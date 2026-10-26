@@ -267,6 +267,23 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
 }
 
 /**
+ * A plan's rows for a caller that groups them its own way (the windows'
+ * counts, facets.ts): the FROM and the selection's WHERE on `alias`, and the
+ * columns it may group by besides src, y and county (every source has them):
+ * each role's id, where the source has one, and agg_cpv_year's code.
+ * `years: false` leaves the year bounds out (a trend's two years are the caller's).
+ */
+export function rollupRows(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters }, alias = "p", opts: { years?: boolean } = {}):
+  { from: Fragment; where: Fragment; id: (role: Role) => Fragment | null; cpv: Fragment | null } {
+  return {
+    from: fromSource(sql, plan.source, alias),
+    where: rollupWhere(sql, plan.source, plan.filters, alias, opts),
+    id: (role) => idColumn(sql, plan.source, role, alias),
+    cpv: plan.source.table === "cpv" ? sql`${sql(alias)}.cpv_code` : null,
+  };
+}
+
+/**
  * minimumRecordsSql on the rollups: `target` (an id column) among the parties
  * with at least N records in the same selection (f without the threshold).
  */

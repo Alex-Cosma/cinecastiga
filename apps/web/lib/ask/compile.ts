@@ -527,7 +527,7 @@ function txFragment(sql: DbSql, dataset: "all" | "da" | "contracts") {
  * size of the whole purchase, only when a question asks for it (F3,
  * fullValueUnion: plan §4.1, "a third variant").
  */
-function txAggFragment(sql: DbSql, dataset: "all" | "da" | "contracts", withNames: boolean, full = false) {
+export function txAggFragment(sql: DbSql, dataset: "all" | "da" | "contracts", withNames: boolean, full = false) {
   if (dataset === "contracts") return sql`marts.contract_transactions`;
   if (dataset === "da") return sql`marts.da_transactions`;
   const fullDa = full ? sql`, null::numeric as contract_value_full` : sql``;

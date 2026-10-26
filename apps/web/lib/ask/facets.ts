@@ -1,0 +1,718 @@
+import type { DbSql } from "@seap/db";
+import { FORCE_CUSTOM_PLANS } from "../plan-cache";
+import { canonicalAskIdentities } from "./canonical-identities";
+import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, AUTHORITY_KINDS, type AskSpec } from "./spec";
+import { ground, type Grounding } from "./ground";
+import {
+  andAll, employeesBounds, fold, fullValueUnion, groupPredicates, predicateContext, profileMinDas, profilePredicates, rowPredicates, trendYearsPredicate,
+  type PredicateCtx,
+} from "./predicates";
+import { authorityKindExpression, authorityKindIds, readAuthorityKinds } from "./authority-kind";
+import { coveragePeriods, daCoverageYears, txAggFragment, uatUnmappedError } from "./compile";
+import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "./months-window";
+import { isHistoricalProfile, unsupportedPopulationView } from "./population";
+import { retarget } from "./filters/retarget";
+import { monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
+import { martColumns } from "./mart-columns";
+import { trendCacheStamp } from "./group-ids";
+import { PROCEDURE_ORDER, PROCEDURE_TYPES, PURCHASE_KIND_ORDER, VALUE_RANGES } from "./purchase";
+import { retiredChoicesText } from "./retired-terms";
+import { questionKey, type QuestionSpec } from "./question-ui";
+import {
+  ABROAD, countyOfFolded, EMPLOYEE_BAND_BOUNDS, FACET_REST, facetSpec, isFacetPart, LOCATE_MATCHES,
+  type CountPart, type FacetCount, type FacetCounts, type FacetPart, type FacetUnit, type LocateMatch, type LocateResult,
+} from "./facet-parts";
+
+/*
+ * The counts of the builder's windows and "Unde e …?" (plan §2.5
+ * "Fațetele", kit R5 and component 20), behind POST /api/ask/facets. A part
+ * counts the options of one window on the draft without the window's own key
+ * (facet-parts.ts facetSpec): the same conditions as the answer
+ * (predicates.ts, rollups.ts), so the number beside an option is the answer
+ * after choosing it.
+ *
+ * Kept apart from the answers: the route reads them on its own small pool
+ * (three connections), at most three at a time in the process, each in a
+ * read-only transaction with an 8 s limit, and drops a request whose window
+ * closed (the client aborts; a running query is cancelled). Counts are kept
+ * for 10 minutes on the draft, the part, the data checkpoint and the marts
+ * build (the file nodes of the transaction marts and of entity_profile,
+ * group-ids.ts trendCacheStamp): a rebuild never serves the counts of the
+ * previous data, whatever the order the checkpoint is published in.
+ *
+ * Every part reads the nightly rollups when the planner can answer exactly
+ * (rollups.ts planRollup), else the live slim union. The kinds of institution
+ * are counted per institution (grouped on its id, then classified with the
+ * lists of authority-kind.ts), never per record. "Unde e …?" ranks the
+ * answer's own grouping once and keeps the rank vector (ids, values, places)
+ * without the text searched, so typing matches names against it without
+ * grouping again; the national ranking over every year ranks straight from
+ * entity_profile (total_ron_split: the rollups' sums, 0 differences on every
+ * institution and firm, 26 Oct 2026).
+ */
+
+type Fragment = ReturnType<DbSql>;
+type Role = "authority" | "supplier";
+type Dataset = "all" | "da" | "contracts";
+
+/** The limit of one part's statements (plan §2.5): the window shows its options without numbers past it. */
+export const FACET_TIMEOUT = "8s";
+/** Parts read at the same time in a process (plan §2.5: "semafor global, 3 în paralel"); the pool has as many connections. */
+export const FACET_SLOTS = 3;
+export const FACET_TTL_MS = 600_000;
+/** Counts kept at most (a window's options are a few dozen numbers). */
+export const FACET_ENTRIES = 500;
+/** Ids held by the rank vectors at most (typed arrays): about six national firm rankings. */
+export const LOCATE_ID_LIMIT = 1_000_000;
+
+export type FacetFailure = { error: string } | { timeout: true } | { precompute: string };
+
+/** What a part needs of the question once grounded (runRows' checks, without its notes). */
+interface Prepared {
+  spec: AskSpec;
+  ctx: PredicateCtx;
+  dataset: Dataset;
+  profile: boolean;
+  /** A trend counts its two years (and their same months), not the period between them. */
+  trend: { yearA: number; yearB: number } | null;
+}
+
+async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding): Promise<Prepared | { error: string }> {
+  // Read first, write later (plan F0a): a key this release does not apply is refused here too.
+  if (unimplementedSpecKeys(input).length) return { error: NEWER_VERSION_LINK };
+  const canonical = await canonicalAskIdentities(sql, input, grounding);
+  let spec = canonical.spec;
+  grounding = canonical.grounding;
+  // "Cine conduce?" on value is the ranking's first row (runSpec): its selection is the ranking's.
+  if (spec.block === "entity_card" && spec.rankBy === "value") spec = { ...retarget(spec, "table"), measure: "value" };
+  const unsupported = unsupportedPopulationView(spec);
+  if (unsupported) return { error: unsupported };
+  const f = spec.filters;
+  if (f.cpvTerm && !grounding.cpv?.prefixes.length) {
+    const retired = grounding.cpv?.retired;
+    return { error: retired ? `${retired.message} ${retiredChoicesText(retired)}` : `Nu am găsit CPV pentru „${f.cpvTerm}”.` };
+  }
+  if ((f.authorityName || f.authorityId) && !grounding.authority?.entityId) return { error: `Nu am găsit autoritatea „${f.authorityName ?? f.authorityId}”.` };
+  if ((f.supplierName || f.supplierId) && !grounding.supplier?.entityId) return { error: `Nu am găsit firma „${f.supplierName ?? f.supplierId}”.` };
+  if (spec.block === "compare" && !grounding.compare?.entityId) return { error: `Nu am găsit a doua entitate din comparație („${f.compareWith}”).` };
+  if (f.county && !grounding.county?.canonical) return { error: `Nu recunosc județul „${f.county}”.` };
+  if ((f.adminPersonKey || f.adminName) && (!grounding.admin?.personKey || grounding.admin.supplierIds.length === 0))
+    return { error: "Nu am găsit firmele persoanei în date (filtrul «conduse azi de»)." };
+  if (f.uatSiruta && !grounding.uat?.authorityIds?.length) return { error: uatUnmappedError(f.uatName ?? grounding.uat?.name ?? `UAT ${f.uatSiruta}`) };
+  const profile = isHistoricalProfile(spec);
+  const dataset: Dataset = profile ? "da" : spec.dataset ?? "all";
+  // The period clamped to the archive, as the answer clamps it.
+  let yearFrom = f.yearFrom ?? null, yearTo = f.yearTo ?? null;
+  let maxY = 2026, minY = 2018;
+  if (!profile) {
+    const covered = dataset === "contracts" ? await daCoverageYears(sql, "award") : dataset === "da" ? await daCoverageYears(sql, "da")
+      : [...new Set([...(await daCoverageYears(sql, "da")), ...(await daCoverageYears(sql, "award"))])].sort((a, b) => a - b);
+    minY = covered[0] ?? minY;
+    maxY = covered.at(-1) ?? maxY;
+    if (yearFrom !== null || yearTo !== null) {
+      const from = yearFrom ?? minY, to = yearTo ?? maxY;
+      if (to < minY || from > maxY) return { error: `Perioada cerută este în afara datelor disponibile (${minY}–${maxY}).` };
+      yearFrom = Math.max(from, minY);
+      yearTo = Math.min(to, maxY);
+    }
+  }
+  // A trend's months, by the answer's function at this checkpoint (sameMonthsWindow).
+  let window: MonthsWindow = WHOLE_YEAR;
+  if (spec.block === "trend" && spec.trend?.months !== undefined) {
+    const resolved = sameMonthsWindow(await coveragePeriods(sql), dataset, yearTo ?? maxY, spec.trend.months);
+    if ("error" in resolved) return { error: resolved.error };
+    window = resolved;
+  }
+  const kindIds = await authorityKindIds(sql, namedKind(f.authorityKind));
+  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window) });
+  return { spec, ctx, dataset, profile, trend: spec.block === "trend" && !profile ? { yearA: yearFrom ?? minY, yearB: yearTo ?? maxY } : null };
+}
+
+/** No condition on the records (the employees apart: an attribute of the firm), over every year: the profiles' sums are the answer's. */
+function everyRecord(p: Prepared): boolean {
+  const w = p.ctx;
+  return p.dataset === "all" && !p.trend && !p.spec.population && !p.spec.minimumRecords &&
+    !w.county && w.cpvPrefixes.length === 0 && w.cpvExclude.length === 0 && !w.kind && !w.authorityId && !w.supplierId &&
+    w.uatSiruta === null && !w.singleBidder && w.adminSupplierIds === null && !w.comparison &&
+    !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
+    w.yearFrom === null && w.yearTo === null && w.monthFrom === null && w.monthTo === null;
+}
+
+/** The selection's records, from a rollup or live, with the columns a part groups by and the two aggregates. */
+interface Rows {
+  from: Fragment;
+  where: Fragment;
+  /** sum of the value, number of records. */
+  v: Fragment;
+  n: Fragment;
+  src: Fragment;
+  y: Fragment;
+  county: Fragment;
+  /** The CPV code (agg_cpv_year, or the records); null on a rollup without it. */
+  cpv: Fragment | null;
+  id: (role: Role) => Fragment | null;
+  /** Read from the transaction marts, not a rollup. */
+  live: boolean;
+}
+
+/**
+ * The rows a part groups: the rollup the planner picks for `need` when the
+ * nightly build has the rollups (and `live` is not asked), else the slim union
+ * with the answer's conditions (rowPredicates, the record threshold).
+ */
+async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: Ready, opts: { full?: boolean } = {}): Promise<Rows> {
+  const { ctx, trend } = p;
+  // A trend's same months read agg_entity_month / agg_county_month once a build has made them (as its answer).
+  const plan = need && ready.rollups ? planRollup(ctx, need, { months: ready.months }) : null;
+  if (plan && "source" in plan) {
+    const r = rollupRows(sql, plan, "p", { years: !trend });
+    const where: Fragment = trend ? sql`${r.where} and p.y in (${String(trend.yearA)}, ${String(trend.yearB)})` : r.where;
+    return {
+      from: r.from, where, v: sql`coalesce(sum(p.v), 0)`, n: sql`coalesce(sum(p.n), 0)`,
+      src: sql`p.src`, y: sql`p.y`, county: sql`p.county`, cpv: r.cpv, id: r.id, live: false,
+    };
+  }
+  const full = opts.full === true || fullValueUnion(ctx);
+  const source = txAggFragment(sql, p.dataset, false, full) as unknown as Fragment;
+  const base = andAll(sql, [...rowPredicates(ctx, { years: !trend }), ...(trend ? [trendYearsPredicate(sql, trend.yearA, trend.yearB, ctx.trendMonths, ctx)] : [])]);
+  const where = andAll(sql, [base, ...groupPredicates(ctx, source, base)]);
+  return {
+    from: sql`${source} d`, where, v: sql`coalesce(sum(d.closing_value), 0)`, n: sql`count(*)`,
+    src: p.dataset === "all" ? sql`d.src` : sql`${p.dataset}::text`, y: sql`substr(d.finalization_date, 1, 4)`, county: sql`d.county`,
+    cpv: sql`d.cpv_code`, id: (role) => role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`, live: true,
+  };
+}
+
+/** The rollups the nightly build has made (probed with the pool, before the transaction: rollups.ts). */
+interface Ready { rollups: boolean; months: boolean }
+const NO_ROLLUPS: Ready = { rollups: false, months: false };
+async function readyOf(sql: DbSql): Promise<Ready> {
+  const rollups = await rollupsReady(sql);
+  return { rollups, months: rollups && await monthRollupReady(sql) };
+}
+
+/**
+ * A selection no index anchors (no named or compared entity, locality,
+ * person's firms, county or kind of institution) on the direct acquisitions:
+ * grouped live per institution or firm it reads millions of records (a
+ * domain nationally, 2025: 3–5 s, S4 F3-facets). Its windows show their
+ * options without numbers until the marts stage keeps the entities per CPV
+ * division (PRECOMPUTE.md, ENTITY_LIVE); the contracts alone (1.1M records)
+ * stay counted.
+ */
+function nationalLive(p: Prepared): boolean {
+  const w = p.ctx;
+  return p.dataset !== "contracts" && !w.authorityId && !w.supplierId && w.uatSiruta === null && w.adminSupplierIds === null
+    && !w.comparison && !w.county && !w.kind;
+}
+/** The PRECOMPUTE.md entry the national live entity counts wait on. */
+export const ENTITY_LIVE = "Numerele ferestrelor pe instituții și firme, cu domeniu, național";
+
+/** A grouped row: the group's key (null: no option holds it), the value and the count; `f`, a seat's foreign flag. */
+interface Grouped { k: string | null; v: string; n: string; f?: boolean }
+
+/** The purchase kind of a code (purchase.ts divisionKind, predicates.ts purchaseKindCond), null without one. */
+const kindOfCode = (sql: DbSql, c: Fragment): Fragment =>
+  sql`(case when ${c} like '45%' then 'lucrari' when ${c} >= '50' then 'servicii' when ${c} < '45' or (${c} >= '48' and ${c} < '50') then 'produse' end)`;
+
+/** A firm's band of employees (kit §4), null without a filing ("Fără bilanț"). */
+const bandOf = (sql: DbSql, employees: Fragment): Fragment => {
+  const cases = EMPLOYEE_BAND_BOUNDS.map((band) => band.max === null
+    ? sql`when ${employees} >= ${band.min} then ${band.value}`
+    : sql`when ${employees} between ${band.min} and ${band.max} then ${band.value}`).reduce((a, b) => sql`${a} ${b}`);
+  return sql`(case ${cases} end)`;
+};
+
+/** A procedure of the window from a SEAP type (purchase.ts PROCEDURE_TYPES; "altele" is the rest, an empty one too). */
+const procedureOf = (sql: DbSql, type: Fragment): Fragment => {
+  const named = (["deschisa", "simplificata", "negociere_fara_publicare"] as const)
+    .map((procedure) => sql`when ${type} = any(${sql.array([...PROCEDURE_TYPES[procedure]])}::text[]) then ${procedure}`).reduce((a, b) => sql`${a} ${b}`);
+  return sql`(case ${named} else 'altele' end)`;
+};
+
+/** The size range of a purchase (purchase.ts VALUE_RANGES, [min, max)), its index as text. */
+const sizeOf = (sql: DbSql, value: Fragment): Fragment => {
+  const cases = VALUE_RANGES.map((range, i): Fragment | null => range.purchaseValueMax === undefined ? null : sql`when ${value} < ${range.purchaseValueMax}::numeric then ${String(i)}`)
+    .filter((c): c is Fragment => c !== null).reduce((a, b) => sql`${a} ${b}`);
+  return sql`(case ${cases} else ${String(VALUE_RANGES.length - 1)} end)`;
+};
+
+/**
+ * The seat column of a firm: entity_profile.seat_county once a marts build
+ * filled it (mart-columns.ts), else its county (plan §2.5). Not async: a
+ * fragment is a thenable, which an async function would run.
+ */
+const seatColumn = (sql: DbSql, filled: boolean): Fragment => filled ? sql`ep.seat_county` : sql`ep.county`;
+
+/** Counts of the transaction parts, grouped as each window lists its options. */
+async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready: Ready, run: Runner):
+  Promise<{ rows: Grouped[]; unit: FacetUnit } | { error: string } | { precompute: string }> {
+  // The channel, the county and the years group any rollup's rows (src, y and county are on all of them);
+  // asked "by county", the planner also finds agg_county_month for a trend's same months.
+  const byCounty: RollupNeed = { by: "county" };
+  switch (part) {
+    case "channel": {
+      // The national draft over every year: the totals of the nightly build (runSpec's `bare`).
+      if (everyRecord(p) && p.ctx.minEmployees === null && p.ctx.maxEmployees === null)
+        return { unit: "records", rows: await run<Grouped>(sql`select src k, v_plaf::text v, n_plaf::text n from marts.agg_national`) };
+      const r = await rowsOf(sql, p, byCounty, ready);
+      return { unit: "records", rows: await run<Grouped>(sql`select ${r.src} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
+    }
+    case "procedure": {
+      // The procedure is a column of the contract records the rollups do not keep.
+      const r = await rowsOf(sql, p, null, NO_ROLLUPS);
+      return { unit: "records", rows: await run<Grouped>(sql`select ${procedureOf(sql, sql`d.procedure_type`)} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
+    }
+    case "domain": {
+      // The code is on agg_cpv_year only: a selection with an entity condition counts live.
+      const rolled = await rowsOf(sql, p, { by: "cpv" }, ready);
+      const r = rolled.cpv ? rolled : await rowsOf(sql, p, null, NO_ROLLUPS);
+      return { unit: "records", rows: await run<Grouped>(sql`select ${kindOfCode(sql, r.cpv!)} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
+    }
+    case "size": {
+      // The whole purchase's value (purchaseValueConds): a contract's contract_value_full, a direct acquisition's own.
+      const r = await rowsOf(sql, p, null, NO_ROLLUPS, { full: true });
+      const value: Fragment = p.ctx.plafond === "strict" ? sql`d.closing_value` : sql`coalesce(d.contract_value_full, d.closing_value)`;
+      return { unit: "records", rows: await run<Grouped>(sql`select ${sizeOf(sql, value)} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
+    }
+    case "years": {
+      if (p.trend) return { error: "Anii schimbării se aleg în propoziție." };
+      const r = await rowsOf(sql, p, byCounty, ready);
+      return { unit: "records", rows: await run<Grouped>(sql`select ${r.y} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1 order by 1`) };
+    }
+    case "county": {
+      const r = await rowsOf(sql, p, byCounty, ready);
+      return { unit: "records", rows: await run<Grouped>(sql`select ${r.county} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
+    }
+    case "kind": {
+      // Per institution, then its kind (plan §2.5: 16 s on the records, a few hundred ms grouped).
+      const r = await rowsOf(sql, p, { by: "authority" }, ready);
+      if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+      const id = r.id("authority") ?? sql`d.authority_id`;
+      const kinds = await readAuthorityKinds(sql);
+      return { unit: "institutions", rows: await run<Grouped>(sql`
+        select ${authorityKindExpression(sql, kinds, sql`g.id`)} k, coalesce(sum(g.v), 0) v, count(*) n
+        from (select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1) g
+        group by 1
+      `) };
+    }
+    case "seat": case "employees": {
+      // A seat is the county (folded and named after, countyOfFolded) with the firm's foreign flag: a Romanian
+      // county first, then a foreign seat, the rest unknown. A band is the firm's latest filing.
+      const seat = seatColumn(sql, (await martColumns(sql)).seat);
+      const key: Fragment = part === "employees" ? sql`${bandOf(sql, sql`ep.employees`)} k, false f` : sql`${seat} k, coalesce(ep.is_foreign, false) f`;
+      // Every record, both channels, every year: the firms' own profiles hold their sums (plan §2.5, "calea rapidă pe atribute").
+      if (everyRecord(p)) {
+        const size = p.ctx.minEmployees !== null || p.ctx.maxEmployees !== null ? sql`and ${employeesBounds(sql, p.ctx.minEmployees, p.ctx.maxEmployees)}` : sql``;
+        return { unit: "firms", rows: await run<Grouped>(sql`
+          select ${key}, coalesce(sum(ep.total_ron_split), 0) v, count(*) n
+          from marts.entity_profile ep
+          where ep.role = 'supplier' and ep.total_ron_split > 0 ${size}
+          group by 1, 2
+        `) };
+      }
+      const r = await rowsOf(sql, p, { by: "supplier" }, ready);
+      if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+      const id = r.id("supplier") ?? sql`d.supplier_id`;
+      return { unit: "firms", rows: await run<Grouped>(sql`
+        select ${key}, coalesce(sum(g.v), 0) v, count(*) n
+        from (select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1) g
+        left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = 'supplier'
+        group by 1, 2
+      `) };
+    }
+  }
+}
+
+/**
+ * Counts of a profile question (the risk cloud, "Cine conduce?" on the
+ * index): its profiles (profilePredicates), by kind or by county (a firm's
+ * seat on firm profiles). A distribution's group is its own window (F6a,
+ * /api/ask/peers); the other parts are conditions on records, which a
+ * profile does not take.
+ */
+async function profileCounts(sql: DbSql, p: Prepared, part: CountPart, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit } | { error: string }> {
+  const { spec, ctx } = p;
+  const role: Role = spec.dim === "supplier" ? "supplier" : "authority";
+  const offered = spec.block !== "distribution" && (part === "county" || (part === "kind" && role === "authority") || (part === "seat" && role === "supplier"));
+  if (!offered) return { error: "Profilurile istorice nu se numără după această condiție." };
+  const parts: Fragment[] = [...profilePredicates(ctx, role, profileMinDas(spec.block))];
+  if (spec.block === "scatter") parts.push(sql`ef.cri is not null`);
+  const where = andAll(sql, parts);
+  const key: Fragment = part === "kind" ? authorityKindExpression(sql, await readAuthorityKinds(sql), sql`ef.entity_id`) : sql`ef.county`;
+  return { unit: "profiles", rows: await run<Grouped>(sql`
+    select ${key} k, coalesce(sum(ef.total_ron), 0) v, count(*) n from marts.entity_flags ef where ${where} group by 1
+  `) };
+}
+
+/** The options of a part, in the window's order (the counties and years as found); null maps a group to the rest. */
+function optionOf(part: CountPart, key: string | null, foreign = false): string | null {
+  if (part === "seat") return countyOfFolded(key) ?? (foreign ? ABROAD : null);
+  if (key === null) return null;
+  switch (part) {
+    case "county": return countyOfFolded(key);
+    case "years": return /^\d{4}$/.test(key) ? key : null;
+    case "kind": return (AUTHORITY_KINDS as readonly string[]).includes(key) ? key : null;
+    default: return key;
+  }
+}
+const FIXED_OPTIONS: Partial<Record<CountPart, readonly string[]>> = {
+  channel: ["da", "contracts"],
+  procedure: PROCEDURE_ORDER,
+  domain: PURCHASE_KIND_ORDER,
+  size: VALUE_RANGES.map((_, i) => String(i)),
+  kind: AUTHORITY_KINDS,
+  employees: EMPLOYEE_BAND_BOUNDS.map((band) => band.value),
+};
+
+/** The grouped rows as the window's options and rest, with each share of the value (of the profiles on a profile question). */
+export function assembleCounts(part: CountPart, unit: FacetUnit, rows: readonly Grouped[], meta: { checkpoint: string | null; tookMs: number; firmProfiles?: boolean }): FacetCounts {
+  const sums = new Map<string, { n: number; v: number }>();
+  const rest = { n: 0, v: 0 };
+  for (const row of rows) {
+    const option = optionOf(part, row.k, row.f === true), n = Number(row.n), v = Number(row.v);
+    if (option === null) { rest.n += n; rest.v += v; continue; }
+    const at = sums.get(option) ?? { n: 0, v: 0 };
+    sums.set(option, { n: at.n + n, v: at.v + v });
+  }
+  const total = { n: rest.n, value_ron: rest.v };
+  for (const { n, v } of sums.values()) { total.n += n; total.value_ron += v; }
+  const share = (n: number, v: number) => unit === "profiles" ? (total.n ? n / total.n : 0) : total.value_ron ? v / total.value_ron : 0;
+  const fixed = FIXED_OPTIONS[part];
+  const values = fixed ? [...fixed] : [...sums.keys()].sort(part === "years" ? undefined : (a, b) => sums.get(b)!.v - sums.get(a)!.v || a.localeCompare(b));
+  const options: FacetCount[] = values.map((value) => {
+    const at = sums.get(value) ?? { n: 0, v: 0 };
+    return { value, n: at.n, value_ron: at.v, share: share(at.n, at.v) };
+  });
+  const label = part === "county" && meta.firmProfiles ? FACET_REST.seat : FACET_REST[part];
+  return {
+    part, unit, options,
+    rest: label && (rest.n > 0 || part === "kind" || part === "seat" || part === "employees") ? { label, n: rest.n, value_ron: rest.v, share: share(rest.n, rest.v) } : null,
+    total, checkpoint: meta.checkpoint, tookMs: meta.tookMs,
+  };
+}
+
+/** A query run under the request's signal: a closed window cancels the statement it waits on. */
+type Runner = <T>(query: Fragment) => Promise<T[]>;
+function runner(signal: AbortSignal | undefined): Runner {
+  return async <T,>(query: Fragment): Promise<T[]> => {
+    signal?.throwIfAborted();
+    const cancel = () => { (query as unknown as { cancel?: () => void }).cancel?.(); };
+    signal?.addEventListener("abort", cancel, { once: true });
+    try { return (await query) as unknown as T[]; } finally { signal?.removeEventListener("abort", cancel); }
+  };
+}
+
+let refreshesTable: { ok: boolean; at: number } | null = null;
+/** The data checkpoint (the last ready refresh), null without one. */
+async function dataCheckpoint(sql: DbSql): Promise<string | null> {
+  if (!refreshesTable || Date.now() - refreshesTable.at > FACET_TTL_MS) {
+    const [row] = (await sql`select to_regclass('app.monitoring_refreshes') is not null ok`) as unknown as { ok: boolean }[];
+    refreshesTable = { ok: Boolean(row?.ok), at: Date.now() };
+  }
+  if (!refreshesTable.ok) return null;
+  const [ready] = (await sql`select id::text id from app.monitoring_refreshes where status = 'ready' order by version desc limit 1`) as unknown as { id: string }[];
+  return ready?.id ?? null;
+}
+
+/** What a kept answer is valid for: the marts build (null when a mart is missing: nothing is kept) and the checkpoint. */
+async function facetStamp(sql: DbSql): Promise<{ build: string | null; checkpoint: string | null }> {
+  const [build, checkpoint] = await Promise.all([trendCacheStamp(sql), dataCheckpoint(sql)]);
+  return { build, checkpoint };
+}
+
+/** The key of a part's counts (plan §2.5): the draft without the part's key, the part, the checkpoint and the marts build. */
+export function facetKey(spec: AskSpec, part: FacetPart, stamp: { build: string; checkpoint: string | null }): string {
+  const asked = part === "locate" ? rankingSpec(spec) : facetSpec(spec, part);
+  return JSON.stringify([stamp.build, stamp.checkpoint, part, questionKey(asked as unknown as QuestionSpec)]);
+}
+
+const counted = new Map<string, { value: FacetCounts; at: number }>();
+const pending = new Map<string, Shared>();
+let stats = { hits: 0, misses: 0, grouped: 0 };
+
+function keep(key: string, value: FacetCounts): void {
+  counted.delete(key);
+  counted.set(key, { value, at: Date.now() });
+  for (const oldest of counted.keys()) {
+    if (counted.size <= FACET_ENTRIES) break;
+    counted.delete(oldest);
+  }
+}
+
+/** Tests and ask-perf: forget every kept count and rank vector, and the counters. */
+export function forgetFacets(): void {
+  counted.clear(); pending.clear(); vectors.clear(); held = 0; refreshesTable = null;
+  stats = { hits: 0, misses: 0, grouped: 0 };
+}
+export const facetStats = () => ({ ...stats, entries: counted.size, vectors: vectors.size, held });
+
+/** Inside the facet transaction: read-only, the plans of the values, the 8 s limit. */
+async function inFacetTransaction<T>(sql: DbSql, work: (tx: DbSql) => Promise<T>): Promise<T> {
+  return await sql.begin("read only", async (tx) => {
+    await tx.unsafe(FORCE_CUSTOM_PLANS);
+    await tx.unsafe(`set local statement_timeout = '${FACET_TIMEOUT}'`);
+    return await work(tx as unknown as DbSql);
+  }) as T;
+}
+
+const timedOut = (e: unknown) => e instanceof Error && e.message.includes("statement timeout");
+/**
+ * A request whose window closed: its signal's reason (AbortError, or Next's
+ * ResponseAborted), or a query cancelled for it.
+ */
+export const aborted = (e: unknown): boolean =>
+  e instanceof Error && (e.name === "AbortError" || e.name === "ResponseAborted" || e.message.includes("due to user request"));
+const closed = () => Object.assign(new Error("The window closed."), { name: "AbortError" });
+
+/**
+ * One count shared by every request asking the same thing at the same time
+ * (a window reopened, React's development effects run twice). Its query is
+ * cancelled only when every request waiting on it has gone.
+ */
+interface Shared { key: string | null; work: Promise<FacetCounts | FacetFailure>; controller: AbortController; waiters: number }
+
+function waitFor(shared: Shared, signal: AbortSignal | undefined): Promise<FacetCounts | FacetFailure> {
+  shared.waiters++;
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const leave = () => {
+      if (settled) return;
+      settled = true;
+      // The last one gone: cancel, and let the next request count afresh rather than join a cancelled count.
+      if (--shared.waiters === 0) {
+        if (shared.key && pending.get(shared.key) === shared) pending.delete(shared.key);
+        shared.controller.abort();
+      }
+      reject(closed());
+    };
+    if (signal?.aborted) { leave(); return; }
+    signal?.addEventListener("abort", leave, { once: true });
+    shared.work.then((value) => { if (!settled) { settled = true; shared.waiters--; resolve(value); } },
+      (e: unknown) => { if (!settled) { settled = true; shared.waiters--; reject(e); } })
+      .finally(() => signal?.removeEventListener("abort", leave));
+  });
+}
+
+/**
+ * The counts of one window on a draft (validated by the caller): kept, or
+ * counted once for every request asking the same thing at the same time.
+ */
+export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, opts: { signal?: AbortSignal } = {}): Promise<FacetCounts | FacetFailure> {
+  const base = facetSpec(draft, part);
+  const stamp = await facetStamp(sql);
+  const key = stamp.build ? facetKey(base, part, { build: stamp.build, checkpoint: stamp.checkpoint }) : null;
+  const kept = key ? counted.get(key) : undefined;
+  if (key && kept && Date.now() - kept.at <= FACET_TTL_MS) {
+    stats.hits++;
+    keep(key, kept.value);
+    return { ...kept.value, tookMs: 0 };
+  }
+  const running = key ? pending.get(key) : undefined;
+  if (running) return await waitFor(running, opts.signal);
+  stats.misses++;
+  const controller = new AbortController();
+  const work = (async (): Promise<FacetCounts | FacetFailure> => {
+    const started = Date.now();
+    try {
+      const grounding = await ground(sql, base.filters, base.population);
+      // The rollups are probed with the pool, before the transaction (rollups.ts).
+      const ready = await readyOf(sql);
+      await martColumns(sql);
+      const result = await inFacetTransaction(sql, async (tx) => {
+        const p = await prepare(tx, base, grounding);
+        if ("error" in p) return p;
+        stats.grouped++;
+        const run = runner(controller.signal);
+        const grouped = p.profile ? await profileCounts(tx, p, part, run) : await transactionCounts(tx, p, part, ready, run);
+        if ("error" in grouped || "precompute" in grouped) return grouped;
+        return assembleCounts(part, grouped.unit, grouped.rows, {
+          checkpoint: stamp.checkpoint, tookMs: Date.now() - started, firmProfiles: p.profile && p.spec.dim === "supplier",
+        });
+      });
+      if ("options" in result && key) keep(key, result);
+      return result;
+    } catch (e) {
+      if (timedOut(e)) return { timeout: true };
+      throw e;
+    }
+  })();
+  const shared: Shared = { key, work, controller, waiters: 0 };
+  if (key) pending.set(key, shared);
+  void work.catch(() => {}).finally(() => { if (key && pending.get(key) === shared) pending.delete(key); });
+  return await waitFor(shared, opts.signal);
+}
+
+// --- "Unde e …?" (component 20, part=locate)
+
+/** The ranking a search places names in: the question without its length (a place past the first N is still a place, final table §5). */
+function rankingSpec(spec: AskSpec): AskSpec {
+  const { topN: _top, ...rest } = spec;
+  return rest;
+}
+
+/**
+ * The rank vector of a ranking: its ids in their places (value or records
+ * descending, then the id, as the answer orders them), and the same ids
+ * sorted with their places, for a binary search.
+ */
+interface RankVector { ids: Float64Array; values: Float64Array; counts: Float64Array; sorted: Float64Array; places: Int32Array; size: number }
+const vectors = new Map<string, { vector: RankVector; at: number }>();
+let held = 0;
+
+export function rankVector(rows: readonly { id: string; v: string; n: string }[]): RankVector {
+  const ids = Float64Array.from(rows, (r) => Number(r.id)), values = Float64Array.from(rows, (r) => Number(r.v)), counts = Float64Array.from(rows, (r) => Number(r.n));
+  const order = Array.from(ids.keys()).sort((a, b) => ids[a]! - ids[b]!);
+  return { ids, values, counts, sorted: Float64Array.from(order, (i) => ids[i]!), places: Int32Array.from(order, (i) => i + 1), size: ids.length };
+}
+/** The place of an id in the vector, or null when the ranking does not hold it. */
+export function placeOf(vector: Pick<RankVector, "sorted" | "places">, id: number): number | null {
+  let lo = 0, hi = vector.sorted.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1, at = vector.sorted[mid]!;
+    if (at === id) return vector.places[mid]!;
+    if (at < id) lo = mid + 1; else hi = mid - 1;
+  }
+  return null;
+}
+function keepVector(key: string, vector: RankVector): void {
+  const old = vectors.get(key);
+  if (old) { vectors.delete(key); held -= old.vector.size; }
+  if (vector.size > LOCATE_ID_LIMIT) return;
+  vectors.set(key, { vector, at: Date.now() });
+  held += vector.size;
+  for (const [oldest, { vector: v }] of vectors) {
+    if (held <= LOCATE_ID_LIMIT) break;
+    vectors.delete(oldest);
+    held -= v.size;
+  }
+}
+
+/** The text searched as a LIKE pattern on folded names. */
+const namePattern = (q: string) => `%${fold(q).replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/**
+ * "Unde e o firmă?" / "Unde e o instituție?" on a ranking of firms or
+ * institutions (value or records): the names matching `q` and their places.
+ * The national ranking over every record reads entity_profile (a count of the
+ * profiles above each match); any other ranking groups once and keeps its
+ * rank vector, which the next searches on the same question reuse.
+ */
+export async function locate(sql: DbSql, spec: AskSpec, q: string, opts: { signal?: AbortSignal } = {}): Promise<LocateResult | FacetFailure> {
+  if (spec.block !== "table" || (spec.dim !== "supplier" && spec.dim !== "authority")) return { error: "„Unde e …?” caută într-un clasament de firme sau de instituții." };
+  if (spec.measure !== "value" && spec.measure !== "count") return { error: "„Unde e …?” nu se aplică valorii pe locuitor." };
+  const role: Role = spec.dim, measure = spec.measure;
+  const asked = rankingSpec(spec);
+  const started = Date.now();
+  try {
+    const stamp = await facetStamp(sql);
+    const key = stamp.build ? facetKey(asked, "locate", { build: stamp.build, checkpoint: stamp.checkpoint }) : null;
+    const grounding = await ground(sql, asked.filters, asked.population);
+    const ready = await readyOf(sql);
+    return await inFacetTransaction(sql, async (tx) => {
+      const run = runner(opts.signal);
+      const p = await prepare(tx, asked, grounding);
+      if ("error" in p) return p;
+      const pattern = namePattern(q);
+      const done = (total: number, matches: LocateMatch[]): LocateResult =>
+        ({ part: "locate", total, measure, matches, checkpoint: stamp.checkpoint, tookMs: Date.now() - started });
+      // Every record, both channels, every year (the firms' bands apart): each profile's sum is its place's
+      // value, and a firm's records are n_das + n_contracts (an institution's profile counts a contract once).
+      if (everyRecord(p) && (measure === "value" || role === "supplier")) {
+        const size = role === "supplier" && (p.ctx.minEmployees !== null || p.ctx.maxEmployees !== null)
+          ? sql`and ${employeesBounds(sql, p.ctx.minEmployees, p.ctx.maxEmployees)}` : sql``;
+        const by = (alias: string) => measure === "count" ? sql`${sql(alias)}.n_das + ${sql(alias)}.n_contracts` : sql`${sql(alias)}.total_ron_split`;
+        const ranked = sql`ep.role = ${role} and ep.total_ron_split > 0 ${size}`;
+        const [count] = await run<{ t: string }>(sql`select count(*) t from marts.entity_profile ep where ${ranked}`);
+        const rows = await run<{ id: string; nm: string; co: string | null; v: string; n: string; place: string }>(sql`
+          with m as (
+            select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co, ep.total_ron_split v, ep.n_das + ep.n_contracts n, ${by("ep")} k
+            from marts.entity_profile ep
+            where ${ranked} and lower(unaccent(ep.name_display)) like ${pattern}
+            order by ${by("ep")} desc, ep.entity_id
+            limit ${LOCATE_MATCHES}
+          )
+          select m.id, m.nm, m.co, m.v, m.n, (
+            select count(*) + 1 from marts.entity_profile ep
+            where ${ranked} and (${by("ep")} > m.k or (${by("ep")} = m.k and ep.entity_id < m.id))
+          ) place
+          from m order by place
+        `);
+        return done(Number(count?.t ?? 0), rows.map((r) => ({ id: String(r.id), name: r.nm, county: r.co, rank: Number(r.place), value: Number(r.v), n: Number(r.n) })));
+      }
+      let vector = key ? vectors.get(key) : undefined;
+      if (vector && Date.now() - vector.at > FACET_TTL_MS) { vectors.delete(key!); held -= vector.vector.size; vector = undefined; }
+      if (!vector) {
+        const r = await rowsOf(tx, p, { by: role }, ready);
+        const id = r.id(role) ?? (role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`);
+        stats.grouped++;
+        const rows = await run<{ id: string; v: string; n: string }>(sql`
+          select ${id} id, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} and ${id} is not null
+          group by 1 order by ${measure === "count" ? sql`n` : sql`v`} desc, 1
+        `);
+        vector = { vector: rankVector(rows), at: Date.now() };
+        if (key) keepVector(key, vector.vector);
+      }
+      const ranking = vector.vector;
+      // Names apart (plan §2.5): the profiles whose name holds the text, placed by the vector.
+      const names = await run<{ id: string; nm: string; co: string | null }>(sql`
+        select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co
+        from marts.entity_profile ep
+        where ep.role = ${role} and lower(unaccent(ep.name_display)) like ${pattern}
+        order by ep.total_ron_split desc nulls last, ep.entity_id
+        limit 200
+      `);
+      const placed = names.map((r) => ({ r, place: placeOf(ranking, Number(r.id)) }));
+      const inRanking = placed.filter((m) => m.place !== null).sort((a, b) => a.place! - b.place!).slice(0, LOCATE_MATCHES);
+      // A name the ranking does not hold is said so ("nu intră în clasament"), only when no name is placed.
+      const shown = inRanking.length ? inRanking : placed.slice(0, 3);
+      return done(ranking.size, shown.map(({ r, place }) => ({
+        id: String(r.id), name: r.nm, county: r.co, rank: place,
+        value: place === null ? null : ranking.values[place - 1]!, n: place === null ? null : ranking.counts[place - 1]!,
+      })));
+    });
+  } catch (e) {
+    if (timedOut(e)) return { timeout: true };
+    throw e;
+  }
+}
+
+// --- the slots: at most FACET_SLOTS parts at a time in the process
+
+let busy = 0;
+const waiting: (() => void)[] = [];
+
+/**
+ * Run `work` in one of the FACET_SLOTS slots, waiting for a free one. A
+ * request whose window closed while it waited is dropped without a query.
+ */
+export async function inFacetSlot<T>(signal: AbortSignal | undefined, work: () => Promise<T>): Promise<T> {
+  while (busy >= FACET_SLOTS) {
+    await new Promise<void>((resolve) => {
+      // Woken by a slot that ends, or leaving the queue when the window closes (a stale entry would swallow the next wake-up).
+      const go = () => { signal?.removeEventListener("abort", drop); resolve(); };
+      const drop = () => { const at = waiting.indexOf(go); if (at >= 0) waiting.splice(at, 1); resolve(); };
+      waiting.push(go);
+      signal?.addEventListener("abort", drop, { once: true });
+    });
+    signal?.throwIfAborted();
+  }
+  signal?.throwIfAborted();
+  busy++;
+  try { return await work(); } finally {
+    busy--;
+    waiting.shift()?.();
+  }
+}
+/** Tests: the slots in use and the requests waiting. */
+export const facetSlots = () => ({ busy, waiting: waiting.length });
+
+/** The part a request names, with its text for "Unde e …?" (plan §2.5: at least two characters). */
+export function facetRequest(body: { part?: unknown; q?: unknown }): { part: FacetPart; q: string | null } | { error: string } {
+  const part = body.part;
+  if (!isFacetPart(part)) return { error: "Parte necunoscută." };
+  if (part !== "locate") return { part, q: null };
+  const q = typeof body.q === "string" ? body.q.trim().slice(0, 80) : "";
+  if (fold(q).length < 2) return { error: "Scrie cel puțin două litere." };
+  return { part: "locate", q };
+}

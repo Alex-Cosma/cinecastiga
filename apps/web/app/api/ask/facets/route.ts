@@ -1,0 +1,60 @@
+import { NextResponse } from "next/server";
+import { createDb, type DbSql } from "@seap/db";
+import { NEWER_VERSION_LINK, validateSpec } from "@/lib/ask/spec";
+import { localityScopeError } from "@/lib/ask/question-ui";
+import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, type FacetFailure } from "@/lib/ask/facets";
+import type { FacetCounts, LocateResult } from "@/lib/ask/facet-parts";
+import { devlog } from "@/lib/devlog";
+
+/**
+ * POST /api/ask/facets — the counts of a builder's window and "Unde e …?"
+ * (plan §2.5, kit R5 and component 20).
+ *   { spec, part }      → { ok, part, unit, options, rest, total, checkpoint, tookMs }
+ *   { spec, part: "locate", q } → { ok, part, total, measure, matches, checkpoint, tookMs }
+ *   over the 8 s limit  → { ok: false, timeout: true }: the window shows its options without numbers.
+ * POST, not GET: a precise selection reaches 64 KB, and a person's key (name,
+ * birth date and place) stays out of the access logs. Its own pool of
+ * FACET_SLOTS connections, so counts never wait for an answer's connection or
+ * hold one; a closed window aborts the request, which cancels its query.
+ */
+
+const g = globalThis as unknown as { __seapFacetSql?: DbSql };
+function db(): DbSql {
+  if (!g.__seapFacetSql) g.__seapFacetSql = createDb(undefined, { max: FACET_SLOTS }).sql;
+  return g.__seapFacetSql;
+}
+
+export async function POST(req: Request) {
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as typeof body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error("Invalid body");
+  } catch {
+    return NextResponse.json({ ok: false, error: "Body invalid (JSON)." }, { status: 400 });
+  }
+  const asked = facetRequest(body);
+  if ("error" in asked) return NextResponse.json({ ok: false, error: asked.error }, { status: 400 });
+  // A key this release reads but does not apply is refused here too (plan F0a).
+  const v = validateSpec(body.spec, { refuseNewer: NEWER_VERSION_LINK });
+  if ("error" in v) return NextResponse.json({ ok: false, error: v.error }, { status: v.newer ? 422 : 400 });
+  const localityError = localityScopeError(v);
+  if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
+  const signal = req.signal;
+  try {
+    const result = await inFacetSlot<FacetCounts | LocateResult | FacetFailure>(signal, () => asked.part === "locate"
+      ? locate(db(), v, asked.q!, { signal })
+      : facetCounts(db(), v, asked.part, { signal }));
+    if ("timeout" in result) return NextResponse.json({ ok: false, timeout: true }, { headers: { "cache-control": "no-store" } });
+    // A count that waits on the marts stage (PRECOMPUTE.md): the options without numbers, as past the limit.
+    if ("precompute" in result) return NextResponse.json({ ok: false, timeout: true, precompute: result.precompute }, { headers: { "cache-control": "no-store" } });
+    if ("error" in result) return NextResponse.json({ ok: false, error: result.error }, { status: 200 });
+    devlog("facets", { part: asked.part, tookMs: result.tookMs });
+    return NextResponse.json({ ok: true, ...result }, { headers: { "cache-control": "no-store" } });
+  } catch (e) {
+    // The window closed: nobody reads the answer.
+    if (signal.aborted || aborted(e)) return new NextResponse(null, { status: 499 });
+    const msg = e instanceof Error ? e.message : String(e);
+    devlog("facets", { part: asked.part, ok: false, error: msg });
+    return NextResponse.json({ ok: false, error: "Numerele nu au putut fi calculate." }, { status: 500 });
+  }
+}
