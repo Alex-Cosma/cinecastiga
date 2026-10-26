@@ -52,6 +52,10 @@ export const PERF_ENTITIES = {
   dedeman: { id: 2124387, name: "DEDEMAN S.R.L." },
   clujNapoca: { id: 2146445, name: "Municipiul Cluj-Napoca" },
   clujNapocaUat: { siruta: 54975, name: "mun. Cluj-Napoca (Cluj)" },
+  // F6a's distribution groups (final distribution §3.2).
+  buzau: { id: 2144364, name: "MUNICIPIUL BUZAU" },
+  rusetu: { id: 2144926, name: "Comuna Rusetu" },
+  corabia: { id: 2146373, name: "Spitalul Orasenesc Corabia" },
 } as const;
 
 type Edit = (q: QuestionSpec) => void;
@@ -184,6 +188,20 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:network-selgros", "sources", "Sursele rețelei SELGROS", "network", focal("supplier"), { path: "rows" }),
     perfCase("sources:distribution-cluj-napoca", "sources", "Sursele profilului Municipiului Cluj-Napoca", "distribution", focal("authority"),
       { path: "rows", scope: { entityIds: [String(PERF_ENTITIES.clujNapoca.id)], role: "authority" } }),
+    // F6a: the distribution's group (lib/ask/peer-groups.ts, distribution.ts): the answer, a bar's sources, the group's CSV.
+    perfCase("national:distribution-buzau-population", "national", "Unde se situează Buzău față de primăriile cu 52–207 mii de locuitori", "distribution",
+      all(focal("authority", PERF_ENTITIES.buzau), top({ peers: { similar: true } })), { barMs: 1000 }),
+    perfCase("national:distribution-rusetu-population", "national", "Unde se situează Rusetu față de 2.034 de primării de mărimea ei", "distribution",
+      all(focal("authority", PERF_ENTITIES.rusetu), top({ peers: { similar: true } })), { barMs: 1000 }),
+    perfCase("national:distribution-dedeman-country", "national", "Unde se situează DEDEMAN față de toate firmele", "distribution", focal("supplier", PERF_ENTITIES.dedeman), { barMs: 1000 }),
+    perfCase("national:distribution-dedeman-seat", "national", "Unde se situează DEDEMAN față de firmele cu sediul în Bacău", "distribution",
+      all(focal("supplier", PERF_ENTITIES.dedeman), set({ county: "Bacău" })), { barMs: 1000 }),
+    perfCase("national:distribution-hospital-kind-activity", "national", "Unde se situează Spitalul Corabia față de spitalele cu activitate apropiată", "distribution",
+      all(focal("authority", PERF_ENTITIES.corabia), top({ peers: { similar: true, activity: true } })), { barMs: 1000 }),
+    perfCase("sources:distribution-rusetu-bar", "sources", "Sursele profilurilor cu 2 criterii din grupul Rusetu (442)", "distribution",
+      all(focal("authority", PERF_ENTITIES.rusetu), top({ peers: { similar: true } })), { path: "rows", scope: { criteria: 2 }, barMs: 2000 }),
+    perfCase("csv:distribution-rusetu-group", "csv", "CSV-ul surselor grupului Rusetu (2.034 de profiluri)", "distribution",
+      all(focal("authority", PERF_ENTITIES.rusetu), top({ peers: { similar: true } })), { path: "csv", barMs: 2000 }),
     // The source paths whose conditions F0 moved into lib/ask/predicates.ts: the DA bound
     // on direct acquisitions only, a comparison, and a profile population chosen by kind.
     perfCase("sources:stat-da-2025", "sources", "Sursele achizițiilor directe din 2025", "stat", all(top({ dataset: "da" }), years(2025)), { path: "rows", barMs: 2000 }),

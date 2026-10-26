@@ -7,7 +7,7 @@ import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-tex
 import { askLink } from "../../lib/ask/source-spec";
 import type { QuestionSpec } from "../../lib/ask/question-ui";
 import {
-  CRITERION_LABEL, CRITERION_RULE, PEER_MINIMUM, PROFILE_MIN_DAS, coverageWords, peerCountWords, peerGroupValue, peerWindowTip, writePeerTicks,
+  CRITERION_LABEL, CRITERION_RULE, PEER_MINIMUM, PROFILE_MIN_DAS, coverageWords, peerCountWords, peerGroupValue, peerWindowTip, similarRuleName, writePeerTicks,
   type PeerRowId,
 } from "../../lib/ask/peer-groups-shared";
 import { cleanName, formatInt } from "../../lib/format";
@@ -87,7 +87,7 @@ export default function DistributionAnswer({ distribution: d, spec, onChangeGrou
     </div>;
   }
   if (d.status === "small") {
-    const label: Record<PeerRowId, string> = { similar: "același tip", domain: "același domeniu principal", county: "același județ", activity: "activitate apropiată" };
+    const label: Record<PeerRowId, string> = { similar: similarRuleName(group.facts.similar), domain: "același domeniu principal", county: "același județ", activity: "activitate apropiată" };
     const relax = [
       ...group.ticks.map((tick) => ({ id: tick, label: `Scoate „${label[tick]}”`, onClick: () => write(writePeerTicks(applied, group.ticks.filter((t) => t !== tick), group.facts)) })),
       ...(group.legacy.county ? [{ id: "legacy-county", label: `Scoate „${group.legacy.county}”`, onClick: () => { const next = structuredClone(applied); delete next.filters.county; write(next); } }] : []),
@@ -95,7 +95,7 @@ export default function DistributionAnswer({ distribution: d, spec, onChangeGrou
     ];
     return <div className="dist">
       {head}
-      <EmptyState message={`Grupul are ${group.others === 0 ? "niciun alt membru" : `doar ${noun(group.others)}`}. Comparația cere cel puțin ${PEER_MINIMUM}.`} relax={onChangeGroup ? relax : []} />
+      <EmptyState message={`${group.others === 0 ? "Grupul nu are niciun alt membru" : `Grupul are doar ${noun(group.others)}`}. Comparația cere cel puțin ${PEER_MINIMUM}.`} relax={onChangeGroup ? relax : []} />
     </div>;
   }
 
