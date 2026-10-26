@@ -124,7 +124,7 @@ describe("the flow's answer (final sankey §3.2–§3.4, §3.10)", () => {
   it("suggests the domain that holds 90% of the value, never at eight digits", () => {
     expect(sankeySuggestion(SANKEY)).toBeNull();
     const one = { ...SANKEY, domains: [{ ...SANKEY.domains[0]!, value: 16_000 }], totals: { ...SANKEY.totals, value: 16_950 } };
-    expect(sankeySuggestion(one)).toEqual({ code: "45", text: "94,4% e Construcții" });
+    expect(sankeySuggestion(one)).toEqual({ code: "45", name: "Construcții", text: "94,4% e Construcții" });
     expect(sankeySuggestion({ ...one, domains: [{ ...one.domains[0]!, code: "45233140" }] })).toBeNull();
     const deeper = sankeyDeeperSpec({ block: "sankey", measure: "value", filters: { authorityId: 1, purchaseKind: "lucrari" } }, "45");
     expect(deeper).toEqual({ block: "sankey", measure: "value", filters: { authorityId: 1, cpvTerm: "45" } });

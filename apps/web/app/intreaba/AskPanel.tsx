@@ -33,7 +33,7 @@ import TrendBlock from "./TrendAnswer";
 import NetworkAnswer from "./NetworkAnswer";
 import SankeyAnswer from "./SankeyAnswer";
 import { NETWORK_LIST_CSV, shownList as shownNetworkList } from "./network-answer";
-import { sankeySuggestion, shownOptions as sankeyShownOptions } from "./sankey-answer";
+import { domainName, sankeySuggestion, shownOptions as sankeyShownOptions } from "./sankey-answer";
 import { networkList, NETWORK_LIST_LABELS, type NetworkList, type NetworkOrder } from "@/lib/ask/network-shared";
 import { sankeyShown } from "@/lib/ask/sankey-shared";
 import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
@@ -178,6 +178,9 @@ export default function AskPanel({
   const lastBody = useRef<Record<string, unknown> | null>(null);
   /** A link that already holds the question opens on its answer; the builder waits under "Schimbă întrebarea". */
   const [builderCollapsed, setBuilderCollapsed] = useState(false);
+  /** The same, for execute (a stable callback): a strip's new query reaches a folded builder through its initial question. */
+  const builderCollapsedRef = useRef(false);
+  builderCollapsedRef.current = builderCollapsed;
   const [toast, setToast] = useState<string | null>(null);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
   /**
@@ -307,14 +310,21 @@ export default function AskPanel({
         setAppliedSpec(executed);
         if (!("tablePage" in body)) setThread(opts.thread ?? null);
         // The builder gets the stream the engine resolved, not the one asked (validateSpec can put it back).
-        if (opts.strip) setStripPatch((current) => ({
-          seq: (current?.seq ?? 0) + 1, ...opts.strip!, ...(opts.strip!.path === "dataset" ? { value: executed.dataset ?? "all" } : {}),
-          // The evolution's options as the engine ran them (F3): the draft gets the whole key.
-          ...(opts.strip!.path === "timeseries" ? { timeseries: executed.timeseries ?? null } : {}),
-          // The network's reference year (F4): its options as the engine ran them.
-          ...(opts.strip!.path === "network" ? { network: executed.network ?? null } : {}),
-        }));
-        else if (body.spec && !("tablePage" in body)) {
+        if (opts.strip) {
+          const patch = {
+            ...opts.strip, ...(opts.strip.path === "dataset" ? { value: executed.dataset ?? "all" } : {}),
+            // The evolution's options as the engine ran them (F3): the draft gets the whole key.
+            ...(opts.strip.path === "timeseries" ? { timeseries: executed.timeseries ?? null } : {}),
+            // The network's reference year (F4): its options as the engine ran them.
+            ...(opts.strip.path === "network" ? { network: executed.network ?? null } : {}),
+          };
+          setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...patch }));
+          // A builder folded under "Schimbă întrebarea" is not mounted: it opens on the strip's key too (F4-network-sankey).
+          if (builderCollapsedRef.current) {
+            setBuilderInit((current) => current ? patchDraft(current, patch) : current);
+            setBuilderResolution((current) => current ? { submitted: patchDraft(current.submitted, patch), resolved: patchDraft(current.resolved, patch) } : current);
+          }
+        } else if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as QuestionSpec, resolved: answer.spec });
         }
         // The composer owns draft/applied comparison, including edits made
@@ -1089,7 +1099,7 @@ export default function AskPanel({
                   : <span className="qb-row qb-tipwrap-sm"><Crumbs label="Domenii" items={[]} current="toate" /><HelpTip tip={{ title: "Domenii", text: "Domeniul = codul CPV declarat de instituție pentru fiecare înregistrare. Detaliază coboară un nivel." }} /></span>)}
                 {data.block === "sankey" && (() => {
                   const deeper = sankeySuggestion(data);
-                  return deeper && <Suggest text={deeper.text} href={threadHref(applied, deeper.code, deeperThread(thread, applied, deeper.code, deeper.text.replace(/^.* e /, "")))} />;
+                  return deeper && <Suggest text={deeper.text} href={threadHref(applied, deeper.code, deeperThread(thread, applied, deeper.code, deeper.name))} />;
                 })()}
                 {stripKeys.includes("measure") && data.block === "map" && (
                   <StripLabelled before="Harta arată">
@@ -1220,7 +1230,7 @@ export default function AskPanel({
               )}
               {data.block === "sankey" && (
                 <SankeyAnswer data={data} spec={applied} layout={layout}
-                  deeperHref={(code) => threadHref(applied, code, deeperThread(thread, applied, code, data.domains.find((d) => d.code === code)?.name ?? `CPV ${code}`))} />
+                  deeperHref={(code) => threadHref(applied, code, deeperThread(thread, applied, code, domainName(data.domains.find((d) => d.code === code) ?? { code, name: null })))} />
               )}
               {data.block === "network" && (
                 <NetworkAnswer data={data} spec={applied} conditions={totalWords}
