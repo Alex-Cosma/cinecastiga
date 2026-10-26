@@ -191,7 +191,7 @@ export interface RunResult {
 }
 export interface CaseResult {
   id: string; group: PerfCase["group"]; label: string; path: PerfCase["path"]; barMs: number; ref?: string;
-  spec: PerfCase["spec"]; scope?: PerfCase["scope"];
+  spec: PerfCase["spec"]; scope?: PerfCase["scope"]; drawer?: PerfCase["drawer"]; precompute?: string;
   /** Other active backends before and after the timed runs, and the 1-minute load average
    * at the start: concurrent work on a shared machine skews timings. */
   otherActive: number;
@@ -273,6 +273,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
     }
     const result = await runRows(sql, c.spec, grounding, c.page ?? 0, {
       ...(c.scope ? { scope: c.scope } : {}), ...(c.path === "csv" ? { limit: CSV_MAX_ROWS } : {}),
+      ...(c.drawer?.sort ? { sort: c.drawer.sort } : {}), ...(c.drawer?.dir ? { dir: c.drawer.dir } : {}), ...(c.drawer?.search ? { search: c.drawer.search } : {}),
     });
     if ("error" in result) return { ms: round(performance.now() - started), groundMs: round(groundMs), error: result.error };
     const csv = c.path === "csv" ? evidenceCsv(result.rows) : null;
@@ -314,7 +315,7 @@ async function worker(options: PerfOptions, url: string) {
     } finally { await sql.end(); }
   })();
   const out: CaseResult = { id: c.id, group: c.group, label: c.label, path: c.path, barMs: c.barMs, ...(c.ref ? { ref: c.ref } : {}),
-    spec: c.spec, ...(c.scope ? { scope: c.scope } : {}), ...timed };
+    spec: c.spec, ...(c.scope ? { scope: c.scope } : {}), ...(c.drawer ? { drawer: c.drawer } : {}), ...(c.precompute ? { precompute: c.precompute } : {}), ...timed };
   if (options.explain) {
     const plans: StatementPlan[] = [];
     let collect = false;
@@ -394,8 +395,8 @@ const setting = (value: string, unit: string | null) => {
 };
 export const overBar = (c: CaseResult) => !c.warm.error && c.warm.ms > c.barMs;
 
-/** The question a case asks: its spec as questionKey reads it, and the drawer's selection. */
-const asked = (c: Pick<CaseResult, "spec" | "scope">) => `${questionKey(c.spec)}|${JSON.stringify(c.scope ?? null)}`;
+/** The question a case asks: its spec as questionKey reads it, and the drawer's selection (and its order or search, when set). */
+const asked = (c: Pick<CaseResult, "spec" | "scope" | "drawer">) => `${questionKey(c.spec)}|${JSON.stringify(c.scope ?? null)}${c.drawer ? `|${JSON.stringify(c.drawer)}` : ""}`;
 /** Cases whose id is in the baseline but whose question is not the baseline's: their timings do not compare. */
 export function specChanges(base: PerfReport, current: PerfReport): string[] {
   const byId = new Map(base.cases.map((c) => [c.id, c]));
@@ -444,7 +445,7 @@ export function renderMarkdown(report: PerfReport, base?: PerfReport, tolerance 
     "",
   ];
   const over = report.cases.filter(overBar), failed = report.cases.filter((c) => c.warm.error);
-  lines.push(`**Peste pragul la cald: ${over.length} din ${report.cases.length}.**${over.length ? " " + over.map((c) => `\`${c.id}\` (${seconds(c.warm.ms)})`).join(", ") + "." : ""}`);
+  lines.push(`**Peste pragul la cald: ${over.length} din ${report.cases.length}.**${over.length ? " " + over.map((c) => `\`${c.id}\` (${seconds(c.warm.ms)}${c.precompute ? `, pe PRECOMPUTE.md: «${c.precompute}»` : ""})`).join(", ") + "." : ""}`);
   const firstOver = report.cases.filter((c) => !c.first.error && c.first.ms > c.barMs && !overBar(c));
   if (firstOver.length) lines.push("", `Doar prima rulare peste prag: ${firstOver.map((c) => `\`${c.id}\` (${seconds(c.first.ms)})`).join(", ")}.`);
   if (failed.length) lines.push("", `Erori: ${failed.map((c) => `\`${c.id}\` — ${c.warm.error}`).join("; ")}.`);
