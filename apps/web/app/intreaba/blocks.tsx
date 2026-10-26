@@ -13,6 +13,10 @@ import type { QuestionSpec } from "@/lib/ask/question-ui";
 import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
 import { deeperThread, threadHref, type Thread } from "./answer-state";
 import KitLink, { recordsWords } from "./answer/KitLink";
+import { FactTag } from "./answer/RowFacts";
+import { breakdownKinds, breakdownShown, largestTag } from "./breakdown-answer";
+import HelpTip from "./builder/HelpTip";
+import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
 
 /**
  * House rule (docs/PRINCIPLES.md): every graph element answers on hover with an
@@ -81,6 +85,7 @@ import { FLAG_META, criBand } from "@/lib/flags";
 import type {
   DistributionData,
   BreakdownSlice,
+  BreakdownGroup,
   ScatterPoint,
   ScatterDensity,
   SankeyFlow,
@@ -270,17 +275,28 @@ const SEG_OTHER = "#a3acba";
 export function BreakdownBlock({
   slices,
   other,
+  base,
   spec,
   thread = null,
+  onKind,
+  onMeasure,
 }: {
   slices: BreakdownSlice[];
   other: { value: number; count: number };
+  /** F3: every group of the level, for the kinds row, the order by records and the tags (absent from older answers). */
+  base?: BreakdownGroup[] | undefined;
   spec: AskSpec;
   /** The levels above this one ("fir"): a deeper level carries them, so the strip can lead back. */
   thread?: Thread | null;
+  /** The kinds row (final breakdown §3.7): a kind of purchase, asked again. */
+  onKind?: (kind: PurchaseKind) => void;
+  /** The legend's headers (final §3.8): the order by value or by records, on the groups already fetched. */
+  onMeasure?: (measure: "value" | "count") => void;
 }) {
   const t = useTip();
   const evidence = useAnswerEvidence();
+  const [all, setAll] = useState(false);
+  const byCount = spec.measure === "count" && Boolean(base);
   // slice click: while the stem can go deeper, open the same breakdown one
   // CPV level down; at a full 8-digit code, open the transactions instead.
   const canDeepen = (code: string): boolean => code.length < 8;
@@ -291,23 +307,30 @@ export function BreakdownBlock({
 
   const total = slices.reduce((a, s) => a + s.value, 0) + other.value;
   if (total <= 0) return <p className="ask-empty">Niciun rezultat.</p>;
+  // The groups shown and the rest (final §3.8–§3.9): by the order chosen, from every group when the answer has them.
+  const shown = breakdownShown(slices, other, base, byCount, all);
+  const measureTotal = byCount ? shown.total.count : shown.total.value;
+  const amount = (s: { value: number; count: number }) => byCount ? s.count : s.value;
+  const kinds = !spec.filters.purchaseKind && base && onKind ? breakdownKinds(base, byCount) : null;
   const items = [
-    ...slices.map((s, i) => ({
+    ...shown.groups.map((s, i) => ({
       // The catalogue writes ş/ţ; the answer says ș/ț, as the sentence does (data and CSV keep the catalogue's).
       name: s.name ? readableCpvName(s.name) : `CPV ${s.code}`,
       code: s.code as string | null,
       value: s.value,
       count: s.count,
       color: SEG_COLORS[i % SEG_COLORS.length]!,
+      tag: largestTag(s, shown.total.value),
     })),
-    ...(other.value > 0
+    ...(amount(shown.rest) > 0
       ? [
           {
-            name: "alte domenii",
+            name: shown.restGroups > 0 ? `alte ${countWords(shown.restGroups, "domeniu", "domenii")}` : "alte domenii",
             code: null as string | null,
-            value: other.value,
-            count: other.count,
+            value: shown.rest.value,
+            count: shown.rest.count,
             color: SEG_OTHER,
+            tag: null,
           },
         ]
       : []),
@@ -315,12 +338,18 @@ export function BreakdownBlock({
   return (
     <div>
       {t.el}
+      {kinds && kinds.length > 1 && <div className="qb qb-kinds" role="group" aria-label="Tipul achiziției">
+        {kinds.map((kind) => <button type="button" key={kind.kind} className="qb-kind" onClick={() => onKind!(kind.kind)}>
+          {PURCHASE_KIND_WORDS[kind.kind].label} <b className="qb-num">{formatShare(kind.share)}</b>
+        </button>)}
+        <HelpTip tip={{ title: "Tipul", text: "Tipul vine din codul CPV ales de cumpărător: 45 = lucrări, 50–98 = servicii, restul = produse." }} />
+      </div>}
       <div className="ask-comp">
         {items.map((s) => {
           const bind = t.bind(
             s.name,
-            formatRon(s.value),
-            `${countWords(s.count, "achiziție", "achiziții")} · ${formatShare(s.value / total)} din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
+            byCount ? countWords(s.count, "înregistrare", "înregistrări") : formatRon(s.value),
+            `${byCount ? formatRon(s.value) : countWords(s.count, "achiziție", "achiziții")} · ${formatShare(amount(s) / measureTotal)} din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
           );
           return s.code ? (
             <a
@@ -328,7 +357,7 @@ export function BreakdownBlock({
               className="seg"
               href={sliceUrl(s.code, s.name)}
               style={{
-                width: `${(s.value / total) * 100}%`,
+                width: `${(amount(s) / measureTotal) * 100}%`,
                 background: s.color,
               }}
               {...bind}
@@ -338,7 +367,7 @@ export function BreakdownBlock({
               key={s.name}
               className="seg"
               style={{
-                width: `${(s.value / total) * 100}%`,
+                width: `${(amount(s) / measureTotal) * 100}%`,
                 background: s.color,
               }}
               {...bind}
@@ -346,6 +375,13 @@ export function BreakdownBlock({
           );
         })}
       </div>
+      {/* The legend orders by value or by records (final §3.8): both are on every row. */}
+      {base && onMeasure && <div className="qb qb-legend-head" role="group" aria-label="Ordonează domeniile">
+        <span>{countWords(base.length, "domeniu", "domenii")}</span>
+        <button type="button" className="qb-sort" aria-pressed={!byCount} onClick={() => onMeasure("value")}>Valoare{!byCount && <span aria-hidden="true"> ▾</span>}</button>
+        <button type="button" className="qb-sort" aria-pressed={byCount} onClick={() => onMeasure("count")}>Înreg.{byCount && <span aria-hidden="true"> ▾</span>}</button>
+        <HelpTip tip={{ title: "Înregistrări", text: "Un contract cu mai mulți câștigători apare o dată pentru fiecare, mai des la lucrări." }} />
+      </div>}
       <div className="ask-complegend">
         {items.map((s) => (
           <div key={s.name} className="li">
@@ -358,9 +394,10 @@ export function BreakdownBlock({
               ) : (
                 s.name
               )}
+              {s.tag && <FactTag fact={s.tag} />}
             </span>
             <span className="vv num">
-              <span>{formatRonFull(s.value)} · {formatShare(s.value / total)}</span>
+              <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)} · {formatShare(amount(s) / measureTotal)}</span>
               {evidence && (
                 <button
                   type="button"
@@ -371,7 +408,7 @@ export function BreakdownBlock({
                       s.code
                         ? { cpvPrefixes: [s.code] }
                         : {
-                            excludeCpvPrefixes: slices.map((item) => item.code),
+                            excludeCpvPrefixes: shown.groups.map((item) => item.code),
                           },
                       `${s.name} · înregistrările categoriei`,
                     )
@@ -384,9 +421,11 @@ export function BreakdownBlock({
           </div>
         ))}
       </div>
+      {shown.more > 0 && <div className="qb qb-listfoot"><button type="button" className="qb-more-btn" onClick={() => setAll(true)}>Arată toate</button></div>}
     </div>
   );
 }
+
 
 /* ── scatter ──────────────────────────────────────────────────────────── */
 

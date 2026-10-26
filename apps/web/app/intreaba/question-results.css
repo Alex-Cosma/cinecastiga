@@ -395,6 +395,138 @@
 .cq-result .ask-ts-one .d {
   color: var(--muted);
 }
+/* F3 (final timeseries §3.8–§3.10): a bar is a button that opens its card; the parts of a split stack inside it,
+   the marker of the incomplete last year is a line on the bar before it; the card sits beside the chart (under it on a phone). */
+.ask-ts-wrap .ts-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+.ask-ts-wrap .ts-row > .ask-ts {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ask-ts-wrap .ts-row > .ts-card {
+  flex: 0 0 300px;
+  max-width: 300px;
+  margin-top: 8px;
+}
+.ask-ts button.col {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.ask-ts button.col:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 2px;
+}
+.ask-ts .col.is-picked .bar {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.ask-ts .bar {
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse;
+}
+.ask-ts .ts-seg {
+  display: block;
+  width: 100%;
+  flex: none;
+}
+.ts-sw--proc { background: var(--fk-proc); }
+.ts-sw--da { background: var(--fk-da); }
+.ts-sw--c1 { background: var(--fk-c1); }
+.ts-sw--c2 { background: var(--fk-c2); }
+.ts-sw--c3 { background: var(--fk-c3); }
+.ts-sw--c4 { background: var(--fk-c4); }
+.ts-sw--other { background: var(--line2); }
+.cq-result .ask-ts .col.partial .ts-seg {
+  background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--paper) 4px 7px);
+}
+.ask-ts .ts-ref {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  border-top: 2px solid var(--ink);
+}
+.ts-ref-key {
+  display: inline-block;
+  width: 16px;
+  vertical-align: middle;
+  border-top: 2px solid var(--ink);
+}
+/* Under the year's label, outside the column's flow: the bar keeps the baseline of the others. */
+.ask-ts .cl {
+  position: relative;
+}
+.ask-ts .ts-cap {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+}
+.ask-ts .ts-m {
+  white-space: nowrap;
+}
+.ts-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 10px 16px 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink2);
+  font-size: 12.5px;
+}
+.ts-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ts-sw {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+/* The contracts above the cap: a title on two lines at most (whole in its tooltip), its value beside it. */
+.ts-above {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+.ts-above li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 1px solid var(--line);
+}
+.ts-above li a {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.ts-above li .qb-num {
+  flex: none;
+  white-space: nowrap;
+}
 .cq-result .ask-cmp {
   gap: 22px;
 }
@@ -584,6 +716,12 @@
   .qb-trend-strip .qb-trend-sub { flex-wrap: wrap; row-gap: 6px; }
   .qb-trend-strip .qb-trend-sub > .qb-seg { flex: 1 1 100%; }
   .qb-trend-sub-label { padding-left: 2px; }
+  /* The bar's card under the chart, on the whole width (final timeseries §3.10). */
+  .ask-ts-wrap .ts-row { flex-direction: column; align-items: stretch; }
+  .ask-ts-wrap .ts-row > .ts-card { flex: none; max-width: none; width: 100%; }
+  .ts-legend { margin: 10px 4px 0; }
+  .ts-above li { align-items: center; padding: 0; }
+  .ts-above li a { min-height: 44px; padding: 3px 0; }
 }
 @media (max-width: 600px) {
   .cq-page-intro {
@@ -689,6 +827,13 @@
     max-width: 100%;
     overflow: hidden;
     flex-shrink: 0;
+  }
+  /* Month by month: narrow bars, January's tick only, the first one kept inside the chart. */
+  .cq-result .ask-ts.ask-ts--months {
+    gap: 3px;
+  }
+  .ask-ts--months .col:first-child .cl {
+    align-self: flex-start;
   }
   /* '18 … '26 where 2018 does not fit; the full year stays for screen readers. */
   .ask-ts .ts-y {

@@ -43,7 +43,7 @@ describe("countedOptions: a window's options with their counts", () => {
   });
   it("shares the procedures of every purchase once the channels are read", () => {
     const procedures = counts({ part: "procedure", unit: "records", options: [{ value: "deschisa", n: 10, value_ron: 250, share: 0.5 }], rest: null });
-    expect(countedOptions([{ value: "p", label: "Licitație deschisă" }], ready(procedures), () => "deschisa", { over: 1000 })[0]!.count).toBe("25,0% · 10");
+    expect(countedOptions<KitOption>([{ value: "p", label: "Licitație deschisă" }], ready(procedures), () => "deschisa", { over: 1000 })[0]!.count).toBe("25,0% · 10");
   });
 });
 

@@ -15,7 +15,8 @@ import { reloadsFor409 } from "@/lib/ask/source-csv";
 import { answerLabels, questionTitle } from "@/lib/ask/filters/title";
 import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
-import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
+import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
+import { employeesWords } from "@/lib/ask/filters/words";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -39,7 +40,12 @@ import { patchDraft } from "./builder/view";
 import { readCoverage } from "./builder/coverage";
 import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
-import AnswerStrip, { Crumbs, StripEnd, StripLabelled } from "./answer/AnswerStrip";
+import AnswerStrip, { Crumbs, StripEnd, StripLabelled, Suggest } from "./answer/AnswerStrip";
+import Toggle from "./builder/Toggle";
+import SeriesAnswer from "./SeriesAnswer";
+import { barKey, barName, barSources } from "./series-answer";
+import StatMix from "./answer/StatMix";
+import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import EmptyState from "./answer/EmptyState";
 import { emptyAnswer, relaxations } from "./answer-empty";
@@ -50,10 +56,13 @@ import Segmented from "./builder/Segmented";
 import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
 import { useCpvName } from "./cpv-name";
-import { DATA_RELOADED, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, readThread, shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread } from "./answer-state";
+import {
+  CHANNEL_SHARE_TIP, DATA_RELOADED, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, breakdownSuggestion, channelShares, readThread, sameMonthsSwitch, seriesSplitOptions,
+  shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread,
+} from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
-import { AnswerEvidence, useAnswerEvidence } from "./AnswerEvidence";
+import { AnswerEvidence, useAnswerEvidence, type EvidenceOpenOpts } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
 import MapBlock from "./MapBlock";
 import { ProfileNotice } from "./ProfileNotes";
@@ -181,6 +190,8 @@ export default function AskPanel({
     title: string;
     scopeLabel?: string;
     months?: ExecutedWindow["months"];
+    /** The drawer's first order (a bar's largest record, F3). */
+    sort?: "value";
   } | null>(null);
   const [tableOpts, setTableOpts] = useState<{
     page: number;
@@ -282,7 +293,11 @@ export default function AskPanel({
         setAppliedSpec(executed);
         if (!("tablePage" in body)) setThread(opts.thread ?? null);
         // The builder gets the stream the engine resolved, not the one asked (validateSpec can put it back).
-        if (opts.strip) setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...opts.strip!, ...(opts.strip!.path === "dataset" ? { value: executed.dataset ?? "all" } : {}) }));
+        if (opts.strip) setStripPatch((current) => ({
+          seq: (current?.seq ?? 0) + 1, ...opts.strip!, ...(opts.strip!.path === "dataset" ? { value: executed.dataset ?? "all" } : {}),
+          // The evolution's options as the engine ran them (F3): the draft gets the whole key.
+          ...(opts.strip!.path === "timeseries" ? { timeseries: executed.timeseries ?? null } : {}),
+        }));
         else if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as QuestionSpec, resolved: answer.spec });
         }
@@ -581,7 +596,7 @@ export default function AskPanel({
     return true;
   };
   const openEvidence = useCallback(
-    (spec?: AskSpec, scope?: EvidenceScope, label?: string) => {
+    (spec?: AskSpec, scope?: EvidenceScope, label?: string, opts: EvidenceOpenOpts = {}) => {
       const selected = spec ?? applied;
       if (selected) {
         const effectiveScope =
@@ -594,14 +609,17 @@ export default function AskPanel({
                     : ("authority" as const),
               }
             : scope;
-        // The applied trend's sources list the months its answer counted (plan §2.8).
-        const months = selected === applied ? resp?.executed?.months : undefined;
+        // The applied trend's (and evolution's, F3) sources list the months its answer counted (plan §2.8).
+        const months = selected === applied || selected.block === "timeseries" && applied?.block === "timeseries" && selected.timeseries?.months !== undefined
+          ? resp?.executed?.months : undefined;
         setEvidence({
           spec: selected,
           ...(effectiveScope ? { scope: effectiveScope } : {}),
+          ...(opts.filters ? { filters: opts.filters } : {}),
           title,
           ...(label ? { scopeLabel: label } : {}),
           ...(months ? { months } : {}),
+          ...(opts.sort ? { sort: opts.sort } : {}),
         });
       }
     },
@@ -927,18 +945,48 @@ export default function AskPanel({
             {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. */}
             {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
               <div className="qb cq-strip"><AnswerStrip>
-                {stripKeys.includes("dataset") && (
-                  <Segmented
+                {stripKeys.includes("dataset") && (() => {
+                  // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
+                  const shares = data.block === "breakdown" ? channelShares(data, applied.measure === "count") : null;
+                  const control = <Segmented
                     label="Ce fel de achiziții"
                     value={streamShown ?? applied.dataset ?? "all"}
-                    options={streamOptions(applied)}
+                    options={shares ? shares.options(streamOptions(applied)) : streamOptions(applied)}
                     onChange={(value) => {
                       if (value === (streamShown ?? applied.dataset ?? "all")) return;
                       setStreamShown(value);
                       applyStripChange("dataset", value);
                     }}
-                  />
+                  />;
+                  return shares ? <StripLabelled after={shares.unit} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
+                })()}
+                {/* The evolution's split and same months (F3, final timeseries §3.8–§3.9): each a new grouping. */}
+                {data.block === "timeseries" && stripKeys.includes("timeseriesSplit") && (
+                  <StripLabelled before="Împarte" smHide>
+                    <Segmented
+                      label="Împarte"
+                      value={`split:${applied.timeseries?.split ?? ""}`}
+                      options={seriesSplitOptions(applied)}
+                      onChange={(value) => { if (value !== `split:${applied.timeseries?.split ?? ""}`) applyStripChange("timeseries", value); }}
+                    />
+                  </StripLabelled>
                 )}
+                {data.block === "timeseries" && stripKeys.includes("timeseriesMonths") && (() => {
+                  const window = sameMonthsSwitch(data, applied);
+                  return window && <span className="qb-pair qb-tipwrap-sm">
+                    <Toggle id="ts-months" label={`Aceleași luni: ${window.label}`} pressed={window.on}
+                      onToggle={(_id, pressed) => applyStripChange("timeseries", pressed ? "months:auto" : "months:")} />
+                    <HelpTip tip={{ title: "Aceleași luni", text: `Fiecare an e tăiat la ${window.label}, ultimele luni complete din ${window.year}. 2018 nu intră în comparație.` }} />
+                  </span>;
+                })()}
+                {/* The breakdown's kind is the first level of its thread (F3, final breakdown §3.7): „toate” goes back. */}
+                {data.block === "breakdown" && !crumbs && applied.filters.purchaseKind && PURCHASE_KIND_WORDS[applied.filters.purchaseKind] && (
+                  <Crumbs label="Domenii" items={[{ label: "toate", onClick: () => applyStripChange("purchaseKind", "") }]} current={PURCHASE_KIND_WORDS[applied.filters.purchaseKind].label} />
+                )}
+                {data.block === "breakdown" && (() => {
+                  const deeper = breakdownSuggestion(data, applied, thread);
+                  return deeper && <Suggest text={deeper.text} href={deeper.href} />;
+                })()}
                 {stripKeys.includes("measure") && data.block === "map" && (
                   <StripLabelled before="Harta arată">
                     <Segmented
@@ -974,9 +1022,11 @@ export default function AskPanel({
                 titleId="raspuns-titlu"
               />
             </div> : <div className={`cq-result cq-result-${data.block}`}>
-              {data.block === "stat" && (
+              {data.block === "stat" && <>
                 <StatBlock stat={data.stat} measure={applied.measure} />
-              )}
+                {/* „Din care” (F3): asked once the number is drawn; „Doar acestea ›” asks the total again with that row. */}
+                <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
+              </>}
               {data.block === "table" &&
                 (layout === "visual" ? (
                   <RankingBars
@@ -984,6 +1034,7 @@ export default function AskPanel({
                     spec={applied}
                     conditions={totalWords}
                     totals={(data.page ?? 0) === 0 && !tableOpts.sort ? data.totals : undefined}
+                    group={(data.page ?? 0) === 0 && !tableOpts.sort ? data.group : undefined}
                     onSources={openEvidence}
                   />
                 ) : (
@@ -1020,10 +1071,10 @@ export default function AskPanel({
                 ))}
               {data.block === "timeseries" &&
                 (layout === "visual" ? (
-                  <SeriesBlock series={data.series} spec={applied} partial={resp.partialYears ?? []} />
+                  <SeriesAnswer data={data} spec={applied} partial={resp.partialYears ?? []} onSources={openEvidence} />
                 ) : (
                   <ExactSeries
-                    series={data.series}
+                    data={data}
                     partial={resp.partialYears ?? []}
                     spec={applied}
                     onSources={openEvidence}
@@ -1053,8 +1104,11 @@ export default function AskPanel({
                 <BreakdownBlock
                   slices={data.slices}
                   other={data.other}
+                  base={data.base}
                   spec={applied}
                   thread={thread}
+                  onKind={(kind) => applyStripChange("purchaseKind", kind)}
+                  onMeasure={(measure) => { if (measure !== (applied.measure === "count" ? "count" : "value")) applyStripChange("measure", measure); }}
                 />
               )}
               {data.block === "scatter" && (
@@ -1160,6 +1214,7 @@ export default function AskPanel({
           {...(evidence.scope ? { scope: evidence.scope } : {})}
           {...(evidence.filters ? { initialFilters: evidence.filters } : {})}
           {...(evidence.months ? { months: evidence.months, onStale: () => reloadOutdated(true) } : {})}
+          {...(evidence.sort ? { initialSort: evidence.sort } : {})}
           onClose={() => setEvidence(null)}
         />
       )}
@@ -1171,19 +1226,24 @@ function RankingBars({
   rows,
   spec,
   totals,
+  group,
   conditions = [],
   onSources,
 }: {
   rows: TableRow[];
   spec: AskSpec;
   totals?: RankingTotals | undefined;
+  /** F3 (table:employees-2): the ranked firms of a band, the list; `totals` stay the whole selection's. */
+  group?: RankingTotals | undefined;
   /** What changed the total outside the sentence (G8): the total line says it. */
   conditions?: readonly string[];
   onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
   // Shares are of money: a per-capita ranking has no meaningful "% din total".
   const shareTotals = spec.measure === "value_per_capita" ? undefined : totals;
-  const rest = rankingRest(rows, shareTotals);
+  // The rest row is the list's (the band's firms after the shown ones), its share of the whole selection.
+  const rest = rankingRest(rows, group ?? shareTotals, group ? shareTotals : undefined);
+  const band = group && shareTotals && shareTotals.value > 0 ? employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees) : null;
   const metric = (r: TableRow) =>
     spec.measure === "count"
       ? r.count
@@ -1261,7 +1321,14 @@ function RankingBars({
         )}
       </div>
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
-      {conditions.length > 0 ? <>
+      {/* F3: the band of CÂȘTIGĂTORII narrows the list; its line says the list's sum against the whole selection's. */}
+      {band && group && shareTotals ? <>
+        <div className="qb cq-total"><TotalLine conditions={conditions}>
+          {entityNoun(spec.dim, group.entities)} {band}: <span className="qb-num">{formatRonFull(group.value)}</span>, {formatShare(group.value / shareTotals.value)} din{" "}
+          <span className="qb-num">{formatRonFull(shareTotals.value)}</span> ({entityNoun(spec.dim, shareTotals.entities)})
+        </TotalLine></div>
+        <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>
+      </> : conditions.length > 0 ? <>
         <div className="qb cq-total"><TotalLine conditions={conditions}>{hasTotal ? <>Total: <span className="qb-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
         {spec.dim === "supplier" && <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>}
       </> : (hasTotal || spec.dim === "supplier") && (
@@ -1274,49 +1341,56 @@ function RankingBars({
     </>
   );
 }
+/**
+ * The evolution as a table (final timeseries §4 „Vizual | Tabel”): a row per
+ * year or month, a column per part of a split, and the change against the
+ * year before only between two complete years.
+ */
 function ExactSeries({
-  series,
+  data,
   partial,
   spec,
   onSources,
 }: {
-  series: SeriesPoint[];
+  data: Extract<BlockData, { block: "timeseries" }>;
   partial: PartialYear[];
   spec: AskSpec;
   onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
 }) {
+  const monthly = data.grain === "month";
+  const parts = data.parts ?? [];
+  const rows = [...data.series].sort((a, b) => barKey(a).localeCompare(barKey(b)));
+  const complete = (year: number) => year > 2018 && !partial.some((p) => p.year === year);
   return (
     <table className="ask-table cq-exact-table">
       <thead>
         <tr>
-          <th>An</th>
+          <th>{monthly ? "Luna" : "An"}</th>
           <th>Valoare înregistrată</th>
           <th>Înregistrări</th>
+          {parts.map((part) => <th key={part.key}>{part.label}</th>)}
+          {!monthly && <th>Față de anul anterior</th>}
           <th>Surse</th>
         </tr>
       </thead>
       <tbody>
-        {series.map((r) => {
-          const part = partial.find((p) => p.year === r.year);
+        {rows.map((r) => {
+          const part = monthly ? undefined : partial.find((p) => p.year === r.year);
+          const previous = monthly ? undefined : rows.find((p) => p.year === r.year - 1);
+          const change = previous && previous.value > 0 && complete(r.year) && complete(r.year - 1) ? formatChange((r.value / previous.value - 1) * 100) : "—";
+          const sources = barSources(spec, r);
           return (
-          <tr key={r.year}>
+          <tr key={barKey(r)}>
             <th>
-              {r.year}
+              {barName(r)}
               {part && <small className="ask-partial-note">{part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: {part.note}</small>}
             </th>
             <td>{formatRonFull(r.value)}</td>
             <td>{formatInt(r.count)}</td>
+            {parts.map((p) => <td key={p.key}>{formatRonFull(r.parts?.[p.key]?.value ?? 0)}</td>)}
+            {!monthly && <td>{change}</td>}
             <td>
-              <button
-                type="button"
-                onClick={() =>
-                  onSources(
-                    spec,
-                    { years: [r.year] },
-                    `${r.year} · înregistrările anului`,
-                  )
-                }
-              >
+              <button type="button" onClick={() => onSources(sources.spec, sources.scope, `${barName(r)} · înregistrările ${monthly ? "lunii" : "anului"}`)}>
                 Vezi înregistrările →
               </button>
             </td>
@@ -1564,131 +1638,6 @@ function TableBlock({
       )}
     </div>
   );
-}
-
-function SeriesBlock({
-  series,
-  spec,
-  partial,
-}: {
-  series: SeriesPoint[];
-  spec: unknown;
-  partial: PartialYear[];
-}) {
-  const t = useTip();
-  const evidence = useAnswerEvidence();
-  const asCount = (spec as AskSpec).measure === "count";
-  const metric = (p: { value: number; count: number }) => (asCount ? p.count : p.value);
-  const display = (p: { value: number; count: number }) =>
-    asCount ? formatInt(p.count) : formatRon(p.value);
-  // year-bar click → same filters, scoped to that year, drill rows opened
-  const yearUrl = (year: number | string) =>
-    yearSourceLink(spec as AskSpec, Number(year));
-  if (series.length === 0) return <p className="ask-empty">Niciun rezultat.</p>;
-  // From 2018, continuous; the older contracts are one row under the chart (display only, final timeseries §4).
-  const { bars, before } = seriesAxis(series);
-  const f = (spec as AskSpec).filters;
-  // One year with data is one number, not a chart of one bar (final timeseries §5.4).
-  if (bars.length === 1 && !before) {
-    const only = bars[0]!;
-    return (
-      <div className="ask-bigstat ask-ts-one">
-        <div className="v">{display(only)}</div>
-        <div className="d">{only.year} · {formatRonFull(only.value)} · {countWords(only.count, "înregistrare", "înregistrări")}</div>
-        {(f.yearFrom || f.yearTo) && (
-          <div className="qb qb-relax">
-            <KitLink className="qb-relax-link" link={{ label: "Toți anii", glyph: "›", href: askLink(withoutPeriod(spec as AskSpec)) }} />
-          </div>
-        )}
-      </div>
-    );
-  }
-  const max = Math.max(...bars.map(metric), 1);
-  const peak = bars.reduce((a, b) => (metric(b) > metric(a) ? b : a));
-  const shownPartial = partial.filter((x) => bars.some((p) => p.year === x.year && !("empty" in p)));
-  const labels = seriesLabels(bars.length, bars.indexOf(peak));
-  const off = (on: boolean, className: string) => (on ? "" : ` ${className}`);
-  const yearLabel = (year: number, mark: string) => (
-    <><span className="ts-y">{year}{mark}</span><span className="ts-y-short" aria-hidden="true">’{String(year).slice(2)}{mark}</span></>
-  );
-  return (
-    <div>
-      {t.el}
-      <div className="ask-ts">
-        {bars.map((p, i) => {
-          const part = partial.find((x) => x.year === p.year);
-          if ("empty" in p)
-            return (
-              <div key={p.year} className="col empty" role="img" aria-label={`${p.year}: nicio înregistrare`}>
-                <div className="cv ts-off" aria-hidden="true">0</div>
-                <div className="bar" style={{ height: "0%" }} />
-                <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{yearLabel(p.year, "")}</div>
-              </div>
-            );
-          return (
-          <a
-            key={p.year}
-            className={part ? "col partial" : "col"}
-            href={yearUrl(p.year)}
-            onClick={(event) => {
-              if (evidence && !event.ctrlKey && !event.metaKey) {
-                event.preventDefault();
-                evidence.open(
-                  spec as AskSpec,
-                  { years: [p.year] },
-                  `${p.year} · înregistrările anului`,
-                );
-              }
-            }}
-            {...t.bind(
-              String(p.year),
-              asCount
-                ? countWords(p.count, "înregistrare", "înregistrări")
-                : formatRonFull(p.value),
-              `${countWords(p.count, "achiziție", "achiziții")}${p.year === peak.year ? " · vârful seriei" : ""}${part ? ` · ${part.provisional ? "date parțiale sau provizorii" : "an acoperit parțial"}: ${part.note}` : ""} · click → achizițiile anului`,
-            )}
-          >
-            <div className={`cv${off(labels.value.has(i), "ts-off")}${off(labels.valuePhone.has(i), "ts-off-sm")}`}>{display(p)}</div>
-            <div
-              className={p.year === peak.year ? "bar peak" : "bar"}
-              style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%` }}
-            />
-            <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{yearLabel(p.year, part ? "*" : "")}</div>
-          </a>
-          );
-        })}
-      </div>
-      {/* One-line notes, the details in their (?) (final timeseries §4; owner: terse copy). */}
-      <div className="qb ask-ts-notes">
-        {before && (
-          <p className="ask-fine">
-            {countWords(before.count, "înregistrare", "înregistrări")} datate {before.from === before.to ? before.from : `${before.from}–${before.to}`} ({formatRon(before.value)}) nu apar pe axă.{" "}
-            <KitLink
-              className="qb-rec"
-              link={{ label: "Vezi-le", glyph: "→", onClick: () => evidence?.open(spec as AskSpec, { years: before.years }, `${before.from}–${before.to} · înregistrările dinainte de ${CHART_FIRST_YEAR}`) }}
-            />
-          </p>
-        )}
-        {shownPartial.length > 0 && (
-          <p className="ask-fine ask-partial-note qb-tipwrap">
-            * {shownPartial.map((x) => x.year).join(", ").replace(/, (\d+)$/, " și $1")} {shownPartial.length === 1 ? "e incomplet" : "sunt incomplete"}{" "}
-            <HelpTip tip={{
-              title: shownPartial.length === 1 ? "An incomplet" : "Ani incompleți",
-              text: `${shownPartial.map((x) => `${x.year}: ${x.note}`).join("; ")}. Nu se compară direct cu un an întreg.`,
-            }} />
-          </p>
-        )}
-        <p className="ask-fine qb-tipwrap">{RECORDED_VALUE.text} <HelpTip tip={RECORDED_VALUE.tip} /></p>
-      </div>
-    </div>
-  );
-}
-
-/** The same question without its years ("Toți anii", the first row of "Când?"). */
-function withoutPeriod(spec: AskSpec): AskSpec {
-  const filters = { ...spec.filters };
-  for (const key of ["yearFrom", "yearTo", "monthFrom", "monthTo"] as const) delete filters[key];
-  return { ...spec, filters };
 }
 
 /**

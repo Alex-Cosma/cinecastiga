@@ -27,10 +27,11 @@ export function StripRow({ label, tip, children }: { label: string; tip?: KitTip
 /**
  * A control with short words around it ("Arată [6 · 10 · 15] firme"). A label
  * that would squeeze the control on a phone ("Împarte") is kept for screen
- * readers only there (`smHide`).
+ * readers only there (`smHide`). A control whose options carry a number keeps
+ * the whole width there, its words under it (`wide`).
  */
-export function StripLabelled({ before, after, smHide = false, children }: { before?: string; after?: string; smHide?: boolean; children: ReactNode }) {
-  return <span className="qb-row">
+export function StripLabelled({ before, after, smHide = false, wide = false, children }: { before?: string; after?: string; smHide?: boolean; wide?: boolean; children: ReactNode }) {
+  return <span className={`qb-row${wide ? " qb-row--wide" : ""}`}>
     {before && <span className={`qb-strip-label${smHide ? " qb-strip-label--sm-hide" : ""}`}>{before}</span>}
     {children}
     {after && <span className="qb-strip-label">{after}</span>}
@@ -42,9 +43,10 @@ export function StripEnd({ children }: { children: ReactNode }) {
   return <span className="qb-strip-end">{children}</span>;
 }
 
-/** The suggestion to go down a level: "99,9% e Construcții · Detaliază ›" (R8: › is another answer). */
-export function Suggest({ text, action = "Detaliază", onClick }: { text: string; action?: string; onClick?: () => void }) {
-  return <button type="button" className="qb-suggest" onClick={onClick}>{text}<span aria-hidden="true">·</span><b>{action}<span className="qb-glyph" aria-hidden="true">›</span></b></button>;
+/** The suggestion to go down a level: "99,9% e Construcții · Detaliază ›" (R8: › is another answer), a link where the level has its own address. */
+export function Suggest({ text, action = "Detaliază", onClick, href }: { text: string; action?: string; onClick?: () => void; href?: string }) {
+  const inner = <>{text}<span aria-hidden="true">·</span><b>{action}<span className="qb-glyph" aria-hidden="true">›</span></b></>;
+  return href ? <a className="qb-suggest" href={href}>{inner}</a> : <button type="button" className="qb-suggest" onClick={onClick}>{inner}</button>;
 }
 
 /** The thread of a drill-down ("Domenii: toate › Construcții"): each step goes back; the current one is text. */

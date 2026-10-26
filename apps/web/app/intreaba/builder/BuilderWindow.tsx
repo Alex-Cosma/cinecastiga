@@ -29,10 +29,11 @@ import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
   CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, fromTab, fromTabs,
-  listOptions, optionValue, periodPresets, presetCounts, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
+  listOptions, optionValue, periodPresets, presetCounts, seriesMonthPresets, seriesMonthsError, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 import { useFacet } from "./use-facet";
 import type { FacetView } from "@/lib/ask/facet-parts";
+import type { PeriodChoice } from "@/lib/ask/filters/defs/selection";
 
 /*
  * The windows of the builder (kit components 7–13, plan §2.3): each place
@@ -548,36 +549,46 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   const coverage = useCoverage();
   const span: CoverageSpan | null = coverage?.span ?? null;
   const trend = draft.block === "trend";
-  // The year chart draws from 2018 and its custom range is years ("Alege anii…", plan §4.3); months by month are F3's.
+  // The year chart draws from 2018 (plan §4.3); „Lună de lună” its months, at most 36 (F3, final timeseries §3.7).
   const series = draft.block === "timeseries";
-  const { presets: plain, value } = periodPresets(draft, span, year, coverage?.periods ?? null);
-  // Each preset's records (the years it holds, R5); a trend's two years are compared, not counted.
-  const counts = useFacet(draft, trend ? null : "years");
+  const [pace, setPace] = useState<"year" | "month">(series && draft.timeseries?.grain === "month" ? "month" : "year");
+  const monthly = series && pace === "month";
+  const { presets: plain, value } = monthly ? seriesMonthPresets(draft, span, year) : periodPresets(draft, span, year, coverage?.periods ?? null);
+  // Each preset's records (the years it holds, R5); a trend's two years are compared, not counted; the months' presets are not years.
+  const counts = useFacet(draft, trend || monthly ? null : "years");
   const presets = presetCounts(plain, counts);
   const f = draft.filters;
   const [open, setOpen] = useState(value === null && Boolean(f.yearFrom || f.yearTo));
   const [range, setRange] = useState<PeriodRangeValue>({ ...EMPTY_RANGE, yearFrom: String(f.yearFrom ?? ""), yearTo: String(f.yearTo ?? ""), monthFrom: String(f.monthFrom ?? ""), monthTo: String(f.monthTo ?? "") });
   const [error, setError] = useState<string | null>(null);
   const last = span?.to ? Number(span.to.slice(0, 4)) : year;
+  // The evolution's pace goes with its period: months by month write the grain after the period, years before it.
+  const choose = (period: PeriodChoice | undefined, month: boolean): Choice[] => !series ? [{ filter: "period", value: period }]
+    : month ? [{ filter: "period", value: period }, { filter: "timeseriesGrain", value: "month" }]
+      : [{ filter: "timeseriesGrain", value: undefined }, { filter: "period", value: period }];
   const use = () => {
-    const problem = periodRangeError(range, { twoYears: trend });
+    const problem = periodRangeError(range, { twoYears: trend }) ?? (monthly ? seriesMonthsError(range) : null);
     if (problem) { setError(problem); return; }
-    const num = (v: string) => v ? Number(v) : undefined;
-    const months = !trend && !series;
-    onPick([{ filter: "period", value: { ...(range.yearFrom ? { yearFrom: num(range.yearFrom) } : {}), ...(range.yearTo ? { yearTo: num(range.yearTo) } : {}), ...(months && range.monthFrom ? { monthFrom: num(range.monthFrom) } : {}), ...(months && range.monthTo ? { monthTo: num(range.monthTo) } : {}) } }]);
+    const months = !trend && (!series || monthly);
+    const period: PeriodChoice = { ...(range.yearFrom ? { yearFrom: Number(range.yearFrom) } : {}), ...(range.yearTo ? { yearTo: Number(range.yearTo) } : {}), ...(months && range.monthFrom ? { monthFrom: Number(range.monthFrom) } : {}), ...(months && range.monthTo ? { monthTo: Number(range.monthTo) } : {}) };
+    // One year by year is one bar: it is shown month by month (final timeseries §3.7, only in this window).
+    onPick(choose(period, monthly || series && Boolean(range.yearFrom) && range.yearFrom === range.yearTo));
   };
   return <>
+    {series && <Segmented label="Ritmul" full value={pace} options={[{ value: "year", label: "An de an" }, { value: "month", label: "Lună de lună" }]}
+      onChange={(next) => { setPace(next as "year" | "month"); setOpen(false); setError(null); }} />}
     <PeriodPicker label="Perioada" presets={presets} value={value} onPreset={(next, source) => {
       if (source !== "activate") return;
       const preset = presets.find((p) => p.value === next);
-      if (preset) onPick([{ filter: "period", value: preset.period }]);
+      if (preset) onPick(choose(preset.period, monthly));
     }} custom={{
-      open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : series ? "Alege anii…" : "Alege anii sau lunile…",
+      open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : monthly ? "Alege lunile…" : series ? "Alege anii…" : "Alege anii sau lunile…",
       value: range, onChange: (next) => { setRange(next); setError(null); },
       // 2018 leaves the trend only (trend final §3.2): its direct acquisitions start in April.
-      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && !series,
+      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && (!series || monthly),
       ...(trend ? { labels: ["Primul an", "Al doilea an"] as const } : {}), error,
     }} />
+    {series && !monthly && open && <p className="qb-pop-note">Un singur an: îl arăt lună de lună.</p>}
     {open && <div className="qb-pop-foot"><span /><button type="button" className="qb-primary" onClick={use}>Folosește</button></div>}
   </>;
 }

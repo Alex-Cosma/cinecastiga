@@ -8,6 +8,7 @@ import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
 import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { DEFAULT_TREND_MIN_BASE, type AskSpec } from "../../../lib/ask/spec";
+import { MAX_SERIES_MONTHS } from "../../../lib/ask/series";
 import { MIN_TREND_YEAR, defaultTrendYears, type CoveragePeriods } from "../../../lib/ask/months-window";
 import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendGap, trendGroupLabel, trendNoun } from "../../../lib/ask/filters/defs/trend";
 import { formatInt, formatRon } from "../../../lib/format";
@@ -46,6 +47,8 @@ export function windowKind(win: BuilderWindowSpec): WindowKind {
     case "admin": return "admin";
     case "compareWith": return "compareWith";
     case "trendMonths": return "months";
+    // The evolution's same months: the chip's window removes them (its switch is beside the answer).
+    case "timeseriesMonths": return "list";
     case "authority": case "supplier": return "focal";
     default: return "list";
   }
@@ -153,6 +156,12 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
     case "trendMonths": return value === "whole"
       ? { label: "Ani întregi", detail: "Toate lunile, în ambii ani." }
       : { label: "Aceleași luni, automat", detail: "Până la ultima lună completă. Se recalculează la fiecare actualizare." };
+    // The evolution's (F3, final timeseries §3.7–§3.9): the same months, the split, the pace.
+    case "timeseriesMonths": return value === undefined
+      ? { label: "Ani întregi", detail: "Toate lunile fiecărui an." }
+      : { label: "Aceleași luni, automat", detail: "Fiecare an, până la ultima lună completă din ultimul an." };
+    case "timeseriesSplit": return { label: value === "channel" ? "Directe / proceduri" : value === "domain" ? "Domenii" : "Total" };
+    case "timeseriesGrain": return { label: value === "month" ? "Lună de lună" : "An de an" };
     default: return { label: value === undefined ? "Oricare" : String(value) };
   }
 }
@@ -372,6 +381,34 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
     ? !f.yearFrom && !f.yearTo && !f.monthFrom && !f.monthTo
     : Number(f.yearFrom) === p.yearFrom && Number(f.yearTo) === p.yearTo && !f.monthFrom && !f.monthTo;
   return { presets, value: presets.find((p) => same(p.period))?.value ?? null };
+}
+
+/**
+ * „Lună de lună” in the evolution's „Când?” (final timeseries §3.7; F3): the
+ * last year of data (how far it goes), the one before, the last 12 months to
+ * the month of the last data, and the last two years, each at most 36 months.
+ */
+export function seriesMonthPresets(spec: QuestionSpec, span: CoverageSpan | null, year: number): { presets: PeriodPreset[]; value: string | null } {
+  const to = span?.to ?? `${year}-12-31`;
+  const last = Number(to.slice(0, 4)), lastMonth = Number(to.slice(5, 7));
+  const until = to.endsWith("-12-31") ? null : dayWords(to).replace(/ \d{4}$/, "");
+  const from = lastMonth === 12 ? { y: last, m: 1 } : { y: last - 1, m: lastMonth + 1 };
+  const presets: PeriodPreset[] = [
+    { value: "m-current", label: String(last), ...(until ? { detail: `până la ${until}` } : {}), period: { yearFrom: last, yearTo: last } },
+    { value: "m-previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } },
+    { value: "m-12", label: "Ultimele 12 luni", detail: `${MONTH_SHORT[from.m - 1]} ${from.y} – ${MONTH_SHORT[lastMonth - 1]} ${last}`,
+      period: { yearFrom: from.y, monthFrom: from.m, yearTo: last, monthTo: lastMonth } },
+    { value: "m-two", label: `${last - 1}–${last}`, period: { yearFrom: last - 1, yearTo: last } },
+  ];
+  const f = spec.filters, same = (p: PeriodChoice | undefined) => p !== undefined && Number(f.yearFrom) === p.yearFrom && Number(f.yearTo) === p.yearTo
+    && Number(f.monthFrom ?? 0) === (p.monthFrom ?? 0) && Number(f.monthTo ?? 0) === (p.monthTo ?? 0);
+  return { presets, value: spec.timeseries?.grain === "month" ? presets.find((p) => same(p.period))?.value ?? null : null };
+}
+/** „Lună de lună” shows at most this many months (TIMESERIES_RULES.grain): a range typed in says so before it is used. */
+export function seriesMonthsError(range: { yearFrom: string; yearTo: string; monthFrom: string; monthTo: string }): string | null {
+  if (!range.yearFrom || !range.yearTo) return "Alege anul de început și anul de sfârșit.";
+  const span = (Number(range.yearTo) - Number(range.yearFrom)) * 12 + Number(range.monthTo || 12) - Number(range.monthFrom || 1) + 1;
+  return span > MAX_SERIES_MONTHS ? `„Lună de lună” arată cel mult ${MAX_SERIES_MONTHS} de luni. Alege o perioadă mai scurtă.` : null;
 }
 
 // --- The windows' counts (kit R5, plan §2.5; use-facet.ts asks for them)

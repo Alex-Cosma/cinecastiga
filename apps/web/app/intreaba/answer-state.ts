@@ -3,6 +3,10 @@ import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
 import { SELECTION_RULES, type AskSpec, type MonthWindow } from "../../lib/ask/spec";
 import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
+import { formatShare } from "../../lib/ask/answer-text";
+import { divisionShortName } from "../../lib/ask/cpv-divisions";
+import { monthsLabel } from "../../lib/ask/months-window";
+import { readableCpvName } from "../../lib/entity-summary";
 import type { SegmentOption } from "./builder/Segmented";
 import type { StripPatch } from "./builder/view";
 
@@ -32,8 +36,12 @@ export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWind
   return months && months.pills?.length === 0 ? described.totalWords.filter((words) => words !== months.words) : described.totalWords;
 }
 
-/** The keys the strip writes in F1b: the data stream (a new query) and the map's lens (the data already fetched). */
-export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset"]);
+/**
+ * The keys the strip writes that ask again: the data stream (F1b), and in F3 the evolution's split and same months
+ * (another grouping) and the breakdown's kind (its rows). The map's lens and the breakdown's order switch on the data
+ * already fetched.
+ */
+export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "timeseries", "purchaseKind"]);
 
 /** The strip's data stream (kit §4: "Toate · Directe · Proceduri", the charts' channel colours as a legend). */
 const STREAM_OPTIONS: readonly SegmentOption[] = [
@@ -62,7 +70,101 @@ export function streamOptions(spec: Pick<AskSpec, "filters">): readonly SegmentO
 
 /** The applied question after a strip change: only that key (plan §2.3). */
 export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], value: string): AskSpec {
-  return path === "dataset" ? { ...applied, dataset: value as NonNullable<AskSpec["dataset"]> } : { ...applied, measure: value as AskSpec["measure"] };
+  if (path === "dataset") return { ...applied, dataset: value as NonNullable<AskSpec["dataset"]> };
+  if (path === "timeseries") return seriesAfterStrip(applied, value);
+  if (path === "purchaseKind") {
+    const filters = { ...applied.filters };
+    if (value) filters.purchaseKind = value as NonNullable<AskSpec["filters"]["purchaseKind"]>;
+    else delete filters.purchaseKind;
+    return { ...applied, filters };
+  }
+  return { ...applied, measure: value as AskSpec["measure"] };
+}
+
+/**
+ * The evolution's strip (F3, final timeseries §3.8–§3.9) writes one option of
+ * `timeseries`, named in the value: "split:channel", "split:domain",
+ * "split:" (Total), "months:auto", "months:" (whole years).
+ */
+export function seriesAfterStrip(applied: AskSpec, value: string): AskSpec {
+  const [key, option] = value.split(":") as ["split" | "months", string];
+  const options: NonNullable<AskSpec["timeseries"]> = { ...applied.timeseries };
+  if (key === "split") { if (option === "channel" || option === "domain") options.split = option; else delete options.split; }
+  if (key === "months") { if (option === "auto") options.months = "auto"; else delete options.months; }
+  const next: AskSpec = { ...applied };
+  if (Object.keys(options).length) next.timeseries = options;
+  else delete next.timeseries;
+  return next;
+}
+
+/**
+ * The strip's „Aceleași luni: ian.–{M}” (final timeseries §3.9), on years
+ * only: on, with the months the answer ran on; off, where the answer found
+ * the last year incomplete and knows its complete months (its marker,
+ * data.ref); absent otherwise (no "complet până la" day, complete years).
+ */
+export function sameMonthsSwitch(data: { grain?: string; months?: { from: number; to: number }; ref?: { year: number; months: readonly [number, number] }; series: readonly { year: number }[] },
+  applied: Pick<AskSpec, "timeseries">): { label: string; on: boolean; year: number } | null {
+  if (data.grain === "month") return null;
+  const last = Math.max(...data.series.map((p) => p.year));
+  if (applied.timeseries?.months !== undefined) {
+    const window = data.months;
+    return { label: window && !(window.from === 1 && window.to === 12) ? monthsLabel(window) : "toate lunile", on: true, year: last };
+  }
+  return data.ref ? { label: monthsLabel({ from: data.ref.months[0], to: data.ref.months[1] }), on: false, year: data.ref.year + 1 } : null;
+}
+
+/** Why a breakdown's channels have shares (final breakdown §3.6): of the whole selection, with every channel. */
+export const CHANNEL_SHARE_TIP = { title: "Ponderile", text: "Directe: fără licitație, cel mult 2 mil. lei pe achiziție. Proceduri: licitații și alte proceduri, cel mult 1 mld. lei pe contract. Plafoane de analiză, nu praguri legale. Procentul: partea din toate achizițiile selecției." };
+
+/**
+ * The breakdown's channels with their shares of the selection on every channel
+ * (data.streams, F3): by value, or by records when the legend is ordered by
+ * them; a channel without records is disabled („—”).
+ */
+export function channelShares(data: { streams?: Record<"da" | "contracts", { value: number; count: number }> }, byCount: boolean):
+  { options: (base: readonly SegmentOption[]) => SegmentOption[]; unit: string } | null {
+  const streams = data.streams;
+  if (!streams) return null;
+  const amount = (s: { value: number; count: number }) => byCount ? s.count : s.value;
+  const total = amount(streams.da) + amount(streams.contracts);
+  if (total <= 0) return null;
+  return {
+    unit: byCount ? "% din înregistrări" : "% din valoare",
+    options: (base) => base.map((option) => {
+      if (option.value !== "da" && option.value !== "contracts") return option;
+      const share = amount(streams[option.value]) / total;
+      return share > 0 ? { ...option, count: formatShare(share) } : { ...option, count: "—", disabled: option.disabled ?? "Nicio înregistrare pe acest canal în selecție." };
+    }),
+  };
+}
+
+/** A level's suggestion to go down (kit item 5, trusa-5): one group with at least this share of the value. */
+export const SUGGEST_SHARE = 0.9;
+/**
+ * „98% e Construcții · Detaliază ›” (final breakdown §3.5, trusa-5): the
+ * group that holds ≥ 90% of the level's value, when a deeper level exists;
+ * the link opens it as its slice does (the thread goes with it).
+ */
+export function breakdownSuggestion(data: { slices: readonly { code: string; name: string | null; value: number }[]; other: { value: number } }, applied: AskSpec, thread: Thread | null):
+  { text: string; href: string } | null {
+  const top = data.slices[0];
+  const total = data.slices.reduce((t, s) => t + s.value, 0) + data.other.value;
+  if (!top || total <= 0 || top.code.length >= 8 || top.value / total < SUGGEST_SHARE) return null;
+  const full = top.code.length === 2 ? divisionShortName(top.code) : top.name ? readableCpvName(top.name) : `CPV ${top.code}`;
+  const name = full.length > 42 ? `${full.slice(0, 40).trimEnd()}…` : full;
+  return { text: `${formatShare(top.value / total)} e ${name}`, href: threadHref(applied, top.code, deeperThread(thread, applied, top.code, full)) };
+}
+
+/** "Împarte" (final timeseries §3.8): the parts the selection can show, the others disabled with the reason (R1). */
+export function seriesSplitOptions(spec: Pick<AskSpec, "dataset" | "filters">): SegmentOption[] {
+  const channel = (spec.dataset ?? "all") !== "all" ? "„Directe / proceduri” împarte toate achizițiile." : null;
+  const domain = spec.filters.cpvTerm || spec.filters.purchaseKind === "lucrari" ? "Un singur domeniu nu se împarte pe domenii." : null;
+  return [
+    { value: "split:", label: "Total" },
+    { value: "split:channel", label: "Directe / proceduri", ...(channel ? { disabled: channel } : {}) },
+    { value: "split:domain", label: "Domenii", ...(domain ? { disabled: domain } : {}) },
+  ];
 }
 
 /**
