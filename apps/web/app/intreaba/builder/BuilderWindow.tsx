@@ -24,6 +24,7 @@ import Pills, { RangeFields } from "./Pills";
 import { useCoverage } from "./coverage";
 import EntitySearch, { type SearchResult } from "./EntitySearch";
 import PeriodPicker, { EMPTY_RANGE, MONTHS, PeriodRange, periodRangeError, type PeriodRangeValue } from "./PeriodPicker";
+import HelpTip from "./HelpTip";
 import Segmented from "./Segmented";
 import OptionList from "./pickers/OptionList";
 import Popover from "./pickers/Popover";
@@ -34,7 +35,11 @@ import {
   listOptions, optionValue, periodPresets, presetCounts, seriesMonthPresets, seriesMonthsError, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 import { useFacet } from "./use-facet";
-import type { FacetView } from "@/lib/ask/facet-parts";
+import { useComparePeers, usePairFacts } from "./use-pair";
+import {
+  comparePeriodPresets, comparePeriodTip, generalCodesNote, kindLabel, pairCountyOptions, pairDomainGroup, pairDomainOptions, pairNames, pairRest, peerResults, withPairShares,
+} from "./compare-windows";
+import { FACET_REST, type FacetView } from "../../../lib/ask/facet-parts";
 import type { PeriodChoice } from "@/lib/ask/filters/defs/selection";
 
 /*
@@ -219,6 +224,41 @@ function ListWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
 
 /** "Cine a cumpărat?": every institution, a kind (with the institutions of each, R5), one institution or a town hall. */
 function BuyerWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
+  if (draft.block === "compare") return <ClientsWindow win={win} draft={draft} ctx={ctx} onPick={onPick} />;
+  return <BuyerLists win={win} draft={draft} ctx={ctx} onPick={onPick} />;
+}
+
+/**
+ * "Cine a cumpărat?" between two firms (F4, final compare §3.5, kit §6 compare
+ * 1): their clients' kind and county, each option with both firms' shares of
+ * value (the pair's facts, without the window's own key), „Alte instituții”
+ * and „Județ necunoscut” as rest rows; a kind or a county neither has is
+ * disabled with the reason.
+ */
+function ClientsWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
+  const pair = usePairFacts(draft, true);
+  const kinds = listOptions(win, draft, "authorityKind", ctx);
+  const kindOptions = withPairShares(kinds.options.map((o) => o.choice.value === undefined ? o : { ...o, label: kindLabel(String(o.choice.value)) }), pair?.kinds ?? null,
+    (o) => o.choice.value === undefined ? null : String(o.choice.value));
+  const county = draft.filters.county ? String(draft.filters.county) : null;
+  const counties = pairCountyOptions(pair?.counties ?? null);
+  return <>
+    <PairKey draft={draft} />
+    <p className="qb-opt-group">Ce fel de instituții</p>
+    <ChoiceList label="Tipul instituției" options={kindOptions} value={kinds.value} rest={pairRest(FACET_REST.kind!, pair?.kinds ?? null)} onPick={(option) => onPick([option.choice])} />
+    <p className="qb-opt-group">Unde</p>
+    <ChoiceList label="Unde" options={[{ value: "none", label: "Toată țara", choice: { filter: "county", value: undefined } }, ...counties]}
+      value={county ? `county:${county}` : "none"} rest={pairRest(FACET_REST.county!, pair?.counties ?? null)} onPick={(option) => onPick([option.choice])} />
+  </>;
+}
+
+/** Whose bar is whose in a comparison's window: the two entities, in the answer's colours (A, then B). */
+function PairKey({ draft }: { draft: QuestionSpec }) {
+  const names = pairNames(draft);
+  return <p className="qb-pair-key"><span><i className="qb-pair-ka" aria-hidden="true" />{names.a}</span><span><i className="qb-pair-kb" aria-hidden="true" />{names.b}</span></p>;
+}
+
+function BuyerLists({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
   const own = windowOf(win.slot);
   const kinds = own.includes("authorityKind") ? listOptions(win, draft, "authorityKind", ctx) : null;
   const counts = useFacet(draft, kinds ? "kind" : null);
@@ -302,7 +342,11 @@ export default function BuilderWindow(props: BuilderWindowProps) {
   const { win, anchor, onClose, draft } = props;
   const kind = win ? windowKind(win) : null;
   const wide = kind !== null && ["advanced", "buyer", "from", "peers", "focal", "compareWith", "cpv", "place", "seat", "locality", "admin"].includes(kind);
-  const tip = win ? windowTip(win, draft) : undefined;
+  // A comparison's period (F4, final compare §3.1): its (?) says the common period and, once the pair's facts are read
+  // (the window's own request, kept in the page), the records before 2018.
+  const comparePeriod = Boolean(win) && kind === "period" && draft.block === "compare";
+  const pair = usePairFacts(draft, comparePeriod);
+  const tip = win ? comparePeriod ? comparePeriodTip(draft, pair) : windowTip(win, draft) : undefined;
   return <Popover open={Boolean(win)} anchor={anchor} onClose={onClose} title={win?.title ?? ""} wide={wide} {...(tip ? { tip } : {})}>
     {win && <WindowBody key={win.key} {...props} win={win} />}
   </Popover>;
@@ -340,7 +384,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
         <PlaceSearch draft={draft} locality counties={false} onPick={pick} />
       </>;
     case "focal": return <FocalSearch draft={draft} roles={win.slot.picker === "focal" ? ["authority", "supplier"] : [win.slot.id as Role]} onPick={pick} />;
-    case "compareWith": return <FocalSearch draft={draft} roles={[ctx.role]} compareWith onPick={pick} />;
+    case "compareWith": return <FocalSearch draft={draft} roles={[ctx.role]} compareWith suggest onPick={pick} />;
     case "from": return <>{marker}<FromWindow win={win} draft={draft} onPick={pick} /></>;
     case "employees": return <BandsWindow draft={draft} onPick={pick} />;
     case "admin": return <>
@@ -349,6 +393,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     </>;
     case "cpv": return <>
       {own.includes("purchaseKind") && <KindSegmented win={win} draft={draft} ctx={ctx} onPick={pick} />}
+      {draft.block === "compare" && <PairDomains draft={draft} onPick={pick} onCpvName={onCpvName} />}
       <CpvSearch draft={draft} onPick={pick} onCpvName={onCpvName} />
     </>;
     case "period": return <PeriodWindow draft={draft} year={ctx.year} onPick={pick} />;
@@ -420,13 +465,19 @@ function CountySelect({ draft, onPick }: { draft: QuestionSpec; onPick: (choices
   </label>;
 }
 
-function FocalSearch({ draft, roles, compareWith = false, onPick }: { draft: QuestionSpec; roles: readonly Role[]; compareWith?: boolean; onPick: (choices: Choice[]) => void }) {
+function FocalSearch({ draft, roles, compareWith = false, suggest = false, onPick }: { draft: QuestionSpec; roles: readonly Role[]; compareWith?: boolean; suggest?: boolean; onPick: (choices: Choice[]) => void }) {
   const ctx = filterContext(draft as FilterSpec);
   const [role, setRole] = useState<Role>(roles.includes(ctx.role) ? ctx.role : roles[0]!);
   const s = useSuggestions(true);
   useEffect(() => { s.search(""); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- the starters, once
-  const results = useMemo(() => entityResults(role, s.data, s.hits, s.query).map((r) => compareWith
-    ? { ...r, choices: r.choices.map((c) => ({ filter: "compareWith" as const, value: c.value })) } : r), [s.data, s.hits, s.query, role, compareWith]);
+  // "Cu cine comparăm?" (F4, final compare §3.6): the chosen role's suggestions, asked lazily, above the results until the reader types.
+  const peers = useComparePeers(draft, suggest);
+  const focalId = Number(draft.filters.authorityId ?? draft.filters.supplierId) || undefined;
+  const results = useMemo(() => [
+    ...(suggest && s.query.length < 2 ? peerResults(peers, { id: focalId }) : []),
+    ...entityResults(role, s.data, s.hits, s.query, suggest && peers?.label && s.query.length < 2 ? "Cele mai mari" : undefined),
+  ].map((r) => compareWith
+    ? { ...r, choices: r.choices.map((c) => ({ filter: "compareWith" as const, value: c.value })) } : r), [s.data, s.hits, s.query, role, compareWith, suggest, peers, focalId]);
   return <>
     {roles.length > 1 && <Segmented label="Instituție sau firmă" full value={role} options={[{ value: "authority", label: "Instituție" }, { value: "supplier", label: "Firmă" }]} onChange={(value) => setRole(value as Role)} />}
     <EntitySearch label={role === "authority" ? "Instituție" : "Firmă"} placeholder={role === "authority" ? "Numele instituției sau CUI" : "Numele firmei sau CUI"} results={results} loading={s.loading}
@@ -462,6 +513,25 @@ function CpvSearch({ draft, onPick, onCpvName }: { draft: QuestionSpec; onPick: 
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
     <EntitySearch label="Domeniu, produs sau cod CPV" placeholder="medicamente, asfaltare, 45…" results={results} loading={s.loading}
       onSearch={(q) => s.search(q)} onPick={(r) => { const found = r as Found; if (found.cpvName) onCpvName(String(found.choices[0]!.value), found.cpvName); onPick(found.choices); }} />
+  </>;
+}
+
+/**
+ * "Cumpără amândouă" / "Vând amândouă" (F4, final compare §3.2, kit §6
+ * compare 7): the CPV groups both entities have, by the smaller value, with
+ * the two bars; under them, the share of general codes when either has at
+ * least 10% of its value there, its (?) saying why a domain leaves them out.
+ */
+function PairDomains({ draft, onPick, onCpvName }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void; onCpvName: (code: string, name: string) => void }) {
+  const pair = usePairFacts(draft, true);
+  const options = pairDomainOptions(pair);
+  const note = generalCodesNote(pair);
+  if (!options.length && !note) return null;
+  const chosen = options.find((o) => o.choice.value === draft.filters.cpvTerm)?.value ?? null;
+  return <>
+    {options.length > 0 && <><PairKey draft={draft} /><p className="qb-opt-group">{pairDomainGroup(draft)}</p>
+      <ChoiceList label={pairDomainGroup(draft)} options={options} value={chosen} onPick={(option) => { onCpvName(String(option.choice.value), option.label); onPick([option.choice]); }} /></>}
+    {note && <p className="qb-pop-note">{note} <HelpTip tip={{ id: "coduri-generale" }} /></p>}
   </>;
 }
 
@@ -590,7 +660,10 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   const series = draft.block === "timeseries";
   const [pace, setPace] = useState<"year" | "month">(series && draft.timeseries?.grain === "month" ? "month" : "year");
   const monthly = series && pace === "month";
-  const { presets: plain, value } = monthly ? seriesMonthPresets(draft, span, year) : periodPresets(draft, span, year, coverage?.periods ?? null);
+  // A comparison (F4, final compare §3.1): its own presets, "Perioada comună" from the pair's years.
+  const pair = usePairFacts(draft, draft.block === "compare");
+  const { presets: plain, value } = monthly ? seriesMonthPresets(draft, span, year)
+    : draft.block === "compare" ? comparePeriodPresets(draft, span, year, coverage?.periods ?? null, pair) : periodPresets(draft, span, year, coverage?.periods ?? null);
   // Each preset's records (the years it holds, R5); a trend's two years are compared, not counted; the months' presets are not years.
   const counts = useFacet(draft, trend || monthly ? null : "years");
   const presets = presetCounts(plain, counts);
