@@ -69,6 +69,15 @@ describe("retarget keeps the question and changes only its block", () => {
     expect(parseSpec({ ...profile, block: "table" })).toHaveProperty("error");
   });
 
+  it("keeps F3's kind, procedure and size on every answer over the records, which applies them (plan §2.4)", () => {
+    const f3: AskSpec = { block: "stat", dataset: "contracts", measure: "value", filters: { purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 1_000_000, yearFrom: 2025, yearTo: 2025 } };
+    for (const block of ["table", "timeseries", "map", "breakdown", "trend"] as const) {
+      const next = retarget({ ...f3, dim: "supplier" }, block);
+      expect([block, next.filters, next.dataset]).toEqual([block, f3.filters, "contracts"]);
+      expect(validateSpec({ ...next, ...(block === "trend" ? { filters: { ...next.filters, yearFrom: 2024 } } : {}) }), block).not.toHaveProperty("error");
+    }
+  });
+
   it("keeps the order of the keys, so a link that only changes the block keeps the bytes of its permalink", () => {
     const spec: AskSpec = { block: "breakdown", dataset: "da", measure: "value", filters: { county: "Cluj", cpvTerm: "45" } };
     expect(JSON.stringify(retarget(spec, "breakdown"))).toBe(JSON.stringify(spec));

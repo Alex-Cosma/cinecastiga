@@ -68,6 +68,12 @@ async function load(q: DbSql) {
       (205,2,14,'Cluj',null,650,'2025-03-03',1,650,null)
     ) v(id,a,s,county,cpv,cv,dt,nw,vfull,sb)
     left join ${names} an on an.entity_id = v.a left join ${names} sn on sn.entity_id = v.s`);
+  // A firm's total_ron_split is its sum over the same records, as the marts build writes it: the ranking of
+  // firms by their size alone reads it (compile.ts firmSizeOnly, F3), the live answer of these cases.
+  await q`update marts.entity_profile ep set total_ron_split =
+      coalesce((select sum(d.closing_value) from marts.da_transactions d where d.supplier_id = ep.entity_id and d.closing_value > 0 and d.closing_value <= 2000000), 0)
+    + coalesce((select sum(c.closing_value) from marts.contract_transactions c where c.supplier_id = ep.entity_id and c.closing_value > 0), 0)
+    where ep.role = 'supplier'`;
   // Risk profiles for the scatter (n_das >= 10, a null and a zero value).
   await q`insert into marts.entity_flags (entity_id,role,name_display,county,n_das,total_ron,cri,n_flags,flags) values
     (10,'supplier','Furnizor A','Bucuresti',40,2003000.34,0.5,2,'[]'),(11,'supplier','Furnizor B','Cluj',12,3504201,0.25,1,'[]'),

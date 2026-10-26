@@ -235,14 +235,15 @@ export async function seedGoldenFixture(q: DbSql): Promise<void> {
   for (const county of ["Alba", "Buzau", "Cluj"])
     await q`insert into marts.spend_by_county (county, role, n, total_ron) values (${county}, 'authority', 1, 1)`;
 
-  // Entity profiles: totals from the rows above, as the marts build derives them.
+  // Entity profiles: totals from the rows above, as the marts build derives them (and monitoring/validate.ts checks):
+  // the direct acquisitions up to the ceiling, the distinct contracts, each with a positive value.
   for (const [key, e] of Object.entries(F)) {
     const filing = FILINGS[key as keyof typeof F];
     for (const role of ["authority", "supplier"] as const) {
       const column = role === "authority" ? q`authority_id` : q`supplier_id`;
       const [t] = await q`
-        select (select count(*)::int from marts.da_transactions where ${column} = ${e.id}) n_das,
-               (select count(*)::int from marts.contract_transactions where ${column} = ${e.id}) n_contracts,
+        select (select count(*)::int from marts.da_transactions where ${column} = ${e.id} and closing_value > 0 and closing_value <= 2000000) n_das,
+               (select count(distinct contract_id)::int from marts.contract_transactions where ${column} = ${e.id} and closing_value > 0) n_contracts,
                (select coalesce(sum(closing_value), 0) from marts.da_transactions where ${column} = ${e.id} and closing_value > 0 and closing_value <= 2000000)
                  + (select coalesce(sum(closing_value), 0) from marts.contract_transactions where ${column} = ${e.id}) split,
                (select coalesce(sum(closing_value), 0) from marts.da_transactions where ${column} = ${e.id} and closing_value > 0)
