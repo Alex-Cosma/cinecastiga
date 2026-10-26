@@ -135,8 +135,8 @@ export const QUESTION_TYPES: {
     id: "distribution",
     group: "signals",
     label: "Cât de neobișnuit este un profil?",
-    description: "Poziția indicelui de risc față de grupul ales.",
-    keywords: "distributie percentila neobisnuit risc",
+    description: "Câte criterii de risc îndeplinește, față de grupul ales.",
+    keywords: "distributie percentila neobisnuit risc criterii grup comparatie",
   },
   {
     id: "scatter",

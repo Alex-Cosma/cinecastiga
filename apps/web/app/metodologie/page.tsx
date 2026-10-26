@@ -84,6 +84,12 @@ export default function MetodologiePage() {
         <p>Semnalele despre contracte prin proceduri, bilanțuri și reprezentanți ONRC nu intră în CRI.
           În profil, filtrele tabelului de achiziții nu recalculează acest scor. Datele incomplete pot schimba rezultatul;
           verifică perioada fiecărui semnal și sursele sale înainte de a trage o concluzie.</p>
+        <p id="grup-comparatie"><strong>Față de cine?</strong> În „Întreabă”, „Unde se situează?” numără criteriile entității
+          și câți dintre ceilalți membri ai grupului ales au mai multe, tot atâtea sau mai puține. Grupul folosește regulile paginii
+          Comparații: primăriile după populația RPL 2021, între jumătate și dublul populației entității (comunele, orașele și municipiile
+          împreună; doar primăriile identificate sigur), consiliile județene între ele, primăriile de sector între ele, spitalele și școlile
+          după tipul instituției, același județ și activitatea apropiată (între jumătate și dublul achizițiilor directe acceptate).
+          Intră doar profilurile cu cel puțin 10 achiziții directe, iar comparația cere cel puțin 5 alți membri.</p>
       </section>
 
       <section className="section" id="acoperire">
