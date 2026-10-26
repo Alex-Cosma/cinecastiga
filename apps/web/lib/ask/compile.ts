@@ -40,6 +40,10 @@ import { sectorUnit } from "../peer-population";
 import { kindApplies, kindLeftOutNote } from "./purchase";
 import { assembleSeries, type SeriesPart, type SeriesPoint, type SeriesRef, type SeriesRow } from "./series";
 import { mixRollupReady, monthsWhere } from "./series-rollups";
+import { networkLastYear, networkList, networkSince, networkSourcesNote } from "./network-shared";
+import { networkAnswer, networkMembersCond, sankeyAnswer, type RelationQuery } from "./relations";
+import type { NetworkData } from "./network-shared";
+import type { SankeyData } from "./sankey-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -159,19 +163,8 @@ export interface ScatterDensity {
   /** sparse cells as [xBucket (1-based), yBucket (1-based), count] */
   cells: [number, number, number][];
 }
-export interface SankeyFlow {
-  partnerId: string;
-  partner: string;
-  categoryCode: string;
-  category: string | null;
-  value: number;
-}
-export interface NetworkNode {
-  entityId: string;
-  name: string;
-  value: number;
-  count: number;
-}
+export type { NetworkData } from "./network-shared";
+export type { SankeyData, SankeyFlow } from "./sankey-shared";
 export interface EntityCardData {
   entityId: string;
   name: string;
@@ -221,8 +214,10 @@ export type BlockData =
   // selection with every channel (streams); absent from older answers. Not compared by a watch (answerCore).
   | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number }; base?: BreakdownGroup[]; streams?: Record<"da" | "contracts", { value: number; count: number }> }
   | { block: "scatter"; points: ScatterPoint[]; density?: ScatterDensity | undefined }
-  | { block: "sankey"; flows: SankeyFlow[]; focal: { entityId: string; name: string; role: string } }
-  | { block: "network"; nodes: NetworkNode[]; focal: { entityId: string; name: string; role: string } }
+  // sankey-2 and network-2 (F4, plan §4.8–§4.9): relations.ts. An answer stored before them (flows only, the
+  // first 14 nodes) is read by ResultComparison as plain data.
+  | SankeyData
+  | NetworkData
   | { block: "entity_card"; card: EntityCardData }
   | { block: "fact_check"; fact: FactCheckData }
   // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
@@ -352,6 +347,11 @@ export function seatNote(filled: boolean): string {
 /** A relationship view with no partner rows: on every stream, not only direct acquisitions. */
 export function emptyRelationError(focalName: string): string {
   return `„${focalName}” nu are înregistrări în selecția aleasă.`;
+}
+
+/** A reference year the archive has not completed on every channel (network final §3.2: no 2026 while it runs). */
+export function networkSinceError(since: number, last: number): string {
+  return `Anul ${since} nu e încheiat în date. Alege ${last} sau un an mai vechi.`;
 }
 
 /** Coverage of a stream ('da' | 'award'), cached per process (10 min). */
@@ -932,6 +932,15 @@ export async function runSpec(
     }
   }
 
+  // network (F4, final network §3.2): the year its groups are counted from, at most the last year every channel
+  // has complete (a group from an incomplete year would count as gone the partners of its missing months).
+  let networkReference: number | null = null, networkComplete: number | null = null;
+  if (spec.block === "network") {
+    const last = networkComplete = networkLastYear(await coveragePeriods(sql), maxY);
+    networkReference = networkSince(spec, last);
+    if (networkReference > last) return { error: networkSinceError(networkReference, last), caveats };
+  }
+
   // Every condition of the question, written by lib/ask/predicates.ts for the
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
   // The kind of institution is a list of ids, read once per marts build (authority-kind.ts, D1).
@@ -1145,6 +1154,16 @@ export async function runSpec(
   // The evolution's months, split and same months read agg_months once a build has made it (series-rollups.ts); so does
   // the largest record of a breakdown's divisions (its „1 contract: 99%” tag) when the rollups answer the breakdown.
   const seriesRollup = (spec.block === "timeseries" || spec.block === "breakdown") && await mixRollupReady(sql) ? monthsWhere(sql, w, "p") : null;
+
+  // The relations (network, sankey; relations.ts): the question's conditions on the centre's records, an old link's
+  // record threshold, and the same question on every channel for the strip's shares (none where a procedure or a
+  // single bidder is the channel itself, as the breakdown's).
+  const relation = (): RelationQuery => ({
+    ctx: w, dataset, focalRole, focalId: String(focalId),
+    threshold: groupPredicates(w, txtAgg as unknown as ReturnType<DbSql>, andAll(sql, rowPredicates(w))),
+    every: spec.filters.procedure || spec.filters.singleBidder ? null : dataset === "all" ? w
+      : predicateContext(sql, { ...spec, dataset: "all" }, grounding, { dataset: "all", yearFrom, yearTo, kindIds, seat }),
+  });
 
   // --- execute under guardrails
   // trend: a watch's group (TableOpts.freezeGroup, TableOpts.fixedMembers), set by its case.
@@ -1866,94 +1885,20 @@ export async function runSpec(
           };
         }
 
+        // sankey-2 (plan §4.9, F4): the partners × domains of the selection, two CPV digits below the chosen domain,
+        // the first 15 partners and 5 domains with their records and rests, the shared contracts (relations.ts).
         case "sankey": {
           if (!focalId) return { error: "Lipsește entitatea centrală." };
-          const partnerId = focalRole === "authority" ? s`d.supplier_id` : s`d.authority_id`;
-          const partnerName = focalRole === "authority" ? s`d.supplier_name` : s`d.authority_name`;
-          const focalCol = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const r = (await s`
-            select ${partnerId} pid, max(${partnerName}) pnm,
-                   substr(d.cpv_code, 1, 2) stem,
-                   coalesce(sum(d.closing_value), 0) v
-            from ${txtAggNames} d
-            where ${whereFrag()} and ${focalCol} = ${focalId}
-              and ${partnerId} is not null and d.cpv_code is not null
-            group by 1, 3
-            order by v desc
-          `) as unknown as { pid: string; pnm: string; stem: string; v: string }[];
-          if (r.length === 0) {
-            return { error: emptyRelationError(focalName) };
-          }
-          // keep top 6 partners / top 5 categories, roll the rest up
-          const byPartner = new Map<string, number>();
-          const byCat = new Map<string, number>();
-          for (const row of r) {
-            byPartner.set(row.pid, (byPartner.get(row.pid) ?? 0) + Number(row.v));
-            byCat.set(row.stem, (byCat.get(row.stem) ?? 0) + Number(row.v));
-          }
-          const topPartners = new Set(
-            [...byPartner.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k),
-          );
-          const topCats = new Set(
-            [...byCat.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k),
-          );
-          const agg = new Map<string, { partnerId: string; partner: string; categoryCode: string; value: number }>();
-          for (const row of r) {
-            const pk = topPartners.has(row.pid) ? row.pid : "_alt";
-            const pn = topPartners.has(row.pid)
-              ? (r.find((x) => x.pid === row.pid)?.pnm ?? "?")
-              : "alți parteneri";
-            const ck = topCats.has(row.stem) ? row.stem : "_alt";
-            const key = `${pk}|${ck}`;
-            const cur = agg.get(key);
-            if (cur) cur.value += Number(row.v);
-            else agg.set(key, { partnerId: pk, partner: pn, categoryCode: ck, value: Number(row.v) });
-          }
-          const catStems = [...topCats];
-          const names = await cpvNamesFor(s, catStems);
-          return {
-            block: "sankey",
-            flows: [...agg.values()]
-              .sort((a, b) => b.value - a.value)
-              .map((f) => ({
-                partnerId: f.partnerId,
-                partner: f.partner,
-                categoryCode: f.categoryCode,
-                category: f.categoryCode === "_alt" ? "alte categorii" : (names.get(f.categoryCode) ?? f.categoryCode),
-                value: f.value,
-              })),
-            focal: { entityId: String(focalId), name: focalName, role: focalRole },
-          };
+          const flow = await sankeyAnswer(s, { ...relation(), focalName, prefixes: w.cpvPrefixes });
+          return flow ?? { error: emptyRelationError(focalName) };
         }
 
+        // network-2 (plan §4.8, F4): the partners in four lists against the reference year (the groups of the whole
+        // relation), each with its totals and first rows of every order, the facts of each partner (relations.ts).
         case "network": {
           if (!focalId) return { error: "Lipsește entitatea centrală." };
-          const partnerId = focalRole === "authority" ? s`d.supplier_id` : s`d.authority_id`;
-          const partnerName = focalRole === "authority" ? s`d.supplier_name` : s`d.authority_name`;
-          const focalCol = focalRole === "authority" ? s`d.authority_id` : s`d.supplier_id`;
-          const r = (await s`
-            select ${partnerId} pid, max(${partnerName}) pnm,
-                   coalesce(sum(d.closing_value), 0) v, count(*) n
-            from ${txtAggNames} d
-            where ${whereFrag()} and ${focalCol} = ${focalId}
-              and ${partnerId} is not null
-            group by 1
-            order by v desc
-            limit 14
-          `) as unknown as { pid: string; pnm: string; v: string; n: string }[];
-          if (r.length === 0) {
-            return { error: emptyRelationError(focalName) };
-          }
-          return {
-            block: "network",
-            nodes: r.map((p) => ({
-              entityId: String(p.pid),
-              name: p.pnm ?? "?",
-              value: Number(p.v),
-              count: Number(p.n),
-            })),
-            focal: { entityId: String(focalId), name: focalName, role: focalRole },
-          };
+          const net = await networkAnswer(s, { ...relation(), focalName, since: networkReference!, complete: networkComplete!, signals: spec.network?.signals === true, list: networkList(spec) });
+          return net ?? { error: emptyRelationError(focalName) };
         }
 
         case "entity_card": {
@@ -2525,6 +2470,20 @@ export async function runRows(
       if (!focalId) return { error: "Lipsește entitatea centrală." };
       // The answer repeats it beside its own conditions too (focalCol = focalId).
       parts.push(focalRole === "authority" ? sql`d.authority_id = ${focalId}` : sql`d.supplier_id = ${focalId}`);
+    }
+    // network-2 (F4): a group and „Cu semnale” select partners of the whole relation, the answer's own grouping
+    // as a semi-join on the partners' ids (relations.ts), never a list of them.
+    const networkGroup = spec.block === "network" ? networkList(spec) : "all";
+    if (spec.block === "network" && focalId && (networkGroup !== "all" || spec.network?.signals)) {
+      const last = networkLastYear(await coveragePeriods(sql), maxY);
+      const since = networkSince(spec, last);
+      if (since > last) return { error: networkSinceError(since, last) };
+      const members = networkMembersCond(sql, {
+        ctx, dataset, focalRole, focalId: String(focalId), group: networkGroup, since, signals: spec.network?.signals === true, every: null,
+        threshold: groupPredicates(ctx, txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as ReturnType<DbSql>, andAll(sql, rowPredicates(ctx))),
+      });
+      if (members) parts.push(members);
+      notes.push(networkSourcesNote(networkGroup, since, spec.network?.signals === true));
     }
     if (spec.block === "trend") {
       parts.push(trendYearsPredicate(sql, yearFrom ?? minY, yearTo ?? maxY, ctx.trendMonths, ctx));

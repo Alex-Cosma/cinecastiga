@@ -94,11 +94,11 @@ describe("the key versions of this release", () => {
 });
 
 describe("the version of an answer", () => {
-  it("is the block's, then each key's the question carries; F2 changed the trend's only", () => {
-    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2" });
+  it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's", () => {
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2" });
     expect(KEY_VERSIONS).toEqual({});
     for (const block of BLOCKS)
-      expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: block === "trend" ? "trend-2" : `${block}-1`, conditions: {} });
+      expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: ANSWER_VERSIONS[block] ?? `${block}-1`, conditions: {} });
     bumpKind(); bumpEmployees();
     expect(answerVersion(hospitals)).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
     expect(answerVersion(stat)).toEqual({ question: "stat-1", conditions: {} });
@@ -119,7 +119,7 @@ describe("the version of an answer", () => {
   });
 
   it("is the first one, which a watch does not store, until a release bumps it (a revert below F0 then compares equal)", () => {
-    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(block !== "trend");
+    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(!["trend", "network", "sankey"].includes(block));
     beforeF2();
     expect(isFirstAnswerVersion(answerVersion(trend), "trend")).toBe(true);
     Object.assign(ANSWER_VERSIONS, RELEASED);

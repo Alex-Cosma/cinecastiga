@@ -12,7 +12,7 @@ import type { Choice } from "../../../lib/ask/filters/pickers";
 import { monthsLabel } from "../../../lib/ask/months-window";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
-import type { TimeseriesOptions, TrendOptions } from "../../../lib/ask/spec";
+import type { NetworkOptions, SankeyOptions, TimeseriesOptions, TrendOptions } from "../../../lib/ask/spec";
 import { specTrendList, type TrendList } from "../../../lib/ask/trend-shared";
 import { KIND_WORDS, cloneQuestion, countyWords, questionKey, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { SentenceToken as KitToken } from "./kit-types";
@@ -49,7 +49,8 @@ export type UnderRemoval =
   | { kind: "advanced"; key: "population" | "minimumRecords" }
   | { kind: "choice"; slot: Slot; choice: Choice };
 
-export interface RowChipView { key: string; id: FilterId; label: string; name: string; active: boolean }
+/** A chip of a condition row; `toggle`: a switch without values (kit component 5, the network's „Cu semnale”). */
+export interface RowChipView { key: string; id: FilterId; label: string; name: string; active: boolean; toggle?: true }
 export interface RowView { label: string; kind: "group" | "selection"; chips: RowChipView[] }
 
 export interface BuilderView {
@@ -76,15 +77,20 @@ export interface BuilderView {
  * `seq` is a new change; the builder is not remounted, so a draft survives.
  */
 export interface StripPatch {
-  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind"; value: string;
+  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey"; value: string;
   /** "trend": the list chosen in the answer (`value`) and the applied question's trend options after it (null: no key). */
   trend?: TrendOptions | null;
   /** "timeseries" (F3): the evolution's options after the strip's split or same months (null: no key). */
   timeseries?: TimeseriesOptions | null;
+  /** "network" (F4): its options after a group, an order or a reference year chosen beside the answer; a group takes the period away. */
+  network?: NetworkOptions | null;
+  dropPeriod?: true;
+  /** "sankey" (F4): its options after „Arată 6 · 10 · 15” (null: no key). */
+  sankey?: SankeyOptions | null;
 }
 
 /** The draft after a strip change: only that key, as the applied question got it. */
-export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend" | "timeseries">): QuestionSpec {
+export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend" | "timeseries" | "network" | "dropPeriod" | "sankey">): QuestionSpec {
   const next = cloneQuestion(draft);
   if (patch.path === "dataset") next.dataset = patch.value;
   else if (patch.path === "trend") {
@@ -93,6 +99,13 @@ export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" |
   } else if (patch.path === "timeseries") {
     if (patch.timeseries) next.timeseries = structuredClone(patch.timeseries) as TimeseriesOptions;
     else delete next.timeseries;
+  } else if (patch.path === "network") {
+    if (patch.network) next.network = structuredClone(patch.network) as NetworkOptions;
+    else delete next.network;
+    if (patch.dropPeriod) for (const key of ["yearFrom", "yearTo", "monthFrom", "monthTo"]) delete next.filters[key];
+  } else if (patch.path === "sankey") {
+    if (patch.sankey) next.sankey = structuredClone(patch.sankey) as SankeyOptions;
+    else delete next.sankey;
   } else if (patch.path === "purchaseKind") {
     // The breakdown's kinds row (F3): a kind, or every kind again (an empty value).
     if (patch.value) next.filters.purchaseKind = patch.value;
@@ -216,7 +229,7 @@ export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, c
       windows[key] = { key, slot, title: slot.window ?? FILTERS[slot.id].windowTitle ?? name, name };
       // An old link's range of employees stays its own chip under the sentence (kit §5.5): here the row says nothing.
       const shown = conditionSet(spec, slot.id) && (slot.id !== "employees" || employeesOnBands(spec.filters.minEmployees, spec.filters.maxEmployees));
-      return { key, id: slot.id, label: shown ? rowChipLabel(spec, slot, described) : name, name, active: shown };
+      return { key, id: slot.id, label: shown ? rowChipLabel(spec, slot, described) : name, name, active: shown, ...(FILTERS[slot.id].control === "toggle" ? { toggle: true as const } : {}) };
     }),
   }));
 

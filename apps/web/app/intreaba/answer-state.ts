@@ -1,7 +1,9 @@
 import { describeConditions } from "../../lib/ask/filters/describe";
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
-import { SELECTION_RULES, type AskSpec, type MonthWindow } from "../../lib/ask/spec";
+import { SELECTION_RULES, type AskSpec, type MonthWindow, type NetworkOptions, type SankeyOptions } from "../../lib/ask/spec";
+import { networkListSpec, type NetworkList, type NetworkOrder } from "../../lib/ask/network-shared";
+import { DEFAULT_SANKEY_SHOWN } from "../../lib/ask/sankey-shared";
 import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
 import { formatShare } from "../../lib/ask/answer-text";
 import { divisionShortName } from "../../lib/ask/cpv-divisions";
@@ -42,6 +44,36 @@ export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWind
  * already fetched.
  */
 export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "timeseries", "purchaseKind"]);
+
+/**
+ * The network's strip (F4, final network §3.1–§3.5): a group or an order switches on the answer already
+ * fetched; the reference year counts the groups again (a new query). A group takes the period away and
+ * writes the year its buttons counted from (networkListSpec), so the link says what the screen shows.
+ */
+export function appliedAfterNetwork(applied: AskSpec, change: { list?: NetworkList; order?: NetworkOrder; since?: number }, since: number): { spec: AskSpec; dropPeriod: boolean } {
+  let next: AskSpec = applied;
+  let dropPeriod = false;
+  if (change.list !== undefined) {
+    dropPeriod = change.list !== "all" && ["yearFrom", "yearTo", "monthFrom", "monthTo"].some((key) => applied.filters[key as keyof AskSpec["filters"]] !== undefined);
+    next = networkListSpec(next, change.list, since);
+  }
+  if (change.order !== undefined || change.since !== undefined) {
+    const network: NetworkOptions = { ...next.network };
+    if (change.order !== undefined) { if (change.order === "value") delete network.order; else network.order = change.order; }
+    if (change.since !== undefined) network.since = change.since;
+    next = { ...next, network };
+  }
+  if (next.network && !Object.keys(next.network).length) { next = { ...next }; delete next.network; }
+  return { spec: next, dropPeriod };
+}
+
+/** The flow's „Arată 6 · 10 · 15” (F4, kit §6 sankey 5): six is the question without the key. */
+export function appliedAfterSankeyShown(applied: AskSpec, shown: number): AskSpec {
+  const next: AskSpec = { ...applied };
+  if (shown === DEFAULT_SANKEY_SHOWN) delete next.sankey;
+  else next.sankey = { shown: shown as NonNullable<SankeyOptions["shown"]> };
+  return next;
+}
 
 /** The strip's data stream (kit §4: "Toate · Directe · Proceduri", the charts' channel colours as a legend). */
 const STREAM_OPTIONS: readonly SegmentOption[] = [
@@ -203,7 +235,7 @@ export interface Thread { root: string | null; steps: { code: string; name: stri
 
 /** The thread of a URL, when it leads to the breakdown on screen (its last step is the question's domain). */
 export function readThread(raw: string | null, spec: AskSpec): Thread | null {
-  if (!raw || spec.block !== "breakdown") return null;
+  if (!raw || (spec.block !== "breakdown" && spec.block !== "sankey")) return null;
   try {
     const value = JSON.parse(raw) as Partial<Thread>;
     const steps = Array.isArray(value.steps) ? value.steps.filter((s): s is Thread["steps"][number] => typeof s?.code === "string" && typeof s?.name === "string").slice(0, 8) : [];
@@ -220,9 +252,17 @@ export function deeperThread(thread: Thread | null, spec: AskSpec, code: string,
 
 /** The link to a breakdown level, with the thread that leads to it (none at the root). */
 export function threadHref(spec: AskSpec, cpvTerm: string | null, thread: Thread | null): string {
-  const next = breakdownDeeperSpec(spec, cpvTerm ?? "");
+  // The flow goes down on itself (final sankey §3.3): the same question with the code; the breakdown opens its slice.
+  const next = spec.block === "sankey" ? sankeyDeeperSpec(spec, cpvTerm ?? "") : breakdownDeeperSpec(spec, cpvTerm ?? "");
   if (!cpvTerm) delete next.filters.cpvTerm;
   return `/intreaba?spec=${encodeURIComponent(encodeSpec(next))}${thread?.steps.length ? `&fir=${encodeURIComponent(JSON.stringify(thread))}` : ""}`;
+}
+
+/** The flow one CPV level down: the same question with that code as its domain (a code decides the kind). */
+export function sankeyDeeperSpec(spec: AskSpec, code: string): AskSpec {
+  const filters = { ...spec.filters, cpvTerm: code };
+  delete filters.purchaseKind;
+  return { ...spec, filters };
 }
 
 /** The crumbs above the level on screen, each back to its level, and the current one's name. */

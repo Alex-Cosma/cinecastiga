@@ -84,7 +84,7 @@ export const TREND_REFUSALS: Partial<Record<FilterId, string>> = {
 };
 
 /** The shape of the answer, not a condition: the question shows it in its sentence or ignores it. */
-const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode"]);
+const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode", "networkOrder", "networkShow", "sankeyShown"]);
 
 /** The spec without the keys of these filters (no picker side effects: what the link would be without them). */
 export function withoutConditions(spec: FilterSpec, ids: readonly FilterId[]): FilterSpec {

@@ -27,6 +27,8 @@ export const ENGINE_GLOBAL_TABLES = [
 export const ENGINE_MARTS_TABLES = [
   "da_transactions", "contract_transactions", "national_stats", "data_coverage", "entity_profile", "entity_flags",
   "agg_top_entities", "agg_national", "agg_years", "agg_map_county", "spend_by_county", "cui_corroborations",
+  // F4: the network's signals on a relation (relations.ts relationSignals).
+  "flag_instances",
 ] as const;
 /** A marts table a database may predate (migration 0077): created empty with its own columns. */
 const MISSING_MARTS_DDL: Record<string, string> = {

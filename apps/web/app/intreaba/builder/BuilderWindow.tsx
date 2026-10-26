@@ -12,6 +12,7 @@ import type { Excluded } from "@/lib/ask/filters/origin";
 import type { FilterSpec } from "@/lib/ask/filters/types";
 import { cloneQuestion, foldQuestion, type QuestionSpec } from "@/lib/ask/question-ui";
 import { countyIsFirmSeat } from "@/lib/ask/population";
+import { SEAT_COUNTY_BLOCKS, type Block } from "@/lib/ask/spec";
 import type { EntityHit } from "@/lib/search";
 import { MIN_TREND_YEAR, type CoveragePeriods } from "@/lib/ask/months-window";
 import { choiceState } from "@/lib/ask/filters/pickers";
@@ -275,8 +276,11 @@ function SeatWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
   return <>
     <ChoiceList label={win.name} options={counted} value={value} current={seatCurrentRow(draft)} {...(rest ? { rest } : {})}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : option.value === "none" ? seatClearChoices(draft) : [option.choice])} />
-    <p className="qb-opt-group">În județul…</p>
-    <SeatSearch draft={draft} {...(relative ? {} : { counts })} onPick={onPick} />
+    {/* A county of the seat only where firms are the subject (SEAT_COUNTY_BLOCKS): around an institution the seat is against it. */}
+    {SEAT_COUNTY_BLOCKS.includes(draft.block as Block) && <>
+      <p className="qb-opt-group">În județul…</p>
+      <SeatSearch draft={draft} {...(relative ? {} : { counts })} onPick={onPick} />
+    </>}
   </>;
 }
 

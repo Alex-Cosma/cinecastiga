@@ -26,7 +26,8 @@ export function emptyAnswer(data: BlockData): boolean {
     case "breakdown": return data.slices.length === 0 && data.other.count === 0;
     // trend-2: empty when the selection is; an empty group of a full selection says so in its own list (TrendAnswer).
     case "trend": return data.composition?.all ? data.composition.all.count === 0 : data.rowsTrend.length === 0;
-    case "network": return data.nodes.length === 0;
+    // F4: an empty group of a network with partners says so in its own list (NetworkAnswer).
+    case "network": return data.lists.all.partners === 0 && data.lists.new.partners + data.lists.continuing.partners + data.lists.gone.partners === 0;
     case "sankey": return data.flows.length === 0;
     case "scatter": return data.points.length === 0;
     default: return false;

@@ -57,12 +57,14 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
     corpus: ["site:topic-total", "site:topic-top", "site:topic-domains"] },
   { file: "lib/ask/source-spec.ts", occurrences: 6, kind: "derived", what: "A ranking row's or a year's records; a lone county council's place among the others and its total (\"Cine conduce?\")",
     corpus: ["site:source-entity-row", "site:source-entity-spec", "site:source-year", "site:leader-alone-peers", "site:leader-alone-total"] },
-  { file: "app/intreaba/blocks.tsx", occurrences: 4, kind: "derived", what: "A slice's records; a network node or flow ribbon's records",
+  // F4: a network node's and a flow's records open the drawer in place (NetworkAnswer, SankeyAnswer); the corpus keeps
+  // the links those built before (site:node-records, site:ribbon-records), which still answer.
+  { file: "app/intreaba/blocks.tsx", occurrences: 2, kind: "derived", what: "A slice's records",
     corpus: ["site:slice-records", "site:node-records", "site:ribbon-records"] },
   { file: "app/intreaba/answer-state.ts", occurrences: 2, kind: "derived", what: "A breakdown slice one CPV level down, and the thread's crumbs back up (fir)",
     corpus: ["site:slice-deeper"] },
   { file: "app/intreaba/MapBlock.tsx", occurrences: 2, kind: "derived", what: "A county's records", corpus: ["site:map-county-records"] },
-  { file: "app/intreaba/AskPanel.tsx", occurrences: 8, kind: "relay", what: "The applied answer's permalink (also after a strip change or a trend's group button), builder key, export key and drawer" },
+  { file: "app/intreaba/AskPanel.tsx", occurrences: 10, kind: "relay", what: "The applied answer's permalink (also after a strip change, a trend's or a network's group button, the flow's length), builder key, export key and drawer; the flow's domain thread (threadHref, F4)" },
   { file: "app/intreaba/EvidenceDrawer.tsx", occurrences: 2, kind: "relay", what: "The drawer's own source link (sourceUrl) for captures" },
   { file: "app/intreaba/SaveQuestionButton.tsx", occurrences: 2, kind: "relay", what: "A saved question's link" },
   { file: "app/intreaba/SavedQuestions.tsx", occurrences: 2, kind: "relay", what: "Reopening a saved question in the builder" },

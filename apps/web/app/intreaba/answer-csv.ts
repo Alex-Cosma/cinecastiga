@@ -4,6 +4,8 @@ import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
 import { breakdownShown } from "./breakdown-answer";
+import { networkCsvRows } from "./network-answer";
+import { sankeyCsvRows } from "./sankey-answer";
 
 /*
  * "Rezultatul afișat · CSV" (plan §2.3, §2.8): exactly the rows and columns
@@ -38,6 +40,8 @@ function csvQ(s: string | null | undefined): string {
   const safe = /^[\s﻿]*[=+@-]/.test(text) ? "'" + text : text;
   return `"${safe.replaceAll('"', '""')}"`;
 }
+
+const csvAny = (value: unknown): string => csvQ(value === undefined || value === null ? "" : String(value));
 
 /** B − A of two amounts in lei, to the ban: a float subtraction leaves noise (1130000000.12 − 481712345.67 = 648287654.4499998). */
 export const leiDifference = (a: number, b: number): number => Math.round((b - a) * 100) / 100;
@@ -81,10 +85,11 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
     }
     case "scatter":
       return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`)];
+    // F4: the flows on screen, the partners past „Arată” folded (sankey-2); the partners of the list on screen, in its order and length (network-2).
     case "sankey":
-      return ["partener,categorie,valoare_lei", ...data.flows.map((f) => `${csvQ(f.partner)},${csvQ(f.category)},${f.value}`)];
+      return sankeyCsvRows(data, spec, csvAny);
     case "network":
-      return ["partener,valoare_lei,achizitii", ...data.nodes.map((n) => `${csvQ(n.name)},${n.value},${n.count}`)];
+      return networkCsvRows(data, spec, csvAny);
     case "entity_card": {
       const c = data.card, profile = isHistoricalProfile(spec);
       return [

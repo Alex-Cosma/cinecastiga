@@ -83,6 +83,9 @@ describe.runIf(Boolean(connection))("legacy links keep their answers (golden cor
         : data.block === "timeseries" ? data.series.reduce((n, p) => n + p.count, 0)
         : data.block === "map" ? data.counties.reduce((n, p) => n + p.count, 0)
         : data.block === "breakdown" ? data.slices.reduce((n, p) => n + p.count, 0) + data.other.count
+        // F4: a network's list (a group's sources are its partners'), the flow's whole selection.
+        : data.block === "network" ? data.lists[data.list].count
+        : data.block === "sankey" ? data.totals.count
         : null;
       if (counted !== null) expect.soft(r.sources["sourceTotal"], `${r.id}: records`).toBe(counted);
       if (r.csv["status"] === 200 && !r.request.rows) {

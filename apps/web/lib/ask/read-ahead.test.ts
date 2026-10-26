@@ -16,12 +16,6 @@ const table = { block: "table", dim: "supplier", measure: "value", filters: {} }
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=network-group">, Record<string, unknown>> = {
   "filters.sharedPartners": { block: "compare", measure: "value", filters: { supplierId: 1, compareWithId: 2, sharedPartners: true } },
-  "sankey.shown": { block: "sankey", measure: "value", filters: { supplierId: 1 }, sankey: { shown: 10 } },
-  "network.partners": { block: "network", measure: "value", filters: { authorityId: 1 }, network: { partners: "new" } },
-  "network.since": { block: "network", measure: "value", filters: { authorityId: 1 }, network: { since: 2023 } },
-  "network.order": { block: "network", measure: "value", filters: { authorityId: 1 }, network: { order: "years" } },
-  "network.show": { block: "network", measure: "value", filters: { authorityId: 1 }, network: { show: 25 } },
-  "network.signals": { block: "network", measure: "value", filters: { authorityId: 1 }, network: { signals: true } },
   "filters.newSince": { ...table, filters: { newSince: 2024 } },
   "filters.newScope": { ...table, filters: { newScope: "registry" } },
   "filters.mainClient": { ...table, filters: { authorityId: 1, mainClient: true } },
@@ -121,8 +115,8 @@ describe("keys read ahead of the engine", () => {
   });
 
   it("refuses the newer key before the rules a newer release may have changed", () => {
-    // Today a network needs its entity; a newer link with the network's groups is "newer", not "invalid".
-    const raw = { block: "network", measure: "value", filters: {}, network: { partners: "new" } };
+    // Today a distribution needs its entity; a newer link with F6a's comparison group is "newer", not "invalid".
+    const raw = { block: "distribution", measure: "value", filters: {}, peers: { similar: true } };
     expect(validateSpec(raw)).toHaveProperty("error", expect.stringContaining("requires filters.authorityName"));
     expect(validateSpec(raw, { refuseNewer: NEWER_VERSION_LINK })).toEqual({ error: NEWER_VERSION_LINK, newer: true });
   });
@@ -164,6 +158,8 @@ describe("today's questions", () => {
       "trend.change", "trend.months", "trend.order", "trend.minBase", "trend.firstOnly",
       // F3: the evolution's pace, split and same months, likewise (the strip, the "Când?" window and links).
       "timeseries.grain", "timeseries.split", "timeseries.months",
+      // F4: the network's groups, year, order, length and signals and the flow's length: the builder, the strip and links.
+      "network.partners", "network.since", "network.order", "network.show", "network.signals", "sankey.shown",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

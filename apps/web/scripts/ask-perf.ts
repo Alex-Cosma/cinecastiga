@@ -240,7 +240,7 @@ export function answerRows(data: BlockData): number {
     case "breakdown": return data.slices.length;
     case "scatter": return data.points.length;
     case "sankey": return data.flows.length;
-    case "network": return data.nodes.length;
+    case "network": return data.lists[data.list].rows.length;
     case "trend": return data.rowsTrend.length;
   }
 }

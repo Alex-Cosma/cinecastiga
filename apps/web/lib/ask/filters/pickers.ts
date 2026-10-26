@@ -26,7 +26,9 @@ export interface SubjectChoice { dim: "supplier" | "authority" | "county"; kind?
  * The answer's shape: its window has no empty row, the first row is a value ("Toate achizițiile", "valoarea
  * înregistrată"); so are a trend's change, order and base, whose every value is a row ("Toate schimbările", "Diferența în lei").
  */
-const NO_EMPTY_ROW: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "dataset", "trendChange", "trendOrder", "trendMinBase"]);
+const NO_EMPTY_ROW: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "dataset", "trendChange", "trendOrder", "trendMinBase",
+  // F4: the network's year, order and length are values every one ("2025", "Valoarea înregistrată", "Primii 15").
+  "networkSince", "networkOrder", "networkShow", "sankeyShown"]);
 
 /** Kinds a question cannot say before D1 (sentence.ts KINDS_AFTER_D1): its windows do not offer them. */
 const laterKind = (block: Block, kind: unknown) => (KINDS_AFTER_D1[block] ?? []).includes(kind as AuthorityKind);

@@ -21,7 +21,8 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   // Values are recorded, not paid; the cloud plots risk against recorded value.
   breakdown: "pe domenii",
   scatter: "risc și valoare",
-  sankey: "fluxul banilor",
+  // Recorded, not paid (final sankey §1): what was bought and from whom, never a "flow of money".
+  sankey: "pe parteneri și domenii",
   network: "rețea de parteneri",
   // "Cine conduce?": its own short name (kit §4), not the engine's slug.
   entity_card: "locul 1",

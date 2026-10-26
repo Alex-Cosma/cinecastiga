@@ -25,13 +25,17 @@ import {
   DistributionBlock,
   BreakdownBlock,
   ScatterBlock,
-  SankeyBlock,
-  NetworkBlock,
   EntityCardBlock,
   FactCheckBlock,
   useTip,
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
+import NetworkAnswer from "./NetworkAnswer";
+import SankeyAnswer from "./SankeyAnswer";
+import { NETWORK_LIST_CSV, shownList as shownNetworkList } from "./network-answer";
+import { sankeySuggestion, shownOptions as sankeyShownOptions } from "./sankey-answer";
+import { networkList, NETWORK_LIST_LABELS, type NetworkList, type NetworkOrder } from "@/lib/ask/network-shared";
+import { sankeyShown } from "@/lib/ask/sankey-shared";
 import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
 import { specTrendList, specTrendPartLabel, type TrendList } from "@/lib/ask/trend-shared";
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
@@ -60,7 +64,8 @@ import "./builder/filters-kit.css";
 import { answerCsv, type BandState } from "./answer-csv";
 import { useCpvName } from "./cpv-name";
 import {
-  CHANNEL_SHARE_TIP, DATA_RELOADED, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, breakdownSuggestion, channelShares, readThread, sameMonthsSwitch, seriesSplitOptions,
+  CHANNEL_SHARE_TIP, DATA_RELOADED, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterNetwork, appliedAfterSankeyShown, appliedAfterStrip, appliedAfterTrendList, breakdownSuggestion, channelShares,
+  deeperThread, readThread, sameMonthsSwitch, seriesSplitOptions, threadHref,
   shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread,
 } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
@@ -115,7 +120,8 @@ function totalLead(data: BlockData): ReactNode {
       : data.block === "map" ? sum([...data.counties, data.unknown])
         : data.block === "breakdown" ? sum([...data.slices, data.other])
           : data.block === "table" && data.totals && (data.page ?? 0) === 0 ? data.totals
-            : null;
+            : data.block === "sankey" && data.totals ? data.totals
+              : null;
   if (!total) return "Selecția";
   return <>Total: <span className="qb-num">{formatRonFull(total.value)}</span> · {countWords(total.count, "înregistrare", "înregistrări")}</>;
 }
@@ -124,8 +130,13 @@ const EXAMPLES = [
   "Cine furnizează cel mai mult pentru spitale?",
   "Cum s-au schimbat achizițiile de lucrări, pe ani?",
 ];
-function sourceCount(data: BlockData): number | null {
+function sourceCount(data: BlockData, applied?: AskSpec): number | null {
   switch (data.block) {
+    // F4: the records of the list on screen (a group's sources are its partners', relations.ts), the flow's whole selection.
+    case "network":
+      return data.lists?.[applied ? networkList(applied) : data.list]?.count ?? null;
+    case "sankey":
+      return data.totals?.count ?? null;
     case "stat":
       return data.stat.count;
     case "fact_check":
@@ -300,6 +311,8 @@ export default function AskPanel({
           seq: (current?.seq ?? 0) + 1, ...opts.strip!, ...(opts.strip!.path === "dataset" ? { value: executed.dataset ?? "all" } : {}),
           // The evolution's options as the engine ran them (F3): the draft gets the whole key.
           ...(opts.strip!.path === "timeseries" ? { timeseries: executed.timeseries ?? null } : {}),
+          // The network's reference year (F4): its options as the engine ran them.
+          ...(opts.strip!.path === "network" ? { network: executed.network ?? null } : {}),
         }));
         else if (body.spec && !("tablePage" in body)) {
           setBuilderResolution({ submitted: body.spec as QuestionSpec, resolved: answer.spec });
@@ -548,6 +561,10 @@ export default function AskPanel({
       groupFile: TREND_LIST_CSV[specTrendList(applied)],
     } : {}),
     ...(resp?.data?.block === "trend" && resp.data.months && !isWholeYear(resp.data.months) ? { months: monthsLabel(resp.data.months) } : {}),
+    // F4: the network's group on screen, with its year (the file name says the group).
+    ...(resp?.data?.block === "network" && shownNetworkList(applied) !== "all" ? {
+      group: `${NETWORK_LIST_LABELS[shownNetworkList(applied)]} din ${resp.data.since}`, groupFile: NETWORK_LIST_CSV[shownNetworkList(applied)],
+    } : {}),
   } : {};
   const appliedKey = applied ? questionKey(applied) : "";
   useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
@@ -584,6 +601,45 @@ export default function AskPanel({
     setAppliedSpec(next);
     setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...patch }));
     // A builder folded under "Schimbă întrebarea" is not mounted: it opens on the group shown, not the link's.
+    if (builderCollapsed) {
+      setBuilderInit((current) => current ? patchDraft(current, patch) : current);
+      setBuilderResolution((current) => current ? { submitted: patchDraft(current.submitted, patch), resolved: patchDraft(current.resolved, patch) } : current);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("spec", encodeSpec(next));
+    window.history.replaceState(null, "", url);
+  };
+  /**
+   * The network's groups and order beside the answer (F4, owner-R-facts-all-lists): the answer holds every
+   * list and order, so the applied question changes in the URL and the builder, with no request. Its
+   * reference year counts the groups again: a new query, the builder told as by any strip change.
+   */
+  const applyNetwork = (change: { list?: NetworkList; order?: NetworkOrder }) => {
+    if (!applied || resp?.data?.block !== "network") return;
+    const { spec: next, dropPeriod } = appliedAfterNetwork(applied, change, resp.data.since);
+    const patch = { path: "network" as const, value: change.list ?? change.order ?? "", network: next.network ?? null, ...(dropPeriod ? { dropPeriod: true as const } : {}) };
+    setAppliedSpec(next);
+    setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...patch }));
+    if (builderCollapsed) {
+      setBuilderInit((current) => current ? patchDraft(current, patch) : current);
+      setBuilderResolution((current) => current ? { submitted: patchDraft(current.submitted, patch), resolved: patchDraft(current.resolved, patch) } : current);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("spec", encodeSpec(next));
+    window.history.replaceState(null, "", url);
+  };
+  const applyNetworkSince = (since: number) => {
+    if (!applied || resp?.data?.block !== "network") return;
+    const { spec: next } = appliedAfterNetwork(applied, { since }, resp.data.since);
+    void execute({ spec: next }, false, undefined, undefined, false, { strip: { path: "network", value: String(since) }, thread });
+  };
+  /** The flow's „Arată 6 · 10 · 15” (F4): the answer holds the first 15, so the length switches with no request. */
+  const applySankeyShown = (shown: number) => {
+    if (!applied) return;
+    const next = appliedAfterSankeyShown(applied, shown);
+    const patch = { path: "sankey" as const, value: String(shown), sankey: next.sankey ?? null };
+    setAppliedSpec(next);
+    setStripPatch((current) => ({ seq: (current?.seq ?? 0) + 1, ...patch }));
     if (builderCollapsed) {
       setBuilderInit((current) => current ? patchDraft(current, patch) : current);
       setBuilderResolution((current) => current ? { submitted: patchDraft(current.submitted, patch), resolved: patchDraft(current.resolved, patch) } : current);
@@ -708,7 +764,7 @@ export default function AskPanel({
     openEvidence(spec, scope, "selecția aleasă");
   };
   const data = resp?.data,
-    count = data ? sourceCount(data) : null;
+    count = data ? sourceCount(data, applied) : null;
   const watchedGroup = data?.block === "trend" && applied ? trendWatch(data, applied) : null;
   const isProfile = !!applied && isHistoricalProfile(applied);
   // What changes the total outside the sentence (G8), on the applied question as it ran (a trend's months).
@@ -727,9 +783,10 @@ export default function AskPanel({
    * the one left out (the next, else the last) takes the focus once it is drawn (kit §5.13).
    */
   const refocusRow = useRef<number | null>(null);
-  const excludeRow = useCallback((entity: { id: string; name: string }, index: number) => {
+  const excludeRow = useCallback((entity: { id: string; name: string; field?: "authority" | "supplier" | "cpv" }, index: number) => {
     const question = applied as unknown as QuestionSpec | undefined;
-    const role = question ? excludedRole(question) : null;
+    // A flow's domain says its field (a CPV code); every other row is of the answer's role (BLOCK_FILTERS.exclude).
+    const role = question ? entity.field ?? excludedRole(question) : null;
     const next = question && role ? excludeEntity(question, { field: role, value: entity.id, label: entity.name }) : null;
     if (!next) return;
     window.history.pushState(null, "", window.location.href);
@@ -978,7 +1035,9 @@ export default function AskPanel({
               <div className="qb cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (() => {
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
-                  const shares = data.block === "breakdown" ? channelShares(data, applied.measure === "count") : null;
+                  // F4: the network's and the flow's from their own `streams` (the selection on every channel).
+                  const shares = data.block === "breakdown" ? channelShares(data, applied.measure === "count")
+                    : data.block === "network" || data.block === "sankey" ? channelShares(data, false) : null;
                   const control = <Segmented
                     label="Ce fel de achiziții"
                     value={streamShown ?? applied.dataset ?? "all"}
@@ -1018,6 +1077,20 @@ export default function AskPanel({
                   const deeper = breakdownSuggestion(data, applied, thread);
                   return deeper && <Suggest text={deeper.text} href={deeper.href} />;
                 })()}
+                {/* The flow's length, its domains' thread and the suggestion to go down (F4, final sankey §3.2–§3.4). */}
+                {data.block === "sankey" && stripKeys.includes("sankeyShown") && (
+                  <StripLabelled before="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"}>
+                    <Segmented label="Câți parteneri arăți" size="sm" value={String(sankeyShown(applied))} options={sankeyShownOptions(data)}
+                      onChange={(value) => { if (Number(value) !== sankeyShown(applied)) applySankeyShown(Number(value)); }} />
+                  </StripLabelled>
+                )}
+                {data.block === "sankey" && !crumbs && (applied.filters.cpvTerm
+                  ? <Crumbs label="Domenii" items={[{ label: "toate", href: threadHref(applied, null, null) }]} current={cpvName ?? `„${String(applied.filters.cpvTerm)}”`} />
+                  : <span className="qb-row qb-tipwrap-sm"><Crumbs label="Domenii" items={[]} current="toate" /><HelpTip tip={{ title: "Domenii", text: "Domeniul = codul CPV declarat de instituție pentru fiecare înregistrare. Detaliază coboară un nivel." }} /></span>)}
+                {data.block === "sankey" && (() => {
+                  const deeper = sankeySuggestion(data);
+                  return deeper && <Suggest text={deeper.text} href={threadHref(applied, deeper.code, deeperThread(thread, applied, deeper.code, deeper.text.replace(/^.* e /, "")))} />;
+                })()}
                 {stripKeys.includes("measure") && data.block === "map" && (
                   <StripLabelled before="Harta arată">
                     <Segmented
@@ -1029,7 +1102,7 @@ export default function AskPanel({
                   </StripLabelled>
                 )}
                 {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
-                {["table", "timeseries", "map"].includes(data.block) && (
+                {["table", "timeseries", "map", "sankey"].includes(data.block) && (
                   <StripEnd>
                     <Segmented
                       label="Cum arată răspunsul"
@@ -1146,14 +1219,12 @@ export default function AskPanel({
                 <ScatterBlock points={data.points} density={data.density} />
               )}
               {data.block === "sankey" && (
-                <SankeyBlock
-                  flows={data.flows}
-                  focal={data.focal}
-                  spec={applied}
-                />
+                <SankeyAnswer data={data} spec={applied} layout={layout}
+                  deeperHref={(code) => threadHref(applied, code, deeperThread(thread, applied, code, data.domains.find((d) => d.code === code)?.name ?? `CPV ${code}`))} />
               )}
               {data.block === "network" && (
-                <NetworkBlock nodes={data.nodes} focal={data.focal} />
+                <NetworkAnswer data={data} spec={applied} conditions={totalWords}
+                  onList={(list) => applyNetwork({ list })} onOrder={(order) => applyNetwork({ order })} onSince={applyNetworkSince} />
               )}
               {data.block === "entity_card" && (
                 <EntityCardBlock card={data.card} historical={isProfile} spec={applied} />
@@ -1175,7 +1246,7 @@ export default function AskPanel({
             </div>}
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
-            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && (
+            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && (
               <div className="qb cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}

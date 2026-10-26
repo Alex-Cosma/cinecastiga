@@ -109,10 +109,11 @@ const cpvGroundings: (Grounding["cpv"] | undefined)[] = [
 /** The specs whose population the plan words differently: another page's selection or exclusions. */
 const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) || splitExcluded(spec.population).excluded.length);
 /**
- * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, an evolution with its options (F3-rows) or F4's seat: the six grammars
+ * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, an evolution with its options (F3-rows), F4's seat or the network's
+ * and the flow's options (builderNetwork): the six grammars
  * came before them; their words are tested below.
  */
-const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined
+const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined || spec.network !== undefined || spec.sankey !== undefined
   || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {
@@ -289,7 +290,8 @@ describe("the words of every condition", () => {
   it("cover every key of today's engine but the shape of the answer and the ignored comparison mode", () => {
     const implemented = new Set(FILTER_DEFS.filter((def) => Object.keys(def.engine).length).map((def) => def.id));
     const owners = new Set(Object.values(SPEC_PATH_OWNERS).filter((id) => id !== "question" && implemented.has(id)));
-    expect(new Set(DESCRIBED_FILTERS)).toEqual(new Set([...owners].filter((id) => !["dim", "measure", "topN", "rankBy"].includes(id))));
+    // The network's order and length and the flow's are presentation, as topN (F4): the presentation line and the strip say them.
+    expect(new Set(DESCRIBED_FILTERS)).toEqual(new Set([...owners].filter((id) => !["dim", "measure", "topN", "rankBy", "networkShow", "sankeyShown"].includes(id))));
   });
 
   it("give a total line for every selection outside the basic sentence (G8)", () => {

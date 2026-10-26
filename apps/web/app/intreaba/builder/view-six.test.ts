@@ -79,11 +79,13 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect(sentence(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc?");
   });
 
-  it("draw the partners by role: the network's firms by size and person, the flow's by size, the clients by place and kind (P3b)", () => {
-    expect(builderView(SIX.network!).rows.map((r) => [r.label, r.kind, r.chips.map((c) => c.name)])).toEqual([["Furnizorii", "selection", ["Angajați", "Administrator"]]]);
+  it("draw the partners by role: the network's firms by seat, size, signals and person, the flow's by seat and size, the clients by place and kind (P3b)", () => {
+    expect(builderView(SIX.network!).rows.map((r) => [r.label, r.kind, r.chips.map((c) => c.name)])).toEqual([["Furnizorii", "selection", ["Sediul firmei", "Angajați", "Cu semnale", "Administrator"]]]);
+    // F4: „Cu semnale” is a switch (no window), the seat's window the one of the rankings, against the institution.
+    expect(builderView(SIX.network!).rows[0]!.chips.find((c) => c.id === "networkSignals")).toMatchObject({ toggle: true, active: false });
     // The flow's final leaves the person to the network and the verification: a link's person is its chip.
     const flow = q({ block: "sankey", dim: "authority", filters: { ...BUZAU, adminPersonKey: "k", adminName: "ION" } });
-    expect(builderView(flow).rows.map((r) => r.chips.map((c) => c.name))).toEqual([["Angajați"]]);
+    expect(builderView(flow).rows.map((r) => r.chips.map((c) => c.name))).toEqual([["Sediul firmei", "Angajați"]]);
     expect(builderView(flow).under).toEqual([expect.objectContaining({ kind: "legacy", words: "firmele conduse azi de ION" })]);
     const clients = builderView(q({ block: "sankey", dim: "supplier", filters: { ...PORR, county: "Ilfov" } }));
     expect(clients.rows[0]!.chips.map((c) => [c.label, c.active])).toEqual([["Județul Ilfov", true], ["Tipul instituției", false]]);

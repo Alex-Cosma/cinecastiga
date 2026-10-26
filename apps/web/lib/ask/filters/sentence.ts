@@ -8,6 +8,8 @@ import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block, t
 import { formatRon } from "../../format";
 import { filterContext, formOf } from "./context";
 import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NO_RECORDS, firstTimeTip, firstTimeWords, trendGap } from "./defs/trend";
+import { lastNetworkYear } from "./defs/network";
+import { NETWORK_ORDER_WORDS, NETWORK_VERBS, networkShow } from "../network-shared";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
   TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, localityName, periodPhrase, periodWordsWith,
@@ -81,6 +83,8 @@ export interface SentenceLabels {
   trendYears?: { yearA: number; yearB: number } | null | undefined;
   /** The reader asked about town halls and the question counts every institution: the default institutions say so. */
   allInstitutions?: boolean | undefined;
+  /** The reference year a network's answer counted its groups from (its data.since): said where the spec has none. */
+  networkSince?: number | null | undefined;
 }
 
 /**
@@ -128,6 +132,10 @@ const NAMES = {
   order: ["Ordinea", "Cum comparăm?"],
   change: ["Felul schimbării", "Ce fel de schimbare?"],
   minBase: ["Pragul", "De la ce valoare?"],
+  partners: ["Ce parteneri", "Ce parteneri?"],
+  since: ["Anul de referință", "Față de ce an?"],
+  show: ["Câți parteneri", "Câți parteneri arăți?"],
+  partnerOrder: ["Ordinea", "Cum ordonăm partenerii?"],
 } as const satisfies Record<string, readonly [string, string]>;
 type Name = keyof typeof NAMES;
 
@@ -562,12 +570,21 @@ const trend: Write = (out, spec, ctx, labels) => {
   out.text("?");
 };
 
-/** §4.8 "Cu cine lucrează [X] {pentru […]} {prin [achiziții directe]}, în [toți anii]?" The partners' conditions are a row. */
+/**
+ * §4.8 (final network §1, kit §6 network 1): the group is the verb, "Cu cine [lucrează] [X] {pentru […]}
+ * {prin [achiziții directe]}, în [toți anii]?"; a group of the whole relation takes its reference year
+ * instead of a period: "Cu cine [a început să lucreze | a continuat să lucreze | nu mai lucrează] [X] …
+ * din [2025]?" (the year the builder knows as the last complete one, until the reader picks another). The
+ * partners' conditions are a row; the order and the length the presentation line.
+ */
 const network: Write = (out, spec, ctx, labels) => {
-  focal(out.text("Cu cine lucrează "), spec, ctx);
+  const group = spec.network?.partners, since = spec.network?.since;
+  out.text("Cu cine ").slot("networkPartners", "partners", NETWORK_VERBS[group ?? "all"], { says: group ? ["networkPartners"] : [] });
+  focal(out.text(" "), spec, ctx);
   domain(out, spec, labels, " pentru ", null);
   channel(out, spec);
-  period(out, spec);
+  if (group) out.text(" din ").slot("networkSince", "since", String(since ?? labels.networkSince ?? lastNetworkYear(ctx)), { says: since !== undefined ? ["networkSince"] : [] });
+  else period(out, spec);
   out.text("?");
 };
 
@@ -722,6 +739,11 @@ export function presentationTokens(input: QuestionSpec | AskSpec): SentenceToken
   if (spec.block === "table") {
     out.text("Arată ").slot("topN", "topN", top(spec.topN), { says: spec.topN === undefined ? [] : ["topN"] });
     out.text(", după ").slot("measure", "order", MEASURE_WORDS[spec.measure] ?? MEASURE_WORDS.value!).text(".");
+  } else if (spec.block === "network") {
+    // Final network §1, §3.5: "Arată primii [15] parteneri, după [valoarea înregistrată]." (14 on an old link).
+    const n = networkShow(spec), order = spec.network?.order ?? "value";
+    out.text("Arată primii ").slot("networkShow", "show", String(n), { says: spec.network?.show === undefined ? [] : ["networkShow"] });
+    out.text(" parteneri, după ").slot("networkOrder", "partnerOrder", NETWORK_ORDER_WORDS[order].phrase, { says: spec.network?.order === undefined ? [] : ["networkOrder"] }).text(".");
   } else if (spec.block === "trend") {
     const t = spec.trend ?? {};
     out.text("Arată ").slot("topN", "topN", top(spec.topN ?? 10), { says: spec.topN === undefined ? [] : ["topN"] });

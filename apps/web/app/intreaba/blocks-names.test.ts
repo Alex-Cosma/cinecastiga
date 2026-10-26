@@ -12,8 +12,11 @@ vi.mock("@/lib/ask/spec", () => import("../../lib/ask/spec"));
 vi.mock("@/lib/ask/question-ui", () => import("../../lib/ask/question-ui"));
 vi.mock("@/lib/ask/filters/retarget", () => import("../../lib/ask/filters/retarget"));
 vi.mock("@/lib/flags", () => import("../../lib/flags"));
+vi.mock("@/lib/ask/sankey-shared", () => import("../../lib/ask/sankey-shared"));
+vi.mock("@/lib/ask/filters/exclusions", () => import("../../lib/ask/filters/exclusions"));
 
-const { BreakdownBlock, SankeyBlock } = await import("./blocks");
+const { BreakdownBlock } = await import("./blocks");
+const { default: SankeyAnswer } = await import("./SankeyAnswer");
 
 /*
  * F1b-tests: the browser check found the CPV catalogue's cedilla letters in
@@ -36,13 +39,18 @@ describe("CPV names in the answer", () => {
     expect(markup).not.toMatch(/[şţŞŢ]/);
   });
 
-  it("are written with ș/ț in the flow's categories", () => {
-    const markup = text(renderToStaticMarkup(createElement(SankeyBlock, {
-      flows: [{ partnerId: "7", partner: "FIRMA EXEMPLU SRL", categoryCode: "45", category: "Lucrări de construcţii", value: 1000, count: 2 }],
-      focal: { entityId: "1", name: "Primăria Exemplu", role: "authority" },
-      spec: { block: "sankey", dim: "authority", measure: "value", filters: { authorityId: 1, authorityName: "Primăria Exemplu" } },
+  it("are written with ș/ț in the flow's domains (sankey-2: below a division, the catalogue's name)", () => {
+    const markup = text(renderToStaticMarkup(createElement(SankeyAnswer, {
+      data: {
+        block: "sankey", focal: { entityId: "1", name: "Primăria Exemplu", role: "authority" },
+        flows: [{ partnerId: "7", partner: "FIRMA EXEMPLU SRL", categoryCode: "4523", category: "Lucrări de construcţii de autostrăzi", value: 1000, count: 2 }],
+        partners: [{ entityId: "7", name: "FIRMA EXEMPLU SRL", value: 1000, count: 2, domains: 1, joint: 0 }],
+        domains: [{ code: "4523", name: "Lucrări de construcţii de autostrăzi", value: 1000, count: 2, partners: 1 }],
+        totals: { value: 1000, count: 2, partners: 1, domains: 1 }, stemLen: 4, joint: 0,
+      },
+      spec: { block: "sankey", dim: "authority", measure: "value", filters: { authorityId: 1, authorityName: "Primăria Exemplu", cpvTerm: "45" } },
     } as never)));
-    expect(markup).toContain("Lucrări de construcții");
+    expect(markup).toContain("Lucrări de construcții de autostrăzi");
     expect(markup).not.toMatch(/[şţŞŢ]/);
   });
 });

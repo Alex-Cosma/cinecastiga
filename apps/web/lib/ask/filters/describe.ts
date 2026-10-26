@@ -14,6 +14,8 @@ import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
 import { kindApplies, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "../purchase";
 import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, TREND_GROUP_ROW, firstTimeWords, trendGroupLabel } from "./defs/trend";
+import { networkGroupLabel } from "./defs/network";
+import { NETWORK_ORDER_WORDS, type NetworkGroup } from "../network-shared";
 import { filterContext } from "./context";
 import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type Excluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
@@ -512,6 +514,29 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       scope: [{ label: "Baza creșterii", value: `Cel puțin ${formatRon(base)}${when}` }],
     };
   },
+  // F4, the network's options (final network §3, kit §4: „Noi” always with its year).
+  networkPartners: (spec) => {
+    const group = spec.network?.partners, since = spec.network?.since;
+    if (!group) return null;
+    const label = networkGroupLabel(group, since);
+    return {
+      words: `${NETWORK_GROUP_WORDS[group]}${since !== undefined ? ` din ${since}` : ""}`, chip: label, pills: [label.toLocaleLowerCase("ro-RO")],
+      scope: [{ label: "Partenerii", value: label }], summary: label,
+    };
+  },
+  // The year alone on „Toți” moves only the answer's buttons: a receipt's row, no words in the title.
+  networkSince: (spec) => spec.network?.since === undefined || spec.network?.partners ? null
+    : { scope: [{ label: "Grupele, față de", value: String(spec.network.since) }] },
+  networkOrder: (spec) => {
+    const order = spec.network?.order;
+    if (!order) return null;
+    const words = `după ${NETWORK_ORDER_WORDS[order].phrase}`;
+    return { words, chip: capitalFirst(NETWORK_ORDER_WORDS[order].phrase), pills: [words], scope: [{ label: "Ordine", value: NETWORK_ORDER_WORDS[order].short }] };
+  },
+  networkSignals: (spec) => spec.network?.signals ? {
+    words: "doar partenerii cu semnale", chip: "Cu semnale", pills: ["cu semnale"],
+    scope: [{ label: "Semnale", value: "Doar partenerii cu un semnal oficial pe relație" }], summary: "Cu semnale",
+  } : null,
   trendFirstOnly: (spec) => {
     if (!spec.trend?.firstOnly) return null;
     const year = spec.filters.yearTo ? ` în ${spec.filters.yearTo}` : "";
@@ -523,16 +548,22 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
   },
 };
 
+/** A network's group in a list of conditions (the total line, a link's chip): whose partners. */
+const NETWORK_GROUP_WORDS: Record<NetworkGroup, string> = {
+  new: "partenerii noi", continuing: "partenerii care continuă", gone: "partenerii care nu mai apar",
+};
+
 /** The filters that have words: every key of today's engine but the shape of the answer (pills.ts) and the ignored comparison mode. */
 export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 
 /** The order of each place, today's. */
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "firmSeat", "seatCounty", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const NETWORK_ORDER: readonly FilterId[] = ["networkPartners", "networkSince", "networkSignals", "networkOrder"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "locality", "county", "firmSeat", "seatCounty", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
-const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "population", "minimumRecords"];
+const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];
 
 /**
@@ -564,26 +595,33 @@ function outsideSentence(spec: Spec): FilterId[] {
  * The partners' row of a relation (blocks.ts partners, P3b) says whose
  * condition it is in the title's tail and the total line, as the kit's "doar
  * furnizorii cu sediul în alt județ" (G8): "doar furnizorii cu 1–9 angajați",
- * "doar furnizorii conduși azi de X" (the network), "doar clienții din județul
- * Ilfov", "doar spitalele din județul Ilfov" (a kind with its county, one phrase).
- * An empty string: said with another chip's words.
+ * "doar furnizorii conduși azi de X" (the network), "doar furnizorii cu sediul
+ * în alt județ" (F4), "doar clienții din județul Ilfov", "doar spitalele din
+ * județul Ilfov" (a kind with its county, one phrase), "doar furnizorii cu
+ * semnale" (the network, F4). An empty string: said with another chip's words.
  */
 function partnerWords(spec: Spec): Partial<Record<FilterId, string>> {
   if (spec.block !== "network" && spec.block !== "sankey") return {};
   const f = spec.filters;
+  const signals = spec.block === "network" && spec.network?.signals;
   if (focalRole(spec) === "authority") {
     const size = employeesWords(f.minEmployees, f.maxEmployees);
     const person = spec.block === "network" && (f.adminName || f.adminPersonKey) ? String(f.adminName ?? "persoana aleasă") : null;
-    return { ...(size ? { employees: `doar furnizorii ${size}` } : {}), ...(person ? { admin: `doar furnizorii conduși azi de ${person}` } : {}) };
+    const seat = typeof f.firmSeat === "string" && (FIRM_SEATS as readonly string[]).includes(f.firmSeat) ? firmSeatWords(f.firmSeat as FirmSeat) : null;
+    return {
+      ...(seat ? { firmSeat: `doar furnizorii cu sediul ${seat}` } : {}), ...(size ? { employees: `doar furnizorii ${size}` } : {}),
+      ...(person ? { admin: `doar furnizorii conduși azi de ${person}` } : {}), ...(signals ? { networkSignals: "doar furnizorii cu semnale" } : {}),
+    };
   }
   const kind = typeof f.authorityKind === "string" ? KIND_WORDS[f.authorityKind]?.the : undefined;
   const place = f.county ? countyWords(String(f.county)) : null;
-  if (kind) return { authorityKind: `doar ${kind}${place ? ` ${place}` : ""}`, ...(place ? { county: "" } : {}) };
-  return place ? { county: `doar clienții ${place}` } : {};
+  const flagged = signals ? { networkSignals: "doar clienții cu semnale" } : {};
+  if (kind) return { authorityKind: `doar ${kind}${place ? ` ${place}` : ""}`, ...(place ? { county: "" } : {}), ...flagged };
+  return { ...(place ? { county: `doar clienții ${place}` } : {}), ...flagged };
 }
 
 /** The shape of the answer, not a condition (the sentence's subject, its axis, the presentation line). */
-const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode"]);
+const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode", "networkOrder", "networkShow", "sankeyShown"]);
 
 /**
  * The title's tail (G7, R11): the conditions under the sentence (P4), in the
