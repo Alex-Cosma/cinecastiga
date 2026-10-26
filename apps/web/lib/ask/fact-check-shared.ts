@@ -1,4 +1,7 @@
 import { countWords } from "./answer-text";
+import { legacyConditions, presentConditions } from "./filters/legacy-conditions";
+import { FILTERS } from "./filters/registry";
+import type { FilterId, FilterSpec } from "./filters/types";
 import { periodWordsWith } from "./filters/words";
 import { formatRon } from "../format";
 import { GLOSSARY } from "../glossary";
@@ -135,20 +138,28 @@ export const OUTSIDE_ROWS_LIMIT = 50;
 /** Up to this rank the weight says the place ("al 7-lea"); beyond it "unul din …". */
 export const SHARE_RANK_SHOWN = 20;
 
-/** Filters of today's sentence: the pair, the period, the domain. Anything else of `filters` is an old link's. */
-const SENTENCE_FILTERS = new Set(["authorityId", "authorityName", "supplierId", "supplierName", "cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo"]);
+/** A verification as the engine and the answer read it (an AskSpec, or the answer's spec on screen). */
 type SpecLike = { dataset?: string | undefined; filters: Record<string, unknown>; population?: unknown; minimumRecords?: unknown };
-const set = (v: unknown) => v !== undefined && v !== null && v !== "";
 
-/** The sentence narrows the relation (Când, Ce, Cum). */
-export function factRestricted(spec: SpecLike): boolean {
-  const f = spec.filters;
-  return ["yearFrom", "yearTo", "monthFrom", "monthTo", "cpvTerm"].some((key) => set(f[key])) || (spec.dataset !== undefined && spec.dataset !== "all");
+/**
+ * The conditions a verification holds besides its pair, read from the filter
+ * registry as the builder shows them: `legacy` are the chips under the
+ * sentence (legacyConditions: an old link's, or another page's selection),
+ * `own` the rest the engine applies here, the question's (the sentence's
+ * Când, Ce and Cum, its "Selecție avansată"). A key a later stage offers on
+ * the verification is its own from the day BLOCK_FILTERS offers it.
+ */
+export function factConditions(spec: SpecLike): { own: FilterId[]; legacy: FilterId[] } {
+  const question = { measure: "value", ...spec, block: "fact_check" } as unknown as FilterSpec;
+  const pair = (id: FilterId) => id === "authority" || id === "supplier";
+  const legacy = legacyConditions(question).map((c) => c.key).filter((id) => !pair(id));
+  const own = [...presentConditions(question).keys()].filter((id) => !pair(id) && !legacy.includes(id) && FILTERS[id].engine.fact_check !== undefined);
+  return { own, legacy };
 }
+/** The sentence narrows the relation (Când, Ce, Cum, a precise selection). */
+export const factRestricted = (spec: SpecLike): boolean => factConditions(spec).own.length > 0;
 /** An old link's condition (final §6.5): applied as before, the band "În toată relația" always shown. */
-export function factLegacy(spec: SpecLike): boolean {
-  return Boolean(spec.population || spec.minimumRecords) || Object.entries(spec.filters).some(([key, value]) => !SENTENCE_FILTERS.has(key) && set(value));
-}
+export const factLegacy = (spec: SpecLike): boolean => factConditions(spec).legacy.length > 0;
 
 /** The three verdicts (final §4.1): records, else rows outside the sums ("Da · nu intră în sume"), else frameworks, else "Nu". */
 export function factVerdict(o: { count: number; excluded: number; frameworks: number }): FactVerdict {
@@ -217,9 +228,8 @@ export function shareWords(share: FactShare, one: string, many: string, percent:
 export function noRecordsWords(spec: SpecLike, reason: FactNoReason): string {
   if (reason === "none") return "Nicio înregistrare între ei în datele noastre.";
   if (reason === "legacy") return "Nicio înregistrare cu condiția din link.";
-  const f = spec.filters;
-  const onlyPeriod = !set(f.cpvTerm) && (spec.dataset === undefined || spec.dataset === "all");
-  return onlyPeriod ? `Nicio înregistrare ${periodWordsWith(f)}.` : "Nicio înregistrare cu alegerile făcute.";
+  const onlyPeriod = factConditions(spec).own.every((id) => id === "period");
+  return onlyPeriod ? `Nicio înregistrare ${periodWordsWith(spec.filters)}.` : "Nicio înregistrare cu alegerile făcute.";
 }
 
 /** The band "În toată relația" (final §5.1): its verdict and its figures, in one line after the label. */

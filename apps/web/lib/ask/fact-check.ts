@@ -5,7 +5,7 @@ import { andAll, DA_PLAFOND_RON, groupPredicates, rowPredicates, type PredicateC
 import type { CoveragePeriods } from "./months-window";
 import type { AskSpec, Dataset } from "./spec";
 import {
-  COMPETITION_PROCEDURES, FACT_CHECK_VERSION, OUTSIDE_ROWS_LIMIT, factLegacy, factNoReason, factRestricted, factVerdict,
+  COMPETITION_PROCEDURES, FACT_CHECK_VERSION, OUTSIDE_ROWS_LIMIT, factConditions, factNoReason, factVerdict,
   type FactCheckData, type FactOutsideCategory, type FactOutsideRow, type FactParty, type FactSample, type FactShare, type FactTwin,
 } from "./fact-check-shared";
 
@@ -45,7 +45,7 @@ export interface FactCheckInput {
 }
 
 /** The pair's rows with the columns of the list and of the profile: both marts, as the union of the engine (txFragment). */
-function pairTx(s: DbSql): Fragment {
+export function pairTx(s: DbSql): Fragment {
   return s`(
     select 'da'::text src, sicap_da_id ref_id, da_code, authority_id, supplier_id, county, cpv_code, cpv_name, closing_value, finalization_date,
            estimated_value_ron, null::integer n_winners, null::numeric contract_value_full, null::text procedure_type,
@@ -62,6 +62,9 @@ function pairTx(s: DbSql): Fragment {
  * The pair's procedure contracts in the source tables, under the contract
  * mart's names (the award's CPV, the authority's county, the contract's date
  * from CONTRACT_DATE_FLOOR), with why each is outside the sums, or null.
+ * Every column a condition of rowPredicates reads on `d` is here, as in
+ * pairTx: the whole contract's value is contract_value_full (the size of a
+ * purchase, F3), the winner's share closing_value.
  */
 function coreContracts(s: DbSql, authorityId: string, supplierId: string): Fragment {
   return s`(
@@ -80,7 +83,7 @@ function coreContracts(s: DbSql, authorityId: string, supplierId: string): Fragm
              ae.county, aw.cpv_code, cpv.name_ro cpv_name, c.contract_no da_code, aw.procedure_type, 'contracts'::text src,
              ${contractOriginalCurrency(s)} currency,
              case when ${contractDatePlausible(s)} then to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') end finalization_date,
-             v.full_value, v.full_value / w.n closing_value, null::boolean is_single_bidder,
+             v.full_value, v.full_value contract_value_full, v.full_value / w.n closing_value, null::boolean is_single_bidder,
              v.kind, v.canonical, v.identity_excluded, v.in_sums
       from core.contract_winners cw
       join core.contracts c on c.id = cw.contract_id
@@ -97,10 +100,16 @@ function coreContracts(s: DbSql, authorityId: string, supplierId: string): Fragm
   )`;
 }
 
-/** The pair alone: the whole relation (both channels, no period, domain or old condition). */
+/**
+ * The pair alone: the whole relation (both channels, no period, domain or old
+ * condition). Written field by field, never from `...ctx`: a condition added
+ * to PredicateCtx does not compile here until it is cleared, so the band
+ * "În toată relația" never keeps a choice of the sentence.
+ */
 export function pairOnly(ctx: PredicateCtx): PredicateCtx {
   return {
-    ...ctx, population: null, minimumRecords: null, cpvPrefixes: [], cpvExclude: [], county: null, kind: null, kindIds: null,
+    sql: ctx.sql, authorityId: ctx.authorityId, supplierId: ctx.supplierId,
+    population: null, minimumRecords: null, cpvPrefixes: [], cpvExclude: [], county: null, kind: null, kindIds: null,
     uatSiruta: null, uatAuthorityIds: [], singleBidder: false, minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null,
     monthFrom: null, monthTo: null, trendMonths: null, adminSupplierIds: null, plafond: "da-branch", comparison: null,
   };
@@ -135,7 +144,8 @@ export async function factCheckData(s: DbSql, input: FactCheckInput): Promise<Fa
   const tx = pairTx(s);
   const bare = pairOnly(ctx);
   const sel = selectionWhere(s, ctx, input);
-  const restricted = factRestricted(spec), legacy = factLegacy(spec);
+  const conditions = factConditions(spec);
+  const restricted = conditions.own.length > 0, legacy = conditions.legacy.length > 0;
 
   // The relation's records, grouped by channel, year and division, with the selection's marked.
   const profile = (await s`

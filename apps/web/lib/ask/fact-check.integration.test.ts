@@ -2,9 +2,11 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
 import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import { runRows, runSpec } from "./compile";
+import { factCheckData, pairTx } from "./fact-check";
 import type { FactCheckData } from "./fact-check-shared";
 import { ground } from "./ground";
 import { personFirms } from "./person-firms";
+import type { PredicateCtx } from "./predicates";
 import { validateSpec, type AskSpec } from "./spec";
 import { testDatabaseUrl, withAskFixture } from "./test-fixture";
 
@@ -198,6 +200,34 @@ describe.runIf(Boolean(connection))("the verification (fact_check-2, isolated Po
     expect(out.person).toEqual({ firms: 2, suppliers: [{ entityId: id(S), name: "ALFA CONSTRUCT SRL", cui: id(S), county: "Cluj", role: "administrator" }] });
     // A placeholder birth date does not tell namesakes apart: no firm.
     expect(out.placeholder).toEqual({ firms: 0, suppliers: [] });
+  });
+
+  it("reads every condition of the question on the rows outside the sums, and none of them in the whole relation", async () => {
+    const fact = await withAskFixture(connection!.sql, "fact_every", seed, async (q) => {
+      // Field by field, never from a spread: a condition added to PredicateCtx must be given a value here, so the
+      // source contracts (coreContracts: every column a condition reads) and the band (pairOnly) are read with it.
+      const ctx: PredicateCtx = {
+        sql: q,
+        population: { operator: "and", groups: [{ operator: "and", conditions: [
+          { field: "date", op: "gte", value: "2018-01-01" }, { field: "value", op: "lte", value: "10000000000" },
+          { field: "county", op: "in", values: ["Alba"] }, { field: "cpv", op: "not_in", values: ["99"] },
+          { field: "authority", op: "in", values: [id(A)] }, { field: "supplier", op: "not_in", values: [id(S_OTHER)] },
+        ] }] },
+        minimumRecords: { role: "supplier", count: 1 }, cpvPrefixes: ["45", "71"], cpvExclude: ["4599"], county: "Alba", kind: "comuna", kindIds: [id(A)],
+        authorityId: id(A), supplierId: id(S), uatSiruta: 1017, uatAuthorityIds: [id(A)], singleBidder: true, minEmployees: 1, maxEmployees: 9,
+        yearFrom: 2019, yearTo: 2025, monthFrom: 2, monthTo: 11, trendMonths: null, adminSupplierIds: [id(S)], plafond: "da-branch", comparison: null,
+      };
+      const spec = validateSpec({ block: "fact_check", measure: "value", filters: { ...pair(S), county: "Alba" } });
+      if ("error" in spec) throw new Error(spec.error);
+      return factCheckData(q, {
+        spec, ctx, dataset: "all", agg: pairTx(q), coverage: null,
+        authority: { entityId: id(A), name: "Comuna Fixture" }, supplier: { entityId: id(S), name: "ALFA CONSTRUCT SRL" },
+      });
+    });
+    // No firm of the fixture has a filing or a single offer: nothing is selected, not even outside the sums.
+    expect(fact).toMatchObject({ state: "no", reason: "legacy", count: 0, excluded: { count: 0 }, frameworks: { count: 0 } });
+    // The band is the pair alone: every record, ceiling and row outside the sums of the relation.
+    expect(fact.relation).toEqual({ count: 5, value: 1_880_000, yearFirst: 2024, yearLast: 2025, frameworks: 1, excluded: 5 });
   });
 
   it("„Nu” in the whole archive names the same-named entity with records and each side's partners, never a similar name", async () => {
