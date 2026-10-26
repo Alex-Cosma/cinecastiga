@@ -169,11 +169,21 @@ describe.runIf(Boolean(connection))("the windows' counts (dedicated rollback fix
       expect(live.get("kinds of purchase")!.rest).toMatchObject({ label: "Fără cod CPV", n: 2 });
       expect(option(live.get("procedures")!, "altele").n).toBe(2);
 
-      // The firms' seats over every record (the profiles): each county's firms (any spelling of the data), abroad, unknown.
-      const seat = counts(await facetCounts(q, table("supplier", {}), "seat"));
+      // The firms' own seats over every record (the profiles), as „Cine conduce?” by value offers them: each county's
+      // firms (any spelling of the data), abroad, unknown. The seat column is not filled here: the SEAP county stands in.
+      const leader = { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} } as AskSpec;
+      const seat = counts(await facetCounts(q, leader, "seat"));
       expect(seat.options.map((o) => [o.value, o.n])).toEqual(expect.arrayContaining([["Iași", 1], ["Cluj", 1], ["București", 1], ["Ilfov", 1], [ABROAD, 1]]));
       expect(seat.rest).toMatchObject({ label: "Sediu necunoscut", n: 1 });
       expect([seat.total.n, cents(seat.total.value_ron)]).toEqual(Object.values(await answer(q, table("supplier", {}))));
+      // F4: a ranking of firms counts the seat against each record's buyer county (firmSeat), each class as its answer.
+      const inCluj = { ...Y, county: "Cluj" };
+      const classes = counts(await facetCounts(q, table("supplier", inCluj), "seat"));
+      expect(classes.options.map((o) => [o.value, o.n, cents(o.value_ron)])).toEqual([["same", 1, 3053000.5], ["abroad", 1, 2005000], ["other", 3, 68751.1]]);
+      for (const o of classes.options)
+        expect([o.value, o.n, cents(o.value_ron)]).toEqual([o.value, ...Object.values(await answer(q, table("supplier", { ...inCluj, firmSeat: o.value as "same" })))]);
+      // Nationally, without the rollups, the records' classes wait on them (ENTITY_LIVE), as the other entity counts.
+      expect(await facetCounts(q, table("supplier", Y), "seat")).toEqual({ precompute: ENTITY_LIVE });
       // The bands over every record read the profiles too: the firms the ranking holds, those without a filing apart.
       const bands = counts(await facetCounts(q, table("supplier", {}), "employees"));
       expect([bands.options.map((o) => o.n), bands.rest?.n]).toEqual([[1, 2, 0, 1, 0], 2]);

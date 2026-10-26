@@ -1,3 +1,4 @@
+import { seatSwitched } from "./seat";
 import { namedKind, type AskSpec, type AuthorityKind, type Block } from "./spec";
 
 /*
@@ -36,7 +37,9 @@ export interface KeyVersion {
  * Keyed by id. D1: kind (town halls from the locality registry, hospitals with
  * the clinical institutes, lib/ask/authority-kind.ts); F3: "table:employees"
  * (the employees of a firm ranking become a group, plan §2.6), whose
- * methodology note a watch on such a ranking gets once.
+ * methodology note a watch on such a ranking gets once; F4: seat (a firm's
+ * county is its seat, owner-seat-switch), on every answer of before F4 that
+ * shows a firm's own county or selects firms by it (seat.ts seatSwitched).
  */
 export const KEY_VERSIONS: Record<string, KeyVersion> = {
   // Only the kinds D1 corrected: schools and county councils keep their institutions and records
@@ -48,6 +51,11 @@ export const KEY_VERSIONS: Record<string, KeyVersion> = {
     version: "table:employees-2", label: "Angajații firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"], blocks: ["table"],
     when: (spec) => spec.dim === "supplier",
   },
+  // F4 (owner-seat-switch, 24 October 2026): the "Județ" beside a firm, and a firm profile's county, are its seat (the
+  // latest ONRC registration, then SEAP; foreign apart) instead of its SEAP county: the rows' county changes, a
+  // county on firm profiles selects other firms. Every question has a block: "block" is always present. A question with
+  // only F4's own seat keys could not be asked before: no version, as F3's keys (seat.ts seatSwitched).
+  seat: { version: "seat-2", label: "Sediul firmei", paths: ["block"], when: (spec) => seatSwitched(spec) },
 };
 const KIND_2: ReadonlySet<string> = new Set<AuthorityKind>(["comuna", "oras_municipiu", "spital"]);
 
@@ -55,6 +63,7 @@ const KIND_2: ReadonlySet<string> = new Set<AuthorityKind>(["comuna", "oras_muni
 export const KEY_VERSION_NOTES: Record<string, string> = {
   "kind-2": "Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice).",
   "table:employees-2": "Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.",
+  "seat-2": "Județul firmei e acum sediul ei: ultima înmatriculare la Registrul Comerțului, apoi SEAP; firmele străine apar separat.",
 };
 
 /**

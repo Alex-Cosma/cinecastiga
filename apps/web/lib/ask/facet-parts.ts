@@ -154,7 +154,7 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
     case "size": return ["purchaseValueMin", "purchaseValueMax"];
     case "kind": return BUYER_WINDOW_BLOCKS.has(spec.block) ? ["authorityKind", "authorityId", "authorityName", "uatSiruta", "uatName"] : ["authorityKind"];
     case "county": return ["county", "uatSiruta", "uatName"];
-    case "seat": return isHistoricalProfile(spec) ? ["county"] : ["seatCounty", "firmSeat"];
+    case "seat": return isHistoricalProfile(spec) ? ["county", "seatCounty"] : ["seatCounty", "firmSeat"];
     case "employees": return ["minEmployees", "maxEmployees"];
     case "years": return ["yearFrom", "yearTo", "monthFrom", "monthTo"];
   }

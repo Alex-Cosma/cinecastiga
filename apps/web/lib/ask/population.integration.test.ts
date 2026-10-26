@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
-import { runRows, runSpec } from "./compile";
+import { runRows, runSpec, seatNote } from "./compile";
 import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
@@ -165,8 +165,9 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
         expect(await runSpec(q,{ ...paged, dim:"county" },{})).toMatchObject({ data:{ block:"table", total:2, rows:[{ name:"Bucuresti" },{ name:"Vrancea" }] } });
         expect(await runSpec(q,{ ...paged, dim:"county" },{},{ page:1 })).toMatchObject({ data:{ block:"table", total:2, rows:[] } });
         if (!("data" in bare)) throw new Error("table expected");
-        // The column note sits next to the "Județ" header (AskPanel), not in the caveats.
-        expect(bare.caveats.some(c => c.includes("Județ"))).toBe(false);
+        // The column's (?) sits next to the "Județ" header (AskPanel); the caveats say only where a firm's seat comes from
+        // (F4, owner-seat-switch): here the marts build has not filled it, so the SEAP county stands in.
+        expect(bare.caveats.filter(c => c.includes("Județ"))).toEqual([seatNote(false)]);
         expect(bare.caveats.some(c => c.includes("autorității cumpărătoare"))).toBe(false);
         throw rollback;
       });

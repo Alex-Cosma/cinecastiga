@@ -84,6 +84,8 @@ export interface Grounding {
   /** block=compare: the second entity, same role as the focal one. */
   compare?: EntityGrounding;
   county?: { query: string; canonical: string | null };
+  /** F4: the firm's own county (filters.seatCounty), in the same spelling as `county`. */
+  seatCounty?: { query: string; canonical: string | null };
   uat?: UatGrounding;
   admin?: AdminGrounding;
   /**
@@ -539,9 +541,10 @@ async function groundCounty(
   query: string,
 ): Promise<{ query: string; canonical: string | null }> {
   const folded = fold(query.replace(/^jude[țt]ul\s+/i, ""));
+  // Not the firms' rows: since F4 they hold their seat (the same spelling) and "Străinătate", no buyer's county.
   const rows = (await sql`
     select county from marts.spend_by_county
-    where lower(unaccent(county)) = ${folded}
+    where role is distinct from 'supplier' and lower(unaccent(county)) = ${folded}
     limit 1
   `) as unknown as { county: string }[];
   return { query, canonical: rows[0]?.county ?? null };
@@ -587,7 +590,7 @@ export async function ground(
     (filters.supplierName || filters.supplierId)
       ? "supplier"
       : "authority";
-  const [cpv, authority, supplier, compare, county, uat, admin, entities] =
+  const [cpv, authority, supplier, compare, county, uat, admin, entities, seatCounty] =
     await Promise.all([
       filters.cpvTerm
         ? groundCpv(sql, filters.cpvTerm)
@@ -620,12 +623,14 @@ export async function ground(
           })
         : Promise.resolve(undefined),
       population ? groundEntityNames(sql, population) : Promise.resolve(undefined),
+      filters.seatCounty ? groundCounty(sql, filters.seatCounty) : Promise.resolve(undefined),
     ]);
   if (cpv) g.cpv = cpv;
   if (authority) g.authority = authority;
   if (supplier) g.supplier = supplier;
   if (compare) g.compare = compare;
   if (county) g.county = county;
+  if (seatCounty) g.seatCounty = seatCounty;
   if (uat) g.uat = uat;
   if (admin) g.admin = admin;
   if (entities) g.entities = entities;

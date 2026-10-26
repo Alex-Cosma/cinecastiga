@@ -400,6 +400,13 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("f3-other-procedures", "table", all(top({ dim: "authority", dataset: "contracts" }), set({ procedure: "altele" })));
   combo("f3-kind", "breakdown", set({ purchaseKind: "servicii" }));
   combo("f3-kind-domain", "timeseries", set({ purchaseKind: "produse", cpvTerm: cpv.word }));
+  // F4, the firm's seat as the builder writes it: against the buyer's county (and with it fixed), abroad, a county of its own
+  combo("f4-seat-other", "table", set({ firmSeat: "other" }));
+  combo("f4-seat-same-county", "table", set({ firmSeat: "same", county: ids.county }));
+  combo("f4-seat-county", "table", set({ seatCounty: ids.county }));
+  combo("f4-seat-abroad", "stat", set({ firmSeat: "abroad" }));
+  combo("f4-seat-county", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), set({ seatCounty: ids.county })));
+  combo("f4-seat-county", "scatter", all(top({ dim: "supplier" }), set({ seatCounty: ids.county })));
   // network
   combo("buyer", "network", focalBuyer());
   combo("firm", "network", focalFirm(), { rows: { scope: { role: "authority", entityIds: [String(pair.authority.id)] } } });

@@ -4,7 +4,7 @@ import { canonicalAskIdentities } from "./canonical-identities";
 import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, AUTHORITY_KINDS, type AskSpec } from "./spec";
 import { ground, type Grounding } from "./ground";
 import {
-  andAll, employeesBounds, fold, fullValueUnion, groupPredicates, predicateContext, profileMinDas, profilePredicates, rowPredicates, trendYearsPredicate,
+  andAll, employeesBounds, fold, fullValueUnion, groupPredicates, ownCountySql, predicateContext, profileMinDas, profilePredicates, rowPredicates, seatOf, trendYearsPredicate,
   type PredicateCtx,
 } from "./predicates";
 import { authorityKindExpression, authorityKindIds, readAuthorityKinds } from "./authority-kind";
@@ -96,6 +96,7 @@ export async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding):
   if ((f.supplierName || f.supplierId) && !grounding.supplier?.entityId) return { error: `Nu am găsit firma „${f.supplierName ?? f.supplierId}”.` };
   if (spec.block === "compare" && !grounding.compare?.entityId) return { error: `Nu am găsit a doua entitate din comparație („${f.compareWith}”).` };
   if (f.county && !grounding.county?.canonical) return { error: `Nu recunosc județul „${f.county}”.` };
+  if (f.seatCounty && !grounding.seatCounty?.canonical) return { error: `Nu recunosc județul „${f.seatCounty}”.` };
   if ((f.adminPersonKey || f.adminName) && (!grounding.admin?.personKey || grounding.admin.supplierIds.length === 0))
     return { error: "Nu am găsit firmele persoanei în date (filtrul «conduse azi de»)." };
   if (f.uatSiruta && !grounding.uat?.authorityIds?.length) return { error: uatUnmappedError(f.uatName ?? grounding.uat?.name ?? `UAT ${f.uatSiruta}`) };
@@ -125,7 +126,9 @@ export async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding):
     window = resolved;
   }
   const kindIds = await authorityKindIds(sql, namedKind(f.authorityKind));
-  const ctx = predicateContext(sql, spec, grounding, { dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window), seriesMonths: partialMonths(window) });
+  const ctx = predicateContext(sql, spec, grounding, {
+    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window), seriesMonths: partialMonths(window), seat: (await martColumns(sql)).seat,
+  });
   return { spec, ctx, dataset, profile, trend: spec.block === "trend" && !profile ? { yearA: yearFrom ?? minY, yearB: yearTo ?? maxY } : null };
 }
 
@@ -135,7 +138,7 @@ function everyRecord(p: Prepared): boolean {
   return p.dataset === "all" && !p.trend && !p.spec.population && !p.spec.minimumRecords &&
     !w.county && w.cpvPrefixes.length === 0 && w.cpvExclude.length === 0 && !w.kind && !w.authorityId && !w.supplierId &&
     w.uatSiruta === null && !w.singleBidder && w.adminSupplierIds === null && !w.comparison &&
-    !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null &&
+    !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null && !w.firmSeat && !w.seatCounty &&
     w.yearFrom === null && w.yearTo === null && w.monthFrom === null && w.monthTo === null && !w.seriesMonths;
 }
 
@@ -239,14 +242,15 @@ export const sizeOf = (sql: DbSql, value: Fragment): Fragment => {
 };
 
 /**
- * The seat column of a firm: entity_profile.seat_county once a marts build
- * filled it (mart-columns.ts), else its county (plan §2.5). Not async: a
- * fragment is a thenable, which an async function would run.
+ * The seat window of a ranking of firms (plan §4.2, F4) offers the seat
+ * against the buyer's county of each record (firmSeat): its options are the
+ * classes of the records, not the firms' counties. Elsewhere ("Cine conduce?"
+ * by value, the profiles) the seat is the firm's own county (seatCounty).
  */
-const seatColumn = (sql: DbSql, filled: boolean): Fragment => filled ? sql`ep.seat_county` : sql`ep.county`;
+export const relativeSeat = (spec: Pick<AskSpec, "block" | "dim">): boolean => spec.block === "table" && spec.dim === "supplier";
 
 /** Counts of the transaction parts, grouped as each window lists its options. */
-async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready: Ready, run: Runner):
+async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready: Ready, run: Runner, opts: { relative?: boolean } = {}):
   Promise<{ rows: Grouped[]; unit: FacetUnit } | { error: string } | { precompute: string }> {
   // The channel, the county and the years group any rollup's rows (src, y and county are on all of them);
   // asked "by county", the planner also finds agg_county_month for a trend's same months.
@@ -299,9 +303,11 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
     }
     case "seat": case "employees": {
       // A seat is the county (folded and named after, countyOfFolded) with the firm's foreign flag: a Romanian
-      // county first, then a foreign seat, the rest unknown. A band is the firm's latest filing.
-      const seat = seatColumn(sql, (await martColumns(sql)).seat);
-      const key: Fragment = part === "employees" ? sql`${bandOf(sql, sql`ep.employees`)} k, false f` : sql`${seat} k, coalesce(ep.is_foreign, false) f`;
+      // county first, then a foreign seat, the rest unknown (seatOf: the seat column, or the SEAP county before
+      // it is filled). A band is the firm's latest filing.
+      const seat = seatOf(sql, p.ctx.seatColumn);
+      if (part === "seat" && opts.relative) return await seatClasses(sql, p, ready, run);
+      const key: Fragment = part === "employees" ? sql`${bandOf(sql, sql`ep.employees`)} k, false f` : sql`${seat.county} k, coalesce(${seat.foreign}, false) f`;
       // Every record, both channels, every year: the firms' own profiles hold their sums (plan §2.5, "calea rapidă pe atribute").
       if (everyRecord(p)) {
         const size = p.ctx.minEmployees !== null || p.ctx.maxEmployees !== null ? sql`and ${employeesBounds(sql, p.ctx.minEmployees, p.ctx.maxEmployees)}` : sql``;
@@ -326,9 +332,32 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
 }
 
 /**
+ * The seat window of a ranking of firms (relativeSeat): each record's firm
+ * against the record's buyer county, as firmSeatCond selects it ("same",
+ * "other", "abroad"; the rest, a seat or a buyer county nobody knows, is
+ * "Sediu necunoscut"). Per class the firms (one firm can sell in its county
+ * and elsewhere) and the value of the records, grouped once per firm and buyer
+ * county; a rollup with a firm id has both.
+ */
+async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit } | { precompute: string }> {
+  const r = await rowsOf(sql, p, { by: "supplier" }, ready);
+  if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+  const id = r.id("supplier") ?? sql`d.supplier_id`;
+  const seat = seatOf(sql, p.ctx.seatColumn);
+  return { unit: "firms", rows: await run<Grouped>(sql`
+    select case when ${seat.foreign} then 'abroad' when ${seat.county} is null or g.county is null then null
+                when ${seat.county} = g.county then 'same' else 'other' end k,
+           coalesce(sum(g.v), 0) v, count(distinct g.id) n, false f
+    from (select ${id} id, ${r.county} county, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1, 2) g
+    left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = 'supplier'
+    group by 1
+  `) };
+}
+
+/**
  * Counts of a profile question (the risk cloud, "Cine conduce?" on the
  * index): its profiles (profilePredicates), by kind or by county (a firm's
- * seat on firm profiles). A distribution's group is its own window (F6a,
+ * seat on firm profiles: its profile row's, F4). A distribution's group is its own window (F6a,
  * /api/ask/peers); the other parts are conditions on records, which a
  * profile does not take.
  */
@@ -340,7 +369,9 @@ async function profileCounts(sql: DbSql, p: Prepared, part: CountPart, run: Runn
   const parts: Fragment[] = [...profilePredicates(ctx, role, profileMinDas(spec.block))];
   if (spec.block === "scatter") parts.push(sql`ef.cri is not null`);
   const where = andAll(sql, parts);
-  const key: Fragment = part === "kind" ? authorityKindExpression(sql, await readAuthorityKinds(sql), sql`ef.entity_id`) : sql`ef.county`;
+  const seat: Fragment = role === "supplier" && ctx.seatColumn
+    ? sql`(select ep.seat_county from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = 'supplier')` : sql`ef.county`;
+  const key: Fragment = part === "kind" ? authorityKindExpression(sql, await readAuthorityKinds(sql), sql`ef.entity_id`) : seat;
   return { unit: "profiles", rows: await run<Grouped>(sql`
     select ${key} k, coalesce(sum(ef.total_ron), 0) v, count(*) n from marts.entity_flags ef where ${where} group by 1
   `) };
@@ -348,7 +379,8 @@ async function profileCounts(sql: DbSql, p: Prepared, part: CountPart, run: Runn
 
 /** The options of a part, in the window's order (the counties and years as found); null maps a group to the rest. */
 function optionOf(part: CountPart, key: string | null, foreign = false): string | null {
-  if (part === "seat") return countyOfFolded(key) ?? (foreign ? ABROAD : null);
+  // A ranking of firms counts the classes of firmSeat (seatClasses); elsewhere a seat is a county, or abroad.
+  if (part === "seat") return key === "same" || key === "other" || key === ABROAD ? key : countyOfFolded(key) ?? (foreign ? ABROAD : null);
   if (key === null) return null;
   switch (part) {
     case "county": return countyOfFolded(key);
@@ -525,7 +557,7 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
         if ("error" in p) return p;
         stats.grouped++;
         const run = runner(controller.signal);
-        const grouped = p.profile ? await profileCounts(tx, p, part, run) : await transactionCounts(tx, p, part, ready, run);
+        const grouped = p.profile ? await profileCounts(tx, p, part, run) : await transactionCounts(tx, p, part, ready, run, { relative: relativeSeat(draft) });
         if ("error" in grouped || "precompute" in grouped) return grouped;
         return assembleCounts(part, grouped.unit, grouped.rows, {
           checkpoint: stamp.checkpoint, tookMs: Date.now() - started, firmProfiles: p.profile && p.spec.dim === "supplier",
@@ -627,7 +659,7 @@ export async function locate(sql: DbSql, spec: AskSpec, q: string, opts: { signa
         const [count] = await run<{ t: string }>(sql`select count(*) t from marts.entity_profile ep where ${ranked}`);
         const rows = await run<{ id: string; nm: string; co: string | null; v: string; n: string; place: string }>(sql`
           with m as (
-            select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co, ep.total_ron_split v, ep.n_das + ep.n_contracts n, ${by("ep")} k
+            select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ${ownCountySql(sql, role, p.ctx.seatColumn)} co, ep.total_ron_split v, ep.n_das + ep.n_contracts n, ${by("ep")} k
             from marts.entity_profile ep
             where ${ranked} and lower(unaccent(ep.name_display)) like ${pattern}
             order by ${by("ep")} desc, ep.entity_id
@@ -657,7 +689,7 @@ export async function locate(sql: DbSql, spec: AskSpec, q: string, opts: { signa
       const ranking = vector.vector;
       // Names apart (plan §2.5): the profiles whose name holds the text, placed by the vector.
       const names = await run<{ id: string; nm: string; co: string | null }>(sql`
-        select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ep.county co
+        select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ${ownCountySql(sql, role, p.ctx.seatColumn)} co
         from marts.entity_profile ep
         where ep.role = ${role} and lower(unaccent(ep.name_display)) like ${pattern}
         order by ep.total_ron_split desc nulls last, ep.entity_id

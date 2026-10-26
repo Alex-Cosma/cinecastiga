@@ -40,7 +40,7 @@ afterEach(() => {
 
 describe("the key versions of this release", () => {
   it("are D1's kind and F3's employees on a ranking of firms: one alert each, with its note", () => {
-    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees"]);
+    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees", "seat"]);
     // F3 (plan §4.2, DECISIONS F1b-s-employees): the employees of a ranking of firms are a group (CÂȘTIGĂTORII); only „% din total” changes.
     expect(DECLARED["table:employees"]).toMatchObject({ version: "table:employees-2", label: "Angajații firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"], blocks: ["table"] });
     expect(KEY_VERSION_NOTES["table:employees-2"]).toBe("Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.");
@@ -64,14 +64,32 @@ describe("the key versions of this release", () => {
     expect(keyVersionNotes({ block: "table", dim: "authority", measure: "value", topN: 10, filters: { authorityKind: "comuna", county: "Ilfov" } })).toEqual([KEY_VERSION_NOTES["kind-2"]]);
     expect(keyVersionNotes({ ...hospitals, filters: { authorityKind: "scoala" } })).toEqual([]);
     expect(keyVersionNotes(stat)).toEqual([]);
-    // F3's note on a ranking of firms only: not on institutions, nor on a total with the same employees.
-    expect(keyVersionNotes(smallFirms)).toEqual([KEY_VERSION_NOTES["table:employees-2"]]);
+    // F3's note on a ranking of firms only: not on institutions, nor on a total with the same employees (F4's seat beside it).
+    expect(keyVersionNotes(smallFirms)).toEqual([KEY_VERSION_NOTES["table:employees-2"], KEY_VERSION_NOTES["seat-2"]]);
     expect(keyVersionNotes(smallFirmsBuyers)).toEqual([]);
     expect(keyVersionNotes({ ...smallFirms, block: "stat" })).toEqual([]);
     // A version without a note says nothing.
     const note = KEY_VERSION_NOTES["table:employees-2"]!;
     delete KEY_VERSION_NOTES["table:employees-2"];
-    try { expect(keyVersionNotes(smallFirms)).toEqual([]); } finally { KEY_VERSION_NOTES["table:employees-2"] = note; }
+    try { expect(keyVersionNotes(smallFirms)).toEqual([KEY_VERSION_NOTES["seat-2"]]); } finally { KEY_VERSION_NOTES["table:employees-2"] = note; }
+  });
+
+  it("are F4's seat on every answer of before it that shows a firm's own county: one alert, with its note (owner-seat-switch)", () => {
+    expect(DECLARED.seat).toMatchObject({ version: "seat-2", label: "Sediul firmei", paths: ["block"] });
+    expect(KEY_VERSION_NOTES["seat-2"]).toBe("Județul firmei e acum sediul ei: ultima înmatriculare la Registrul Comerțului, apoi SEAP; firmele străine apar separat.");
+    Object.assign(KEY_VERSIONS, DECLARED);
+    const firms = (spec: Omit<AskSpec, "measure">) => answerVersion({ measure: "value", ...spec } as AskSpec).conditions.seat;
+    // The county beside each firm: a ranking, a trend, the cloud and „Cine conduce?” of firms, two firms compared.
+    for (const spec of [smallFirms, trend, { block: "scatter", dim: "supplier", filters: {} }, { block: "entity_card", dim: "supplier", rankBy: "value", filters: {} },
+      { block: "entity_card", dim: "supplier", filters: { county: "Cluj" } }, { block: "compare", filters: { supplierId: 1, compareWithId: 2 } },
+      { block: "distribution", filters: { supplierId: 1, county: "Cluj" } }] as const)
+      expect([spec.block, firms(spec as Omit<AskSpec, "measure">)]).toEqual([spec.block, "seat-2"]);
+    // No firm's county: institutions, a total, a map by the buyers' counties, a firm's network, a firm placed among every firm.
+    for (const spec of [smallFirmsBuyers, stat, map, { block: "scatter", dim: "authority", filters: { county: "Cluj" } }, { block: "network", filters: { supplierId: 1 } },
+      { block: "compare", filters: { authorityId: 1, compareWithId: 2 } }, { block: "distribution", filters: { supplierId: 1 } }] as const)
+      expect([spec.block, firms(spec as Omit<AskSpec, "measure">)]).toEqual([spec.block, undefined]);
+    // F4's own keys could not be asked before it: no version on a question that shows no firm's county.
+    expect(firms({ block: "stat", filters: { firmSeat: "other" } })).toBeUndefined();
   });
 });
 
