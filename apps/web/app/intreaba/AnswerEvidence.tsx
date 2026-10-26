@@ -7,5 +7,10 @@ import type { EvidenceFilters } from "@/lib/ask/evidence";
 export interface EvidenceOpenOpts { filters?: EvidenceFilters; sort?: "value" }
 export const AnswerEvidence = createContext<{
   open: (spec?: AskSpec, scope?: EvidenceScope, title?: string, opts?: EvidenceOpenOpts) => void;
+  /**
+   * "Scoate din calcul" on a row (F4): the applied question without that entity, a new answer that "Înapoi"
+   * undoes; `index` is the row's place, whose "⋯" takes the focus once the new answer is drawn.
+   */
+  exclude?: (entity: { id: string; name: string }, index: number) => void;
 } | null>(null);
 export const useAnswerEvidence = () => useContext(AnswerEvidence);
