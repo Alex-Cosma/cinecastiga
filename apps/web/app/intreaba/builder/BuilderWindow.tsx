@@ -23,6 +23,9 @@ import PeriodPicker, { EMPTY_RANGE, MONTHS, PeriodRange, periodRangeError, type 
 import Segmented from "./Segmented";
 import OptionList from "./pickers/OptionList";
 import Popover from "./pickers/Popover";
+import PeersWindow, { peerDataFor } from "./PeersWindow";
+import type { PeerDialogState } from "./use-peer-dialog";
+import { peerWindowTip } from "../../../lib/ask/peer-groups-shared";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
@@ -47,7 +50,9 @@ export interface BuilderWindowProps {
   excluded?: readonly Excluded[];
   onClose: () => void;
   /** Apply these choices in order (chooseValue each) and close. */
-  onChoose: (choices: Choice[]) => void;
+  onChoose: (choices: Choice[], opts?: { keepOpen?: boolean; note?: string }) => void;
+  /** "Față de cine?": the entity's rows and sizes (use-peer-dialog.ts), F6a. */
+  peers?: PeerDialogState;
   /** The precise selection and the threshold of "Selecție avansată", written as they are edited. */
   onReplace: (spec: QuestionSpec) => void;
   onRemoveExclusions: (excluded: Excluded[]) => void;
@@ -163,7 +168,9 @@ export default function BuilderWindow(props: BuilderWindowProps) {
   const { win, anchor, onClose, draft } = props;
   const kind = win ? windowKind(win) : null;
   const wide = kind !== null && ["advanced", "buyer", "from", "peers", "focal", "compareWith", "cpv", "place", "locality", "admin"].includes(kind);
-  const tip = win ? windowTip(win, draft) : undefined;
+  // "Față de cine?": the rules of the entity's rows, once read (kit §4: in the (?), not inline).
+  const peerData = kind === "peers" && props.peers ? peerDataFor(draft, props.peers) : null;
+  const tip = peerData ? peerWindowTip(peerData) : win ? windowTip(win, draft) : undefined;
   return <Popover open={Boolean(win)} anchor={anchor} onClose={onClose} title={win?.title ?? ""} wide={wide} {...(tip ? { tip } : {})}>
     {win && <WindowBody key={win.key} {...props} win={win} />}
   </Popover>;
@@ -172,7 +179,7 @@ export default function BuilderWindow(props: BuilderWindowProps) {
 /** Windows whose first choice is a list above a search: they open on the chosen row, not the field (on a phone its keyboard would cover the list). */
 const LIST_FIRST = new Set(["buyer", "place", "locality", "from", "peers"]);
 
-function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveExclusions, onCpvName, onClose, coverage }: BuilderWindowProps & { win: BuilderWindowSpec }) {
+function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveExclusions, onCpvName, onClose, coverage, peers }: BuilderWindowProps & { win: BuilderWindowSpec }) {
   const kind = windowKind(win);
   const body = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -192,7 +199,8 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       const { options, value, rest } = listOf();
       return <ChoiceList label={win.name} options={options} value={value} {...(rest ? { rest } : {})} onPick={(option) => pick([option.choice])} />;
     }
-    case "peers": return <>{marker}<PeersWindow win={win} draft={draft} onPick={pick} /></>;
+    case "peers": return <>{marker}<PeersWindow spec={draft} state={peers ?? { data: null, loading: true, error: null }}
+      onChange={(next, note) => onChoose(peerChoices(draft, next), { keepOpen: true, ...(note ? { note } : {}) })} /></>;
     case "buyer": {
       const kinds = own.includes("authorityKind") ? listOf("authorityKind") : null;
       const named = Boolean(draft.filters.authorityName || draft.filters.authorityId || draft.filters.uatSiruta);
@@ -278,23 +286,17 @@ function PlaceSearch({ draft, locality, counties = true, onPick }: { draft: Ques
 }
 
 /**
- * "Față de cine?" (plan §4.11, today's keys until F6a's peers): the group a
- * distribution places its entity in. Institutions: a kind, then a county;
- * firms: the county of their seat. Each part has its own first row (R4),
- * and the two combine.
+ * "Față de cine?" (F6a, plan §4.11): the ticks of the entity's group
+ * (PeersWindow), each written as the choices of the phrase's window (peers,
+ * the county, an old link's kind), with the window kept open.
  */
-function PeersWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
-  const institutions = windowOf(win.slot).includes("authorityKind");
-  const kinds = institutions ? listOptions(win, draft, "authorityKind") : null;
-  const anywhere: ChoiceOption = { value: "none", label: institutions ? "Toată țara" : "Oriunde", choice: { filter: "county", value: undefined } };
-  return <>
-    {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={kinds.options} value={kinds.value} {...(kinds.rest ? { rest: kinds.rest } : {})} onPick={(option) => onPick([option.choice])} /></>}
-    <p className="qb-opt-group">{institutions ? "Unde" : "Unde au sediul firmele"}</p>
-    <ChoiceList label={institutions ? "Unde" : "Sediul firmei"} options={[anywhere]} value={draft.filters.county ? null : "none"} current={currentRow("peers", draft)}
-      {...(institutions ? {} : { rest: [{ label: UNKNOWN_SEAT }] })}
-      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [anywhere.choice])} />
-    <PlaceSearch draft={draft} locality={false} onPick={onPick} />
-  </>;
+export function peerChoices(before: QuestionSpec, after: QuestionSpec): Choice[] {
+  const changed = (a: unknown, b: unknown) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
+  return [
+    ...(changed(before.peers, after.peers) ? [{ filter: "peers" as const, value: after.peers }] : []),
+    ...(changed(before.filters.county, after.filters.county) ? [{ filter: "county" as const, value: after.filters.county }] : []),
+    ...(changed(before.filters.authorityKind, after.filters.authorityKind) ? [{ filter: "authorityKind" as const, value: after.filters.authorityKind }] : []),
+  ];
 }
 
 function CountySelect({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {

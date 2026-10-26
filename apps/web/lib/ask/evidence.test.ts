@@ -28,6 +28,10 @@ function database(profileValue = "30.01") {
         { state: "Oferta refuzata", n: "1", v: "10", fn: "0", fv: "0", date_from: "2021-01-01", date_to: "2025-02-02" },
       ]));
       if (this.text.includes("coalesce(sum(n_das)")) return Promise.resolve(resolve([{ n: "1", records: "3", v: profileValue }]));
+      // distribution-2: the entity placed in its group (peer-groups.ts readPeerFocal), with a profile.
+      if (this.text.includes("ef.entity_id::text id, ef.name_display, ef.county, ef.n_das")) return Promise.resolve(resolve([
+        { id: "123", name_display: "Spitalul X", county: "Cluj", n_das: 12, n_flags: 1, cri: "0.2", flags: ["da_split"] },
+      ]));
       if (this.text.includes("select entity_id, name_display, role")) return Promise.resolve(resolve([
         { entity_id: "123", name_display: "Spitalul X", role: "authority", n_das: 3, total_ron: profileValue, cri: "0.2", flags: ["da_split"] },
       ]));

@@ -36,8 +36,6 @@ const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=net
   "filters.mainClient": { ...table, filters: { authorityId: 1, mainClient: true } },
   "filters.dominantSupplier": { ...table, dim: "authority", filters: { dominantSupplier: true } },
   "filters.authorityKind=local_admin": { block: "map", measure: "value", filters: { authorityKind: "local_admin" } },
-  "peers.similar": { block: "distribution", measure: "value", filters: { authorityId: 1 }, peers: { similar: true } },
-  "peers.activity": { block: "distribution", measure: "value", filters: { authorityId: 1 }, peers: { activity: true } },
   "peers.domain": { block: "distribution", measure: "value", filters: { supplierId: 1 }, peers: { domain: true } },
   "scatter.flag": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } },
   "scatter.rankBy": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { rankBy: "value" } },
@@ -171,6 +169,8 @@ describe("today's questions", () => {
       "filters.monthFrom", "filters.monthTo", "population", "minimumRecords", "comparisonMode",
       // F2: the trend's lenses come from the builder and the rules interpreter (plan §2.7); the model path is off.
       "trend.change", "trend.months", "trend.order", "trend.minBase", "trend.firstOnly",
+      // F6a: the distribution's group, from the builder's «Față de cine?» and the rules interpreter.
+      "peers.similar", "peers.activity",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

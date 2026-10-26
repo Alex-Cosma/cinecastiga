@@ -28,6 +28,9 @@ import ScopeLine from "./builder/ScopeLine";
 import Sentence, { Presentation } from "./builder/Sentence";
 import UnderChips from "./builder/UnderChips";
 import { useEntityNames } from "./builder/use-entity-names";
+import { usePeerDialog } from "./builder/use-peer-dialog";
+import { peerDataFor } from "./builder/PeersWindow";
+import { peerFollowUp } from "../../lib/ask/peer-groups-shared";
 import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { builderView, onlyExclusions, patchDraft, trendListSwitch, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
@@ -137,9 +140,12 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const transition = useMemo(() => ({ coverage }), [coverage]);
   // An old link's selection names its institutions and firms in the (?) once they are looked up (the answer does not wait).
   const entities = useEntityNames(draft.population);
+  // A distribution's group (F6a): the window's rows and sizes, the sentence's bounds, a new question's default tick.
+  const peerState = usePeerDialog(draft);
+  const peerData = peerDataFor(draft, peerState);
   const view = useMemo(
-    () => builderView(draft, { cpvName, entities }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})),
-    [draft, cpvName, entities, coverage],
+    () => builderView(draft, { cpvName, entities, peerGroup: peerData?.facts }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})),
+    [draft, cpvName, entities, coverage, peerData],
   );
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
   // A refused link condition says its reason on its chip: the list under the buttons keeps the rest.
@@ -201,6 +207,15 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     return () => cancelAnimationFrame(frame);
   }, [catalogue]);
 
+  // What waits for the entity's group to be read: a new question's default tick, or another entity's county and type.
+  const followPeers = useRef<{ fresh?: boolean; previousCounty?: string | null } | null>(null);
+  useEffect(() => {
+    if (!followPeers.current || !peerData) return;
+    const next = peerFollowUp(draftRef.current, peerData, followPeers.current);
+    followPeers.current = null;
+    if (next) settle({ spec: next.spec, notes: next.notes, parked });
+  }, [peerData]); // eslint-disable-line react-hooks/exhaustive-deps -- once per group read
+
   /** The draft after an edit, with its notes and the parked row (transition.ts). */
   function settle(next: Pick<Transition, "spec" | "notes" | "parked" | "links">, replaceNotes = false) {
     setDraft(next.spec);
@@ -212,15 +227,19 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     setOpen(current => current?.key === key ? null : { key, anchor });
   }
   const closeWindow = () => setOpen(null);
-  /** The choices of a window, in order, each through chooseValue. */
-  function choose(target: BuilderWindowSpec, choices: readonly Choice[]) {
+  /** The choices of a window, in order, each through chooseValue. "Față de cine?" stays open: a tick changes the group at once. */
+  function choose(target: BuilderWindowSpec, choices: readonly Choice[], opts: { keepOpen?: boolean; note?: string } = {}) {
     let spec: QuestionSpec = draft, current = parked;
-    const notes: string[] = [], links: Record<string, NoteLink> = {};
+    const notes: string[] = opts.note ? [opts.note] : [], links: Record<string, NoteLink> = {};
+    // Another entity of a distribution: its county follows and its type is checked once its group is read (final distribution §4.4).
+    if (draft.block === "distribution" && target.slot.picker === "focal")
+      followPeers.current = draft.filters.authorityId || draft.filters.supplierId ? { previousCounty: peerData?.facts.county ?? null } : { fresh: true };
     for (const choice of choices) {
       const next = chooseValue(spec, target.slot, choice, current, transition);
       spec = next.spec; current = next.parked; notes.push(...next.notes); Object.assign(links, next.links);
     }
     settle({ spec, notes, parked: current, links });
+    if (opts.keepOpen) return;
     closeWindow();
     // The trend's group in the sentence and the answer's group buttons are one control (plan §4.7 P1, P6):
     // a group the answer already holds is shown at once, the draft applied by the StripPatch that follows.
@@ -270,6 +289,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     if (parked) settle(restoreParked(draft, parked, transition));
   }
   function chooseType(block: string) {
+    // A new distribution writes its default tick once the entity's group is read (final distribution §4.2).
+    if (block === "distribution" && draft.block !== "distribution") followPeers.current = { fresh: true };
     settle(chooseQuestion(draft, block, parked, transition), true);
     closeCatalogue();
   }
@@ -357,7 +378,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     </section>
     {intro && navigation}
     <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
-      onClose={closeWindow} onChoose={(choices) => { if (win) choose(win, choices); }} onReplace={replace} onRemoveExclusions={removeExclusions}
+      onClose={closeWindow} onChoose={(choices, opts) => { if (win) choose(win, choices, opts); }} onReplace={replace} onRemoveExclusions={removeExclusions} peers={peerState}
       onCpvName={(code, name) => setCpvNames(current => ({ ...current, [code]: name }))} coverage={coverage} />
     <dialog ref={dialogRef} className="qb-dialog qb-dialog-search qb-dialog-catalogue" aria-labelledby={dialogTitleId} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeCatalogue(); } }} onCancel={(event) => { event.preventDefault(); closeCatalogue(); }} onClick={(event) => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeCatalogue(); } }}>
       {catalogue && <><div className="qb-picker-head"><h2 id={dialogTitleId}>Ce ai vrea să afli?</h2><button className="qb-dialog-close" type="button" onClick={closeCatalogue} aria-label="Închide"><Glyph name="close" /></button></div>

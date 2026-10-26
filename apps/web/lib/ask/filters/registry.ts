@@ -41,7 +41,7 @@ export const SPEC_PATH_OWNERS: { readonly [P in SpecPath]: FilterId | "question"
   "network.partners": "networkPartners", "network.since": "networkSince", "network.order": "networkOrder",
   "network.show": "networkShow", "network.signals": "networkSignals",
   "sankey.shown": "sankeyShown", "scatter.flag": "scatterFlag", "scatter.rankBy": "scatterRankBy",
-  "peers.similar": "peers", "peers.activity": "peers", "peers.domain": "peers",
+  "peers.similar": "peers", "peers.activity": "peers", "peers.domain": "peersDomain",
 };
 
 /** Every control of a question on this spec, with its place. */

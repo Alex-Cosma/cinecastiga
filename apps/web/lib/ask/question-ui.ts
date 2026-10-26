@@ -357,6 +357,13 @@ export function transitionQuestion(
     if (["distribution", "compare"].includes(block)) spec.dim = focalRole(spec);
     else spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
   }
+  // F6a (final distribution §4.4): institution ↔ firm drops the tick of the other role; activity and the county stay.
+  if (block === "distribution" && spec.peers) {
+    const firm = focalRole(spec) === "supplier";
+    if (firm && spec.peers.similar) { delete spec.peers.similar; changes.push("Am scos „același tip”: se aplică doar instituțiilor."); }
+    if (!firm && spec.peers.domain) { delete spec.peers.domain; changes.push("Am scos „același domeniu principal”: se aplică doar firmelor."); }
+    if (!Object.keys(spec.peers).length) delete spec.peers;
+  }
   if (["table", "trend"].includes(block)) {
     spec.dim = spec.dim ?? "supplier";
     if (

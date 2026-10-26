@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import type { DistributionData } from "../../lib/ask/compile";
+import { RUSETU_CHART } from "../../lib/ask/fixtures/distribution-screen";
 
 vi.mock("@/lib/format", () => import("../../lib/format"));
 vi.mock("@/lib/entity-summary", () => import("../../lib/entity-summary"));
@@ -80,19 +80,14 @@ describe("the answer's targets and contrast", () => {
     expect(kit).toContain(".qb-scope-sep{color:var(--muted)}");
   });
 
-  it("lists a distribution's bars, each with its own control (ten bars are under 44 px on a phone)", () => {
-    const distribution: DistributionData = {
-      buckets: Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: [3, 0, 24, 0, 0, 1, 0, 0, 0, 0][i]! })),
-      focal: { entityId: "7", name: "Comuna X", cri: 0.52, percentile: 96 },
-      role: "authority", totalEntities: 28,
-    };
-    const markup = renderToStaticMarkup(createElement(DistributionBlock, { distribution }));
-    const list = markup.slice(markup.indexOf("<summary>Intervalele"));
-    expect(list).toContain("<summary>Intervalele indicelui, ca listă</summary>");
-    expect([...list.matchAll(/<tr>/g)]).toHaveLength(4); // the header and the three bars with entities
-    expect(list).toContain("0,5–0,6 · aici e Comuna X");
-    expect(list).toContain('href="/semnale?rol=authority&amp;criMin=0.2&amp;criMax=0.3"');
-    // G10: the comparison group is counted with its «de».
-    expect(markup).toContain("cele <b>28 de instituții</b>");
+  it("draws a distribution's chart in six columns (wide enough on a phone) and gives its controls 44 px", () => {
+    const markup = renderToStaticMarkup(createElement(DistributionBlock, { distribution: RUSETU_CHART, spec: { block: "distribution", measure: "value", filters: { authorityId: 2145000 } } }));
+    // distribution-2: one column per number of criteria (0…5), the entity's marked "aici"; G10 with its «de».
+    expect([...markup.matchAll(/class="dist-col/g)]).toHaveLength(6);
+    expect(markup).toContain("<em>aici</em>442");
+    expect(markup).toContain("Din celelalte 2.034 de primării");
+    const rules = phoneRules(css("./distribution.css").replace(/\s+/g, ""), ".dist-bars");
+    for (const target of [".dist-change", ".dist-all", ".dist-crit-cases", "button.dist-col"]) expect(rules, target).toContain(target);
+    expect(rules).toContain("min-height:44px");
   });
 });

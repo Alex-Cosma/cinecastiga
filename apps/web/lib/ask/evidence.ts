@@ -10,6 +10,8 @@ export interface EvidenceScope {
   /** Several buyer counties at once: a group of a county trend (at most 42, plan §2.5). */
   counties?: readonly string[];
   riskBucket?: { from: number; to: number };
+  /** distribution-2: the group's profiles that meet exactly this many criteria (a bar of the chart, 0–5). */
+  criteria?: number;
   cpvPrefixes?: readonly string[];
   excludeCpvPrefixes?: readonly string[];
   years?: readonly number[];
@@ -78,7 +80,7 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return { error: "Selecție de surse invalidă." };
   const o = raw as Record<string, unknown>;
-  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "cpvPrefixes", "excludeCpvPrefixes", "years"];
+  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "cpvPrefixes", "excludeCpvPrefixes", "years"];
   if (Object.keys(o).some((k) => !allowed.includes(k))) return { error: "Filtru de surse necunoscut." };
   const scope: EvidenceScope = {};
   if (o["county"] !== undefined) {
@@ -123,6 +125,11 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
       Math.abs((b["to"] - b["from"]) - 0.1) > 1e-8 || Math.abs(b["from"] * 10 - Math.round(b["from"] * 10)) > 1e-8)
       return { error: "Interval de risc invalid." };
     scope.riskBucket = { from: b["from"], to: b["to"] };
+  }
+  if (o["criteria"] !== undefined) {
+    const k = o["criteria"];
+    if (typeof k !== "number" || !Number.isInteger(k) || k < 0 || k > 5) return { error: "Număr de criterii invalid." };
+    scope.criteria = k;
   }
   return scope;
 }

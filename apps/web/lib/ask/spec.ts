@@ -322,6 +322,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
     "maxEmployees", "yearFrom", "yearTo"].map(key => `filters.${key}`),
   // F2: the trend's group, its months, its order (TREND_RULES below; compile.ts case "trend").
   ...["change", "months", "order", "minBase", "firstOnly"].map(key => `trend.${key}`),
+  // F6a: the distribution's comparison group (PEERS_RULE below; lib/ask/distribution.ts). The main domain is phase 2.
+  "peers.similar", "peers.activity",
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -338,7 +340,8 @@ export const READ_AHEAD_KEYS = {
   "network.partners": "F4", "network.since": "F4", "network.order": "F4", "network.show": "F4", "network.signals": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
   "filters.authorityKind=local_admin": "F5",
-  "peers.similar": "F6a", "peers.activity": "F6a", "peers.domain": "F6a",
+  // Phase 2 of F6a (DECISIONS A3-main-cpv-div): marts.entity_flags.main_cpv_div is built; the row waits for it.
+  "peers.domain": "F6a-2",
   "scatter.flag": "F6b", "scatter.rankBy": "F6b",
 } as const satisfies Record<string, string>;
 
@@ -633,6 +636,22 @@ export const TREND_RULES: Readonly<Record<"order" | "minBase" | "firstOnly", (sp
     ? "„Prima dată” se aplică doar firmelor sau instituțiilor noi." : null,
 };
 
+/**
+ * The comparison group's rule (plan §3, final distribution §7.1): only on the
+ * distribution (the cloud and "Cine conduce?" read it ahead, F6b–c), "același
+ * tip" only of an institution, the main domain only of a firm.
+ * FilterDef.validate of lib/ask/filters/defs/profile.ts; runnableError runs it.
+ */
+export function peersRule(spec: AskSpec): string | null {
+  const p = spec.peers;
+  if (!p || !Object.keys(p).length) return null;
+  if (spec.block !== "distribution") return "Grupul de comparație se alege doar la „Unde se situează?”. Scoate-l sau alege această întrebare.";
+  const firm = !(spec.filters.authorityId || spec.filters.authorityName) && Boolean(spec.filters.supplierId || spec.filters.supplierName);
+  if (p.similar && firm) return "„Același tip” se aplică doar instituțiilor; la firme, alege județul sau activitatea apropiată.";
+  if (p.domain && !firm) return "„Același domeniu principal” se aplică doar firmelor.";
+  return null;
+}
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -673,6 +692,8 @@ export function runnableError(spec: AskSpec): string | null {
     const error = rule(spec);
     if (error) return error;
   }
+  const peers = peersRule(spec);
+  if (peers) return peers;
   // Degenerate rankings: the row dimension pinned to a single value by a filter
   // would produce a one-row "clasament". (dim defaults to authority downstream.)
   if (block === "table" || block === "trend" || block === "scatter") {
