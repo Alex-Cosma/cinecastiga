@@ -89,10 +89,13 @@ describe("retarget keeps the question and changes only its block", () => {
   });
 });
 
+/** A slice of a breakdown is one of its codes: of its kind, when it has one (F3). */
+const SLICE_OF_KIND: Record<string, string> = { lucrari: "4521", produse: "3360", servicii: "7931" };
 describe("the derived links of today go through retarget", () => {
   const derived = accepted.flatMap(({ id, spec }) => {
     const out: { id: string; from: AskSpec; to: AskSpec; target: Block }[] = [];
-    if (spec.block === "breakdown") out.push({ id: `${id} › slice`, from: spec, to: breakdownDeeperSpec(spec, "4521"), target: "breakdown" });
+    if (spec.block === "breakdown")
+      out.push({ id: `${id} › slice`, from: spec, to: breakdownDeeperSpec(spec, SLICE_OF_KIND[spec.filters.purchaseKind ?? "lucrari"]!), target: "breakdown" });
     if (spec.block === "table" || spec.block === "trend")
       out.push({ id: `${id} › row`, from: spec, to: entitySourceSpec(spec, { entityId: "27", name: "Firma" }), target: "stat" });
     if (spec.block === "entity_card" && spec.rankBy === "value")
