@@ -15,7 +15,7 @@ import { monthsLabel } from "../months-window";
 import { kindApplies, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "../purchase";
 import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, TREND_GROUP_ROW, firstTimeWords, trendGroupLabel } from "./defs/trend";
 import { filterContext } from "./context";
-import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type OriginHint, type OriginWords } from "./origin";
+import { exclusionWords, isDaBoundPopulation, selectionOrigin, splitExcluded, type Excluded, type OriginHint, type OriginWords } from "./origin";
 import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import { presentationTokens, sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
@@ -179,6 +179,15 @@ export function unnamedEntityIds(population: QueryPopulation | undefined, all = 
 export function populationDetail(population: QueryPopulation, known: Readonly<Record<string, string>> = {}, full = false): string {
   const group = (g: QueryPopulation["groups"][number]) => g.conditions.map((c) => conditionWords(c, known, full)).join(g.operator === "and" ? " ȘI " : " SAU ");
   return population.groups.length === 1 ? group(population.groups[0]!) : population.groups.map((g) => `(${group(g)})`).join(population.operator === "and" ? " ȘI " : " SAU ");
+}
+
+/** What "Scoate din calcul" left out, every name, one kind after another: "firma SYSTRA", "instituțiile A, B" (caveat, note). */
+function outWords(excluded: readonly Excluded[]): string {
+  return [...new Set(excluded.map((e) => e.field))].map((field) => {
+    const names = excluded.filter((e) => e.field === field).map((e) => e.label);
+    const [theOne, theMany] = LIST_NOUNS[field];
+    return `${names.length === 1 ? theOne : theMany} ${names.join(", ")}`;
+  }).join("; ");
 }
 
 const RECEIPT_NAMES = { authority: "Instituția", supplier: "Firma", cpv: "Codul CPV", county: "Județul" };
@@ -413,14 +422,24 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     }
     const { excluded, rest } = splitExcluded(p);
     const restWords = rest ? preciseWords(rest) : null;
+    // "Scoate din calcul" (F4) in its own words, never "Selecție precisă" (kit §4): the pill as the total line, the
+    // answer's caveat and the sources' note with every name; the rest of a precise selection keeps its own words.
+    const out = excluded.length ? outWords(excluded) : null;
+    const restPrecise = rest ? populationDetail(rest, entities, true) : null;
     return {
       words: [...exclusionWords(excluded), ...(restWords ? [restWords] : [])].join(", "),
       chip: precise, detail: populationDetail(p, entities),
-      pills: [`Selecție precisă · ${countWords(conditionsOf(p), "condiție", "condiții")} în ${countWords(p.groups.length, "grup", "grupuri")}`],
+      pills: [
+        ...exclusionWords(excluded),
+        ...(rest ? [`Selecție precisă · ${countWords(conditionsOf(rest), "condiție", "condiții")} în ${countWords(rest.groups.length, "grup", "grupuri")}`] : []),
+      ],
       ...(excluded.length ? { scope: [{ label: "Scoase din calcul", value: excluded.map((e) => `Fără ${e.label}${e.label !== e.value ? ` (${e.value})` : ""}`).join(", ") }] } : {}),
       summary: precise,
-      caveat: `Selecție precisă aplicată: ${precise}. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.`,
-      note: `Selecție precisă aplicată: ${precise}.`,
+      caveat: [
+        ...(restPrecise ? [`Selecție precisă aplicată: ${restPrecise}. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor.`] : []),
+        ...(out ? [`Scoase din calcul: ${out}.`] : []),
+      ].join(" "),
+      note: [...(restPrecise ? [`Selecție precisă aplicată: ${restPrecise}.`] : []), ...(out ? [`Scoase din calcul: ${out}.`] : [])].join(" "),
     };
   },
   // F2, the trend's lenses (kit §4: „Noi” always with its year, „Nu mai apar”, „Aceleași luni: ian.–mai”, „Prima dată”).

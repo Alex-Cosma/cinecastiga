@@ -303,18 +303,5 @@ export function onlyExclusions(population: QueryPopulation | undefined): QueryPo
   return groups.length ? { operator: "and", groups } : undefined;
 }
 
-/** The population without some labelled exclusions: their values leave the `not_in` lists; an empty list, group or population goes. */
-export function withoutExclusions(population: QueryPopulation | undefined, excluded: readonly Pick<Excluded, "field" | "value">[]): QueryPopulation | undefined {
-  if (!population) return undefined;
-  const gone = (field: string, value: string) => excluded.some((e) => e.field === field && e.value === value);
-  const groups = population.groups.map((group) => ({
-    ...group,
-    conditions: group.conditions.flatMap((c) => {
-      if (!("values" in c) || c.op !== "not_in") return [c];
-      const keep = c.values.map((value, i) => ({ value, label: c.labels?.[i] })).filter((v) => !gone(c.field, v.value));
-      if (!keep.length) return [];
-      return [{ ...c, values: keep.map((v) => v.value), ...(c.labels ? { labels: keep.map((v) => v.label!) } : {}) }];
-    }),
-  })).filter((group) => group.conditions.length);
-  return groups.length ? { operator: population.operator, groups } : undefined;
-}
+/** The population without some labelled exclusions (the chip's ×): lib/ask/filters/exclusions.ts. */
+export { withoutExclusions } from "../../../lib/ask/filters/exclusions";

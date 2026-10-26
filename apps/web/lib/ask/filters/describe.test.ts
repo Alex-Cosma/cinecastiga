@@ -271,9 +271,13 @@ describe("the changes the plan fixes", () => {
     expect(d.tail).toBe("fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei");
     expect(d.totalLine).toBe("fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei");
     expect(questionTitle(spec)).toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii, fără SYSTRA SA, valoarea pe câștigător ≥ 1.000 lei?");
-    // Kept as today: the pills, the caveat and the note describe the whole precise selection.
-    expect(d.pills).toContain("Selecție precisă · 2 condiții în 2 grupuri");
-    expect(d.byId.population?.note).toBe("Selecție precisă aplicată: (fără firma SYSTRA SA) ȘI (valoarea pe câștigător ≥ 1.000 lei).");
+    // F4: "Scoate din calcul" in its own words, never "Selecție precisă" (kit §4); the rest of the precise selection keeps its own.
+    expect(d.pills).toEqual(expect.arrayContaining(["fără SYSTRA SA", "Selecție precisă · 1 condiție în 1 grup"]));
+    expect(d.byId.population?.note).toBe("Selecție precisă aplicată: valoarea pe câștigător ≥ 1.000 lei. Scoase din calcul: firma SYSTRA SA.");
+    expect(d.caveats).toEqual(["Selecție precisă aplicată: valoarea pe câștigător ≥ 1.000 lei. Datele și limitele sunt inclusive; valorile se referă la cota alocată fiecărui furnizor. Scoase din calcul: firma SYSTRA SA."]);
+    const only = describeConditions({ ...spec, population: { operator: "and", groups: [spec.population!.groups[0]!] } });
+    expect([only.pills.filter((p) => /fără|Selecție/.test(p)), only.caveats, only.byId.population?.note])
+      .toEqual([["fără SYSTRA SA"], ["Scoase din calcul: firma SYSTRA SA."], "Scoase din calcul: firma SYSTRA SA."]);
     const three = { ...spec, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field: "supplier" as const, op: "not_in" as const, values: ["1", "2", "3"], labels: ["A", "B", "C"] }] }] } };
     expect(describeConditions(three).tail).toBe("fără 3 firme");
     // Unlabelled lists stay a precise selection: their chip could only show a number.

@@ -220,13 +220,33 @@ function winners(spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
  */
 const sameMonths = placed("trendMonths", "months");
 
+/**
+ * The role of an answer's rows that "Scoate din calcul" leaves out (F4, plan
+ * §4.2, §4.7, §4.13): the ranked institutions or firms of a ranking, of "Cine
+ * conduce?" by value (its places run that ranking) and of a trend (the
+ * optional exclusion of §9 F2, offered). Not the counties (42 rows: leaving
+ * one out is not a question, final table §3.11), not a profile (no record to
+ * leave out). The map's card, the network's and the flow's partners come
+ * with their own rows (F5, F4's relations).
+ */
+function rowRole(spec: FilterSpec, ctx: FilterCtx): "authority" | "supplier" | null {
+  if (ctx.profile || !["table", "trend", "entity_card"].includes(ctx.block)) return null;
+  return spec.dim === "authority" || spec.dim === "supplier" ? spec.dim : null;
+}
+const excludeRows: BlockFilters["exclude"] = (spec, ctx) => {
+  const field = rowRole(spec, ctx);
+  return field ? { field, max: 5 } : null;
+};
+/** P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul" · "Fișa firmei ↗", on every row with an entity of its own. */
+const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) => rowRole(spec, ctx) ? ["records", "exclude", "entity"] : [];
+
 function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = {}): BlockFilters {
   return {
     sentence, presentation, invites, advanced, advancedFields,
     scopeLine: (_spec, ctx) => ctx.profile ? "historical-da" : null,
     rows: extra.rows ?? (() => []), under: extra.under ?? (() => []), strip: extra.strip ?? [],
     // P7–P8 are the answer's (its row menu and facts), drawn with the strip.
-    rowMenu: [], facts: [],
+    rowMenu: entityRowMenu, exclude: excludeRows, facts: [],
   };
 }
 

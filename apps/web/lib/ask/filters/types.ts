@@ -230,7 +230,12 @@ export interface BlockFilters {
    * fixtures/site-links-inventory.ts.
    */
   strip: readonly FilterId[];
-  rowMenu: readonly RowAction[];
+  /** P7, the "⋯" of a row of the answer (kit component 15): the actions on that row's entity, in their order. */
+  rowMenu(spec: FilterSpec, ctx: FilterCtx): readonly RowAction[];
   facts: readonly FactId[];
-  exclude?: { field: "authority" | "supplier" | "cpv"; max: 5 };
+  /**
+   * "Scoate din calcul" (F4, plan §3): the role of the answer's rows the menu leaves out, at most five
+   * (exclusions.ts); null where the question has no such rows (a county, a total, a profile).
+   */
+  exclude(spec: FilterSpec, ctx: FilterCtx): { field: "authority" | "supplier"; max: 5 } | null;
 }

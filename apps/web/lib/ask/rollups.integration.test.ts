@@ -79,6 +79,26 @@ async function load(q: DbSql) {
       coalesce((select sum(d.closing_value) from marts.da_transactions d where d.supplier_id = ep.entity_id and d.closing_value > 0 and d.closing_value <= 2000000), 0)
     + coalesce((select sum(c.closing_value) from marts.contract_transactions c where c.supplier_id = ep.entity_id and c.closing_value > 0), 0)
     where ep.role = 'supplier'`;
+  // The national fast paths, with the marts build's own definitions (transaction-marts.ts): the ranking with a firm
+  // left out reads them (F4, rankedWithout).
+  await q`insert into marts.agg_national
+    select src, coalesce(sum(cv) filter (where plaf), 0), count(*) filter (where plaf), coalesce(sum(cv), 0), count(*)
+    from (select 'da'::text src, closing_value cv, (closing_value <= 2000000) plaf from marts.da_transactions where closing_value > 0
+          union all select 'contracts', closing_value, true from marts.contract_transactions where closing_value > 0) x
+    group by src`;
+  await q`insert into marts.agg_top_entities
+    with base as (
+      select authority_id eid, 'authority'::text role, authority_name nm, closing_value cv, (closing_value <= 2000000) plaf from marts.da_transactions where closing_value > 0
+      union all select authority_id, 'authority', authority_name, closing_value, true from marts.contract_transactions where closing_value > 0
+      union all select supplier_id, 'supplier', supplier_name, closing_value, (closing_value <= 2000000) from marts.da_transactions where closing_value > 0
+      union all select supplier_id, 'supplier', supplier_name, closing_value, true from marts.contract_transactions where closing_value > 0
+    ), g as (
+      select role, eid, max(nm) nm, coalesce(sum(cv) filter (where plaf), 0) v_plaf, count(*) filter (where plaf) n_plaf,
+             coalesce(sum(cv), 0) v_all, count(*) n_all
+      from base where eid is not null group by role, eid
+    )
+    select g.role, g.eid, g.nm, ep.county, g.v_plaf, g.n_plaf, g.v_all, g.n_all
+    from g left join marts.entity_profile ep on ep.entity_id = g.eid and ep.role = g.role`;
   // Risk profiles for the scatter (n_das >= 10, a null and a zero value).
   await q`insert into marts.entity_flags (entity_id,role,name_display,county,n_das,total_ron,cri,n_flags,flags) values
     (10,'supplier','Furnizor A','Bucuresti',40,2003000.34,0.5,2,'[]'),(11,'supplier','Furnizor B','Cluj',12,3504201,0.25,1,'[]'),
@@ -301,7 +321,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
     try {
       await sql.begin(async (tx) => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities"])
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national"])
           await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
         // With its generated log_total_ron (migration 0085).
         await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
@@ -422,12 +442,19 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           expect([c.name, size > 0]).toEqual([c.name, true]);
         }
 
+        // F4: the national ranking with a firm left out takes its fast path (rankedWithout: agg_top_entities and
+        // agg_national, and on the id indexes of the transaction marts the records without a firm), the live answer.
+        const fast = CASES.find((c) => c.name === "one firm left out")!;
+        const wiredFast = await runSpec(q, fast.spec, {});
+        if ("error" in wiredFast) throw new Error(wiredFast.error);
+        expect(canonical(wiredFast.data)).toEqual(canonical(liveAnswers.get(fast.name)!));
+
         // runSpec reads the rollups now (rollupsReady), with its own mapping: emptied
-        // transaction marts change none of these answers.
+        // transaction marts change none of these answers (but the fast path's, above).
         await q.unsafe("savepoint emptied_marts");
         await q`delete from marts.da_transactions`;
         await q`delete from marts.contract_transactions`;
-        for (const c of CASES) {
+        for (const c of CASES.filter((c) => c !== fast)) {
           const wired = await runSpec(q, c.spec, c.g ?? {}, c.sort ? { sort: c.sort, dir: "asc" } : {});
           if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
           // A breakdown below the divisions: agg_months keeps the largest record of a division only, so the rollups'
