@@ -66,6 +66,9 @@ export const PERF_ENTITIES = {
   curelaru: { id: 1967089, name: "CURELARU PROD EXIM SRL" },
   clujNapoca: { id: 2146445, name: "Municipiul Cluj-Napoca" },
   clujNapocaUat: { siruta: 54975, name: "mun. Cluj-Napoca (Cluj)" },
+  // F4-network-sankey: the final's institutions (network final §3.1), a county hospital with 1,095 partners.
+  buzau: { id: 2144364, name: "MUNICIPIUL BUZAU" },
+  bacau: { id: 2146264, name: "SPITALUL JUDETEAN DE URGENTA BACAU" },
 } as const;
 
 type Edit = (q: QuestionSpec) => void;
@@ -275,6 +278,31 @@ export function perfCases(): PerfCase[] {
     ...f3RowsCases(),
     ...seatCases(),
     ...excludeCases(),
+    ...relationCases(),
+  ];
+}
+
+/**
+ * F4-network-sankey (S4; plan §4.8, §4.9, §6.4): the network's groups of the whole relation (the largest firm's 466
+ * thousand direct acquisitions; a county hospital), „Cu semnale”, a group on one channel, a group's sources (its
+ * partners' records, a semi-join on the relation); the flow two CPV digits below a domain and on one channel.
+ */
+function relationCases(): PerfCase[] {
+  const network = (edit: NonNullable<AskSpec["network"]>): Edit => (q) => { q.network = { show: 15, ...edit }; };
+  const bacau = focal("authority", PERF_ENTITIES.bacau), buzau = focal("authority", PERF_ENTITIES.buzau), selgros = focal("supplier");
+  return [
+    perfCase("filtered:network-buzau-new", "filtered", "Cu cine a început să lucreze Buzăul din 2025", "network", all(buzau, network({ partners: "new", since: 2025 }))),
+    perfCase("filtered:network-bacau-continuing-signals", "filtered", "Spitalul Bacău: partenerii care continuă, cu semnale", "network", all(bacau, network({ partners: "continuing", since: 2025, signals: true }))),
+    perfCase("filtered:network-bacau-cpv33-2023", "filtered", "Spitalul Bacău, CPV 33, 2023–2024", "network", all(bacau, set({ cpvTerm: "33" }), years(2023, 2024))),
+    perfCase("filtered:network-selgros-gone", "filtered", "SELGROS: clienții care nu mai apar din 2025", "network", all(selgros, network({ partners: "gone", since: 2025 }))),
+    perfCase("filtered:network-selgros-new-da", "filtered", "SELGROS: clienți noi din 2025, directe", "network", all(selgros, top({ dataset: "da" }), network({ partners: "new", since: 2025 }))),
+    perfCase("filtered:network-buzau-seat-other", "filtered", "Buzău: furnizorii cu sediul în alt județ", "network", all(buzau, set({ firmSeat: "other" }))),
+    perfCase("sources:network-selgros-gone", "sources", "Sursele grupei „Nu mai apar” a SELGROS", "network", all(selgros, network({ partners: "gone", since: 2025 })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:network-bacau-signals", "sources", "Sursele partenerilor cu semnale ai Spitalului Bacău", "network", all(bacau, network({ signals: true })), { path: "rows", barMs: 2000 }),
+    perfCase("csv:network-selgros-new", "csv", "CSV: clienții noi ai SELGROS din 2025", "network", all(selgros, network({ partners: "new", since: 2025 })), { path: "csv", barMs: 2000 }),
+    perfCase("filtered:sankey-buzau-45", "filtered", "Ce cumpără Buzăul în construcții și de la cine", "sankey", all(buzau, set({ cpvTerm: "45" }))),
+    perfCase("filtered:sankey-bacau-15", "filtered", "Spitalul Bacău: primii 15 furnizori, pe domenii", "sankey", all(bacau, (q) => { q.sankey = { shown: 15 }; })),
+    perfCase("filtered:sankey-bacau-seat-same", "filtered", "Spitalul Bacău: furnizorii din județ, pe domenii", "sankey", all(bacau, set({ firmSeat: "same" }))),
   ];
 }
 
