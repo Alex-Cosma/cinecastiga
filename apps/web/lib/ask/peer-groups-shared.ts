@@ -1,5 +1,6 @@
 import { COUNTIES } from "../counties";
 import { formatInt } from "../format";
+import { GLOSSARY } from "../glossary";
 import { countWords } from "./answer-text";
 import { KIND_WORDS, countyWords } from "./question-ui";
 import type { PeersOptions } from "./spec";
@@ -25,6 +26,8 @@ export const PROFILE_MIN_DAS = 10;
 export const PEER_MINIMUM = 5;
 /** Up to 50 other members the answer lists them all instead of the chart. */
 export const PEER_LIST_LIMIT = 50;
+/** Above 50, a bar of the chart lists its members ten at a time ("Arată încă 10", GET /api/ask/peers/members). */
+export const PEER_MEMBERS_PAGE = 10;
 
 export type PeerRowId = "similar" | "domain" | "county" | "activity";
 /** The rows of "Față de cine?", in the window's order. */
@@ -208,9 +211,9 @@ export function peerRowTip(id: PeerRowId, facts: PeerFacts): string {
     case "similar": {
       const s = facts.similar;
       if (!s) return facts.similarReason ?? `Tipul lui ${facts.name} nu se poate stabili sigur.`;
+      // The rule in the glossary's words (populatie-apropiata), then this entity's own population.
       if (s.rule === "population")
-        return `Populația rezidentă INS, RPL 2021: între jumătate și dublul populației lui ${facts.name} (${formatInt(s.value)}). `
-          + "Comunele, orașele și municipiile sunt în același grup: contează populația, nu rangul. Pe pagina Comparații, grupul automat are cele mai apropiate 10.";
+        return `${GLOSSARY["populatie-apropiata"].text} ${facts.name}: ${countWords(s.value, "locuitor", "locuitori")}. Pe pagina Comparații, grupul automat are cele mai apropiate 10.`;
       if (s.rule === "county_councils") return "Celelalte consilii județene identificate sigur.";
       if (s.rule === "sectors") return "Celelalte primării de sector, cu populația sectorului (RPL 2021). Primăria Capitalei nu intră.";
       return s.kind === "spital"
@@ -370,11 +373,31 @@ export function withPeerGroup<S extends { peers?: PeersOptions | undefined; filt
   return next;
 }
 
+/**
+ * The request of a bar's members (GET /api/ask/peers/members): the group as the
+ * answer computed it, its ticks, the county (the entity's own, or an old link's
+ * other one) and an old link's kind, not as the draft may say it now.
+ */
+export function barMembersQuery(
+  d: { role: "authority" | "supplier"; focal: { entityId: string }; group: { ticks: readonly PeerRowId[]; facts: Pick<PeerFacts, "county">; legacy: { county?: string; authorityKind?: string } } },
+  k: number, offset: number,
+): string {
+  const params = new URLSearchParams({ role: d.role, id: d.focal.entityId, k: String(k) });
+  if (offset > 0) params.set("offset", String(offset));
+  if (d.group.ticks.includes("similar")) params.set("similar", "1");
+  if (d.group.ticks.includes("activity")) params.set("activity", "1");
+  const county = d.group.ticks.includes("county") ? d.group.facts.county : d.group.legacy.county ?? null;
+  if (county) params.set("county", county);
+  if (d.group.legacy.authorityKind) params.set("kind", d.group.legacy.authorityKind);
+  return params.toString();
+}
+
 /** The window's (?) (kit §4: the rules in a tip, not inline): each row's rule, the band's coverage, the thresholds. */
 export function peerWindowTip(data: Pick<PeerDialogData, "rows" | "coverage">): { title: string; text: string } {
   const rules = data.rows.map((row) => `${capitalFirst(row.rule)}: ${row.disabled?.tip ?? row.tip}`);
-  return { title: "Față de cine?", text: [...rules, ...(data.coverage ? [coverageWords(data.coverage)] : []),
-    `Intră profilurile cu cel puțin ${PROFILE_MIN_DAS} achiziții directe; comparația cere cel puțin ${PEER_MINIMUM} alți membri.`].join(" ") };
+  // The thresholds in the glossary's words (fata-de-cine): its last sentence, after each row's rule and the band's coverage.
+  const thresholds = GLOSSARY["fata-de-cine"].text.slice(GLOSSARY["fata-de-cine"].text.indexOf("Intră "));
+  return { title: "Față de cine?", text: [...rules, ...(data.coverage ? [coverageWords(data.coverage)] : []), thresholds].join(" ") };
 }
 
 /** "30 din cele 32 de primării din interval sunt identificate sigur; lipsesc Alba Iulia și Popești-Leordeni." (final §3.1) */

@@ -5,7 +5,7 @@ import {
   PEER_MINIMUM, bandWords, countyDisplay, coverageWords, defaultPeerTicks, peerCountWords, peerFollowUp, peerGroupValue, peerGroupWords, peerKey,
   peerRowState, peerTicks, peerWindowTip, togglePeerRow, withPeerGroup, writePeerTicks, type PeerDialogData, type PeerFacts,
 } from "./peer-groups-shared";
-import { transitionQuestion, type QuestionSpec } from "./question-ui";
+import { localityScopeError, transitionQuestion, type QuestionSpec } from "./question-ui";
 import { validateSpec } from "./spec";
 
 /*
@@ -149,5 +149,11 @@ describe("the rows of the window (final §3.1 table)", () => {
     expect(peerTickError({ facts: facts({ similar: null, similarReason: "Tipul lui X nu se poate stabili sigur." }), similarIds: null }, { similar: true }))
       .toBe("Tipul lui X nu se poate stabili sigur. Scoate „același tip” sau alege altă instituție.");
     expect(peerTickError({ facts: BUZAU_FACTS, similarIds: [] }, { similar: true })).toBeNull();
+  });
+
+  it("never carry an old link's locality into a group: /api/ask, its sources, CSV and watches refuse it, with the link's chip", () => {
+    // The group's words, the window and "→ N" do not know a locality, so the routes refuse it before runSpec (localityScopeError).
+    const spec = { block: "distribution", measure: "value", filters: { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU", uatSiruta: 44818, uatName: "Buzău" }, peers: { similar: true } } as QuestionSpec;
+    expect(localityScopeError(spec)).toMatch(/^Indicele de risc compară profiluri între ele, deci aici poți alege doar județul\. Elimină localitatea „Buzău”/);
   });
 });

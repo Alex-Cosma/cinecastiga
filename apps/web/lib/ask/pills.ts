@@ -44,9 +44,9 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
 
 /**
  * `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture);
- * `labels.executedMonths`: the months a trend's answer counted.
+ * `labels.executedMonths`: the months a trend's answer counted; `labels.peerGroup`: a distribution's group facts.
  */
-export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths"> = {}): string[] {
+export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths" | "peerGroup"> = {}): string[] {
   const pills: string[] = [];
   pills.push(BLOCK_LABEL[spec.block]);
   const dim = DIM_LABEL[spec.dim ?? "authority"];
@@ -70,6 +70,6 @@ export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<Con
           : "valoarea înregistrată",
     );
   }
-  pills.push(...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths }).pills);
+  pills.push(...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths, peerGroup: labels.peerGroup }).pills);
   return pills;
 }

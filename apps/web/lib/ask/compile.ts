@@ -2092,7 +2092,8 @@ export async function runRows(
     profileParts = profilePredicates(ctx, role, profileMinDas(spec.block));
     if (spec.block === "scatter") profileParts.push(sql`ef.cri is not null`);
     // distribution-2: the group's sources are its other members, as the answer counts them (lib/ask/distribution.ts).
-    if (spec.block === "distribution" && focalId) {
+    // An old link's bar (distribution-1: `riskBucket`, no ticks) keeps its population, the entity included (final §5).
+    if (spec.block === "distribution" && focalId && !(scope.riskBucket && !spec.peers)) {
       const group = await distributionGroup(sql, spec, role, String(focalId));
       if (!group.resolution) return { error: "Entitatea are sub 10 achiziții directe: nu are un grup de comparație." };
       if (group.error) return { error: group.error };
@@ -2602,7 +2603,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};` +
         "\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);" +
         "\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure," +
-        "\n-- contractele peste 1 mld. lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)";
+        "\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)";
     case "trend": {
       const { having, order } = trendGroupText(trendGroupOf(spec), w.yearTo ?? "ultimul_an");
       return (

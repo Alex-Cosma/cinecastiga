@@ -145,6 +145,13 @@ function ChangedValues({ before, after, label }: { before: unknown; after: unkno
   return <>{differences.length ? <><div className="mon-table-wrap" role="region" aria-label={label} tabIndex={0}><table className="mon-diff mon-stack mon-stack-pair"><thead><tr><th>Unde în rezultat</th><th>Ce s-a schimbat</th><th>Înainte</th><th>După</th></tr></thead><tbody>{differences.slice(0, visible).map(row => <tr key={row.key}><th scope="row">{row.context}</th><td data-label="Ce s-a schimbat">{row.field}</td><td data-label="Înainte">{formatResultValue(row.before, row.fieldKey)}</td><td data-label="După">{formatResultValue(row.after, row.fieldKey)}</td></tr>)}</tbody></table></div>{visible < differences.length && <><p className="mon-muted" role="status">Sunt afișate {visible} din {countWords(differences.length, "câmp modificat", "câmpuri modificate")}.</p><button type="button" onClick={() => setVisible(count => count + 12)}>Arată încă {countWords(Math.min(12, differences.length - visible), "modificare", "modificări")}</button></>}</> : <p className="mon-muted">Valorile afișate sunt neschimbate. Diferența privește ordinea sau metadatele de prezentare ale rezultatului.</p>}<details className="mon-small-details"><summary>Datele complete ale comparației · detalii tehnice</summary><div className="mon-result-pair"><section><h3>Înainte</h3><pre>{JSON.stringify(before, null, 2)}</pre></section><section><h3>După</h3><pre>{JSON.stringify(after, null, 2)}</pre></section></div></details></>;
 }
 
+/** The new shape of an answer in words (the owner's terse copy): never the engine's version slug. */
+export const RESHAPED_WORDS: Readonly<Record<string, string>> = {
+  "distribution-2": "criteriile față de un grup ales",
+  "fact_check-2": "verdict în trei forme, cu profilul relației",
+  "trend-2": "grupele schimbării",
+};
+
 /**
  * The answer's version moved between the two checks (distribution-1 → distribution-2,
  * trend-1 → trend-2): the two results have another shape, so a field-by-field list
@@ -168,6 +175,6 @@ export default function ResultComparison({ detail }: { detail: MonitoringRunDeta
     return Object.entries(after).filter(([id, version]) => before[id] !== version).map(([, version]) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
   }, [previousMethodology, methodology]);
   return <>{detail.run.resultChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în rezultatul întrebării</summary>{reshaped
-    ? <p>Răspunsul are acum altă formă ({reshaped.from} → {reshaped.to}), deci nu îl comparăm câmp cu câmp. Rezultatul nou e cel de pe pagina întrebării; ce s-a schimbat în calcul e mai jos.</p>
+    ? <p>Răspunsul are acum altă formă{RESHAPED_WORDS[reshaped.to] ? `: ${RESHAPED_WORDS[reshaped.to]}` : ""}, deci nu îl comparăm câmp cu câmp. Rezultatul nou e cel de pe pagina întrebării; ce s-a schimbat în calcul e mai jos.</p>
     : <><p>Comparăm valorile păstrate la cele două verificări. Sumele exacte ale înregistrărilor se verifică în listele de surse.</p><ChangedValues key={`${detail.run.id}-result`} before={answerCore(block, detail.previousResult)} after={answerCore(block, detail.result)} label="Rezultatul întrebării, înainte și după" /></>}</details>}{detail.run.methodologyChanged && <details className="mon-settings" open><summary>Ce s-a schimbat în metodologie</summary><p>Aceste diferențe descriu modul de calcul. Ele nu reprezintă, în sine, modificări ale contractelor.</p>{notes.map(note => <p key={note}>{note}</p>)}<ChangedValues key={`${detail.run.id}-methodology`} before={previousMethodology} after={methodology} label="Metodologia, înainte și după" /></details>}</>;
 }

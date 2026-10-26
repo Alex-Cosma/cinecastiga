@@ -229,6 +229,19 @@ export const GLOSSARY = {
     title: "Prima dată",
     text: "Dintre cele noi, cele a căror primă înregistrare în datele noastre e în al doilea an comparat. Nu e data înființării.",
   },
+  // Ask's distribution (distribution-2, final distribution §7.9): the group, the population band and the criteria.
+  "fata-de-cine": {
+    title: "Față de cine?",
+    text: "Grupul cu care se compară entitatea: același tip sau populație apropiată, același județ, activitate apropiată ori toată țara. Intră doar profilurile cu cel puțin 10 achiziții directe acceptate; comparația cere cel puțin 5 alți membri.",
+  },
+  "populatie-apropiata": {
+    title: "Populație apropiată",
+    text: "Primăriile cu între jumătate și dublul populației rezidente (INS, RPL 2021). Comunele, orașele și municipiile stau în același grup: contează populația, nu rangul.",
+  },
+  "criterii-risc": {
+    title: "Criteriile de risc",
+    text: "Cinci criterii la instituții și patru la firme, din achizițiile directe acceptate ale întregii arhive. Un criteriu îndeplinit e un semnal de verificat, nu o dovadă.",
+  },
   // Ask's verification (fact_check-2, final fact_check §4.1, §4.4): its third verdict and its line "Concurență".
   "acord-cadru": {
     title: "Acord-cadru",
