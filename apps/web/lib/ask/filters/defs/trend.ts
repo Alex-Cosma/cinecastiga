@@ -1,4 +1,5 @@
 import { formatRon } from "../../../format";
+import { GLOSSARY } from "../../../glossary";
 import { DEFAULT_TREND_MIN_BASE, TREND_RULES, type AskSpec, type MonthWindow, type TrendChange, type TrendOptions } from "../../spec";
 import type { FilterDef, FilterSpec } from "../types";
 import { alwaysScope, edited } from "./shared";
@@ -32,24 +33,56 @@ export const TREND_FIRST_LABEL = "Prima dată";
 export const TREND_LIST_LABELS: Readonly<Record<TrendChange | "first", string>> = { ...TREND_CHANGE_LABELS, first: TREND_FIRST_LABEL };
 /** Every change, in a window's row, a chip set aside and the way out of an empty group („Vezi toate schimbările”). */
 export const TREND_ALL_CHANGES = "Toate schimbările";
+/** The row naming the group of a question's conditions and of a watch's fixed members („Grupa: Noi față de 2024”). */
+export const TREND_GROUP_ROW = "Grupa";
 /** The entities with the same value in both years: only on „Toate” (a row's swatch, a watch's update). */
 export const TREND_EQUAL_LABEL = "Aceeași valoare";
 /** The change after "cea mai mare" in the sentence (trend final §1) and its window's row ("Creștere"): every change is "schimbare". */
 export const TREND_CHANGE_PHRASE = { up: "creștere", down: "scădere", all: "schimbare" } as const;
 
 const hasYear = (y: unknown) => typeof y === "number" || (typeof y === "string" && y !== "");
+/** The new and the gone of years with others between them (trend final §1): only the year without records is sure. */
+export const TREND_NO_RECORDS = "Fără înregistrări";
+/**
+ * Years compared across others (2023 → 2025, trend final §1): a firm that worked in 2024 only is
+ * neither new nor gone, so „Noi” and „Nu mai apar” say „Fără înregistrări în 2023” / „… în 2025”
+ * (the short buttons stay „Noi”, „Nu mai apar”). A year may carry its partial mark („2026*”).
+ */
+export function trendGap(yearA?: unknown, yearB?: unknown): boolean {
+  const a = Number.parseInt(String(yearA ?? ""), 10), b = Number.parseInt(String(yearB ?? ""), 10);
+  return Number.isFinite(a) && Number.isFinite(b) && Math.abs(b - a) > 1;
+}
 /**
  * A group's name in a sentence, a chip or a note (kit §4: bare „Noi” only on the short buttons):
- * „Noi față de 2024”, „Nu mai apar în 2025”; the others as on the buttons.
+ * „Noi față de 2024”, „Nu mai apar în 2025”, across other years „Fără înregistrări în 2023”;
+ * the others as on the buttons.
  */
 export function trendGroupLabel(change: TrendChange, yearA?: unknown, yearB?: unknown): string {
-  if (change === "new" && hasYear(yearA)) return `${TREND_CHANGE_LABELS.new} față de ${yearA}`;
-  if (change === "gone" && hasYear(yearB)) return `${TREND_CHANGE_LABELS.gone} în ${yearB}`;
+  const gap = trendGap(yearA, yearB);
+  if (change === "new" && hasYear(yearA)) return gap ? `${TREND_NO_RECORDS} în ${yearA}` : `${TREND_CHANGE_LABELS.new} față de ${yearA}`;
+  if (change === "gone" && hasYear(yearB)) return gap ? `${TREND_NO_RECORDS} în ${yearB}` : `${TREND_CHANGE_LABELS.gone} în ${yearB}`;
   return TREND_CHANGE_LABELS[change];
 }
 /** „prima dată în 2025” (a row's label, a part's name, the pills), „prima dată” without the year (the sentence's fixed phrase). */
 export function firstTimeWords(yearB?: unknown): string {
   return `${TREND_FIRST_LABEL.toLocaleLowerCase("ro-RO")}${hasYear(yearB) ? ` în ${yearB}` : ""}`;
+}
+/** What „Prima dată” adds where the selection is narrower than the archive (trend final §3.8: a domain, a buyer or a firm). */
+export const FIRST_TIME_NARROWED = "Privește toate datele, nu doar această selecție.";
+/**
+ * The one (?) of „Prima dată” on the trend (kit §5 decision 7): the glossary's text, the same in the
+ * sentence's fixed phrase, the strip's „Toate · Prima dată” and the rows' label under the list; with a
+ * narrower selection, FIRST_TIME_NARROWED after it.
+ */
+export function firstTimeTip(narrowed: boolean): string {
+  return `${GLOSSARY["trend-prima-data"].text}${narrowed ? ` ${FIRST_TIME_NARROWED}` : ""}`;
+}
+/** A trend's selection narrower than the archive's records (a domain, a buyer or a place on firms, a firm on institutions or counties). */
+export function trendNarrowed(spec: Pick<AskSpec, "dim" | "filters">): boolean {
+  const f = spec.filters, set = (v: unknown) => v !== undefined && v !== null && v !== "";
+  if (set(f.cpvTerm)) return true;
+  if (spec.dim === "supplier") return [f.authorityId, f.authorityName, f.uatSiruta, f.uatName, f.county, f.authorityKind].some(set);
+  return set(f.supplierId) || set(f.supplierName) || (spec.dim === "county" && set(f.authorityKind));
 }
 /** The base of the growths in percent, after their name: „de la cel puțin 1 mil. lei în 2024”. */
 export function trendBaseWords(minBase: number, yearA?: unknown): string {

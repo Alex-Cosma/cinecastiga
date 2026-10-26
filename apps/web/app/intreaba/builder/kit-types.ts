@@ -31,9 +31,14 @@ export type SentenceToken =
  * draft without this window's own key (R5). Counts arrive formatted
  * ("32,0% · 88", "→ 336", "doar 1"): numerals follow countWords upstream.
  */
+/** A trend group's swatch (component 8 and the window of „Ce fel de schimbare?”): its shape tells the groups apart, never colour alone. */
+export type GroupSwatch = "all" | "up" | "new" | "down" | "gone";
+
 export interface KitOption {
   value: string;
   label: string;
+  /** The group's square before the label (trend final §3.1): the sentence's word, the window and the answer's buttons as one control. */
+  swatch?: GroupSwatch;
   /** Second line ("județul instituției", "din care București 49,6%"). */
   detail?: string;
   count?: string;

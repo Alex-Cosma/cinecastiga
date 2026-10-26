@@ -20,10 +20,10 @@ describe("the follow action", () => {
   });
 
   it("is disabled with its reason when the group is too large to fix", () => {
-    const markup = html({ label: "Urmărește grupa", blocked: "Grupa are 17.633 de firme; restrânge perioada sau locul." });
+    const markup = html({ label: "Urmărește grupa", blocked: "Grupa are 17.633 de firme (cel mult 5.000); restrânge perioada sau locul." });
     expect(markup).not.toContain("<a ");
     expect(markup).toMatch(/<button type="button" class="follow-action" aria-disabled="true" aria-describedby="([^"]+)">Urmărește grupa<\/button><span id="\1"/);
-    expect(markup).toContain("Grupa are 17.633 de firme; restrânge perioada sau locul.");
+    expect(markup).toContain("Grupa are 17.633 de firme (cel mult 5.000); restrânge perioada sau locul.");
   });
 
   it("is not shown to a visitor without an account", () => {

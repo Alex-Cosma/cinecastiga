@@ -306,8 +306,9 @@ describe("the words of every condition", () => {
     const base = { block: "trend", dim: "supplier", measure: "value", topN: 10, filters: { yearFrom: 2024, yearTo: 2025 } } as const;
     const growth = describeConditions({ ...base, trend: { change: "up", months: "auto", order: "percent", minBase: 1_000_000 } });
     expect(growth.pills).toEqual(["2024 → 2025", "creșteri", "aceleași luni", "după creșterea în procente", "cel puțin 1 mil. lei în 2024", "toate achizițiile: directe și din proceduri"]);
-    expect(growth.scope.filter((row) => ["Grupul", "Luni comparate", "Ordine", "Baza creșterii"].includes(row.label))).toEqual([
-      { label: "Grupul", value: "Creșteri" },
+    // „Grupa”, as the drawer's header and a watch's fixed group say it (MF-note-grupei).
+    expect(growth.scope.filter((row) => ["Grupa", "Luni comparate", "Ordine", "Baza creșterii"].includes(row.label))).toEqual([
+      { label: "Grupa", value: "Creșteri" },
       { label: "Luni comparate", value: "Aceleași luni în ambii ani, până la ultima lună completă" },
       { label: "Ordine", value: "Creșterea în procente" },
       { label: "Baza creșterii", value: "Cel puțin 1 mil. lei în 2024" },
@@ -318,6 +319,9 @@ describe("the words of every condition", () => {
     const fresh = describeConditions({ ...base, trend: { change: "new", firstOnly: true, months: [1, 5] } });
     expect(fresh.byId.trendChange).toMatchObject({ chip: "Noi față de 2024", words: "noi față de 2024", summary: "Noi față de 2024" });
     expect(fresh.byId.trendFirstOnly).toMatchObject({ chip: "Prima dată în 2025", words: "prima dată în 2025" });
+    // Across other years (trend final §1): the year without records.
+    const apart = describeConditions({ ...base, filters: { yearFrom: 2023, yearTo: 2025 }, trend: { change: "gone" } });
+    expect(apart.byId.trendChange).toMatchObject({ chip: "Fără înregistrări în 2025", words: "fără înregistrări în 2025" });
     expect(fresh.byId.trendMonths).toMatchObject({ chip: "Aceleași luni: ian.–mai", words: "pe aceleași luni: ian.–mai", scope: [{ label: "Luni comparate", value: "ian.–mai, în ambii ani" }] });
     // The title says the group and chosen months (title.ts): the saved summary does not repeat them.
     expect(fresh.summary).toEqual([]);

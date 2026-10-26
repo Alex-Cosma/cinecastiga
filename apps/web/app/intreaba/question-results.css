@@ -565,21 +565,21 @@
 .qb-trend-legend > span { display: inline-flex; align-items: center; gap: 2px; }
 .qb-trend .qb-listfoot, .qb-trend .qb-total { margin: 0; }
 @media (max-width: 600px) {
-  /* Three levels (§4.8): name and labels · the partner on the whole width · the years | Δ, then
-     "Înregistrări →" | the percent. A sum never breaks: the years' line breaks at the arrow. */
-  .qb-trend-rows .qb-arow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "tags tags" "part part" "yrs dlt" "rec pct"; column-gap: 10px; row-gap: 0; }
-  .qb-trend-rows .qb-arow > .qb-trow-main, .qb-trend-rows .qb-trow-val, .qb-trend-rows .qb-trow-dline { display: contents; }
+  /* Three levels (§4.8): name and labels · the partner on the whole width · the years | Δ with its
+     percent (one piece, so „×216” never reads as part of „Înregistrări →”), then "Înregistrări →".
+     A sum never breaks: the years' line breaks at the arrow; Δ and its percent may stack. */
+  .qb-trend-rows .qb-arow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name name" "tags tags" "part part" "yrs dlt" "rec ."; column-gap: 10px; row-gap: 0; }
+  .qb-trend-rows .qb-arow > .qb-trow-main, .qb-trend-rows .qb-trow-val { display: contents; }
   .qb-trend-rows .qb-trow-name { grid-area: name; }
   .qb-trend-rows .qb-tags { grid-area: tags; }
   .qb-trend-rows .qb-trow-partner { grid-area: part; margin-top: 7px; }
   .qb-trend-rows .qb-trow-years { grid-area: yrs; align-self: baseline; margin-top: 8px; white-space: normal; line-height: 1.5; text-align: left; }
   .qb-trend-rows .qb-trow-years > span { white-space: nowrap; }
-  .qb-trend-rows .qb-trow-delta { grid-area: dlt; align-self: baseline; justify-self: end; margin-top: 8px; text-align: right; }
-  .qb-trend-rows .qb-trow-pct { grid-area: pct; align-self: center; justify-self: end; }
+  .qb-trend-rows .qb-trow-dline { grid-area: dlt; align-self: baseline; justify-self: end; flex-wrap: wrap; justify-content: flex-end; column-gap: 6px; margin-top: 8px; text-align: right; }
   .qb-trend-rows .qb-rec { grid-area: rec; justify-self: start; align-self: center; justify-content: flex-start; margin: 0; }
   /* A new or gone row in its own list has one value (its year beside it): "Înregistrări →" goes up beside it. */
-  .qb-trend-rows--single .qb-arow { grid-template-areas: "name name" "tags tags" "part part" "rec dlt" "rec pct"; }
-  .qb-trend-rows--single .qb-trow-delta { margin-top: 4px; }
+  .qb-trend-rows--single .qb-arow { grid-template-areas: "name name" "tags tags" "part part" "rec dlt"; }
+  .qb-trend-rows--single .qb-trow-dline { margin-top: 4px; }
   /* „Firme noi: (?)” on its line, „Toate · Prima dată în 2025” on the whole width under it. */
   .qb-trend-strip .qb-trend-sub { flex-wrap: wrap; row-gap: 6px; }
   .qb-trend-strip .qb-trend-sub > .qb-seg { flex: 1 1 100%; }

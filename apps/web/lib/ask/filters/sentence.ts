@@ -5,7 +5,7 @@ import {
 import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { formatRon } from "../../format";
 import { filterContext } from "./context";
-import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, firstTimeWords } from "./defs/trend";
+import { TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NO_RECORDS, firstTimeTip, firstTimeWords, trendGap } from "./defs/trend";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
   TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, employeesWords, localityName, periodPhrase, periodWordsWith,
@@ -409,15 +409,16 @@ const compare: Write = (out, spec, ctx, labels) => {
 const CHANGE_WORDS = TREND_CHANGE_PHRASE;
 /** The new ones' and the gone ones' phrases: the buttons' words in the sentence („noi”, „nu mai apar”). */
 const NEW_WORD = TREND_CHANGE_LABELS.new.toLocaleLowerCase("ro-RO"), GONE_WORDS = TREND_CHANGE_LABELS.gone.toLocaleLowerCase("ro-RO");
+/** Across other years (trend final §1, defs/trend.ts trendGap): the new „fără înregistrări în [A]”, the gone „nu au înregistrări în [B]”. */
+const NO_RECORDS = TREND_NO_RECORDS.toLocaleLowerCase("ro-RO");
 
 /**
  * "Prima dată" on the new ones (trend final §3.8, kit §4): the first record of the entity anywhere in
- * the archive is in year B. A fixed phrase: the answer's strip sets it, the sentence only says it.
+ * the archive is in year B. A fixed phrase: the answer's strip sets it, the sentence only says it,
+ * with the glossary's one (?) (firstTimeTip).
  */
-function firstTime(out: Tokens, spec: Spec, year: string, narrowed: boolean): void {
-  const whose = spec.dim === "supplier" ? "firmei" : "instituției";
-  out.text(" ").fixed(firstTimeWords(), ["trendFirstOnly"],
-    `Prima înregistrare a ${whose} în datele noastre e în ${year}. Nu e data înființării.${narrowed ? " Privește toate datele, nu doar această selecție." : ""}`);
+function firstTime(out: Tokens, narrowed: boolean): void {
+  out.text(" ").fixed(firstTimeWords(), ["trendFirstOnly"], firstTimeTip(narrowed));
 }
 
 /**
@@ -430,7 +431,10 @@ function firstTime(out: Tokens, spec: Spec, year: string, narrowed: boolean): vo
  * On institutions the kind is the subject and the firm follows: "Ce [spitale] [noi] cumpără de la
  * [DR.MAX] în [2025], față de [2024]?", "Ce [spitale] din [2024] [nu mai cumpără] de la [DR.MAX] în
  * [2025]?". With their place ("din [județul Cluj]") the gone ones say "în [2025], față de [2024]": one
- * "din" for the place (R9). The order and its base are the presentation line's.
+ * "din" for the place (R9). Across other years (2023 → 2025, trend final §1) only the year without
+ * records is sure: "Ce [firme] [fără înregistrări] în [2023] apar în [2025]?", "Ce [firme] din [2023]
+ * [nu au înregistrări] în [2025]?" ("nu cumpără" where they buy). The order and its base are the
+ * presentation line's.
  */
 const trend: Write = (out, spec, ctx, labels) => {
   const dim = spec.dim ?? "supplier", f = spec.filters, t = spec.trend ?? {}, change = t.change ?? "all";
@@ -438,7 +442,13 @@ const trend: Write = (out, spec, ctx, labels) => {
   out.text("Ce ").slot("dim", "ranked", dim === "supplier" ? "firme" : dim === "county" ? "județe" : kindBare(spec), {
     says: dim === "authority" ? subjectSays(spec) : ["dim"], writes: ["authorityKind"], picker: "subject",
   });
-  if (change === "new") out.text(" ").slot("trendChange", "change", NEW_WORD, { says: changeSays });
+  // Without years the engine compares the archive's first and last years (compile.ts trend: minY, maxY);
+  // the title says the ones its answer compared (labels.trendYears). Across other years (trendGap) the
+  // new ones' phrase follows the place, with year A.
+  const yearWord = (year: unknown, ran: number | undefined, none: string) => has(year) ? String(year) : ran !== undefined ? String(ran) : none;
+  const a = yearWord(f.yearFrom, labels.trendYears?.yearA, "primul an"), b = yearWord(f.yearTo, labels.trendYears?.yearB, "ultimul an");
+  const gap = trendGap(a, b);
+  if (change === "new" && !gap) out.text(" ").slot("trendChange", "change", NEW_WORD, { says: changeSays });
   const town = dim === "authority" && ctx.locality.ok && hasLocality(spec), placed = town || dim === "authority" && has(f.county);
   if (town) out.text(" ale primăriei ").slot("locality", "place", localityName(String(f.uatName ?? `SIRUTA ${f.uatSiruta}`)), { writes: ["county"] });
   else if (placed) place(out, spec, ctx);
@@ -458,22 +468,19 @@ const trend: Write = (out, spec, ctx, labels) => {
     }
     fromWhom(out, spec, ctx, dim === "supplier" ? [] : ["supplier"], "de la");
   };
-  // Without years the engine compares the archive's first and last years (compile.ts trend: minY, maxY);
-  // the title says the ones its answer compared (labels.trendYears).
   const periodSays: FilterId[] = hasPeriod(spec) ? ["period"] : [];
-  const yearWord = (year: unknown, ran: number | undefined, none: string) => has(year) ? String(year) : ran !== undefined ? String(ran) : none;
-  const a = yearWord(f.yearFrom, labels.trendYears?.yearA, "primul an"), b = yearWord(f.yearTo, labels.trendYears?.yearB, "ultimul an");
   const year = (lead: string, value: string) => out.text(lead).slot("period", "years", value, { says: periodSays });
   if (change === "new") {
+    if (gap) { out.text(" ").slot("trendChange", "change", NO_RECORDS, { says: changeSays }); year(" în ", a); }
     out.text(buys ? " cumpără" : " apar");
     fragments(buys ? null : " în achizițiile");
     channel(out, spec);
-    if (t.firstOnly) firstTime(out, spec, b, has(f.cpvTerm) || buyerSet || seller);
+    if (t.firstOnly) firstTime(out, has(f.cpvTerm) || buyerSet || seller);
     year(" în ", b);
-    year(", față de ", a);
+    if (!gap) year(", față de ", a);
   } else if (change === "gone") {
     if (!placed) year(" din ", a);
-    out.text(" ").slot("trendChange", "change", buys ? "nu mai cumpără" : GONE_WORDS, { says: changeSays });
+    out.text(" ").slot("trendChange", "change", gap ? buys ? "nu cumpără" : "nu au înregistrări" : buys ? "nu mai cumpără" : GONE_WORDS, { says: changeSays });
     fragments(buys ? null : " în achizițiile");
     channel(out, spec);
     year(" în ", b);

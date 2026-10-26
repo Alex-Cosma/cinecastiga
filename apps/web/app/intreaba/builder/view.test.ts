@@ -207,6 +207,16 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(clients.value).toBe('"new"');
     // The counties' new and gone are sure to be empty without a firm or a domain: not offered (trend final §3.1).
     expect(changes(q({ ...SEVEN.trend!, dim: "county" })).options.map((o) => o.label)).toEqual(["Creștere", "Scădere", "Toate schimbările"]);
+    // Each change with the square of its button in the answer: the sentence's word, the window and the buttons are one control.
+    expect(legacy.options.map((o) => o.swatch)).toEqual(["up", "new", "down", "gone", "all"]);
+    // New institutions without a chosen firm: often an old one under another identity (trend final §3.1).
+    const institutions = changes(q({ ...SEVEN.trend!, dim: "authority", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "new" } }));
+    expect(institutions.options.find((o) => o.value === '"new"')).toMatchObject({ label: "Instituții noi",
+      detail: "Nicio înregistrare în 2024, cel puțin una în 2025. Des: reorganizări, asociații, beneficiari privați." });
+    expect(clients.options.find((o) => o.value === '"new"')?.detail).toBe("Nicio înregistrare în 2024, cel puțin una în 2025.");
+    // Across other years only the year without records is sure (trend final §1).
+    const apart = changes(q({ ...SEVEN.trend!, filters: { yearFrom: 2023, yearTo: 2025 }, trend: { change: "new" } }));
+    expect(apart.options.map((o) => o.label)).toEqual(["Creștere", "Firme fără înregistrări în 2023", "Scădere", "Fără înregistrări în 2025", "Toate schimbările"]);
   });
 
   it("list the stream as the kit names it, the current one checked", () => {
@@ -262,6 +272,19 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(stat.map((p) => [p.label, p.detail ?? ""])).toEqual([["2025", ""], ["2024", ""], ["Ultimii 3 ani compleți", "2023–2025"], ["Toți anii", "apr. 2018 – 31 dec. 2025"]]);
     const trend = periodPresets(SEVEN.trend!, span, 2026).presets;
     expect(trend.map((p) => [p.label, p.detail ?? ""])).toEqual([["2024 și 2025", "ultimii doi ani compleți"], ["2023 și 2024", ""]]);
+  });
+
+  it("give a trend the complete years of its default (every channel's «complet până la», trend final §3.2), not of the data's last day", () => {
+    const periods = (until: string | null) => ({ da: { from: "2018-04-02", to: "2027-01-20", completeUntil: "2027-01-15" }, contracts: { from: "2018-01-03", to: "2027-01-20", completeUntil: until } });
+    const span = { from: "2018-04-02", to: "2027-01-20" };
+    // January 2027, December's contracts not complete yet: the default stays 2024 → 2025, and 2026 is on the same months.
+    const january = periodPresets(SEVEN.trend!, span, 2027, periods("2026-11-30"));
+    expect(january.presets.map((p) => [p.label, p.detail ?? ""])).toEqual([["2024 și 2025", "ultimii doi ani compleți"], ["2025 și 2026", "pe aceleași luni"], ["2023 și 2024", ""]]);
+    // Once they are: 2025 → 2026 is complete, and January 2027 runs on the same months.
+    const march = periodPresets(SEVEN.trend!, span, 2027, periods("2027-01-15"));
+    expect(march.presets.map((p) => [p.label, p.detail ?? ""])).toEqual([["2025 și 2026", "ultimii doi ani compleți"], ["2026 și 2027", "pe aceleași luni · 2027: până la 20 ian."], ["2024 și 2025", ""]]);
+    // Without the periods: the data's last day, as before.
+    expect(periodPresets(SEVEN.trend!, span, 2027).presets[0]).toMatchObject({ label: "2025 și 2026" });
   });
 
   it("give the year chart intervals only, none before 2018 (plan §4.3, final timeseries §3.7)", () => {

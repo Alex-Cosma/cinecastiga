@@ -52,7 +52,8 @@ describe("beginner glossary", () => {
   it("defines the change between two years' terms for the trend's tips (plan §4.7, §8)", () => {
     expect(GLOSSARY["firma-noua"].text).toContain("primul an comparat");
     expect(GLOSSARY["nu-mai-apare"].text).toContain("intră întreg în anul atribuirii");
-    expect(GLOSSARY["trend-prima-data"].text).toContain("toată arhiva");
+    expect(GLOSSARY["trend-prima-data"].text).toContain("în datele noastre");
+    expect(GLOSSARY["trend-prima-data"].text).toContain("Nu e data înființării.");
     expect(GLOSSARY["aceleasi-luni"].text).toContain("ultima lună completă");
   });
 

@@ -3,6 +3,7 @@ import { countyIsFirmSeat } from "../population";
 import { subjectWords, transitionQuestion, type QuestionSpec } from "../question-ui";
 import { parseSpec, type Block } from "../spec";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
+import { GLOSSARY } from "../../glossary";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { describeConditions } from "./describe";
 import { filterContext } from "./context";
@@ -237,11 +238,23 @@ describe("the sentence of each question (plan §4)", () => {
     expect(marked(fresh("supplier"))).toBe("Ce [firme] [noi] apar {prima dată} în [2025], față de [2024]?");
     expect(marked(fresh("authority", { supplierName: "DR.MAX", supplierId: 8 }))).toBe("Ce [instituții publice] [noi] cumpără de la [DR.MAX] {prima dată} în [2025], față de [2024]?");
     const fixed = sentenceTokens(fresh("supplier")).find((t) => t.kind === "fixed");
-    expect(fixed).toEqual({ kind: "fixed", text: "prima dată", says: ["trendFirstOnly"], tip: "Prima înregistrare a firmei în datele noastre e în 2025. Nu e data înființării." });
+    // The glossary's one text, as the strip's and the rows' (kit §5 decision 7).
+    expect(fixed).toEqual({ kind: "fixed", text: "prima dată", says: ["trendFirstOnly"], tip: GLOSSARY["trend-prima-data"].text });
     // A narrowed selection: the first record is still the archive's, not the selection's (trend final §3.8).
     expect(sentenceTokens(fresh("supplier", { cpvTerm: "asfaltare" })).find((t) => t.kind === "fixed")).toMatchObject({ tip: expect.stringMatching(/Privește toate datele, nu doar această selecție\.$/) });
     expect(saidFilters(sentenceTokens(fresh("supplier")))).toContain("trendFirstOnly");
     expect(under(fresh("supplier"))).toEqual([]);
+  });
+
+  it("trend: across other years says the year without records, not „noi” or „nu mai apar” (trend final §1)", () => {
+    const apart = (dim: string, change: "new" | "gone", filters: QuestionSpec["filters"] = {}) =>
+      q({ block: "trend", dim, filters: { yearFrom: 2023, yearTo: 2025, ...filters }, trend: { change } } as Parameters<typeof q>[0]);
+    expect(marked(apart("supplier", "new"))).toBe("Ce [firme] [fără înregistrări] în [2023] apar în [2025]?");
+    expect(marked(apart("supplier", "gone"))).toBe("Ce [firme] din [2023] [nu au înregistrări] în [2025]?");
+    expect(marked(apart("authority", "gone", { supplierName: "DR.MAX", supplierId: 8 }))).toBe("Ce [instituții publice] din [2023] [nu cumpără] de la [DR.MAX] în [2025]?");
+    expect(marked(apart("authority", "new", { county: "Cluj" }))).toBe("Ce [instituții publice] din [județul Cluj] [fără înregistrări] în [2023] apar în [2025]?");
+    // Consecutive years keep the kit's words.
+    expect(marked(q({ block: "trend", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "new" } } as Parameters<typeof q>[0]))).toBe("Ce [firme] [noi] apar în [2025], față de [2024]?");
   });
 
   it("trend: says that a question about town halls counts every institution, where the interpreter knows it", () => {
