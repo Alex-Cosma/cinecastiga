@@ -404,6 +404,12 @@ function seatCases(): PerfCase[] {
       all(top({ dim: "supplier", rankBy: "risk" }), set({ seatCounty: "Cluj" }))),
     perfCase("sources:table-suppliers-seat-other-2025", "sources", "Sursele firmelor cu sediul în alt județ, 2025", "table", all(firms, set({ firmSeat: "other" }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:table-suppliers-seat-cluj", "sources", "Sursele firmelor cu sediul în județul Cluj", "table", all(firms, set({ seatCounty: "Cluj" })), { path: "rows", barMs: 2000 }),
+    // S4 verify: abroad the page hides the key (compile.ts keyHidden; by the key 10–24 s, at the route's 20 s limit), and a
+    // total's records selected by the seat take their totals from agg_entity_year (rollupSourceTotals; live 2.2–3.6 s).
+    perfCase("sources:stat-seat-abroad", "sources", "Sursele totalului firmelor cu sediul în străinătate", "stat", set({ firmSeat: "abroad" }), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-seat-abroad-da", "sources", "Sursele achizițiilor directe de la firme cu sediul în străinătate", "stat", all(set({ firmSeat: "abroad" }), top({ dataset: "da" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:table-suppliers-seat-abroad", "sources", "Sursele firmelor cu sediul în străinătate", "table", all(firms, set({ firmSeat: "abroad" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:stat-seat-other", "sources", "Sursele totalului firmelor cu sediul în alt județ, toți anii", "stat", set({ firmSeat: "other" }), { path: "rows", barMs: 2000 }),
     // The seat window: the records' classes on a ranking (national: the entity rollup), each county's firms on „Cine conduce?”.
     perfCase("facets:seat-classes-national", "facets", "„Unde au sediul firmele?” pe clasamentul național", "table", firms, { facet: { part: "seat" }, barMs: 2000 }),
     perfCase("facets:seat-classes-2025", "facets", "„Unde au sediul firmele?” pe clasamentul din 2025", "table", all(firms, years(2025)), { facet: { part: "seat" }, barMs: 2000 }),

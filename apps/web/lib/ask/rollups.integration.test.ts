@@ -300,6 +300,12 @@ const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" 
   { name: "sources of the firms seated in another county", spec: base("table", { topN: 10 }, { firmSeat: "other" }), block: "firms" },
   { name: "sources of the firms seated in Ilfov, 2025", spec: base("table", { topN: 10 }, { seatCounty: "Ilfov", yearFrom: 2025, yearTo: 2025 }), g: SEATED("Ilfov"), block: "firms" },
   { name: "sources of the firms with 1–9 employees", spec: base("table", { topN: 10 }, { minEmployees: 1, maxEmployees: 9 }), block: "firms" },
+  // So do a total, a map, an evolution and the counties of records selected by such an attribute (S4 verify).
+  { name: "sources of the total of firms seated in another county", spec: base("stat", {}, { firmSeat: "other" }), block: "stat" },
+  { name: "sources of the total of firms seated abroad, 2025", spec: base("stat", {}, { firmSeat: "abroad", yearFrom: 2025, yearTo: 2025 }), block: "stat" },
+  { name: "sources of the map of firms seated in their buyer's county", spec: base("map", {}, { firmSeat: "same" }), block: "map" },
+  { name: "sources of the years of firms with 1–9 employees", spec: base("timeseries", {}, { minEmployees: 1, maxEmployees: 9 }), block: "timeseries" },
+  { name: "sources of the counties of firms seated in another county", spec: base("table", { dim: "county" }, { firmSeat: "other" }), block: "county" },
   { name: "sources of the DAs of 2025", spec: base("stat", { dataset: "da" }, { yearFrom: 2025, yearTo: 2025 }), block: "stat" },
   { name: "sources of everything", spec: base("stat"), block: "stat" },
   { name: "sources of the map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), block: "map" },

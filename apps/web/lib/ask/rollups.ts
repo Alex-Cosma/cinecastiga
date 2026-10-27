@@ -737,7 +737,8 @@ export async function rollupMap(sql: DbSql, plan: { source: RollupSource; filter
  * block (map: a county; breakdown: a CPV code; timeseries: a dated row; a
  * county ranking: a county). A ranking of firms selected by an attribute of
  * the firm (`firms`: the seat, F4; the employees) reads agg_entity_year: every
- * record of it has its firm. So does a ranking of firms or institutions
+ * record of it has its firm; so do the other blocks but the breakdown, on
+ * records selected by such an attribute. So does a ranking of firms or institutions
  * (`authorities`) with some of them left out ("Scoate din calcul", F4): the
  * rest of its role's rows. Other blocks (other rankings of entities, network,
  * profiles) are not served. sources:stat-da-2025: 1.57–2.19 s live, 0.05 s here.
@@ -753,6 +754,12 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
     const out = role === "supplier" ? plan.filters.excludeSuppliers : plan.filters.excludeAuthorities;
     if (plan.source.table !== "entity" || plan.source.role !== role || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees)))
       return { reason: "a ranking's source totals read agg_entity_year when an attribute of the firm or an exclusion selects its entities" };
+  } else if (plan.source.table === "entity") {
+    // A total, a map, an evolution or the counties of records selected by an attribute of their firm (F4's seat, the
+    // employees): each record kept has its firm, so the firms' rows of agg_entity_year are exactly them (national „În
+    // alt județ”, all years: 2.2–3.6 s live, the union with the seat's semi-join; S4 verify).
+    if (block === "breakdown" || plan.source.role !== "supplier" || !(plan.filters.seat || plan.filters.employees))
+      return { reason: "source totals read agg_entity_year when an attribute of the firm selects the records" };
   } else if (plan.source.table !== "cpv") return { reason: "source totals read agg_cpv_year only" };
   const where = rollupWhere(sql, plan.source, plan.filters, "p");
   const own = block === "map" || block === "county" ? sql`p.county is not null`

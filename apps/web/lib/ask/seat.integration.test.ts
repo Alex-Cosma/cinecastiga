@@ -101,6 +101,8 @@ describe.runIf(Boolean(connection))("F4: the firm's seat (dedicated rollback fix
         // 10 in Ilfov, 11 in Cluj (its SEAP county: "same" before F4), 12 everywhere (București).
         ["other", { ...all, filters: { ...Y, firmSeat: "other" } }, {}, 1550, 4],
         ["abroad", { ...all, filters: { ...Y, firmSeat: "abroad" } }, {}, 400, 1],
+        // On one channel the sources' page hides the key too (compile.ts keyHidden, S4 verify): the same records.
+        ["abroad, direct acquisitions", { ...all, dataset: "da", filters: { ...Y, firmSeat: "abroad" } }, {}, 400, 1],
         // The firm's own county: every record of 11, wherever its buyer.
         ["seated in Ilfov", { ...all, filters: { ...Y, seatCounty: "Ilfov" } }, seated("Ilfov"), 270, 2],
         ["seated in București, in Ilfov", { ...all, filters: { ...Y, county: "Ilfov", seatCounty: "Bucuresti" } }, { ...seated("Bucuresti"), county: { query: "Ilfov", canonical: "Ilfov" } }, 1000, 1],

@@ -2867,6 +2867,12 @@ export async function runRows(
     // a county the key stays: nationally its matches come early (0.25–1.2 s; hidden 1.2–9.4 s). S4 tests.
     const sizeInCounty = (spec.filters.purchaseValueMin != null || spec.filters.purchaseValueMax != null)
       && Boolean(spec.filters.county || scope.county || scope.counties?.length);
+    // A firm abroad (F4): the 764 foreign firms hold 27 direct acquisitions and 2,477 contracts, so the key's
+    // backward walk read every direct acquisition for the page's ten rows (national: 10–24 s, at the route's 20 s
+    // limit, so the drawer failed; directe alone 10 s; in Cluj over the limit). Hidden, on any channel layout, their
+    // records come from the firm index (S4 verify).
+    const keyHidden = sizeInCounty || spec.filters.firmSeat === "abroad";
+    const keyOrder = keyHidden ? sql`(d.ref_id + 0)` : sql`d.ref_id`;
     const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
       : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
     // With the keys in the covering index, the direct acquisitions' first keys in the drawer's order come
@@ -2889,10 +2895,13 @@ export async function runRows(
       ) selected_row
     )` : !profile && dataset === "all" && sortKey === "source" ? sql`(
       (select * from ${daTx} d where ${sourceWhere} and ${localWhere}
-       order by ${sizeInCounty ? sql`(d.ref_id + 0)` : sql`d.ref_id`} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+       order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
       union all
       (select * from ${contractTx} d where ${sourceWhere} and ${localWhere}
-       order by ${sizeInCounty ? sql`(d.ref_id + 0)` : sql`d.ref_id`} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+       order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
+    )` : !profile && sortKey === "source" && keyHidden ? sql`(
+      select * from ${txt} d where ${sourceWhere} and ${localWhere}
+      order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit}
     )` : txt;
     if (opts.capture) await opts.capture.persist(s, s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,
