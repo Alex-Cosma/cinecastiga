@@ -50,6 +50,7 @@ import SeriesAnswer from "./SeriesAnswer";
 import { barKey, barName, barSources } from "./series-answer";
 import StatMix from "./answer/StatMix";
 import { useAnswerFact } from "./answer/use-answer-fact";
+import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import EmptyState from "./answer/EmptyState";
@@ -210,6 +211,8 @@ export default function AskPanel({
     months?: ExecutedWindow["months"];
     /** The drawer's first order (a bar's largest record, F3). */
     sort?: "value";
+    /** The answer's group its whole sources list (a band, a network's group): the drawer says both figures (S4 review). */
+    listGroup?: DrawerListGroup;
   } | null>(null);
   const [tableOpts, setTableOpts] = useState<{
     page: number;
@@ -710,6 +713,8 @@ export default function AskPanel({
         // The applied trend's (and evolution's, F3) sources list the months its answer counted (plan §2.8).
         const months = selected === applied || selected.block === "timeseries" && applied?.block === "timeseries" && selected.timeseries?.months !== undefined
           ? resp?.executed?.months : undefined;
+        // The whole answer's sources of a band or a network's group: the group's figures beside the selection's.
+        const listGroup = !effectiveScope && selected === applied ? answerListGroup(answered, applied) : null;
         setEvidence({
           spec: selected,
           ...(effectiveScope ? { scope: effectiveScope } : {}),
@@ -718,10 +723,11 @@ export default function AskPanel({
           ...(label ? { scopeLabel: label } : {}),
           ...(months ? { months } : {}),
           ...(opts.sort ? { sort: opts.sort } : {}),
+          ...(listGroup ? { listGroup } : {}),
         });
       }
     },
-    [applied, title, resp?.executed?.months],
+    [applied, title, resp?.executed?.months, answered],
   );
   /**
    * A trend's sources answered 409 (plan §2.8): the data moved the months its
@@ -1370,6 +1376,7 @@ export default function AskPanel({
           {...(evidence.filters ? { initialFilters: evidence.filters } : {})}
           {...(evidence.months ? { months: evidence.months, onStale: () => reloadOutdated(true) } : {})}
           {...(evidence.sort ? { initialSort: evidence.sort } : {})}
+          {...(evidence.listGroup ? { listGroup: evidence.listGroup } : {})}
           onClose={() => setEvidence(null)}
         />
       )}
