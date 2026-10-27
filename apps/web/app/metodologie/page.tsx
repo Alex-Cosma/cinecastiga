@@ -181,6 +181,19 @@ export default function MetodologiePage() {
             Firmele străine apar separat. „În județul instituției” și „În alt județ” compară sediul cu județul instituției care cumpără, la fiecare înregistrare.
             Sediul nu e locul lucrării: multe firme mari au sediul în București. O firmă fără sediu cunoscut nu intră în nicio condiție de sediu.</p>
         </details>
+        <details className="method-fold" id="marimea-achizitiei">
+          <summary>Mărimea, procedura și tipul achiziției</summary>
+          <p>Mărimea este valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător: un contract de 1,2 mil. lei cu doi câștigători
+            intră la „peste 1 mil. lei”, iar sumele rămân pe cote. Plajele (sub 10.000 lei, 10.000–100.000, 100.000–1 mil., peste 1 mil.) nu sunt praguri legale.
+            Procedura este cea declarată în SEAP, doar la contractele din proceduri; negocierea fără publicare este permisă în cazuri anume.
+            Tipul vine din codul CPV ales de cumpărător: 45 lucrări, 50–98 servicii, restul produse.</p>
+        </details>
+        <details className="method-fold" id="angajati-benzi">
+          <summary>Angajații firmelor</summary>
+          <p>Benzile (fără angajați, 1–9, 10–49, 50–249, 250 sau mai mulți) vin din ultimul bilanț depus la Ministerul Finanțelor, nu din anul atribuirii.
+            Firmele fără bilanț (străine, PFA, înființate recent) nu intră în nicio bandă. Pe un clasament de firme banda restrânge lista;
+            totalul și „% din total” rămân ale întregii selecții.</p>
+        </details>
         <details className="method-fold">
           <summary>TED</summary>
           <p>Pentru TED păstrăm moneda și sensul sumei: valoare de ofertă/rezultat, interval, plafon de acord-cadru sau necunoscut.

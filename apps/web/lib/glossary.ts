@@ -258,6 +258,23 @@ export const GLOSSARY = {
     title: "Sediul furnizorilor",
     text: "Sediul social al firmei, nu locul lucrării: ultima înmatriculare la Registrul Comerțului, apoi județul din SEAP. Firmele cu sediul în București apar „în alt județ”.",
   },
+  // F3's common selection (plan §8; S4 review: their (?) texts lived inline in „Din care”, the windows and the breakdown).
+  "marimea-achizitiei": {
+    title: "Mărimea achiziției",
+    text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Limita de jos intră în plajă, cea de sus nu. Plajele nu sunt praguri legale.",
+  },
+  procedura: {
+    title: "Procedura",
+    text: "Procedura declarată în SEAP, doar la contractele din proceduri. Negocierea fără publicare e permisă în cazuri anume: o pistă, nu o abatere.",
+  },
+  "tip-achizitie": {
+    title: "Tipul achiziției",
+    text: "Tipul vine din codul CPV ales de cumpărător: 45 lucrări, 50–98 servicii, restul produse.",
+  },
+  "angajati-benzi": {
+    title: "Angajați",
+    text: "Din ultimul bilanț depus la Ministerul Finanțelor, nu din anul atribuirii. Firmele fără bilanț (străine, PFA, înființate recent) nu intră în nicio bandă.",
+  },
   "inregistrari-consortiu": {
     title: "În asociere",
     text: "La un contract cu mai mulți câștigători, câte o înregistrare pe câștigător, cu cota lui egală. De aceea înregistrările pot fi mai multe decât contractele.",

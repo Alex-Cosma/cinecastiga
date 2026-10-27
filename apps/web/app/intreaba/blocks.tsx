@@ -357,7 +357,7 @@ export function BreakdownBlock({
         {kinds.map((kind) => <button type="button" key={kind.kind} className="qb-kind" onClick={() => onKind!(kind.kind)}>
           {PURCHASE_KIND_WORDS[kind.kind].label} <b className="qb-num">{formatShare(kind.share)}</b>
         </button>)}
-        <HelpTip tip={{ title: "Tipul", text: "Tipul vine din codul CPV ales de cumpărător: 45 = lucrări, 50–98 = servicii, restul = produse." }} />
+        <HelpTip tip={{ id: "tip-achizitie" }} />
       </div>}
       <div className="ask-comp">
         {items.map((s) => {
