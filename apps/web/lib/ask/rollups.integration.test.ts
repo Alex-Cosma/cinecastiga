@@ -282,6 +282,7 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "breakdown", spec: base("breakdown"), source: "cpv" },
   { name: "breakdown, 2025", spec: base("breakdown", {}, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
   { name: "breakdown, Cluj, contracts", spec: base("breakdown", { dataset: "contracts" }, { county: "Cluj" }), g: CLUJ, source: "cpv" },
+  { name: "breakdown, Cluj", spec: base("breakdown", {}, { county: "Cluj" }), g: CLUJ, source: "cpv" },
   { name: "breakdown inside a CPV group", spec: base("breakdown", {}, { cpvTerm: "3360" }), g: { cpv: { term: "3360", prefixes: ["3360"], matchedNames: [], method: "code" } }, source: "cpv" },
   { name: "total, 2025", spec: base("stat", {}, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
   { name: "total of direct acquisitions, 2024–2025", spec: base("stat", { dataset: "da" }, { yearFrom: 2024, yearTo: 2025 }), source: "cpv" },
@@ -461,8 +462,21 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           // answer has no „1 contract: 99%” tag there (DECISIONS F3r-breakdown-largest); the rest is the live answer.
           const deeper = c.name === "breakdown inside a CPV group";
           if (deeper && wired.data.block === "breakdown") expect(wired.data.base!.every((g) => g.max === undefined)).toBe(true);
-          const tagless = (d: BlockData): BlockData => deeper && d.block === "breakdown" ? { ...d, base: d.base!.map(({ max: _m, maxSrc: _s, ...g }) => g) } : d;
-          expect([c.name, canonical(tagless(wired.data))]).toEqual([c.name, canonical(tagless(liveAnswers.get(c.name)!))]);
+          // A breakdown on one channel: the rollups' pass has every channel, so it gives the strip's shares; live, it reads
+          // that channel only and gives none (the strip keeps those of the question on every channel, S4 review).
+          const oneChannel = c.spec.block === "breakdown" && (c.spec.dataset ?? "all") !== "all";
+          const live = liveAnswers.get(c.name)!;
+          if (oneChannel && live.block === "breakdown") expect([c.name, live.streams]).toEqual([c.name, undefined]);
+          // Its shares are those of the same question on every channel.
+          const every = liveAnswers.get("breakdown, Cluj");
+          if (oneChannel && wired.data.block === "breakdown" && every?.block === "breakdown") expect([c.name, wired.data.streams]).toEqual([c.name, every.streams]);
+          const tagless = (d: BlockData): BlockData => {
+            if (d.block !== "breakdown") return d;
+            const { streams, ...rest } = d;
+            const shown = oneChannel ? rest : { ...rest, ...(streams ? { streams } : {}) };
+            return deeper ? { ...shown, base: d.base!.map(({ max: _m, maxSrc: _s, ...g }) => g) } : shown;
+          };
+          expect([c.name, canonical(tagless(wired.data))]).toEqual([c.name, canonical(tagless(live))]);
         }
         await q.unsafe("rollback to savepoint emptied_marts");
 

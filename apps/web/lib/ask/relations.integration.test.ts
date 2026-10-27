@@ -122,16 +122,28 @@ describe.runIf(Boolean(connection))("F4: the relations, network-2 and sankey-2 (
 
   it("keeps a partner's group whatever the channel and the domain, which only choose who is listed", async () => {
     await withAskFixture(connection!.sql, "f4_relations", load, async (q) => {
-      const direct = network(await runSpec(q, { ...since(around), dataset: "da" }, BUYER));
+      // „Toți” on one channel or in a period is answered from the records it bounds; its whole relation is part=network's
+      // (network-facts.ts: runSpec with networkWhole), asked once the answer is drawn.
+      const whole = { networkWhole: true } as const;
+      const direct = network(await runSpec(q, { ...since(around), dataset: "da" }, BUYER, whole));
       expect([ids(direct, "new"), ids(direct, "continuing"), ids(direct, "gone")]).toEqual([[], ["10", "14"], ["13", "15"]]);
       // Epsilon's works of 2025 are its only records in „45”: it stays continuing (first record of the relation: 2023).
       const works = network(await runSpec(q, { ...since(around), filters: { ...around.filters, cpvTerm: "45" } }, WORKS));
       expect([ids(works, "new"), ids(works, "continuing"), ids(works, "gone")]).toEqual([["11", "12"], ["14"], []]);
       expect(works.lists.continuing.value).toBe(200);
       // A period applies to „Toți” only; the groups are of the whole selection without it.
-      const year = network(await runSpec(q, { ...around, filters: { ...around.filters, yearFrom: 2024, yearTo: 2024 } }, BUYER));
+      const yearSpec: AskSpec = { ...around, filters: { ...around.filters, yearFrom: 2024, yearTo: 2024 } };
+      const year = network(await runSpec(q, yearSpec, BUYER, whole));
       expect([year.since, ids(year, "all"), ids(year, "new")]).toEqual([2024, ["10", "11", "12"], ["11", "12"]]);
       expect(year.lists.all.value).toBe(82000);
+      // The bounded answers (S4 review): the same „Toți”, rows and totals, with no group, year or signal until the whole relation.
+      for (const [name, spec, full] of [["directe", { ...since(around), dataset: "da" }, direct], ["2024", yearSpec, year]] as [string, AskSpec, NetworkData][]) {
+        const bounded = network(await runSpec(q, spec, BUYER));
+        expect([name, bounded.relation, bounded.lists.all]).toEqual([name, "pending", full.lists.all]);
+        expect([name, bounded.lists.new.partners, bounded.streams, bounded.partners["10"]?.years]).toEqual([name, 0, undefined, []]);
+        expect([name, bounded.partners["10"]?.county, bounded.partners["10"]?.employees]).toEqual([name, full.partners["10"]?.county, full.partners["10"]?.employees]);
+        expect(full.relation).toBeUndefined();
+      }
     });
   });
 

@@ -11,15 +11,16 @@ import { isHistoricalProfile } from "./population";
  * a count ("32,0% · 88"). Plain TypeScript, no SQL: lib/ask/facets.ts counts.
  */
 
-export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate", "mix", "bars", "pair", "compare-peers"] as const;
+export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate", "mix", "bars", "pair", "compare-peers", "network"] as const;
 export type FacetPart = (typeof FACET_PARTS)[number];
 /**
  * The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"),
  * `mix` is the composition of a total („Din care”, stat) and `bars` the facts of an evolution's bars (F3);
  * `pair` the facts of a comparison's pair for its windows and `compare-peers` the suggestions of
- * "Cu cine comparăm?" (F4, lib/ask/compare-engine.ts).
+ * "Cu cine comparăm?" (F4, lib/ask/compare-engine.ts); `network` the whole relation of a network whose
+ * „Toți” on one channel or in a period was answered from the records it bounds (lib/ask/network-facts.ts).
  */
-export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers">;
+export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network">;
 export const isFacetPart = (value: unknown): value is FacetPart => (FACET_PARTS as readonly unknown[]).includes(value);
 
 /**
@@ -185,7 +186,7 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
  * contracts. `locate` keeps the question: it finds a place in its answer.
  */
 export function facetSpec<T extends { block: string; dataset?: string; dim?: string; rankBy?: string; filters: object }>(spec: T, part: FacetPart): T {
-  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers") return spec;
+  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network") return spec;
   const filters = { ...spec.filters } as Record<string, unknown>;
   for (const key of ownKeys(spec, part)) delete filters[key];
   const out = { ...spec, filters } as T;

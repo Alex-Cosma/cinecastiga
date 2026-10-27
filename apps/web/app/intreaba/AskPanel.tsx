@@ -49,6 +49,7 @@ import Toggle from "./builder/Toggle";
 import SeriesAnswer from "./SeriesAnswer";
 import { barKey, barName, barSources } from "./series-answer";
 import StatMix from "./answer/StatMix";
+import { useAnswerFact } from "./answer/use-answer-fact";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import EmptyState from "./answer/EmptyState";
@@ -578,13 +579,24 @@ export default function AskPanel({
   } : {};
   const appliedKey = applied ? questionKey(applied) : "";
   /**
-   * The flow's channel shares (F4): an answer on every channel brings them; on one channel the flow reads that channel
-   * only, so the strip keeps the shares of the same question on every channel, the last one this page answered.
+   * The channel shares of the flow, the network and the breakdown (F3, F4): an answer on every channel brings them; on
+   * one channel the flow and an anchored breakdown read that channel only (S4 review: a second pass of every channel
+   * for the shares alone), so the strip keeps the shares of the same question on every channel, the last one this page
+   * answered (its block, its question without the channel and the display keys).
    */
-  const flowStreamsMemo = useRef<{ key: string; streams: NonNullable<SankeyData["streams"]> } | null>(null);
-  const flowKey = (spec: AskSpec) => questionKey({ ...spec, dataset: undefined, sankey: undefined } as unknown as QuestionSpec);
-  if (resp?.data?.block === "sankey" && resp.data.streams && applied) flowStreamsMemo.current = { key: flowKey(applied), streams: resp.data.streams };
-  const flowStreams = (spec: AskSpec) => flowStreamsMemo.current?.key === flowKey(spec) ? flowStreamsMemo.current.streams : undefined;
+  const streamsMemo = useRef<{ key: string; streams: NonNullable<SankeyData["streams"]> } | null>(null);
+  const streamsKey = (block: string, spec: AskSpec) => `${block}|${questionKey({ ...spec, dataset: undefined, measure: undefined, sankey: undefined,
+    network: spec.network?.signals ? { signals: true } : undefined } as unknown as QuestionSpec)}`;
+  /**
+   * A network's „Toți” on one channel or in a period lists its partners from the records it bounds (S4 review); its
+   * whole relation (the groups, the years, the signals, the strip's shares) is asked once it is drawn (part=network),
+   * for the question answered: the group buttons then switch the applied question on it with no request.
+   */
+  const networkWhole = useAnswerFact(resp?.data?.block === "network" && resp.data.relation === "pending" && resp.spec ? resp.spec : null, "network");
+  const answered: BlockData | undefined = resp?.data?.block === "network" && resp.data.relation === "pending" && networkWhole.status === "ready" ? networkWhole.value.data : resp?.data;
+  if (answered && applied && (answered.block === "sankey" || answered.block === "breakdown" || answered.block === "network") && answered.streams)
+    streamsMemo.current = { key: streamsKey(answered.block, applied), streams: answered.streams };
+  const keptStreams = (block: string, spec: AskSpec) => streamsMemo.current?.key === streamsKey(block, spec) ? streamsMemo.current.streams : undefined;
   useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
   /**
    * The strip changed one key of the applied question (plan §2.3): the data
@@ -790,7 +802,7 @@ export default function AskPanel({
     event.preventDefault();
     openEvidence(spec, scope, "selecția aleasă");
   };
-  const data = resp?.data,
+  const data = answered,
     count = data ? sourceCount(data, applied) : null;
   const watchedGroup = data?.block === "trend" && applied ? trendWatch(data, applied) : null;
   const isProfile = !!applied && isHistoricalProfile(applied);
@@ -1062,10 +1074,10 @@ export default function AskPanel({
               <div className="qb cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (() => {
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
-                  // F4: the network's and the flow's from their own `streams` (the selection on every channel).
-                  const shares = data.block === "breakdown" ? channelShares(data, applied.measure === "count")
-                    : data.block === "network" ? channelShares(data, false)
-                      : data.block === "sankey" ? (() => { const streams = data.streams ?? flowStreams(applied); return streams ? channelShares({ streams }, false) : null; })() : null;
+                  // F4: the network's and the flow's from their own `streams` (the selection on every channel); on one channel,
+                  // those of the same question on every channel this page answered (streamsMemo).
+                  const streams = data.block === "breakdown" || data.block === "network" || data.block === "sankey" ? data.streams ?? keptStreams(data.block, applied) : undefined;
+                  const shares = streams ? channelShares({ streams }, data.block === "breakdown" && applied.measure === "count") : null;
                   const control = <Segmented
                     label="Ce fel de achiziții"
                     value={streamShown ?? applied.dataset ?? "all"}
@@ -1264,6 +1276,7 @@ export default function AskPanel({
               )}
               {data.block === "network" && (
                 <NetworkAnswer data={data} spec={applied} conditions={totalWords}
+                  {...(data.relation === "pending" ? { relation: networkWhole.status === "none" ? "failed" as const : "loading" as const } : {})}
                   onList={(list) => applyNetwork({ list })} onOrder={(order) => applyNetwork({ order })} onSince={applyNetworkSince} />
               )}
               {data.block === "entity_card" && (

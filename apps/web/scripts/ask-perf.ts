@@ -271,11 +271,13 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       const { barFacts, forgetAnswerFacts, mixFacts } = await import("../lib/ask/answer-facts");
       // F4: a comparison's pair and the suggestions of "Cu cine comparăm?".
       const { comparePeers, forgetCompareFacets, pairFacts } = await import("../lib/ask/compare-engine");
-      if (c.facet.part !== "locate") { forgetFacets(); forgetAnswerFacts(); forgetCompareFacets(); }
+      // S4 review: a bounded network's whole relation, asked after its answer.
+      const { forgetNetworkFacts, networkFacts } = await import("../lib/ask/network-facts");
+      if (c.facet.part !== "locate") { forgetFacets(); forgetAnswerFacts(); forgetCompareFacets(); forgetNetworkFacts(); }
       const part = c.facet.part;
       const result = part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : part === "mix" ? await mixFacts(sql, c.spec)
         : part === "bars" ? await barFacts(sql, c.spec) : part === "pair" ? await pairFacts(sql, c.spec)
-          : part === "compare-peers" ? await comparePeers(sql, c.spec) : await facetCounts(sql, c.spec, part);
+          : part === "compare-peers" ? await comparePeers(sql, c.spec) : part === "network" ? await networkFacts(sql, c.spec) : await facetCounts(sql, c.spec, part);
       const ms = round(performance.now() - started);
       if ("timeout" in result) return { ms, groundMs: 0, error: "timeout (8 s)" };
       if ("error" in result) return { ms, groundMs: 0, error: result.error };
@@ -284,7 +286,8 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       const { tookMs: _took, ...answer } = result;
       const rows = "matches" in answer ? answer.matches.length : "options" in answer ? answer.options.length
         : "procedure" in answer ? answer.kind.length + answer.procedure.length + answer.size.length
-          : "years" in answer ? answer.years.length + answer.domains.length : "peers" in answer ? answer.peers.length : Object.keys(answer.max ?? {}).length;
+          : "years" in answer ? answer.years.length + answer.domains.length : "peers" in answer ? answer.peers.length
+            : "data" in answer ? Object.keys(answer.data.partners).length : Object.keys(answer.max ?? {}).length;
       return { ms, groundMs: 0, rows, hash: fingerprint(answer) };
     }
     const grounding = await ground(sql, c.spec.filters, c.spec.population);

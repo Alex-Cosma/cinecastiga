@@ -8276,7 +8276,8 @@
        "name": "Mașini, echipamente și consumabile de birou și de calcul",
        "value": 950.4,
        "count": 1,
-       "partners": 1
+       "partners": 1,
+       "single": "da"
       }
      ],
      "totals": {
@@ -27732,17 +27733,7 @@
        "max": 87000,
        "maxSrc": "contracts"
       }
-     ],
-     "streams": {
-      "da": {
-       "value": 190568.94,
-       "count": 27
-      },
-      "contracts": {
-       "value": 558000.02,
-       "count": 5
-      }
-     }
+     ]
     },
     "displaySql": "select categoria_cpv, sum(closing_value), count(*)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and an >= 2025\n  and an <= 2025\ngroup by categoria_cpv\norder by 2 desc;",
     "variants": {
@@ -39667,31 +39658,12 @@
        ]
       },
       "new": {
-       "partners": 3,
-       "value": 363850.75,
-       "count": 5,
-       "oneOff": 2,
+       "partners": 0,
+       "value": 0,
+       "count": 0,
+       "oneOff": 0,
        "joint": 0,
-       "rows": [
-        {
-         "entityId": "9100000101",
-         "value": 360800.35,
-         "count": 3,
-         "joint": 0
-        },
-        {
-         "entityId": "9100000106",
-         "value": 2100,
-         "count": 1,
-         "joint": 0
-        },
-        {
-         "entityId": "9100000105",
-         "value": 950.4,
-         "count": 1,
-         "joint": 0
-        }
-       ]
+       "rows": []
       },
       "continuing": {
        "partners": 0,
@@ -39702,19 +39674,12 @@
        "rows": []
       },
       "gone": {
-       "partners": 1,
-       "value": 45100,
-       "count": 2,
+       "partners": 0,
+       "value": 0,
+       "count": 0,
        "oneOff": 0,
        "joint": 0,
-       "rows": [
-        {
-         "entityId": "9100000103",
-         "value": 45100,
-         "count": 2,
-         "joint": 0
-        }
-       ]
+       "rows": []
       }
      },
      "partners": {
@@ -39723,20 +39688,9 @@
        "name": "Fixture Construct SRL",
        "county": "Cluj",
        "employees": 3,
-       "first": 2025,
-       "last": 2025,
-       "years": [2025],
-       "signals": [],
-       "firmShare": 0.6998077082347774
-      },
-      "9100000103": {
-       "entityId": "9100000103",
-       "name": "Fixture Servicii SA",
-       "county": "Alba",
-       "employees": 300,
-       "first": 2024,
-       "last": 2024,
-       "years": [2024],
+       "first": 0,
+       "last": 0,
+       "years": [],
        "signals": [],
        "firmShare": null
       },
@@ -39745,35 +39699,15 @@
        "name": "Fixture Mic SRL",
        "county": "Cluj",
        "employees": 0,
-       "first": 2025,
-       "last": 2025,
-       "years": [2025],
-       "signals": [],
-       "firmShare": null
-      },
-      "9100000106": {
-       "entityId": "9100000106",
-       "name": "Fixture Partener SRL",
-       "county": "Cluj",
-       "employees": 12,
-       "first": 2026,
-       "last": 2026,
-       "years": [2026],
+       "first": 0,
+       "last": 0,
+       "years": [],
        "signals": [],
        "firmShare": null
       }
      },
-     "lastNew": 2026,
-     "streams": {
-      "da": {
-       "value": 21750.75,
-       "count": 3
-      },
-      "contracts": {
-       "value": 340000,
-       "count": 1
-      }
-     }
+     "lastNew": null,
+     "relation": "pending"
     },
     "displaySql": "select partener, sum(closing_value), count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\n  and an >= 2025\n  and an <= 2025\ngroup by partener\norder by 2 desc;"
    },
@@ -40359,19 +40293,12 @@
        "rows": []
       },
       "continuing": {
-       "partners": 1,
-       "value": 3325000.5,
-       "count": 2,
+       "partners": 0,
+       "value": 0,
+       "count": 0,
        "oneOff": 0,
        "joint": 0,
-       "rows": [
-        {
-         "entityId": "9100000102",
-         "value": 3325000.5,
-         "count": 2,
-         "joint": 0
-        }
-       ]
+       "rows": []
       },
       "gone": {
        "partners": 0,
@@ -40388,24 +40315,15 @@
        "name": "Fixture Medical SRL",
        "county": "Buzau",
        "employees": 40,
-       "first": 2024,
-       "last": 2026,
-       "years": [2024,2025,2026],
+       "first": 0,
+       "last": 0,
+       "years": [],
        "signals": [],
-       "firmShare": 0.9903697657079946
+       "firmShare": null
       }
      },
-     "lastNew": 2024,
-     "streams": {
-      "da": {
-       "value": 96601.85,
-       "count": 5
-      },
-      "contracts": {
-       "value": 3325000.5,
-       "count": 2
-      }
-     }
+     "lastNew": null,
+     "relation": "pending"
     },
     "displaySql": "select partener, sum(closing_value), count(*)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000003\ngroup by partener\norder by 2 desc;"
    },
@@ -42339,7 +42257,8 @@
        "name": "Mașini, echipamente și consumabile de birou și de calcul",
        "value": 950.4,
        "count": 1,
-       "partners": 1
+       "partners": 1,
+       "single": "da"
       }
      ],
      "totals": {
@@ -43068,7 +42987,8 @@
        "name": "Mașini, echipamente și consumabile de birou și de calcul",
        "value": 950.4,
        "count": 1,
-       "partners": 1
+       "partners": 1,
+       "single": "da"
       }
      ],
      "totals": {
@@ -43254,7 +43174,8 @@
        "name": "Mașini, echipamente și consumabile de birou și de calcul",
        "value": 950.4,
        "count": 1,
-       "partners": 1
+       "partners": 1,
+       "single": "da"
       }
      ],
      "totals": {
@@ -43462,7 +43383,8 @@
        "name": "Mașini, echipamente și consumabile de birou și de calcul",
        "value": 950.4,
        "count": 1,
-       "partners": 1
+       "partners": 1,
+       "single": "da"
       }
      ],
      "totals": {

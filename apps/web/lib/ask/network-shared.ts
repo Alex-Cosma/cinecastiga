@@ -142,6 +142,12 @@ export interface NetworkData {
   lastNew: number | null;
   /** Each channel in the same selection on every channel (the strip's shares); absent with a procedure or a single bidder. */
   streams?: Record<"da" | "contracts", { value: number; count: number }>;
+  /**
+   * „Toți” on one channel or in a period (relations.ts boundedNetwork, S4 review): its rows and totals are the
+   * answer's, the other lists empty, the partners without the relation's years, signals and the firm's share, no
+   * streams; the screen asks the whole answer of part=network once this one is drawn. Absent: the whole answer.
+   */
+  relation?: "pending";
 }
 
 /** The official signals that can sit on a relation (final §3.4): the pair's, and the dependence of a firm on the institution. */

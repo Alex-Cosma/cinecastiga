@@ -2,24 +2,26 @@
 
 import { useEffect, useState } from "react";
 import type { BarsResult, MixResult } from "../../../lib/ask/facet-parts";
+import type { NetworkFacts } from "../../../lib/ask/network-facts";
 import { questionKey, type QuestionSpec } from "../../../lib/ask/question-ui";
 import type { AskSpec } from "../../../lib/ask/spec";
 
 /*
  * A fact of the answer on screen (F3): stat's „Din care” (part `mix`) and an
- * evolution's bar facts (`bars`), asked of POST /api/ask/facets once the
- * answer is drawn, so they never delay it. The request is aborted when the
+ * evolution's bar facts (`bars`); a bounded network's whole relation
+ * (`network`, S4 review), asked of POST /api/ask/facets once the answer is
+ * drawn, so they never delay it. The request is aborted when the
  * applied question changes or the answer leaves; a fact read is kept in the
  * page for five minutes. A limit passed, a selection the marts stage will
  * precompute or an error: `none` (the screen says what it can without it).
  */
 
 export type AnswerFact<T> = { status: "loading" } | { status: "ready"; value: T } | { status: "none"; precompute?: boolean };
-type Part = "mix" | "bars";
-type Value<P extends Part> = P extends "mix" ? MixResult : BarsResult;
+type Part = "mix" | "bars" | "network";
+type Value<P extends Part> = P extends "mix" ? MixResult : P extends "bars" ? BarsResult : NetworkFacts;
 
 const KEPT_MS = 300_000;
-const kept = new Map<string, { value: MixResult | BarsResult; at: number }>();
+const kept = new Map<string, { value: MixResult | BarsResult | NetworkFacts; at: number }>();
 /** Tests: forget the facts kept in the page. */
 export function forgetPageAnswerFacts(): void { kept.clear(); }
 

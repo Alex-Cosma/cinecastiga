@@ -5,6 +5,7 @@ import { localityScopeError } from "@/lib/ask/question-ui";
 import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, type FacetFailure } from "@/lib/ask/facets";
 import { barFacts, mixFacts } from "@/lib/ask/answer-facts";
 import { comparePeers, pairFacts } from "@/lib/ask/compare-engine";
+import { networkFacts, type NetworkFacts } from "@/lib/ask/network-facts";
 import type { ComparePeersResult, PairResult } from "@/lib/ask/compare-shared";
 import type { BarsResult, FacetCounts, LocateResult, MixResult } from "@/lib/ask/facet-parts";
 import { devlog } from "@/lib/devlog";
@@ -19,6 +20,7 @@ import { devlog } from "@/lib/devlog";
  *   { spec, part: "pair" } → a comparison's pair for its windows (lib/ask/compare-engine.ts): { ok, part, years, domains, general, kinds, counties, … }
  *   { spec, part: "compare-peers" } → the suggestions of "Cu cine comparăm?": { ok, part, label, tip, peers, … };
  *     the second entity is not chosen yet, so only the shape of the spec and its first entity are checked.
+ *   { spec, part: "network" } → a network's whole relation where its answer was bounded (lib/ask/network-facts.ts): { ok, part, data, … }
  *   over the 8 s limit  → { ok: false, timeout: true }: the window shows its options without numbers.
  * POST, not GET: a precise selection reaches 64 KB, and a person's key (name,
  * birth date and place) stays out of the access logs. Its own pool of
@@ -49,13 +51,14 @@ export async function POST(req: Request) {
   if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const signal = req.signal;
   try {
-    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PairResult | ComparePeersResult | FacetFailure>(signal, () => asked.part === "locate"
+    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PairResult | ComparePeersResult | NetworkFacts | FacetFailure>(signal, () => asked.part === "locate"
       ? locate(db(), v, asked.q!, { signal })
       : asked.part === "mix" ? mixFacts(db(), v, { signal })
         : asked.part === "bars" ? barFacts(db(), v, { signal })
           : asked.part === "pair" ? pairFacts(db(), v, { signal })
             : asked.part === "compare-peers" ? comparePeers(db(), v, { signal })
-              : facetCounts(db(), v, asked.part, { signal }));
+              : asked.part === "network" ? networkFacts(db(), v)
+                : facetCounts(db(), v, asked.part, { signal }));
     if ("timeout" in result) return NextResponse.json({ ok: false, timeout: true }, { headers: { "cache-control": "no-store" } });
     // A count that waits on the marts stage (PRECOMPUTE.md): the options without numbers, as past the limit.
     if ("precompute" in result) return NextResponse.json({ ok: false, timeout: true, precompute: result.precompute }, { headers: { "cache-control": "no-store" } });

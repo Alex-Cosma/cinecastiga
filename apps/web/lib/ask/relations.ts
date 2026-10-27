@@ -202,8 +202,10 @@ function listOf(listed: Listed[]): NetworkListData {
  * year in the selection and the channels' shares. `signals`: only the partners
  * with an official signal on the relation (a selection: they leave every list
  * and every total). Null when no partner has a record in the selection.
+ * `bounded`: „Toți” from the records the question bounds (boundedNetwork).
  */
-export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number; complete: number; signals: boolean; focalName: string; list: NetworkList }): Promise<NetworkData | null> {
+export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number; complete: number; signals: boolean; focalName: string; list: NetworkList; bounded?: boolean }): Promise<NetworkData | null> {
+  if (q.bounded) return await boundedNetwork(s, q);
   const all = await partnerRows(s, q);
   const rows = q.signals ? all.filter((row) => row.sig.length > 0) : all;
   const lists: Record<NetworkList, Listed[]> = { all: [], new: [], continuing: [], gone: [] };
@@ -234,6 +236,51 @@ export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number
   return {
     block: "network", focal: { entityId: q.focalId, name: q.focalName, role: q.focalRole }, since: q.since, complete: q.complete, list: q.list,
     lists: data, partners, lastNew, ...(q.every ? { streams: streamsOf(rows) } : {}),
+  };
+}
+
+/**
+ * „Toți” on one channel or in a period (S4 review, until the pairs' rollup of
+ * S5, PRECOMPUTE.md): the selection's partners from the records the question
+ * bounds (one channel's branch of the union, the period on the id indexes),
+ * as network-1 read them, with their place and employees: SELGROS on
+ * „Proceduri” 4 ms before network-2, 575 ms reading its whole relation. Its
+ * rows and totals are the whole answer's „Toți” (the same selection); the
+ * groups, the relation's years and signals, the firm's share and the strip's
+ * shares need the whole relation, so the answer says it waits on them
+ * (`relation: "pending"`) and the screen asks part=network once it is drawn
+ * (network-facts.ts), never before the answer.
+ */
+async function boundedNetwork(s: DbSql, q: RelationQuery & { since: number; complete: number; focalName: string }): Promise<NetworkData | null> {
+  const { ctx, dataset, focalRole } = q;
+  const pid = partnerOf(s, focalRole), partnerRole = focalRole === "authority" ? "supplier" : "authority";
+  const per = selectionCond(s, ctx, dataset, { years: true, ...(q.threshold ? { threshold: q.threshold } : {}) });
+  const full = ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null;
+  const rows = (await s`
+    select ${pid}::text pid, coalesce(sum(d.closing_value), 0)::text v, count(*) n,
+           coalesce(sum(d.closing_value) filter (where d.n_winners > 1), 0)::text c
+    from ${relationUnion(s, full)} d
+    where ${per} and ${pid} is not null
+    group by 1
+  `) as unknown as { pid: string; v: string; n: string; c: string }[];
+  if (!rows.length) return null;
+  // The order by years waits on the relation's years: until then it is the order by value (byValue breaks the ties).
+  const all = listOf(rows.map((row) => ({ id: row.pid, v: row.v, n: Number(row.n), c: row.c, years: 0 })));
+  const held = all.rows.map((row) => row.entityId);
+  const profiles = (await s`
+    select ep.entity_id::text pid, ep.name_display nm, ${ownCountySql(s, partnerRole, ctx.seatColumn)} co, ep.employees emp
+    from marts.entity_profile ep where ep.entity_id = any(${s.array(held)}::bigint[]) and ep.role = ${partnerRole}
+  `) as unknown as { pid: string; nm: string | null; co: string | null; emp: number | null }[];
+  const byId = new Map(profiles.map((row) => [row.pid, row]));
+  const partners: Record<string, NetworkPartner> = {};
+  for (const id of held) {
+    const p = byId.get(id);
+    partners[id] = { entityId: id, name: p?.nm ?? "?", county: p?.co ?? null, employees: p?.emp ?? null, first: 0, last: 0, years: [], signals: [], firmShare: null };
+  }
+  const none: NetworkListData = { partners: 0, value: 0, count: 0, oneOff: 0, joint: 0, rows: [] };
+  return {
+    block: "network", focal: { entityId: q.focalId, name: q.focalName, role: focalRole }, since: q.since, complete: q.complete, list: "all",
+    lists: { all, new: none, continuing: none, gone: none }, partners, lastNew: null, relation: "pending",
   };
 }
 

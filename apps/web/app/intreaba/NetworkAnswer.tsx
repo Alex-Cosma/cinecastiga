@@ -17,8 +17,8 @@ import TotalLine from "./answer/TotalLine";
 import { focusFirstNew } from "./answer/ListFoot";
 import { entityRowActions } from "./answer/row-actions";
 import {
-  JOINT_TIP, ONE_OFF_TIP, ORDER_OPTIONS, bandLast, chartRows, networkButtons, networkEmpty, networkPage, networkRowView, networkSummary, partnerNoun, shownList, sinceTip,
-  type NetworkRowView,
+  JOINT_TIP, ONE_OFF_TIP, ORDER_OPTIONS, bandLast, chartRows, networkButtons, networkEmpty, networkPage, networkRowView, networkSummary, partnerNoun, relationWaits, shownList, sinceTip,
+  type NetworkRelation, type NetworkRowView,
 } from "./network-answer";
 import "./relations.css";
 
@@ -30,7 +30,10 @@ import "./relations.css";
  * facts, share and band of years, „Arată încă 15” with the rest of the list,
  * and a group's empty state. The groups and the orders switch on the answer
  * already fetched (onList, onOrder: AskPanel writes the applied question with
- * no request); the reference year is a new query (onSince).
+ * no request); the reference year is a new query (onSince). A bounded answer
+ * („Toți” on one channel or in a period, S4 review) waits on its whole relation
+ * (`relation`): the groups and the order by years are disabled, the rows have
+ * no band, until AskPanel gives the whole answer in its place.
  */
 
 export interface NetworkAnswerProps {
@@ -41,9 +44,11 @@ export interface NetworkAnswerProps {
   onList?: (list: NetworkList) => void;
   onOrder?: (order: NetworkOrder) => void;
   onSince?: (year: number) => void;
+  /** A bounded answer's whole relation, still asked or not read (part=network). */
+  relation?: NetworkRelation;
 }
 
-export default function NetworkAnswer({ data, spec, conditions = [], onList, onOrder, onSince }: NetworkAnswerProps) {
+export default function NetworkAnswer({ data, spec, conditions = [], onList, onOrder, onSince, relation }: NetworkAnswerProps) {
   const evidence = useAnswerEvidence();
   const list = shownList(spec);
   const own = data.lists[list];
@@ -74,7 +79,7 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
           onChange={(value) => { if (Number(value) !== data.since) onSince?.(Number(value)); }} />
         <HelpTip tip={sinceTip(data)} />
       </div>
-      <CountGroups label="Ce parteneri" groups={networkButtons(data)} value={list} onChange={(value) => { if (value !== list) onList?.(value as NetworkList); }} />
+      <CountGroups label="Ce parteneri" groups={networkButtons(data, relation)} value={list} onChange={(value) => { if (value !== list) onList?.(value as NetworkList); }} />
     </div>
     {!empty && <div className="qb-net-head">
       <p className="qb-net-summary qb-tipwrap">
@@ -85,7 +90,8 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
       </p>
       <span className="qb-row qb-net-order">
         <span className="qb-strip-label">Ordonează</span>
-        <Segmented label="Ordonează" size="sm" value={networkOrder(spec)} options={ORDER_OPTIONS} onChange={(value) => { if (value !== networkOrder(spec)) onOrder?.(value as NetworkOrder); }} />
+        <Segmented label="Ordonează" size="sm" value={networkOrder(spec)}
+          options={relation ? ORDER_OPTIONS.map((option) => option.value === "years" ? { ...option, disabled: relationWaits(relation) } : option) : ORDER_OPTIONS} onChange={(value) => { if (value !== networkOrder(spec)) onOrder?.(value as NetworkOrder); }} />
       </span>
     </div>}
     {empty ? <EmptyState message={empty} titleId="raspuns-titlu" relax={list !== "all" && data.lists.all.partners > 0
@@ -127,12 +133,12 @@ function NetworkRowItem({ view, actions, onRecords }: { view: NetworkRowView; ac
       <span className="qb-num">{view.value}</span>
       <small>{view.share}</small>
     </div>
-    <div className="qb-nrow-years">
+    {view.band.length > 0 && <div className="qb-nrow-years">
       <span className="qb-years-band" role="img" aria-label={view.bandLabel}>
         {view.band.map((cell) => <i key={cell.year} className={`qb-yc${cell.on ? " is-on" : ""}${cell.partial ? " is-partial" : ""}${cell.gap ? " is-gap" : ""}`} title={cell.label} />)}
       </span>
       <small>{view.yearsText}</small>
-    </div>
+    </div>}
     {onRecords && <button type="button" className="qb-rec qb-nrow-rec" aria-label={`${view.records}: ${view.name}`} onClick={onRecords}>
       {view.records}<span className="qb-glyph" aria-hidden="true">→</span>
     </button>}
