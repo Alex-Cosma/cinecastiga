@@ -142,7 +142,7 @@ node --test infra/prod/deploy.test.mjs infra/prod/process-nightly.test.mjs
 pnpm turbo typecheck lint test build
 ```
 
-Pentru teste PostgreSQL, citește testul înainte. Folosește o bază izolată `seap_test_*` și variabila cerută de acel test (`TEST_DATABASE_URL` sau altă configurație explicită). Multe integrări sunt sărite fără DB de test: „unit passed” nu înseamnă că integrările au rulat. Nu rula seed-uri/truncate-uri de fixtures pe `seap`, `seap_collab` cu lucru personal sau producție.
+Pentru teste PostgreSQL, citește testul înainte. Folosește o bază izolată `seap_test_*` și variabila cerută de acel test (`TEST_DATABASE_URL` sau altă configurație explicită). Unele integrări din ingestie deschid `createDb()` fără URL (de exemplu `marts.integration.test.ts`, `coverage.integration.test.ts`, `contract-reporting.integration.test.ts`): citesc `DATABASE_URL`, iar fără ea baza locală `seap`, unde își fac fixture-ul (DDL într-o tranzacție anulată). Când rulezi integrările pe o copie, pune și `DATABASE_URL` pe aceeași bază `seap_test_*`. Multe integrări sunt sărite fără DB de test: „unit passed” nu înseamnă că integrările au rulat. Nu rula seed-uri/truncate-uri de fixtures pe `seap`, `seap_collab` cu lucru personal sau producție.
 
 Fixture-urile motorului „Întreabă” (`lib/ask/test-fixture.ts`, și `rollups.integration.test.ts` din 25 octombrie) citesc și tabelele din afara `marts` (`core.entities`, `core.cpv_codes`, `reference.*`, lista `ENGINE_GLOBAL_TABLES`) din copii goale, în tranzacția lor anulată. Trec deci la fel pe o copie doar cu schema și pe o bază `seap_test_*` în care alt test a lăsat date (de exemplu catalogul CPV al fixture-ului „de aur”, care altfel numea feliile defalcării live, nu și pe cele din rollup-uri).
 
