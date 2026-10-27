@@ -103,8 +103,11 @@
 .cmp-seat { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--sunk); }
 .cmp-seat i { display: block; width: var(--w); background-color: var(--cmp-a); }
 .cmp-seat i:nth-child(2) { opacity: 0.45; }
-.cmp-seat i:nth-child(3) { background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--surface) 3px 5px); }
+.cmp-seat i:nth-child(3) { opacity: 0.2; }
+/* R7: hatching is for what is not known (S4 review: it was abroad's, the unknown part an unlabelled gap). */
+.cmp-seat i.cmp-seat-unknown, .cmp-b .cmp-seat i.cmp-seat-unknown { background-color: transparent; background-image: repeating-linear-gradient(135deg, var(--line2) 0 2px, transparent 2px 5px); }
 .cmp-b .cmp-seat i { background-color: var(--cmp-b); }
+.cmp-kv-wide dd.cmp-seat-none { font-size: 13px; color: var(--muted); }
 .cmp-seat-legend { display: flex; flex-wrap: wrap; gap: 2px 14px; margin-top: 6px; font-size: 12px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 button.cmp-year { padding: 0; border: 0; border-radius: 6px; background: none; font: inherit; color: inherit; cursor: pointer; }
 button.cmp-year:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

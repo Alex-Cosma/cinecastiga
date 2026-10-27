@@ -70,6 +70,23 @@ export function seatParts(seats: NonNullable<CompareEntity["seats"]>): { same: n
 }
 
 /**
+ * The card's row "Sediul furnizorilor" (S4 review): the four parts and their words, the unknown seat its own
+ * (hatched, R7), said only when there is some; without the institution's county no class can be said, so one line
+ * says that instead of „0% în același județ”. Null without the seats (a firm, an answer saved before F4).
+ */
+export function seatRow(e: Pick<CompareEntity, "county" | "seats">):
+  { parts: { same: number; other: number; abroad: number; unknown: number }; words: string[] } | { none: string } | null {
+  const parts = e.seats ? seatParts(e.seats) : null;
+  if (!parts) return null;
+  if (!e.county) return { none: "Județul instituției nu e cunoscut." };
+  return {
+    parts,
+    words: [`în același județ ${percent(parts.same)}`, `în alt județ ${percent(parts.other)}`, `în străinătate ${percent(parts.abroad)}`,
+      ...(parts.unknown > 0 ? [`sediu necunoscut ${percent(parts.unknown)}`] : [])],
+  };
+}
+
+/**
  * "Pe locuitor" only between two administrations of one level (final §4.3):
  * two town halls (a București sector's too) or two county councils. An answer
  * saved before F4 has no level: both populations, as before.

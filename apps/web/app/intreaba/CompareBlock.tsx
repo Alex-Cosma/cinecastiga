@@ -11,7 +11,7 @@ import { cleanName, formatInt, formatRon } from "@/lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import { useTip } from "./blocks";
 import {
-  cardSpan, consortiumWords, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatParts, sharedSubtitle, yearColumns, yearReadout, type YearColumn,
+  cardSpan, consortiumWords, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatRow, sharedSubtitle, yearColumns, yearReadout, type YearColumn,
 } from "./compare-answer";
 import "./compare.css";
 
@@ -104,7 +104,7 @@ function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: 
   const span = cardSpan(e);
   const subtitle = sharedSubtitle(e);
   const consortium = consortiumWords(e), joint = jointRow(e), general = generalRow(e), whole = partnersOfWhole(e);
-  const seats = e.seats ? seatParts(e.seats) : null;
+  const seats = seatRow(e);
   const empty = e.count === 0;
   return (
     <article className={`cmp-card cmp-${side}${empty ? " cmp-card-empty" : ""}`}>
@@ -154,18 +154,16 @@ function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: 
         {seats && (
           <div className="cmp-kv-wide">
             <dt>Sediul furnizorilor <Term id="sediu-furnizori" tip /></dt>
-            <dd>
+            {/* Against the institution's county: without it, no class can be said (S4 review: „0%” read as none local). */}
+            {"none" in seats ? <dd className="cmp-seat-none">{seats.none}</dd> : <dd>
               <span className="cmp-seat" aria-hidden="true">
-                <i style={{ "--w": `${seats.same * 100}%` } as CSSProperties} />
-                <i style={{ "--w": `${seats.other * 100}%` } as CSSProperties} />
-                <i style={{ "--w": `${seats.abroad * 100}%` } as CSSProperties} />
+                <i style={{ "--w": `${seats.parts.same * 100}%` } as CSSProperties} />
+                <i style={{ "--w": `${seats.parts.other * 100}%` } as CSSProperties} />
+                <i style={{ "--w": `${seats.parts.abroad * 100}%` } as CSSProperties} />
+                <i className="cmp-seat-unknown" style={{ "--w": `${seats.parts.unknown * 100}%` } as CSSProperties} />
               </span>
-              <span className="cmp-seat-legend">
-                <span>în același județ {percent(seats.same)}</span>
-                <span>în alt județ {percent(seats.other)}</span>
-                <span>în străinătate {percent(seats.abroad)}</span>
-              </span>
-            </dd>
+              <span className="cmp-seat-legend">{seats.words.map((words) => <span key={words}>{words}</span>)}</span>
+            </dd>}
           </div>
         )}
         {e.firm && (
