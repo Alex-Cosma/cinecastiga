@@ -25,9 +25,10 @@ import { useAnswerFact } from "./use-answer-fact";
 export type MixTab = "kind" | "procedure" | "size" | "offers";
 const TABS: Record<MixTab, string> = { kind: "Tip", procedure: "Procedură", size: "Mărime", offers: "Concurență" };
 const TIPS: Record<MixTab, KitTip> = {
-  kind: { title: "Tipul", text: "Tipul vine din codul CPV: 45 lucrări, 50–98 servicii, restul produse." },
-  procedure: { title: "Procedura", text: "Procedura declarată în SEAP. Negocierea fără publicare e permisă în cazuri anume: o pistă, nu o abatere." },
-  size: { title: "Mărimea achiziției", text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Plajele nu sunt praguri legale." },
+  // The glossary's (plan §8): one text with the windows' and the breakdown's (?).
+  kind: { id: "tip-achizitie" },
+  procedure: { id: "procedura" },
+  size: { id: "marimea-achizitiei" },
   offers: { title: "Numărul de oferte", text: "Doar pentru contractele găsite și în TED; achizițiile directe nu au ofertanți. „Nu știm” nu înseamnă fără concurență." },
 };
 const OFFER_LABELS: Record<string, string> = { one: "O singură ofertă", several: "Mai multe oferte", unknown: "Nu știm" };

@@ -201,10 +201,11 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
   if (win.slot.id === "trendMonths")
     return { title: "Aceleași luni", text: "Ambii ani se compară pe aceleași luni, ca diferența să nu vină din lunile lipsă." };
   // F3 (stat final §3.1, §3.3, §3.6): what the kind, the procedure and the size are made of.
-  if (win.slot.id === "purchaseValue")
-    return { title: "Mărimea achiziției", text: "Valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător. Limita de jos intră în plajă, cea de sus nu. Plajele nu sunt praguri legale." };
-  if (windowOf(win.slot).includes("purchaseKind")) return { title: "Tipul", text: "Tipul vine din codul CPV." };
-  if (win.slot.id === "dataset" && windowOf(win.slot).includes("procedure")) return { title: PROCEDURE_GROUP, text: "Procedura declarată în SEAP, doar la contractele din proceduri." };
+  // The glossary's texts (plan §8), the same in „Din care” and the breakdown.
+  if (win.slot.id === "purchaseValue") return { id: "marimea-achizitiei" };
+  if (windowOf(win.slot).includes("purchaseKind")) return { id: "tip-achizitie" };
+  if (win.slot.id === "dataset" && windowOf(win.slot).includes("procedure")) return { id: "procedura" };
+  if (windowKind(win) === "employees") return { id: "angajati-benzi" };
   // F4: where the seat comes from (owner-seat-switch), one text with the column's (?) and /harta's.
   if (windowKind(win) === "seat") return { id: "sediul-firmei" };
   // F4, the network: the groups are of the whole relation; the year cannot be one the archive has not completed.
