@@ -39,7 +39,7 @@ import { useComparePeers, usePairFacts } from "./use-pair";
 import {
   comparePeriodPresets, comparePeriodTip, generalCodesNote, kindLabel, pairCountyOptions, pairDomainGroup, pairDomainOptions, pairNames, pairRest, peerResults, withPairShares,
 } from "./compare-windows";
-import { FACET_REST, type FacetView } from "../../../lib/ask/facet-parts";
+import { FACET_REST, relativeSeat, SEAT_UNCOMPARED, SEAT_UNCOMPARED_TIP, type FacetView } from "../../../lib/ask/facet-parts";
 import type { PeriodChoice } from "@/lib/ask/filters/defs/selection";
 
 /*
@@ -305,13 +305,16 @@ function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draf
  * each record; "În străinătate" where the question runs on the records; then
  * a county of the seat, searched (seatCounty), the buyers' county first. The
  * counts (R5): on a ranking the firms of each class and their records' value,
- * elsewhere each county's firms (or profiles); the rest is "Sediu necunoscut".
+ * elsewhere each county's firms (or profiles); the rest is "Sediu necunoscut",
+ * against the buyer's county "Nu se poate compara" (either side unknown). The
+ * classes overlap (a firm sells in its county and elsewhere): "Oriunde" counts
+ * the draft's firms once.
  */
 function SeatWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
   const { options, value } = seatOptions(win, draft, ctx);
   const relative = options.some((option) => option.value === "same" || option.value === "other");
   const counts = useFacet(draft, "seat");
-  const rest = countedRest([{ label: UNKNOWN_SEAT }], counts);
+  const rest = countedRest([relativeSeat(draft) ? { label: SEAT_UNCOMPARED, tip: SEAT_UNCOMPARED_TIP } : { label: UNKNOWN_SEAT }], counts);
   const counted = countedOptions(options, counts, (option) => option.value === "none" ? undefined : option.value, { checked: value });
   return <>
     <ChoiceList label={win.name} options={counted} value={value} current={seatCurrentRow(draft)} {...(rest ? { rest } : {})}

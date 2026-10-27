@@ -112,12 +112,14 @@ describe("the window „Unde au sediul firmele?” (kit §4, §6 table 1 and ent
 });
 
 describe("the seat's counts (part `seat`, kit R5)", () => {
-  it("counts on a ranking the classes of the records, the rest unknown", () => {
+  it("counts on a ranking the classes of the records, the rest not comparable, and the draft's firms once", () => {
     const counts = assembleCounts("seat", "firms", [
       { k: "same", v: "60", n: "4", f: false }, { k: "other", v: "30", n: "3", f: false }, { k: "abroad", v: "5", n: "1", f: false }, { k: null, v: "5", n: "2", f: false },
-    ], meta);
+    ], { ...meta, whole: 8, relative: true });
     expect(counts.options.map((o) => [o.value, o.n, o.share])).toEqual([["same", 4, 0.6], ["other", 3, 0.3], [ABROAD, 1, 0.05]]);
-    expect(counts.rest).toMatchObject({ label: "Sediu necunoscut", n: 2, value_ron: 5 });
+    expect(counts.rest).toMatchObject({ label: "Nu se poate compara", n: 2, value_ron: 5 });
+    // Two firms sell in their county and in another: „Oriunde” is 8 firms, not the classes' 10; the value adds up.
+    expect(counts.total).toEqual({ n: 8, value_ron: 100 });
   });
 });
 

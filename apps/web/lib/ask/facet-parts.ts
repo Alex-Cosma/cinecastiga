@@ -129,6 +129,23 @@ export const FACET_REST: Partial<Record<CountPart, string>> = {
   domain: "Fără cod CPV",
   years: "Fără dată",
 };
+/**
+ * The seat window of a ranking of firms (plan §4.2, F4) offers the seat
+ * against the buyer's county of each record (firmSeat): its options are the
+ * classes of the records, not the firms' counties; so do the network and the
+ * flow around an institution (F4, their row FURNIZORII: the firms against
+ * that institution's county). Elsewhere ("Cine conduce?" by value, the
+ * profiles) the seat is the firm's own county (seatCounty).
+ */
+export const relativeSeat = (spec: { block: string; dim?: string | undefined }): boolean =>
+  spec.block === "table" && spec.dim === "supplier" || (spec.block === "network" || spec.block === "sankey") && spec.dim === "authority";
+/**
+ * The rest of the seat against the buyer's county (a ranking of firms, the network and flow around an institution):
+ * the records whose firm's seat or buyer's county is unknown, most often the buyer's (S4 review, local 2025: 7,522
+ * firms with a known seat against 2,872 without one). Neither side is named: the record cannot be compared.
+ */
+export const SEAT_UNCOMPARED = "Nu se poate compara";
+export const SEAT_UNCOMPARED_TIP = { title: SEAT_UNCOMPARED, text: "Nu știm sediul firmei sau județul instituției care a cumpărat." } as const;
 
 /** The option of the seat window for a firm with a foreign seat (kit §4 Sediul firmei: „În străinătate”). */
 export const ABROAD = "abroad";

@@ -252,6 +252,12 @@ describe.runIf(Boolean(connection))("the windows' counts (dedicated rollback fix
         await expectAnswers(q, c, got);
         expect(got.rest).toMatchObject(c.part === "kind" ? { label: "Alte instituții", n: 1 } : { label: "Fără bilanț", n: 2 });
       }
+      // The seat classes of a ranking of firms overlap (firm 12 sells in Iași, its seat, and in Cluj; 14 in Iași and
+      // where the buyer has no county): „Oriunde” is the firms the answer ranks, each once, not the classes' sum.
+      const seats = counts(await facetCounts(q, table("supplier", Y), "seat"));
+      expect(seats.options.reduce((n, o) => n + o.n, seats.rest?.n ?? 0)).toBeGreaterThan(seats.total.n);
+      expect([seats.total.n, cents(seats.total.value_ron)]).toEqual(Object.values(await answer(q, table("supplier", Y))));
+      expect(seats.rest).toMatchObject({ label: "Nu se poate compara", n: 3 });
       // A kind of purchase per institution stays live (the rollups keep no code per entity): it waits on the marts stage.
       expect(await facetCounts(q, stat({ ...Y, purchaseKind: "lucrari" }), "kind")).toEqual({ precompute: ENTITY_LIVE });
     }, { globals: [...ENGINE_GLOBAL_TABLES, "app.monitoring_refreshes"] });

@@ -247,7 +247,7 @@ export function seatOf(sql: DbSql, filled: boolean, alias = "ep"): { county: Fra
  * §2.5): `same` and `other` need a Romanian firm with a known seat and a buyer
  * with a known county; `abroad` is the firm's own attribute (a semi-join, as
  * the employees). The rest (a seat or a buyer county nobody knows, a record
- * without firm) is in no option: the window's "Sediu necunoscut". `row` names
+ * without firm) is in no option: the window's "Nu se poate compara". `row` names
  * the firm and buyer county columns: the record's, or a rollup's.
  */
 export function firmSeatCond(sql: DbSql, seat: FirmSeat, filled: boolean,
