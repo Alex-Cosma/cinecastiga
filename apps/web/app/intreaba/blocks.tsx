@@ -13,10 +13,10 @@ import type { QuestionSpec } from "@/lib/ask/question-ui";
 import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
 import { deeperThread, threadHref, type Thread } from "./answer-state";
 import KitLink, { recordsWords } from "./answer/KitLink";
-import { FactTag } from "./answer/RowFacts";
+import { FactTag, type RowFact } from "./answer/RowFacts";
 import RowMenu from "./answer/RowMenu";
 import { entityRowActions } from "./answer/row-actions";
-import { breakdownKinds, breakdownShown, largestTag } from "./breakdown-answer";
+import { breakdownKinds, breakdownShown, generalTag, largestTag } from "./breakdown-answer";
 import HelpTip from "./builder/HelpTip";
 import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
 
@@ -335,7 +335,7 @@ export function BreakdownBlock({
       value: s.value,
       count: s.count,
       color: SEG_COLORS[i % SEG_COLORS.length]!,
-      tag: largestTag(s, shown.total.value),
+      tags: [largestTag(s, shown.total.value), generalTag(s.code, spec.filters.cpvTerm ? String(spec.filters.cpvTerm) : null)].filter((tag): tag is RowFact => tag !== null),
     })),
     ...(amount(shown.rest) > 0
       ? [
@@ -345,7 +345,7 @@ export function BreakdownBlock({
             value: shown.rest.value,
             count: shown.rest.count,
             color: SEG_OTHER,
-            tag: null,
+            tags: [] as RowFact[],
           },
         ]
       : []),
@@ -409,7 +409,7 @@ export function BreakdownBlock({
               ) : (
                 s.name
               )}
-              {s.tag && <FactTag fact={s.tag} />}
+              {s.tags.map((tag) => <FactTag key={tag.text} fact={tag} />)}
             </span>
             <span className="vv num">
               <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)} · {formatShare(amount(s) / measureTotal)}</span>
