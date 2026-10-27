@@ -25,7 +25,7 @@ import { asksSharedPartners, sharedPartnersPrestep } from "./compare-prestep";
 import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
-  compareParties, compareSharedPartners, compareTopPartners, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
+  compareInstitutionParties, compareParties, compareSharedPartners, compareTopPartners, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
   coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
@@ -1691,11 +1691,14 @@ export async function runSpec(
                         c.closing_value, c.finalization_date, c.is_single_bidder, 'contracts'::text src, c.contract_id,
                         c.procedure_type, c.contract_value_full
                  from marts.contract_transactions c)`;
+          // Two institutions: their partners and their suppliers' seat from one grouping (rollups.ts compareInstitutionParties).
+          const seatCols = seatOf(s, seat);
+          const institutions = focalRole === "authority" ? compareInstitutionParties(s, partners, seatCols) : null;
           const [streams, parties, years, domains, top, shared, joint, profiles, risk] = await Promise.all([
             s`select ${party}::text id, ${src} src, sum(d.closing_value)::text value, count(*)::int n, ${singleBid},
                      coalesce(sum(d.closing_value) filter (where d.cpv_code is null), 0)::text no_cpv
               from ${txtAgg} d where ${where} group by 1, 2`,
-            compareParties(s, partners),
+            institutions ? institutions.then((r) => r.parties) : compareParties(s, partners),
             s`select ${party}::text id, substr(d.finalization_date, 1, 4)::int y, sum(d.closing_value)::text value, count(*)::int n
               from ${txtAgg} d where ${where} and d.finalization_date is not null group by 1, 2`,
             s`select id, g, value, groups from (
@@ -1736,22 +1739,14 @@ export async function runSpec(
           const wAbove: PredicateCtx = { ...w, cpvPrefixes: [], cpvExclude: [] };
           const aboveBase = andAll(s, rowPredicates(wAbove));
           const aboveWhere = andAll(s, [aboveBase, ...groupPredicates(wAbove, txtAgg as unknown as ReturnType<DbSql>, aboveBase), s`substr(d.cpv_code, 1, 8) = any(${s.array(above)}::text[])`]);
-          // - An institution's suppliers by their seat against its county (firmSeatCond's classes), and its distinct contracts.
-          const seatCols = seatOf(s, seat);
+          // - An institution's suppliers by their seat against its county (firmSeatCond's classes: with its partners, above),
+          //   and its distinct contracts.
           // - Between firms, with P: each one's value from the contracts both won, per institution.
           const [general, seats, distinct, jointBy] = await Promise.all([
             above.length
               ? s`select ${party}::text id, sum(d.closing_value)::text value from ${txtAgg} d where ${aboveWhere} group by 1`
               : Promise.resolve([]),
-            focalRole === "authority"
-              ? s`select x.id, case when ep.entity_id is null then 'unknown' when ${seatCols.foreign} then 'abroad'
-                                    when ${seatCols.county} is null or x.county is null then 'unknown'
-                                    when ${seatCols.county} = x.county then 'same' else 'other' end cls, sum(x.v)::text value
-                  from (select d.authority_id::text id, d.supplier_id sup, d.county, sum(d.closing_value) v
-                        from ${txtAgg} d where ${where} group by 1, 2, 3) x
-                  left join marts.entity_profile ep on ep.entity_id = x.sup and ep.role = 'supplier'
-                  group by 1, 2`
-              : Promise.resolve([]),
+            institutions ? institutions.then((r) => r.seats) : Promise.resolve([]),
             focalRole === "authority" && contractRows
               ? s`select d.authority_id::text id, count(distinct d.contract_id)::int n from ${contractRows} d where ${where} group by 1`
               : Promise.resolve([]),
