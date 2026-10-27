@@ -16,6 +16,7 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
 import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} from "@/lib/ask/source-csv";
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
+import { listGroupHeader, type DrawerListGroup } from "./drawer-group";
 import { ProfileSourceNote } from "./ProfileNotes";
 
 export interface EvidenceDrawerProps {
@@ -39,6 +40,12 @@ export interface EvidenceDrawerProps {
   onStale?: (() => boolean) | undefined;
   /** The first order, where the part opened asks for it (a bar's largest record, F3): by value, largest first. */
   initialSort?: "value" | undefined;
+  /**
+   * A group of the answer whose records the drawer lists (S4 review; plan §4.2 Surse, §6.3): a ranking's
+   * CÂȘTIGĂTORII band, a network's group or „Cu semnale”. Its members and the selection's value it is part of
+   * come from the answer; the drawer says both figures (listGroupHeader), as a trend's group's.
+   */
+  listGroup?: DrawerListGroup | undefined;
 }
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
@@ -46,7 +53,7 @@ const count = (n: number) => n.toLocaleString("ro-RO");
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
 const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
-export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale, initialSort }: EvidenceDrawerProps) {
+export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale, initialSort, listGroup }: EvidenceDrawerProps) {
   // Saved and followed selections keep both the question and the part opened.
   const title = scopeLabel ? `${questionTitle} · ${scopeLabel}` : questionTitle;
   const dialog = useRef<HTMLDialogElement>(null);
@@ -75,7 +82,9 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   activeQuery.current = queryKey;
   const filtered = !!(search.trim() || state || stream);
   // The drawer of a trend's group names it, with its share of the selection (DrillResult.group).
-  const group = result?.group ? trendGroupHeader(spec, result.group, result.sourceValue) : null;
+  // So do a ranking's band and a network's group, from the answer's figures (listGroup).
+  const group = result?.group ? trendGroupHeader(spec, result.group, result.sourceValue)
+    : result && listGroup ? listGroupHeader(listGroup, result.sourceValue) : null;
   // Following a group's own records fixes all its members, as „Urmărește grupa” does: the same limit, said before the setup page.
   const watchBlocked = drawerWatchBlocked(spec, result?.group);
 
@@ -176,7 +185,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       </div>}
       {result && <>
       <div className="ev-source-summary" aria-live="polite">
-        <div><span>{result?.group ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
+        <div><span>{result?.group || listGroup ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
         <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
         <p>{result?.dateFrom ? `${date(result.dateFrom)} — ${date(result.dateTo)}` : result ? "Nicio dată de finalizare disponibilă în selecție." : "Acoperirea înregistrărilor se afișează după încărcare."}</p>
       </div>

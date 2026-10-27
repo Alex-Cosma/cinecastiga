@@ -8,6 +8,8 @@ import { appliedAfterNetwork, appliedAfterSankeyShown, sankeyDeeperSpec, threadH
 import { networkButtons, networkEmpty, networkPage, networkRowView, orderedRows, rowFacts, yearBand, yearsWords } from "./network-answer";
 import { flowGeometry, partnerDomainsWords, sankeySuggestion, sankeyView, shownOptions } from "./sankey-answer";
 import { patchDraft } from "./builder/view";
+import { answerListGroup, listGroupHeader } from "./drawer-group";
+import type { BlockData } from "../../lib/ask/compile";
 
 /*
  * F4, the relations' answers as words (network-answer.ts, sankey-answer.ts):
@@ -46,6 +48,17 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
       ["gone", "Nu mai apar", "0 · 0 lei", "Toți partenerii au înregistrări și din 2025."],
     ]);
     expect(networkEmpty({ ...NETWORK, lists: { ...NETWORK.lists, new: list([], 0) } }, "new")).toBe("Niciun furnizor nou din 2025. Cel mai recent nou: 2023.");
+  });
+
+  it("heads the records of a group, of „Cu semnale” and of a ranking's band with both figures (S4 review, plan §6.3)", () => {
+    const group = (list?: "new", signals = false) => answerListGroup(NETWORK, { ...spec, network: { ...(list ? { partners: list, since: 2025 } : {}), ...(signals ? { signals } : {}) } });
+    expect(group()).toBeNull();
+    expect(listGroupHeader(group("new")!, "146131789")).toBe("Grupa „Noi din 2025”: 28 de firme · 146,1 mil. lei din 1,6 mld. lei");
+    expect(listGroupHeader(group(undefined, true)!, "900")).toBe("„Cu semnale”: 282 de firme · 900 lei");
+    const ranking = { block: "table", rows: [], totals: { value: 102e9, count: 900_000, entities: 41_000 }, group: { value: 8.1e9, count: 52_000, entities: 412 } } as unknown as BlockData;
+    const firms: AskSpec = { block: "table", dim: "supplier", measure: "value", filters: { minEmployees: 1, maxEmployees: 9 } };
+    expect(listGroupHeader(answerListGroup(ranking, firms)!, "8100000000")).toBe("Înregistrările celor 412 firme din listă · 8,1 mld. lei din 102 mld. lei");
+    expect(answerListGroup(ranking, { ...firms, dim: "authority" })).toBeNull();
   });
 
   it("keeps a bounded answer's groups and bands waiting on its whole relation („Toți” on one channel or in a period)", () => {
