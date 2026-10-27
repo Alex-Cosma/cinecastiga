@@ -19,7 +19,7 @@ import { PROCEDURE_ORDER, PROCEDURE_TYPES, PURCHASE_KIND_ORDER, VALUE_RANGES } f
 import { retiredChoicesText } from "./retired-terms";
 import { questionKey, type QuestionSpec } from "./question-ui";
 import {
-  ABROAD, countyOfFolded, EMPLOYEE_BAND_BOUNDS, FACET_REST, facetSpec, isFacetPart, LOCATE_MATCHES,
+  ABROAD, countyOfFolded, EMPLOYEE_BAND_BOUNDS, FACET_REST, facetSpec, isFacetPart, LOCATE_MATCHES, relativeSeat, SEAT_UNCOMPARED,
   type CountPart, type FacetCount, type FacetCounts, type FacetPart, type FacetUnit, type LocateMatch, type LocateResult,
 } from "./facet-parts";
 
@@ -244,19 +244,11 @@ export const sizeOf = (sql: DbSql, value: Fragment): Fragment => {
 };
 
 /**
- * The seat window of a ranking of firms (plan §4.2, F4) offers the seat
- * against the buyer's county of each record (firmSeat): its options are the
- * classes of the records, not the firms' counties; so do the network and the
- * flow around an institution (F4, their row FURNIZORII: the firms against
- * that institution's county). Elsewhere ("Cine conduce?" by value, the
- * profiles) the seat is the firm's own county (seatCounty).
+ * Counts of the transaction parts, grouped as each window lists its options. `whole`: the draft's own count where
+ * the options overlap (the seat classes of a ranking of firms), which the first row shows instead of their sum.
  */
-export const relativeSeat = (spec: Pick<AskSpec, "block" | "dim">): boolean =>
-  spec.block === "table" && spec.dim === "supplier" || (spec.block === "network" || spec.block === "sankey") && spec.dim === "authority";
-
-/** Counts of the transaction parts, grouped as each window lists its options. */
 async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready: Ready, run: Runner, opts: { relative?: boolean } = {}):
-  Promise<{ rows: Grouped[]; unit: FacetUnit } | { error: string } | { precompute: string }> {
+  Promise<{ rows: Grouped[]; unit: FacetUnit; whole?: number } | { error: string } | { precompute: string }> {
   // The channel, the county and the years group any rollup's rows (src, y and county are on all of them);
   // asked "by county", the planner also finds agg_county_month for a trend's same months.
   const byCounty: RollupNeed = { by: "county" };
@@ -340,23 +332,30 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
  * The seat window of a ranking of firms (relativeSeat): each record's firm
  * against the record's buyer county, as firmSeatCond selects it ("same",
  * "other", "abroad"; the rest, a seat or a buyer county nobody knows, is
- * "Sediu necunoscut"). Per class the firms (one firm can sell in its county
- * and elsewhere) and the value of the records, grouped once per firm and buyer
- * county; a rollup with a firm id has both.
+ * "Nu se poate compara", SEAT_UNCOMPARED). Per class the firms and the value of
+ * the records, grouped once per firm and buyer county; a rollup with a firm id
+ * has both. One firm can sell in its county and elsewhere, so the classes
+ * overlap: the draft's own firms (`whole`, the answer's) are counted apart, in
+ * the same grouping (S4 review: national 2025, 14,459 by the classes' sum
+ * against 11,722 firms ranked).
  */
-async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit } | { precompute: string }> {
+async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit; whole: number } | { precompute: string }> {
   const r = await rowsOf(sql, p, { by: "supplier" }, ready);
   if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
   const id = r.id("supplier") ?? sql`d.supplier_id`;
   const seat = seatOf(sql, p.ctx.seatColumn);
-  return { unit: "firms", rows: await run<Grouped>(sql`
-    select case when ${seat.foreign} then 'abroad' when ${seat.county} is null or g.county is null then null
-                when ${seat.county} = g.county then 'same' else 'other' end k,
-           coalesce(sum(g.v), 0) v, count(distinct g.id) n, false f
-    from (select ${id} id, ${r.county} county, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1, 2) g
-    left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = 'supplier'
-    group by 1
-  `) };
+  const rows = await run<Grouped & { t: boolean }>(sql`
+    select x.k, coalesce(sum(x.v), 0) v, count(distinct x.id) n, false f, grouping(x.k) = 1 t
+    from (
+      select case when ${seat.foreign} then 'abroad' when ${seat.county} is null or g.county is null then null
+                  when ${seat.county} = g.county then 'same' else 'other' end k, g.id, g.v
+      from (select ${id} id, ${r.county} county, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1, 2) g
+      left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = 'supplier'
+    ) x
+    group by grouping sets ((x.k), ())
+  `);
+  const whole = rows.find((row) => row.t);
+  return { unit: "firms", rows: rows.filter((row) => !row.t), whole: whole ? Number(whole.n) : 0 };
 }
 
 /**
@@ -403,8 +402,12 @@ const FIXED_OPTIONS: Partial<Record<CountPart, readonly string[]>> = {
   employees: EMPLOYEE_BAND_BOUNDS.map((band) => band.value),
 };
 
-/** The grouped rows as the window's options and rest, with each share of the value (of the profiles on a profile question). */
-export function assembleCounts(part: CountPart, unit: FacetUnit, rows: readonly Grouped[], meta: { checkpoint: string | null; tookMs: number; firmProfiles?: boolean }): FacetCounts {
+/**
+ * The grouped rows as the window's options and rest, with each share of the value (of the profiles on a profile
+ * question). `whole`: the draft's count where the options overlap (seatClasses), instead of their sum; `relative`,
+ * the seat classes' rest (SEAT_UNCOMPARED).
+ */
+export function assembleCounts(part: CountPart, unit: FacetUnit, rows: readonly Grouped[], meta: { checkpoint: string | null; tookMs: number; firmProfiles?: boolean; whole?: number; relative?: boolean }): FacetCounts {
   const sums = new Map<string, { n: number; v: number }>();
   const rest = { n: 0, v: 0 };
   for (const row of rows) {
@@ -415,6 +418,8 @@ export function assembleCounts(part: CountPart, unit: FacetUnit, rows: readonly 
   }
   const total = { n: rest.n, value_ron: rest.v };
   for (const { n, v } of sums.values()) { total.n += n; total.value_ron += v; }
+  // Each record is in one class, so the value adds up; a firm can be in several, so its count is the draft's own.
+  if (meta.whole !== undefined) total.n = meta.whole;
   const share = (n: number, v: number) => unit === "profiles" ? (total.n ? n / total.n : 0) : total.value_ron ? v / total.value_ron : 0;
   const fixed = FIXED_OPTIONS[part];
   const values = fixed ? [...fixed] : [...sums.keys()].sort(part === "years" ? undefined : (a, b) => sums.get(b)!.v - sums.get(a)!.v || a.localeCompare(b));
@@ -422,7 +427,7 @@ export function assembleCounts(part: CountPart, unit: FacetUnit, rows: readonly 
     const at = sums.get(value) ?? { n: 0, v: 0 };
     return { value, n: at.n, value_ron: at.v, share: share(at.n, at.v) };
   });
-  const label = part === "county" && meta.firmProfiles ? FACET_REST.seat : FACET_REST[part];
+  const label = part === "county" && meta.firmProfiles ? FACET_REST.seat : part === "seat" && meta.relative ? SEAT_UNCOMPARED : FACET_REST[part];
   return {
     part, unit, options,
     rest: label && (rest.n > 0 || part === "kind" || part === "seat" || part === "employees") ? { label, n: rest.n, value_ron: rest.v, share: share(rest.n, rest.v) } : null,
@@ -567,8 +572,10 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
         const run = runner(controller.signal);
         const grouped = p.profile ? await profileCounts(tx, p, part, run) : await transactionCounts(tx, p, part, ready, run, { relative: relativeSeat(draft) });
         if ("error" in grouped || "precompute" in grouped) return grouped;
+        const whole = (grouped as { whole?: number }).whole;
         return assembleCounts(part, grouped.unit, grouped.rows, {
           checkpoint: stamp.checkpoint, tookMs: Date.now() - started, firmProfiles: p.profile && p.spec.dim === "supplier",
+          ...(whole !== undefined ? { whole, relative: true } : {}),
         });
       });
       if ("options" in result && key) keep(key, result);

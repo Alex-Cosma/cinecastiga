@@ -3,6 +3,7 @@
 import { Fragment, type CSSProperties } from "react";
 import { rovingKeyDown, rovingStop } from "../keyboard";
 import type { ChangeSource, KitOption, KitRestRow } from "../kit-types";
+import HelpTip from "../HelpTip";
 
 /*
  * Component 9, the list of a short window: radios (one choice, a radiogroup
@@ -30,11 +31,11 @@ export interface OptionListProps {
 
 const pct = (share: number) => `${Math.round(Math.max(0, Math.min(1, share)) * 1000) / 10}%`;
 
-/** A rest row: text, out of the radiogroup's roving order. */
+/** A rest row: text, out of the radiogroup's roving order; its (?) says what it holds. */
 function RestRow({ row }: { row: KitRestRow }) {
-  return <div className="qb-opt qb-opt--rest">
+  return <div className={`qb-opt qb-opt--rest${row.tip ? " qb-tipwrap" : ""}`}>
     <span className="qb-opt-mark" aria-hidden="true" />
-    <span className="qb-opt-t"><strong>{row.label}</strong></span>
+    <span className="qb-opt-t"><strong>{row.label}{row.tip && <HelpTip tip={row.tip} />}</strong></span>
     <span className="qb-opt-n">{row.count}</span>
   </div>;
 }

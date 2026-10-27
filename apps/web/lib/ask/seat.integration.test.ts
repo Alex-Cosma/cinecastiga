@@ -163,12 +163,15 @@ describe.runIf(Boolean(connection))("F4: the firm's seat (dedicated rollback fix
       const counts = await facetCounts(q, ranking({ ...cluj, firmSeat: "other" }), "seat");
       if (!("options" in counts)) throw new Error(JSON.stringify(counts));
       expect(counts.options.map((o) => [o.value, o.n, o.value_ron])).toEqual([["other", 2, 500], ["abroad", 1, 400], ["same", 1, 100]]);
-      expect(counts.rest).toMatchObject({ label: "Sediu necunoscut", n: 1, value_ron: 30 });
+      expect(counts.rest).toMatchObject({ label: "Nu se poate compara", n: 1, value_ron: 30 });
       const clujGrounding: Grounding = { county: { query: "Cluj", canonical: "Cluj" } };
       for (const o of counts.options) {
         const chosen = table(await runSpec(q, ranking({ ...cluj, firmSeat: o.value as "same" }), clujGrounding));
         expect([o.value, chosen.total, chosen.totals?.value]).toEqual([o.value, o.n, o.value_ron]);
       }
+      // „Oriunde” (the first row) is the ranking without a seat: its firms each once, though a firm can be in two classes.
+      const anywhere = table(await runSpec(q, ranking(cluj), clujGrounding));
+      expect([counts.total.n, counts.total.value_ron]).toEqual([anywhere.total, anywhere.totals?.value]);
       // „Cine conduce?” by value over every record: the firms of each county of their seat (their profiles), and abroad.
       const own = await facetCounts(q, { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }, "seat");
       if (!("options" in own)) throw new Error(JSON.stringify(own));
