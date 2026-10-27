@@ -162,7 +162,9 @@ function NetworkChart({ rows, data, list, views }: { rows: readonly NetworkRow[]
     {rows.map((n, i) => {
       const a = (i / rows.length) * Math.PI * 2 - Math.PI / 2;
       const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R, r = 6 + Math.sqrt(n.value / max) * 16;
-      const anchor = Math.cos(a) > 0.3 ? "start" : Math.cos(a) < -0.3 ? "end" : "middle";
+      // Only a disc at the very top or bottom centres its label: with 15 partners the two nearest the bottom (78°, 102°)
+      // centred theirs about 50 units apart, and labels of 26 characters met (S4 review); beside their discs they part.
+      const anchor = Math.cos(a) > 0.1 ? "start" : Math.cos(a) < -0.1 ? "end" : "middle";
       const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId;
       const label = name.length > 26 ? `${name.slice(0, 25)}…` : name;
       return <g key={n.entityId} onMouseEnter={() => setHover(n.entityId)} onMouseLeave={() => setHover(null)}>
@@ -172,7 +174,7 @@ function NetworkChart({ rows, data, list, views }: { rows: readonly NetworkRow[]
           <title>{`${name}\n${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total · ${view?.records ?? ""}`}</title>
           <circle cx={x} cy={y} r={on ? r + 2 : r} className="qb-net-node" />
         </a>
-        {/* The disc is the target; its label is words beside it (two neighbours' labels may meet, their targets never). */}
+        {/* The disc is the target; its label is words beside it, away from its neighbours'. */}
         <text x={x + (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)} y={y + (anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4)}
           fontSize={10} textAnchor={anchor} className="qb-net-label" fontWeight={on ? 700 : 400} aria-hidden="true" pointerEvents="none">{label}</text>
       </g>;

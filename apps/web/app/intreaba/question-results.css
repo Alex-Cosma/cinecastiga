@@ -394,6 +394,15 @@
 .cq-result .ask-ts-notes .ask-fine {
   margin: 6px 0;
 }
+/* Under 600 px a (?) and a link are 44 px targets on a 20 px line (filters-kit.css): the notes get the room for them,
+   so a tap near one never opens its neighbour on the next line (S4 review: 24×14 px overlaps at 390 px). */
+@media (max-width: 600px) {
+  .cq-result .ask-ts-notes .ask-fine {
+    margin: 0;
+    padding-block: 10px;
+    line-height: 2.1;
+  }
+}
 .cq-result .ask-ts-one .d {
   color: var(--muted);
 }

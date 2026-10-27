@@ -31,6 +31,17 @@ export interface TipBind {
   onMouseMove: (e: React.MouseEvent) => void;
   onMouseLeave: () => void;
 }
+/** A screen whose main pointer cannot hover (a phone, a tablet): no cursor tip there. */
+const noHover = (): boolean => typeof window !== "undefined" && window.matchMedia?.("(hover: none)").matches === true;
+/** The tip beside the cursor, turned to its other side near the screen's right or bottom edge (its max-width is 240 px). */
+const TIP_W = 248, TIP_H = 96;
+function tipPlace(x: number, y: number): { left: number; top: number } {
+  const w = typeof window !== "undefined" ? window.innerWidth : Infinity, h = typeof window !== "undefined" ? window.innerHeight : Infinity;
+  return {
+    left: x + 14 + TIP_W > w ? Math.max(8, x - 14 - TIP_W) : x + 14,
+    top: y + 14 + TIP_H > h ? Math.max(8, y - 14 - TIP_H) : y + 14,
+  };
+}
 export function useTip() {
   const [tip, setTip] = useState<{
     title: string;
@@ -40,8 +51,12 @@ export function useTip() {
     y: number;
   } | null>(null);
   const bind = (title: string, v?: string, s?: string): TipBind => {
-    const move = (e: React.MouseEvent) =>
+    // A tap emulates the mouse's enter and never its leave: on a screen without hover the tip would stay over what the
+    // tap opened, past the screen's edge (S4 review: a bar's card on a phone). There the tap's own result speaks.
+    const move = (e: React.MouseEvent) => {
+      if (noHover()) return;
       setTip({ title, v, s, x: e.clientX, y: e.clientY });
+    };
     return {
       onMouseEnter: move,
       onMouseMove: move,
@@ -53,7 +68,7 @@ export function useTip() {
   const bindClip = (text: string | null | undefined): TipBind => {
     const move = (e: React.MouseEvent) => {
       const el = e.currentTarget as HTMLElement;
-      if (!text || el.scrollWidth <= el.clientWidth + 1) {
+      if (!text || noHover() || el.scrollWidth <= el.clientWidth + 1) {
         setTip(null);
         return;
       }
@@ -66,7 +81,7 @@ export function useTip() {
     };
   };
   const el = tip ? (
-    <div className="ask-maptip" style={{ left: tip.x + 14, top: tip.y + 14 }}>
+    <div className="ask-maptip" style={tipPlace(tip.x, tip.y)}>
       <div className="t">{tip.title}</div>
       {tip.v && <div className="v">{tip.v}</div>}
       {tip.s && <div className="s">{tip.s}</div>}
