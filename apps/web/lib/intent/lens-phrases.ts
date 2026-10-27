@@ -67,6 +67,11 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
     { re: /\bde cate ori\b/, path: "trend.order", value: "percent", quiet: true },
     { re: /\b(?:pe )?aceleasi luni\b/, path: "trend.months", value: "auto" },
   ],
+  // F3 (plan §2.7, §4.3): the evolution month by month, where its period fits the months' bars (timeseriesGrain); else
+  // the note says it does not apply. „Pe luni” only as a phrase: „luni” alone is also Monday.
+  timeseries: [
+    { re: /\b(?:luna de luna|pe luni|lunar|in fiecare luna|pe fiecare luna)\b/, path: "timeseries.grain", value: "month" },
+  ],
   // F4 (plan §2.7, final compare §3.4): between two firms only; between institutions the note says it does not apply.
   compare: [
     { re: /\b(?:clienti(?:i|lor)? comuni|aceiasi clienti|acelorasi clienti)\b/, path: "filters.sharedPartners", value: true },

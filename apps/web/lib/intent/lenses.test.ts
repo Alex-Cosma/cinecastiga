@@ -127,6 +127,14 @@ describe("trend lenses: the group, the order, the months", () => {
     expect(series.r.spec?.block).toBe("timeseries");
     expect(series.r.interpretation.notes).toContain(lensNotApplied("pe aceleași luni"));
   });
+  it("«lună de lună» draws an evolution's months where its period fits them, and says so where it does not (S4 review)", async () => {
+    const months = await ask("Cum au evoluat achizițiile din județul Cluj lună de lună în 2025?");
+    expect(months.r.spec).toMatchObject({ block: "timeseries", timeseries: { grain: "month" }, filters: { county: "Cluj", yearFrom: 2025, yearTo: 2025 } });
+    const all = await ask("Cum au evoluat achizițiile din județul Cluj pe luni?");
+    expect(all.r.spec?.timeseries?.grain).toBeUndefined();
+    expect(all.r.interpretation.notes).toContain(lensNotApplied("pe luni"));
+  });
+
   it("reads phrases, never single words: «noi» the pronoun and «nu mai mult de» are no group", async () => {
     const us = await ask("cine câștigă la noi în județul Cluj");
     expect(us.i.lenses).toEqual([]);
