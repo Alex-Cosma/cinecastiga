@@ -103,7 +103,7 @@
 .cmp-seat { display: flex; height: 8px; overflow: hidden; border-radius: 4px; background: var(--sunk); }
 .cmp-seat i { display: block; width: var(--w); background-color: var(--cmp-a); }
 .cmp-seat i:nth-child(2) { opacity: 0.45; }
-.cmp-seat i:nth-child(3) { opacity: 0.2; }
+.cmp-seat i:nth-child(3) { opacity: 0.3; }
 /* R7: hatching is for what is not known (S4 review: it was abroad's, the unknown part an unlabelled gap). */
 .cmp-seat i.cmp-seat-unknown, .cmp-b .cmp-seat i.cmp-seat-unknown { background-color: transparent; background-image: repeating-linear-gradient(135deg, var(--line2) 0 2px, transparent 2px 5px); }
 .cmp-b .cmp-seat i { background-color: var(--cmp-b); }

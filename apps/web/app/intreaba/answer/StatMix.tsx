@@ -32,6 +32,19 @@ const TIPS: Record<MixTab, KitTip> = {
 };
 const OFFER_LABELS: Record<string, string> = { one: "O singură ofertă", several: "Mai multe oferte", unknown: "Nu știm" };
 
+/**
+ * A row's tone, the same on its segment and its swatch (S4 review: `i % 4` gave „Achiziții directe” and „Alte
+ * proceduri” one green): the channels' colours on the procedures (R7: --fk-da, shades of --fk-proc), one hue's ramp
+ * on the sizes, the categories on the kinds and offers; what is not known hatched.
+ */
+const TONES: Record<MixTab, Record<string, string>> = {
+  kind: { produse: "c1", servicii: "c2", lucrari: "c3", none: "unknown" },
+  procedure: { da: "da", deschisa: "proc", simplificata: "proc2", negociere_fara_publicare: "proc3", altele: "proc4" },
+  size: { 0: "size0", 1: "size1", 2: "size2", 3: "size3" },
+  offers: { one: "c1", several: "c2", unknown: "unknown" },
+};
+export const mixTone = (tab: MixTab, value: string): string => TONES[tab][value] ?? "c4";
+
 /** A row's name in its tab. */
 export function mixLabel(tab: MixTab, value: string): string {
   if (tab === "kind") return value === "none" ? "Fără cod CPV" : PURCHASE_KIND_WORDS[value as PurchaseKind]?.label ?? value;
@@ -108,18 +121,20 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
     </div>
     <div id={`${base}-p`} role="tabpanel" aria-label={TABS[tab]}>
       <div className="qb-mix-bar" aria-hidden="true">
-        {rows.map((row, i) => <i key={row.value} className={`qb-mix-seg qb-mix-seg--${tab === "offers" && row.value === "unknown" ? "unknown" : i % 4}`} style={{ width: `${row.share * 100}%` }} />)}
+        {rows.map((row) => <i key={row.value} className={`qb-mix-seg qb-mix-seg--${mixTone(tab, row.value)}`} style={{ width: `${row.share * 100}%` }} />)}
       </div>
       <ul className="qb-mix-rows">
         {rows.map((row) => {
           const only = tab === "offers" ? null : mixOnly(spec, tab, row.value);
+          // Each row's swatch is its segment's (the final's .st-sw): the bar reads row by row.
           const body = <>
-            <span className="qb-mix-l">{mixLabel(tab, row.value)}</span>
+            <span className="qb-mix-l"><i className={`qb-mix-sw qb-mix-seg--${mixTone(tab, row.value)}`} aria-hidden="true" />{mixLabel(tab, row.value)}</span>
             <span className="qb-mix-n">{countWords(row.n, "înregistrare", "înregistrări")} · {formatRon(row.value_ron)} · <b className="qb-num">{formatShare(row.share)}</b></span>
           </>;
+          // „›” always shows the row is another answer (R8); its words appear on hover or focus (final stat §3.7).
           return <li key={row.value}>
             {only ? <button type="button" className="qb-mix-row" aria-label={`${only.words}: ${mixLabel(tab, row.value)}, ${formatShare(row.share)}`} onClick={() => onOnly(only.spec, only.words)}>
-              {body}<span className="qb-mix-only" aria-hidden="true">Doar acestea<span className="qb-glyph">›</span></span>
+              {body}<span className="qb-mix-only" aria-hidden="true"><span className="qb-mix-only-w">Doar acestea</span><span className="qb-glyph">›</span></span>
             </button> : <div className={`qb-mix-row is-read${row.value === "unknown" ? " is-unknown" : ""}`}>{body}</div>}
           </li>;
         })}

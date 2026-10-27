@@ -433,11 +433,22 @@ a.qb-menu-item{text-decoration:none}
 .qb-mix-head{margin:0;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase}
 .qb-mix-bar{display:flex;height:8px;margin-bottom:8px;border-radius:4px;overflow:hidden;background:var(--line)}
 .qb-mix-seg{display:block;height:100%}
-.qb-mix-seg--0{background:var(--fk-c1)}
-.qb-mix-seg--1{background:var(--fk-c2)}
-.qb-mix-seg--2{background:var(--fk-c3)}
-.qb-mix-seg--3{background:var(--fk-c4)}
+/* One tone per row, on its segment and its swatch (StatMix mixTone): the channels' on the procedures (R7), a ramp on the sizes. */
+.qb-mix-seg--c1{background:var(--fk-c1)}
+.qb-mix-seg--c2{background:var(--fk-c2)}
+.qb-mix-seg--c3{background:var(--fk-c3)}
+.qb-mix-seg--c4{background:var(--fk-c4)}
+.qb-mix-seg--da{background:var(--fk-da)}
+.qb-mix-seg--proc{background:var(--fk-proc)}
+.qb-mix-seg--proc2{background:color-mix(in srgb,var(--fk-proc) 70%,var(--surface))}
+.qb-mix-seg--proc3{background:color-mix(in srgb,var(--fk-proc) 48%,var(--surface))}
+.qb-mix-seg--proc4{background:color-mix(in srgb,var(--fk-proc) 30%,var(--surface))}
+.qb-mix-seg--size0{background:color-mix(in srgb,var(--fk-c1) 30%,var(--surface))}
+.qb-mix-seg--size1{background:color-mix(in srgb,var(--fk-c1) 52%,var(--surface))}
+.qb-mix-seg--size2{background:color-mix(in srgb,var(--fk-c1) 76%,var(--surface))}
+.qb-mix-seg--size3{background:var(--fk-c1)}
 .qb-mix-seg--unknown{background-color:var(--line);background-image:repeating-linear-gradient(135deg,var(--line2) 0 2px,transparent 2px 6px)}
+.qb-mix-sw{display:inline-block;width:10px;height:10px;margin-right:8px;border-radius:2px;vertical-align:-1px}
 .qb-mix-rows{margin:0;padding:0;list-style:none}
 .qb-mix-row{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;width:100%;min-height:40px;padding:6px 8px;border-radius:8px;text-align:left}
 button.qb-mix-row:hover,button.qb-mix-row:focus-visible{background:var(--fk-chip-hover)}
@@ -445,8 +456,9 @@ button.qb-mix-row:hover,button.qb-mix-row:focus-visible{background:var(--fk-chip
 .qb-mix-row.is-unknown .qb-mix-l{color:var(--muted)}
 .qb-mix-n{color:var(--ink2);font-size:12.5px}
 .qb-mix-n b{font-weight:600;color:var(--ink)}
-.qb-mix-only{color:var(--fk-green);font-size:12.5px;font-weight:600;opacity:0}
-button.qb-mix-row:hover .qb-mix-only,button.qb-mix-row:focus-visible .qb-mix-only{opacity:1}
+.qb-mix-only{color:var(--fk-green);font-size:12.5px;font-weight:600}
+.qb-mix-only-w{opacity:0}
+button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-only-w{opacity:1}
 .qb-mix-foot{margin:8px 0 0;color:var(--muted);font-size:12px}
 .qb-mix-skel{height:28px;margin:6px 0;border-radius:6px;background:var(--line)}
 .qb-kinds{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 10px}
