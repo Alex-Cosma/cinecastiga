@@ -3,7 +3,7 @@ import type { BreakdownGroup, PartialYear } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv } from "./answer-csv";
 import { breakdownSuggestion, channelShares, sameMonthsSwitch, seriesAfterStrip, seriesSplitOptions, STRIP_QUERY_KEYS, SUGGEST_SHARE } from "./answer-state";
-import { breakdownKinds, breakdownShown, largestTag } from "./breakdown-answer";
+import { breakdownKinds, breakdownShown, generalTag, largestTag } from "./breakdown-answer";
 import { mixLabel, mixOnly, mixTabs } from "./answer/StatMix";
 import { aboveTotal, barFacts, barKey, barLinks, barName, barParts, barSources, monthTick, partSources, partTone, seriesBars, type SeriesData } from "./series-answer";
 
@@ -127,6 +127,13 @@ describe("the breakdown (final breakdown §3.5–§3.10)", () => {
     expect(largestTag(group("45", 500, 10, { max: 300, maxSrc: "contracts" }), 1000)?.text).toBe("1 contract: 60,0%");
     expect(largestTag(group("45", 500, 10, { max: 200, maxSrc: "contracts" }), 1000)).toBeNull();
     expect(largestTag(group("09", 50, 10, { max: 50, maxSrc: "da" }), 1000)).toBeNull();
+  });
+
+  it("tags the group coded as its parent itself „cod general”, never at the divisions (S4 review, final §3.5)", () => {
+    expect(generalTag("4500", "45")).toMatchObject({ text: "cod general", tip: { title: "Cod general" } });
+    expect(generalTag("4500", "45")?.tone).toBeUndefined();
+    expect(generalTag("452300", "4523")?.text).toBe("cod general");
+    expect([generalTag("4523", "45"), generalTag("45", null), generalTag("3300", "medicamente")]).toEqual([null, null, null]);
   });
 
   it("gives the channels their share of the selection, and goes down a level from 90% of one group", () => {

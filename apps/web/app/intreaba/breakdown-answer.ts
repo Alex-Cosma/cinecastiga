@@ -50,6 +50,16 @@ export function breakdownKinds(base: readonly BreakdownGroup[], byCount: boolean
   return total > 0 ? [...sums.entries()].filter(([, v]) => v > 0).map(([kind, v]) => ({ kind, share: v / total })).sort((a, b) => b.share - a.share) : [];
 }
 
+/**
+ * The grey tag „cod general” (final breakdown §3.5, plan §4.5 P8): the group coded as its parent itself, the parent
+ * padded with zeros (4500 → 45000000 under 45), so its records name no subcategory. Neutral, with a (?). `parent`:
+ * the code the level is inside (a domain written as digits), none at the divisions.
+ */
+export function generalTag(code: string, parent: string | null | undefined): RowFact | null {
+  if (!parent || !/^\d+$/.test(parent) || code !== `${parent}00`) return null;
+  return { text: "cod general", tip: { title: "Cod general", text: `Înregistrări codate doar cu codul ${parent.padEnd(8, "0")}, fără o subcategorie. Codul îl alege instituția.` } };
+}
+
 /** The amber tag of a group made by one record (final §3.10): a group of ≥ 10% of the level whose largest record is ≥ half of it. */
 export function largestTag(group: Pick<BreakdownGroup, "value" | "max" | "maxSrc">, total: number): RowFact | null {
   if (!group.max || !group.maxSrc || total <= 0 || group.value / total < 0.1 || group.max / group.value < 0.5) return null;
