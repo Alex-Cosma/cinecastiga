@@ -14,6 +14,7 @@ import { isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { retarget } from "./filters/retarget";
 import { monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
 import { mixRollupReady, mixWhere } from "./series-rollups";
+import { countyDisplay } from "./resolved-spec";
 import { martColumns } from "./mart-columns";
 import { trendCacheStamp } from "./group-ids";
 import { PROCEDURE_ORDER, PROCEDURE_TYPES, PURCHASE_KIND_ORDER, VALUE_RANGES } from "./purchase";
@@ -592,10 +593,13 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
         const grouped = p.profile ? await profileCounts(tx, p, part, run) : await transactionCounts(tx, p, part, ready, run, { relative: relativeSeat(draft) });
         if ("error" in grouped || "precompute" in grouped) return grouped;
         const whole = (grouped as { whole?: number }).whole;
-        return assembleCounts(part, grouped.unit, grouped.rows, {
+        const counts = assembleCounts(part, grouped.unit, grouped.rows, {
           checkpoint: stamp.checkpoint, tookMs: Date.now() - started, firmProfiles: p.profile && p.spec.dim === "supplier",
           ...(whole !== undefined ? { whole, relative: true } : {}),
         });
+        // Around an institution its county names the option „În județul …” (a county of the draft would filter the centre).
+        const centre = part === "seat" && (draft.block === "network" || draft.block === "sankey") && draft.dim === "authority" ? grounding.authority?.county : null;
+        return centre ? { ...counts, centreCounty: countyDisplay(centre) } : counts;
       });
       if ("options" in result && key) keep(key, result);
       return result;

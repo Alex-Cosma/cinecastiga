@@ -311,9 +311,9 @@ function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draf
  * the draft's firms once.
  */
 function SeatWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; ctx: FilterContext; onPick: (choices: Choice[]) => void }) {
-  const { options, value } = seatOptions(win, draft, ctx);
-  const relative = options.some((option) => option.value === "same" || option.value === "other");
   const counts = useFacet(draft, "seat");
+  const { options, value } = seatOptions(win, draft, ctx, counts.status === "ready" ? counts.counts.centreCounty ?? null : null);
+  const relative = options.some((option) => option.value === "same" || option.value === "other");
   const rest = countedRest([relativeSeat(draft) ? { label: SEAT_UNCOMPARED, tip: SEAT_UNCOMPARED_TIP } : { label: UNKNOWN_SEAT }], counts);
   const counted = countedOptions(options, counts, (option) => option.value === "none" ? undefined : option.value, { checked: value });
   return <>

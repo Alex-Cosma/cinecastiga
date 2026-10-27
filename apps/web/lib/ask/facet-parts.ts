@@ -44,6 +44,11 @@ export interface FacetCounts {
   /** The data checkpoint the counts were read at (null without a published refresh). */
   checkpoint: string | null;
   tookMs: number;
+  /**
+   * The seat window around an institution (the network, the flow): its county, as the grounding found it, so
+   * the option says „În județul Buzău” (kit §6 network 5) where the draft has no county of its own (S4 review).
+   */
+  centreCounty?: string;
 }
 
 /** A window's counts as the builder holds them (use-facet.ts): loading, read, or none (not asked, past the limit, an error). */

@@ -405,6 +405,15 @@ describe("F3's common selection, in every place's words (kit §4)", () => {
     expect(d.scope).toContainEqual({ label: "Clienții", value: "Doar instituțiile care au cumpărat de la ambele firme" });
   });
 
+  it("says whose list CÂȘTIGĂTORII narrows in the title, never a bare „firme cu …” (S4 review)", () => {
+    const band = { yearFrom: 2025, yearTo: 2025, minEmployees: 1, maxEmployees: 9 };
+    expect(questionTitle({ block: "table", dim: "supplier", measure: "value", topN: 10, filters: band }))
+      .toBe("Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în 2025, doar firmele cu 1–9 angajați?");
+    expect(questionTitle({ block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: band })).toMatch(/, dintre firmele cu 1–9 angajați\?$/);
+    // Institutions ranked by the firms they buy from: a selection of the records, said as before.
+    expect(questionTitle({ block: "table", dim: "authority", measure: "value", topN: 10, filters: band })).not.toMatch(/doar firmele|dintre firmele/);
+  });
+
   it("says no kind the engine left out: the domain has no codes of it", () => {
     const grounding: Grounding = { cpv: { term: "asfaltare", prefixes: ["45233"], matchedNames: [], method: "synonym" } };
     const spec: AskSpec = { ...stat, filters: { cpvTerm: "asfaltare", purchaseKind: "produse" } };
