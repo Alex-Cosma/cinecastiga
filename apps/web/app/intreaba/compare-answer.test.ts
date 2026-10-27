@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CompareEntity } from "../../lib/ask/compile";
 import {
-  cardSpan, consortiumWords, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatParts, sharedSubtitle, yearColumns, yearReadout,
+  cardSpan, consortiumWords, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatParts, seatRow, sharedSubtitle, yearColumns, yearReadout,
 } from "./compare-answer";
 
 /*
@@ -38,6 +38,15 @@ describe("the cards' context rows", () => {
     const parts = seatParts({ same: 1_893_037_731, other: 1_916_681_819, abroad: 599_165_780, unknown: 825_903 })!;
     expect([percent(parts.same), percent(parts.other), percent(parts.abroad)]).toEqual(["43%", "43%", "14%"]);
     expect(seatParts({ same: 0, other: 0, abroad: 0, unknown: 0 })).toBeNull();
+  });
+  it("say the unknown seat as its own part, and nothing but that without the institution's county (S4 review)", () => {
+    const row = seatRow(entity({ county: "Bucuresti", seats: { same: 6, other: 2, abroad: 0, unknown: 2 } }));
+    expect(row && "words" in row ? row.words : row).toEqual(["în același județ 60%", "în alt județ 20%", "în străinătate 0%", "sediu necunoscut 20%"]);
+    const known = seatRow(entity({ seats: { same: 6, other: 4, abroad: 0, unknown: 0 } }));
+    expect(known && "words" in known ? known.words.length : known).toBe(3);
+    // Electrocentrale Craiova: no county, 99% unknown; never „în același județ 0%”.
+    expect(seatRow(entity({ county: null, seats: { same: 0, other: 0, abroad: 7, unknown: 702 } }))).toEqual({ none: "Județul instituției nu e cunoscut." });
+    expect(seatRow(entity({ role: "supplier" }))).toBeNull();
   });
   it("show „Pe locuitor” only between two of one level (an older answer: both with a population)", () => {
     const townHall = entity({ population: 286_598, populationLevel: "local" }), council = entity({ population: 691_106, populationLevel: "county" });
