@@ -73,8 +73,9 @@ describe("the window „Unde au sediul firmele?” (kit §4, §6 table 1 and ent
       ["none", "Oriunde", null], ["same", "În județul instituției", null], ["other", "În alt județ", null], ["abroad", "În străinătate", null],
     ]);
     expect(value).toBe("none");
-    // With the buyers' county fixed, "the institution's county" is named.
+    // With the buyers' county fixed, "the institution's county" is named; around an institution, the centre's (its counts' centreCounty).
     expect(seatOptions(win, firms({ county: "Cluj" })).options[1]?.label).toBe("În județul Cluj");
+    expect(seatOptions(win, firms(), undefined, "Buzău").options[1]?.label).toBe("În județul Buzău");
     // A foreign firm has no MF filing: beside the CÂȘTIGĂTORII band, "În străinătate" says why it cannot be chosen.
     const banded = seatOptions(win, firms({ minEmployees: 1, maxEmployees: 9 })).options.find((o) => o.value === "abroad");
     expect(banded?.disabled).toMatch(/^Firmele străine nu au bilanț/);

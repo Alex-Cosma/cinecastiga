@@ -426,7 +426,8 @@ describe("beginner phrasings → interpretation", () => {
   it("49. «firme mici» → at most 49 employees, said plainly", async () => {
     const { r } = await ask("firme mici care castiga contracte de paza in cluj");
     expect(r.spec?.filters).toMatchObject({ maxEmployees: 49, cpvTerm: "paza", county: "Cluj" });
-    expect(r.sentence).toContain("firme cu cel mult 49 de angajați");
+    // The ranked firms' band says whose list it narrows (CÂȘTIGĂTORII, S4 review).
+    expect(r.sentence).toContain("doar firmele cu cel mult 49 de angajați");
   });
 
   it("50. an acronym buyer («CNAIR»)", async () => {

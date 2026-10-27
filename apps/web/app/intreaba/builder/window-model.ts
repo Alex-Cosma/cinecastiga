@@ -291,9 +291,10 @@ export const SEAT_WINDOW = "Unde au sediul firmele?";
  * county of the seat is searched under the list (seatCounty). Each row with
  * its choices (pickers.ts) and its state (abroad beside a size: disabled, with
  * the reason). `value` is the checked row, null when a county is chosen
- * (seatCurrentRow says it).
+ * (seatCurrentRow says it). `centre`: around an institution (the network,
+ * the flow), its county, which names "În județul Buzău" (kit §6 network 5).
  */
-export function seatOptions(win: BuilderWindowSpec, spec: QuestionSpec, ctx: FilterCtx = filterContext(spec as FilterSpec)): { options: ChoiceOption[]; value: string | null } {
+export function seatOptions(win: BuilderWindowSpec, spec: QuestionSpec, ctx: FilterCtx = filterContext(spec as FilterSpec), centre: string | null = null): { options: ChoiceOption[]; value: string | null } {
   const f = spec.filters;
   const offered = choicesOf(win.slot, spec as FilterSpec, ctx).filter((c) => c.filter === "firmSeat" && c.value !== undefined);
   // On a firm profile a link's county is the seat too: "Oriunde" clears it as well.
@@ -307,7 +308,8 @@ export function seatOptions(win: BuilderWindowSpec, spec: QuestionSpec, ctx: Fil
     const seat = choice.value as FirmSeat;
     const state = choiceState(win.slot, choice, spec as FilterSpec, ctx);
     if (state.state === "hidden") continue;
-    const words = firmSeatWords(seat, seat === "same" && f.county ? String(f.county) : null);
+    // „În județul Buzău”: the draft's county, else the county of the institution in the centre (its seat counts' `centreCounty`).
+    const words = firmSeatWords(seat, seat === "same" ? (f.county ? String(f.county) : centre) : null);
     rows.push({ value: seat, label: `${words.charAt(0).toLocaleUpperCase("ro-RO")}${words.slice(1)}`, ...(state.state === "disabled" ? { disabled: state.reason } : {}), choice });
   }
   const chosen = typeof f.firmSeat === "string" ? f.firmSeat : null;
