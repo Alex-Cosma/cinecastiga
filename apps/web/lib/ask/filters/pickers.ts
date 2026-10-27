@@ -1,6 +1,6 @@
 import { AUTHORITY_KINDS, SEAT_RULES, SELECTION_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { BLOCK_FILTERS, PICKER_FAMILY, populationFits, windowOf } from "./blocks";
-import { filterContext } from "./context";
+import { filterContext, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "./context";
 import { FILTERS } from "./defs";
 import { edited } from "./defs/shared";
 import type { Party } from "./defs/selection";
@@ -158,6 +158,9 @@ export function choiceState(slot: Slot, choice: Choice, spec: FilterSpec, ctx: F
   if (choice.filter === "purchaseKind" && choice.value !== undefined) {
     const reason = SELECTION_RULES.purchaseKind(FILTERS.purchaseKind.write(spec, choice.value) as unknown as AskSpec);
     if (reason) return { state: "disabled", reason };
+    // Goods and services cover most records: grouped per entity nationally they read both marts whole (S4 review,
+    // 2–9 s); works are an index range of 45 (about 1 s). The current choice stays choosable.
+    if (choice.value !== "lucrari" && choice.value !== spec.filters.purchaseKind && nationalEntityScan(spec)) return { state: "disabled", reason: NATIONAL_ENTITY_SCAN };
   }
   // A foreign firm has no MF filing (SEAT_RULES, F4): beside a size, "În străinătate" is shown with the reason.
   if (choice.filter === "firmSeat" && choice.value !== undefined) {

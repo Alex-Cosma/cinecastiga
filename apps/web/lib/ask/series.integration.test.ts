@@ -218,6 +218,13 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       expect(mixCluj.kind.map((r) => r.value)).toEqual(["lucrari", "servicii", "produse", "none"]);
       // The offers of Cluj's contracts: one (201, 206), several (205).
       expect(mixCluj.offers!.rows.map((r) => [r.value, r.n])).toEqual([["one", 2], ["several", 1]]);
+      // The totals by a size of the ranges, a procedure, the single bidder: live here, from agg_national_mix after step 5
+      // (S4 review: national, under 10.000 lei in 2025, 2.4–3.3 s live).
+      const MIXED: AskSpec[] = [stat({ ...Y, purchaseValueMin: 1_000_000 }), stat({ ...Y, purchaseValueMax: 10_000 }), stat({ purchaseValueMin: 10_000, purchaseValueMax: 100_000 }),
+        stat({ ...Y, procedure: "deschisa" }, { dataset: "contracts" }), stat({ ...Y, singleBidder: true }, { dataset: "contracts" }), stat({ ...Y, purchaseValueMin: 1_000_000 }, { dataset: "da" })];
+      const mixedLive: { n: number; value: number }[] = [];
+      for (const spec of MIXED) mixedLive.push(await total(q, spec));
+      expect(mixedLive.filter((t) => t.n > 0).length).toBeGreaterThan(3);
 
       // 3. The bars' facts, live: an anchored selection reads its largest records; nationally they wait on the rollup.
       const largest = async (filters: string) => Object.fromEntries((await q.unsafe(`
@@ -272,6 +279,13 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       expect(mixNational.kind.map((r) => r.value)).toEqual(["lucrari", "produse", "servicii", "none"]);
       // The offers of the contracts: one (201, 206), several (the two winners of 202, and 205), unknown (203, 204).
       expect(mixNational.offers!.rows.map((r) => [r.value, r.n])).toEqual([["one", 2], ["several", 3], ["unknown", 2]]);
+      // The totals by a size of the ranges, a procedure, the single bidder: from agg_national_mix now (the marts emptied
+      // change none of them), the live ones.
+      await q.unsafe("savepoint mixed_only");
+      await q`delete from marts.da_transactions`;
+      await q`delete from marts.contract_transactions`;
+      for (const [i, spec] of MIXED.entries()) expect([i, await total(q, spec)]).toEqual([i, mixedLive[i]]);
+      await q.unsafe("rollback to savepoint mixed_only");
       // A size typed in (not the ranges of the rollup) is read live, the same as the answer.
       const typed = stat({ ...Y, purchaseValueMin: 50_000, purchaseValueMax: 250_000 });
       expect(await mixFacts(q, typed)).toEqual({ precompute: MIX_LIVE });

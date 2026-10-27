@@ -495,6 +495,7 @@ function facetCases(): PerfCase[] {
 const SIZE_LIVE = "Sursele unei mărimi a achiziției pe o selecție națională";
 const SIZE_RANKING = "Clasamentul național pe mărimea achiziției";
 const SIZE_SOURCES_FIRMS = "Totalurile surselor unui clasament național pe angajați";
+const KIND_ENTITY = "Produsele și serviciile pe instituții și firme, național";
 
 /**
  * F3 (S4, F3-keys): the purchase kind, the procedure, the size of a purchase and the employee bands,
@@ -518,6 +519,14 @@ function f3Cases(): PerfCase[] {
     perfCase("national:trend-suppliers-2024-2025-works-up", "national", "Firme cu cea mai mare creștere la lucrări, 2024 → 2025", "trend",
       all(works, years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
     perfCase("filtered:table-cluj-works-2025", "filtered", "Cine câștigă lucrările în Cluj, 2025", "table", all(works, set({ county: "Cluj" }), years(2025))),
+    // S4 review: goods and services cover most records, so per entity nationally they read both marts whole; the
+    // builder does not offer them there (filters/context.ts nationalEntityScan) until S5's entity × division rollup.
+    perfCase("national:table-suppliers-goods", "national", "Cine câștigă produsele, național, toți anii (link)", "table", set({ purchaseKind: "produse" }), { barMs: 2000, precompute: KIND_ENTITY }),
+    perfCase("national:table-suppliers-services-2025", "national", "Cine câștigă serviciile, național, 2025 (link)", "table", all(set({ purchaseKind: "servicii" }), years(2025)), { barMs: 2000, precompute: KIND_ENTITY }),
+    perfCase("national:leader-goods", "national", "Care firmă câștigă cel mai mult la produse (link)", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), set({ purchaseKind: "produse" })), { barMs: 2000, precompute: KIND_ENTITY }),
+    perfCase("national:trend-suppliers-goods-2024-2025", "national", "Firme cu cea mai mare schimbare la produse, 2024 → 2025 (link)", "trend",
+      all(set({ purchaseKind: "produse" }), years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000, precompute: KIND_ENTITY }),
+    perfCase("filtered:table-cluj-goods-2025", "filtered", "Cine câștigă produsele în Cluj, 2025", "table", all(set({ purchaseKind: "produse", county: "Cluj" }), years(2025))),
     // The procedure: the contracts only (1.1M rows), live.
     perfCase("national:stat-open-tender", "national", "Cât valorează contractele din licitații deschise, toți anii", "stat", open, { barMs: 2000 }),
     perfCase("national:stat-negotiated-2025", "national", "Cât valorează contractele negociate fără publicare, 2025", "stat", all(negotiated, years(2025)), { barMs: 2000 }),

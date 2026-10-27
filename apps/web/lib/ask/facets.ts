@@ -13,6 +13,7 @@ import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "
 import { isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { retarget } from "./filters/retarget";
 import { monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
+import { mixRollupReady, mixWhere } from "./series-rollups";
 import { martColumns } from "./mart-columns";
 import { trendCacheStamp } from "./group-ids";
 import { PROCEDURE_ORDER, PROCEDURE_TYPES, PURCHASE_KIND_ORDER, VALUE_RANGES } from "./purchase";
@@ -189,13 +190,24 @@ async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: R
   };
 }
 
-/** The rollups the nightly build has made (probed with the pool, before the transaction: rollups.ts). */
-export interface Ready { rollups: boolean; months: boolean }
-const NO_ROLLUPS: Ready = { rollups: false, months: false };
+/** The rollups the nightly build has made (probed with the pool, before the transaction: rollups.ts, series-rollups.ts). */
+export interface Ready { rollups: boolean; months: boolean; mix: boolean }
+const NO_ROLLUPS: Ready = { rollups: false, months: false, mix: false };
 export async function readyOf(sql: DbSql): Promise<Ready> {
   const rollups = await rollupsReady(sql);
-  return { rollups, months: rollups && await monthRollupReady(sql) };
+  return { rollups, months: rollups && await monthRollupReady(sql), mix: await mixRollupReady(sql) };
 }
+
+/**
+ * The procedures and the sizes of a selection agg_national_mix holds (series-rollups.ts mixWhere: a county, a kind of
+ * purchase, the channel, whole years; no entity, months or size typed in): their counts to the leu without the live
+ * pass over the records (S4 review: the national sizes of 2025, 2.76 s live). A trend's two years are not a range.
+ */
+const mixOf = (sql: DbSql, p: Prepared, ready: Ready): Fragment | null => {
+  if (!ready.mix || p.trend || p.profile) return null;
+  const mixed = mixWhere(sql, p.ctx, "p");
+  return "where" in mixed ? mixed.where : null;
+};
 
 /**
  * A selection no index anchors (no named or compared entity, locality,
@@ -261,7 +273,10 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
       return { unit: "records", rows: await run<Grouped>(sql`select ${r.src} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
     }
     case "procedure": {
-      // The procedure is a column of the contract records the rollups do not keep.
+      // The procedure is a column of the contract records agg_national_mix keeps (the draft counts the contracts).
+      const mixed = mixOf(sql, p, ready);
+      if (mixed) return { unit: "records", rows: await run<Grouped>(sql`
+        select ${procedureOf(sql, sql`p.procedure_type`)} k, coalesce(sum(p.v), 0) v, coalesce(sum(p.n), 0) n from marts.agg_national_mix p where ${mixed} group by 1`) };
       const r = await rowsOf(sql, p, null, NO_ROLLUPS);
       return { unit: "records", rows: await run<Grouped>(sql`select ${procedureOf(sql, sql`d.procedure_type`)} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
     }
@@ -272,7 +287,11 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
       return { unit: "records", rows: await run<Grouped>(sql`select ${kindOfCode(sql, r.cpv!)} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };
     }
     case "size": {
-      // The whole purchase's value (purchaseValueConds): a contract's contract_value_full, a direct acquisition's own.
+      // The whole purchase's value (purchaseValueConds): a contract's contract_value_full, a direct acquisition's own;
+      // agg_national_mix keeps its range (ASK_MIX_SIZE_BOUNDS, the same as VALUE_RANGES).
+      const mixed = mixOf(sql, p, ready);
+      if (mixed) return { unit: "records", rows: await run<Grouped>(sql`
+        select p.size::text k, coalesce(sum(p.v), 0) v, coalesce(sum(p.n), 0) n from marts.agg_national_mix p where ${mixed} group by 1`) };
       const r = await rowsOf(sql, p, null, NO_ROLLUPS, { full: true });
       const value: Fragment = p.ctx.plafond === "strict" ? sql`d.closing_value` : sql`coalesce(d.contract_value_full, d.closing_value)`;
       return { unit: "records", rows: await run<Grouped>(sql`select ${sizeOf(sql, value)} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`) };

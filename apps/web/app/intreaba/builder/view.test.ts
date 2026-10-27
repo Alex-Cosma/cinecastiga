@@ -64,8 +64,11 @@ describe("the builder's view of a draft (P1, P2, P4, P5, P9)", () => {
 
   it("invites the fragments the sentence does not show, named, in its order (P2)", () => {
     expect(builderView(SEVEN.stat!).invites.map((i) => i.label)).toEqual(["De la cine", "Mărimea achiziției"]);
-    // F4: the firms' seat first, glued to the subject once set (kit §5.28).
-    expect(builderView(SEVEN.table!).invites.map((i) => i.label)).toEqual(["Sediul firmei", "Administrator", "Ce s-a cumpărat", "Mărimea achiziției"]);
+    // F4: the firms' seat first, glued to the subject once set (kit §5.28). The size of purchase waits for a place, a
+    // kind or a domain on a national ranking (S4 review: it read both marts whole), as in Cluj.
+    expect(builderView(SEVEN.table!).invites.map((i) => i.label)).toEqual(["Sediul firmei", "Administrator", "Ce s-a cumpărat"]);
+    const cluj = { ...SEVEN.table!, filters: { ...SEVEN.table!.filters, county: "Cluj" } };
+    expect(builderView(cluj).invites.map((i) => i.label)).toEqual(["Sediul firmei", "Administrator", "Ce s-a cumpărat", "Mărimea achiziției"]);
     expect(builderView(SEVEN.trend!).invites.map((i) => i.label)).toEqual(["Ce s-a cumpărat", "Cine a cumpărat", "Ce fel de achiziții"]);
     const markup = renderToStaticMarkup(createElement(Invitations, { items: builderView(SEVEN.trend!).invites }));
     expect(text(markup)).toBe("+Ce s-a cumpărat+Cine a cumpărat+Ce fel de achiziții");

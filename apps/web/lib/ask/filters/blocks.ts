@@ -1,4 +1,5 @@
 import type { Block } from "../spec";
+import { nationalEntityScan } from "./context";
 import { FILTERS } from "./defs";
 import { splitExcluded } from "./origin";
 import { offersKind, presentationTokens, sentenceSlots, sentenceTokens, type SentenceSlot } from "./sentence";
@@ -87,8 +88,13 @@ function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
   const cpvInvite = placed("cpvTerm", "cpvTerm", offersKind(spec) ? { writes: ["purchaseKind"] } : {});
   switch (ctx.block) {
     case "stat": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin", "employees"]), sizeInvite];
-    // The ranked firms' size is the row CÂȘTIGĂTORII (F3), not an invitation.
-    case "table": return firms ? [seatInvite, adminInvite, cpvInvite, sizeInvite] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), sizeInvite];
+    // The ranked firms' size is the row CÂȘTIGĂTORII (F3), not an invitation. The size of purchase is invited where a
+    // place, a kind, a domain, an entity or the contracts bound the records: nationally per entity it reads both marts
+    // whole (S4 review, firms over 1 mil. lei in 2025: 1.4–4.4 s) until S5's size column (PRECOMPUTE.md).
+    case "table": {
+      const sized = nationalEntityScan(spec) ? [] : [sizeInvite];
+      return firms ? [seatInvite, adminInvite, cpvInvite, ...sized] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), ...sized];
+    }
     case "timeseries": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin"])];
     case "map": return [cpvInvite, buyerInvite(ctx, { authority: false, locality: false, county: false }), fromInvite(["supplier", "admin"])];
     case "breakdown": return [cpvInvite, fromInvite(["supplier"])];
