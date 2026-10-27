@@ -20,14 +20,15 @@ import type { AskSpec } from "./ask/spec";
  * Rows are committed on the dedicated seap_test_* database and deleted after.
  */
 
-const release = vi.hoisted(() => ({ beforeF4: false }));
+const release = vi.hoisted(() => ({ beforeF4: false, unfilled: false }));
 vi.mock("./ask/mart-columns", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./ask/mart-columns")>();
   return {
     ...actual,
     martColumns: async (sql: DbSql) => {
       const columns = await actual.martColumns(sql);
-      return release.beforeF4 ? { ...columns, seat: false } : columns;
+      // `unfilled`: F4 deployed, its migration's seat columns still empty until the next marts build.
+      return release.beforeF4 || release.unfilled ? { ...columns, seat: false } : columns;
     },
   };
 });
@@ -156,5 +157,29 @@ describe.skipIf(!url)("F4 on watches: one methodology alert, only on an answer t
     expect(monitoringRunTag(switched)).toBe("Metodologie modificată");
     await checkpoint();
     expect((await run(watch)).run).toMatchObject({ kind: "unchanged", hasAlert: false });
+  });
+
+  it("before the marts build fills the seat, F4 answers as before with no version; the alert comes once the seat is read", async () => {
+    const watch = await beforeF4(async () => {
+      await checkpoint();
+      const created = (await createMonitoringWatch(uid, { spec: FIRMS_RANKING, title: "Înainte de completarea sediului" }, sql)).id;
+      await run(created);
+      return created;
+    });
+    // F4 deployed, the seat column empty (the deploy migration adds it; the nightly build fills it): the SEAP county, no seat-2.
+    release.unfilled = true;
+    try {
+      await checkpoint();
+      const waiting = await run(watch);
+      expect(waiting.run).toMatchObject({ kind: "unchanged", hasAlert: false, methodologyChanged: false, resultChanged: false });
+      expect(waiting.methodology).not.toHaveProperty("answer");
+    } finally { release.unfilled = false; }
+    // The build filled it: one methodology alert with the new counties, never "Rezultat recalculat"; then quiet.
+    await checkpoint();
+    const switched = await run(watch);
+    expect(switched.run).toMatchObject({ kind: "update", hasAlert: true, methodologyChanged: true, resultChanged: true });
+    expect(monitoringRunTag(switched.run)).toBe("Metodologie modificată");
+    await checkpoint();
+    expect((await run(watch)).run).toMatchObject({ kind: "unchanged", hasAlert: false, methodologyChanged: false, resultChanged: false });
   });
 });

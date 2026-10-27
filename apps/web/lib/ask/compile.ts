@@ -325,6 +325,11 @@ export interface EngineResult {
   groupMembers?: string[];
   /** trend with TableOpts.fixedMembers: where the fixed members stand in the live group (the watch's note). */
   movement?: TrendGroupMovement;
+  /**
+   * F4: false when a firm's county was its SEAP county, the seat column not filled yet (mart-columns.ts): the answer
+   * is computed as before seat-2, so it carries no seat version (answer-core.ts answerVersion).
+   */
+  seatColumn?: false;
 }
 
 // Audit F15: the locality filter is the UAT's own administration, strictly
@@ -2208,6 +2213,7 @@ export async function runSpec(
   const ran = trendWindow ?? seriesWindow;
   const executed: ExecutedWindow | null = ran ? { months: [ran.from, ran.to], mode: ran.mode, checkpoint: ran.checkpoint } : null;
   return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}),
+    ...(seat ? {} : { seatColumn: false as const }),
     ...(frozenMembers ? { groupMembers: frozenMembers } : {}), ...(movement ? { movement } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}),
     ...(displaySqlByList ? { displaySqlByList } : {}) };
 }
@@ -2612,7 +2618,9 @@ export async function runRows(
       if (scope.excludeEntityIds) parts.push(sql`not (${col} = any(${sql.array([...scope.excludeEntityIds])}::bigint[]))`);
     }
     if (scope.cpvPrefixes) parts.push(sql`d.cpv_code like any(${sql.array(scope.cpvPrefixes.map((p) => p + "%"))}::text[])`);
-    if (scope.excludeCpvPrefixes) parts.push(sql`not (d.cpv_code like any(${sql.array(scope.excludeCpvPrefixes.map((p) => p + "%"))}::text[]))`);
+    // A record without a code is under none of the prefixes left out: the evolution's „Alte domenii” counts it (series.ts),
+    // the breakdown and the flow keep only coded records (above).
+    if (scope.excludeCpvPrefixes) parts.push(sql`not coalesce(d.cpv_code like any(${sql.array(scope.excludeCpvPrefixes.map((p) => p + "%"))}::text[]), false)`);
     if (scope.years) parts.push(sql`substr(d.finalization_date, 1, 4) = any(${sql.array(scope.years.map(String))}::text[])`);
     notes.push("Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.");
     if (dataset !== "contracts") notes.push("Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.");

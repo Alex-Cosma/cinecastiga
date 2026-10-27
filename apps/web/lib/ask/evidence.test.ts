@@ -260,7 +260,12 @@ describe("source query regression", () => {
     expect(query).toContain("d.supplier_id is not null");
     expect(query).toContain("d.cpv_code is not null");
     expect(query).toContain("not (d.supplier_id = any");
-    expect(query).toContain("not (d.cpv_code like any");
+    expect(query).toContain("not coalesce(d.cpv_code like any");
+    // An evolution's „Alte domenii” keeps the records without a code (series.ts counts them there): no coded-only condition.
+    const series = database();
+    await runRows(series.sql, { ...stat, block: "timeseries", timeseries: { split: "domain" } }, grounding, 0, { scope: { excludeCpvPrefixes: ["45"] } });
+    const other = series.statements.find((s) => s.includes("group by d.state"))!;
+    expect([other.includes("not coalesce(d.cpv_code like any"), other.includes("d.cpv_code is not null")]).toEqual([true, false]);
   });
   it("ordering includes stream, source and supplier IDs to keep consortium pagination stable", async () => {
     const db = database();

@@ -98,11 +98,18 @@ const presentPaths = (spec: AskSpec): Set<string> => {
   return paths;
 };
 
-export function answerVersion(spec: AskSpec): AnswerVersion {
+/**
+ * `ran`: how the engine ran it (runSpec's result), where the caller has it: an answer computed on the SEAP county,
+ * before the marts build fills the seat (seatColumn false), is the one of before F4 and carries no seat-2; a watch
+ * then hears of the switch once, when the seat is read (S4 review: else seat-2 first on the old counties, then a
+ * "Rezultat recalculat" when they changed under the same version).
+ */
+export function answerVersion(spec: AskSpec, ran: { seatColumn?: false } = {}): AnswerVersion {
   const present = presentPaths(spec);
   const conditions: Record<string, string> = {};
   for (const [id, key] of Object.entries(KEY_VERSIONS)) {
     if (key.blocks && !key.blocks.includes(spec.block)) continue;
+    if (id === "seat" && ran.seatColumn === false) continue;
     if (!key.paths.some((path) => present.has(path)) || key.when && !key.when(spec)) continue;
     conditions[id] = key.version;
   }
