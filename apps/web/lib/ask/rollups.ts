@@ -824,6 +824,33 @@ export async function compareParties(sql: DbSql, c: CompareQueryParts): Promise<
   `) as unknown as { id: string; n: number }[];
 }
 
+/**
+ * Two institutions compared (F4, final compare §4): their partners, as compareParties, and their suppliers' seat
+ * against their county (firmSeatCond's classes, by value; `seat`: seatOf's columns on `ep`), from one grouping by
+ * institution, supplier and county, read twice (S4 review: the seats were a second pass over both institutions'
+ * records, +21% buffers on Cluj-Napoca and Timișoara).
+ */
+export async function compareInstitutionParties(sql: DbSql, c: CompareQueryParts, seat: { county: Fragment; foreign: Fragment }): Promise<{
+  parties: { id: string; n: number }[]; seats: { id: string; cls: "same" | "other" | "abroad" | "unknown"; value: string }[];
+}> {
+  const rows = (await sql`
+    with x as materialized (
+      select d.authority_id::text id, d.supplier_id other, d.county, sum(d.closing_value) v
+      from ${c.source} d where ${c.where} group by 1, 2, 3)
+    select 'parties' k, x.id, null::text cls, count(distinct x.other)::text v from x where x.other is not null group by x.id
+    union all
+    select 'seats', x.id, case when ep.entity_id is null then 'unknown' when ${seat.foreign} then 'abroad'
+                               when ${seat.county} is null or x.county is null then 'unknown'
+                               when ${seat.county} = x.county then 'same' else 'other' end, sum(x.v)::text
+    from x left join marts.entity_profile ep on ep.entity_id = x.other and ep.role = 'supplier'
+    group by 2, 3
+  `) as unknown as { k: "parties" | "seats"; id: string; cls: string | null; v: string }[];
+  return {
+    parties: rows.filter((r) => r.k === "parties").map((r) => ({ id: r.id, n: Number(r.v) })),
+    seats: rows.filter((r) => r.k === "seats").map((r) => ({ id: r.id, cls: r.cls as "same" | "other" | "abroad" | "unknown", value: r.v })),
+  };
+}
+
 export async function compareTopPartners(sql: DbSql, c: CompareQueryParts):
   Promise<{ id: string; other_id: string; name: string | null; value: string; n: number }[]> {
   const { party, other, otherRole } = partnerColumns(sql, c.focalRole);
