@@ -333,6 +333,15 @@ function relationCases(): PerfCase[] {
     perfCase("filtered:sankey-buzau-45", "filtered", "Ce cumpără Buzăul în construcții și de la cine", "sankey", all(buzau, set({ cpvTerm: "45" }))),
     perfCase("filtered:sankey-bacau-15", "filtered", "Spitalul Bacău: primii 15 furnizori, pe domenii", "sankey", all(bacau, (q) => { q.sankey = { shown: 15 }; })),
     perfCase("filtered:sankey-bacau-seat-same", "filtered", "Spitalul Bacău: furnizorii din județ, pe domenii", "sankey", all(bacau, set({ firmSeat: "same" }))),
+    // S4 review: „Toți” on one channel or in a period lists the partners from the records it bounds (as network-1); the
+    // whole relation (groups, years, signals, the strip's shares) is asked after the answer (part=network).
+    perfCase("filtered:network-selgros-2025", "filtered", "SELGROS, 2025, toate achizițiile", "network", all(selgros, years(2025))),
+    perfCase("facets:network-whole-selgros-contracts", "facets", "Relația întreagă după „SELGROS, Proceduri”", "network", all(selgros, top({ dataset: "contracts" })),
+      { facet: { part: "network" }, barMs: 2000 }),
+    perfCase("facets:network-whole-selgros-2025", "facets", "Relația întreagă după „SELGROS, 2025”", "network", all(selgros, years(2025)), { facet: { part: "network" }, barMs: 2000 }),
+    // S4 review: an anchored breakdown on one channel reads that channel only (no second pass for the strip's shares).
+    perfCase("filtered:breakdown-selgros-contracts", "filtered", "Ce vinde SELGROS, Proceduri", "breakdown", all(set({ supplierName: PERF_ENTITIES.selgros.name, supplierId: PERF_ENTITIES.selgros.id }), top({ dataset: "contracts" }))),
+    perfCase("filtered:breakdown-selgros-da", "filtered", "Ce vinde SELGROS, Directe", "breakdown", all(set({ supplierName: PERF_ENTITIES.selgros.name, supplierId: PERF_ENTITIES.selgros.id }), top({ dataset: "da" }))),
   ];
 }
 

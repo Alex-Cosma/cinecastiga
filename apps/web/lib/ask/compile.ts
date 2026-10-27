@@ -644,6 +644,14 @@ function breakdownStems(rows: readonly { stem: string; v: string; n: string }[])
   return [...by.entries()].map(([stem, at]) => ({ stem, v: sumDecimalStrings(at.v), n: String(at.n) }))
     .sort((a, b) => Number(b.v) - Number(a.v) || (a.stem < b.stem ? -1 : a.stem > b.stem ? 1 : 0));
 }
+/** Each channel's value and records over rows by channel: a breakdown's strip shares (F3, final breakdown §3.6). */
+function channelTotals(rows: readonly { src: string; v: string; n: string }[]): Record<"da" | "contracts", { value: number; count: number }> {
+  const by = new Map<string, { v: string[]; n: number }>();
+  for (const row of rows) { const at = by.get(row.src) ?? { v: [], n: 0 }; at.v.push(row.v); at.n += Number(row.n); by.set(row.src, at); }
+  const totals = { da: { value: 0, count: 0 }, contracts: { value: 0, count: 0 } };
+  for (const src of ["da", "contracts"] as const) { const at = by.get(src); if (at) totals[src] = { value: Number(sumDecimalStrings(at.v)), count: at.n }; }
+  return totals;
+}
 /** The largest record of each group and its channel (the „1 contract: 99%” tag, final breakdown §3.10). */
 function largestOf(rows: readonly { stem: string; src: "da" | "contracts"; mx: string | null }[]): Map<string, { max: number; maxSrc: "da" | "contracts" }> {
   const out = new Map<string, { max: number; maxSrc: "da" | "contracts" }>();
@@ -666,6 +674,11 @@ export interface TableOpts {
   fixedMembers?: TrendFixedMembers;
   /** Server-only, a watch being activated on a trend's group: return its members (EngineResult.groupMembers). */
   freezeGroup?: boolean;
+  /**
+   * Server-only, part=network (network-facts.ts): a network's whole relation even where „Toți” on one channel or in a
+   * period is answered from the records it bounds (relations.ts boundedNetwork).
+   */
+  networkWhole?: boolean;
 }
 
 /**
@@ -1098,38 +1111,16 @@ export async function runSpec(
     : s`ef.county`;
 
   /**
-   * A breakdown's channels (F3, final breakdown §3.6): each one's value and
-   * records in the same selection with every channel, for the strip's shares.
-   * On every channel, from the breakdown's own pass (`live`) or a grouping by
-   * channel (a rollup, else live); none where the question keeps one channel
-   * (a procedure, the single bidder: the strip's other options are disabled).
+   * A breakdown on every channel (F3, final breakdown §3.6): the strip's shares are each channel's value and records in
+   * the same selection with every channel, which a question on one channel reads from the same pass as its slices
+   * (agg_months, or agg_cpv_year by channel); answered live, one channel reads that channel only and the strip keeps
+   * the shares of the same question on every channel (AskPanel), as the flow's (S4 review: SELGROS on „Proceduri”
+   * 4 → 65 ms with a second live grouping of every channel). None where the question keeps one channel (a procedure,
+   * the single bidder: the strip's other options are disabled).
    */
-  const breakdownStreams = async (s: DbSql, live: readonly { src: "da" | "contracts"; v: string; n: string }[] | null):
-    Promise<Record<"da" | "contracts", { value: number; count: number }> | null> => {
-    if (spec.filters.procedure || spec.filters.singleBidder) return null;
-    const totals = { da: { value: 0, count: 0 }, contracts: { value: 0, count: 0 } };
-    const add = (rows: readonly { src?: string | null; v: string; n: string }[]) => {
-      const by = new Map<string, { v: string[]; n: number }>();
-      for (const row of rows) { const at = by.get(row.src ?? "") ?? { v: [], n: 0 }; at.v.push(row.v); at.n += Number(row.n); by.set(row.src ?? "", at); }
-      for (const src of ["da", "contracts"] as const) { const at = by.get(src); if (at) totals[src] = { value: Number(sumDecimalStrings(at.v)), count: at.n }; }
-      return totals;
-    };
-    if (dataset === "all" && live) return add(live);
-    const every: AskSpec = { ...spec, dataset: "all" };
-    const ctx = predicateContext(sql, every, grounding, { dataset: "all", yearFrom, yearTo, kindIds, seat });
-    const plan = rollup ? await rollupPlanFor(s, every, ctx) : null;
-    if (plan) {
-      // A breakdown's plan is agg_cpv_year's (by CPV): its records without a code are left out, as the breakdown's.
-      const rows = rollupRows(s, plan, "p");
-      return add((await s`select p.src, coalesce(sum(p.v), 0) v, sum(p.n) n from ${rows.from} where ${rows.where} and p.cpv_code is not null group by 1`) as unknown as { src: string; v: string; n: string }[]);
-    }
-    return add((await s`
-      select d.src, coalesce(sum(d.closing_value), 0) v, count(*) n
-      from ${txAggFragment(sql, "all", false, fullValueUnion(ctx))} d
-      where ${andAll(sql, rowPredicates(ctx))} and d.cpv_code is not null
-      group by 1
-    `) as unknown as { src: string; v: string; n: string }[]);
-  };
+  const breakdownShares = !spec.filters.procedure && !spec.filters.singleBidder;
+  const breakdownEvery = (): PredicateCtx => dataset === "all" ? w
+    : predicateContext(sql, { ...spec, dataset: "all" }, grounding, { dataset: "all", yearFrom, yearTo, kindIds, seat });
 
   // The band of a ranking of firms is applied after grouping (rankedBand): said under the ranking's text.
   const displaySql = rankedBand
@@ -1889,31 +1880,44 @@ export async function runSpec(
           // full 8-digit code). Otherwise: top-level divisions (2-digit).
           const plen = w.cpvPrefixes.reduce((a, p) => Math.max(a, p.length), 0);
           const stemLen = plen === 0 ? 2 : Math.min(plen + 2, 8);
-          // On every channel the rollup groups by stem and channel too (F3): the strip's shares from the same pass.
-          const rolled = !rollup ? null : dataset === "all" ? await rollupBreakdown(s, rollup, stemLen, "src") : await rollupBreakdown(s, rollup, stemLen);
+          type ByChannel = { stem: string; src: "da" | "contracts"; v: string; n: string };
+          // The divisions from agg_months (F3): the slices, the largest record of each (the „1 contract: 99%” tag) and
+          // every channel's shares in one pass over its ~250 thousand rows, one channel's slices kept here; agg_cpv_year
+          // took a pass for the slices, another for one channel's shares and agg_months a third for the tag (S4 review:
+          // the catalogue's breakdown 83 → 118 ms, one channel 40 → 90 ms).
+          const months = stemLen === 2 && seriesRollup && "where" in seriesRollup
+            ? (dataset === "all" ? seriesRollup : breakdownShares ? monthsWhere(sql, breakdownEvery(), "p") : seriesRollup) : null;
+          const divisions = months && "where" in months ? (await s`
+            select p.cpv2 stem, p.src, coalesce(sum(p.v), 0) v, sum(p.n) n, max(p.mx) mx
+            from marts.agg_months p where ${months.where} and p.cpv2 is not null
+            group by 1, 2
+          `) as unknown as (ByChannel & { mx: string })[] : null;
+          // Deeper, agg_cpv_year by stem and channel too, once: on one channel over every channel, the channel's rows kept.
+          const everyPlan = divisions || !rollup || dataset === "all" || !breakdownShares ? null : await rollupPlanFor(s, { ...spec, dataset: "all" }, breakdownEvery());
+          const rolled = divisions || !rollup ? null : dataset === "all" || everyPlan ? await rollupBreakdown(s, everyPlan ?? rollup, stemLen, "src") : await rollupBreakdown(s, rollup, stemLen);
           const rolledRows = rolled && "rows" in rolled ? rolled.rows : null;
           // Equal values come out by stem, as from the rollup. Live, by stem and channel (F3): the largest
-          // record of each group and the channels' totals come from the same pass.
-          const live = rolledRows ? null : (await s`
+          // record of each group and, on every channel, the channels' totals come from the same pass.
+          const live = divisions || rolledRows ? null : (await s`
             select substr(d.cpv_code, 1, ${stemLen}) stem, ${dataset === "all" ? s`d.src` : s`${dataset}::text`} src,
                    coalesce(sum(d.closing_value), 0) v, count(*) n, max(d.closing_value) mx
             from ${txtAgg} d
             where ${whereFrag()} and d.cpv_code is not null
             group by 1, 2
-          `) as unknown as { stem: string; src: "da" | "contracts"; v: string; n: string; mx: string }[];
-          const bySrc = rolledRows && dataset === "all" ? rolledRows as { stem: string; src: "da" | "contracts"; v: string; n: string }[] : null;
-          const r = bySrc ? breakdownStems(bySrc) : rolledRows ?? breakdownStems(live!);
+          `) as unknown as (ByChannel & { mx: string })[];
+          // Every channel by stem and channel, where a pass has them; the question's own channel of them.
+          const bySrc: ByChannel[] | null = divisions ?? (rolledRows && (dataset === "all" || everyPlan) ? rolledRows as ByChannel[] : null);
+          const own = bySrc && dataset !== "all" ? bySrc.filter((row) => row.src === dataset) : bySrc;
+          const r = own ? breakdownStems(own) : rolledRows ?? breakdownStems(live!);
           const top = r.slice(0, 8);
           const rest = r.slice(8);
           // F3 (final breakdown §3.6–§3.10): every group of the level, for the kinds row, the order by records
           // and the „1 contract: 99%” tag; the largest record from agg_months on the divisions it answers.
           const base = r.slice(0, BREAKDOWN_BASE);
-          const largest = live ? largestOf(live) : stemLen === 2 && seriesRollup && "where" in seriesRollup ? largestOf((await s`
-            select p.cpv2 stem, p.src, max(p.mx) mx from marts.agg_months p where ${seriesRollup.where} and p.cpv2 is not null group by 1, 2
-          `) as unknown as { stem: string; src: "da" | "contracts"; mx: string }[]) : null;
+          const largest = live ? largestOf(live) : divisions ? largestOf(dataset === "all" ? divisions : divisions.filter((row) => row.src === dataset)) : null;
           const names = await cpvNamesFor(s, base.map((t) => t.stem));
           // The strip's shares (final §3.6): each channel in the same selection with every channel.
-          const streams = await breakdownStreams(s, live ?? bySrc);
+          const streams = !breakdownShares ? null : bySrc ? channelTotals(bySrc) : dataset === "all" && live ? channelTotals(live) : null;
           return {
             block: "breakdown",
             slices: top.map((t) => ({
@@ -1983,7 +1987,11 @@ export async function runSpec(
         // relation), each with its totals and first rows of every order, the facts of each partner (relations.ts).
         case "network": {
           if (!focalId) return { error: "Lipsește entitatea centrală." };
-          const net = await networkAnswer(s, { ...relation(), focalName, since: networkReference!, complete: networkComplete!, signals: spec.network?.signals === true, list: networkList(spec) });
+          // „Toți” on one channel or in a period reads the records it bounds; the whole relation follows (part=network).
+          const list = networkList(spec), signals = spec.network?.signals === true;
+          const bounded = !tableOpts.networkWhole && list === "all" && !signals
+            && (dataset !== "all" || w.yearFrom !== null || w.yearTo !== null || w.monthFrom !== null || w.monthTo !== null);
+          const net = await networkAnswer(s, { ...relation(), focalName, since: networkReference!, complete: networkComplete!, signals, list, bounded });
           return net ?? { error: emptyRelationError(focalName) };
         }
 

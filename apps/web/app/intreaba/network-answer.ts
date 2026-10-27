@@ -38,12 +38,24 @@ const SWATCH = { all: "all", new: "new", continuing: "up", gone: "gone" } as con
 export const shownList = (spec: Pick<AskSpec, "network">): NetworkList => networkList(spec);
 
 /**
- * The four buttons (final §3.1, kit §6 network 2): „Toți” first (a whole row on phones), each with its
- * partners and value; an empty group stays, disabled with its reason.
+ * A bounded answer's whole relation (relations.ts boundedNetwork, part=network): still asked, or not read
+ * (a limit, an error). The groups, the years' order and band wait on it; „Toți” is the answer's own.
  */
-export function networkButtons(data: NetworkData): CountGroup[] {
+export type NetworkRelation = "loading" | "failed";
+export const relationWaits = (relation: NetworkRelation): string =>
+  relation === "loading" ? "Se calculează pe toată relația." : "Nu au putut fi calculate acum.";
+
+/**
+ * The four buttons (final §3.1, kit §6 network 2): „Toți” first (a whole row on phones), each with its
+ * partners and value; an empty group stays, disabled with its reason. A bounded answer's groups wait on
+ * its whole relation (`relation`): „…” while it is asked.
+ */
+export function networkButtons(data: NetworkData, relation?: NetworkRelation): CountGroup[] {
   return NETWORK_LISTS.map((list) => {
     const own = data.lists[list];
+    if (relation && list !== "all") return {
+      value: list, name: NETWORK_LIST_LABELS[list], swatch: SWATCH[list], count: relation === "loading" ? "…" : "—", disabled: relationWaits(relation),
+    };
     const empty = own.partners === 0 ? emptyWords(data, list) : null;
     return {
       value: list, name: NETWORK_LIST_LABELS[list], swatch: SWATCH[list],
@@ -164,13 +176,15 @@ export function networkRowView(row: NetworkRow, data: NetworkData, list: Network
   const place = [partner.county, firm && partner.employees !== null ? countWords(partner.employees, "angajat", "angajați") : null].filter(Boolean).join(" · ") || null;
   const own = data.lists[list];
   const group = list === "all" ? null : list;
+  // A bounded answer has no relation's years yet (part=network brings them): no band until then.
+  const years = data.relation !== "pending";
   return {
     key: row.entityId, entityId: row.entityId, name, place,
     facts: rowFacts(row, partner),
     value: formatRonFull(row.value), share: `${own.value > 0 ? formatShare(row.value / own.value) : "—"} din total`,
     count: row.count, records: countWords(row.count, "înregistrare", "înregistrări"),
-    band: yearBand(partner, data, last), yearsText: yearsWords(partner, group),
-    bandLabel: `Ani cu înregistrări: ${partner.years.join(", ") || "—"}`,
+    band: years ? yearBand(partner, data, last) : [], yearsText: years ? yearsWords(partner, group) : "",
+    bandLabel: years ? `Ani cu înregistrări: ${partner.years.join(", ") || "—"}` : "",
     scope: { role: firm ? "supplier" : "authority", entityIds: [row.entityId] },
     scopeLabel: `${name} · relația cu ${cleanName(data.focal.name)}`,
   };

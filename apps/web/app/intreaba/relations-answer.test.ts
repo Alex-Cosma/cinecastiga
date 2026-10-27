@@ -48,6 +48,16 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     expect(networkEmpty({ ...NETWORK, lists: { ...NETWORK.lists, new: list([], 0) } }, "new")).toBe("Niciun furnizor nou din 2025. Cel mai recent nou: 2023.");
   });
 
+  it("keeps a bounded answer's groups and bands waiting on its whole relation („Toți” on one channel or in a period)", () => {
+    const bounded: NetworkData = { ...NETWORK, relation: "pending", lists: { ...NETWORK.lists, new: list([], 0), continuing: list([], 0), gone: list([], 0) } };
+    expect(networkButtons(bounded, "loading").map((b) => [b.value, b.count, b.disabled ?? null])).toEqual([
+      ["all", "282 · 1,6 mld.", null], ["new", "…", "Se calculează pe toată relația."], ["continuing", "…", "Se calculează pe toată relația."], ["gone", "…", "Se calculează pe toată relația."],
+    ]);
+    expect(networkButtons(bounded, "failed")[1]).toMatchObject({ count: "—", disabled: "Nu au putut fi calculate acum." });
+    const view = networkRowView(bounded.lists.all.rows[0]!, bounded, "all", 2025);
+    expect([view.band, view.yearsText, view.bandLabel, view.value]).toEqual([[], "", "", "332.540.727 lei"]);
+  });
+
   it("orders the rows it holds by value, records or years, and folds the rest", () => {
     expect(orderedRows(NETWORK, "all", "count").map((r) => r.entityId)).toEqual(["12", "10", "11", "13"]);
     expect(orderedRows(NETWORK, "all", "years").map((r) => r.entityId)).toEqual(["12", "10", "11", "13"]);
