@@ -232,7 +232,8 @@ describe("the pairs of the trend's offers with the archive's periods (R1)", () =
     }
     expect(problems.slice(0, 10)).toEqual([]);
     expect(pairs).toBeGreaterThan(1_000);
-  });
+    // ~2 s alone; the whole suite on a shared machine took it to 6.4 s, past the default 5 s (S4 review).
+  }, 30_000);
 });
 
 /** The rows a trend's places offer on a draft (with the periods), the ones a reader can choose. */

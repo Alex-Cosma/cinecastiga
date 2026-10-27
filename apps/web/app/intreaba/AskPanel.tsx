@@ -1166,8 +1166,9 @@ export default function AskPanel({
             </div> : <div className={`cq-result cq-result-${data.block}`}>
               {data.block === "stat" && <>
                 <StatBlock stat={data.stat} measure={applied.measure} />
-                {/* „Din care” (F3): asked once the number is drawn; „Doar acestea ›” asks the total again with that row. */}
-                <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
+                {/* „Din care” (F3): asked once the number is drawn; „Doar acestea ›” asks the total again with that row, a
+                    restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
+                <StatMix spec={applied} onOnly={(next, words) => { window.history.pushState(null, "", window.location.href); runWider(next); showToast(`${words}.`); }} />
               </>}
               {data.block === "table" &&
                 (layout === "visual" ? (

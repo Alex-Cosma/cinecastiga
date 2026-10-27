@@ -45,8 +45,8 @@ export interface SankeyPartner {
   with?: string[];
   withMore?: number;
 }
-/** A domain of the flow: its value, records and partners. */
-export interface SankeyDomain { code: string; name: string | null; value: number; count: number; partners: number }
+/** A domain of the flow: its value, records and partners; with one record, that record's channel (absent on an answer stored before). */
+export interface SankeyDomain { code: string; name: string | null; value: number; count: number; partners: number; single?: "da" | "contracts" }
 
 /** A sankey-2 answer (plan §4.9). */
 export interface SankeyData {

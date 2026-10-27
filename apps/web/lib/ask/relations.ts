@@ -336,13 +336,13 @@ export async function sankeyAnswer(s: DbSql, q: RelationQuery & { focalName: str
   if (!selected.length) return null;
   // Each partner and each domain over the whole selection.
   const partnerSums = new Map<string, { v: string[]; n: number; c: string[]; stems: Set<string> }>();
-  const domainSums = new Map<string, { v: string[]; n: number; partners: Set<string> }>();
+  const domainSums = new Map<string, { v: string[]; n: number; partners: Set<string>; src: "da" | "contracts" }>();
   for (const row of selected) {
     const p = partnerSums.get(row.pid) ?? { v: [], n: 0, c: [], stems: new Set<string>() };
     p.v.push(row.v); p.n += Number(row.n); p.c.push(row.c); p.stems.add(row.stem);
     partnerSums.set(row.pid, p);
-    const d = domainSums.get(row.stem) ?? { v: [], n: 0, partners: new Set<string>() };
-    d.v.push(row.v); d.n += Number(row.n); d.partners.add(row.pid);
+    const d = domainSums.get(row.stem) ?? { v: [], n: 0, partners: new Set<string>(), src: row.src };
+    d.v.push(row.v); d.n += Number(row.n); d.partners.add(row.pid); d.src = row.src;
     domainSums.set(row.stem, d);
   }
   const ranked = <K>(map: Map<string, K & { v: string[] }>) => [...map.entries()].map(([key, at]) => ({ key, at, value: sumDecimalStrings(at.v) }))
@@ -378,6 +378,8 @@ export async function sankeyAnswer(s: DbSql, q: RelationQuery & { focalName: str
   });
   const domains: SankeyDomain[] = domainRank.slice(0, SANKEY_DOMAINS).map(({ key, at, value }) => ({
     code: key, name: cpvNames.get(key) ?? null, value: Number(value), count: at.n, partners: at.partners.size,
+    // A domain of one record says which it is, a contract or a direct acquisition (its only row is the one grouped).
+    ...(at.n === 1 ? { single: at.src } : {}),
   }));
   return {
     block: "sankey", focal: { entityId: focalId, name: q.focalName, role: focalRole },

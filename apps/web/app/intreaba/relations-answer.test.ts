@@ -127,6 +127,12 @@ describe("the flow's answer (final sankey §3.2–§3.4, §3.10)", () => {
     expect(shownOptions({ totals: { ...SANKEY.totals, partners: 8 } }).map((o) => o.disabled ?? null)).toEqual([null, null, "Selecția are mai puțini parteneri."]);
   });
 
+  it("says what a domain's one record is: a contract, a direct acquisition, or a record on an answer stored before", () => {
+    const one = (single?: "da" | "contracts") => sankeyView({ ...SANKEY, domains: [{ ...SANKEY.domains[1]!, count: 1, ...(single ? { single } : {}) }] }, {}).domains[0]!.single;
+    expect([one("da"), one("contracts"), one()]).toEqual(["O singură achiziție directă.", "Un singur contract.", "O singură înregistrare."]);
+    expect(sankeyView(SANKEY, {}).domains[0]!.single).toBeUndefined();
+  });
+
   it("suggests the domain that holds 90% of the value, never at eight digits", () => {
     expect(sankeySuggestion(SANKEY)).toBeNull();
     const one = { ...SANKEY, domains: [{ ...SANKEY.domains[0]!, value: 16_000 }], totals: { ...SANKEY.totals, value: 16_950 } };
