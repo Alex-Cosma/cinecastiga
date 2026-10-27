@@ -155,7 +155,8 @@ describe("each condition is written by the function of its engine level (plan §
       // (compare-prestep.ts); rowPredicates writes them once found (PredicateCtx.shared, tested below).
       "sharedPartners on compare",
     ].filter((key) => expected.has(key)));
-  });
+    // ~3 s alone; the whole suite on a shared machine took it to 7 s, past the default 5 s (S4 review).
+  }, 30_000);
 });
 
 describe("the shared clients of two compared firms (F4, PredicateCtx.shared)", () => {

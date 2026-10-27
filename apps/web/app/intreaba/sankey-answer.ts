@@ -134,7 +134,8 @@ function domainNode(d: SankeyDomain, share: (v: number) => string, stemLen: numb
   return {
     id: d.code, rest: false, name: cut(full), full: `${full} · CPV ${d.code}`, value: d.value, count: d.count, share: share(d.value),
     facts: `${countWords(d.count, "înregistrare", "înregistrări")} · ${countWords(d.partners, "partener", "parteneri")}`,
-    ...(d.count === 1 ? { single: "Un singur contract." } : {}),
+    // Kit §4: one contract and one direct acquisition are told apart; an answer stored without the channel names neither.
+    ...(d.count === 1 ? { single: d.single === "da" ? "O singură achiziție directă." : d.single === "contracts" ? "Un singur contract." : "O singură înregistrare." } : {}),
     ...(d.code.length < 8 && (stemLen === 0 || stemLen < 8) ? { deeper: d.code } : {}),
     scope: { cpvPrefixes: [d.code] }, scopeLabel: `${full} · ${focal}`,
   };

@@ -349,7 +349,7 @@ export function BreakdownBlock({
           const bind = t.bind(
             s.name,
             byCount ? countWords(s.count, "înregistrare", "înregistrări") : formatRon(s.value),
-            `${byCount ? formatRon(s.value) : countWords(s.count, "achiziție", "achiziții")} · ${formatShare(amount(s) / measureTotal)} din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
+            `${byCount ? formatRon(s.value) : countWords(s.count, "înregistrare", "înregistrări")} · ${formatShare(amount(s) / measureTotal)} din total${s.code ? (canDeepen(s.code) ? " · click → structura subcategoriilor" : " · click → achizițiile categoriei") : ""}`,
           );
           return s.code ? (
             <a
