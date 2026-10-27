@@ -104,7 +104,7 @@ export async function evaluateMonitoringWatch(watchId:string,expectedCheckpointI
     if("error"in answer)throw new MonitoringError(answer.error,422);
     // answer: the version of this question's answer (lib/ask/answer-core.ts), so a release that changes one block or key alerts only its watches.
     // Stored only once a release bumped it: absent reads the same, and code from before F0 (jsonb equality) then sees no false change after a revert.
-    const version=answerVersion(spec);
+    const version=answerVersion(spec,answer);
     const runId=randomUUID(),methodology={...MONITORING_METHODOLOGY,refresh:checkpoint.methodology,...(isFirstAnswerVersion(version,spec.block)?{}:{answer:version})};
     const [time]=await q`select to_char(transaction_timestamp() at time zone 'Europe/Bucharest','YYYY-MM-DD"T"HH24:MI:SS') observed_at`;
     const observedAt=String(time!.observed_at);

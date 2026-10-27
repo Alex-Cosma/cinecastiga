@@ -90,6 +90,9 @@ describe("the key versions of this release", () => {
       expect([spec.block, firms(spec as Omit<AskSpec, "measure">)]).toEqual([spec.block, undefined]);
     // F4's own keys could not be asked before it: no version on a question that shows no firm's county.
     expect(firms({ block: "stat", filters: { firmSeat: "other" } })).toBeUndefined();
+    // Run on the SEAP county (the seat column not filled yet): the answer of before F4, no seat-2; the other keys stay.
+    const unfilled = answerVersion(smallFirms, { seatColumn: false });
+    expect([unfilled.conditions.seat, unfilled.conditions["table:employees"]]).toEqual([undefined, "table:employees-2"]);
   });
 });
 

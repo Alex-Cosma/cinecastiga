@@ -192,7 +192,7 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
     evidenceOptions: { search: request.options.search, state: request.options.state, stream: request.options.stream },
     grounding, effectiveSpec: spec, sources: sourceMetadata, warnings: [...answer.caveats, ...sources.scopeNotes] },
     // Which meaning of the question the frozen answer was computed with, for readers of result.json (lib/ask/answer-core.ts).
-    result: { ...answer, answerVersion: answerVersion(spec) }, expectedRows: sources.total, expectedTotal: sources.value, methodology: CAPTURE_METHODOLOGY };
+    result: { ...answer, answerVersion: answerVersion(spec, answer) }, expectedRows: sources.total, expectedTotal: sources.value, methodology: CAPTURE_METHODOLOGY };
 }
 
 async function peerCapture(q: DbSql, captureId: string, request: CaptureRequest, peerEvidence?: BoundPeerEvidence) {

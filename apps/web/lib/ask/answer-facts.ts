@@ -1,6 +1,6 @@
 import { contractAboveValueCap, contractRonValue, type DbSql } from "@seap/db";
 import { ground } from "./ground";
-import { andAll, employeesCond, groupPredicates, procedureCond, purchaseKindCond, rowPredicates, type PredicateCtx } from "./predicates";
+import { andAll, employeesCond, firmSeatCond, groupPredicates, procedureCond, purchaseKindCond, rowPredicates, seatCountyCond, type PredicateCtx } from "./predicates";
 import {
   FACET_TTL_MS, facetStamp, inFacetTransaction, kindOfCode, nationalLive, prepare, procedureOf, runner, sizeOf, timedOut,
   type FacetFailure, type Prepared, type Runner,
@@ -201,6 +201,10 @@ function aboveCapWhere(sql: DbSql, ctx: PredicateCtx): Fragment | null {
   if (ctx.supplierId) parts.push(winner(sql`cw.entity_id = ${ctx.supplierId}`));
   if (ctx.adminSupplierIds !== null) parts.push(winner(sql`cw.entity_id = any(${sql.array(ctx.adminSupplierIds)}::bigint[])`));
   if (ctx.minEmployees !== null || ctx.maxEmployees !== null) parts.push(winner(employeesCond(sql, ctx.minEmployees, ctx.maxEmployees, sql`cw.entity_id`)));
+  // F4: the winner's seat against the buyer's county (firmSeat), or its own county (seatCounty), as on the records (S4 review:
+  // „cu sediul în străinătate” listed the same contracts as every seat).
+  if (ctx.firmSeat) parts.push(winner(firmSeatCond(sql, ctx.firmSeat, ctx.seatColumn, { supplier: sql`cw.entity_id`, county: sql`ae.county` })));
+  if (ctx.seatCounty) parts.push(winner(seatCountyCond(sql, ctx.seatCounty, ctx.seatColumn, sql`cw.entity_id`)));
   return andAll(sql, parts);
 }
 

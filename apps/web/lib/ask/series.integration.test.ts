@@ -235,6 +235,12 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       const firm = barsOf(await barFacts(q, series({ ...Y, supplierId: 10, supplierName: "Furnizor A" })));
       expect(Object.keys(firm.above!)).toEqual(["2025"]);
       expect(barsCluj.above).toEqual({});
+      // F4: the winner's seat against the awarding authority's county (Iași): 12 (Iași) won in its county, 10 (București)
+      // in another, none abroad; before the review every seat listed both contracts.
+      await q`update core.entities set county = 'Iasi' where id = 3`;
+      const seated = async (firmSeat: "same" | "other" | "abroad") => Object.keys(barsOf(await barFacts(q, series({ ...Y, firmSeat }))).above!);
+      expect([await seated("same"), await seated("other"), await seated("abroad")]).toEqual([["2024"], ["2025"], []]);
+      await q`update core.entities set county = null where id = 3`;
 
       // 4. The ranked firms' employees (CÂȘTIGĂTORII, table:employees-2): the list narrows to the band, the total and
       // „% din total” stay the selection's, the band's figures are those of a total over the same firms.
