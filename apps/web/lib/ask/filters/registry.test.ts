@@ -4,10 +4,10 @@ import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, par
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
-import { filterContext, formOf, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
+import { filterContext, formOf, NATIONAL_ENTITY_SCAN, nationalEntityScan, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
 import { legacyConditions, presentConditions } from "./legacy-conditions";
 import { selectionOrigin } from "./origin";
-import { windowFilters, writeChoice, type Choice } from "./pickers";
+import { choiceState, windowFilters, writeChoice, type Choice } from "./pickers";
 import { baseQuestions, builderErrors, choicesOn, engineError, REQUIRED_INPUTS, type PlacedChoice } from "./probe";
 import { availability, conditionSet, FILTER_DEFS, FILTERS, offeredFilters, placedSlots, SPEC_PATH_OWNERS, visibleFilters } from "./registry";
 import { sentenceTokens } from "./sentence";
@@ -354,9 +354,11 @@ function walk() {
       const where = `${ctx.form} ${placed.placement} ${placed.slot.id}${placed.slot.picker ? ` (${placed.slot.picker})` : ""} = ${JSON.stringify(placed.choice.value)} on ${questionKey(spec)}`;
       if (placed.state.state === "hidden") continue;
       if (placed.state.state === "disabled") {
-        // Disabled says why, and is honest: the engine would refuse the choice (a ranking pinned to one row).
+        // Disabled says why, and is honest: the engine would refuse the choice (a ranking pinned to one row), or it
+        // would read both marts whole until S5 (goods or services per entity nationally, S4 review): said as such.
         if (!placed.state.reason) problems.push(`disabled without a reason: ${where}`);
-        if (!runnableError(writeChoice(spec, placed.slot, placed.choice) as unknown as AskSpec)) problems.push(`disabled, engine accepts: ${where}`);
+        const slow = placed.state.reason === NATIONAL_ENTITY_SCAN && nationalEntityScan(writeChoice(spec, placed.slot, placed.choice));
+        if (!slow && !runnableError(writeChoice(spec, placed.slot, placed.choice) as unknown as AskSpec)) problems.push(`disabled, engine accepts: ${where}`);
         disabled.set(placed.state.reason, (disabled.get(placed.state.reason) ?? 0) + 1);
         continue;
       }
@@ -404,7 +406,9 @@ describe("R1: what a question offers, the engine accepts (plan §2.1)", () => {
       "Firmele străine nu au bilanț și nici număr la Registrul Comerțului. Scoate angajații sau alege alt sediu.",
       "Scoate firma aleasă ca să clasezi firmele.", "Scoate instituția aleasă ca să clasezi instituțiile.",
       "Scoate județul ca să clasezi județele.", "Scoate localitatea ca să clasezi județele.",
-    ]);
+      // S4 review: goods or services per institution or firm, nationally, wait on S5's rollup (PRECOMPUTE.md).
+      NATIONAL_ENTITY_SCAN,
+    ].sort());
   });
 });
 
@@ -477,6 +481,21 @@ describe("availability (plan §2.2)", () => {
       const ctx = ctxOf(spec), offered = offeredFilters(spec, ctx);
       for (const def of FILTER_DEFS) expect(availability(def.id, spec, ctx).state === "hidden", `${def.id} on ${questionKey(spec)}`).toBe(!offered.has(def.id));
     }
+  });
+
+  it("keeps goods and services from a national answer per entity, where they read both marts whole (S4 review)", () => {
+    const firms = base("table firms");
+    const kindSlot = { id: "purchaseKind", label: "Ce s-a cumpărat", window: "Ce s-a cumpărat?" } as const;
+    const state = (spec: FilterSpec, value: string) => choiceState(kindSlot as never, { filter: "purchaseKind", value } as Choice, spec, ctxOf(spec)).state;
+    const at = (spec: FilterSpec) => ["produse", "servicii", "lucrari"].map((value) => state(spec, value));
+    expect([nationalEntityScan(firms), at(firms)]).toEqual([true, ["disabled", "disabled", "offered"]]);
+    // A county, a kind of institution, a domain or the contracts bound the records; the counties are a rollup's.
+    for (const filters of [{ county: "Cluj" }, { authorityKind: "spital" }, { cpvTerm: "medicamente" }] as FilterSpec["filters"][])
+      expect(at({ ...firms, filters: { ...firms.filters, ...filters } })).toEqual(["offered", "offered", "offered"]);
+    expect(at({ ...firms, dataset: "contracts" })).toEqual(["offered", "offered", "offered"]);
+    expect(at({ ...firms, dim: "county" })).toEqual(["offered", "offered", "offered"]);
+    // A goods ranking a link opened stays choosable as it is.
+    expect(state({ ...firms, filters: { ...firms.filters, purchaseKind: "produse" } }, "produse")).toBe("offered");
   });
 
   // Nothing generic under any question any more (R3, G1): the threshold and the precise selection live in

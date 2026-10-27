@@ -41,7 +41,7 @@ import {
 import { sectorUnit } from "../peer-population";
 import { kindApplies, kindLeftOutNote } from "./purchase";
 import { assembleSeries, type SeriesPart, type SeriesPoint, type SeriesRef, type SeriesRow } from "./series";
-import { mixRollupReady, monthsWhere } from "./series-rollups";
+import { mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
 import { networkLastYear, networkList, networkSince, networkSourcesNote } from "./network-shared";
 import { networkAnswer, networkMembersCond, sankeyAnswer, type RelationQuery } from "./relations";
 import type { NetworkData } from "./network-shared";
@@ -1174,6 +1174,10 @@ export async function runSpec(
   // The evolution's months, split and same months read agg_months once a build has made it (series-rollups.ts); so does
   // the largest record of a breakdown's divisions (its „1 contract: 99%” tag) when the rollups answer the breakdown.
   const seriesRollup = (spec.block === "timeseries" || spec.block === "breakdown") && await mixRollupReady(sql) ? monthsWhere(sql, w, "p") : null;
+  // A total by the size of the purchase (the kit's ranges), a procedure or the single bidder, which agg_cpv_year does not
+  // keep: agg_national_mix holds it to the leu (the same rows as „Din care”'s „Doar acestea ›”; S4 review: national,
+  // under 10.000 lei in 2025, 2.4–3.3 s live over 8–10M buffers). A size typed in, months, an entity stay live.
+  const statMix = spec.block === "stat" && !rollup && !unfiltered && await mixRollupReady(sql) ? mixWhere(sql, w, "p") : null;
 
   // The relations (network, sankey; relations.ts): the question's conditions on the centre's records, an old link's
   // record threshold, and the same question on every channel for the strip's shares (none where a procedure or a
@@ -1212,8 +1216,11 @@ export async function runSpec(
               },
             };
           }
+          const mixed = statMix && "where" in statMix ? statMix.where : null;
           if (dataset === "all") {
-            const r = rollup ? (await rollupStat(s, rollup)).rows as { src: "da" | "contracts"; v: string; n: string }[] : (await s`
+            const r = rollup ? (await rollupStat(s, rollup)).rows as { src: "da" | "contracts"; v: string; n: string }[] : mixed ? (await s`
+              select p.src, coalesce(sum(p.v), 0) v, coalesce(sum(p.n), 0) n from marts.agg_national_mix p where ${mixed} group by p.src order by p.src
+            `) as unknown as { src: "da" | "contracts"; v: string; n: string }[] : (await s`
               select d.src, coalesce(sum(d.closing_value), 0) v, count(*) n
               from ${txtAgg} d
               where ${whereFrag()}
@@ -1233,7 +1240,9 @@ export async function runSpec(
               },
             };
           }
-          const r = rollup ? (await rollupStat(s, rollup)).rows : (await s`
+          const r = rollup ? (await rollupStat(s, rollup)).rows : mixed ? (await s`
+            select coalesce(sum(p.v), 0) v, coalesce(sum(p.n), 0) n from marts.agg_national_mix p where ${mixed}
+          `) as unknown as { v: string; n: string }[] : (await s`
             select coalesce(sum(d.closing_value), 0) v, count(*) n
             from ${txtAgg} d
             where ${whereFrag()}
