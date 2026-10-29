@@ -1,6 +1,6 @@
 import { TRANSACTION_FORMS } from "../context";
 import type { FilterDef } from "../types";
-import { alwaysScope, levels, readAhead, setFilters } from "./shared";
+import { alwaysScope, levels, setFilters } from "./shared";
 import type { Party } from "./selection";
 
 /*
@@ -60,10 +60,4 @@ export const admin: FilterDef<PersonChoice> = {
   choices: () => [{ key: "ion exemplu|1970-01-01|cluj-napoca", name: "Ion Exemplu (n. 1970, Cluj-Napoca)" }],
 };
 
-export const newSince = readAhead<{ newSince?: number; newScope?: string }>({
-  id: "newSince", keys: ["filters.newSince", "filters.newScope"], placement: "row", control: "rangePills",
-  label: "Firme noi", scope: "group",
-  sample: { block: "table", value: { newSince: 2024, newScope: "archive" }, base: { dim: "supplier" } },
-});
-
-export const FROM_WHOM_DEFS = [supplier, employees, admin, newSince] as const;
+export const FROM_WHOM_DEFS = [supplier, employees, admin] as const;

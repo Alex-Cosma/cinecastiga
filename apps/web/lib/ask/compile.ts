@@ -7,8 +7,8 @@ import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, typ
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, ownCountySql, perCapitaPredicate, plafondFor, predicateContext,
-  profileCounty as profileCountyOf, profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, seatOf, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx, type TrendGroup,
+  andAll, asksWinners, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, newFirmCond, ownCountySql, perCapitaPredicate, plafondFor, predicateContext,
+  profileCounty as profileCountyOf, profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, seatOf, trendGroupOf, trendGroupSql, trendYearsPredicate, winnersPredicates, type PredicateCtx, type TrendGroup,
 } from "./predicates";
 import { authorityKindIds, KIND_LABEL } from "./authority-kind";
 import { monthsLabel, partialMonths, sameMonthsWindow, WHOLE_YEAR, type CoveragePeriods, type MonthsMode, type MonthsWindow } from "./months-window";
@@ -17,7 +17,8 @@ import { TREND_CHANGE_LABELS } from "./filters/defs/trend";
 import { countyIsFirmSeat, isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { firmCountyShown } from "./seat";
 import { describeConditions, type ConditionLabels } from "./filters/describe";
-import { employeesWords } from "./filters/words";
+import { employeesWords, NEW_FIRMS_LIST } from "./filters/words";
+import { resolveWinners } from "./winners";
 import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
 import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
@@ -413,6 +414,9 @@ export function seatNote(filled: boolean): string {
 }
 
 /** A relationship view with no partner rows: on every stream, not only direct acquisitions. */
+/** F5: „Înmatriculate” before a marts build has filled the register year (mart-columns.ts registeredYear). */
+export const REGISTERED_YEAR_MISSING = "Anul înmatriculării nu e încă în date. Alege „Prima dată” sau revino după actualizarea de noapte.";
+
 export function emptyRelationError(focalName: string): string {
   return `„${focalName}” nu are înregistrări în selecția aleasă.`;
 }
@@ -1086,9 +1090,24 @@ export async function runSpec(
   // condition on the ranked firm after grouping (rankedBand): the list narrows to the band, the total and
   // „% din total” stay the whole selection's (wSel: the conditions of the records, without the band).
   // "Cine conduce?" by value runs this ranking with topN 1: its place 1 is the same firm.
-  const rankedBand = spec.block === "table" && spec.dim === "supplier" && (w.minEmployees !== null || w.maxEmployees !== null)
+  const firmsRanked = spec.block === "table" && spec.dim === "supplier";
+  const rankedBand = firmsRanked && (w.minEmployees !== null || w.maxEmployees !== null)
     ? { min: w.minEmployees, max: w.maxEmployees } : null;
-  const wSel: PredicateCtx = rankedBand ? { ...w, minEmployees: null, maxEmployees: null } : w;
+  // F5 (plan §4.2 P3a, final table §3.3–§3.7): the ranked winners narrow the list the same way: on firms „Firme noi”
+  // (any sense) and „Principalul lor client public”, on institutions „O firmă ia peste jumătate” (winners.ts). On a
+  // ranking of institutions or counties a firm's own year stays a selection of its records („de la [firme …]”).
+  const rankedNew = firmsRanked ? w.newFirms : null;
+  const rankedMain = firmsRanked && w.mainClient;
+  const rankedDominant = spec.block === "table" && spec.dim === "authority" && w.dominantSupplier;
+  const ranked = Boolean(rankedBand || rankedNew || rankedMain || rankedDominant);
+  const wSel: PredicateCtx = ranked ? {
+    ...w, winners: null,
+    ...(rankedBand ? { minEmployees: null, maxEmployees: null } : {}),
+    ...(firmsRanked ? { newFirms: null, mainClient: false } : {}),
+    ...(rankedDominant ? { dominantSupplier: false } : {}),
+  } : w;
+  // „Înmatriculate” reads the register year the marts build fills (mart-columns.ts); before it, no firm has one.
+  if (w.newFirms?.scope === "registry" && !columns.registeredYear) return { error: REGISTERED_YEAR_MISSING, caveats };
 
   // --- WHERE fragment over the transaction mart (da_/contract_, all parameterized):
   // the record conditions, then the record threshold counted over the same rows.
@@ -1125,7 +1144,9 @@ export async function runSpec(
     w.yearFrom === null && w.yearTo === null &&
     w.monthFrom === null && w.monthTo === null && !w.seriesMonths && !spec.minimumRecords;
   const noRecordCondition = noKeyCondition && (!spec.population || nationalDaBound);
-  const unfiltered = noRecordCondition && w.minEmployees === null && w.maxEmployees === null;
+  // F5: the ranked winners narrow a ranking (keep below); none is answered by the bare national marts.
+  const noWinners = !w.newFirms && !w.mainClient && !w.dominantSupplier;
+  const unfiltered = noRecordCondition && w.minEmployees === null && w.maxEmployees === null && noWinners;
   // The other rollups combine both streams; agg_national retains src and can
   // also serve filter-free DA-only and contract-only totals without a scan.
   const bare = dataset === "all" && unfiltered;
@@ -1133,12 +1154,14 @@ export async function runSpec(
   // a ranking of firms reads their own profiles, whose total_ron_split and n_das + n_contracts are each
   // firm's sum and count over the same records (0 differences on 163,158 firms, 26 Oct 2026; the
   // nightly validation checks the totals, apps/ingestion monitoring/validate.ts).
-  const firmSizeOnly = dataset === "all" && noRecordCondition && !spec.population && !unfiltered;
+  // F5: so does a firm's own year, in the archive or the register (entity_profile.first_activity, registered_year).
+  const firmSizeOnly = dataset === "all" && noRecordCondition && !spec.population && !unfiltered
+    && !w.mainClient && !w.dominantSupplier && w.newFirms?.scope !== "buyer";
   // "Scoate din calcul" on the national ranking (plan §2.5, F4): entities of the ranked role left out and no
   // other condition, over every year and both streams. The precomputed ranking without their rows, the national
   // totals less their own sums (rankedWithout): any entity of the role, not only those of agg_top_entities.
   const rankedOut = spec.block === "table" && (spec.dim === "authority" || spec.dim === "supplier") && dataset === "all"
-    && noKeyCondition && w.minEmployees === null && w.maxEmployees === null ? sameRoleExclusions(spec.population, spec.dim) : null;
+    && noKeyCondition && w.minEmployees === null && w.maxEmployees === null && noWinners ? sameRoleExclusions(spec.population, spec.dim) : null;
   const aggV = w.plafond === "none" && !nationalDaBound ? sql`v_all` : sql`v_plaf`;
   const aggN = w.plafond === "none" && !nationalDaBound ? sql`n_all` : sql`n_plaf`;
 
@@ -1160,8 +1183,14 @@ export async function runSpec(
     : predicateContext(sql, { ...spec, dataset: "all" }, grounding, { dataset: "all", yearFrom, yearTo, kindIds, seat });
 
   // The band of a ranking of firms is applied after grouping (rankedBand): said under the ranking's text.
-  const displaySql = rankedBand
-    ? `${buildDisplaySql(spec, wSel)}\n-- lista: doar firmele ${employeesWords(rankedBand.min ?? undefined, rankedBand.max ?? undefined)} (ultimul bilanț MF); totalul și „% din total” sunt ale întregii selecții`
+  const listWords = [
+    ...(rankedBand ? [`doar firmele ${employeesWords(rankedBand.min ?? undefined, rankedBand.max ?? undefined)} (ultimul bilanț MF)`] : []),
+    ...(rankedNew ? [`doar ${NEW_FIRMS_LIST[rankedNew.scope]} din ${rankedNew.since}`] : []),
+    ...(rankedMain ? ["doar firmele al căror principal client public e instituția aleasă (cel puțin jumătate din valoare, toată arhiva)"] : []),
+    ...(rankedDominant ? ["doar instituțiile la care cea mai mare firmă are cel puțin jumătate din valoare, din cel puțin 3 înregistrări"] : []),
+  ];
+  const displaySql = ranked
+    ? `${buildDisplaySql(spec, wSel)}\n-- lista: ${listWords.join("; ")}; totalul și „% din total” sunt ale întregii selecții`
     // F4: P is read in the answer's transaction (case "compare"), after this text: its rule in words.
     : `${buildDisplaySql(spec, w)}${asksSharedPartners(spec, w) ? "\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)" : ""}`;
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
@@ -1232,11 +1261,15 @@ export async function runSpec(
   // trend: a watch's group (TableOpts.freezeGroup, TableOpts.fixedMembers), set by its case.
   let frozenMembers: string[] | undefined;
   let movement: TrendGroupMovement | undefined;
+  // F5: whether the rollups answer the selection a relation of the ranked winners is read on (winners.ts).
+  const winnersRollups = asksWinners(w) ? await rollupsReady(sql) : false;
   const exec = async (): Promise<BlockData | { error: string }> => {
     return await sql.begin("read only", async (tx) => {
       await tx.unsafe(FORCE_CUSTOM_PLANS);
       await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`);
       const s = tx as unknown as DbSql;
+      // F5: the relation keys of the ranked winners, resolved once into lists before any query reads them.
+      if (asksWinners(w)) await resolveWinners(s, w, { source: txtAgg as unknown as ReturnType<DbSql>, rollups: winnersRollups });
 
       switch (spec.block) {
         case "stat": {
@@ -1467,8 +1500,11 @@ export async function runSpec(
           const sizeSort = tableOpts.sort ?? (spec.measure === "count" ? "count" : "value");
           if (firmSizeOnly && dim === "supplier" && spec.measure !== "value_per_capita" && (sizeSort === "value" || sizeSort === "count")) {
             // The band narrows the list (rankedBand): the totals are every firm's, the band's apart (F3, table:employees-2).
-            const every = s`ep.role = 'supplier' and ep.total_ron_split > 0`;
-            const size = s`${every} and ${employeesBounds(s, w.minEmployees, w.maxEmployees)}`;
+            const every: ReturnType<DbSql> = s`ep.role = 'supplier' and ep.total_ron_split > 0`;
+            // F5: a firm's own year, in the archive or the register, on the same profile row.
+            const size = andAll(s, [every,
+              ...(w.minEmployees !== null || w.maxEmployees !== null ? [employeesBounds(s, w.minEmployees, w.maxEmployees)] : []),
+              ...(w.newFirms && w.newFirms.scope !== "buyer" ? [newFirmCond(s, w.newFirms.scope, w.newFirms.since, s`ep.entity_id`)] : [])]);
             const r = (await s`
               with sel as (select sum(ep.total_ron_split) tv, sum(ep.n_das + ep.n_contracts) tn, count(*) te from marts.entity_profile ep where ${every})
               select ep.entity_id id, coalesce(ep.name_display, '(fără nume)') nm, ${ownCountySql(s, "supplier", seat)} co,
@@ -1574,8 +1610,14 @@ export async function runSpec(
               ...(await pagedMeta(r, count)),
             };
           }
-          // The band of a ranking of firms keeps its firms after grouping (rankedBand, F3): `keep` on the grouped id.
-          const keep = rankedBand ? (id: ReturnType<DbSql>) => employeesCond(s, rankedBand.min, rankedBand.max, id) : null;
+          // The band of a ranking of firms keeps its firms after grouping (rankedBand, F3): `keep` on the grouped id. So do
+          // the ranked winners of F5: a firm's own year, and the lists winners.ts resolved (resolveWinners, above).
+          const keep = ranked ? (id: ReturnType<DbSql>) => andAll(s, [
+            ...(rankedBand ? [employeesCond(s, rankedBand.min, rankedBand.max, id)] : []),
+            ...(rankedNew && rankedNew.scope !== "buyer" ? [newFirmCond(s, rankedNew.scope, rankedNew.since, id)] : []),
+            ...(firmsRanked && w.winners?.suppliers ? [s`${id} = any(${s.array([...w.winners.suppliers])}::bigint[])` as ReturnType<DbSql>] : []),
+            ...(rankedDominant && w.winners?.authorities ? [s`${id} = any(${s.array([...w.winners.authorities])}::bigint[])` as ReturnType<DbSql>] : []),
+          ]) : null;
           const rolled = rollup ? await rollupTable(s, rollup, { ...rollupOpts, dim, seat, ...(keep ? { keep } : {}) }) : null;
           if (rolled && "rows" in rolled) {
             const first = rolled.rows[0];
@@ -2448,6 +2490,10 @@ export async function runRows(
     dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(trendWindow),
     seat: (await martColumns(sql)).seat,
   });
+  // F5: the ranked winners' lists, read as the answer reads them (winners.ts), so a list's sources are its firms' records.
+  if (!profile && ctx.newFirms?.scope === "registry" && !(await martColumns(sql)).registeredYear) return { error: REGISTERED_YEAR_MISSING };
+  if (!profile && asksWinners(ctx))
+    await resolveWinners(sql, ctx, { source: txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as ReturnType<DbSql>, rollups: await rollupsReady(sql) });
   // F4, „Doar clienții comuni”: the answer's P, read the same way (compare-prestep.ts), so a card's records are its own.
   if (!profile && asksSharedPartners(spec, ctx)) {
     ctx.shared = (await sharedPartnersPrestep(sql, ctx, txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as ReturnType<DbSql>)).ids;
@@ -2582,9 +2628,9 @@ export async function runRows(
       // Counted over the selection itself (rowPredicates): the rollups hold the same party list.
       const party = (spec.minimumRecords.role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`) as unknown as ReturnType<DbSql>;
       const fromRollups = rollup && !isRelationship && spec.block !== "trend" ? rollupMinimumCond(sql, rollup, party) : null;
-      parts.push(...(fromRollups ? [fromRollups] : groupPredicates(ctx, txt as unknown as ReturnType<DbSql>, andAll(sql, parts))));
+      parts.push(...(fromRollups ? [fromRollups, ...winnersPredicates(ctx)] : groupPredicates(ctx, txt as unknown as ReturnType<DbSql>, andAll(sql, parts))));
       if (conditions.minimumRecords?.note) notes.push(conditions.minimumRecords.note);
-    }
+    } else parts.push(...winnersPredicates(ctx));
     if (valueWinner) {
       parts.push(spec.dim === "supplier" ? sql`d.supplier_id = ${valueWinner}` : sql`d.authority_id = ${valueWinner}`);
       notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");

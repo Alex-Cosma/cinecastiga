@@ -14,6 +14,7 @@ const national: RollupCtx = {
   minEmployees: null, maxEmployees: null, yearFrom: null, yearTo: null, monthFrom: null, monthTo: null, trendMonths: null, seriesMonths: null,
   adminSupplierIds: null, comparison: null, purchaseKind: null, procedure: null, purchaseValueMin: null, purchaseValueMax: null,
   firmSeat: null, seatCounty: null, seatColumn: true, shared: null,
+  newFirms: null, mainClient: false, dominantSupplier: false, buyerIds: [], winners: null,
 };
 const source = (ctx: Partial<RollupCtx> & Record<string, unknown>, need: Parameters<typeof planRollup>[1]) => {
   const plan = planRollup({ ...national, ...ctx }, need);
@@ -125,7 +126,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
 
   it("fails closed on a condition it does not know (a key of a later stage)", () => {
     // Keys of the filter registry that are not in the rollups: refused while they hold a value…
-    for (const [key, value] of Object.entries({ registeredFrom: 2024, mainClient: true, localAdminIds: ["1"] }))
+    for (const [key, value] of Object.entries({ registeredFrom: 2024, firmAgeFrom: 2024, localAdminIds: ["1"] }))
       expect([key, source({ [key]: value }, { by: "supplier" })]).toEqual([key, `${key}: a condition the rollups do not know`]);
     // …and ignored when they hold none.
     for (const value of [null, undefined, false, []])
@@ -150,6 +151,7 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
       adminSupplierIds: ["4"], comparison: { role: "supplier", focalId: "2", compareId: "5" },
       purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 1_000_000, purchaseValueMax: 2_000_000,
       firmSeat: "other", seatCounty: "Cluj", seatColumn: true, shared: ["6"],
+      newFirms: { scope: "archive", since: 2024 }, mainClient: true, dominantSupplier: true, buyerIds: ["7"], winners: { suppliers: ["8"], authorities: null },
     };
     for (const key of Object.keys(active) as (keyof RollupCtx)[]) {
       // The kind comes with its institutions; their list alone is no condition.
@@ -164,6 +166,9 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
         firmSeat: reached.seat?.firmSeat === "other", seatCounty: reached.seat?.county === "Cluj",
         // Which column the seat keys read is no condition: alone it plans as a national question.
         seatColumn: reached.seat === null,
+        // F5: a firm's own year on the rollup's firm id; the buyer's identities alone are no condition (its relations refuse).
+        newFirms: reached.newFirms?.scope === "archive" && reached.newFirms.since === 2024,
+        buyerIds: reached.employees === null && reached.newFirms === null,
       };
       expect([key, mapped[key]]).toEqual([key, true]);
     }

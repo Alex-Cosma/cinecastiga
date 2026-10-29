@@ -1,7 +1,7 @@
 import { countyIsFirmSeat } from "./population";
 import { countyWords } from "./question-ui";
 import { FIRM_SEATS, type FirmSeat } from "./spec";
-import { employeesPhrase } from "./filters/words";
+import { employeesWords, newFirmsPhrase } from "./filters/words";
 
 /** A question as the engine and the builder hold it (AskSpec, QuestionSpec). */
 type SeatSpec = { block: string; dim?: string; rankBy?: string; filters: { [key: string]: unknown } };
@@ -39,11 +39,14 @@ export function firmSeatWords(seat: FirmSeat, buyerCounty?: string | null): stri
  * size alone where the tab has no seat (`seat` false). Null without either.
  */
 export function firmsKindPhrase(f: { [key: string]: unknown }, seat: boolean): string | null {
-  const size = employeesPhrase(f.minEmployees, f.maxEmployees);
+  const size = employeesWords(f.minEmployees, f.maxEmployees);
   const where = seat && typeof f.firmSeat === "string" && (FIRM_SEATS as readonly string[]).includes(f.firmSeat)
     ? `cu sediul ${firmSeatWords(f.firmSeat as FirmSeat, f.county ? String(f.county) : null)}` : null;
-  if (!where) return size;
-  return size ? `${size}, ${where}` : `firme ${where}`;
+  // F5 (kit §5 table 5): the firms' own year first, "firme înmatriculate din 2024, fără angajați".
+  const aged = seat && f.newSince !== undefined && (f.newScope === "archive" || f.newScope === "registry")
+    ? newFirmsPhrase(f.newScope, Number(f.newSince)).replace(/^firme /, "") : null;
+  const parts = [aged, size, where].filter((part): part is string => Boolean(part));
+  return parts.length ? `firme ${parts.join(", ")}` : null;
 }
 
 /** The seat a question selects, in words ("în alt județ", "în județul Cluj"), or null without one. */

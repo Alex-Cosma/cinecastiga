@@ -2,7 +2,7 @@ import { VALUE_RANGES, type ValueRange } from "../../purchase";
 import { SELECTION_RULES } from "../../spec";
 import { TRANSACTION_FORMS } from "../context";
 import type { FilterDef } from "../types";
-import { alwaysScope, edited, levels, readAhead, setFilters } from "./shared";
+import { alwaysScope, edited, levels, setFilters } from "./shared";
 
 /*
  * What a row is, how the list is ordered and how long it is (plan §2.2
@@ -73,16 +73,4 @@ export const purchaseValue: FilterDef<ValueRange> = {
   validate: SELECTION_RULES.purchaseValue,
 };
 
-export const mainClient = readAhead<true>({
-  id: "mainClient", keys: ["filters.mainClient"], placement: "row", control: "toggle",
-  label: "Clientul lor principal", scope: "group",
-  sample: { block: "table", value: true, base: { dim: "supplier", filters: { authorityId: 1 } } },
-});
-
-export const dominantSupplier = readAhead<true>({
-  id: "dominantSupplier", keys: ["filters.dominantSupplier"], placement: "row", control: "toggle",
-  label: "O firmă ia peste jumătate", scope: "group",
-  sample: { block: "table", value: true, base: { dim: "authority" } },
-});
-
-export const RANKING_DEFS: readonly FilterDef[] = [dim, measure, topN, purchaseValue, mainClient, dominantSupplier];
+export const RANKING_DEFS: readonly FilterDef[] = [dim, measure, topN, purchaseValue];

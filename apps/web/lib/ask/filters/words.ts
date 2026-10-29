@@ -47,6 +47,27 @@ export function employeesPhrase(minRaw: unknown, maxRaw: unknown): string | null
   return words ? `firme ${words}` : null;
 }
 
+/**
+ * "Firme noi" in each sense (F5, kit §4 "Prima înregistrare a firmei", "Nou", "Înmatriculare"; final table §3.3):
+ * the window's option and its line, the active chip ("Furnizori noi · din 2024", "Prima dată · din 2025",
+ * "Înmatriculate din 2024") and the firms of the list, after "doar" ("doar furnizorii noi din 2024").
+ */
+export const NEW_SCOPE_WORDS = {
+  buyer: { option: "Furnizori noi", detail: "prima înregistrare cu această instituție", chip: (y: number) => `Furnizori noi · din ${y}`, list: "furnizorii noi" },
+  archive: { option: "Prima dată", detail: "prima înregistrare în datele noastre", chip: (y: number) => `Prima dată · din ${y}`, list: "firmele cu prima înregistrare" },
+  registry: { option: "Înmatriculate", detail: "anul din Registrul Comerțului", chip: (y: number) => `Înmatriculate din ${y}`, list: "firmele înmatriculate" },
+} as const;
+/** The firms of a list after "doar", by sense: "furnizorii noi", "firmele înmatriculate". */
+export const NEW_FIRMS_LIST: Record<keyof typeof NEW_SCOPE_WORDS, string> = {
+  buyer: NEW_SCOPE_WORDS.buyer.list, archive: NEW_SCOPE_WORDS.archive.list, registry: NEW_SCOPE_WORDS.registry.list,
+};
+/** The firms one ranks "de la […]" on institutions and counties (kit §5 table 5): "firme înmatriculate din 2024". */
+export const newFirmsPhrase = (scope: "archive" | "registry", since: number): string =>
+  scope === "registry" ? `firme înmatriculate din ${since}` : `firme cu prima înregistrare din ${since}`;
+/** „Principalul lor client public” (plan §4.2, §9 F5) and „O firmă ia peste jumătate” (final table §3.6–§3.7). */
+export const MAIN_CLIENT_LABEL = "Principalul lor client public";
+export const DOMINANT_LABEL = "O firmă ia peste jumătate";
+
 /** The firms a person leads today (ONRC, kit §4): the register says who leads now, not at the contract's date. */
 export const adminLead = (one = false): string => one ? "condusă azi de" : "conduse azi de";
 export const adminPhrase = (name: unknown): string => `firmele ${adminLead()} ${name ? String(name) : "persoana aleasă"}`;

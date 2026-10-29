@@ -115,6 +115,8 @@ export function pairOnly(ctx: PredicateCtx): PredicateCtx {
     // F3's common selection and F4's seat are the question's conditions, not the pair: the whole relation has none.
     purchaseKind: null, procedure: null, purchaseValueMin: null, purchaseValueMax: null, firmSeat: null, seatCounty: null,
     seatColumn: ctx.seatColumn, shared: null,
+    // F5: the ranked winners are the question's too.
+    newFirms: null, mainClient: false, dominantSupplier: false, buyerIds: [], winners: null,
   };
 }
 

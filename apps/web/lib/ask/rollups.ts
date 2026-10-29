@@ -3,7 +3,7 @@ import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
 import { AUTHORITY_KINDS, type AuthorityKind, type FirmSeat } from "./spec";
 import { authorityKindCond } from "./authority-kind";
-import { employeesCond, firmSeatCond, ownCountySql, purchaseKindCond, seatCountyCond } from "./predicates";
+import { employeesCond, firmSeatCond, newFirmCond, ownCountySql, purchaseKindCond, seatCountyCond } from "./predicates";
 import type { Procedure, PurchaseKind } from "./purchase";
 import { trendChannelColumns } from "./trend-partition";
 
@@ -91,6 +91,13 @@ export interface RollupCtx {
   seatColumn: boolean;
   /** F4: the shared clients of two compared firms (the pre-step P of „Doar clienții comuni”); a comparison has its own queries. */
   shared: readonly string[] | null;
+  /** F5: a firm new in the archive or the register (newFirmCond on the rollup's firm id); new for a buyer is a named buyer's. */
+  newFirms: { scope: "buyer" | "archive" | "registry"; since: number } | null;
+  /** F5: the relation keys and their resolved lists (winners.ts): their id indexes answer, never the rollups. */
+  mainClient: boolean;
+  dominantSupplier: boolean;
+  buyerIds: readonly string[];
+  winners: { suppliers: readonly string[] | null; authorities: readonly string[] | null } | null;
 }
 
 /**
@@ -103,6 +110,7 @@ export const ROLLUP_CTX_KEYS = [
   "authorityId", "supplierId", "uatSiruta", "uatAuthorityIds", "singleBidder", "minEmployees", "maxEmployees",
   "yearFrom", "yearTo", "monthFrom", "monthTo", "trendMonths", "seriesMonths", "adminSupplierIds", "comparison",
   "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "seatColumn", "shared",
+  "newFirms", "mainClient", "dominantSupplier", "buyerIds", "winners",
 ] as const satisfies readonly ("sql" | keyof RollupCtx)[];
 const KNOWN_KEYS = new Set<string>(ROLLUP_CTX_KEYS);
 
@@ -137,6 +145,8 @@ export interface RollupFilters {
   employees: { min: number | null; max: number | null } | null;
   /** F4: the firm's seat (firmSeatCond, seatCountyCond) on the rollup's firm id, against its buyer county. */
   seat: { firmSeat: FirmSeat | null; county: string | null; filled: boolean } | null;
+  /** F5: a firm new in the archive or the register (newFirmCond) on the rollup's firm id. */
+  newFirms: { scope: "archive" | "registry"; since: number } | null;
   /** Explicit exclusions (population not_in); unknown ids are kept, as in populationSql. */
   excludeAuthorities: readonly string[];
   excludeSuppliers: readonly string[];
@@ -194,6 +204,9 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
     if (!KNOWN_KEYS.has(key) && holdsCondition(value)) return { reason: `${key}: a condition the rollups do not know` };
   if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
   if (ctx.shared) return { reason: "shared clients: the pre-step P of a comparison" };
+  // F5: a relation of the ranked winners is a list of ids (winners.ts), read on their indexes.
+  if (ctx.mainClient || ctx.dominantSupplier || ctx.newFirms?.scope === "buyer" || ctx.winners?.suppliers || ctx.winners?.authorities)
+    return { reason: "ranked winners: resolved lists of ids" };
   if (ctx.monthFrom !== null || ctx.monthTo !== null) return { reason: "months: the rollups keep whole years" };
   if (ctx.trendMonths && !opts.months) return { reason: "months: agg_entity_month is not built" };
   if (ctx.seriesMonths) return { reason: "months: the same months of every year are on agg_months (series-rollups.ts)" };
@@ -215,12 +228,13 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   const filters: RollupFilters = {
     dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
     cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, purchaseKind: ctx.purchaseKind, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
-    employees, seat, excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
+    employees, seat, newFirms: ctx.newFirms ? { scope: ctx.newFirms.scope, since: ctx.newFirms.since } : null,
+    excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
     minimum: ctx.minimumRecords, months: ctx.trendMonths,
   };
   const sides = new Set<Role>();
   if (filters.kind || filters.excludeAuthorities.length) sides.add("authority");
-  if (filters.employees || filters.seat || filters.excludeSuppliers.length) sides.add("supplier");
+  if (filters.employees || filters.seat || filters.newFirms || filters.excludeSuppliers.length) sides.add("supplier");
   if (filters.minimum) sides.add(filters.minimum.role);
   // The purchase kind is a condition on the code, as the domain is: agg_cpv_year only.
   const cpv = filters.cpvPrefixes.length > 0 || filters.cpvExclude.length > 0 || filters.purchaseKind !== null;
@@ -289,6 +303,8 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
   // The live seat conditions (F4), on the rollup's firm id and its buyer county.
   if (f.seat?.firmSeat) parts.push(firmSeatCond(sql, f.seat.firmSeat, f.seat.filled, { supplier: supplier!, county: sql`${sql(alias)}.county` }));
   if (f.seat?.county) parts.push(seatCountyCond(sql, f.seat.county, f.seat.filled, supplier!));
+  // F5: the firm's own year (archive or register), on the rollup's firm id.
+  if (f.newFirms) parts.push(newFirmCond(sql, f.newFirms.scope, f.newFirms.since, supplier!));
   if (f.excludeAuthorities.length)
     parts.push(sql`not (coalesce(${authority!} = any(${sql.array([...f.excludeAuthorities])}::bigint[]), false))`);
   if (f.excludeSuppliers.length)
@@ -321,7 +337,7 @@ export function rollupRows(sql: DbSql, plan: { source: RollupSource; filters: Ro
 function minimumSemiJoin(sql: DbSql, f: RollupFilters, target: Fragment, innerAlias: string, opts: { years?: boolean } = {}): Fragment {
   const { role, count } = f.minimum!;
   const everything = f.dataset === "all" && (opts.years === false || (f.yearFrom === null && f.yearTo === null)) && !f.county
-    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.purchaseKind && !f.kind && !f.employees && !f.seat && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
+    && !f.cpvPrefixes.length && !f.cpvExclude.length && !f.purchaseKind && !f.kind && !f.employees && !f.seat && !f.newFirms && !f.excludeAuthorities.length && !f.excludeSuppliers.length;
   if (everything && role === "supplier") {
     // Over every year and channel a firm's records are n_das + n_contracts of its profile
     // (equal for all 163,158 firms on 24 Oct 2026; not for institutions, whose profile

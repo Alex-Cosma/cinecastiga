@@ -4,11 +4,12 @@ import { canonicalAskIdentities } from "./canonical-identities";
 import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, AUTHORITY_KINDS, type AskSpec } from "./spec";
 import { ground, type Grounding } from "./ground";
 import {
-  andAll, employeesBounds, fold, fullValueUnion, groupPredicates, ownCountySql, predicateContext, profileMinDas, profilePredicates, rowPredicates, seatOf, trendYearsPredicate,
+  andAll, asksWinners, employeesBounds, fold, fullValueUnion, groupPredicates, newFirmCond, ownCountySql, predicateContext, profileMinDas, profilePredicates, rowPredicates, seatOf, trendYearsPredicate,
   type PredicateCtx,
 } from "./predicates";
 import { authorityKindExpression, authorityKindIds, readAuthorityKinds } from "./authority-kind";
-import { coveragePeriods, daCoverageYears, txAggFragment, uatUnmappedError } from "./compile";
+import { coveragePeriods, daCoverageYears, REGISTERED_YEAR_MISSING, txAggFragment, uatUnmappedError } from "./compile";
+import { resolveWinners } from "./winners";
 import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "./months-window";
 import { isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { retarget } from "./filters/retarget";
@@ -130,20 +131,37 @@ export async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding):
     window = resolved;
   }
   const kindIds = await authorityKindIds(sql, namedKind(f.authorityKind));
+  const columns = await martColumns(sql);
   const ctx = predicateContext(sql, spec, grounding, {
-    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window), seriesMonths: partialMonths(window), seat: (await martColumns(sql)).seat,
+    dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window), seriesMonths: partialMonths(window), seat: columns.seat,
   });
+  // F5: „Înmatriculate” waits for the register year; the relations of the ranked winners are lists, read as the answer reads them.
+  if (ctx.newFirms?.scope === "registry" && !columns.registeredYear) return { error: REGISTERED_YEAR_MISSING };
+  if (!profile && asksWinners(ctx))
+    await resolveWinners(sql, ctx, { source: txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as Fragment, rollups: await rollupsReady(sql) });
   return { spec, ctx, dataset, profile, trend: spec.block === "trend" && !profile ? { yearA: yearFrom ?? minY, yearB: yearTo ?? maxY } : null };
 }
 
-/** No condition on the records (the employees apart: an attribute of the firm), over every year: the profiles' sums are the answer's. */
-function everyRecord(p: Prepared): boolean {
+/**
+ * No condition on the records, over every year: the profiles' sums are the answer's. `firm`: firms are counted, and
+ * their own attributes (the employees, F5's year in the archive or the register) are conditions on their profile
+ * rows (firmAttrs); elsewhere those select records. A relation of the ranked winners (winners.ts) is a list of ids.
+ */
+function everyRecord(p: Prepared, firm = false): boolean {
   const w = p.ctx;
   return p.dataset === "all" && !p.trend && !p.spec.population && !p.spec.minimumRecords &&
+    (firm || w.minEmployees === null && w.maxEmployees === null && !w.newFirms) && !w.mainClient && !w.dominantSupplier && w.newFirms?.scope !== "buyer" &&
     !w.county && w.cpvPrefixes.length === 0 && w.cpvExclude.length === 0 && !w.kind && !w.authorityId && !w.supplierId &&
     w.uatSiruta === null && !w.singleBidder && w.adminSupplierIds === null && !w.comparison &&
     !w.purchaseKind && !w.procedure && w.purchaseValueMin === null && w.purchaseValueMax === null && !w.firmSeat && !w.seatCounty &&
     w.yearFrom === null && w.yearTo === null && w.monthFrom === null && w.monthTo === null && !w.seriesMonths;
+}
+/** A firm's own attributes on its profile row `ep` (everyRecord with `firm`): its band, its year in the archive or the register. */
+function firmAttrs(sql: DbSql, w: PredicateCtx): Fragment {
+  const parts: Fragment[] = [];
+  if (w.minEmployees !== null || w.maxEmployees !== null) parts.push(employeesBounds(sql, w.minEmployees, w.maxEmployees));
+  if (w.newFirms && w.newFirms.scope !== "buyer") parts.push(newFirmCond(sql, w.newFirms.scope, w.newFirms.since, sql`ep.entity_id`));
+  return parts.length ? sql`and ${andAll(sql, parts)}` : sql``;
 }
 
 /** The selection's records, from a rollup or live, with the columns a part groups by and the two aggregates. */
@@ -326,8 +344,8 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
       if (part === "seat" && opts.relative) return await seatClasses(sql, p, ready, run);
       const key: Fragment = part === "employees" ? sql`${bandOf(sql, sql`ep.employees`)} k, false f` : sql`${seat.county} k, coalesce(${seat.foreign}, false) f`;
       // Every record, both channels, every year: the firms' own profiles hold their sums (plan §2.5, "calea rapidă pe atribute").
-      if (everyRecord(p)) {
-        const size = p.ctx.minEmployees !== null || p.ctx.maxEmployees !== null ? sql`and ${employeesBounds(sql, p.ctx.minEmployees, p.ctx.maxEmployees)}` : sql``;
+      if (everyRecord(p, true)) {
+        const size = firmAttrs(sql, p.ctx);
         return { unit: "firms", rows: await run<Grouped>(sql`
           select ${key}, coalesce(sum(ep.total_ron_split), 0) v, count(*) n
           from marts.entity_profile ep
@@ -689,9 +707,8 @@ export async function locate(sql: DbSql, spec: AskSpec, q: string, opts: { signa
         ({ part: "locate", total, measure, matches, checkpoint: stamp.checkpoint, tookMs: Date.now() - started });
       // Every record, both channels, every year (the firms' bands apart): each profile's sum is its place's
       // value, and a firm's records are n_das + n_contracts (an institution's profile counts a contract once).
-      if (everyRecord(p) && (measure === "value" || role === "supplier")) {
-        const size = role === "supplier" && (p.ctx.minEmployees !== null || p.ctx.maxEmployees !== null)
-          ? sql`and ${employeesBounds(sql, p.ctx.minEmployees, p.ctx.maxEmployees)}` : sql``;
+      if (everyRecord(p, role === "supplier") && (measure === "value" || role === "supplier")) {
+        const size = role === "supplier" ? firmAttrs(sql, p.ctx) : sql``;
         const by = (alias: string) => measure === "count" ? sql`${sql(alias)}.n_das + ${sql(alias)}.n_contracts` : sql`${sql(alias)}.total_ron_split`;
         const ranked = sql`ep.role = ${role} and ep.total_ron_split > 0 ${size}`;
         const [count] = await run<{ t: string }>(sql`select count(*) t from marts.entity_profile ep where ${ranked}`);

@@ -180,11 +180,11 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
   it("fails a queued query capture whose spec carries a key this release does not apply",async()=>{
     const spec={block:"stat",measure:"value",filters:{authorityId:Number(authority)}};
     const {capture}=await queued("query",null,spec);
-    await sql`update app.evidence_captures set request=jsonb_set(request,'{spec,filters,newSince}','2024') where id=${capture.id}`;
+    await sql`update app.evidence_captures set request=jsonb_set(request,'{spec,filters,authorityKind}','"local_admin"') where id=${capture.id}`;
     await processCapture(uid,inv,capture.id,sql);
     expect(await getCapture(uid,inv,capture.id,sql)).toMatchObject({status:"failed",error:NEWER_VERSION_QUESTION});
     expect((await sql`select count(*)::int n from app.evidence_capture_rows where capture_id=${capture.id}`)[0]?.n).toBe(0);
-    expect(validateCaptureRequest("query",null,{...spec,filters:{...spec.filters,newSince:2024}},null)).toEqual({error:NEWER_VERSION_QUESTION});
+    expect(validateCaptureRequest("query",null,{...spec,filters:{...spec.filters,authorityKind:"local_admin"}},null)).toEqual({error:NEWER_VERSION_QUESTION});
   });
   it("does not freeze ordinary source rows while publication is unvalidated",async()=>{
     const {capture}=await queued('da',da);
