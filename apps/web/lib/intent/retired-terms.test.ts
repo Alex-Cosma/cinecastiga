@@ -29,11 +29,12 @@ describe("retired words are offered as choices, never guessed", () => {
     expect(r.alternatives.every((a) => a.spec.filters.authorityKind === "scoala")).toBe(true);
   });
 
-  it("„lucrari” alone asks which works; next to a real subject it is just a word", async () => {
+  it("„lucrari” alone is the purchase kind, never a domain; next to a real subject it is just a word", async () => {
+    // F3 (plan §2.7 „tip”): the words write purchaseKind; a link's cpvTerm „lucrari” still asks which works (ground.ts retiredText).
     const alone = await read("lucrari buzau");
-    expect(alone.spec).toBeNull();
-    expect(alone.alternatives.map((a) => a.spec.filters.cpvTerm)).toEqual(["constructii", "cladiri", "drumuri", "reparatii", "renovare"]);
-    expect(alone.alternatives.every((a) => a.spec.filters.county === "Buzău")).toBe(true);
+    expect(alone.interpretation.subjectChoices ?? null).toBeNull();
+    expect(alone.spec).toMatchObject({ filters: { purchaseKind: "lucrari", county: "Buzău" } });
+    expect(alone.spec?.filters.cpvTerm).toBeUndefined();
     const asphalt = await read("lucrari de asfaltare");
     expect(asphalt.interpretation.subjectChoices ?? null).toBeNull();
     // the curated "asfaltare" (road works) beats the narrower catalogue label „Lucrări de pavare şi de asfaltare”
@@ -48,7 +49,7 @@ describe("retired words are offered as choices, never guessed", () => {
     }
     const school = await read("mesele scolii");
     expect(school.interpretation.subjectChoices?.options.map((o) => o.term)).toEqual(["catering", "39121200"]);
-    expect((await read("lucrarile buzau")).interpretation.subjectChoices?.options).toHaveLength(5);
+    expect((await read("lucrarile buzau")).spec?.filters.purchaseKind).toBe("lucrari");
     expect((await read("programelor")).interpretation.subjectChoices?.options).toHaveLength(2);
     for (const q of ["meserii", "mesaje", "mesager"]) expect((await read(q)).interpretation.subjectChoices ?? null, q).toBeNull();
   });

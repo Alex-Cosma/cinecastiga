@@ -1,6 +1,6 @@
 import { periodPhrase } from "../ask/filters/words";
 import { namedKind, type AskSpec, type AuthorityKind } from "../ask/spec";
-import { PROCEDURE_WORDS } from "../ask/purchase";
+import { PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords } from "../ask/purchase";
 import { saysSameMonths, type SentenceLabels } from "./to-spec";
 
 /**
@@ -68,5 +68,10 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string, labels: P
     if (saysSameMonths(spec, labels) && !/aceleași luni/.test(sentence)) out.push("same months not in sentence");
   }
   if (profile && f.uatSiruta) out.push("risk profile scoped to one town hall");
+  // S5 (plan §2.7): the kind, the size and the firm's seat written from words, as the sentence and its tail say them.
+  if (f.purchaseKind && !sentence.includes(PURCHASE_KIND_WORDS[f.purchaseKind].noun)) out.push(`kind ${f.purchaseKind} not in sentence`);
+  const size = valueWords(f);
+  if (size && !sentence.includes(size.replace(/^de /, ""))) out.push(`size "${size}" not in sentence`);
+  if (f.firmSeat && !/cu sediul/.test(sentence)) out.push("firm seat not in sentence");
   return out;
 }
