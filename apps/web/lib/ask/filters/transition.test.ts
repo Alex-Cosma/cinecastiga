@@ -163,6 +163,23 @@ describe("a window's choice", () => {
   });
 });
 
+describe("a network's period waits for „Toți” (final network §3.2, §4)", () => {
+  const all = q({ block: "network", filters: { authorityId: 1, authorityName: "MUNICIPIUL BUZAU", yearFrom: 2023, yearTo: 2024 } });
+  it("is set aside by a group, kept across groups, and back on „Toți” (or from its chip)", () => {
+    const fresh = choose(all, "networkPartners", { filter: "networkPartners", value: "new" });
+    expect([fresh.spec.network?.partners, fresh.spec.network?.since, fresh.spec.filters.yearFrom, fresh.notes]).toEqual(["new", 2023, undefined, ["Am păstrat doar anul de început: 2023."]]);
+    expect(fresh.parked).toMatchObject({ label: "Doar la Toți", lens: "network", items: [{ id: "period", label: "2023–2024" }] });
+    const other = chooseValue(fresh.spec, phrase(fresh.spec, "networkPartners"), { filter: "networkPartners", value: "continuing" }, fresh.parked);
+    expect([other.spec.network?.partners, other.parked?.lens]).toEqual(["continuing", "network"]);
+    for (const back of [chooseValue(other.spec, phrase(other.spec, "networkPartners"), { filter: "networkPartners", value: undefined }, other.parked), restoreParked(other.spec, other.parked!)]) {
+      expect([back.spec.network?.partners, back.spec.filters.yearFrom, back.spec.filters.yearTo, back.parked]).toEqual([undefined, 2023, 2024, null]);
+    }
+    // Without a period there is nothing to keep.
+    const plain = choose(q({ block: "network", filters: { authorityId: 1 } }), "networkPartners", { filter: "networkPartners", value: "gone" });
+    expect(plain.parked).toBeNull();
+  });
+});
+
 describe("the sellers' seat on institutions (S4r-from-seat, plan §4.2 P2)", () => {
   it("keeps the firms' seat when the ranking moves from firms to institutions: it becomes „de la [firme cu sediul …]”", () => {
     const firms = q({ block: "table", dim: "supplier", topN: 10, filters: { county: "Cluj", firmSeat: "other" } });

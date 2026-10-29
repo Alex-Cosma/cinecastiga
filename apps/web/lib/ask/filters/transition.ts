@@ -171,7 +171,12 @@ export function chooseValue(input: QuestionSpec, slot: Slot, choice: Choice, par
   const draft = seatFromCounty(input as FilterSpec);
   const first: Partial<Record<FilterId, FilterId>> = draft !== input ? { county: "seatCounty" } : {};
   const lens = choice.filter === "rankBy" && draft.block === "entity_card" && choice.value !== leaderAxis(draft);
-  const start = lens && parked?.lens === choice.value ? unpark(draft as FilterSpec, parked) : draft as FilterSpec;
+  // A network's period applies to „Toți” only (final network §3.2, §4): a group sets it aside, „Toți” brings it back.
+  const group = choice.filter === "networkPartners" && draft.block === "network";
+  const toAll = group && choice.value === undefined && parked?.lens === "network";
+  const start = lens && parked?.lens === choice.value || toAll ? unpark(draft as FilterSpec, parked) : draft as FilterSpec;
+  const period = group && choice.value !== undefined && !start.network?.partners && presentConditions(start).has("period")
+    ? { id: "period" as const, label: phraseLabels(start).get("period") ?? FILTERS.period.label, values: pathValues(start, FILTERS.period.keys) } : null;
   const chosen = writeChoice(start, slot, choice);
   // A network's group keeps the period's first year as its reference (F4): the period leaves with that note, not as dropped.
   const network = networkFollows(start, chosen, filterContext(chosen, context.coverage ? { coverage: context.coverage } : {}));
@@ -193,7 +198,7 @@ export function chooseValue(input: QuestionSpec, slot: Slot, choice: Choice, par
     spec: subject.spec, notes: unique([...normalized.changes, ...network.notes, ...follows.notes, ...settled.notes, ...(subject.note ? [subject.note] : [])]),
     // The exclusions left with their note: the whole precise selection when nothing else was in it.
     dropped: subject.note ? [...settled.dropped, subject.spec.population ? "exclude" : "population"] : settled.dropped,
-    parked: !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : waiting,
+    parked: period ? parkedRow("network", [period]) : toAll ? null : !lens ? parked : settled.parked.length ? parkedRow(leaderAxis(start), settled.parked) : waiting,
     ...(Object.keys(settled.links).length ? { links: settled.links } : {}),
     ...(Object.keys(renamed).length ? { renamed } : {}),
   };
@@ -234,5 +239,7 @@ export function chooseQuestion(input: QuestionSpec, block: string, parked: Parke
 /** Touching a parked chip: back to the lens it came from, with everything that waited there (kit §5.43); a trend's, back to the trend. */
 export function restoreParked(draft: QuestionSpec, parked: Parked, context: TransitionContext = {}): Transition {
   if (parked.lens === "trend") return chooseQuestion(draft, "trend", parked, context);
+  // A network's period: back on „Toți”, every partner in that period.
+  if (parked.lens === "network") return chooseValue(draft, { id: "networkPartners" }, { filter: "networkPartners", value: undefined }, parked, context);
   return chooseValue(draft, { id: "rankBy" }, { filter: "rankBy", value: parked.lens }, parked, context);
 }

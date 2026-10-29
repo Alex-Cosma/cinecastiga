@@ -18,7 +18,7 @@ export interface ParkedItem { id: FilterId; label: string; values: Readonly<Reco
  * axis of "Cine conduce?", or the trend itself, whose options another question
  * cannot apply (trend-rules.ts leavingTrend).
  */
-export interface Parked { label: string; tip: string; lens: "value" | "risk" | "trend"; items: readonly ParkedItem[] }
+export interface Parked { label: string; tip: string; lens: "value" | "risk" | "trend" | "network"; items: readonly ParkedItem[] }
 
 /** The value of every key of a spec path list ("filters.cpvTerm", "dataset"), absent ones left out. */
 export function pathValues(spec: FilterSpec, paths: readonly string[]): Record<string, unknown> {
@@ -52,6 +52,11 @@ export function parkedRow(lens: Parked["lens"], items: readonly ParkedItem[]): P
   if (lens === "trend") return {
     label: "Doar la schimbare", lens, items,
     tip: "Țin de întrebarea „Cine are cea mai mare schimbare?”. Atinge una ca să revii la ea.",
+  };
+  // A network's period, set aside by a group (final network §3.2): it waits for „Toți”.
+  if (lens === "network") return {
+    label: "Doar la Toți", lens, items,
+    tip: "Perioada se aplică doar la toți partenerii; grupele se socotesc față de un an. Atinge-o ca să revii la Toți.",
   };
   if (lens === "value") return {
     label: "Nu se aplică indicelui", lens, items,
