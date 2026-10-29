@@ -1,6 +1,7 @@
 import { flagLabel } from "../flags";
 import { formatInt } from "../format";
 import { countWords, formatShare } from "./answer-text";
+import { KIND_ONE } from "./question-ui";
 import { SCATTER_FLAGS, SCATTER_FLAGS_BY_ROLE, type AskSpec, type RankBy } from "./spec";
 
 /*
@@ -156,3 +157,12 @@ export function withScatterChoice<T extends { scatter?: AskSpec["scatter"] | und
   if (Object.keys(options).length) next.scatter = options; else delete next.scatter;
   return next;
 }
+
+/** The pill's noun: "82 de primării de comună", "72.655 de firme". */
+export function groupNoun(n: number, role: ScatterRole, kind: string | null | undefined): string {
+  if (role === "supplier") return countWords(n, "firmă", "firme");
+  const word = kind ? { one: KIND_ONE[kind] ?? "instituție publică", many: ({ comuna: "primării de comună", oras_municipiu: "primării de oraș și municipiu", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli" } as Record<string, string>)[kind] ?? "instituții publice" }
+    : { one: "instituție publică", many: "instituții publice" };
+  return countWords(n, word.one, word.many);
+}
+

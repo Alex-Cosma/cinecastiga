@@ -2680,7 +2680,10 @@
      "dim": "supplier",
      "measure": "value",
      "topN": 10,
-     "filters": {}
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk"
+     }
     }
    },
    "answer": {
@@ -2693,9 +2696,12 @@
      "measure": "value",
      "filters": {},
      "dim": "supplier",
-     "topN": 10
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
     },
-    "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["6 firme","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
@@ -2704,69 +2710,129 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000101",
-       "name": "Fixture Construct SRL",
-       "county": "Cluj",
-       "value": 88000,
-       "cri": 0.581,
-       "nFlags": 2
+     "scatter": {
+      "version": 2,
+      "role": "supplier",
+      "levels": 4,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 6,
+       "nList": 6,
+       "small": true
       },
-      {
-       "entityId": "9100000102",
-       "name": "Fixture Medical SRL",
-       "county": "Buzau",
-       "value": 140000,
-       "cri": 0.362,
-       "nFlags": 1
+      "criteria": {
+       "da_split": 1,
+       "da_rapid": 1,
+       "da_round": 2,
+       "da_dependence": 4
       },
-      {
-       "entityId": "9100000103",
-       "name": "Fixture Servicii SA",
-       "county": "Alba",
-       "value": 60000,
-       "cri": 0.714,
-       "nFlags": 3
+      "p90": 114000,
+      "cloud": {
+       "points": []
       },
-      {
-       "entityId": "9100000105",
-       "name": "Fixture Mic SRL",
-       "county": "Cluj",
-       "value": 13000,
-       "cri": 0.124,
-       "nFlags": 0
-      },
-      {
-       "entityId": "9100000111",
-       "name": "Profil Firma Unu SRL",
-       "county": "Buzau",
-       "value": 45000,
-       "cri": 0.887,
-       "nFlags": 4
-      },
-      {
-       "entityId": "9100000112",
-       "name": "Profil Firma Doi SRL",
-       "county": "Cluj",
-       "value": 9000,
-       "cri": 0.473,
-       "nFlags": 1
-      }
-     ],
-     "density": {
-      "minLog": 3.9542425094393248,
-      "maxLog": 5.146128035678238,
-      "nx": 80,
-      "ny": 46,
-      "total": 6,
-      "cells": [
-       [1,22,1],
-       [11,6,1],
-       [47,41,1],
-       [56,33,1],
-       [67,27,1],
-       [80,17,1]
+      "list": [
+       {
+        "entityId": "9100000111",
+        "name": "Profil Firma Unu SRL",
+        "county": "Buzău",
+        "value": 45000,
+        "nDas": 26,
+        "cri": 0.887,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 7,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 60000,
+        "nDas": 15,
+        "cri": 0.714,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 300,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 88000,
+        "nDas": 24,
+        "cri": 0.581,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 3,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "value": 9000,
+        "nDas": 13,
+        "cri": 0.473,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_rapid"
+         }
+        ],
+        "employees": 55,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzău",
+        "value": 140000,
+        "nDas": 40,
+        "cri": 0.362,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 40,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "value": 13000,
+        "nDas": 11,
+        "cri": 0.124,
+        "nFlags": 0,
+        "flags": [],
+        "employees": 0,
+        "employeesYear": 2023
+       }
       ]
      }
     },
@@ -11766,7 +11832,7 @@
      "dataset": "da",
      "dim": "authority"
     },
-    "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -11774,78 +11840,156 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000001",
-       "name": "Comuna Fixture Vest",
-       "county": "Cluj",
-       "value": 30500,
-       "cri": 0.663,
-       "nFlags": 3
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 7,
+       "nList": 7,
+       "small": true
       },
-      {
-       "entityId": "9100000002",
-       "name": "Municipiul Fixture Nord",
-       "county": "Cluj",
-       "value": 51234.5,
-       "cri": 0.421,
-       "nFlags": 2
+      "criteria": {
+       "da_split": 4,
+       "da_year_end": 3,
+       "da_rapid": 3,
+       "da_round": 2,
+       "da_concentration": 3
       },
-      {
-       "entityId": "9100000003",
-       "name": "Spitalul Judetean Fixture",
-       "county": "Buzau",
-       "value": 98700.1,
-       "cri": 0.812,
-       "nFlags": 4
+      "p90": 85680.04000000001,
+      "cloud": {
+       "points": []
       },
-      {
-       "entityId": "9100000004",
-       "name": "Consiliul Judetean Alba",
-       "county": "Alba",
-       "value": 40463.46,
-       "cri": 0.274,
-       "nFlags": 1
-      },
-      {
-       "entityId": "9100000006",
-       "name": "Municipiul Aiud",
-       "county": "Alba",
-       "value": 17542.15,
-       "cri": 0.151,
-       "nFlags": 0
-      },
-      {
-       "entityId": "9100000011",
-       "name": "Comuna Profil Unu",
-       "county": "Cluj",
-       "value": 77000,
-       "cri": 0.933,
-       "nFlags": 5
-      },
-      {
-       "entityId": "9100000012",
-       "name": "Comuna Profil Doi",
-       "county": "Buzau",
-       "value": 15500,
-       "cri": 0.052,
-       "nFlags": 0
-      }
-     ],
-     "density": {
-      "minLog": 4.190331698170292,
-      "maxLog": 4.994317592684086,
-      "nx": 80,
-      "ny": 46,
-      "total": 7,
-      "cells": [
-       [0,3,1],
-       [6,7,1],
-       [30,31,1],
-       [42,13,1],
-       [52,20,1],
-       [70,43,1],
-       [80,38,1]
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "value": 98700.1,
+        "nDas": 45,
+        "cri": 0.812,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "spital"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "value": 40463.46,
+        "nDas": 12,
+        "cri": 0.274,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "consiliu_judetean"
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "value": 17542.15,
+        "nDas": 10,
+        "cri": 0.151,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "value": 15500,
+        "nDas": 27,
+        "cri": 0.052,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "comuna"
+       }
       ]
      }
     },
@@ -12005,7 +12149,7 @@
      },
      "dim": "supplier"
     },
-    "pills": ["risc și valoare","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 firme","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -12015,42 +12159,72 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000101",
-       "name": "Fixture Construct SRL",
-       "county": "Cluj",
-       "value": 88000,
-       "cri": 0.581,
-       "nFlags": 2
+     "scatter": {
+      "version": 2,
+      "role": "supplier",
+      "levels": 4,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 3,
+       "nList": 3,
+       "small": true
       },
-      {
-       "entityId": "9100000105",
-       "name": "Fixture Mic SRL",
-       "county": "Cluj",
-       "value": 13000,
-       "cri": 0.124,
-       "nFlags": 0
+      "criteria": {
+       "da_split": 0,
+       "da_rapid": 1,
+       "da_round": 0,
+       "da_dependence": 1
       },
-      {
-       "entityId": "9100000112",
-       "name": "Profil Firma Doi SRL",
-       "county": "Cluj",
-       "value": 9000,
-       "cri": 0.473,
-       "nFlags": 1
-      }
-     ],
-     "density": {
-      "minLog": 3.9542425094393248,
-      "maxLog": 4.944482672150169,
-      "nx": 80,
-      "ny": 46,
-      "total": 3,
-      "cells": [
-       [1,22,1],
-       [13,6,1],
-       [80,27,1]
+      "p90": 73000,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 88000,
+        "nDas": 24,
+        "cri": 0.581,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 3,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "value": 9000,
+        "nDas": 13,
+        "cri": 0.473,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_rapid"
+         }
+        ],
+        "employees": 55,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "value": 13000,
+        "nDas": 11,
+        "cri": 0.124,
+        "nFlags": 0,
+        "flags": [],
+        "employees": 0,
+        "employeesYear": 2023
+       }
       ]
      }
     },
@@ -16205,7 +16379,7 @@
      "dim": "authority",
      "rankBy": "value"
     },
-    "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -16213,78 +16387,156 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000001",
-       "name": "Comuna Fixture Vest",
-       "county": "Cluj",
-       "value": 30500,
-       "cri": 0.663,
-       "nFlags": 3
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 7,
+       "nList": 7,
+       "small": true
       },
-      {
-       "entityId": "9100000002",
-       "name": "Municipiul Fixture Nord",
-       "county": "Cluj",
-       "value": 51234.5,
-       "cri": 0.421,
-       "nFlags": 2
+      "criteria": {
+       "da_split": 4,
+       "da_year_end": 3,
+       "da_rapid": 3,
+       "da_round": 2,
+       "da_concentration": 3
       },
-      {
-       "entityId": "9100000003",
-       "name": "Spitalul Judetean Fixture",
-       "county": "Buzau",
-       "value": 98700.1,
-       "cri": 0.812,
-       "nFlags": 4
+      "p90": 85680.04000000001,
+      "cloud": {
+       "points": []
       },
-      {
-       "entityId": "9100000004",
-       "name": "Consiliul Judetean Alba",
-       "county": "Alba",
-       "value": 40463.46,
-       "cri": 0.274,
-       "nFlags": 1
-      },
-      {
-       "entityId": "9100000006",
-       "name": "Municipiul Aiud",
-       "county": "Alba",
-       "value": 17542.15,
-       "cri": 0.151,
-       "nFlags": 0
-      },
-      {
-       "entityId": "9100000011",
-       "name": "Comuna Profil Unu",
-       "county": "Cluj",
-       "value": 77000,
-       "cri": 0.933,
-       "nFlags": 5
-      },
-      {
-       "entityId": "9100000012",
-       "name": "Comuna Profil Doi",
-       "county": "Buzau",
-       "value": 15500,
-       "cri": 0.052,
-       "nFlags": 0
-      }
-     ],
-     "density": {
-      "minLog": 4.190331698170292,
-      "maxLog": 4.994317592684086,
-      "nx": 80,
-      "ny": 46,
-      "total": 7,
-      "cells": [
-       [0,3,1],
-       [6,7,1],
-       [30,31,1],
-       [42,13,1],
-       [52,20,1],
-       [70,43,1],
-       [80,38,1]
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "value": 98700.1,
+        "nDas": 45,
+        "cri": 0.812,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "spital"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "value": 40463.46,
+        "nDas": 12,
+        "cri": 0.274,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "consiliu_judetean"
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "value": 17542.15,
+        "nDas": 10,
+        "cri": 0.151,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "value": 15500,
+        "nDas": 27,
+        "cri": 0.052,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "comuna"
+       }
       ]
      }
     },
@@ -17097,12 +17349,11 @@
    "source": "o cheie din versiunea următoare (F0a)",
    "request": {
     "spec": {
-     "block": "scatter",
-     "dim": "authority",
+     "block": "table",
+     "dim": "supplier",
      "measure": "value",
-     "filters": {},
-     "scatter": {
-      "flag": "da_split"
+     "filters": {
+      "newSince": 2024
      }
     }
    },
@@ -37760,6 +38011,9 @@
      "topN": 10,
      "filters": {
       "seatCounty": "Cluj"
+     },
+     "scatter": {
+      "rankBy": "risk"
      }
     }
    },
@@ -37775,9 +38029,12 @@
       "seatCounty": "Cluj"
      },
      "dim": "supplier",
-     "topN": 10
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
     },
-    "pills": ["risc și valoare","cu sediul în județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 firme","cu sediul în județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
@@ -37786,42 +38043,72 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000101",
-       "name": "Fixture Construct SRL",
-       "county": "Cluj",
-       "value": 88000,
-       "cri": 0.581,
-       "nFlags": 2
+     "scatter": {
+      "version": 2,
+      "role": "supplier",
+      "levels": 4,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 3,
+       "nList": 3,
+       "small": true
       },
-      {
-       "entityId": "9100000105",
-       "name": "Fixture Mic SRL",
-       "county": "Cluj",
-       "value": 13000,
-       "cri": 0.124,
-       "nFlags": 0
+      "criteria": {
+       "da_split": 0,
+       "da_rapid": 1,
+       "da_round": 0,
+       "da_dependence": 1
       },
-      {
-       "entityId": "9100000112",
-       "name": "Profil Firma Doi SRL",
-       "county": "Cluj",
-       "value": 9000,
-       "cri": 0.473,
-       "nFlags": 1
-      }
-     ],
-     "density": {
-      "minLog": 3.9542425094393248,
-      "maxLog": 4.944482672150169,
-      "nx": 80,
-      "ny": 46,
-      "total": 3,
-      "cells": [
-       [1,22,1],
-       [13,6,1],
-       [80,27,1]
+      "p90": 73000,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 88000,
+        "nDas": 24,
+        "cri": 0.581,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 3,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "value": 9000,
+        "nDas": 13,
+        "cri": 0.473,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_rapid"
+         }
+        ],
+        "employees": 55,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "value": 13000,
+        "nDas": 11,
+        "cri": 0.124,
+        "nFlags": 0,
+        "flags": [],
+        "employees": 0,
+        "employeesYear": 2023
+       }
       ]
      }
     },
@@ -45882,7 +46169,10 @@
      "dim": "authority",
      "measure": "value",
      "topN": 10,
-     "filters": {}
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk"
+     }
     }
    },
    "answer": {
@@ -45895,9 +46185,12 @@
      "measure": "value",
      "filters": {},
      "dim": "authority",
-     "topN": 10
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
     },
-    "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -45905,78 +46198,156 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000001",
-       "name": "Comuna Fixture Vest",
-       "county": "Cluj",
-       "value": 30500,
-       "cri": 0.663,
-       "nFlags": 3
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 7,
+       "nList": 7,
+       "small": true
       },
-      {
-       "entityId": "9100000002",
-       "name": "Municipiul Fixture Nord",
-       "county": "Cluj",
-       "value": 51234.5,
-       "cri": 0.421,
-       "nFlags": 2
+      "criteria": {
+       "da_split": 4,
+       "da_year_end": 3,
+       "da_rapid": 3,
+       "da_round": 2,
+       "da_concentration": 3
       },
-      {
-       "entityId": "9100000003",
-       "name": "Spitalul Judetean Fixture",
-       "county": "Buzau",
-       "value": 98700.1,
-       "cri": 0.812,
-       "nFlags": 4
+      "p90": 85680.04000000001,
+      "cloud": {
+       "points": []
       },
-      {
-       "entityId": "9100000004",
-       "name": "Consiliul Judetean Alba",
-       "county": "Alba",
-       "value": 40463.46,
-       "cri": 0.274,
-       "nFlags": 1
-      },
-      {
-       "entityId": "9100000006",
-       "name": "Municipiul Aiud",
-       "county": "Alba",
-       "value": 17542.15,
-       "cri": 0.151,
-       "nFlags": 0
-      },
-      {
-       "entityId": "9100000011",
-       "name": "Comuna Profil Unu",
-       "county": "Cluj",
-       "value": 77000,
-       "cri": 0.933,
-       "nFlags": 5
-      },
-      {
-       "entityId": "9100000012",
-       "name": "Comuna Profil Doi",
-       "county": "Buzau",
-       "value": 15500,
-       "cri": 0.052,
-       "nFlags": 0
-      }
-     ],
-     "density": {
-      "minLog": 4.190331698170292,
-      "maxLog": 4.994317592684086,
-      "nx": 80,
-      "ny": 46,
-      "total": 7,
-      "cells": [
-       [0,3,1],
-       [6,7,1],
-       [30,31,1],
-       [42,13,1],
-       [52,20,1],
-       [70,43,1],
-       [80,38,1]
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "value": 98700.1,
+        "nDas": 45,
+        "cri": 0.812,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "spital"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "value": 40463.46,
+        "nDas": 12,
+        "cri": 0.274,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "consiliu_judetean"
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "value": 17542.15,
+        "nDas": 10,
+        "cri": 0.151,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "value": 15500,
+        "nDas": 27,
+        "cri": 0.052,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "comuna"
+       }
       ]
      }
     },
@@ -46119,7 +46490,10 @@
      "dim": "supplier",
      "measure": "value",
      "topN": 10,
-     "filters": {}
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk"
+     }
     }
    },
    "answer": {
@@ -46132,9 +46506,12 @@
      "measure": "value",
      "filters": {},
      "dim": "supplier",
-     "topN": 10
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
     },
-    "pills": ["risc și valoare","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["6 firme","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
@@ -46143,69 +46520,129 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000101",
-       "name": "Fixture Construct SRL",
-       "county": "Cluj",
-       "value": 88000,
-       "cri": 0.581,
-       "nFlags": 2
+     "scatter": {
+      "version": 2,
+      "role": "supplier",
+      "levels": 4,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 6,
+       "nList": 6,
+       "small": true
       },
-      {
-       "entityId": "9100000102",
-       "name": "Fixture Medical SRL",
-       "county": "Buzau",
-       "value": 140000,
-       "cri": 0.362,
-       "nFlags": 1
+      "criteria": {
+       "da_split": 1,
+       "da_rapid": 1,
+       "da_round": 2,
+       "da_dependence": 4
       },
-      {
-       "entityId": "9100000103",
-       "name": "Fixture Servicii SA",
-       "county": "Alba",
-       "value": 60000,
-       "cri": 0.714,
-       "nFlags": 3
+      "p90": 114000,
+      "cloud": {
+       "points": []
       },
-      {
-       "entityId": "9100000105",
-       "name": "Fixture Mic SRL",
-       "county": "Cluj",
-       "value": 13000,
-       "cri": 0.124,
-       "nFlags": 0
-      },
-      {
-       "entityId": "9100000111",
-       "name": "Profil Firma Unu SRL",
-       "county": "Buzau",
-       "value": 45000,
-       "cri": 0.887,
-       "nFlags": 4
-      },
-      {
-       "entityId": "9100000112",
-       "name": "Profil Firma Doi SRL",
-       "county": "Cluj",
-       "value": 9000,
-       "cri": 0.473,
-       "nFlags": 1
-      }
-     ],
-     "density": {
-      "minLog": 3.9542425094393248,
-      "maxLog": 5.146128035678238,
-      "nx": 80,
-      "ny": 46,
-      "total": 6,
-      "cells": [
-       [1,22,1],
-       [11,6,1],
-       [47,41,1],
-       [56,33,1],
-       [67,27,1],
-       [80,17,1]
+      "list": [
+       {
+        "entityId": "9100000111",
+        "name": "Profil Firma Unu SRL",
+        "county": "Buzău",
+        "value": 45000,
+        "nDas": 26,
+        "cri": 0.887,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 7,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 60000,
+        "nDas": 15,
+        "cri": 0.714,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 300,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 88000,
+        "nDas": 24,
+        "cri": 0.581,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 3,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "value": 9000,
+        "nDas": 13,
+        "cri": 0.473,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_rapid"
+         }
+        ],
+        "employees": 55,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzău",
+        "value": 140000,
+        "nDas": 40,
+        "cri": 0.362,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 40,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "value": 13000,
+        "nDas": 11,
+        "cri": 0.124,
+        "nFlags": 0,
+        "flags": [],
+        "employees": 0,
+        "employeesYear": 2023
+       }
       ]
      }
     },
@@ -46340,6 +46777,9 @@
      "topN": 10,
      "filters": {
       "county": "Cluj"
+     },
+     "scatter": {
+      "rankBy": "risk"
      }
     }
    },
@@ -46355,9 +46795,12 @@
       "county": "Cluj"
      },
      "dim": "authority",
-     "topN": 10
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
     },
-    "pills": ["risc și valoare","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 instituții publice","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -46366,42 +46809,95 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000001",
-       "name": "Comuna Fixture Vest",
-       "county": "Cluj",
-       "value": 30500,
-       "cri": 0.663,
-       "nFlags": 3
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 3,
+       "nList": 3,
+       "small": true
       },
-      {
-       "entityId": "9100000002",
-       "name": "Municipiul Fixture Nord",
-       "county": "Cluj",
-       "value": 51234.5,
-       "cri": 0.421,
-       "nFlags": 2
+      "criteria": {
+       "da_split": 3,
+       "da_year_end": 2,
+       "da_rapid": 2,
+       "da_round": 2,
+       "da_concentration": 1
       },
-      {
-       "entityId": "9100000011",
-       "name": "Comuna Profil Unu",
-       "county": "Cluj",
-       "value": 77000,
-       "cri": 0.933,
-       "nFlags": 5
-      }
-     ],
-     "density": {
-      "minLog": 4.484299839346786,
-      "maxLog": 4.886490725172482,
-      "nx": 80,
-      "ny": 46,
-      "total": 3,
-      "cells": [
-       [1,31,1],
-       [45,20,1],
-       [80,43,1]
+      "p90": 71846.9,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       }
       ]
      }
     },
@@ -46497,6 +46993,9 @@
      "topN": 10,
      "filters": {
       "authorityKind": "comuna"
+     },
+     "scatter": {
+      "rankBy": "risk"
      }
     },
     "rows": {
@@ -46518,9 +47017,12 @@
       "authorityKind": "comuna"
      },
      "dim": "authority",
-     "topN": 10
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
     },
-    "pills": ["risc și valoare","doar primării de comună","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 primării de comună","doar primării de comună","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -46528,42 +47030,85 @@
     ],
     "data": {
      "block": "scatter",
-     "points": [
-      {
-       "entityId": "9100000001",
-       "name": "Comuna Fixture Vest",
-       "county": "Cluj",
-       "value": 30500,
-       "cri": 0.663,
-       "nFlags": 3
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 3,
+       "nList": 3,
+       "small": true
       },
-      {
-       "entityId": "9100000011",
-       "name": "Comuna Profil Unu",
-       "county": "Cluj",
-       "value": 77000,
-       "cri": 0.933,
-       "nFlags": 5
+      "criteria": {
+       "da_split": 2,
+       "da_year_end": 1,
+       "da_rapid": 2,
+       "da_round": 2,
+       "da_concentration": 1
       },
-      {
-       "entityId": "9100000012",
-       "name": "Comuna Profil Doi",
-       "county": "Buzau",
-       "value": 15500,
-       "cri": 0.052,
-       "nFlags": 0
-      }
-     ],
-     "density": {
-      "minLog": 4.190331698170292,
-      "maxLog": 4.886490725172482,
-      "nx": 80,
-      "ny": 46,
-      "total": 3,
-      "cells": [
-       [0,3,1],
-       [34,31,1],
-       [80,43,1]
+      "p90": 67700,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ]
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ]
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "value": 15500,
+        "nDas": 27,
+        "cri": 0.052,
+        "nFlags": 0,
+        "flags": []
+       }
       ]
      }
     },
@@ -46591,6 +47136,1035 @@
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+    ],
+    "statuses": [],
+    "rows": []
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-0.csv",
+    "x-total-rows": "0",
+    "x-exported-rows": "0",
+    "x-source-rows": "0",
+    "x-source-value": "0.00",
+    "x-filtered-value": "0.00",
+    "lines": 1,
+    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+   }
+  },
+  {
+   "id": "combo:scatter:signal",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "scatter",
+     "dim": "authority",
+     "measure": "value",
+     "topN": 10,
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk",
+      "flag": "da_split"
+     }
+    },
+    "rows": {}
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "scatter",
+     "measure": "value",
+     "filters": {},
+     "dim": "authority",
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk",
+      "flag": "da_split"
+     }
+    },
+    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","semnal: posibilă fracționare"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "scatter",
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": "da_split",
+      "group": {
+       "n": 7,
+       "nList": 7,
+       "small": true
+      },
+      "criteria": {
+       "da_split": 4,
+       "da_year_end": 3,
+       "da_rapid": 3,
+       "da_round": 2,
+       "da_concentration": 3
+      },
+      "p90": 85680.04000000001,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "value": 98700.1,
+        "nDas": 45,
+        "cri": 0.812,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "spital"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       }
+      ],
+      "chosen": {
+       "n": 4,
+       "nList": 4
+      }
+     }
+    },
+    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 0,
+    "value": "0.00",
+    "sourceTotal": 0,
+    "sourceValue": "0.00",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 0,
+     "value": "0.00"
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000001",
+      "name": "Comuna Fixture Vest",
+      "role": "authority",
+      "count": 18,
+      "value": "30500.00",
+      "cri": 0.663,
+      "flags": ["da_split","da_rapid","da_round"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000002",
+      "name": "Municipiul Fixture Nord",
+      "role": "authority",
+      "count": 34,
+      "value": "51234.50",
+      "cri": 0.421,
+      "flags": ["da_split","da_year_end"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000003",
+      "name": "Spitalul Judetean Fixture",
+      "role": "authority",
+      "count": 45,
+      "value": "98700.10",
+      "cri": 0.812,
+      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000011",
+      "name": "Comuna Profil Unu",
+      "role": "authority",
+      "count": 22,
+      "value": "77000.00",
+      "cri": 0.933,
+      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+      "applicable": 5
+     }
+    ],
+    "profileCount": 4,
+    "profileReconciled": true,
+    "scopeNotes": [
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele semnalului „Posibilă fracționare”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
+    ],
+    "statuses": [],
+    "rows": []
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-0.csv",
+    "x-total-rows": "0",
+    "x-exported-rows": "0",
+    "x-source-rows": "0",
+    "x-source-value": "0.00",
+    "x-filtered-value": "0.00",
+    "lines": 1,
+    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+   }
+  },
+  {
+   "id": "combo:scatter:by-value",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "scatter",
+     "dim": "authority",
+     "measure": "value",
+     "topN": 10,
+     "filters": {},
+     "scatter": {
+      "rankBy": "value"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "scatter",
+     "measure": "value",
+     "filters": {},
+     "dim": "authority",
+     "topN": 10,
+     "scatter": {
+      "rankBy": "value"
+     }
+    },
+    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","primele după valoare"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "scatter",
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "value",
+      "flag": null,
+      "group": {
+       "n": 7,
+       "nList": 7,
+       "small": true
+      },
+      "criteria": {
+       "da_split": 4,
+       "da_year_end": 3,
+       "da_rapid": 3,
+       "da_round": 2,
+       "da_concentration": 3
+      },
+      "p90": 85680.04000000001,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "value": 98700.1,
+        "nDas": 45,
+        "cri": 0.812,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "spital"
+       },
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "value": 40463.46,
+        "nDas": 12,
+        "cri": 0.274,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "consiliu_judetean"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "value": 17542.15,
+        "nDas": 10,
+        "cri": 0.151,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "value": 15500,
+        "nDas": 27,
+        "cri": 0.052,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "comuna"
+       }
+      ]
+     }
+    },
+    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 23,
+    "value": "70505.71",
+    "sourceTotal": 23,
+    "sourceValue": "70505.71",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 23,
+     "value": "70505.71"
+    },
+    "dateFrom": "2024-01-12",
+    "dateTo": "2026-05-18",
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000001",
+      "name": "Comuna Fixture Vest",
+      "role": "authority",
+      "count": 18,
+      "value": "30500.00",
+      "cri": 0.663,
+      "flags": ["da_split","da_rapid","da_round"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000002",
+      "name": "Municipiul Fixture Nord",
+      "role": "authority",
+      "count": 34,
+      "value": "51234.50",
+      "cri": 0.421,
+      "flags": ["da_split","da_year_end"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000003",
+      "name": "Spitalul Judetean Fixture",
+      "role": "authority",
+      "count": 45,
+      "value": "98700.10",
+      "cri": 0.812,
+      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000004",
+      "name": "Consiliul Judetean Alba",
+      "role": "authority",
+      "count": 12,
+      "value": "40463.46",
+      "cri": 0.274,
+      "flags": ["da_concentration"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000006",
+      "name": "Municipiul Aiud",
+      "role": "authority",
+      "count": 10,
+      "value": "17542.15",
+      "cri": 0.151,
+      "flags": [],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000011",
+      "name": "Comuna Profil Unu",
+      "role": "authority",
+      "count": 22,
+      "value": "77000.00",
+      "cri": 0.933,
+      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+      "applicable": 5
+     },
+     {
+      "entityId": "9100000012",
+      "name": "Comuna Profil Doi",
+      "role": "authority",
+      "count": 27,
+      "value": "15500.00",
+      "cri": 0.052,
+      "flags": [],
+      "applicable": 5
+     }
+    ],
+    "profileCount": 7,
+    "profileReconciled": false,
+    "scopeNotes": [
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
+    ],
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 23,
+      "value": "70505.71"
+     }
+    ],
+    "rows": [
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
+     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
+     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
+     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
+     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-23.csv",
+    "x-total-rows": "23",
+    "x-exported-rows": "23",
+    "x-source-rows": "23",
+    "x-source-value": "70505.71",
+    "x-filtered-value": "70505.71",
+    "lines": 24,
+    "sha256": "2fafdc36fc87dcffe839994621f640ccbbbb1fc5cc8216d1e056faacabdd5584"
+   }
+  },
+  {
+   "id": "combo:scatter:firms-signal",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "scatter",
+     "dim": "supplier",
+     "measure": "value",
+     "topN": 10,
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk",
+      "flag": "da_dependence"
+     }
+    },
+    "rows": {
+     "scope": {
+      "role": "supplier",
+      "entityIds": ["9100000102"]
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "scatter",
+     "measure": "value",
+     "filters": {},
+     "dim": "supplier",
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk",
+      "flag": "da_dependence"
+     }
+    },
+    "pills": ["6 firme","profil istoric: achiziții directe acceptate, toată arhiva","semnal: dependență de o autoritate"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "scatter",
+     "scatter": {
+      "version": 2,
+      "role": "supplier",
+      "levels": 4,
+      "rankBy": "risk",
+      "flag": "da_dependence",
+      "group": {
+       "n": 6,
+       "nList": 6,
+       "small": true
+      },
+      "criteria": {
+       "da_split": 1,
+       "da_rapid": 1,
+       "da_round": 2,
+       "da_dependence": 4
+      },
+      "p90": 114000,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000111",
+        "name": "Profil Firma Unu SRL",
+        "county": "Buzău",
+        "value": 45000,
+        "nDas": 26,
+        "cri": 0.887,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 7,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 60000,
+        "nDas": 15,
+        "cri": 0.714,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 300,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 88000,
+        "nDas": 24,
+        "cri": 0.581,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 3,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzău",
+        "value": 140000,
+        "nDas": 40,
+        "cri": 0.362,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 40,
+        "employeesYear": 2024
+       }
+      ],
+      "chosen": {
+       "n": 4,
+       "nList": 4
+      }
+     }
+    },
+    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 4,
+    "value": "65101.85",
+    "sourceTotal": 4,
+    "sourceValue": "65101.85",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 4,
+     "value": "65101.85"
+    },
+    "dateFrom": "2024-09-12",
+    "dateTo": "2026-02-03",
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000102",
+      "name": "Fixture Medical SRL",
+      "role": "supplier",
+      "count": 40,
+      "value": "140000.00",
+      "cri": 0.362,
+      "flags": ["da_dependence"],
+      "applicable": 4
+     }
+    ],
+    "profileCount": 1,
+    "profileReconciled": null,
+    "scopeNotes": [
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele semnalului „Dependență de o autoritate”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
+    ],
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 4,
+      "value": "65101.85"
+     }
+    ],
+    "rows": [
+     ["da","9100100010","DA-FX-10","2026-02-03","9100000003","9100000102","Buzau","33690000-3","22400.15","Oferta acceptata",null,null,false,null],
+     ["da","9100100009","DA-FX-9","2025-06-30","9100000003","9100000102","Buzau","33690000-3","18700.80","Oferta acceptata",null,null,false,null],
+     ["da","9100100021","DA-FX-21","2025-12-17","9100000003","9100000102","Buzau","33690000-3","14100.00","Oferta acceptata",null,null,true,null],
+     ["da","9100100011","DA-FX-11","2024-09-12","9100000003","9100000102","Buzau","33600000-6","9900.90","Oferta acceptata",null,null,false,null]
+    ]
+   },
+   "csv": {
+    "status": 200,
+    "file": "randuri-4.csv",
+    "x-total-rows": "4",
+    "x-exported-rows": "4",
+    "x-source-rows": "4",
+    "x-source-value": "65101.85",
+    "x-filtered-value": "65101.85",
+    "lines": 5,
+    "sha256": "b233290bbd3a160410cb64e508919d3d560d735731a1edefa5e8950a07b42e9d"
+   }
+  },
+  {
+   "id": "combo:scatter:signal-profile",
+   "origin": "combo",
+   "source": "builder: defaultQuestion → chooseType → edits → transitionQuestion",
+   "request": {
+    "spec": {
+     "block": "scatter",
+     "dim": "authority",
+     "measure": "value",
+     "topN": 10,
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk"
+     }
+    },
+    "rows": {
+     "scope": {
+      "role": "authority",
+      "entityIds": ["9100000002"],
+      "flag": "da_year_end"
+     }
+    }
+   },
+   "answer": {
+    "status": 200,
+    "ok": true,
+    "question": null,
+    "model": null,
+    "spec": {
+     "block": "scatter",
+     "measure": "value",
+     "filters": {},
+     "dim": "authority",
+     "topN": 10,
+     "scatter": {
+      "rankBy": "risk"
+     }
+    },
+    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "scatter",
+     "scatter": {
+      "version": 2,
+      "role": "authority",
+      "levels": 5,
+      "rankBy": "risk",
+      "flag": null,
+      "group": {
+       "n": 7,
+       "nList": 7,
+       "small": true
+      },
+      "criteria": {
+       "da_split": 4,
+       "da_year_end": 3,
+       "da_rapid": 3,
+       "da_round": 2,
+       "da_concentration": 3
+      },
+      "p90": 85680.04000000001,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "value": 77000,
+        "nDas": 22,
+        "cri": 0.933,
+        "nFlags": 5,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "value": 98700.1,
+        "nDas": 45,
+        "cri": 0.812,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "spital"
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 30500,
+        "nDas": 18,
+        "cri": 0.663,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_rapid"
+         },
+         {
+          "code": "da_round"
+         }
+        ],
+        "kind": "comuna"
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 51234.5,
+        "nDas": 34,
+        "cri": 0.421,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_year_end"
+         }
+        ],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "value": 40463.46,
+        "nDas": 12,
+        "cri": 0.274,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_concentration"
+         }
+        ],
+        "kind": "consiliu_judetean"
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "value": 17542.15,
+        "nDas": 10,
+        "cri": 0.151,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "value": 15500,
+        "nDas": 27,
+        "cri": 0.052,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "comuna"
+       }
+      ]
+     }
+    },
+    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+   },
+   "sources": {
+    "status": 200,
+    "ok": true,
+    "total": 0,
+    "value": "0.00",
+    "sourceTotal": 0,
+    "sourceValue": "0.00",
+    "page": 0,
+    "pageSize": 10,
+    "accepted": {
+     "count": 0,
+     "value": "0.00"
+    },
+    "dateFrom": null,
+    "dateTo": null,
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000002",
+      "name": "Municipiul Fixture Nord",
+      "role": "authority",
+      "count": 34,
+      "value": "51234.50",
+      "cri": 0.421,
+      "flags": ["da_split","da_year_end"],
+      "applicable": 5
+     }
+    ],
+    "profileCount": 1,
+    "profileReconciled": true,
+    "scopeNotes": [
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele semnalului „Vârf în decembrie”: achizițiile finalizate în decembrie, în anii în care decembrie a avut cel puțin 35% din valoarea anuală, nu tot istoricul profilurilor."
     ],
     "statuses": [],
     "rows": []

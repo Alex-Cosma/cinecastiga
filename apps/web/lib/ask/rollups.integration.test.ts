@@ -328,7 +328,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
     try {
       await sql.begin(async (tx) => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national"])
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national", "flag_instances"])
           await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
         // With its generated log_total_ron (migration 0085).
         await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);

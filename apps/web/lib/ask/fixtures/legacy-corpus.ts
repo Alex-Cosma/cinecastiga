@@ -484,6 +484,12 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("suppliers", "scatter", () => {});
   combo("county", "scatter", all(top({ dim: "authority" }), set({ county: ids.county })));
   combo("kind", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "comuna" })), { rows: { scope: { role: "authority", entityIds: [String(authority.id)] } } });
+  // F6b: the cloud's signal and order as the strip writes them, and the sources of a signal, whole and of one profile.
+  const cloudOf = (options: NonNullable<QuestionSpec["scatter"]>): Edit => (q) => { q.scatter = { ...options }; };
+  combo("signal", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" })), { rows: {} });
+  combo("by-value", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "value" })));
+  combo("firms-signal", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_dependence" })), { rows: { scope: { role: "supplier", entityIds: [String(ids.profileSupplier.id)] } } });
+  combo("signal-profile", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk" })), { rows: { scope: { role: "authority", entityIds: [String(authority.id)], flag: "da_year_end" } } });
   // entity_card
   combo("risk-authority", "entity_card", top({ rankBy: "risk", dim: "authority" }));
   combo("risk-supplier", "entity_card", top({ rankBy: "risk", dim: "supplier" }));

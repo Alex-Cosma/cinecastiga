@@ -47,7 +47,7 @@
 .sc-list-wrap{display:grid;gap:8px;min-width:0}
 .sc-list-head{margin:0;font-size:14px;font-weight:600;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .sc-list{list-style:none;margin:0;padding:0;display:grid}
-.sc-row{display:grid;grid-template-columns:28px minmax(0,1fr) 92px 100px auto;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0}
+.sc-row{display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0}
 .sc-row.is-picked{background:var(--fk-sel);border-radius:8px;border-bottom-color:transparent}
 .sc-rank{color:var(--muted);font-size:12.5px;padding-top:2px}
 .sc-who{display:grid;gap:3px;min-width:0}

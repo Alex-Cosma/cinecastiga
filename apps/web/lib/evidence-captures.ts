@@ -188,7 +188,7 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   });
   if (connectionSources?.some(pair => pair.rowCount === 0)) throw new CaptureError("Filtrele nu păstrează surse pentru fiecare legătură a traseului. Elimină filtrele listei sau salvează separat legătura care are surse. Nu am păstrat un traseu incomplet ca legătură documentată.");
   const { rows: _rows, ...sourceMetadata } = sources;
-  const pills = buildPills(spec, grounding, { entities, executedMonths: answer.executed?.months, peerGroup: answerLabels(answer).peerGroup });
+  const pills = buildPills(spec, grounding, { entities, executedMonths: answer.executed?.months, peerGroup: answerLabels(answer).peerGroup, ...(answerLabels(answer).scatterGroup !== undefined ? { scatterGroup: answerLabels(answer).scatterGroup! } : {}) });
   return { summary: { title: connection?.context.title ?? pills.join(" · "), pills, ...(connection ? { connection: connection.selection, connectionContext: {...connection.context,sourcePairs:connectionSources} } : {}), evidenceScope: options.scope ?? {},
     evidenceOptions: { search: request.options.search, state: request.options.state, stream: request.options.stream },
     grounding, effectiveSpec: spec, sources: sourceMetadata, warnings: [...answer.caveats, ...sources.scopeNotes] },

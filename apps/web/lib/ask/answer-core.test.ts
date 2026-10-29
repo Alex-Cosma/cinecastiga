@@ -99,7 +99,7 @@ describe("the key versions of this release", () => {
 
 describe("the version of an answer", () => {
   it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's, F6a the distribution's and the verification's", () => {
-    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-2", fact_check: "fact_check-2" });
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-2", fact_check: "fact_check-2", scatter: "scatter-2" });
     expect(KEY_VERSIONS).toEqual({});
     for (const block of BLOCKS)
       expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: ANSWER_VERSIONS[block] ?? `${block}-1`, conditions: {} });
@@ -226,6 +226,32 @@ describe("what a watch compares between two checks", () => {
     Object.assign(ANSWER_VERSIONS, RELEASED);
     expect(methodologiesDiffer(before, run(spec), "distribution")).toBe(true);
     expect(methodologiesDiffer(run(spec), run(spec), "distribution")).toBe(false);
+  });
+
+  it("on the risk cloud (scatter-2), compares the group and the list the question asks for, never the chart's points, names or the years of a signal", () => {
+    const row = (id: string, nFlags: number, years: number[]) => ({ entityId: id, name: `N${id}`, county: "Buzau", value: 10, nDas: 30, cri: nFlags / 5, nFlags, flags: [{ code: "da_split", years }] });
+    const scatter = { version: 2, role: "authority", levels: 5, rankBy: "risk", flag: null, group: { n: 2, nList: 2 }, criteria: { da_split: 2 }, p90: 5,
+      cloud: { points: [{ id: "1", name: "N1", value: 10, nFlags: 1, flags: 1, nDas: 30 }] }, list: [row("1", 1, [2019]), row("2", 1, [2020])] };
+    const data = { block: "scatter", scatter };
+    const core = answerCore("scatter", data) as { scatter: Record<string, unknown> };
+    expect(Object.keys(core.scatter).sort()).toEqual(["chosen", "criteria", "flag", "group", "list", "rankBy", "role", "version"]);
+    // The chart's points, the top 10% line, a name, a county and a signal's years move with every refresh: not a change.
+    const moved = { ...scatter, p90: 6, cloud: { points: [] }, list: [row("1", 1, [2019, 2021]), row("2", 1, [2020])].map((r) => ({ ...r, name: "altfel", county: null })) };
+    expect(sameAnswerCore("scatter", data, { block: "scatter", scatter: moved })).toBe(true);
+    // A profile that gains a criterion, another order of the list or another signal are.
+    const gains = { ...scatter, list: [row("1", 2, [2019]), row("2", 1, [2020])] };
+    const swapped = { ...scatter, list: [row("2", 1, [2020]), row("1", 1, [2019])] };
+    const signal = { ...scatter, flag: "da_split", chosen: { n: 2, nList: 2 } };
+    for (const after of [gains, swapped, signal]) expect(sameAnswerCore("scatter", data, { block: "scatter", scatter: after })).toBe(false);
+    // An answer stored before scatter-2 (points, density) is compared whole; the alert is the methodology's (scatter-2).
+    const v1 = { block: "scatter", points: [], density: null };
+    expect(answerCore("scatter", v1)).toBe(v1);
+    delete ANSWER_VERSIONS.scatter;
+    const spec = { block: "scatter", dim: "authority", measure: "value", filters: {} } as AskSpec;
+    const before = run(spec);
+    Object.assign(ANSWER_VERSIONS, RELEASED);
+    expect(methodologiesDiffer(before, run(spec), "scatter")).toBe(true);
+    expect(methodologiesDiffer(run(spec), run(spec), "scatter")).toBe(false);
   });
 
   it("on a verification (fact_check-2), compares the verdict and the selection's figures, never its profile, list, weight or the relation around it", () => {

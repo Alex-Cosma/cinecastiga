@@ -78,7 +78,7 @@ async function inFixture(label: string, seat: boolean, work: (q: DbSql) => Promi
     await sql.begin(async (tx) => {
       await tx.unsafe(`create schema ${prefix}`);
       // agg_map_county too: the column probe (mart-columns.ts) reads whether its seat split is built.
-      for (const t of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national", "agg_map_county", "spend_by_county"])
+      for (const t of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national", "agg_map_county", "spend_by_county", "flag_instances"])
         await tx.unsafe(`create table ${prefix}.${t} as table marts.${t} with no data`);
       await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
       const q = scoped(tx as unknown as DbSql, prefix);
@@ -153,7 +153,7 @@ describe.runIf(Boolean(connection))("F4: the firm's seat (dedicated rollback fix
           return d.scatter.list.map((r) => [r.entityId, r.county]).sort();
         });
       };
-      expect(await cloud({})).toEqual([["10", "Cluj"], ["11", "Ilfov"], ["12", "Bucuresti"]]);
+      expect(await cloud({})).toEqual([["10", "Cluj"], ["11", "Ilfov"], ["12", "București"]]);
       expect(await cloud({ seatCounty: "Ilfov" }, seated("Ilfov"))).toEqual([["11", "Ilfov"]]);
       // Before F4 the profile's county (SEAP) put 11 in Cluj; its seat is Ilfov.
       expect(await cloud({ county: "Cluj" }, { county: { query: "Cluj", canonical: "Cluj" } })).toEqual([["10", "Cluj"]]);

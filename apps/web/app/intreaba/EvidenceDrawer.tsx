@@ -9,7 +9,7 @@ import type { DrillResult, DrillSort } from "@/lib/ask/compile";
 import { EVIDENCE_CSV_LIMIT, evidenceLinks, formatEvidenceAmount, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { countWords } from "@/lib/ask/answer-text";
-import { FLAG_META } from "@/lib/flags";
+import { flagLabel } from "@/lib/flags";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -201,7 +201,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
           {result.profiles.map((p) => <div className="ev-formula-profile" key={`${p.role}:${p.entityId}`}>
             <Link href={`/entitati/${p.entityId}`}>{p.name}</Link>
             <span>{p.flags.length} ÷ {p.applicable} = {p.cri === null ? "indice indisponibil" : p.cri.toLocaleString("ro-RO", { maximumFractionDigits: 4 })}</span>
-            <small>{p.flags.length ? p.flags.map((flag) => FLAG_META[flag]?.title ?? flag).join(" · ") : "Niciun indicator activ"}</small>
+            <small>{p.flags.length ? p.flags.map((flag) => flagLabel(flag)).join(" · ") : "Niciun indicator activ"}</small>
           </div>)}
           {result.profileCount > result.profiles.length && <p>Sunt prezentate primele {countWords(result.profiles.length, "profil", "profiluri")} din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</p>}
         </>}
