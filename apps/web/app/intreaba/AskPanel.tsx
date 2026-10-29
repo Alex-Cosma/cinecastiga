@@ -53,6 +53,11 @@ import { useAnswerFact } from "./answer/use-answer-fact";
 import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
+import RankingLocate from "./answer/RankingLocate";
+import { FactTag } from "./answer/RowFacts";
+import { useRowFacts } from "./answer/use-row-facts";
+import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
+import type { WinnerFacts } from "@/lib/ask/winners";
 import EmptyState from "./answer/EmptyState";
 import { emptyAnswer, relaxations } from "./answer-empty";
 import KitLink from "./answer/KitLink";
@@ -844,6 +849,21 @@ export default function AskPanel({
     setLinkRuns(true);
     void execute({ spec: next as unknown as AskSpec }, false, undefined, undefined, false);
   }, [applied, execute]);
+  // F5: the facts of the ranking's rows on screen (part `rows`), asked once they are drawn; "Unde e o firmă?" opens the
+  // whole ranking, in pages, on the page of the place it found.
+  const factIds = data?.block === "table" && applied && rowFactsWanted(applied) ? data.rows.flatMap((r) => r.entityId ? [r.entityId] : []) : [];
+  const rowFacts = useRowFacts(factIds.length ? applied ?? null : null, factIds);
+  const wholeRanking = (rank: number) => {
+    if (!applied) return;
+    const { topN: _topN, ...rest } = applied;
+    const page = Math.floor((rank - 1) / RANKING_PAGE_SIZE);
+    window.history.pushState(null, "", window.location.href);
+    setBuilderInit(rest as unknown as QuestionSpec);
+    setLinkRuns(true);
+    setLayout("table");
+    setTableOpts({ page });
+    void execute({ spec: rest, tablePage: page }, false, undefined, undefined, false);
+  };
   useEffect(() => {
     const index = refocusRow.current;
     if (index === null || loading) return;
@@ -1192,6 +1212,10 @@ export default function AskPanel({
                     restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
                 <StatMix spec={applied} onOnly={(next, words) => { window.history.pushState(null, "", window.location.href); runWider(next); showToast(`${words}.`); }} />
               </>}
+              {data.block === "table" && applied && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0 && (
+                <RankingLocate spec={applied} onWhole={wholeRanking}
+                  shown={data.total !== undefined ? ((data.page ?? 0) + 1) * (data.pageSize ?? RANKING_PAGE_SIZE) : data.rows.length} />
+              )}
               {data.block === "table" &&
                 (layout === "visual" ? (
                   <RankingBars
@@ -1201,11 +1225,13 @@ export default function AskPanel({
                     totals={(data.page ?? 0) === 0 && !tableOpts.sort ? data.totals : undefined}
                     group={(data.page ?? 0) === 0 && !tableOpts.sort ? data.group : undefined}
                     onSources={openEvidence}
+                    facts={rowFacts}
                   />
                 ) : (
                   <TableBlock
                     rows={data.rows}
                     spec={applied}
+                    facts={rowFacts}
                     totals={data.totals}
                     perCapita={applied.measure === "value_per_capita"}
                     meta={
@@ -1389,6 +1415,12 @@ export default function AskPanel({
   );
 }
 
+/** F5 (kit P8): a ranking row's facts, inline in the row (a span: the row is a button), at most three. */
+function FactTags({ tags }: { tags: readonly WinnerTag[] }) {
+  if (!tags.length) return null;
+  return <span className="qb-tags cq-rank-facts">{tags.slice(0, 3).map((tag) => <FactTag key={tag.text} fact={tag} />)}</span>;
+}
+
 function RankingBars({
   rows,
   spec,
@@ -1396,9 +1428,12 @@ function RankingBars({
   group,
   conditions = [],
   onSources,
+  facts = null,
 }: {
   rows: TableRow[];
   spec: AskSpec;
+  /** F5: the facts of the rows shown (use-row-facts.ts), once read. */
+  facts?: Record<string, WinnerFacts> | null;
   totals?: RankingTotals | undefined;
   /** F3 (table:employees-2): the ranked firms of a band, the list; `totals` stay the whole selection's. */
   group?: RankingTotals | undefined;
@@ -1411,6 +1446,9 @@ function RankingBars({
   // The rest row is the list's (the band's firms after the shown ones), its share of the whole selection.
   const rest = rankingRest(rows, group ?? shareTotals, group ? shareTotals : undefined);
   const band = group && shareTotals && shareTotals.value > 0 ? employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees) : null;
+  // F5: the list of a chip of the row says its own words ("177 de furnizori noi din 2024"); the band alone keeps F3's.
+  const lead = group && shareTotals && shareTotals.value > 0
+    ? rankedGroupLead(spec, group.entities) ?? (band ? `${entityNoun(spec.dim, group.entities)} ${band}` : null) : null;
   const metric = (r: TableRow) =>
     spec.measure === "count"
       ? r.count
@@ -1449,6 +1487,7 @@ function RankingBars({
             </span>
             <span className="cq-rank-name">
               <strong>{cleanName(r.name)}</strong>
+              <FactTags tags={r.entityId ? winnerFactTags(spec, facts?.[r.entityId]) : []} />
               <span className="cq-bar-track">
                 <i
                   style={{
@@ -1496,9 +1535,9 @@ function RankingBars({
       </div>
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
       {/* F3: the band of CÂȘTIGĂTORII narrows the list; its line says the list's sum against the whole selection's. */}
-      {band && group && shareTotals ? <>
+      {lead && group && shareTotals ? <>
         <div className="qb cq-total"><TotalLine conditions={conditions}>
-          {entityNoun(spec.dim, group.entities)} {band}: <span className="qb-num">{formatRonFull(group.value)}</span>, {formatShare(group.value / shareTotals.value)} din{" "}
+          {lead}: <span className="qb-num">{formatRonFull(group.value)}</span>, {formatShare(group.value / shareTotals.value)} din{" "}
           <span className="qb-num">{formatRonFull(shareTotals.value)}</span> ({entityNoun(spec.dim, shareTotals.entities)})
         </TotalLine></div>
         <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>
@@ -1663,6 +1702,7 @@ function StatBlock({
 function TableBlock({
   rows,
   spec,
+  facts = null,
   totals,
   perCapita,
   meta,
@@ -1672,6 +1712,8 @@ function TableBlock({
 }: {
   rows: TableRow[];
   spec?: unknown;
+  /** F5: the facts of the rows shown (use-row-facts.ts), under each name. */
+  facts?: Record<string, WinnerFacts> | null;
   totals?: RankingTotals | undefined;
   perCapita: boolean;
   /** Present only in paged mode (clasament without explicit topN). */
@@ -1760,6 +1802,7 @@ function TableBlock({
                 ) : (
                   cleanName(r.name)
                 )}
+                {r.entityId && spec ? <FactTags tags={winnerFactTags(spec as AskSpec, facts?.[r.entityId])} /> : null}
               </td>
               <td>{r.county ?? "—"}</td>
               {perCapita && (

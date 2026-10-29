@@ -140,6 +140,18 @@ function withTotals(sql: DbSql, pairs: { pairs: Fragment; whole: boolean }): Fra
   )`;
 }
 
+/** The institutions one firm takes half of in the selection `ctx` (without the key itself), as a subquery of their ids. */
+export function dominantIdsSql(sql: DbSql, ctx: PredicateCtx, o: { source: Fragment; rollups: boolean }): Fragment {
+  return dominantOf(sql, withTotals(sql, selectionPairs(sql, withoutWinners(ctx), o)));
+}
+/** Each firm's records with the named buyer, over every channel and the whole archive: its first one (f) and their value (v). */
+export function buyerRowsSql(sql: DbSql, buyerIds: readonly string[]): Fragment {
+  return sql`(
+    select d.supplier_id, min(d.finalization_date) f, sum(d.closing_value) v from ${everyChannel(sql)} d
+    where d.authority_id = any(${sql.array([...buyerIds])}::bigint[]) and d.supplier_id is not null group by 1
+  )`;
+}
+
 /** The selection of a relation key: the question's conditions without the winners themselves. */
 export const withoutWinners = (ctx: PredicateCtx): PredicateCtx =>
   ({ ...ctx, newFirms: ctx.newFirms?.scope === "buyer" ? null : ctx.newFirms, mainClient: false, dominantSupplier: false, winners: null });

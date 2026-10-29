@@ -46,8 +46,9 @@ describe("facetSpec: a window counts without its own key (R5)", () => {
     expect(FACET_PARTS.every(isFacetPart)).toBe(true);
     // F3-rows: the answer's facts after the answer, „Din care” (mix) and a bar's card (bars); F4: a comparison's pair and
     // suggestions, and a bounded network's whole relation (S4 review).
-    expect(FACET_PARTS.slice(-5)).toEqual(["mix", "bars", "pair", "compare-peers", "network"]);
-    expect(["rows", "peers", "", null, 3].some(isFacetPart)).toBe(false);
+    // F5: the facts of a ranking's rows shown (rows).
+    expect(FACET_PARTS.slice(-6)).toEqual(["mix", "bars", "pair", "compare-peers", "network", "rows"]);
+    expect(["facts", "peers", "", null, 3].some(isFacetPart)).toBe(false);
   });
 });
 

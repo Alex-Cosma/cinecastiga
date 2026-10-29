@@ -17,6 +17,10 @@ import type { EntityHit } from "@/lib/search";
 import { MIN_TREND_YEAR, type CoveragePeriods } from "@/lib/ask/months-window";
 import { choiceState } from "@/lib/ask/filters/pickers";
 import { trendMonthsState } from "@/lib/ask/filters/trend-rules";
+import { defaultNewScope, newScopesOf, newYearsOf } from "../../../lib/ask/filters/defs/winners";
+import { NEW_SCOPE_WORDS } from "../../../lib/ask/filters/words";
+import { winnerOption } from "../../../lib/ask/facet-parts";
+import type { NewScope } from "../../../lib/ask/spec";
 import PopulationEditor from "../PopulationEditor";
 import { codeKinds, PURCHASE_KIND_ORDER, PURCHASE_KIND_WORDS, VALUE_RANGES, valueRangeIndex, type PurchaseKind, type ValueRange } from "@/lib/ask/purchase";
 import Bands, { EMPLOYEE_BANDS, bandRange, bandsWords } from "./Bands";
@@ -35,7 +39,7 @@ import { peerWindowTip } from "../../../lib/ask/peer-groups-shared";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, seatClearChoices, seatCurrentRow, seatOptions, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, firmsKindButton, firmsKindChoices, firmsKindSeatOptions, fromSeat, fromTab, fromTabs,
+  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, agedOf, bandCount, winnerCount, type AgedFirms, seatClearChoices, seatCurrentRow, seatOptions, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, firmsKindButton, firmsKindChoices, firmsKindSeatOptions, fromSeat, fromTab, fromTabs,
   listOptions, optionValue, periodPresets, presetCounts, seriesMonthPresets, seriesMonthsError, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 import { useFacet } from "./use-facet";
@@ -399,6 +403,7 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
     case "compareWith": return <FocalSearch draft={draft} roles={[ctx.role]} compareWith suggest onPick={pick} />;
     case "from": return <>{marker}<FromWindow win={win} draft={draft} onPick={pick} /></>;
     case "employees": return <BandsWindow draft={draft} onPick={pick} />;
+    case "newFirms": return <NewFirmsWindow draft={draft} onPick={pick} />;
     case "admin": return <>
       <PersonSearch onPick={pick} />
       {(draft.filters.adminName || draft.filters.adminPersonKey) && <div className="qb-pop-foot"><button type="button" className="qb-link" onClick={() => pick([{ filter: "admin", value: undefined }])}>Scoate condiția</button></div>}
@@ -649,9 +654,10 @@ function FromWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Que
   const [tab, setTab] = useState(fromTab(win, draft));
   const names = { supplier: "O firmă", admin: "Administrator", employees: "Ce fel de firme" } as const;
   const set = tabs.some((t) => t === "supplier" ? draft.filters.supplierName || draft.filters.supplierId : t === "admin" ? draft.filters.adminName || draft.filters.adminPersonKey
-    : draft.filters.minEmployees !== undefined || draft.filters.maxEmployees !== undefined || seat && draft.filters.firmSeat);
-  // „Orice firmă” removes the seat too where the tab holds it.
-  const any: Choice[] = [{ filter: tabs[0]!, value: undefined }, ...(seat && draft.filters.firmSeat ? [{ filter: "firmSeat" as const, value: undefined }] : [])];
+    : draft.filters.minEmployees !== undefined || draft.filters.maxEmployees !== undefined || seat && (draft.filters.firmSeat || agedOf(draft)));
+  // „Orice firmă” removes the seat and the firms' years too where the tab holds them (F5).
+  const any: Choice[] = [{ filter: tabs[0]!, value: undefined }, ...(seat && draft.filters.firmSeat ? [{ filter: "firmSeat" as const, value: undefined }] : []),
+    ...(seat && agedOf(draft) ? [{ filter: "newSince" as const, value: undefined }] : [])];
   return <>
     <ChoiceList label="De la cine" options={[{ value: "any", label: "Orice firmă", choice: any[0]! }]} value={set ? null : "any"} current={set ? currentRow("from", draft, tabs, seat) : null}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : any)} />
@@ -671,6 +677,9 @@ function FromWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: Que
 function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void; seat?: boolean }) {
   const [values, setValues] = useState(bandValues(draft));
   const [where, setWhere] = useState(typeof draft.filters.firmSeat === "string" ? draft.filters.firmSeat : "none");
+  // F5 (kit §5 table 5): the firms' own year, in our data or in the register, beside their size and seat.
+  const [aged, setAged] = useState<AgedFirms | null>(agedOf(draft));
+  const agedYears = aged ? newYearsOf(draft as FilterSpec, filterContext(draft as FilterSpec), aged.scope) : [];
   const range = bandRange(EMPLOYEE_BANDS, values);
   // The firms of each band under it, and those without a filing in the rest row (kit §3 item 10, R5).
   const counts = useFacet(draft, "employees");
@@ -678,20 +687,87 @@ function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onP
   // A foreign firm has no filing: a band leaves „În străinătate” shown with its reason, and a band chosen after it moves the seat to „Oriunde”.
   const seats = seat ? firmsKindSeatOptions(draft, values.length > 0) : [];
   const chooseBands = (next: string[]) => { setValues(next); if (next.length && where === "abroad") setWhere("none"); };
-  const clear: Choice[] = [{ filter: "employees", value: undefined }, ...(seat ? [{ filter: "firmSeat" as const, value: undefined }] : [])];
+  const clear: Choice[] = [{ filter: "employees", value: undefined }, ...(seat ? [{ filter: "firmSeat" as const, value: undefined }, { filter: "newSince" as const, value: undefined }] : [])];
   return <>
     <Bands label="Angajați" bands={bands} value={values} onChange={chooseBands} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
     {seat && <div className="qb-row qb-tipwrap qb-from-seat">
       <span className="qb-row-label">Sediul firmei <HelpTip tip={{ id: "sediul-firmei" }} /></span>
       <Pills label="Sediul firmei" options={seats} value={where} onChange={(value) => setWhere(value)} />
     </div>}
+    {seat && <div className="qb-row qb-tipwrap qb-from-seat">
+      <span className="qb-row-label">Firme noi <HelpTip tip={{ id: "firme-noi" }} /></span>
+      <Pills label="Firme noi" options={[{ value: "none", label: "Oricând" }, { value: "archive", label: NEW_SCOPE_WORDS.archive.option }, { value: "registry", label: NEW_SCOPE_WORDS.registry.option }]}
+        value={aged?.scope ?? "none"} onChange={(value) => {
+          if (value === "none") { setAged(null); return; }
+          const scope = value as AgedFirms["scope"], years = newYearsOf(draft as FilterSpec, filterContext(draft as FilterSpec), scope);
+          const since = aged && years.includes(aged.since) ? aged.since : newFirmsYear(draft, years);
+          setAged(since === null ? null : { scope, since });
+        }} />
+      {aged && <Pills label="Din anul" options={agedYears.map((year) => ({ value: String(year), label: `din ${year}` }))} value={String(aged.since)}
+        onChange={(value) => setAged({ ...aged, since: Number(value) })} />}
+    </div>}
     <div className="qb-pop-foot">
       <button type="button" className="qb-link" onClick={() => onPick(clear)}>Scoate condiția</button>
-      <button type="button" className="qb-primary" onClick={() => onPick(seat ? firmsKindChoices(bandsChoice(values), where) : [bandsChoice(values)])}>
-        {seat ? firmsKindButton(draft, bandsChoice(values), where) : range ? bandsWords(range) : "Orice mărime"}
+      <button type="button" className="qb-primary" onClick={() => onPick(seat ? firmsKindChoices(bandsChoice(values), where, aged) : [bandsChoice(values)])}>
+        {seat ? firmsKindButton(draft, bandsChoice(values), where, aged) : range ? bandsWords(range) : "Orice mărime"}
       </button>
     </div>
   </>;
+}
+
+/**
+ * F5, „Ce firme noi?” (final table §3.3, kit §4): the sense (new for the named buyer, first in our data, registered)
+ * with its line, then the year as pills, each with the firms it keeps (the part `winners`, with the draft's other
+ * chips). It opens on the draft's sense, else new for the buyer when one is named, else registered; on the draft's
+ * year, else the period's first year, else the last complete one. „Folosește” writes both keys.
+ */
+function NewFirmsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
+  const ctx = filterContext(draft as FilterSpec);
+  const scopes = newScopesOf(draft as FilterSpec, ctx);
+  const own = scopes.find((scope) => scope === draft.filters.newScope) ?? defaultNewScope(draft as FilterSpec, ctx);
+  const [scope, setScope] = useState<NewScope | null>(own);
+  const years = scope ? newYearsOf(draft as FilterSpec, ctx, scope) : [];
+  const [year, setYear] = useState<number | null>(draft.filters.newSince !== undefined ? Number(draft.filters.newSince) : null);
+  const chosen = year !== null && years.includes(year) ? year : newFirmsYear(draft, years);
+  const counts = useFacet(draft, "winners");
+  const set = draft.filters.newSince !== undefined || draft.filters.newScope !== undefined;
+  const slot = { id: "newSince" as const };
+  // A sense the draft cannot take beside its other conditions (registered beside a foreign seat): shown with the reason.
+  const reasonOf = (s: NewScope) => {
+    const state = choiceState(slot, { filter: "newSince", value: { newScope: s, newSince: newFirmsYear(draft, newYearsOf(draft as FilterSpec, ctx, s)) } }, draft as FilterSpec, ctx);
+    return state.state === "disabled" ? state.reason : undefined;
+  };
+  return <>
+    <OptionList label="Ce firme noi?" options={scopes.map((s) => {
+      const reason = reasonOf(s);
+      return { value: s, label: NEW_SCOPE_WORDS[s].option, detail: NEW_SCOPE_WORDS[s].detail, ...(reason ? { disabled: reason } : {}) };
+    })} value={scope} onChange={(value) => setScope(value as NewScope)} />
+    {scope && <>
+      <p className="qb-opt-group">Din</p>
+      <Pills label="Din anul" options={years.map((y) => {
+        const count = winnerCount(counts, winnerOption(scope, y));
+        return { value: String(y), label: String(y), ...(count ? { count } : {}) };
+      })} value={chosen === null ? null : String(chosen)} onChange={(value) => setYear(Number(value))} />
+    </>}
+    <div className="qb-pop-foot">
+      {set ? <button type="button" className="qb-link" onClick={() => onPick([{ filter: "newSince", value: undefined }])}>Scoate condiția</button> : <span />}
+      <button type="button" className="qb-primary" disabled={!scope || chosen === null || Boolean(scope && reasonOf(scope))}
+        onClick={() => { if (scope && chosen !== null) onPick([{ filter: "newSince", value: { newScope: scope, newSince: chosen } }]); }}>
+        {scope && chosen !== null ? NEW_SCOPE_WORDS[scope].chip(chosen) : "Folosește"}
+      </button>
+    </div>
+  </>;
+}
+
+/**
+ * The year „Firme noi” opens on (final table §3.3): the period's first year when the window offers it, else the last
+ * complete year, else the last one offered.
+ */
+function newFirmsYear(draft: QuestionSpec, years: readonly number[]): number | null {
+  const first = draft.filters.yearFrom !== undefined ? Number(draft.filters.yearFrom) : null;
+  if (first !== null && years.includes(first)) return first;
+  const complete = new Date().getFullYear() - 1;
+  return years.includes(complete) ? complete : years.at(-1) ?? null;
 }
 
 /** The years of the free range, oldest first, up to the last year of data. */

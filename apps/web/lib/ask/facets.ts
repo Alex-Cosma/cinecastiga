@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import { canonicalAskIdentities } from "./canonical-identities";
-import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, AUTHORITY_KINDS, type AskSpec } from "./spec";
+import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, AUTHORITY_KINDS, type AskSpec, type NewScope } from "./spec";
 import { ground, type Grounding } from "./ground";
 import {
   andAll, asksWinners, employeesBounds, fold, fullValueUnion, groupPredicates, newFirmCond, ownCountySql, predicateContext, profileMinDas, profilePredicates, rowPredicates, seatOf, trendYearsPredicate,
@@ -9,7 +9,7 @@ import {
 } from "./predicates";
 import { authorityKindExpression, authorityKindIds, readAuthorityKinds } from "./authority-kind";
 import { coveragePeriods, daCoverageYears, REGISTERED_YEAR_MISSING, txAggFragment, uatUnmappedError } from "./compile";
-import { resolveWinners } from "./winners";
+import { buyerRowsSql, dominantIdsSql, rankedFacts, RELATION_MIN_RECORDS, RELATION_SHARE, resolveWinners } from "./winners";
 import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "./months-window";
 import { isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { retarget } from "./filters/retarget";
@@ -22,9 +22,12 @@ import { PROCEDURE_ORDER, PROCEDURE_TYPES, PURCHASE_KIND_ORDER, VALUE_RANGES } f
 import { retiredChoicesText } from "./retired-terms";
 import { questionKey, type QuestionSpec } from "./question-ui";
 import {
-  ABROAD, countyOfFolded, EMPLOYEE_BAND_BOUNDS, FACET_REST, facetSpec, isFacetPart, LOCATE_MATCHES, relativeSeat, SEAT_UNCOMPARED,
-  type CountPart, type FacetCount, type FacetCounts, type FacetPart, type FacetUnit, type LocateMatch, type LocateResult,
+  ABROAD, countyOfFolded, EMPLOYEE_BAND_BOUNDS, FACET_REST, facetSpec, isFacetPart, LOCATE_MATCHES, relativeSeat, ROWS_MAX, SEAT_UNCOMPARED, winnerOption,
+  type CountPart, type FacetCount, type FacetCounts, type FacetPart, type FacetUnit, type LocateMatch, type LocateResult, type RowsResult,
 } from "./facet-parts";
+import { newScopesOf, newYearsOf } from "./filters/defs/winners";
+import { formOf } from "./filters/context";
+import type { FilterSpec } from "./filters/types";
 
 /*
  * The counts of the builder's windows and "Unde e …?" (plan §2.5
@@ -363,6 +366,8 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
         group by 1, 2
       `) };
     }
+    // F5: counted on its own (winnersCounts), with the draft's other chips.
+    case "winners": return { error: "Numerele câștigătorilor se citesc separat." };
   }
 }
 
@@ -585,7 +590,8 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
   if (draft.block === "compare" && draft.filters.sharedPartners) return { error: SHARED_PARTNERS_COUNTS };
   const base = facetSpec(draft, part);
   const stamp = await facetStamp(sql);
-  const key = stamp.build ? facetKey(base, part, { build: stamp.build, checkpoint: stamp.checkpoint }) : null;
+  // F5: the winners' chips count with the draft's other chips (winnersCounts), so they are kept on the draft itself.
+  const key = stamp.build ? facetKey(part === "winners" ? draft : base, part, { build: stamp.build, checkpoint: stamp.checkpoint }) : null;
   const kept = key ? counted.get(key) : undefined;
   if (key && kept && Date.now() - kept.at <= FACET_TTL_MS) {
     stats.hits++;
@@ -608,6 +614,8 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
         if ("error" in p) return p;
         stats.grouped++;
         const run = runner(controller.signal);
+        // F5: the ranked winners' chips, each conditioned on the others the draft has set.
+        if (part === "winners") return await winnersCounts(tx, p, draft, ready, run, { checkpoint: stamp.checkpoint, started });
         const grouped = p.profile ? await profileCounts(tx, p, part, run) : await transactionCounts(tx, p, part, ready, run, { relative: relativeSeat(draft) });
         if ("error" in grouped || "precompute" in grouped) return grouped;
         const whole = (grouped as { whole?: number }).whole;
@@ -630,6 +638,110 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
   if (key) pending.set(key, shared);
   void work.catch(() => {}).finally(() => { if (key && pending.get(key) === shared) pending.delete(key); });
   return await waitFor(shared, opts.signal);
+}
+
+// --- F5, the ranked winners (part=winners: the chips' counts; part=rows: the facts of the rows shown)
+
+/**
+ * The counts of the ranked winners' chips (plan §4.2 P6, final table §4 "Răspunsul"): on firms each year of each
+ * sense of „Firme noi” and „Principalul lor client public”, on institutions „O firmă ia peste jumătate”. One
+ * grouping of the selection without any chip (facetSpec), each firm's years and its relation with the named buyer
+ * beside it; an option counts the firms it keeps with the other chips the draft has set (the band, the other
+ * key), so its number is the list after that click. Shares are of the whole selection's value, as the answer's.
+ */
+async function winnersCounts(sql: DbSql, p: Prepared, draft: AskSpec, ready: Ready, run: Runner, meta: { checkpoint: string | null; started: number }): Promise<FacetCounts | FacetFailure> {
+  if (p.profile || p.spec.block !== "table" || (p.spec.dim !== "supplier" && p.spec.dim !== "authority")) return { error: "Numerele se calculează doar pe clasamente." };
+  const done = (unit: FacetUnit, options: FacetCount[], total: { n: number; v: number }): FacetCounts =>
+    ({ part: "winners", unit, options, rest: null, total: { n: total.n, value_ron: total.v }, checkpoint: meta.checkpoint, tookMs: Date.now() - meta.started });
+  const share = (v: number, total: number) => total ? v / total : 0;
+  if (p.spec.dim === "authority") {
+    const r = await rowsOf(sql, p, { by: "authority" }, ready);
+    if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+    const id = r.id("authority") ?? sql`d.authority_id`;
+    const dominant = dominantIdsSql(sql, p.ctx, { source: txAggFragment(sql, p.dataset, false, fullValueUnion(p.ctx)) as unknown as Fragment, rollups: ready.rollups });
+    const [row] = await run<{ dn: string; dv: string; n: string; v: string }>(sql`
+      select count(*) filter (where g.id in (${dominant})) dn, coalesce(sum(g.v) filter (where g.id in (${dominant})), 0) dv, count(*) n, coalesce(sum(g.v), 0) v
+      from (select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1) g
+    `);
+    const total = { n: Number(row?.n ?? 0), v: Number(row?.v ?? 0) };
+    return done("institutions", [{ value: "dominant", n: Number(row?.dn ?? 0), value_ron: Number(row?.dv ?? 0), share: share(Number(row?.dv ?? 0), total.v) }], total);
+  }
+  // The firms of the selection: their profiles over every record, else grouped from the rollups or the records.
+  let grouped: Fragment;
+  if (everyRecord(p, true)) grouped = sql`select ep.entity_id id, ep.total_ron_split v from marts.entity_profile ep where ep.role = 'supplier' and ep.total_ron_split > 0`;
+  else {
+    const r = await rowsOf(sql, p, { by: "supplier" }, ready);
+    if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+    const id = r.id("supplier") ?? sql`d.supplier_id`;
+    grouped = sql`select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1`;
+  }
+  // The other chips of the draft (its band, its sense of „Firme noi”, its main client), each applied to the other options.
+  const f = draft.filters;
+  const band = f.minEmployees !== undefined || f.maxEmployees !== undefined
+    ? sql`coalesce(${employeesBounds(sql, f.minEmployees ?? null, f.maxEmployees ?? null)}, false)` : sql`true`;
+  const buyer = p.ctx.buyerIds.length > 0;
+  const scope = f.newScope as NewScope | undefined, since = f.newSince !== undefined ? Number(f.newSince) : null;
+  const isNew = since === null || !scope ? sql`true`
+    : scope === "archive" ? sql`coalesce(a.fa >= ${String(since)}, false)` : scope === "registry" ? sql`coalesce(a.ry >= ${since}, false)`
+      : buyer ? sql`coalesce(a.bf >= ${String(since)}, false)` : sql`false`;
+  const main = f.mainClient === true ? sql`a.main_ok` : sql`true`;
+  const rows = await run<{ s: string; y: string | null; n: string; v: string }>(sql`
+    with g as (${grouped}), a as (
+      select g.id, g.v, ${band} band_ok, substr(ep.first_activity, 1, 4) fa, ep.registered_year ry,
+             ${buyer ? sql`substr(b.f, 1, 4)` : sql`null::text`} bf,
+             ${buyer ? sql`coalesce(ep.n_das + ep.n_contracts >= ${RELATION_MIN_RECORDS} and b.v >= ${RELATION_SHARE} * ep.total_ron_split, false)` : sql`false`} main_ok
+      from g left join marts.entity_profile ep on ep.entity_id = g.id and ep.role = 'supplier'
+      ${buyer ? sql`left join ${buyerRowsSql(sql, p.ctx.buyerIds)} b on b.supplier_id = g.id` : sql``}
+    )
+    select 'archive' s, a.fa y, count(*) n, coalesce(sum(a.v), 0) v from a where a.band_ok and ${main} group by a.fa
+    union all select 'registry', a.ry::text, count(*), coalesce(sum(a.v), 0) from a where a.band_ok and ${main} group by a.ry
+    ${buyer ? sql`union all select 'buyer', a.bf, count(*), coalesce(sum(a.v), 0) from a where a.band_ok and ${main} group by a.bf` : sql``}
+    union all select 'main', null, count(*), coalesce(sum(a.v), 0) from a where a.band_ok and a.main_ok and ${isNew}
+    union all select 'all', null, count(*), coalesce(sum(a.v), 0) from a
+  `);
+  const all = rows.find((r) => r.s === "all");
+  const total = { n: Number(all?.n ?? 0), v: Number(all?.v ?? 0) };
+  const ctx = { form: formOf(draft as unknown as FilterSpec), year: new Date().getFullYear() };
+  const options: FacetCount[] = [];
+  for (const sense of newScopesOf(draft as unknown as FilterSpec, ctx)) {
+    const years = rows.filter((r) => r.s === sense && r.y !== null && /^\d{4}$/.test(r.y));
+    for (const year of newYearsOf(draft as unknown as FilterSpec, ctx, sense)) {
+      const from = years.filter((r) => Number(r.y) >= year);
+      const n = from.reduce((sum, r) => sum + Number(r.n), 0), v = from.reduce((sum, r) => sum + Number(r.v), 0);
+      options.push({ value: winnerOption(sense, year), n, value_ron: v, share: share(v, total.v) });
+    }
+  }
+  const mainRow = rows.find((r) => r.s === "main");
+  if (buyer) options.push({ value: "main", n: Number(mainRow?.n ?? 0), value_ron: Number(mainRow?.v ?? 0), share: share(Number(mainRow?.v ?? 0), total.v) });
+  return done("firms", options, total);
+}
+
+/**
+ * The facts of the rows an answer shows (plan §4.2 P8; final table §3.3–§3.7: why a row is there), asked once the
+ * ranking is drawn so they never delay it: lib/ask/winners.ts rankedFacts on the ids shown, with the question's
+ * conditions (an institution's largest firm is the selection's).
+ */
+export async function rowFacts(sql: DbSql, spec: AskSpec, ids: readonly string[], opts: { signal?: AbortSignal } = {}): Promise<RowsResult | FacetFailure> {
+  if (spec.block !== "table" || (spec.dim !== "supplier" && spec.dim !== "authority")) return { error: "Faptele rândurilor sunt ale clasamentelor de firme sau instituții." };
+  const started = Date.now();
+  try {
+    const stamp = await facetStamp(sql);
+    const grounding = await ground(sql, spec.filters, spec.population);
+    const ready = await readyOf(sql);
+    return await inFacetTransaction(sql, async (tx) => {
+      const p = await prepare(tx, spec, grounding);
+      if ("error" in p) return p;
+      opts.signal?.throwIfAborted();
+      const facts = await rankedFacts(tx, p.ctx, {
+        dim: spec.dim as "supplier" | "authority", ids, rollups: ready.rollups,
+        source: txAggFragment(tx, p.dataset, false, fullValueUnion(p.ctx)) as unknown as Fragment,
+      });
+      return { part: "rows" as const, facts, checkpoint: stamp.checkpoint, tookMs: Date.now() - started };
+    });
+  } catch (e) {
+    if (timedOut(e)) return { timeout: true };
+    throw e;
+  }
 }
 
 // --- "Unde e …?" (component 20, part=locate)
@@ -796,9 +908,15 @@ export async function inFacetSlot<T>(signal: AbortSignal | undefined, work: () =
 export const facetSlots = () => ({ busy, waiting: waiting.length });
 
 /** The part a request names, with its text for "Unde e …?" (plan §2.5: at least two characters). */
-export function facetRequest(body: { part?: unknown; q?: unknown }): { part: FacetPart; q: string | null } | { error: string } {
+export function facetRequest(body: { part?: unknown; q?: unknown; ids?: unknown }): { part: FacetPart; q: string | null; ids?: string[] } | { error: string } {
   const part = body.part;
   if (!isFacetPart(part)) return { error: "Parte necunoscută." };
+  // F5: the facts of the rows shown, by their ids (a page at most).
+  if (part === "rows") {
+    const ids = Array.isArray(body.ids) ? body.ids.filter((id): id is string => typeof id === "string" && /^\d{1,18}$/.test(id)) : [];
+    if (!ids.length || ids.length > ROWS_MAX || ids.length !== (body.ids as unknown[]).length) return { error: "Rândurile cerute nu sunt valide." };
+    return { part, q: null, ids };
+  }
   if (part !== "locate") return { part, q: null };
   const q = typeof body.q === "string" ? body.q.trim().slice(0, 80) : "";
   if (fold(q).length < 2) return { error: "Scrie cel puțin două litere." };
