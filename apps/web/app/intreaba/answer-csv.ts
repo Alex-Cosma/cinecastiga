@@ -9,6 +9,9 @@ import { shownTrendList, trendRowView } from "./trend-answer";
 import { breakdownShown } from "./breakdown-answer";
 import { networkCsvRows } from "./network-answer";
 import { sankeyCsvRows } from "./sankey-answer";
+import { mapCsvRows } from "./map-answer";
+import type { MapLensValue } from "../../lib/ask/map-lens";
+import type { MapFacts } from "../../lib/ask/map-facts";
 
 /*
  * "Rezultatul afișat · CSV" (plan §2.3, §2.8): exactly the rows and columns
@@ -23,8 +26,8 @@ import { sankeyCsvRows } from "./sankey-answer";
 export interface BandState {
   /** The data stream chosen in the strip (where the strip has it). */
   stream?: "all" | "da" | "contracts";
-  /** The map's lens: value or records. */
-  lens?: "value" | "count";
+  /** The map's lens (F5: also per inhabitant, the firms of the county, the firm's share). */
+  lens?: MapLensValue;
   /** The breakdown's thread, root to the current level ("toate › Construcții"). */
   thread?: string;
   /** A trend's group chosen in the answer, by its part's name as the drawer and the watch say it ("Noi față de 2024"). */
@@ -35,8 +38,13 @@ export interface BandState {
   months?: string;
 }
 
+/** What the answer read after it was drawn (F5: a map's county facts). */
+export interface CsvExtra { mapFacts?: MapFacts | null }
+
 const STREAM_WORD: Record<NonNullable<BandState["stream"]>, string> = { all: "toate", da: "directe", contracts: "proceduri" };
-const LENS_WORD: Record<NonNullable<BandState["lens"]>, string> = { value: "valoare", count: "inregistrari" };
+const LENS_WORD: Record<NonNullable<BandState["lens"]>, string> = {
+  value: "valoare", count: "inregistrari", value_per_capita: "pe-locuitor", seat: "firme-din-judet", share: "cota-firmei",
+};
 
 function csvQ(s: string | null | undefined): string {
   const text = s ?? "";
@@ -49,8 +57,8 @@ const csvAny = (value: unknown): string => csvQ(value === undefined || value ===
 /** B − A of two amounts in lei, to the ban: a float subtraction leaves noise (1130000000.12 − 481712345.67 = 648287654.4499998). */
 export const leiDifference = (a: number, b: number): number => Math.round((b - a) * 100) / 100;
 
-/** The rows of the shown result, as before F1b. */
-function rowsOf(data: BlockData, spec: AskSpec): string[] {
+/** The rows of the shown result, as before F1b; the map's with its county facts (F5) where they are read. */
+function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] {
   switch (data.block) {
     case "table": {
       // A firm's place is its seat (F4 owner-seat-switch), `sediu` as on the trend (S4t-firm-csv-column); the band of
@@ -69,11 +77,8 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
       ];
     }
     case "map":
-      return [
-        "judet,valoare_lei,achizitii",
-        ...data.counties.map((c) => `${csvQ(c.county)},${c.value},${c.count}`),
-        ...(data.unknown.count > 0 ? [`${csvQ("Județ necunoscut")},${data.unknown.value},${data.unknown.count}`] : []),
-      ];
+      // F5 (map final §4 „Surse și CSV”): `inregistrari`, per inhabitant, the card's columns, the seat or the share.
+      return mapCsvRows(data, spec, extra.mapFacts ?? null, csvQ);
     case "stat":
       return ["valoare_lei,achizitii", `${data.stat.value},${data.stat.count}`];
     case "compare":
@@ -168,8 +173,8 @@ function bandColumns(band: BandState): [string, string][] {
  * The shown result as CSV text (UTF-8 BOM, CRLF, as the source export) and its
  * file name: the title's slug, then the strip's values ("…-directe.csv").
  */
-export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: BandState = {}): { text: string; filename: string } {
-  const [header, ...rows] = rowsOf(data, spec);
+export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: BandState = {}, extra: CsvExtra = {}): { text: string; filename: string } {
+  const [header, ...rows] = rowsOf(data, spec, extra);
   // A strip column the rows already carry (the network's „grupa”, with its year) names the file only: one column per name (S4 tests).
   const own = new Set(header!.split(","));
   const columns = bandColumns(band).filter(([name]) => !own.has(name));

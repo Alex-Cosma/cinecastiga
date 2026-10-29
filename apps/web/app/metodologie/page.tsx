@@ -205,6 +205,19 @@ export default function MetodologiePage() {
             Firmele străine apar separat. „În județul instituției” și „În alt județ” compară sediul cu județul instituției care cumpără, la fiecare înregistrare.
             Sediul nu e locul lucrării: multe firme mari au sediul în București. O firmă fără sediu cunoscut nu intră în nicio condiție de sediu.</p>
         </details>
+        <details className="method-fold" id="harta-judete">
+          <summary>Harta pe județe</summary>
+          <p>Fiecare înregistrare stă în județul instituției care cumpără. „Harta arată” schimbă doar culoarea și ordinea, nu selecția.
+            Culorile sunt cinci grupe cu același număr de județe (cuantile); hașurat înseamnă prea puține date pentru un procent.
+            „Firme din județ” este partea valorii câștigată de firme cu sediul în județul instituției, din toată valoarea județului
+            (cu firmele din alte județe, din străinătate și cu sediu necunoscut); e hașurat sub 20 de înregistrări sau când sediul lipsește
+            pentru peste 10% din valoare. „Cota firmei” este valoarea firmei din toate achizițiile județului cu aceleași condiții, hașurată sub 3
+            înregistrări ale firmei sau 20 ale județului. Fișa județului arată cel mai mare cumpărător și cea mai mare înregistrare, cu procentul lor din județ.</p>
+          <p>„Primăriile și consiliile județene” sunt lista strictă de la valoarea pe locuitor (nume, județ și cod SIRUTA concordante, plus primăriile
+            celor șase sectoare), fără instituțiile, serviciile și companiile lor. Fiecare stă în județul pe care îl administrează: Consiliul Județean
+            Ilfov, cu sediul în București, e la Ilfov. „Pe locuitor” împarte valoarea lor la populația rezidentă a județului (INS, RPL 2021);
+            un județ al cărui consiliu județean nu e încă în listă e hașurat. Pe mai mulți ani, cifra e a întregii perioade, nu o medie pe an.</p>
+        </details>
         <details className="method-fold" id="marimea-achizitiei">
           <summary>Mărimea, procedura și tipul achiziției</summary>
           <p>Mărimea este valoarea întregului contract sau a achiziției directe, nu cota fiecărui câștigător: un contract de 1,2 mil. lei cu doi câștigători
