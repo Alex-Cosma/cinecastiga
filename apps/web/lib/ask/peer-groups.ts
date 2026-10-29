@@ -7,6 +7,7 @@ import {
   type PeerCoverage, type PeerDialogData, type PeerFacts, type PeerRow, type PeerRowId, type SimilarFacts,
 } from "./peer-groups-shared";
 import { martColumns } from "./mart-columns";
+import { SEAT_ABROAD } from "./seat";
 import { profileCounty, profileCountyCond } from "./predicates";
 import type { DistributionMember } from "./compile";
 import { namedKind, type ParsedAuthorityKind, type PeersOptions } from "./spec";
@@ -111,6 +112,8 @@ export async function resolvePeerFacts(q: DbSql, role: "authority" | "supplier",
   const facts: PeerFacts = {
     role, entityId: focal.entityId, name: focal.name, county: countyDisplay(focal.county), nDas: focal.nDas, similar: null,
     activity: focal.nDas >= PROFILE_MIN_DAS ? { min: half(focal.nDas), max: focal.nDas * 2 } : null,
+    // A foreign firm's seat label (profileCounty, seat-2) is not a county: its row says why, not „necunoscut”.
+    ...(role === "supplier" && focal.county === SEAT_ABROAD ? { abroad: true as const } : {}),
   };
   if (role === "supplier") return { facts, similarIds: null };
   const pops = await readPeerPopulations(q);
@@ -160,7 +163,7 @@ export function peerRows(facts: PeerFacts, peers: PeersOptions | undefined): Pee
   return ids.map((id): PeerRow => {
     const row: PeerRow = { id, label: peerRowLabel(id, facts), rule: id === "similar" ? similarRuleName(facts.similar) : id === "county" ? "același județ" : id === "activity" ? "activitate apropiată" : "același domeniu principal", tip: peerRowTip(id, facts) };
     if (id === "similar" && !facts.similar) row.disabled = { short: "necunoscut", tip: row.tip };
-    if (id === "county" && !facts.county) row.disabled = { short: "necunoscut", tip: row.tip };
+    if (id === "county" && !facts.county) row.disabled = { short: facts.abroad ? "în străinătate" : "necunoscut", tip: row.tip };
     return row;
   });
 }

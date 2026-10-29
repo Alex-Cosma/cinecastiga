@@ -52,6 +52,8 @@ export interface PeerFacts {
   name: string;
   /** Display spelling (COUNTIES), null when unknown. */
   county: string | null;
+  /** A foreign firm: its seat („Străinătate”) is known but is no county, so „Același județ” has none to name. */
+  abroad?: true;
   /** Accepted direct acquisitions of the profile (entity_flags.n_das). */
   nDas: number;
   similar: SimilarFacts | null;
@@ -221,6 +223,7 @@ export function peerRowTip(id: PeerRowId, facts: PeerFacts): string {
         : "După denumire: școală, liceu, colegiu sau grădiniță. Numele ambigue nu intră.";
     }
     case "county":
+      if (facts.abroad) return `${facts.name} are sediul în străinătate: nu are un județ cu care să fie comparată.`;
       if (!facts.county) return `Județul lui ${facts.name} nu e cunoscut.`;
       return facts.role === "supplier"
         ? "Sediul firmei din registrul nostru, nu județul instituțiilor care cumpără de la ea. Firmele fără sediu cunoscut nu intră."
