@@ -366,6 +366,8 @@ function relationCases(): PerfCase[] {
     perfCase("filtered:network-selgros-gone", "filtered", "SELGROS: clienții care nu mai apar din 2025", "network", all(selgros, network({ partners: "gone", since: 2025 }))),
     perfCase("filtered:network-selgros-new-da", "filtered", "SELGROS: clienți noi din 2025, directe", "network", all(selgros, top({ dataset: "da" }), network({ partners: "new", since: 2025 }))),
     perfCase("filtered:network-buzau-seat-other", "filtered", "Buzău: furnizorii cu sediul în alt județ", "network", all(buzau, set({ firmSeat: "other" }))),
+    // S5 (S4 leftovers): the firms the seat cannot place, counted beside the answer on the busiest institution.
+    perfCase("filtered:network-bacau-seat-other", "filtered", "Spitalul Bacău: furnizorii cu sediul în alt județ (+ fără sediu cunoscut)", "network", all(bacau, set({ firmSeat: "other" }))),
     perfCase("sources:network-selgros-gone", "sources", "Sursele grupei „Nu mai apar” a SELGROS", "network", all(selgros, network({ partners: "gone", since: 2025 })), { path: "rows", barMs: 2000 }),
     perfCase("sources:network-bacau-signals", "sources", "Sursele partenerilor cu semnale ai Spitalului Bacău", "network", all(bacau, network({ signals: true })), { path: "rows", barMs: 2000 }),
     perfCase("csv:network-selgros-new", "csv", "CSV: clienții noi ai SELGROS din 2025", "network", all(selgros, network({ partners: "new", since: 2025 })), { path: "csv", barMs: 2000 }),
@@ -453,6 +455,14 @@ function seatCases(): PerfCase[] {
     perfCase("facets:seat-classes-national", "facets", "„Unde au sediul firmele?” pe clasamentul național", "table", firms, { facet: { part: "seat" }, barMs: 2000 }),
     perfCase("facets:seat-classes-2025", "facets", "„Unde au sediul firmele?” pe clasamentul din 2025", "table", all(firms, years(2025)), { facet: { part: "seat" }, barMs: 2000 }),
     perfCase("facets:seat-counties-leader", "facets", "„Unde au sediul firmele?” la „Cine conduce?”", "entity_card", top({ dim: "supplier", rankBy: "value" }), { facet: { part: "seat" }, barMs: 2000 }),
+    // S5 (S4r-from-seat): „De la cine › Ce fel de firme” on institutions now writes the sellers' seat; the answers and
+    // their sources as the builder offers them (national, a county, a year).
+    perfCase("national:table-authorities-from-seat-other", "national", "Ce instituții cumpără cel mai mult de la firme cu sediul în alt județ", "table",
+      all(top({ dim: "authority" }), set({ firmSeat: "other" })), { barMs: 2000 }),
+    perfCase("filtered:table-cluj-authorities-from-seat-other-2025", "filtered", "Ce instituții din Cluj cumpără de la firme cu sediul în alt județ, 2025", "table",
+      all(top({ dim: "authority" }), set({ county: "Cluj", firmSeat: "other" }), years(2025))),
+    perfCase("sources:table-authorities-from-seat-other", "sources", "Sursele instituțiilor care cumpără de la firme cu sediul în alt județ", "table",
+      all(top({ dim: "authority" }), set({ firmSeat: "other" })), { path: "rows", barMs: 2000 }),
   ];
 }
 
