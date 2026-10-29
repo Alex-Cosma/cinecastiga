@@ -131,6 +131,15 @@ export default function MetodologiePage() {
             Un contract intră întreg în anul atribuirii, nu în anii în care se execută. Când al doilea an nu e încheiat în date,
             ambii ani se compară pe aceleași luni, din ianuarie până la ultima lună completă. Valorile sunt înregistrate, nu plăți.</p>
         </details>
+        <details className="method-fold" id="grupele-retelei">
+          <summary>Partenerii unei entități</summary>
+          <p>În „Întreabă”, „Cu cine lucrează X?” împarte partenerii față de un an de referință, încheiat în date (din 2021):
+            Noi, cu prima înregistrare a relației din acel an încoace; Continuă, cu înregistrări și înainte, și de atunci; Nu mai apar, fără nicio
+            înregistrare din acel an. Grupele privesc toate achizițiile dintre cei doi, pe toate canalele; domeniul, canalul sau sediul aleg doar cine
+            apare și valorile, iar perioada se aplică doar la Toți. „Cu semnale” păstrează partenerii cu un semnal oficial pe acea relație.
+            O urmărire pe o grupă își fixează partenerii la activare; cei care intră sau ies din grupă apar doar ca notă.
+            Semnalele sunt piste, nu dovezi; valorile sunt înregistrate, nu plăți.</p>
+        </details>
         <details className="method-fold" id="verificare">
           <summary>Verificarea unei relații</summary>
           <p>În „Întreabă”, „A cumpărat X de la Y?” are trei răspunsuri. Da: cel puțin o înregistrare a perechii în selecție, sau un rând
