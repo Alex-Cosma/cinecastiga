@@ -18,7 +18,11 @@ export type IntentKind =
   | "breakdown"
   | "trend"
   | "compare"
-  | "signals";
+  | "signals"
+  /** "Cu cine lucrează X?": the network of one institution or firm (S5, plan §2.7 „rețea”). */
+  | "network"
+  /** "Ce cumpără X și de la cine?": the flow of one institution or firm (S5). */
+  | "flow";
 
 export interface Span {
   /** The words as the person typed them. */

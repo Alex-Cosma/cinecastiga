@@ -135,6 +135,15 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
   timeseries: [
     { re: /\b(?:luna de luna|pe luni|lunar|in fiecare luna|pe fiecare luna)\b/, path: "timeseries.grain", value: "month" },
   ],
+  // S5 (plan §2.7 „rețea”): the network's groups against the last complete year, its order by years, „Cu semnale”.
+  // The network cue reads the same words ("cu cine nu mai lucrează"): the cue decides the question, the lens the group.
+  network: [
+    { re: new RegExp(`\\b(?:(?:${ROWS_SUPPLIER}|${ROWS_AUTHORITY}|parteneri|partenerii) noi|(?:a|au) inceput sa lucreze|(?:a|au) inceput colaborarea)\\b`), path: "network.partners", value: "new" },
+    { re: /\b(?:inca lucreaza|(?<!\bnu )mai lucreaza|lucreaza in continuare|continua sa lucreze|(?:a|au) continuat sa lucreze)\b/, path: "network.partners", value: "continuing" },
+    { re: /\b(?:nu mai lucreaza|(?:a|au) incetat sa lucreze)\b/, path: "network.partners", value: "gone" },
+    { re: /\bde (?:ani de zile|cei mai multi ani)\b/, path: "network.order", value: "years" },
+    { re: /\b(?:cu semnale|cu semnal oficial)\b/, path: "network.signals", value: true },
+  ],
   // F4 (plan §2.7, final compare §3.4): between two firms only; between institutions the note says it does not apply.
   compare: [
     { re: /\b(?:clienti(?:i|lor)? comuni|aceiasi clienti|acelorasi clienti)\b/, path: "filters.sharedPartners", value: true },

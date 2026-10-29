@@ -244,6 +244,50 @@ describe("comparison lenses (F4, plan §2.7, final compare §3.4)", () => {
   });
 });
 
+describe("the network and the flow in words (S5, plan §2.7 „rețea”; an S4 leftover)", () => {
+  it("«cu cine lucrează X» is X's network, a town hall its institution; a group, its order and «cu semnale» are its lenses", async () => {
+    const all = await ask("cu cine lucreaza primaria buzau");
+    expect(all.i.intent).toBe("network");
+    expect(all.r.spec).toEqual({ block: "network", measure: "value", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 2144364 }, network: { show: 15 } });
+    expect(all.r.sentence).toBe("Cu cine lucrează MUNICIPIUL BUZAU, în toți anii?");
+    // A group counts from the last complete year (the archive's periods), or from the year said.
+    const fresh = await ask("cu ce firme a inceput sa lucreze primaria buzau");
+    expect(fresh.r.spec?.network).toEqual({ show: 15, partners: "new", since: 2025 });
+    expect(fresh.r.sentence).toBe("Cu cine a început să lucreze MUNICIPIUL BUZAU din 2025?");
+    expect((await ask("cu ce firme a inceput sa lucreze primaria buzau din 2023")).r.spec?.network).toEqual({ show: 15, partners: "new", since: 2023 });
+    // „nu mai lucrează” is the network's group here, not a trend; „mai lucrează” its continuing partners.
+    const gone = await ask("cu cine nu mai lucreaza primaria buzau in 2023-2024");
+    expect([gone.i.intent, gone.r.spec?.network, gone.r.spec?.filters.yearFrom]).toEqual(["network", { show: 15, partners: "gone", since: 2023 }, undefined]);
+    expect(gone.r.interpretation.notes).toContain("Am păstrat doar anul de început: 2023.");
+    expect((await ask("cu cine mai lucreaza primaria buzau")).r.spec?.network?.partners).toBe("continuing");
+    // „cu semnale” is the network's lens, never the risk cloud (the collision table of plan §2.7).
+    expect((await ask("cu cine lucreaza primaria buzau cu semnale")).r.spec).toMatchObject({ block: "network", network: { signals: true } });
+    expect((await ask("partenerii primariei buzau de ani de zile")).r.spec).toMatchObject({ block: "network", network: { order: "years" } });
+    // A period on „Toți” stays the period.
+    expect((await ask("cu cine lucreaza primaria buzau in 2024")).r.spec).toMatchObject({ block: "network", filters: { yearFrom: 2024, yearTo: 2024 } });
+  });
+  it("asks which institution when two registry identities carry the town hall's name (never a guess)", async () => {
+    const twice = new RulesInterpreter(memoryVocabulary({ ...FIXTURE, authorities: [...FIXTURE.authorities, { id: 2144399, name: "Municipiul Buzau", county: "Buzau", total: 1_000 }] }));
+    const r = resultFor(await twice.interpret("cu cine lucreaza primaria buzau", { now: NOW }), CONTEXT);
+    expect(r.spec).toBeNull();
+    expect(r.alternatives.map((a) => [a.spec.block, a.spec.filters.authorityId])).toEqual([["network", 2144364], ["network", 2144399]]);
+  });
+  it("asks for the centre when none is named; «ce cumpără X și de la cine» is X's flow", async () => {
+    const none = await ask("cu cine lucreaza");
+    expect([none.r.spec, none.r.problem]).toEqual([null, "Spune a cui rețea vrei să o vezi, de exemplu „Cu cine lucrează primăria Buzău?”."]);
+    const flow = await ask("ce cumpara primaria buzau si de la cine");
+    expect([flow.i.intent, flow.r.spec]).toEqual(["flow", { block: "sankey", measure: "value", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 2144364 } }]);
+    expect(flow.r.sentence).toBe("Ce cumpără MUNICIPIUL BUZAU și de la cine, în toți anii?");
+    // Elsewhere the words keep their questions: a trend's „nu mai câștigă”, „cine lucrează la …” a ranking.
+    expect((await ask("ce firme nu mai castiga in cluj")).r.spec?.block).toBe("trend");
+    expect((await ask("cine lucreaza la primaria buzau")).r.spec?.block).toBe("table");
+    for (const q of ["cu cine lucreaza primaria buzau", "cu ce firme a inceput sa lucreze primaria buzau", "ce cumpara primaria buzau si de la cine"]) {
+      const { r } = await ask(q);
+      expect(sentenceScopeProblems(r.spec!, r.sentence!), q).toEqual([]);
+    }
+  });
+});
+
 describe("the selection's filters in words: the kind, the size, the firm's seat (S5, plan §2.7 „tip”, „mărime”, „sediu”)", () => {
   it("«lucrări», «servicii», «produse» alone are the purchase kind, said in the sentence", async () => {
     const works = await ask("ce firme castiga lucrari in buzau");

@@ -51,7 +51,9 @@ export function sentenceScopeProblems(spec: AskSpec, sentence: string, labels: P
   if (!profile) {
     const { yearFrom: a, yearTo: b } = f;
     // The period's words (kit §4): "în [2025]", "în [2021–2023]", "[din 2020 încoace]"; an evolution is "an de an".
-    const want = spec.block === "timeseries" && !a && !b ? "an de an" : periodPhrase(f).value;
+    // A network's group has no period: its reference year, "din [2025]" (final network §3.2).
+    const want = spec.block === "network" && spec.network?.partners ? `din ${spec.network.since}`
+      : spec.block === "timeseries" && !a && !b ? "an de an" : periodPhrase(f).value;
     // A trend says both years: "între 2024 și 2025", "în 2025, față de 2024" (new ones), "din 2024 … în 2025" (gone ones).
     // Across other years (2023 → 2025) the new ones say "fără înregistrări în 2023 apar … în 2025".
     const trendYears = a && b && (sentence.includes(`între ${a} și ${b}`) || sentence.includes(`în ${b}, față de ${a}`) || sentence.includes(`din ${a} `) && sentence.includes(`în ${b}`)
