@@ -38,30 +38,45 @@ export function flagRecordsNote(flag: ScatterFlag): string {
 }
 
 /**
- * The ids (sicap_da_id) of the records behind `flag` for the profiles `entities` (a query of their ids), as a
- * subquery. A role cannot have the other's signal: the caller checks (SCATTER_RULES).
+ * The records behind `flag` for the profiles `entities` (a query of their ids), as a subquery of their keys with
+ * the value and the date (ref_id, closing_value, finalization_date): the drawer counts and orders them on these
+ * columns and reads whole rows only for the page it shows. Each case reads an index alone (F6b review: a national
+ * signal scanned the 19.6M rows twice, past the drawer's 20 s limit):
+ *   da_split, da_rapid, da_round     da_tx_flagged_idx, whose predicate the query repeats word for word (0.1–0.6 s);
+ *   da_year_end                      the authority's covering index, on December's range of each flagged year (11 s → 1.3 s);
+ *   da_concentration, da_dependence  the party's covering index (the main partner over all its records: 3.3 s nationally).
+ * A role cannot have the other's signal: the caller checks (SCATTER_RULES).
  */
-export function flaggedRecordIds(sql: DbSql, role: ScatterRole, flag: ScatterFlag, entities: Fragment): Fragment {
+export function flaggedRecordKeys(sql: DbSql, role: ScatterRole, flag: ScatterFlag, entities: Fragment): Fragment {
   const party = sql(PARTY[role]), partner = sql(PARTNER[role]);
   switch (flag) {
     case "da_split":
     case "da_rapid":
     case "da_round":
-      return frag(sql`(select d.sicap_da_id from marts.da_transactions d where d.${party} in (${entities}) and ${flag} = any(d.da_flags))`);
+      return frag(sql`(select d.sicap_da_id ref_id, d.closing_value, d.finalization_date from marts.da_transactions d
+        where d.${party} in (${entities}) and cardinality(d.da_flags) > 0 and ${flag} = any(d.da_flags))`);
     case "da_year_end":
-      return frag(sql`(select d.sicap_da_id from marts.da_transactions d
-        where d.authority_id in (${entities}) and substr(d.finalization_date, 6, 2) = '12'
-          and exists (select 1 from marts.flag_instances fi where fi.flag_code = 'da_year_end' and fi.entity_id = d.authority_id and fi.period = substr(d.finalization_date, 1, 4)))`);
+      // The range bounds the index; the month's prefix is the exact test (each flagged year once, so no row twice).
+      return frag(sql`(select d.sicap_da_id ref_id, d.closing_value, d.finalization_date
+        from (select distinct fi.entity_id, fi.period from marts.flag_instances fi where fi.flag_code = 'da_year_end' and fi.entity_id in (${entities})) fi
+        join marts.da_transactions d on d.authority_id = fi.entity_id
+          and d.finalization_date >= fi.period || '-12' and d.finalization_date < fi.period || '-13'
+          and substr(d.finalization_date, 1, 7) = fi.period || '-12')`);
     case "da_concentration":
     case "da_dependence":
       // The partner + 0 hides its index: the planner would read a main partner's 26,000 records for each profile instead of the profile's own.
-      return frag(sql`(select d.sicap_da_id from marts.da_transactions d
+      return frag(sql`(select d.sicap_da_id ref_id, d.closing_value, d.finalization_date from marts.da_transactions d
         join (select distinct on (x.a) x.a, x.p from (
                 select t.${party} a, t.${partner} p, sum(t.closing_value) v from marts.da_transactions t
                 where t.${party} in (${entities}) and t.${partner} is not null group by 1, 2) x
               order by x.a, x.v desc, x.p) main on main.a = d.${party} and main.p = d.${partner} + 0
         where d.${party} in (${entities}))`);
   }
+}
+
+/** The ids (sicap_da_id) of the records behind `flag` (flaggedRecordKeys), as a subquery. */
+export function flaggedRecordIds(sql: DbSql, role: ScatterRole, flag: ScatterFlag, entities: Fragment): Fragment {
+  return frag(sql`(select k.ref_id from ${flaggedRecordKeys(sql, role, flag, entities)} k)`);
 }
 
 /** What a signal's years and shares are for the profiles `ids` (the cheap facts: flag_instances), without reading their records. */

@@ -456,6 +456,14 @@ function seatCases(): PerfCase[] {
       all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
     perfCase("sources:scatter-signal-national-small", "sources", "Sursele „concentrare pe un furnizor”, instituțiile din țară", "scatter",
       all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_concentration" })), { path: "rows", barMs: 2000 }),
+    // F6b verify: a national signal of the rows scanned the mart twice (20 s, HTTP 500); its keys now come from
+    // da_tx_flagged_idx (built nightly) and December's from the authority index.
+    perfCase("sources:scatter-split-national", "sources", "Sursele „posibilă fracționare”, instituțiile din țară", "scatter",
+      all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-rapid-firms-national", "sources", "Sursele „finalizare rapidă”, firmele din țară", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-year-end-national", "sources", "Sursele „vârf în decembrie”, instituțiile din țară", "scatter",
+      all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_year_end" })), { path: "rows", barMs: 2000 }),
     perfCase("filtered:scatter-suppliers-seat-cluj", "filtered", "Ce firme cu sediul în județul Cluj ies din tipar", "scatter", all(firms, set({ seatCounty: "Cluj" }))),
     perfCase("filtered:entity-card-risk-seat-cluj", "filtered", "Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc", "entity_card",
       all(top({ dim: "supplier", rankBy: "risk" }), set({ seatCounty: "Cluj" }))),
