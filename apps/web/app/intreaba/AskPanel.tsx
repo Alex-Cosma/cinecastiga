@@ -7,7 +7,8 @@ import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
 import { isHistoricalProfile } from "@/lib/ask/population";
-import { NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { LOCAL_ADMIN_KIND, NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
+import { withLens } from "@/lib/ask/map-lens";
 import { BLOCK_FILTERS } from "@/lib/ask/filters/blocks";
 import { restoreLink } from "@/lib/ask/filters/restore";
 import { trendMonthsWaiting } from "@/lib/ask/filters/trend-rules";
@@ -80,6 +81,8 @@ import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence, type EvidenceOpenOpts } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
 import MapBlock from "./MapBlock";
+import { countyMetrics, mapFirm, mapLensOptions, mapLocalAdmin, metricWords, shownLens, type MapLensValue } from "./map-answer";
+import type { MapFacts } from "@/lib/ask/map-facts";
 import { ProfileNotice } from "./ProfileNotes";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
@@ -118,6 +121,10 @@ interface AskResponse {
   executedAt?: string;
 }
 export type PanelMode = "search" | "ask" | "build";
+/** „Harta arată” (map final §3.7): the lens changes the colours, never the selection. */
+const MAP_LENS_TIP = { title: "Harta arată", text: "Schimbă doar culoarea și ordinea. Selecția rămâne aceeași. „Înregistrări”: un rând per câștigător la asocieri." };
+/** „Pe locuitor →” (map final §3.7). */
+const PER_INHABITANT_TIP = { title: "Pe locuitor", text: "Doar pentru primării și consilii județene: companiile și instituțiile naționale apar în județul sediului, nu unde locuiesc oamenii. Linkul schimbă cumpărătorii din propoziție." };
 /**
  * The lead of the total line (G8): the answer's total where it has one,
  * "Selecția" where its rows are not one sum (a comparison, a trend, relations).
@@ -564,10 +571,17 @@ export default function AskPanel({
   // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
   // words whether the answer came from typed text, a builder edit or a shared link, in every view,
   // the drawer and the export. A trend's title says the years and months its answer ran (answerLabels).
+  // F5: a map's county facts (part `map`), asked once it is drawn, on its selection (never its lens): every lens of
+  // „Harta arată” then switches with no request. The lens drawn is the asked one once its facts can draw it.
+  const mapFacts = useAnswerFact(resp?.data?.block === "map" && applied ? withLens(applied, "value") : null, "map");
+  const lensChoices = resp?.data?.block === "map" && applied ? mapLensOptions(applied, mapFacts) : null;
+  const mapLens = lensChoices && applied ? shownLens(applied, lensChoices) : null;
+  // The map's title follows the lens drawn (map final §3.7); the saved question's follows the lens it asks (title.ts).
+  const titled = applied && mapLens ? withLens(applied, mapLens) : applied;
   const title =
     resp?.question ||
-    (applied
-      ? questionTitle(applied, { cpvName, ...answerLabels(resp) })
+    (titled
+      ? questionTitle(titled, { cpvName, ...answerLabels(resp) })
       : "Răspunsul tău");
   // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
   const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];
@@ -575,7 +589,7 @@ export default function AskPanel({
   const crumbs = thread && applied ? threadCrumbs(thread, applied) : null;
   const band: BandState = applied ? {
     ...(stripKeys.includes("dataset") ? { stream: (applied.dataset ?? "all") as NonNullable<BandState["stream"]> } : {}),
-    ...(stripKeys.includes("measure") ? { lens: applied.measure === "count" ? "count" as const : "value" as const } : {}),
+    ...(stripKeys.includes("measure") ? { lens: mapLens ?? (applied.measure === "count" ? "count" as const : "value" as const) } : {}),
     ...(thread ? { thread: threadWords(thread) } : {}),
     // A trend's group buttons and its months (plan §4.7 Export): in the header and the file name.
     // `grupa` names the part as its drawer and its watch do (with the answer's years when the link has none).
@@ -824,6 +838,18 @@ export default function AskPanel({
   // What changes the total outside the sentence (G8), on the applied question as it ran (a trend's months).
   const totalWords = applied ? totalConditionWords(applied, resp?.executed?.months) : [];
   const empty = Boolean(data && emptyAnswer(data));
+  /**
+   * „Pe locuitor →” beside the map's lens (map final §3.7): the buyers become „Primăriile și consiliile județene” and
+   * the lens per inhabitant, a new question the sentence shows, in a new history entry.
+   */
+  const perInhabitant = () => {
+    if (!applied) return;
+    const next = withLens({ ...applied, filters: { ...applied.filters, authorityKind: LOCAL_ADMIN_KIND } }, "value_per_capita") as AskSpec;
+    window.history.pushState(null, "", window.location.href);
+    setBuilderInit(next as unknown as QuestionSpec);
+    setLinkRuns(true);
+    void execute({ spec: next }, false, undefined, undefined, false);
+  };
   /** A wider question from the empty answer (G2): the builder takes it as its draft, then it runs. */
   const runWider = (next: AskSpec) => {
     setBuilderInit(next as unknown as QuestionSpec);
@@ -1171,15 +1197,25 @@ export default function AskPanel({
                   const deeper = sankeySuggestion(data);
                   return deeper && <Suggest text={deeper.text} href={threadHref(applied, deeper.code, deeperThread(thread, applied, deeper.code, deeper.name))} />;
                 })()}
-                {stripKeys.includes("measure") && data.block === "map" && (
-                  <StripLabelled before="Harta arată">
-                    <Segmented
-                      label="Harta arată"
-                      value={applied.measure === "count" ? "count" : "value"}
-                      options={[{ value: "value", label: "Valoare" }, { value: "count", label: "Înregistrări" }]}
-                      onChange={(value) => { if (value !== (applied.measure === "count" ? "count" : "value")) applyStripChange("measure", value); }}
-                    />
-                  </StripLabelled>
+                {stripKeys.includes("measure") && data.block === "map" && lensChoices && mapLens && (
+                  <span className="qb-row qb-row--wide qb-tipwrap-sm ask-maplens">
+                    <StripLabelled before="Harta arată">
+                      <Segmented
+                        label="Harta arată"
+                        value={mapLens}
+                        options={lensChoices}
+                        onChange={(value) => { if (value !== mapLens) applyStripChange("measure", value); }}
+                      />
+                    </StripLabelled>
+                    <HelpTip tip={MAP_LENS_TIP} />
+                    {/* Per inhabitant only for the local administrations (map final §3.7): the link changes the buyers, in view. */}
+                    {!mapFirm(applied) && !mapLocalAdmin(applied) && (
+                      <span className="qb-row ask-percap-link">
+                        <button type="button" className="qb-link" onClick={() => perInhabitant()}>Pe locuitor<span className="qb-glyph" aria-hidden="true">→</span></button>
+                        <HelpTip tip={PER_INHABITANT_TIP} />
+                      </span>
+                    )}
+                  </span>
                 )}
                 {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
                 {["table", "timeseries", "map", "sankey"].includes(data.block) && (
@@ -1273,13 +1309,17 @@ export default function AskPanel({
                 ))}
               {data.block === "map" &&
                 (layout === "visual" ? (
-                  <MapBlock counties={data.counties} unknown={data.unknown} spec={applied} />
+                  <MapBlock counties={data.counties} unknown={data.unknown} spec={applied} {...(data.local ? { local: data.local } : {})}
+                    facts={mapFacts} {...(mapLens ? { lens: mapLens } : {})} />
                 ) : (
                   <CountyValues
                     counties={data.counties}
                     unknown={data.unknown}
                     spec={applied}
                     onSources={openEvidence}
+                    facts={mapFacts.status === "ready" ? mapFacts.value : null}
+                    {...(data.local ? { local: data.local } : {})}
+                    lens={mapLens ?? "value"}
                   />
                 ))}
               {data.block === "compare" && (
@@ -1376,7 +1416,7 @@ export default function AskPanel({
                 <CopyIcon />
                 Copiază linkul
               </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band))}
+              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}))}
                 months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
               {mode === "ask" && (
                 <button
@@ -1619,31 +1659,50 @@ function CountyValues({
   unknown,
   spec,
   onSources,
+  facts = null,
+  local,
+  lens = "value",
 }: {
   counties: CountyValue[];
   unknown: MapUnknown;
   spec: AskSpec;
-  onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string) => void;
+  onSources: (spec: AskSpec, scope?: EvidenceScope, title?: string, opts?: EvidenceOpenOpts) => void;
+  /** F5 (map final §3.11): the county facts, for the columns of the card and the lens. */
+  facts?: MapFacts | null;
+  local?: Extract<BlockData, { block: "map" }>["local"];
+  lens?: MapLensValue;
 }) {
+  const metrics = countyMetrics({ counties, ...(local ? { local } : {}) }, lens, facts);
+  const lensColumn = lens === "value_per_capita" ? "Pe locuitor" : lens === "seat" ? "Firme din județ" : lens === "share" ? (spec.filters.adminName ? "Cota firmelor" : "Cota firmei") : null;
+  const firm = mapFirm(spec);
   return (
-    <table className="ask-table cq-exact-table">
+    <div>
+    <table className="ask-table cq-exact-table cq-map-table">
       <thead>
         <tr>
           <th>Județ</th>
           <th>Valoare înregistrată</th>
           <th>Înregistrări</th>
+          {lensColumn && <th>{lensColumn}</th>}
+          {!firm && <th>Cel mai mare cumpărător</th>}
+          <th>Cea mai mare înregistrare</th>
           <th>Surse</th>
         </tr>
       </thead>
       <tbody>
         {[...counties]
           .sort((a, b) => b.value - a.value)
-          .map((r) => (
+          .map((r) => {
+            const f = facts?.counties[r.county], m = metrics.get(r.county);
+            return (
             <tr key={r.county}>
               <th>{r.county}</th>
-              <td>{formatRonFull(r.value)}</td>
-              <td>{formatInt(r.count)}</td>
-              <td>
+              <td data-label="Valoare">{formatRonFull(r.value)}</td>
+              <td data-label="Înregistrări">{formatInt(r.count)}</td>
+              {lensColumn && <td data-label={lensColumn}>{m?.metric !== null && m?.metric !== undefined ? `${metricWords(lens, m.metric)}${m.muted ? " ·" : ""}` : "—"}</td>}
+              {!firm && <td data-label="Cel mai mare cumpărător">{f?.buyer ? `${f.buyer.name} · ${formatShare(f.buyer.value / f.value)}` : "—"}</td>}
+              <td data-label="Cea mai mare înregistrare">{f?.record ? `${formatRon(f.record.value)} · ${formatShare(f.record.value / f.value)}` : "—"}</td>
+              <td className="cq-map-src">
                 <button
                   type="button"
                   onClick={() =>
@@ -1654,17 +1713,23 @@ function CountyValues({
                 </button>
               </td>
             </tr>
-          ))}
+            );
+          })}
         {unknown.count > 0 && (
           <tr>
             <th>Județ necunoscut</th>
-            <td>{formatRonFull(unknown.value)}</td>
-            <td>{formatInt(unknown.count)}</td>
-            <td>nu apar pe hartă</td>
+            <td data-label="Valoare">{formatRonFull(unknown.value)}</td>
+            <td data-label="Înregistrări">{formatInt(unknown.count)}</td>
+            {lensColumn && <td className="cq-map-empty" />}
+            {!firm && <td className="cq-map-empty" />}
+            <td className="cq-map-empty" />
+            <td className="cq-map-src">nu apar pe hartă</td>
           </tr>
         )}
       </tbody>
     </table>
+    {lensColumn && metrics.size > 0 && [...metrics.values()].some((m) => m.muted) && <p className="ask-fine">„·”: prea puține înregistrări pentru un procent (gri pe hartă).</p>}
+    </div>
   );
 }
 function StatBlock({

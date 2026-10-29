@@ -1,3 +1,4 @@
+import { withLens } from "../../../lib/ask/map-lens";
 import { BLOCK_FILTERS } from "../../../lib/ask/filters/blocks";
 import { filterContext } from "../../../lib/ask/filters/context";
 import { describeConditions, type ConditionLabels } from "../../../lib/ask/filters/describe";
@@ -117,7 +118,7 @@ export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" |
     // A comparison's „Doar clienții comuni” (F4): on ("true") or off.
     if (patch.value === "true") next.filters.sharedPartners = true;
     else delete next.filters.sharedPartners;
-  } else next.measure = patch.value;
+  } else return withLens(next, patch.value);
   return next;
 }
 

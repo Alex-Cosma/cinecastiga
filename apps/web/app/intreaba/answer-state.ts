@@ -1,3 +1,4 @@
+import { withLens } from "../../lib/ask/map-lens";
 import { describeConditions } from "../../lib/ask/filters/describe";
 import { encodeSpec } from "../../lib/ask/permalink";
 import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
@@ -120,7 +121,8 @@ export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], va
     else delete filters.sharedPartners;
     return { ...applied, filters };
   }
-  return { ...applied, measure: value as AskSpec["measure"] };
+  // The measure, or the map's lens beyond it (F5: map.lens for „Firme din județ” and „Cota firmei”).
+  return withLens(applied, value) as AskSpec;
 }
 
 /**
