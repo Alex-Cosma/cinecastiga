@@ -112,11 +112,13 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
       const c = data.card, profile = isHistoricalProfile(spec);
       // entity_card-2 (F6c): the podium's places with their share of the total and the rest, or every profile at the top level.
       if (data.podium) {
-        const { places, total } = data.podium, rest = podiumRest(data.podium);
+        const { places, total, selection } = data.podium, rest = podiumRest(data.podium);
+        // Under a band of CÂȘTIGĂTORII the share is of the category (the firms in the band), the selection's total a row of its own.
         return [
-          "loc,nume,judet,valoare_lei,procent_din_total,inregistrari",
+          `loc,nume,judet,valoare_lei,${selection ? "procent_din_categorie" : "procent_din_total"},inregistrari`,
           ...places.map((place, i) => [i + 1, csvQ(place.name), csvQ(place.county), place.value, placeShare(place, total)?.toFixed(4) ?? "", place.count].join(",")),
-          ...(rest && total ? [["", csvQ(`celelalte ${rest.entities}`), "", rest.value, rest.share.toFixed(4), Math.max(0, total.count - places.reduce((n, place) => n + place.count, 0))].join(",")] : []),
+          ...(rest && total ? [["", csvQ(`celelalte ${rest.entities}${selection ? " din categorie" : ""}`), "", rest.value, rest.share.toFixed(4), Math.max(0, total.count - places.reduce((n, place) => n + place.count, 0))].join(",")] : []),
+          ...(selection && total ? [["", csvQ(`toată selecția: ${selection.entities}`), "", selection.value, "", selection.count].join(",")] : []),
         ];
       }
       if (data.ties) return [

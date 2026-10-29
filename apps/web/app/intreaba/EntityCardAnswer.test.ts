@@ -181,6 +181,15 @@ describe("the shown CSV", () => {
     expect(lines[4]).toBe(',"celelalte 1464",,13020924311,0.4921,180961');
   });
 
+  it("under a band of CÂȘTIGĂTORII names the share the category's and gives the selection's total a row", () => {
+    const band = { places: [{ entityId: "2", name: "BETA", county: "Ilfov", value: 3000, count: 1 }, { entityId: "3", name: "GAMA", county: "Cluj", value: 1000, count: 1 }],
+      version: 2 as const, total: { value: 5000, count: 3, entities: 3 }, selection: { value: 11804, count: 9, entities: 6 } };
+    const lines = answerCsv({ block: "entity_card", card: card(), podium: band }, spec, "Cine").text.split("\r\n").filter(Boolean);
+    expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,procent_din_categorie,inregistrari");
+    expect(lines[1]).toBe('1,"BETA","Ilfov",3000,0.6000,1');
+    expect(lines.slice(3)).toEqual([',"celelalte 1 din categorie",,1000,0.2000,1', ',"toată selecția: 6",,11804,,9']);
+  });
+
   it("holds every profile at the top level, with the level and its signals", () => {
     const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ties: { ...TIES, count: 2, rows: [tie(1), tie(2, { flags: ["da_split", "da_rapid"], nFlags: 2 })] } },
       { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n");

@@ -70,7 +70,13 @@ describe.runIf(Boolean(connection))("investigative population SQL (dedicated rol
         if ("error" in evidence) throw new Error(evidence.error);
         expect(sumDecimalStrings(evidence.rows.map(row=>row.valueExact))).toBe("3000070.70");
         expect(new Set(evidence.rows.map(row=>row.src))).toEqual(new Set(["da","contracts"]));
-        expect(await runRows(q,leader,{},0,{ scope:{role:"authority",entityIds:["1"]} })).toMatchObject({total:0});
+        // entity_card-2 (F6c review): authority 1 is place 2 of the podium, so its row opens its own records; an id off the
+        // podium is refused, never substituted for the winner.
+        const second = await runRows(q,leader,{},0,{ scope:{role:"authority",entityIds:["1"]} });
+        if ("error" in second) throw new Error(second.error);
+        expect(second.total).toBeGreaterThan(0);
+        expect(new Set(second.rows.map(row=>row.authorityId))).toEqual(new Set(["1"]));
+        expect(await runRows(q,leader,{},0,{ scope:{role:"authority",entityIds:["999999"]} })).toMatchObject({ error: expect.stringMatching(/podium/) });
         expect(await runRows(q,leader,{},0,{ stream:"da" })).toMatchObject({ total:2, sourceTotal:3, value:"70.70" });
         expect(await runSpec(q,{ ...leader, dataset:"da" },{})).toMatchObject({data:{card:{entityId:"1",value:90.9,count:3}}});
         expect(await runSpec(q,{ ...leader, dataset:"contracts" },{})).toMatchObject({data:{card:{entityId:"2",value:3000000,count:1}}});

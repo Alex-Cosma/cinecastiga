@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { EntityCardData } from "../../lib/ask/compile";
 import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-text";
 import { leadOverSecond, podiumRest, type Podium, type PodiumFact, type Ties } from "../../lib/ask/entity-card-shared";
@@ -23,7 +23,7 @@ import TotalLine from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
 import {
-  largestWords, leadWords, placeFacts, placeWords, restWords, shareWords, tieFacts, tiePlace, tiesHeadline, tiesRest, tiesShown, totalLead,
+  largestWords, leadWords, placeFacts, placeWords, restWords, shareWords, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead,
 } from "./entity-card-answer";
 import "./entity-card.css";
 
@@ -40,8 +40,6 @@ import "./entity-card.css";
 
 type Data = { card: EntityCardData; podium?: Podium; ties?: Ties };
 
-/** The last year of the data: a balance sheet two years older than it is read with care. */
-const lastDataYear = () => new Date().getFullYear() - 1;
 
 export default function EntityCardAnswer({ data, spec, historical = true, conditions = [] }: { data: Data; spec?: QuestionSpec; historical?: boolean; conditions?: readonly string[] }) {
   const { card } = data;
@@ -71,6 +69,8 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
   const ids = podium.places.map((place) => place.entityId);
   const loaded = useAnswerFact(spec as unknown as AskSpec, "podium", ids);
   const facts = loaded.status === "ready" ? new Map<string, PodiumFact>(loaded.value.places.map((fact) => [fact.entityId, fact])) : null;
+  // The data's latest filing year: an older balance sheet is amber against it (an answer kept before it: none is).
+  const balanceYear = loaded.status === "ready" ? loaded.value.balanceYear ?? null : null;
   const [first, ...others] = podium.places;
   if (!first) return null;
   const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
@@ -89,7 +89,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
   delete ranking.rankBy;
   const stack = podium.total && podium.total.value > 0 ? podium.places.map((place) => place.value / podium.total!.value) : null;
   const firstFact = facts?.get(first.entityId);
-  const tags = placeFacts(first, firstFact, spec, lastDataYear());
+  const tags = placeFacts(first, firstFact, spec, balanceYear);
   const largest = largestWords(firstFact);
   const actions = menu(first, 0);
   return (
@@ -133,7 +133,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
               key={place.entityId}
               name={`${i + 2}. ${cleanName(place.name)}`}
               place={placeWords(place, spec).replace(/^(Firmă|Instituție) · /, "")}
-              facts={placeFacts(place, facts?.get(place.entityId), spec, lastDataYear())}
+              facts={placeFacts(place, facts?.get(place.entityId), spec, balanceYear)}
               value={formatRon(place.value)}
               {...(shareWords(place, podium) ? { share: shareWords(place, podium)! } : {})}
               {...(records ? { records: { label: recordsWords(place.count), onClick: records } } : {})}
@@ -177,6 +177,8 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
   const head = tiesHeadline(ties, spec);
+  // The kicker names the list (final §4, „Accesibilitate”): one id per answer, two answers on a page never share it.
+  const kickerId = `${useId()}-kicker`;
   const { rows, hidden } = tiesShown(ties, all);
   const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
   const open = (row: { entityId: string; name: string }) => evidence
@@ -187,8 +189,14 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
   return (
     <div className="qb ec">
       <div className="ec-ties-head">
-        {head.kicker && <p className="ec-kicker" id="ec-kicker">{head.kicker}</p>}
-        {head.none ? <p className="ec-ties-text">{head.lead}.</p> : head.lead ? (
+        {head.kicker && <p className="ec-kicker" id={kickerId}>
+          {head.kicker}{head.notDistinct && <> <HelpTip tip={{ id: "indice-egalitate" }} /></>}
+        </p>}
+        {head.none ? <>
+          <p className="ec-ties-text">{head.lead}.</p>
+          {/* The sources and the CSV still hold the first profiles by value (runRows): said, never silent. */}
+          {ties.rows.length > 0 && <p className="ec-rest">{tiesNoneSources(ties)}</p>}
+        </> : head.lead ? (
           <p className="ec-ties-text">
             <b>{head.lead}</b>, <b className="num">{head.level}</b> <Level n={ties.maxFlags} of={ties.criteria} /> {head.signals}.
           </p>
@@ -199,7 +207,7 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
       {!head.none && (
         <>
           {ties.count > 1 && <p className="ec-order">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
-          <AnswerList label="Profilurile cu cel mai ridicat indice" listRef={list}>
+          <AnswerList label="Profilurile cu cel mai ridicat indice" listRef={list} {...(head.kicker ? { describedBy: kickerId } : {})}>
             {rows.map((row) => {
               const records = open(row);
               const entity = { id: row.entityId, name: cleanName(row.name) };

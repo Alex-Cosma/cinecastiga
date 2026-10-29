@@ -241,7 +241,8 @@ function entityCardCore(data: unknown): unknown {
     const places = Array.isArray(data.podium.places) ? data.podium.places : [];
     core.podium = {
       places: places.map((place) => object(place) ? { entityId: place.entityId, value: place.value, count: place.count } : place),
-      totals: data.podium.total,
+      // Under a band of CÂȘTIGĂTORII the total is the category's (podiumOf), and a watch names it so.
+      ...(object(data.podium.selection) ? { categoryTotals: data.podium.total } : { totals: data.podium.total }),
     };
   }
   if (object(data.ties)) {

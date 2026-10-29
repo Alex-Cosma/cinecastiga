@@ -99,6 +99,11 @@ export const blankCard = (role: "authority" | "supplier") => ({
   entityId: "", name: "", county: null, role, value: 0, count: 0, cri: null, nFlags: 0, flags: [] as string[], population: null,
 });
 
+/** The ids of the podium's places (place 1 alone for an answer stored before entity_card-2): what a records drawer may narrow to. */
+export function podiumPlaceIds(data: { card: { entityId: string }; podium?: Pick<Podium, "places"> | undefined }): string[] {
+  return data.podium?.places.length ? data.podium.places.map((place) => place.entityId) : [data.card.entityId];
+}
+
 /** The share of a place in the total; null without one. */
 export function placeShare(place: Pick<PodiumPlace, "value">, total: PodiumTotals | null): number | null {
   return total && total.value > 0 ? place.value / total.value : null;
@@ -131,7 +136,7 @@ export function jointShare(value: number, fact: Pick<PodiumFact, "joint"> | unde
   const share = fact.joint / value;
   return share >= JOINT_TAG_FROM ? Math.min(1, share) : null;
 }
-/** The share of the largest record in the place's value, from half of it and with more than one record behind it. */
+/** The share of the largest record in the place's value, from half of it (a place of one record: 100%, final §3.9). */
 export function oneRecordShare(place: Pick<PodiumPlace, "value" | "count">, fact: Pick<PodiumFact, "largest"> | undefined): { share: number; src: "da" | "contracts" } | null {
   if (!fact?.largest || place.value <= 0 || place.count < 1) return null;
   const share = fact.largest.value / place.value;

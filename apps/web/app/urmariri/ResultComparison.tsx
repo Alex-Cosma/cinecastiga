@@ -44,7 +44,7 @@ const labels: Record<string, string> = {
   state: "Verdictul", undated: "Contracte fără dată plauzibilă", channels: "Pe canale", frameworks: "Acorduri-cadru (plafoane)",
   ceiling: "Plafon", excluded: "Rânduri în afara sumelor",
   // entity_card-2 (F6c): the podium's places and total, the group at the top of the index.
-  podium: "Podiumul", places: "Locurile 1–3", totals: "Totalul selecției", ties: "Grupul de la egalitate pe primul loc", level: "Indicele maxim", maxFlags: "Semnale la indicele maxim",
+  podium: "Podiumul", places: "Locurile 1–3", totals: "Totalul selecției", categoryTotals: "Totalul categoriei", ties: "Grupul de la egalitate pe primul loc", level: "Indicele maxim", maxFlags: "Semnale la indicele maxim",
 };
 /** A group's count is of its entities or counties, not of records (TrendPartTotals.count); a distribution's members are its group. */
 const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă"

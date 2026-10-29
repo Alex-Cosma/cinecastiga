@@ -221,6 +221,8 @@ export const FACET_PENDING = "…";
 export interface PodiumResult {
   part: "podium";
   places: import("./entity-card-shared").PodiumFact[];
+  /** The latest balance-sheet year of the firms' profiles: what a place's filing is old against (never the wall clock); null without one. */
+  balanceYear: number | null;
   checkpoint: string | null;
   tookMs: number;
 }

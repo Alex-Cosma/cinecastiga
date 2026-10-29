@@ -341,6 +341,10 @@ describe("«Cine conduce?»'s core (entity_card-2, F6c)", () => {
       block: "entity_card", card: { entityId: "1", role: "supplier", value: 100, count: 3, cri: null, nFlags: 0, flags: [] },
       podium: { places: [{ entityId: "1", value: 100, count: 3 }, { entityId: "2", value: 60, count: 2 }], totals: { value: 300, count: 9, entities: 40 } },
     });
+    // Under a band of CÂȘTIGĂTORII the total is the category's: kept under its own name.
+    expect(answerCore("entity_card", { ...value, podium: { ...podium, selection: { value: 900, count: 20, entities: 90 } } })).toMatchObject({
+      podium: { categoryTotals: { value: 300, count: 9, entities: 40 } },
+    });
     const renamed = { ...value, podium: { ...podium, places: podium.places.map((p) => ({ ...p, name: "Altă denumire", county: "Cluj" })) } };
     expect(sameAnswerCore("entity_card", value, renamed)).toBe(true);
     expect(sameAnswerCore("entity_card", value, { ...value, podium: { ...podium, total: { ...podium.total, value: 301 } } })).toBe(false);
