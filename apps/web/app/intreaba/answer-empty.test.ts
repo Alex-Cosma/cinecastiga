@@ -41,6 +41,18 @@ describe("the empty answer (G2)", () => {
     expect(relaxations(advanced)[0]!.spec).not.toHaveProperty("population");
   });
 
+  it("«Cine conduce?» with nobody in the selection is an empty answer, widened by the sentence's phrases and the firms' size (F6c)", () => {
+    expect(emptyAnswer({ block: "entity_card", card: {}, empty: true } as unknown as BlockData)).toBe(true);
+    expect(emptyAnswer({ block: "entity_card", card: {} } as unknown as BlockData)).toBe(false);
+    // By value: the period and the domain from the sentence's end, then the band under it, at most three.
+    const value = spec({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { cpvTerm: "medicamente", yearFrom: 2025, yearTo: 2025, maxEmployees: 0 } });
+    expect(relaxations(value).map((r) => r.label)).toEqual(["Scoate „Angajați”", "Toți anii", "Orice domeniu"]);
+    expect(relaxations(value)[0]!.spec.filters).toEqual({ cpvTerm: "medicamente", yearFrom: 2025, yearTo: 2025 });
+    // On the index: the whole country, or without the band.
+    const index = spec({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj", maxEmployees: 0 } });
+    expect(relaxations(index).map((r) => r.label)).toEqual(["Scoate „Angajați”", "Oriunde"]);
+  });
+
   it("never widens the question itself: the entity it is about, its subject", () => {
     const network = spec({ block: "network", dim: "authority", filters: { authorityName: "MUNICIPIUL BUZAU", authorityId: 1, cpvTerm: "asfaltare" } });
     expect(relaxations(network).map((r) => r.label)).toEqual(["Orice domeniu"]);

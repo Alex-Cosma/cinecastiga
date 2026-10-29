@@ -51,7 +51,7 @@ import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 import { factCheckData } from "./fact-check";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
 import { bareNational, nationalTotals, podiumOf, tiesOf } from "./entity-card";
-import { PODIUM_PLACES, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
+import { blankCard, PODIUM_PLACES, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -284,7 +284,8 @@ export type BlockData =
   | NetworkData
   // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3 and the total), on the index the group at the top
   // (every profile at the best level). `card` stays the first of them; absent from answers stored before entity_card-2.
-  | { block: "entity_card"; card: EntityCardData; podium?: Podium; ties?: Ties }
+  // `empty`: no firm or institution in the selection (G2: the answer offers its relaxations, it is not an error); `card` is blank then.
+  | { block: "entity_card"; card: EntityCardData; podium?: Podium; ties?: Ties; empty?: true }
   | { block: "fact_check"; fact: FactCheckData }
   // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
   // the first N of every group, the composition, the group noun and the facts of the shown rows (trend-partition.ts).
@@ -830,8 +831,8 @@ export async function runSpec(
     const table = ranked.data.block === "table" ? ranked.data : undefined;
     const places = (table?.rows ?? []).flatMap((row) => row.entityId ? [{ ...row, entityId: row.entityId }] : []);
     const winner = places[0];
-    if (!winner) return { error: "Niciun rezultat pentru aceste filtre.", caveats: ranked.caveats };
     const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
+    if (!winner) return { ...ranked, data: { block: "entity_card", card: blankCard(role), empty: true } };
     const totals = table?.totals ?? (bareNational(spec) ? await nationalTotals(sql, role) : null);
     return { ...ranked, data: {
       block: "entity_card",
@@ -2011,7 +2012,7 @@ export async function runSpec(
           const minDas = profileMinDas(spec.block);
           const ties = await tiesOf(s, { role, where: efWhere(role, minDas), county: profileCounty(s, role) });
           const e = ties?.rows[0];
-          if (!ties || !e) return { error: "Niciun rezultat pentru aceste filtre." };
+          if (!ties || !e) return { block: "entity_card", card: blankCard(role), empty: true };
           const cardPopulation = role === "authority"
             ? (await readPerCapitaPopulations(s)).byEntity.get(e.entityId) ?? null : null;
           if (cardPopulation !== null) caveats.push(POPULATION_CARD_NOTE);
@@ -2376,7 +2377,7 @@ export async function runRows(
     const result = await runSpec(sql, spec, grounding);
     opts.signal?.throwIfAborted();
     if ("error" in result) return { error: result.error };
-    if (result.data.block !== "entity_card") return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
+    if (result.data.block !== "entity_card" || result.data.empty) return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
     valueWinner = result.data.card.entityId;
     if (scope.role && scope.role !== (spec.dim === "supplier" ? "supplier" : "authority"))
       return { error: "Rolul selectat nu aparține entității din răspuns." };

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  buyerForm, criteriaCount, jointShare, leadOverSecond, levelWords, oneRecordShare, placeShare, podiumRest, signalsWords, tiesNotDistinct,
+  buyerForm, criteriaCount, jointShare, leadOverSecond, LEADER_MIN_DAS, levelWords, oneRecordShare, placeShare, podiumRest, signalsWords, tiesNotDistinct,
   type Podium, type PodiumPlace,
 } from "./entity-card-shared";
 import { bareNational, podiumFactsOf, podiumOf } from "./entity-card";
+import { ENTITY_CARD_MIN_DAS } from "./predicates";
 
 /*
  * „Cine conduce?” (entity_card-2, final entity_card §3.9–§3.10): the shapes and words the engine, the answer, its CSV
@@ -41,9 +42,13 @@ describe("the podium", () => {
     expect(podiumRest({ places: podium.places, total: null })).toBeNull();
   });
 
+  it("ranks the index with the profiles the engine counts", () => {
+    expect(LEADER_MIN_DAS).toBe(ENTITY_CARD_MIN_DAS);
+  });
+
   it("reads the national ranking's total from agg_national only where no condition narrows it", () => {
     expect(bareNational({ filters: {} })).toBe(true);
-    expect(bareNational({ filters: { cpvTerm: undefined, county: "" } })).toBe(true);
+    expect(bareNational({ filters: { county: "" } })).toBe(true);
     expect(bareNational({ filters: { yearFrom: 2025 } })).toBe(false);
     expect(bareNational({ filters: {}, dataset: "da" })).toBe(false);
     expect(bareNational({ filters: {}, minimumRecords: { role: "supplier", count: 5 } })).toBe(false);

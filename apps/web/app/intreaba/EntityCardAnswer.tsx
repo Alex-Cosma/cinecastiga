@@ -86,6 +86,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
   // „Tot clasamentul ›”: the same question as a ranking, every condition as it is (retarget keeps what the ranking applies).
   const ranking = retarget(spec, "table");
   ranking.topN = 10;
+  delete ranking.rankBy;
   const stack = podium.total && podium.total.value > 0 ? podium.places.map((place) => place.value / podium.total!.value) : null;
   const firstFact = facts?.get(first.entityId);
   const tags = placeFacts(first, firstFact, spec, lastDataYear());

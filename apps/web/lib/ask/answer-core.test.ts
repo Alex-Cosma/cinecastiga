@@ -320,3 +320,38 @@ describe("a comparison's core (F4)", () => {
     expect(answerVersion({ block: "compare", measure: "value", filters: { authorityId: 1, compareWithId: 2 } })).toEqual({ question: "compare-1", conditions: {} });
   });
 });
+
+describe("«Cine conduce?»'s core (entity_card-2, F6c)", () => {
+  const card = { entityId: "1", name: "ALLIANCE", county: "Bucuresti", role: "supplier", value: 100, count: 3, cri: null, nFlags: 0, flags: [], population: null };
+  const podium = { version: 2, places: [{ entityId: "1", name: "ALLIANCE", county: "Bucuresti", value: 100, count: 3 }, { entityId: "2", name: "DR.MAX", county: "Ilfov", value: 60, count: 2 }], total: { value: 300, count: 9, entities: 40 } };
+  const ties = {
+    version: 2, level: 0.2, maxFlags: 1, criteria: 5, count: 2, pool: 19, nextLevel: 0, nextCount: 5,
+    rows: [{ entityId: "5", name: "Spital 5", county: "Cluj", count: 40, value: 90, nFlags: 1, flags: ["da_split"] }, { entityId: "6", name: "Spital 6", county: "Cluj", count: 30, value: 80, nFlags: 1, flags: ["da_round"] }],
+  };
+  const value = { block: "entity_card", card, podium };
+  const index = { block: "entity_card", card: { ...card, entityId: "5", role: "authority", cri: 0.2, nFlags: 1, flags: ["da_split"] }, ties };
+  it("is the question's second answer, on both axes", () => {
+    expect(answerVersion({ block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }).question).toBe("entity_card-2");
+    expect(answerVersion({ block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} }).question).toBe("entity_card-2");
+    // A watch stored before it (no version: "entity_card-1") hears of it once.
+    expect(sameAnswerVersion(readAnswerVersion(undefined, "entity_card"), answerVersion({ block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }))).toBe(false);
+  });
+  it("compares the places and their total, or the level and the profiles at it; never the names, the pool or the next level", () => {
+    expect(answerCore("entity_card", value)).toEqual({
+      block: "entity_card", card: { entityId: "1", role: "supplier", value: 100, count: 3, cri: null, nFlags: 0, flags: [] },
+      podium: { places: [{ entityId: "1", value: 100, count: 3 }, { entityId: "2", value: 60, count: 2 }], totals: { value: 300, count: 9, entities: 40 } },
+    });
+    const renamed = { ...value, podium: { ...podium, places: podium.places.map((p) => ({ ...p, name: "Altă denumire", county: "Cluj" })) } };
+    expect(sameAnswerCore("entity_card", value, renamed)).toBe(true);
+    expect(sameAnswerCore("entity_card", value, { ...value, podium: { ...podium, total: { ...podium.total, value: 301 } } })).toBe(false);
+    expect(sameAnswerCore("entity_card", value, { ...value, podium: { ...podium, places: [podium.places[1]!, podium.places[0]!] } })).toBe(false);
+    // The pool and the next level are references: a firm added to the pool does not change a watch on the group at the top.
+    expect(sameAnswerCore("entity_card", index, { ...index, ties: { ...ties, pool: 20, nextCount: 6, nextLevel: 0.1 } })).toBe(true);
+    expect(sameAnswerCore("entity_card", index, { ...index, ties: { ...ties, count: 3 } })).toBe(false);
+    expect(sameAnswerCore("entity_card", index, { ...index, ties: { ...ties, rows: [ties.rows[1], ties.rows[0]] } })).toBe(false);
+  });
+  it("compares an answer stored before entity_card-2 whole", () => {
+    const old = { block: "entity_card", card };
+    expect(answerCore("entity_card", old)).toBe(old);
+  });
+});

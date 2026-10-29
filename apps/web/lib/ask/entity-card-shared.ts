@@ -16,6 +16,8 @@ import { criteriaOf } from "./peer-groups-shared";
  */
 
 export const ENTITY_CARD_VERSION = 2;
+/** The direct acquisitions a profile needs to be ranked on the index (predicates.ts ENTITY_CARD_MIN_DAS keeps them equal, entity-card-shared.test.ts). */
+export const LEADER_MIN_DAS = 20;
 /** The podium: places 1–3. */
 export const PODIUM_PLACES = 3;
 /** The tied profiles listed at most (the answer's "Arată toate cele 14", final §3.10). */
@@ -91,6 +93,11 @@ export interface PodiumFact {
    */
   registeredYear?: number | null;
 }
+
+/** The card of an answer with no entity (`empty`): nothing to show, never read. */
+export const blankCard = (role: "authority" | "supplier") => ({
+  entityId: "", name: "", county: null, role, value: 0, count: 0, cri: null, nFlags: 0, flags: [] as string[], population: null,
+});
 
 /** The share of a place in the total; null without one. */
 export function placeShare(place: Pick<PodiumPlace, "value">, total: PodiumTotals | null): number | null {

@@ -321,6 +321,7 @@ export function perfCases(): PerfCase[] {
     ...facetCases(),
     ...f3RowsCases(),
     ...seatCases(),
+    ...leaderCases(),
     ...excludeCases(),
     ...relationCases(),
     ...compareCases(),
@@ -426,6 +427,36 @@ function excludeCases(): PerfCase[] {
  * own (seatCounty), as the builder writes them, on rollups where they answer (the entity and pair rollups hold the firm
  * and the buyer county) and live elsewhere; the seat window's counts; the firms' profiles by their seat.
  */
+/**
+ * F6c, „Cine conduce?” (entity_card-2): the podium by value (the ranking stopped at place 3 with its total: live, on the
+ * precomputed national ranking, under a band of CÂȘTIGĂTORII), its places' facts after the answer, the group at the top of
+ * the index (every profile at the best level), a firm's size on the index with its window, and the tied profiles' sources.
+ * The places of the facts are the local copy's (ALLIANCE, DR.MAX, FARMEXIM).
+ */
+function leaderCases(): PerfCase[] {
+  const PLACES = ["2128212", "2161704", "2128622"];
+  const medicines = all(top({ dim: "supplier", rankBy: "value" }), set({ cpvTerm: "medicamente" }), years(2025));
+  return [
+    perfCase("national:leader-podium-firms", "national", "Podiumul firmelor, național, toți anii (agg_top_entities + agg_national)", "entity_card", top({ dim: "supplier", rankBy: "value" }), { barMs: 1000 }),
+    perfCase("national:leader-podium-authorities", "national", "Podiumul instituțiilor, național, toți anii", "entity_card", top({ dim: "authority", rankBy: "value" }), { barMs: 1000 }),
+    perfCase("national:leader-podium-medicines-2025", "national", "Podiumul firmelor la medicamente, 2025", "entity_card", medicines, { barMs: 2000, ref: "„Cine conduce?”: valoare live („medicamente” 2025), podiumul în aceeași trecere" }),
+    perfCase("national:leader-podium-no-employees-medicines-2025", "national", "Podiumul firmelor fără angajați la medicamente, 2025", "entity_card", all(medicines, set({ maxEmployees: 0 })), { barMs: 2000 }),
+    perfCase("filtered:leader-podium-hospitals-cluj-2025", "filtered", "Podiumul spitalelor din Cluj, 2025", "entity_card", all(top({ dim: "authority", rankBy: "value" }), set({ authorityKind: "spital", county: "Cluj" }), years(2025))),
+    perfCase("filtered:leader-podium-seat-cluj-2025", "filtered", "Podiumul firmelor cu sediul în Cluj, 2025", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), set({ seatCounty: "Cluj" }), years(2025))),
+    perfCase("facets:podium-facts-national", "facets", "Faptele locurilor 1–3, național, după răspuns", "entity_card", top({ dim: "supplier", rankBy: "value" }), { facet: { part: "podium", ids: PLACES }, barMs: 2000 }),
+    perfCase("facets:podium-facts-medicines-2025", "facets", "Faptele locurilor 1–3 la medicamente, 2025, după răspuns", "entity_card", medicines, { facet: { part: "podium", ids: PLACES }, barMs: 2000 }),
+    perfCase("national:leader-ties-firms", "national", "Firmele la egalitate pe primul loc la indice", "entity_card", top({ dim: "supplier", rankBy: "risk" }), { barMs: 1000 }),
+    perfCase("national:leader-ties-hospitals", "national", "Spitalele la egalitate pe primul loc la indice", "entity_card", all(top({ dim: "authority", rankBy: "risk" }), set({ authorityKind: "spital" })), { barMs: 1000 }),
+    perfCase("filtered:leader-ties-hospitals-cluj", "filtered", "Spitalele din Cluj la egalitate pe primul loc la indice", "entity_card", all(top({ dim: "authority", rankBy: "risk" }), set({ authorityKind: "spital", county: "Cluj" }))),
+    perfCase("filtered:leader-ties-no-employees", "filtered", "Firmele fără angajați la egalitate pe primul loc la indice", "entity_card", all(top({ dim: "supplier", rankBy: "risk" }), set({ maxEmployees: 0 }))),
+    perfCase("filtered:leader-ties-1-9-employees-cluj", "filtered", "Firmele cu 1–9 angajați și sediul în Cluj, la indice", "entity_card", all(top({ dim: "supplier", rankBy: "risk" }), set({ minEmployees: 1, maxEmployees: 9, seatCounty: "Cluj" }))),
+    perfCase("facets:employees-leader-risk", "facets", "„Câți angajați au firmele?” la „Cine conduce?” pe indice", "entity_card", top({ dim: "supplier", rankBy: "risk" }), { facet: { part: "employees" }, barMs: 1000 }),
+    perfCase("sources:leader-ties-firms", "sources", "Sursele celor șase firme la egalitate pe primul loc", "entity_card", top({ dim: "supplier", rankBy: "risk" }), { path: "rows", barMs: 1000 }),
+    perfCase("sources:leader-ties-hospitals-cluj", "sources", "Sursele spitalelor din Cluj la egalitate pe primul loc", "entity_card", all(top({ dim: "authority", rankBy: "risk" }), set({ authorityKind: "spital", county: "Cluj" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:leader-podium-firm-1", "sources", "Sursele locului 1 al firmelor la medicamente, 2025", "entity_card", medicines, { path: "rows", barMs: 2000 }),
+  ];
+}
+
 function seatCases(): PerfCase[] {
   const firms = top({ dim: "supplier" });
   return [
