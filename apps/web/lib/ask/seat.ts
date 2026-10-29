@@ -1,6 +1,7 @@
 import { countyIsFirmSeat } from "./population";
 import { countyWords } from "./question-ui";
-import type { FirmSeat } from "./spec";
+import { FIRM_SEATS, type FirmSeat } from "./spec";
+import { employeesPhrase } from "./filters/words";
 
 /** A question as the engine and the builder hold it (AskSpec, QuestionSpec). */
 type SeatSpec = { block: string; dim?: string; rankBy?: string; filters: { [key: string]: unknown } };
@@ -28,6 +29,21 @@ export const seatCountyWords = (county: string): string => countyWords(county).r
 export function firmSeatWords(seat: FirmSeat, buyerCounty?: string | null): string {
   if (seat === "same") return buyerCounty ? seatCountyWords(buyerCounty) : "în județul instituției";
   return seat === "other" ? "în alt județ" : "în străinătate";
+}
+
+/**
+ * „De la cine › Ce fel de firme” on a ranking of institutions or counties
+ * (plan §4.2 P2, kit §5.28: the seat is a chip there, S4r-from-seat): the
+ * firms by their size and their seat against the buyer, "firme cu 1–9
+ * angajați, cu sediul în alt județ", "firme cu sediul în străinătate"; the
+ * size alone where the tab has no seat (`seat` false). Null without either.
+ */
+export function firmsKindPhrase(f: { [key: string]: unknown }, seat: boolean): string | null {
+  const size = employeesPhrase(f.minEmployees, f.maxEmployees);
+  const where = seat && typeof f.firmSeat === "string" && (FIRM_SEATS as readonly string[]).includes(f.firmSeat)
+    ? `cu sediul ${firmSeatWords(f.firmSeat as FirmSeat, f.county ? String(f.county) : null)}` : null;
+  if (!where) return size;
+  return size ? `${size}, ${where}` : `firme ${where}`;
 }
 
 /** The seat a question selects, in words ("în alt județ", "în județul Cluj"), or null without one. */

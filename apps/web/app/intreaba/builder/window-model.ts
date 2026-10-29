@@ -5,11 +5,11 @@ import type { EmployeesChoice } from "../../../lib/ask/filters/defs/from-whom";
 import type { PeriodChoice } from "../../../lib/ask/filters/defs/selection";
 import { choicesOf, choiceState, type Choice, type SubjectChoice } from "../../../lib/ask/filters/pickers";
 import type { FilterCtx, FilterSpec } from "../../../lib/ask/filters/types";
-import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, employeesPhrase, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
+import { TREND_ORDER_WORDS, adminPhrase, employeesOnBands, localityName, MONTH_SHORT } from "../../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, entityLabel, leaderAxis, type QuestionSpec } from "../../../lib/ask/question-ui";
-import { DEFAULT_TREND_MIN_BASE, type AskSpec, type FirmSeat } from "../../../lib/ask/spec";
+import { DEFAULT_TREND_MIN_BASE, FIRM_SEATS, SEAT_RULES, type AskSpec, type FirmSeat } from "../../../lib/ask/spec";
 import { countyIsFirmSeat } from "../../../lib/ask/population";
-import { firmSeatWords, seatCountyWords } from "../../../lib/ask/seat";
+import { firmSeatWords, firmsKindPhrase, seatCountyWords } from "../../../lib/ask/seat";
 import { MAX_SERIES_MONTHS } from "../../../lib/ask/series";
 import { MIN_TREND_YEAR, defaultTrendYears, type CoveragePeriods } from "../../../lib/ask/months-window";
 import { TREND_ALL_CHANGES, TREND_CHANGE_LABELS, TREND_CHANGE_PHRASE, TREND_NOUN_WORDS, trendGap, trendGroupLabel, trendNoun } from "../../../lib/ask/filters/defs/trend";
@@ -346,7 +346,7 @@ export const CURRENT_ROW = "current";
  * radiogroup with nothing checked reads as "nothing chosen"). None when the
  * window is on its first row.
  */
-export function currentRow(kind: "place" | "locality" | "buyer" | "cpv" | "from" | "peers", spec: QuestionSpec, tabs: readonly ("supplier" | "admin" | "employees")[] = []): ChoiceOption | null {
+export function currentRow(kind: "place" | "locality" | "buyer" | "cpv" | "from" | "peers", spec: QuestionSpec, tabs: readonly ("supplier" | "admin" | "employees")[] = [], seat = false): ChoiceOption | null {
   const f = spec.filters;
   const row = (label: string, detail?: string): ChoiceOption => ({ value: CURRENT_ROW, label, ...(detail ? { detail } : {}), choice: { filter: "county", value: f.county } });
   const county = f.county ? String(f.county) : null;
@@ -363,9 +363,10 @@ export function currentRow(kind: "place" | "locality" | "buyer" | "cpv" | "from"
       return row(/^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+/g, "")) ? `CPV ${term}` : `„${term}”`);
     }
     case "from": {
-      const tab = tabs.find((t) => t === "supplier" ? f.supplierName || f.supplierId : t === "admin" ? f.adminName || f.adminPersonKey : f.minEmployees !== undefined || f.maxEmployees !== undefined);
+      const tab = tabs.find((t) => t === "supplier" ? f.supplierName || f.supplierId : t === "admin" ? f.adminName || f.adminPersonKey
+        : f.minEmployees !== undefined || f.maxEmployees !== undefined || seat && Boolean(f.firmSeat));
       if (!tab) return null;
-      return row(capital(tab === "supplier" ? entityLabel(spec, "supplier") : tab === "admin" ? adminPhrase(f.adminName) : employeesPhrase(f.minEmployees, f.maxEmployees) ?? "Firmele alese"));
+      return row(capital(tab === "supplier" ? entityLabel(spec, "supplier") : tab === "admin" ? adminPhrase(f.adminName) : firmsKindPhrase(f, seat) ?? "Firmele alese"));
     }
   }
 }
@@ -376,11 +377,42 @@ export function fromTabs(win: BuilderWindowSpec): ("supplier" | "admin" | "emplo
   return (PICKER_FAMILY.from ?? []).filter((id) => own.includes(id)) as ("supplier" | "admin" | "employees")[];
 }
 
+/** „Ce fel de firme” of this "De la cine?" also holds the firms' seat (rankings of institutions and counties, S4r-from-seat). */
+export const fromSeat = (win: BuilderWindowSpec): boolean => windowOf(win.slot).includes("firmSeat") && fromTabs(win).includes("employees");
+
 /** The tab a "De la cine?" window opens on: the one the draft uses, else the first. */
 export function fromTab(win: BuilderWindowSpec, spec: QuestionSpec): "supplier" | "admin" | "employees" {
-  const tabs = fromTabs(win), f = spec.filters;
+  const tabs = fromTabs(win), f = spec.filters, seat = fromSeat(win);
   return tabs.find((tab) => tab === "supplier" ? Boolean(f.supplierName || f.supplierId)
-    : tab === "admin" ? Boolean(f.adminName || f.adminPersonKey) : f.minEmployees !== undefined || f.maxEmployees !== undefined) ?? tabs[0] ?? "supplier";
+    : tab === "admin" ? Boolean(f.adminName || f.adminPersonKey) : f.minEmployees !== undefined || f.maxEmployees !== undefined || seat && Boolean(f.firmSeat)) ?? tabs[0] ?? "supplier";
+}
+
+/**
+ * The seat's chips of „Ce fel de firme” (kit §5.28, the window „Unde au sediul firmele?”'s rows): Oriunde, in the
+ * buyer's county (the county when the question fixes it), in another county, abroad. Abroad is shown with the
+ * reason beside a size: a foreign firm has no MF filing (SEAT_RULES.firmSeat).
+ */
+export function firmsKindSeatOptions(spec: QuestionSpec, sized: boolean): { value: string; label: string; disabled?: string }[] {
+  const county = spec.filters.county ? String(spec.filters.county) : null;
+  // The rule's own words, as the seat window says them beside a size (choiceState).
+  const { seatCounty: _seatCounty, ...rest } = spec.filters;
+  const abroad = sized ? SEAT_RULES.firmSeat({ ...spec, filters: { ...rest, firmSeat: "abroad", minEmployees: 0 } } as unknown as AskSpec) : null;
+  return [{ value: "none", label: "Oriunde" }, ...FIRM_SEATS.map((seat) => {
+    const words = firmSeatWords(seat, seat === "same" ? county : null);
+    return { value: seat, label: `${words.charAt(0).toLocaleUpperCase("ro-RO")}${words.slice(1)}`, ...(seat === "abroad" && abroad ? { disabled: abroad } : {}) };
+  })];
+}
+
+/** The choices „Ce fel de firme” writes with its seat: the bands' (bandsChoice) and the seat, "none" removing it. */
+export function firmsKindChoices(bands: Choice, seat: string): Choice[] {
+  return [bands, { filter: "firmSeat", value: seat === "none" ? undefined : seat }];
+}
+
+/** Its bottom button, what applies (kit: "Firme cu 1–9 angajați, cu sediul în alt județ"), or „Orice firmă”. */
+export function firmsKindButton(spec: QuestionSpec, bands: Choice, seat: string): string {
+  const size = (bands.value ?? {}) as EmployeesChoice;
+  const words = firmsKindPhrase({ county: spec.filters.county, minEmployees: size.minEmployees, maxEmployees: size.maxEmployees, firmSeat: seat === "none" ? undefined : seat }, true);
+  return words ? capital(words) : "Orice firmă";
 }
 
 /** The bands a draft's employees cover; none for an old link's range off the bands (its chip says it, kit §5.5). */

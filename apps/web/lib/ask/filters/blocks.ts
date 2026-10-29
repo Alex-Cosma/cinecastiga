@@ -65,9 +65,14 @@ const buyerInvite = (ctx: FilterCtx, opts: { authority?: boolean; locality?: boo
     ...(opts.county !== false ? ["county" as const] : []),
   ],
 });
-/** "+ De la cine": its tabs on this question (kit §5.24). */
-const fromInvite = (tabs: readonly ("supplier" | "admin" | "employees")[]): Slot =>
-  placed(tabs[0]!, "from", { picker: "from", ...(tabs.length > 1 ? { writes: tabs.slice(1) } : {}) });
+/**
+ * "+ De la cine": its tabs on this question (kit §5.24). `seat`: „Ce fel de firme” also holds the firms' seat against
+ * the buyer, as a chip (rankings of institutions and counties, plan §4.2 P2, kit §5.28; S4r-from-seat).
+ */
+const fromInvite = (tabs: readonly ("supplier" | "admin" | "employees")[], seat = false): Slot => {
+  const writes: FilterId[] = [...tabs.slice(1), ...(seat ? ["firmSeat" as const] : [])];
+  return placed(tabs[0]!, "from", { picker: "from", ...(writes.length ? { writes } : {}) });
+};
 const datasetInvite = placed("dataset", "dataset");
 const employeesInvite = placed("employees", "employees");
 const adminInvite = placed("admin", "admin");
@@ -93,7 +98,7 @@ function candidates(spec: FilterSpec, ctx: FilterCtx): Slot[] {
     // whole (S4 review, firms over 1 mil. lei in 2025: 1.4–4.4 s) until S5's size column (PRECOMPUTE.md).
     case "table": {
       const sized = nationalEntityScan(spec) ? [] : [sizeInvite];
-      return firms ? [seatInvite, adminInvite, cpvInvite, ...sized] : [cpvInvite, fromInvite(["supplier", "admin", "employees"]), ...sized];
+      return firms ? [seatInvite, adminInvite, cpvInvite, ...sized] : [cpvInvite, fromInvite(["supplier", "admin", "employees"], true), ...sized];
     }
     case "timeseries": return [cpvInvite, buyerInvite(ctx), fromInvite(["supplier", "admin"])];
     case "map": return [cpvInvite, buyerInvite(ctx, { authority: false, locality: false, county: false }), fromInvite(["supplier", "admin"])];

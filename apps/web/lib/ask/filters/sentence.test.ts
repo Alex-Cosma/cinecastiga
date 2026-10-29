@@ -647,6 +647,22 @@ describe("one vocabulary (kit §4, plan G3, G10)", () => {
     // Without a seat, the ranking says nothing of it: the invitation "+ Sediul firmei" adds it.
     expect(marked(firms({}))).not.toContain("sediul");
   });
+
+  it("says the sellers' seat in „de la [firme …]” on institutions and counties (S4r-from-seat, plan §4.2 P2)", () => {
+    const buyers = (dim: "authority" | "county", filters: QuestionSpec["filters"]) => q({ block: "table", dim, topN: 10, filters });
+    expect(marked(buyers("authority", { firmSeat: "other" })))
+      .toBe("Ce [instituții publice] din [toată țara] cumpără cel mai mult de la [firme cu sediul în alt județ], prin [toate achizițiile], în [toți anii]?");
+    expect(marked(buyers("authority", { county: "Cluj", firmSeat: "same", minEmployees: 1, maxEmployees: 9 })))
+      .toContain("de la [firme cu 1–9 angajați, cu sediul în județul Cluj]");
+    expect(marked(buyers("county", { firmSeat: "abroad" }))).toContain("de la [firme cu sediul în străinătate]");
+    // One phrase for the tab „Ce fel de firme”: it says both keys and its window writes the seat with the other tabs.
+    expect(slotOf(buyers("authority", { firmSeat: "other", maxEmployees: 0 }), "employees")).toMatchObject({ says: ["employees", "firmSeat"], picker: "from", writes: ["supplier", "admin", "firmSeat"] });
+    expect(slotOf(buyers("authority", { firmSeat: "other" }), "employees")).toMatchObject({ says: ["firmSeat"] });
+    // A named firm is its own tab: its seat is not the tab's phrase (a link's chip).
+    expect(marked(buyers("authority", { supplierName: "PORR", supplierId: 3, firmSeat: "other" }))).toContain("de la [PORR]");
+    // The total and the evolution keep their tabs without the seat.
+    expect(marked(q({ block: "stat", filters: { minEmployees: 1, maxEmployees: 9, firmSeat: "other" } }))).toContain("de la [firme cu 1–9 angajați]");
+  });
 });
 
 describe("the sentence as BLOCK_FILTERS places it", () => {

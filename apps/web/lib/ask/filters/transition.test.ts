@@ -162,3 +162,25 @@ describe("a window's choice", () => {
     expect([risk.notes, risk.links, risk.parked?.items.some((item) => item.id === "supplier")]).toEqual([[], undefined, true]);
   });
 });
+
+describe("the sellers' seat on institutions (S4r-from-seat, plan §4.2 P2)", () => {
+  it("keeps the firms' seat when the ranking moves from firms to institutions: it becomes „de la [firme cu sediul …]”", () => {
+    const firms = q({ block: "table", dim: "supplier", topN: 10, filters: { county: "Cluj", firmSeat: "other" } });
+    const institutions = choose(firms, "dim", { filter: "dim", value: { dim: "authority" } });
+    expect([institutions.spec.dim, institutions.spec.filters.firmSeat, institutions.notes]).toEqual(["authority", "other", []]);
+    // The firm's own county is a firms' question only: it leaves with its note.
+    const own = choose(q({ block: "table", dim: "supplier", topN: 10, filters: { seatCounty: "Cluj" } }), "dim", { filter: "dim", value: { dim: "authority" } });
+    expect([own.spec.filters.seatCounty, own.notes]).toEqual([undefined, ["Am scos „doar firmele cu sediul în județul Cluj”: nu se potrivește cu alegerea nouă."]]);
+  });
+
+  it("„Ce fel de firme” is one tab with the size and the seat: a named firm or a person replaces both, and back", () => {
+    const seated = q({ block: "table", dim: "authority", topN: 10, filters: { firmSeat: "other", minEmployees: 1, maxEmployees: 9 } });
+    const firm = choose(seated, "employees", { filter: "supplier", value: { name: "PORR", id: 3 } });
+    expect([firm.spec.filters.supplierId, firm.spec.filters.firmSeat, firm.spec.filters.minEmployees, firm.notes]).toEqual([3, undefined, undefined, []]);
+    const back = choose(firm.spec, "supplier", { filter: "firmSeat", value: "same" });
+    expect([back.spec.filters.supplierId, back.spec.filters.firmSeat, back.notes]).toEqual([undefined, "same", []]);
+    // The size beside a seat keeps it.
+    const sized = choose(back.spec, "employees", { filter: "employees", value: { maxEmployees: 0 } });
+    expect([sized.spec.filters.firmSeat, sized.spec.filters.maxEmployees]).toEqual(["same", 0]);
+  });
+});
