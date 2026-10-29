@@ -1,5 +1,7 @@
 import type { BlockData } from "../../lib/ask/compile";
+import { BLOCK_FILTERS } from "../../lib/ask/filters/blocks";
 import { filterContext } from "../../lib/ask/filters/context";
+import { FILTERS } from "../../lib/ask/filters/registry";
 import { advancedConditions, legacyConditions, withoutConditions } from "../../lib/ask/filters/legacy-conditions";
 import { sentenceTokens } from "../../lib/ask/filters/sentence";
 import type { FilterId, FilterSpec } from "../../lib/ask/filters/types";
@@ -30,6 +32,8 @@ export function emptyAnswer(data: BlockData): boolean {
     case "network": return data.lists.all.partners === 0 && data.lists.new.partners + data.lists.continuing.partners + data.lists.gone.partners === 0;
     case "sankey": return data.flows.length === 0;
     case "scatter": return data.points.length === 0;
+    // „Cine conduce?” (F6c): no firm or institution in the selection, or no profile with enough acquisitions.
+    case "entity_card": return data.empty === true;
     default: return false;
   }
 }
@@ -40,6 +44,8 @@ const FIRST_ROW: Partial<Record<FilterId, string>> = {
   supplier: "Orice firmă", admin: "Orice firmă", employees: "Orice firmă",
   authority: "Toate instituțiile publice", authorityKind: "Toate instituțiile publice", locality: "Toate instituțiile publice",
   county: "Toată țara",
+  // The firm's seat (F4): the first row of „Unde au sediul firmele?” is „Oriunde” (F6c: also the index of firms).
+  seatCounty: "Oriunde", firmSeat: "Oriunde",
 };
 /** The question itself, never relaxed: who it is about, what it ranks and how. */
 const QUESTION: ReadonlySet<string> = new Set(["focal", "subject"]);
@@ -57,6 +63,10 @@ export function relaxations(input: AskSpec): Relax[] {
   };
   for (const c of advancedConditions(spec)) add(`a:${c.key}`, removeWords("Selecție avansată"), [c.key]);
   for (const c of legacyConditions(spec)) if (c.status === "applied") add(`l:${c.key}`, removeWords(c.words), [c.key]);
+  // The rows under the sentence are chips too (CÂȘTIGĂTORII: the firms' size; F6c, final entity_card §4 „Scoate „Angajați””).
+  for (const row of BLOCK_FILTERS[ctx.block].rows(spec, ctx)) for (const chip of row.chips)
+    // A link's own range of employees is already its chip above.
+    if (FILTERS[chip.id].read(spec) !== undefined && !out.some((r) => r.id === `l:${chip.id}`)) add(`r:${chip.id}`, removeWords(chip.label ?? FILTERS[chip.id].label), [chip.id]);
   const slots = sentenceTokens(spec, ctx).filter((t) => t.kind === "slot");
   for (const token of [...slots].reverse()) {
     if (token.required || token.picker && QUESTION.has(token.picker) || !token.says.length) continue;

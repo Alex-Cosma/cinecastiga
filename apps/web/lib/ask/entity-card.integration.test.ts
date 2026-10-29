@@ -4,7 +4,8 @@ import { forgetAuthorityKinds } from "./authority-kind";
 import { runRows, runSpec, type BlockData } from "./compile";
 import { evidenceCsv } from "./evidence";
 import { podiumFacts } from "./answer-facts";
-import { forgetFacets } from "./facets";
+import { facetCounts, forgetFacets } from "./facets";
+import { sameAnswerCore } from "./answer-core";
 import { retarget } from "./filters/retarget";
 import { ground } from "./ground";
 import { forgetMartColumns } from "./mart-columns";
@@ -216,12 +217,13 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
   it("takes an institution's kind by name, the clinical institutes with the hospitals (D1)", async () => {
     const out = await withAskFixture(connection!.sql, "ec_kind", seed, async (q) => ({
       hospitals: await answer(q, { dim: "authority", rankBy: "risk", filters: { authorityKind: "spital" } }),
-      value: await answer(q, { dim: "authority", rankBy: "value", filters: { ...T, authorityKind: "spital" } }).catch((e: Error) => e.message),
+      // The fixture has no hospital with records: the answer by value is empty, not an error.
+      value: await answer(q, { dim: "authority", rankBy: "value", filters: { ...T, authorityKind: "spital" } }),
     }));
     // Spitalul 4 has two signals (0,40) alone at the top; the institute and the hospitals follow, the school is no hospital.
     expect(out.hospitals.data.ties).toMatchObject({ level: 0.4, maxFlags: 2, criteria: 5, count: 1, pool: 5, nextLevel: 0.2, nextCount: 3 });
     expect(out.hospitals.data.ties!.rows.map((r) => r.name)).toEqual(["Spitalul Fixture 4"]);
-    expect(typeof out.value).toBe("string");
+    expect(out.value.data).toMatchObject({ block: "entity_card", empty: true });
   }, 60000);
 
   it("lists the sources of the answer: the tied profiles' direct acquisitions, one profile's, and nobody else's", async () => {
@@ -239,6 +241,64 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     expect([out.one.sourceTotal, out.one.profileCount]).toEqual([3, 1]);
     expect([out.below.sourceTotal, out.below.profileCount]).toEqual([0, 0]);
     expect(evidenceCsv(out.group.rows).trim().split("\n")).toHaveLength(8);
+  }, 60000);
+
+  it("counts the profiles of each band of the firms' size for the window, the draft's own band left out", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_facets", seed, async (q) => {
+      const spec = validateSpec({ block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: { maxEmployees: 0, seatCounty: "Cluj" } }) as AskSpec;
+      const counts = await facetCounts(q, spec, "employees");
+      const wholeCountry = await facetCounts(q, { ...spec, filters: {} }, "employees");
+      const institutions = await facetCounts(q, { ...spec, dim: "authority", filters: {} }, "employees");
+      return { counts, wholeCountry, institutions };
+    });
+    if ("error" in out.counts || "timeout" in out.counts || "precompute" in out.counts) throw new Error(JSON.stringify(out.counts));
+    // The band is the window's own key: its options count the profiles seated in Cluj (Alfa, Gama, Epsilon) in each band.
+    expect(out.counts.unit).toBe("profiles");
+    expect(out.counts.options.map((o) => [o.value, o.n])).toEqual([["0", 1], ["1-9", 0], ["10-49", 0], ["50-249", 1], ["250+", 0]]);
+    expect(out.counts.rest).toMatchObject({ n: 1 });
+    expect(out.counts.total.n).toBe(3);
+    if ("error" in out.wholeCountry || "timeout" in out.wholeCountry || "precompute" in out.wholeCountry) throw new Error(JSON.stringify(out.wholeCountry));
+    expect(out.wholeCountry.options.map((o) => o.n)).toEqual([2, 1, 0, 2, 0]);
+    expect(out.wholeCountry.total.n).toBe(6);
+    // An institution has no size of its own: the window is not offered on its index.
+    expect("error" in out.institutions).toBe(true);
+  }, 60000);
+
+  it("changes what a watch compares only when the group at the top changes, not when the pool does", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_watch", seed, async (q) => {
+      const raw = { dim: "supplier", rankBy: "risk", filters: {} };
+      const before = (await answer(q, raw)).data;
+      // A profile far below the top: the pool grows, the group at the top is the same.
+      await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags) values (${id(70)}, 'supplier', 'Mica SRL', 'Cluj', 21, 5, 0, 0, '[]')`;
+      const poolOnly = (await answer(q, raw)).data;
+      // A new profile at the top level: the group changes.
+      await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags) values (${id(71)}, 'supplier', 'Noua SRL', 'Cluj', 30, 70, 0.75, 3, '["da_split","da_dependence","da_rapid"]')`;
+      const grown = (await answer(q, raw)).data;
+      const podiumBefore = (await answer(q, { dim: "supplier", rankBy: "value", filters: T })).data;
+      await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date)
+        values (77,'DA77',${id(50)},'Primaria Fixture',${id(4)},'Delta Mica SRL','Cluj','33600000-6',10000,'2025-10-10')`;
+      const podiumAfter = (await answer(q, { dim: "supplier", rankBy: "value", filters: T })).data;
+      return { before, poolOnly, grown, podiumBefore, podiumAfter };
+    });
+    expect(out.poolOnly.ties!.pool).toBe(out.before.ties!.pool + 1);
+    expect(sameAnswerCore("entity_card", out.before, out.poolOnly)).toBe(true);
+    expect(out.grown.ties!.count).toBe(5);
+    expect(sameAnswerCore("entity_card", out.before, out.grown)).toBe(false);
+    // The podium: a firm that climbs to place 1 changes it; its names alone would not.
+    expect(out.podiumAfter.podium!.places[0]!.name).toBe("Delta Mica SRL");
+    expect(sameAnswerCore("entity_card", out.podiumBefore, out.podiumAfter)).toBe(false);
+  }, 60000);
+
+  it("answers an empty selection as an empty answer (G2), not as an error: by value and on the index", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_empty", seed, async (q) => ({
+      value: await answer(q, { dim: "supplier", rankBy: "value", filters: { yearFrom: 2025, yearTo: 2025, minEmployees: 250 } }),
+      index: await answer(q, { dim: "supplier", rankBy: "risk", filters: { minEmployees: 250 } }),
+    }));
+    for (const empty of [out.value.data, out.index.data]) {
+      expect(empty).toMatchObject({ block: "entity_card", empty: true, card: { entityId: "", role: "supplier" } });
+      expect(empty.podium).toBeUndefined();
+      expect(empty.ties).toBeUndefined();
+    }
   }, 60000);
 
   it("keeps „Tot clasamentul ›” the same selection as a ranking: the conditions it applies stay", () => {

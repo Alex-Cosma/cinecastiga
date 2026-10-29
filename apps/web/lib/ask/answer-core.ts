@@ -241,7 +241,7 @@ function entityCardCore(data: unknown): unknown {
     const places = Array.isArray(data.podium.places) ? data.podium.places : [];
     core.podium = {
       places: places.map((place) => object(place) ? { entityId: place.entityId, value: place.value, count: place.count } : place),
-      total: data.podium.total,
+      totals: data.podium.total,
     };
   }
   if (object(data.ties)) {

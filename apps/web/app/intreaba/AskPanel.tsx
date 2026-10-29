@@ -17,6 +17,7 @@ import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import { employeesWords } from "@/lib/ask/filters/words";
+import { LEADER_MIN_DAS } from "@/lib/ask/entity-card-shared";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -149,6 +150,9 @@ function sourceCount(data: BlockData, applied?: AskSpec): number | null {
       return data.counties.reduce((n, r) => n + r.count, 0);
     case "breakdown":
       return data.slices.reduce((n, r) => n + r.count, 0) + data.other.count;
+    // entity_card-2 (F6c): the sources are place 1's records by value, the tied profiles' on the index (runRows).
+    case "entity_card":
+      return data.ties ? data.ties.rows.reduce((n, r) => n + r.count, 0) : data.podium ? data.card.count : null;
     default:
       return null; // A displayed top N is never the full source population.
   }
@@ -1177,7 +1181,7 @@ export default function AskPanel({
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
               <EmptyState
-                message="Nicio înregistrare pentru această întrebare."
+                message={data.block === "entity_card" ? isProfile ? `Niciun profil cu cel puțin ${LEADER_MIN_DAS} de achiziții directe aici.` : "Nicio înregistrare aici." : "Nicio înregistrare pentru această întrebare."}
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               />

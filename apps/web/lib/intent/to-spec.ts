@@ -166,6 +166,12 @@ function baseFilters(i: Interpretation, choice: Choice, notes: string[]): AskFil
   return f;
 }
 
+/** „firme din Buzău”, „firma cu sediul în Buzău”: the county follows the firm's noun directly (folded text). */
+function seatSaid(text: string, county: string): boolean {
+  const name = fold(county).replace(/[^a-z0-9]+/g, " ").trim().replace(/ /g, "\\s+");
+  return new RegExp(`\\b(?:firma|firme|firmele|furnizor\\w*|societat\\w*|compani\\w*)\\s+(?:din|cu\\s+sediul\\s+(?:in|la))\\s+(?:judetul\\s+)?${name}\\b`).test(fold(text));
+}
+
 /** Build the spec of one intent. Returns the engine's validation message when impossible. */
 export function specFor(input: Interpretation, asked: IntentKind, choice: Choice = {}, context: SpecContext = {}): { spec: AskSpec | null; error: string | null; notes: string[] } {
   const i = choice.pair ? { ...input, authority: choice.pair.focal, compareWith: choice.pair.other, place: null }
@@ -182,8 +188,9 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
   else if (i.singleBidder) raw.dataset = "contracts";
   if (i.singleBidder) notes.push(i.dataset === "da" ? SINGLE_OFFER_DA_NOTE : SINGLE_OFFER_NOTE);
   const named = Boolean(f.authorityName || f.supplierName);
-  const dropForProfiles = (keepEntity: boolean) => {
-    const dropped = PROFILE_DROPPED.filter((k) => f[k] !== undefined);
+  // `keepSize`: the index of firms takes their size (F6c, final entity_card §3.6), as the profile of a firm's own peers does not.
+  const dropForProfiles = (keepEntity: boolean, keepSize = false) => {
+    const dropped = PROFILE_DROPPED.filter((k) => f[k] !== undefined && !(keepSize && (k === "minEmployees" || k === "maxEmployees")));
     for (const k of dropped) delete f[k];
     delete raw.dataset;
     if (!keepEntity) for (const k of ["authorityName", "authorityId", "supplierName", "supplierId", "compareWith", "compareWithId"] as const) delete f[k];
@@ -305,10 +312,16 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
           delete f.authorityKind;
           notes.push("Profilurile firmelor nu se pot restrânge după tipul instituției care cumpără; am păstrat doar județul.");
         }
-        dropForProfiles(false);
+        dropForProfiles(false, Boolean(i.superlative) && dim === "supplier");
       }
       break;
     }
+  }
+  // „firmă din Cluj”, „firmă cu sediul în Cluj” on „Cine conduce?” is the firm's seat, not its buyers' county (plan §2.7,
+  // final entity_card decision 2); „în județul Cluj” after the verb stays the buyers'.
+  if (raw.block === "entity_card" && raw.dim === "supplier" && place?.kind === "county" && f.county === place.county && seatSaid(i.text, place.county)) {
+    f.seatCounty = place.county;
+    delete f.county;
   }
   // "în 2025 față de 2024" on a total or a ranking would sum both years: the year asked about, as before the rule.
   const versus = i.period?.versus;

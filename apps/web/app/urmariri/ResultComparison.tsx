@@ -43,9 +43,12 @@ const labels: Record<string, string> = {
   // fact_check-2 (F6a): the verdict and what the sums leave out.
   state: "Verdictul", undated: "Contracte fără dată plauzibilă", channels: "Pe canale", frameworks: "Acorduri-cadru (plafoane)",
   ceiling: "Plafon", excluded: "Rânduri în afara sumelor",
+  // entity_card-2 (F6c): the podium's places and total, the group at the top of the index.
+  podium: "Podiumul", places: "Locurile 1–3", totals: "Totalul selecției", ties: "Grupul de la egalitate pe primul loc", level: "Indicele maxim", maxFlags: "Semnale la indicele maxim",
 };
 /** A group's count is of its entities or counties, not of records (TrendPartTotals.count); a distribution's members are its group. */
 const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă"
+  : key === "count" && path.includes("ties") ? "Profiluri la indicele maxim"
   : key === "members" && path.includes("distribution") ? "Membrii grupului" : key === "others" && path.includes("perCriterion") ? "La ceilalți membri" : name(key);
 const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "entityId", "partnerId", "nx", "ny", "rowFacts", "noun"]);
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
@@ -150,6 +153,7 @@ export const RESHAPED_WORDS: Readonly<Record<string, string>> = {
   "distribution-2": "criteriile față de un grup ales",
   "fact_check-2": "verdict în trei forme, cu profilul relației",
   "trend-2": "grupele schimbării",
+  "entity_card-2": "podiumul sau grupul de la egalitate pe primul loc",
 };
 
 /**

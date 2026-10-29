@@ -406,7 +406,8 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const range = min !== undefined && max !== undefined ? `${formatInt(min)}–${employeesCount(max)}` : null;
     // CÂȘTIGĂTORII (F3, the ranked firms' row) narrows the list, not the records: the title says whose list it is
     // („doar firmele cu 1–9 angajați”; „Cine conduce?”: „dintre firmele cu …”), not a bare „firme cu …” (S4 review).
-    const ranked = spec.dim === "supplier" && (spec.block === "table" || spec.block === "trend" || spec.block === "entity_card" && spec.rankBy === "value");
+    // On the index (F6c) the band selects the profiles of the firms in it: the same words for the title.
+    const ranked = spec.dim === "supplier" && (spec.block === "table" || spec.block === "trend" || spec.block === "entity_card");
     const tail = ranked ? `${spec.block === "entity_card" ? "dintre firmele" : "doar firmele"} ${employeesWords(min, max)}` : undefined;
     return {
       words: employeesPhrase(min, max)!, ...(tail ? { tail } : {}),

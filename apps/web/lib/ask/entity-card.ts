@@ -1,6 +1,5 @@
 import type { DbSql } from "@seap/db";
 import type { AskSpec } from "./spec";
-import { ENTITY_CARD_MIN_DAS } from "./predicates";
 import {
   criteriaCount, ENTITY_CARD_VERSION, PODIUM_PLACES, TIES_LISTED, type PodiumFact, type PodiumPlace, type PodiumTotals, type Podium, type Ties,
 } from "./entity-card-shared";
@@ -112,8 +111,6 @@ export async function tiesOf(sql: DbSql, o: { role: "authority" | "supplier"; wh
   };
 }
 
-/** The risk profiles' minimum, as the question states it (the group's pool counts profiles with at least this many acquisitions). */
-export const TIES_MIN_DAS = ENTITY_CARD_MIN_DAS;
 
 export interface PodiumFactRows {
   id: string; joint: string; largest: string | null; largest_src: "da" | "contracts" | null;
