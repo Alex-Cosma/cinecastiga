@@ -38,10 +38,12 @@ export function placeWords(place: Pick<PodiumPlace, "county">, spec: Spec, popul
  * several winners (from a quarter), a single record with at least half of it (amber), and the band of
  * CÂȘTIGĂTORII the question set, with the year of the balance sheet it was read from (amber when old).
  * „Firme noi” (F5) adds its own tag here — „înmatriculată în 2024”, „prima dată în 2025” — when its key is implemented.
+ * „În asociere” is a firm's tag (plan P8: an institution's would be its largest supplier): a buyer has no share in a
+ * contract of several winners, and its (?) speaks of firms.
  */
 export function placeFacts(place: PodiumPlace, fact: PodiumFact | undefined, spec: Spec, lastYear: number | null): RowFact[] {
   const tags: RowFact[] = [];
-  const joint = jointShare(place.value, fact);
+  const joint = spec.dim === "supplier" ? jointShare(place.value, fact) : null;
   if (joint !== null) tags.push({ text: `${Math.round(joint * 100)}% în asociere`, tip: { id: "in-asociere" } });
   const one = oneRecordShare(place, fact);
   // A place of a single record says so too (final §3.9: ENERGOMONTAJ, one contract, 100%).

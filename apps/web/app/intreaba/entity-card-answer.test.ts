@@ -46,6 +46,13 @@ describe("the tags of a place (P8)", () => {
     expect(energomontaj.map((t) => t.text)).toEqual(["100% în asociere", "1 contract: 100%", "0 angajați · bilanț 2024"]);
   });
 
+  it("say „în asociere” of a firm only: an institution has no share in a contract of several winners", () => {
+    const oncology = { ...alliance, name: "Institutul Oncologic Cluj", county: "Cluj" };
+    expect(placeFacts(oncology, fact({ joint: 0.47 * oncology.value }), hospitals, 2025)).toEqual([]);
+    expect(placeFacts(oncology, fact({ joint: 0.47 * oncology.value, largest: { value: 0.6 * oncology.value, src: "contracts" } }), hospitals, 2025)
+      .map((t) => t.text)).toEqual(["1 contract: 60%"]);
+  });
+
   it("carry the band the question set, with the balance sheet's year, amber when it is over two years old", () => {
     const band = { dim: "supplier", filters: { maxEmployees: 0 } } as const;
     expect(placeFacts(alliance, fact({ employees: 0, employeesYear: 2024 }), band, 2025).map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["0 angajați · bilanț 2024", "neutral"]]);

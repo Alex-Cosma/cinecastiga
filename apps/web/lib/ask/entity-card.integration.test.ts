@@ -1,7 +1,8 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
 import { forgetAuthorityKinds } from "./authority-kind";
-import { runRows, runSpec, type BlockData } from "./compile";
+import { forgetPodiums, runRows, runSpec, type BlockData } from "./compile";
+import { forgetNationalTotals, nationalTotals } from "./entity-card";
 import { evidenceCsv } from "./evidence";
 import { podiumFacts } from "./answer-facts";
 import { facetCounts, forgetFacets } from "./facets";
@@ -100,7 +101,7 @@ async function seed(q: DbSql): Promise<void> {
   await q`insert into core.direct_acquisitions (sicap_da_id, da_code, authority_entity_id, supplier_entity_id, closing_value, finalization_date, state)
     select 1000 + n, 'DAX' || n, ${buyer}::bigint, (${BASE}::bigint + s), 100, '2025-03-01'::timestamptz + (n || ' days')::interval, 'Oferta acceptata'
     from (values (1, 1), (2, 1), (3, 1), (4, 2), (5, 3), (6, 4), (7, 6), (8, 6)) v(n, s)`;
-  forgetMartColumns(); forgetAuthorityKinds(); forgetFacets();
+  forgetMartColumns(); forgetAuthorityKinds(); forgetFacets(); forgetNationalTotals();
 }
 
 const T = { yearFrom: 2025, yearTo: 2025 };
@@ -169,6 +170,25 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     // Both channels of agg_national (the analysis ceilings applied), the firms with value on their profiles.
     expect(podium!.total).toEqual({ value: 11804, count: 9, entities: 6 });
     expect(podium!.places[0]!.county).toBe("Cluj");
+  }, 60000);
+
+  it("keeps the national totals per build: a change in place keeps them, a rebuilt agg_national gives the new ones", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_national_kept", seed, async (q) => {
+      const first = await nationalTotals(q, "supplier");
+      // In place (the same files): the count over the profiles is not paid again.
+      await q`update marts.entity_profile set total_ron_split = 0 where entity_id = ${id(4)}`;
+      const kept = await nationalTotals(q, "supplier");
+      // A new build: the rollup is dropped and created again, with new files.
+      await q`create table marts.agg_national_next as table marts.agg_national`;
+      await q`drop table marts.agg_national`;
+      await q`alter table marts.agg_national_next rename to agg_national`;
+      await q`update marts.agg_national set v_plaf = v_plaf * 2`;
+      const rebuilt = await nationalTotals(q, "supplier");
+      return { first, kept, rebuilt };
+    });
+    expect(out.first).toEqual({ value: 11804, count: 9, entities: 6 });
+    expect(out.kept).toEqual(out.first);
+    expect(out.rebuilt).toEqual({ value: 23608, count: 9, entities: 5 });
   }, 60000);
 
   it("gives the places' facts from their own records and their profiles", async () => {
@@ -287,6 +307,24 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     expect(csv[1]).toMatch(/CT13/);
     // Delta is fourth: not on the podium, refused.
     expect(fourth).toMatchObject({ error: expect.stringMatching(/podium/) });
+  }, 60000);
+
+  it("by value: the sources read the podium the answer kept for this build, and rank again once it is forgotten", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_podium_kept", seed, async (q) => {
+      const { spec, grounding } = await answer(q, { dim: "supplier", rankBy: "value", filters: T });
+      // In place (the same files): Delta would now lead, but the drawer follows the answer's podium.
+      await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date)
+        values (89,'DA89',${id(61)},'Spitalul Fixture 1',${id(4)},'Delta Mica SRL','Bucuresti','33600000-6',9000,'2025-11-11')`;
+      const kept = await runRows(q, spec, grounding, 0, { limit: 100 });
+      const delta = await runRows(q, spec, grounding, 0, { limit: 100, scope: { entityIds: [id(4)], role: "supplier" } });
+      forgetPodiums();
+      const ranked = await runRows(q, spec, grounding, 0, { limit: 100 });
+      return { kept, delta, ranked };
+    });
+    if ("error" in out.kept || "error" in out.ranked) throw new Error(JSON.stringify(out));
+    expect([...new Set(out.kept.rows.map((row) => row.supplierId))]).toEqual([id(1)]);
+    expect(out.delta).toMatchObject({ error: expect.stringMatching(/podium/) });
+    expect([...new Set(out.ranked.rows.map((row) => row.supplierId))]).toEqual([id(4)]);
   }, 60000);
 
   it("counts the profiles of each band of the firms' size for the window, the draft's own band left out", async () => {
