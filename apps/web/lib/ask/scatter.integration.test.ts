@@ -1,10 +1,11 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { createDb, type DbSql } from "@seap/db";
+import { createDb, TRANSACTION_MART_BUILD_INDEXES, type DbSql } from "@seap/db";
 import { forgetAuthorityKinds } from "./authority-kind";
 import { runRows, runSpec } from "./compile";
 import { locate, profileFacts } from "./facets";
 import { ground } from "./ground";
 import { scatterWithFacts } from "./scatter";
+import { flaggedRecordKeys } from "./scatter-records";
 import type { ScatterData } from "./scatter-shared";
 import { pointPlace, type ScatterV2 } from "../../app/intreaba/scatter-answer";
 import { validateSpec, type AskSpec } from "./spec";
@@ -215,6 +216,33 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
     expect(out.alfa).toEqual(["2022-12-05", "2022-12-05", "2022-12-05", "2022-12-05"]);
     expect(out.delta).toBe(6);
     expect(out.gama).toEqual([15, [id(107)]]);
+  });
+
+  it("counts and orders a signal's records on their keys exactly as on the whole rows, and its keys read the build's index", async () => {
+    const out = await withAskFixture(connection!.sql, "scatter_keys", seed, async (q) => {
+      const spec = cloud({}, {});
+      // A search that keeps every record reads whole rows (the path before the F6b review); without one, the keys.
+      const run = async (sort: string, dir: string, page: number, search?: string) => {
+        const r = await runRows(q, spec, await ground(q, spec.filters), page, { scope: { flag: "da_rapid" }, sort, dir, ...(search ? { search } : {}) } as never);
+        if ("error" in r) throw new Error(r.error);
+        return { total: r.total, value: r.value, from: r.dateFrom, to: r.dateTo, ids: r.rows.map((row) => row.refId) };
+      };
+      const pairs: [unknown, unknown][] = [];
+      for (const [sort, dir] of [["value", "desc"], ["date", "asc"], ["source", "desc"]]) for (const page of [0, 1])
+        pairs.push([await run(sort!, dir!, page), await run(sort!, dir!, page, "comuna")]);
+      // The index the nightly build makes (TRANSACTION_MART_BUILD_INDEXES), on the fixture's copy of the mart.
+      await q.unsafe(TRANSACTION_MART_BUILD_INDEXES.find((index) => index.name === "da_tx_flagged_idx")!.definition);
+      await q.unsafe("set local enable_seqscan = off");
+      const keys = flaggedRecordKeys(q, "supplier", "da_rapid", q`select ${BASE + 107}::bigint`);
+      const plan = (await q`explain select count(*), sum(k.closing_value) from ${keys} k`) as unknown as { "QUERY PLAN": string }[];
+      await q.unsafe("set local enable_seqscan = on");
+      return { pairs, plan: plan.map((line) => line["QUERY PLAN"]).join("\n") };
+    });
+    for (const [keyed, whole] of out.pairs) expect(keyed).toEqual(whole);
+    // Alfa's 8 and Gama's 6, ten on the first page and four on the second.
+    expect(out.pairs.map(([keyed]) => (keyed as { ids: string[] }).ids.length)).toEqual([10, 4, 10, 4, 10, 4]);
+    // The partial index is usable only when the query repeats its predicate (an unvacuumed copy reads it by bitmap or index scan).
+    expect(out.plan).toMatch(/(Scan using|Scan on) da_tx_flagged_idx/);
   });
 
   it("refuses a signal the role cannot have, and a signal on another question", async () => {

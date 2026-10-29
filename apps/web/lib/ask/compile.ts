@@ -30,7 +30,7 @@ import {
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import { hasFlag, scatterAnswer } from "./scatter";
-import { builtFlagTotals, flagRecordsNote, flaggedRecordIds, RECONCILE_MAX } from "./scatter-records";
+import { builtFlagTotals, flagRecordsNote, flaggedRecordKeys, RECONCILE_MAX } from "./scatter-records";
 import { SCATTER_LIST_MAX, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
 import { flagLabel } from "../flags";
 import {
@@ -2490,7 +2490,10 @@ export async function runRows(
     from marts.contract_transactions
   )`;
   // scatter-2 (F6b): a signal's records, the acquisitions it flags of the profiles that have it (scatter-records.ts).
-  const txt = profile && flag ? sql`(select * from ${daTx} flagged where flagged.ref_id in ${flaggedRecordIds(sql, role as "authority" | "supplier", flag, sql`select entity_id from ${cohort} selected_profiles`)})`
+  // Their keys come from an index alone, with the value and the date: without a search the drawer counts and
+  // orders those, and reads whole rows only for its page (flagKeyed, below; a national signal: 0.1–1.3 s, not 20 s).
+  const flagKeys = profile && flag ? flaggedRecordKeys(sql, role as "authority" | "supplier", flag, sql`select entity_id from ${cohort} selected_profiles`) : null;
+  const txt = flagKeys ? sql`(select * from ${daTx} flagged where flagged.ref_id in (select k.ref_id from ${flagKeys} k))`
     : profile ? sql`(
     select da.sicap_da_id as ref_id, da.da_code, to_char(da.finalization_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD HH24:MI') as finalization_date,
            da.authority_entity_id as authority_id, a.name_display as authority_name,
@@ -2701,6 +2704,10 @@ export async function runRows(
     localParts.push(sql`strpos(lower(unaccent(concat_ws(' ', d.da_code, d.authority_name, d.supplier_name, d.cpv_name, d.cpv_code, d.county, d.ref_id::text))), ${fold(search)}) > 0`);
   }
   const localWhere = localParts.reduce((a, b) => sql`${a} and ${b}`);
+  // A signal's records without a search, on their keys: the channel and the state are the mart's own, and a
+  // profile's sources have no other condition (sourceWhere is `true`), so the totals and the first keys need no row.
+  const flagKeyed = flagKeys && !search
+    ? sql`(select k.ref_id, k.closing_value, k.finalization_date, 'da'::text as src, 'Oferta acceptata'::text as state from ${flagKeys} k)` : null;
   // The blocks whose source condition rollupSourceTotals adds itself.
   const totalsBlock = spec.block === "stat" || spec.block === "map" || spec.block === "breakdown" || spec.block === "timeseries" ? spec.block
     : spec.block === "table" && spec.dim === "county" ? "county" as const : spec.block === "table" && spec.dim === "supplier" ? "firms" as const
@@ -2769,7 +2776,7 @@ export async function runRows(
              count(*) filter (where ${localWhere}) fn,
              coalesce(sum(d.closing_value) filter (where ${localWhere}), 0)::text fv,
              min(d.finalization_date) date_from, max(d.finalization_date) date_to
-      from ${txt} d where ${sourceWhere} group by d.state
+      from ${flagKeyed ?? txt} d where ${sourceWhere} group by d.state
     `, opts.signal)) as unknown as SourceTotalsRow[]);
     const sourceTotal = totals.reduce((n, r) => n + Number(r.n), 0);
     const sourceValue = sumDecimalStrings(totals.map((r) => r.v));
@@ -2859,6 +2866,9 @@ export async function runRows(
     )` : !profile && sortKey === "source" && keyHidden ? sql`(
       select * from ${txt} d where ${sourceWhere} and ${localWhere}
       order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit}
+    )` : flagKeyed && (sortKey === "value" || sortKey === "date" || sortKey === "source") ? sql`(
+      select * from ${daTx} d where d.ref_id in (
+        select d.ref_id from ${flagKeyed} d where ${localWhere} order by ${sortFrag} ${dirFrag}, d.ref_id limit ${branchLimit})
     )` : txt;
     if (opts.capture) await opts.capture.persist(s, s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,

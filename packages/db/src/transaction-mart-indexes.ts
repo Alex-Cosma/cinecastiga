@@ -58,12 +58,23 @@ export type TransactionMartTable = (typeof TRANSACTION_MART_INDEXES)[number]["ta
  * against 9.7 s; 56k records: 45 ms against 120 ms; +10% size, measured on a
  * copy of 2024–2025, 25 October 2026). The web probes for the column
  * (coverRefReady) and keeps its plans until the first build with it.
+ *
+ * da_tx_flagged_idx holds only the rows that carry a flag (2.56M of 19.6M,
+ * after the da_split stamp), with both parties, the key, the value, the date
+ * and the flags: the sources of a signal on the risk cloud (scatter-records.ts
+ * flaggedRecordKeys) read their keys and totals from it alone. Without it a
+ * national signal scanned the whole mart twice, past the drawer's 20 s limit
+ * (possible split on the institutions, rapid on the firms); with it 0.1–0.6 s.
+ * 269 MB, built in 7.7 s on a copy of the local mart (F6b review, 30 Oct 2026).
+ * The query repeats its predicate word for word, so the planner can use it.
  */
 export const TRANSACTION_MART_BUILD_INDEXES = [
   { table: "da_transactions", name: "da_tx_supplier_cover_idx",
     definition: "CREATE INDEX da_tx_supplier_cover_idx ON marts.da_transactions USING btree (supplier_id, finalization_date) INCLUDE (authority_id, closing_value, cpv_code, county, sicap_da_id)" },
   { table: "da_transactions", name: "da_tx_authority_cover_idx",
     definition: "CREATE INDEX da_tx_authority_cover_idx ON marts.da_transactions USING btree (authority_id, finalization_date) INCLUDE (supplier_id, closing_value, cpv_code, county, sicap_da_id)" },
+  { table: "da_transactions", name: "da_tx_flagged_idx",
+    definition: "CREATE INDEX da_tx_flagged_idx ON marts.da_transactions USING btree (authority_id) INCLUDE (supplier_id, sicap_da_id, closing_value, finalization_date, da_flags) WHERE (cardinality(da_flags) > 0)" },
 ] as const;
 
 /** Before loading da_transactions (inside the build transaction, which holds the table). */
