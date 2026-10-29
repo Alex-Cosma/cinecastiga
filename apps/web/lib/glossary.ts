@@ -301,6 +301,19 @@ export const GLOSSARY = {
     title: "În asociere",
     text: "La un contract cu mai mulți câștigători, câte o înregistrare pe câștigător, cu cota lui egală. De aceea înregistrările pot fi mai multe decât contractele.",
   },
+  // Ask's ranking (F5, final table §3.3, §3.6, §3.7; kit §4): the ranked winners' chips, each a lead, never a signal.
+  "firme-noi": {
+    title: "Firme noi",
+    text: "Furnizori noi: prima înregistrare a firmei cu instituția aleasă e în anul ales sau după. Prima dată: prima înregistrare în datele noastre, nu data înființării. Înmatriculate: anul din Registrul Comerțului (după o mutare de sediu, poate fi anul mutării; firmele străine nu au număr).",
+  },
+  "client-principal": {
+    title: "Principalul lor client public",
+    text: "Cel puțin jumătate din tot ce a câștigat firma în achiziții publice (toată arhiva, cel puțin 3 înregistrări) vine de la această instituție. Vânzările private nu se văd aici. E un punct de plecare, nu o abatere.",
+  },
+  "o-firma-ia-jumatate": {
+    title: "O firmă ia peste jumătate",
+    text: "Cea mai mare firmă are cel puțin jumătate din valoarea instituției în selecție, din cel puțin 3 înregistrări. Des la școli (alimente), utilități și acorduri-cadru; e un punct de plecare.",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryId = keyof typeof GLOSSARY;

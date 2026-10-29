@@ -21,7 +21,8 @@ const NONE: FacetView = { status: "none" };
 
 /** The draft a part asks about, and its key in the page's memory. */
 export function facetAsk(draft: QuestionSpec, part: CountPart): { spec: QuestionSpec; key: string } {
-  const spec = facetSpec(draft, part);
+  // F5: the winners' chips count with the draft's other chips (the server leaves their own keys out itself).
+  const spec = part === "winners" ? draft : facetSpec(draft, part);
   return { spec, key: `${part}|${questionKey(spec)}` };
 }
 

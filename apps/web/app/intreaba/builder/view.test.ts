@@ -299,7 +299,7 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(firmsKindButton(seated, bandsChoice(["1-9"]), "other")).toBe("Firme cu 1–9 angajați, cu sediul în alt județ");
     expect(firmsKindButton(seated, bandsChoice([]), "same")).toBe("Firme cu sediul în județul Cluj");
     expect(firmsKindButton(seated, bandsChoice([]), "none")).toBe("Orice firmă");
-    expect(firmsKindChoices(bandsChoice([]), "none")).toEqual([{ filter: "employees", value: undefined }, { filter: "firmSeat", value: undefined }]);
+    expect(firmsKindChoices(bandsChoice([]), "none")).toEqual([{ filter: "employees", value: undefined }, { filter: "firmSeat", value: undefined }, { filter: "newSince", value: undefined }]);
   });
 
   it("count a year whose data reach 31 Dec as complete («compleți»: without a year still running)", () => {
@@ -349,7 +349,7 @@ describe("the windows (component 9 and the composed pickers)", () => {
   it("cover every place BLOCK_FILTERS offers on the seven questions", () => {
     for (const [name, spec] of Object.entries(SEVEN)) {
       const view = builderView(spec);
-      for (const target of Object.values(view.windows)) expect(windowKind(target), `${name} ${target.key}`).toMatch(/^(subject|focal|buyer|from|period|cpv|place|seat|locality|employees|admin|compareWith|list|advanced|exclusions|size)$/);
+      for (const target of Object.values(view.windows)) expect(windowKind(target), `${name} ${target.key}`).toMatch(/^(subject|focal|buyer|from|period|cpv|place|seat|locality|employees|admin|compareWith|list|advanced|exclusions|size|newFirms)$/);
       expect(BLOCK_FILTERS[spec.block as keyof typeof BLOCK_FILTERS]).toBeDefined();
     }
   });

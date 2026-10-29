@@ -33,7 +33,7 @@ import type { BuilderWindowSpec } from "./view";
 
 export type WindowKind =
   | "subject" | "focal" | "buyer" | "from" | "peers" | "period" | "cpv" | "place" | "locality" | "employees" | "admin" | "compareWith"
-  | "months" | "list" | "advanced" | "exclusions" | "size" | "seat";
+  | "months" | "list" | "advanced" | "exclusions" | "size" | "seat" | "newFirms";
 
 /** The control a window holds, from its place: a composed picker first, then the filter's own. */
 export function windowKind(win: BuilderWindowSpec): WindowKind {
@@ -50,6 +50,8 @@ export function windowKind(win: BuilderWindowSpec): WindowKind {
     case "county": return win.title === SEAT_WINDOW ? "seat" : "place";
     case "locality": return "locality";
     case "employees": return "employees";
+    // F5: „Firme noi”, its senses and its years (final table §3.3).
+    case "newSince": return "newFirms";
     case "admin": return "admin";
     case "compareWith": return "compareWith";
     case "trendMonths": return "months";
@@ -206,6 +208,7 @@ export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | 
   if (windowOf(win.slot).includes("purchaseKind")) return { id: "tip-achizitie" };
   if (win.slot.id === "dataset" && windowOf(win.slot).includes("procedure")) return { id: "procedura" };
   if (windowKind(win) === "employees") return { id: "angajati-benzi" };
+  if (windowKind(win) === "newFirms") return { id: "firme-noi" };
   // F4: where the seat comes from (owner-seat-switch), one text with the column's (?) and /harta's.
   if (windowKind(win) === "seat") return { id: "sediul-firmei" };
   // F4, the network: the groups are of the whole relation; the year cannot be one the archive has not completed.
@@ -364,7 +367,7 @@ export function currentRow(kind: "place" | "locality" | "buyer" | "cpv" | "from"
     }
     case "from": {
       const tab = tabs.find((t) => t === "supplier" ? f.supplierName || f.supplierId : t === "admin" ? f.adminName || f.adminPersonKey
-        : f.minEmployees !== undefined || f.maxEmployees !== undefined || seat && Boolean(f.firmSeat));
+        : f.minEmployees !== undefined || f.maxEmployees !== undefined || seat && (Boolean(f.firmSeat) || agedOf(spec) !== null));
       if (!tab) return null;
       return row(capital(tab === "supplier" ? entityLabel(spec, "supplier") : tab === "admin" ? adminPhrase(f.adminName) : firmsKindPhrase(f, seat) ?? "Firmele alese"));
     }
@@ -384,7 +387,14 @@ export const fromSeat = (win: BuilderWindowSpec): boolean => windowOf(win.slot).
 export function fromTab(win: BuilderWindowSpec, spec: QuestionSpec): "supplier" | "admin" | "employees" {
   const tabs = fromTabs(win), f = spec.filters, seat = fromSeat(win);
   return tabs.find((tab) => tab === "supplier" ? Boolean(f.supplierName || f.supplierId)
-    : tab === "admin" ? Boolean(f.adminName || f.adminPersonKey) : f.minEmployees !== undefined || f.maxEmployees !== undefined || seat && Boolean(f.firmSeat)) ?? tabs[0] ?? "supplier";
+    : tab === "admin" ? Boolean(f.adminName || f.adminPersonKey) : f.minEmployees !== undefined || f.maxEmployees !== undefined || seat && (Boolean(f.firmSeat) || agedOf(spec) !== null)) ?? tabs[0] ?? "supplier";
+}
+
+/** F5: the firms' own year „Ce fel de firme” holds on institutions and counties (the archive or the register), or null. */
+export interface AgedFirms { scope: "archive" | "registry"; since: number }
+export function agedOf(spec: QuestionSpec): AgedFirms | null {
+  const { newScope: scope, newSince: since } = spec.filters;
+  return (scope === "archive" || scope === "registry") && since !== undefined ? { scope, since: Number(since) } : null;
 }
 
 /**
@@ -404,14 +414,18 @@ export function firmsKindSeatOptions(spec: QuestionSpec, sized: boolean): { valu
 }
 
 /** The choices „Ce fel de firme” writes with its seat: the bands' (bandsChoice) and the seat, "none" removing it. */
-export function firmsKindChoices(bands: Choice, seat: string): Choice[] {
-  return [bands, { filter: "firmSeat", value: seat === "none" ? undefined : seat }];
+export function firmsKindChoices(bands: Choice, seat: string, aged: AgedFirms | null = null): Choice[] {
+  return [bands, { filter: "firmSeat", value: seat === "none" ? undefined : seat },
+    { filter: "newSince", value: aged ? { newScope: aged.scope, newSince: aged.since } : undefined }];
 }
 
 /** Its bottom button, what applies (kit: "Firme cu 1–9 angajați, cu sediul în alt județ"), or „Orice firmă”. */
-export function firmsKindButton(spec: QuestionSpec, bands: Choice, seat: string): string {
+export function firmsKindButton(spec: QuestionSpec, bands: Choice, seat: string, aged: AgedFirms | null = null): string {
   const size = (bands.value ?? {}) as EmployeesChoice;
-  const words = firmsKindPhrase({ county: spec.filters.county, minEmployees: size.minEmployees, maxEmployees: size.maxEmployees, firmSeat: seat === "none" ? undefined : seat }, true);
+  const words = firmsKindPhrase({
+    county: spec.filters.county, minEmployees: size.minEmployees, maxEmployees: size.maxEmployees, firmSeat: seat === "none" ? undefined : seat,
+    ...(aged ? { newScope: aged.scope, newSince: aged.since } : {}),
+  }, true);
   return words ? capital(words) : "Orice firmă";
 }
 
@@ -607,6 +621,17 @@ export function emptyReason(view: FacetView, value: string): string | null {
   if (view.status !== "ready") return null;
   const found = view.counts.options.find((o) => o.value === value);
   return found && found.n === 0 ? EMPTY_REASON[view.counts.unit] : null;
+}
+
+/**
+ * F5, a chip of the ranked winners with its number before the click (final table §4: „+ Principalul lor client
+ * public · 21 · 7,3%”): the firms or institutions it keeps and their share of the selection's value.
+ */
+export function winnerCount(view: FacetView, value: string): string | undefined {
+  if (view.status === "loading") return FACET_PENDING;
+  if (view.status !== "ready") return undefined;
+  const found = view.counts.options.find((o) => o.value === value);
+  return found ? `${formatInt(found.n)} · ${formatShare(found.share)}` : undefined;
 }
 
 /** The firms of each band of employees (kit §3 item 10: the number under each band), pending while they load. */

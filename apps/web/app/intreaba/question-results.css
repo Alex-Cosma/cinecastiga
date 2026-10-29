@@ -1006,3 +1006,11 @@
 .cq-strip { margin: 0 0 18px; min-width: 0; }
 .cq-total { min-width: 0; }
 .cq-total .qb-total { margin: 14px 0 0; }
+
+/* F5 (kit P8, component 20): a ranking row's facts between its name and its bar, and "Unde e o firmă?" above the
+   ranking. The facts wrap; the field takes the row on a phone (filters-kit.css .qb-find). */
+.cq-rank-name > strong + .cq-rank-facts { margin: -6px 0 10px; }
+.ask-table .cq-rank-facts { display: flex; margin-top: 4px; }
+.cq-locate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 14px; min-width: 0; }
+.cq-locate .qb-find { flex: 1 1 280px; min-width: 0; }
+.cq-locate-whole { min-height: 44px; }

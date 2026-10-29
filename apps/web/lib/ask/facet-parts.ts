@@ -11,7 +11,7 @@ import { isHistoricalProfile } from "./population";
  * a count ("32,0% · 88"). Plain TypeScript, no SQL: lib/ask/facets.ts counts.
  */
 
-export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate", "mix", "bars", "pair", "compare-peers", "network"] as const;
+export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "winners", "locate", "mix", "bars", "pair", "compare-peers", "network", "rows"] as const;
 export type FacetPart = (typeof FACET_PARTS)[number];
 /**
  * The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"),
@@ -19,8 +19,10 @@ export type FacetPart = (typeof FACET_PARTS)[number];
  * `pair` the facts of a comparison's pair for its windows and `compare-peers` the suggestions of
  * "Cu cine comparăm?" (F4, lib/ask/compare-engine.ts); `network` the whole relation of a network whose
  * „Toți” on one channel or in a period was answered from the records it bounds (lib/ask/network-facts.ts).
+ * F5: `winners` counts the ranked winners' chips (WINNERS_OPTIONS), `rows` reads the facts of the rows shown
+ * (lib/ask/winners.ts rankedFacts).
  */
-export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network">;
+export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network" | "rows">;
 export const isFacetPart = (value: unknown): value is FacetPart => (FACET_PARTS as readonly unknown[]).includes(value);
 
 /**
@@ -111,6 +113,23 @@ export interface BarsResult {
 /** A bar's sheet lists at most this many contracts above the cap. */
 export const ABOVE_CAP_ROWS = 5;
 
+/**
+ * F5, the options of the part `winners` (WINNERS_OPTIONS): "buyer:2024", "archive:2025", "registry:2024" (the firms
+ * of „Firme noi” from that year on), "main" („Principalul lor client public”), "dominant" („O firmă ia peste
+ * jumătate”); each conditioned on the other chips the draft has set, its share of the whole selection's value.
+ */
+export const winnerOption = (scope: string, year: number): string => `${scope}:${year}`;
+
+/** F5, the facts of the rows shown (part `rows`, lib/ask/winners.ts WinnerFacts), by entity id. */
+export interface RowsResult {
+  part: "rows";
+  facts: Record<string, import("./winners").WinnerFacts>;
+  checkpoint: string | null;
+  tookMs: number;
+}
+/** At most this many rows a request asks the facts of (a page of 50). */
+export const ROWS_MAX = 50;
+
 /** At most this many names a search returns (plan §2.5: "cel mult 8 potriviri"). */
 export const LOCATE_MATCHES = 8;
 /** A search starts at two characters (plan §2.5), after the reader stops typing for 250 ms. */
@@ -182,6 +201,9 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
     case "seat": return isHistoricalProfile(spec) ? ["county", "seatCounty"] : ["seatCounty", "firmSeat"];
     case "employees": return ["minEmployees", "maxEmployees"];
     case "years": return ["yearFrom", "yearTo", "monthFrom", "monthTo"];
+    // F5: the ranked winners' chips count over the selection without any of them (the others' condition is applied
+    // to each option on the server, so a number is the answer after that click); on firms the band is one of them.
+    case "winners": return spec.dim === "supplier" ? ["newSince", "newScope", "mainClient", "minEmployees", "maxEmployees"] : ["dominantSupplier"];
   }
 }
 
@@ -191,7 +213,7 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
  * contracts. `locate` keeps the question: it finds a place in its answer.
  */
 export function facetSpec<T extends { block: string; dataset?: string; dim?: string; rankBy?: string; filters: object }>(spec: T, part: FacetPart): T {
-  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network") return spec;
+  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network" || part === "rows") return spec;
   const filters = { ...spec.filters } as Record<string, unknown>;
   for (const key of ownKeys(spec, part)) delete filters[key];
   const out = { ...spec, filters } as T;

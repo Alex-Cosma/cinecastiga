@@ -266,7 +266,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
     // A window's counts (POST /api/ask/facets): grounding is inside; counts are counted again on every run,
     // "Unde e …?" keeps its rank vector (its warm runs are the next searches).
     if (c.path === "facet" && c.facet) {
-      const { facetCounts, locate, forgetFacets } = await import("../lib/ask/facets");
+      const { facetCounts, locate, forgetFacets, rowFacts } = await import("../lib/ask/facets");
       // An answer's facts (F3: „Din care”, the bars of an evolution) are asked as a part too, counted afresh each run.
       const { barFacts, forgetAnswerFacts, mixFacts } = await import("../lib/ask/answer-facts");
       // F4: a comparison's pair and the suggestions of "Cu cine comparăm?".
@@ -277,7 +277,8 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       const part = c.facet.part;
       const result = part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : part === "mix" ? await mixFacts(sql, c.spec)
         : part === "bars" ? await barFacts(sql, c.spec) : part === "pair" ? await pairFacts(sql, c.spec)
-          : part === "compare-peers" ? await comparePeers(sql, c.spec) : part === "network" ? await networkFacts(sql, c.spec) : await facetCounts(sql, c.spec, part);
+          : part === "compare-peers" ? await comparePeers(sql, c.spec) : part === "network" ? await networkFacts(sql, c.spec)
+            : part === "rows" ? await rowFacts(sql, c.spec, c.facet.ids ?? []) : await facetCounts(sql, c.spec, part);
       const ms = round(performance.now() - started);
       if ("timeout" in result) return { ms, groundMs: 0, error: "timeout (8 s)" };
       if ("error" in result) return { ms, groundMs: 0, error: result.error };
@@ -287,7 +288,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       const rows = "matches" in answer ? answer.matches.length : "options" in answer ? answer.options.length
         : "procedure" in answer ? answer.kind.length + answer.procedure.length + answer.size.length
           : "years" in answer ? answer.years.length + answer.domains.length : "peers" in answer ? answer.peers.length
-            : "data" in answer ? Object.keys(answer.data.partners).length : Object.keys(answer.max ?? {}).length;
+            : "data" in answer ? Object.keys(answer.data.partners).length : "facts" in answer ? Object.keys(answer.facts).length : Object.keys(answer.max ?? {}).length;
       return { ms, groundMs: 0, rows, hash: fingerprint(answer) };
     }
     const grounding = await ground(sql, c.spec.filters, c.spec.population);
