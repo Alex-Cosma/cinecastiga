@@ -1,5 +1,5 @@
 import { createDb, type DbSql } from "@seap/db";
-import { cpvCodeName, isCpvCodeTerm } from "@/lib/ask/cpv-label";
+import { cpvCodeName, isCpvCodeTerm } from "../../../../lib/ask/cpv-label";
 
 const globalDb = globalThis as unknown as { __seapSql?: DbSql };
 
