@@ -44,6 +44,9 @@ export interface CorpusIdentities {
   /** Profiles with at least ten direct acquisitions; one entity without a profile. */
   profileAuthority: Party;
   profileSupplier: Party;
+  /** Profiles carrying a signal of the risk cloud (F6b): December's share (an institution), dependence (a firm). */
+  signalAuthority: Party;
+  signalSupplier: Party;
   noProfile: Party;
   /** A buyer without records in the `cpv.quietWord` domain. */
   quietAuthority: Party;
@@ -489,8 +492,8 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   const cloudOf = (options: NonNullable<QuestionSpec["scatter"]>): Edit => (q) => { q.scatter = { ...options }; };
   combo("signal", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" })), { rows: {} });
   combo("by-value", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "value" })));
-  combo("firms-signal", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_dependence" })), { rows: { scope: { role: "supplier", entityIds: [String(ids.profileSupplier.id)] } } });
-  combo("signal-profile", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk" })), { rows: { scope: { role: "authority", entityIds: [String(authority.id)], flag: "da_year_end" } } });
+  combo("firms-signal", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_dependence" })), { rows: { scope: { role: "supplier", entityIds: [String(ids.signalSupplier.id)] } } });
+  combo("signal-profile", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk" })), { rows: { scope: { role: "authority", entityIds: [String(ids.signalAuthority.id)], flag: "da_year_end" } } });
   // entity_card
   combo("risk-authority", "entity_card", top({ rankBy: "risk", dim: "authority" }));
   combo("risk-supplier", "entity_card", top({ rankBy: "risk", dim: "supplier" }));

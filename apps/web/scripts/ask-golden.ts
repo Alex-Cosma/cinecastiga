@@ -35,6 +35,9 @@ export const LOCAL_IDENTITIES: CorpusIdentities = {
   unrelated: { authority: { id: 2146445, name: "Municipiul Cluj-Napoca" }, supplier: { id: 1967089, name: "CURELARU PROD EXIM SRL" } },
   profileAuthority: { id: 2146445, name: "Municipiul Cluj-Napoca" },
   profileSupplier: { id: 2115381, name: "SELGROS CASH&CARRY SRL" },
+  // F6b review: Cluj-Napoca and SELGROS lack these signals, so their sources were empty on the local copy.
+  signalAuthority: { id: 2144649, name: "Opera Maghiara Cluj-Napoca" },
+  signalSupplier: { id: 2108933, name: "XRX SERVICE" },
   noProfile: { id: 2020757, name: "ASOCIATIA SALVAMOND SALVASPEO VLADEASA CLUJ" },
   quietAuthority: { id: 2130038, name: "Scoala Gimnaziala Râsca" },
   county: "Cluj",
