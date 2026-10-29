@@ -1,3 +1,4 @@
+import { countWords } from "./answer-text";
 import { defaultTrendYears, type CoveragePeriods } from "./months-window";
 import type { AskSpec, NetworkOptions } from "./spec";
 
@@ -153,7 +154,16 @@ export interface NetworkData {
    * how many and when, not the live group (relations.ts NetworkWatch). Absent on every other answer.
    */
   members?: { list: NetworkGroup; frozen: number; frozenAt: string };
+  /**
+   * The firms' seat against the institution in the centre (`firmSeat` same, other): the Romanian firms nobody knows
+   * the seat of, with records in the selection, in no list (final §3.4). Absent when none, or without that seat.
+   * Not compared by a watch (answer-core.ts).
+   */
+  unknownSeat?: number;
 }
+
+/** „19 firme fără sediu cunoscut nu intră în răspuns.” (final §3.4), under the summary while the seat is chosen. */
+export const unknownSeatWords = (n: number): string => `${countWords(n, "firmă", "firme")} fără sediu cunoscut nu intră în răspuns.`;
 
 /** The official signals that can sit on a relation (final §3.4): the pair's, and the dependence of a firm on the institution. */
 export const RELATION_SIGNALS = ["da_split", "net_shared_admin", "da_dependence", "award_dependence"] as const;

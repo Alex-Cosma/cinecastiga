@@ -8,6 +8,8 @@
 .qb-net .qb-net-since { gap: 8px; }
 .qb-net .qb-net-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .qb-net .qb-net-summary { margin: 0; color: var(--ink2); font-size: 13.5px; min-width: 0; }
+/* „N firme fără sediu cunoscut nu intră în răspuns.” under the summary, while the seat is chosen (final network §3.4). */
+.qb-net .qb-net-unknown { display: block; margin-top: 2px; font-size: 13px; }
 .qb-net .qb-net-order { flex-wrap: nowrap; }
 .qb-net .qb-net-chart { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
 .qb-net .qb-net-chart-toggle { display: none; }

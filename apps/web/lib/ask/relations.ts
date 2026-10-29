@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import type { Dataset } from "./spec";
 import { sumDecimalStrings } from "./evidence";
-import { andAll, ownCountySql, rowPredicates, type PredicateCtx } from "./predicates";
+import { andAll, ownCountySql, rowPredicates, seatOf, type PredicateCtx } from "./predicates";
 import {
   DEPENDENCE_PAIR_SHARE, FIRM_SHARE_MIN, FIRM_SHARE_TOTAL, NETWORK_LISTS, NETWORK_ROWS, RELATION_SIGNALS, networkGroupOf,
   type NetworkData, type NetworkGroup, type NetworkList, type NetworkListData, type NetworkPartner, type NetworkRow,
@@ -311,6 +311,28 @@ async function boundedNetwork(s: DbSql, q: RelationQuery & { since: number; comp
     block: "network", focal: { entityId: q.focalId, name: q.focalName, role: focalRole }, since: q.since, complete: q.complete, list: "all",
     lists: { all, new: none, continuing: none, gone: none }, partners, lastNew: null, relation: "pending",
   };
+}
+
+/**
+ * The firms around an institution that the seat against its county cannot
+ * place (final network §3.4, „19 firme fără sediu cunoscut nu intră în
+ * răspuns.”): Romanian firms whose seat nobody knows, with a record in the
+ * question's selection without the seat (the period on „Toți” only), so in
+ * none of its lists. A grouping of the centre's records on their id index.
+ */
+export async function unknownSeatPartners(s: DbSql, q: RelationQuery & { list: NetworkList }): Promise<number> {
+  const ctx: PredicateCtx = { ...q.ctx, firmSeat: null };
+  const rel = andAll(s, [...rowPredicates(relationCtx(ctx)), s`d.supplier_id is not null`]);
+  const sel = selectionCond(s, ctx, q.dataset, { years: q.list === "all", ...(q.threshold ? { threshold: q.threshold } : {}) });
+  const seat = seatOf(s, ctx.seatColumn);
+  const [row] = (await s`
+    select count(*)::int n from (
+      select distinct d.supplier_id id from ${relationUnion(s, ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null)} d where ${rel} and ${sel}
+    ) p
+    left join marts.entity_profile ep on ep.entity_id = p.id and ep.role = 'supplier'
+    where ep.entity_id is null or (${seat.romanian} and ${seat.county} is null)
+  `) as unknown as { n: number }[];
+  return row?.n ?? 0;
 }
 
 /**

@@ -43,7 +43,7 @@ import { kindApplies, kindLeftOutNote } from "./purchase";
 import { assembleSeries, type SeriesPart, type SeriesPoint, type SeriesRef, type SeriesRow } from "./series";
 import { mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
 import { networkLastYear, networkList, networkSince, networkSourcesNote } from "./network-shared";
-import { networkAnswer, networkMembersCond, sankeyAnswer, type NetworkWatch, type RelationQuery } from "./relations";
+import { networkAnswer, networkMembersCond, sankeyAnswer, unknownSeatPartners, type NetworkWatch, type RelationQuery } from "./relations";
 import type { NetworkData, NetworkGroup } from "./network-shared";
 import type { SankeyData } from "./sankey-shared";
 import { distributionData, distributionGroup } from "./distribution";
@@ -1998,7 +1998,10 @@ export async function runSpec(
           const net = await networkAnswer(s, { ...relation(), focalName, since: networkReference!, complete: networkComplete!, signals, list, bounded, ...(watch ? { watch } : {}) });
           if (watch?.members) frozenMembers = watch.members;
           if (watch?.movement) movement = watch.movement;
-          return net ?? { error: emptyRelationError(focalName) };
+          if (!net) return { error: emptyRelationError(focalName) };
+          // The firms' seat against the institution (final network §3.4): those nobody knows the seat of are in no list, said under the summary.
+          const unknownSeat = focalRole === "authority" && (w.firmSeat === "same" || w.firmSeat === "other") ? await unknownSeatPartners(s, { ...relation(), list }) : 0;
+          return unknownSeat ? { ...net, unknownSeat } : net;
         }
 
         case "entity_card": {

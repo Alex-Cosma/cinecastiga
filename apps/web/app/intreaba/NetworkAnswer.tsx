@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
 import { countWords, formatShare } from "@/lib/ask/answer-text";
 import { networkSinceChoices, NETWORK_LIST_LABELS, type NetworkData, type NetworkList, type NetworkOrder, type NetworkRow } from "@/lib/ask/network-shared";
-import { networkOrder } from "@/lib/ask/network-shared";
+import { networkOrder, unknownSeatWords } from "@/lib/ask/network-shared";
 import type { AskSpec } from "@/lib/ask/spec";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import CountGroups from "./builder/CountGroups";
@@ -87,6 +87,7 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
         {/* The space before each part stays outside its nowrap: the line may break there (S4 tests: „· 95,3% în asociere (?)” ran 56 px past a 390 px screen, its (?) out of reach). */}
         {summary.oneOff && <>{" "}<span className="qb-nowrap">· {summary.oneOff}<HelpTip tip={ONE_OFF_TIP} /></span></>}
         {summary.joint && <>{" "}<span className="qb-nowrap">· {summary.joint}<HelpTip tip={JOINT_TIP} /></span></>}
+        {data.unknownSeat ? <span className="qb-net-unknown">{unknownSeatWords(data.unknownSeat)}</span> : null}
       </p>
       <span className="qb-row qb-net-order">
         <span className="qb-strip-label">Ordonează</span>
