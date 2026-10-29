@@ -2836,7 +2836,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -11993,7 +11993,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -12225,10 +12225,11 @@
         "employees": 0,
         "employeesYear": 2023
        }
-      ]
+      ],
+      "wider": 6
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -16540,7 +16541,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -17349,11 +17350,12 @@
    "source": "o cheie din versiunea următoare (F0a)",
    "request": {
     "spec": {
-     "block": "table",
-     "dim": "supplier",
+     "block": "scatter",
+     "dim": "authority",
      "measure": "value",
-     "filters": {
-      "newSince": 2024
+     "filters": {},
+     "peers": {
+      "domain": true
      }
     }
    },
@@ -38109,10 +38111,11 @@
         "employees": 0,
         "employeesYear": 2023
        }
-      ]
+      ],
+      "wider": 6
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -46351,7 +46354,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -46646,7 +46649,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -46898,10 +46901,11 @@
         ],
         "kind": "oras_municipiu"
        }
-      ]
+      ],
+      "wider": 7
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47112,7 +47116,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and entity_id in (…)  -- doar primării de comună\n;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47314,7 +47318,7 @@
       }
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_split'  -- Posibilă fracționare\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47379,7 +47383,7 @@
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Posibilă fracționare”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
+     "Sursele semnalului „Posibilă fracționare”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
     ],
     "statuses": [],
     "rows": []
@@ -47588,7 +47592,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47867,7 +47871,7 @@
       }
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Dependență de o autoritate\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -48129,7 +48133,7 @@
       ]
      }
     },
-    "displaySql": "select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= 10 and cri is not null;"
+    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,

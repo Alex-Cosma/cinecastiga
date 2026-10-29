@@ -4,11 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import { BUZAU_CLOUD, BUZAU_SPLIT, NATIONAL_BANDS, SPITALE_SMALL } from "../../lib/ask/fixtures/scatter-screen";
 import type { AskSpec } from "../../lib/ask/spec";
 import { AnswerEvidence } from "./AnswerEvidence";
+import { decodeSpec } from "../../lib/ask/permalink";
 import { answerCsv } from "./answer-csv";
-import { emptyAnswer } from "./answer-empty";
+import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
-  axisTicks, axisWords, bandIndex, cardFacts, dots, employeesWords, flagTag, geometry, jitter, kindWords, listHeadTip, listHeadWords, nearest, rowMeta, scatterCsv, withFacts,
+  axisTicks, axisWords, bandIndex, cardFacts, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip, listHeadWords, nearest, pointPlace, rowMeta,
+  scatterCsv, signalsPageLink, stripStatusWords, withFacts, type ScatterV2,
 } from "./scatter-answer";
 
 /*
@@ -23,6 +25,19 @@ const text = (markup: string) => markup.replace(/<span[^>]*role="tooltip"[^>]*>.
 const spec = (extra: Partial<AskSpec> = {}): AskSpec => ({ block: "scatter", dim: "authority", measure: "value", filters: { authorityKind: "comuna", county: "Buzău" }, scatter: { rankBy: "risk" }, ...extra });
 const render = (data = BUZAU_CLOUD, applied = spec()) => renderToStaticMarkup(createElement(AnswerEvidence.Provider, { value: { open: vi.fn() } },
   createElement(ScatterAnswer, { data, spec: applied, onStrip: () => undefined }) as ReactNode));
+/** A CSV line split into its fields (quoted fields may hold commas and doubled quotes). */
+const fields = (line: string): string[] => {
+  const out: string[] = [];
+  let cur = "", quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]!;
+    if (quoted) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') quoted = false; else cur += c; }
+    else if (c === '"') quoted = true;
+    else if (c === ",") { out.push(cur); cur = ""; }
+    else cur += c;
+  }
+  return [...out, cur];
+};
 
 describe("the risk cloud's answer", () => {
   it("has the strip's two rows: the order, and the signals with the number of profiles that have each (none with zero)", () => {
@@ -80,12 +95,26 @@ describe("the risk cloud's answer", () => {
     expect(markup).toContain("sc-dot is-list is-flag");
   });
 
-  it("shows a group of fewer than 10 as a list, with a way out, and no chart", () => {
-    const markup = render(SPITALE_SMALL, spec({ filters: { authorityKind: "spital", county: "Buzău" } }));
+  it("shows a group of fewer than 10 as a list, with a way out to the same kind in the whole country, and no chart", () => {
+    const markup = render({ ...SPITALE_SMALL, wider: 329 }, spec({ filters: { authorityKind: "spital", county: "Buzău" } }));
     expect(markup).not.toContain("sc-chart");
     expect(text(markup)).toContain("5 profiluri în grup: prea puține pentru un nor. Le arătăm ca listă.");
-    expect(markup).toMatch(/href="\/intreaba\?spec=[^"]+"[^>]*>Toată țara/);
     expect(text(markup)).toContain("SPITALUL JUDETEAN DE URGENTA BUZAU");
+    // Only the place leaves: the hospitals stay hospitals (review: the kind was dropped without a word).
+    const link = markup.match(/href="\/intreaba\?spec=([^"]+)"[^>]*>Toate spitalele din țară · 329/);
+    expect(link).not.toBeNull();
+    const widened = decodeSpec(decodeURIComponent(link![1]!.replace(/&amp;/g, "&"))) as AskSpec;
+    expect(widened.filters).toEqual({ authorityKind: "spital" });
+    // Without the national number (an answer stored before it), the link says the place alone; nationally, none.
+    expect(text(render(SPITALE_SMALL, spec({ filters: { authorityKind: "spital", county: "Buzău" } })))).toContain("Toată țara");
+    expect(render(SPITALE_SMALL, spec({ filters: { authorityKind: "spital" } }))).not.toContain("qb-relax-link");
+  });
+
+  it("offers no order for a group of one listed profile, and says the strip's answer to a screen reader", () => {
+    const one = { ...SPITALE_SMALL, group: { n: 1, nList: 1, small: true as const } };
+    expect(text(render(one, spec({ filters: { authorityKind: "consiliu_judetean", county: "Buzău" } })))).not.toContain("Primele după");
+    expect(render(BUZAU_SPLIT, spec({ scatter: { rankBy: "risk", flag: "da_split" } }))).toContain('role="status">46 cu Posibilă fracționare, după semnale<');
+    expect(stripStatusWords(BUZAU_CLOUD as ScatterV2)).toBe("82 în listă, după semnale");
   });
 
   it("draws a national cloud from cells, the named profiles exact", () => {
@@ -97,6 +126,7 @@ describe("the risk cloud's answer", () => {
 
   it("is empty when its group is, and the old answer's sample says so too", () => {
     expect(emptyAnswer({ block: "scatter", scatter: { ...BUZAU_CLOUD, group: { n: 0, nList: 0 } } })).toBe(true);
+    expect(emptyMessage({ block: "scatter", scatter: { ...BUZAU_CLOUD, group: { n: 0, nList: 0 } } })).toBe("Niciun profil în acest grup.");
     expect(emptyAnswer({ block: "scatter", scatter: BUZAU_CLOUD })).toBe(false);
     expect(emptyAnswer({ block: "scatter", points: [] })).toBe(true);
   });
@@ -105,11 +135,32 @@ describe("the risk cloud's answer", () => {
     const { text: csv, filename } = answerCsv({ block: "scatter", scatter: BUZAU_SPLIT }, spec({ scatter: { rankBy: "value", flag: "da_split" } }), "Ce primării ies din tipar",
       { rank: "valoare", signal: "Posibilă fracționare", signalFile: "posibila-fractionare" });
     const lines = csv.replace(/^﻿/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("loc,nume,tip,judet,valoare_lei,achizitii_directe,indice_de_risc,semnale,detalii_semnale,primele_dupa,semnal");
+    expect(lines[0]).toBe("loc,nume,tip,judet,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale,primele_dupa,semnal");
     expect(lines).toHaveLength(4);
-    expect(lines[1]).toContain('"Comuna Sageata (Primaria Comunei Sageata)","Primărie de comună","Buzău",21000000,2567,0.6,3,"da_split|da_year_end|da_rapid","Posibilă fracționare · 2018–2019; Vârf în decembrie · 2022; Finalizare rapidă"');
-    expect(lines[1]).toMatch(/"valoare","Posibilă fracționare"$/);
+    // Every line has a header for each value (review: the count of signals had none, so every column after it slid).
+    const head = fields(lines[0]!);
+    for (const line of lines.slice(1)) expect(fields(line)).toHaveLength(head.length);
+    const first = Object.fromEntries(head.map((name, i) => [name, fields(lines[1]!)[i]]));
+    expect(first).toMatchObject({ nume: "Comuna Sageata (Primaria Comunei Sageata)", tip: "Primărie de comună", judet: "Buzău", valoare_lei: "21000000", achizitii_directe: "2567",
+      indice_de_risc: "0.6", nr_semnale: "3", semnale: "da_split|da_year_end|da_rapid", detalii_semnale: "Posibilă fracționare · 2018–2019; Vârf în decembrie · 2022; Finalizare rapidă",
+      primele_dupa: "valoare", semnal: "Posibilă fracționare" });
     expect(filename).toBe("ce-primarii-ies-din-tipar-dupa-valoare-posibila-fractionare.csv");
+  });
+
+  it("exports a firm's list with as many headers as values, and the rates' shares the screen asked after the answer", () => {
+    const firms = { ...BUZAU_CLOUD, role: "supplier" as const, levels: 4, list: BUZAU_CLOUD.list.map(({ kind: _kind, ...r }) => ({ ...r, employees: 3, employeesYear: 2025 })) } as ScatterV2;
+    const rows = scatterCsv(firms, (v) => JSON.stringify(v ?? ""), new Map([["2144803", [{ code: "da_rapid", share: 0.252, rows: 647 }]]]));
+    expect(rows[0]).toBe("loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale");
+    for (const line of rows.slice(1)) expect(fields(line)).toHaveLength(fields(rows[0]!).length);
+    expect(fields(rows[1]!).at(-1)).toBe("Posibilă fracționare · 2018–2019; Vârf în decembrie · 2022; Finalizare rapidă · 25,2%");
+  });
+
+  it("links the whole list on /semnale as the cloud orders it: the index without a signal, the signal's own with one, the county kept", () => {
+    expect(signalsPageLink(BUZAU_CLOUD as ScatterV2, spec())).toEqual({ href: "/semnale?view=cri&rol=authority&jud=Buz%C4%83u", label: "Toată lista pe /semnale" });
+    expect(signalsPageLink(BUZAU_SPLIT as ScatterV2, spec())).toEqual({ href: "/semnale?tip=da_split&rol=authority&jud=Buz%C4%83u", label: "Aparițiile semnalului pe /semnale" });
+    expect(signalsPageLink({ ...BUZAU_CLOUD, flag: "da_concentration" } as ScatterV2, spec({ filters: {} })).href).toBe("/semnale?tip=da_concentration&rol=authority");
+    const firms = { ...BUZAU_CLOUD, role: "supplier" } as ScatterV2;
+    expect(signalsPageLink(firms, spec({ dim: "supplier", filters: { seatCounty: "Cluj" } })).href).toBe("/semnale?view=cri&rol=supplier&jud=Cluj");
   });
 });
 
@@ -139,7 +190,30 @@ describe("the chart's geometry and words", () => {
     expect(axisWords(1e9)).toBe("1 mld.");
     expect(axisTicks(6.2, 8.3, false).map((t) => t.text)).toEqual(["2 mil.", "5 mil.", "10 mil.", "20 mil.", "50 mil.", "100 mil."]);
     expect(axisTicks(3, 9, false).map((t) => t.text)).toEqual(["1 mie", "10 mii", "100 mii", "1 mil.", "10 mil.", "100 mil.", "1 mld."]);
-    expect(axisTicks(6.2, 8.3, true).map((t) => t.text)).toEqual(["10 mil.", "100 mil."]);
+    // A phone keeps at least three ticks: the 2 and the 5 where the decades are fewer (review: one lonely "10 mil." at 320 px).
+    expect(axisTicks(6.2, 8.3, true).map((t) => t.text)).toEqual(["2 mil.", "10 mil.", "50 mil."]);
+    expect(axisTicks(6.5, 7.6, true).map((t) => t.text)).toEqual(["5 mil.", "10 mil.", "20 mil."]);
+    expect(axisTicks(3, 9, true).map((t) => t.text)).toEqual(["1 mie", "100 mii", "10 mil.", "1 mld."]);
+  });
+
+  it("places a point past the list's first rows from the cloud drawn point by point, in the server's order", () => {
+    // Comuna Mica has 12 acquisitions: in the cloud, not in the list of 20.
+    expect(["2144803", "2144792", "2146202", "1"].map((id) => pointPlace(BUZAU_CLOUD as ScatterV2, id))).toEqual([1, 2, 3, null]);
+    // By value: Merei's 28,3 mil. first; with a signal, only the points that have it count.
+    expect(pointPlace({ ...BUZAU_CLOUD, rankBy: "value" } as ScatterV2, "2146202")).toBe(1);
+    expect(pointPlace({ ...BUZAU_CLOUD, flag: "da_year_end" } as ScatterV2, "2146202")).toBeNull();
+    expect(pointPlace({ ...BUZAU_CLOUD, flag: "da_year_end" } as ScatterV2, "2144792")).toBe(2);
+    // A national cloud of cells has no place to give: the search's part=locate does.
+    expect(pointPlace(NATIONAL_BANDS as ScatterV2, "2144803")).toBeNull();
+  });
+
+  it("draws a found profile exact on a cloud of cells, marked when it has the chosen signal", () => {
+    const data = { ...NATIONAL_BANDS, flag: "da_split" } as ScatterV2, g = geometry(data, 800);
+    const dot = exactDot(data, g, { id: "42", name: "DEDEMAN", value: 5e6, nFlags: 2, nDas: 400, codes: ["da_split", "da_rapid"] });
+    expect(dot.x).toBeCloseTo(g.x(5e6), 6);
+    expect(dot.y).toBeCloseTo(g.y(2, "42"), 6);
+    expect([dot.flagged, dot.listed]).toEqual([true, false]);
+    expect(render(data, spec({ filters: {}, scatter: { rankBy: "risk", flag: "da_split" } })).match(/class="sc-dot[^"]*"/g)).toHaveLength(3);
   });
 
   it("finds the nearest point within reach, and marks the chosen signal's points", () => {

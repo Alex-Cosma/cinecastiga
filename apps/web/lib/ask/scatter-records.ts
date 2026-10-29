@@ -27,9 +27,9 @@ const PARTNER: Record<ScatterRole, string> = { authority: "supplier_id", supplie
 /** The drawer's note on a signal's sources: which acquisitions they are (the rows of flaggedRecordIds). */
 export function flagRecordsNote(flag: ScatterFlag): string {
   const which: Record<ScatterFlag, string> = {
-    da_split: "achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV), fiecare sub plafon, cu suma peste plafon",
+    da_split: "achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon",
     da_year_end: "achizițiile finalizate în decembrie, în anii în care decembrie a avut cel puțin 35% din valoarea anuală",
-    da_rapid: "achizițiile finalizate la scurt timp după publicare",
+    da_rapid: "achizițiile finalizate în mai puțin de o oră de la publicare",
     da_round: "achizițiile cu valoarea între 90% și 100% din plafon",
     da_concentration: "achizițiile de la furnizorul principal al instituției (cea mai mare valoare)",
     da_dependence: "achizițiile de la instituția principală a firmei (cea mai mare valoare)",

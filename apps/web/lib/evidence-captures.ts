@@ -6,6 +6,7 @@ import type { CaptureRequest, CaptureSummary, CaptureStatus, FrozenRecord } from
 import { contractSnapshot, freezeRow, validateCaptureRequest } from "./evidence-capture-input";
 import { ground } from "./ask/ground";
 import { runRows, runSpec } from "./ask/compile";
+import { scatterWithFacts } from "./ask/scatter";
 import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
 import { answerLabels } from "./ask/filters/title";
@@ -173,8 +174,10 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   const canonical=await canonicalAskIdentities(database,spec,grounding,request.options.scope);
   spec=canonical.spec;grounding=canonical.grounding;
   const options={...request.options,...(canonical.scope?{scope:canonical.scope}:{})};
-  const answer = await runSpec(database, spec, grounding, {}, { entities });
-  if ("error" in answer) throw new CaptureError(answer.error);
+  const ran = await runSpec(database, spec, grounding, {}, { entities });
+  if ("error" in ran) throw new CaptureError(ran.error);
+  // scatter-2: the frozen list keeps the records behind each signal and the rates' shares the screen asks afterwards.
+  const answer = ran.data.block === "scatter" && "scatter" in ran.data ? { ...ran, data: { ...ran.data, scatter: await scatterWithFacts(database, ran.data.scatter) } } : ran;
   const sources = await runRows(database, spec, grounding, 0, { ...options, ...(entities ? { entities } : {}),
     capture: { persist: (database, query) => persistQueryRows(database, captureId, query) } });
   if ("error" in sources) throw new CaptureError(sources.error);

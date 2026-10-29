@@ -18,6 +18,10 @@ import { SCATTER_FLAGS, SCATTER_FLAGS_BY_ROLE, type AskSpec, type RankBy } from 
 export type ScatterRole = "authority" | "supplier";
 export type ScatterFlag = (typeof SCATTER_FLAGS)[number];
 
+/*
+ * The two floors are predicates.ts's RISK_MIN_DAS and ENTITY_CARD_MIN_DAS, written here because this module is the
+ * screen's and predicates.ts brings the database package; scatter-shared.test.ts holds them equal.
+ */
 /** The cloud: profiles with at least this many accepted direct acquisitions (RISK_MIN_DAS, as the distribution). */
 export const SCATTER_CLOUD_MIN_DAS = 10;
 /** A group of fewer profiles than this is no cloud: the whole group is listed, from SCATTER_CLOUD_MIN_DAS acquisitions (final §4.4). */
@@ -41,8 +45,11 @@ export const isScatterFlag = (value: unknown): value is ScatterFlag => (SCATTER_
 /** The criteria a role can meet: the chart's bands are 0…this. */
 export const scatterLevels = (role: ScatterRole): number => SCATTER_FLAGS_BY_ROLE[role].length;
 
-/** A point of the cloud: its signals as bits of scatterFlagsOf(role), so the chart marks the chosen one with no request. */
-export interface ScatterCloudPoint { id: string; name: string; value: number; nFlags: number; flags: number; nDas: number }
+/**
+ * A point of the cloud: its signals as bits of scatterFlagsOf(role), so the chart marks the chosen one with no request.
+ * `county`: every point of a cloud drawn point by point (up to 2,000), for the sheet of a point past the list's 50.
+ */
+export interface ScatterCloudPoint { id: string; name: string; value: number; nFlags: number; flags: number; nDas: number; county?: string | null }
 export const flagBit = (role: ScatterRole, flag: ScatterFlag): number => 1 << Math.max(0, scatterFlagsOf(role).indexOf(flag));
 
 /** Cells of the grey layer: [x bucket (1-based), criteria met (the band), profiles]. */
@@ -101,6 +108,8 @@ export interface ScatterData {
   cloud: { points: ScatterCloudPoint[] } | { bands: ScatterBands; flagged?: ScatterBands; named: ScatterCloudPoint[] };
   /** The first 50 of the list in the order chosen, with the chosen signal only. */
   list: ScatterListRow[];
+  /** A group under 10 with a place: the profiles of the same kind in the whole country (the way out's number). */
+  wider?: number;
 }
 
 /** The order the list is in, as the strip's two words. */
@@ -156,6 +165,14 @@ export function withScatterChoice<T extends { scatter?: AskSpec["scatter"] | und
   const next = { ...spec };
   if (Object.keys(options).length) next.scatter = options; else delete next.scatter;
   return next;
+}
+
+/** The group in plural, with its article: "spitalele", "primăriile de comună", "firmele" (the way out, the empty search). */
+export function groupPlural(role: ScatterRole, kind: string | null | undefined): string {
+  if (role === "supplier") return "firmele";
+  if (!kind) return "instituțiile publice";
+  return ({ comuna: "primăriile de comună", oras_municipiu: "primăriile de oraș și municipiu", consiliu_judetean: "consiliile județene", spital: "spitalele", scoala: "școlile" } as Record<string, string>)[kind]
+    ?? "instituțiile de acest tip";
 }
 
 /** The pill's noun: "82 de primării de comună", "72.655 de firme". */

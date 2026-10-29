@@ -1,3 +1,4 @@
+import { flagLabel } from "../flags";
 import { validatePopulation, unsupportedPopulationView, type MinimumRecords, type QueryPopulation } from "./population";
 import { codeKinds, PURCHASE_KIND_WORDS } from "./purchase";
 import { MAX_SERIES_MONTHS, seriesMonthsSpan } from "./series";
@@ -819,9 +820,9 @@ export const SCATTER_RULES: Readonly<Record<"flag", (spec: AskSpec) => string | 
     const flag = spec.scatter?.flag;
     if (!flag) return null;
     const role = spec.dim === "supplier" ? "supplier" : "authority";
+    // The chosen signal's own name: "Vârf în decembrie" on firms is refused as itself, never as another one.
     return SCATTER_FLAGS_BY_ROLE[role].includes(flag) ? null
-      : role === "supplier" ? "Concentrarea pe un furnizor se aplică instituțiilor. Alege alt semnal sau scoate-l."
-        : "Dependența de o autoritate se aplică firmelor. Alege alt semnal sau scoate-l.";
+      : `${flagLabel(flag)} se aplică doar ${role === "supplier" ? "instituțiilor" : "firmelor"}. Alege alt semnal sau scoate-l.`;
   },
 };
 

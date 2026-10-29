@@ -4,7 +4,9 @@ import { forgetAuthorityKinds } from "./authority-kind";
 import { runRows, runSpec } from "./compile";
 import { locate, profileFacts } from "./facets";
 import { ground } from "./ground";
+import { scatterWithFacts } from "./scatter";
 import type { ScatterData } from "./scatter-shared";
+import { pointPlace, type ScatterV2 } from "../../app/intreaba/scatter-answer";
 import { validateSpec, type AskSpec } from "./spec";
 import { ENGINE_GLOBAL_TABLES, testDatabaseUrl, withAskFixture } from "./test-fixture";
 
@@ -104,8 +106,16 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
   it("counts the group once: the cloud from 10 acquisitions, the list from 20, and the signals of the group", async () => {
     const out = await withAskFixture(connection!.sql, "scatter_group", seed, async (q) => {
       const d = await answer(q, cloud());
-      return { group: d.group, criteria: d.criteria, levels: d.levels, cloud: "points" in d.cloud ? d.cloud.points.length : -1, list: ids(d), p90: d.p90 > 0 };
+      const byValue = await answer(q, cloud({ scatter: { rankBy: "value" } })), split = await answer(q, cloud({ scatter: { rankBy: "risk", flag: "da_split" } }));
+      // The screen places a point past the list's rows from the points alone: the server's order, row by row.
+      const placed = [d, byValue, split].map((x) => x.list.map((r) => pointPlace(x as ScatterV2, r.entityId)));
+      return { group: d.group, criteria: d.criteria, levels: d.levels, cloud: "points" in d.cloud ? d.cloud.points.length : -1, list: ids(d), p90: d.p90 > 0,
+        counties: "points" in d.cloud ? [...new Set(d.cloud.points.map((p) => p.county))] : [], placed, wider: d.wider };
     });
+    expect(out.counties).toEqual(["Buzău"]);
+    expect(out.placed).toEqual([[1, 2, 3, 4], [1, 2, 3, 4], [1, 2]]);
+    // A cloud is no small group: no way out to count.
+    expect(out.wider).toBeUndefined();
     expect(out.group).toEqual({ n: 12, nList: 4 });
     expect(out.criteria).toEqual({ da_split: 3, da_year_end: 2, da_rapid: 2, da_round: 0, da_concentration: 1 });
     expect(out.levels).toBe(5);
@@ -138,6 +148,8 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
   it("lists a group of fewer than 10 whole, from 10 acquisitions, without a cloud", async () => {
     const d = await withAskFixture(connection!.sql, "scatter_small", seed, (q) => answer(q, cloud({}, { county: "Cluj" })));
     expect(d.group).toEqual({ n: 3, nList: 3, small: true });
+    // The way out counts the same group without its county: the 15 institutions of the fixture.
+    expect(d.wider).toBe(15);
     expect(d.list.map((r) => r.name)).toEqual(["Spital Unu", "Spital Doi", "Spital Trei"].sort((a, b) => (a === "Spital Unu" ? -1 : b === "Spital Unu" ? 1 : 0)).slice(0, 3));
     expect("points" in d.cloud && d.cloud.points).toEqual([]);
   });
@@ -151,7 +163,10 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
       if (!("rows" in facts)) throw new Error("facts");
       const by = (entity: number) => facts.rows.find((r) => r.id === id(entity))!;
       const drawer = async (entity: number, flag: string) => (await sources(q, spec, { entityIds: [id(entity)], role: "authority", flag })).total;
+      // A capture freezes the same facts in its list (evidence-captures.ts queryCapture).
+      const frozen = await scatterWithFacts(q, d);
       return {
+        frozenAlfa: frozen.list.find((r) => r.entityId === id(1))!.flags,
         alfa: alfa.flags, gama: gama.flags, factsAlfa: by(1).flags, factsGama: by(3).flags, factsEpsilon: by(5).flags,
         drawn: { split: await drawer(1, "da_split"), rapid: await drawer(1, "da_rapid"), december: await drawer(1, "da_year_end"), main: await drawer(3, "da_concentration"), rapidGama: await drawer(3, "da_rapid") },
       };
@@ -164,6 +179,7 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
     ]);
     expect(out.factsGama).toEqual([{ code: "da_rapid", rows: 6, share: 6 / 22 }, { code: "da_concentration", share: 0.68, rows: 15 }]);
     expect(out.factsEpsilon).toEqual([]);
+    expect(out.frozenAlfa).toEqual(out.factsAlfa);
     // One number: the count on the row, the card's fact, the drawer's total.
     expect(out.drawn).toEqual({ split: 3, rapid: 8, december: 4, main: 15, rapidGama: 6 });
   });
@@ -183,7 +199,7 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
     expect(out.epsilon).toBe(0);
     expect(out.whole).toBe(8);
     expect(out.groups).toBe(2);
-    expect(out.notes).toEqual(["Sursele semnalului „Finalizare rapidă”: achizițiile finalizate la scurt timp după publicare, nu tot istoricul profilurilor."]);
+    expect(out.notes).toEqual(["Sursele semnalului „Finalizare rapidă”: achizițiile finalizate în mai puțin de o oră de la publicare, nu tot istoricul profilurilor."]);
   });
 
   it("counts December only in the years the criterion flags, and the main supplier by value", async () => {

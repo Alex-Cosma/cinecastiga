@@ -34,6 +34,10 @@ export function emptyAnswer(data: BlockData): boolean {
   }
 }
 
+/** The empty answer's sentence: a risk cloud's group has no profile (final scatter §4.4), the others no record. */
+export const emptyMessage = (data: BlockData): string =>
+  data.block === "scatter" ? "Niciun profil în acest grup." : "Nicio înregistrare pentru această întrebare.";
+
 /** The first row of each phrase's window (kit §4), the words of its relaxation. */
 const FIRST_ROW: Partial<Record<FilterId, string>> = {
   period: "Toți anii", dataset: "Toate achizițiile", cpvTerm: "Orice domeniu",

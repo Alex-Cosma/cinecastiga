@@ -35,6 +35,8 @@ export interface ScatterInput {
   county: Fragment;
   /** marts.entity_flags.log_total_ron exists (martColumns). */
   logTotal: boolean;
+  /** The same group without its place (county, seat, locality), the kind kept: counted for a small group's way out. */
+  wider?: Fragment | null;
 }
 
 /** The list's order (final §3.3): signals, then value, then id — the order of "Cine conduce?" on the index; or value. */
@@ -85,6 +87,11 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
     criteria, p90: Number(count?.p90 ?? 0), cloud: { points: [] }, list: [],
     ...(flag ? { chosen: { n: criteria[flag] ?? 0, nList: small ? criteria[flag] ?? 0 : Number(count?.chosen_list ?? 0) } } : {}),
   };
+  // A group under 10 (or empty) offers the whole country of the same kind, with its number (final §4.4).
+  if (small && input.wider) {
+    const [wide] = (await s`select count(*)::int n from marts.entity_flags ef where ${input.wider} and ef.cri is not null`) as unknown as { n: number }[];
+    data.wider = Number(wide?.n ?? 0);
+  }
   if (n === 0) return data;
 
   // The list: the strip's order and signal, at least 20 acquisitions, the first 50.
@@ -121,11 +128,15 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
   // The cloud: every point up to 2,000; above, the grey cells of the group with the named points exact.
   if (small) return data;
   if (n <= SCATTER_POINTS_MAX) {
+    // Each point with its county, so a point past the list's 50 still says where it is and its place (ScatterAnswer).
     const rows = (await s`
-      select ef.entity_id::text id, ef.name_display name, ef.total_ron, ef.n_flags, ef.n_das, ef.flags
+      select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_flags, ef.n_das, ef.flags
       from marts.entity_flags ef where ${group} order by ef.entity_id
-    `) as unknown as { id: string; name: string | null; total_ron: string | null; n_flags: number; n_das: number; flags: string[] | null }[];
-    data.cloud = { points: rows.map((r) => ({ id: r.id, name: r.name ?? "?", value: Number(r.total_ron ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), flags: bit(role, r.flags) })) };
+    `) as unknown as { id: string; name: string | null; county: string | null; total_ron: string | null; n_flags: number; n_das: number; flags: string[] | null }[];
+    data.cloud = { points: rows.map((r) => ({
+      id: r.id, name: r.name ?? "?", value: Number(r.total_ron ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), flags: bit(role, r.flags),
+      county: r.county ? countyDisplay(r.county) : null,
+    })) };
     return data;
   }
   const minLog = Number(count!.mn), maxLog = Math.max(Number(count!.mx), minLog + 0.01);
@@ -168,6 +179,17 @@ export async function scatterProfileFacts(s: DbSql, role: ScatterRole, ids: read
     }));
     return { id: r.id, nDas: Number(r.n_das), flags: facts };
   });
+}
+
+/**
+ * The answer as a capture freezes it (final scatter §5, frozen evidence): each listed row's signals with the records
+ * behind them and the shares of the two rates, which the screen asks after the answer (part=profile). The group's
+ * definition is in the capture's answer version (kind-2, seat-2) and its spec.
+ */
+export async function scatterWithFacts(s: DbSql, data: ScatterData): Promise<ScatterData> {
+  if (!data.list.length) return data;
+  const facts = new Map((await scatterProfileFacts(s, data.role, data.list.map((r) => r.entityId))).map((p) => [p.id, p.flags]));
+  return { ...data, list: data.list.map((r) => ({ ...r, flags: r.flags.map((f) => ({ ...f, ...facts.get(r.entityId)?.find((x) => x.code === f.code) })) })) };
 }
 
 /** The names a search matches: folded, every word of the text (the locate part's pattern). */

@@ -31,7 +31,8 @@ import {
 } from "./rollups";
 import { hasFlag, scatterAnswer } from "./scatter";
 import { builtFlagTotals, flagRecordsNote, flaggedRecordIds, RECONCILE_MAX } from "./scatter-records";
-import { scatterFlagsOf, type ScatterData } from "./scatter-shared";
+import { SCATTER_LIST_MAX, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
+import { flagLabel } from "../flags";
 import {
   factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
   type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
@@ -1946,8 +1947,11 @@ export async function runSpec(
         case "scatter": {
           const role: Dim = spec.dim === "supplier" ? "supplier" : "authority";
           // scatter-2 (F6b, plan §4.12): the group's cloud and the list of the strip's order and signal (lib/ask/scatter.ts).
+          // A small group's way out (final §4.4): the same kind in the whole country, counted only where a place narrows it.
+          const placed = w.county !== null || w.seatCounty !== null || w.uatSiruta !== null;
+          const wider = placed ? andAll(s, profilePredicates({ ...w, county: null, seatCounty: null, uatSiruta: null, uatAuthorityIds: [] }, role as "authority" | "supplier", RISK_MIN_DAS)) : null;
           const scatter = await scatterAnswer(s, {
-            spec, role, where: efWhere(role as "authority" | "supplier", RISK_MIN_DAS), county: profileCounty(s, role), logTotal: columns?.logTotal ?? false,
+            spec, role, where: efWhere(role as "authority" | "supplier", RISK_MIN_DAS), county: profileCounty(s, role), logTotal: columns?.logTotal ?? false, wider,
           });
           return { block: "scatter", scatter };
         }
@@ -2996,8 +3000,22 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "breakdown":
       // The groups by value or by records (F3: the legend's headers order them); both are on every row.
       return `select categoria_cpv, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by ${spec.measure === "count" ? 3 : 2} desc;`;
-    case "scatter":
-      return `select name_display, total_ron, cri, n_flags\nfrom marts.entity_flags\nwhere n_das >= ${RISK_MIN_DAS} and cri is not null;`;
+    case "scatter": {
+      // scatter-2 (F6b, lib/ask/scatter.ts): the cloud is the group; the list is its profiles with 20 acquisitions (all of a
+      // group under 10), with the strip's signal, in the strip's order.
+      const role = spec.dim === "supplier" ? "supplier" : "authority";
+      const county = role === "supplier" ? w.seatCounty ?? w.county : w.county;
+      const flag = spec.scatter?.flag;
+      const group = [
+        `role = '${role}' and n_das >= ${RISK_MIN_DAS} and cri is not null`,
+        ...(county ? [`unaccent(county) ilike '${fold(county)}'${role === "supplier" && w.seatColumn ? "  -- sediul firmei" : ""}`] : []),
+        ...(w.kind && role === "authority" ? [`entity_id in (…)  -- doar ${KIND_LABEL[w.kind]}`] : []),
+      ];
+      // The statement's end stays out of a condition's trailing comment.
+      return `-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere ${group.join("\n  and ")}${group.at(-1)!.includes("--") ? "\n" : ""};` +
+        `\n-- lista: primele ${SCATTER_LIST_MAX}\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= ${ENTITY_CARD_MIN_DAS}  -- un grup sub 10 profiluri: toate, de la ${RISK_MIN_DAS}` +
+        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}\norder by ${scatterRank(spec) === "risk" ? "cri desc, total_ron desc, entity_id" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
+    }
     case "sankey":
       return `select partener, categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by partener, categoria_cpv;`;
     case "network":

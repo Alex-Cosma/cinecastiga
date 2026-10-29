@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { countWords, formatDecimal } from "../../lib/ask/answer-text";
-import type { LocateMatch, LocateResult, ProfileFactsResult } from "../../lib/ask/facet-parts";
+import type { LocateMatch, LocateResult } from "../../lib/ask/facet-parts";
 import { LOCATE_DEBOUNCE_MS, LOCATE_MIN_CHARS } from "../../lib/ask/facet-parts";
 import { askLink } from "../../lib/ask/source-spec";
-import { questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
+import { countyWords, questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
 import {
-  SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, listPlace, scatterFlagsOf, withScatterChoice,
+  SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, groupPlural, listPlace, scatterFlagsOf, withScatterChoice,
   type ScatterFlag, type ScatterFlagFact, type ScatterListRow,
 } from "../../lib/ask/scatter-shared";
-import type { AskSpec } from "../../lib/ask/spec";
+import { namedKind, type AskSpec } from "../../lib/ask/spec";
 import { flagEntityRule, flagLabel } from "../../lib/flags";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -24,8 +24,8 @@ import HelpTip from "./builder/HelpTip";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
-  bandIndex, cardFacts, cellRects, dots, flagTag, geometry, listHeadTip, listHeadWords, nearest, p90Words, rowMeta, withFacts,
-  kindWords, employeesWords, type Dot, type ScatterV2,
+  bandIndex, cardFacts, cellRects, dots, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty, keptScatterFacts, listHeadTip, listHeadWords, nearest, p90Words,
+  pointPlace, rowMeta, scatterFactsKey, signalsPageLink, stripStatusWords, withFacts, kindWords, employeesWords, type Dot, type ScatterV2,
 } from "./scatter-answer";
 import "./scatter.css";
 
@@ -70,13 +70,12 @@ interface Picked {
   from: "chart" | "list" | "find";
 }
 
-const FACTS_KEPT = new Map<string, Map<string, ScatterFlagFact[]>>();
-
 /** The facts of the profiles on screen, asked once the answer is drawn and as more are shown (part=profile). */
 function useProfileFacts(spec: AskSpec, wanted: readonly string[]): { facts: ReadonlyMap<string, ScatterFlagFact[]> } {
-  const key = useMemo(() => questionKey({ ...spec, scatter: undefined } as unknown as QuestionSpec), [spec]);
-  const [store, setStore] = useState<{ key: string; facts: ReadonlyMap<string, ScatterFlagFact[]> }>(() => ({ key, facts: FACTS_KEPT.get(key) ?? new Map() }));
-  const facts = store.key === key ? store.facts : FACTS_KEPT.get(key) ?? EMPTY_FACTS;
+  // One store per question (scatter-answer.ts): the CSV export reads and completes the same one.
+  const key = useMemo(() => scatterFactsKey(spec), [spec]);
+  const [store, setStore] = useState<{ key: string; facts: ReadonlyMap<string, ScatterFlagFact[]> }>(() => ({ key, facts: keptScatterFacts(spec) ?? EMPTY_FACTS }));
+  const facts = store.key === key ? store.facts : keptScatterFacts(spec) ?? EMPTY_FACTS;
   // The ids asked for this question: another question starts again, an answer for an older one is dropped.
   const asked = useRef({ key, ids: new Set<string>() });
   if (asked.current.key !== key) asked.current = { key, ids: new Set() };
@@ -86,24 +85,21 @@ function useProfileFacts(spec: AskSpec, wanted: readonly string[]): { facts: Rea
     if (!need.length) return;
     const mine = asked.current;
     need.forEach((id) => mine.ids.add(id));
-    const forget = () => need.forEach((id) => mine.ids.delete(id));
-    void fetch("/api/ask/facets", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ spec: withScatterChoice(spec, "flag:"), part: "profile", ids: need }),
-    }).then(async (r) => (await r.json().catch(() => null)) as ({ ok: boolean } & ProfileFactsResult) | null).then((answer) => {
+    void fetchScatterFacts(spec, need).then((next) => {
       if (asked.current !== mine) return;
-      if (!answer?.ok) { forget(); return; }
-      setStore((current) => {
-        const next = new Map(current.key === key ? current.facts : []);
-        for (const row of answer.rows) next.set(row.id, row.flags);
-        FACTS_KEPT.set(key, next);
-        return { key, facts: next };
-      });
-    }).catch(forget);
+      if (!next) { need.forEach((id) => mine.ids.delete(id)); return; }
+      setStore({ key, facts: next });
+    });
   }, [needKey, key]); // eslint-disable-line react-hooks/exhaustive-deps -- `need` is its key
   return { facts };
 }
 const EMPTY_FACTS: ReadonlyMap<string, ScatterFlagFact[]> = new Map();
+
+/**
+ * A chosen signal the new group does not have (final §4.4): the answer goes back to „Tot grupul” and says so. Kept
+ * outside the component, for the question without its signal, so the note survives the strip's new answer.
+ */
+let droppedSignal: { flag: ScatterFlag; key: string } | null = null;
 
 /** The width of an element, for a chart drawn in real pixels (text keeps its size; a phone gets its own proportions). */
 function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
@@ -127,6 +123,9 @@ const flagHelp = (role: "authority" | "supplier") => <>
   <ul className="sc-tip-list">{scatterFlagsOf(role).map((code) => <li key={code}><b>{flagLabel(code)}.</b> {flagEntityRule(code)}</li>)}</ul>
 </>;
 
+/** A name on the chart is skipped when its box would sit on more points than this. */
+const LABEL_COVER_MAX = 3;
+
 /** A name on the chart: without the parenthesis ("Comuna Sageata (Primaria Comunei Sageata)"), short. */
 const chartName = (name: string): string => { const short = cleanName(name).replace(/\s*\(.*$/, ""); return short.length > 28 ? `${short.slice(0, 27)}…` : short; };
 
@@ -138,6 +137,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const [hover, setHover] = useState<{ x: number; y: number; dot: Dot } | null>(null);
   const [found, setFound] = useState<{ results: LocateMatch[]; name: string; place: string } | null>(null);
   const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
   const [answered, setAnswered] = useState(data);
   // The strip's choice while its answer is on the way (a short new query): the buttons move at once.
   const [chosen, setChosen] = useState<{ rank?: string; flag?: string }>({});
@@ -154,36 +154,65 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const g = useMemo(() => geometry(data, width), [data, width]);
   const listed = useMemo(() => new Set(rows.map((r) => r.entityId)), [rows]);
   const all = useMemo(() => dots(data, g, listed), [data, g, listed]);
+  // On a chart of cells only the list's 50 are points: a profile found or picked beyond them is drawn exact (final §3.6).
+  const extra = useMemo(() => {
+    if ("points" in data.cloud) return [];
+    const have = new Set(all.map((d) => d.point.id)), out: Dot[] = [];
+    const add = (p: Parameters<typeof exactDot>[2]) => { if (!have.has(p.id)) { have.add(p.id); out.push(exactDot(data, g, p)); } };
+    if (picked) add({ id: picked.id, name: picked.name, value: picked.value, nFlags: picked.nFlags, nDas: picked.nDas, codes: picked.flags });
+    for (const m of found?.results ?? []) if (m.value !== null && m.profile) add({ id: m.id, name: m.name, value: m.value, nFlags: m.profile.nFlags, nDas: m.n ?? 0, codes: m.profile.flags });
+    return out;
+  }, [data, g, all, picked, found]);
+  const drawn = useMemo(() => [...all, ...extra], [all, extra]);
   const wanted = useMemo(() => [...visible.map((r) => r.entityId), ...(picked ? [picked.id] : [])], [visible, picked]);
   const { facts } = useProfileFacts(spec, wanted);
   const rank = data.rankBy;
-  const noun = firm ? "firmă" : "instituție";
   const labels = useMemo(() => {
-    // The first names of the list on the chart, each where it fits: one that would sit on another label is left to the list.
+    // The first names of the list on the chart, each where it fits.
     const placed: { x0: number; x1: number; y0: number; y1: number }[] = [], out: { id: string; x: number; y: number; anchor: "start" | "end"; text: string }[] = [];
     for (const row of rows.slice(0, g.box.compact ? 3 : 6)) {
       const d = all.find((x) => x.point.id === row.entityId);
       if (!d) continue;
-      const text = chartName(row.name), w = text.length * 6.3, right = d.x < g.box.width * 0.62;
-      const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
-      if (placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1)) continue;
+      const text = chartName(row.name), w = text.length * 6.3;
+      // The side with the room first (right on the left of the chart), then the side over fewer points; a name that would
+      // sit on another label, or across a cluster on both sides, is left to the list (a phone's narrow chart).
+      const sides = (d.x < g.box.width * 0.62 ? [true, false] : [false, true]).map((right) => {
+        const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
+        const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
+        return { right, x, box, fits, covers: all.filter((o) => o !== d && o.x >= box.x0 && o.x <= box.x1 && o.y >= box.y0 && o.y <= box.y1).length };
+      }).filter((side) => side.fits && side.covers <= LABEL_COVER_MAX);
+      const side = sides.sort((a, b) => a.covers - b.covers)[0];
+      if (!side) continue;
+      const { right, x, box } = side;
       placed.push(box);
       out.push({ id: row.entityId, x, y: d.y + 3, anchor: right ? "start" : "end", text });
     }
     return out;
-  }, [rows, all, g.box.compact, g.box.width]);
+  }, [rows, all, g.box.compact, g.box.width, g.pad.l]);
 
   // The legend, the cloud and the list speak of the same profiles with the same classes.
   const total = data.chosen ? data.chosen.nList : data.group.nList;
 
+  // A signal the group does not have (after a change of Cine/Unde, or a link): back to the whole group, with a note.
+  const baseKey = useMemo(() => questionKey(withScatterChoice(spec, "flag:") as unknown as QuestionSpec), [spec]);
+  const vanished = flag && data.group.n > 0 && (data.criteria[flag] ?? 0) === 0 ? flag : null;
+  useEffect(() => {
+    if (!vanished) return;
+    droppedSignal = { flag: vanished, key: baseKey };
+    onStrip("flag:");
+  }, [vanished, baseKey]); // eslint-disable-line react-hooks/exhaustive-deps -- once per answer that lost its signal
+  const dropped = !flag && droppedSignal?.key === baseKey ? droppedSignal.flag : null;
+  const stripChange = (value: string) => { droppedSignal = null; onStrip(value); };
+
   const strip = <AnswerStrip rows label="Ajustează lista și semnalul">
-    <StripRow label="Primele după" tip={{ title: "Primele după", text: rank === "risk"
+    {/* One listed profile has no order to choose (final: no control that changes nothing). */}
+    {data.group.nList >= 2 && <StripRow label="Primele după" tip={{ title: "Primele după", text: rank === "risk"
       ? "Semnale: cele mai multe semnale; la egalitate, valoarea mai mare întâi. În listă: cine are cel puțin 20 de achiziții directe, ca la «Cel mai ridicat indice de risc». Semnalele apar mai des la cine cumpără mult."
       : "Valoare: cea mai mare valoare a achizițiilor directe. Linia punctată: cele mai mari 10% din grup. Contractele din proceduri nu intră." }}>
       <Segmented label="Primele după" value={chosen.rank ?? rank}
         options={[{ value: "risk", label: "Semnale" }, { value: "value", label: "Valoare" }]}
-        onChange={(value) => { if (value !== (chosen.rank ?? rank)) { setChosen((c) => ({ ...c, rank: value })); onStrip(`rankBy:${value}`); } }} />
-    </StripRow>
+        onChange={(value) => { if (value !== (chosen.rank ?? rank)) { setChosen((c) => ({ ...c, rank: value })); stripChange(`rankBy:${value}`); } }} />
+    </StripRow>}
     <StripRow label="Semnal" tip={{ title: "Semnal", text: flagHelp(role) }}>
       <Pills label="Semnal" value={chosen.flag ?? flag ?? ""}
         options={[{ value: "", label: "Tot grupul", count: formatInt(data.group.n) } as PillOption,
@@ -191,7 +220,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             value: code, label: flagLabel(code), count: formatInt(data.criteria[code] ?? 0), signal: true,
             ...((data.criteria[code] ?? 0) === 0 ? { disabled: "Niciun profil din grup nu are acest semnal." } : {}),
           }))]}
-        onChange={(value) => { if (value !== (chosen.flag ?? flag ?? "")) { setChosen((c) => ({ ...c, flag: value })); onStrip(`flag:${value}`); } }} />
+        onChange={(value) => { if (value !== (chosen.flag ?? flag ?? "")) { setChosen((c) => ({ ...c, flag: value })); stripChange(`flag:${value}`); } }} />
     </StripRow>
   </AnswerStrip>;
 
@@ -212,9 +241,12 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     if (at >= 0) return pick(rowPick(rows[at]!, at, from));
     const codes = scatterFlagsOf(role).filter((code) => (point.flags & (1 << scatterFlagsOf(role).indexOf(code))) !== 0);
     const floor = data.group.small ? 10 : 20;
+    // Past the first 50 a point of the list still has its place: the cloud drawn point by point holds the whole group.
+    const place = pointPlace(data, point.id);
     pick({
-      id: point.id, name: point.name, value: point.value, nDas: point.nDas, nFlags: point.nFlags, cri: point.nFlags / levels, county: null, flags: codes, from,
-      ...(point.nDas < floor ? { place: belowListWords(point.nDas) } : flag && !codes.includes(flag) ? { place: `nu are semnalul „${flagLabel(flag).toLocaleLowerCase("ro-RO")}”` } : {}),
+      id: point.id, name: point.name, value: point.value, nDas: point.nDas, nFlags: point.nFlags, cri: point.nFlags / levels, county: point.county ?? null, flags: codes, from,
+      ...(place !== null ? { place: listPlace(place, total, rank) } : point.nDas < floor ? { place: belowListWords(point.nDas) }
+        : flag && !codes.includes(flag) ? { place: `nu are semnalul „${flagLabel(flag).toLocaleLowerCase("ro-RO")}”` } : {}),
     });
   };
 
@@ -234,6 +266,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   // "Unde e o instituție?" (part=locate): the profiles of the group whose name holds the text, with their place in the list.
   const search = async (q: string) => {
     const seq = ++searchSeq.current;
+    setQuery(q);
     if (q.length < LOCATE_MIN_CHARS) { setFound(null); return; }
     setSearching(true);
     try {
@@ -270,11 +303,18 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     } : {}),
   }));
 
+  // The way out of a small group, an empty search: the same kind in the whole country (only the place leaves, final §4.4).
+  const county = groupCounty(spec, role);
+  const hasPlace = Boolean(county || spec.filters.uatSiruta);
+  const plural = groupPlural(role, role === "authority" ? namedKind(spec.filters.authorityKind) : null);
   const widen = (() => {
     const next = structuredClone(spec) as AskSpec;
-    delete next.filters.county; delete next.filters.seatCounty;
-    return next.filters.authorityKind ? (() => { delete next.filters.authorityKind; return next; })() : next;
+    delete next.filters.county; delete next.filters.seatCounty; delete next.filters.uatSiruta; delete next.filters.uatName;
+    return next;
   })();
+  const widenHref = askLink(widen as unknown as QuestionSpec);
+  const widenLabel = data.wider !== undefined ? `Toate ${plural} din țară · ${formatInt(data.wider)}` : "Toată țara";
+  const groupIn = `${plural}${county ? ` ${countyWords(county)}` : ""}`;
 
   const rowRecordsLabel = (row: ScatterListRow) => {
     if (!flag) return countWords(row.nDas, "înregistrare", "înregistrări");
@@ -287,13 +327,17 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   };
   const signalRows = flag ? visible.reduce((sum, row) => sum + (facts.get(row.entityId)?.find((f) => f.code === flag)?.rows ?? 0), 0) : 0;
   const signalLoaded = flag ? visible.every((row) => facts.get(row.entityId)?.some((f) => f.code === flag)) : false;
+  const signals = signalsPageLink(data, spec);
 
   return <div className="qb sc" ref={wrap}>
     {strip}
+    {/* The strip's new answer said aloud (final §4.3): "46 cu Posibilă fracționare, după semnale". */}
+    <span className="d-sr-only" role="status">{stripStatusWords(data)}</span>
+    {dropped && <p className="sc-small" role="note">Am scos semnalul «{flagLabel(dropped)}»: nu apare în noul grup.</p>}
 
     {data.group.small ? <p className="sc-small" role="note">
-      {countWords(data.group.n, noun === "firmă" ? "profil" : "profil", "profiluri")} în grup: prea puține pentru un nor. Le arătăm ca listă.
-      {" "}<Link className="qb-relax-link" href={askLink(widen as unknown as QuestionSpec)}>Toată țara<span className="qb-glyph" aria-hidden="true">›</span></Link>
+      {countWords(data.group.n, "profil", "profiluri")} în grup: prea puține pentru un nor. Le arătăm ca listă.
+      {hasPlace && <>{" "}<Link className="qb-relax-link" href={widenHref}>{widenLabel}<span className="qb-glyph" aria-hidden="true">›</span></Link></>}
     </p> : <figure className="sc-figure">
       <svg className="sc-chart" role="img" width={g.box.width} height={g.box.height} viewBox={`0 0 ${g.box.width} ${g.box.height}`}
         aria-label={`Norul de risc: ${countWords(data.group.n, "profil", "profiluri")}, pe ${levels + 1} benzi după numărul de semnale și pe scara valorii achizițiilor directe. Lista de mai jos are aceleași profiluri, cu cele numite.`}
@@ -320,12 +364,13 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         {all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}
         {all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}
         {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""}`} />)}
+        {extra.map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className={`sc-dot${d.flagged ? " is-flag" : ""}`} />)}
         {labels.map((l) => <text key={l.id} x={l.x} y={l.y} textAnchor={l.anchor} className="sc-name">{l.text}</text>)}
         {picked && (() => {
-          const d = all.find((x) => x.point.id === picked.id);
+          const d = drawn.find((x) => x.point.id === picked.id);
           return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring" /> : null;
         })()}
-        {found?.results.map((m) => { const d = all.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find" /> : null; })}
+        {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find" /> : null; })}
       </svg>
       {hover && <div className="sc-hover" style={{ left: Math.min(hover.x + 12, g.box.width - 190), top: Math.max(hover.y - 8, 0) }} role="presentation">
         <b>{cleanName(hover.dot.point.name)}</b>
@@ -342,9 +387,11 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
 
     <div className="sc-find">
       <Locate key={`${data.flag ?? ""}|${data.rankBy}`} label={firm ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={searching} onSearch={(q) => void search(q)} delay={LOCATE_DEBOUNCE_MS} minChars={LOCATE_MIN_CHARS}
-        emptyText={`Niciun profil în acest grup. Încearcă un nume mai scurt.`}
+        emptyText={`Niciun profil „${query}” în ${groupIn}.`}
         onPick={(result) => { const m = found?.results.find((x) => x.id === result.id); if (m) openMatch(m, total); }}
         found={found && found.name ? { name: cleanName(found.name), place: found.place } : null} />
+      {found && !searching && found.results.length === 0 && hasPlace
+        && <Link className="qb-relax-link sc-wide" href={widenHref}>Caută în toată țara<span className="qb-glyph" aria-hidden="true">›</span></Link>}
     </div>
 
     {picked && <DetailCard
@@ -387,7 +434,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       <ListFoot shown={shown} total={rows.length} noun={["profil", "profiluri", "n"]} list={listRef} onMore={() => setMore((m) => Math.min(m + SCATTER_LIST_PAGE, rows.length))}
         records={{ label: flag ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : "Vezi înregistrările celor din listă", glyph: "→",
           onClick: () => records({ entityIds: visible.map((r) => r.entityId), ...(flag ? { flag } : {}) }, flag ? `semnalul „${flagLabel(flag).toLocaleLowerCase("ro-RO")}” · profilurile din listă` : "profilurile din listă", !flag) }} />
-      <p className="sc-more"><Link className="qb-link" href={flag ? `/semnale?tip=${encodeURIComponent(flag)}&rol=${role}` : `/semnale?rol=${role}`}>Toată lista pe /semnale<span className="qb-glyph" aria-hidden="true">↗</span></Link></p>
+      <p className="sc-more"><Link className="qb-link" href={signals.href}>{signals.label}<span className="qb-glyph" aria-hidden="true">↗</span></Link></p>
     </section> : <p className="qb-empty-note sc-none">{flag ? `Niciun profil din grup cu 20 de achiziții directe nu are semnalul „${flagLabel(flag).toLocaleLowerCase("ro-RO")}”.` : "Niciun profil din grup nu are destule achiziții directe pentru listă."}</p>}
 
     <p className="sc-foot qb-tipwrap">Semnalele sunt piste, nu dovezi. Valori înregistrate, nu plăți.{" "}

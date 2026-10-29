@@ -13,8 +13,9 @@ import { facetRequest } from "./facets";
 import { facetSpec } from "./facet-parts";
 import { SCATTER_FLAGS, SCATTER_FLAGS_BY_ROLE, SCATTER_RULES, runnableError, validateSpec, type AskSpec } from "./spec";
 import { answerVersion } from "./answer-core";
+import { ENTITY_CARD_MIN_DAS, RISK_MIN_DAS } from "./predicates";
 import {
-  SCATTER_FLAG_ORDER, belowListWords, flagBit, flagDetail, groupNoun, listPlace, scatterFlagsOf, scatterLevels, scatterRank, scatterSignalWords, withScatterChoice, yearsWords,
+  SCATTER_CLOUD_MIN_DAS, SCATTER_FLAG_ORDER, SCATTER_LIST_MIN_DAS, belowListWords, flagBit, flagDetail, groupNoun, groupPlural, listPlace, scatterFlagsOf, scatterLevels, scatterRank, scatterSignalWords, withScatterChoice, yearsWords,
 } from "./scatter-shared";
 
 /*
@@ -68,6 +69,11 @@ describe("the signals of a profile", () => {
     expect(groupNoun(82, "authority", "comuna")).toBe("82 de primării de comună");
     expect(groupNoun(1, "supplier", undefined)).toBe("1 firmă");
     expect(groupNoun(15_729, "authority", undefined)).toBe("15.729 de instituții publice");
+    expect([groupPlural("authority", "spital"), groupPlural("authority", undefined), groupPlural("supplier", "comuna")]).toEqual(["spitalele", "instituțiile publice", "firmele"]);
+  });
+
+  it("keeps the cloud's and the list's floors equal to the distribution's and „Cine conduce?”'s (written twice for the screen)", () => {
+    expect([SCATTER_CLOUD_MIN_DAS, SCATTER_LIST_MIN_DAS]).toEqual([RISK_MIN_DAS, ENTITY_CARD_MIN_DAS]);
   });
 });
 
@@ -77,8 +83,10 @@ describe("the cloud's keys in a spec", () => {
   it("takes a signal of the role and an order, and refuses the other role's signal with its reason", () => {
     expect(validateSpec(cloud({ scatter: { flag: "da_split", rankBy: "value" } }))).toHaveProperty("scatter", { flag: "da_split", rankBy: "value" });
     expect(validateSpec(cloud({ scatter: { flag: "da_dependence" } }))).toEqual({ error: SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))! });
-    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))).toMatch(/Dependența de o autoritate se aplică firmelor/);
-    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).toMatch(/Concentrarea pe un furnizor se aplică instituțiilor/);
+    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))).toBe("Dependență de o autoritate se aplică doar firmelor. Alege alt semnal sau scoate-l.");
+    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).toBe("Concentrare pe un furnizor se aplică doar instituțiilor. Alege alt semnal sau scoate-l.");
+    // The refusal names the signal chosen: December's peak on firms is refused as itself (review: it read as concentration).
+    expect(validateSpec(cloud({ scatter: { flag: "da_year_end" } }, "supplier"))).toEqual({ error: "Vârf în decembrie se aplică doar instituțiilor. Alege alt semnal sau scoate-l." });
     expect(runnableError(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).not.toBeNull();
     expect(runnableError(cloud({ scatter: { flag: "da_year_end" } }))).toBeNull();
     expect(runnableError(cloud({ scatter: { flag: "da_dependence" } }, "supplier"))).toBeNull();
