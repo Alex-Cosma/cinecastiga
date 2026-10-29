@@ -1,0 +1,107 @@
+/* "A cumpărat X de la Y?" (fact_check-2, final fact_check §4–§6, mock final/fact_check/mock.html): the verdict,
+   the two entities, the weight, the profile in labelled lines, "De reținut", the list. Tokens only (approved.css,
+   filters-kit.css), both themes; no orange (a neutral check, kit R7); the channels' colours are not needed here.
+   Under 600 px the labels sit above their lines, the list becomes cards and every control is 44 px tall. */
+
+.fc{display:grid;gap:14px;min-width:0}
+.fc p{margin:0}
+.fc-verdict-row{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
+.fc-verdict{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:86px;height:60px;padding:0 16px;border-radius:12px;
+  font-family:var(--display);font-weight:700;font-size:33px;letter-spacing:-1px;background:var(--accent-soft);color:var(--accent);flex:none}
+.fc-verdict.is-no{background:var(--sunk);color:var(--ink2)}
+.fc-verdict.is-framework{background:var(--sunk);color:var(--ink);font-size:24px;letter-spacing:-.5px}
+/* The verdict's (?) sits in the box but opens over the whole row (.fc-verdict-row is its .qb-tipwrap). */
+.fc-verdict .term-tip{font-family:var(--body, inherit);letter-spacing:0;font-size:13px;font-weight:400}
+.fc-verdict-text{flex:1 1 220px;min-width:0;display:grid;gap:2px;font-size:14px;color:var(--ink)}
+.fc-num{font-family:var(--mono);font-weight:500}
+.fc-meta{color:var(--muted);font-size:12px}
+.fc-src{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:9px 13px;border:1px solid var(--line2);border-radius:8px;
+  background:var(--surface);color:var(--accent);font:inherit;font-size:12.5px;font-weight:500;text-decoration:none;cursor:pointer;flex:none}
+.fc-src:hover{border-color:var(--accent)}
+.fc-subtle{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;color:var(--muted);font-size:12.5px}
+.fc-textlink{border:0;background:none;padding:0;font:inherit;font-size:12.5px;color:var(--accent);text-decoration:underline;text-decoration-color:var(--line2);
+  text-underline-offset:3px;cursor:pointer;display:inline-flex;align-items:center;gap:2px}
+.fc-ident{display:flex;flex-wrap:wrap;gap:2px 14px;color:var(--muted);font-size:11.5px}
+.fc-ident a{color:inherit;text-decoration:none;overflow-wrap:anywhere}
+.fc-ident a:hover{color:var(--accent);text-decoration:underline}
+.fc-weight{display:flex;flex-wrap:wrap;gap:4px 18px;align-items:center;padding:9px 12px;border-radius:10px;background:var(--fk-chip-bg, var(--sunk));
+  border:1px solid var(--line);font-size:12.5px;color:var(--ink2)}
+.fc-whole{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;flex-wrap:wrap;border:1px solid var(--line2);background:var(--accent-soft);
+  border-radius:10px;padding:10px 12px;font-size:13px;color:var(--ink)}
+.fc-twin{border:1px dashed var(--line2);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--ink2)}
+.fc-twin b{font-weight:500;color:var(--ink)}
+.fc-ctx{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.fc-ctx .fc-textlink{font-size:13.5px;min-height:32px}
+.fc-excl{border:1px solid var(--fk-warm-line);background:var(--fk-warm-bg);color:var(--fk-warm-ink);border-radius:10px;padding:10px 12px;font-size:12.5px}
+.fc-excl .fc-textlink{color:inherit}
+.fc-note{color:var(--muted);font-size:11.5px;margin-top:4px}
+
+.fc-prof{border-top:1px solid var(--line)}
+.fc-pl{display:grid;grid-template-columns:104px minmax(0,1fr);gap:14px;padding:11px 0;border-bottom:1px solid var(--line);align-items:start}
+.fc-h{color:var(--muted);font-size:12px;font-weight:500;padding-top:3px}
+.fc-pc{min-width:0}
+.fc-flow{display:flex;flex-wrap:wrap;gap:2px 16px;align-items:baseline;font-size:13px}
+.fc-lk{border:0;background:none;padding:3px 0;font:inherit;font-size:13px;color:var(--ink);text-align:left;min-height:30px;display:inline-flex;gap:6px;align-items:baseline;max-width:100%}
+button.fc-lk{cursor:pointer}
+.fc-lk .fc-t{text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px;overflow-wrap:anywhere}
+button.fc-lk:hover .fc-t{text-decoration-color:var(--accent)}
+.fc-n{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.fc-arr{color:var(--accent)}
+.fc-yrs{display:grid;grid-template-columns:repeat(var(--n,9),minmax(0,1fr));gap:6px;align-items:end;height:96px;max-width:520px}
+.fc-yb{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;height:100%;border:0;background:transparent;padding:0;min-width:0;font:inherit;color:inherit}
+button.fc-yb{cursor:pointer;border-radius:5px}
+.fc-yb i{display:block;width:100%;max-width:34px;border-radius:4px 4px 1px 1px;background:var(--accent-line);min-height:3px}
+button.fc-yb:hover i{background:var(--accent)}
+.fc-yb.is-partial i{background:repeating-linear-gradient(135deg,var(--accent-line) 0 4px,var(--sunk) 4px 7px)}
+.fc-yb em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink2);line-height:1}
+.fc-yb>span{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.fc-remember{border-top:0}
+.fc-notes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.fc-notes>li{position:relative;padding-left:16px;font-size:13px;line-height:1.6;color:var(--ink2)}
+.fc-notes>li::before{content:"";position:absolute;left:0;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--accent-line)}
+.fc-outside{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px}
+.fc-outside li{font-size:12.5px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
+.fc-outside a{color:var(--accent)}
+
+.fc-recs-head{display:flex;align-items:baseline;gap:10px;margin:4px 0 2px;flex-wrap:wrap}
+.fc-recs-head h4{margin:0;font-size:13px;font-weight:600;color:var(--ink)}
+.fc-recs-head small{color:var(--muted);font-size:11.5px}
+.fc-recs ul{list-style:none;margin:0;padding:0}
+.fc-recs li{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;align-items:start}
+.fc-recs li:last-child{border-bottom:0}
+.fc-d{color:var(--muted);font-family:var(--mono);font-size:11.5px;padding-top:1px}
+.fc-w{min-width:0;display:grid;gap:2px;color:var(--ink)}
+.fc-w a{color:var(--ink);overflow-wrap:anywhere}
+.fc-w a:hover{color:var(--accent)}
+.fc-v{font-family:var(--mono);text-align:right;white-space:nowrap;color:var(--ink)}
+.fc-badges{display:flex;flex-wrap:wrap;gap:3px 4px}
+.fc-badge{display:inline-block;font-size:10.5px;border-radius:4px;padding:1px 6px;background:var(--sunk);color:var(--ink2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.fc-badge.is-recent{background:var(--accent-soft);color:var(--accent)}
+
+@media (max-width:600px){
+  .fc-verdict{min-width:70px;height:52px;font-size:28px}
+  .fc-verdict.is-framework{font-size:21px}
+  .fc-verdict-text{flex-basis:calc(100% - 100px)}
+  .fc-src{width:100%;min-height:44px}
+  .fc-weight{flex-direction:column;align-items:flex-start}
+  .fc-pl{grid-template-columns:minmax(0,1fr);gap:2px}
+  .fc-h{padding-top:0}
+  .fc-flow{flex-direction:column;align-items:flex-start}
+  .fc-yrs{grid-template-columns:repeat(var(--phone,5),minmax(0,1fr));grid-auto-rows:84px;height:auto;gap:8px 6px;max-width:none}
+  .fc-lk,.fc-textlink,button.fc-yb,.fc-w a,.fc-outside a,.fc-ident a{min-height:44px}
+  .fc-lk,.fc-textlink,.fc-w a,.fc-outside a,.fc-ident a{display:inline-flex;align-items:center}
+  .fc-textlink{min-width:44px;justify-content:center}
+  .fc-ident{flex-direction:column;gap:0}
+  .fc-yb i{max-width:44px}
+  .fc-ctx .fc-textlink{min-height:44px}
+  /* In a line that wraps beside 44 px source links, the (?) keeps its whole target in its own line box: no overlap. */
+  .fc .fc-comp .term-tip>.term-trigger,.fc .fc-notes .term-tip>.term-trigger{margin-block:0}
+  .fc-recs li{grid-template-columns:minmax(0,1fr) auto}
+  .fc-d{grid-column:1}
+  .fc-w{grid-column:1}
+  .fc-v{grid-column:2;grid-row:1 / span 2}
+}
+.fc-comp{font-size:13px;color:var(--ink2);display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
+
+/* A (?) opens on its row's width (.qb-tipwrap), at most a readable measure on a wide screen. */
+.fc .term-tip>.term-def{right:auto;width:min(560px,100%)}

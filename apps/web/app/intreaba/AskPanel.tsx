@@ -1260,6 +1260,7 @@ export default function AskPanel({
                 <DistributionBlock
                   distribution={data.distribution}
                   spec={applied}
+                  onChangeGroup={(value) => applyStripChange("peers", value)}
                 />
               )}
               {data.block === "breakdown" && (
@@ -1289,7 +1290,7 @@ export default function AskPanel({
                 <EntityCardBlock card={data.card} historical={isProfile} spec={applied} />
               )}
               {data.block === "fact_check" && (
-                <FactCheckBlock fact={data.fact} />
+                <FactCheckBlock fact={data.fact} spec={applied} onWider={runWider} />
               )}
               {data.block === "trend" && (
                 <TrendBlock

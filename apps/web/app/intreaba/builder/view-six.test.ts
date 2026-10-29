@@ -103,17 +103,19 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect(builderView(SIX.fact_check!).invites.map((i) => i.label)).toEqual(["Ce s-a cumpărat", "Ce fel de achiziții"]);
   });
 
-  it("open «Față de cine?» on the group with today's keys: a kind and a county for institutions, the seat for firms", () => {
+  it("open «Față de cine?» on the entity's ticks (F6a): the group, the county and an old link's kind, one window", () => {
     const group = win(SIX.distribution!, "Față de cine");
     expect([windowKind(group), group.title]).toEqual(["peers", "Față de cine?"]);
-    const kinds = listOptions(group, SIX.distribution!, "authorityKind");
-    expect(kinds.options.map((o) => o.label)).toEqual(["Toate instituțiile publice", "Primării de comună", "Primării de oraș și municipiu", "Consilii județene", "Spitale", "Școli"]);
-    expect(kinds.rest).toEqual([{ label: OTHER_INSTITUTIONS, after: kinds.options.at(-1)!.value }]);
+    expect(group.slot).toMatchObject({ id: "peers", picker: "peers", writes: ["county", "authorityKind"] });
     const chosen = chooseValue(SIX.distribution!, group.slot, { filter: "county", value: "Buzău" });
     expect(sentence(chosen.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de instituțiile publice din județul Buzău?");
+    // A tick is a choice of the same window: written as the group, no note.
+    const ticked = chooseValue(SIX.distribution!, group.slot, { filter: "peers", value: { similar: true } });
+    expect([ticked.spec.peers, ticked.notes]).toEqual([{ similar: true }, []]);
+    expect(sentence(ticked.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de instituțiile de același tip?");
     const firm = q({ block: "distribution", dim: "supplier", filters: { ...URBAN, county: "Bucuresti" } });
     expect(sentence(firm)).toBe("Unde se situează URBAN SCOPE după indicele de risc, față de firmele cu sediul în București?");
-    expect(win(firm, "Față de cine").slot.writes ?? []).toEqual([]);
+    expect(win(firm, "Față de cine").slot.writes).toEqual(["county"]);
     expect(windowTip(group, SIX.distribution!)).toMatchObject({ title: "Grupul de comparație" });
   });
 

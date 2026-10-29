@@ -1,9 +1,9 @@
-import type { MonitoringScope } from "@/lib/monitoring-shared";
-import { describeConditions } from "@/lib/ask/filters/describe";
-import { specTrendPartLabel } from "@/lib/ask/trend-shared";
-import { TREND_GROUP_ROW } from "@/lib/ask/filters/defs/trend";
-import { countWords } from "@/lib/ask/answer-text";
-import { formatBucharestDay } from "@/lib/format";
+import type { MonitoringScope } from "../../lib/monitoring-shared";
+import { describeConditions } from "../../lib/ask/filters/describe";
+import { specTrendPartLabel } from "../../lib/ask/trend-shared";
+import { TREND_GROUP_ROW } from "../../lib/ask/filters/defs/trend";
+import { countWords } from "../../lib/ask/answer-text";
+import { formatBucharestDay } from "../../lib/format";
 export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   const { spec, options } = scope, subgroup = options.scope, members = options.members;
   // The question's conditions in the words of describeConditions; the receipt keeps a precise selection group by group.
@@ -26,6 +26,11 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   if (subgroup?.excludeCpvPrefixes) selection.push({ label: "Exclude ramurile CPV", value: subgroup.excludeCpvPrefixes.join(", ") });
   if (subgroup?.years) selection.push({ label: "Ani selectați din rezultat", value: subgroup.years.join(", ") });
   if (subgroup?.riskBucket) selection.push({ label: "Interval CRI", value: `${subgroup.riskBucket.from} — ${subgroup.riskBucket.to}` });
+  // distribution-2: a bar of the chart, the group's profiles with exactly that many criteria.
+  if (subgroup?.criteria !== undefined) selection.push({ label: "Criterii de risc", value: `Doar profilurile cu ${countWords(subgroup.criteria, "criteriu", "criterii")}` });
+  // fact_check-2: the lines of a verification's answer, as it names them.
+  if (subgroup?.consortium) selection.push({ label: "Contracte", value: "Doar cele în asociere" });
+  if (subgroup?.singleBid) selection.push({ label: "Concurență", value: "Doar licitațiile cu o singură ofertă (TED)" });
   const list = (rows: { label: string; value: string }[]) => <dl className="mon-scope-conditions">{rows.map((item, i) => <div key={i}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
   return <>{list(items)}{receipt && <div className="mon-population"><p>{receipt.intro}</p><strong>{receipt.operator}</strong>{receipt.groups.map((group, i) => <div key={i}><span>{group.title}</span><ul>{group.items.map((item, index) => <li key={index}>{item}</li>)}</ul></div>)}</div>}{selection.length > 0 && <div className="mon-selection"><p><strong>Din aceste rezultate, urmărim doar selecția de mai jos.</strong> Toate aceste restricții se aplică împreună, peste condițiile întrebării.</p>{list(selection)}</div>}</>;
 }

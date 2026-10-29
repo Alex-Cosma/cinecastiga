@@ -20,7 +20,7 @@ export function testDatabaseUrl(label = "Ask fixtures"): string | undefined {
 /** Qualified tables outside marts that runSpec, runRows and ground read. */
 export const ENGINE_GLOBAL_TABLES = [
   "core.entities", "core.entity_sicap_ids", "core.entity_redirects", "core.cpv_codes",
-  "core.direct_acquisitions", "core.contracts", "raw.raw_documents",
+  "core.direct_acquisitions", "core.contracts", "core.awards", "core.contract_winners", "raw.raw_documents",
   "reference.uat", "reference.authority_uat", "reference.company_reps", "reference.cpv_synonym",
 ] as const;
 /** marts tables of the same paths, including the agg_* fast paths. */
@@ -29,6 +29,8 @@ export const ENGINE_MARTS_TABLES = [
   "agg_top_entities", "agg_national", "agg_years", "agg_map_county", "spend_by_county", "cui_corroborations",
   // F4: the network's signals on a relation (relations.ts relationSignals).
   "flag_instances",
+  // A verification reads the pair's contracts outside the sums (fact-check.ts: contractKind, canonicalContract).
+  "contract_identity_exclusions", "contract_identity_members", "contract_identity_decisions",
 ] as const;
 /** A marts table a database may predate (migration 0077): created empty with its own columns. */
 const MISSING_MARTS_DDL: Record<string, string> = {

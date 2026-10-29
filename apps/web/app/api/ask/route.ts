@@ -10,6 +10,7 @@ import {
   type TableSort,
 } from "@/lib/ask/compile";
 import { buildPills } from "@/lib/ask/pills";
+import { answerLabels } from "../../../lib/ask/filters/title";
 import { trendListSpec, type TrendList } from "@/lib/ask/trend-shared";
 import { interpret } from "@/lib/ask/llm";
 import { resolvedSpec } from "@/lib/ask/resolved-spec";
@@ -134,7 +135,7 @@ export async function POST(req: Request) {
       model,
       spec: resolvedSpec(spec, grounding),
       executedAt: new Date().toISOString(),
-      pills: buildPills(spec, grounding, { executedMonths: result.executed?.months }),
+      pills: buildPills(spec, grounding, { executedMonths: result.executed?.months, peerGroup: answerLabels(result).peerGroup }),
       caveats: result.caveats,
       data: result.data,
       ...(result.partialYears ? { partialYears: result.partialYears } : {}),

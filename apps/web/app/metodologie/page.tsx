@@ -84,6 +84,12 @@ export default function MetodologiePage() {
         <p>Semnalele despre contracte prin proceduri, bilanțuri și reprezentanți ONRC nu intră în CRI.
           În profil, filtrele tabelului de achiziții nu recalculează acest scor. Datele incomplete pot schimba rezultatul;
           verifică perioada fiecărui semnal și sursele sale înainte de a trage o concluzie.</p>
+        <p id="grup-comparatie"><strong>Față de cine?</strong> În „Întreabă”, „Unde se situează?” numără criteriile entității
+          și câți dintre ceilalți membri ai grupului ales au mai multe, tot atâtea sau mai puține. Grupul folosește regulile paginii
+          Comparații: primăriile după populația RPL 2021, între jumătate și dublul populației entității (comunele, orașele și municipiile
+          împreună; doar primăriile identificate sigur), consiliile județene între ele, primăriile de sector între ele, spitalele și școlile
+          după tipul instituției, același județ și activitatea apropiată (între jumătate și dublul achizițiilor directe acceptate).
+          Intră doar profilurile cu cel puțin 10 achiziții directe, iar comparația cere cel puțin 5 alți membri.</p>
       </section>
 
       <section className="section" id="acoperire">
@@ -124,6 +130,15 @@ export default function MetodologiePage() {
             cele a căror primă înregistrare din toată arhiva este în al doilea an.
             Un contract intră întreg în anul atribuirii, nu în anii în care se execută. Când al doilea an nu e încheiat în date,
             ambii ani se compară pe aceleași luni, din ianuarie până la ultima lună completă. Valorile sunt înregistrate, nu plăți.</p>
+        </details>
+        <details className="method-fold" id="verificare">
+          <summary>Verificarea unei relații</summary>
+          <p>În „Întreabă”, „A cumpărat X de la Y?” are trei răspunsuri. Da: cel puțin o înregistrare a perechii în selecție, sau un rând
+            pe care totalurile îl lasă afară (o achiziție directă peste filtrul de 2 milioane lei ori fără valoare pozitivă, un contract cu identitate
+            nesigură, peste 1 miliard lei, fără valoare în lei sau de tip neclar); acesta din urmă se spune „nu intră în sume”. Acord-cadru: perechea are doar plafoane
+            de acord-cadru, care nu sunt cumpărări și nu se adună. Nu: nimic din acestea, cu motivul (alegerile întrebării, o condiție dintr-un link
+            vechi sau nicio înregistrare în date). Concurența se numără doar la licitațiile deschise și restrânse cu numărul ofertelor cunoscut din TED.
+            Ponderea relației compară perechea cu ceilalți parteneri ai fiecărei părți, cu aceleași alegeri. Un „Da” nu dovedește livrarea sau plata.</p>
         </details>
         <details className="method-fold">
           <summary>Republicări</summary>

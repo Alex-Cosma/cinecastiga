@@ -4,6 +4,7 @@ import { breakdownDeeperSpec } from "../../lib/ask/source-spec";
 import { SELECTION_RULES, type AskSpec, type MonthWindow, type NetworkOptions, type SankeyOptions } from "../../lib/ask/spec";
 import { networkListSpec, type NetworkList, type NetworkOrder } from "../../lib/ask/network-shared";
 import { DEFAULT_SANKEY_SHOWN } from "../../lib/ask/sankey-shared";
+import { withPeerGroup } from "../../lib/ask/peer-groups-shared";
 import { specTrendList, trendListSpec, type TrendList } from "../../lib/ask/trend-shared";
 import { formatShare } from "../../lib/ask/answer-text";
 import { divisionShortName } from "../../lib/ask/cpv-divisions";
@@ -40,10 +41,10 @@ export function totalConditionWords(applied: AskSpec, executedMonths?: MonthWind
 
 /**
  * The keys the strip writes that ask again: the data stream (F1b), and in F3 the evolution's split and same months
- * (another grouping) and the breakdown's kind (its rows), in F4 a comparison's shared clients (the pre-step P). The
- * map's lens and the breakdown's order switch on the data already fetched.
+ * (another grouping) and the breakdown's kind (its rows), in F4 a comparison's shared clients (the pre-step P), in
+ * F6a the distribution's group. The map's lens and the breakdown's order switch on the data already fetched.
  */
-export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "timeseries", "purchaseKind", "sharedPartners"]);
+export const STRIP_QUERY_KEYS = new Set<StripPatch["path"]>(["dataset", "timeseries", "purchaseKind", "sharedPartners", "peers"]);
 
 /**
  * The network's strip (F4, final network §3.1–§3.5): a group or an order switches on the answer already
@@ -104,6 +105,8 @@ export function streamOptions(spec: Pick<AskSpec, "filters">): readonly SegmentO
 export function appliedAfterStrip(applied: AskSpec, path: StripPatch["path"], value: string): AskSpec {
   if (path === "dataset") return { ...applied, dataset: value as NonNullable<AskSpec["dataset"]> };
   if (path === "timeseries") return seriesAfterStrip(applied, value);
+  // F6a: the distribution's "Schimbă grupul" writes its ticks, the county and an old link's kind (a new query).
+  if (path === "peers") return withPeerGroup(applied as AskSpec & { filters: Record<string, unknown> }, value);
   if (path === "purchaseKind") {
     const filters = { ...applied.filters };
     if (value) filters.purchaseKind = value as NonNullable<AskSpec["filters"]["purchaseKind"]>;

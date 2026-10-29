@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, parseSpec, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, parseSpec, peersRule, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -51,9 +51,9 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners", "sharedPartners"]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "peers", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners", "sharedPartners"]);
     expect(ruled.map((def) => def.validate)).toEqual([
-      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
+      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, peersRule, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
       TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months, NETWORK_RULES.partners, COMPARE_RULES.sharedPartners,
     ]);
     // F4 (plan §3): one seat at a time, abroad without a size, a county of the seat where firms are the subject.
@@ -92,6 +92,15 @@ describe("the rules of a key (plan §2.4)", () => {
     expect(validateSpec({ ...stat, filters: { cpvTerm: "45233140", purchaseKind: "lucrari" } })).not.toHaveProperty("error");
     expect(validateSpec({ ...stat, filters: { procedure: "altele" } })).toMatchObject({ dataset: "contracts" });
     expect(validateSpec({ ...stat, dataset: "da", filters: { purchaseValueMin: 2_000_000 } })).not.toHaveProperty("error");
+    // F6a: the comparison group only on the distribution, "același tip" only of an institution.
+    const distribution = { block: "distribution", measure: "value", filters: { supplierId: 7 } } as const;
+    for (const raw of [{ ...distribution, peers: { similar: true } }, { block: "scatter", dim: "authority", measure: "value", filters: {}, peers: { activity: true } }]) {
+      const parsed = parseSpec(raw);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(peersRule(parsed), JSON.stringify(raw)).not.toBeNull();
+      expect(validateSpec(raw)).toEqual({ error: peersRule(parsed) });
+    }
+    expect(validateSpec({ ...distribution, peers: { activity: true } })).not.toHaveProperty("error");
     const trend = { block: "trend", dim: "supplier", measure: "value", filters: { yearFrom: 2024, yearTo: 2025 } } as const;
     for (const [raw, rule] of [
       [{ ...trend, trend: { change: "down", order: "lei" } }, TREND_RULES.order],
@@ -200,11 +209,12 @@ describe("keys F3-rows implements (the evolution's options, plan §4.3)", () => 
   });
 });
 
-describe("keys a later stage implements (F2: the trend's)", () => {
-  const later = FILTER_DEFS.filter((def) => def.since === "F2");
+describe("keys a later stage implements (F2: the trend's; F6a: the distribution's group)", () => {
+  const later = FILTER_DEFS.filter((def) => def.since === "F2" || def.since === "F6a");
 
   it("are the trend's five lenses, applied on the trend only, with the plan's level and scope", () => {
     expect(later.map((def) => [def.id, def.since, def.engine, def.scope("trend")])).toEqual([
+      ["peers", "F6a", { distribution: "profile" }, "selection"],
       ["trendChange", "F2", { trend: "group" }, "group"],
       ["trendMonths", "F2", { trend: "row" }, "selection"],
       ["trendOrder", "F2", { trend: "display" }, "display"],
@@ -224,7 +234,7 @@ describe("keys a later stage implements (F2: the trend's)", () => {
     expect(FILTERS.trendChange.write(first, "gone").trend).toEqual({ change: "gone" });
     expect(FILTERS.trendMonths.write(FILTERS.trendMonths.write(base, "auto"), undefined)).not.toHaveProperty("trend");
     // Every value a control writes passes validateSpec on the question it offers it on.
-    for (const def of later) {
+    for (const def of later.filter((d) => d.id.startsWith("trend"))) {
       let spec = base;
       if (def.id === "trendOrder" || def.id === "trendMinBase") spec = FILTERS.trendOrder.write(FILTERS.trendChange.write(base, "up"), "percent");
       if (def.id === "trendFirstOnly") spec = FILTERS.trendChange.write(base, "new");

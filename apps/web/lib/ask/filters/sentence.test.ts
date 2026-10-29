@@ -12,6 +12,7 @@ import {
   KINDS_AFTER_D1, kindAfterD1, presentationTokens, saidFilters, sentenceSlots, sentenceText, sentenceTokens, type SentenceLabels, type SentenceSlot,
 } from "./sentence";
 import type { FilterId } from "./types";
+import type { PeerFacts } from "../peer-groups-shared";
 import type { SentenceToken as KitSentenceToken } from "../../../app/intreaba/builder/kit-types";
 
 /*
@@ -320,10 +321,35 @@ describe("the sentence of each question (plan §4)", () => {
     expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN" } }))).toBe("Unde se situează [DEDEMAN] după indicele de risc, față de [toate firmele]?");
     // On firm profiles the county is the seat (R9).
     expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN", county: "Bacău" } }))).toBe("Unde se situează [DEDEMAN] după indicele de risc, față de [firmele cu sediul în județul Bacău]?");
-    expect(slotOf(q({ block: "distribution", dim: "authority", filters: { ...BUZAU, authorityKind: "comuna", county: "Buzău" } }), "county"))
-      .toMatchObject({ says: ["county", "authorityKind"], window: "Față de cine?" });
+    // F6a: one phrase for the group; an old link's kind is said by it too (the window shows it apart, with ×).
+    expect(slotOf(q({ block: "distribution", dim: "authority", filters: { ...BUZAU, authorityKind: "comuna", county: "Buzău" } }), "peers"))
+      .toMatchObject({ says: ["county", "authorityKind"], writes: ["county", "authorityKind"], picker: "peers", window: "Față de cine?" });
     // Transaction keys and a kind on firms are refused on a profile: under the sentence, with their reason.
     expect(under(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN", authorityKind: "spital", cpvTerm: "x", yearFrom: 2025 } }))).toEqual(["authorityKind", "cpvTerm", "period"]);
+  });
+
+  it("distribution: the ticks of «Față de cine?» bounded by the entity's facts (F6a, final distribution §1.1)", () => {
+    const facts: PeerFacts = { role: "authority", entityId: "11", name: "MUNICIPIUL BUZAU", county: "Buzău", nDas: 782,
+      similar: { rule: "population", value: 103_481, min: 51_741, max: 206_962 }, activity: { min: 391, max: 1_564 } };
+    const similar = q({ block: "distribution", dim: "authority", filters: BUZAU, peers: { similar: true } });
+    expect(marked(similar, { peerGroup: facts })).toBe("Unde se situează [MUNICIPIUL BUZAU] după indicele de risc, față de [primăriile cu 52–207 mii de locuitori]?");
+    // Without the facts (a saved question's summary, before the window's numbers): the rule by name.
+    expect(marked(similar)).toBe("Unde se situează [MUNICIPIUL BUZAU] după indicele de risc, față de [instituțiile de același tip]?");
+    // Another entity's facts never bound this one's group.
+    expect(marked(similar, { peerGroup: { ...facts, entityId: "12" } })).toContain("[instituțiile de același tip]");
+    const commune: PeerFacts = { ...facts, similar: { rule: "population", value: 3_173, min: 1_587, max: 6_346 } };
+    expect(marked({ ...similar, filters: { ...BUZAU, county: "Buzău" } }, { peerGroup: commune }))
+      .toContain("[primăriile cu 1.587–6.346 de locuitori din județul Buzău]");
+    const hospital: PeerFacts = { ...facts, similar: { rule: "kind", kind: "spital" }, activity: { min: 12_101, max: 48_404 } };
+    expect(marked({ ...similar, peers: { similar: true, activity: true } }, { peerGroup: hospital }))
+      .toContain("[spitalele cu 12.101–48.404 achiziții directe]");
+    expect(marked({ ...similar, peers: { activity: true } }, { peerGroup: hospital })).toContain("[instituțiile publice cu 12.101–48.404 achiziții directe]");
+    expect(marked({ ...similar, peers: { similar: true } }, { peerGroup: { ...facts, similar: { rule: "sectors" } } })).toContain("[celelalte sectoare ale Capitalei]");
+    expect(marked({ ...similar, peers: { similar: true } }, { peerGroup: { ...facts, similar: { rule: "county_councils" } } })).toContain("[consiliile județene]");
+    const dedeman: PeerFacts = { role: "supplier", entityId: "5", name: "DEDEMAN", county: "Bacău", nDas: 461_798, similar: null, activity: { min: 230_899, max: 923_596 } };
+    expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN", supplierId: 5, county: "Bacău" }, peers: { activity: true } }), { peerGroup: dedeman }))
+      .toContain("[firmele cu 230.899–923.596 de achiziții directe cu sediul în județul Bacău]");
+    expect(slotOf(similar, "peers")?.says).toEqual(["peers"]);
   });
 
   it("scatter: «Cine» and «Unde», the fixed place of county councils (§4.12)", () => {

@@ -42,7 +42,7 @@ export type FilterId =
   | "trendChange" | "trendMonths" | "trendOrder" | "trendMinBase" | "trendFirstOnly"
   | "timeseriesGrain" | "timeseriesSplit" | "timeseriesMonths"
   | "networkPartners" | "networkSince" | "networkOrder" | "networkShow" | "networkSignals"
-  | "sankeyShown" | "scatterFlag" | "scatterRankBy" | "peers";
+  | "sankeyShown" | "scatterFlag" | "scatterRankBy" | "peers" | "peersDomain";
 
 /** P1–P9 (kit §2). Today: sentence, under (the chips row), invite ("Adaugă o condiție"), presentation, advanced ("Mai multe filtre"). */
 export type Placement = "sentence" | "invite" | "row" | "under" | "presentation" | "strip" | "rowMenu" | "fact" | "advanced";

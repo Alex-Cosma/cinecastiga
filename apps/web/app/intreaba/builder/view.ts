@@ -4,12 +4,13 @@ import { describeConditions, type ConditionLabels } from "../../../lib/ask/filte
 import { advancedConditions, legacyConditions, type LegacyCondition } from "../../../lib/ask/filters/legacy-conditions";
 import { exclusionWords, splitExcluded, type Excluded } from "../../../lib/ask/filters/origin";
 import { conditionSet, FILTERS } from "../../../lib/ask/filters/registry";
-import { presentationTokens, sentenceTokens, type SentenceSlot, type SentenceToken } from "../../../lib/ask/filters/sentence";
+import { presentationTokens, sentenceTokens, type SentenceLabels, type SentenceSlot, type SentenceToken } from "../../../lib/ask/filters/sentence";
 import type { FilterCtx, FilterId, FilterSpec, Slot } from "../../../lib/ask/filters/types";
 import { employeesOnBands } from "../../../lib/ask/filters/words";
 import { trendMonthsState, trendMonthsWaiting, type TrendMonthsState } from "../../../lib/ask/filters/trend-rules";
 import type { Choice } from "../../../lib/ask/filters/pickers";
 import { monthsLabel } from "../../../lib/ask/months-window";
+import { withPeerGroup } from "../../../lib/ask/peer-groups-shared";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
 import type { NetworkOptions, SankeyOptions, TimeseriesOptions, TrendOptions } from "../../../lib/ask/spec";
@@ -77,7 +78,8 @@ export interface BuilderView {
  * `seq` is a new change; the builder is not remounted, so a draft survives.
  */
 export interface StripPatch {
-  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey" | "sharedPartners"; value: string;
+  /** "peers": the answer's "Schimbă grupul" (F6a), `value` the JSON of its PeerGroupValue (peer-groups-shared.ts). */
+  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey" | "sharedPartners" | "peers"; value: string;
   /** "trend": the list chosen in the answer (`value`) and the applied question's trend options after it (null: no key). */
   trend?: TrendOptions | null;
   /** "timeseries" (F3): the evolution's options after the strip's split or same months (null: no key). */
@@ -91,6 +93,7 @@ export interface StripPatch {
 
 /** The draft after a strip change: only that key, as the applied question got it. */
 export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend" | "timeseries" | "network" | "dropPeriod" | "sankey">): QuestionSpec {
+  if (patch.path === "peers") return withPeerGroup(draft, patch.value);
   const next = cloneQuestion(draft);
   if (patch.path === "dataset") next.dataset = patch.value;
   else if (patch.path === "trend") {
@@ -210,11 +213,11 @@ function sameMonthsChip(slot: Slot, state: NonNullable<TrendMonthsState>): { ite
 }
 
 /** The builder's view of a draft. `labels` names a CPV code; `ctx` comes from the caller when it has more than the spec. */
-export function builderView(input: QuestionSpec, labels: ConditionLabels = {}, ctx: FilterCtx = filterContext(input as FilterSpec)): BuilderView {
+export function builderView(input: QuestionSpec, labels: ConditionLabels & Pick<SentenceLabels, "peerGroup"> = {}, ctx: FilterCtx = filterContext(input as FilterSpec)): BuilderView {
   const spec = input as FilterSpec;
   const entry = BLOCK_FILTERS[ctx.block];
   const windows: Record<string, BuilderWindowSpec> = {};
-  const sentence = kitTokens(sentenceTokens(spec, ctx, { cpvName: labels.cpvName }), "s:", windows);
+  const sentence = kitTokens(sentenceTokens(spec, ctx, { cpvName: labels.cpvName, peerGroup: labels.peerGroup }), "s:", windows);
   const presentation = kitTokens(presentationTokens(spec), "p:", windows);
   const described = describeConditions(spec, labels).byId;
 

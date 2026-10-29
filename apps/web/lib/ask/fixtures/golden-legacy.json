@@ -2133,7 +2133,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -2143,42 +2143,146 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": false,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 3,
       "value": 93301.26,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-05-09",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
-        "value": 45000.01
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
        },
        {
         "daCode": "DA-FX-5",
         "date": "2025-05-09",
         "cpvName": "Lucrări de drumuri",
-        "value": 41000.55
+        "value": 41000.55,
+        "src": "da",
+        "refId": "9100100005",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        },
        {
         "daCode": "DA-FX-20",
         "date": "2025-08-19",
         "cpvName": "Diverse lucrări de îmbrăcăminte",
-        "value": 7300.7
+        "value": 7300.7,
+        "src": "da",
+        "refId": "9100100020",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        }
-      ]
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 2,
+        "value": 48301.25
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 2,
+        "of": 3,
+        "share": 0.18096695564740198
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 3,
+        "share": 0.6220016823818303
+       }
+      },
+      "relation": null,
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -2266,7 +2370,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -2275,85 +2379,185 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 2
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 1
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 1
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 1
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 1
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 1
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "ok",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
+       "nFlags": 1,
        "cri": 0.274,
-       "percentile": 50
+       "flags": ["da_concentration"],
+       "nDas": 12,
+       "county": "Alba",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 8
+      "group": {
+       "words": "toate instituțiile publice",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "nDas": 12,
+        "similar": {
+         "rule": "county_councils"
+        },
+        "activity": {
+         "min": 6,
+         "max": 24
+        }
+       },
+       "ticks": [],
+       "legacy": {},
+       "others": 7,
+       "memberIds": ["9100000011","9100000003","9100000001","9100000002","9100000013","9100000012","9100000006"]
+      },
+      "position": {
+       "more": 4,
+       "same": 0,
+       "fewer": 3
+      },
+      "hist": [
+       {
+        "k": 0,
+        "n": 3
+       },
+       {
+        "k": 1,
+        "n": 0
+       },
+       {
+        "k": 2,
+        "n": 1
+       },
+       {
+        "k": 3,
+        "n": 1
+       },
+       {
+        "k": 4,
+        "n": 1
+       },
+       {
+        "k": 5,
+        "n": 1
+       }
+      ],
+      "perCriterion": [
+       {
+        "code": "da_split",
+        "others": 4,
+        "country": 4
+       },
+       {
+        "code": "da_year_end",
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_round",
+        "others": 2,
+        "country": 2
+       },
+       {
+        "code": "da_rapid",
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_concentration",
+        "others": 2,
+        "country": 3
+       }
+      ],
+      "countryTotal": 8,
+      "members": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 5,
+        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+        "nDas": 22
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+        "nDas": 45
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 3,
+        "flags": ["da_split","da_rapid","da_round"],
+        "nDas": 18
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 2,
+        "flags": ["da_split","da_year_end"],
+        "nDas": 34
+       },
+       {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 31
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 27
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 10
+       }
+      ]
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 23,
-    "value": "70505.71",
-    "sourceTotal": 23,
-    "sourceValue": "70505.71",
+    "total": 11,
+    "value": "30042.25",
+    "sourceTotal": 11,
+    "sourceValue": "30042.25",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 23,
-     "value": "70505.71"
+     "count": 11,
+     "value": "30042.25"
     },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
+    "dateFrom": "2025-01-02",
+    "dateTo": "2025-10-02",
     "profile": true,
     "profiles": [
      {
@@ -2384,16 +2588,6 @@
       "value": "98700.10",
       "cri": 0.812,
       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000004",
-      "name": "Consiliul Judetean Alba",
-      "role": "authority",
-      "count": 12,
-      "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
       "applicable": 5
      },
      {
@@ -2437,7 +2631,7 @@
       "applicable": 5
      }
     ],
-    "profileCount": 8,
+    "profileCount": 7,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
@@ -2447,33 +2641,33 @@
     "statuses": [
      {
       "state": "Oferta acceptata",
-      "count": 23,
-      "value": "70505.71"
+      "count": 11,
+      "value": "30042.25"
      }
     ],
     "rows": [
      ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
-     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
-     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
-     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
-     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null]
+     ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null],
+     ["da","9100100107","DA-FX-107","2025-07-08","9100000006","9100000103","Alba","79000000-4","1959.91","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100105","DA-FX-105","2025-05-06","9100000006","9100000103","Alba","79000000-4","1685.65","Oferta acceptata",null,null,false,null],
+     ["da","9100100104","DA-FX-104","2025-04-05","9100000006","9100000103","Alba","79000000-4","1548.52","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
+     ["da","9100100102","DA-FX-102","2025-02-03","9100000006","9100000103","Alba","79000000-4","1274.26","Oferta acceptata",null,null,false,null]
     ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-23.csv",
-    "x-total-rows": "23",
-    "x-exported-rows": "23",
-    "x-source-rows": "23",
-    "x-source-value": "70505.71",
-    "x-filtered-value": "70505.71",
-    "lines": 24,
-    "sha256": "2fafdc36fc87dcffe839994621f640ccbbbb1fc5cc8216d1e056faacabdd5584"
+    "file": "randuri-11.csv",
+    "x-total-rows": "11",
+    "x-exported-rows": "11",
+    "x-source-rows": "11",
+    "x-source-value": "30042.25",
+    "x-filtered-value": "30042.25",
+    "lines": 12,
+    "sha256": "5f4d10104f5cbec4e66e89c46f7d16da3bbdc4cfeaddd39974f77624e1c4fe0b"
    }
   },
   {
@@ -5735,7 +5929,7 @@
      },
      "dataset": "contracts"
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","doar contractele din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -5743,30 +5937,125 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": true,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 1,
       "value": 45000.01,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-09-01",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
+       }
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 1,
         "value": 45000.01
        }
-      ]
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 0,
+        "value": 0
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 1,
+        "value": 45000.01
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 3,
+        "of": 3,
+        "share": 0.10204066314987757
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 2,
+        "share": 0.5
+       }
+      },
+      "relation": {
+       "count": 3,
+       "value": 93301.26,
+       "yearFirst": 2025,
+       "yearLast": 2025,
+       "frameworks": 0,
+       "excluded": 0
+      },
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -8521,7 +8810,7 @@
      },
      "dim": "authority"
     },
-    "pills": ["poziție în distribuția de risc","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -8530,134 +8819,83 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 0
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 0
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 1
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 0
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 0
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 0
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 0
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "small",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
+       "nFlags": 1,
        "cri": 0.274,
-       "percentile": 100
+       "flags": ["da_concentration"],
+       "nDas": 12,
+       "county": "Alba",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 1
+      "group": {
+       "words": "consiliile județene",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "nDas": 12,
+        "similar": {
+         "rule": "county_councils"
+        },
+        "activity": {
+         "min": 6,
+         "max": 24
+        }
+       },
+       "ticks": [],
+       "legacy": {
+        "authorityKind": "consiliu_judetean"
+       },
+       "others": 0
+      }
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and entity_id in (…)  -- doar consilii județene / județe\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 12,
-    "value": "40463.46",
-    "sourceTotal": 12,
-    "sourceValue": "40463.46",
+    "total": 0,
+    "value": "0.00",
+    "sourceTotal": 0,
+    "sourceValue": "0.00",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 12,
-     "value": "40463.46"
+     "count": 0,
+     "value": "0.00"
     },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
+    "dateFrom": null,
+    "dateTo": null,
     "profile": true,
-    "profiles": [
-     {
-      "entityId": "9100000004",
-      "name": "Consiliul Judetean Alba",
-      "role": "authority",
-      "count": 12,
-      "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
-     }
-    ],
-    "profileCount": 1,
+    "profiles": [],
+    "profileCount": 0,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
     ],
-    "statuses": [
-     {
-      "state": "Oferta acceptata",
-      "count": 12,
-      "value": "40463.46"
-     }
-    ],
-    "rows": [
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
-     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
-     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
-     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
-     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
-     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null]
-    ]
+    "statuses": [],
+    "rows": []
    },
    "csv": {
     "status": 200,
-    "file": "randuri-12.csv",
-    "x-total-rows": "12",
-    "x-exported-rows": "12",
-    "x-source-rows": "12",
-    "x-source-value": "40463.46",
-    "x-filtered-value": "40463.46",
-    "lines": 13,
-    "sha256": "f3e59395fc433b4a7e488925a8de2d1cf984371125fe4d4cd18f089e78259642"
+    "file": "randuri-0.csv",
+    "x-total-rows": "0",
+    "x-exported-rows": "0",
+    "x-source-rows": "0",
+    "x-source-value": "0.00",
+    "x-filtered-value": "0.00",
+    "lines": 1,
+    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
    }
   },
   {
@@ -18390,7 +18628,7 @@
       "supplierId": 9100000103
      }
     },
-    "pills": ["verificare Da/Nu","Scoala Gimnaziala Fixture","Fixture Servicii SA","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Scoala Gimnaziala Fixture","Fixture Servicii SA","până acum","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -18400,23 +18638,75 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "no",
+      "reason": "none",
+      "restricted": false,
+      "legacy": false,
       "verdict": false,
       "authority": {
        "entityId": "9100000005",
-       "name": "Scoala Gimnaziala Fixture"
+       "name": "Scoala Gimnaziala Fixture",
+       "cui": "91000005",
+       "county": "Buzau"
       },
       "supplier": {
        "entityId": "9100000103",
-       "name": "Fixture Servicii SA"
+       "name": "Fixture Servicii SA",
+       "cui": "91000103",
+       "county": "Alba"
       },
       "count": 0,
       "value": 0,
       "yearFirst": null,
       "yearLast": null,
-      "samples": []
+      "dateFirst": null,
+      "dateLast": null,
+      "samples": [],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 0,
+        "value": 0
+       },
+       "contracts": {
+        "count": 0,
+        "value": 0
+       }
+      },
+      "domains": [],
+      "competition": null,
+      "consortium": null,
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": null,
+      "relation": null,
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": {
+       "authoritySuppliers": 2,
+       "supplierAuthorities": 4
+      },
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000005\n  and supplier_id = 9100000103;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000005\n  and supplier_id = 9100000103;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -18475,13 +18765,9 @@
    },
    "answer": {
     "status": 200,
-    "ok": false,
-    "error": "„Agentia Fixture Nationala” nu are profil de risc (prea puține achiziții directe).",
-    "caveats": [
-     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
-    ],
+    "ok": true,
+    "question": null,
+    "model": null,
     "spec": {
      "block": "distribution",
      "measure": "value",
@@ -18491,143 +18777,58 @@
      },
      "dim": "authority"
     },
-    "question": null
+    "pills": ["criterii de risc față de grup","Agentia Fixture Nationala","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "distribution",
+     "distribution": {
+      "version": 2,
+      "role": "authority",
+      "status": "below",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "focal": {
+       "entityId": "9100000007",
+       "name": "Agentia Fixture Nationala",
+       "nFlags": 0,
+       "cri": null,
+       "flags": [],
+       "nDas": 0,
+       "county": null,
+       "population": null,
+       "inGroup": false
+      },
+      "group": {
+       "words": "toate instituțiile publice",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000007",
+        "name": "Agentia Fixture Nationala",
+        "county": null,
+        "nDas": 0,
+        "similar": null,
+        "activity": null
+       },
+       "ticks": [],
+       "legacy": {},
+       "others": 0
+      }
+     }
+    },
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
-    "ok": true,
-    "total": 23,
-    "value": "70505.71",
-    "sourceTotal": 23,
-    "sourceValue": "70505.71",
-    "page": 0,
-    "pageSize": 10,
-    "accepted": {
-     "count": 23,
-     "value": "70505.71"
-    },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
-    "profile": true,
-    "profiles": [
-     {
-      "entityId": "9100000001",
-      "name": "Comuna Fixture Vest",
-      "role": "authority",
-      "count": 18,
-      "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000002",
-      "name": "Municipiul Fixture Nord",
-      "role": "authority",
-      "count": 34,
-      "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000003",
-      "name": "Spitalul Judetean Fixture",
-      "role": "authority",
-      "count": 45,
-      "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000004",
-      "name": "Consiliul Judetean Alba",
-      "role": "authority",
-      "count": 12,
-      "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000006",
-      "name": "Municipiul Aiud",
-      "role": "authority",
-      "count": 10,
-      "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000011",
-      "name": "Comuna Profil Unu",
-      "role": "authority",
-      "count": 22,
-      "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000012",
-      "name": "Comuna Profil Doi",
-      "role": "authority",
-      "count": 27,
-      "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000013",
-      "name": "Spitalul Profil Trei",
-      "role": "authority",
-      "count": 31,
-      "value": "260000.00",
-      "cri": null,
-      "flags": [],
-      "applicable": 5
-     }
-    ],
-    "profileCount": 8,
-    "profileReconciled": false,
-    "scopeNotes": [
-     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
-    ],
-    "statuses": [
-     {
-      "state": "Oferta acceptata",
-      "count": 23,
-      "value": "70505.71"
-     }
-    ],
-    "rows": [
-     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
-     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
-     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
-     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
-     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null]
-    ]
+    "ok": false,
+    "error": "Entitatea are sub 10 achiziții directe: nu are un grup de comparație."
    },
    "csv": {
     "status": 200,
-    "file": "randuri-23.csv",
-    "x-total-rows": "23",
-    "x-exported-rows": "23",
-    "x-source-rows": "23",
-    "x-source-value": "70505.71",
-    "x-filtered-value": "70505.71",
-    "lines": 24,
-    "sha256": "2fafdc36fc87dcffe839994621f640ccbbbb1fc5cc8216d1e056faacabdd5584"
+    "ok": false,
+    "error": "Entitatea are sub 10 achiziții directe: nu are un grup de comparație."
    }
   },
   {
@@ -43499,7 +43700,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -43509,42 +43710,146 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": false,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 3,
       "value": 93301.26,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-05-09",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
-        "value": 45000.01
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
        },
        {
         "daCode": "DA-FX-5",
         "date": "2025-05-09",
         "cpvName": "Lucrări de drumuri",
-        "value": 41000.55
+        "value": 41000.55,
+        "src": "da",
+        "refId": "9100100005",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        },
        {
         "daCode": "DA-FX-20",
         "date": "2025-08-19",
         "cpvName": "Diverse lucrări de îmbrăcăminte",
-        "value": 7300.7
+        "value": 7300.7,
+        "src": "da",
+        "refId": "9100100020",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        }
-      ]
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 2,
+        "value": 48301.25
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 2,
+        "of": 3,
+        "share": 0.18096695564740198
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 3,
+        "share": 0.6220016823818303
+       }
+      },
+      "relation": null,
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -43640,7 +43945,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","2025","toate achizițiile: directe și din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","2025","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -43650,42 +43955,153 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": true,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 3,
       "value": 93301.26,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-05-09",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
-        "value": 45000.01
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
        },
        {
         "daCode": "DA-FX-5",
         "date": "2025-05-09",
         "cpvName": "Lucrări de drumuri",
-        "value": 41000.55
+        "value": 41000.55,
+        "src": "da",
+        "refId": "9100100005",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        },
        {
         "daCode": "DA-FX-20",
         "date": "2025-08-19",
         "cpvName": "Diverse lucrări de îmbrăcăminte",
-        "value": 7300.7
+        "value": 7300.7,
+        "src": "da",
+        "refId": "9100100020",
+        "nid": null,
+        "procedure": null,
+        "nWinners": null,
+        "fullValue": null,
+        "bids": null,
+        "kind": null
        }
-      ]
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 2,
+        "value": 48301.25
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 3,
+        "value": 93301.26
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 2,
+        "of": 3,
+        "share": 0.20301862643543164
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 3,
+        "share": 0.6461233606658984
+       }
+      },
+      "relation": {
+       "count": 3,
+       "value": 93301.26,
+       "yearFirst": 2025,
+       "yearLast": 2025,
+       "frameworks": 0,
+       "excluded": 0
+      },
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101\n  and an >= 2025\n  and an <= 2025;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000001\n  and supplier_id = 9100000101\n  and an >= 2025\n  and an <= 2025;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -43779,7 +44195,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["verificare Da/Nu","Comuna Fixture Vest","Fixture Construct SRL","toți anii","doar contractele din proceduri"],
+    "pills": ["verificare","Comuna Fixture Vest","Fixture Construct SRL","până acum","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -43787,30 +44203,125 @@
     "data": {
      "block": "fact_check",
      "fact": {
+      "version": 2,
+      "state": "yes",
+      "restricted": true,
+      "legacy": false,
       "verdict": true,
       "authority": {
        "entityId": "9100000001",
-       "name": "Comuna Fixture Vest"
+       "name": "Comuna Fixture Vest",
+       "cui": "91000001",
+       "county": "Cluj"
       },
       "supplier": {
        "entityId": "9100000101",
-       "name": "Fixture Construct SRL"
+       "name": "Fixture Construct SRL",
+       "cui": "91000101",
+       "county": "Cluj"
       },
       "count": 1,
       "value": 45000.01,
       "yearFirst": 2025,
       "yearLast": 2025,
+      "dateFirst": "2025-09-01",
+      "dateLast": "2025-09-01",
       "samples": [
        {
         "daCode": "CT-FX-2",
         "date": "2025-09-01",
         "cpvName": "Lucrări de drumuri",
+        "value": 45000.01,
+        "src": "contracts",
+        "refId": "9100200002",
+        "nid": "9100400002",
+        "procedure": "Licitatie deschisa",
+        "nWinners": 2,
+        "fullValue": 90000.02,
+        "bids": 3,
+        "kind": "contract"
+       }
+      ],
+      "undated": {
+       "count": 0,
+       "value": 0
+      },
+      "years": [
+       {
+        "year": 2025,
+        "count": 1,
         "value": 45000.01
        }
-      ]
+      ],
+      "partialYear": 2026,
+      "channels": {
+       "da": {
+        "count": 0,
+        "value": 0
+       },
+       "contracts": {
+        "count": 1,
+        "value": 45000.01
+       }
+      },
+      "domains": [
+       {
+        "code": "45",
+        "name": "Lucrări de construcții",
+        "count": 1,
+        "value": 45000.01
+       }
+      ],
+      "competition": {
+       "single": 0,
+       "multiple": 1,
+       "unknown": 0
+      },
+      "consortium": {
+       "count": 1,
+       "share": 45000.01,
+       "full": 90000.02
+      },
+      "frameworks": {
+       "count": 0,
+       "ceiling": 0,
+       "inSums": 0,
+       "inSumsCeiling": 0,
+       "rows": []
+      },
+      "excluded": {
+       "count": 0,
+       "rows": []
+      },
+      "share": {
+       "ofSupplier": {
+        "rank": 3,
+        "of": 3,
+        "share": 0.10204066314987757
+       },
+       "ofAuthority": {
+        "rank": 1,
+        "of": 2,
+        "share": 0.5
+       }
+      },
+      "relation": {
+       "count": 3,
+       "value": 93301.26,
+       "yearFirst": 2025,
+       "yearLast": 2025,
+       "frameworks": 0,
+       "excluded": 0
+      },
+      "coverage": {
+       "da": "2026-06-20",
+       "contracts": "2026-06-25"
+      },
+      "partners": null,
+      "twins": []
      }
     },
-    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;"
+    "displaySql": "select count(*), sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and authority_id = 9100000001\n  and supplier_id = 9100000101;\n-- în afara sumelor, aceeași pereche: achizițiile directe peste 2 mil. lei sau fără valoare pozitivă (da_transactions);\n-- din core.contracts ⨝ core.awards ⨝ core.contract_winners: acordurile-cadru (plafoane), identitățile nesigure,\n-- contractele peste 1 mld. lei, fără valoare în lei și cele de tip neclar (contractKind, canonicalContract, @seap/db)"
    },
    "sources": {
     "status": 200,
@@ -43890,7 +44401,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -43899,85 +44410,185 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 2
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 1
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 1
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 1
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 1
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 1
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "ok",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
+       "nFlags": 1,
        "cri": 0.274,
-       "percentile": 50
+       "flags": ["da_concentration"],
+       "nDas": 12,
+       "county": "Alba",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 8
+      "group": {
+       "words": "toate instituțiile publice",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "nDas": 12,
+        "similar": {
+         "rule": "county_councils"
+        },
+        "activity": {
+         "min": 6,
+         "max": 24
+        }
+       },
+       "ticks": [],
+       "legacy": {},
+       "others": 7,
+       "memberIds": ["9100000011","9100000003","9100000001","9100000002","9100000013","9100000012","9100000006"]
+      },
+      "position": {
+       "more": 4,
+       "same": 0,
+       "fewer": 3
+      },
+      "hist": [
+       {
+        "k": 0,
+        "n": 3
+       },
+       {
+        "k": 1,
+        "n": 0
+       },
+       {
+        "k": 2,
+        "n": 1
+       },
+       {
+        "k": 3,
+        "n": 1
+       },
+       {
+        "k": 4,
+        "n": 1
+       },
+       {
+        "k": 5,
+        "n": 1
+       }
+      ],
+      "perCriterion": [
+       {
+        "code": "da_split",
+        "others": 4,
+        "country": 4
+       },
+       {
+        "code": "da_year_end",
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_round",
+        "others": 2,
+        "country": 2
+       },
+       {
+        "code": "da_rapid",
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_concentration",
+        "others": 2,
+        "country": 3
+       }
+      ],
+      "countryTotal": 8,
+      "members": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 5,
+        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+        "nDas": 22
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+        "nDas": 45
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 3,
+        "flags": ["da_split","da_rapid","da_round"],
+        "nDas": 18
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 2,
+        "flags": ["da_split","da_year_end"],
+        "nDas": 34
+       },
+       {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 31
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 27
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 10
+       }
+      ]
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 23,
-    "value": "70505.71",
-    "sourceTotal": 23,
-    "sourceValue": "70505.71",
+    "total": 11,
+    "value": "30042.25",
+    "sourceTotal": 11,
+    "sourceValue": "30042.25",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 23,
-     "value": "70505.71"
+     "count": 11,
+     "value": "30042.25"
     },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
+    "dateFrom": "2025-01-02",
+    "dateTo": "2025-10-02",
     "profile": true,
     "profiles": [
      {
@@ -44008,16 +44619,6 @@
       "value": "98700.10",
       "cri": 0.812,
       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
-     },
-     {
-      "entityId": "9100000004",
-      "name": "Consiliul Judetean Alba",
-      "role": "authority",
-      "count": 12,
-      "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
       "applicable": 5
      },
      {
@@ -44061,7 +44662,7 @@
       "applicable": 5
      }
     ],
-    "profileCount": 8,
+    "profileCount": 7,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
@@ -44071,33 +44672,33 @@
     "statuses": [
      {
       "state": "Oferta acceptata",
-      "count": 23,
-      "value": "70505.71"
+      "count": 11,
+      "value": "30042.25"
      }
     ],
     "rows": [
      ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
-     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
-     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
-     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
-     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null]
+     ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null],
+     ["da","9100100107","DA-FX-107","2025-07-08","9100000006","9100000103","Alba","79000000-4","1959.91","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100105","DA-FX-105","2025-05-06","9100000006","9100000103","Alba","79000000-4","1685.65","Oferta acceptata",null,null,false,null],
+     ["da","9100100104","DA-FX-104","2025-04-05","9100000006","9100000103","Alba","79000000-4","1548.52","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
+     ["da","9100100102","DA-FX-102","2025-02-03","9100000006","9100000103","Alba","79000000-4","1274.26","Oferta acceptata",null,null,false,null]
     ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-23.csv",
-    "x-total-rows": "23",
-    "x-exported-rows": "23",
-    "x-source-rows": "23",
-    "x-source-value": "70505.71",
-    "x-filtered-value": "70505.71",
-    "lines": 24,
-    "sha256": "2fafdc36fc87dcffe839994621f640ccbbbb1fc5cc8216d1e056faacabdd5584"
+    "file": "randuri-11.csv",
+    "x-total-rows": "11",
+    "x-exported-rows": "11",
+    "x-source-rows": "11",
+    "x-source-value": "30042.25",
+    "x-filtered-value": "30042.25",
+    "lines": 12,
+    "sha256": "5f4d10104f5cbec4e66e89c46f7d16da3bbdc4cfeaddd39974f77624e1c4fe0b"
    }
   },
   {
@@ -44133,7 +44734,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -44143,97 +44744,62 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 0
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 1
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 0
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 0
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 0
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 0
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "small",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
+       "nFlags": 1,
        "cri": 0.274,
-       "percentile": 100
+       "flags": ["da_concentration"],
+       "nDas": 12,
+       "county": "Alba",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 2
+      "group": {
+       "words": "instituțiile publice din județul Alba",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "nDas": 12,
+        "similar": {
+         "rule": "county_councils"
+        },
+        "activity": {
+         "min": 6,
+         "max": 24
+        }
+       },
+       "ticks": ["county"],
+       "legacy": {},
+       "others": 1
+      }
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'alba'\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 22,
-    "value": "58005.61",
-    "sourceTotal": 22,
-    "sourceValue": "58005.61",
+    "total": 10,
+    "value": "17542.15",
+    "sourceTotal": 10,
+    "sourceValue": "17542.15",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 22,
-     "value": "58005.61"
+     "count": 10,
+     "value": "17542.15"
     },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
+    "dateFrom": "2025-01-02",
+    "dateTo": "2025-10-02",
     "profile": true,
     "profiles": [
-     {
-      "entityId": "9100000004",
-      "name": "Consiliul Judetean Alba",
-      "role": "authority",
-      "count": 12,
-      "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
-     },
      {
       "entityId": "9100000006",
       "name": "Municipiul Aiud",
@@ -44245,7 +44811,7 @@
       "applicable": 5
      }
     ],
-    "profileCount": 2,
+    "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
@@ -44254,33 +44820,48 @@
     "statuses": [
      {
       "state": "Oferta acceptata",
-      "count": 22,
-      "value": "58005.61"
+      "count": 10,
+      "value": "17542.15"
      }
     ],
     "rows": [
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
-     ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
-     ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
-     ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
-     ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
-     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null]
+     ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null],
+     ["da","9100100107","DA-FX-107","2025-07-08","9100000006","9100000103","Alba","79000000-4","1959.91","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100105","DA-FX-105","2025-05-06","9100000006","9100000103","Alba","79000000-4","1685.65","Oferta acceptata",null,null,false,null],
+     ["da","9100100104","DA-FX-104","2025-04-05","9100000006","9100000103","Alba","79000000-4","1548.52","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
+     ["da","9100100102","DA-FX-102","2025-02-03","9100000006","9100000103","Alba","79000000-4","1274.26","Oferta acceptata",null,null,false,null],
+     [
+      "da",
+      "9100100101",
+      "DA-FX-101",
+      "2025-01-02",
+      "9100000006",
+      "9100000103",
+      "Alba",
+      "79000000-4",
+      "1137.13",
+      "Oferta acceptata",
+      null,
+      null,
+      false,
+      "Servicii de consultanță"
+     ]
     ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-22.csv",
-    "x-total-rows": "22",
-    "x-exported-rows": "22",
-    "x-source-rows": "22",
-    "x-source-value": "58005.61",
-    "x-filtered-value": "58005.61",
-    "lines": 23,
-    "sha256": "540b9eb5619a150ee37f1ef0570ca20f5165e5ba17d0ebaf7bd1e3392a9618de"
+    "file": "randuri-10.csv",
+    "x-total-rows": "10",
+    "x-exported-rows": "10",
+    "x-source-rows": "10",
+    "x-source-value": "17542.15",
+    "x-filtered-value": "17542.15",
+    "lines": 11,
+    "sha256": "7531c8c64f2fcbd30a0f96c2859c07965f5ade78e5112b175e67905b026e0408"
    }
   },
   {
@@ -44322,7 +44903,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -44332,69 +44913,44 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 0
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 1
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 0
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 0
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 0
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 0
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "small",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
+       "nFlags": 1,
        "cri": 0.274,
-       "percentile": 100
+       "flags": ["da_concentration"],
+       "nDas": 12,
+       "county": "Alba",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 2
+      "group": {
+       "words": "instituțiile publice din județul Alba",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "nDas": 12,
+        "similar": {
+         "rule": "county_councils"
+        },
+        "activity": {
+         "min": 6,
+         "max": 24
+        }
+       },
+       "ticks": ["county"],
+       "legacy": {},
+       "others": 1
+      }
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'alba'\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
@@ -44501,7 +45057,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -44510,69 +45066,169 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 2
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 1
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 1
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 1
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 1
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 1
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "ok",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
+       "nFlags": 1,
        "cri": 0.274,
-       "percentile": 50
+       "flags": ["da_concentration"],
+       "nDas": 12,
+       "county": "Alba",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 8
+      "group": {
+       "words": "toate instituțiile publice",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "nDas": 12,
+        "similar": {
+         "rule": "county_councils"
+        },
+        "activity": {
+         "min": 6,
+         "max": 24
+        }
+       },
+       "ticks": [],
+       "legacy": {},
+       "others": 7,
+       "memberIds": ["9100000011","9100000003","9100000001","9100000002","9100000013","9100000012","9100000006"]
+      },
+      "position": {
+       "more": 4,
+       "same": 0,
+       "fewer": 3
+      },
+      "hist": [
+       {
+        "k": 0,
+        "n": 3
+       },
+       {
+        "k": 1,
+        "n": 0
+       },
+       {
+        "k": 2,
+        "n": 1
+       },
+       {
+        "k": 3,
+        "n": 1
+       },
+       {
+        "k": 4,
+        "n": 1
+       },
+       {
+        "k": 5,
+        "n": 1
+       }
+      ],
+      "perCriterion": [
+       {
+        "code": "da_split",
+        "others": 4,
+        "country": 4
+       },
+       {
+        "code": "da_year_end",
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_round",
+        "others": 2,
+        "country": 2
+       },
+       {
+        "code": "da_rapid",
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_concentration",
+        "others": 2,
+        "country": 3
+       }
+      ],
+      "countryTotal": 8,
+      "members": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 5,
+        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+        "nDas": 22
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+        "nDas": 45
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 3,
+        "flags": ["da_split","da_rapid","da_round"],
+        "nDas": 18
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 2,
+        "flags": ["da_split","da_year_end"],
+        "nDas": 34
+       },
+       {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 31
+       },
+       {
+        "entityId": "9100000012",
+        "name": "Comuna Profil Doi",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 27
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 10
+       }
+      ]
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
@@ -44673,7 +45329,7 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -44682,97 +45338,63 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 0
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 0
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 0
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 1
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 0
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 0
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 0
-       }
-      ],
+      "version": 2,
+      "role": "authority",
+      "status": "small",
+      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
       "focal": {
        "entityId": "9100000002",
        "name": "Municipiul Fixture Nord",
+       "nFlags": 2,
        "cri": 0.421,
-       "percentile": 100
+       "flags": ["da_split","da_year_end"],
+       "nDas": 34,
+       "county": "Cluj",
+       "population": null,
+       "inGroup": true
       },
-      "role": "authority",
-      "totalEntities": 2
+      "group": {
+       "words": "primăriile de oraș și municipiu",
+       "facts": {
+        "role": "authority",
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "nDas": 34,
+        "similar": null,
+        "activity": {
+         "min": 17,
+         "max": 68
+        },
+        "similarReason": "Populația lui Municipiul Fixture Nord nu se poate stabili sigur (RPL 2021)."
+       },
+       "ticks": [],
+       "legacy": {
+        "authorityKind": "oras_municipiu"
+       },
+       "others": 1
+      }
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and entity_id in (…)  -- doar primării de oraș și municipiu\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 11,
-    "value": "30042.25",
-    "sourceTotal": 11,
-    "sourceValue": "30042.25",
+    "total": 10,
+    "value": "17542.15",
+    "sourceTotal": 10,
+    "sourceValue": "17542.15",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 11,
-     "value": "30042.25"
+     "count": 10,
+     "value": "17542.15"
     },
     "dateFrom": "2025-01-02",
     "dateTo": "2025-10-02",
     "profile": true,
     "profiles": [
-     {
-      "entityId": "9100000002",
-      "name": "Municipiul Fixture Nord",
-      "role": "authority",
-      "count": 34,
-      "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
-     },
      {
       "entityId": "9100000006",
       "name": "Municipiul Aiud",
@@ -44784,22 +45406,20 @@
       "applicable": 5
      }
     ],
-    "profileCount": 2,
-    "profileReconciled": false,
+    "profileCount": 1,
+    "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [
      {
       "state": "Oferta acceptata",
-      "count": 11,
-      "value": "30042.25"
+      "count": 10,
+      "value": "17542.15"
      }
     ],
     "rows": [
-     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
      ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
      ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
      ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null],
@@ -44808,19 +45428,35 @@
      ["da","9100100105","DA-FX-105","2025-05-06","9100000006","9100000103","Alba","79000000-4","1685.65","Oferta acceptata",null,null,false,null],
      ["da","9100100104","DA-FX-104","2025-04-05","9100000006","9100000103","Alba","79000000-4","1548.52","Oferta acceptata",null,null,false,null],
      ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null],
-     ["da","9100100102","DA-FX-102","2025-02-03","9100000006","9100000103","Alba","79000000-4","1274.26","Oferta acceptata",null,null,false,null]
+     ["da","9100100102","DA-FX-102","2025-02-03","9100000006","9100000103","Alba","79000000-4","1274.26","Oferta acceptata",null,null,false,null],
+     [
+      "da",
+      "9100100101",
+      "DA-FX-101",
+      "2025-01-02",
+      "9100000006",
+      "9100000103",
+      "Alba",
+      "79000000-4",
+      "1137.13",
+      "Oferta acceptata",
+      null,
+      null,
+      false,
+      "Servicii de consultanță"
+     ]
     ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-11.csv",
-    "x-total-rows": "11",
-    "x-exported-rows": "11",
-    "x-source-rows": "11",
-    "x-source-value": "30042.25",
-    "x-filtered-value": "30042.25",
-    "lines": 12,
-    "sha256": "5f4d10104f5cbec4e66e89c46f7d16da3bbdc4cfeaddd39974f77624e1c4fe0b"
+    "file": "randuri-10.csv",
+    "x-total-rows": "10",
+    "x-exported-rows": "10",
+    "x-source-rows": "10",
+    "x-source-value": "17542.15",
+    "x-filtered-value": "17542.15",
+    "lines": 11,
+    "sha256": "7531c8c64f2fcbd30a0f96c2859c07965f5ade78e5112b175e67905b026e0408"
    }
   },
   {
@@ -44854,7 +45490,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -44863,85 +45499,156 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 0
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 1
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 0
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 1
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 1
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 1
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 0
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 1
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 1
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 0
-       }
-      ],
+      "version": 2,
+      "role": "supplier",
+      "status": "ok",
+      "criteria": ["da_split","da_dependence","da_rapid","da_round"],
       "focal": {
        "entityId": "9100000102",
        "name": "Fixture Medical SRL",
+       "nFlags": 1,
        "cri": 0.362,
-       "percentile": 33
+       "flags": ["da_dependence"],
+       "nDas": 40,
+       "county": "Buzău",
+       "population": null,
+       "inGroup": true
       },
-      "role": "supplier",
-      "totalEntities": 6
+      "group": {
+       "words": "toate firmele",
+       "facts": {
+        "role": "supplier",
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzău",
+        "nDas": 40,
+        "similar": null,
+        "activity": {
+         "min": 20,
+         "max": 80
+        }
+       },
+       "ticks": [],
+       "legacy": {},
+       "others": 5,
+       "memberIds": ["9100000111","9100000103","9100000101","9100000112","9100000105"]
+      },
+      "position": {
+       "more": 3,
+       "same": 1,
+       "fewer": 1
+      },
+      "hist": [
+       {
+        "k": 0,
+        "n": 1
+       },
+       {
+        "k": 1,
+        "n": 1
+       },
+       {
+        "k": 2,
+        "n": 1
+       },
+       {
+        "k": 3,
+        "n": 1
+       },
+       {
+        "k": 4,
+        "n": 1
+       }
+      ],
+      "perCriterion": [
+       {
+        "code": "da_split",
+        "others": 1,
+        "country": 1
+       },
+       {
+        "code": "da_dependence",
+        "others": 3,
+        "country": 4
+       },
+       {
+        "code": "da_rapid",
+        "others": 1,
+        "country": 1
+       },
+       {
+        "code": "da_round",
+        "others": 2,
+        "country": 2
+       }
+      ],
+      "countryTotal": 6,
+      "members": [
+       {
+        "entityId": "9100000111",
+        "name": "Profil Firma Unu SRL",
+        "county": "Buzău",
+        "population": null,
+        "nFlags": 4,
+        "flags": ["da_split","da_round","da_concentration","da_dependence"],
+        "nDas": 26
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "population": null,
+        "nFlags": 3,
+        "flags": ["da_round","da_concentration","da_dependence"],
+        "nDas": 15
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 2,
+        "flags": ["da_concentration","da_dependence"],
+        "nDas": 24
+       },
+       {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 1,
+        "flags": ["da_rapid"],
+        "nDas": 13
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "population": null,
+        "nFlags": 0,
+        "flags": [],
+        "nDas": 11
+       }
+      ]
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 23,
-    "value": "70505.71",
-    "sourceTotal": 23,
-    "sourceValue": "70505.71",
+    "total": 17,
+    "value": "49640.77",
+    "sourceTotal": 17,
+    "sourceValue": "49640.77",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 23,
-     "value": "70505.71"
+     "count": 17,
+     "value": "49640.77"
     },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
+    "dateFrom": "2024-04-13",
+    "dateTo": "2026-02-15",
     "profile": true,
     "profiles": [
      {
@@ -44952,16 +45659,6 @@
       "value": "88000.00",
       "cri": 0.581,
       "flags": ["da_concentration","da_dependence"],
-      "applicable": 4
-     },
-     {
-      "entityId": "9100000102",
-      "name": "Fixture Medical SRL",
-      "role": "supplier",
-      "count": 40,
-      "value": "140000.00",
-      "cri": 0.362,
-      "flags": ["da_dependence"],
       "applicable": 4
      },
      {
@@ -45005,7 +45702,7 @@
       "applicable": 4
      }
     ],
-    "profileCount": 6,
+    "profileCount": 5,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
@@ -45015,33 +45712,33 @@
     "statuses": [
      {
       "state": "Oferta acceptata",
-      "count": 23,
-      "value": "70505.71"
+      "count": 17,
+      "value": "49640.77"
      }
     ],
     "rows": [
      ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
      ["da","9100100211","DA-FX-211","2026-02-11","9100000004","9100000103","Alba","79000000-4","4321.77","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
      ["da","9100100209","DA-FX-209","2024-04-19","9100000004","9100000103","Alba","79000000-4","3899.63","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
      ["da","9100100207","DA-FX-207","2025-06-17","9100000004","9100000103","Alba","79000000-4","3477.49","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
      ["da","9100100205","DA-FX-205","2026-02-15","9100000004","9100000103","Alba","79000000-4","3055.35","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null]
+     ["da","9100100203","DA-FX-203","2024-04-13","9100000004","9100000103","Alba","79000000-4","2633.21","Oferta acceptata",null,null,false,null],
+     ["da","9100100110","DA-FX-110","2025-10-02","9100000006","9100000103","Alba","79000000-4","2371.30","Oferta acceptata",null,null,false,null],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100201","DA-FX-201","2025-06-11","9100000004","9100000103","Alba","79000000-4","2211.07","Oferta acceptata",null,null,false,null],
+     ["da","9100100108","DA-FX-108","2025-08-09","9100000006","9100000103","Alba","79000000-4","2097.04","Oferta acceptata",null,null,false,null]
     ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-23.csv",
-    "x-total-rows": "23",
-    "x-exported-rows": "23",
-    "x-source-rows": "23",
-    "x-source-value": "70505.71",
-    "x-filtered-value": "70505.71",
-    "lines": 24,
-    "sha256": "2fafdc36fc87dcffe839994621f640ccbbbb1fc5cc8216d1e056faacabdd5584"
+    "file": "randuri-17.csv",
+    "x-total-rows": "17",
+    "x-exported-rows": "17",
+    "x-source-rows": "17",
+    "x-source-value": "49640.77",
+    "x-filtered-value": "49640.77",
+    "lines": 18,
+    "sha256": "5a025f2b8ed347393c6abd844f3bcafe471192d42fb065b1f004566dc824b511"
    }
   },
   {
@@ -45077,7 +45774,7 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["poziție în distribuția de risc","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["criterii de risc față de grup","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -45088,97 +45785,60 @@
     "data": {
      "block": "distribution",
      "distribution": {
-      "buckets": [
-       {
-        "from": 0,
-        "to": 0.1,
-        "n": 0
-       },
-       {
-        "from": 0.1,
-        "to": 0.2,
-        "n": 0
-       },
-       {
-        "from": 0.2,
-        "to": 0.3,
-        "n": 0
-       },
-       {
-        "from": 0.3,
-        "to": 0.4,
-        "n": 1
-       },
-       {
-        "from": 0.4,
-        "to": 0.5,
-        "n": 0
-       },
-       {
-        "from": 0.5,
-        "to": 0.6,
-        "n": 0
-       },
-       {
-        "from": 0.6,
-        "to": 0.7,
-        "n": 0
-       },
-       {
-        "from": 0.7,
-        "to": 0.8,
-        "n": 0
-       },
-       {
-        "from": 0.8,
-        "to": 0.9,
-        "n": 1
-       },
-       {
-        "from": 0.9,
-        "to": 1,
-        "n": 0
-       }
-      ],
+      "version": 2,
+      "role": "supplier",
+      "status": "small",
+      "criteria": ["da_split","da_dependence","da_rapid","da_round"],
       "focal": {
        "entityId": "9100000102",
        "name": "Fixture Medical SRL",
+       "nFlags": 1,
        "cri": 0.362,
-       "percentile": 50
+       "flags": ["da_dependence"],
+       "nDas": 40,
+       "county": "Buzău",
+       "population": null,
+       "inGroup": true
       },
-      "role": "supplier",
-      "totalEntities": 2
+      "group": {
+       "words": "firmele cu sediul în județul Buzău",
+       "facts": {
+        "role": "supplier",
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzău",
+        "nDas": 40,
+        "similar": null,
+        "activity": {
+         "min": 20,
+         "max": 80
+        }
+       },
+       "ticks": ["county"],
+       "legacy": {},
+       "others": 1
+      }
      }
     },
-    "displaySql": "select width_bucket(cri, 0, 1, 10) interval_risc, count(*)\nfrom marts.entity_flags\nwhere n_das >= 10\ngroup by 1;\n-- + poziția entității tale în distribuție"
+    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'buzau'\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 6,
-    "value": "20864.94",
-    "sourceTotal": 6,
-    "sourceValue": "20864.94",
+    "total": 0,
+    "value": "0.00",
+    "sourceTotal": 0,
+    "sourceValue": "0.00",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 6,
-     "value": "20864.94"
+     "count": 0,
+     "value": "0.00"
     },
-    "dateFrom": "2024-01-12",
-    "dateTo": "2026-05-18",
+    "dateFrom": null,
+    "dateTo": null,
     "profile": true,
     "profiles": [
-     {
-      "entityId": "9100000102",
-      "name": "Fixture Medical SRL",
-      "role": "supplier",
-      "count": 40,
-      "value": "140000.00",
-      "cri": 0.362,
-      "flags": ["da_dependence"],
-      "applicable": 4
-     },
      {
       "entityId": "9100000111",
       "name": "Profil Firma Unu SRL",
@@ -45190,39 +45850,26 @@
       "applicable": 4
      }
     ],
-    "profileCount": 2,
+    "profileCount": 1,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
-    "statuses": [
-     {
-      "state": "Oferta acceptata",
-      "count": 6,
-      "value": "20864.94"
-     }
-    ],
-    "rows": [
-     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
-     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
-     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
-     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
-     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
-     ["da","9100100202","DA-FX-202","2026-05-12","9100000004","9100000102","Alba","33690000-3","2422.14","Oferta acceptata",null,null,false,null]
-    ]
+    "statuses": [],
+    "rows": []
    },
    "csv": {
     "status": 200,
-    "file": "randuri-6.csv",
-    "x-total-rows": "6",
-    "x-exported-rows": "6",
-    "x-source-rows": "6",
-    "x-source-value": "20864.94",
-    "x-filtered-value": "20864.94",
-    "lines": 7,
-    "sha256": "f17ac6ac108bde6bd2b3863ca1b31fbdb1279195344903540349d6747219f4dc"
+    "file": "randuri-0.csv",
+    "x-total-rows": "0",
+    "x-exported-rows": "0",
+    "x-source-rows": "0",
+    "x-source-value": "0.00",
+    "x-filtered-value": "0.00",
+    "lines": 1,
+    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
    }
   },
   {
