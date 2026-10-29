@@ -42,6 +42,13 @@ describe("value wording (audit F36)", () => {
     const method = readFileSync(new URL("../../app/metodologie/page.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
     expect(method).toContain("ponderea lui în valoarea contractată de autoritate");
   });
+
+  it("has the network's groups in the methodology, with their rule and that signals are leads (S4 leftover)", () => {
+    const method = readFileSync(new URL("../../app/metodologie/page.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+    expect(method).toContain('id="grupele-retelei"');
+    for (const words of ["Noi, cu prima înregistrare a relației din acel an încoace", "Nu mai apar, fără nicio înregistrare din acel an",
+      "perioada se aplică doar la Toți", "Semnalele sunt piste, nu dovezi; valorile sunt înregistrate, nu plăți."]) expect(method).toContain(words);
+  });
 });
 
 // Audit F09: every page that shows totals states the 1 mld. lei contract cap.
