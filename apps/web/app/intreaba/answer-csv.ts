@@ -7,6 +7,7 @@ import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
 import { breakdownShown } from "./breakdown-answer";
 import { networkCsvRows } from "./network-answer";
+import { scatterCsv } from "./scatter-answer";
 import { sankeyCsvRows } from "./sankey-answer";
 
 /*
@@ -32,6 +33,10 @@ export interface BandState {
   groupFile?: string;
   /** A trend's months, when both years count only some ("ian.–mai"). */
   months?: string;
+  /** The risk cloud's order ("semnale", "valoare") and its signal ("Posibilă fracționare"), chosen in the strip (F6b). */
+  rank?: string;
+  signal?: string;
+  signalFile?: string;
 }
 
 const STREAM_WORD: Record<NonNullable<BandState["stream"]>, string> = { all: "toate", da: "directe", contracts: "proceduri" };
@@ -101,6 +106,9 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
         ...(shown.rest.count > 0 || !data.base ? [`"alte domenii",,${shown.rest.value},${shown.rest.count}`] : [])];
     }
     case "scatter":
+      // scatter-2: the list on screen — the 50 profiles of the strip's order and signal, with their signals' years or shares;
+      // an answer stored before it keeps its sample of points.
+      if ("scatter" in data) return scatterCsv(data.scatter, csvAny);
       return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`)];
     // F4: the flows on screen, the partners past „Arată” folded (sankey-2); the partners of the list on screen, in its order and length (network-2).
     case "sankey":
@@ -154,6 +162,8 @@ function bandColumns(band: BandState): [string, string][] {
     ...(band.thread ? [["fir", band.thread] as [string, string]] : []),
     ...(band.group ? [["grupa", band.group] as [string, string]] : []),
     ...(band.months ? [["luni", band.months] as [string, string]] : []),
+    ...(band.rank ? [["primele_dupa", band.rank] as [string, string]] : []),
+    ...(band.signal ? [["semnal", band.signal] as [string, string]] : []),
   ];
 }
 
@@ -169,6 +179,6 @@ export function answerCsv(data: BlockData, spec: AskSpec, title: string, band: B
   const lines = columns.length
     ? [`${header},${columns.map(([name]) => name).join(",")}`, ...rows.map((row) => `${row},${columns.map(([, value]) => csvQ(value)).join(",")}`)]
     : [header!, ...rows];
-  const suffix = bandColumns(band).map(([name, value]) => name === "grupa" ? band.groupFile ?? fileSlug(value, "") : name === "fir" || name === "luni" ? fileSlug(value, "") : value).filter(Boolean).join("-");
+  const suffix = bandColumns(band).map(([name, value]) => name === "grupa" ? band.groupFile ?? fileSlug(value, "") : name === "fir" || name === "luni" ? fileSlug(value, "") : name === "semnal" ? band.signalFile ?? fileSlug(value, "") : name === "primele_dupa" ? (value === "valoare" ? "dupa-valoare" : "") : value).filter(Boolean).join("-");
   return { text: "﻿" + lines.join("\r\n") + "\r\n", filename: `${fileSlug(title)}${suffix ? `-${suffix}` : ""}.csv` };
 }

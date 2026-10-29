@@ -8,6 +8,16 @@ export interface FlagMeta {
   title: string;
   subject: "da" | "award" | "authority" | "supplier" | "pair";
   short: string;
+  /**
+   * The short name Ask's answers use (the risk cloud's chips and list, the distribution's criteria; F6b, plan §4.12
+   * decision 7): set for the signals on direct acquisitions. The long `title` stays on the methodology pages.
+   */
+  label?: string;
+  /**
+   * The rule at the level of an entity ("Cel puțin o dată în arhivă: …"), not the one-acquisition `short` text:
+   * what the profile's criterion means for an institution or a firm. Set with `label`.
+   */
+  entityRule?: string;
   description: string;
   rationale: string;
   caveat: string;
@@ -21,6 +31,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   da_split: {
     code: "da_split",
     title: "Posibilă fracționare sub prag",
+    label: "Posibilă fracționare",
+    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an și aceeași clasă CPV, fiecare sub plafon, cu suma peste plafon. Apare mai des la cine cumpără mult și de mulți ani.",
     subject: "pair",
     short: "Achiziții din aceeași clasă CPV și același tip, însumând peste plafonul de referință.",
     description:
@@ -33,6 +45,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   da_concentration: {
     code: "da_concentration",
     title: "Concentrare pe un furnizor",
+    label: "Concentrare pe un furnizor",
+    entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției (minimum 3 furnizori și 100.000 lei).",
     subject: "authority",
     short: "O mare parte din valoarea achizițiilor directe revine unui singur furnizor.",
     description:
@@ -44,6 +58,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   da_dependence: {
     code: "da_dependence",
     title: "Dependență de o autoritate",
+    label: "Dependență de o autoritate",
+    entityRule: "O instituție aduce cel puțin 85% din valoarea achizițiilor directe ale firmei (minimum 50.000 lei). Cine are un singur client public primește semnalul automat.",
     subject: "supplier",
     short: "Majoritatea valorii achizițiilor directe ale furnizorului provine de la o autoritate.",
     description:
@@ -54,6 +70,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   da_rapid: {
     code: "da_rapid",
     title: "Finalizare rapidă",
+    label: "Finalizare rapidă",
+    entityRule: "Peste 25% din achizițiile directe sunt finalizate la scurt timp după publicare. Cere cel puțin 5 achiziții.",
     subject: "da",
     short: "Achiziție finalizată în câteva minute de la publicare.",
     description:
@@ -65,6 +83,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   da_round: {
     code: "da_round",
     title: "Valoare aproape de prag",
+    label: "Aproape de prag",
+    entityRule: "Peste 10% din achizițiile directe au între 90% și 100% din plafon. Cere cel puțin 5 achiziții.",
     subject: "da",
     short: "O achiziție între 90% și 100% din plafonul de referință.",
     description:
@@ -76,6 +96,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   da_year_end: {
     code: "da_year_end",
     title: "Achiziții concentrate în decembrie",
+    label: "Vârf în decembrie",
+    entityRule: "Cel puțin un an în care decembrie are 35% din valoarea anuală, la un total anual de cel puțin 100.000 lei. Doar anii întregi ai arhivei (2019–2025).",
     subject: "authority",
     short: "O pondere mare din valoarea anuală a achizițiilor directe este finalizată în decembrie.",
     description:
@@ -169,6 +191,11 @@ export const FLAG_META: Record<string, FlagMeta> = {
       "Reprezentantul legal nu este automat proprietar sau beneficiar real. Registrul disponibil descrie o situație ulterioară unora dintre achiziții și nu dovedește control comun la data atribuirii. Legătura poate exista între firme care lucrează legitim pentru aceeași autoritate.",
   },
 };
+
+/** A signal's short name where Ask speaks of it (FlagMeta.label), else its title. */
+export const flagLabel = (code: string): string => FLAG_META[code]?.label ?? FLAG_META[code]?.title ?? code;
+/** A signal's rule at the level of an entity (FlagMeta.entityRule); empty where the signal has none. */
+export const flagEntityRule = (code: string): string => FLAG_META[code]?.entityRule ?? "";
 
 export const FLAG_ORDER = [
   "da_split",

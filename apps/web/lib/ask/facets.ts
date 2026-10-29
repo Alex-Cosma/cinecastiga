@@ -4,9 +4,10 @@ import { canonicalAskIdentities } from "./canonical-identities";
 import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, AUTHORITY_KINDS, type AskSpec } from "./spec";
 import { ground, type Grounding } from "./ground";
 import {
-  andAll, employeesBounds, fold, fullValueUnion, groupPredicates, ownCountySql, predicateContext, profileMinDas, profilePredicates, rowPredicates, seatOf, trendYearsPredicate,
+  andAll, employeesBounds, fold, fullValueUnion, groupPredicates, ownCountySql, predicateContext, profileCounty, profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, seatOf, trendYearsPredicate,
   type PredicateCtx,
 } from "./predicates";
+import { scatterLocate, scatterProfileFacts } from "./scatter";
 import { authorityKindExpression, authorityKindIds, readAuthorityKinds } from "./authority-kind";
 import { coveragePeriods, daCoverageYears, txAggFragment, uatUnmappedError } from "./compile";
 import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "./months-window";
@@ -22,7 +23,7 @@ import { retiredChoicesText } from "./retired-terms";
 import { questionKey, type QuestionSpec } from "./question-ui";
 import {
   ABROAD, countyOfFolded, EMPLOYEE_BAND_BOUNDS, FACET_REST, facetSpec, isFacetPart, LOCATE_MATCHES, relativeSeat, SEAT_UNCOMPARED,
-  type CountPart, type FacetCount, type FacetCounts, type FacetPart, type FacetUnit, type LocateMatch, type LocateResult,
+  type CountPart, type FacetCount, type FacetCounts, type FacetPart, type FacetUnit, type LocateMatch, type LocateResult, type ProfileFactsResult,
 } from "./facet-parts";
 
 /*
@@ -670,6 +671,7 @@ const namePattern = (q: string) => `%${fold(q).replace(/[\\%_]/g, (c) => `\\${c}
  * rank vector, which the next searches on the same question reuse.
  */
 export async function locate(sql: DbSql, spec: AskSpec, q: string, opts: { signal?: AbortSignal } = {}): Promise<LocateResult | FacetFailure> {
+  if (spec.block === "scatter") return await locateProfiles(sql, spec, q);
   if (spec.block !== "table" || (spec.dim !== "supplier" && spec.dim !== "authority")) return { error: "„Unde e …?” caută într-un clasament de firme sau de instituții." };
   if (spec.measure !== "value" && spec.measure !== "count") return { error: "„Unde e …?” nu se aplică valorii pe locuitor." };
   const role: Role = spec.dim, measure = spec.measure;
@@ -748,6 +750,51 @@ export async function locate(sql: DbSql, spec: AskSpec, q: string, opts: { signa
   }
 }
 
+/**
+ * "Unde e o instituție / firmă?" in the risk cloud (F6b, final scatter §3.5): the profiles of the cloud's group whose
+ * name holds the text, with their place in the list of the strip's order and signal (lib/ask/scatter.ts scatterLocate).
+ * The group is the answer's: the same predicates, so a profile outside it is not found.
+ */
+async function locateProfiles(sql: DbSql, spec: AskSpec, q: string): Promise<LocateResult | FacetFailure> {
+  const started = Date.now();
+  try {
+    const stamp = await facetStamp(sql);
+    const grounding = await ground(sql, spec.filters, spec.population);
+    return await inFacetTransaction(sql, async (tx) => {
+      const p = await prepare(tx, spec, grounding);
+      if ("error" in p) return p;
+      const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
+      const found = await scatterLocate(tx, {
+        spec, role, where: andAll(tx, profilePredicates(p.ctx, role, RISK_MIN_DAS)), county: profileCounty(tx, role, p.ctx.seatColumn), logTotal: false,
+      }, q, LOCATE_MATCHES);
+      return { part: "locate" as const, total: found.total, measure: "value" as const, by: found.by, matches: found.matches, checkpoint: stamp.checkpoint, tookMs: Date.now() - started };
+    });
+  } catch (e) {
+    if (timedOut(e)) return { timeout: true };
+    throw e;
+  }
+}
+
+/**
+ * The facts of the risk cloud's profiles on screen (part=profile): every signal they have with its years or share and
+ * the records behind it (lib/ask/scatter.ts scatterProfileFacts). Asked once the answer is drawn, for the listed rows
+ * or the one picked, so the answer never waits for the acquisitions of the largest profiles.
+ */
+export async function profileFacts(sql: DbSql, spec: AskSpec, ids: readonly string[]): Promise<ProfileFactsResult | FacetFailure> {
+  if (spec.block !== "scatter") return { error: "Faptele profilurilor se cer la norul de risc." };
+  const started = Date.now();
+  try {
+    const stamp = await facetStamp(sql);
+    return await inFacetTransaction(sql, async (tx) => {
+      const rows = await scatterProfileFacts(tx, spec.dim === "supplier" ? "supplier" : "authority", ids);
+      return { part: "profile" as const, rows, checkpoint: stamp.checkpoint, tookMs: Date.now() - started };
+    });
+  } catch (e) {
+    if (timedOut(e)) return { timeout: true };
+    throw e;
+  }
+}
+
 // --- the slots: at most FACET_SLOTS parts at a time in the process
 
 let busy = 0;
@@ -779,9 +826,14 @@ export async function inFacetSlot<T>(signal: AbortSignal | undefined, work: () =
 export const facetSlots = () => ({ busy, waiting: waiting.length });
 
 /** The part a request names, with its text for "Unde e …?" (plan §2.5: at least two characters). */
-export function facetRequest(body: { part?: unknown; q?: unknown }): { part: FacetPart; q: string | null } | { error: string } {
+export function facetRequest(body: { part?: unknown; q?: unknown; ids?: unknown }): { part: FacetPart; q: string | null; ids?: string[] } | { error: string } {
   const part = body.part;
   if (!isFacetPart(part)) return { error: "Parte necunoscută." };
+  if (part === "profile") {
+    const ids = body.ids;
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > 50 || ids.some((id) => typeof id !== "string" || !/^[1-9]\d{0,17}$/.test(id))) return { error: "Alege cel mult 50 de profiluri." };
+    return { part, q: null, ids: ids as string[] };
+  }
   if (part !== "locate") return { part, q: null };
   const q = typeof body.q === "string" ? body.q.trim().slice(0, 80) : "";
   if (fold(q).length < 2) return { error: "Scrie cel puțin două litere." };

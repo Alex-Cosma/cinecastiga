@@ -3,6 +3,7 @@ export * from "./signal-lookup.js";
 export * from "./transaction-mart-indexes.js";
 export * from "./ask-rollups.js";
 export * from "./firm-seat.js";
+export * from "./profile-flags.js";
 export * from "./schema/index.js";
 export * from "./monitoring.js";
 

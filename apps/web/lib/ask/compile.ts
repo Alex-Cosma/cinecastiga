@@ -26,9 +26,12 @@ import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
   compareInstitutionParties, compareParties, compareSharedPartners, compareTopPartners, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
+import { hasFlag, scatterAnswer } from "./scatter";
+import { builtFlagTotals, flagRecordsNote, flaggedRecordIds, RECONCILE_MAX } from "./scatter-records";
+import { scatterFlagsOf, type ScatterData } from "./scatter-shared";
 import {
   factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
   type TrendAttribute, type TrendComposition, type TrendList, type TrendMemberPart, type TrendNoun, type TrendPartitionRow, type TrendPartSources, type TrendRowFacts,
@@ -275,6 +278,9 @@ export type BlockData =
   // F3: every group of the level (base, with its largest record where known) and each channel's totals in the same
   // selection with every channel (streams); absent from older answers. Not compared by a watch (answerCore).
   | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number }; base?: BreakdownGroup[]; streams?: Record<"da" | "contracts", { value: number; count: number }> }
+  // scatter-2 (F6b, plan §4.12): the group's cloud, its signals and the list (scatter-shared.ts). `points` and
+  // `density` are the answer stored before it (captures, watch runs), which an old branch still draws.
+  | { block: "scatter"; scatter: ScatterData }
   | { block: "scatter"; points: ScatterPoint[]; density?: ScatterDensity | undefined }
   // sankey-2 and network-2 (F4, plan §4.8–§4.9): relations.ts. An answer stored before them (flows only, the
   // first 14 nodes) is read by ResultComparison as plain data.
@@ -1939,39 +1945,11 @@ export async function runSpec(
 
         case "scatter": {
           const role: Dim = spec.dim === "supplier" ? "supplier" : "authority";
-          const r = (await s`
-            (select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.total_ron, ef.cri, ef.n_flags
-             from marts.entity_flags ef
-             where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
-             order by ef.cri desc, ef.total_ron desc limit 200)
-            union
-            (select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.total_ron, ef.cri, ef.n_flags
-             from marts.entity_flags ef
-             where ${efWhere(role as "authority" | "supplier", RISK_MIN_DAS)} and ef.cri is not null
-             order by ef.total_ron desc nulls last limit 200)
-          `) as unknown as {
-            entity_id: string;
-            name_display: string | null;
-            county: string | null;
-            total_ron: string | null;
-            cri: string;
-            n_flags: number;
-          }[];
-          // full-population density layer (same filters as the sample), from the
-          // stored log_total_ron once migration 0085 has added it (rollups.ts)
-          const density = await scatterDensity(s, efWhere(role as "authority" | "supplier", RISK_MIN_DAS), columns?.logTotal ?? false);
-          return {
-            block: "scatter",
-            points: r.map((p) => ({
-              entityId: String(p.entity_id),
-              name: p.name_display ?? "?",
-              county: p.county,
-              value: Number(p.total_ron ?? 0),
-              cri: Number(p.cri),
-              nFlags: Number(p.n_flags),
-            })),
-            density,
-          };
+          // scatter-2 (F6b, plan §4.12): the group's cloud and the list of the strip's order and signal (lib/ask/scatter.ts).
+          const scatter = await scatterAnswer(s, {
+            spec, role, where: efWhere(role as "authority" | "supplier", RISK_MIN_DAS), county: profileCounty(s, role), logTotal: columns?.logTotal ?? false,
+          });
+          return { block: "scatter", scatter };
         }
 
         // sankey-2 (plan §4.9, F4): the partners × domains of the selection, two CPV digits below the chosen domain,
@@ -2391,6 +2369,7 @@ export async function runRows(
   }
 
   if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
+  if (scope.flag && spec.block !== "scatter") return { error: "Semnalul se aplică norului de risc." };
   if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years || scope.consortium || scope.singleBid))
     return { error: "Profilul istoric nu se restrânge la CPV sau perioadă. Deschide o întrebare despre achiziții pentru aceste filtre." };
   const dataset = profile ? "da" : spec.dataset ?? "all";
@@ -2399,6 +2378,9 @@ export async function runRows(
   const role = spec.block === "compare" || spec.block === "distribution"
     ? focalRole : spec.dim === "supplier" ? "supplier" : "authority";
   if (profile && scope.role && scope.role !== role) return { error: "Rolul selectat nu aparține acestei populații de profiluri." };
+  // scatter-2 (F6b): the records behind a signal, the drawer's own or the cloud's chosen one; the role keeps its signals.
+  const flag = spec.block === "scatter" ? scope.flag ?? spec.scatter?.flag ?? null : null;
+  if (flag && !scatterFlagsOf(role).includes(flag)) return { error: "Semnalul ales nu se aplică acestui tip de profil." };
   if (spec.block === "compare" && (!focalId || !grounding.compare?.entityId))
     return { error: "Comparația necesită două entități identificate." };
 
@@ -2481,6 +2463,7 @@ export async function runRows(
   if (scope.excludeEntityIds) selectionParts.push(sql`not (ef.entity_id = any(${sql.array([...scope.excludeEntityIds])}::bigint[]))`);
   if (scope.riskBucket) selectionParts.push(sql`width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) = ${Math.round(scope.riskBucket.from * 10) + 1}`);
   if (scope.criteria !== undefined) selectionParts.push(sql`ef.n_flags = ${scope.criteria}`);
+  if (flag) selectionParts.push(hasFlag(sql, flag) as ReturnType<DbSql>);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
   // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12).
@@ -2502,7 +2485,9 @@ export async function runRows(
            false as value_suspect, null::text as state, n_winners, contract_value_full, is_single_bidder, procedure_type
     from marts.contract_transactions
   )`;
-  const txt = profile ? sql`(
+  // scatter-2 (F6b): a signal's records, the acquisitions it flags of the profiles that have it (scatter-records.ts).
+  const txt = profile && flag ? sql`(select * from ${daTx} flagged where flagged.ref_id in ${flaggedRecordIds(sql, role as "authority" | "supplier", flag, sql`select entity_id from ${cohort} selected_profiles`)})`
+    : profile ? sql`(
     select da.sicap_da_id as ref_id, da.da_code, to_char(da.finalization_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD HH24:MI') as finalization_date,
            da.authority_entity_id as authority_id, a.name_display as authority_name,
            nullif(da.supplier_entity_id, da.authority_entity_id) as supplier_id, su.name_display as supplier_name,
@@ -2524,6 +2509,7 @@ export async function runRows(
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
+    if (flag) notes.push(flagRecordsNote(flag));
   } else {
     // The precise selection and the record threshold, in the words of describeConditions.
     const conditions = describeConditions(spec, { grounding, origin: opts.origin, entities: opts.entities }).byId;
@@ -2899,9 +2885,19 @@ export async function runRows(
     if (profile) {
       const expected = (await readEvidenceQuery(s`select count(*) n, coalesce(sum(n_das), 0) records, coalesce(sum(total_ron), 0)::text v from ${cohort} selected_profiles`, opts.signal)) as unknown as { n: string; records: string; v: string }[];
       profileCount = Number(expected[0]?.n ?? 0);
-      const difference = sumDecimalStrings([expected[0]?.v ?? "0", sourceValue.startsWith("-") ? sourceValue.slice(1) : `-${sourceValue}`]);
-      profileReconciled = Number(expected[0]?.records ?? 0) === sourceTotal && /^-?0(?:\.0+)?$/.test(difference);
-      if (!profileReconciled) notes.push("Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile.");
+      const zero = (a: string, b: string) => /^-?0(?:\.0+)?$/.test(sumDecimalStrings([a, b.startsWith("-") ? b.slice(1) : `-${b}`]));
+      if (flag) {
+        // A signal's records are the acquisitions it flags, not the profile's history: the build's own count and value of
+        // them (core.flags), for a few profiles; a group or a signal the build keeps no list of is not checked here.
+        const built = profileCount > 0 && profileCount <= RECONCILE_MAX
+          ? await builtFlagTotals(s, role as "authority" | "supplier", flag, sql`select entity_id from ${cohort} selected_profiles`) : null;
+        opts.signal?.throwIfAborted();
+        profileReconciled = built ? (built.records === null || built.records === sourceTotal) && zero(built.value, sourceValue) : null;
+        if (profileReconciled === false) notes.push("Sursele semnalului nu coincid exact cu ce a calculat construirea profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile.");
+      } else {
+        profileReconciled = Number(expected[0]?.records ?? 0) === sourceTotal && zero(expected[0]?.v ?? "0", sourceValue);
+        if (!profileReconciled) notes.push("Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile.");
+      }
       const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, cri, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; cri: string | null; flags: string[] | null }[];
       profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, cri: r.cri === null ? null : Number(r.cri), flags: r.flags ?? [], applicable: r.role === "authority" ? 5 : 4 }));
     }

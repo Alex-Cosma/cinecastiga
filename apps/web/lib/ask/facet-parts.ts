@@ -2,6 +2,7 @@ import { formatInt } from "../format";
 import { COUNTIES } from "../counties";
 import { formatShare } from "./answer-text";
 import { isHistoricalProfile } from "./population";
+import type { ScatterFlagFact } from "./scatter-shared";
 
 /*
  * The counts of the builder's windows (plan §2.5 "Fațetele", kit R5), for the
@@ -11,16 +12,17 @@ import { isHistoricalProfile } from "./population";
  * a count ("32,0% · 88"). Plain TypeScript, no SQL: lib/ask/facets.ts counts.
  */
 
-export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate", "mix", "bars", "pair", "compare-peers", "network"] as const;
+export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "locate", "mix", "bars", "pair", "compare-peers", "network", "profile"] as const;
 export type FacetPart = (typeof FACET_PARTS)[number];
 /**
  * The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"),
  * `mix` is the composition of a total („Din care”, stat) and `bars` the facts of an evolution's bars (F3);
  * `pair` the facts of a comparison's pair for its windows and `compare-peers` the suggestions of
  * "Cu cine comparăm?" (F4, lib/ask/compare-engine.ts); `network` the whole relation of a network whose
- * „Toți” on one channel or in a period was answered from the records it bounds (lib/ask/network-facts.ts).
+ * „Toți” on one channel or in a period was answered from the records it bounds (lib/ask/network-facts.ts);
+ * `profile` the facts of the risk cloud's profiles (their signals' shares and records, F6b, lib/ask/scatter.ts).
  */
-export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network">;
+export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network" | "profile">;
 export const isFacetPart = (value: unknown): value is FacetPart => (FACET_PARTS as readonly unknown[]).includes(value);
 
 /**
@@ -55,13 +57,30 @@ export interface FacetCounts {
 export type FacetView = { status: "loading" } | { status: "ready"; counts: FacetCounts } | { status: "none" };
 
 /** A name found in an answer's ranking: its place, or null when the ranking does not hold it. */
-export interface LocateMatch { id: string; name: string; county: string | null; rank: number | null; value: number | null; n: number | null }
+export interface LocateMatch {
+  id: string; name: string; county: string | null; rank: number | null; value: number | null; n: number | null;
+  /** The risk cloud (F6b): the signals the profile has, the criteria it meets, and why it has no place in the list. */
+  profile?: { flags: string[]; nFlags: number; cri: number; why: "below" | "signal" | null };
+}
 export interface LocateResult {
   part: "locate";
   /** Every entity the ranking holds („locul 37 din 413”). */
   total: number;
   measure: "value" | "count";
+  /** The risk cloud: the order its places are in. */
+  by?: "risk" | "value";
   matches: LocateMatch[];
+  checkpoint: string | null;
+  tookMs: number;
+}
+
+/**
+ * The facts of the risk cloud's profiles (F6b, part=profile): each signal a profile has with its years or share and the
+ * records behind it. Asked of the listed rows once the answer is drawn, and of the profile a point or a search picked.
+ */
+export interface ProfileFactsResult {
+  part: "profile";
+  rows: { id: string; nDas: number; flags: ScatterFlagFact[] }[];
   checkpoint: string | null;
   tookMs: number;
 }
@@ -191,10 +210,12 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
  * contracts. `locate` keeps the question: it finds a place in its answer.
  */
 export function facetSpec<T extends { block: string; dataset?: string; dim?: string; rankBy?: string; filters: object }>(spec: T, part: FacetPart): T {
-  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network") return spec;
+  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network" || part === "profile") return spec;
   const filters = { ...spec.filters } as Record<string, unknown>;
   for (const key of ownKeys(spec, part)) delete filters[key];
   const out = { ...spec, filters } as T;
+  // The risk cloud's signal and order choose who is named, never who is counted (F6b).
+  if (out.block === "scatter") delete (out as { scatter?: unknown }).scatter;
   if (part === "channel") delete out.dataset;
   if (part === "procedure") out.dataset = "contracts";
   return out;

@@ -282,7 +282,7 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   legacy("locality-ranking", "localitate pe clasamentul firmelor", { block: "table", dim: "supplier", measure: "value", topN: 10, filters: { uatSiruta: ids.uat.siruta, uatName: ids.uat.name } });
   legacy("unknown-key-refused", "o cheie necunoscută", { block: "stat", measure: "value", filters: {}, future: 1 });
   legacy("unknown-filter-refused", "un filtru necunoscut", { block: "stat", measure: "value", filters: { color: "verde" } });
-  legacy("newer-key-refused", "o cheie din versiunea următoare (F0a)", { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } });
+  legacy("newer-key-refused", "o cheie din versiunea următoare (F0a)", { block: "table", dim: "supplier", measure: "value", filters: { newSince: 2024 } });
   // F3: the evolution month by month, split by channel or domain, on the same months (as the builder writes them).
   legacy("timeseries-months", "evoluția lună de lună (F3)", { block: "timeseries", measure: "value", filters: { yearFrom: a, yearTo: b }, timeseries: { grain: "month" } });
   legacy("timeseries-channel", "evoluția pe directe și proceduri (F3)", { block: "timeseries", measure: "value", filters: {}, timeseries: { split: "channel" } });

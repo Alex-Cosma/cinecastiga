@@ -11,6 +11,7 @@ import { trendMonthsState, trendMonthsWaiting, type TrendMonthsState } from "../
 import type { Choice } from "../../../lib/ask/filters/pickers";
 import { monthsLabel } from "../../../lib/ask/months-window";
 import { withPeerGroup } from "../../../lib/ask/peer-groups-shared";
+import { withScatterChoice } from "../../../lib/ask/scatter-shared";
 import { askLink } from "../../../lib/ask/source-spec";
 import type { QueryPopulation } from "../../../lib/ask/population";
 import type { NetworkOptions, SankeyOptions, TimeseriesOptions, TrendOptions } from "../../../lib/ask/spec";
@@ -78,8 +79,8 @@ export interface BuilderView {
  * `seq` is a new change; the builder is not remounted, so a draft survives.
  */
 export interface StripPatch {
-  /** "peers": the answer's "Schimbă grupul" (F6a), `value` the JSON of its PeerGroupValue (peer-groups-shared.ts). */
-  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey" | "sharedPartners" | "peers"; value: string;
+  /** "peers": the answer's "Schimbă grupul" (F6a), `value` the JSON of its PeerGroupValue (peer-groups-shared.ts); "scatter": the risk cloud's strip (F6b), `value` "rankBy:value" or "flag:da_split". */
+  seq: number; path: "dataset" | "measure" | "trend" | "timeseries" | "purchaseKind" | "network" | "sankey" | "sharedPartners" | "peers" | "scatter"; value: string;
   /** "trend": the list chosen in the answer (`value`) and the applied question's trend options after it (null: no key). */
   trend?: TrendOptions | null;
   /** "timeseries" (F3): the evolution's options after the strip's split or same months (null: no key). */
@@ -94,6 +95,7 @@ export interface StripPatch {
 /** The draft after a strip change: only that key, as the applied question got it. */
 export function patchDraft(draft: QuestionSpec, patch: Pick<StripPatch, "path" | "value" | "trend" | "timeseries" | "network" | "dropPeriod" | "sankey">): QuestionSpec {
   if (patch.path === "peers") return withPeerGroup(draft, patch.value);
+  if (patch.path === "scatter") return withScatterChoice(cloneQuestion(draft), patch.value);
   const next = cloneQuestion(draft);
   if (patch.path === "dataset") next.dataset = patch.value;
   else if (patch.path === "trend") {

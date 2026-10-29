@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, parseSpec, peersRule, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, SCATTER_RULES, NEWER_VERSION_LINK, parseSpec, peersRule, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -51,9 +51,9 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "peers", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners", "sharedPartners"]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "scatterFlag", "peers", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners", "sharedPartners"]);
     expect(ruled.map((def) => def.validate)).toEqual([
-      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, peersRule, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
+      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, SCATTER_RULES.flag, peersRule, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
       TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months, NETWORK_RULES.partners, COMPARE_RULES.sharedPartners,
     ]);
     // F4 (plan §3): one seat at a time, abroad without a size, a county of the seat where firms are the subject.

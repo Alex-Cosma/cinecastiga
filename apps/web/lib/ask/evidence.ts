@@ -1,5 +1,7 @@
 import type { AskSpec } from "./spec";
+import { SCATTER_FLAGS } from "./spec";
 import type { DrillRow } from "./compile";
+import type { ScatterFlag } from "./scatter-shared";
 
 /** An exact selection inside the applied answer, independent of display limits. */
 export interface EvidenceScope {
@@ -12,6 +14,11 @@ export interface EvidenceScope {
   riskBucket?: { from: number; to: number };
   /** distribution-2: the group's profiles that meet exactly this many criteria (a bar of the chart, 0–5). */
   criteria?: number;
+  /**
+   * scatter-2 (F6b): the records behind one signal of the risk cloud's profiles, not their whole history: the profiles
+   * that have it, and of each the acquisitions it flags (lib/ask/scatter-records.ts). The cloud's chosen signal is the default.
+   */
+  flag?: ScatterFlag;
   cpvPrefixes?: readonly string[];
   excludeCpvPrefixes?: readonly string[];
   years?: readonly number[];
@@ -84,7 +91,7 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return { error: "Selecție de surse invalidă." };
   const o = raw as Record<string, unknown>;
-  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "cpvPrefixes", "excludeCpvPrefixes", "years", "consortium", "singleBid"];
+  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "flag", "cpvPrefixes", "excludeCpvPrefixes", "years", "consortium", "singleBid"];
   if (Object.keys(o).some((k) => !allowed.includes(k))) return { error: "Filtru de surse necunoscut." };
   const scope: EvidenceScope = {};
   if (o["county"] !== undefined) {
@@ -134,6 +141,10 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
     const k = o["criteria"];
     if (typeof k !== "number" || !Number.isInteger(k) || k < 0 || k > 5) return { error: "Număr de criterii invalid." };
     scope.criteria = k;
+  }
+  if (o["flag"] !== undefined) {
+    if (typeof o["flag"] !== "string" || !(SCATTER_FLAGS as readonly string[]).includes(o["flag"])) return { error: "Semnal invalid în selecție." };
+    scope.flag = o["flag"] as ScatterFlag;
   }
   for (const key of ["consortium", "singleBid"] as const) {
     if (o[key] === undefined) continue;

@@ -30,6 +30,9 @@ import {
   useTip,
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
+import ScatterAnswer from "./ScatterAnswer";
+import { RANK_WORDS, scatterRank } from "@/lib/ask/scatter-shared";
+import { flagLabel } from "@/lib/flags";
 import NetworkAnswer from "./NetworkAnswer";
 import SankeyAnswer from "./SankeyAnswer";
 import { NETWORK_LIST_CSV, shownList as shownNetworkList } from "./network-answer";
@@ -575,6 +578,11 @@ export default function AskPanel({
       groupFile: TREND_LIST_CSV[specTrendList(applied)],
     } : {}),
     ...(resp?.data?.block === "trend" && resp.data.months && !isWholeYear(resp.data.months) ? { months: monthsLabel(resp.data.months) } : {}),
+    // F6b: the risk cloud's order and signal beside the chart, in the header (and the signal in the file name).
+    ...(resp?.data?.block === "scatter" && "scatter" in resp.data ? {
+      rank: RANK_WORDS[scatterRank(applied)],
+      ...(applied.scatter?.flag ? { signal: flagLabel(applied.scatter.flag), signalFile: fileSlug(flagLabel(applied.scatter.flag), "") } : {}),
+    } : {}),
     // F4: the network's group on screen, with its year (the file name says the group).
     ...(resp?.data?.block === "network" && shownNetworkList(applied) !== "all" ? {
       group: `${NETWORK_LIST_LABELS[shownNetworkList(applied)]} din ${resp.data.since}`, groupFile: NETWORK_LIST_CSV[shownNetworkList(applied)],
@@ -1035,7 +1043,7 @@ export default function AskPanel({
                   onClick={() => openEvidence()}
                 >
                   <DiscoveryIcon name="database"/>
-                  {count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
+                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>
@@ -1274,9 +1282,12 @@ export default function AskPanel({
                   onMeasure={(measure) => { if (measure !== (applied.measure === "count" ? "count" : "value")) applyStripChange("measure", measure); }}
                 />
               )}
-              {data.block === "scatter" && (
-                <ScatterBlock points={data.points} density={data.density} />
-              )}
+              {data.block === "scatter" && ("scatter" in data
+                ? <ScatterAnswer data={data.scatter} spec={applied} onStrip={(value) => applyStripChange("scatter", value)} />
+                : <>
+                  <p className="cq-oldnote">Captură veche: norul de dinainte de semnale și de lista cu locuri.</p>
+                  <ScatterBlock points={data.points} density={data.density} />
+                </>)}
               {data.block === "sankey" && (
                 <SankeyAnswer data={data} spec={applied} layout={layout}
                   deeperHref={(code) => threadHref(applied, code, deeperThread(thread, applied, code, domainName(data.domains.find((d) => d.code === code) ?? { code, name: null })))} />

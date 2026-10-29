@@ -13,6 +13,7 @@ import {
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
+import { flagLabel } from "../../flags";
 import { kindApplies, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "../purchase";
 import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, TREND_GROUP_ROW, firstTimeWords, trendGroupLabel } from "./defs/trend";
 import { networkGroupLabel } from "./defs/network";
@@ -564,6 +565,16 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     words: "doar partenerii cu semnale", chip: "Cu semnale", pills: ["cu semnale"],
     scope: [{ label: "Semnale", value: "Doar partenerii cu un semnal oficial pe relație" }], summary: "Cu semnale",
   } : null,
+  // F6b (final scatter §3.3–§3.4): the risk cloud's signal and order, beside the chart. They name who is shown, never
+  // what is counted: the pill and the receipt say them, the title and the total line do not (SHAPE).
+  scatterFlag: (spec) => {
+    const flag = spec.scatter?.flag;
+    if (!flag) return null;
+    const label = flagLabel(flag), lower = label.toLocaleLowerCase("ro-RO");
+    return { words: `semnal: ${lower}`, chip: `Semnal: ${label}`, pills: [`semnal: ${lower}`], scope: [{ label: "Semnal", value: label }], summary: `Semnal: ${label}` };
+  },
+  scatterRankBy: (spec) => spec.scatter?.rankBy === "value"
+    ? { words: "primele după valoare", chip: "Primele după valoare", pills: ["primele după valoare"], scope: [{ label: "Primele după", value: "Valoare" }] } : null,
   trendFirstOnly: (spec) => {
     if (!spec.trend?.firstOnly) return null;
     const year = spec.filters.yearTo ? ` în ${spec.filters.yearTo}` : "";
@@ -587,8 +598,8 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
 const NETWORK_ORDER: readonly FilterId[] = ["networkPartners", "networkSince", "networkSignals", "networkOrder"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords", "scatterFlag", "scatterRankBy"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population", "scatterFlag", "scatterRankBy"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
 const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "sharedPartners", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];
@@ -648,7 +659,7 @@ function partnerWords(spec: Spec): Partial<Record<FilterId, string>> {
 }
 
 /** The shape of the answer, not a condition (the sentence's subject, its axis, the presentation line). */
-const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode", "networkOrder", "networkShow", "sankeyShown"]);
+const SHAPE: ReadonlySet<FilterId> = new Set(["dim", "measure", "topN", "rankBy", "comparisonMode", "networkOrder", "networkShow", "sankeyShown", "scatterFlag", "scatterRankBy"]);
 
 /**
  * The title's tail (G7, R11): the conditions under the sentence (P4), in the
