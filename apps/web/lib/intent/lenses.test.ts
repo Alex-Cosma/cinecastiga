@@ -242,6 +242,15 @@ describe("comparison lenses (F4, plan §2.7, final compare §3.4)", () => {
     expect(r.spec).toMatchObject({ block: "compare", filters: { supplierId: 9000001, compareWithId: 9000003, authorityKind: "spital" } });
     expect(r.sentence).toBe("Compară CONSTRUCTII ERBASU S.A. cu ELBI ENERGY PROJECTS SRL la toate achizițiile făcute de spitalele, în toți anii.");
   });
+  it("between two firms a place after the second name is their clients' county, not part of the name (S4 leftover)", async () => {
+    for (const q of ["compara constructii erbasu cu elbi energy projects din buzau", "compara constructii erbasu cu elbi energy projects la spitalele din buzau"]) {
+      const { i, r } = await ask(q);
+      expect([i.intent, i.leftover], q).toEqual(["compare", []]);
+      expect(r.spec, q).toMatchObject({ block: "compare", filters: { supplierId: 9000001, compareWithId: 9000003, county: "Buzău" } });
+    }
+    expect((await ask("compara constructii erbasu cu elbi energy projects din buzau")).r.sentence)
+      .toBe("Compară CONSTRUCTII ERBASU S.A. cu ELBI ENERGY PROJECTS SRL la toate achizițiile făcute de instituțiile publice din județul Buzău, în toți anii.");
+  });
 });
 
 describe("the network and the flow in words (S5, plan §2.7 „rețea”; an S4 leftover)", () => {
