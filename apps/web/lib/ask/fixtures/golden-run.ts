@@ -45,7 +45,8 @@ export async function goldenRecord(entry: CorpusEntry, send: SendRoute, opts: { 
   const { page = 0, ...drawer } = entry.rows ?? {};
 
   const asked = await send("ask", { spec: entry.spec, ...table });
-  const { tookMs: _took, executedAt: _at, ...answer } = JSON.parse(asked.text) as Record<string, unknown>;
+  // The CPV code's catalogue name (S5) is the title's label for the spec's code, not an answer: as the timings, left out.
+  const { tookMs: _took, executedAt: _at, cpvName: _name, ...answer } = JSON.parse(asked.text) as Record<string, unknown>;
   canonicalData(answer["data"] as Record<string, unknown> | undefined);
 
   const listed = await send("rows", { spec: entry.spec, page, ...drawer });
