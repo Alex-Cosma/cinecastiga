@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { BUZAU_DIALOG, BUZAU_FACTS, HOSPITAL_DIALOG } from "./fixtures/distribution-screen";
-import { legacyCounty, peerRows, peerTickError, populationCoverage } from "./peer-groups";
+import { legacyCounty, peerRows, peerTickError, populationCoverage, resolvePeerFacts } from "./peer-groups";
 import { profileCounty, profileCountyCond, profilePredicates, type PredicateCtx } from "./predicates";
 import {
   PEER_MINIMUM, PROFILE_MIN_DAS, bandWords, countyDisplay, coverageWords, defaultPeerTicks, peerCountWords, peerFollowUp, peerGroupValue, peerGroupWords, peerKey,
@@ -147,6 +147,22 @@ describe("the rows of the window (final §3.1 table)", () => {
     expect(unknown.map((r) => [r.id, r.disabled?.short])).toEqual([["similar", "necunoscut"], ["county", "necunoscut"], ["activity", undefined]]);
     expect(peerRows(facts({ role: "supplier", similar: null }), undefined).map((r) => [r.id, r.label])).toEqual([["county", "Buzău, sediul firmei"], ["activity", "391–1.564 de achiziții directe"]]);
   });
+  it("say a foreign firm has no county to compare with, not that its county is unknown (F6a merge, seat-2)", async () => {
+    // A firm's group reads no database (no population, no kind): its seat label „Străinătate” is not a county.
+    const none = (() => { throw new Error("no query for a firm"); }) as unknown as DbSql;
+    const focal = { entityId: "9", name: "SIEMENS AG", county: "Străinătate", nDas: 400, nFlags: 1, cri: 0.2, flags: [] };
+    const { facts } = await resolvePeerFacts(none, "supplier", focal);
+    expect([facts.county, facts.abroad]).toEqual([null, true]);
+    const [county] = peerRows(facts, undefined);
+    expect([county!.id, county!.label, county!.disabled]).toEqual(["county", "Același județ",
+      { short: "în străinătate", tip: "SIEMENS AG are sediul în străinătate: nu are un județ cu care să fie comparată." }]);
+    // A Romanian firm with no known seat stays „necunoscut”; one in Buzău names its seat.
+    const unknown = await resolvePeerFacts(none, "supplier", { ...focal, name: "X SRL", county: null });
+    expect([unknown.facts.abroad, peerRows(unknown.facts, undefined)[0]!.disabled?.short]).toEqual([undefined, "necunoscut"]);
+    const buzau = await resolvePeerFacts(none, "supplier", { ...focal, county: "Buzau" });
+    expect([buzau.facts.county, peerRows(buzau.facts, undefined)[0]!.label]).toEqual(["Buzău", "Buzău, sediul firmei"]);
+  });
+
   it("refuse a tick the entity cannot form, with its reason (never ignored)", () => {
     expect(peerTickError({ facts: facts({ similar: null, similarReason: "Tipul lui X nu se poate stabili sigur." }), similarIds: null }, { similar: true }))
       .toBe("Tipul lui X nu se poate stabili sigur. Scoate „același tip” sau alege altă instituție.");
