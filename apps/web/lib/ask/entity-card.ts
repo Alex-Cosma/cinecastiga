@@ -31,6 +31,9 @@ export function bareNational(spec: Pick<AskSpec, "dataset" | "population" | "min
  * already applied, v_plaf/n_plaf) and the firms or institutions with value (their profiles' sums are the rollups').
  */
 export async function nationalTotals(sql: DbSql, role: "authority" | "supplier"): Promise<PodiumTotals | null> {
+  // The rollup may not exist yet (a build before it, a fixture): then no total, and the answer says no share.
+  const [ready] = (await sql`select to_regclass('marts.agg_national') is not null ok`) as unknown as { ok: boolean }[];
+  if (!ready?.ok) return null;
   const [national] = (await sql`select coalesce(sum(v_plaf), 0)::text v, coalesce(sum(n_plaf), 0)::text n from marts.agg_national`) as unknown as { v: string; n: string }[];
   const [pool] = (await sql`select count(*)::text n from marts.entity_profile where role = ${role} and total_ron_split > 0`) as unknown as { n: string }[];
   if (!national || Number(national.v) <= 0) return null;
