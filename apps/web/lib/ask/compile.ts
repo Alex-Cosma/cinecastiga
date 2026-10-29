@@ -812,6 +812,27 @@ function trendGrouping(s: DbSql, o: Parameters<typeof trendGroupedInput>[1]): { 
   };
 }
 
+/**
+ * „Cine conduce?” by value: the podium's places kept per marts build (the trend groups' stamp, group-ids.ts) for its
+ * source drawer, so opening, paging or narrowing the sources does not rank the selection again (~1,5 s live at
+ * „medicamente”, 2025). Written by the answer and by the drawer; a miss ranks again. Never taken from the client.
+ */
+const podiumsKept = new Map<string, { places: string[]; at: number }>();
+const PODIUMS_KEPT = 200;
+const PODIUM_TTL_MS = 10 * 60_000;
+/** Tests and ask-perf: forget the kept podiums. */
+export function forgetPodiums(): void { podiumsKept.clear(); }
+const podiumKey = (stamp: string, spec: AskSpec, grounding: Grounding): string => JSON.stringify([stamp, { ...spec, measure: "value" }, grounding]);
+function keepPodium(key: string, places: string[]): void {
+  podiumsKept.delete(key);
+  podiumsKept.set(key, { places, at: Date.now() });
+  for (const oldest of podiumsKept.keys()) { if (podiumsKept.size <= PODIUMS_KEPT) break; podiumsKept.delete(oldest); }
+}
+function keptPodium(key: string): string[] | null {
+  const hit = podiumsKept.get(key);
+  return hit && Date.now() - hit.at <= PODIUM_TTL_MS ? hit.places : null;
+}
+
 export async function runSpec(
   sql: DbSql,
   spec: AskSpec,
@@ -838,6 +859,8 @@ export async function runSpec(
     if (!winner) return { ...ranked, data: { block: "entity_card", card: blankCard(role), empty: true } };
     const totals = table?.totals ?? (bareNational(spec) ? await nationalTotals(sql, role) : null);
     const podium = podiumOf(places, totals, table?.group);
+    const stamp = await trendCacheStamp(sql);
+    if (stamp) keepPodium(podiumKey(stamp, spec, grounding), podiumPlaceIds({ card: winner, podium }));
     // Under a band the podium's shares are the category's (owner decision entity_card 4), not the selection's as the
     // ranking's own text says: „Cum am calculat” says the podium's.
     const displaySql = podium.selection ? ranked.displaySql.replace(RANKED_BAND_TOTALS, PODIUM_BAND_TOTALS) : ranked.displaySql;
@@ -2380,19 +2403,25 @@ export async function runRows(
   // Resolve the winner from the original population before any drawer filters.
   // Intersect it below, so a caller cannot substitute a different entity.
   // entity_card-2 (F6c): the podium's places 2 and 3 have their own records; a scope naming places of the podium
-  // narrows to them, any other id is refused (the podium is recomputed here, never taken from the client).
+  // narrows to them, any other id is refused (the podium is recomputed here or kept by the server for this build,
+  // never taken from the client).
   let valueWinner: string[] | null = null;
   if (spec.block === "entity_card" && spec.rankBy === "value") {
-    const result = await runSpec(sql, spec, grounding);
-    opts.signal?.throwIfAborted();
-    if ("error" in result) return { error: result.error };
-    if (result.data.block !== "entity_card" || result.data.empty) return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
+    const stamp = await trendCacheStamp(sql);
+    let kept = stamp ? keptPodium(podiumKey(stamp, spec, grounding)) : null;
+    if (!kept) {
+      const result = await runSpec(sql, spec, grounding);
+      opts.signal?.throwIfAborted();
+      if ("error" in result) return { error: result.error };
+      if (result.data.block !== "entity_card" || result.data.empty) return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
+      kept = podiumPlaceIds(result.data);
+    }
+    const places = kept;
     if (scope.role && scope.role !== (spec.dim === "supplier" ? "supplier" : "authority"))
       return { error: "Rolul selectat nu aparține entității din răspuns." };
-    const places = podiumPlaceIds(result.data);
     if (scope.entityIds && !scope.entityIds.every((id) => places.includes(id)))
       return { error: "Entitatea selectată nu este pe podiumul răspunsului." };
-    valueWinner = scope.entityIds ? [...scope.entityIds] : [result.data.card.entityId];
+    valueWinner = scope.entityIds ? [...scope.entityIds] : [places[0]!];
   }
 
   if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };

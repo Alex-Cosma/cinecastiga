@@ -25,18 +25,35 @@ export function bareNational(spec: Pick<AskSpec, "dataset" | "population" | "min
   return Object.values(spec.filters).every((value) => value === undefined || value === null || value === "");
 }
 
+/** The nationwide totals kept per marts build (the files of agg_national and entity_profile, as the counts' stamp). */
+const nationalKept = new Map<string, { value: PodiumTotals | null; at: number }>();
+/** At most this long on the same files (a table changed in place keeps its file), as the counts. */
+const NATIONAL_TTL_MS = 10 * 60_000;
+/** Tests and ask-perf: forget the kept nationwide totals. */
+export function forgetNationalTotals(): void { nationalKept.clear(); }
+
 /**
  * The totals of the nationwide ranking by value: the value and records of both channels (the analysis ceilings
  * already applied, v_plaf/n_plaf) and the firms or institutions with value (their profiles' sums are the rollups').
+ * Kept per build: the count over entity_profile (~15 ms) is paid once a build, then only the catalog stamp.
  */
 export async function nationalTotals(sql: DbSql, role: "authority" | "supplier"): Promise<PodiumTotals | null> {
   // The rollup may not exist yet (a build before it, a fixture): then no total, and the answer says no share.
-  const [ready] = (await sql`select to_regclass('marts.agg_national') is not null ok`) as unknown as { ok: boolean }[];
-  if (!ready?.ok) return null;
+  const [stamp] = (await sql`
+    select current_database() db, pg_relation_filenode(to_regclass('marts.agg_national'))::text agg,
+           pg_relation_filenode(to_regclass('marts.entity_profile'))::text ep
+  `) as unknown as { db: string; agg: string | null; ep: string | null }[];
+  if (!stamp?.agg || !stamp.ep) return null;
+  const build = `${stamp.db}:${stamp.agg}:${stamp.ep}:`;
+  const hit = nationalKept.get(build + role);
+  if (hit && Date.now() - hit.at <= NATIONAL_TTL_MS) return hit.value;
   const [national] = (await sql`select coalesce(sum(v_plaf), 0)::text v, coalesce(sum(n_plaf), 0)::text n from marts.agg_national`) as unknown as { v: string; n: string }[];
   const [pool] = (await sql`select count(*)::text n from marts.entity_profile where role = ${role} and total_ron_split > 0`) as unknown as { n: string }[];
-  if (!national || Number(national.v) <= 0) return null;
-  return { value: Number(national.v), count: Number(national.n), entities: Number(pool?.n ?? 0) };
+  const value = !national || Number(national.v) <= 0 ? null : { value: Number(national.v), count: Number(national.n), entities: Number(pool?.n ?? 0) };
+  // A new build has new files: the older builds' entries go.
+  for (const old of nationalKept.keys()) if (!old.startsWith(build)) nationalKept.delete(old);
+  nationalKept.set(build + role, { value, at: Date.now() });
+  return value;
 }
 
 /**
