@@ -659,9 +659,11 @@ async function winnersCounts(sql: DbSql, p: Prepared, draft: AskSpec, ready: Rea
     if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
     const id = r.id("authority") ?? sql`d.authority_id`;
     const dominant = dominantIdsSql(sql, p.ctx, { source: txAggFragment(sql, p.dataset, false, fullValueUnion(p.ctx)) as unknown as Fragment, rollups: ready.rollups });
+    // The institutions once (a materialized list), then both sums over the grouped selection.
     const [row] = await run<{ dn: string; dv: string; n: string; v: string }>(sql`
-      select count(*) filter (where g.id in (${dominant})) dn, coalesce(sum(g.v) filter (where g.id in (${dominant})), 0) dv, count(*) n, coalesce(sum(g.v), 0) v
-      from (select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1) g
+      with dom as materialized (${dominant}), g as (select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1)
+      select count(dom.authority_id) dn, coalesce(sum(g.v) filter (where dom.authority_id is not null), 0) dv, count(*) n, coalesce(sum(g.v), 0) v
+      from g left join dom on dom.authority_id = g.id
     `);
     const total = { n: Number(row?.n ?? 0), v: Number(row?.v ?? 0) };
     return done("institutions", [{ value: "dominant", n: Number(row?.dn ?? 0), value_ron: Number(row?.dv ?? 0), share: share(Number(row?.dv ?? 0), total.v) }], total);

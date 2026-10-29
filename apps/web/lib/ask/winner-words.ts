@@ -1,7 +1,7 @@
 import { countWords, formatShare } from "./answer-text";
 import { DOMINANT_LABEL, employeesWords } from "./filters/words";
 import type { FirmFacts, InstitutionFacts, WinnerFacts } from "./winners";
-import type { AskSpec, NewScope } from "./spec";
+import type { NewScope } from "./spec";
 
 /*
  * F5, the ranked winners in the answer's words (plan §4.2 P6, P8; final table
@@ -10,12 +10,13 @@ import type { AskSpec, NewScope } from "./spec";
  * facts come lazily from POST /api/ask/facets, part `rows`) and its tests.
  */
 
-type Spec = Pick<AskSpec, "block" | "dim" | "filters">;
+/** A question as the engine and the builder hold it (AskSpec, QuestionSpec). */
+type Spec = { block: string; dim?: string | undefined; filters: { [key: string]: unknown } };
 /** One fact tag (app/intreaba/answer/RowFacts.tsx RowFact): neutral, accent (what the question picked out), caveat (amber). */
 export interface WinnerTag { text: string; tone?: "accent" | "caveat" }
 
 const newOf = (spec: Spec): { scope: NewScope; since: number } | null =>
-  spec.filters.newSince !== undefined && spec.filters.newScope ? { scope: spec.filters.newScope, since: Number(spec.filters.newSince) } : null;
+  spec.filters.newSince !== undefined && typeof spec.filters.newScope === "string" ? { scope: spec.filters.newScope as NewScope, since: Number(spec.filters.newSince) } : null;
 const banded = (spec: Spec) => spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined;
 
 /** The rankings whose rows have facts to read: institutions (their largest firm, always), firms with a chip of their row. */
