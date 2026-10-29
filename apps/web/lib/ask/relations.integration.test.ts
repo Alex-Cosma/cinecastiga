@@ -187,6 +187,16 @@ describe.runIf(Boolean(connection))("F4: the relations, network-2 and sankey-2 (
       expect(ids(other, "all")).toEqual(["11"]);
       const abroad = network(await runSpec(q, { ...since(around), filters: { ...around.filters, firmSeat: "abroad" } }, BUYER));
       expect(ids(abroad, "all")).toEqual(["13"]);
+      // A Romanian firm nobody knows the seat of is in neither, and the answer says how many (final network §3.4).
+      expect(other.unknownSeat).toBeUndefined();
+      await q`update marts.entity_profile set seat_county = null where entity_id = 15 and role = 'supplier'`;
+      const unknown = network(await runSpec(q, { ...since(around), filters: { ...around.filters, firmSeat: "same" } }, BUYER));
+      expect([ids(unknown, "all"), unknown.unknownSeat]).toEqual([["10", "12", "14"], 1]);
+      // A group counts the whole relation's records (Zeta, gone, still there); „Toți” in 2024 does not reach its 2019 record.
+      expect(network(await runSpec(q, { ...since(around, "gone"), filters: { ...around.filters, firmSeat: "same" } }, BUYER)).unknownSeat).toBe(1);
+      const year = network(await runSpec(q, { ...around, filters: { ...around.filters, firmSeat: "same", yearFrom: 2024, yearTo: 2024 } }, BUYER, { networkWhole: true }));
+      expect(year.unknownSeat).toBeUndefined();
+      expect(network(await runSpec(q, { ...since(around), filters: { ...around.filters, firmSeat: "abroad" } }, BUYER)).unknownSeat).toBeUndefined();
     });
   });
 

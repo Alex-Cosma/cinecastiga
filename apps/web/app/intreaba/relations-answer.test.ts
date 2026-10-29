@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { NetworkData } from "../../lib/ask/network-shared";
+import { unknownSeatWords, type NetworkData } from "../../lib/ask/network-shared";
 import type { SankeyData } from "../../lib/ask/sankey-shared";
 import type { AskSpec } from "../../lib/ask/spec";
 import { decodeSpec } from "../../lib/ask/permalink";
@@ -121,6 +121,12 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     expect(head.filter((name) => name === "grupa")).toHaveLength(1);
     expect(head.at(-1)).toBe("canal");
     expect(banded.filename).toBe("cu-cine-a-continuat-toate-continua.csv");
+  });
+
+  it("says how many firms the seat cannot place (final network §3.4)", () => {
+    expect(unknownSeatWords(19)).toBe("19 firme fără sediu cunoscut nu intră în răspuns.");
+    expect(unknownSeatWords(1)).toBe("1 firmă fără sediu cunoscut nu intră în răspuns.");
+    expect(unknownSeatWords(20)).toBe("20 de firme fără sediu cunoscut nu intră în răspuns.");
   });
 
   it("offers „Urmărește grupa” on a group, which fixes its partners at activation (F4n-members-watch)", () => {
