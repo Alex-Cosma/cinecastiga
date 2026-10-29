@@ -66,13 +66,15 @@ describe("where the answer's «⋯» offers it (BLOCK_FILTERS.rowMenu, exclude)"
     ["trend of firms", q({ block: "trend", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 } }), "supplier"],
     ["trend of counties", q({ block: "trend", dim: "county", filters: { yearFrom: 2024, yearTo: 2025 } }), null],
     ["total", q({ block: "stat" }), null],
-    ["map", q({ block: "map" }), null],
+    // F5: the map leaves out a county card's largest buyer (no row menu: the card's button); not beside a firm.
+    ["map", q({ block: "map" }), "authority"],
+    ["map of a firm", q({ block: "map", filters: { supplierName: "SYSTRA", supplierId: 7 } }), null],
     ["risk cloud", q({ block: "scatter", dim: "authority" }), null],
   ];
   it.each(cases)("%s", (_name, spec, role) => {
     const ctx = filterContext(spec);
     expect(excludedRole(spec)).toBe(role);
-    expect(BLOCK_FILTERS[ctx.block].rowMenu(spec, ctx)).toEqual(role ? ["records", "exclude", "entity"] : []);
+    expect(BLOCK_FILTERS[ctx.block].rowMenu(spec, ctx)).toEqual(role && ctx.block !== "map" ? ["records", "exclude", "entity"] : []);
     // Where it is offered, the question it writes runs.
     if (role) expect(validateSpec(excludeEntity(spec, { ...SYSTRA, field: role })!)).not.toHaveProperty("error");
   });

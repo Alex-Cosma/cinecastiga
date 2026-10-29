@@ -3,7 +3,7 @@ import { retiredChoicesText } from "./retired-terms";
 import { countWords } from "./answer-text";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
-import { namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type MonthWindow, type TrendChange } from "./spec";
+import { LOCAL_ADMIN_KIND, namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type MonthWindow, type TrendChange } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
@@ -21,7 +21,8 @@ import { employeesWords, NEW_FIRMS_LIST } from "./filters/words";
 import { resolveWinners } from "./winners";
 import { retarget } from "./filters/retarget";
 import type { OriginHint } from "./filters/origin";
-import { PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
+import { martsCounty, PER_CAPITA_SOURCE, perCapitaCaveat, POPULATION_CARD_NOTE, readPerCapitaPopulations, type PerCapitaPopulations } from "./per-capita";
+import { localAdminMap, localMapSql, mapLocal, mapRollupFilters, mapRollupReady, type MapLocal } from "./map-facts";
 import { asksSharedPartners, sharedPartnersPrestep } from "./compare-prestep";
 import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
@@ -270,7 +271,9 @@ export type BlockData =
   | { block: "timeseries"; series: SeriesPoint[]; grain?: "month"; parts?: SeriesPart[]; months?: MonthsWindow; ref?: SeriesRef }
   // unknown: records of the same selection whose authority has no county.
   // They are not on the map, but shares are of the whole selection (audit F13).
-  | { block: "map"; counties: CountyValue[]; unknown: { value: number; count: number } }
+  // F5 (map final §3.3, §3.8): `local` on the map of the local administrations (the counties they administer, their
+  // population, the councils the list lacks); absent elsewhere and from older answers. Not compared by a watch (answerCore).
+  | { block: "map"; counties: CountyValue[]; unknown: { value: number; count: number }; local?: MapLocal }
   | CompareData
   | { block: "distribution"; distribution: DistributionData }
   // F3: every group of the level (base, with its largest record where known) and each channel's totals in the same
@@ -357,7 +360,7 @@ export interface EngineResult {
    * The SQL shown for each display state the strip switches on the data
    * already fetched (plan §2.3 variants): the map's lens, value or records.
    */
-  displaySqlByMeasure?: Partial<Record<"value" | "count", string>>;
+  displaySqlByMeasure?: Partial<Record<"value" | "count" | "value_per_capita", string>>;
   /** trend: the SQL shown for each list of the answer (the group buttons switch on the data already fetched). */
   displaySqlByList?: Partial<Record<TrendList, string>>;
   /** trend with `trend.months`: the window `auto` resolved to (plan §2.8); the spec keeps `auto`. */
@@ -1028,7 +1031,7 @@ export async function runSpec(
   // Every condition of the question, written by lib/ask/predicates.ts for the
   // answer, its sources, the CSV, the captures and the displayed SQL alike.
   // The kind of institution is a list of ids, read once per marts build (authority-kind.ts, D1).
-  const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
+  const kindIds = await authorityKindIds(sql, spec.filters.authorityKind);
   // The optional mart columns (mart-columns.ts, probed once per process with the pool): the firm's seat (F4) and the
   // scatter's density layer. Before the seat column is filled, a firm's county is its SEAP county, said in the note.
   const columns = await martColumns(sql);
@@ -1195,8 +1198,12 @@ export async function runSpec(
     : `${buildDisplaySql(spec, w)}${asksSharedPartners(spec, w) ? "\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)" : ""}`;
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
   // So does the breakdown's order by value or by records (F3, final breakdown §3.8).
+  // F5: the map of the local administrations also per inhabitant (its third lens with a query text of its own).
   const displaySqlByMeasure = spec.block === "map" || spec.block === "breakdown"
-    ? { value: buildDisplaySql({ ...spec, measure: "value" }, w), count: buildDisplaySql({ ...spec, measure: "count" }, w) }
+    ? {
+      value: buildDisplaySql({ ...spec, measure: "value" }, w), count: buildDisplaySql({ ...spec, measure: "count" }, w),
+      ...(spec.block === "map" && localAdminMap(w) ? { value_per_capita: buildDisplaySql({ ...spec, measure: "value_per_capita" }, w) } : {}),
+    }
     : undefined;
   // A trend answers every list in one statement (the group buttons switch without a query): the SQL of each list.
   // A watch on fixed members lists only its own.
@@ -1235,6 +1242,9 @@ export async function runSpec(
 
   // The nightly rollups answer the selections that otherwise group the transaction marts.
   const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, wSel);
+  // F5: the map of the local administrations reads the strict list and agg_map_year (map-facts.ts), probed with the pool.
+  const localMap = spec.block === "map" && localAdminMap(w) ? await readPerCapitaPopulations(sql) : null;
+  const localRollup = localMap ? await mapRollupReady(sql) : false;
   // A trend's group sources read their days from the rollup once a build has them (rollupDaysReady).
   const trendDays = spec.block === "trend" && rollup ? await rollupDaysReady(sql) : false;
   // The evolution's months, split and same months read agg_months once a build has made it (series-rollups.ts); so does
@@ -1394,6 +1404,18 @@ export async function runSpec(
         }
 
         case "map": {
+          // F5: „Primăriile și consiliile județene”, by the county each one administers (CJ Ilfov at Ilfov), with the
+          // counties' population for the lens per inhabitant (map final §3.3, §3.8).
+          if (localMap) {
+            const rolled = localRollup ? mapRollupFilters(wSel, dataset) : null;
+            const r = (await s`${localMapSql(s, { ctx: wSel, dataset, rolled, local: localMap })}`) as unknown as { c: string; v: string; n: string }[];
+            return {
+              block: "map",
+              counties: r.map((p) => ({ county: p.c, value: Number(p.v), count: Number(p.n) })),
+              unknown: { value: 0, count: 0 },
+              local: mapLocal(localMap),
+            };
+          }
           if (bare) {
             const r = (await s`
               select county c, ${aggV} v, ${aggN} n from marts.agg_map_county order by 2 desc limit 200
@@ -2485,7 +2507,7 @@ export async function runRows(
     if (opts.months && (opts.months[0] !== trendWindow.from || opts.months[1] !== trendWindow.to)) return { error: DATA_CHANGED, conflict: true };
   } else if (opts.months) return { error: "Lunile comparate se aplică doar schimbării între doi ani și evoluției." };
   // The question's conditions, written for the sources as for the answer (predicates.ts).
-  const kindIds = await authorityKindIds(sql, namedKind(spec.filters.authorityKind));
+  const kindIds = await authorityKindIds(sql, spec.filters.authorityKind);
   const ctx = predicateContext(sql, spec, grounding, {
     dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(trendWindow), seriesMonths: partialMonths(trendWindow),
     seat: (await martColumns(sql)).seat,
@@ -2635,7 +2657,20 @@ export async function runRows(
       parts.push(spec.dim === "supplier" ? sql`d.supplier_id = ${valueWinner}` : sql`d.authority_id = ${valueWinner}`);
       notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");
     }
-    if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
+    // F5: a county of the local administrations' map holds the administrations of that county, wherever they sit
+    // (CJ Ilfov at Ilfov, map final §3.3): the strict list's ids, as the answer groups them.
+    if (scope.county && localAdminMap(ctx)) {
+      const local = await readPerCapitaPopulations(sql);
+      const ids = local.ids.filter((_, i) => fold(local.counties[i]!) === fold(scope.county!));
+      parts.push(sql`d.authority_id = any(${sql.array(ids)}::bigint[])`);
+    } else if (scope.county) {
+      parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
+      // The same county on the column itself, so the county indexes bound the rows (a map's county, Cluj 2025: 10.5 s →
+      // 1.2–1.3 s; by the firms' seat 7–9 s → 1.5 s, at load 20): the marts write the 42 canonical spellings only
+      // (agg_cpv_year, 30 October 2026).
+      const canonical = martsCounty(scope.county);
+      if (canonical) parts.push(sql`d.county = ${canonical}`);
+    }
     // Several counties: a group of a county trend (at most 42), in the drawer's words.
     if (scope.counties) parts.push(sql`lower(unaccent(d.county)) = any(${sql.array(scope.counties.map(fold))}::text[])`);
     if (isRelationship) parts.push(focalRole === "authority" ? sql`d.supplier_id is not null` : sql`d.authority_id is not null`);
@@ -2649,7 +2684,8 @@ export async function runRows(
       parts.push(perCapitaPredicate(sql, perCapita.ids));
       notes.push(`Lei/locuitor: valoarea înregistrărilor unei administrații se împarte la ${PER_CAPITA_SOURCE}. Sursele includ doar primăriile (inclusiv cele de sector) și consiliile județene identificate strict, ca în clasament.`);
     }
-    if (spec.block === "map") parts.push(sql`d.county is not null`);
+    // The local administrations' map places every record by its buyer (F5): none is off the map.
+    if (spec.block === "map" && !localAdminMap(ctx)) parts.push(sql`d.county is not null`);
     if (spec.block === "timeseries") parts.push(sql`substr(d.finalization_date, 1, 4) ~ '^[0-9]{4}$'`);
     if (spec.block === "breakdown" || spec.block === "sankey") parts.push(sql`d.cpv_code is not null`);
     if (scope.entityIds || scope.excludeEntityIds) {
@@ -3039,6 +3075,11 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       return `select ${key}${part}, ${measure}\nfrom ${dtable}\nwhere ${where}\ngroup by ${key}${part} order by ${key};`;
     }
     case "map":
+      // F5: the local administrations by the county each administers, per inhabitant of that county (map final §3.3, §3.8).
+      if (w.kind === LOCAL_ADMIN_KIND)
+        return `select judet_administrat, ${spec.measure === "value_per_capita" ? "sum(closing_value) / populatie_judet" : measure}\nfrom ${dtable}\n` +
+          "join lista_stricta using (authority_id)  -- primării (inclusiv de sector) și consilii județene, fiecare în județul pe care îl administrează; populația județului: INS RPL 2021\n" +
+          `where ${where}\ngroup by judet_administrat;`;
       return `select county, ${measure}\nfrom ${dtable}\nwhere ${where}\ngroup by county;`;
     case "table": {
       const perCap = spec.measure === "value_per_capita";

@@ -117,8 +117,8 @@ const STREAM_CHIP: Record<string, string> = { all: "Toate achizițiile", da: "Ac
 const STREAM_PILL: Record<string, string> = { all: "toate achizițiile: directe și din proceduri", da: "doar achizițiile directe", contracts: "doar contractele din proceduri" };
 const STREAM_SCOPE: Record<string, string> = { all: "Toate achizițiile: directe și din proceduri", da: "Achizițiile directe", contracts: "Contractele din proceduri" };
 /** The kinds as the windows name them (kit §4 Tipurile), never "Comune", "Orașe și municipii", "Școli și licee". */
-const KIND_SCOPE: Record<AuthorityKind, string> = {
-  comuna: "Primării de comună", oras_municipiu: "Primării de oraș și municipiu", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli",
+const KIND_SCOPE: Record<ParsedAuthorityKind, string> = {
+  local_admin: "Primării și consilii județene", comuna: "Primării de comună", oras_municipiu: "Primării de oraș și municipiu", consiliu_judetean: "Consilii județene", spital: "Spitale", scoala: "Școli",
 };
 
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
@@ -253,12 +253,13 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
   authorityKind: (spec) => {
     const raw = spec.filters.authorityKind;
     if (!raw) return null;
-    const kind = namedKind(raw as ParsedAuthorityKind);
-    const known = kind && KIND_SCOPE[kind] ? kind : undefined;
+    // F5: the local administrations of the map (local_admin) are a kind of their own words, the strict list's.
+    const kind = raw as ParsedAuthorityKind;
+    const known = KIND_SCOPE[kind] && KIND_WORDS[kind] ? kind : undefined;
     return {
       ...(known ? { words: `doar ${KIND_WORDS[known]!.bare}`, pills: [`doar ${KIND_WORDS[known]!.bare}`] } : {}),
-      chip: (KIND_OPTIONS.find(([id]) => id === raw) ?? KIND_OPTIONS[0])[1],
-      // A kind read ahead (local_admin) belongs to a newer release; its watch is refused, not shown as another kind.
+      chip: known === "local_admin" ? KIND_WORDS.local_admin!.the : (KIND_OPTIONS.find(([id]) => id === raw) ?? KIND_OPTIONS[0])[1],
+      // A kind this release does not know belongs to a newer one: its watch is refused, not shown as another kind.
       scope: [{ label: "Tipul instituției", value: known ? KIND_SCOPE[known] : "dintr-o versiune mai nouă a site-ului" }],
     };
   },

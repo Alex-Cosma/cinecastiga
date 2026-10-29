@@ -24,8 +24,8 @@ import { validateCaptureRequest } from "./evidence-capture-input";
 import { NEWER_VERSION_QUESTION } from "./ask/spec";
 
 const stat = { block: "stat", measure: "value", filters: { authorityId: 12 } };
-// A key read ahead of this release (READ_AHEAD_KEYS): the strict list of local administrations (F5, the map's).
-const newer = { ...stat, filters: { ...stat.filters, authorityKind: "local_admin" } };
+// A key read ahead of this release (READ_AHEAD_KEYS): the main domain of a firm's comparison group (F6a phase 2).
+const newer = { block: "distribution", measure: "value", filters: { supplierId: 12 }, peers: { domain: true } };
 const members = { kind: "trend-group", role: "supplier", group: "new", ids: ["13", "14"], frozenAt: "2026-10-24T10:00:00Z" };
 // A network's fixed group is applied since S5 (F4n-members-watch), a trend's since F2; another kind is a newer release's.
 const network = { ...members, kind: "network-group", role: "supplier", group: "continuing" };

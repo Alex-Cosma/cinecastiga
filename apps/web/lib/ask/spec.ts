@@ -103,6 +103,13 @@ export interface NetworkOptions {
   signals?: true;
 }
 export interface SankeyOptions { shown?: 6 | 10 | 15 }
+/**
+ * The map's lens beyond the measure (F5, plan §4.4, map final §3.7): „Firme din județ” (seat) and „Cota firmei”
+ * (share). Display only: the answer brings every lens (the county facts, part `map`), the selection stays.
+ */
+export const MAP_LENSES = ["seat", "share"] as const;
+export type MapLens = (typeof MAP_LENSES)[number];
+export interface MapOptions { lens?: MapLens }
 /** rankBy here, not the top-level one: old scatter links carry rankBy from "Cine conduce?" and ignore it. */
 export interface ScatterOptions { flag?: (typeof SCATTER_FLAGS)[number]; rankBy?: RankBy }
 export interface PeersOptions { similar?: true; activity?: true; domain?: true }
@@ -207,6 +214,7 @@ export interface AskSpec {
   network?: NetworkOptions;
   sankey?: SankeyOptions;
   scatter?: ScatterOptions;
+  map?: MapOptions;
   /** distribution (then scatter, entity_card): the comparison group of a profile. */
   peers?: PeersOptions;
 }
@@ -373,6 +381,9 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   // F5: the ranked winners' new firms, main public client and the institutions one firm takes half of (WINNERS_RULES
   // below; lib/ask/winners.ts).
   ...["newSince", "newScope", "mainClient", "dominantSupplier"].map(key => `filters.${key}`),
+  // F5: the map's local administrations (the strict list of the per-inhabitant ranking, MAP_RULES below; lib/ask/map-facts.ts)
+  // and its lens beyond the measure („Firme din județ”, „Cota firmei”; display only).
+  "filters.authorityKind=local_admin", "map.lens",
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -382,14 +393,13 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  * any other kind a newer release stored is refused there.
  */
 export const READ_AHEAD_KEYS = {
-  "filters.authorityKind=local_admin": "F5",
   // Phase 2 of F6a (DECISIONS A3-main-cpv-div): marts.entity_flags.main_cpv_div is built; the row waits for it.
   "peers.domain": "F6a-2",
   "scatter.flag": "F6b", "scatter.rankBy": "F6b",
 } as const satisfies Record<string, string>;
 
 /** Options that belong to one block. On another block they cannot change the answer and are dropped. */
-export const BLOCK_OPTION_KEYS = ["trend", "timeseries", "network", "sankey", "scatter"] as const;
+export const BLOCK_OPTION_KEYS = ["trend", "timeseries", "network", "sankey", "scatter", "map"] as const;
 /** The profiles a comparison group (`peers`) can belong to; elsewhere it is refused. */
 export const PEERS_BLOCKS: readonly Block[] = ["distribution", "scatter", "entity_card"];
 export type OptionKey = (typeof BLOCK_OPTION_KEYS)[number] | "peers";
@@ -410,6 +420,7 @@ const OPTION_SHAPES: Record<OptionKey, Record<string, (v: unknown) => boolean>> 
     show: among([10, 15, 25, 50]), signals: isTrue },
   sankey: { shown: among([6, 10, 15]) },
   scatter: { flag: among(SCATTER_FLAGS), rankBy: among(RANK_BYS) },
+  map: { lens: among(MAP_LENSES) },
   peers: { similar: isTrue, activity: isTrue, domain: isTrue },
 };
 
@@ -743,6 +754,24 @@ export const SEAT_COUNTY_BLOCKS: readonly Block[] = ["table", "trend", "entity_c
  * a firm profile is its seat: seatCounty there). FilterDef.validate of
  * lib/ask/filters/defs/seat.ts; runnableError runs both.
  */
+/**
+ * „Primăriile și consiliile județene” (F5, plan §3, map final §3.3): the strict list of the per-inhabitant ranking
+ * (lib/ask/per-capita.ts), each in the county it administers, compared county by county on the map only (the table
+ * per inhabitant keeps its own measure). A county, a town hall or one institution would leave one county or a part
+ * of it: the counties are the answer.
+ */
+export const LOCAL_ADMIN_ONLY_MAP = "„Primăriile și consiliile județene” se compară doar pe hartă. Alege alt tip de instituții.";
+export const LOCAL_ADMIN_PLACE = "„Primăriile și consiliile județene” se compară pe toată țara. Scoate județul, localitatea sau instituția.";
+export const MAP_RULES: Readonly<Record<"localAdmin", (spec: AskSpec) => string | null>> = {
+  localAdmin: (spec) => {
+    if (spec.filters.authorityKind !== LOCAL_ADMIN_KIND) return null;
+    if (spec.block !== "map") return LOCAL_ADMIN_ONLY_MAP;
+    const f = spec.filters;
+    if (f.county || f.uatSiruta || f.authorityId || f.authorityName) return LOCAL_ADMIN_PLACE;
+    return null;
+  },
+};
+
 export const SEAT_RULES: Readonly<Record<"firmSeat" | "seatCounty", (spec: AskSpec) => string | null>> = {
   firmSeat: (spec) => {
     const seat = spec.filters.firmSeat;
@@ -879,7 +908,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES), ...Object.values(WINNERS_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES), ...Object.values(WINNERS_RULES), ...Object.values(MAP_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

@@ -468,6 +468,8 @@ function seatCases(): PerfCase[] {
 
 /** PRECOMPUTE.md entries the F3-rows facts wait on (answer-facts.ts MIX_LIVE, BARS_LIVE). */
 const MIX_LIVE = "„Din care” pe o selecție națională fără rollup";
+/** F5: the map's county facts without agg_map_year nor an index (answer-facts.ts MAP_LIVE). */
+const MAP_LIVE = "Faptele județelor pe o hartă națională fără rollup (domeniu, luni, mărime)";
 
 /**
  * F3-rows (S4; plan §4.1–§4.3, §6.4): the evolution's options (agg_months), „Din care” (agg_national_mix
@@ -641,5 +643,29 @@ function f3Cases(): PerfCase[] {
       all(top({ dim: "authority" }), years(2025)), { facet: { part: "rows", ids: [String(PERF_ENTITIES.clujNapoca.id)] }, barMs: 2000 }),
     perfCase("facets:locate-registered-2025", "facets", "„Unde e o firmă?” printre firmele înmatriculate din 2024, 2025", "table",
       all(top({ dim: "supplier" }), set({ newSince: 2024, newScope: "registry" }), years(2025)), { facet: { part: "locate", q: "strabag" }, barMs: 2000 }),
+    // F5 (plan §4.4, §6.4): the map of the local administrations (agg_map_year with the strict list) and the county
+    // facts asked after a map (lib/ask/map-facts.ts): agg_map_year, the code index for a domain, live on an entity.
+    perfCase("national:map-local-2025", "national", "Harta primăriilor și consiliilor județene pe locuitor, 2025", "map",
+      all(set({ authorityKind: "local_admin" }), years(2025), (q) => { q.measure = "value_per_capita"; }), { barMs: 2000 }),
+    perfCase("facets:map-all", "facets", "Faptele județelor, harta națională, toți anii", "map", () => {}, { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("facets:map-2025", "facets", "Faptele județelor, harta națională, 2025", "map", years(2025), { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("facets:map-works-2025", "facets", "Faptele județelor, lucrări, 2025", "map", all(set({ purchaseKind: "lucrari" }), years(2025)), { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("facets:map-local-2025", "facets", "Faptele județelor, primăriile și consiliile județene, 2025", "map",
+      all(set({ authorityKind: "local_admin" }), years(2025)), { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("facets:map-without-cluj-napoca-2025", "facets", "Faptele județelor fără Cluj-Napoca, 2025", "map",
+      all((q) => { q.population = withExclusion(q.population, { field: "authority", value: String(PERF_ENTITIES.clujNapoca.id), label: PERF_ENTITIES.clujNapoca.name }); }, years(2025)), { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("facets:map-medicines-2024-2025", "facets", "Faptele județelor, „medicamente”, 2024–2025 (fără rollup)", "map",
+      all(set({ cpvTerm: "medicamente" }), years(2024, 2025)), { facet: { part: "map" }, barMs: 2000, precompute: MAP_LIVE }),
+    perfCase("facets:map-lemne-2025", "facets", "Faptele județelor, „lemne”, 2025 (indexul codului)", "map",
+      all(set({ cpvTerm: "lemne" }), years(2025)), { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("sources:map-cluj-2025", "sources", "Sursele județului Cluj pe hartă, 2025", "map", years(2025), { path: "rows", scope: { county: "Cluj" }, barMs: 2000 }),
+    perfCase("facets:map-porr-works", "facets", "Faptele județelor și cota firmei, PORR CONSTRUCT, lucrări, 2024–2025", "map",
+      all(set({ purchaseKind: "lucrari", supplierName: "PORR CONSTRUCT", supplierId: 2108050 }), years(2024, 2025)), { facet: { part: "map" }, barMs: 2000 }),
+    perfCase("facets:map-h1-2025", "facets", "Faptele județelor, ian.–iun. 2025 (fără rollup)", "map",
+      all(years(2025), set({ monthFrom: 1, monthTo: 6 })), { facet: { part: "map" }, barMs: 2000, precompute: MAP_LIVE }),
+    perfCase("sources:map-local-ilfov-2025", "sources", "Sursele județului Ilfov pe harta primăriilor și consiliilor județene, 2025", "map",
+      all(set({ authorityKind: "local_admin" }), years(2025)), { path: "rows", scope: { county: "Ilfov" }, barMs: 2000 }),
+    perfCase("sources:map-cluj-same-seat-2025", "sources", "Sursele firmelor din județ, Cluj, 2025", "map",
+      all(set({ firmSeat: "same" }), years(2025)), { path: "rows", scope: { county: "Cluj" }, barMs: 2000 }),
   ];
 }

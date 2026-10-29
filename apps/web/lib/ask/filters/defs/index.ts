@@ -3,6 +3,7 @@ import { COMPARE_DEFS } from "./compare";
 import { EXCLUDE_DEFS } from "./exclude";
 import { FROM_WHOM_DEFS } from "./from-whom";
 import { LEGACY_DEFS } from "./legacy";
+import { MAP_DEFS } from "./map";
 import { NETWORK_DEFS } from "./network";
 import { PROFILE_DEFS } from "./profile";
 import { RANKING_DEFS } from "./ranking";
@@ -16,6 +17,6 @@ import { WINNERS_DEFS } from "./winners";
 /** Every FilterDef, in the order of their families (the registry re-exports them). */
 export const FILTER_DEFS: readonly FilterDef[] = [
   ...SELECTION_DEFS, ...FROM_WHOM_DEFS, ...SEAT_DEFS, ...RANKING_DEFS, ...WINNERS_DEFS, ...PROFILE_DEFS, ...TREND_DEFS,
-  ...TIMESERIES_DEFS, ...NETWORK_DEFS, ...SANKEY_DEFS, ...COMPARE_DEFS, ...EXCLUDE_DEFS, ...LEGACY_DEFS,
+  ...TIMESERIES_DEFS, ...NETWORK_DEFS, ...SANKEY_DEFS, ...MAP_DEFS, ...COMPARE_DEFS, ...EXCLUDE_DEFS, ...LEGACY_DEFS,
 ];
 export const FILTERS = Object.fromEntries(FILTER_DEFS.map((def) => [def.id, def])) as Record<FilterId, FilterDef>;

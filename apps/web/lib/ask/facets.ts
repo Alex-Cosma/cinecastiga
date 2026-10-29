@@ -133,7 +133,7 @@ export async function prepare(sql: DbSql, input: AskSpec, grounding: Grounding):
     if ("error" in resolved) return { error: resolved.error };
     window = resolved;
   }
-  const kindIds = await authorityKindIds(sql, namedKind(f.authorityKind));
+  const kindIds = await authorityKindIds(sql, f.authorityKind);
   const columns = await martColumns(sql);
   const ctx = predicateContext(sql, spec, grounding, {
     dataset, yearFrom, yearTo, kindIds, trendMonths: partialMonths(window), seriesMonths: partialMonths(window), seat: columns.seat,

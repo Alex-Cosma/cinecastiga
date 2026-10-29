@@ -57,7 +57,7 @@ export interface KeyVersion {
  */
 export const KEY_VERSIONS: Record<string, KeyVersion> = {
   // Only the kinds D1 corrected: schools and county councils keep their institutions and records
-  // (0 in, 0 out locally), and a newer value (local_admin, F5) is refused before it runs.
+  // (0 in, 0 out locally); the local administrations (local_admin, F5) are new with F5, so no answer before it.
   kind: { version: "kind-2", label: "Tipul instituției", paths: ["filters.authorityKind"], when: (spec) => KIND_2.has(namedKind(spec.filters.authorityKind) ?? "") },
   // F3 (plan §4.2, §2.6): on a ranking of firms the employees narrow the list (CÂȘTIGĂTORII), the same rows and
   // values; the totals and „% din total” are the whole selection's. "Cine conduce?" by value shows place 1 only: no change.
@@ -189,6 +189,8 @@ export function answerCore(block: string, data: unknown): unknown {
   // for the screen: a watch on a comparison of before F4 sees the same core.
   if (block === "compare" && object(data) && Array.isArray(data.entities)) return compareCore(data);
   if (block === "breakdown" && object(data)) { const { base: _base, streams: _streams, ...core } = data; return core; }
+  // F5: the local map's populations and the councils its list lacks are for the screen: a watch compares the counties.
+  if (block === "map" && object(data)) { const { local: _local, ...core } = data; return core; }
   if (block === "distribution") return distributionCore(data);
   if (block === "fact_check") return factCheckCore(data);
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;

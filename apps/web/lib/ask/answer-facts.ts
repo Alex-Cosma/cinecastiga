@@ -10,6 +10,10 @@ import { PROCEDURE_ORDER, VALUE_RANGES } from "./purchase";
 import { questionKey, type QuestionSpec } from "./question-ui";
 import { ABOVE_CAP_ROWS, type AboveCapRow, type BarsResult, type MixResult, type MixRow } from "./facet-parts";
 import type { AskSpec } from "./spec";
+import { martColumns } from "./mart-columns";
+import { readPerCapitaPopulations } from "./per-capita";
+import { assembleMapFacts, domainOnIndex, localAdminMap, mapFactsSql, mapRollupFilters, mapRollupReady, mapRows, type MapFacts, type MapFactsRow } from "./map-facts";
+import { rollupsReady } from "./rollups";
 
 /*
  * Facts asked about an answer once it is on screen (F3), behind the same
@@ -34,8 +38,9 @@ type Fragment = ReturnType<DbSql>;
 /** The PRECOMPUTE.md entries these facts wait on where the rollups do not answer a national selection. */
 export const MIX_LIVE = "„Din care” pe o selecție națională fără rollup";
 export const BARS_LIVE = "Cea mai mare înregistrare a barelor, pe o selecție națională fără rollup";
+export const MAP_LIVE = "Faptele județelor pe o hartă națională fără rollup (domeniu, luni, mărime)";
 
-const kept = new Map<string, { value: MixResult | BarsResult; at: number }>();
+const kept = new Map<string, { value: MixResult | BarsResult | MapFacts; at: number }>();
 /** Facts kept at most (one per answer: a few numbers). */
 const FACT_ENTRIES = 200;
 export function forgetAnswerFacts(): void { kept.clear(); }
@@ -45,7 +50,7 @@ export function forgetAnswerFacts(): void { kept.clear(); }
  * checkpoint and the marts build (as the counts), else computed in a read-only
  * transaction with the counts' limit. A limit passed is `{ timeout: true }`.
  */
-async function answerFact<T extends MixResult | BarsResult>(
+async function answerFact<T extends MixResult | BarsResult | MapFacts>(
   sql: DbSql, spec: AskSpec, part: T["part"], signal: AbortSignal | undefined,
   work: (tx: DbSql, p: Prepared, run: Runner, mixReady: boolean, checkpoint: string | null, started: number) => Promise<T | FacetFailure>,
 ): Promise<T | FacetFailure> {
@@ -249,5 +254,46 @@ export async function barFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
       }
     }
     return { part: "bars", max, above, checkpoint, tookMs: Date.now() - started };
+  });
+}
+
+/**
+ * The county facts of a map (F5, plan §4.4, map final §3.7–§3.11; lib/ask/map-facts.ts): each county's seat split,
+ * largest buyer, number of buyers and largest record, and beside a firm or a person the same selection without them
+ * („Cota firmei”), from agg_map_year where it answers, else live on the answer's records. The map of the local
+ * administrations groups by the county each one administers.
+ */
+export async function mapFacts(sql: DbSql, spec: AskSpec, opts: { signal?: AbortSignal } = {}): Promise<MapFacts | FacetFailure> {
+  if (spec.block !== "map") return { error: "Faptele județelor descriu o hartă." };
+  // Probed with the pool, before the transaction (mart-columns.ts, map-facts.ts).
+  const [ready, columns, rollups] = await Promise.all([mapRollupReady(sql), martColumns(sql), rollupsReady(sql)]);
+  return await answerFact<MapFacts>(sql, spec, "map", opts.signal, async (tx, p, run, _mixReady, checkpoint, started) => {
+    const local = localAdminMap(p.ctx) ? await readPerCapitaPopulations(tx) : null;
+    // Null where neither agg_map_year nor an index answers (PRECOMPUTE.md): a national selection with months or a size,
+    // or a domain of more records than its code index reads in the bar (domainOnIndex).
+    const facts = async (ctx: PredicateCtx) => {
+      const rolled = ready ? mapRollupFilters(ctx, p.dataset) : null;
+      const national = !rolled && nationalLive({ ...p, ctx });
+      if (national && !(rollups && await domainOnIndex(tx, ctx, p.dataset))) return null;
+      const rows = mapRows(tx, { ctx, dataset: p.dataset, rolled, seat: columns.seat, local });
+      // The planner reads both marts' covering indexes whole for a domain (9 s for medicines 2024–2025, at either
+      // random_page_cost); on the code index it reads the domain's rows only (2.0 s): this statement only.
+      if (national) await tx.unsafe("set local enable_seqscan = off; set local enable_indexonlyscan = off");
+      try {
+        return assembleMapFacts(await run<MapFactsRow>(mapFactsSql(tx, rows)), columns.seat);
+      } finally {
+        if (national) await tx.unsafe("set local enable_seqscan = on; set local enable_indexonlyscan = on");
+      }
+    };
+    const counties = await facts(p.ctx);
+    if (!counties) return { precompute: MAP_LIVE };
+    // „Cota firmei” (map final §3.10): the same selection without the firm or the person's firms, county by county.
+    const firm = Boolean(p.ctx.supplierId || p.ctx.adminSupplierIds);
+    const base = firm ? await facts({ ...p.ctx, supplierId: null, adminSupplierIds: null }) : null;
+    for (const [county, f] of Object.entries(counties)) {
+      const b = base?.[county];
+      if (b) f.base = { value: b.value, count: b.count };
+    }
+    return { part: "map", counties, seat: columns.seat, share: Boolean(base), checkpoint, tookMs: Date.now() - started };
   });
 }

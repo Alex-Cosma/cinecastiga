@@ -55,10 +55,10 @@ describe("device saved questions", () => {
   });
   it("lists a question with a key read ahead of the engine, with that key", () => {
     const storage = fixture();
-    const saved = writeLocalQuestion(storage, { title:"Primării", spec:{ ...spec, filters:{ ...spec.filters, authorityKind:"local_admin" } } });
+    const saved = writeLocalQuestion(storage, { title:"Domeniu", spec:{ block:"distribution", measure:"value", filters:{ supplierId:12 }, peers:{ domain:true } } });
     // Listed, and counted as a newer release's item: it cannot open here.
     expect(readLocalQuestionStore(storage)).toEqual({ questions:[saved], kept:[], newer:1, unreadable:0 });
-    expect(saved.spec.filters.authorityKind).toBe("local_admin");
+    expect(saved.spec.peers).toEqual({ domain: true });
   });
   it("keeps an item whose option is named like an Object.prototype member, alone", () => {
     const storage = fixture(); const ok = writeLocalQuestion(storage, { title:"Lucrări", spec });

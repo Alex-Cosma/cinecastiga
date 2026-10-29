@@ -1,5 +1,5 @@
 import { VALUE_RANGES, type ValueRange } from "../../purchase";
-import { SELECTION_RULES } from "../../spec";
+import { LOCAL_ADMIN_KIND, SELECTION_RULES } from "../../spec";
 import { TRANSACTION_FORMS } from "../context";
 import type { FilterDef } from "../types";
 import { alwaysScope, edited, levels, setFilters } from "./shared";
@@ -35,7 +35,9 @@ export const measure: FilterDef<MeasureValue> = {
   scope: alwaysScope("display"),
   read: (spec) => spec.measure as MeasureValue,
   write: (spec, value) => edited(spec, (next) => { next.measure = value ?? "value"; }),
-  choices: (spec) => ["value", "count", ...(spec.block === "table" && spec.dim === "authority" ? ["value_per_capita" as const] : [])],
+  // F5: per inhabitant on the map of the local administrations (map final §3.8): a lens of the strip there.
+  choices: (spec) => ["value", "count", ...(spec.block === "table" && spec.dim === "authority" || spec.block === "map" && spec.filters.authorityKind === LOCAL_ADMIN_KIND
+    ? ["value_per_capita" as const] : [])],
 };
 
 export const topN: FilterDef<number> = {

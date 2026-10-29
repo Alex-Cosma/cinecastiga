@@ -49,7 +49,7 @@ describe("the key versions of this release", () => {
     Object.assign(KEY_VERSIONS, DECLARED);
     expect(answerVersion(hospitals)).toEqual({ question: "stat-1", conditions: { kind: "kind-2" } });
     expect(answerVersion(stat)).toEqual({ question: "stat-1", conditions: {} });
-    // A newer value of the key (F5's local_admin) is refused before it runs: no D1 version.
+    // The local administrations (F5's local_admin, the map's) are new with F5: no D1 version.
     expect(answerVersion({ ...hospitals, filters: { authorityKind: "local_admin" } })).toEqual({ question: "stat-1", conditions: {} });
     // Only the kinds D1 corrected: schools and county councils keep their institutions and records.
     for (const kind of ["comuna", "oras_municipiu", "spital"] as const)

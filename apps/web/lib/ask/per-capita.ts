@@ -1,6 +1,8 @@
 import type { DbSql } from "@seap/db";
 import { formatInt } from "../format";
-import { POPULATION_VERSION, readPopulationMappingRows, sectorTownHallPopulations, uniquePopulationMappings } from "../peer-population";
+import { COUNTIES } from "../counties";
+import { countyFold, POPULATION_VERSION, readPopulationMappingRows, sectorTownHallPopulations, uniquePopulationMappings } from "../peer-population";
+import catalog from "../reference/population-rpl2021.json" with { type: "json" };
 
 /**
  * Per-capita denominators for Întreabă. They come from the same strict
@@ -30,22 +32,47 @@ export interface PerCapitaPopulations {
   /** București sector town halls, each with its own sector's population. */
   sector: number;
   county: number;
+  /**
+   * F5 (map final §3.3): the county each administration administers, in the marts' spelling ("Bistrita-Nasaud"),
+   * aligned with `ids`: the catalog unit's for a town hall, its sector's (București) for a sector, the county's for a
+   * county council (CJ Ilfov at Ilfov, though it sits in București). The map of "Primăriile și consiliile județene"
+   * groups by it.
+   */
+  counties: string[];
+  /** The counties (marts spelling) whose county council is in the list: a county without one is no per-capita figure. */
+  councils: ReadonlySet<string>;
 }
+
+/** The marts' spelling of a county (core.entities.county: the display name without diacritics), by its fold. */
+const MARTS_COUNTY = new Map(COUNTIES.map((name) => [countyFold(name), name.normalize("NFD").replace(/[\u0300-\u036f]/g, "")]));
+/** A catalog county ("BISTRIȚA-NĂSĂUD", "MUNICIPIUL BUCUREȘTI") in the marts' spelling, or null. */
+export const martsCounty = (name: string): string | null => MARTS_COUNTY.get(countyFold(name)) ?? null;
+
+/**
+ * The resident population of each county and of București (INS RPL 2021, the versioned catalog's `counties`; never
+ * reference.uat, where București has 0), by the marts' spelling: the denominator of the map per inhabitant.
+ */
+export const COUNTY_POPULATION: ReadonlyMap<string, number> = new Map(
+  (catalog.counties as { name: string; population: number }[]).flatMap((c) => { const county = martsCounty(c.name); return county ? [[county, c.population] as const] : []; }));
+/** The country's resident population (19,053,815), the sum of the counties'. */
+export const NATIONAL_POPULATION: number = catalog.nationalPopulation;
 
 export async function readPerCapitaPopulations(q: DbSql): Promise<PerCapitaPopulations> {
   const rows = await readPopulationMappingRows(q);
   // The two indexes are disjoint: the strict join never maps a sector name.
   const index = new Map([...uniquePopulationMappings(rows), ...sectorTownHallPopulations(rows)]);
-  const ids: string[] = [], populations: number[] = [], byEntity = new Map<string, number>(), levels = new Map<string, "local" | "county">();
+  const ids: string[] = [], populations: number[] = [], counties: string[] = [], byEntity = new Map<string, number>(), levels = new Map<string, "local" | "county">();
+  const councils = new Set<string>();
   let local = 0, sector = 0, county = 0;
   for (const [id, population] of [...index].sort((a, b) => Number(a[0]) - Number(b[0]))) {
-    // A non-positive value is not a denominator.
-    if (!(population.value > 0)) continue;
-    ids.push(id); populations.push(population.value); byEntity.set(id, population.value);
+    // A non-positive value is not a denominator; a unit whose county the catalog does not name has no place on the map.
+    const at = martsCounty(population.county);
+    if (!(population.value > 0) || !at) continue;
+    ids.push(id); populations.push(population.value); counties.push(at); byEntity.set(id, population.value);
     levels.set(id, population.level === "county" ? "county" : "local");
-    if (population.level === "county") county++; else if (population.level === "sector") sector++; else local++;
+    if (population.level === "county") { county++; councils.add(at); } else if (population.level === "sector") sector++; else local++;
   }
-  return { ids, populations, byEntity, levels, local, sector, county };
+  return { ids, populations, byEntity, levels, local, sector, county, counties, councils };
 }
 
 export const PER_CAPITA_SOURCE =

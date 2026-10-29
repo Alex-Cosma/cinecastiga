@@ -1,5 +1,5 @@
 import type {
-  AskFilters, AskSpec, Block, NetworkOptions, PeersOptions, SankeyOptions, ScatterOptions, TimeseriesOptions, TrendOptions,
+  AskFilters, AskSpec, Block, MapOptions, NetworkOptions, PeersOptions, SankeyOptions, ScatterOptions, TimeseriesOptions, TrendOptions,
 } from "../spec";
 import type { QuestionSpec } from "../question-ui";
 import type { CoveragePeriods } from "../months-window";
@@ -18,10 +18,10 @@ export type FilterSpec = QuestionSpec;
 type Sub<K extends string, T> = `${K}.${Extract<keyof T, string>}`;
 /** Every path of AskSpec: top-level keys, `filters.*` and the sub-keys of each block option. */
 export type SpecPath =
-  | Exclude<keyof AskSpec, "filters" | "trend" | "timeseries" | "network" | "sankey" | "scatter" | "peers">
+  | Exclude<keyof AskSpec, "filters" | "trend" | "timeseries" | "network" | "sankey" | "scatter" | "map" | "peers">
   | Sub<"filters", AskFilters>
   | Sub<"trend", TrendOptions> | Sub<"timeseries", TimeseriesOptions> | Sub<"network", NetworkOptions>
-  | Sub<"sankey", SankeyOptions> | Sub<"scatter", ScatterOptions> | Sub<"peers", PeersOptions>;
+  | Sub<"sankey", SankeyOptions> | Sub<"scatter", ScatterOptions> | Sub<"map", MapOptions> | Sub<"peers", PeersOptions>;
 
 /**
  * What the engine answers, which is the block except for "Cine conduce?": on
@@ -42,7 +42,7 @@ export type FilterId =
   | "trendChange" | "trendMonths" | "trendOrder" | "trendMinBase" | "trendFirstOnly"
   | "timeseriesGrain" | "timeseriesSplit" | "timeseriesMonths"
   | "networkPartners" | "networkSince" | "networkOrder" | "networkShow" | "networkSignals"
-  | "sankeyShown" | "scatterFlag" | "scatterRankBy" | "peers" | "peersDomain";
+  | "sankeyShown" | "scatterFlag" | "scatterRankBy" | "peers" | "peersDomain" | "mapLens";
 
 /** P1–P9 (kit §2). Today: sentence, under (the chips row), invite ("Adaugă o condiție"), presentation, advanced ("Mai multe filtre"). */
 export type Placement = "sentence" | "invite" | "row" | "under" | "presentation" | "strip" | "rowMenu" | "fact" | "advanced";

@@ -128,7 +128,7 @@ export async function POST(req: Request) {
     const executedMonths = result.executed?.months;
     const byList = result.displaySqlByList;
     const variants = result.displaySqlByMeasure || byList ? {
-      ...(result.displaySqlByMeasure ? { measure: Object.fromEntries((["value", "count"] as const).map((measure) => [measure, {
+      ...(result.displaySqlByMeasure ? { measure: Object.fromEntries((Object.keys(result.displaySqlByMeasure) as ("value" | "count" | "value_per_capita")[]).map((measure) => [measure, {
         pills: buildPills({ ...spec, measure }, grounding, { executedMonths }), displaySql: result.displaySqlByMeasure![measure],
       }])) } : {}),
       ...(byList ? { trend: Object.fromEntries((Object.keys(byList) as TrendList[]).map((list) => [list, {

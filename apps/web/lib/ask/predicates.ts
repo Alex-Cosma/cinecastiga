@@ -1,7 +1,7 @@
 import { SEAT_ABROAD_LABEL, type DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
-import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type FirmSeat, type MonthWindow, type NewScope, type TrendChange } from "./spec";
+import { DEFAULT_TREND_MIN_BASE, type AskSpec, type AuthorityKind, type ParsedAuthorityKind, type Dataset, type FirmSeat, type MonthWindow, type NewScope, type TrendChange } from "./spec";
 import { authorityKindCond, KIND_LABEL, KIND_SOURCE } from "./authority-kind";
 import { countWords } from "./answer-text";
 import { kindApplies, NAMED_PROCEDURE_TYPES, PROCEDURE_TYPES, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "./purchase";
@@ -56,7 +56,8 @@ export interface PredicateCtx {
   /** Sub-trees of the subject left out (synonym exclusions): `and not (cpv_code like …)`. */
   cpvExclude: string[];
   county: string | null;
-  kind: AuthorityKind | null;
+  /** The buyer's kind (D1), or the local administrations of the map (local_admin, F5): either way a list of ids. */
+  kind: ParsedAuthorityKind | null;
   /** The institutions of that kind (authorityKindIds, D1), resolved by the caller before the first query. */
   kindIds: readonly string[] | null;
   authorityId: string | null;
@@ -149,7 +150,7 @@ export function predicateContext(
   },
 ): PredicateCtx {
   const f = spec.filters;
-  const kind = namedKind(f.authorityKind) ?? null;
+  const kind = f.authorityKind ?? null;
   // The kind is a list of institution ids (authority-kind.ts): a caller that did not read it would drop the condition.
   if (kind && !window.kindIds) throw new Error(`predicateContext: the institutions of kind ${kind} were not read (authorityKindIds)`);
   const authorityId = f.authorityName || f.authorityId ? grounding.authority?.entityId ?? null : null;
