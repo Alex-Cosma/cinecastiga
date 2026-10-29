@@ -1185,8 +1185,14 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (!hit) return placesInstead();
       focal = { role: hit.role, id: hit.id, name: hit.name, county: hit.county, matched: c.span(focalKs[0]!, focalKs[focalKs.length - 1]! + 1) };
     }
-    const ks = side(connector.j, c.tokens.length);
-    const other = await lookup(ks, focal.role);
+    // "… cu ELBI din Buzău": a place after the second name is the clients' (plan §2.7, final compare §3.5), not part of
+    // the name; the whole rest is tried when the cut name resolves to nothing ("… cu Construcții la Cheie").
+    const rest = side(connector.j, c.tokens.length);
+    let cut = c.tokens.length;
+    for (let k = connector.j + 1; k < c.tokens.length; k++) if (PLACE_CUT.test(c.f(k))) { cut = k; break; }
+    const named = cut < c.tokens.length ? side(connector.j, cut) : rest;
+    const first = named.length ? await lookup(named, focal.role) : null;
+    const [other, ks] = first || named === rest ? [first, named] : [await lookup(rest, focal.role), rest];
     if (!other || other.id === focal.id) return placesInstead();
     for (const k of focalKs) c.take(k, k + 1, "entity");
     if (!out.supplier && !out.authority) { if (focal.role === "supplier") out.supplier = focal; else out.authority = focal; }
