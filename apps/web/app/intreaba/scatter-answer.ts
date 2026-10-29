@@ -26,9 +26,9 @@ export const chartBox = (width: number): ChartBox => {
   return { width: Math.max(260, Math.round(width)), height: compact ? 300 : 400, compact };
 };
 
-/** Room around the plot: the bands' labels on the left, the decades under it. */
+/** Room around the plot: the bands' labels on the left, the decades under it, the words of the top 10% over it. */
 export function plotPad(box: ChartBox) {
-  return { l: box.compact ? 44 : 58, r: 14, t: 14, b: box.compact ? 40 : 46 };
+  return { l: box.compact ? 44 : 58, r: 14, t: 24, b: box.compact ? 40 : 46 };
 }
 
 /** A stable spread inside a band: -0.5…0.5 from the id, so a point does not move between runs (no Math.random). */
@@ -115,6 +115,52 @@ export function cellRects(bands: ScatterBands, g: Geometry): { x: number; y: num
 
 /** The line at the top 10%: the value above which a profile is among the group's largest tenth. */
 export const p90Words = "cele mai mari 10%";
+
+/** A box on the chart, in px. */
+export interface LabelBox { x0: number; x1: number; y0: number; y1: number }
+/** Approximate width of a chart text in px (11–11.5 px type). */
+const textWidth = (text: string): number => text.length * 6.3;
+
+/**
+ * The words of the top 10% over the plot, beside the line (before it when they would leave the chart): above the
+ * top band, so they never sit on its points (F6b review: on a phone they covered a point of the band 4/4).
+ */
+export function p90Label(g: Geometry, p90: number): { x: number; y: number; anchor: "start" | "end"; box: LabelBox } {
+  const line = g.x(p90), w = textWidth(p90Words), end = line + 4 + w > g.box.width;
+  const x = end ? line - 4 : line + 4, y = g.pad.t - 8;
+  return { x, y, anchor: end ? "end" : "start", box: { x0: end ? x - w : x, x1: end ? x : x + w, y0: y - 10, y1: y + 3 } };
+}
+
+/** A name on the chart is skipped when its box would sit on more points than this. */
+export const LABEL_COVER_MAX = 3;
+export interface ChartLabel { id: string; x: number; y: number; anchor: "start" | "end"; text: string }
+
+/**
+ * The first names of the list on the chart, each where it fits: the side with the room first (right on the left of
+ * the chart), then the side over fewer points. A name that would sit on another label or on the words of the top 10%,
+ * cross its line, or cover a cluster on both sides is left to the list (a phone's narrow chart; F6b review: at 390 px
+ * a firm's name crossed the line and its points).
+ */
+export function chartLabels(names: readonly { id: string; text: string }[], all: readonly Dot[], g: Geometry, p90: number): ChartLabel[] {
+  const line = p90 > 0 ? g.x(p90) : null;
+  const placed: LabelBox[] = line === null ? [] : [p90Label(g, p90).box], out: ChartLabel[] = [];
+  for (const { id, text } of names) {
+    const d = all.find((x) => x.point.id === id);
+    if (!d) continue;
+    const w = textWidth(text);
+    const sides = (d.x < g.box.width * 0.62 ? [true, false] : [false, true]).map((right) => {
+      const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
+      const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && (line === null || line <= box.x0 || line >= box.x1)
+        && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
+      return { right, x, box, fits, covers: all.filter((o) => o !== d && o.x >= box.x0 && o.x <= box.x1 && o.y >= box.y0 && o.y <= box.y1).length };
+    }).filter((side) => side.fits && side.covers <= LABEL_COVER_MAX);
+    const side = sides.sort((a, b) => a.covers - b.covers)[0];
+    if (!side) continue;
+    placed.push(side.box);
+    out.push({ id, x: side.x, y: d.y + 3, anchor: side.right ? "start" : "end", text });
+  }
+  return out;
+}
 
 /** A point of the cloud with its marks (the chosen signal, in the list), for drawing and for the nearest-point search. */
 export interface Dot { point: ScatterCloudPoint; x: number; y: number; flagged: boolean; listed: boolean }

@@ -24,7 +24,7 @@ import HelpTip from "./builder/HelpTip";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
-  bandIndex, cardFacts, cellRects, dots, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty, keptScatterFacts, listHeadTip, listHeadWords, nearest, p90Words,
+  bandIndex, cardFacts, cellRects, chartLabels, dots, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty, keptScatterFacts, listHeadTip, listHeadWords, nearest, p90Label, p90Words,
   pointPlace, rowMeta, scatterFactsKey, signalsPageLink, stripStatusWords, withFacts, kindWords, employeesWords, type Dot, type ScatterV2,
 } from "./scatter-answer";
 import "./scatter.css";
@@ -123,9 +123,6 @@ const flagHelp = (role: "authority" | "supplier") => <>
   <ul className="sc-tip-list">{scatterFlagsOf(role).map((code) => <li key={code}><b>{flagLabel(code)}.</b> {flagEntityRule(code)}</li>)}</ul>
 </>;
 
-/** A name on the chart is skipped when its box would sit on more points than this. */
-const LABEL_COVER_MAX = 3;
-
 /** A name on the chart: without the parenthesis ("Comuna Sageata (Primaria Comunei Sageata)"), short. */
 const chartName = (name: string): string => { const short = cleanName(name).replace(/\s*\(.*$/, ""); return short.length > 28 ? `${short.slice(0, 27)}…` : short; };
 
@@ -167,28 +164,10 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const wanted = useMemo(() => [...visible.map((r) => r.entityId), ...(picked ? [picked.id] : [])], [visible, picked]);
   const { facts } = useProfileFacts(spec, wanted);
   const rank = data.rankBy;
-  const labels = useMemo(() => {
-    // The first names of the list on the chart, each where it fits.
-    const placed: { x0: number; x1: number; y0: number; y1: number }[] = [], out: { id: string; x: number; y: number; anchor: "start" | "end"; text: string }[] = [];
-    for (const row of rows.slice(0, g.box.compact ? 3 : 6)) {
-      const d = all.find((x) => x.point.id === row.entityId);
-      if (!d) continue;
-      const text = chartName(row.name), w = text.length * 6.3;
-      // The side with the room first (right on the left of the chart), then the side over fewer points; a name that would
-      // sit on another label, or across a cluster on both sides, is left to the list (a phone's narrow chart).
-      const sides = (d.x < g.box.width * 0.62 ? [true, false] : [false, true]).map((right) => {
-        const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
-        const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
-        return { right, x, box, fits, covers: all.filter((o) => o !== d && o.x >= box.x0 && o.x <= box.x1 && o.y >= box.y0 && o.y <= box.y1).length };
-      }).filter((side) => side.fits && side.covers <= LABEL_COVER_MAX);
-      const side = sides.sort((a, b) => a.covers - b.covers)[0];
-      if (!side) continue;
-      const { right, x, box } = side;
-      placed.push(box);
-      out.push({ id: row.entityId, x, y: d.y + 3, anchor: right ? "start" : "end", text });
-    }
-    return out;
-  }, [rows, all, g.box.compact, g.box.width, g.pad.l]);
+  // The first names of the list on the chart, each where it fits (chartLabels).
+  const labels = useMemo(() => chartLabels(rows.slice(0, g.box.compact ? 3 : 6).map((row) => ({ id: row.entityId, text: chartName(row.name) })), all, g, data.p90),
+    [rows, all, g, data.p90]);
+  const p90At = data.p90 > 0 ? p90Label(g, data.p90) : null;
 
   // The legend, the cloud and the list speak of the same profiles with the same classes.
   const total = data.chosen ? data.chosen.nList : data.group.nList;
@@ -355,9 +334,9 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           <text x={t.x} y={g.box.height - g.pad.b + 16} textAnchor="middle" className="sc-tick">{t.text}{g.box.compact ? "" : " lei"}</text>
         </g>)}
         <text x={g.pad.l + g.plotW / 2} y={g.box.height - 6} textAnchor="middle" className="sc-axis">achiziții directe (scară logaritmică)</text>
-        {data.p90 > 0 && <g className={`sc-p90${rank === "value" ? " is-on" : ""}`}>
-          <line x1={g.x(data.p90)} x2={g.x(data.p90)} y1={g.pad.t} y2={g.box.height - g.pad.b} />
-          <text x={Math.min(g.x(data.p90) + 4, g.box.width - 4)} y={g.pad.t + 10} textAnchor={g.x(data.p90) + 100 > g.box.width ? "end" : "start"}>{p90Words}</text>
+        {p90At && <g className={`sc-p90${rank === "value" ? " is-on" : ""}`}>
+          <line x1={g.x(data.p90)} x2={g.x(data.p90)} y1={g.pad.t - 4} y2={g.box.height - g.pad.b} />
+          <text x={p90At.x} y={p90At.y} textAnchor={p90At.anchor}>{p90Words}</text>
         </g>}
         {"bands" in data.cloud && <g className="sc-cells">{cellRects(data.cloud.bands, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o} className="sc-cell" />)}</g>}
         {"bands" in data.cloud && data.cloud.flagged && <g className="sc-cells is-flag">{cellRects(data.cloud.flagged, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={Math.min(1, c.o + 0.15)} className="sc-cell" />)}</g>}

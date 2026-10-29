@@ -9,8 +9,8 @@ import { answerCsv } from "./answer-csv";
 import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
-  axisTicks, axisWords, bandIndex, cardFacts, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip, listHeadWords, nearest, pointPlace, rowMeta,
-  scatterCsv, signalsPageLink, stripStatusWords, withFacts, type ScatterV2,
+  axisTicks, axisWords, bandIndex, cardFacts, chartLabels, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip, listHeadWords, nearest, p90Label,
+  pointPlace, rowMeta, scatterCsv, signalsPageLink, stripStatusWords, withFacts, type Dot, type ScatterV2,
 } from "./scatter-answer";
 
 /*
@@ -214,6 +214,27 @@ describe("the chart's geometry and words", () => {
     expect(dot.y).toBeCloseTo(g.y(2, "42"), 6);
     expect([dot.flagged, dot.listed]).toEqual([true, false]);
     expect(render(data, spec({ filters: {}, scatter: { rankBy: "risk", flag: "da_split" } })).match(/class="sc-dot[^"]*"/g)).toHaveLength(3);
+  });
+
+  it("writes the top 10% over the plot, and keeps the names off its line and its words (F6b review, 390 px)", () => {
+    const g = geometry(BUZAU_CLOUD, 390), top = g.yBand(BUZAU_CLOUD.levels) - g.bandH / 2;
+    const p90 = 10 ** ((g.x0 + g.x1) / 2), line = g.x(p90), words = p90Label(g, p90);
+    // Above the top band (4/4 or 5/5), never on its points; before the line when it would leave the chart.
+    expect(words.box.y1).toBeLessThanOrEqual(top);
+    expect(words.box.x1).toBeLessThanOrEqual(g.box.width);
+    expect(p90Label(g, 10 ** (g.x1 - 0.01)).anchor).toBe("end");
+    const dot = (id: string, x: number, y: number): Dot => ({ point: { id } as Dot["point"], x, y, flagged: false, listed: true });
+    // Just left of the line, a name on the right would cross it: it goes to the left. At the height of the words, at the
+    // line's right, a name on the right would sit on them, and on the left cross the line: left to the list.
+    const all = [dot("a", line - 20, g.yBand(2)), dot("b", line + 12, words.y - 4)];
+    const placed = chartLabels([{ id: "a", text: "EPIC CONSTRUCT S.R.L" }, { id: "b", text: "Comuna Lungă" }], all, g, p90);
+    expect(placed.map((l) => [l.id, l.anchor])).toEqual([["a", "end"]]);
+    for (const l of placed) {
+      const w = l.text.length * 6.3, x0 = l.anchor === "end" ? l.x - w : l.x;
+      expect(line <= x0 || line >= x0 + w).toBe(true);
+    }
+    // Without a line (a group too small for it), the same name goes to the right.
+    expect(chartLabels([{ id: "a", text: "EPIC CONSTRUCT S.R.L" }], all, g, 0).map((l) => l.anchor)).toEqual(["start"]);
   });
 
   it("finds the nearest point within reach, and marks the chosen signal's points", () => {
