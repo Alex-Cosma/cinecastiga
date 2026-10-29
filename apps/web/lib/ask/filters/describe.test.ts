@@ -116,6 +116,8 @@ const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) |
  */
 const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined || spec.network !== undefined || spec.sankey !== undefined
   || spec.scatter?.flag !== undefined || spec.scatter?.rankBy === "value"
+  // F6a-2's main-domain group, read ahead (the corpus' newer-key case): no grammar before it, its words are F6a's.
+  || spec.peers?.domain !== undefined
   || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "sharedPartners"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {

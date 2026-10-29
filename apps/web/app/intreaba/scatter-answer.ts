@@ -1,8 +1,10 @@
 import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-text";
 import { flagLabel } from "../../lib/flags";
-import { KIND_ONE } from "../../lib/ask/question-ui";
+import { KIND_ONE, questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
+import type { ProfileFactsResult } from "../../lib/ask/facet-parts";
+import type { AskSpec } from "../../lib/ask/spec";
 import {
-  RANK_WORDS, SCATTER_CLOUD_MIN_DAS, SCATTER_LIST_MIN_DAS, flagBit, flagDetail, scatterFlagsOf,
+  RANK_WORDS, SCATTER_CLOUD_MIN_DAS, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, flagBit, flagDetail, scatterFlagsOf, withScatterChoice,
   type ScatterBands, type ScatterCloudPoint, type ScatterData, type ScatterFlag, type ScatterFlagFact, type ScatterListRow, type ScatterRole,
 } from "../../lib/ask/scatter-shared";
 import { formatInt, formatRon } from "../../lib/format";
@@ -46,18 +48,24 @@ export function axisWords(value: number): string {
 
 /**
  * The ticks of the horizontal axis (a log scale): every decade from 1 mie to 1 mld.; a short range adds the 2 and the
- * 5 of each decade, so the axis is never one lonely label. A phone keeps the decades, every second one when crowded.
+ * 5 of each decade, so the axis is never one lonely label. A phone keeps the decades while they are three or more,
+ * else the 2 and the 5 too, at most four, evenly spaced.
  */
 export function axisTicks(x0: number, x1: number, compact: boolean): { lg: number; text: string }[] {
   const decades = Math.ceil(x1) - Math.floor(x0);
-  const steps = decades <= 3 && !compact ? [1, 2, 5] : [1];
-  const out: { lg: number; text: string }[] = [];
-  for (let d = Math.floor(x0); d <= Math.ceil(x1); d++) for (const step of steps) {
-    const value = step * 10 ** d, lg = Math.log10(value);
-    if (d < 3 || d > 9 || lg < x0 || lg > x1) continue;
-    out.push({ lg, text: axisWords(value) });
-  }
-  return compact && out.length > 4 ? out.filter((_, i) => i % 2 === 0) : out;
+  const at = (steps: readonly number[]) => {
+    const out: { lg: number; text: string }[] = [];
+    for (let d = Math.floor(x0); d <= Math.ceil(x1); d++) for (const step of steps) {
+      const value = step * 10 ** d, lg = Math.log10(value);
+      if (d < 3 || d > 9 || lg < x0 || lg > x1) continue;
+      out.push({ lg, text: axisWords(value) });
+    }
+    return out;
+  };
+  if (!compact) return at(decades <= 3 ? [1, 2, 5] : [1]);
+  const plain = at([1]), out = plain.length >= 3 || decades > 3 ? plain : at([1, 2, 5]);
+  const every = Math.ceil(out.length / 4);
+  return every > 1 ? out.filter((_, i) => i % every === 0) : out;
 }
 
 export interface Geometry {
@@ -116,6 +124,38 @@ export function dots(data: ScatterV2, g: Geometry, listed: ReadonlySet<string>):
   const mask = flag ? flagBit(data.role, flag) : 0;
   const points = "points" in c ? c.points : c.named;
   return points.map((point) => ({ point, x: g.x(point.value), y: g.y(point.nFlags, point.id), flagged: mask !== 0 && (point.flags & mask) !== 0, listed: listed.has(point.id) }));
+}
+
+/**
+ * A profile the search found or a row of the list's tail, exact on a chart of cells (final §3.6: the named, found and
+ * chosen points stay exact): from its value, its criteria and its signals, with no request.
+ */
+export function exactDot(data: ScatterV2, g: Geometry, p: { id: string; name: string; value: number; nFlags: number; nDas: number; codes: readonly string[] }): Dot {
+  const point: ScatterCloudPoint = { id: p.id, name: p.name, value: p.value, nFlags: p.nFlags, nDas: p.nDas, flags: 0 };
+  for (const code of scatterFlagsOf(data.role)) if (p.codes.includes(code)) point.flags |= flagBit(data.role, code);
+  const mask = data.flag ? flagBit(data.role, data.flag) : 0;
+  return { point, x: g.x(point.value), y: g.y(point.nFlags, point.id), flagged: mask !== 0 && (point.flags & mask) !== 0, listed: false };
+}
+
+/** Whether id `a` comes before `b` (bigint ids as text: shorter is smaller), the list's last tie-break. */
+const idBefore = (a: string, b: string): boolean => a.length !== b.length ? a.length < b.length : a < b;
+
+/**
+ * A point's place in the list of the strip's order and signal, from the cloud drawn point by point (every profile of
+ * the group is there): the same order as the server (scatter.ts scatterOrder), so a point past the first 50 still says
+ * "locul 73 din 120". Null when it is not in the list (under the floor, without the signal) or the cloud is cells.
+ */
+export function pointPlace(data: ScatterV2, id: string): number | null {
+  if (!("points" in data.cloud)) return null;
+  const floor = data.group.small ? SCATTER_CLOUD_MIN_DAS : SCATTER_LIST_MIN_DAS;
+  const mask = data.flag ? flagBit(data.role, data.flag) : 0;
+  const listed = data.cloud.points.filter((p) => p.nDas >= floor && (mask === 0 || (p.flags & mask) !== 0));
+  const me = listed.find((p) => p.id === id);
+  if (!me) return null;
+  const ahead = (p: ScatterCloudPoint) => data.rankBy === "risk"
+    ? p.nFlags > me.nFlags || p.nFlags === me.nFlags && (p.value > me.value || p.value === me.value && idBefore(p.id, me.id))
+    : p.value > me.value || p.value === me.value && idBefore(p.id, me.id);
+  return 1 + listed.filter((p) => p !== me && ahead(p)).length;
 }
 
 /** The point nearest to (x, y) within `reach` px, or null. */
@@ -181,16 +221,71 @@ export function cardFacts(value: number, cri: number, nFlags: number, levels: nu
   ];
 }
 
-/** The shown list as CSV rows (one row per profile of the 50): a place, the group's, the signals with their years or shares. */
-export function scatterCsv(data: ScatterV2, csv: (value: unknown) => string): string[] {
+/**
+ * The shown list as CSV rows (one row per profile of the 50): a place, the group's, the number of signals, their codes
+ * and their tags with the years or shares — the shares of the two rates from `facts` (part=profile), as on screen.
+ */
+export function scatterCsv(data: ScatterV2, csv: (value: unknown) => string, facts?: ReadonlyMap<string, ScatterFlagFact[]>): string[] {
   const firm = data.role === "supplier";
-  const head = firm ? "loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,indice_de_risc,semnale,detalii_semnale"
-    : "loc,nume,tip,judet,valoare_lei,achizitii_directe,indice_de_risc,semnale,detalii_semnale";
+  const head = firm ? "loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale"
+    : "loc,nume,tip,judet,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale";
   return [head, ...data.list.map((r, i) => {
-    const tags = r.flags.map((f) => flagTag(f).text);
+    const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f).text);
     const own = firm ? [r.employees ?? "", r.employeesYear ?? "", csv(r.county)] : [csv(kindWords(r.kind) ?? ""), csv(r.county)];
     return [i + 1, csv(r.name), ...own, r.value, r.nDas, r.cri, r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
   })];
+}
+
+// --- the facts asked after the answer (part=profile), kept per question for the list, the sheet and the CSV
+
+const FACTS_KEPT = new Map<string, Map<string, ScatterFlagFact[]>>();
+/** The facts are the profiles', whatever the strip: one store per question without its cloud options. */
+export const scatterFactsKey = (spec: AskSpec): string => questionKey({ ...spec, scatter: undefined } as unknown as QuestionSpec);
+export const keptScatterFacts = (spec: AskSpec): ReadonlyMap<string, ScatterFlagFact[]> | undefined => FACTS_KEPT.get(scatterFactsKey(spec));
+
+/** Asks the facts of `ids` (at most 50) and keeps them; null when the request failed. */
+export async function fetchScatterFacts(spec: AskSpec, ids: readonly string[]): Promise<Map<string, ScatterFlagFact[]> | null> {
+  const answer = await fetch("/api/ask/facets", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ spec: withScatterChoice(spec, "flag:"), part: "profile", ids: ids.slice(0, SCATTER_LIST_MAX) }),
+  }).then(async (r) => (await r.json().catch(() => null)) as ({ ok: boolean } & ProfileFactsResult) | null).catch(() => null);
+  if (!answer?.ok) return null;
+  const key = scatterFactsKey(spec);
+  const next = new Map(FACTS_KEPT.get(key) ?? []);
+  for (const row of answer.rows) next.set(row.id, row.flags);
+  FACTS_KEPT.set(key, next);
+  return next;
+}
+
+/** The facts of every listed row before an export, so the CSV carries the shares the screen shows (asked once). */
+export async function ensureScatterFacts(spec: AskSpec, ids: readonly string[]): Promise<void> {
+  const kept = keptScatterFacts(spec);
+  const missing = ids.filter((id) => !kept?.has(id));
+  if (missing.length) await fetchScatterFacts(spec, missing);
+}
+
+// --- links and spoken words
+
+/** The place of the question (an institution's county, a firm's seat): what "Toată țara" takes away. */
+export const groupCounty = (spec: AskSpec, role: ScatterRole): string | null =>
+  (role === "supplier" ? spec.filters.seatCounty ?? spec.filters.county : spec.filters.county) ?? null;
+
+/**
+ * "Toată lista pe /semnale": without a signal the index's list (view=cri), with one the signal's own list; the county
+ * of the group either way. A profile's signal (concentration, dependence) lists profiles; the others list occurrences.
+ */
+export function signalsPageLink(data: ScatterV2, spec: AskSpec): { href: string; label: string } {
+  const q = new URLSearchParams(data.flag ? { tip: data.flag, rol: data.role } : { view: "cri", rol: data.role });
+  const county = groupCounty(spec, data.role);
+  if (county) q.set("jud", county);
+  const profiles = !data.flag || data.flag === "da_concentration" || data.flag === "da_dependence";
+  return { href: `/semnale?${q.toString()}`, label: profiles ? "Toată lista pe /semnale" : "Aparițiile semnalului pe /semnale" };
+}
+
+/** What a screen reader hears when the strip's answer arrives: "46 cu Posibilă fracționare, după semnale". */
+export function stripStatusWords(data: ScatterV2): string {
+  const total = data.chosen ? data.chosen.nList : data.group.nList;
+  return `${formatInt(total)} ${data.flag ? `cu ${flagLabel(data.flag)}` : "în listă"}, după ${RANK_WORDS[data.rankBy]}`;
 }
 
 export const rankHeading = (rank: "risk" | "value") => `după ${RANK_WORDS[rank]}`;

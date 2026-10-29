@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { formatResultValue, RESHAPED_WORDS, reshapedAnswer, resultDifferences } from "./ResultComparison";
+import { entityNames, formatResultValue, RESHAPED_WORDS, reshapedAnswer, resultDifferences } from "./ResultComparison";
+import { answerCore } from "../../lib/ask/answer-core";
 import ScopeConditions from "./ScopeConditions";
 import { comparableMethodologies, type MonitoringScope } from "../../lib/monitoring-shared";
 
@@ -44,12 +45,27 @@ describe("human-readable monitoring result comparisons", () => {
     expect(reshapedAnswer(before, after)).toEqual({ from: "distribution-1", to: "distribution-2" });
     expect(reshapedAnswer(after, after)).toBeNull();
     // The reader sees the new shape in words, never the engine's slug.
-    for (const version of ["distribution-2", "fact_check-2", "trend-2"]) expect(RESHAPED_WORDS[version]).toMatch(/^[a-zăâîșț ,]+$/);
+    for (const version of ["distribution-2", "fact_check-2", "trend-2", "scatter-2"]) expect(RESHAPED_WORDS[version]).toMatch(/^[a-zăâîșț ,]+$/);
     // distribution-2 names its fields: the position among the others, the group.
     const v2 = (more: number) => ({ block: "distribution", distribution: { version: 2, position: { more, same: 0, fewer: 29 - more }, group: { others: 29 } } });
     expect(resultDifferences(v2(0), v2(1)).map((row) => [row.context, row.field])).toEqual([
       ["Distribuția riscului · Poziția în grup", "Cu mai multe criterii"], ["Distribuția riscului · Poziția în grup", "Cu mai puține criterii"],
     ]);
+  });
+  it("names a watched risk cloud's rows and fields (scatter-2): the core keeps ids, the stored answers give the names", () => {
+    const full = (value: number, flag: string | null) => ({ block: "scatter", scatter: { version: 2, role: "authority", rankBy: "risk", flag,
+      group: { n: 82, nList: 60 }, criteria: { da_split: 46 }, list: [{ entityId: "7", name: "Comuna Sageata", value, nDas: 30, nFlags: 3, flags: [{ code: "da_split", years: [2019] }] }] } });
+    const before = full(100, null), after = full(120, "da_split");
+    const core = (v: unknown) => answerCore("scatter", v);
+    const rows = resultDifferences(core(before), core(after), entityNames(before, after)).map((row) => [row.context, row.field, formatResultValue(row.before, row.fieldKey), formatResultValue(row.after, row.fieldKey)]);
+    expect(rows).toEqual([
+      ["Norul de risc", "Semnalul ales", "Tot grupul", "Posibilă fracționare"],
+      ["Norul de risc · Lista · Comuna Sageata", "Valoare înregistrată (achiziții directe)", "100 lei", "120 lei"],
+    ]);
+    const counts = resultDifferences(core(before), core({ ...after, scatter: { ...after.scatter, rankBy: "value", group: { n: 83, nList: 60 }, criteria: { da_split: 47 } } }));
+    expect(counts.map((row) => [row.context, row.field])).toEqual(expect.arrayContaining([
+      ["Norul de risc", "Primele după"], ["Norul de risc · Grupul", "Profiluri în nor"], ["Norul de risc · Profiluri cu fiecare semnal", "Posibilă fracționare"],
+    ]));
   });
   it("names the map records whose authority has no county in Romanian", () => {
     const before = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 60, count: 2 } };

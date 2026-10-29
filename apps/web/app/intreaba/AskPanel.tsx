@@ -31,6 +31,7 @@ import {
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
 import ScatterAnswer from "./ScatterAnswer";
+import { ensureScatterFacts } from "./scatter-answer";
 import { RANK_WORDS, scatterRank } from "@/lib/ask/scatter-shared";
 import { flagLabel } from "@/lib/flags";
 import NetworkAnswer from "./NetworkAnswer";
@@ -57,7 +58,7 @@ import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import EmptyState from "./answer/EmptyState";
-import { emptyAnswer, relaxations } from "./answer-empty";
+import { emptyAnswer, emptyMessage, relaxations } from "./answer-empty";
 import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { entityRowActions } from "./answer/row-actions";
@@ -1185,7 +1186,7 @@ export default function AskPanel({
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
               <EmptyState
-                message="Nicio înregistrare pentru această întrebare."
+                message={emptyMessage(data)}
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               />
@@ -1357,7 +1358,7 @@ export default function AskPanel({
                 <CopyIcon />
                 Copiază linkul
               </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band))}
+              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band));}}
                 months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
               {mode === "ask" && (
                 <button

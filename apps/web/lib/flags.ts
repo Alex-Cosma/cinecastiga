@@ -32,7 +32,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_split",
     title: "Posibilă fracționare sub prag",
     label: "Posibilă fracționare",
-    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an și aceeași clasă CPV, fiecare sub plafon, cu suma peste plafon. Apare mai des la cine cumpără mult și de mulți ani.",
+    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Apare mai des la cine cumpără mult și de mulți ani.",
     subject: "pair",
     short: "Achiziții din aceeași clasă CPV și același tip, însumând peste plafonul de referință.",
     description:
@@ -71,7 +71,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_rapid",
     title: "Finalizare rapidă",
     label: "Finalizare rapidă",
-    entityRule: "Peste 25% din achizițiile directe sunt finalizate la scurt timp după publicare. Cere cel puțin 5 achiziții.",
+    entityRule: "Peste 25% din achizițiile directe sunt finalizate în mai puțin de o oră de la publicare. Cere cel puțin 5 achiziții.",
     subject: "da",
     short: "Achiziție finalizată în câteva minute de la publicare.",
     description:

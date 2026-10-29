@@ -7,7 +7,7 @@ import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
 import { breakdownShown } from "./breakdown-answer";
 import { networkCsvRows } from "./network-answer";
-import { scatterCsv } from "./scatter-answer";
+import { keptScatterFacts, scatterCsv } from "./scatter-answer";
 import { sankeyCsvRows } from "./sankey-answer";
 
 /*
@@ -106,9 +106,10 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
         ...(shown.rest.count > 0 || !data.base ? [`"alte domenii",,${shown.rest.value},${shown.rest.count}`] : [])];
     }
     case "scatter":
-      // scatter-2: the list on screen — the 50 profiles of the strip's order and signal, with their signals' years or shares;
+      // scatter-2: the list on screen — the 50 profiles of the strip's order and signal, with their signals' years or shares
+      // (the rates' shares come after the answer: AskPanel completes them before the export, ensureScatterFacts);
       // an answer stored before it keeps its sample of points.
-      if ("scatter" in data) return scatterCsv(data.scatter, csvAny);
+      if ("scatter" in data) return scatterCsv(data.scatter, csvAny, keptScatterFacts(spec));
       return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`)];
     // F4: the flows on screen, the partners past „Arată” folded (sankey-2); the partners of the list on screen, in its order and length (network-2).
     case "sankey":

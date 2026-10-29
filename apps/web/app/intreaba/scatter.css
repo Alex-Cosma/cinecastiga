@@ -44,6 +44,7 @@
 .sc-small{margin:0;font-size:13px;color:var(--ink2);background:var(--sunk);border-radius:8px;padding:10px 12px}
 
 .sc-find{min-width:0}
+.sc-wide{margin-top:8px}
 .sc-list-wrap{display:grid;gap:8px;min-width:0}
 .sc-list-head{margin:0;font-size:14px;font-weight:600;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .sc-list{list-style:none;margin:0;padding:0;display:grid}
@@ -70,6 +71,7 @@
   .sc-cri{grid-area:cri;text-align:left}
   .sc-rec{grid-area:rec;justify-self:start}
   .sc-name-btn,.sc-rec{min-height:44px;display:inline-flex;align-items:center}
+  .sc-small .qb-relax-link,.sc-wide{min-height:44px}
   .sc-legend{gap:6px 12px}
 }
 .cq-oldnote{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
