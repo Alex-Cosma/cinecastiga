@@ -148,6 +148,11 @@ export interface NetworkData {
    * streams; the screen asks the whole answer of part=network once this one is drawn. Absent: the whole answer.
    */
   relation?: "pending";
+  /**
+   * A watch on a group (options.members network-group, plan §2.8): the list is its partners fixed at activation,
+   * how many and when, not the live group (relations.ts NetworkWatch). Absent on every other answer.
+   */
+  members?: { list: NetworkGroup; frozen: number; frozenAt: string };
 }
 
 /** The official signals that can sit on a relation (final §3.4): the pair's, and the dependence of a firm on the institution. */

@@ -4,7 +4,7 @@ import { sumDecimalStrings } from "./evidence";
 import { andAll, ownCountySql, rowPredicates, type PredicateCtx } from "./predicates";
 import {
   DEPENDENCE_PAIR_SHARE, FIRM_SHARE_MIN, FIRM_SHARE_TOTAL, NETWORK_LISTS, NETWORK_ROWS, RELATION_SIGNALS, networkGroupOf,
-  type NetworkData, type NetworkList, type NetworkListData, type NetworkPartner, type NetworkRow,
+  type NetworkData, type NetworkGroup, type NetworkList, type NetworkListData, type NetworkPartner, type NetworkRow,
 } from "./network-shared";
 import { SANKEY_DOMAINS, SANKEY_PARTNERS, SANKEY_REST, type SankeyData, type SankeyDomain, type SankeyFlow, type SankeyPartner } from "./sankey-shared";
 
@@ -174,6 +174,21 @@ function streamsOf(rows: readonly PartnerRow[]): NonNullable<NetworkData["stream
   };
 }
 
+/**
+ * A watch on a network's group (options.members network-group, plan §2.8),
+ * server-only: `collect` returns the group's partners for activation to fix
+ * (`members`, ids ascending); `fixed` computes the answer on the partners
+ * fixed then and says where they stand in the live group (`movement`).
+ */
+export interface NetworkWatch {
+  collect?: boolean;
+  /** The partners still identified (redirects followed), how many were fixed at activation and when. */
+  fixed?: { ids: readonly string[]; frozen: number; frozenAt: string };
+  members?: string[];
+  movement?: { part: NetworkGroup; members: number; stayed: number; live: number };
+}
+const byId = (a: string, b: string) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
+
 interface Listed { id: string; v: string; n: number; c: string; years: number }
 const byValue = (a: Listed, b: Listed) => Number(b.v) - Number(a.v) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 /** The orders of a list (final §3.5): the value, the records, the years with records; ties by value. */
@@ -204,7 +219,7 @@ function listOf(listed: Listed[]): NetworkListData {
  * and every total). Null when no partner has a record in the selection.
  * `bounded`: „Toți” from the records the question bounds (boundedNetwork).
  */
-export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number; complete: number; signals: boolean; focalName: string; list: NetworkList; bounded?: boolean }): Promise<NetworkData | null> {
+export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number; complete: number; signals: boolean; focalName: string; list: NetworkList; bounded?: boolean; watch?: NetworkWatch }): Promise<NetworkData | null> {
   if (q.bounded) return await boundedNetwork(s, q);
   const all = await partnerRows(s, q);
   const rows = q.signals ? all.filter((row) => row.sig.length > 0) : all;
@@ -218,7 +233,20 @@ export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number
       lastNew = Math.max(lastNew ?? row.y0, row.y0);
     }
   }
-  if (!NETWORK_LISTS.some((list) => lists[list].length)) return null;
+  // A watch on a group (plan §2.8, options.members network-group): activation fixes the group's partners; every
+  // check lists those partners with a record in the selection, wherever the relation's years put them now, and says
+  // where they stand in the live group only in the watch's note (never in `data`).
+  const watch = q.watch, group = q.list === "all" ? null : q.list;
+  if (watch?.collect && group) watch.members = lists[group].map((row) => row.id).sort(byId);
+  if (watch?.fixed && group) {
+    const fixed = new Set(watch.fixed.ids), live = lists[group];
+    watch.movement = { part: group, members: watch.fixed.ids.length, stayed: live.filter((row) => fixed.has(row.id)).length, live: live.length };
+    const own: Listed[] = rows.filter((row) => fixed.has(row.pid) && Number(row.ns) > 0)
+      .map((row) => ({ id: row.pid, v: row.vs, n: Number(row.ns), c: row.cs, years: row.yrs?.length ?? 0 }));
+    for (const list of NETWORK_LISTS) lists[list] = list === group ? own : [];
+  }
+  // A watch's fixed partners may have no record left in the selection: an empty group, never a missing relation.
+  if (!(watch?.fixed && group) && !NETWORK_LISTS.some((list) => lists[list].length)) return null;
   const data = Object.fromEntries(NETWORK_LISTS.map((list) => [list, listOf(lists[list])])) as Record<NetworkList, NetworkListData>;
   const held = new Set(NETWORK_LISTS.flatMap((list) => data[list].rows.map((row) => row.entityId)));
   const partners: Record<string, NetworkPartner> = {};
@@ -236,6 +264,7 @@ export async function networkAnswer(s: DbSql, q: RelationQuery & { since: number
   return {
     block: "network", focal: { entityId: q.focalId, name: q.focalName, role: q.focalRole }, since: q.since, complete: q.complete, list: q.list,
     lists: data, partners, lastNew, ...(q.every ? { streams: streamsOf(rows) } : {}),
+    ...(watch?.fixed && group ? { members: { list: group, frozen: watch.fixed.frozen, frozenAt: watch.fixed.frozenAt } } : {}),
   };
 }
 

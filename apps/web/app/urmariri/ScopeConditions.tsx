@@ -2,6 +2,11 @@ import type { MonitoringScope } from "../../lib/monitoring-shared";
 import { describeConditions } from "../../lib/ask/filters/describe";
 import { specTrendPartLabel } from "../../lib/ask/trend-shared";
 import { TREND_GROUP_ROW } from "../../lib/ask/filters/defs/trend";
+import { networkGroupLabel } from "../../lib/ask/filters/defs/network";
+import type { NetworkGroup } from "../../lib/ask/network-shared";
+
+/** The question's row of a network's group (describeConditions networkPartners). */
+const NETWORK_PARTNERS_ROW = "Partenerii";
 import { countWords } from "../../lib/ask/answer-text";
 import { formatBucharestDay } from "../../lib/format";
 export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
@@ -12,8 +17,11 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   const [one, many] = members?.role === "county" ? ["județ", "județe"] : members?.role === "authority" ? ["instituție", "instituții"] : ["firmă", "firme"];
   // The group by its part's name, as the answer's drawer, the setup page and the server's notes say it (trendPartLabel);
   // its row replaces the question's own „Grupa” (describeConditions), so the page names it once.
-  const group = members && spec.block === "trend" ? specTrendPartLabel(spec) : members?.group;
-  const items = members ? [...conditions.filter((row) => row.label !== TREND_GROUP_ROW), { label: TREND_GROUP_ROW, value: `${group} · ${countWords(members.ids.length, one!, many!)} ${members.ids.length === 1 ? members.role === "county" ? "fixat" : "fixată" : "fixate"} la ${formatBucharestDay(members.frozenAt)}` }] : conditions;
+  // A network's group with its year (kit §4), in place of the question's own „Partenerii” row.
+  const group = members && spec.block === "trend" ? specTrendPartLabel(spec)
+    : members && spec.block === "network" ? networkGroupLabel(members.group as NetworkGroup, spec.network?.since) : members?.group;
+  const own = (label: string) => label === TREND_GROUP_ROW || spec.block === "network" && label === NETWORK_PARTNERS_ROW;
+  const items = members ? [...conditions.filter((row) => !own(row.label)), { label: TREND_GROUP_ROW, value: `${group} · ${countWords(members.ids.length, one!, many!)} ${members.ids.length === 1 ? members.role === "county" ? "fixat" : "fixată" : "fixate"} la ${formatBucharestDay(members.frozenAt)}` }] : conditions;
   const selection: { label: string; value: string }[] = [];
   if (options.stream) selection.push({ label: "Ce fel de achiziții", value: options.stream === "da" ? "Doar achizițiile directe" : "Doar contractele din proceduri" });
   if (options.search) selection.push({ label: "Căutare în surse", value: options.search });

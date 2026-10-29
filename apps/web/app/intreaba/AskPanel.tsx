@@ -32,7 +32,7 @@ import {
 import TrendBlock from "./TrendAnswer";
 import NetworkAnswer from "./NetworkAnswer";
 import SankeyAnswer from "./SankeyAnswer";
-import { NETWORK_LIST_CSV, shownList as shownNetworkList } from "./network-answer";
+import { NETWORK_LIST_CSV, networkWatch, shownList as shownNetworkList } from "./network-answer";
 import { domainName, sankeySuggestion, shownOptions as sankeyShownOptions } from "./sankey-answer";
 import { networkList, NETWORK_LIST_LABELS, type NetworkList, type NetworkOrder } from "@/lib/ask/network-shared";
 import { sankeyShown } from "@/lib/ask/sankey-shared";
@@ -814,7 +814,7 @@ export default function AskPanel({
   };
   const data = answered,
     count = data ? sourceCount(data, applied) : null;
-  const watchedGroup = data?.block === "trend" && applied ? trendWatch(data, applied) : null;
+  const watchedGroup = data?.block === "trend" && applied ? trendWatch(data, applied) : data?.block === "network" && applied ? networkWatch(data, applied) : null;
   const isProfile = !!applied && isHistoricalProfile(applied);
   // What changes the total outside the sentence (G8), on the applied question as it ran (a trend's months).
   const totalWords = applied ? totalConditionWords(applied, resp?.executed?.months) : [];
@@ -1052,7 +1052,7 @@ export default function AskPanel({
                   Trimite
                 </button>
                 <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} />
-                {/* A trend's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
+                {/* A trend's or a network's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title}
                   {...(watchedGroup ? { label: watchedGroup.label, blocked: watchedGroup.blocked } : {})} />
                 <ClipButton

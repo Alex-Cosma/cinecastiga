@@ -43,8 +43,8 @@ import { kindApplies, kindLeftOutNote } from "./purchase";
 import { assembleSeries, type SeriesPart, type SeriesPoint, type SeriesRef, type SeriesRow } from "./series";
 import { mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
 import { networkLastYear, networkList, networkSince, networkSourcesNote } from "./network-shared";
-import { networkAnswer, networkMembersCond, sankeyAnswer, type RelationQuery } from "./relations";
-import type { NetworkData } from "./network-shared";
+import { networkAnswer, networkMembersCond, sankeyAnswer, type NetworkWatch, type RelationQuery } from "./relations";
+import type { NetworkData, NetworkGroup } from "./network-shared";
 import type { SankeyData } from "./sankey-shared";
 import { distributionData, distributionGroup } from "./distribution";
 import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
@@ -326,10 +326,11 @@ const monthsOf = (window: MonthsWindow | null): MonthsWindow => window ? { from:
 export const DATA_CHANGED = "Datele s-au actualizat; reîncarcă răspunsul.";
 
 /**
- * A watch on a trend's group (plan §2.8, F2): the members fixed when it was
- * activated (entity ids already followed through core.entity_redirects, or
- * county names). Its answer and its sources are those of the same members at
- * every check, never of the live group. Server-only (TableOpts.fixedMembers,
+ * A watch on a trend's group (plan §2.8, F2), or on a network's (the centre's
+ * partners of one group, S5): the members fixed when it was activated (entity
+ * ids already followed through core.entity_redirects, or county names). Its
+ * answer and its sources are those of the same members at every check, never
+ * of the live group. Server-only (TableOpts.fixedMembers,
  * DrillOpts.fixedMembers): no request carries it.
  */
 export interface TrendFixedMembers { role: "supplier" | "authority" | "county"; ids: readonly string[]; frozen: number; frozenAt: string }
@@ -340,7 +341,7 @@ export interface TrendFrozenGroup { list: TrendList; frozen: number; frozenAt: s
  * ("3 firme au intrat în grupă, 1 a ieșit"): never in `data`, so the movement
  * of other entities never changes the watched result.
  */
-export interface TrendGroupMovement { part: TrendMemberPart; members: number; stayed: number; live: number }
+export interface TrendGroupMovement { part: TrendMemberPart | NetworkGroup; members: number; stayed: number; live: number }
 /** A group watch whose question no longer lists that group (another role or change): never run on another group. */
 export const FIXED_GROUP_MISMATCH = "Grupa fixată nu corespunde întrebării. Creează o urmărire nouă pentru această grupă.";
 
@@ -1990,7 +1991,13 @@ export async function runSpec(
           const list = networkList(spec), signals = spec.network?.signals === true;
           const bounded = !tableOpts.networkWhole && list === "all" && !signals
             && (dataset !== "all" || w.yearFrom !== null || w.yearTo !== null || w.monthFrom !== null || w.monthTo !== null);
-          const net = await networkAnswer(s, { ...relation(), focalName, since: networkReference!, complete: networkComplete!, signals, list, bounded });
+          // A watch on a group (options.members network-group): its partners fixed at activation, never „Toți”.
+          const fixed = tableOpts.fixedMembers, partnerRole = focalRole === "authority" ? "supplier" : "authority";
+          if (fixed && (list === "all" || fixed.role !== partnerRole)) return { error: FIXED_GROUP_MISMATCH };
+          const watch: NetworkWatch | undefined = fixed ? { fixed: { ids: fixed.ids, frozen: fixed.frozen, frozenAt: fixed.frozenAt } } : tableOpts.freezeGroup && list !== "all" ? { collect: true } : undefined;
+          const net = await networkAnswer(s, { ...relation(), focalName, since: networkReference!, complete: networkComplete!, signals, list, bounded, ...(watch ? { watch } : {}) });
+          if (watch?.members) frozenMembers = watch.members;
+          if (watch?.movement) movement = watch.movement;
           return net ?? { error: emptyRelationError(focalName) };
         }
 
@@ -2542,7 +2549,15 @@ export async function runRows(
     // network-2 (F4): a group and „Cu semnale” select partners of the whole relation, the answer's own grouping
     // as a semi-join on the partners' ids (relations.ts), never a list of them.
     const networkGroup = spec.block === "network" ? networkList(spec) : "all";
-    if (spec.block === "network" && focalId && (networkGroup !== "all" || spec.network?.signals)) {
+    // A watch on a network's group: the records of the partners fixed at activation, never the live group's.
+    const fixedPartners = spec.block === "network" ? opts.fixedMembers ?? null : null;
+    if (fixedPartners && (networkGroup === "all" || fixedPartners.role !== (focalRole === "authority" ? "supplier" : "authority"))) return { error: FIXED_GROUP_MISMATCH };
+    if (fixedPartners && focalId) {
+      const last = networkLastYear(await coveragePeriods(sql), maxY);
+      const since = networkSince(spec, last);
+      parts.push(sql`${focalRole === "authority" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array([...fixedPartners.ids])}::bigint[])`);
+      notes.push(`${networkSourcesNote(networkGroup, since, false)} Partenerii sunt cei fixați la activarea urmăririi (${countWords(fixedPartners.frozen, "partener", "parteneri")}), nu grupa de acum.`);
+    } else if (spec.block === "network" && focalId && (networkGroup !== "all" || spec.network?.signals)) {
       const last = networkLastYear(await coveragePeriods(sql), maxY);
       const since = networkSince(spec, last);
       if (since > last) return { error: networkSinceError(since, last) };
@@ -2615,8 +2630,9 @@ export async function runRows(
   const trendGroup = spec.block === "trend" && !profile ? trendGroupOf(spec) : null;
   const listed = trendGroup && !isEveryChange(trendGroup) ? trendGroup : null;
   const groupDim = spec.dim ?? "authority";
-  const fixed = opts.fixedMembers ?? null;
-  if (fixed && (!listed || fixed.role !== groupDim)) return { error: FIXED_GROUP_MISMATCH };
+  // A watch's fixed members: a trend's group here, a network's above (its partners); nowhere else.
+  const fixed = spec.block === "trend" ? opts.fixedMembers ?? null : null;
+  if (opts.fixedMembers && spec.block !== "network" && (!listed || opts.fixedMembers.role !== groupDim)) return { error: FIXED_GROUP_MISMATCH };
   const yearA = yearFrom ?? minY, yearB = yearTo ?? maxY;
   // A row's own members ("Înregistrări →"): its entity ids, or on counties the county (or counties) the drawer
   // names; the drawer then lists that row, with no group header and no group note.

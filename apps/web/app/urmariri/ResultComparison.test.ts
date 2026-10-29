@@ -95,4 +95,12 @@ describe("a watch's selection from an answer's sources", () => {
     expect(markup).toContain("Doar profilurile cu 2 criterii");
     expect(markup).toContain("urmărim doar selecția");
   });
+
+  it("names a network watch's fixed group once, with its year and the partners fixed (F4n-members-watch)", () => {
+    const spec = { block: "network", measure: "value", filters: { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU" }, network: { partners: "new", since: 2025 } };
+    const members = { kind: "network-group", role: "supplier", group: "new", ids: ["1", "2", "3"], frozenAt: "2026-10-29T10:00:00Z" };
+    const markup = renderToStaticMarkup(createElement(ScopeConditions, { scope: { spec, options: { members } } as unknown as MonitoringScope }));
+    expect(markup).toContain("Noi din 2025 · 3 firme fixate la 29.10.2026");
+    expect(markup).not.toContain("Partenerii");
+  });
 });
