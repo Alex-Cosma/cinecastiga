@@ -295,7 +295,10 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
 ];
 
-const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" }[] = [
+const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" | "authorities" }[] = [
+  // S5 (S4r-from-seat): a ranking of institutions buying from firms of a seat or a size: agg_pair_year's rows.
+  { name: "sources of the institutions buying from firms seated in another county", spec: base("table", { topN: 10, dim: "authority" }, { firmSeat: "other" }), block: "authorities" },
+  { name: "sources of the institutions buying from firms with 1–9 employees, 2025", spec: base("table", { topN: 10, dim: "authority" }, { minEmployees: 1, maxEmployees: 9, yearFrom: 2025, yearTo: 2025 }), block: "authorities" },
   // A ranking of firms selected by an attribute of the firm (F4's seat, the employees): agg_entity_year's firm rows.
   { name: "sources of the firms seated in another county", spec: base("table", { topN: 10 }, { firmSeat: "other" }), block: "firms" },
   { name: "sources of the firms seated in Ilfov, 2025", spec: base("table", { topN: 10 }, { seatCounty: "Ilfov", yearFrom: 2025, yearTo: 2025 }), g: SEATED("Ilfov"), block: "firms" },

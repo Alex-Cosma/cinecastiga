@@ -749,7 +749,11 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
   // A ranking of firms selected by an attribute of the firm (F4's seat, the employees), or of either role with some of
   // them left out: its records are those of the selected entities, every one with its entity, so agg_entity_year's rows
   // of that role (and their d0/d1) are exactly them.
-  if (block === "firms" || block === "authorities") {
+  if (block === "authorities" && plan.source.table === "pair" && (plan.filters.seat || plan.filters.employees)) {
+    // S5 (S4r-from-seat): a ranking of institutions buying from firms of a seat or a size — „De la cine › Ce fel de
+    // firme”: every record kept has its firm and its buyer county, so the pairs' rows of agg_pair_year are exactly them
+    // (national „în alt județ”, all years: 2.5 s live, the union with the seat's semi-join).
+  } else if (block === "firms" || block === "authorities") {
     const role: Role = block === "firms" ? "supplier" : "authority";
     const out = role === "supplier" ? plan.filters.excludeSuppliers : plan.filters.excludeAuthorities;
     if (plan.source.table !== "entity" || plan.source.role !== role || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees)))
