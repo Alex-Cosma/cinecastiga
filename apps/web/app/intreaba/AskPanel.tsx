@@ -97,6 +97,8 @@ interface AskResponse {
   error?: string;
   question?: string | null;
   spec?: AskSpec;
+  /** The catalogue name of the spec's CPV code, readable (the title names it from the first paint). */
+  cpvName?: string;
   pills?: string[];
   caveats?: string[];
   data?: BlockData;
@@ -551,7 +553,9 @@ export default function AskPanel({
   }, [execute, interpret, revealError]);
   const applied = appliedSpec ?? undefined;
   // A CPV code is named as the builder names it ("pentru [lucrări de construcții]").
-  const cpvName = useCpvName(applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm));
+  const appliedCpv = applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm);
+  // The answer brings its code's name: the title never says „CPV 45” before it (S4, a fresh page).
+  const cpvName = useCpvName(appliedCpv, resp?.spec && String(resp.spec.filters.cpvTerm ?? "") === appliedCpv ? resp.cpvName : undefined);
   // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
   // words whether the answer came from typed text, a builder edit or a shared link, in every view,
   // the drawer and the export. A trend's title says the years and months its answer ran (answerLabels).

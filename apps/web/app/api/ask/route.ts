@@ -15,6 +15,8 @@ import { trendListSpec, type TrendList } from "@/lib/ask/trend-shared";
 import { interpret } from "@/lib/ask/llm";
 import { resolvedSpec } from "@/lib/ask/resolved-spec";
 import { devlog } from "@/lib/devlog";
+import { cpvCodeName, isCpvCodeTerm } from "@/lib/ask/cpv-label";
+import { readableCpvName } from "@/lib/entity-summary";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 
 /**
@@ -100,6 +102,9 @@ export async function POST(req: Request) {
     tableOpts.dir = body.tableDir;
 
   const sql = db();
+  // A CPV code's name beside the answer (S4: the title said „CPV 45” until the page's own lookup came back).
+  const cpvTerm = spec.filters.cpvTerm === undefined ? "" : String(spec.filters.cpvTerm);
+  const cpvName = isCpvCodeTerm(cpvTerm) ? cpvCodeName(sql, cpvTerm).catch(() => null) : Promise.resolve(null);
   try {
     const grounding = await ground(sql, spec.filters, spec.population);
     const result = await runSpec(sql, spec, grounding, tableOpts);
@@ -117,6 +122,7 @@ export async function POST(req: Request) {
       );
     }
     devlog("ask", { question, spec, ok: true, tookMs: result.tookMs });
+    const codeName = await cpvName;
     // The words of each display state of the strip, with the same functions (plan §2.3): the map's lens,
     // and each list of a trend (its group buttons switch on the lists already fetched).
     const executedMonths = result.executed?.months;
@@ -134,6 +140,7 @@ export async function POST(req: Request) {
       question,
       model,
       spec: resolvedSpec(spec, grounding),
+      ...(codeName ? { cpvName: readableCpvName(codeName) } : {}),
       executedAt: new Date().toISOString(),
       pills: buildPills(spec, grounding, { executedMonths: result.executed?.months, peerGroup: answerLabels(result).peerGroup }),
       caveats: result.caveats,
