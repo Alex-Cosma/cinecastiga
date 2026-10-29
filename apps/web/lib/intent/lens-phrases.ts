@@ -76,4 +76,10 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
   compare: [
     { re: /\b(?:clienti(?:i|lor)? comuni|aceiasi clienti|acelorasi clienti)\b/, path: "filters.sharedPartners", value: true },
   ],
+  // F6a: the distribution's group (final distribution §7.12). "față de" stays the comparison cue's word, so the
+  // phrases are the rule's own; "din județul lui" and the whole country need the entity (lib/intent/server.ts).
+  distribution: [
+    { re: /\b(?:de (?:aceeasi )?marimea (?:lui|ei|sa)|de acelasi tip|cu (?:o )?populatie (?:apropiata|asemanatoare|similara))\b/, path: "peers.similar", value: { similar: true } },
+    { re: /\bcu (?:o )?activitate (?:apropiata|asemanatoare|similara)\b/, path: "peers.activity", value: { activity: true } },
+  ],
 };

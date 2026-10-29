@@ -8,6 +8,7 @@ import { SCOPE_CHANGES } from "./filters/today";
 import { personClipSpec } from "./site-links";
 import { BLOCKS, type AskSpec } from "./spec";
 import { comparableMethodologies, methodologiesDiffer } from "../monitoring-shared";
+import { BUZAU_LIST } from "./fixtures/distribution-screen";
 
 // The answer versions and the core a watch compares (plan §2.8, §6.2).
 
@@ -97,8 +98,8 @@ describe("the key versions of this release", () => {
 });
 
 describe("the version of an answer", () => {
-  it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's", () => {
-    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2" });
+  it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's, F6a the distribution's and the verification's", () => {
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-2", fact_check: "fact_check-2" });
     expect(KEY_VERSIONS).toEqual({});
     for (const block of BLOCKS)
       expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: ANSWER_VERSIONS[block] ?? `${block}-1`, conditions: {} });
@@ -122,7 +123,7 @@ describe("the version of an answer", () => {
   });
 
   it("is the first one, which a watch does not store, until a release bumps it (a revert below F0 then compares equal)", () => {
-    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(!["trend", "network", "sankey"].includes(block));
+    for (const block of BLOCKS) expect(isFirstAnswerVersion(answerVersion({ block, measure: "value", filters: {} }), block), block).toBe(!(block in RELEASED));
     beforeF2();
     expect(isFirstAnswerVersion(answerVersion(trend), "trend")).toBe(true);
     Object.assign(ANSWER_VERSIONS, RELEASED);
@@ -202,6 +203,58 @@ describe("what a watch compares between two checks", () => {
     expect(sameAnswerCore("timeseries", series, { ...series, grain: "month" })).toBe(false);
     const slices = { block: "breakdown", slices: [{ code: "45", name: "A", value: 10, count: 1 }], other: { value: 0, count: 0 } };
     expect(sameAnswerCore("breakdown", slices, { ...slices, base: slices.slices, streams: { da: { value: 1, count: 1 }, contracts: { value: 9, count: 1 } } })).toBe(true);
+  });
+
+  it("on a distribution (distribution-2), compares the group and the position, never the words, the facts or the country's marks", () => {
+    const data = { block: "distribution", distribution: BUZAU_LIST };
+    const core = answerCore("distribution", data) as { distribution: Record<string, unknown> };
+    expect(Object.keys(core.distribution).sort()).toEqual(["focal", "group", "hist", "members", "perCriterion", "position", "role", "status", "version"]);
+    // A country's mark, the words or the coverage of the band move: not a change of this watch.
+    const country = { ...BUZAU_LIST, countryTotal: 15_800, perCriterion: BUZAU_LIST.perCriterion!.map((c) => ({ ...c, country: c.country + 1 })) };
+    const words = { ...BUZAU_LIST, group: { ...BUZAU_LIST.group, words: "altfel", coverage: { inBand: 33, identified: 31, missing: [] } } };
+    for (const after of [country, words]) expect(sameAnswerCore("distribution", data, { block: "distribution", distribution: after })).toBe(true);
+    // A member that gains a criterion, or the entity's own criteria, are.
+    const member = { ...BUZAU_LIST, members: BUZAU_LIST.members!.map((m, i) => i === 0 ? { ...m, nFlags: 3 } : m) };
+    const own = { ...BUZAU_LIST, focal: { ...BUZAU_LIST.focal, nFlags: 2 } };
+    for (const after of [member, own]) expect(sameAnswerCore("distribution", data, { block: "distribution", distribution: after })).toBe(false);
+    // An answer of distribution-1 (buckets, a percentile) is compared whole; the alert is the methodology's (distribution-2).
+    const v1 = { block: "distribution", distribution: { buckets: [], focal: { entityId: "1", name: "X", cri: 0.2, percentile: 40 }, role: "authority", totalEntities: 9 } };
+    expect(answerCore("distribution", v1)).toBe(v1);
+    const spec = { block: "distribution", measure: "value", filters: { authorityId: 1 } } as AskSpec;
+    delete ANSWER_VERSIONS.distribution;
+    const before = run(spec);
+    Object.assign(ANSWER_VERSIONS, RELEASED);
+    expect(methodologiesDiffer(before, run(spec), "distribution")).toBe(true);
+    expect(methodologiesDiffer(run(spec), run(spec), "distribution")).toBe(false);
+  });
+
+  it("on a verification (fact_check-2), compares the verdict and the selection's figures, never its profile, list, weight or the relation around it", () => {
+    const fact = { version: 2, state: "yes", verdict: true, authority: { entityId: "1", name: "A", cui: "11", county: "Buzau" }, supplier: { entityId: "2", name: "B" },
+      count: 3, value: 900, yearFirst: 2024, yearLast: 2025, samples: [{ daCode: "DA1", date: "2025-01-02", cpvName: "x", value: 500 }],
+      undated: { count: 0, value: 0 }, channels: { da: { count: 3, value: 900 }, contracts: { count: 0, value: 0 } },
+      frameworks: { count: 0, ceiling: 0, inSums: 0, inSumsCeiling: 0, rows: [] }, excluded: { count: 0, rows: [] },
+      share: { ofSupplier: { rank: 1, of: 4, share: 0.5 }, ofAuthority: { rank: 9, of: 90, share: 0.01 } }, relation: { count: 9, value: 2000, yearFirst: 2019, yearLast: 2025, frameworks: 0, excluded: 0 },
+      coverage: { da: "2026-09-25", contracts: "2026-09-25" }, years: [{ year: 2024, count: 1, value: 400 }], domains: [], competition: null, consortium: null, partners: null, twins: [] };
+    const data = { block: "fact_check", fact };
+    const core = answerCore("fact_check", data) as { fact: Record<string, unknown> };
+    expect(Object.keys(core.fact).sort()).toEqual(["authority", "channels", "count", "excluded", "frameworks", "state", "supplier", "undated", "value", "version"]);
+    // Other clients of the firm, the data's last day, the relation outside the period, a new largest record of the same total: not a change.
+    for (const after of [{ ...fact, share: { ...fact.share, ofSupplier: { rank: 2, of: 5, share: 0.4 } } }, { ...fact, coverage: { da: "2026-10-25", contracts: "2026-10-25" } },
+      { ...fact, relation: { ...fact.relation, count: 10 } }, { ...fact, samples: [] }])
+      expect(sameAnswerCore("fact_check", data, { block: "fact_check", fact: after })).toBe(true);
+    // A new record, a ceiling found, a row leaving the sums, the verdict: a change.
+    for (const after of [{ ...fact, count: 4, value: 950 }, { ...fact, frameworks: { ...fact.frameworks, count: 1, ceiling: 7 } },
+      { ...fact, excluded: { count: 1, rows: [] } }, { ...fact, state: "no" }])
+      expect(sameAnswerCore("fact_check", data, { block: "fact_check", fact: after })).toBe(false);
+    // An answer of fact_check-1 is compared whole; the alert is the methodology's, once.
+    const v1 = { block: "fact_check", fact: { verdict: true, count: 3, value: 900, samples: [] } };
+    expect(answerCore("fact_check", v1)).toBe(v1);
+    const spec = { block: "fact_check", measure: "value", filters: { authorityId: 1, supplierId: 2 } } as AskSpec;
+    delete ANSWER_VERSIONS.fact_check;
+    const before = run(spec);
+    Object.assign(ANSWER_VERSIONS, RELEASED);
+    expect(methodologiesDiffer(before, run(spec), "fact_check")).toBe(true);
+    expect(methodologiesDiffer(run(spec), run(spec), "fact_check")).toBe(false);
   });
 
   it("compares the core of the answer as jsonb does: key order does not count, array order does", () => {

@@ -20,8 +20,6 @@ const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=net
   "filters.mainClient": { ...table, filters: { authorityId: 1, mainClient: true } },
   "filters.dominantSupplier": { ...table, dim: "authority", filters: { dominantSupplier: true } },
   "filters.authorityKind=local_admin": { block: "map", measure: "value", filters: { authorityKind: "local_admin" } },
-  "peers.similar": { block: "distribution", measure: "value", filters: { authorityId: 1 }, peers: { similar: true } },
-  "peers.activity": { block: "distribution", measure: "value", filters: { authorityId: 1 }, peers: { activity: true } },
   "peers.domain": { block: "distribution", measure: "value", filters: { supplierId: 1 }, peers: { domain: true } },
   "scatter.flag": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } },
   "scatter.rankBy": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { rankBy: "value" } },
@@ -114,8 +112,8 @@ describe("keys read ahead of the engine", () => {
   });
 
   it("refuses the newer key before the rules a newer release may have changed", () => {
-    // Today a distribution needs its entity; a newer link with F6a's comparison group is "newer", not "invalid".
-    const raw = { block: "distribution", measure: "value", filters: {}, peers: { similar: true } };
+    // Today a distribution needs its entity; a newer link with the group's main domain (F6a phase 2) is "newer", not "invalid".
+    const raw = { block: "distribution", measure: "value", filters: {}, peers: { domain: true } };
     expect(validateSpec(raw)).toHaveProperty("error", expect.stringContaining("requires filters.authorityName"));
     expect(validateSpec(raw, { refuseNewer: NEWER_VERSION_LINK })).toEqual({ error: NEWER_VERSION_LINK, newer: true });
   });
@@ -159,6 +157,8 @@ describe("today's questions", () => {
       "timeseries.grain", "timeseries.split", "timeseries.months",
       // F4: the network's groups, year, order, length and signals and the flow's length: the builder, the strip and links.
       "network.partners", "network.since", "network.order", "network.show", "network.signals", "sankey.shown",
+      // F6a: the distribution's group, from the builder's «Față de cine?» and the rules interpreter.
+      "peers.similar", "peers.activity",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

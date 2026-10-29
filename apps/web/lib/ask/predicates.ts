@@ -330,13 +330,16 @@ export const fullValueUnion = (ctx: Pick<PredicateCtx, "plafond" | "purchaseValu
  * (a trend adds its two years itself). The buyer's kind is on its ids
  * (authority_id, D1), so a trend's grouping, facts and sources read no names.
  * The comparison replaces the condition on its own role by both entities.
+ * `values: false` leaves out the bounds of the sums (a positive value, the DA
+ * plausibility bound): a verification lists the rows they leave out (fact-check.ts).
  */
-export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean } = {}): Fragment[] {
+export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean; values?: boolean } = {}): Fragment[] {
   const { sql } = ctx;
-  const parts: Fragment[] = [sql`d.closing_value > 0`];
+  const values = opts.values ?? true;
+  const parts: Fragment[] = values ? [sql`d.closing_value > 0`] : [sql`true`];
   if (ctx.population) parts.push(populationSql(sql, ctx.population));
-  if (ctx.plafond === "strict") parts.push(sql`d.closing_value <= ${DA_PLAFOND_RON}`);
-  if (ctx.plafond === "da-branch") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
+  if (values && ctx.plafond === "strict") parts.push(sql`d.closing_value <= ${DA_PLAFOND_RON}`);
+  if (values && ctx.plafond === "da-branch") parts.push(sql`(d.src = 'contracts' or d.closing_value <= ${DA_PLAFOND_RON})`);
   if (ctx.cpvPrefixes.length > 0) parts.push(sql`(${cpvLike(sql, ctx.cpvPrefixes)})`);
   if (ctx.cpvExclude.length > 0) parts.push(sql`not (${cpvLike(sql, ctx.cpvExclude)})`);
   // The kind and the domain combine (kit §5.3): both conditions on the same code.
@@ -486,6 +489,21 @@ export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Frag
 }
 
 /**
+ * The county of a profile row (marts.entity_flags ef): the one profilePredicates
+ * filters, and the one a distribution's "Același județ" names and counts
+ * (peer-groups.ts, distribution.ts), so the tick says the county the answer
+ * filters. A firm's county is its seat (F4, owner-seat-switch) on its profile
+ * row once the seat column is filled (`seat`: martColumns().seat); before, and
+ * for an institution, entity_flags.county. Made here, for all.
+ */
+export const profileCounty = (sql: DbSql, role: "authority" | "supplier" = "authority", seat = false): Fragment => role === "supplier" && seat
+  ? sql`(select ${ownCountySql(sql, "supplier", true)} from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = 'supplier')`
+  : sql`ef.county`;
+export const profileCountyCond = (sql: DbSql, county: string, role: "authority" | "supplier" = "authority", seat = false): Fragment => role === "supplier" && seat
+  ? sql`ef.entity_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ${seatIn(sql, county, true)})`
+  : sql`lower(unaccent(${profileCounty(sql)})) = ${fold(county)}`;
+
+/**
  * The population of historical risk profiles (marts.entity_flags ef): the
  * role, the profiles with enough direct acquisitions, the entity's own county
  * and, for institutions, the locality and the kind. A firm's county is its seat
@@ -496,11 +514,8 @@ export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Frag
 export function profilePredicates(ctx: PredicateCtx, role: "authority" | "supplier", minDas: number): Fragment[] {
   const { sql } = ctx;
   const parts: Fragment[] = [sql`ef.role = ${role}`, sql`ef.n_das >= ${minDas}`];
-  const seat = role === "supplier" ? ctx.seatCounty ?? ctx.county : null;
-  if (seat && ctx.seatColumn)
-    parts.push(sql`ef.entity_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ${seatIn(sql, seat, true)})`);
-  else if (seat) parts.push(sql`lower(unaccent(ef.county)) = ${fold(seat)}`);
-  else if (ctx.county) parts.push(sql`lower(unaccent(ef.county)) = ${fold(ctx.county)}`);
+  const county = role === "supplier" ? ctx.seatCounty ?? ctx.county : ctx.county;
+  if (county) parts.push(profileCountyCond(sql, county, role, ctx.seatColumn));
   if (ctx.uatSiruta !== null && role === "authority") parts.push(sql`ef.entity_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
   if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kindIds!, sql`ef.entity_id`));
   return parts;

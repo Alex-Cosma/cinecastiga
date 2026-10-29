@@ -437,7 +437,8 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
   const last = span?.to ? Number(span.to.slice(0, 4)) : year;
   const partial = span?.to && !span.to.endsWith("-12-31") ? span.to : null;
   const settled = spec.block === "trend" ? defaultTrendYears(periods, (spec.dataset ?? "all") as "all" | "da" | "contracts")?.yearTo ?? null : null;
-  const complete = settled !== null && settled < last ? settled : partial ? last - 1 : last;
+  // Before the archive's span is read, the calendar year is the one still running.
+  const complete = settled !== null && settled < last ? settled : partial || !span?.to ? last - 1 : last;
   const until = partial ? dayWords(partial).replace(/ \d{4}$/, "") : null;
   const all: PeriodPreset = { value: "all", label: "Toți anii", ...(span?.from && span.to ? { detail: `${monthWords(span.from)} – ${dayWords(span.to)}` } : {}), period: undefined };
   const years = (value: string, label: string, n: number): PeriodPreset => {
@@ -455,6 +456,11 @@ export function periodPresets(spec: QuestionSpec, span: CoverageSpan | null, yea
     ]
     : spec.block === "timeseries"
       ? [all, years("five", "Ultimii 5 ani compleți", 5), years("three", "Ultimii 3 ani compleți", 3)]
+      // A verification's "Când?" (final fact_check §3.1): "Până acum" first, the sentence's default, which writes no year.
+      : spec.block === "fact_check"
+        ? [{ ...all, label: "Până acum" }, years("three", "Ultimii 3 ani compleți", 3),
+          { value: "current", label: String(last), ...(until ? { detail: `până la ${until}` } : {}), period: { yearFrom: last, yearTo: last } },
+          { value: "previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } }]
       : [
         { value: "current", label: String(last), ...(until ? { detail: `până la ${until}` } : {}), period: { yearFrom: last, yearTo: last } },
         { value: "previous", label: String(last - 1), period: { yearFrom: last - 1, yearTo: last - 1 } },

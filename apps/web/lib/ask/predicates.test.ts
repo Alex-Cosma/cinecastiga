@@ -154,7 +154,10 @@ describe("each condition is written by the function of its engine level (plan §
       // F4: „Doar clienții comuni” is the institutions the pre-step P finds in the answer's transaction
       // (compare-prestep.ts); rowPredicates writes them once found (PredicateCtx.shared, tested below).
       "sharedPartners on compare",
-    ].filter((key) => expected.has(key)));
+      // F6a: the group's ticks need the entity's facts (its population band, its kind, its acquisitions):
+      // lib/ask/distribution.ts writes them beside profilePredicates, for the answer and its sources.
+      "peers on distribution",
+    ].filter((key) => expected.has(key)).sort());
     // ~3 s alone; the whole suite on a shared machine took it to 7 s, past the default 5 s (S4 review).
   }, 30_000);
 });

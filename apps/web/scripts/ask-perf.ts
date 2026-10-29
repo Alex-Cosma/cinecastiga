@@ -236,7 +236,7 @@ export function answerRows(data: BlockData): number {
     case "timeseries": return data.series.length;
     case "map": return data.counties.length;
     case "compare": return data.entities.length;
-    case "distribution": return data.distribution.buckets.length;
+    case "distribution": return data.distribution.members?.length ?? data.distribution.hist?.length ?? 1;
     case "breakdown": return data.slices.length;
     case "scatter": return data.points.length;
     case "sankey": return data.flows.length;

@@ -261,6 +261,11 @@ describe("the windows (component 9 and the composed pickers)", () => {
     const trend = periodPresets(SEVEN.trend!, span, 2026);
     expect(trend.presets[0]).toMatchObject({ label: "2024 și 2025", period: { yearFrom: 2024, yearTo: 2025 } });
     expect(trend.value).toBe("pair-1");
+    // A verification's "Când?" (final fact_check §3.1): "Până acum" first, the sentence's default, which writes no year.
+    const fact = periodPresets(q({ block: "fact_check", filters: { authorityId: 1, supplierId: 2 } }), span, 2026);
+    expect(fact.presets.map((p) => p.label)).toEqual(["Până acum", "Ultimii 3 ani compleți", "2026", "2025"]);
+    expect(fact.presets[0]!.period).toBeUndefined();
+    expect(fact.value).toBe("all");
   });
 
   it("lead a searched window with its current choice, checked, so it is never «nothing chosen»", () => {
@@ -283,6 +288,12 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(stat.map((p) => [p.label, p.detail ?? ""])).toEqual([["2025", ""], ["2024", ""], ["Ultimii 3 ani compleți", "2023–2025"], ["Toți anii", "apr. 2018 – 31 dec. 2025"]]);
     const trend = periodPresets(SEVEN.trend!, span, 2026).presets;
     expect(trend.map((p) => [p.label, p.detail ?? ""])).toEqual([["2024 și 2025", "ultimii doi ani compleți"], ["2023 și 2024", ""]]);
+  });
+
+  it("never count the calendar year as complete before the archive's span is read", () => {
+    const fact = periodPresets(q({ block: "fact_check", filters: { authorityId: 1, supplierId: 2 } }), null, 2026).presets;
+    expect(fact.map((p) => [p.label, p.detail ?? ""])).toEqual([["Până acum", ""], ["Ultimii 3 ani compleți", "2023–2025"], ["2026", ""], ["2025", ""]]);
+    expect(periodPresets(SEVEN.trend!, null, 2026).presets[0]).toMatchObject({ label: "2024 și 2025", detail: "ultimii doi ani compleți" });
   });
 
   it("give a trend the complete years of its default (every channel's «complet până la», trend final §3.2), not of the data's last day", () => {

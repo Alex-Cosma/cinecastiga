@@ -7,6 +7,7 @@ import {
   type QuestionSpec,
 } from "../question-ui";
 import { countyDisplay } from "../resolved-spec";
+import type { PeerFacts } from "../peer-groups-shared";
 import {
   DEFAULT_TREND_MIN_BASE, FIRM_SEATS, namedKind, type AskSpec, type AuthorityKind, type FirmSeat, type MonthWindow, type ParsedAuthorityKind,
 } from "../spec";
@@ -56,6 +57,8 @@ export interface ConditionLabels {
   sameMonthsRule?: boolean | undefined;
   /** The years a trend's answer compared (its data.yearA/yearB): what a spec without years resolved to. */
   trendYears?: { yearA: number; yearB: number } | null | undefined;
+  /** The facts of a distribution's group (its answer's, or the window's): which rule "același tip" used. */
+  peerGroup?: PeerFacts | null | undefined;
 }
 
 export interface ScopeRow { label: string; value: string }
@@ -328,6 +331,21 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
       scope: [{ label: "Sediul firmei", value: county }],
     };
   },
+  // F6a: the distribution's group by its rules (the sentence says the bounds where it knows the entity: peer-groups-shared.ts).
+  // With the answer's facts the pill names the rule it used, and its source: "populație RPL 2021" (final §1.1).
+  peers: (spec, { peerGroup }) => {
+    const p = spec.peers;
+    if (!p || !Object.keys(p).length) return null;
+    const role = focalRole(spec);
+    const facts = peerGroup && peerGroup.role === role && peerGroup.entityId === String(spec.filters[role === "authority" ? "authorityId" : "supplierId"] ?? "") ? peerGroup : null;
+    const rule = facts?.similar ? facts.similar.rule : null;
+    const similar = rule === null ? "același tip sau populație apropiată" : rule === "population" ? "populație apropiată" : "același tip";
+    const rules = [p.similar && similar, p.domain && "același domeniu principal", p.activity && "activitate apropiată"]
+      .filter((r): r is string => Boolean(r));
+    const words = `grupul de comparație: ${rules.join(", ")}`;
+    const census = p.similar && (rule === "population" || rule === "sectors") ? ["populație RPL 2021"] : [];
+    return { words, chip: capitalFirst(rules.join(" · ")), pills: [words, ...census], scope: [{ label: "Grupul de comparație", value: capitalFirst(rules.join(", ")) }] };
+  },
   admin: (spec, { grounding }) => {
     const f = spec.filters;
     const pills = grounding?.admin?.personKey && grounding.admin.display ? [`conduse azi de ${grounding.admin.display}`] : [];
@@ -343,7 +361,7 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     const from = bound(f.yearFrom, f.monthFrom), to = bound(f.yearTo, f.monthTo);
     const pills = f.yearFrom || f.yearTo
       ? [spec.block === "trend" ? `${from ?? "?"} → ${to ?? "?"}` : from && to && from !== to ? `${from}–${to}` : (from ?? to)!]
-      : isHistoricalProfile(spec) ? [] : ["toți anii"];
+      : isHistoricalProfile(spec) ? [] : [spec.block === "fact_check" ? "până acum" : "toți anii"];
     const mark = (y: unknown, m: unknown) => `${y}${m ? `-${String(m).padStart(2, "0")}` : ""}`;
     return {
       ...(f.yearFrom || f.yearTo ? { words: periodWordsWith(f) } : {}),
@@ -569,8 +587,8 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
 const NETWORK_ORDER: readonly FilterId[] = ["networkPartners", "networkSince", "networkSignals", "networkOrder"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
 const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "sharedPartners", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];

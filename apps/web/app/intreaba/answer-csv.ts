@@ -1,5 +1,7 @@
 import { fileSlug } from "../../lib/ask/answer-text";
-import type { BlockData } from "../../lib/ask/compile";
+import type { BlockData, DistributionDataV1, DistributionMember } from "../../lib/ask/compile";
+import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
+import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
@@ -75,8 +77,23 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
           e.streams?.contracts.singleBid ?? "", e.streams?.contracts.bidsKnown ?? "", e.streams?.da.value ?? "", e.streams?.da.count ?? "",
           e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(",")),
       ];
-    case "distribution":
-      return ["cri_de,cri_pana,entitati", ...data.distribution.buckets.map((b) => `${b.from},${b.to},${b.n}`)];
+    case "distribution": {
+      // distribution-2 (final §7.7 "criterii,entitati + criterii + membri"): one table, by `sectiune`: the group's others by
+      // number of criteria (the chart), each criterion among them and in the country, the entity, then the list on screen (≤ 50).
+      const d = data.distribution, f = d.focal, max = d.criteria.length;
+      if (d.version !== 2) return ["cri_de,cri_pana,entitati", ...(d as unknown as DistributionDataV1).buckets.map((b) => `${b.from},${b.to},${b.n}`)];
+      const row = (cells: (string | number)[]) => cells.join(",");
+      const member = (part: string, m: DistributionMember, own: string) =>
+        row([csvQ(part), m.nFlags, m.nFlags / max, "", csvQ(m.name), csvQ(m.county), m.population ?? "", csvQ(m.flags.join("|")), m.nDas, "", "", own]);
+      return [
+        "sectiune,criterii,indice_de_risc,criteriu,nume,judet,populatie,semnale,achizitii_directe,din_grup,din_tara,entitatea",
+        ...(d.hist ?? []).map((h) => row([csvQ("criterii"), h.k, h.k / max, "", "", "", "", "", "", h.n, "", h.k === Math.min(f.nFlags, max) ? "da" : ""])),
+        ...(d.perCriterion ?? []).map((c) => row([csvQ("criteriu"), "", "", csvQ(`${CRITERION_LABEL[c.code] ?? c.code} (${c.code})`), "", "", "", "", "", c.others, c.country,
+          f.flags.includes(c.code) ? "da" : "nu"])),
+        member("entitatea", f, "da"),
+        ...(d.members ?? []).map((m) => member("grup", m, "")),
+      ];
+    }
     case "breakdown": {
       // F3: the groups as the legend shows them (by records when it is ordered so), every group with `base`.
       const shown = breakdownShown(data.slices, data.other, data.base, spec.measure === "count" && Boolean(data.base), true);
@@ -97,8 +114,21 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
         `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count}${profile ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
       ];
     }
-    case "fact_check":
-      return ["cod,data,ce,valoare_lei", ...data.fact.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
+    case "fact_check": {
+      // fact_check-2: the list on screen (the five largest and the most recent), then the rows outside the sums it names
+      // (framework ceilings, excluded rows), each with whether it is in the sums.
+      const f = data.fact;
+      if (f.version !== 2) return ["cod,data,ce,valoare_lei", ...f.samples.map((s) => `${csvQ(s.daCode)},${csvQ(s.date)},${csvQ(s.cpvName)},${s.value}`)];
+      const sample = (s: FactSample) => [csvQ(s.recent ? "cea mai recentă" : "cele mai mari"), csvQ(s.daCode), csvQ(s.date), csvQ(s.cpvName),
+        s.src === "da" ? "achizitie_directa" : "contract", csvQ(s.procedure ?? ""), s.nWinners ?? "", s.fullValue ?? "", s.bids ?? "",
+        s.kind === "framework" ? "da (plafon)" : "da", s.value].join(",");
+      const outside = (r: FactOutsideRow) => [csvQ(r.category === "framework" ? "acord-cadru" : `exclus: ${OUTSIDE_WHY[r.category]}`), csvQ(r.code), csvQ(r.date),
+        csvQ(r.what), r.src === "da" ? "achizitie_directa" : "contract", csvQ(r.procedure ?? ""), "", "", "", "nu", r.value ?? ""].join(",");
+      return [
+        "categorie,cod,data,ce,sursa,procedura,castigatori,valoare_contract_integral,oferte,in_sume,valoare_lei",
+        ...f.samples.map(sample), ...(f.frameworks?.rows ?? []).map(outside), ...(f.excluded?.rows ?? []).map(outside),
+      ];
+    }
     case "trend": {
       // The list on screen with its columns: the name as shown, the place beside it (an institution's county, a firm's
       // seat or a foreign firm's country, F4 owner-seat-switch; none on a county), its labels and partner line.

@@ -18,6 +18,7 @@ import { DA_BOUND_VALUE, selectionOrigin, splitExcluded } from "./origin";
 import { FILTER_DEFS, SPEC_PATH_OWNERS } from "./registry";
 import { entityCaptureSpec, NATIONAL_DA_COUNT_SPEC } from "../site-links";
 import { DA_PLAFOND_RON } from "../predicates";
+import type { PeerFacts } from "../peer-groups-shared";
 
 /*
  * describeConditions replaces six grammars (plan §2.2, §5 F0). Each output is
@@ -130,7 +131,9 @@ describe("describeConditions says what the six grammars said (plan §2.2)", () =
       for (const cpv of cpvGroundings) {
         if (relabelled(spec) || keyed(spec)) continue;
         const grounding = groundingOf(spec, cpv);
-        expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map((p) => kitPill(fixed(p))));
+        // F6a: a verification without a period says "până acum" (final fact_check §1), never "toți anii".
+        const kit = (p: string) => spec.block === "fact_check" && p === "toți anii" ? "până acum" : p;
+        expect(describeConditions(spec, { grounding }).pills, JSON.stringify(spec)).toEqual(conditionPillsBefore(spec, grounding).map((p) => kit(kitPill(fixed(p)))));
         // A ranking without topN is the complete one, in pages: its pill no longer says "top 10" (pills.ts, after the S1 review).
         if (spec.block === "table" && spec.topN == null) expect(buildPills(spec, grounding)[1]).toMatch(/^(toate instituțiile publice|toți furnizorii|toate județele)$/);
         else if (spec.block === "table" || spec.block === "trend") expect(buildPills(spec, grounding)).toContain(kitTop(fixed(topPillBefore(spec))));
@@ -376,6 +379,20 @@ describe("the words of every condition", () => {
     expect(d.byId.population?.detail).toBe("doar CPV 45 SAU doar CPV 33 SAU doar 3 firme");
     // "Selecție precisă" is not the 13 questions' name for it any more (plan R3, §6.3).
     for (const spec of [value, two, three]) expect(`${questionTitle(spec)} ${d.totalLine}`).not.toMatch(/selecție precisă/i);
+  });
+
+  it("name the distribution group's rule in the pill, with RPL 2021 when it goes by population (final distribution §1.1)", () => {
+    const spec = { block: "distribution", measure: "value", filters: { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU" }, peers: { similar: true } } as AskSpec;
+    const facts = (similar: PeerFacts["similar"]) =>
+      ({ role: "authority" as const, entityId: "2144364", name: "MUNICIPIUL BUZAU", county: "Buzău", nDas: 782, similar, activity: { min: 391, max: 1_564 } });
+    const pills = (peerGroup?: ReturnType<typeof facts>) => buildPills(spec, {} as Grounding, peerGroup ? { peerGroup } : {});
+    expect(pills(facts({ rule: "population", value: 103_481, min: 51_741, max: 206_962 }))).toEqual(expect.arrayContaining(["grupul de comparație: populație apropiată", "populație RPL 2021"]));
+    const hospital = pills(facts({ rule: "kind", kind: "spital" }));
+    expect(hospital).toContain("grupul de comparație: același tip");
+    expect(hospital).not.toContain("populație RPL 2021");
+    // Without the answer's facts (a saved question) both rules are named; another entity's facts are not used.
+    expect(pills()).toContain("grupul de comparație: același tip sau populație apropiată");
+    expect(pills({ ...facts({ rule: "kind", kind: "spital" }), entityId: "1" })).toContain("grupul de comparație: același tip sau populație apropiată");
   });
 });
 

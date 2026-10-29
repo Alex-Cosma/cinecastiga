@@ -17,7 +17,8 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   timeseries: "evoluție pe ani",
   map: "pe județe (hartă)",
   compare: "comparație",
-  distribution: "poziție în distribuția de risc",
+  // distribution-2 counts the criteria the entity meets against its group (final distribution §1.1: "spune ce se numără").
+  distribution: "criterii de risc față de grup",
   // Values are recorded, not paid; the cloud plots risk against recorded value.
   breakdown: "pe domenii",
   scatter: "risc și valoare",
@@ -26,7 +27,7 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   network: "rețea de parteneri",
   // "Cine conduce?": its own short name (kit §4), not the engine's slug.
   entity_card: "locul 1",
-  fact_check: "verificare Da/Nu",
+  fact_check: "verificare",
   trend: "schimbare între ani",
 };
 
@@ -45,9 +46,9 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
 
 /**
  * `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture);
- * `labels.executedMonths`: the months a trend's answer counted.
+ * `labels.executedMonths`: the months a trend's answer counted; `labels.peerGroup`: a distribution's group facts.
  */
-export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths"> = {}): string[] {
+export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths" | "peerGroup"> = {}): string[] {
   const pills: string[] = [];
   // An evolution month by month says so in its first pill (F3); its other options are conditions (describe.ts).
   pills.push(spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni" : BLOCK_LABEL[spec.block]);
@@ -72,6 +73,6 @@ export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<Con
           : "valoarea înregistrată",
     );
   }
-  pills.push(...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths }).pills);
+  pills.push(...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths, peerGroup: labels.peerGroup }).pills);
   return pills;
 }

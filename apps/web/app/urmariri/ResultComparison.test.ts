@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { formatResultValue, resultDifferences } from "./ResultComparison";
-import { comparableMethodologies } from "../../lib/monitoring-shared";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { formatResultValue, RESHAPED_WORDS, reshapedAnswer, resultDifferences } from "./ResultComparison";
+import ScopeConditions from "./ScopeConditions";
+import { comparableMethodologies, type MonitoringScope } from "../../lib/monitoring-shared";
 
 describe("human-readable monitoring result comparisons", () => {
   it("matches entity rows by identity even when a ranking changes order", () => {
@@ -36,6 +39,18 @@ describe("human-readable monitoring result comparisons", () => {
     expect(formatResultValue(1e-7, "value")).toBe("0,0000001 lei");
     expect(formatResultValue(2026, "year")).toBe("2026");
   });
+  it("lists no false changes when the answer's version moved (distribution-1 → distribution-2): only the methodology says it", () => {
+    const [before, after] = comparableMethodologies({ version: "monitoring-1" }, { version: "monitoring-1", answer: { question: "distribution-2", conditions: {} } }, "distribution");
+    expect(reshapedAnswer(before, after)).toEqual({ from: "distribution-1", to: "distribution-2" });
+    expect(reshapedAnswer(after, after)).toBeNull();
+    // The reader sees the new shape in words, never the engine's slug.
+    for (const version of ["distribution-2", "fact_check-2", "trend-2"]) expect(RESHAPED_WORDS[version]).toMatch(/^[a-zăâîșț ,]+$/);
+    // distribution-2 names its fields: the position among the others, the group.
+    const v2 = (more: number) => ({ block: "distribution", distribution: { version: 2, position: { more, same: 0, fewer: 29 - more }, group: { others: 29 } } });
+    expect(resultDifferences(v2(0), v2(1)).map((row) => [row.context, row.field])).toEqual([
+      ["Distribuția riscului · Poziția în grup", "Cu mai multe criterii"], ["Distribuția riscului · Poziția în grup", "Cu mai puține criterii"],
+    ]);
+  });
   it("names the map records whose authority has no county in Romanian", () => {
     const before = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 60, count: 2 } };
     const after = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 40, count: 1 } };
@@ -69,5 +84,15 @@ describe("human-readable monitoring result comparisons", () => {
       // D1 declares the kind (answer-core.ts KEY_VERSIONS): the condition is named by its label.
       ["Versiunea răspunsului · Condiții cu versiune proprie", "Tipul instituției", "kind-1", "kind-2"],
     ]);
+  });
+});
+
+describe("a watch's selection from an answer's sources", () => {
+  it("names a distribution bar's criteria, so a watch on one bar does not read as the whole group", () => {
+    const spec = { block: "distribution", measure: "value", filters: { authorityId: 2145000, authorityName: "Comuna Rusetu" }, peers: { similar: true } };
+    const markup = renderToStaticMarkup(createElement(ScopeConditions, { scope: { spec, options: { scope: { criteria: 2 } } } as unknown as MonitoringScope }));
+    expect(markup).toContain("Criterii de risc");
+    expect(markup).toContain("Doar profilurile cu 2 criterii");
+    expect(markup).toContain("urmărim doar selecția");
   });
 });
