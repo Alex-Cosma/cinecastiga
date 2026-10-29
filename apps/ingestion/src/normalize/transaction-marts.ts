@@ -152,11 +152,11 @@ export async function buildTransactionMarts(q:TransactionSql){
     await q`refresh materialized view marts.signal_lookup`;
     await q`analyze marts.signal_lookup`;
     const [row]=await q`select count(*)::int n from marts.da_transactions`;
-    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,rollups:rollups.rows,mapCountyTop,mapCountyMs};
+    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,rollups:rollups.rows,mapCountyTop,mapCountyMs,mapYearMs:rollups.mapYearMs};
 }
 export async function runTransactionMarts(sql:DbSql,opts:{log?:(message:string)=>void}={}){
  const report=await sql.begin(q=>buildTransactionMarts(q));
- opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_months=${report.rollups.agg_months} agg_national_mix=${report.rollups.agg_national_mix} agg_map_county_top=${report.mapCountyTop} agg_map_county ${report.mapCountyMs} ms`);
+ opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_months=${report.rollups.agg_months} agg_national_mix=${report.rollups.agg_national_mix} agg_map_county_top=${report.mapCountyTop} agg_map_year=${report.rollups.agg_map_year} agg_map_county ${report.mapCountyMs} ms, agg_map_year ${report.mapYearMs} ms`);
  if(report.createdIndexes.length)opts.log?.(`transaction marts: recreated missing indexes ${report.createdIndexes.join(', ')}`);
  // After the commit (VACUUM cannot run in a transaction), before the site
  // reopens: the reload leaves no page all-visible, so until autovacuum (cost
