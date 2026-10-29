@@ -50,6 +50,8 @@ import { distributionData, distributionGroup } from "./distribution";
 import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 import { factCheckData } from "./fact-check";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
+import { bareNational, nationalTotals, podiumOf, tiesOf } from "./entity-card";
+import { PODIUM_PLACES, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -280,7 +282,9 @@ export type BlockData =
   // first 14 nodes) is read by ResultComparison as plain data.
   | SankeyData
   | NetworkData
-  | { block: "entity_card"; card: EntityCardData }
+  // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3 and the total), on the index the group at the top
+  // (every profile at the best level). `card` stays the first of them; absent from answers stored before entity_card-2.
+  | { block: "entity_card"; card: EntityCardData; podium?: Podium; ties?: Ties }
   | { block: "fact_check"; fact: FactCheckData }
   // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
   // the first N of every group, the composition, the group noun and the facts of the shown rows (trend-partition.ts).
@@ -818,15 +822,22 @@ export async function runSpec(
   ({spec,grounding}=await canonicalAskIdentities(sql,spec,grounding));
   // Value superlatives share the transaction ranking, including both streams,
   // its filters, allocation rules and deterministic tie break. CRI stays historical.
+  // entity_card-2 (F6c): the podium is the same ranking stopped at place 3, with the selection's total, which the
+  // precomputed national ranking does not carry (agg_national and the profiles give it).
   if (spec.block === "entity_card" && spec.rankBy === "value") {
-    const ranked = await runSpec(sql, { ...retarget(spec, "table"), measure: "value", topN: 1 }, grounding);
+    const ranked = await runSpec(sql, { ...retarget(spec, "table"), measure: "value", topN: PODIUM_PLACES }, grounding);
     if ("error" in ranked) return ranked;
-    const winner = ranked.data.block === "table" ? ranked.data.rows[0] : undefined;
-    if (!winner?.entityId) return { error: "Niciun rezultat pentru aceste filtre.", caveats: ranked.caveats };
-    return { ...ranked, data: { block: "entity_card", card: {
-      ...winner, entityId: winner.entityId, role: spec.dim === "supplier" ? "supplier" : "authority",
-      cri: null, nFlags: 0, flags: [],
-    } } };
+    const table = ranked.data.block === "table" ? ranked.data : undefined;
+    const places = (table?.rows ?? []).flatMap((row) => row.entityId ? [{ ...row, entityId: row.entityId }] : []);
+    const winner = places[0];
+    if (!winner) return { error: "Niciun rezultat pentru aceste filtre.", caveats: ranked.caveats };
+    const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
+    const totals = table?.totals ?? (bareNational(spec) ? await nationalTotals(sql, role) : null);
+    return { ...ranked, data: {
+      block: "entity_card",
+      card: { ...winner, role, cri: null, nFlags: 0, flags: [] },
+      podium: podiumOf(places, totals, table?.group),
+    } };
   }
   const caveats: string[] = [];
   const started = Date.now();
@@ -1995,49 +2006,30 @@ export async function runSpec(
         }
 
         case "entity_card": {
+          // The index (entity_card-2, F6c): the group at the top, not one name chosen by value among the tied.
           const role = spec.dim === "supplier" ? ("supplier" as const) : ("authority" as const);
           const minDas = profileMinDas(spec.block);
-          const order =
-            (spec.rankBy ?? "risk") === "risk"
-              ? s`ef.cri desc nulls last, ef.total_ron desc nulls last, ef.entity_id`
-              : s`ef.total_ron desc nulls last, ef.entity_id`;
-          const r = (await s`
-            select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.role, ef.n_das, ef.total_ron,
-                   ef.cri, ef.n_flags, ef.flags
-            from marts.entity_flags ef
-            where ${efWhere(role, minDas)}
-            order by ${order}
-            limit 1
-          `) as unknown as {
-            entity_id: string;
-            name_display: string | null;
-            county: string | null;
-            role: string;
-            n_das: number;
-            total_ron: string | null;
-            cri: string | null;
-            n_flags: number;
-            flags: string[] | null;
-          }[];
-          if (r.length === 0) return { error: "Niciun rezultat pentru aceste filtre." };
-          const e = r[0]!;
+          const ties = await tiesOf(s, { role, where: efWhere(role, minDas), county: profileCounty(s, role) });
+          const e = ties?.rows[0];
+          if (!ties || !e) return { error: "Niciun rezultat pentru aceste filtre." };
           const cardPopulation = role === "authority"
-            ? (await readPerCapitaPopulations(s)).byEntity.get(String(e.entity_id)) ?? null : null;
+            ? (await readPerCapitaPopulations(s)).byEntity.get(e.entityId) ?? null : null;
           if (cardPopulation !== null) caveats.push(POPULATION_CARD_NOTE);
           return {
             block: "entity_card",
             card: {
-              entityId: String(e.entity_id),
-              name: e.name_display ?? "?",
+              entityId: e.entityId,
+              name: e.name,
               county: e.county,
-              role: e.role,
-              value: Number(e.total_ron ?? 0),
-              count: Number(e.n_das),
-              cri: e.cri === null ? null : Number(e.cri),
-              nFlags: Number(e.n_flags),
-              flags: e.flags ?? [],
+              role,
+              value: e.value,
+              count: e.count,
+              cri: ties.level,
+              nFlags: e.nFlags,
+              flags: e.flags,
               population: cardPopulation,
             },
+            ties,
           };
         }
 
@@ -2471,8 +2463,12 @@ export async function runRows(
     : sql`ef.total_ron desc nulls last, ef.entity_id`;
   // Select the winner before intersecting a requested profile ID, so a client
   // cannot replace the superlative with an arbitrary lower-ranked entity.
+  // entity_card-2 (F6c): on the index the answer is the group at the top, every profile at the best level (the first
+  // TIES_LISTED by value, as the answer lists them); a row's "⋯ › Vezi înregistrările" narrows it to that profile.
   const profileBase = spec.block === "entity_card"
-    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere} order by ${profileOrder} limit 1)`
+    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null
+        and ef.cri = (select max(ef.cri) from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null)
+        order by ${profileOrder} limit ${TIES_LISTED})`
     : sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere})`;
   const selectionParts: ReturnType<DbSql>[] = [sql`true`];
   if (scope.county) selectionParts.push(sql`lower(unaccent(ef.county)) = ${fold(scope.county)}`);
@@ -2483,7 +2479,9 @@ export async function runRows(
   if (scope.criteria !== undefined) selectionParts.push(sql`ef.n_flags = ${scope.criteria}`);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
-  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12).
+  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12). A firm's cohort
+  // is also asked on the bare column, which the nullif() below hides from the index (F6c: the sources of the firms at
+  // the top of the index, 3.2 s → 2 ms for one firm).
   const partyCore = role === "authority" ? sql`da.authority_entity_id` : sql`nullif(da.supplier_entity_id, da.authority_entity_id)`;
   const daTx = sql`(
     select sicap_da_id as ref_id, da_code, finalization_date, authority_id, authority_name,
@@ -2516,6 +2514,7 @@ export async function runRows(
     left join core.cpv_codes cpv on cpv.code = da.cpv_code
     where da.state = 'Oferta acceptata' and da.closing_value > 0 and da.closing_value <= ${DA_PLAFOND_RON}
       and ${partyCore} in (select entity_id from ${cohort} selected_profiles)
+      ${role === "supplier" ? sql`and da.supplier_entity_id in (select entity_id from ${cohort} indexed_profiles)` : sql``}
   )` : dataset === "da" ? daTx : dataset === "contracts" ? contractTx : sql`(select * from ${daTx} direct_rows union all select * from ${contractTx} contract_rows)`;
 
   // Only what is proper to the sources is added below: the relationship's focal entity,
@@ -3007,7 +3006,10 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "network":
       return `select partener, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by partener\norder by 2 desc;`;
     case "entity_card":
-      return `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by ${(spec.rankBy ?? "risk") === "risk" ? "cri" : "total_ron"} desc\nlimit 1;`;
+      // entity_card-2: the index shows every profile at the best level, by value; the podium is the ranking's first three.
+      return (spec.rankBy ?? "risk") === "risk"
+        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit ${TIES_LISTED};\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)`
+        : `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by total_ron desc\nlimit ${PODIUM_PLACES};`;
     case "fact_check":
       // fact_check-2: the verdict counts these records, then what the sums leave out of the pair (lib/ask/fact-check.ts).
       return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};` +

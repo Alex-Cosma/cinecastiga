@@ -18,7 +18,8 @@ export type PerfPath = "answer" | "rows" | "csv" | "facet";
 export interface PerfDrawer { sort?: "source" | "value" | "date"; dir?: "asc" | "desc"; search?: string }
 export type PerfGroup = "catalog" | "national" | "filtered" | "sources" | "csv" | "facets";
 /** facet only: the window's part (lib/ask/facets.ts), and the text "Unde e …?" searches. */
-export interface PerfFacet { part: FacetPart; q?: string }
+/** `ids`: the podium's places (part `podium`, F6c). */
+export interface PerfFacet { part: FacetPart; q?: string; ids?: string[] }
 export interface PerfCase {
   /** Stable key: later runs are compared with the baseline by id. */
   id: string;

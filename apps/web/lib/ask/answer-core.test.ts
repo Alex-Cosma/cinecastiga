@@ -98,8 +98,8 @@ describe("the key versions of this release", () => {
 });
 
 describe("the version of an answer", () => {
-  it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's, F6a the distribution's and the verification's", () => {
-    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-2", fact_check: "fact_check-2" });
+  it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's, F6a the distribution's and the verification's, F6c the leader's (entity_card-2)", () => {
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-2", fact_check: "fact_check-2", entity_card: "entity_card-2" });
     expect(KEY_VERSIONS).toEqual({});
     for (const block of BLOCKS)
       expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: ANSWER_VERSIONS[block] ?? `${block}-1`, conditions: {} });

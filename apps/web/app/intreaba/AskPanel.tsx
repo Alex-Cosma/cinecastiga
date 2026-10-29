@@ -1287,7 +1287,7 @@ export default function AskPanel({
                   onList={(list) => applyNetwork({ list })} onOrder={(order) => applyNetwork({ order })} onSince={applyNetworkSince} />
               )}
               {data.block === "entity_card" && (
-                <EntityCardBlock card={data.card} historical={isProfile} spec={applied} />
+                <EntityCardBlock data={data} historical={isProfile} spec={applied} conditions={totalWords} />
               )}
               {data.block === "fact_check" && (
                 <FactCheckBlock fact={data.fact} spec={applied} onWider={runWider} />
@@ -1306,7 +1306,7 @@ export default function AskPanel({
             </div>}
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
-            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && (
+            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && data.block !== "entity_card" && (
               <div className="qb cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}

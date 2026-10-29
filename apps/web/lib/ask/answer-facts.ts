@@ -8,7 +8,10 @@ import {
 import { mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
 import { PROCEDURE_ORDER, VALUE_RANGES } from "./purchase";
 import { questionKey, type QuestionSpec } from "./question-ui";
-import { ABOVE_CAP_ROWS, type AboveCapRow, type BarsResult, type MixResult, type MixRow } from "./facet-parts";
+import { ABOVE_CAP_ROWS, type AboveCapRow, type BarsResult, type MixResult, type MixRow, type PodiumResult } from "./facet-parts";
+import { podiumFactsOf, type PodiumFactRows, type PodiumProfileRows } from "./entity-card";
+import { PODIUM_PLACES } from "./entity-card-shared";
+import { factsSource } from "./trend-partition";
 import type { AskSpec } from "./spec";
 
 /*
@@ -35,7 +38,7 @@ type Fragment = ReturnType<DbSql>;
 export const MIX_LIVE = "„Din care” pe o selecție națională fără rollup";
 export const BARS_LIVE = "Cea mai mare înregistrare a barelor, pe o selecție națională fără rollup";
 
-const kept = new Map<string, { value: MixResult | BarsResult; at: number }>();
+const kept = new Map<string, { value: MixResult | BarsResult | PodiumResult; at: number }>();
 /** Facts kept at most (one per answer: a few numbers). */
 const FACT_ENTRIES = 200;
 export function forgetAnswerFacts(): void { kept.clear(); }
@@ -45,12 +48,14 @@ export function forgetAnswerFacts(): void { kept.clear(); }
  * checkpoint and the marts build (as the counts), else computed in a read-only
  * transaction with the counts' limit. A limit passed is `{ timeout: true }`.
  */
-async function answerFact<T extends MixResult | BarsResult>(
+async function answerFact<T extends MixResult | BarsResult | PodiumResult>(
   sql: DbSql, spec: AskSpec, part: T["part"], signal: AbortSignal | undefined,
   work: (tx: DbSql, p: Prepared, run: Runner, mixReady: boolean, checkpoint: string | null, started: number) => Promise<T | FacetFailure>,
+  /** What else the fact depends on (the podium's ids), in its key. */
+  also: string = "",
 ): Promise<T | FacetFailure> {
   const stamp = await facetStamp(sql);
-  const key = stamp.build ? JSON.stringify([stamp.build, stamp.checkpoint, part, questionKey(spec as unknown as QuestionSpec)]) : null;
+  const key = stamp.build ? JSON.stringify([stamp.build, stamp.checkpoint, part, also, questionKey(spec as unknown as QuestionSpec)]) : null;
   const hit = key ? kept.get(key) : undefined;
   if (key && hit && Date.now() - hit.at <= FACET_TTL_MS) return { ...(hit.value as T), tookMs: 0 };
   const started = Date.now();
@@ -250,4 +255,35 @@ export async function barFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
     }
     return { part: "bars", max, above, checkpoint, tookMs: Date.now() - started };
   });
+}
+
+/**
+ * The facts of the podium's places (F6c, final entity_card §3.9): of each place's value the part that comes from
+ * contracts with several winners, its largest record in the selection, and the firm's latest filing (employees and
+ * its year) and first activity. The records are the answer's own (the ranking's selection, a place's records only
+ * through the id indexes), asked once the podium is drawn: they never delay it. `ids`: the places, at most three.
+ */
+export async function podiumFacts(sql: DbSql, spec: AskSpec, ids: readonly string[], opts: { signal?: AbortSignal } = {}): Promise<PodiumResult | FacetFailure> {
+  if (spec.block !== "entity_card" || spec.rankBy !== "value") return { error: "Faptele locurilor descriu clasamentul „Cine conduce?” pe valoare." };
+  const places = [...new Set(ids)].filter((id) => /^\d{1,18}$/.test(id)).slice(0, PODIUM_PLACES);
+  if (places.length === 0) return { error: "Lipsesc locurile." };
+  const role = spec.dim === "supplier" ? "supplier" : "authority";
+  return await answerFact<PodiumResult>(sql, spec, "podium", opts.signal, async (tx, p, run, _mixReady, checkpoint, started) => {
+    const source = factsSource(tx, p.dataset, false, true);
+    const id = role === "supplier" ? tx`d.supplier_id` : tx`d.authority_id`;
+    // The band of CÂȘTIGĂTORII is the list's, not a selection of the records (p.ctx holds it as the records' size): a place passes it already.
+    const where = andAll(tx, rowPredicates({ ...p.ctx, minEmployees: null, maxEmployees: null }));
+    const records = await run<PodiumFactRows>(tx`
+      select ${id}::text id, d.src collate "C" largest_src, max(d.closing_value)::text largest,
+             coalesce(sum(d.closing_value) filter (where d.n_winners > 1), 0)::text joint
+      from ${source} d
+      where ${where} and ${id} = any(${tx.array(places)}::bigint[])
+      group by 1, 2
+    `);
+    const profiles = await run<PodiumProfileRows>(tx`
+      select ep.entity_id::text id, ep.employees, ep.employees_year, ep.first_activity
+      from marts.entity_profile ep where ep.role = ${role} and ep.entity_id = any(${tx.array(places)}::bigint[])
+    `);
+    return { part: "podium", places: podiumFactsOf(records, profiles, places), checkpoint, tookMs: Date.now() - started };
+  }, places.join(","));
 }

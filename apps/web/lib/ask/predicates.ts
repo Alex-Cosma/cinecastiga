@@ -518,6 +518,9 @@ export function profilePredicates(ctx: PredicateCtx, role: "authority" | "suppli
   if (county) parts.push(profileCountyCond(sql, county, role, ctx.seatColumn));
   if (ctx.uatSiruta !== null && role === "authority") parts.push(sql`ef.entity_id = any(${sql.array(ctx.uatAuthorityIds)}::bigint[])`);
   if (ctx.kind && role === "authority") parts.push(authorityKindCond(sql, ctx.kindIds!, sql`ef.entity_id`));
+  // F6c (final entity_card §3.6): a firm's size is an attribute of the firm, not of a record, so the index takes it too:
+  // the profiles of the firms whose latest filing is in the band (a firm without one is in no band).
+  if (role === "supplier" && (ctx.minEmployees !== null || ctx.maxEmployees !== null)) parts.push(employeesCond(sql, ctx.minEmployees, ctx.maxEmployees, sql`ef.entity_id`));
   return parts;
 }
 

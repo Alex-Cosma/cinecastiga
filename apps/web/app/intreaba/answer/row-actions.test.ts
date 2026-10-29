@@ -22,12 +22,16 @@ describe("the «⋯» of an answer's row", () => {
     ]);
   });
 
-  it("on institutions, «Cine conduce?» by value and a trend; none on counties or the index", () => {
+  it("on institutions, «Cine conduce?» by value and a trend; none on counties, records and the page on the index's tied profiles", () => {
     expect(shape(entityRowActions(spec({ dim: "authority", topN: 10 }), row, on)).map((a) => a[0])).toEqual(["Vezi înregistrările", "Scoate din calcul", "Fișa instituției"]);
     expect(entityRowActions(spec({ block: "entity_card", dim: "supplier", rankBy: "value" }), row, on)).toHaveLength(3);
     expect(entityRowActions(spec({ block: "trend", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 } }), row, on)).toHaveLength(3);
     expect(entityRowActions(spec({ dim: "county", topN: 10 }), row, on)).toEqual([]);
-    expect(entityRowActions(spec({ block: "entity_card", dim: "supplier", rankBy: "risk" }), row, on)).toEqual([]);
+    // F6c: the profiles tied at the top of the index (entity_card-2): their records and their page, no calculation to leave them out of.
+    expect(shape(entityRowActions(spec({ block: "entity_card", dim: "supplier", rankBy: "risk" }), row, on))).toEqual([
+      ["Vezi înregistrările", "→", null, null], ["Fișa firmei", "↗", "/entitati/202", null],
+    ]);
+    expect(shape(entityRowActions(spec({ block: "entity_card", dim: "authority", rankBy: "risk" }), row, on)).map((a) => a[0])).toEqual(["Vezi înregistrările", "Fișa instituției"]);
   });
 
   it("leaves out an action without its handler, and disables «Scoate din calcul» at five, with the reason", () => {

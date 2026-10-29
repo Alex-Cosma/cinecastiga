@@ -3,6 +3,7 @@ import type { BlockData, DistributionDataV1, DistributionMember } from "../../li
 import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
 import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
 import { isHistoricalProfile } from "../../lib/ask/population";
+import { placeShare, podiumRest } from "../../lib/ask/entity-card-shared";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
 import { breakdownShown } from "./breakdown-answer";
@@ -109,6 +110,19 @@ function rowsOf(data: BlockData, spec: AskSpec): string[] {
       return networkCsvRows(data, spec, csvAny);
     case "entity_card": {
       const c = data.card, profile = isHistoricalProfile(spec);
+      // entity_card-2 (F6c): the podium's places with their share of the total and the rest, or every profile at the top level.
+      if (data.podium) {
+        const { places, total } = data.podium, rest = podiumRest(data.podium);
+        return [
+          "loc,nume,judet,valoare_lei,procent_din_total,inregistrari",
+          ...places.map((place, i) => [i + 1, csvQ(place.name), csvQ(place.county), place.value, placeShare(place, total)?.toFixed(4) ?? "", place.count].join(",")),
+          ...(rest && total ? [["", csvQ(`celelalte ${rest.entities}`), "", rest.value, rest.share.toFixed(4), Math.max(0, total.count - places.reduce((n, place) => n + place.count, 0))].join(",")] : []),
+        ];
+      }
+      if (data.ties) return [
+        "nume,judet,valoare_lei,achizitii,cri,semnale,flags",
+        ...data.ties.rows.map((row) => [csvQ(row.name), csvQ(row.county), row.value, row.count, data.ties!.level, row.nFlags, csvQ(row.flags.join("|"))].join(",")),
+      ];
       return [
         profile ? "nume,judet,valoare_lei,achizitii,cri,semnale,flags" : "nume,judet,valoare_lei,inregistrari",
         `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count}${profile ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
