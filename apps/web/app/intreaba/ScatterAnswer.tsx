@@ -8,7 +8,7 @@ import { LOCATE_DEBOUNCE_MS, LOCATE_MIN_CHARS } from "../../lib/ask/facet-parts"
 import { askLink } from "../../lib/ask/source-spec";
 import { questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
 import {
-  SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, flagChipLabel, listPlace, scatterFlagsOf, withScatterChoice,
+  SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, listPlace, scatterFlagsOf, withScatterChoice,
   type ScatterFlag, type ScatterFlagFact, type ScatterListRow,
 } from "../../lib/ask/scatter-shared";
 import type { AskSpec } from "../../lib/ask/spec";
@@ -395,4 +395,3 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   </div>;
 }
 
-export { flagChipLabel };
