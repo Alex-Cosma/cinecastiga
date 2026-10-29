@@ -148,7 +148,9 @@ describe.runIf(Boolean(connection))("F4: the firm's seat (dedicated rollback fix
         return runSpec(q, { block: "scatter", dim: "supplier", measure: "value", filters }, g).then((r) => {
           const d = data(r);
           if (d.block !== "scatter") throw new Error(d.block);
-          return d.points.map((p) => [p.entityId, p.county]).sort();
+          // scatter-2: a group of fewer than 10 profiles is listed whole, each with its county (the seat of a firm).
+          if (!("scatter" in d)) throw new Error("the old shape");
+          return d.scatter.list.map((r) => [r.entityId, r.county]).sort();
         });
       };
       expect(await cloud({})).toEqual([["10", "Cluj"], ["11", "Ilfov"], ["12", "Bucuresti"]]);

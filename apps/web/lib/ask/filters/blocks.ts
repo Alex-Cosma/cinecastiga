@@ -296,6 +296,7 @@ export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   sankey: entry({ rows: partners, strip: ["dataset", "sankeyShown"] }),
   fact_check: entry(),
   distribution: entry(),
-  scatter: entry(),
+  // F6b (final scatter §3.3–§3.4): who is named beside the chart — the list's order, then the signal — in rows (kit 14).
+  scatter: entry({ strip: ["scatterRankBy", "scatterFlag"] }),
   entity_card: entry({ rows: winners }),
 };

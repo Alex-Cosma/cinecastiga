@@ -365,6 +365,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   "filters.sharedPartners",
   // F6a: the distribution's comparison group (PEERS_RULE below; lib/ask/distribution.ts). The main domain is phase 2.
   "peers.similar", "peers.activity",
+  // F6b: the risk cloud's signal and the order of its list (SCATTER_RULES below; lib/ask/scatter.ts).
+  "scatter.flag", "scatter.rankBy",
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -379,7 +381,6 @@ export const READ_AHEAD_KEYS = {
   "filters.authorityKind=local_admin": "F5",
   // Phase 2 of F6a (DECISIONS A3-main-cpv-div): marts.entity_flags.main_cpv_div is built; the row waits for it.
   "peers.domain": "F6a-2",
-  "scatter.flag": "F6b", "scatter.rankBy": "F6b",
 } as const satisfies Record<string, string>;
 
 /** Options that belong to one block. On another block they cannot change the answer and are dropped. */
@@ -799,6 +800,31 @@ export function peersRule(spec: AskSpec): string | null {
   return null;
 }
 
+/** The signals of each role's profile on the risk cloud (plan §4.12): concentration is an institution's, dependence a firm's. */
+export const SCATTER_FLAGS_BY_ROLE: Readonly<Record<"authority" | "supplier", readonly (typeof SCATTER_FLAGS)[number][]>> = {
+  authority: ["da_split", "da_year_end", "da_rapid", "da_round", "da_concentration"],
+  supplier: ["da_split", "da_rapid", "da_round", "da_dependence"],
+};
+
+/**
+ * The rule of the risk cloud's signal (plan §3, §4.12; final scatter §4.4): the
+ * signals are the role's own, so the one an institution has is not offered on
+ * firms (and the other way round). The builder takes the signal away with a
+ * note when the subject changes (transitionQuestion); a link that carries
+ * one across is refused, never run on a group that cannot have it.
+ * FilterDef.validate of lib/ask/filters/defs/profile.ts; runnableError runs it.
+ */
+export const SCATTER_RULES: Readonly<Record<"flag", (spec: AskSpec) => string | null>> = {
+  flag: (spec) => {
+    const flag = spec.scatter?.flag;
+    if (!flag) return null;
+    const role = spec.dim === "supplier" ? "supplier" : "authority";
+    return SCATTER_FLAGS_BY_ROLE[role].includes(flag) ? null
+      : role === "supplier" ? "Concentrarea pe un furnizor se aplică instituțiilor. Alege alt semnal sau scoate-l."
+        : "Dependența de o autoritate se aplică firmelor. Alege alt semnal sau scoate-l.";
+  },
+};
+
 /** What this release can answer, on a parsed spec. Null when it can run. */
 export function runnableError(spec: AskSpec): string | null {
   const { block, dim, measure, filters } = spec;
@@ -835,7 +861,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES), ...Object.values(SCATTER_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

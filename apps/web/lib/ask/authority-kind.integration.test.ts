@@ -103,7 +103,11 @@ describe.skipIf(!url)("the kind of an institution, the same on every page (isola
       expect([kind, sources.total]).toEqual([kind, 4 * ofKind(kind).length]);
       const scatter = await runSpec(sql, { block: "scatter", dim: "authority", measure: "value", filters: { authorityKind: kind } }, {});
       if ("error" in scatter || scatter.data.block !== "scatter") throw new Error(`${kind}: ${"error" in scatter ? scatter.error : scatter.data.block}`);
-      expect([kind, ours(scatter.data.points.map((p) => p.entityId))]).toEqual([kind, ofKind(kind).sort()]);
+      // scatter-2: a group of at least 10 is a cloud of points; a smaller one is listed whole (final scatter §4.4).
+      const cloud = "scatter" in scatter.data ? scatter.data.scatter : null;
+      if (!cloud) throw new Error(`${kind}: the old shape`);
+      const ids = cloud.group.small ? cloud.list.map((r) => r.entityId) : "points" in cloud.cloud ? cloud.cloud.points.map((p) => p.id) : [];
+      expect([kind, ours(ids)]).toEqual([kind, ofKind(kind).sort()]);
     }
   });
 

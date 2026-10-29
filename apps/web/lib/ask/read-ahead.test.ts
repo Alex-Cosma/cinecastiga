@@ -21,8 +21,6 @@ const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=net
   "filters.dominantSupplier": { ...table, dim: "authority", filters: { dominantSupplier: true } },
   "filters.authorityKind=local_admin": { block: "map", measure: "value", filters: { authorityKind: "local_admin" } },
   "peers.domain": { block: "distribution", measure: "value", filters: { supplierId: 1 }, peers: { domain: true } },
-  "scatter.flag": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } },
-  "scatter.rankBy": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { rankBy: "value" } },
 };
 
 /** Any query fails the test: the refusal comes before grounding, coverage or identities. */
@@ -159,6 +157,8 @@ describe("today's questions", () => {
       "network.partners", "network.since", "network.order", "network.show", "network.signals", "sankey.shown",
       // F6a: the distribution's group, from the builder's «Față de cine?» and the rules interpreter.
       "peers.similar", "peers.activity",
+      // F6b: the risk cloud's order and signal, from the strip beside the chart and the rules interpreter.
+      "scatter.flag", "scatter.rankBy",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

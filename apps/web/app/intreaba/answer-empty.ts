@@ -29,7 +29,7 @@ export function emptyAnswer(data: BlockData): boolean {
     // F4: an empty group of a network with partners says so in its own list (NetworkAnswer).
     case "network": return data.lists.all.partners === 0 && data.lists.new.partners + data.lists.continuing.partners + data.lists.gone.partners === 0;
     case "sankey": return data.flows.length === 0;
-    case "scatter": return data.points.length === 0;
+    case "scatter": return "scatter" in data ? data.scatter.group.n === 0 : data.points.length === 0;
     default: return false;
   }
 }
