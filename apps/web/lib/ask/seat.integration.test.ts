@@ -6,6 +6,8 @@ import { facetCounts } from "./facets";
 import { retarget } from "./filters/retarget";
 import type { Grounding } from "./ground";
 import { forgetMartColumns } from "./mart-columns";
+import { peerDialog, peerMembers, readPeerFocal } from "./peer-groups";
+import { peerKey } from "./peer-groups-shared";
 import type { AskSpec } from "./spec";
 import { scoped, testDatabaseUrl } from "./test-fixture";
 
@@ -178,6 +180,36 @@ describe.runIf(Boolean(connection))("F4: the firm's seat (dedicated rollback fix
       const own = await facetCounts(q, { block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }, "seat");
       if (!("options" in own)) throw new Error(JSON.stringify(own));
       expect(own.options.map((o) => [o.value, o.n, o.value_ron])).toEqual([["București", 1, 1300], ["abroad", 1, 400], ["Ilfov", 1, 270], ["Cluj", 1, 150]]);
+    });
+  }, 60000);
+
+  it("places a firm among the firms of its seat: the distribution's group, its window and a bar's members (merge of F6a)", async () => {
+    // 11 moved from Cluj (SEAP) to Ilfov (ONRC); 10 sits in Cluj. A firm's "același județ" is its seat, as the answer's county.
+    const firm = (county?: string): [AskSpec, Grounding] => [
+      { block: "distribution", measure: "value", filters: { supplierId: 11, supplierName: "Mutata SRL", ...(county ? { county } : {}) } },
+      { supplier: { query: "Mutata SRL", entityId: "11", nameDisplay: "Mutata SRL", county: null, alternatives: [] }, ...(county ? { county: { query: county, canonical: county } } : {}) },
+    ];
+    const group = async (q: DbSql, county?: string) => {
+      const d = data(await runSpec(q, ...firm(county)));
+      if (d.block !== "distribution" || d.distribution.version !== 2) throw new Error(d.block);
+      return d.distribution;
+    };
+    await inFixture("f4_seat_peers", true, async (q) => {
+      expect((await readPeerFocal(q, "supplier", "11"))?.county).toBe("Ilfov");
+      const dialog = await peerDialog(q, "supplier", "11", { filters: {} });
+      expect([dialog?.facts.county, dialog?.sizes[peerKey(["county"])]]).toEqual(["Ilfov", 0]);
+      const own = await group(q, "Ilfov");
+      expect([own.focal.inGroup, own.group.ticks, own.group.others]).toEqual([true, ["county"], 0]);
+      // An old link's Cluj is the seat Cluj: firm 10 only (a group under 5), 11 outside; a bar's members are the same firm.
+      const old = await group(q, "Cluj");
+      expect([old.focal.inGroup, old.group.legacy, old.group.others, old.status]).toEqual([false, { county: "Cluj" }, 1, "small"]);
+      const bar = await peerMembers(q, "supplier", "11", { filters: { county: "Cluj" } }, 1, 0);
+      expect(bar && "members" in bar ? bar.members.map((m) => [m.entityId, m.county]) : bar).toEqual([["10", "Cluj"]]);
+    });
+    // Before the marts build fills the seat, the SEAP county stands in: 11 is a firm of Cluj, with 10.
+    await inFixture("f4_seat_peers_fallback", false, async (q) => {
+      const dialog = await peerDialog(q, "supplier", "11", { filters: {} });
+      expect([dialog?.facts.county, dialog?.sizes[peerKey(["county"])]]).toEqual(["Cluj", 1]);
     });
   }, 60000);
 
