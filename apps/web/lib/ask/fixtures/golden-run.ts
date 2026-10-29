@@ -32,8 +32,15 @@ function canonicalData(data: Record<string, unknown> | undefined): void {
   const stat = data["stat"] as { byStream?: { src: string }[] } | undefined;
   stat?.byStream?.sort(byKey((s) => s.src));
   if (data["block"] === "scatter") {
-    (data["points"] as { entityId: string }[]).sort(byKey((p) => p.entityId.padStart(20, "0")));
-    (data["density"] as { cells: number[][] } | undefined)?.cells.sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!);
+    // scatter-2: the cloud's points by id, the cells of its grey layers by position (group by); the list is in the strip's order.
+    const cloud = (data["scatter"] as { cloud?: { points?: { id: string }[]; bands?: { cells: number[][] }; flagged?: { cells: number[][] }; named?: { id: string }[] } } | undefined)?.cloud;
+    const cells = (a: number[], b: number[]) => a[0]! - b[0]! || a[1]! - b[1]!;
+    cloud?.points?.sort(byKey((p) => p.id.padStart(20, "0")));
+    cloud?.bands?.cells.sort(cells);
+    cloud?.flagged?.cells.sort(cells);
+    // An answer stored before it: a union of two samples and an unordered density.
+    (data["points"] as { entityId: string }[] | undefined)?.sort(byKey((p) => p.entityId.padStart(20, "0")));
+    (data["density"] as { cells: number[][] } | undefined)?.cells.sort(cells);
   }
 }
 

@@ -36,12 +36,29 @@ export function jitter(id: string): number {
   return ((h >>> 0) % 1000) / 1000 - 0.5;
 }
 
-const decade = (lg: number) => Math.floor(lg + 1e-9);
+/** A value on the horizontal axis in words: "1 mie", "50 mii", "2 mil.", "1 mld.". */
+export function axisWords(value: number): string {
+  if (value >= 1e9) return `${formatInt(value / 1e9)} mld.`;
+  if (value >= 1e6) return `${formatInt(value / 1e6)} mil.`;
+  const thousands = value / 1e3;
+  return thousands === 1 ? "1 mie" : `${formatInt(thousands)} mii`;
+}
 
-/** The decades of the horizontal axis with their words: "1 mie lei" … "1 mld. lei" (phone: every second one). */
-export const DECADES: readonly [number, string][] = [
-  [3, "1 mie"], [4, "10 mii"], [5, "100 mii"], [6, "1 mil."], [7, "10 mil."], [8, "100 mil."], [9, "1 mld."],
-];
+/**
+ * The ticks of the horizontal axis (a log scale): every decade from 1 mie to 1 mld.; a short range adds the 2 and the
+ * 5 of each decade, so the axis is never one lonely label. A phone keeps the decades, every second one when crowded.
+ */
+export function axisTicks(x0: number, x1: number, compact: boolean): { lg: number; text: string }[] {
+  const decades = Math.ceil(x1) - Math.floor(x0);
+  const steps = decades <= 3 && !compact ? [1, 2, 5] : [1];
+  const out: { lg: number; text: string }[] = [];
+  for (let d = Math.floor(x0); d <= Math.ceil(x1); d++) for (const step of steps) {
+    const value = step * 10 ** d, lg = Math.log10(value);
+    if (d < 3 || d > 9 || lg < x0 || lg > x1) continue;
+    out.push({ lg, text: axisWords(value) });
+  }
+  return compact && out.length > 4 ? out.filter((_, i) => i % 2 === 0) : out;
+}
 
 export interface Geometry {
   box: ChartBox;
@@ -70,8 +87,7 @@ export function geometry(data: ScatterV2, width: number): Geometry {
   const plotW = box.width - pad.l - pad.r, plotH = box.height - pad.t - pad.b, bandH = plotH / (data.levels + 1);
   const x = (value: number) => pad.l + ((Math.log10(Math.max(value, 1)) - x0) / (x1 - x0)) * plotW;
   const yBand = (k: number) => box.height - pad.b - (k + 0.5) * bandH;
-  const ticks = DECADES.filter(([lg]) => lg >= x0 && lg <= x1).filter((_, i) => !box.compact || i % 2 === 0)
-    .map(([lg, text]) => ({ lg, text, x: pad.l + ((lg - x0) / (x1 - x0)) * plotW }));
+  const ticks = axisTicks(x0, x1, box.compact).map((t) => ({ ...t, x: pad.l + ((t.lg - x0) / (x1 - x0)) * plotW }));
   return { box, pad, x0, x1, plotW, plotH, bandH, x, yBand, y: (k, id) => yBand(k) + jitter(id) * bandH * 0.62, ticks };
 }
 
@@ -151,9 +167,9 @@ export function listHeadWords(data: ScatterV2, shown: number): string {
 /** The (?) of the head: the order, the 20-acquisition floor and how many are in the cloud alone. */
 export function listHeadTip(data: ScatterV2): string {
   const order = data.rankBy === "risk" ? "Cele mai multe semnale; la egalitate, valoarea mai mare întâi." : "Cea mai mare valoare a achizițiilor directe.";
-  if (data.group.small) return `${order} Grupul e mic: sunt listate toate profilurile cu cel puțin ${SCATTER_CLOUD_MIN_DAS} achiziții directe.`;
+  if (data.group.small) return `${order} Grupul e mic: sunt listate toate profilurile cu cel puțin ${countWords(SCATTER_CLOUD_MIN_DAS, "achiziție directă", "achiziții directe")}.`;
   const only = data.group.n - data.group.nList;
-  return `${order} În listă intră cine are cel puțin ${SCATTER_LIST_MIN_DAS} achiziții directe.${only > 0 ? ` ${countWords(only, "profil e", "profiluri sunt")} doar în nor (${SCATTER_CLOUD_MIN_DAS}–${SCATTER_LIST_MIN_DAS - 1} achiziții).` : ""}`;
+  return `${order} În listă intră cine are cel puțin ${countWords(SCATTER_LIST_MIN_DAS, "achiziție directă", "achiziții directe")}.${only > 0 ? ` ${countWords(only, "profil e", "profiluri sunt")} doar în nor (${SCATTER_CLOUD_MIN_DAS}–${SCATTER_LIST_MIN_DAS - 1} achiziții).` : ""}`;
 }
 
 /** The sheet's facts line: "Achiziții directe: 21,0 mil. lei · Indice 0,6 · 3 din 5 semnale". */
@@ -175,14 +191,6 @@ export function scatterCsv(data: ScatterV2, csv: (value: unknown) => string): st
     const own = firm ? [r.employees ?? "", r.employeesYear ?? "", csv(r.county)] : [csv(kindWords(r.kind) ?? ""), csv(r.county)];
     return [i + 1, csv(r.name), ...own, r.value, r.nDas, r.cri, r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
   })];
-}
-
-/** The pill's noun: "82 de primării de comună", "72.655 de firme". */
-export function groupNoun(n: number, role: ScatterRole, kind: string | undefined): string {
-  if (role === "supplier") return countWords(n, "firmă", "firme");
-  const word = kind ? { one: KIND_ONE[kind] ?? "instituție publică", many: ({ comuna: "primării de comună", oras_municipiu: "primării de oraș și municipiu", consiliu_judetean: "consilii județene", spital: "spitale", scoala: "școli" } as Record<string, string>)[kind] ?? "instituții publice" }
-    : { one: "instituție publică", many: "instituții publice" };
-  return countWords(n, word.one, word.many);
 }
 
 export const rankHeading = (rank: "risk" | "value") => `după ${RANK_WORDS[rank]}`;

@@ -356,6 +356,8 @@ export function transitionQuestion(
     spec.rankBy = spec.rankBy ?? "value";
     spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
   }
+  // F6b (final scatter §4.2): a new risk cloud writes its order, so a saved link keeps its meaning if the default ever moves.
+  if (entering && block === "scatter") spec.scatter = { ...spec.scatter, rankBy: spec.scatter?.rankBy ?? "risk" };
   if (entering && isProfileQuestion(spec)) {
     if (["distribution", "compare"].includes(block)) spec.dim = focalRole(spec);
     else spec.dim = spec.dim === "supplier" ? "supplier" : "authority";

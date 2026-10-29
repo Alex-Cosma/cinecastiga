@@ -73,37 +73,37 @@ interface Picked {
 const FACTS_KEPT = new Map<string, Map<string, ScatterFlagFact[]>>();
 
 /** The facts of the profiles on screen, asked once the answer is drawn and as more are shown (part=profile). */
-function useProfileFacts(spec: AskSpec, wanted: readonly string[]): { facts: ReadonlyMap<string, ScatterFlagFact[]>; loading: boolean } {
+function useProfileFacts(spec: AskSpec, wanted: readonly string[]): { facts: ReadonlyMap<string, ScatterFlagFact[]> } {
   const key = useMemo(() => questionKey({ ...spec, scatter: undefined } as unknown as QuestionSpec), [spec]);
-  const [facts, setFacts] = useState<ReadonlyMap<string, ScatterFlagFact[]>>(() => FACTS_KEPT.get(key) ?? new Map());
-  const [loading, setLoading] = useState(false);
-  const asked = useRef(new Set<string>());
-  useEffect(() => { setFacts(FACTS_KEPT.get(key) ?? new Map()); asked.current = new Set(); }, [key]);
-  const need = wanted.filter((id) => !facts.has(id) && !asked.current.has(id)).slice(0, SCATTER_LIST_MAX);
+  const [store, setStore] = useState<{ key: string; facts: ReadonlyMap<string, ScatterFlagFact[]> }>(() => ({ key, facts: FACTS_KEPT.get(key) ?? new Map() }));
+  const facts = store.key === key ? store.facts : FACTS_KEPT.get(key) ?? EMPTY_FACTS;
+  // The ids asked for this question: another question starts again, an answer for an older one is dropped.
+  const asked = useRef({ key, ids: new Set<string>() });
+  if (asked.current.key !== key) asked.current = { key, ids: new Set() };
+  const need = wanted.filter((id) => !facts.has(id) && !asked.current.ids.has(id)).slice(0, SCATTER_LIST_MAX);
   const needKey = need.join(",");
   useEffect(() => {
     if (!need.length) return;
-    const controller = new AbortController();
-    need.forEach((id) => asked.current.add(id));
-    setLoading(true);
+    const mine = asked.current;
+    need.forEach((id) => mine.ids.add(id));
+    const forget = () => need.forEach((id) => mine.ids.delete(id));
     void fetch("/api/ask/facets", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ spec: { ...spec, scatter: undefined }, part: "profile", ids: need }), signal: controller.signal,
+      body: JSON.stringify({ spec: withScatterChoice(spec, "flag:"), part: "profile", ids: need }),
     }).then(async (r) => (await r.json().catch(() => null)) as ({ ok: boolean } & ProfileFactsResult) | null).then((answer) => {
-      if (controller.signal.aborted) return;
-      setLoading(false);
-      if (!answer?.ok) { need.forEach((id) => asked.current.delete(id)); return; }
-      setFacts((current) => {
-        const next = new Map(current);
+      if (asked.current !== mine) return;
+      if (!answer?.ok) { forget(); return; }
+      setStore((current) => {
+        const next = new Map(current.key === key ? current.facts : []);
         for (const row of answer.rows) next.set(row.id, row.flags);
         FACTS_KEPT.set(key, next);
-        return next;
+        return { key, facts: next };
       });
-    }).catch(() => { if (!controller.signal.aborted) { setLoading(false); need.forEach((id) => asked.current.delete(id)); } });
-    return () => { controller.abort(); need.forEach((id) => asked.current.delete(id)); setLoading(false); };
+    }).catch(forget);
   }, [needKey, key]); // eslint-disable-line react-hooks/exhaustive-deps -- `need` is its key
-  return { facts, loading };
+  return { facts };
 }
+const EMPTY_FACTS: ReadonlyMap<string, ScatterFlagFact[]> = new Map();
 
 /** The width of an element, for a chart drawn in real pixels (text keeps its size; a phone gets its own proportions). */
 function useWidth(): [React.RefObject<HTMLDivElement | null>, number] {
@@ -126,6 +126,9 @@ const flagHelp = (role: "authority" | "supplier") => <>
   <span>Cât de des apare fiecare semnal în grup. Un semnal pe care îl are jumătate din grup nu iese din tipar. Ales, păstrează în listă doar profilurile cu el; norul rămâne tot grupul.</span>
   <ul className="sc-tip-list">{scatterFlagsOf(role).map((code) => <li key={code}><b>{flagLabel(code)}.</b> {flagEntityRule(code)}</li>)}</ul>
 </>;
+
+/** A name on the chart: without the parenthesis ("Comuna Sageata (Primaria Comunei Sageata)"), short. */
+const chartName = (name: string): string => { const short = cleanName(name).replace(/\s*\(.*$/, ""); return short.length > 28 ? `${short.slice(0, 27)}…` : short; };
 
 export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProps) {
   const evidence = useAnswerEvidence();
@@ -155,7 +158,20 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const { facts } = useProfileFacts(spec, wanted);
   const rank = data.rankBy;
   const noun = firm ? "firmă" : "instituție";
-  const named = rows.slice(0, g.box.compact ? 3 : 6);
+  const labels = useMemo(() => {
+    // The first names of the list on the chart, each where it fits: one that would sit on another label is left to the list.
+    const placed: { x0: number; x1: number; y0: number; y1: number }[] = [], out: { id: string; x: number; y: number; anchor: "start" | "end"; text: string }[] = [];
+    for (const row of rows.slice(0, g.box.compact ? 3 : 6)) {
+      const d = all.find((x) => x.point.id === row.entityId);
+      if (!d) continue;
+      const text = chartName(row.name), w = text.length * 6.3, right = d.x < g.box.width * 0.62;
+      const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
+      if (placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1)) continue;
+      placed.push(box);
+      out.push({ id: row.entityId, x, y: d.y + 3, anchor: right ? "start" : "end", text });
+    }
+    return out;
+  }, [rows, all, g.box.compact, g.box.width]);
 
   // The legend, the cloud and the list speak of the same profiles with the same classes.
   const total = data.chosen ? data.chosen.nList : data.group.nList;
@@ -164,7 +180,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     <StripRow label="Primele după" tip={{ title: "Primele după", text: rank === "risk"
       ? "Semnale: cele mai multe semnale; la egalitate, valoarea mai mare întâi. În listă: cine are cel puțin 20 de achiziții directe, ca la «Cel mai ridicat indice de risc». Semnalele apar mai des la cine cumpără mult."
       : "Valoare: cea mai mare valoare a achizițiilor directe. Linia punctată: cele mai mari 10% din grup. Contractele din proceduri nu intră." }}>
-      <Segmented label="Primele după" full value={chosen.rank ?? rank}
+      <Segmented label="Primele după" value={chosen.rank ?? rank}
         options={[{ value: "risk", label: "Semnale" }, { value: "value", label: "Valoare" }]}
         onChange={(value) => { if (value !== (chosen.rank ?? rank)) { setChosen((c) => ({ ...c, rank: value })); onStrip(`rankBy:${value}`); } }} />
     </StripRow>
@@ -292,7 +308,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         })}
         {g.ticks.map((t) => <g key={t.lg}>
           <line x1={t.x} x2={t.x} y1={g.pad.t} y2={g.box.height - g.pad.b} className="sc-grid" />
-          <text x={t.x} y={g.box.height - g.pad.b + 16} textAnchor="middle" className="sc-tick">{g.box.compact ? t.text : `${t.text} lei`}</text>
+          <text x={t.x} y={g.box.height - g.pad.b + 16} textAnchor="middle" className="sc-tick">{t.text}{g.box.compact ? "" : " lei"}</text>
         </g>)}
         <text x={g.pad.l + g.plotW / 2} y={g.box.height - 6} textAnchor="middle" className="sc-axis">achiziții directe (scară logaritmică)</text>
         {data.p90 > 0 && <g className={`sc-p90${rank === "value" ? " is-on" : ""}`}>
@@ -304,12 +320,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         {all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}
         {all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}
         {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""}`} />)}
-        {named.map((row) => {
-          const d = all.find((x) => x.point.id === row.entityId);
-          if (!d) return null;
-          const right = d.x < g.box.width * 0.62;
-          return <text key={row.entityId} x={d.x + (right ? 8 : -8)} y={d.y + 3} textAnchor={right ? "start" : "end"} className="sc-name">{cleanName(row.name).slice(0, 26)}</text>;
-        })}
+        {labels.map((l) => <text key={l.id} x={l.x} y={l.y} textAnchor={l.anchor} className="sc-name">{l.text}</text>)}
         {picked && (() => {
           const d = all.find((x) => x.point.id === picked.id);
           return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring" /> : null;
@@ -330,7 +341,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     </figure>}
 
     <div className="sc-find">
-      <Locate label={firm ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={searching} onSearch={(q) => void search(q)} delay={LOCATE_DEBOUNCE_MS} minChars={LOCATE_MIN_CHARS}
+      <Locate key={`${data.flag ?? ""}|${data.rankBy}`} label={firm ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={searching} onSearch={(q) => void search(q)} delay={LOCATE_DEBOUNCE_MS} minChars={LOCATE_MIN_CHARS}
         emptyText={`Niciun profil în acest grup. Încearcă un nume mai scurt.`}
         onPick={(result) => { const m = found?.results.find((x) => x.id === result.id); if (m) openMatch(m, total); }}
         found={found && found.name ? { name: cleanName(found.name), place: found.place } : null} />

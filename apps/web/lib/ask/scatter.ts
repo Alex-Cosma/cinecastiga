@@ -1,6 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { readAuthorityKinds } from "./authority-kind";
 import { fold } from "./predicates";
+import { countyDisplay } from "./resolved-spec";
 import { instanceFacts, recordFacts } from "./scatter-records";
 import {
   SCATTER_CLOUD_MIN_DAS, SCATTER_CLOUD_MIN_PROFILES, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, SCATTER_POINTS_MAX, flagBit, scatterFlagsOf, scatterLevels, scatterRank,
@@ -107,7 +108,7 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
     // Every signal of the profile, in the strip's order, with the years or the share its instances say.
     const facts: ScatterFlagFact[] = flags.filter((code) => have.includes(code)).map((code) => cheap.find((f) => f.code === code) ?? { code });
     const row: ScatterListRow = {
-      entityId: r.id, name: r.name ?? "?", county: r.county, value: Number(r.total_ron ?? 0), nDas: Number(r.n_das), cri: Number(r.cri), nFlags: Number(r.n_flags), flags: facts,
+      entityId: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, value: Number(r.total_ron ?? 0), nDas: Number(r.n_das), cri: Number(r.cri), nFlags: Number(r.n_flags), flags: facts,
     };
     if (kinds) row.kind = kinds.get(r.id) ?? null;
     if (role === "supplier") { const f = filed.get(r.id); row.employees = f?.employees ?? null; row.employeesYear = f?.employees_year ?? null; }
@@ -210,7 +211,7 @@ export async function scatterLocate(s: DbSql, input: ScatterInput, q: string, li
     const have = Array.isArray(r.flags) ? r.flags : [];
     const why = rankIn !== null ? null : Number(r.n_das) < listMin ? "below" as const : "signal" as const;
     return {
-      id: r.id, name: r.name ?? "?", county: r.county, rank: rankIn, value: Number(r.total_ron ?? 0), n: Number(r.n_das),
+      id: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, rank: rankIn, value: Number(r.total_ron ?? 0), n: Number(r.n_das),
       profile: { flags: have, nFlags: Number(r.n_flags), cri: Number(r.cri), why },
     };
   });

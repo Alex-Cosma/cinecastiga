@@ -76,6 +76,17 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
   compare: [
     { re: /\b(?:clienti(?:i|lor)? comuni|aceiasi clienti|acelorasi clienti)\b/, path: "filters.sharedPartners", value: true },
   ],
+  // F6b (plan §4.2, final scatter §4.2): the risk cloud's signal and the order of its list. The signal's words are also
+  // cues of the signals question (rules.ts), so they name it; "cele mai mari valori" orders the list by value.
+  scatter: [
+    { re: /\bfractionar\w*|\bimpartir\w* (?:in|a) (?:mai multe )?achizitii\b/, path: "scatter.flag", value: "da_split", quiet: true },
+    { re: /\b(?:varf(?:ul)?|concentrar\w*|cheltuiel\w*|achizitii\w*) (?:de |in |la )?(?:final de an|decembrie)\b/, path: "scatter.flag", value: "da_year_end", quiet: true },
+    { re: /\bfinalizar\w* rapid\w*|\bfinalizat\w* rapid\b/, path: "scatter.flag", value: "da_rapid", quiet: true },
+    { re: /\b(?:valoar\w* )?aproape de prag\b/, path: "scatter.flag", value: "da_round", quiet: true },
+    { re: /\bconcentrar\w* pe un (?:singur )?furnizor\b/, path: "scatter.flag", value: "da_concentration", quiet: true },
+    { re: /\bdependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)\b/, path: "scatter.flag", value: "da_dependence", quiet: true },
+    { re: /\b(?:cele mai mari valori|dupa valoare|dupa suma)\b/, path: "scatter.rankBy", value: "value", quiet: true },
+  ],
   // F6a: the distribution's group (final distribution §7.12). "față de" stays the comparison cue's word, so the
   // phrases are the rule's own; "din județul lui" and the whole country need the entity (lib/intent/server.ts).
   distribution: [

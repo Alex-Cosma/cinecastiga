@@ -4,7 +4,7 @@ import { comparableMethodologies, type MonitoringRunDetail } from "../../lib/mon
 import { answerCore, KEY_VERSION_NOTES, KEY_VERSIONS } from "../../lib/ask/answer-core";
 import { formatExactDecimal } from "../../lib/format";
 import { countWords } from "../../lib/ask/answer-text";
-import { FLAG_META } from "../../lib/flags";
+import { flagLabel } from "../../lib/flags";
 import { TREND_EQUAL_LABEL, TREND_LIST_LABELS } from "../../lib/ask/filters/defs/trend";
 
 const labels: Record<string, string> = {
@@ -128,7 +128,7 @@ export function formatResultValue(value: unknown, field: string): string {
   if (value === undefined) return "Nu figura în această versiune";
   if (value === null) return "Necunoscut / indisponibil";
   if (typeof value === "boolean") return value ? "Da" : "Nu";
-  if (Array.isArray(value)) return value.length ? value.map(item => field === "flags" ? FLAG_META[String(item)]?.title ?? String(item) : formatResultValue(item, field)).join("; ") : "Niciunul";
+  if (Array.isArray(value)) return value.length ? value.map(item => field === "flags" ? flagLabel(String(item)) : formatResultValue(item, field)).join("; ") : "Niciunul";
   if (typeof value === "number" || typeof value === "string" && /^-?\d+(?:\.\d+)?$/.test(value)) {
     const text = typeof value === "number" ? expandedNumber(value) : value;
     if (["year", "yearA", "yearB", "yearFirst", "yearLast", "code", "categoryCode", "daCode"].includes(field)) return text;

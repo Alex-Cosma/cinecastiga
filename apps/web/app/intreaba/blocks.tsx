@@ -98,7 +98,7 @@ export function useTip() {
   const hide = () => setTip(null);
   return { bind, bindClip, show, hide, el, active: tip?.title ?? null };
 }
-import { FLAG_META, criBand } from "@/lib/flags";
+import { FLAG_META, criBand, flagLabel } from "@/lib/flags";
 import type {
   DistributionData,
   BreakdownSlice,
@@ -111,7 +111,7 @@ import type {
 /** Renderers for the risk/relationship result blocks (mockup blocks 5–13). */
 
 function flagTitle(code: string): string {
-  return FLAG_META[code]?.title ?? code;
+  return flagLabel(code);
 }
 
 /* ── distribution ─────────────────────────────────────────────────────── */

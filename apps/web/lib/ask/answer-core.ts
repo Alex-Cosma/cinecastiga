@@ -32,6 +32,9 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   // fact_check-2 (F6a, plan §4.10): three verdicts (Da · Acord-cadru · Nu), the rows outside the sums say "Da"
   // ("Da · nu intră în sume"), framework ceilings never do; the profile, the weight and the whole relation beside it.
   fact_check: "fact_check-2",
+  // scatter-2 (F6b, plan §4.12): the group's cloud by number of criteria, the list of the strip's order and signal with
+  // its places, instead of two samples of 200 and a density; a watch hears of it once.
+  scatter: "scatter-2",
 };
 
 /** A key whose meaning a release changed, on the questions that carry it. */
@@ -190,6 +193,7 @@ export function answerCore(block: string, data: unknown): unknown {
   if (block === "compare" && object(data) && Array.isArray(data.entities)) return compareCore(data);
   if (block === "breakdown" && object(data)) { const { base: _base, streams: _streams, ...core } = data; return core; }
   if (block === "distribution") return distributionCore(data);
+  if (block === "scatter") return scatterCore(data);
   if (block === "fact_check") return factCheckCore(data);
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
   const { groups: _groups, composition, noun: _noun, rowFacts: _facts, withoutFiling: _unfiled, ...core } = data;
@@ -237,6 +241,21 @@ function distributionCore(data: unknown): unknown {
     position: d.position, hist: d.hist,
     perCriterion: Array.isArray(d.perCriterion) ? d.perCriterion.map((c) => object(c) ? { code: c.code, others: c.others } : c) : d.perCriterion,
     members: Array.isArray(d.members) ? d.members.map((m) => object(m) ? { entityId: m.entityId, nFlags: m.nFlags } : m) : d.members,
+  } };
+}
+
+/**
+ * scatter-2 (F6b): the group, the criteria's counts and the list the question asks for (who, in which order, with which
+ * signals and how much); not the points of the chart, the top 10% line, the names' spelling, the county and the years or
+ * shares a signal carries (descriptions that move with every refresh). An answer stored before scatter-2 is whole.
+ */
+function scatterCore(data: unknown): unknown {
+  if (!object(data) || !object(data.scatter) || data.scatter.version !== 2) return data;
+  const s = data.scatter;
+  return { ...data, scatter: {
+    version: 2, role: s.role, rankBy: s.rankBy, flag: s.flag, group: s.group, criteria: s.criteria, chosen: s.chosen,
+    list: Array.isArray(s.list) ? s.list.map((r) => object(r) ? { entityId: r.entityId, value: r.value, nDas: r.nDas, nFlags: r.nFlags,
+      flags: Array.isArray(r.flags) ? r.flags.map((f) => object(f) ? f.code : f) : r.flags } : r) : s.list,
   } };
 }
 
