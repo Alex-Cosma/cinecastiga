@@ -19173,15 +19173,9 @@
    },
    "answer": {
     "status": 200,
-    "ok": false,
-    "error": "Niciun rezultat pentru aceste filtre.",
-    "caveats": [
-     "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
-     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
-     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
-     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
-    ],
+    "ok": true,
+    "question": null,
+    "model": null,
     "spec": {
      "block": "entity_card",
      "measure": "value",
@@ -19191,7 +19185,31 @@
      "dim": "supplier",
      "rankBy": "risk"
     },
-    "question": null
+    "pills": ["primii la egalitate","cea mai riscantă (CRI)","furnizori","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "caveats": [
+     "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "entity_card",
+     "card": {
+      "entityId": "",
+      "name": "",
+      "county": null,
+      "role": "supplier",
+      "value": 0,
+      "count": 0,
+      "cri": null,
+      "nFlags": 0,
+      "flags": [],
+      "population": null
+     },
+     "empty": true
+    },
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
    },
    "sources": {
     "status": 200,
