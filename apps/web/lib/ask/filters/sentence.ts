@@ -1,5 +1,5 @@
 import { countyIsFirmSeat } from "../population";
-import { firmSeatWords, seatCountyWords } from "../seat";
+import { firmSeatWords, firmsKindPhrase, seatCountyWords } from "../seat";
 import { PROCEDURE_WORDS, PURCHASE_KIND_WORDS, type Procedure, type PurchaseKind } from "../purchase";
 import {
   KIND_ONE, KIND_OPTIONS, KIND_WORDS, compareWithLabel, countyWords, entityLabel, leaderAxis, subjectWords, type QuestionSpec,
@@ -13,7 +13,7 @@ import { lastNetworkYear } from "./defs/network";
 import { NETWORK_ORDER_WORDS, NETWORK_VERBS, networkShow } from "../network-shared";
 import type { FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
 import {
-  TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, employeesPhrase, localityName, periodPhrase, periodWordsWith,
+  TREND_ORDER_WORDS, adminLead, adminPhrase, employeesOnBands, localityName, periodPhrase, periodWordsWith,
   streamWords, trendBaseWho,
 } from "./words";
 
@@ -259,13 +259,17 @@ type FromWhom = "supplier" | "admin" | "employees";
  * (kit §5.24), so one phrase says the firm, else the person, else the size.
  * `offered` are the tabs of this question, in that order.
  */
-function fromWhom(out: Tokens, spec: Spec, ctx: FilterCtx, offered: readonly FromWhom[], verb: string): void {
-  const id = offered.find((tab) => tab === "supplier" ? ctx.named.supplier : tab === "admin" ? ctx.named.admin : hasEmployees(spec));
+function fromWhom(out: Tokens, spec: Spec, ctx: FilterCtx, offered: readonly FromWhom[], verb: string, opts: { seat?: boolean } = {}): void {
+  // On institutions and counties „Ce fel de firme” also holds the firms' seat (S4r-from-seat): "de la [firme cu sediul în alt județ]".
+  const seat = Boolean(opts.seat) && offered.includes("employees");
+  const seated = seat && has(spec.filters.firmSeat);
+  const id = offered.find((tab) => tab === "supplier" ? ctx.named.supplier : tab === "admin" ? ctx.named.admin : hasEmployees(spec) || seated);
   if (!id) return;
   const value = id === "supplier" ? entityLabel(spec, "supplier")
     : id === "admin" ? adminPhrase(spec.filters.adminName)
-      : employeesPhrase(spec.filters.minEmployees, spec.filters.maxEmployees)!;
-  out.text(` ${verb} `).slot(id, "from", value, { writes: offered, picker: "from" });
+      : firmsKindPhrase(spec.filters, seat)!;
+  const says: FilterId[] = id !== "employees" ? [id] : [...(hasEmployees(spec) ? ["employees" as const] : []), ...(seated ? ["firmSeat" as const] : [])];
+  out.text(` ${verb} `).slot(id, "from", value, { writes: seat ? [...offered, "firmSeat"] : offered, picker: "from", says });
 }
 
 /**
@@ -382,7 +386,7 @@ const table: Write = (out, spec, ctx, labels) => {
     // One institution would be one county: the buyers of a county ranking are kinds (plan §4.2).
     buyer(out, spec, ctx, { place: "never", locality: false, authority: false });
     domain(out, spec, labels, " pentru ", " ");
-    fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la");
+    fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la", { seat: true });
     noun(out.text(", prin "), spec, "via");
   } else {
     out.text("Ce ").slot("dim", "ranked", kindBare(spec), { says: subjectSays(spec), writes: ["authorityKind"], picker: "subject" });
@@ -390,7 +394,7 @@ const table: Write = (out, spec, ctx, labels) => {
     else place(out, spec, ctx);
     out.text(" cumpără cel mai mult");
     domain(out, spec, labels, " pentru ", " ");
-    fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la");
+    fromWhom(out, spec, ctx, ["supplier", "admin", "employees"], "de la", { seat: true });
     noun(out.text(", prin "), spec, "via");
   }
   period(out, spec);

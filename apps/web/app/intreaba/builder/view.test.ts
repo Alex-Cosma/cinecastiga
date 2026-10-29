@@ -9,7 +9,7 @@ import Invitations from "./Invitations";
 import Sentence from "./Sentence";
 import UnderChips from "./UnderChips";
 import { builderView, onlyExclusions, patchDraft, withoutExclusions } from "./view";
-import { CURRENT_ROW, bandValues, bandsChoice, currentRow, fromTabs, listOptions, periodPresets, windowKind } from "./window-model";
+import { CURRENT_ROW, bandValues, bandsChoice, currentRow, firmsKindButton, firmsKindChoices, firmsKindSeatOptions, fromSeat, fromTab, fromTabs, listOptions, periodPresets, windowKind } from "./window-model";
 
 /*
  * F1b-builder-a: the builder drawn from the registry (view.ts, window-model.ts)
@@ -280,6 +280,26 @@ describe("the windows (component 9 and the composed pickers)", () => {
     expect(currentRow("from", from, ["supplier", "admin", "employees"])?.label).toBe("URBAN SCOPE");
     expect(currentRow("from", SEVEN.table!, ["supplier", "admin", "employees"])?.label).toBe("Firme cu 1–9 angajați");
     expect(currentRow("from", q({ block: "stat", filters: { adminName: "ION", adminPersonKey: "k" } }), ["supplier", "admin"])?.label).toBe("Firmele conduse azi de ION");
+  });
+
+  it("hold the sellers' seat in „De la cine › Ce fel de firme” on institutions (S4r-from-seat): tab, current row, chips, button", () => {
+    const institutions = q({ block: "table", dim: "authority", topN: 10, filters: { county: "Cluj" } });
+    const view = builderView(institutions);
+    const invite = view.windows[view.invites.find((i) => i.label === "De la cine")!.id]!;
+    expect([fromTabs(invite), fromSeat(invite), fromTab(invite, institutions)]).toEqual([["supplier", "admin", "employees"], true, "supplier"]);
+    // The total's tab keeps the size alone.
+    const stat = builderView(SEVEN.stat!);
+    expect(fromSeat(stat.windows[stat.invites[0]!.id]!)).toBe(false);
+    const seated = q({ block: "table", dim: "authority", topN: 10, filters: { county: "Cluj", firmSeat: "other" } });
+    const phrase = win(seated, "De la cine");
+    expect([fromSeat(phrase), fromTab(phrase, seated), currentRow("from", seated, fromTabs(phrase), true)?.label]).toEqual([true, "employees", "Firme cu sediul în alt județ"]);
+    expect(firmsKindSeatOptions(seated, false).map((o) => [o.label, o.disabled ?? ""])).toEqual([["Oriunde", ""], ["În județul Cluj", ""], ["În alt județ", ""], ["În străinătate", ""]]);
+    // Beside a band, abroad says why: a foreign firm has no filing.
+    expect(firmsKindSeatOptions(seated, true)[3]!.disabled).toBe("Firmele străine nu au bilanț și nici număr la Registrul Comerțului. Scoate angajații sau alege alt sediu.");
+    expect(firmsKindButton(seated, bandsChoice(["1-9"]), "other")).toBe("Firme cu 1–9 angajați, cu sediul în alt județ");
+    expect(firmsKindButton(seated, bandsChoice([]), "same")).toBe("Firme cu sediul în județul Cluj");
+    expect(firmsKindButton(seated, bandsChoice([]), "none")).toBe("Orice firmă");
+    expect(firmsKindChoices(bandsChoice([]), "none")).toEqual([{ filter: "employees", value: undefined }, { filter: "firmSeat", value: undefined }]);
   });
 
   it("count a year whose data reach 31 Dec as complete («compleți»: without a year still running)", () => {

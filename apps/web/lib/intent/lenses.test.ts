@@ -306,6 +306,10 @@ describe("the selection's filters in words: the kind, the size, the firm's seat 
     expect((await ask("ce firme din afara judetului castiga la spitalul judetean buzau")).r.spec?.filters.firmSeat).toBe("other");
     expect((await ask("firmele locale din buzau")).r.spec?.filters).toEqual({ county: "Buzău", firmSeat: "same" });
     expect((await ask("ce firme din judet castiga la primaria buzau")).r.spec?.filters.firmSeat).toBe("same");
+    // On institutions it is „de la [firme cu sediul …]” (S4r-from-seat).
+    const buyers = await ask("ce institutii din cluj cumpara de la firme straine");
+    expect(buyers.r.spec).toMatchObject({ block: "table", dim: "authority", filters: { county: "Cluj", firmSeat: "abroad" } });
+    expect(buyers.r.sentence).toContain("de la firme cu sediul în străinătate");
   });
   it("every sentence says the kind, the size and the seat its spec runs (scope-check)", async () => {
     for (const q of ["ce firme castiga lucrari in buzau", "servicii in cluj", "contractele de peste 1 milion de lei din cluj", "achizitii sub 10.000 lei in cluj",

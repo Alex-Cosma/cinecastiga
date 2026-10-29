@@ -35,7 +35,7 @@ import { peerWindowTip } from "../../../lib/ask/peer-groups-shared";
 import type { ChangeSource, KitRestRow } from "./kit-types";
 import type { BuilderWindowSpec } from "./view";
 import {
-  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, seatClearChoices, seatCurrentRow, seatOptions, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, fromTab, fromTabs,
+  CURRENT_ROW, SERIES_FIRST_YEAR, UNKNOWN_SEAT, bandCount, seatClearChoices, seatCurrentRow, seatOptions, bandValues, bandsChoice, choiceWords, countedOptions, countedRest, countySide, currentRow, emptyReason, firmsKindButton, firmsKindChoices, firmsKindSeatOptions, fromSeat, fromTab, fromTabs,
   listOptions, optionValue, periodPresets, presetCounts, seriesMonthPresets, seriesMonthsError, shareText, windowKind, windowTip, type ChoiceOption, type CoverageSpan,
 } from "./window-model";
 import { useFacet } from "./use-facet";
@@ -645,33 +645,51 @@ function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: 
 }
 
 function FromWindow({ win, draft, onPick }: { win: BuilderWindowSpec; draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
-  const tabs = fromTabs(win);
+  const tabs = fromTabs(win), seat = fromSeat(win);
   const [tab, setTab] = useState(fromTab(win, draft));
   const names = { supplier: "O firmă", admin: "Administrator", employees: "Ce fel de firme" } as const;
-  const set = tabs.some((t) => t === "supplier" ? draft.filters.supplierName || draft.filters.supplierId : t === "admin" ? draft.filters.adminName || draft.filters.adminPersonKey : draft.filters.minEmployees !== undefined || draft.filters.maxEmployees !== undefined);
+  const set = tabs.some((t) => t === "supplier" ? draft.filters.supplierName || draft.filters.supplierId : t === "admin" ? draft.filters.adminName || draft.filters.adminPersonKey
+    : draft.filters.minEmployees !== undefined || draft.filters.maxEmployees !== undefined || seat && draft.filters.firmSeat);
+  // „Orice firmă” removes the seat too where the tab holds it.
+  const any: Choice[] = [{ filter: tabs[0]!, value: undefined }, ...(seat && draft.filters.firmSeat ? [{ filter: "firmSeat" as const, value: undefined }] : [])];
   return <>
-    <ChoiceList label="De la cine" options={[{ value: "any", label: "Orice firmă", choice: { filter: tabs[0]!, value: undefined } }]} value={set ? null : "any"} current={set ? currentRow("from", draft, tabs) : null}
-      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />
+    <ChoiceList label="De la cine" options={[{ value: "any", label: "Orice firmă", choice: any[0]! }]} value={set ? null : "any"} current={set ? currentRow("from", draft, tabs, seat) : null}
+      onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : any)} />
     {tabs.length > 1 && <Segmented label="De la cine" mode="tabs" full value={tab} options={tabs.map((t) => ({ value: t, label: names[t] }))} onChange={(value) => setTab(value as typeof tab)} />}
     <div className="qb-tabpanel">
       {tab === "supplier" && <FocalSearch draft={draft} roles={["supplier"]} onPick={onPick} />}
       {tab === "admin" && <PersonSearch onPick={onPick} />}
-      {tab === "employees" && <BandsWindow draft={draft} onPick={onPick} />}
+      {tab === "employees" && <BandsWindow draft={draft} onPick={onPick} seat={seat} />}
     </div>
   </>;
 }
 
-function BandsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void }) {
+/**
+ * The bands of employees; with `seat` (De la cine › Ce fel de firme on a ranking of institutions or counties,
+ * S4r-from-seat) also the firms' seat as a chip, and the bottom button says both (kit §441: what applies).
+ */
+function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onPick: (choices: Choice[]) => void; seat?: boolean }) {
   const [values, setValues] = useState(bandValues(draft));
+  const [where, setWhere] = useState(typeof draft.filters.firmSeat === "string" ? draft.filters.firmSeat : "none");
   const range = bandRange(EMPLOYEE_BANDS, values);
   // The firms of each band under it, and those without a filing in the rest row (kit §3 item 10, R5).
   const counts = useFacet(draft, "employees");
   const bands = EMPLOYEE_BANDS.map((band) => { const count = bandCount(counts, band.value); return count ? { ...band, count } : band; });
+  // A foreign firm has no filing: a band leaves „În străinătate” shown with its reason, and a band chosen after it moves the seat to „Oriunde”.
+  const seats = seat ? firmsKindSeatOptions(draft, values.length > 0) : [];
+  const chooseBands = (next: string[]) => { setValues(next); if (next.length && where === "abroad") setWhere("none"); };
+  const clear: Choice[] = [{ filter: "employees", value: undefined }, ...(seat ? [{ filter: "firmSeat" as const, value: undefined }] : [])];
   return <>
-    <Bands label="Angajați" bands={bands} value={values} onChange={setValues} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
+    <Bands label="Angajați" bands={bands} value={values} onChange={chooseBands} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
+    {seat && <div className="qb-row qb-tipwrap qb-from-seat">
+      <span className="qb-row-label">Sediul firmei <HelpTip tip={{ id: "sediul-firmei" }} /></span>
+      <Pills label="Sediul firmei" options={seats} value={where} onChange={(value) => setWhere(value)} />
+    </div>}
     <div className="qb-pop-foot">
-      <button type="button" className="qb-link" onClick={() => onPick([{ filter: "employees", value: undefined }])}>Scoate condiția</button>
-      <button type="button" className="qb-primary" onClick={() => onPick([bandsChoice(values)])}>{range ? bandsWords(range) : "Orice mărime"}</button>
+      <button type="button" className="qb-link" onClick={() => onPick(clear)}>Scoate condiția</button>
+      <button type="button" className="qb-primary" onClick={() => onPick(seat ? firmsKindChoices(bandsChoice(values), where) : [bandsChoice(values)])}>
+        {seat ? firmsKindButton(draft, bandsChoice(values), where) : range ? bandsWords(range) : "Orice mărime"}
+      </button>
     </div>
   </>;
 }

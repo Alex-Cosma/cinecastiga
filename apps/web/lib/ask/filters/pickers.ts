@@ -123,8 +123,11 @@ export function writeChoice(spec: FilterSpec, slot: Slot, choice: Choice): Filte
     });
   }
   const family = slot.picker ? PICKER_FAMILY[slot.picker] ?? [] : [];
+  // „Ce fel de firme” holds the firms' size and their seat together where the window writes the seat (S4r-from-seat): one tab.
+  const tab = (id: FilterId): FilterId => slot.picker === "from" && id === "firmSeat" ? "employees" : id;
   let next = spec;
-  if (family.includes(choice.filter)) for (const id of family) if (id !== choice.filter && windowOf(slot).includes(id)) next = FILTERS[id].write(next, undefined);
+  if (family.includes(tab(choice.filter)))
+    for (const id of windowOf(slot)) if (tab(id) !== tab(choice.filter) && family.includes(tab(id))) next = FILTERS[id].write(next, undefined);
   return FILTERS[choice.filter].write(next, choice.value);
 }
 

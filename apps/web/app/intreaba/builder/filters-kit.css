@@ -110,6 +110,8 @@
 /* ---------- 3. The condition row (role label + chips): group, or selection ---------- */
 .qb-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
 .qb-row+.qb-row{margin-top:10px}
+/* „De la cine › Ce fel de firme” on institutions: the seat's chips under the bands (S4r-from-seat). */
+.qb-from-seat{margin-top:12px}
 .qb-row-label{display:inline-flex;align-items:center;gap:2px;margin-right:4px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;white-space:nowrap}
 .qb-row--select .qb-row-label{color:var(--ink2)}
 
