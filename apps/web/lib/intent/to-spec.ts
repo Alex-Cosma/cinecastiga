@@ -5,7 +5,8 @@ import { questionTitle, type TitleLabels } from "../ask/filters/title";
 import { IMPLEMENTED_KEYS, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
-import { filterContext } from "../ask/filters/context";
+import { filterContext, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/filters/context";
+import { choiceState } from "../ask/filters/pickers";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
 import { genitive, hasNamedScope } from "./rules";
@@ -68,18 +69,35 @@ const readPath = (raw: Record<string, unknown>, path: SpecPath): unknown => {
  */
 export function applyLenses(raw: Record<string, unknown>, lenses: readonly LensMatch[], notes: string[]): Record<string, unknown> {
   const block = raw.block as Block;
-  const own = lenses.filter((l) => l.block === block);
+  // The selection's filters said in words (block "*": the kind, the size, the firm's seat) are every question's own.
+  const own = lenses.filter((l) => l.block === block || l.block === "*");
   const overlaps = (a: LensMatch["matched"], b: LensMatch["matched"]) => a.from < b.to && b.from < a.to;
   for (const l of lenses)
-    if (l.block !== block && !l.quiet && !own.some((o) => overlaps(o.matched, l.matched))) notes.push(lensNotApplied(l.matched.text));
+    if (l.block !== block && l.block !== "*" && !l.quiet && !own.some((o) => overlaps(o.matched, l.matched))) notes.push(lensNotApplied(l.matched.text));
   const byPath = new Map<SpecPath, LensMatch[]>();
   for (const l of own) byPath.set(l.path, [...(byPath.get(l.path) ?? []), l]);
   let spec = raw as unknown as FilterSpec;
-  const offered = (path: SpecPath, value: unknown, at: FilterSpec): boolean => {
+  /** Why a choice the question offers is not chosen here (choiceState: a national scan, a code without the kind…). */
+  let held: string | null = null;
+  const offered = (path: SpecPath, value: unknown, at: FilterSpec, typed = false): boolean => {
+    held = null;
     const owner = SPEC_PATH_OWNERS[path];
     if (owner === "question" || !IMPLEMENTED_KEYS.has(path)) return false;
     const ctx = filterContext(at);
-    return offeredFilters(at, ctx).has(owner) && FILTERS[owner].choices(at, ctx).some((choice) => JSON.stringify(choice) === JSON.stringify(value));
+    // A national ranking per entity does not invite a size, nor goods and services (S4r-national-kind, blocks.ts): it
+    // reads both marts whole until the marts stage's size column (PRECOMPUTE.md). The reason, not "nu se aplică".
+    if (owner === "purchaseValue" && nationalEntityScan(at)) { held = NATIONAL_ENTITY_SCAN; return false; }
+    if (!offeredFilters(at, ctx).has(owner)) {
+      if (owner === "purchaseKind" && nationalEntityScan(at)) held = NATIONAL_ENTITY_SCAN;
+      return false;
+    }
+    // A bound typed in words is any value the filter's rule accepts (its window has a field for it), not only a preset.
+    if (!typed && !FILTERS[owner].choices(at, ctx).some((choice) => JSON.stringify(choice) === JSON.stringify(value))) return false;
+    const state = choiceState({ id: owner }, { filter: owner, value }, at, ctx);
+    if (state.state !== "offered") { held = state.state === "disabled" ? state.reason : null; return false; }
+    const reason = FILTERS[owner].validate?.(FILTERS[owner].write(at, value) as unknown as AskSpec) ?? null;
+    if (reason) { held = reason; return false; }
+    return true;
   };
   const write = (path: SpecPath, value: unknown) => {
     const owner = SPEC_PATH_OWNERS[path];
@@ -98,7 +116,11 @@ export function applyLenses(raw: Record<string, unknown>, lenses: readonly LensM
       if (current === undefined && offered(need.path, need.value, spec)) { write(need.path, need.value); notes.push(need.note); }
       else if (current !== need.value) { notes.push(lensNotApplied(words.join("”, „"))); continue; }
     }
-    if (!offered(path, value, spec)) { if (!found.every((l) => l.quiet)) notes.push(lensNotApplied(words.join("”, „"))); continue; }
+    if (!offered(path, value, spec, found.some((l) => l.typed))) {
+      if (held) notes.push(`„${words.join("”, „")}” nu se aplică aici: ${held}`);
+      else if (!found.every((l) => l.quiet)) notes.push(lensNotApplied(words.join("”, „")));
+      continue;
+    }
     write(path, value);
   }
   return spec as unknown as Record<string, unknown>;

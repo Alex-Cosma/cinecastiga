@@ -1,10 +1,10 @@
 import type { AuthorityKind, Block } from "../ask/spec";
-import type { Procedure } from "../ask/purchase";
+import { valueWords, type Procedure } from "../ask/purchase";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
 import { countWords } from "../ask/answer-text";
 import { placeKey } from "./places";
-import { LENS_PHRASES, NOT_MOST_OFTEN } from "./lens-phrases";
+import { AMOUNT_LENS, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
@@ -309,6 +309,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (const p of places) byKey.set(p.key, [...(byKey.get(p.key) ?? []), p]);
     const localities = places.filter((p) => p.kind === "locality");
 
+    // The size of a purchase before the periods and the fiscal codes: "peste 2000 de lei" is no year, "1000000 lei" no CUI.
+    this.amounts(c, out);
     this.periods(c, out, year);
     this.modifiers(c, out);
     await this.fiscalCodes(c, out);
@@ -333,6 +335,28 @@ export class RulesInterpreter implements QuestionInterpreter {
     this.leftover(c, out);
     this.score(c, out);
     return out;
+  }
+
+  // ------------------------------------------------------ size of purchase
+  /**
+   * F3 (plan §2.7 „mărime”): "peste 1 milion de lei", "sub 10.000 lei", one
+   * range for every bound said (lens-phrases.ts AMOUNT_LENS); to-spec writes
+   * it where the question offers the size ("Doar cele de peste 1 mil. lei").
+   */
+  private amounts(c: Cursor, out: Interpretation) {
+    const range: { purchaseValueMin?: number; purchaseValueMax?: number } = {};
+    let from = Infinity, to = -1;
+    for (const h of c.all(AMOUNT_LENS)) {
+      const bound = amountBound(h.m);
+      if (!bound) continue;
+      c.take(h.i, h.j, "modifier");
+      range[bound.end === "min" ? "purchaseValueMin" : "purchaseValueMax"] = bound.lei;
+      from = Math.min(from, h.i); to = Math.max(to, h.j);
+    }
+    if (to < 0) return;
+    // Named as the chip names it ("de peste 1,5 mil. lei"): the tokens lost the typed "1,5" and "1.000.000".
+    out.lenses.push({ block: "*", path: range.purchaseValueMin !== undefined ? "filters.purchaseValueMin" : "filters.purchaseValueMax", value: range,
+      matched: { ...c.span(from, to), text: valueWords(range) ?? c.span(from, to).text }, typed: true });
   }
 
   // --------------------------------------------------------------- periods
@@ -470,6 +494,12 @@ export class RulesInterpreter implements QuestionInterpreter {
    * leftover; to-spec applies the chosen block's lenses (plan §2.7).
    */
   private lenses(c: Cursor, out: Interpretation) {
+    // The firm's seat (F4) on any question that offers it: its words are understood, never a place or a leftover.
+    for (const phrase of SEAT_LENSES)
+      for (const h of c.over(phrase.re, ["cue", "modifier"])) {
+        for (let k = h.i; k < h.j; k++) if (!c.used[k]) c.used[k] = "modifier";
+        out.lenses.push({ block: "*", path: phrase.path, value: phrase.value, matched: c.span(h.i, h.j) });
+      }
     for (const [block, phrases] of Object.entries(LENS_PHRASES) as [Block, NonNullable<(typeof LENS_PHRASES)[Block]>][])
       for (const phrase of phrases)
         for (const h of c.over(phrase.re, ["cue", "modifier"])) {
@@ -1048,7 +1078,17 @@ export class RulesInterpreter implements QuestionInterpreter {
       });
       if (out.subjects.length >= 3) break;
     }
-    // a retired word alone ("lucrări", "mese"): the person chooses what it means
+    // "lucrări", "servicii", "produse" beside no subject: the purchase kind (F3, plan §2.7 „tip”), never a guessed
+    // domain; on a question that does not offer the kind, to-spec says so.
+    if (!out.subjects.length) {
+      for (let k = 0; k < c.tokens.length; k++) {
+        const kind = KIND_WORDS[c.f(k)];
+        if (!kind || !c.isFree(k, k + 1)) continue;
+        c.take(k, k + 1, "modifier");
+        out.lenses.push({ block: "*", path: "filters.purchaseKind", value: kind, matched: c.span(k, k + 1) });
+      }
+    }
+    // a retired word alone ("mese"): the person chooses what it means
     if (!out.subjects.length && retired && c.isFree(retired.k, retired.k + 1)) {
       c.take(retired.k, retired.k + 1, "subject");
       out.subjectChoices = { matched: c.span(retired.k, retired.k + 1), message: retired.entry.message, options: retired.entry.choices.map((o) => ({ label: o.label, term: o.cpvTerm })) };
@@ -1265,14 +1305,15 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (primary) {
       out.intent = primary;
       out.intentSource = "cue";
-    } else if (out.subjects.length || out.subjectChoices || out.place || out.placeAmbiguous || out.authorityKind || out.authority || out.supplier || out.entityAlternatives.length || out.person || out.personAlternatives.length || out.singleBidder || out.dataset || out.period || out.employees) {
+    } else if (out.subjects.length || out.subjectChoices || out.place || out.placeAmbiguous || out.authorityKind || out.authority || out.supplier || out.entityAlternatives.length || out.person || out.personAlternatives.length || out.singleBidder || out.dataset || out.period || out.employees || selectionLens(out)) {
       out.intentSource = "default";
       const supplierLike = out.supplier || (out.entityAlternatives[0]?.role === "supplier");
       const authorityLike = out.authority || (out.entityAlternatives[0]?.role === "authority");
       out.intent = supplierLike && !authorityLike ? "ranking_authorities"
         : authorityLike || ((out.place?.kind === "locality" || out.placeAmbiguous) && !out.subjects.length) ? "breakdown"
-        : out.subjects.length || out.subjectChoices || out.person || out.personAlternatives.length || out.singleBidder || out.employees ? "ranking_suppliers"
-        : out.place || out.authorityKind ? "breakdown"
+        : out.subjects.length || out.subjectChoices || out.person || out.personAlternatives.length || out.singleBidder || out.employees || selectionLens(out, "filters.purchaseKind") ? "ranking_suppliers"
+        // "contractele de peste 1 milion de lei din Cluj": the total says the size, "Ce cumpără" does not offer it.
+        : (out.place || out.authorityKind) && !selectionLens(out, "filters.purchaseValueMin") && !selectionLens(out, "filters.purchaseValueMax") ? "breakdown"
         : "total";
     }
     out.otherIntents = unique(ordered.filter((k) => k !== out.intent && k !== "compare"));
@@ -1309,10 +1350,13 @@ export class RulesInterpreter implements QuestionInterpreter {
   }
 }
 
+/** A filter of the selection said in words (the kind, the size, the firm's seat: lens-phrases.ts), or that one. */
+const selectionLens = (i: Interpretation, path?: string) => i.lenses.some((l) => l.block === "*" && (path === undefined || l.path === path));
+
 /** Something in the question narrows the answer beyond "everything, everywhere". */
 export function hasNamedScope(i: Interpretation): boolean {
   return Boolean(i.subjects.length || i.subjectChoices || i.place || i.placeAmbiguous || i.authorityKind || i.authority || i.supplier || i.entityAlternatives.length
-    || i.person || i.personAlternatives.length || i.period || i.dataset || i.singleBidder || i.employees || i.measure === "value_per_capita");
+    || i.person || i.personAlternatives.length || i.period || i.dataset || i.singleBidder || i.employees || i.measure === "value_per_capita" || selectionLens(i));
 }
 
 interface PlaceFound {

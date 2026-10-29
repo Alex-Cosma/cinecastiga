@@ -243,3 +243,87 @@ describe("comparison lenses (F4, plan §2.7, final compare §3.4)", () => {
     expect(r.sentence).toBe("Compară CONSTRUCTII ERBASU S.A. cu ELBI ENERGY PROJECTS SRL la toate achizițiile făcute de spitalele, în toți anii.");
   });
 });
+
+describe("the selection's filters in words: the kind, the size, the firm's seat (S5, plan §2.7 „tip”, „mărime”, „sediu”)", () => {
+  it("«lucrări», «servicii», «produse» alone are the purchase kind, said in the sentence", async () => {
+    const works = await ask("ce firme castiga lucrari in buzau");
+    expect(works.i.leftover).toEqual([]);
+    expect(works.r.spec).toMatchObject({ block: "table", dim: "supplier", filters: { county: "Buzău", purchaseKind: "lucrari" } });
+    expect(works.r.sentence).toBe("Ce firme câștigă achizițiile de lucrări făcute de instituțiile publice din județul Buzău, în toți anii?");
+    expect((await ask("servicii in cluj")).r.spec?.filters.purchaseKind).toBe("servicii");
+    expect((await ask("cat au cheltuit spitalele pe produse in 2025")).r.spec).toMatchObject({ block: "stat", filters: { authorityKind: "spital", purchaseKind: "produse" } });
+    // Beside a real subject the word is the subject's ("lucrări de asfaltare"): no kind.
+    expect((await ask("lucrari de asfaltare in buzau")).r.spec?.filters).toEqual({ cpvTerm: "asfaltare", county: "Buzău" });
+  });
+  it("a kind the question cannot run says why (a national ranking's goods, two kinds at once), never silently", async () => {
+    const goods = await ask("ce firme castiga produse");
+    expect(goods.r.spec?.filters.purchaseKind).toBeUndefined();
+    expect(goods.r.interpretation.notes.join(" ")).toMatch(/^„produse” nu se aplică aici: Pe toată țara, pe instituții sau firme, cere un calcul pregătit noaptea/);
+    // Works are an index range: offered nationally (S4r-national-kind).
+    expect((await ask("ce firme castiga lucrari")).r.spec?.filters.purchaseKind).toBe("lucrari");
+    const both = await ask("cine castiga lucrari si servicii in cluj");
+    expect(both.r.spec?.filters.purchaseKind).toBeUndefined();
+    expect(both.r.interpretation.notes).toContain("„lucrari” și „servicii” nu merg împreună; nu le-am aplicat.");
+  });
+  it("«peste N lei» is the size of each purchase, with the chip's words; a total asked by place says it", async () => {
+    const { i, r } = await ask("contractele de peste 1 milion de lei din cluj");
+    expect(i.leftover).toEqual([]);
+    expect(r.spec).toMatchObject({ block: "stat", filters: { county: "Cluj", purchaseValueMin: 1_000_000 } });
+    expect(r.sentence).toBe("Cât valorează achizițiile făcute de instituțiile publice din județul Cluj, în toți anii, doar cele de peste 1 mil. lei?");
+    expect((await ask("ce firme castiga contracte de peste 1,5 milioane de lei in cluj")).r.spec?.filters.purchaseValueMin).toBe(1_500_000);
+    expect((await ask("contracte de peste 500.000 de lei in cluj")).r.spec?.filters.purchaseValueMin).toBe(500_000);
+    expect((await ask("achizitii sub 10.000 lei in cluj")).r.spec).toMatchObject({ block: "stat", filters: { county: "Cluj", purchaseValueMax: 10_000 } });
+    const range = await ask("contracte de peste 1 milion si sub 5 milioane de lei in cluj");
+    expect(range.r.spec?.filters).toMatchObject({ purchaseValueMin: 1_000_000, purchaseValueMax: 5_000_000 });
+  });
+  it("an amount is never a year or a fiscal code, and needs lei or a magnitude", async () => {
+    const { i, r } = await ask("contracte de peste 2000 de lei in cluj in 2024");
+    expect(i.period).toMatchObject({ yearFrom: 2024, yearTo: 2024 });
+    expect(r.spec?.filters).toMatchObject({ purchaseValueMin: 2000, yearFrom: 2024 });
+    expect((await ask("contracte peste 1000000 lei in cluj")).r.spec?.filters).toEqual({ county: "Cluj", purchaseValueMin: 1_000_000 });
+    // "sub 5 angajați" stays the firms' size.
+    expect((await ask("ce firme cu sub 5 angajati castiga in cluj")).r.spec?.filters).toMatchObject({ county: "Cluj", maxEmployees: 4 });
+  });
+  it("an entity's total is not a purchase's size: «au cheltuit peste …», «câștigă peste …» are not read", async () => {
+    const spent = await ask("ce primarii din cluj au cheltuit peste 10 milioane de lei");
+    expect(spent.r.spec?.filters.purchaseValueMin).toBeUndefined();
+    expect(spent.i.leftover).toEqual(expect.arrayContaining(["peste"]));
+  });
+  it("a size the question cannot run says why: over the direct acquisitions' ceiling, a national ranking per firm", async () => {
+    const da = await ask("cine castiga achizitiile directe de peste 3 milioane de lei in cluj");
+    expect(da.r.spec?.filters.purchaseValueMin).toBeUndefined();
+    expect(da.r.interpretation.notes).toContain("„de peste 3 mil. lei” nu se aplică aici: Achizițiile directe se numără până la 2 mil. lei. Alege o limită mai mică sau și contractele.");
+    const national = await ask("ce firme castiga contracte de peste 1,5 milioane de lei in 2025");
+    expect(national.r.spec?.filters.purchaseValueMin).toBeUndefined();
+    expect(national.r.interpretation.notes.join(" ")).toMatch(/^„de peste 1,5 mil\. lei” nu se aplică aici: Pe toată țara/);
+  });
+  it("the firm's seat against the buyer's county: «străine», «din alte județe», «locale»", async () => {
+    const abroad = await ask("ce firme straine castiga in cluj");
+    expect(abroad.i.leftover).toEqual([]);
+    expect(abroad.r.spec).toMatchObject({ block: "table", dim: "supplier", filters: { county: "Cluj", firmSeat: "abroad" } });
+    expect(abroad.r.sentence).toBe("Ce firme cu sediul în străinătate câștigă achizițiile făcute de instituțiile publice din județul Cluj, în toți anii?");
+    expect((await ask("firme din alte judete care castiga in buzau")).r.spec?.filters).toEqual({ county: "Buzău", firmSeat: "other" });
+    expect((await ask("ce firme din afara judetului castiga la spitalul judetean buzau")).r.spec?.filters.firmSeat).toBe("other");
+    expect((await ask("firmele locale din buzau")).r.spec?.filters).toEqual({ county: "Buzău", firmSeat: "same" });
+    expect((await ask("ce firme din judet castiga la primaria buzau")).r.spec?.filters.firmSeat).toBe("same");
+  });
+  it("every sentence says the kind, the size and the seat its spec runs (scope-check)", async () => {
+    for (const q of ["ce firme castiga lucrari in buzau", "servicii in cluj", "contractele de peste 1 milion de lei din cluj", "achizitii sub 10.000 lei in cluj",
+      "contracte de peste 1 milion si sub 5 milioane de lei in cluj", "ce firme straine castiga in cluj", "firme din alte judete care castiga in buzau", "firmele locale din buzau"]) {
+      const { r } = await ask(q);
+      expect(sentenceScopeProblems(r.spec!, r.sentence!), q).toEqual([]);
+    }
+    // And a sentence that leaves one out is caught.
+    const spec = validateSpec({ block: "stat", measure: "value", filters: { purchaseKind: "lucrari", purchaseValueMin: 1_000_000 } });
+    if ("error" in spec) throw new Error(spec.error);
+    expect(sentenceScopeProblems(spec, "Cât valorează achizițiile?"))
+      .toEqual(expect.arrayContaining(["kind lucrari not in sentence", 'size "de peste 1 mil. lei" not in sentence']));
+  });
+  it("«firme din județul Cluj» stays the buyers' place (R9), and a question without the seat says it does not apply", async () => {
+    const cluj = await ask("ce firme din judetul cluj castiga");
+    expect(cluj.r.spec?.filters).toEqual({ county: "Cluj" });
+    const total = await ask("cat au castigat firmele straine in 2025");
+    expect(total.r.spec?.filters.firmSeat).toBeUndefined();
+    expect(total.r.interpretation.notes).toContain(lensNotApplied("firmele straine"));
+  });
+});

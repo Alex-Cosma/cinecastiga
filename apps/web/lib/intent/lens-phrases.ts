@@ -13,7 +13,8 @@ import type { SpecPath } from "../ask/filters/types";
  * question, and keep its words from being read as a subject or a name;
  * to-spec.ts applies those of the chosen block that its question offers
  * and says when one does not apply. Only the keys a stage implements are
- * listed: F2 the trend's (lib/ask/filters/defs/trend.ts), F4 a comparison's shared clients.
+ * listed: F2 the trend's (lib/ask/filters/defs/trend.ts), F4 a comparison's shared clients;
+ * S5 the selection's own filters on any question (block "*": SEAT_LENSES, KIND_WORDS, AMOUNT_LENS).
  */
 
 export interface LensPhrase {
@@ -31,14 +32,76 @@ export interface LensPhrase {
   dim?: "supplier" | "authority";
 }
 
-/** A lens found in a question: its block's table, the option, the words. */
+/**
+ * A lens found in a question: its block's table, the option, the words. A
+ * filter of the selection the words say on any question ("firme străine",
+ * "lucrări", "peste 1 milion de lei") has the block "*": every question that
+ * offers it applies it, the others say they do not.
+ */
 export interface LensMatch {
-  block: Block;
+  block: Block | "*";
   path: SpecPath;
   value: unknown;
   matched: { text: string; from: number; to: number };
   quiet?: true;
   dim?: "supplier" | "authority";
+  /** A bound typed in words ("peste 500.000 de lei"): any value the filter's rule accepts, not only its window's presets. */
+  typed?: true;
+}
+
+/** Firms named before a seat's words: the seat qualifies them ("firme străine", not "instituții străine"). */
+const FIRMS = String.raw`(?:firm\w*|furnizor\w*|compani\w*|societat\w*|antreprenor\w*|constructor\w*)`;
+
+/**
+ * F4 (plan §2.7 „sediu”): the firm's seat against the buyer's county, on any
+ * question that offers it (a ranking of firms, "Cine conduce?" by value, the
+ * partners of an institution's network or flow). "din județ" only as a
+ * phrase without a county's name after it: "firme din județul Cluj" stays the
+ * buyers' place (R9: "din" is the institution's place). On "Cine conduce?"
+ * and the cloud a named county is the seat (F6b, F6c): not read here.
+ */
+export const SEAT_LENSES: readonly LensPhrase[] = [
+  { re: new RegExp(String.raw`\b${FIRMS} (?:locale|locali|din judet(?!ul\b)|din judetul (?:lor|respectiv|institutiei|institutiilor)|din acelasi judet|cu sediul in (?:acelasi judet|judetul (?:lor|respectiv|institutiei)))\b`), path: "filters.firmSeat", value: "same" },
+  { re: /\b(?:din|cu sediul in|cu sediul din) (?:alt judet|alte judete|afara judetului)\b/, path: "filters.firmSeat", value: "other" },
+  { re: new RegExp(String.raw`\b(?:${FIRMS} (?:straine|straini|din strainatate)|(?:cu sediul|cu sediul social) (?:in|din) strainatate)\b`), path: "filters.firmSeat", value: "abroad" },
+];
+
+/**
+ * F3 (plan §2.7 „tip”): "lucrări", "servicii", "produse" on their own, beside
+ * no subject ("lucrări de asfaltare" is the road works, rules.ts subjects):
+ * the purchase kind. "lucrări" stays a retired domain (RETIRED_TERMS) for a
+ * link's cpvTerm, so it is never a guessed domain.
+ */
+export const KIND_WORDS: Readonly<Record<string, "lucrari" | "servicii" | "produse">> = {
+  lucrari: "lucrari", lucrare: "lucrari", lucrarile: "lucrari", lucrarilor: "lucrari",
+  servicii: "servicii", serviciu: "servicii", serviciile: "servicii", serviciilor: "servicii",
+  produse: "produse", produs: "produse", produsele: "produse", produselor: "produse",
+};
+
+/** "mii", "milion", "mld.": a magnitude's factor; plain lei without. */
+const MAGNITUDE: Readonly<Record<string, number>> = {
+  mie: 1e3, mii: 1e3, mil: 1e6, milion: 1e6, milioane: 1e6, milioanele: 1e6, mld: 1e9, miliard: 1e9, miliarde: 1e9,
+};
+const AMOUNT_NUMBER = String.raw`(\d{1,3}(?: \d{3})+|\d+(?: \d{1,2})?|un|o|una|doua|doi|trei|cinci|zece|suta)`;
+const AMOUNT_WORDS: Readonly<Record<string, number>> = { un: 1, o: 1, una: 1, doi: 2, doua: 2, trei: 3, cinci: 5, zece: 10, suta: 100 };
+/**
+ * F3 (plan §2.7 „mărime”): the size of each purchase written in words, "peste
+ * 1 milion de lei" (purchaseValueMin) or "sub 10.000 lei" (purchaseValueMax),
+ * over the folded text, where "1.000.000" is "1 000 000" and "2,5" "2 5". A
+ * number needs lei or a magnitude ("peste 2000" alone may be a year). An
+ * entity's total is not a purchase's size: "au cheltuit peste 10 milioane",
+ * "a câștigat peste …" are not read.
+ */
+export const AMOUNT_LENS = new RegExp(String.raw`(?<!\b(?:cheltuit|cheltuie|cheltuiesc|castigat|castiga|incasat|primit|totalizat|insumat|adunat)(?: \w+)?\s)\b(?:de )?(peste|mai mari de|mai mare de|de minimum|sub|mai mici de|mai mica de|de maximum)\s+${AMOUNT_NUMBER}(?:\s+(?:de\s+)?(mie|mii|mil|milion|milioane|mld|miliard|miliarde))?(?:\s+(?:de\s+)?(lei|ron))?\b`);
+
+/** The bound in lei of an AMOUNT_LENS match, and which end it is; null without lei or a magnitude, or under 1 leu. */
+export function amountBound(m: RegExpExecArray): { end: "min" | "max"; lei: number } | null {
+  const [, word, number, magnitude, lei] = m;
+  if (!magnitude && !lei) return null;
+  const n = AMOUNT_WORDS[number!] ?? (/^\d+ \d{1,2}$/.test(number!) ? Number(number!.replace(" ", ".")) : Number(number!.replace(/ /g, "")));
+  const value = Math.round(n * (magnitude ? MAGNITUDE[magnitude]! : 1));
+  if (!Number.isFinite(value) || value < 1) return null;
+  return { end: /^(?:sub|mai mic)/.test(word!) || word === "de maximum" ? "max" : "min", lei: value };
 }
 
 /**

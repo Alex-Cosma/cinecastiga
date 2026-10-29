@@ -585,12 +585,12 @@ describe("review B3: place names are read before subjects; institution words are
     expect(i.subjects).toEqual([]);
     expect(i.notes.join(" ")).toMatch(/numele primăriei/);
   });
-  it("generic «lucrări» alone is not a subject: the person chooses which works (retired term)", async () => {
+  it("generic «lucrări» alone is not a subject: it is the purchase kind (F3, plan §2.7), never a guessed domain", async () => {
     const { i, r } = await ask("ce firme mici castiga lucrari in Suceava");
     expect(i.subjects).toEqual([]);
-    expect(i.subjectChoices?.options.map((o) => o.term)).toEqual(["constructii", "cladiri", "drumuri", "reparatii", "renovare"]);
-    expect(r.spec).toBeNull();
-    expect(r.alternatives.every((a) => a.kind === "subject" && a.spec.filters.county === "Suceava")).toBe(true);
+    expect(i.subjectChoices ?? null).toBeNull();
+    expect(r.spec).toMatchObject({ block: "table", dim: "supplier", filters: { county: "Suceava", purchaseKind: "lucrari", maxEmployees: 49 } });
+    expect(r.spec?.filters.cpvTerm).toBeUndefined();
   });
 });
 
