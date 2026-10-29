@@ -19,11 +19,15 @@ export function countWords(n: number, one: string, many: string): string {
   return `${formatInt(n)} ${de ? "de " : ""}${many}`;
 }
 
-/** A share (0.403) as "40,3%"; under 0,1% says so instead of "0,0%". */
+/**
+ * A share (0.403) as "40,3%"; under 0,1% says so instead of "0,0%", and over
+ * 99,9% short of the whole instead of "100,0%" (S4t-share-100: 99,97% is not all).
+ */
 export function formatShare(share: number): string {
   if (!Number.isFinite(share)) return "—";
   const percent = share * 100;
   if (percent > 0 && percent < 0.1) return "sub 0,1%";
+  if (percent >= 99.95 && percent < 100) return "peste 99,9%";
   return `${pct1.format(percent)}%`;
 }
 

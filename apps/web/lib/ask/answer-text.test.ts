@@ -24,6 +24,11 @@ describe("Romanian numbers", () => {
     expect(formatShare(0.4)).toBe("40,0%");
     expect(formatShare(0.0004)).toBe("sub 0,1%");
     expect(formatShare(0)).toBe("0,0%");
+    // S4t-share-100: 99,97% is not the whole (PORR's „Construcții”), only the whole is 100,0%.
+    expect(formatShare(0.9997)).toBe("peste 99,9%");
+    expect(formatShare(0.9995)).toBe("peste 99,9%");
+    expect(formatShare(0.9994)).toBe("99,9%");
+    expect(formatShare(1)).toBe("100,0%");
     expect(formatDecimal(0.4, 2)).toBe("0,40");
     expect(formatChange(12.4)).toBe("+12%");
     expect(formatChange(-8)).toBe("−8%");
