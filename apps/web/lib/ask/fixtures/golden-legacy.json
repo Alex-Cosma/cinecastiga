@@ -2916,7 +2916,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -2937,9 +2937,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "value": 3423067.29,
+        "count": 14
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 515570.7,
+        "count": 10
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 219772.33,
+        "count": 18
+       }
+      ],
+      "total": {
+       "value": 4315291.18,
+       "count": 51,
+       "entities": 6
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -10625,7 +10656,7 @@
      }
     },
     "pills": [
-     "locul 1",
+     "locurile 1–3",
      "cea mai mare valoare",
      "furnizori",
      "valoarea înregistrată",
@@ -10654,9 +10685,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "value": 3423067.29,
+        "count": 14
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 515570.7,
+        "count": 10
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 219772.33,
+        "count": 18
+       }
+      ],
+      "total": {
+       "value": 4158410.32,
+       "count": 42,
+       "entities": 3
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select supplier_id from (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\n  where closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  group by supplier_id having count(*) >= 5)\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select supplier_id from (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\n  where closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  group by supplier_id having count(*) >= 5)\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -12160,7 +12222,7 @@
      "filters": {},
      "dim": "authority"
     },
-    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -12179,9 +12241,30 @@
       "nFlags": 5,
       "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
       "population": null
+     },
+     "ties": {
+      "version": 2,
+      "level": 0.933,
+      "maxFlags": 5,
+      "criteria": 5,
+      "count": 1,
+      "pool": 4,
+      "nextLevel": 0.812,
+      "nextCount": 1,
+      "rows": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "count": 22,
+        "value": 77000,
+        "nFlags": 5,
+        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"]
+       }
+      ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \norder by cri desc\nlimit 1;"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
    },
    "sources": {
     "status": 200,
@@ -15818,7 +15901,7 @@
      "rankBy": "value"
     },
     "pills": [
-     "locul 1",
+     "locurile 1–3",
      "cea mai mare valoare",
      "furnizori",
      "valoarea înregistrată",
@@ -15847,9 +15930,33 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 515570.7,
+        "count": 10
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "value": 13080.85,
+        "count": 4
+       }
+      ],
+      "total": {
+       "value": 528651.55,
+       "count": 14,
+       "entities": 2
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (firmele reprezentate de persoana aleasă)  -- ONRC\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -15988,7 +16095,7 @@
      "dim": "authority",
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","instituții","valoarea înregistrată","Fixture Construct SRL","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16008,9 +16115,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 360800.35,
+        "count": 3
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 93301.26,
+        "count": 3
+       },
+       {
+        "entityId": "9100000006",
+        "name": "Municipiul Aiud",
+        "county": "Alba",
+        "value": 61469.09,
+        "count": 4
+       }
+      ],
+      "total": {
+       "value": 515570.7,
+       "count": 10,
+       "entities": 3
+      }
      }
     },
-    "displaySql": "select authority_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id = 9100000101\ngroup by authority_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select authority_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id = 9100000101\ngroup by authority_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -16099,7 +16237,7 @@
      "dim": "supplier",
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","Municipiul Fixture Nord","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","furnizori","valoarea înregistrată","Municipiul Fixture Nord","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -16120,9 +16258,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 360800.35,
+        "count": 3
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 45100,
+        "count": 2
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "value": 2100,
+        "count": 1
+       }
+      ],
+      "total": {
+       "value": 408950.75,
+       "count": 7,
+       "entities": 4
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id = 9100000002\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -37659,7 +37828,15 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","cu sediul în județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": [
+     "locurile 1–3",
+     "cea mai mare valoare",
+     "furnizori",
+     "valoarea înregistrată",
+     "cu sediul în județul Cluj",
+     "toți anii",
+     "toate achizițiile: directe și din proceduri"
+    ],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -37680,9 +37857,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 515570.7,
+        "count": 10
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "value": 47100.01,
+        "count": 2
+       },
+       {
+        "entityId": "9100000105",
+        "name": "Fixture Mic SRL",
+        "county": "Cluj",
+        "value": 13080.85,
+        "count": 4
+       }
+      ],
+      "total": {
+       "value": 575751.56,
+       "count": 16,
+       "entities": 3
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and unaccent(county) ilike 'cluj')  -- sediul: județul din SEAP\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and unaccent(county) ilike 'cluj')  -- sediul: județul din SEAP\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -38707,7 +38915,15 @@
       ]
      }
     },
-    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri","fără Fixture Construct SRL"],
+    "pills": [
+     "locurile 1–3",
+     "cea mai mare valoare",
+     "furnizori",
+     "valoarea înregistrată",
+     "toți anii",
+     "toate achizițiile: directe și din proceduri",
+     "fără Fixture Construct SRL"
+    ],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -38729,9 +38945,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "value": 3423067.29,
+        "count": 14
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 219772.33,
+        "count": 18
+       },
+       {
+        "entityId": "9100000104",
+        "name": "Fixture Foreign GmbH",
+        "county": null,
+        "value": 95500,
+        "count": 2
+       }
+      ],
+      "total": {
+       "value": 3798520.48,
+       "count": 40,
+       "entities": 5
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((not coalesce(supplier_id in ('9100000101'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and ((not coalesce(supplier_id in ('9100000101'), false)))\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -46634,7 +46881,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -46653,9 +46900,30 @@
       "nFlags": 5,
       "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
       "population": null
+     },
+     "ties": {
+      "version": 2,
+      "level": 0.933,
+      "maxFlags": 5,
+      "criteria": 5,
+      "count": 1,
+      "pool": 4,
+      "nextLevel": 0.812,
+      "nextCount": 1,
+      "rows": [
+       {
+        "entityId": "9100000011",
+        "name": "Comuna Profil Unu",
+        "county": "Cluj",
+        "count": 22,
+        "value": 77000,
+        "nFlags": 5,
+        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"]
+       }
+      ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \norder by cri desc\nlimit 1;"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
    },
    "sources": {
     "status": 200,
@@ -46734,7 +47002,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["locul 1","cea mai riscantă (CRI)","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii la egalitate","cea mai riscantă (CRI)","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
@@ -46754,9 +47022,30 @@
       "nFlags": 4,
       "flags": ["da_split","da_round","da_concentration","da_dependence"],
       "population": null
+     },
+     "ties": {
+      "version": 2,
+      "level": 0.887,
+      "maxFlags": 4,
+      "criteria": 4,
+      "count": 1,
+      "pool": 3,
+      "nextLevel": 0.581,
+      "nextCount": 1,
+      "rows": [
+       {
+        "entityId": "9100000111",
+        "name": "Profil Firma Unu SRL",
+        "county": "Buzau",
+        "count": 26,
+        "value": 45000,
+        "nFlags": 4,
+        "flags": ["da_split","da_round","da_concentration","da_dependence"]
+       }
+      ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \norder by cri desc\nlimit 1;"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
    },
    "sources": {
     "status": 200,
@@ -46839,7 +47128,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
@@ -46859,9 +47148,30 @@
       "nFlags": 4,
       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
       "population": null
+     },
+     "ties": {
+      "version": 2,
+      "level": 0.812,
+      "maxFlags": 4,
+      "criteria": 5,
+      "count": 1,
+      "pool": 2,
+      "nextLevel": 0.052,
+      "nextCount": 1,
+      "rows": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "count": 45,
+        "value": 98700.1,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_rapid","da_concentration"]
+       }
+      ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \norder by cri desc\nlimit 1;"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
    },
    "sources": {
     "status": 200,
@@ -46944,7 +47254,7 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["locul 1","cea mai riscantă (CRI)","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
@@ -46963,9 +47273,30 @@
       "nFlags": 4,
       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
       "population": null
+     },
+     "ties": {
+      "version": 2,
+      "level": 0.812,
+      "maxFlags": 4,
+      "criteria": 5,
+      "count": 1,
+      "pool": 1,
+      "nextLevel": null,
+      "nextCount": 0,
+      "rows": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "count": 45,
+        "value": 98700.1,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_rapid","da_concentration"]
+       }
+      ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 -- doar spitale\norder by cri desc\nlimit 1;"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 -- doar spitale\n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
    },
    "sources": {
     "status": 200,
@@ -47044,7 +47375,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -47064,9 +47395,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "value": 3421602.35,
+        "count": 7
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 408950.75,
+        "count": 7
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 151201.62,
+        "count": 7
+       }
+      ],
+      "total": {
+       "value": 4315291.18,
+       "count": 51,
+       "entities": 7
+      }
      }
     },
-    "displaySql": "select authority_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by authority_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select authority_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by authority_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -47158,7 +47520,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","furnizori","valoarea înregistrată","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -47179,9 +47541,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "value": 3423067.29,
+        "count": 14
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 515570.7,
+        "count": 10
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 219772.33,
+        "count": 18
+       }
+      ],
+      "total": {
+       "value": 4315291.18,
+       "count": 51,
+       "entities": 6
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -47272,7 +47665,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","2025","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","instituții","valoarea înregistrată","2025","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -47292,9 +47685,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 361750.75,
+        "count": 4
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 145601.62,
+        "count": 6
+       },
+       {
+        "entityId": "9100000004",
+        "name": "Consiliul Judetean Alba",
+        "county": "Alba",
+        "value": 99643.54,
+        "count": 5
+       }
+      ],
+      "total": {
+       "value": 748568.96,
+       "count": 32,
+       "entities": 7
+      }
      }
     },
-    "displaySql": "select authority_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by authority_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select authority_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and an >= 2025\n  and an <= 2025\ngroup by authority_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -47385,7 +47809,7 @@
      "rankBy": "value"
     },
     "pills": [
-     "locul 1",
+     "locurile 1–3",
      "cea mai mare valoare",
      "furnizori",
      "valoarea înregistrată",
@@ -47416,9 +47840,33 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 508270,
+        "count": 9
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "value": 45000.01,
+        "count": 1
+       }
+      ],
+      "total": {
+       "value": 553270.01,
+       "count": 10,
+       "entities": 2
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and (cpv_code like '45233%')\n  and not (cpv_code like '452332%')  -- excluse din subiect\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -47511,7 +47959,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","doar contractele din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","instituții","valoarea înregistrată","toți anii","doar contractele din proceduri"],
     "caveats": [
      "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției."
@@ -47529,9 +47977,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "value": 3325000.5,
+        "count": 2
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "value": 362000,
+        "count": 2
+       },
+       {
+        "entityId": "9100000001",
+        "name": "Comuna Fixture Vest",
+        "county": "Cluj",
+        "value": 90000.02,
+        "count": 2
+       }
+      ],
+      "total": {
+       "value": 3969801.27,
+       "count": 10,
+       "entities": 7
+      }
      }
     },
-    "displaySql": "select authority_name, sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\ngroup by authority_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select authority_name, sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\ngroup by authority_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
@@ -47613,7 +48092,7 @@
      "topN": 10,
      "rankBy": "value"
     },
-    "pills": ["locul 1","cea mai mare valoare","furnizori","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
+    "pills": ["locurile 1–3","cea mai mare valoare","furnizori","valoarea înregistrată","județul Cluj","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -47635,9 +48114,40 @@
       "cri": null,
       "nFlags": 0,
       "flags": []
+     },
+     "podium": {
+      "version": 2,
+      "places": [
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 454101.61,
+        "count": 6
+       },
+       {
+        "entityId": "9100000106",
+        "name": "Fixture Partener SRL",
+        "county": "Cluj",
+        "value": 47100.01,
+        "count": 2
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 45100,
+        "count": 2
+       }
+      ],
+      "total": {
+       "value": 558952.37,
+       "count": 13,
+       "entities": 4
+      }
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by supplier_name\norder by 2 desc\nlimit 1;"
+    "displaySql": "select supplier_name, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and unaccent(county) ilike 'cluj'\ngroup by supplier_name\norder by 2 desc\nlimit 3;"
    },
    "sources": {
     "status": 200,
