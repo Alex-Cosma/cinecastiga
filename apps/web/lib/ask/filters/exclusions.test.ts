@@ -62,6 +62,7 @@ describe("where the answer's «⋯» offers it (BLOCK_FILTERS.rowMenu, exclude)"
     ["ranking of institutions", q({ block: "table", dim: "authority", topN: 10 }), "authority"],
     ["ranking of counties", q({ block: "table", dim: "county", topN: 10 }), null],
     ["«Cine conduce?» by value", q({ block: "entity_card", dim: "supplier", rankBy: "value" }), "supplier"],
+    // F6c: nothing to leave out of the group at the top (it is the whole group), but its rows have records and a page.
     ["«Cine conduce?» on the index", q({ block: "entity_card", dim: "supplier", rankBy: "risk" }), null],
     ["trend of firms", q({ block: "trend", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 } }), "supplier"],
     ["trend of counties", q({ block: "trend", dim: "county", filters: { yearFrom: 2024, yearTo: 2025 } }), null],
@@ -72,7 +73,8 @@ describe("where the answer's «⋯» offers it (BLOCK_FILTERS.rowMenu, exclude)"
   it.each(cases)("%s", (_name, spec, role) => {
     const ctx = filterContext(spec);
     expect(excludedRole(spec)).toBe(role);
-    expect(BLOCK_FILTERS[ctx.block].rowMenu(spec, ctx)).toEqual(role ? ["records", "exclude", "entity"] : []);
+    const tied = spec.block === "entity_card" && ctx.form === "entity_card:risk";
+    expect(BLOCK_FILTERS[ctx.block].rowMenu(spec, ctx)).toEqual(role ? ["records", "exclude", "entity"] : tied ? ["records", "entity"] : []);
     // Where it is offered, the question it writes runs.
     if (role) expect(validateSpec(excludeEntity(spec, { ...SYSTRA, field: role })!)).not.toHaveProperty("error");
   });

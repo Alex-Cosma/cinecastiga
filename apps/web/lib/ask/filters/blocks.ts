@@ -218,12 +218,17 @@ const presentation: BlockFilters["presentation"] = (spec) => sentenceSlots(prese
  * the firms' size is an attribute of the ranked firm, the list narrows to the
  * band and the total stays the sentence's: on a trend of firms under trend-2,
  * on "Cine câștigă?" under table:employees-2 (F3), and on "Cine conduce?" by
- * value, which runs that ranking (its place 1 is the same firm). Not on the
- * risk index (F6c: the employees on profiles).
+ * value, which runs that ranking (its place 1 is the same firm). On the risk
+ * index (F6c) the band selects the profiles of the firms in it (profilePredicates:
+ * a size is the firm's, not the record's), on both axes the same chip.
+ * „Firme noi” (final entity_card §3.7) joins this row by value when F5 builds
+ * its engine (newSince/newScope, table:new-1): this is its place, nothing is
+ * offered before the key is implemented (READ_AHEAD_KEYS, registry.test.ts).
  */
 function winners(spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
-  if (spec.dim !== "supplier" || ctx.form === "entity_card:risk") return [];
-  return [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }];
+  if (spec.dim !== "supplier") return [];
+  // On the index the band is a selection of the profiles (there is no total in lei to keep); by value it is a group.
+  return [{ label: "Câștigătorii", kind: ctx.form === "entity_card:risk" ? "selection" : "group", chips: [employeesInvite] }];
 }
 
 /**
@@ -257,8 +262,11 @@ const excludeRows: BlockFilters["exclude"] = (spec, ctx) => {
  * P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul" · "Fișa firmei ↗", on every row with an entity of its
  * own; a firm around an institution on the network also "Radiografia instituției ↗" (final network §3.6).
  */
-const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) => !rowRole(spec, ctx) ? []
-  : ctx.block === "network" && ctx.role === "authority" ? ["records", "exclude", "entity", "radiography"] : ["records", "exclude", "entity"];
+const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) =>
+  // The profiles tied at the top of the index (F6c): their records and their page; there is no calculation to leave them out of.
+  ctx.form === "entity_card:risk" ? ["records", "entity"]
+    : !rowRole(spec, ctx) ? []
+      : ctx.block === "network" && ctx.role === "authority" ? ["records", "exclude", "entity", "radiography"] : ["records", "exclude", "entity"];
 
 function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = {}): BlockFilters {
   return {

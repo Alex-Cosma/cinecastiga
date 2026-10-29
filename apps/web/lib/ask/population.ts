@@ -77,7 +77,9 @@ export function unsupportedPopulationView(spec: { block: string; dataset?: strin
   // the buyer's county as well (a firm profile's own county is seatCounty, or an old link's county).
   const transaction = ["cpvTerm", "yearFrom", "yearTo", "monthFrom", "monthTo", "singleBidder", "minEmployees", "maxEmployees", "adminName", "adminPersonKey",
     "purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat"];
-  if (spec.population || spec.minimumRecords || transaction.some(k => f[k] !== undefined) || spec.dataset === "contracts")
+  // F6c: the size of a firm is on its profile, so the index of firms takes it (final entity_card §3.6).
+  const firmSize = spec.block === "entity_card" && spec.dim === "supplier" ? ["minEmployees", "maxEmployees"] : [];
+  if (spec.population || spec.minimumRecords || transaction.some(k => f[k] !== undefined && !firmSize.includes(k)) || spec.dataset === "contracts")
     return "Acest răspuns folosește profiluri istorice de achiziții directe și nu poate respecta selecția de tranzacții. Condițiile sunt păstrate. Alege un clasament, o evoluție sau un total; pentru profiluri, elimină explicit condițiile de perioadă, domeniu și selecție precisă.";
   if (["scatter", "entity_card"].includes(spec.block) && ["authorityId", "authorityName", "supplierId", "supplierName"].some(k => f[k] !== undefined))
     return "Acest răspuns compară o populație de profiluri; nu poate fixa o singură entitate. Elimină explicit entitatea sau alege distribuția unui profil.";

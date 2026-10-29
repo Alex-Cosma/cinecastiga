@@ -301,6 +301,23 @@ export const GLOSSARY = {
     title: "În asociere",
     text: "La un contract cu mai mulți câștigători, câte o înregistrare pe câștigător, cu cota lui egală. De aceea înregistrările pot fi mai multe decât contractele.",
   },
+  // "Cine conduce?" (entity_card-2, F6c, final entity_card §3.9–§3.10).
+  "indice-egalitate": {
+    title: "Indicele nu le deosebește",
+    text: "Indicele e proporția semnalelor întâlnite din cele posibile (4 la o firmă, 5 la o instituție), deci ia puține valori și mulți au aceeași. Când peste jumătate din grup îl are, sau când e un singur semnal, indicele nu poate numi pe unul. Semnal statistic, nu dovadă.",
+  },
+  "ordinea-valorii": {
+    title: "În ordinea valorii",
+    text: "Toți cei de pe listă au același indice. Îi ordonăm după valoarea achizițiilor directe din profil, nu după risc: locul în listă nu spune cine ar fi mai riscant.",
+  },
+  "diferenta-locul-doi": {
+    title: "Diferența față de locul 2",
+    text: "O parte din valoare vine din contracte în asociere, împărțite în cote egale; diferența depinde de această convenție. Valoarea e înregistrată, nu plătită.",
+  },
+  "cumparator-societate": {
+    title: "Nume de societate sau asociație",
+    text: "Cumpărător înregistrat în SEAP cu nume de societate sau asociație. Poate fi o companie a unei instituții, o asociație de dezvoltare a mai multor primării sau un cumpărător privat. Doar numele ne spune asta, nu o clasificare.",
+  },
 } as const satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryId = keyof typeof GLOSSARY;

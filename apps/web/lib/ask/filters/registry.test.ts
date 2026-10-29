@@ -575,6 +575,8 @@ describe("places (BLOCK_FILTERS)", () => {
   // the trend of firms (trend-2), "Cine câștigă?" (table:employees-2, F3) and "Cine conduce?" by value.
   it("draws the partners' selection rows on the network and the flow, and the ranked firms' winners as a group", () => {
     const winners = (spec: FilterSpec, ctx: ReturnType<typeof ctxOf>) => spec.dim === "supplier" && ["trend", "table", "entity_card:value"].includes(ctx.form);
+    // F6c: on the index of firms the band selects the profiles in it: the same row, a selection (no total in lei to keep).
+    const profiles = (spec: FilterSpec, ctx: ReturnType<typeof ctxOf>) => spec.dim === "supplier" && ctx.form === "entity_card:risk";
     for (const { spec } of states) {
       const ctx = ctxOf(spec);
       const rows = BLOCK_FILTERS[ctx.block].rows(spec, ctx);
@@ -583,7 +585,7 @@ describe("places (BLOCK_FILTERS)", () => {
         for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form, spec), `${row.label} ${chip.id}`).toBe(row.kind);
         if (row.kind === "group") for (const chip of row.chips) expect(SCOPE_CHANGES.some((c) => c.filter === chip.id && c.form === ctx.form), chip.id).toBe(true);
       }
-      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || winners(spec, ctx));
+      expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || winners(spec, ctx) || profiles(spec, ctx));
       // P4 the question owns: the size of a purchase on the total and the ranking (F3), the trend's "Aceleași luni", the shared
       // clients of two firms (F4).
       expect(BLOCK_FILTERS[ctx.block].under(spec, ctx).map((slot) => slot.id)).toEqual(ctx.block === "trend" ? ["trendMonths"]

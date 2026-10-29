@@ -5,17 +5,13 @@ import { useAnswerEvidence } from "./AnswerEvidence";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { EvidenceScope } from "@/lib/ask/evidence";
 import { useEffect, useRef, useState } from "react";
-import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
+import { formatRon, formatRonFull, cleanName } from "@/lib/format";
 import { readableCpvName } from "@/lib/entity-summary";
 import { countWords, formatDecimal, formatShare } from "@/lib/ask/answer-text";
 import { encodeSpec } from "@/lib/ask/permalink";
-import type { QuestionSpec } from "@/lib/ask/question-ui";
-import { askLink, leaderAlone, leaderAloneSpecs } from "@/lib/ask/source-spec";
 import { deeperThread, threadHref, type Thread } from "./answer-state";
-import KitLink, { recordsWords } from "./answer/KitLink";
+import { recordsWords } from "./answer/KitLink";
 import { FactTag, type RowFact } from "./answer/RowFacts";
-import RowMenu from "./answer/RowMenu";
-import { entityRowActions } from "./answer/row-actions";
 import { breakdownKinds, breakdownShown, generalTag, largestTag } from "./breakdown-answer";
 import HelpTip from "./builder/HelpTip";
 import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
@@ -98,21 +94,15 @@ export function useTip() {
   const hide = () => setTip(null);
   return { bind, bindClip, show, hide, el, active: tip?.title ?? null };
 }
-import { FLAG_META, criBand } from "@/lib/flags";
 import type {
   DistributionData,
   BreakdownSlice,
   BreakdownGroup,
   ScatterPoint,
   ScatterDensity,
-  EntityCardData,
 } from "@/lib/ask/compile";
 
 /** Renderers for the risk/relationship result blocks (mockup blocks 5–13). */
-
-function flagTitle(code: string): string {
-  return FLAG_META[code]?.title ?? code;
-}
 
 /* ── distribution ─────────────────────────────────────────────────────── */
 
@@ -726,98 +716,5 @@ export function ScatterBlock({
 
 /* ── entity card ──────────────────────────────────────────────────────── */
 
-export function EntityCardBlock({ card, historical = true, spec }: { card: EntityCardData; historical?: boolean; spec?: QuestionSpec }) {
-  const evidence = useAnswerEvidence();
-  const band = card.cri !== null ? criBand(card.cri) : null;
-  // A group of one (plan §4.13): no crown, the council and two other answers about it.
-  const alone = spec ? leaderAlone(spec) : null;
-  if (alone && spec) {
-    const { peers, total } = leaderAloneSpecs(spec, card);
-    return (
-      <div className="qb qb-empty ask-alone">
-        <p>{alone}</p>
-        <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
-        <div className="qb-relax">
-          <KitLink className="qb-relax-link" link={{ label: "Unde se situează față de celelalte", glyph: "›", href: askLink(peers) }} />
-          <KitLink className="qb-relax-link" link={{ label: "Cât cumpără", glyph: "›", href: askLink(total) }} />
-        </div>
-      </div>
-    );
-  }
-  // P7 on place 1 by value (F4, plan §4.13): its records, "Scoate din calcul" (the next one is crowned), its page.
-  const records = evidence ? () => evidence.open(undefined, { entityIds: [card.entityId], role: card.role === "supplier" ? "supplier" : "authority" },
-    `${cleanName(card.name)} · ${historical ? "înregistrările profilului" : "achizițiile selectate"}`) : undefined;
-  const entity = { id: card.entityId, name: cleanName(card.name) };
-  const actions = !historical && spec && evidence?.exclude
-    ? entityRowActions(spec as AskSpec, entity, { ...(records ? { records } : {}), exclude: () => evidence.exclude!(entity, 0) }) : [];
-  return (
-    <div className="ask-ecard">
-      {actions.length ? <div className="ask-ecard-head" data-qb-arow="">
-        <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
-        <span className="qb cq-rank-menu"><RowMenu name={entity.name} actions={actions} /></span>
-      </div> : <h3>
-        <Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link>
-      </h3>}
-      <div className="badges">
-        <span className="badge">
-          {card.role === "authority" ? "Autoritate" : "Furnizor"}
-        </span>
-        {card.county && <span className="badge">{card.county}</span>}
-        {card.population !== null && card.population > 0 && (
-          <span className="badge">{countWords(card.population, "locuitor", "locuitori")}</span>
-        )}
-      </div>
-      <div className="kpis">
-        <div className="kpi">
-          <div className="v num">{formatRon(card.value)}</div>
-          <div className="l">{historical ? "valoare înregistrată în profil" : "valoarea achizițiilor selectate"}</div>
-        </div>
-        <div className="kpi">
-          <div className="v num">{formatInt(card.count)}</div>
-          <div className="l">înregistrări</div>
-        </div>
-        {historical && <div className="kpi">
-          <div className="v num risk">
-            {card.cri !== null ? formatDecimal(card.cri, 2) : "—"}
-          </div>
-          <div className="l">indice risc{band ? ` · ${band.label}` : ""}</div>
-        </div>}
-        {historical && <div className="kpi">
-          <div className="v num risk">{card.nFlags}</div>
-          <div className="l">semnale</div>
-        </div>}
-      </div>
-      {evidence && (
-        <button
-          type="button"
-          className="cq-record-link"
-          onClick={() =>
-            evidence.open(
-              undefined,
-              {
-                entityIds: [card.entityId],
-                role: card.role === "supplier" ? "supplier" : "authority",
-              },
-              `${cleanName(card.name)} · ${historical ? "înregistrările profilului" : "achizițiile selectate"}`,
-            )
-          }
-        >
-          {card.count === 1 ? "Vezi înregistrarea →" : `Vezi cele ${recordsWords(card.count)} →`}
-        </button>
-      )}
-      {card.flags.length > 0 && (
-        <div className="ask-fchips">
-          {card.flags.map((f) => (
-            <span key={f} className="ask-fchip" title={FLAG_META[f]?.short}>
-              {flagTitle(f)}
-            </span>
-          ))}
-        </div>
-      )}
-      {historical && <p className="ask-methnote">
-        Indicele de risc (CRI) e un semnal statistic, nu o dovadă de neregulă —{" "}
-        <Link href="/metodologie">cum se calculează</Link>.
-      </p>}
-    </div>
-  );
-}
+// entity_card-2 (F6c): the podium by value, the group at the top of the index (EntityCardAnswer.tsx).
+export { default as EntityCardBlock } from "./EntityCardAnswer";

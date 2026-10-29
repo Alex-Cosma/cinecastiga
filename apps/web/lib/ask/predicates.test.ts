@@ -222,10 +222,15 @@ describe("the conditions of a question", () => {
     expect(() => predicateContext(fake, all, fakeGrounding(all), { dataset: "all", yearFrom: null, yearTo: null, seat: true })).toThrow(/were not read/);
     // Firm profiles: the firm's own county, never the buyer's kind or locality; its seat since F4 (owner-seat-switch),
     // and before the marts build fills the column, the SEAP county of entity_flags as before.
+    // F6c: the firm's size is the firm's too, so "Cine conduce?" on the index takes it (its profiles of the firms in the band);
+    // an institution has none.
+    const band = "ef.entity_id in ( select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.employees is not null and ep.employees between $1 and $2 ) [1,9]";
     expect(texts(profilePredicates(ctx, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]",
-      `ef.entity_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.seat_county = $1) ["Cluj"]`]);
-    expect(texts(profilePredicates({ ...ctx, seatColumn: false }, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]']);
-    expect(texts(profilePredicates({ ...ctx, county: null, seatCounty: "Iasi" }, "supplier", 20)).at(-1)).toMatch(/ep\.seat_county = \$1\) \["Iasi"\]$/);
+      `ef.entity_id in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ep.seat_county = $1) ["Cluj"]`, band]);
+    expect(texts(profilePredicates({ ...ctx, seatColumn: false }, "supplier", 20))).toEqual(['ef.role = $1 ["supplier"]', "ef.n_das >= $1 [20]", 'lower(unaccent(ef.county)) = $1 ["cluj"]', band]);
+    expect(texts(profilePredicates({ ...ctx, minEmployees: null, maxEmployees: null }, "supplier", 20))).toHaveLength(3);
+    expect(texts(profilePredicates(ctx, "authority", 10)).some((text) => text.includes("employees"))).toBe(false);
+    expect(texts(profilePredicates({ ...ctx, county: null, seatCounty: "Iasi", minEmployees: null, maxEmployees: null }, "supplier", 20)).at(-1)).toMatch(/ep\.seat_county = \$1\) \["Iasi"\]$/);
   });
 
   it("write the firm's seat on the records, from its profile (F4, plan §2.5)", () => {

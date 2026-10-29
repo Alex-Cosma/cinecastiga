@@ -388,13 +388,20 @@ async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): 
 async function profileCounts(sql: DbSql, p: Prepared, part: CountPart, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit } | { error: string }> {
   const { spec, ctx } = p;
   const role: Role = spec.dim === "supplier" ? "supplier" : "authority";
-  const offered = spec.block !== "distribution" && (part === "county" || (part === "kind" && role === "authority") || (part === "seat" && role === "supplier"));
+  // F6c: the size of the firms on "Cine conduce?" by the index (final entity_card §3.6): the profiles of each band.
+  const offered = spec.block !== "distribution" && (part === "county" || (part === "kind" && role === "authority") || (part === "seat" && role === "supplier")
+    || (part === "employees" && role === "supplier" && spec.block === "entity_card"));
   if (!offered) return { error: "Profilurile istorice nu se numără după această condiție." };
   const parts: Fragment[] = [...profilePredicates(ctx, role, profileMinDas(spec.block))];
   if (spec.block === "scatter") parts.push(sql`ef.cri is not null`);
   const where = andAll(sql, parts);
   const seat: Fragment = role === "supplier" && ctx.seatColumn
     ? sql`(select ep.seat_county from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = 'supplier')` : sql`ef.county`;
+  if (part === "employees") return { unit: "profiles", rows: await run<Grouped>(sql`
+    select ${bandOf(sql, sql`ep.employees`)} k, coalesce(sum(ef.total_ron), 0) v, count(*) n
+    from marts.entity_flags ef left join marts.entity_profile ep on ep.entity_id = ef.entity_id and ep.role = 'supplier'
+    where ${where} group by 1
+  `) };
   const key: Fragment = part === "kind" ? authorityKindExpression(sql, await readAuthorityKinds(sql), sql`ef.entity_id`) : seat;
   return { unit: "profiles", rows: await run<Grouped>(sql`
     select ${key} k, coalesce(sum(ef.total_ron), 0) v, count(*) n from marts.entity_flags ef where ${where} group by 1
