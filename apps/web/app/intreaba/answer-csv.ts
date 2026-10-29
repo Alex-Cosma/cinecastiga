@@ -2,6 +2,7 @@ import { fileSlug } from "../../lib/ask/answer-text";
 import type { BlockData, DistributionDataV1, DistributionMember } from "../../lib/ask/compile";
 import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
 import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
+import { employeesWords } from "../../lib/ask/filters/words";
 import { isHistoricalProfile } from "../../lib/ask/population";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
@@ -51,8 +52,14 @@ export const leiDifference = (a: number, b: number): number => Math.round((b - a
 /** The rows of the shown result, as before F1b. */
 function rowsOf(data: BlockData, spec: AskSpec): string[] {
   switch (data.block) {
-    case "table":
-      return ["nume,judet,valoare_lei,achizitii,populatie", ...data.rows.map((r) => `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}`)];
+    case "table": {
+      // A firm's place is its seat (F4 owner-seat-switch), `sediu` as on the trend (S4t-firm-csv-column); the band of
+      // CÂȘTIGĂTORII the list is narrowed to, on every row (S4t-band-csv: the title and the chips say it, the file too).
+      const firms = spec.dim === "supplier";
+      const band = firms ? employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees)?.replace(/^cu /, "") ?? null : null;
+      return [`nume,${firms ? "sediu" : "judet"},valoare_lei,achizitii,populatie${band ? ",angajati" : ""}`,
+        ...data.rows.map((r) => `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}${band ? `,${csvQ(band)}` : ""}`)];
+    }
     case "timeseries": {
       // F3: a month's column on a series month by month, a value per part of a split (its parts' labels as columns).
       const month = data.grain === "month", parts = data.parts ?? [];
