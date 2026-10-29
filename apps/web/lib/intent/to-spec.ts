@@ -9,6 +9,7 @@ import { filterContext, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/
 import { choiceState } from "../ask/filters/pickers";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
+import { NEW_NETWORK_SHOW, networkLastYear } from "../ask/network-shared";
 import { genitive, hasNamedScope } from "./rules";
 import { fold } from "./text";
 import type { LensMatch } from "./lens-phrases";
@@ -306,6 +307,20 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
       if (!firms) { delete f.county; delete f.authorityKind; }
       break;
     }
+    // S5 (plan §2.7): the partners of one institution or firm, and what it buys from whom. A town hall is its
+    // institution (rules.ts townHall); the centre's own county or kind would filter the centre itself: they leave.
+    case "network":
+    case "flow": {
+      if (f.authorityName && f.supplierName) { delete f.supplierName; delete f.supplierId; }
+      // A town hall the registry does not name once (rules.ts townHall) is a place, not a centre: say which name to write.
+      if (!named) return { spec: null, error: place?.kind === "locality" ? `Nu am găsit în registru primăria din ${place.name}. Scrie numele întreg al instituției.`
+        : intent === "network" ? RELATION_NEEDS_CENTRE.network : RELATION_NEEDS_CENTRE.flow, notes };
+      raw.block = intent === "network" ? "network" : "sankey";
+      raw.measure = "value";
+      for (const k of ["uatSiruta", "uatName", "county", "authorityKind"] as const) if (f[k] !== undefined && (f.authorityName || f.authorityId)) delete f[k];
+      if (intent === "network") raw.network = { show: NEW_NETWORK_SHOW };
+      break;
+    }
     case "signals": {
       raw.measure = "value";
       // risk profiles compare institutions with each other; never a one-town-hall population (localityScopeSupport)
@@ -346,10 +361,27 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
     const change = said || EVERY_CHANGE.test(fold(i.text)) ? "all" : "up";
     lensed = FILTERS.trendChange.write(lensed as unknown as FilterSpec, change) as unknown as Record<string, unknown>;
   }
+  // A network's group counts from a complete year (final network §3.2): the period's first year, never one the archive
+  // has not completed, else the last complete year; the period applies to „Toți” only (networkFollows' words).
+  if (lensed.block === "network" && optionsOf(lensed, "network").partners) {
+    const last = networkLastYear(context.periods ?? null, context.year ?? new Date().getFullYear());
+    const asked = optionsOf(lensed, "network").since as number | undefined;
+    const since = Math.min(asked ?? last, last);
+    lensed = { ...lensed, network: { ...optionsOf(lensed, "network"), since } };
+    if (asked !== undefined && asked !== since) notes.push(`Grupele se socotesc față de ${last}: ${asked} nu s-a încheiat în date.`);
+    // "din 2023" is the year itself; a closed period keeps only its first year, said.
+    else if (asked !== undefined && f.yearTo !== undefined && f.yearTo !== f.yearFrom) notes.push(`Am păstrat doar anul de început: ${since}.`);
+  }
   const valid = validateSpec(lensed);
   if ("error" in valid) return { spec: null, error: valid.error, notes };
   return { spec: valid, error: null, notes };
 }
+
+/** A relation without its centre (S5): the words asked for one entity's partners or flow, none was named. */
+const RELATION_NEEDS_CENTRE = {
+  network: "Spune a cui rețea vrei să o vezi, de exemplu „Cu cine lucrează primăria Buzău?”.",
+  flow: "Spune cine cumpără, de exemplu „Ce cumpără primăria Buzău și de la cine?”.",
+} as const;
 
 /** The words of a change without a direction: a trend of every change, not the default growths. */
 const EVERY_CHANGE = /\b(?:schimb\w*|evolu\w*|tendint\w*|dinamic\w*|diferent\w*)\b/;
@@ -415,6 +447,8 @@ const INTENT_LABEL: Record<IntentKind, string> = {
   trend: "Cum s-a schimbat de la an la an",
   compare: "Compară",
   signals: "Ce merită verificat",
+  network: "Cu cine lucrează",
+  flow: "Ce cumpără și de la cine",
 };
 
 const FOLLOW_UPS: Record<IntentKind, IntentKind[]> = {
@@ -425,6 +459,8 @@ const FOLLOW_UPS: Record<IntentKind, IntentKind[]> = {
   trend: ["total", "ranking_suppliers"],
   compare: ["total"],
   signals: ["ranking_suppliers"],
+  network: ["flow", "breakdown"],
+  flow: ["network", "breakdown"],
 };
 
 function specKey(spec: AskSpec): string {

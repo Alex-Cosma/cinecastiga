@@ -266,14 +266,15 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.supplier).toBeNull();
     expect(r.spec).toBeNull();
     expect(r.alternatives.map((a) => a.spec.filters.supplierId)).toEqual([9000001, 9000002]);
-    expect(r.alternatives[0]!.spec).toMatchObject({ block: "table", dim: "authority" });
+    // S5: „Cu cine lucrează X?” is the network of the firm chosen (plan §4.8), no longer a ranking of its clients.
+    expect(r.alternatives[0]!.spec).toMatchObject({ block: "network", network: { show: 15 } });
   });
 
   it("27b. a firm whose name starts with a subject word («constructii erbasu»)", async () => {
     const { i, r } = await ask("cu cine lucreaza constructii erbasu");
     expect(i.subjects).toEqual([]);
     expect(i.supplier).toMatchObject({ id: 9000001 });
-    expect(r.spec).toMatchObject({ block: "table", dim: "authority", filters: { supplierId: 9000001 } });
+    expect(r.spec).toMatchObject({ block: "network", filters: { supplierId: 9000001 } });
   });
 
   it("28. «firma Strabag»: two registered firms carry the name, so we ask which", async () => {

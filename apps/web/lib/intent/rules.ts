@@ -101,6 +101,10 @@ const KIND_NOUNS = "spitale|spitalele|scoli|scolile|licee|liceele|comune|comunel
 
 /** Ordered: the more specific phrase first, so it consumes the shared words. */
 const INTENT_CUES: [IntentKind, RegExp][] = [
+  // S5 (plan §2.7 „rețea”): the partners of one entity, before the trend's "nu mai lucrează" and the firms' cue take their words.
+  ["network", /\b(?:cu cine (?:lucreaza|a lucrat|au lucrat|lucra|colaboreaza|a colaborat|a inceput sa lucreze|au inceput sa lucreze|nu mai lucreaza|mai lucreaza|inca lucreaza)|cu ce (?:firme|furnizori|companii|institutii|clienti) (?:lucreaza|a lucrat|a inceput sa lucreze|nu mai lucreaza|mai lucreaza|inca lucreaza)|(?:ce|care) (?:sunt )?partenerii|partenerii|reteaua (?:lui|ei|de parteneri|de furnizori|de clienti))\b/],
+  // "… și de la cine" after what an entity buys: its flow (with the breakdown cue "ce cumpără", settleIntent).
+  ["flow", /\bsi de la cine\b/],
   // "față de" before a year is the period of a change ("în 2025 față de 2024"), not a comparison of two entities.
   ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de(?!\s+(?:anul\s+)?20[0-3]\d)|versus|vs)\b/],
   ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc)\b/],
@@ -329,7 +333,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.subjects(c, out);
     this.settlePlaces([...marked, ...unmarked].sort((a, b) => a.from - b.from), out);
     await this.choicesInPlace(out);
-    if (cues.some((x) => x.intent === "signals")) await this.townHall(out);
+    // A town hall in the centre of a profile, a network or a flow is its institution (the place alone is its records).
+    if (cues.some((x) => x.intent === "signals" || x.intent === "network" || x.intent === "flow")) await this.townHall(out);
     await this.leftoverEntity(c, out);
     this.settleIntent(cues, out);
     this.leftover(c, out);
@@ -1223,9 +1228,18 @@ export class RulesInterpreter implements QuestionInterpreter {
     const typed = significant(placeKey(place.name));
     const { hits } = await this.vocab.entities("authority", typed.join(" "));
     const same = hits.filter((e) => sameName(typed, e.name) && (!e.county || fold(e.county).replace(/[^a-z]+/g, " ") === fold(place.county).replace(/[^a-z]+/g, " ")));
-    if (same.length !== 1) return;
+    if (!same.length) return;
+    const matched = place.matched ?? { text: place.name, from: 0, to: 0 };
+    // Several registry identities carry the town hall's name: the reader chooses (never a guess), as with a firm's name.
+    if (same.length > 1) {
+      out.entityAlternatives = same.slice(0, 8).map((e) => ({ role: "authority" as const, id: e.id, name: e.name, county: e.county, matched }));
+      out.place = null;
+      out.placeAlternatives = [];
+      out.placeNote = null;
+      return;
+    }
     const hit = same[0]!;
-    out.authority = { role: "authority", id: hit.id, name: hit.name, county: hit.county, matched: place.matched ?? { text: place.name, from: 0, to: 0 } };
+    out.authority = { role: "authority", id: hit.id, name: hit.name, county: hit.county, matched };
     out.place = null;
     out.placeAlternatives = [];
     out.placeNote = null;
@@ -1297,9 +1311,13 @@ export class RulesInterpreter implements QuestionInterpreter {
     const has = (k: IntentKind) => ordered.includes(k);
     let primary: IntentKind | null = null;
     if (has("compare") && (out.compareWith || out.compareChoices?.length)) primary = "compare";
+    // "Cu cine lucrează X?": its "cu semnale", "nu mai lucrează" are the network's lenses, never the cloud or the trend (plan §2.7).
+    else if (has("network")) primary = "network";
+    else if (has("flow") && has("breakdown")) primary = "flow";
     else if (has("signals")) primary = "signals";
     else if (has("trend")) primary = "trend";
-    else primary = ordered.find((k) => k !== "compare") ?? null;
+    // A lone "și de la cine" asks who sold, as "de la cine" does.
+    else primary = ordered.find((k) => k !== "compare" && k !== "flow") ?? (has("flow") ? "ranking_suppliers" : null);
     if (has("compare") && !out.compareWith && !out.compareChoices?.length)
       out.notes.push("Pentru o comparație, numește două instituții sau două firme, de exemplu „compară Spitalul Județean de Urgență Buzău cu Spitalul Județean de Urgență Brăila”.");
     if (primary) {
