@@ -5,7 +5,7 @@ import type { AskSpec } from "../../lib/ask/spec";
 import { decodeSpec } from "../../lib/ask/permalink";
 import { answerCsv } from "./answer-csv";
 import { appliedAfterNetwork, appliedAfterSankeyShown, sankeyDeeperSpec, threadHref } from "./answer-state";
-import { networkButtons, networkEmpty, networkPage, networkRowView, orderedRows, rowFacts, yearBand, yearsWords } from "./network-answer";
+import { networkButtons, networkEmpty, networkPage, networkRowView, networkWatch, networkWatchNote, orderedRows, rowFacts, yearBand, yearsWords } from "./network-answer";
 import { flowGeometry, partnerDomainsWords, sankeySuggestion, sankeyView, shownOptions } from "./sankey-answer";
 import { patchDraft } from "./builder/view";
 import { answerListGroup, listGroupHeader } from "./drawer-group";
@@ -121,6 +121,19 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     expect(head.filter((name) => name === "grupa")).toHaveLength(1);
     expect(head.at(-1)).toBe("canal");
     expect(banded.filename).toBe("cu-cine-a-continuat-toate-continua.csv");
+  });
+
+  it("offers „Urmărește grupa” on a group, which fixes its partners at activation (F4n-members-watch)", () => {
+    const group = (partners: "new" | "continuing" | "gone") => ({ network: { partners, since: 2025 } });
+    expect(networkWatch(NETWORK, group("new"))).toEqual({ label: "Urmărește grupa", blocked: null });
+    expect(networkWatch(NETWORK, group("gone"))).toEqual({ label: "Urmărește grupa", blocked: "Grupa nu are niciun membru în această selecție." });
+    // „Toți” is the plain live watch; the bounded answer waits for its whole relation.
+    expect(networkWatch(NETWORK, {})).toBeNull();
+    expect(networkWatch({ ...NETWORK, relation: "pending" }, group("new"))).toBeNull();
+    const spec = { block: "network", filters: { authorityId: 1, authorityName: "MUNICIPIUL BUZAU" }, ...group("new") } as Pick<AskSpec, "block" | "filters" | "network">;
+    expect(networkWatchNote(spec)).toBe("Firmele grupei „Noi din 2025” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.");
+    expect(networkWatchNote({ ...spec, filters: { supplierId: 3 } })).toMatch(/^Instituțiile grupei/);
+    expect(networkWatchNote({ ...spec, network: { since: 2025 } })).toBeNull();
   });
 });
 

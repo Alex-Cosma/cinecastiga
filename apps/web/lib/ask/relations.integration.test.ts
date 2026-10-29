@@ -147,6 +147,34 @@ describe.runIf(Boolean(connection))("F4: the relations, network-2 and sankey-2 (
     });
   });
 
+  it("fixes a group's partners for a watch, then answers and lists sources on them, the live group only a movement (S5)", async () => {
+    await withAskFixture(connection!.sql, "f4_relations", load, async (q) => {
+      // Activation (options.members network-group): the group's partners, ids ascending.
+      const frozen = await runSpec(q, since(around, "continuing"), BUYER, { freezeGroup: true });
+      if ("error" in frozen) throw new Error(frozen.error);
+      expect(frozen.groupMembers).toEqual(["10", "14"]);
+      // A check: Alfa stays, Zeta (gone today) was fixed too; the answer lists the fixed partners wherever their years put them.
+      const fixed = { role: "supplier" as const, ids: ["10", "15"], frozen: 2, frozenAt: "2026-10-29T10:00:00Z" };
+      const run = await runSpec(q, since(around, "continuing"), BUYER, { fixedMembers: fixed });
+      if ("error" in run) throw new Error(run.error);
+      const d = network(run);
+      expect([ids(d, "continuing"), ids(d, "all"), ids(d, "new"), d.members]).toEqual([["10", "15"], [], [], { list: "continuing", frozen: 2, frozenAt: fixed.frozenAt }]);
+      expect(d.lists.continuing.value).toBe(130050);
+      expect(run.movement).toEqual({ part: "continuing", members: 2, stayed: 1, live: 2 });
+      // The sources are the fixed partners' records in the selection, from every year (answer = sources).
+      const sources = await runRows(q, since(around, "continuing"), BUYER, 0, { limit: 100, fixedMembers: fixed });
+      if ("error" in sources) throw new Error(sources.error);
+      expect([sources.sourceTotal, Number(sources.sourceValue), sources.rows.map((r) => r.supplierId).sort()]).toEqual([3, 130050, ["10", "10", "15"]]);
+      expect(sources.scopeNotes.some((n) => n.includes("Partenerii sunt cei fixați la activarea urmăririi (2 parteneri)"))).toBe(true);
+      // Never on „Toți”, nor with the other role's members.
+      expect(await runSpec(q, since(around), BUYER, { fixedMembers: fixed })).toHaveProperty("error");
+      expect(await runSpec(q, since(around, "continuing"), BUYER, { fixedMembers: { ...fixed, role: "authority" } })).toHaveProperty("error");
+      // A group whose fixed partners have no record left is an empty group, not a missing relation.
+      const gone = network(await runSpec(q, since(around, "new"), BUYER, { fixedMembers: { ...fixed, ids: ["999"] } }));
+      expect([gone.lists.new.partners, gone.members?.frozen]).toEqual([0, 2]);
+    });
+  });
+
   it("leaves a partner out of every group and total, and selects the partners with a signal on their relation", async () => {
     await withAskFixture(connection!.sql, "f4_relations", load, async (q) => {
       const out = network(await runSpec(q, { ...since(around), population: withExclusion(undefined, { field: "supplier", value: "10", label: "Alfa SRL" }) }, BUYER));

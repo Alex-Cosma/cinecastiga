@@ -7,6 +7,8 @@ import {
 } from "../../lib/ask/network-shared";
 import type { AskSpec } from "../../lib/ask/spec";
 import { cleanName, formatInt, formatRon, formatRonFull } from "../../lib/format";
+import { networkGroupLabel } from "../../lib/ask/filters/defs/network";
+import { groupWatchBlocked } from "./trend-answer";
 import type { RowFact } from "./answer/RowFacts";
 import type { CountGroup } from "./builder/CountGroups";
 import type { KitTip } from "./builder/kit-types";
@@ -239,4 +241,23 @@ export function networkCsvRows(data: NetworkData, spec: Pick<AskSpec, "network">
       csvQ((p?.signals ?? []).map((code) => RELATION_SIGNAL_LABELS[code] ?? code).join("; ")),
     ].join(",");
   })];
+}
+
+/**
+ * „Urmărește grupa” on a network's group (options.members network-group, F4n-members-watch): activation fixes its
+ * partners, the watch follows them; „Toți” stays the plain live watch. Disabled with the reason over the members'
+ * limit or on an empty group, as a trend's (groupWatchBlocked); none until the whole relation is read.
+ */
+export function networkWatch(data: NetworkData, spec: Pick<AskSpec, "network">): { label: string; blocked: string | null } | null {
+  const list = networkList(spec);
+  if (list === "all" || data.relation === "pending") return null;
+  return { label: "Urmărește grupa", blocked: groupWatchBlocked(data.focal.role === "authority" ? "supplier" : "authority", data.lists[list].partners) };
+}
+
+/** The setup of a watch on a network's group (FollowSetup): what activation fixes, before it does. Null on any other question. */
+export function networkWatchNote(spec: Pick<AskSpec, "block" | "filters" | "network">): string | null {
+  const list = spec.block === "network" ? networkList(spec) : "all";
+  if (list === "all") return null;
+  const who = spec.filters.authorityId || spec.filters.authorityName ? "Firmele" : "Instituțiile";
+  return `${who} grupei „${networkGroupLabel(list, spec.network?.since)}” se fixează la activare; cele care intră sau ies din grupă apar doar ca notă.`;
 }

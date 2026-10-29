@@ -26,18 +26,24 @@ import { NEWER_VERSION_QUESTION } from "./ask/spec";
 const stat = { block: "stat", measure: "value", filters: { authorityId: 12 } };
 const newer = { ...stat, filters: { ...stat.filters, newSince: 2024 } };
 const members = { kind: "trend-group", role: "supplier", group: "new", ids: ["13", "14"], frozenAt: "2026-10-24T10:00:00Z" };
-// A network's fixed group comes with F4 (read ahead); a trend's is applied since F2.
-const network = { ...members, kind: "network-group", role: "authority", group: "continuing" };
+// A network's fixed group is applied since S5 (F4n-members-watch), a trend's since F2; another kind is a newer release's.
+const network = { ...members, kind: "network-group", role: "supplier", group: "continuing" };
+const networkContinuing = { block: "network", measure: "value", filters: { authorityId: 12 }, network: { partners: "continuing", since: 2025 } };
+const future = { ...members, kind: "cohort-group" };
 const trendNew = { block: "trend", measure: "value", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "new" } };
 const thrown = (run: () => unknown) => { try { run(); } catch (error) { return error as Error & { status?: number }; } throw new Error("did not throw"); };
 
 describe("watches", () => {
   beforeEach(() => { calls.length = 0; });
 
-  it("refuses to create a watch on a newer question, on a network's group, or on a group its question does not list", () => {
+  it("refuses to create a watch on a newer question, or on a group its question does not list", () => {
     expect(thrown(() => monitoringScope({ spec: newer }))).toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });
-    expect(thrown(() => monitoringScope({ spec: stat, options: { members: network } }))).toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });
+    expect(thrown(() => monitoringScope({ spec: stat, options: { members: network } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
     expect(thrown(() => monitoringScope({ spec: stat, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
+    // A network's group, on the network that lists it, by its partners' role (the firms around an institution).
+    expect(monitoringScope({ spec: networkContinuing, options: { members: network } })).toEqual({ spec: networkContinuing, options: { members: network } });
+    expect(thrown(() => monitoringScope({ spec: networkContinuing, options: { members: { ...network, role: "authority" } } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
+    expect(thrown(() => monitoringScope({ spec: { ...networkContinuing, network: { partners: "new", since: 2025 } }, options: { members: network } }))).toMatchObject({ message: MEMBERS_MISMATCH });
     expect(thrown(() => monitoringScope({ spec: { ...trendNew, trend: { change: "up" } }, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
     expect(thrown(() => monitoringScope({ spec: { ...trendNew, dim: "authority" }, options: { members } }))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
     expect(monitoringScope({ spec: stat })).toEqual({ spec: stat, options: {} });
@@ -69,7 +75,7 @@ describe("watches", () => {
 
   it.each([
     ["a key this release does not apply", { spec: newer, options: {} }],
-    ["a network's fixed group", { spec: stat, options: { members: network } }],
+    ["a fixed group of a kind a newer release added", { spec: stat, options: { members: future } }],
   ])("keeps the last good result of a stored watch with %s and says why", async (_case, stored) => {
     state.watch = { id: "watch-1", paused: false, last_success_run_id: null, grounding: {}, preferences: { types: ["added"], minimumValueExact: "0", digest: false }, ...stored };
     await expect(evaluateMonitoringWatch("watch-1", undefined, db as unknown as DbSql)).rejects.toMatchObject({ message: NEWER_VERSION_QUESTION, status: 422 });

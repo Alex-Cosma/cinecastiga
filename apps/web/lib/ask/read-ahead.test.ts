@@ -14,7 +14,7 @@ const trend = { block: "trend", dim: "supplier", measure: "value", filters: { ye
 const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
-const SAMPLES: Record<Exclude<keyof typeof READ_AHEAD_KEYS, "options.members=network-group">, Record<string, unknown>> = {
+const SAMPLES: Record<keyof typeof READ_AHEAD_KEYS, Record<string, unknown>> = {
   "filters.newSince": { ...table, filters: { newSince: 2024 } },
   "filters.newScope": { ...table, filters: { newScope: "registry" } },
   "filters.mainClient": { ...table, filters: { authorityId: 1, mainClient: true } },
@@ -33,7 +33,7 @@ const untouched = new Proxy(() => undefined, {
 
 describe("keys read ahead of the engine", () => {
   it("has one sample per key of plan §3 and none of them is implemented yet", () => {
-    expect(Object.keys(SAMPLES).sort()).toEqual(Object.keys(READ_AHEAD_KEYS).filter(key => key !== "options.members=network-group").sort());
+    expect(Object.keys(SAMPLES).sort()).toEqual(Object.keys(READ_AHEAD_KEYS).sort());
     for (const key of Object.keys(READ_AHEAD_KEYS)) expect(IMPLEMENTED_KEYS.has(key), key).toBe(false);
   });
 

@@ -4,6 +4,9 @@ import { evidenceOptions } from "./ask/evidence-request";
 import { trendGroupOf } from "./ask/predicates";
 import { trendMemberPart } from "./ask/group-ids";
 import { specTrendPartLabel } from "./ask/trend-shared";
+import { networkList, type NetworkGroup } from "./ask/network-shared";
+import { networkGroupLabel } from "./ask/filters/defs/network";
+import { focalRole } from "./ask/question-ui";
 import { isWholeYear, monthsLabel } from "./ask/months-window";
 import { DEFAULT_MONITORING_PREFERENCES, MONITORING_CHANGE_TYPES, MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers, type MonitoringOptions, type MonitoringPreferences, type MonitoringScope } from "./monitoring-shared";
 import { isWorkspaceId } from "./investigation-access";
@@ -54,8 +57,8 @@ export function monitoringMembers(value:unknown):MonitoringMembers {
 }
 /** A group above MONITORING_MEMBERS_MAX: "Grupa are 17.633 de firme (cel mult 5.000); restrânge perioada sau locul." */
 export const membersTooMany=(role:MonitoringMembers["role"],n:number)=>new MonitoringError(membersTooManyWords(role,n),422);
-/** The kinds of fixed group this release applies: a trend's (F2); a network's comes with F4 (read ahead, refused). */
-export const IMPLEMENTED_MEMBER_KINDS:readonly MonitoringMembers["kind"][]=["trend-group"];
+/** The kinds of fixed group this release applies: a trend's (F2), a network's partners (S5, F4n-members-watch). */
+export const IMPLEMENTED_MEMBER_KINDS:readonly MonitoringMembers["kind"][]=["trend-group","network-group"];
 /** Read first, write later (plan F0a): what a newer release stored, this one refuses instead of running it without the condition. */
 export function monitoringNewerError(spec:unknown,options:unknown):string|null {
   const members=options&&typeof options==="object"?(options as Record<string,unknown>).members:undefined;
@@ -73,6 +76,23 @@ export function watchedTrendGroup(spec:AskSpec):{change:Exclude<TrendChange,"all
   if(!trendMemberPart(group)||group.change==="all")return null;
   return {change:group.change,role:spec.dim==="county"?"county":spec.dim==="supplier"?"supplier":"authority"};
 }
+/**
+ * The group a network watch fixes (options.members network-group, F4n-members-watch): a network that lists one
+ * group (Noi, Continuă, Nu mai apar), by its partners' role (the firms around an institution, the clients of a
+ * firm). Null on „Toți”, which stays a live answer.
+ */
+export function watchedNetworkGroup(spec:AskSpec):{group:NetworkGroup;role:"supplier"|"authority"}|null {
+  if(spec.block!=="network")return null;
+  const list=networkList(spec);
+  return list==="all"?null:{group:list,role:focalRole(spec)==="authority"?"supplier":"authority"};
+}
+/** The group a watch on this question fixes, of a trend or a network: its kind, group and members' role. */
+export function watchedGroup(spec:AskSpec):Pick<MonitoringMembers,"kind"|"group"|"role">|null {
+  const trend=watchedTrendGroup(spec);
+  if(trend)return {kind:"trend-group",group:trend.change,role:trend.role};
+  const network=watchedNetworkGroup(spec);
+  return network?{kind:"network-group",...network}:null;
+}
 export const MEMBERS_MISMATCH="Grupa urmărită nu corespunde întrebării.";
 export const MEMBERS_CHANGED="Grupa s-a schimbat de la răspunsul afișat. Reîncarcă răspunsul și urmărește din nou grupa.";
 
@@ -87,6 +107,9 @@ function fixedMembers(role:MonitoringMembers["role"],n:number):string {
  * the growths in percent with the base that decides who is in them: „Creșteri de la cel puțin 1 mil. lei în 2024”.
  */
 export function watchedGroupLabel(spec:AskSpec):string {
+  // A network's group with its reference year: „Noi din 2025” (kit §4: „Noi” always with its year).
+  const network=watchedNetworkGroup(spec);
+  if(network)return `„${networkGroupLabel(network.group,spec.network?.since)}”`;
   return `„${specTrendPartLabel(spec)}”`;
 }
 /** Pinned at activation (scope_notes): what the watch fixed, and that the live group is only a note. */
@@ -114,11 +137,11 @@ export function groupCheckNotes(members:MonitoringMembers,o:{day:string;missing:
   }
   return notes;
 }
-/** A fixed group on its question: the kind this release applies, on the trend that lists that group by that role. */
+/** A fixed group on its question: the kind this release applies, on the trend or network that lists that group by that role. */
 export function membersOfQuestion(spec:AskSpec,members:MonitoringMembers):MonitoringError|null {
   if(!IMPLEMENTED_MEMBER_KINDS.includes(members.kind))return new MonitoringError(NEWER_VERSION_QUESTION,422);
-  const watched=watchedTrendGroup(spec);
-  return watched&&watched.change===members.group&&watched.role===members.role?null:new MonitoringError(MEMBERS_MISMATCH,422);
+  const watched=watchedGroup(spec);
+  return watched&&watched.kind===members.kind&&watched.group===members.group&&watched.role===members.role?null:new MonitoringError(MEMBERS_MISMATCH,422);
 }
 /** A trend whose `auto` window moved with the data since the previous check (plan §2.8): "Fereastra comparată: ian.–mai → ian.–iun." */
 export function movedWindowNote(before:unknown,after:unknown):string|null {

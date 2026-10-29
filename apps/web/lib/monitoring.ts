@@ -11,7 +11,7 @@ import { captureTransaction } from "./evidence-captures";
 import { isWorkspaceId } from "./investigation-access";
 import { monitoringDatabase, refreshError } from "./monitoring-engine";
 import { MonitoringError, monitoringObject, monitoringPreferences, monitoringTitle, monitoringScope, monitoringRecipe, monitoringCursor, monitoringHasLocalSelection, MONITORING_LOCAL_SCOPE_NOTE,
-  groupPinnedNote, MEMBERS_CHANGED, MEMBERS_MISMATCH, MONITORING_MEMBERS_MAX, membersTooMany, watchedGroupLabel, watchedTrendGroup } from "./monitoring-input";
+  groupPinnedNote, MEMBERS_CHANGED, MEMBERS_MISMATCH, MONITORING_MEMBERS_MAX, membersTooMany, watchedGroup, watchedGroupLabel } from "./monitoring-input";
 import { MONITORING_MAX_ROWS, type MonitoringMembers, type MonitoringWatch, type MonitoringRun, type MonitoringDelta, type MonitoringRunDetail, type MonitoringPage } from "./monitoring-shared";
 import { formatBucharestDay } from "./format";
 import { monitoredEntityIds,readMonitoringBindings } from "./monitoring-identity";
@@ -62,8 +62,8 @@ export async function createMonitoringWatch(userId:string,input:unknown,sql=moni
     }
     if(grounding.cpv)pinnedNotes.push(`Domenii CPV fixate la activare: ${grounding.cpv.prefixes.join(", ")}${grounding.cpv.excludePrefixes?.length?`, fără ${(grounding.cpv.excludedNames?.length?grounding.cpv.excludedNames:grounding.cpv.excludePrefixes).join("; ")}`:""}. Denumiri identificate: ${grounding.cpv.matchedNames.join("; ")}. Schimbarea ulterioară a sinonimelor nu modifică această urmărire.`);
     if(grounding.admin)pinnedNotes.push(`Reprezentant fixat: ${grounding.admin.display??grounding.admin.query}. Grupul de firme rămâne cel de la activare: ${countWords(grounding.admin.supplierIds.length,"entitate","entități")} (ID-uri: ${grounding.admin.supplierIds.join(", ")||"niciuna"}). Modificările ulterioare ale relațiilor din registru nu adaugă automat firme în această selecție.`);
-    // A trend that lists one group fixes its members now (plan §2.8): the watch follows them, not the live group.
-    const watched=watchedTrendGroup(spec);
+    // A trend or a network that lists one group fixes its members now (plan §2.8): the watch follows them, not the live group.
+    const watched=watchedGroup(spec);
     const answer=await runSpec(database,spec,grounding,watched?{freezeGroup:true}:{});if("error"in answer)throw new MonitoringError(answer.error,422);
     const {members:sent,...selection}=scope.options;
     let members:MonitoringMembers|undefined;
@@ -75,7 +75,7 @@ export async function createMonitoringWatch(userId:string,input:unknown,sql=moni
       // Ids a caller sent are those of the group now, or the group moved since the answer it saw.
       const now=new Set(ids);
       if(sent&&(sent.ids.length!==ids.length||!sent.ids.every(id=>now.has(id))))throw new MonitoringError(MEMBERS_CHANGED,409);
-      members={kind:"trend-group",role:watched.role,group:watched.change,ids,frozenAt:new Date().toISOString()};
+      members={kind:watched.kind,role:watched.role,group:watched.group,ids,frozenAt:new Date().toISOString()};
       pinnedNotes.push(groupPinnedNote(spec,members,formatBucharestDay(members.frozenAt)));
     }else if(sent)throw new MonitoringError(MEMBERS_MISMATCH,422);
     const fixed=members?{role:members.role,ids:members.ids,frozen:members.ids.length,frozenAt:members.frozenAt}:undefined;

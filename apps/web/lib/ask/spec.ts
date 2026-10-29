@@ -369,12 +369,11 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
  * implements each. "filters.authorityKind=local_admin" is a value of an
- * existing key; "options.members=network-group" is a watch's fixed group of a
- * network, not a spec path (a trend's, "trend-group", is applied since F2:
- * lib/monitoring-input.ts IMPLEMENTED_MEMBER_KINDS).
+ * existing key. A watch's fixed group is not a spec path: a trend's and a
+ * network's are applied (lib/monitoring-input.ts IMPLEMENTED_MEMBER_KINDS),
+ * any other kind a newer release stored is refused there.
  */
 export const READ_AHEAD_KEYS = {
-  "options.members=network-group": "F4",
   "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
   "filters.authorityKind=local_admin": "F5",
   // Phase 2 of F6a (DECISIONS A3-main-cpv-div): marts.entity_flags.main_cpv_div is built; the row waits for it.

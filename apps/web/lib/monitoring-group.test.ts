@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupCheckNotes, groupPinnedNote, membersOfQuestion, MEMBERS_MISMATCH, monitoringHasLocalSelection, movedWindowNote, watchedGroupLabel, watchedTrendGroup } from "./monitoring-input";
+import { groupCheckNotes, groupPinnedNote, membersOfQuestion, MEMBERS_MISMATCH, monitoringHasLocalSelection, movedWindowNote, watchedGroup, watchedGroupLabel, watchedNetworkGroup, watchedTrendGroup } from "./monitoring-input";
 import { answerCore, sameAnswerCore } from "./ask/answer-core";
 import { NEWER_VERSION_QUESTION, type AskSpec } from "./ask/spec";
 import type { MonitoringMembers } from "./monitoring-shared";
@@ -25,7 +25,9 @@ describe("the group a trend watch fixes", () => {
     expect(membersOfQuestion(trend({ change: "new" }), members(2))).toBeNull();
     expect(membersOfQuestion(trend({ change: "up" }), members(2))).toMatchObject({ message: MEMBERS_MISMATCH, status: 422 });
     expect(membersOfQuestion(trend({ change: "new" }, "authority"), members(2))).toMatchObject({ message: MEMBERS_MISMATCH });
-    expect(membersOfQuestion(trend({ change: "new" }), { ...members(2), kind: "network-group" })).toMatchObject({ message: NEWER_VERSION_QUESTION });
+    // A network's group on a trend is another question's group; a kind this release does not know is a newer one's.
+    expect(membersOfQuestion(trend({ change: "new" }), { ...members(2), kind: "network-group" })).toMatchObject({ message: MEMBERS_MISMATCH });
+    expect(membersOfQuestion(trend({ change: "new" }), { ...members(2), kind: "cohort-group" as MonitoringMembers["kind"] })).toMatchObject({ message: NEWER_VERSION_QUESTION });
   });
   it("is not a drawer's selection: the answer is computed on the members, so a changed result still alerts", () => {
     expect(monitoringHasLocalSelection({ members: members(3) })).toBe(false);
@@ -43,6 +45,31 @@ describe("the group a trend watch fixes", () => {
     expect(groupPinnedNote(trend({ change: "up", order: "percent", minBase: 10_000_000 }), members(184), "24.10.2026"))
       .toMatch(/^Grupa „Creșteri de la cel puțin 10 mil\. lei în 2024”: 184 de firme fixate la activare/);
     expect(watchedGroupLabel(trend({ change: "up" }))).toBe("„Creșteri”");
+  });
+});
+
+describe("the group a network watch fixes (options.members network-group, F4n-members-watch)", () => {
+  const network = (partners: "new" | "continuing" | "gone" | undefined, focal: Record<string, unknown> = { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU" }): AskSpec =>
+    ({ block: "network", measure: "value", filters: focal, network: { ...(partners ? { partners } : {}), since: 2025 } }) as AskSpec;
+  const partners = (n: number, role: MonitoringMembers["role"] = "supplier"): MonitoringMembers => ({ ...members(n, role), kind: "network-group" });
+  it("is the group the network lists, by its partners' role; „Toți” fixes none", () => {
+    expect(watchedNetworkGroup(network("new"))).toEqual({ group: "new", role: "supplier" });
+    expect(watchedNetworkGroup(network("gone", { supplierId: 2115381, supplierName: "SELGROS" }))).toEqual({ group: "gone", role: "authority" });
+    expect(watchedNetworkGroup(network(undefined))).toBeNull();
+    expect(watchedGroup(network("continuing"))).toEqual({ kind: "network-group", group: "continuing", role: "supplier" });
+    expect(watchedGroup(trend({ change: "new" }))).toEqual({ kind: "trend-group", group: "new", role: "supplier" });
+  });
+  it("must be that network's group, by its partners' role", () => {
+    expect(membersOfQuestion(network("new"), partners(3))).toBeNull();
+    expect(membersOfQuestion(network("continuing"), partners(3))).toMatchObject({ message: MEMBERS_MISMATCH });
+    expect(membersOfQuestion(network("new"), partners(3, "authority"))).toMatchObject({ message: MEMBERS_MISMATCH });
+    expect(membersOfQuestion(network("new"), members(3))).toMatchObject({ message: MEMBERS_MISMATCH });
+  });
+  it("is named with its year, and the pinned note says the partners fixed", () => {
+    expect(watchedGroupLabel(network("new"))).toBe("„Noi din 2025”");
+    expect(groupPinnedNote(network("new"), partners(12), "29.10.2026"))
+      .toBe("Grupa „Noi din 2025”: 12 firme fixate la activare (29.10.2026). Răspunsul și sursele urmăresc aceste firme; cele care intră sau ies din grupă apar doar ca notă.");
+    expect(groupPinnedNote(network("gone", { supplierId: 2115381 }), partners(1, "authority"), "29.10.2026")).toMatch(/^Grupa „Nu mai apar din 2025”: 1 instituție fixată la activare/);
   });
 });
 
