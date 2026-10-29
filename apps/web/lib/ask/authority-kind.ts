@@ -1,6 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { countyFold, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
-import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
+import { readPerCapitaPopulations } from "./per-capita";
+import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, type AuthorityKind, type ParsedAuthorityKind } from "./spec";
 
 /*
  * The kind of a buying institution (plan §2.5, D1): one classification for
@@ -27,7 +28,8 @@ import { AUTHORITY_KINDS, type AuthorityKind } from "./spec";
  */
 
 /** The kind in the "avansat" SQL text and in its comments. */
-export const KIND_LABEL: Record<AuthorityKind, string> = {
+export const KIND_LABEL: Record<ParsedAuthorityKind, string> = {
+  local_admin: "primării și consilii județene (lista strictă a valorii pe locuitor)",
   comuna: "primării de comună",
   oras_municipiu: "primării de oraș și municipiu",
   consiliu_judetean: "consilii județene / județe",
@@ -36,7 +38,8 @@ export const KIND_LABEL: Record<AuthorityKind, string> = {
 };
 
 /** Where each kind comes from, for the "avansat" SQL text. */
-export const KIND_SOURCE: Record<AuthorityKind, string> = {
+export const KIND_SOURCE: Record<ParsedAuthorityKind, string> = {
+  local_admin: "nume, județ și cod SIRUTA concordante, cu populația INS RPL 2021",
   comuna: "registrul localităților, apoi numele",
   oras_municipiu: "registrul localităților, apoi numele",
   consiliu_judetean: "după nume",
@@ -176,8 +179,12 @@ export async function readAuthorityKinds(q: DbSql): Promise<AuthorityKinds> {
 /** Tests that write profiles inside one build: the next read classifies again. */
 export function forgetAuthorityKinds(): void { cached = null; }
 
-/** The ids of one kind (ascending), or null without a kind. */
-export async function authorityKindIds(q: DbSql, kind: AuthorityKind | null | undefined): Promise<readonly string[] | null> {
+/**
+ * The ids of one kind (ascending), or null without a kind. „Primăriile și consiliile județene” (local_admin, F5, map
+ * final §3.3) are the strict list of the per-inhabitant ranking (per-capita.ts), with no name pattern behind it.
+ */
+export async function authorityKindIds(q: DbSql, kind: ParsedAuthorityKind | null | undefined): Promise<readonly string[] | null> {
+  if (kind === LOCAL_ADMIN_KIND) return (await readPerCapitaPopulations(q)).ids;
   return kind ? (await readAuthorityKinds(q)).ids[kind] : null;
 }
 

@@ -1,6 +1,6 @@
 import {
   BLOCK_OPTION_KEYS, optionBelongs, validateSpec, type AskSpec, type Block, type NetworkOptions, type OptionKey,
-  type PeersOptions, type SankeyOptions, type ScatterOptions, type TimeseriesOptions, type TrendOptions,
+  type MapOptions, type PeersOptions, type SankeyOptions, type ScatterOptions, type TimeseriesOptions, type TrendOptions,
 } from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
@@ -27,6 +27,7 @@ export interface QuestionSpec {
   network?: NetworkOptions;
   sankey?: SankeyOptions;
   scatter?: ScatterOptions;
+  map?: MapOptions;
   peers?: PeersOptions;
 }
 const OPTION_KEYS: readonly OptionKey[] = [...BLOCK_OPTION_KEYS, "peers"];
@@ -291,6 +292,8 @@ export function focalRole(spec: QuestionSpec): "authority" | "supplier" {
 
 /** Plural nouns for the authority kinds, as a person says them in a question. */
 export const KIND_WORDS: Record<string, { the: string; bare: string }> = {
+  // F5, the map only (MAP_RULES): the strict list of the per-inhabitant ranking (map final §3.3).
+  local_admin: { the: "primăriile și consiliile județene", bare: "primării și consilii județene" },
   comuna: { the: "primăriile de comună", bare: "primării de comună" },
   oras_municipiu: { the: "primăriile de oraș și municipiu", bare: "primării de oraș și municipiu" },
   consiliu_judetean: { the: "consiliile județene", bare: "consilii județene" },

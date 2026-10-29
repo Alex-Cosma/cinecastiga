@@ -3,11 +3,12 @@ import { createDb, type DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, parseSpec, unimplementedSpecKeys, validateSpec, type AskSpec, type SpecError } from "@/lib/ask/spec";
 import { localityScopeError } from "@/lib/ask/question-ui";
 import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, rowFacts, type FacetFailure } from "@/lib/ask/facets";
-import { barFacts, mixFacts } from "@/lib/ask/answer-facts";
+import { barFacts, mapFacts, mixFacts } from "@/lib/ask/answer-facts";
 import { comparePeers, pairFacts } from "@/lib/ask/compare-engine";
 import { networkFacts, type NetworkFacts } from "@/lib/ask/network-facts";
 import type { ComparePeersResult, PairResult } from "@/lib/ask/compare-shared";
 import type { BarsResult, FacetCounts, LocateResult, MixResult, RowsResult } from "@/lib/ask/facet-parts";
+import type { MapFacts } from "@/lib/ask/map-facts";
 import { devlog } from "@/lib/devlog";
 
 /**
@@ -23,6 +24,7 @@ import { devlog } from "@/lib/devlog";
  *   { spec, part: "network" } → a network's whole relation where its answer was bounded (lib/ask/network-facts.ts): { ok, part, data, … }
  *   { spec, part: "winners" } → F5, the counts of a ranking's chips „Firme noi”, „Principalul lor client public”, „O firmă ia peste jumătate”
  *   { spec, part: "rows", ids } → F5, the facts of the rows shown (at most 50 ids): { ok, part, facts, checkpoint, tookMs }
+ *   { spec, part: "map" } → F5, a map's county facts (lib/ask/map-facts.ts): { ok, part, counties, seat, share, checkpoint, tookMs }
  *   over the 8 s limit  → { ok: false, timeout: true }: the window shows its options without numbers.
  * POST, not GET: a precise selection reaches 64 KB, and a person's key (name,
  * birth date and place) stays out of the access logs. Its own pool of
@@ -53,11 +55,12 @@ export async function POST(req: Request) {
   if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const signal = req.signal;
   try {
-    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PairResult | ComparePeersResult | NetworkFacts | RowsResult | FacetFailure>(signal, () => asked.part === "locate"
+    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PairResult | ComparePeersResult | NetworkFacts | RowsResult | MapFacts | FacetFailure>(signal, () => asked.part === "locate"
       ? locate(db(), v, asked.q!, { signal })
       : asked.part === "rows" ? rowFacts(db(), v, asked.ids!, { signal })
       : asked.part === "mix" ? mixFacts(db(), v, { signal })
         : asked.part === "bars" ? barFacts(db(), v, { signal })
+        : asked.part === "map" ? mapFacts(db(), v, { signal })
           : asked.part === "pair" ? pairFacts(db(), v, { signal })
             : asked.part === "compare-peers" ? comparePeers(db(), v, { signal })
               : asked.part === "network" ? networkFacts(db(), v)

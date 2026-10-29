@@ -1,6 +1,6 @@
 import { COUNTIES } from "../../../counties";
 import { PROCEDURE_ORDER, PURCHASE_KIND_ORDER, type Procedure, type PurchaseKind } from "../../purchase";
-import { AUTHORITY_KINDS, SELECTION_RULES, type AuthorityKind } from "../../spec";
+import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, SELECTION_RULES, type AuthorityKind, type ParsedAuthorityKind } from "../../spec";
 import { PROFILE_FORMS, TRANSACTION_FORMS } from "../context";
 import type { FilterDef, FilterSpec } from "../types";
 import { alwaysScope, edited, levels, setFilters } from "./shared";
@@ -56,7 +56,7 @@ export const authority: FilterDef<Party> = {
   choices: () => [{ name: "Comuna Exemplu", id: 101 }, { name: "Spitalul Exemplu" }],
 };
 
-export const authorityKind: FilterDef<AuthorityKind> = {
+export const authorityKind: FilterDef<ParsedAuthorityKind> = {
   id: "authorityKind", keys: ["filters.authorityKind"], placement: "sentence", control: "list",
   label: "Tipul instituției", detail: "Primării, spitale, școli…",
   windowTitle: "Ce instituții te interesează?", windowNote: "Poți privi toate instituțiile sau un singur tip.",
@@ -64,9 +64,13 @@ export const authorityKind: FilterDef<AuthorityKind> = {
   // institutes, the rest by name) as a list of institution ids; on profiles, the authority's own id. One
   // classification everywhere, so every kind is offered on every question, the profiles (scatter, entity_card) included.
   engine: { ...levels(TRANSACTION_FORMS, "row"), ...levels(PROFILE_FORMS, "profile") }, scope: alwaysScope("selection"),
-  read: (spec) => spec.filters.authorityKind as AuthorityKind | undefined,
-  write: (spec, value) => setFilters(spec, { authorityKind: value }),
-  choices: () => [undefined, ...AUTHORITY_KINDS],
+  read: (spec) => spec.filters.authorityKind as ParsedAuthorityKind | undefined,
+  // F5 (map final §3.3): „Primăriile și consiliile județene”, the strict list, second on the map; leaving it, the
+  // map's per-inhabitant lens goes back to the value.
+  write: (spec, value) => edited(setFilters(spec, { authorityKind: value }), (next) => {
+    if (value !== LOCAL_ADMIN_KIND && next.block === "map" && next.measure === "value_per_capita") next.measure = "value";
+  }),
+  choices: (spec) => [undefined, ...(spec.block === "map" ? [LOCAL_ADMIN_KIND as ParsedAuthorityKind] : []), ...AUTHORITY_KINDS],
 };
 
 export const county: FilterDef<string> = {

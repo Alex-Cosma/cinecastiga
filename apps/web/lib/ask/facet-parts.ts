@@ -11,7 +11,7 @@ import { isHistoricalProfile } from "./population";
  * a count ("32,0% · 88"). Plain TypeScript, no SQL: lib/ask/facets.ts counts.
  */
 
-export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "winners", "locate", "mix", "bars", "pair", "compare-peers", "network", "rows"] as const;
+export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "winners", "locate", "mix", "bars", "pair", "compare-peers", "network", "rows", "map"] as const;
 export type FacetPart = (typeof FACET_PARTS)[number];
 /**
  * The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"),
@@ -20,9 +20,10 @@ export type FacetPart = (typeof FACET_PARTS)[number];
  * "Cu cine comparăm?" (F4, lib/ask/compare-engine.ts); `network` the whole relation of a network whose
  * „Toți” on one channel or in a period was answered from the records it bounds (lib/ask/network-facts.ts).
  * F5: `winners` counts the ranked winners' chips (WINNERS_OPTIONS), `rows` reads the facts of the rows shown
- * (lib/ask/winners.ts rankedFacts).
+ * (lib/ask/winners.ts rankedFacts). `map`: the county facts of a map (lib/ask/map-facts.ts): the seat split, the
+ * largest buyer and record, „Cota firmei”.
  */
-export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network" | "rows">;
+export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network" | "rows" | "map">;
 export const isFacetPart = (value: unknown): value is FacetPart => (FACET_PARTS as readonly unknown[]).includes(value);
 
 /**
@@ -213,7 +214,7 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
  * contracts. `locate` keeps the question: it finds a place in its answer.
  */
 export function facetSpec<T extends { block: string; dataset?: string; dim?: string; rankBy?: string; filters: object }>(spec: T, part: FacetPart): T {
-  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network" || part === "rows") return spec;
+  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network" || part === "rows" || part === "map") return spec;
   const filters = { ...spec.filters } as Record<string, unknown>;
   for (const key of ownKeys(spec, part)) delete filters[key];
   const out = { ...spec, filters } as T;

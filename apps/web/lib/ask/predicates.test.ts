@@ -69,7 +69,7 @@ function trendMonthsOf(spec: AskSpec) {
 }
 const ctxFor = (spec: AskSpec): PredicateCtx =>
   predicateContext(fake, spec, fakeGrounding(spec), { dataset: spec.dataset ?? "all", yearFrom: spec.filters.yearFrom ?? null, yearTo: spec.filters.yearTo ?? null,
-    kindIds: namedKind(spec.filters.authorityKind) ? KIND_IDS : null, trendMonths: trendMonthsOf(spec), seat: true });
+    kindIds: spec.filters.authorityKind ? KIND_IDS : null, trendMonths: trendMonthsOf(spec), seat: true });
 
 /** Each level's output on a spec, as the engine calls it (runSpec; runRows calls the same functions). */
 function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display", string[]> {

@@ -40,7 +40,7 @@ export const SPEC_PATH_OWNERS: { readonly [P in SpecPath]: FilterId | "question"
   "timeseries.grain": "timeseriesGrain", "timeseries.split": "timeseriesSplit", "timeseries.months": "timeseriesMonths",
   "network.partners": "networkPartners", "network.since": "networkSince", "network.order": "networkOrder",
   "network.show": "networkShow", "network.signals": "networkSignals",
-  "sankey.shown": "sankeyShown", "scatter.flag": "scatterFlag", "scatter.rankBy": "scatterRankBy",
+  "sankey.shown": "sankeyShown", "scatter.flag": "scatterFlag", "scatter.rankBy": "scatterRankBy", "map.lens": "mapLens",
   "peers.similar": "peers", "peers.activity": "peers", "peers.domain": "peersDomain",
 };
 

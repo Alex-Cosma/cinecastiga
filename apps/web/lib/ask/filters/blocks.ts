@@ -267,6 +267,11 @@ function rowRole(spec: FilterSpec, ctx: FilterCtx): "authority" | "supplier" | n
   return spec.dim === "authority" || spec.dim === "supplier" ? spec.dim : null;
 }
 const excludeRows: BlockFilters["exclude"] = (spec, ctx) => {
+  // F5 (map final §3.6, plan §4.4 P4): the map leaves out a county card's largest buyer; never beside a firm or a person.
+  if (ctx.block === "map") {
+    const f = spec.filters;
+    return f.supplierId || f.supplierName || f.adminPersonKey || f.adminName ? null : { field: "authority", max: 5 };
+  }
   const field = rowRole(spec, ctx);
   return field ? { field, max: 5 } : null;
 };
@@ -300,7 +305,7 @@ export const BLOCK_FILTERS: Record<Block, BlockFilters> = {
   // The split and the same months beside the answer (F3, final timeseries §3.8–§3.9); the months' chip once set.
   timeseries: entry({ strip: ["timeseriesSplit", "timeseriesMonths"], under: () => [seriesMonths] }),
   // The measure is the map's lens, beside the answer (plan §4.4 F1b).
-  map: entry({ strip: ["measure"] }),
+  map: entry({ strip: ["measure", "mapLens"] }),
   // The data stream is the strip's segmented "Toate · Directe · Proceduri"; the sentence says it once set ("prin […]").
   // The number beside the value: the legend's headers order by it (F3, final breakdown §3.8).
   breakdown: entry({ strip: ["dataset", "measure"] }),

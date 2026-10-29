@@ -15,7 +15,6 @@ const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<keyof typeof READ_AHEAD_KEYS, Record<string, unknown>> = {
-  "filters.authorityKind=local_admin": { block: "map", measure: "value", filters: { authorityKind: "local_admin" } },
   "peers.domain": { block: "distribution", measure: "value", filters: { supplierId: 1 }, peers: { domain: true } },
   "scatter.flag": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } },
   "scatter.rankBy": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { rankBy: "value" } },
@@ -157,6 +156,8 @@ describe("today's questions", () => {
       "peers.similar", "peers.activity",
       // F5: the ranked winners, from the builder's rows CÂȘTIGĂTORII / INSTITUȚIILE and links.
       "filters.newSince", "filters.newScope", "filters.mainClient", "filters.dominantSupplier",
+      // F5: the map's local administrations and its lens, from the builder's „Cine a cumpărat?”, the strip and links.
+      "filters.authorityKind=local_admin", "map.lens",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

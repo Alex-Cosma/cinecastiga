@@ -1,7 +1,7 @@
 import type { DbSql } from "@seap/db";
 import type { MinimumRecords, QueryPopulation } from "./population";
 import type { ScatterDensity, TableSort } from "./compile";
-import { AUTHORITY_KINDS, type AuthorityKind, type FirmSeat } from "./spec";
+import { AUTHORITY_KINDS, type AuthorityKind, type FirmSeat, type ParsedAuthorityKind } from "./spec";
 import { authorityKindCond } from "./authority-kind";
 import { employeesCond, firmSeatCond, newFirmCond, ownCountySql, purchaseKindCond, seatCountyCond } from "./predicates";
 import type { Procedure, PurchaseKind } from "./purchase";
@@ -57,7 +57,7 @@ export interface RollupCtx {
   cpvExclude: readonly string[];
   /** Canonical buyer county (d.county). */
   county: string | null;
-  kind: AuthorityKind | null;
+  kind: ParsedAuthorityKind | null;
   /** The institutions of that kind (authorityKindIds). */
   kindIds: readonly string[] | null;
   authorityId: string | null;
@@ -227,7 +227,7 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
   const seat = ctx.firmSeat || ctx.seatCounty ? { firmSeat: ctx.firmSeat, county: ctx.seatCounty, filled: ctx.seatColumn } : null;
   const filters: RollupFilters = {
     dataset, yearFrom: ctx.yearFrom, yearTo: ctx.yearTo, county: ctx.county,
-    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, purchaseKind: ctx.purchaseKind, kind: ctx.kind, kindIds: ctx.kind ? ctx.kindIds : null,
+    cpvPrefixes: ctx.cpvPrefixes, cpvExclude: ctx.cpvExclude, purchaseKind: ctx.purchaseKind, kind: ctx.kind as AuthorityKind | null, kindIds: ctx.kind ? ctx.kindIds : null,
     employees, seat, newFirms: ctx.newFirms ? { scope: ctx.newFirms.scope, since: ctx.newFirms.since } : null,
     excludeAuthorities: excluded.authority, excludeSuppliers: excluded.supplier,
     minimum: ctx.minimumRecords, months: ctx.trendMonths,

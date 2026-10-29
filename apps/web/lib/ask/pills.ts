@@ -1,4 +1,4 @@
-import type { AskSpec } from "./spec";
+import { LOCAL_ADMIN_KIND, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
 import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
@@ -41,7 +41,9 @@ const DIM_LABEL = {
 /** What the answer measures: elsewhere the engine ignores `measure` and answers in lei. */
 function shownMeasure(spec: AskSpec): AskSpec["measure"] {
   if (!COUNT_MEASURE_BLOCKS.includes(spec.block)) return "value";
-  return spec.measure === "value_per_capita" && spec.block !== "table" ? "value" : spec.measure;
+  // Per inhabitant: a ranking of institutions, and the map of the local administrations (F5, map final §3.8).
+  const perCapita = spec.block === "table" || spec.block === "map" && spec.filters.authorityKind === LOCAL_ADMIN_KIND;
+  return spec.measure === "value_per_capita" && !perCapita ? "value" : spec.measure;
 }
 
 /**

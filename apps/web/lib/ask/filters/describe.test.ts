@@ -294,7 +294,8 @@ describe("the words of every condition", () => {
     const implemented = new Set(FILTER_DEFS.filter((def) => Object.keys(def.engine).length).map((def) => def.id));
     const owners = new Set(Object.values(SPEC_PATH_OWNERS).filter((id) => id !== "question" && implemented.has(id)));
     // The network's order and length and the flow's are presentation, as topN (F4): the presentation line and the strip say them.
-    expect(new Set(DESCRIBED_FILTERS)).toEqual(new Set([...owners].filter((id) => !["dim", "measure", "topN", "rankBy", "networkShow", "sankeyShown"].includes(id))));
+    // So is the map's lens (F5): the strip and the answer's title.
+    expect(new Set(DESCRIBED_FILTERS)).toEqual(new Set([...owners].filter((id) => !["dim", "measure", "topN", "rankBy", "networkShow", "sankeyShown", "mapLens"].includes(id))));
   });
 
   it("give a total line for every selection outside the basic sentence (G8)", () => {

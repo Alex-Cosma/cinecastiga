@@ -2,6 +2,7 @@ import type { BlockData, ExecutedWindow } from "../compile";
 import type { QuestionSpec } from "../question-ui";
 import { NEWER_VERSION_QUESTION, unimplementedSpecKeys, validateSpec, type AskSpec } from "../spec";
 import { filterContext } from "./context";
+import { askedLens, lensTitle, withoutFirm } from "../map-lens";
 import { describeConditions, type ConditionLabels, type DescribedConditions } from "./describe";
 import { sentenceText, sentenceTokens, type SentenceLabels } from "./sentence";
 import type { FilterSpec } from "./types";
@@ -12,8 +13,8 @@ import type { FilterSpec } from "./types";
  * "…, în 2025, fără SYSTRA?"). One grammar for the answer's heading, a saved
  * question, a watch, the records drawer, the CSV file name and the
  * interpreter's "Am înțeles așa:" (lib/intent/to-spec.ts sentenceFor). The
- * map's lens does not change it with today's keys (value or records: the
- * same question); the lenses with their own words come with F5 (plan §4.4).
+ * map's lens changes it (F5, plan §4.4, map final §3.7: „Cât revine pe
+ * locuitor din …”, „Ce parte din …”): the sentence stays the question's.
  */
 
 /**
@@ -45,7 +46,11 @@ export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels
   if (!text) return "Întrebarea ta";
   const described = describeConditions(spec, labels);
   const tail = [orderWords(spec, described), described.tail].filter(Boolean).join(", ");
-  return tail ? text.replace(/([?.])$/, `, ${tail}$1`) : text;
+  const titled = tail ? text.replace(/([?.])$/, `, ${tail}$1`) : text;
+  if (spec.block !== "map") return titled;
+  // F5: the map's title follows its lens (map final §3.7, the exception to R11); the share's names the firm's whole.
+  const lens = askedLens(spec);
+  return lensTitle(titled, lens, spec, lens === "share" ? questionTitle(withoutFirm(spec), labels) : undefined);
 }
 
 /**
