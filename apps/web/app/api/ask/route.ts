@@ -15,8 +15,8 @@ import { trendListSpec, type TrendList } from "@/lib/ask/trend-shared";
 import { interpret } from "@/lib/ask/llm";
 import { resolvedSpec } from "@/lib/ask/resolved-spec";
 import { devlog } from "@/lib/devlog";
-import { cpvCodeName, isCpvCodeTerm } from "@/lib/ask/cpv-label";
-import { readableCpvName } from "@/lib/entity-summary";
+import { cpvCodeName, isCpvCodeTerm } from "../../../lib/ask/cpv-label";
+import { readableCpvName } from "../../../lib/entity-summary";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 
 /**
