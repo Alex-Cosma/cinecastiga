@@ -106,6 +106,19 @@ describe("«Rezultatul afișat · CSV» with the strip's state", () => {
     expect(plain.text).toBe('﻿judet,valoare_lei,achizitii\r\n"Cluj",5,3\r\n');
     expect(plain.filename).toBe("harta.csv");
   });
+
+  it("names a firm's place its seat and says the band CÂȘTIGĂTORII narrows to (S4t-firm-csv-column, S4t-band-csv)", () => {
+    const table = (county: string): BlockData => ({ block: "table", rows: [{ entityId: 1, name: "PORR", county, value: 10, count: 2 }] }) as unknown as BlockData;
+    const firms = answerCsv(table("Bucuresti"), { block: "table", dim: "supplier", measure: "value", filters: {} }, "Firme").text.replace(/^﻿/, "").split("\r\n");
+    expect(firms.slice(0, 2)).toEqual(["nume,sediu,valoare_lei,achizitii,populatie", '"PORR","Bucuresti",10,2,']);
+    const band = answerCsv(table("Cluj"), { block: "table", dim: "supplier", measure: "value", filters: { minEmployees: 1, maxEmployees: 9 } }, "Firme").text.replace(/^﻿/, "").split("\r\n");
+    expect(band.slice(0, 2)).toEqual(["nume,sediu,valoare_lei,achizitii,populatie,angajati", '"PORR","Cluj",10,2,,"1–9 angajați"']);
+    const none = answerCsv(table("Cluj"), { block: "table", dim: "supplier", measure: "value", filters: { maxEmployees: 0 } }, "Firme").text.split("\r\n");
+    expect(none[1]).toBe('"PORR","Cluj",10,2,,"fără angajați"');
+    // An institution's place stays its county; a ranking of institutions has no band of firms.
+    const institutions = answerCsv(table("Cluj"), { block: "table", dim: "authority", measure: "value", filters: { minEmployees: 1, maxEmployees: 9 } }, "Instituții").text;
+    expect(institutions.replace(/^﻿/, "").split("\r\n")[0]).toBe("nume,judet,valoare_lei,achizitii,populatie");
+  });
 });
 
 describe("a trend's group buttons (TB-screen, owner-R-facts-all-lists)", () => {
