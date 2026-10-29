@@ -858,6 +858,9 @@ describe("registration year, seat and main CPV division of the firms", () => {
       ];
       expect(await seats()).toEqual(expected);
       expect(report.firmRegistry).toEqual({ registeredYear: 8, seat: { onrc: 6, seap: 3, foreign: 2, unknown: 1 } });
+      // The processing run keeps what the seat steps cost (stages.marts in the refresh's validation).
+      expect(report.firmRegistryMs).toBeGreaterThanOrEqual(0);
+      expect(report.spendByCountyMs).toBeGreaterThanOrEqual(0);
       // /harta's firms sit in their seat (owner-seat-switch): 12 and 22 in Ilfov, not București; 11 and 18, without a
       // SEAP county, in theirs; the foreign 16 and 17 apart; 15 unknown. The institutions keep their own county.
       const spend = async (role: string) => Object.fromEntries((await q`select county, n, total_ron from marts.spend_by_county where role = ${role}`)
@@ -874,7 +877,8 @@ describe("registration year, seat and main CPV division of the firms", () => {
       await applyFirmRegistry(q as unknown as Parameters<typeof applyFirmRegistry>[0]);
       expect(await seats()).toEqual(expected);
 
-      await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      const transactions = await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
+      expect(transactions.mapCountyMs).toBeGreaterThanOrEqual(0);
       const columns = (await tx`select column_name from information_schema.columns
         where table_schema = ${prefix + "_marts"} and table_name = 'agg_map_county' order by ordinal_position`).map(r => r["column_name"]);
       expect(columns).toEqual(["county", "v_plaf", "n_plaf", "v_all", "n_all", ...AGG_MAP_COUNTY_SEAT_COLUMNS]);

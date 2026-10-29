@@ -26,6 +26,10 @@ export interface MartsReport {
   createdIndexes: string[];
   /** Supplier profiles with an ONRC registration year, and per seat source. */
   firmRegistry: FirmRegistryReport;
+  /** Duration of applyFirmRegistry and of buildSpendByCounty after it, so a
+   * processing run keeps what the seat steps cost each night (plan F5). */
+  firmRegistryMs: number;
+  spendByCountyMs: number;
 }
 
 const TOP_ENTITIES_LIMIT = 200;
@@ -332,10 +336,14 @@ export async function runMarts(
       where e.id = ep.entity_id and ep.role = 'supplier' and ${cuiCorroborated(q, 'e')}
     `;
     // ONRC registration year and the firm's seat (ONRC, then SEAP) for Ask's filters.
+    let started = Date.now();
     const firmRegistry = await applyFirmRegistry(q);
+    const firmRegistryMs = Date.now() - started;
 
     // ── spend_by_county (choropleth source, both roles) ─────────────────────
+    started = Date.now();
     await buildSpendByCounty(q);
+    const spendByCountyMs = Date.now() - started;
 
     // ── top_entities (leaderboards per role) ────────────────────────────────
     await q`
@@ -420,6 +428,8 @@ export async function runMarts(
       contractTransactions: ctx!.c as number,
       createdIndexes,
       firmRegistry,
+      firmRegistryMs,
+      spendByCountyMs,
     };
   });
 
@@ -430,7 +440,8 @@ export async function runMarts(
       `top_partners=${report.topPartners}, concentration=${report.concentration}, ` +
       `contract_transactions=${report.contractTransactions}`,
   );
-  log(`marts firm registry: registered_year=${report.firmRegistry.registeredYear} seat=${JSON.stringify(report.firmRegistry.seat)}`);
+  log(`marts firm registry: registered_year=${report.firmRegistry.registeredYear} seat=${JSON.stringify(report.firmRegistry.seat)} ` +
+    `${report.firmRegistryMs} ms, spend_by_county ${report.spendByCountyMs} ms`);
   if (report.createdIndexes.length) log(`marts: recreated missing indexes ${report.createdIndexes.join(", ")}`);
   return report;
 }
