@@ -1,4 +1,5 @@
 import type { DbSql } from "./client.js";
+import { SEAT_BUCURESTI } from "./firm-seat.js";
 
 type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
 
@@ -70,6 +71,21 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   unknown and on a DA). Live, the national composition read every DA (2.2 s,
  *   3.4 s with the contracts). Both read the union once more (one statement
  *   each); see buildAskMixRollups.
+ * - agg_map_year (src, y, county, authority_id, seat, kind): the map's county
+ *   facts (plan §4.4, F5; map final §3.7–§3.11): every row by its buyer and
+ *   buyer county, the seat of its firm against that county and the purchase
+ *   kind of its code, with the largest record (mx). seat is one class per row:
+ *   same, other, bucuresti (another county, and the firm sits in București:
+ *   the final's „din care din București”, so other + bucuresti is „Firme din
+ *   alte județe”), foreign, unknown (no firm, no profile or no seat), the
+ *   classes of agg_map_county (firm-seat.ts); kind is lucrari, servicii or
+ *   produse by the division (purchaseKindCond of the web), null without a
+ *   code. The lens „Firme din județ”, the county card's largest buyer and
+ *   record and the per-inhabitant map of the local administrations
+ *   (local_admin, a list of authority ids) of a year, a channel, a kind, a kind
+ *   of institution or with institutions left out read it (national map facts
+ *   of 2025, live: 3.4–4.2 s). Needs the seats the marts stage writes on
+ *   entity_profile. See buildAskMapRollup.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -82,7 +98,7 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
 /** The F3 rollups (plan §4.1, §4.3): built by buildAskMixRollups, probed apart by the web (mixRollupReady). */
 export const ASK_MIX_TABLES = ['agg_months', 'agg_national_mix'] as const satisfies readonly AskRollupTable[];
@@ -102,12 +118,14 @@ export const ASK_MIX_SIZE_BOUNDS = [10_000, 100_000, 1_000_000] as const;
 export interface AskRollupsReport {
   /** Rows written per rollup. */
   rows: Record<AskRollupTable, number>;
+  /** How long agg_map_year took (F5): the nightly cost of the map's county facts. */
+  mapYearMs: number;
 }
 
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix`;
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
   // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
   // the yearly pairs and both entity rollups are grouped from it.
@@ -189,7 +207,49 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   await q`analyze marts.agg_entity_month`;
   await q`analyze marts.agg_county_month`;
   const mix = await buildAskMixRollups(q);
-  return { rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix } };
+  const started = Date.now();
+  const map = await buildAskMapRollup(q);
+  return {
+    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map },
+    mapYearMs: Date.now() - started,
+  };
+}
+
+/**
+ * agg_map_year (see the header), from the loaded transaction marts and the
+ * firms' seats on marts.entity_profile (the marts stage writes them before
+ * this one), with the population of every Ask aggregate. Part of
+ * buildAskRollups, so it is of the same build as the other rollups (the web
+ * proves it: the same transaction created both, mapRollupReady); callable
+ * alone on marts that are not being rebuilt (its first build). One statement
+ * over the union: 817,927 rows from 20.7M on the local copy of 30 October
+ * 2026 (18 s read-only, at load 12).
+ */
+export async function buildAskMapRollup(q: Query): Promise<number> {
+  await q`drop table if exists marts.agg_map_year`;
+  const created = await q`
+    create table marts.agg_map_year as
+    select x.src, substr(x.finalization_date, 1, 4) y, x.county, x.authority_id,
+           (case when ep.seat_source = 'foreign' then 'foreign'
+                 when ep.seat_county is null then 'unknown'
+                 when ep.seat_county = x.county then 'same'
+                 when ep.seat_county = ${SEAT_BUCURESTI}::text then 'bucuresti'
+                 else 'other' end) seat,
+           (case when x.cpv_code like '45%' then 'lucrari' when x.cpv_code >= '50' then 'servicii'
+                 when x.cpv_code < '45' or (x.cpv_code >= '48' and x.cpv_code < '50') then 'produse' end) kind,
+           sum(x.closing_value) v, count(*) n, max(x.closing_value) mx
+    from (
+      select authority_id, supplier_id, county, cpv_code, finalization_date, closing_value, 'da'::text src
+      from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+      union all
+      select authority_id, supplier_id, county, cpv_code, finalization_date, closing_value, 'contracts'
+      from marts.contract_transactions where closing_value > 0
+    ) x
+    left join marts.entity_profile ep on ep.entity_id = x.supplier_id and ep.role = 'supplier'
+    group by 1, 2, 3, 4, 5, 6
+  `;
+  await q`analyze marts.agg_map_year`;
+  return created.count;
 }
 
 /**
