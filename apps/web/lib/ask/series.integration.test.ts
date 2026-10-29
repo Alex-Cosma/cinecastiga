@@ -302,8 +302,9 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       for (const c of SERIES.slice(0, 3)) expect([c.name, await points(q, c.spec)]).toEqual([c.name, live.get(c.name)]);
       expect(strip(mixOf(await mixFacts(q, cluj)))).toEqual(strip(mixCluj));
     }, {
-      marts: [...ENGINE_MARTS_TABLES, "contract_identity_members", "contract_identity_decisions", "contract_identity_exclusions"],
-      globals: [...ENGINE_GLOBAL_TABLES, "core.awards", "core.contract_winners", "app.monitoring_refreshes"],
+      // The contract identity tables, core.awards and core.contract_winners are the engine's own since F6a's verification.
+      marts: ENGINE_MARTS_TABLES,
+      globals: [...ENGINE_GLOBAL_TABLES, "app.monitoring_refreshes"],
     });
   });
 });
