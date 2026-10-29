@@ -15,10 +15,6 @@ const stat = { block: "stat", measure: "value", filters: {} };
 const table = { block: "table", dim: "supplier", measure: "value", filters: {} };
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<keyof typeof READ_AHEAD_KEYS, Record<string, unknown>> = {
-  "filters.newSince": { ...table, filters: { newSince: 2024 } },
-  "filters.newScope": { ...table, filters: { newScope: "registry" } },
-  "filters.mainClient": { ...table, filters: { authorityId: 1, mainClient: true } },
-  "filters.dominantSupplier": { ...table, dim: "authority", filters: { dominantSupplier: true } },
   "filters.authorityKind=local_admin": { block: "map", measure: "value", filters: { authorityKind: "local_admin" } },
   "peers.domain": { block: "distribution", measure: "value", filters: { supplierId: 1 }, peers: { domain: true } },
   "scatter.flag": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } },
@@ -159,6 +155,8 @@ describe("today's questions", () => {
       "network.partners", "network.since", "network.order", "network.show", "network.signals", "sankey.shown",
       // F6a: the distribution's group, from the builder's «Față de cine?» and the rules interpreter.
       "peers.similar", "peers.activity",
+      // F5: the ranked winners, from the builder's rows CÂȘTIGĂTORII / INSTITUȚIILE and links.
+      "filters.newSince", "filters.newScope", "filters.mainClient", "filters.dominantSupplier",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

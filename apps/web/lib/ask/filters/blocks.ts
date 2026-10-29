@@ -4,6 +4,7 @@ import { FILTERS } from "./defs";
 import { splitExcluded } from "./origin";
 import { offersKind, presentationTokens, sentenceSlots, sentenceTokens, type SentenceSlot } from "./sentence";
 import type { AdvancedField, BlockFilters, ConditionRow, FilterCtx, FilterId, FilterSpec, Picker, Slot } from "./types";
+import { DOMINANT_LABEL, MAIN_CLIENT_LABEL } from "./words";
 
 /*
  * BLOCK_FILTERS (plan §2.2, §4, §5 F1b): what each of the 13 questions offers,
@@ -50,6 +51,10 @@ const PLACES = {
   size: ["Mărimea achiziției", "Cât de mare e fiecare achiziție?"],
   signals: ["Cu semnale", "Cu semnale"],
   shared: ["Doar clienții comuni", "Doar clienții comuni"],
+  // F5: the ranked winners (final table §3.3, §3.6, §3.7); the two switches keep a title for their (?) and a screen reader.
+  newFirms: ["Firme noi", "Ce firme noi?"],
+  mainClient: [MAIN_CLIENT_LABEL, MAIN_CLIENT_LABEL],
+  dominant: [DOMINANT_LABEL, DOMINANT_LABEL],
 } as const satisfies Record<string, readonly [string, string]>;
 type Place = keyof typeof PLACES;
 
@@ -70,7 +75,8 @@ const buyerInvite = (ctx: FilterCtx, opts: { authority?: boolean; locality?: boo
  * the buyer, as a chip (rankings of institutions and counties, plan §4.2 P2, kit §5.28; S4r-from-seat).
  */
 const fromInvite = (tabs: readonly ("supplier" | "admin" | "employees")[], seat = false): Slot => {
-  const writes: FilterId[] = [...tabs.slice(1), ...(seat ? ["firmSeat" as const] : [])];
+  // F5: there „Ce fel de firme” also holds the firms' own years, in the archive or the register (kit §5 table 5).
+  const writes: FilterId[] = [...tabs.slice(1), ...(seat ? ["firmSeat" as const, "newSince" as const] : [])];
   return placed(tabs[0]!, "from", { picker: "from", ...(writes.length ? { writes } : {}) });
 };
 const datasetInvite = placed("dataset", "dataset");
@@ -227,8 +233,14 @@ const presentation: BlockFilters["presentation"] = (spec) => sentenceSlots(prese
  * risk index (F6c: the employees on profiles).
  */
 function winners(spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
+  // F5 (plan §4.2 P3a): on a ranking of institutions their row INSTITUȚIILE, „O firmă ia peste jumătate”.
+  if (ctx.block === "table" && spec.dim === "authority") return [{ label: "Instituțiile", kind: "group", chips: [placed("dominantSupplier", "dominant")] }];
   if (spec.dim !== "supplier" || ctx.form === "entity_card:risk") return [];
-  return [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }];
+  // F5 on "Cine câștigă?": „Firme noi” first, and „Principalul lor client public” where one buyer is named. "Cine conduce?"
+  // by value applies „Firme noi” too (its place 1 is this ranking's): its row is the F6c track's (DECISIONS F5t-entity-card).
+  if (ctx.block !== "table") return [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }];
+  const main = FILTERS.mainClient.choices(spec, ctx).includes(true) ? [placed("mainClient", "mainClient")] : [];
+  return [{ label: "Câștigătorii", kind: "group", chips: [placed("newSince", "newFirms"), employeesInvite, ...main] }];
 }
 
 /**

@@ -9,7 +9,7 @@ import {
 import { countyDisplay } from "../resolved-spec";
 import type { PeerFacts } from "../peer-groups-shared";
 import {
-  DEFAULT_TREND_MIN_BASE, FIRM_SEATS, namedKind, type AskSpec, type AuthorityKind, type FirmSeat, type MonthWindow, type ParsedAuthorityKind,
+  DEFAULT_TREND_MIN_BASE, FIRM_SEATS, namedKind, type AskSpec, type AuthorityKind, type FirmSeat, type MonthWindow, type NewScope, type ParsedAuthorityKind,
 } from "../spec";
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
@@ -23,7 +23,8 @@ import { FILTERS, SPEC_PATH_OWNERS, presentPaths } from "./registry";
 import { presentationTokens, sentenceTokens } from "./sentence";
 import type { FilterId, FilterSpec } from "./types";
 import {
-  SINGLE_OFFER_WORDS, TREND_ORDER_WORDS, adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName, periodWordsWith, streamPhrase, trendBaseWho,
+  DOMINANT_LABEL, MAIN_CLIENT_LABEL, NEW_SCOPE_WORDS, SINGLE_OFFER_WORDS, TREND_ORDER_WORDS, adminPhrase, employeesCount, employeesPhrase, employeesWords, localityName,
+  newFirmsPhrase, periodWordsWith, streamPhrase, trendBaseWho,
 } from "./words";
 
 /*
@@ -121,6 +122,7 @@ const KIND_SCOPE: Record<AuthorityKind, string> = {
 };
 
 const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
+const lowerFirst = (text: string) => text.charAt(0).toLocaleLowerCase("ro-RO") + text.slice(1);
 const capitalFirst = (text: string) => text.charAt(0).toLocaleUpperCase("ro-RO") + text.slice(1);
 const numberOrUndefined = (value: unknown) => value === undefined || value === null || value === "" ? undefined : Number(value);
 const conditionsOf = (p: QueryPopulation) => p.groups.reduce((n, group) => n + group.conditions.length, 0);
@@ -560,6 +562,31 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     words: "doar la clienții comuni", chip: "Doar clienții comuni", pills: ["clienții comuni"],
     scope: [{ label: "Clienții", value: "Doar instituțiile care au cumpărat de la ambele firme" }], summary: "Clienții comuni",
   } : null,
+  // F5, the ranked winners (kit §4): on a ranking of firms the list's own words ("doar furnizorii noi din 2024"),
+  // on institutions and counties the firms they buy from ("firme înmatriculate din 2024", said by "de la […]").
+  newSince: (spec) => {
+    const since = spec.filters.newSince, scope = spec.filters.newScope;
+    if (since === undefined || typeof scope !== "string" || !(scope in NEW_SCOPE_WORDS)) return null;
+    const y = Number(since), sense = NEW_SCOPE_WORDS[scope as NewScope];
+    const firms = spec.dim === "supplier";
+    const words = firms || scope === "buyer" ? `${sense.list} din ${y}` : newFirmsPhrase(scope as "archive" | "registry", y);
+    return {
+      words, ...(firms ? { tail: `doar ${sense.list} din ${y}` } : {}), chip: sense.chip(y), pills: [lowerFirst(sense.chip(y))],
+      scope: [{ label: "Firme noi", value: `${sense.chip(y)} (${sense.detail})` }], summary: sense.chip(y),
+    };
+  },
+  mainClient: (spec) => spec.filters.mainClient ? {
+    words: "firmele al căror principal client public e instituția aleasă", tail: "doar firmele al căror principal client public e instituția aleasă",
+    chip: MAIN_CLIENT_LABEL, pills: [lowerFirst(MAIN_CLIENT_LABEL)],
+    scope: [{ label: MAIN_CLIENT_LABEL, value: "Instituția aleasă are cel puțin jumătate din valoarea câștigată de firmă (toată arhiva, cel puțin 3 înregistrări)" }],
+    summary: MAIN_CLIENT_LABEL,
+  } : null,
+  dominantSupplier: (spec) => spec.filters.dominantSupplier ? {
+    words: "instituțiile la care o firmă ia peste jumătate", tail: "doar instituțiile la care o firmă ia peste jumătate",
+    chip: DOMINANT_LABEL, pills: [lowerFirst(DOMINANT_LABEL)],
+    scope: [{ label: DOMINANT_LABEL, value: "Cea mai mare firmă are cel puțin jumătate din valoarea instituției în selecție, din cel puțin 3 înregistrări" }],
+    summary: DOMINANT_LABEL,
+  } : null,
   networkSignals: (spec) => spec.network?.signals ? {
     words: "doar partenerii cu semnale", chip: "Cu semnale", pills: ["cu semnale"],
     scope: [{ label: "Semnale", value: "Doar partenerii cu un semnal oficial pe relație" }], summary: "Cu semnale",
@@ -587,8 +614,8 @@ export const DESCRIBED_FILTERS = Object.keys(DESCRIBE) as FilterId[];
 const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "trendMonths", "trendOrder", "trendMinBase"];
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
 const NETWORK_ORDER: readonly FilterId[] = ["networkPartners", "networkSince", "networkSignals", "networkOrder"];
-const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "employees", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "employees", "minimumRecords", "population"];
+const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "newSince", "employees", "mainClient", "dominantSupplier", "dataset", "procedure", "purchaseValue", "population", "minimumRecords"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "newSince", "employees", "mainClient", "dominantSupplier", "minimumRecords", "population"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
 const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "sharedPartners", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];

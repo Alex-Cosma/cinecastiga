@@ -10,7 +10,7 @@ import { baseQuestions } from "./filters/probe";
 import { FILTER_DEFS } from "./filters/registry";
 import type { EngineLevel, FilterDef, FilterSpec } from "./filters/types";
 import {
-  andAll, DA_PLAFOND_RON, displayPredicates, fullValueUnion, groupPredicates, plafondFor, predicateContext, profileMinDas, profilePredicates,
+  andAll, asksWinners, DA_PLAFOND_RON, displayPredicates, fullValueUnion, groupPredicates, plafondFor, predicateContext, profileMinDas, profilePredicates,
   rowPredicates, trendGroupOf, trendGroupSql, trendYearsPredicate, type PredicateCtx,
 } from "./predicates";
 import { partialMonths, sameMonthsWindow, type CoveragePeriods } from "./months-window";
@@ -74,6 +74,8 @@ const ctxFor = (spec: AskSpec): PredicateCtx =>
 /** Each level's output on a spec, as the engine calls it (runSpec; runRows calls the same functions). */
 function levelsOf(spec: AskSpec): Record<"row" | "group" | "profile" | "display", string[]> {
   const ctx = ctxFor(spec);
+  // F5: what resolveWinners reads before the first query (winners.ts), one id per list.
+  if (asksWinners(ctx)) ctx.winners = { suppliers: ctx.newFirms?.scope === "buyer" || ctx.mainClient ? ["9808"] : null, authorities: ctx.dominantSupplier ? ["9909"] : null };
   if (PROFILE_FORMS.includes(formOf(spec))) {
     const role = spec.block === "distribution"
       ? spec.filters.authorityName || spec.filters.authorityId ? "authority" : "supplier"

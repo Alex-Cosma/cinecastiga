@@ -185,18 +185,18 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
   it("keeps the last good result of a watch stored by a newer release and says why",async()=>{
     const watch=await createMonitoringWatch(uid,{spec:base,title:"Newer release fixture"},sql);
     const good=(await evaluateMonitoringWatch(watch.id,checkpointId,sql))!;
-    await sql`update app.monitoring_watches set spec=jsonb_set(spec,'{filters,newSince}','2024') where id=${watch.id}`;
+    await sql`update app.monitoring_watches set spec=jsonb_set(spec,'{filters,authorityKind}','"local_admin"') where id=${watch.id}`;
     await checkpoint();
     await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
     // A fixed group of a kind a newer release added is refused; a trend's and a network's are applied
     // (monitoring-trend-group.integration.test.ts, monitoring-network-group.integration.test.ts).
     const members={kind:"cohort-group",role:"authority",group:"continuing",ids:[supplier],frozenAt:"2026-10-24T10:00:00Z"};
-    await sql`update app.monitoring_watches set spec=spec #- '{filters,newSince}',options=options||${JSON.stringify({members})}::jsonb where id=${watch.id}`;
+    await sql`update app.monitoring_watches set spec=spec #- '{filters,authorityKind}',options=options||${JSON.stringify({members})}::jsonb where id=${watch.id}`;
     await expect(evaluateMonitoringWatch(watch.id,checkpointId,sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
     expect(await getMonitoringWatch(uid,watch.id,sql)).toMatchObject({lastSuccessRunId:good,lastError:NEWER_VERSION_QUESTION});
     expect((await sql`select count(*)::int n from app.monitoring_runs where watch_id=${watch.id} and checkpoint_id=${checkpointId}`)[0]?.n).toBe(0);
-    await expect(createMonitoringWatch(uid,{spec:{...base,filters:{...base.filters,newSince:2024}}},sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
+    await expect(createMonitoringWatch(uid,{spec:{...base,filters:{...base.filters,authorityKind:"local_admin"}}},sql)).rejects.toThrow(NEWER_VERSION_QUESTION);
   });
   // F0 (plan §2.8, §6.2): answer versions per block and per key, compared in TypeScript.
   const run=async(watchId:string)=>{const id=(await evaluateMonitoringWatch(watchId,checkpointId,sql))!;return (await getMonitoringRun(uid,watchId,id,sql))!;};

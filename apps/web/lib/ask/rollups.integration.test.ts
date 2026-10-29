@@ -128,6 +128,8 @@ const ctxOf = (spec: AskSpec, g: Grounding): RollupCtx => {
     purchaseKind: spec.filters.purchaseKind ?? null, procedure: spec.filters.procedure ?? null,
     purchaseValueMin: spec.filters.purchaseValueMin ?? null, purchaseValueMax: spec.filters.purchaseValueMax ?? null,
     firmSeat: spec.filters.firmSeat ?? null, seatCounty: g.seatCounty?.canonical ?? null, seatColumn: true, shared: null,
+    newFirms: spec.filters.newSince !== undefined && spec.filters.newScope ? { scope: spec.filters.newScope, since: spec.filters.newSince } : null,
+    mainClient: spec.filters.mainClient === true, dominantSupplier: spec.filters.dominantSupplier === true, buyerIds: [], winners: null,
   };
 };
 const needOf = (spec: AskSpec): RollupNeed => spec.block === "table" || spec.block === "trend"

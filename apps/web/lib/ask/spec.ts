@@ -75,7 +75,12 @@ export const PROCEDURES = ["deschisa", "simplificata", "negociere_fara_publicare
 /** The firm's seat against the buyer's county on each row (same, other) or abroad. */
 export const FIRM_SEATS = ["same", "other", "abroad"] as const;
 export type FirmSeat = (typeof FIRM_SEATS)[number];
+/**
+ * "Firme noi" (F5, plan §3, final table §3.3): new for the named buyer (its first record with the firm), first in
+ * the archive (entity_profile.first_activity) or registered in the trade register (entity_profile.registered_year).
+ */
 export const NEW_SCOPES = ["buyer", "archive", "registry"] as const;
+export type NewScope = (typeof NEW_SCOPES)[number];
 export const TREND_CHANGES = ["all", "up", "down", "new", "gone"] as const;
 export type TrendChange = (typeof TREND_CHANGES)[number];
 export const NETWORK_PARTNERS = ["new", "continuing", "gone"] as const;
@@ -365,6 +370,9 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   "filters.sharedPartners",
   // F6a: the distribution's comparison group (PEERS_RULE below; lib/ask/distribution.ts). The main domain is phase 2.
   "peers.similar", "peers.activity",
+  // F5: the ranked winners' new firms, main public client and the institutions one firm takes half of (WINNERS_RULES
+  // below; lib/ask/winners.ts).
+  ...["newSince", "newScope", "mainClient", "dominantSupplier"].map(key => `filters.${key}`),
 ]);
 /**
  * Paths parseSpec reads ahead of the engine (plan §3), with the stage that
@@ -374,7 +382,6 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
  * any other kind a newer release stored is refused there.
  */
 export const READ_AHEAD_KEYS = {
-  "filters.newSince": "F5", "filters.newScope": "F5", "filters.mainClient": "F5", "filters.dominantSupplier": "F5",
   "filters.authorityKind=local_admin": "F5",
   // Phase 2 of F6a (DECISIONS A3-main-cpv-div): marts.entity_flags.main_cpv_div is built; the row waits for it.
   "peers.domain": "F6a-2",
@@ -756,6 +763,44 @@ export const SEAT_RULES: Readonly<Record<"firmSeat" | "seatCounty", (spec: AskSp
   },
 };
 
+/** The archive's own first year is inflated by its start (final table §3.3): a firm new for a buyer or in the archive is from 2020. */
+export const NEW_ARCHIVE_FROM = 2020;
+/** A buyer the question names: one institution, or a town hall with all its identities (uatSiruta). */
+export const namedBuyer = (filters: AskFilters): boolean =>
+  Boolean(filters.authorityId || filters.authorityName || filters.uatSiruta);
+/** The rankings whose firms are the subject: a ranking of firms, and "Cine conduce?" by value, which runs it. */
+const firmRanking = (spec: AskSpec) => spec.dim === "supplier" && (spec.block === "table" || spec.block === "entity_card" && spec.rankBy === "value");
+/** The rankings with "Firme noi": firms (a group, CÂȘTIGĂTORII) or, on institutions and counties, their sellers ("de la [firme …]"). */
+const rankedBlock = (spec: AskSpec) => spec.block === "table" || spec.block === "entity_card" && spec.rankBy === "value";
+
+/**
+ * The rules of the ranked winners' conditions (plan §3, §4.2, F5; final table
+ * §3.3, §3.6, §3.7, §4): "Firme noi" names its sense and its year together, on
+ * a ranking (and "Cine conduce?" by value); new for the buyer needs a named
+ * buyer and firms as the subject; the archive's own senses start in 2020, and
+ * no sense starts after the period. „Principalul lor client public” is a
+ * ranking of firms of one named buyer; „O firmă ia peste jumătate” a ranking of
+ * institutions. A foreign firm has no trade register number (SEAT_RULES).
+ * FilterDef.validate of lib/ask/filters/defs/winners.ts; runnableError runs each.
+ */
+export const WINNERS_RULES: Readonly<Record<"newSince" | "mainClient" | "dominantSupplier", (spec: AskSpec) => string | null>> = {
+  newSince: (spec) => {
+    const { newSince: since, newScope: scope } = spec.filters;
+    if (since === undefined && scope === undefined) return null;
+    if (since === undefined || scope === undefined) return "„Firme noi” cere sensul și anul. Alege-le din fereastră.";
+    if (!rankedBlock(spec)) return "„Firme noi” se alege doar la clasamente. Alege „Cine câștigă?” sau scoate condiția.";
+    if (scope === "buyer" && !(firmRanking(spec) && namedBuyer(spec.filters)))
+      return "„Furnizori noi” cere o instituție aleasă și firmele ca subiect. Alege instituția sau alt sens.";
+    if (scope !== "registry" && since < NEW_ARCHIVE_FROM) return `„Firme noi” în acest sens începe din ${NEW_ARCHIVE_FROM}. Alege alt an.`;
+    if (spec.filters.yearTo !== undefined && since > spec.filters.yearTo) return "Anul din „Firme noi” e după sfârșitul perioadei. Alege un an din perioadă.";
+    return null;
+  },
+  mainClient: (spec) => spec.filters.mainClient && !(spec.block === "table" && spec.dim === "supplier" && namedBuyer(spec.filters))
+    ? "„Principalul lor client public” cere un clasament de firme și o instituție aleasă." : null,
+  dominantSupplier: (spec) => spec.filters.dominantSupplier && !(spec.block === "table" && spec.dim === "authority")
+    ? "„O firmă ia peste jumătate” se alege doar la clasamentul instituțiilor." : null,
+};
+
 /**
  * The rules of the network's options (plan §3, §4.8, F4; final network §3.2):
  * a group is of the whole relation against its reference year, so it takes no
@@ -834,7 +879,7 @@ export function runnableError(spec: AskSpec): string | null {
   }
   if (block === "trend" && (filters.monthFrom !== undefined || filters.monthTo !== undefined))
     return "Schimbarea compară doi ani întregi. Elimină explicit lunile sau alege evoluția în timp; filtrele nu au fost eliminate.";
-  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES)]) {
+  for (const rule of [...Object.values(TREND_RULES), ...Object.values(SELECTION_RULES), ...Object.values(TIMESERIES_RULES), ...Object.values(SEAT_RULES), ...Object.values(NETWORK_RULES), ...Object.values(COMPARE_RULES), ...Object.values(WINNERS_RULES)]) {
     const error = rule(spec);
     if (error) return error;
   }

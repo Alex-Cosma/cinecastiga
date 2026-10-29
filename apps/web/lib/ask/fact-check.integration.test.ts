@@ -219,6 +219,8 @@ describe.runIf(Boolean(connection))("the verification (fact_check-2, isolated Po
         // F3's common selection and F4's seat (merge of F6a with S4): each holds a condition the rows outside the sums read too.
         purchaseKind: "lucrari", procedure: "deschisa", purchaseValueMin: 0, purchaseValueMax: 1e12, firmSeat: "same", seatCounty: "Alba", seatColumn: false,
         shared: [id(A)],
+        // F5's ranked winners are a ranking's, never a verification's (WINNERS_RULES): none here.
+        newFirms: null, mainClient: false, dominantSupplier: false, buyerIds: [], winners: null,
       };
       const spec = validateSpec({ block: "fact_check", measure: "value", filters: { ...pair(S), county: "Alba" } });
       if ("error" in spec) throw new Error(spec.error);

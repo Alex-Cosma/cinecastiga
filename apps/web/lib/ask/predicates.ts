@@ -1,7 +1,7 @@
 import { SEAT_ABROAD_LABEL, type DbSql } from "@seap/db";
 import type { Grounding } from "./ground";
 import type { MinimumRecords, PopulationCondition, QueryPopulation } from "./population";
-import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type FirmSeat, type MonthWindow, type TrendChange } from "./spec";
+import { DEFAULT_TREND_MIN_BASE, namedKind, type AskSpec, type AuthorityKind, type Dataset, type FirmSeat, type MonthWindow, type NewScope, type TrendChange } from "./spec";
 import { authorityKindCond, KIND_LABEL, KIND_SOURCE } from "./authority-kind";
 import { countWords } from "./answer-text";
 import { kindApplies, NAMED_PROCEDURE_TYPES, PROCEDURE_TYPES, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "./purchase";
@@ -106,6 +106,24 @@ export interface PredicateCtx {
   /** compare: both entities, of the role of the first (the second replaces its own id condition). */
   comparison: { role: "authority" | "supplier"; focalId: string | null; compareId: string | null } | null;
   /**
+   * F5, „Firme noi” (plan §3, final table §3.3): the sense and the year. In the archive or the trade register it is
+   * the firm's own year on its profile (newFirmCond, a semi-join as the employees); new for the buyer is the firm's
+   * first record with the named buyer, resolved with the other relations into `winners`.
+   */
+  newFirms: { scope: NewScope; since: number } | null;
+  /** F5, „Principalul lor client public”: the named buyer has at least half of the firm's public money (winners.ts). */
+  mainClient: boolean;
+  /** F5, „O firmă ia peste jumătate”: the institutions whose largest firm has half of the selection (winners.ts). */
+  dominantSupplier: boolean;
+  /** The named buyer's identities (the town hall's, or the one institution): whose firms are new, or their main client. */
+  buyerIds: readonly string[];
+  /**
+   * F5, resolved by winners.ts resolveWinners before the first query (as the kind's ids): the firms new for the
+   * buyer or whose main public client it is, and the institutions one firm takes half of. Null until resolved, and
+   * on a question without those keys.
+   */
+  winners: { suppliers: readonly string[] | null; authorities: readonly string[] | null } | null;
+  /**
    * F4, „Doar clienții comuni” (plan §4.6, final compare §3.4): the institutions that bought from both
    * compared firms in the selection, found by the pre-step P (compare-engine.ts sharedPartnersPrestep) on
    * these same conditions without it; every record of the answer, its sources and its CSV is then theirs.
@@ -171,8 +189,28 @@ export function predicateContext(
     comparison: spec.block === "compare"
       ? { role: authorityId ? "authority" : "supplier", focalId: authorityId ?? supplierId, compareId: grounding.compare?.entityId ?? null }
       : null,
+    newFirms: f.newSince !== undefined && f.newScope ? { scope: f.newScope, since: f.newSince } : null,
+    mainClient: f.mainClient === true,
+    dominantSupplier: f.dominantSupplier === true,
+    buyerIds: uat ? uat.authorityIds : authorityId ? [authorityId] : [],
+    winners: null,
     shared: null,
   };
+}
+
+/** The keys whose firms or institutions are resolved into lists first (winners.ts resolveWinners). */
+export const asksWinners = (ctx: Pick<PredicateCtx, "newFirms" | "mainClient" | "dominantSupplier">): boolean =>
+  ctx.newFirms?.scope === "buyer" || ctx.mainClient || ctx.dominantSupplier;
+
+/**
+ * F5, „Firme noi” in the archive or the trade register (final table §3.3): the firm's first record anywhere in the
+ * archive (entity_profile.first_activity, as a trend's „Prima dată”) or its registration year (registered_year, the
+ * oldest year of its ONRC numbers) from `since` on. A firm without one is in neither. `column`: the firm id of the
+ * rows, of a rollup, or of a grouped ranking.
+ */
+export function newFirmCond(sql: DbSql, scope: Exclude<NewScope, "buyer">, since: number, column: Fragment = sql`d.supplier_id`): Fragment {
+  const own = scope === "registry" ? sql`ep.registered_year >= ${since}` : sql`ep.first_activity >= ${String(since)}`;
+  return sql`${column} in (select ep.entity_id from marts.entity_profile ep where ep.role = 'supplier' and ${own})`;
 }
 
 /** `a and b and …` (the parts are never empty: rowPredicates starts with closing_value > 0). */
@@ -362,6 +400,12 @@ export function rowPredicates(ctx: PredicateCtx, opts: { years?: boolean; values
   if (ctx.minEmployees !== null || ctx.maxEmployees !== null) parts.push(employeesCond(sql, ctx.minEmployees, ctx.maxEmployees));
   if (ctx.firmSeat) parts.push(firmSeatCond(sql, ctx.firmSeat, ctx.seatColumn));
   if (ctx.seatCounty) parts.push(seatCountyCond(sql, ctx.seatCounty, ctx.seatColumn));
+  // F5: a firm new in the archive or the register is its own attribute; new for the named buyer, or whose main public
+  // client it is, an attribute of the firm against that buyer, resolved into a list (winners.ts), as a person's firms.
+  if (ctx.newFirms && ctx.newFirms.scope !== "buyer") parts.push(newFirmCond(sql, ctx.newFirms.scope, ctx.newFirms.since));
+  if ((ctx.newFirms?.scope === "buyer" || ctx.mainClient) && !ctx.winners?.suppliers)
+    throw new Error("rowPredicates: the buyer's firms were not resolved (winners.ts resolveWinners)");
+  if (ctx.winners?.suppliers) parts.push(sql`d.supplier_id = any(${sql.array([...ctx.winners.suppliers])}::bigint[])`);
   if (opts.years ?? true) {
     if (ctx.yearFrom !== null)
       parts.push(ctx.monthFrom !== null
@@ -482,10 +526,23 @@ export const perCapitaPredicate = (sql: DbSql, ids: readonly string[]): Fragment
  */
 export function groupPredicates(ctx: PredicateCtx, source: Fragment, where: Fragment): Fragment[] {
   const minimum = ctx.minimumRecords;
-  if (!minimum) return [];
+  const out = winnersPredicates(ctx);
+  if (!minimum) return out;
   const { sql } = ctx;
   const party = minimum.role === "authority" ? sql`d.authority_id` : sql`d.supplier_id`;
-  return [sql`${party} in (select ${party} from ${source} d where ${where} and ${party} is not null group by ${party} having count(*) >= ${minimum.count})`];
+  return [...out, sql`${party} in (select ${party} from ${source} d where ${where} and ${party} is not null group by ${party} having count(*) >= ${minimum.count})`];
+}
+
+/**
+ * F5, „O firmă ia peste jumătate” (final table §3.7): the institutions whose largest firm has half of the selection,
+ * from at least three records, found over the selection grouped by institution and firm (winners.ts resolveWinners,
+ * which reads them once into a list) and applied to its records. A caller that writes the record threshold on its
+ * own (runRows, from the rollups) adds these itself.
+ */
+export function winnersPredicates(ctx: PredicateCtx): Fragment[] {
+  if (!ctx.dominantSupplier) return [];
+  if (!ctx.winners?.authorities) throw new Error("groupPredicates: the institutions one firm takes half of were not resolved (winners.ts resolveWinners)");
+  return [ctx.sql`d.authority_id = any(${ctx.sql.array([...ctx.winners.authorities])}::bigint[])`];
 }
 
 /**
@@ -596,6 +653,17 @@ export function displayPredicates(ctx: PredicateCtx, table: string): string[] {
     conds.push(`sediul_firmei ${ctx.firmSeat === "same" ? "=" : "<>"} county  -- firme cu sediul ${ctx.firmSeat === "same" ? "în județul instituției" : "în alt județ"} (${seatSource})`);
   if (ctx.seatCounty)
     conds.push(`supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and ${ctx.seatColumn ? `seat_county = '${ctx.seatCounty.replaceAll("'", "''")}'` : `unaccent(county) ilike '${fold(ctx.seatCounty)}'`})  -- ${seatSource}`);
+  // F5: the ranked winners (winners.ts), as their sources select them.
+  if (ctx.newFirms?.scope === "archive")
+    conds.push(`supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and first_activity >= '${ctx.newFirms.since}')  -- prima dată în arhivă din ${ctx.newFirms.since}`);
+  if (ctx.newFirms?.scope === "registry")
+    conds.push(`supplier_id in (select entity_id from marts.entity_profile\n                where role = 'supplier' and registered_year >= ${ctx.newFirms.since})  -- înmatriculate din ${ctx.newFirms.since} (ONRC)`);
+  if (ctx.newFirms?.scope === "buyer")
+    conds.push(`supplier_id in (…)  -- furnizori noi: prima înregistrare cu instituția aleasă din ${ctx.newFirms.since} (orice canal, toată arhiva)`);
+  if (ctx.mainClient)
+    conds.push("supplier_id in (…)  -- principalul client public: instituția aleasă are cel puțin jumătate din valoarea firmei (toată arhiva, cel puțin 3 înregistrări)");
+  if (ctx.dominantSupplier)
+    conds.push("authority_id in (…)  -- o firmă ia peste jumătate: cea mai mare firmă are cel puțin jumătate din valoarea instituției în selecție, din cel puțin 3 înregistrări");
   if (ctx.yearFrom !== null) {
     if (ctx.monthFrom !== null)
       conds.push(`luna >= '${ctx.yearFrom}-${String(ctx.monthFrom).padStart(2, "0")}'`);

@@ -263,13 +263,16 @@ function fromWhom(out: Tokens, spec: Spec, ctx: FilterCtx, offered: readonly Fro
   // On institutions and counties „Ce fel de firme” also holds the firms' seat (S4r-from-seat): "de la [firme cu sediul în alt județ]".
   const seat = Boolean(opts.seat) && offered.includes("employees");
   const seated = seat && has(spec.filters.firmSeat);
-  const id = offered.find((tab) => tab === "supplier" ? ctx.named.supplier : tab === "admin" ? ctx.named.admin : hasEmployees(spec) || seated);
+  // F5: there too the firms' own years, in the archive or the register: "de la [firme înmatriculate din 2024]".
+  const aged = seat && has(spec.filters.newSince) && (spec.filters.newScope === "archive" || spec.filters.newScope === "registry");
+  const id = offered.find((tab) => tab === "supplier" ? ctx.named.supplier : tab === "admin" ? ctx.named.admin : hasEmployees(spec) || seated || aged);
   if (!id) return;
   const value = id === "supplier" ? entityLabel(spec, "supplier")
     : id === "admin" ? adminPhrase(spec.filters.adminName)
       : firmsKindPhrase(spec.filters, seat)!;
-  const says: FilterId[] = id !== "employees" ? [id] : [...(hasEmployees(spec) ? ["employees" as const] : []), ...(seated ? ["firmSeat" as const] : [])];
-  out.text(` ${verb} `).slot(id, "from", value, { writes: seat ? [...offered, "firmSeat"] : offered, picker: "from", says });
+  const says: FilterId[] = id !== "employees" ? [id]
+    : [...(hasEmployees(spec) ? ["employees" as const] : []), ...(seated ? ["firmSeat" as const] : []), ...(aged ? ["newSince" as const] : [])];
+  out.text(` ${verb} `).slot(id, "from", value, { writes: seat ? [...offered, "firmSeat", "newSince"] : offered, picker: "from", says });
 }
 
 /**

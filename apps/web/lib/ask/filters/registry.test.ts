@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
-import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, parseSpec, peersRule, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, validateSpec, type AskSpec, type Block } from "../spec";
+import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, parseSpec, peersRule, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, WINNERS_RULES, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
@@ -51,9 +51,9 @@ describe("the rules of a key (plan §2.4)", () => {
   // (TREND_RULES, F2) and the filter declares that same function, which runnableError runs.
   it("are those runnableError runs; no filter declares a rule it would not run", () => {
     const ruled = FILTER_DEFS.filter((def) => def.validate);
-    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "peers", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners", "sharedPartners"]);
+    expect(ruled.map((def) => def.id)).toEqual(["purchaseKind", "procedure", "firmSeat", "seatCounty", "purchaseValue", "newSince", "mainClient", "dominantSupplier", "peers", "trendOrder", "trendMinBase", "trendFirstOnly", "timeseriesGrain", "timeseriesSplit", "timeseriesMonths", "networkPartners", "sharedPartners"]);
     expect(ruled.map((def) => def.validate)).toEqual([
-      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, peersRule, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
+      SELECTION_RULES.purchaseKind, SELECTION_RULES.procedure, SEAT_RULES.firmSeat, SEAT_RULES.seatCounty, SELECTION_RULES.purchaseValue, WINNERS_RULES.newSince, WINNERS_RULES.mainClient, WINNERS_RULES.dominantSupplier, peersRule, TREND_RULES.order, TREND_RULES.minBase, TREND_RULES.firstOnly,
       TIMESERIES_RULES.grain, TIMESERIES_RULES.split, TIMESERIES_RULES.months, NETWORK_RULES.partners, COMPARE_RULES.sharedPartners,
     ]);
     // F4 (plan §3): one seat at a time, abroad without a size, a county of the seat where firms are the subject.
@@ -530,7 +530,9 @@ describe("places (BLOCK_FILTERS)", () => {
     "Câți angajați au firmele?", "Cine conduce firmele?", "Selecție avansată", "Ce luni compari?", "Cât de mare e fiecare achiziție?",
     // F4: the network's „Cu semnale” and a comparison's „Doar clienții comuni” are switches (kit component 5); their places keep a
     // title for their (?) and a screen reader.
-    "Cu semnale", "Doar clienții comuni"];
+    "Cu semnale", "Doar clienții comuni",
+    // F5: „Firme noi”, and the switches „Principalul lor client public” and „O firmă ia peste jumătate” (their (?)).
+    "Ce firme noi?", "Principalul lor client public", "O firmă ia peste jumătate"];
 
   it("has one entry for each of the 13 questions", () => {
     expect(Object.keys(BLOCK_FILTERS).sort()).toEqual(([...new Set(bases.map((b) => b.spec.block))] as Block[]).sort());
@@ -574,14 +576,18 @@ describe("places (BLOCK_FILTERS)", () => {
   // The group row is the ranked firms' size (CÂȘTIGĂTORII), moved to the group under its version (SCOPE_CHANGES):
   // the trend of firms (trend-2), "Cine câștigă?" (table:employees-2, F3) and "Cine conduce?" by value.
   it("draws the partners' selection rows on the network and the flow, and the ranked firms' winners as a group", () => {
-    const winners = (spec: FilterSpec, ctx: ReturnType<typeof ctxOf>) => spec.dim === "supplier" && ["trend", "table", "entity_card:value"].includes(ctx.form);
+    // F5: a ranking of institutions has its own group row, INSTITUȚIILE („O firmă ia peste jumătate”).
+    const winners = (spec: FilterSpec, ctx: ReturnType<typeof ctxOf>) => spec.dim === "supplier" && ["trend", "table", "entity_card:value"].includes(ctx.form)
+      || spec.dim === "authority" && ctx.form === "table";
     for (const { spec } of states) {
       const ctx = ctxOf(spec);
       const rows = BLOCK_FILTERS[ctx.block].rows(spec, ctx);
       for (const row of rows) {
         expect(row.kind, row.label).toBe(winners(spec, ctx) ? "group" : "selection");
         for (const chip of row.chips) expect(FILTERS[chip.id].scope(ctx.form, spec), `${row.label} ${chip.id}`).toBe(row.kind);
-        if (row.kind === "group") for (const chip of row.chips) expect(SCOPE_CHANGES.some((c) => c.filter === chip.id && c.form === ctx.form), chip.id).toBe(true);
+        // A key moved to the group has its version; F5's keys are groups from the start (no answer of before had them).
+        if (row.kind === "group") for (const chip of row.chips)
+          expect(SCOPE_CHANGES.some((c) => c.filter === chip.id && c.form === ctx.form) || FILTERS[chip.id].since === "F5", chip.id).toBe(true);
       }
       expect(rows.length > 0, questionKey(spec)).toBe(["network", "sankey"].includes(ctx.block) || winners(spec, ctx));
       // P4 the question owns: the size of a purchase on the total and the ranking (F3), the trend's "Aceleași luni", the shared

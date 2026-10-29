@@ -1,4 +1,4 @@
-import { AUTHORITY_KINDS, SEAT_RULES, SELECTION_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
+import { AUTHORITY_KINDS, SEAT_RULES, SELECTION_RULES, WINNERS_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { BLOCK_FILTERS, PICKER_FAMILY, populationFits, windowOf } from "./blocks";
 import { filterContext, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "./context";
 import { FILTERS } from "./defs";
@@ -124,7 +124,7 @@ export function writeChoice(spec: FilterSpec, slot: Slot, choice: Choice): Filte
   }
   const family = slot.picker ? PICKER_FAMILY[slot.picker] ?? [] : [];
   // „Ce fel de firme” holds the firms' size and their seat together where the window writes the seat (S4r-from-seat): one tab.
-  const tab = (id: FilterId): FilterId => slot.picker === "from" && id === "firmSeat" ? "employees" : id;
+  const tab = (id: FilterId): FilterId => slot.picker === "from" && (id === "firmSeat" || id === "newSince") ? "employees" : id;
   let next = spec;
   if (family.includes(tab(choice.filter)))
     for (const id of windowOf(slot)) if (tab(id) !== tab(choice.filter) && family.includes(tab(id))) next = FILTERS[id].write(next, undefined);
@@ -168,6 +168,12 @@ export function choiceState(slot: Slot, choice: Choice, spec: FilterSpec, ctx: F
   // A foreign firm has no MF filing (SEAT_RULES, F4): beside a size, "În străinătate" is shown with the reason.
   if (choice.filter === "firmSeat" && choice.value !== undefined) {
     const reason = SEAT_RULES.firmSeat(FILTERS.firmSeat.write(spec, choice.value) as unknown as AskSpec);
+    if (reason) return { state: "disabled", reason };
+  }
+  // F5: a sense of „Firme noi” the draft cannot take (registered beside a foreign seat, a year after the period).
+  if (choice.filter === "newSince" && choice.value !== undefined) {
+    const next = FILTERS.newSince.write(spec, choice.value) as unknown as AskSpec;
+    const reason = SEAT_RULES.firmSeat(next) ?? WINNERS_RULES.newSince(next);
     if (reason) return { state: "disabled", reason };
   }
   // The automatic months of a year whose complete months are not confirmed: the run would refuse it (trend final §3.3).

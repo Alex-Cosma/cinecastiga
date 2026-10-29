@@ -656,7 +656,7 @@ describe("one vocabulary (kit §4, plan G3, G10)", () => {
       .toContain("de la [firme cu 1–9 angajați, cu sediul în județul Cluj]");
     expect(marked(buyers("county", { firmSeat: "abroad" }))).toContain("de la [firme cu sediul în străinătate]");
     // One phrase for the tab „Ce fel de firme”: it says both keys and its window writes the seat with the other tabs.
-    expect(slotOf(buyers("authority", { firmSeat: "other", maxEmployees: 0 }), "employees")).toMatchObject({ says: ["employees", "firmSeat"], picker: "from", writes: ["supplier", "admin", "firmSeat"] });
+    expect(slotOf(buyers("authority", { firmSeat: "other", maxEmployees: 0 }), "employees")).toMatchObject({ says: ["employees", "firmSeat"], picker: "from", writes: ["supplier", "admin", "firmSeat", "newSince"] });
     expect(slotOf(buyers("authority", { firmSeat: "other" }), "employees")).toMatchObject({ says: ["firmSeat"] });
     // A named firm is its own tab: its seat is not the tab's phrase (a link's chip).
     expect(marked(buyers("authority", { supplierName: "PORR", supplierId: 3, firmSeat: "other" }))).toContain("de la [PORR]");
