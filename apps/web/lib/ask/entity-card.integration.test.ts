@@ -147,13 +147,19 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
   it("under a band of CÂȘTIGĂTORII the share is the category's, and the selection's total stays beside it", async () => {
     const out = await withAskFixture(connection!.sql, "ec_band", seed, async (q) => {
       const band = await answer(q, { dim: "supplier", rankBy: "value", filters: { ...T, maxEmployees: 0 } });
-      return band;
+      const { result } = await run(q, { dim: "supplier", rankBy: "value", filters: { ...T, maxEmployees: 0 } });
+      const plain = await run(q, { dim: "supplier", rankBy: "value", filters: T });
+      return { ...band, displaySql: "error" in result ? "" : result.displaySql, plainSql: "error" in plain.result ? "" : plain.result.displaySql };
     });
     const { podium } = out.data;
     // Firms with no employees: Beta (3000) and Gama (2000); the whole selection is 11.804 lei over 6 firms.
     expect(podium!.places.map((p) => p.name)).toEqual(["Beta Asociere SRL", "Gama Unica SRL"]);
     expect(podium!.total).toEqual({ value: 5000, count: 2, entities: 2 });
     expect(podium!.selection).toEqual({ value: 11804, count: 9, entities: 6 });
+    // „Cum am calculat” says the podium's denominator (the category), not the ranking's (the whole selection).
+    expect(out.displaySql).toMatch(/„% din categorie” este din valoarea firmelor din categorie/);
+    expect(out.displaySql).not.toMatch(/sunt ale întregii selecții/);
+    expect(out.plainSql).not.toMatch(/din categorie/);
   }, 60000);
 
   it("on the precomputed national ranking, the total is agg_national's and the firms are the profiles'", async () => {
@@ -181,6 +187,23 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     expect(gama).toMatchObject({ entityId: id(3), joint: 0, largest: { value: 2000, src: "da" }, employeesYear: 2020 });
     // Facts describe the value axis only.
     expect("error" in out.wrong).toBe(true);
+  }, 60000);
+
+  it("counts the places' facts over the ranking's records: the record threshold leaves out what the ranking leaves out", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_facts_min", seed, async (q) => {
+      // A 9.000 lei direct acquisition to Alfa from a buyer with that one record: under „at least 2 records per institution” it
+      // is in neither the ranking nor the facts.
+      await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date)
+        values (88,'DA88',${id(61)},'Spitalul Fixture 1',${id(1)},'Alfa Constructii SRL','Cluj','33600000-6',9000,'2025-11-10')`;
+      const { data, spec } = await answer(q, { dim: "supplier", rankBy: "value", filters: T, minimumRecords: { role: "authority", count: 2 } });
+      const facts = await podiumFacts(q, spec as AskSpec, data.podium!.places.map((p) => p.entityId));
+      return { podium: data.podium!, facts };
+    });
+    if ("error" in out.facts || "timeout" in out.facts || "precompute" in out.facts) throw new Error(JSON.stringify(out.facts));
+    expect(out.podium.places[0]).toMatchObject({ entityId: id(1), value: 6200, count: 4 });
+    expect(out.facts.places[0]).toMatchObject({ entityId: id(1), joint: 1000, largest: { value: 5000, src: "contracts" } });
+    // The data's latest filing year, what an old balance sheet is old against.
+    expect(out.facts.balanceYear).toBe(2025);
   }, 60000);
 
   it("on the index: every profile at the top level, in the order of value; the card is the first, the next level counted", async () => {
@@ -241,6 +264,29 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     expect([out.one.sourceTotal, out.one.profileCount]).toEqual([3, 1]);
     expect([out.below.sourceTotal, out.below.profileCount]).toEqual([0, 0]);
     expect(evidenceCsv(out.group.rows).trim().split("\n")).toHaveLength(8);
+  }, 60000);
+
+  it("by value: each podium place's records are its own, place 1 by default, and an id off the podium is refused", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_podium_sources", seed, async (q) => {
+      const { spec, grounding } = await answer(q, { dim: "supplier", rankBy: "value", filters: T });
+      const place = (n: number) => runRows(q, spec, grounding, 0, { limit: 100, scope: { entityIds: [id(n)], role: "supplier" } });
+      return {
+        whole: await runRows(q, spec, grounding, 0, { limit: 100 }),
+        first: await place(1), second: await place(2), third: await place(3), fourth: await place(4),
+      };
+    });
+    const { whole, first, second, third, fourth } = out;
+    if ("error" in whole || "error" in first || "error" in second || "error" in third) throw new Error(JSON.stringify(out));
+    // Alfa 4 (two direct acquisitions, two contracts), Beta its joint contract, Gama its direct acquisition.
+    expect([whole.sourceTotal, first.sourceTotal, second.sourceTotal, third.sourceTotal]).toEqual([4, 4, 1, 1]);
+    expect(second.rows.map((row) => row.supplierId)).toEqual([id(2)]);
+    expect(third.rows.map((row) => row.supplierId)).toEqual([id(3)]);
+    // Place 2's CSV is its record.
+    const csv = evidenceCsv(second.rows).trim().split("\n");
+    expect(csv).toHaveLength(2);
+    expect(csv[1]).toMatch(/CT13/);
+    // Delta is fourth: not on the podium, refused.
+    expect(fourth).toMatchObject({ error: expect.stringMatching(/podium/) });
   }, 60000);
 
   it("counts the profiles of each band of the firms' size for the window, the draft's own band left out", async () => {

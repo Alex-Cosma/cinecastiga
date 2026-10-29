@@ -51,7 +51,7 @@ import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 import { factCheckData } from "./fact-check";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
 import { bareNational, nationalTotals, podiumOf, tiesOf } from "./entity-card";
-import { blankCard, PODIUM_PLACES, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
+import { blankCard, PODIUM_PLACES, podiumPlaceIds, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -78,6 +78,9 @@ export const CONTRACT_CAP_CAVEAT =
 const DA_ACCEPTED_CAVEAT =
   "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.";
 const STATEMENT_TIMEOUT = "20s";
+/** A ranking of firms under a band of CÂȘTIGĂTORII: its denominator, in „Cum am calculat”; the podium's is the band's (F6c). */
+const RANKED_BAND_TOTALS = "totalul și „% din total” sunt ale întregii selecții";
+const PODIUM_BAND_TOTALS = "„% din categorie” este din valoarea firmelor din categorie; totalul întregii selecții e arătat alături";
 
 export interface TableRow {
   entityId: string | null;
@@ -834,10 +837,14 @@ export async function runSpec(
     const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
     if (!winner) return { ...ranked, data: { block: "entity_card", card: blankCard(role), empty: true } };
     const totals = table?.totals ?? (bareNational(spec) ? await nationalTotals(sql, role) : null);
-    return { ...ranked, data: {
+    const podium = podiumOf(places, totals, table?.group);
+    // Under a band the podium's shares are the category's (owner decision entity_card 4), not the selection's as the
+    // ranking's own text says: „Cum am calculat” says the podium's.
+    const displaySql = podium.selection ? ranked.displaySql.replace(RANKED_BAND_TOTALS, PODIUM_BAND_TOTALS) : ranked.displaySql;
+    return { ...ranked, displaySql, data: {
       block: "entity_card",
       card: { ...winner, role, cri: null, nFlags: 0, flags: [] },
-      podium: podiumOf(places, totals, table?.group),
+      podium,
     } };
   }
   const caveats: string[] = [];
@@ -1172,7 +1179,7 @@ export async function runSpec(
 
   // The band of a ranking of firms is applied after grouping (rankedBand): said under the ranking's text.
   const displaySql = rankedBand
-    ? `${buildDisplaySql(spec, wSel)}\n-- lista: doar firmele ${employeesWords(rankedBand.min ?? undefined, rankedBand.max ?? undefined)} (ultimul bilanț MF); totalul și „% din total” sunt ale întregii selecții`
+    ? `${buildDisplaySql(spec, wSel)}\n-- lista: doar firmele ${employeesWords(rankedBand.min ?? undefined, rankedBand.max ?? undefined)} (ultimul bilanț MF); ${RANKED_BAND_TOTALS}`
     // F4: P is read in the answer's transaction (case "compare"), after this text: its rule in words.
     : `${buildDisplaySql(spec, w)}${asksSharedPartners(spec, w) ? "\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)" : ""}`;
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
@@ -2372,15 +2379,20 @@ export async function runRows(
   const profile = isHistoricalProfile(spec);
   // Resolve the winner from the original population before any drawer filters.
   // Intersect it below, so a caller cannot substitute a different entity.
-  let valueWinner: string | null = null;
+  // entity_card-2 (F6c): the podium's places 2 and 3 have their own records; a scope naming places of the podium
+  // narrows to them, any other id is refused (the podium is recomputed here, never taken from the client).
+  let valueWinner: string[] | null = null;
   if (spec.block === "entity_card" && spec.rankBy === "value") {
     const result = await runSpec(sql, spec, grounding);
     opts.signal?.throwIfAborted();
     if ("error" in result) return { error: result.error };
     if (result.data.block !== "entity_card" || result.data.empty) return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
-    valueWinner = result.data.card.entityId;
     if (scope.role && scope.role !== (spec.dim === "supplier" ? "supplier" : "authority"))
       return { error: "Rolul selectat nu aparține entității din răspuns." };
+    const places = podiumPlaceIds(result.data);
+    if (scope.entityIds && !scope.entityIds.every((id) => places.includes(id)))
+      return { error: "Entitatea selectată nu este pe podiumul răspunsului." };
+    valueWinner = scope.entityIds ? [...scope.entityIds] : [result.data.card.entityId];
   }
 
   if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
@@ -2480,10 +2492,12 @@ export async function runRows(
   if (scope.criteria !== undefined) selectionParts.push(sql`ef.n_flags = ${scope.criteria}`);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
-  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12). A firm's cohort
-  // is also asked on the bare column, which the nullif() below hides from the index (F6c: the sources of the firms at
-  // the top of the index, 3.2 s → 2 ms for one firm).
+  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12). A small, bounded
+  // cohort of firms (the group at the top of the index, at most TIES_LISTED; a scope's own ids) is also asked on the bare
+  // column, which the nullif() hides from the index (F6c: 3.2 s → 2 ms for one firm). Never on a whole population
+  // (the risk cloud, a distribution's group): there the semi-join made the plan 2–3× slower (F6c review).
   const partyCore = role === "authority" ? sql`da.authority_entity_id` : sql`nullif(da.supplier_entity_id, da.authority_entity_id)`;
+  const smallFirmCohort = role === "supplier" && (spec.block === "entity_card" || Boolean(scope.entityIds));
   const daTx = sql`(
     select sicap_da_id as ref_id, da_code, finalization_date, authority_id, authority_name,
            supplier_id, supplier_name, county, cpv_code, cpv_name, closing_value,
@@ -2515,7 +2529,7 @@ export async function runRows(
     left join core.cpv_codes cpv on cpv.code = da.cpv_code
     where da.state = 'Oferta acceptata' and da.closing_value > 0 and da.closing_value <= ${DA_PLAFOND_RON}
       and ${partyCore} in (select entity_id from ${cohort} selected_profiles)
-      ${role === "supplier" ? sql`and da.supplier_entity_id in (select entity_id from ${cohort} indexed_profiles)` : sql``}
+      ${smallFirmCohort ? sql`and da.supplier_entity_id in (select entity_id from ${cohort} indexed_profiles)` : sql``}
   )` : dataset === "da" ? daTx : dataset === "contracts" ? contractTx : sql`(select * from ${daTx} direct_rows union all select * from ${contractTx} contract_rows)`;
 
   // Only what is proper to the sources is added below: the relationship's focal entity,
@@ -2524,6 +2538,12 @@ export async function runRows(
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
+    // entity_card-2: a group at level 0 („Nu are semnale în profil”) shows no row; its sources are still the first profiles by value.
+    if (spec.block === "entity_card" && !scope.entityIds) {
+      const [top] = (await sql`select max(ef.cri)::text lvl from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null`) as unknown as { lvl: string | null }[];
+      if (top?.lvl !== null && top?.lvl !== undefined && Number(top.lvl) === 0)
+        notes.push(`Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare (cel mult ${TIES_LISTED}), toate fără semnale.`);
+    }
   } else {
     // The precise selection and the record threshold, in the words of describeConditions.
     const conditions = describeConditions(spec, { grounding, origin: opts.origin, entities: opts.entities }).byId;
@@ -2568,8 +2588,11 @@ export async function runRows(
       if (conditions.minimumRecords?.note) notes.push(conditions.minimumRecords.note);
     }
     if (valueWinner) {
-      parts.push(spec.dim === "supplier" ? sql`d.supplier_id = ${valueWinner}` : sql`d.authority_id = ${valueWinner}`);
-      notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");
+      const ids = sql.array(valueWinner);
+      parts.push(spec.dim === "supplier" ? sql`d.supplier_id = any(${ids}::bigint[])` : sql`d.authority_id = any(${ids}::bigint[])`);
+      notes.push(valueWinner.length === 1 && !scope.entityIds
+        ? "Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul."
+        : "Sursele sunt limitate la locul ales de pe podiumul răspunsului (primele trei după valoare); filtrele din listă nu schimbă podiumul.");
     }
     if (scope.county) parts.push(sql`lower(unaccent(d.county)) = ${fold(scope.county)}`);
     // Several counties: a group of a county trend (at most 42), in the drawer's words.

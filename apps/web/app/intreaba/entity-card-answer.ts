@@ -20,7 +20,7 @@ import type { RowFact } from "./answer/RowFacts";
 
 type Spec = Pick<QuestionSpec, "dim" | "filters">;
 
-/** A balance sheet older than this many years before the data's last year is read with care (amber). */
+/** A balance sheet older than this many years before the data's latest filing year is read with care (amber). */
 const OLD_BALANCE_YEARS = 2;
 
 /** The place beside a name: "Firmă · sediul în București", "Instituție · județul Cluj" (R9: a firm's county is its seat). */
@@ -39,18 +39,20 @@ export function placeWords(place: Pick<PodiumPlace, "county">, spec: Spec, popul
  * CÂȘTIGĂTORII the question set, with the year of the balance sheet it was read from (amber when old).
  * „Firme noi” (F5) adds its own tag here — „înmatriculată în 2024”, „prima dată în 2025” — when its key is implemented.
  */
-export function placeFacts(place: PodiumPlace, fact: PodiumFact | undefined, spec: Spec, lastYear: number): RowFact[] {
+export function placeFacts(place: PodiumPlace, fact: PodiumFact | undefined, spec: Spec, lastYear: number | null): RowFact[] {
   const tags: RowFact[] = [];
   const joint = jointShare(place.value, fact);
   if (joint !== null) tags.push({ text: `${Math.round(joint * 100)}% în asociere`, tip: { id: "in-asociere" } });
   const one = oneRecordShare(place, fact);
-  if (one !== null && place.count > 1) tags.push({
+  // A place of a single record says so too (final §3.9: ENERGOMONTAJ, one contract, 100%).
+  if (one !== null) tags.push({
     text: `${one.src === "contracts" ? "1 contract" : "1 achiziție directă"}: ${Math.round(one.share * 100)}%`, tone: "caveat",
     tip: { title: "O înregistrare mare", text: `Cea mai mare înregistrare a locului face ${formatShare(one.share)} din valoarea lui. Un contract intră întreg în anul atribuirii: indiciu de verificat, nu concluzie.` },
   });
   const band = employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees);
   if (band && fact && fact.employees !== null) {
-    const stale = fact.employeesYear !== null && fact.employeesYear < lastYear - OLD_BALANCE_YEARS;
+    // Old against the data's latest filing year (PodiumResult.balanceYear), never the wall clock; unknown, not amber.
+    const stale = fact.employeesYear !== null && lastYear !== null && fact.employeesYear < lastYear - OLD_BALANCE_YEARS;
     tags.push({
       text: `${countWords(fact.employees, "angajat", "angajați")}${fact.employeesYear !== null ? ` · bilanț ${fact.employeesYear}` : ""}`,
       ...(stale ? { tone: "caveat" as const } : {}), tip: { id: "angajati-benzi" },
@@ -108,6 +110,8 @@ export interface TiesHeadline {
   next: string | null;
   /** Nobody in the group meets a signal. */
   none: boolean;
+  /** „Indicele nu le deosebește”: the kicker carries its (?) (glossary `indice-egalitate`, final §3.10). */
+  notDistinct: boolean;
 }
 
 export function tiesHeadline(ties: Ties, spec: Spec): TiesHeadline {
@@ -115,12 +119,13 @@ export function tiesHeadline(ties: Ties, spec: Spec): TiesHeadline {
   const level = levelWords(ties.level), signals = signalsWords(ties);
   const next = ties.nextLevel !== null
     ? `Următorul nivel, ${levelWords(ties.nextLevel)}: ${formatInt(ties.nextCount)} din ${countWords(ties.pool, nouns.one, nouns.many)}.` : null;
-  if (ties.maxFlags === 0) return { kicker: "Nu are semnale în profil", lead: `Niciuna din ${countWords(ties.pool, nouns.one, nouns.many)} nu are semnale în profil`, level, signals, next: null, none: true };
-  if (ties.count === 1) return { kicker: "Singur pe primul loc", lead: "", level, signals, next, none: false };
+  const plain = { level, signals, next: null, none: false, notDistinct: false };
+  if (ties.maxFlags === 0) return { ...plain, kicker: "Nu are semnale în profil", lead: `Niciuna din ${countWords(ties.pool, nouns.one, nouns.many)} nu are semnale în profil`, none: true };
+  if (ties.count === 1) return { ...plain, kicker: "Singur pe primul loc", lead: "", next };
   if (tiesNotDistinct(ties)) return {
-    kicker: "Indicele nu le deosebește", lead: `${formatInt(ties.count)} din ${countWords(ties.pool, nouns.one, nouns.many)} au același indice`, level, signals, next: null, none: false,
+    ...plain, kicker: "Indicele nu le deosebește", lead: `${formatInt(ties.count)} din ${countWords(ties.pool, nouns.one, nouns.many)} au același indice`, notDistinct: true,
   };
-  return { kicker: null, lead: `${countWords(ties.count, nouns.one, nouns.many)} au indicele maxim`, level, signals, next: null, none: false };
+  return { ...plain, kicker: null, lead: `${countWords(ties.count, nouns.one, nouns.many)} au indicele maxim` };
 }
 
 /** The lower-case word of a signal, as the official label says it ("posibilă fracționare"). */
@@ -147,6 +152,10 @@ export function tieFacts(row: TiePlace, spec: Spec): RowFact[] {
 
 /** A profile's line beside its name: its county and its direct acquisitions. */
 export const tiePlace = (row: TiePlace): string => [row.county ? countyOfFolded(row.county) ?? row.county : null, countWords(row.count, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
+
+/** With no signal in the group, what the sources and the CSV hold (runRows: the first profiles by value): „Sursele: primele 50 după valoare, fără semnale.” */
+export const tiesNoneSources = (ties: Pick<Ties, "rows">): string =>
+  ties.rows.length === 1 ? "Sursele: singurul profil, fără semnale." : `Sursele: primele ${countWords(ties.rows.length, "profil", "profiluri")} după valoare, fără semnale.`;
 
 /** The rows shown first, and how many wait behind „Arată toate”. */
 export function tiesShown(ties: Ties, all: boolean): { rows: TiePlace[]; hidden: number } {

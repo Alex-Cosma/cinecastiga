@@ -56,6 +56,9 @@ describe("human-readable monitoring result comparisons", () => {
     expect(resultDifferences(podium(100, 300), podium(120, 320)).map((row) => [row.context, row.field])).toEqual([
       ["Podiumul · Locurile 1–3 · Elementul 1", "Valoare înregistrată"], ["Podiumul · Totalul selecției", "Valoare înregistrată"],
     ]);
+    // Under a band of CÂȘTIGĂTORII the total is the category's, and named so.
+    const band = (total: number) => ({ block: "entity_card", podium: { places: [], categoryTotals: { value: total, count: 2, entities: 2 } } });
+    expect(resultDifferences(band(5000), band(5100)).map((row) => [row.context, row.field])).toEqual([["Podiumul · Totalul categoriei", "Valoare înregistrată"]]);
     const ties = (count: number) => ({ block: "entity_card", ties: { level: 0.2, maxFlags: 1, count, rows: [] } });
     expect(resultDifferences(ties(13), ties(14)).map((row) => [row.context, row.field])).toEqual([["Grupul de la egalitate pe primul loc", "Profiluri la indicele maxim"]]);
   });

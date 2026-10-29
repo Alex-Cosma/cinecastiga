@@ -272,7 +272,10 @@ export async function podiumFacts(sql: DbSql, spec: AskSpec, ids: readonly strin
     const source = factsSource(tx, p.dataset, false, true);
     const id = role === "supplier" ? tx`d.supplier_id` : tx`d.authority_id`;
     // The band of CÂȘTIGĂTORII is the list's, not a selection of the records (p.ctx holds it as the records' size): a place passes it already.
-    const where = andAll(tx, rowPredicates({ ...p.ctx, minEmployees: null, maxEmployees: null }));
+    // The record threshold is counted over the same rows, as the ranking's whereFrag does: a place's facts are its ranked records'.
+    const selection = { ...p.ctx, minEmployees: null, maxEmployees: null };
+    const base = andAll(tx, rowPredicates(selection));
+    const where = andAll(tx, [base, ...groupPredicates(selection, source, base)]);
     const records = await run<PodiumFactRows>(tx`
       select ${id}::text id, d.src collate "C" largest_src, max(d.closing_value)::text largest,
              coalesce(sum(d.closing_value) filter (where d.n_winners > 1), 0)::text joint
@@ -284,6 +287,10 @@ export async function podiumFacts(sql: DbSql, spec: AskSpec, ids: readonly strin
       select ep.entity_id::text id, ep.employees, ep.employees_year, ep.first_activity
       from marts.entity_profile ep where ep.role = ${role} and ep.entity_id = any(${tx.array(places)}::bigint[])
     `);
-    return { part: "podium", places: podiumFactsOf(records, profiles, places), checkpoint, tookMs: Date.now() - started };
+    // The data's latest filing year (18 ms warm on local seap, kept with the facts per build): an old balance sheet is old against it.
+    const [latest] = role === "supplier"
+      ? await run<{ y: number | null }>(tx`select max(ep.employees_year) y from marts.entity_profile ep where ep.role = 'supplier'`) : [];
+    const balanceYear = latest?.y === null || latest?.y === undefined ? null : Number(latest.y);
+    return { part: "podium", places: podiumFactsOf(records, profiles, places), balanceYear, checkpoint, tookMs: Date.now() - started };
   }, places.join(","));
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buyerForm, criteriaCount, jointShare, leadOverSecond, LEADER_MIN_DAS, levelWords, oneRecordShare, placeShare, podiumRest, signalsWords, tiesNotDistinct,
+  buyerForm, criteriaCount, jointShare, leadOverSecond, LEADER_MIN_DAS, levelWords, oneRecordShare, placeShare, podiumPlaceIds, podiumRest, signalsWords, tiesNotDistinct,
   type Podium, type PodiumPlace,
 } from "./entity-card-shared";
 import { bareNational, podiumFactsOf, podiumOf } from "./entity-card";
@@ -65,6 +65,13 @@ describe("the facts of the places", () => {
     expect(oneRecordShare({ value: 1000, count: 4 }, { largest: { value: 499, src: "contracts" } })).toBeNull();
     expect(oneRecordShare({ value: 1000, count: 4 }, { largest: { value: 500, src: "contracts" } })).toEqual({ share: 0.5, src: "contracts" });
     expect(oneRecordShare({ value: 1000, count: 4 }, undefined)).toBeNull();
+    expect(oneRecordShare({ value: 1000, count: 1 }, { largest: { value: 1000, src: "contracts" } })).toEqual({ share: 1, src: "contracts" });
+  });
+
+  it("names the podium's places as what a records drawer may narrow to, place 1 alone for an older answer", () => {
+    const place = (entityId: string) => ({ entityId, name: entityId, county: null, value: 1, count: 1 });
+    expect(podiumPlaceIds({ card: { entityId: "1" }, podium: { places: [place("1"), place("2"), place("3")] } })).toEqual(["1", "2", "3"]);
+    expect(podiumPlaceIds({ card: { entityId: "1" } })).toEqual(["1"]);
   });
 
   it("add the channels' records: the joint value, the largest record and the firm's filing", () => {

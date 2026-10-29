@@ -1033,7 +1033,8 @@ export default function AskPanel({
                 )}
               </div>
               <div className="cq-answer-actions">
-                <button
+                {/* G2: an empty answer has no records to open; its relaxations are below. */}
+                {!empty && <button
                   type="button"
                   className="cq-source-main"
                   onClick={() => openEvidence()}
@@ -1042,7 +1043,7 @@ export default function AskPanel({
                   {count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
-                </button>
+                </button>}
                 <button
                   type="button"
                   className="cq-share"
