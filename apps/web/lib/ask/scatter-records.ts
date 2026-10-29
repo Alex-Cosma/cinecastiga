@@ -54,11 +54,12 @@ export function flaggedRecordIds(sql: DbSql, role: ScatterRole, flag: ScatterFla
           and exists (select 1 from marts.flag_instances fi where fi.flag_code = 'da_year_end' and fi.entity_id = d.authority_id and fi.period = substr(d.finalization_date, 1, 4)))`);
     case "da_concentration":
     case "da_dependence":
+      // The partner + 0 hides its index: the planner would read a main partner's 26,000 records for each profile instead of the profile's own.
       return frag(sql`(select d.sicap_da_id from marts.da_transactions d
         join (select distinct on (x.a) x.a, x.p from (
                 select t.${party} a, t.${partner} p, sum(t.closing_value) v from marts.da_transactions t
                 where t.${party} in (${entities}) and t.${partner} is not null group by 1, 2) x
-              order by x.a, x.v desc, x.p) main on main.a = d.${party} and main.p = d.${partner}
+              order by x.a, x.v desc, x.p) main on main.a = d.${party} and main.p = d.${partner} + 0
         where d.${party} in (${entities}))`);
   }
 }
@@ -70,7 +71,7 @@ export async function instanceFacts(sql: DbSql, role: ScatterRole, ids: readonly
   const list = sql.array([...ids]);
   const own = role === "authority" ? sql`fi.entity_id` : sql`fi.partner_id`;
   const rows = (await sql`
-    select fi.flag_code, ${own}::text id, fi.period, fi.evidence
+    select fi.flag_code, (case when fi.flag_code = 'da_split' then ${own} else fi.entity_id end)::text id, fi.period, fi.evidence
     from marts.flag_instances fi
     where (fi.flag_code = 'da_split' and ${own} = any(${list}::bigint[]) and fi.subject_type = 'pair')
        or (fi.flag_code = 'da_year_end' and fi.entity_id = any(${list}::bigint[]))
