@@ -18,7 +18,7 @@ describe("firm columns of the marts on a migrated database", () => {
       await q`delete from marts.entity_profile`;
       await q`delete from marts.entity_flags`;
       // Migrated, not yet rebuilt: the columns exist and are empty; agg_map_county has no seat split.
-      await q`drop table if exists marts.agg_map_county, marts.agg_map_county_top`;
+      await q`drop table if exists marts.agg_map_county`;
       await q`create table marts.agg_map_county (county text primary key, v_plaf numeric, n_plaf bigint, v_all numeric, n_all bigint)`;
       const NONE = { ...NO_MART_COLUMNS, logTotal: true }; // 0085's generated column
       expect(await probe(q)).toEqual(NONE);
@@ -33,9 +33,7 @@ describe("firm columns of the marts on a migrated database", () => {
       await q`insert into marts.agg_map_county (county, v_plaf, n_plaf, v_all, n_all, n_all_unknown) values ('Cluj', 10, 2, 10, 2, 2)`;
       expect(await probe(q)).toEqual({ ...NONE, seat: true, registeredYear: true, mainCpvDiv: true });
       await q`update marts.agg_map_county set n_all_same = 1, n_all_unknown = 1`;
-      expect(await probe(q)).toEqual({ ...NONE, seat: true, registeredYear: true, mainCpvDiv: true, mapSeat: true });
-      await q`create table marts.agg_map_county_top (scope text, channel text, county text, top_record_id bigint)`;
-      expect(await probe(q)).toEqual({ seat: true, registeredYear: true, mainCpvDiv: true, mapSeat: true, logTotal: true, mapTop: true });
+      expect(await probe(q)).toEqual({ seat: true, registeredYear: true, mainCpvDiv: true, mapSeat: true, logTotal: true });
       throw rollback;
     })).rejects.toBe(rollback);
   });

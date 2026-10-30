@@ -1,5 +1,5 @@
 import {buildAskRollups,createTransactionMartBuildIndexes,dropTransactionMartBuildIndexes,ensureTransactionMartIndexes,type DbSql} from '@seap/db';
-import {buildAggMapCounty,buildAggMapCountyTop} from './agg-map-county.js';
+import {buildAggMapCounty} from './agg-map-county.js';
 type TransactionSql=Parameters<Parameters<DbSql['begin']>[1]>[0];
 
 /** Daily procurement read models; uses the retained flags without recomputing CRI. */
@@ -79,13 +79,15 @@ export async function buildTransactionMarts(q:TransactionSql){
       drop table if exists marts.agg_map_county, marts.agg_top_entities,
                           marts.agg_national, marts.agg_years
     `;
-    // Per buyer county, with the split by the winning firm's seat, and the
-    // county card's largest buyer and record. Timed: the seat split is the
-    // part of this stage that reads the seats the marts stage wrote (plan F5).
+    // Per buyer county, with the split by the winning firm's seat. Timed: the
+    // seat split is the part of this stage that reads the seats the marts
+    // stage wrote (plan F5). The county card reads agg_map_year (the Ask
+    // rollups): the unfiltered card's table of before, which nothing read
+    // (8.9–13.4 s a night), is dropped where an earlier build left it (S5 review).
     const mapStarted=Date.now();
     await buildAggMapCounty(q);
     const mapCountyMs=Date.now()-mapStarted;
-    const mapCountyTop=await buildAggMapCountyTop(q);
+    await q`drop table if exists marts.agg_map_county_top`;
     await q`
       create table marts.agg_national as
       select src,
@@ -155,11 +157,11 @@ export async function buildTransactionMarts(q:TransactionSql){
     await q`refresh materialized view marts.signal_lookup`;
     await q`analyze marts.signal_lookup`;
     const [row]=await q`select count(*)::int n from marts.da_transactions`;
-    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,buildIndexesMs,rollups:rollups.rows,mapCountyTop,mapCountyMs,mapYearMs:rollups.mapYearMs,yearKeysMs:rollups.yearKeysMs,kindYearMs:rollups.kindYearMs};
+    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,buildIndexesMs,rollups:rollups.rows,mapCountyMs,mapYearMs:rollups.mapYearMs,yearKeysMs:rollups.yearKeysMs,kindYearMs:rollups.kindYearMs};
 }
 export async function runTransactionMarts(sql:DbSql,opts:{log?:(message:string)=>void}={}){
  const report=await sql.begin(q=>buildTransactionMarts(q));
- opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_months=${report.rollups.agg_months} agg_national_mix=${report.rollups.agg_national_mix} agg_map_county_top=${report.mapCountyTop} agg_map_year=${report.rollups.agg_map_year} agg_da_year_keys=${report.rollups.agg_da_year_keys} agg_entity_kind_year=${report.rollups.agg_entity_kind_year} build indexes ${report.buildIndexesMs} ms, agg_map_county ${report.mapCountyMs} ms, agg_map_year ${report.mapYearMs} ms, agg_da_year_keys ${report.yearKeysMs} ms, agg_entity_kind_year ${report.kindYearMs} ms`);
+ opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_months=${report.rollups.agg_months} agg_national_mix=${report.rollups.agg_national_mix} agg_map_year=${report.rollups.agg_map_year} agg_da_year_keys=${report.rollups.agg_da_year_keys} agg_entity_kind_year=${report.rollups.agg_entity_kind_year} build indexes ${report.buildIndexesMs} ms, agg_map_county ${report.mapCountyMs} ms, agg_map_year ${report.mapYearMs} ms, agg_da_year_keys ${report.yearKeysMs} ms, agg_entity_kind_year ${report.kindYearMs} ms`);
  if(report.createdIndexes.length)opts.log?.(`transaction marts: recreated missing indexes ${report.createdIndexes.join(', ')}`);
  // After the commit (VACUUM cannot run in a transaction), before the site
  // reopens: the reload leaves no page all-visible, so until autovacuum (cost
