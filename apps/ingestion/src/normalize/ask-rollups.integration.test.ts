@@ -28,7 +28,7 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    (17006,${iasi},${a},70,'Oferta refuzata','2024-09-25','45000000-7'),
    (17007,${iasi},${iasi},30,'Oferta acceptata','2024-09-26',null)`;
   const first=await buildTransactionMarts(q);
-  expect(first.buildIndexes).toEqual(['da_tx_supplier_cover_idx','da_tx_authority_cover_idx']);
+  expect(first.buildIndexes).toEqual(['da_tx_supplier_cover_idx','da_tx_authority_cover_idx','da_tx_cpv_cover_idx']);
   const ids=new Set([cluj,iasi,a,b]);
   const own=<T extends Record<string,unknown>>(rows:T[],key:keyof T)=>rows.filter(r=>ids.has(String(r[key]))).map(r=>({...r}));
   // Only accepted, positive DAs up to the 2M ceiling; the authority as its own supplier has no supplier.
@@ -99,6 +99,17 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   ]);
   expect((await q`select src,y,m,v::text,n::int,d0,d1 from marts.agg_county_month where county is null`).map(r=>({...r})))
    .toEqual([{src:'da',y:'2025',m:'03',v:'40',n:1,d0:'2025-03-22',d1:'2025-03-22'}]);
+  // The first and last key of each year's direct acquisitions (S5 PRE-trend), over every row: the table's two ends, every
+  // code of SEAP's form; 17008 without an authority and 17004 above the ceiling are inside their years.
+  const keys=(await q`select y,k0::text,k1::text,n::int,odd_codes::int from marts.agg_da_year_keys order by y`).map(r=>({...r}));
+  expect(keys).toEqual((await q`select substr(finalization_date,1,4) y,min(sicap_da_id)::text k0,max(sicap_da_id)::text k1,count(*)::int n,
+    count(*) filter (where da_code is null or da_code !~ '^DA[0-9]+$')::int odd_codes from marts.da_transactions group by 1 order by 1`).map(r=>({...r})));
+  const ends:Record<string,[number,number]>={'2024':[17003,17007],'2025':[17001,17008]};
+  expect(keys.filter(k=>String(k['y']) in ends).map(k=>[k['y'],Number(k['k0'])<=ends[String(k['y'])]![0],Number(k['k1'])>=ends[String(k['y'])]![1]]))
+   .toEqual([['2024',true,true],['2025',true,true]]);
+  expect(first.rollups.agg_da_year_keys).toBe(keys.length);
+  expect(first.buildIndexesMs).toBeGreaterThanOrEqual(0);
+  expect(first.yearKeysMs).toBeGreaterThanOrEqual(0);
   const [cpv]=await q`select coalesce(sum(v),0)::text v, coalesce(sum(n),0)::int n from marts.agg_cpv_year`;
   const [national]=await q`select coalesce(sum(v_plaf),0)::text v, coalesce(sum(n_plaf),0)::int n from marts.agg_national`;
   expect(cpv).toEqual(national);

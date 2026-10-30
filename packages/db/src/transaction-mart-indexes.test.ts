@@ -35,7 +35,7 @@ describe('covering indexes of the transaction marts (marts audit, 24 October 202
   });
 
   it('keeps the covering twins out of the migrations: the DA build drops and builds them', () => {
-    expect(TRANSACTION_MART_BUILD_INDEXES.map(index => index.name)).toEqual(['da_tx_supplier_cover_idx', 'da_tx_authority_cover_idx']);
+    expect(TRANSACTION_MART_BUILD_INDEXES.map(index => index.name)).toEqual(['da_tx_supplier_cover_idx', 'da_tx_authority_cover_idx', 'da_tx_cpv_cover_idx']);
     for (const index of TRANSACTION_MART_BUILD_INDEXES)
       expect(index.definition.startsWith(`CREATE INDEX ${index.name} ON marts.${index.table} USING btree (`)).toBe(true);
     const names = [...TRANSACTION_MART_INDEXES, ...TRANSACTION_MART_BUILD_INDEXES].map(index => index.name);
