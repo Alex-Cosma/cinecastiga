@@ -316,6 +316,7 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000 }),
     ...preTrendCases(),
+    ...preSourcesCases(),
     ...f3Cases(),
     ...facetCases(),
     ...f3RowsCases(),
@@ -712,5 +713,32 @@ function preTrendCases(): PerfCase[] {
       all(years(2024, 2025), lens({ change: "up", months: "auto" })), search("medicamente")),
     perfCase("sources:trend-cluj-2024-2025-all-search", "sources", "„Toate” în Cluj, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
       all(set({ county: "Cluj" }), years(2024, 2025), every), search("medicamente")),
+  ];
+}
+
+/**
+ * S5 PRE-sources: the source lists PRECOMPUTE.md kept for the marts stage. The historical profiles' cohorts nationally
+ * (a distribution's group of the whole country, of a county: the risk cloud's old links list the same cohorts, which
+ * ask-golden runs, since the builder's cloud has no source rows), a precise selection of OR groups, the seat's sparse
+ * drawers, the per-inhabitant ranking's drawer.
+ */
+function preSourcesCases(): PerfCase[] {
+  const rows = { path: "rows" as const, barMs: 2000 as const };
+  const orGroups: Edit = (q) => {
+    q.population = { operator: "or", groups: [
+      { operator: "and", conditions: [{ field: "authority", op: "in", values: [String(PERF_ENTITIES.clujNapoca.id)], labels: [PERF_ENTITIES.clujNapoca.name] }, { field: "cpv", op: "in", values: ["45"] }] },
+      { operator: "or", conditions: [{ field: "supplier", op: "in", values: [String(PERF_ENTITIES.dedeman.id)], labels: [PERF_ENTITIES.dedeman.name] }, { field: "county", op: "in", values: ["Buzău"] }] },
+    ] };
+  };
+  return [
+    perfCase("sources:distribution-selgros-country", "sources", "Sursele grupului SELGROS: toate firmele țării", "distribution", focal("supplier"), rows),
+    perfCase("sources:distribution-cluj-napoca-country", "sources", "Sursele grupului Cluj-Napoca: toate instituțiile țării", "distribution", focal("authority"), rows),
+    perfCase("sources:distribution-selgros-buzau", "sources", "Sursele grupului SELGROS: firmele cu sediul în Buzău", "distribution", all(focal("supplier"), set({ county: "Buzău" })), rows),
+    perfCase("sources:distribution-buzau-population", "sources", "Sursele grupului Buzău: primăriile cu 52–207 mii de locuitori", "distribution",
+      all(focal("authority", PERF_ENTITIES.buzau), top({ peers: { similar: true } })), rows),
+    perfCase("sources:timeseries-population-or-groups", "sources", "Sursele unei selecții precise SAU (Cluj-Napoca la CPV 45, DEDEMAN sau Buzău)", "timeseries", orGroups, rows),
+    perfCase("sources:table-suppliers-seat-tulcea-satu-mare", "sources", "Sursele firmelor cu sediul în Tulcea care vând în Satu Mare", "table",
+      all(top({ dim: "supplier" }), set({ seatCounty: "Tulcea", county: "Satu Mare" })), rows),
+    perfCase("sources:table-authorities-per-capita", "sources", "Sursele clasamentului pe locuitor, național", "table", top({ dim: "authority", measure: "value_per_capita" }), rows),
   ];
 }
