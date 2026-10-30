@@ -35,7 +35,7 @@ describe('covering indexes of the transaction marts (marts audit, 24 October 202
   });
 
   it('keeps the covering twins out of the migrations: the DA build drops and builds them', () => {
-    expect(TRANSACTION_MART_BUILD_INDEXES.map(index => index.name)).toEqual(['da_tx_supplier_cover_idx', 'da_tx_authority_cover_idx', 'da_tx_cpv_cover_idx']);
+    expect(TRANSACTION_MART_BUILD_INDEXES.map(index => index.name)).toEqual(['da_tx_supplier_cover_idx', 'da_tx_authority_cover_idx', 'da_tx_cpv_cover_idx', 'da_tx_value_desc_idx']);
     for (const index of TRANSACTION_MART_BUILD_INDEXES)
       expect(index.definition.startsWith(`CREATE INDEX ${index.name} ON marts.${index.table} USING btree (`)).toBe(true);
     const names = [...TRANSACTION_MART_INDEXES, ...TRANSACTION_MART_BUILD_INDEXES].map(index => index.name);
@@ -43,6 +43,13 @@ describe('covering indexes of the transaction marts (marts audit, 24 October 202
     for (const file of readdirSync(migrations).filter(name => name.endsWith('.sql')))
       for (const index of TRANSACTION_MART_BUILD_INDEXES)
         expect(readFileSync(new URL(file, migrations), 'utf8')).not.toContain(index.name);
+  });
+
+  it('keys the value index on the negated value, so only the queries that write it read it (S5 PRE-sources)', () => {
+    const value = TRANSACTION_MART_BUILD_INDEXES.find(index => index.name === 'da_tx_value_desc_idx')!;
+    // pg_get_indexdef's text on the local copy (30 October 2026); not partial, so ANALYZE keeps the expression's statistics.
+    expect(value.definition).toBe('CREATE INDEX da_tx_value_desc_idx ON marts.da_transactions USING btree (((- closing_value)), sicap_da_id) INCLUDE (authority_id, supplier_id)');
+    expect(value.definition).not.toContain(' WHERE ');
   });
 
   it('adds log_total_ron in 0085, after 0084', () => {

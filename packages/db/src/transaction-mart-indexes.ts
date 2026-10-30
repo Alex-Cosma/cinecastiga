@@ -72,6 +72,19 @@ export type TransactionMartTable = (typeof TRANSACTION_MART_INDEXES)[number]["ta
  * of PRECOMPUTE.md (agg_cpv_entity_year: 12.3M rows, a third pass over the
  * union each night) with no new table and no new path in the engine: the live
  * queries are unchanged, so their answers are too.
+ *
+ * The fourth orders the direct acquisitions by value, highest first, then by
+ * key (S5, PRE-sources). Its key is the negated value, which no query writes
+ * unless it asks for this index: the drawers ordered or bounded by
+ * `closing_value` keep their plans. Not partial, so the nightly ANALYZE keeps
+ * statistics on the expression (PostgreSQL ignores a partial index's): the
+ * planner then sees how few records a size keeps. Two readers in the web: the
+ * source page of a national profile cohort (the risk cloud, a distribution's
+ * group of the whole country: 19.35M records, ordered by value) takes its
+ * first keys from it, the parties read index-only, instead of sorting every
+ * record (20 s, the route's limit; profileValueKeys); and the sources of a
+ * lower size find its few direct acquisitions in their range (213 of at least
+ * 1 mil. lei in the archive) instead of reading an index of the whole period.
  */
 export const TRANSACTION_MART_BUILD_INDEXES = [
   { table: "da_transactions", name: "da_tx_supplier_cover_idx",
@@ -80,6 +93,8 @@ export const TRANSACTION_MART_BUILD_INDEXES = [
     definition: "CREATE INDEX da_tx_authority_cover_idx ON marts.da_transactions USING btree (authority_id, finalization_date) INCLUDE (supplier_id, closing_value, cpv_code, county, sicap_da_id)" },
   { table: "da_transactions", name: "da_tx_cpv_cover_idx",
     definition: "CREATE INDEX da_tx_cpv_cover_idx ON marts.da_transactions USING btree (cpv_code text_pattern_ops, finalization_date) INCLUDE (authority_id, supplier_id, closing_value, county, sicap_da_id)" },
+  { table: "da_transactions", name: "da_tx_value_desc_idx",
+    definition: "CREATE INDEX da_tx_value_desc_idx ON marts.da_transactions USING btree (((- closing_value)), sicap_da_id) INCLUDE (authority_id, supplier_id)" },
 ] as const;
 
 /** Before loading da_transactions (inside the build transaction, which holds the table). */
