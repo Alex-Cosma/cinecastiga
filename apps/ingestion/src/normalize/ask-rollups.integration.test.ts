@@ -28,7 +28,7 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    (17006,${iasi},${a},70,'Oferta refuzata','2024-09-25','45000000-7'),
    (17007,${iasi},${iasi},30,'Oferta acceptata','2024-09-26',null)`;
   const first=await buildTransactionMarts(q);
-  expect(first.buildIndexes).toEqual(['da_tx_supplier_cover_idx','da_tx_authority_cover_idx','da_tx_cpv_cover_idx']);
+  expect(first.buildIndexes).toEqual(['da_tx_supplier_cover_idx','da_tx_authority_cover_idx','da_tx_cpv_cover_idx','da_tx_value_desc_idx']);
   const ids=new Set([cluj,iasi,a,b]);
   const own=<T extends Record<string,unknown>>(rows:T[],key:keyof T)=>rows.filter(r=>ids.has(String(r[key]))).map(r=>({...r}));
   // Only accepted, positive DAs up to the 2M ceiling; the authority as its own supplier has no supplier.
