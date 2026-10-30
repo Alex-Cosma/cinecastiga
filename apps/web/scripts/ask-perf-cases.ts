@@ -142,9 +142,8 @@ const CATALOG_CHOICES: Partial<Record<Block, { note: string; edit: Edit }>> = {
 };
 
 const SELGROS_ROW: EvidenceScope = { entityIds: [String(PERF_ENTITIES.selgros.id)], role: "supplier" };
-/** PRECOMPUTE.md entries these cases wait on (S3 review). */
+/** The PRECOMPUTE.md entry the orders of „Toate” other than the default still wait on (S3 review; S5 PRE-trend closed the rest). */
 const ALL_DRAWER = "Sertarul „Toate” al trendului";
-const DRAWER_SEARCH = "Căutarea în sertarul unui trend național";
 
 export function perfCases(): PerfCase[] {
   const catalog = QUESTION_TYPES.map((type) => {
@@ -299,23 +298,24 @@ export function perfCases(): PerfCase[] {
       { path: "csv", afterAnswer: true, barMs: 2000 }),
     // S3 F2-merge-fixes: „Toate” of the national trend, „Înregistrările celor doi ani” (4.9M records; track verify problem 3).
     perfCase("sources:trend-2024-2025-all", "sources", "Înregistrările celor doi ani, „Toate”, 2024 → 2025 (național), la rece", "trend", all(years(2024, 2025), lens({ change: "all", months: "auto" })),
-      { path: "rows", barMs: 2000, ref: "Surse trend „Toate” (ambii ani, național)", precompute: ALL_DRAWER }),
+      { path: "rows", barMs: 2000, ref: "Surse trend „Toate” (ambii ani, național)" }),
     perfCase("sources:trend-2024-2025-all-after-answer", "sources", "Înregistrările celor doi ani, „Toate”, 2024 → 2025, după răspuns", "trend", all(years(2024, 2025), lens({ change: "all", months: "auto" })),
-      { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+      { path: "rows", afterAnswer: true, barMs: 2000 }),
     // S3 review: „Toate” on every trend screen (old links, institutions, counties), over the bar wherever its page reads the
     // whole covering index; the marts stage is checked against each dimension, an older pair, the other orders and a search.
     perfCase("sources:trend-authorities-2024-2025-all-after-answer", "sources", "„Toate” la instituții, 2024 → 2025, după răspuns", "trend",
-      all(top({ dim: "authority" }), years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+      all(top({ dim: "authority" }), years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000 }),
     perfCase("sources:trend-counties-2024-2025-all-after-answer", "sources", "„Toate” la județe, 2024 → 2025, după răspuns", "trend",
-      all(top({ dim: "county" }), years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+      all(top({ dim: "county" }), years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000 }),
     perfCase("sources:trend-2021-2022-all-after-answer", "sources", "„Toate” la firme, 2021 → 2022, după răspuns", "trend",
-      all(years(2021, 2022), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+      all(years(2021, 2022), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000 }),
     perfCase("sources:trend-2024-2025-all-by-value-after-answer", "sources", "„Toate” la firme, 2024 → 2025, după valoare, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "value", dir: "desc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
     perfCase("sources:trend-2024-2025-all-source-asc-after-answer", "sources", "„Toate” la firme, 2024 → 2025, cele mai vechi surse întâi, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "source", dir: "asc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
     perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
-      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000, precompute: DRAWER_SEARCH }),
+      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000 }),
+    ...preTrendCases(),
     ...f3Cases(),
     ...facetCases(),
     ...f3RowsCases(),
@@ -677,5 +677,40 @@ function f3Cases(): PerfCase[] {
       all(top({ dim: "authority", measure: "value_per_capita" }), set({ county: "Cluj" }))),
     perfCase("filtered:table-uat-cluj-napoca-2024-2025", "filtered", "Firmele care câștigă de la primăria Cluj-Napoca, 2024–2025", "table",
       all(set({ uatSiruta: PERF_ENTITIES.clujNapocaUat.siruta, uatName: PERF_ENTITIES.clujNapocaUat.name }), years(2024, 2025))),
+  ];
+}
+
+/**
+ * S5 PRE-trend: the trend's precompute entries closed at the marts stage. The domain with an entity list in a county and
+ * its sources (nationally: national:trend-medicamente-2024-2025-new, da_tx_cpv_cover_idx); and „Caută în surse” by names
+ * first (source-search.ts): a domain, a firm, a phrase, a record code and a county on the national two years, a group, the
+ * national ranking's drawer and a county's (today's search).
+ */
+function preTrendCases(): PerfCase[] {
+  const every = lens({ change: "all", months: "auto" });
+  const search = (text: string) => ({ path: "rows" as const, drawer: { search: text }, afterAnswer: true as const, barMs: 2000 as const });
+  return [
+    perfCase("filtered:trend-cluj-medicamente-2024-2025-new", "filtered", "Firme noi la medicamente în Cluj, 2024 → 2025", "trend",
+      all(set({ cpvTerm: "medicamente", county: "Cluj" }), years(2024, 2025), lens({ change: "new", months: "auto" }))),
+    perfCase("sources:trend-medicamente-2024-2025-new", "sources", "Sursele firmelor noi la medicamente, 2024 → 2025, după răspuns", "trend",
+      all(set({ cpvTerm: "medicamente" }), years(2024, 2025), lens({ change: "new", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000 }),
+    perfCase("sources:trend-2024-2025-all-search-selgros-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „SELGROS”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("SELGROS")),
+    perfCase("sources:trend-2024-2025-all-search-phrase-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „spitalul judetean”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("spitalul judetean")),
+    perfCase("sources:trend-2024-2025-all-search-code-after-answer", "sources", "„Toate”, 2024 → 2025, căutare după cod „DA38380070”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("DA38380070")),
+    perfCase("sources:trend-2024-2025-all-search-county-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „Vaslui”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("Vaslui")),
+    perfCase("sources:trend-2024-2025-all-search-number-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „33600000”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("33600000")),
+    perfCase("sources:trend-2024-2025-all-search-common-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „s.r.l. bucuresti”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("s.r.l. bucuresti")),
+    perfCase("sources:table-national-2024-2025-search", "sources", "Sursele clasamentului național 2024–2025, căutare „medicamente”", "table",
+      years(2024, 2025), search("medicamente")),
+    perfCase("sources:trend-2024-2025-up-search-after-answer", "sources", "Creșterile, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
+      all(years(2024, 2025), lens({ change: "up", months: "auto" })), search("medicamente")),
+    perfCase("sources:trend-cluj-2024-2025-all-search", "sources", "„Toate” în Cluj, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
+      all(set({ county: "Cluj" }), years(2024, 2025), every), search("medicamente")),
   ];
 }

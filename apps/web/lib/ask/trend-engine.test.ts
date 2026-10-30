@@ -462,7 +462,7 @@ describe("the trend's sources", () => {
     const narrow = await runRows(cluj.sql, trend({ change: "all", months: "whole" }, { yearFrom: 2024, yearTo: 2025, county: "Cluj" }), { county: { query: "Cluj", canonical: "Cluj" } }, 0);
     if ("error" in narrow) throw new Error(narrow.error);
     expect([counted(cluj), grouping(cluj)]).toEqual([true, false]);
-    // A live grouping would cost what the count does; a search or a row's scope needs the count.
+    // A live grouping would cost what the count does; a row's scope needs the count, a search counts its found records.
     forgetRollupsReady();
     for (const [db, opts] of [[database(PROD, { partition: GONE() }), {}], [database(PROD, { stamp: "51" }), { search: "spital" }],
       [database(PROD, { stamp: "51" }), { scope: { county: "Cluj" } }]] as const) {

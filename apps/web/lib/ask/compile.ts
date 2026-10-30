@@ -28,7 +28,7 @@ import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
   compareInstitutionParties, compareParties, compareSharedPartners, compareTopPartners, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, monthRollupReady, rollupDaysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
+  coverRefReady, daCodesPlain, daYearKeyRange, monthRollupReady, rollupDaysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
@@ -51,6 +51,7 @@ import type { SankeyData } from "./sankey-shared";
 import { distributionData, distributionGroup } from "./distribution";
 import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 import { factCheckData } from "./fact-check";
+import { SEARCH_FEW_RECORDS, searchCandidates, searchLists, searchWords } from "./source-search";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
 
 /**
@@ -2855,11 +2856,19 @@ export async function runRows(
   if (opts.state === "__unknown") localParts.push(sql`d.state is null`);
   else if (opts.state) localParts.push(sql`d.state = ${opts.state}`);
   const search = opts.search?.trim().slice(0, 200);
-  if (search) {
-    // strpos treats percent/underscore literally and remains parameterized.
-    localParts.push(sql`strpos(lower(unaccent(concat_ws(' ', d.da_code, d.authority_name, d.supplier_name, d.cpv_name, d.cpv_code, d.county, d.ref_id::text))), ${fold(search)}) > 0`);
-  }
-  const localWhere = localParts.reduce((a, b) => sql`${a} and ${b}`);
+  // strpos treats percent/underscore literally and remains parameterized.
+  const searchCond: ReturnType<DbSql> | null = search
+    ? sql`strpos(lower(unaccent(concat_ws(' ', d.da_code, d.authority_name, d.supplier_name, d.cpv_name, d.cpv_code, d.county, d.ref_id::text))), ${fold(search)}) > 0` : null;
+  const localOthers = localParts.reduce((a, b) => sql`${a} and ${b}`);
+  if (searchCond) localParts.push(searchCond);
+  const localBase = localParts.reduce((a, b) => sql`${a} and ${b}`);
+  // „Caută în surse” on a broad selection (the country, a large group of a trend): the words' names first
+  // (source-search.ts), read in the page's snapshot; today's condition (above) then checks only their records. A
+  // selection its own indexes bound (a county, a domain, an entity, a kind, a row's records) and the historical
+  // profiles keep today's scan, which their indexes already make short (Cluj 2024 → 2025: 1.0 s; 1.7 s names first).
+  const words = search && !profile && !narrowed && !scope.county && !scope.counties && !scope.entityIds && !fixed && !own
+    ? searchWords(search) : [];
+  const keysForSearch = words.length > 0 && await yearKeysReady(sql);
   // The blocks whose source condition rollupSourceTotals adds itself.
   const totalsBlock = spec.block === "stat" || spec.block === "map" || spec.block === "breakdown" || spec.block === "timeseries" ? spec.block
     : spec.block === "table" && spec.dim === "county" ? "county" as const : spec.block === "table" && spec.dim === "supplier" ? "firms" as const
@@ -2871,6 +2880,14 @@ export async function runRows(
     : opts.dir === "asc" ? sql`asc nulls last` : sql`desc nulls last`;
   const requestedPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0;
   const pageSize = opts.limit && opts.limit > 0 ? Math.min(Math.floor(opts.limit), CSV_MAX_ROWS) : DRILL_PAGE_SIZE;
+  // „Toate” in the default order (newest source first): the direct acquisitions' page walks the primary key back from
+  // the last key of the two years (agg_da_year_keys, read in the page's snapshot), instead of reading the covering index
+  // of every record of both years for its first keys (4.6M entries nationally: 2.5–3.2 s for any dimension or pair not
+  // ending in the archive's last year; 0.09 s so, S5 PRE-trend). The bound holds every record of the two years, so the
+  // page is the same; the totals never read it. Not the oldest first: a year's first key lies far below the bulk of its
+  // records (2025's first is among 2020's), so a forward walk from it read millions of other years' rows (5.4 s, against
+  // 3.05 s by the covering index).
+  const keyBounded = everyChange && sortKey === "source" && opts.dir !== "asc" && dataset !== "contracts" && await yearKeysReady(sql);
 
   return await sql.begin("isolation level repeatable read read only", async (tx) => {
     await tx.unsafe(FORCE_CUSTOM_PLANS);
@@ -2884,6 +2901,19 @@ export async function runRows(
     if (ctx.kind) await tx.unsafe("set local jit = off");
     const s = tx as unknown as DbSql;
     if (spec.block === "trend") await s.unsafe(TREND_NO_JIT);
+    // The selection's period as a range on the column (it holds every record of it): the names' id indexes bound by it.
+    const [periodLo, periodHi] = spec.block === "trend" ? [Math.min(yearA, yearB), Math.max(yearA, yearB)] : [yearFrom, yearTo];
+    const searchRange: ReturnType<DbSql> | null = periodLo !== null && periodHi !== null
+      ? sql`d.finalization_date >= ${String(periodLo)} and d.finalization_date < ${String(periodHi + 1)}` : null;
+    const candidates = words.length ? searchCandidates(s, words, await searchLists(s, words),
+      { daCodesPlain: keysForSearch && await daCodesPlain(s), range: searchRange }) : null;
+    // Today's condition only on a candidate (CASE keeps that order: on a scanned channel, the contracts, the planner
+    // would read it first, on every row).
+    let localWhere = candidates
+      ? sql`${localOthers} and ${candidates.cond} and (case when ${candidates.cond} then ${searchCond!} else false end)` : localBase;
+    // A search read on every direct acquisition (a code, a number) keeps the page's scan: walking the key for its few
+    // records read millions (a DA code: 9.2 s).
+    const daRange = keyBounded && candidates?.indexed !== false ? await daYearKeyRange(s, [yearA, yearB]) : null;
     const group = groupMembers ? await groupMembers(s) : null;
     const members = group ? memberList(group.members) : null;
     // A row's own records ("Înregistrări →") are that row's: no group note (a watch says its fixed group).
@@ -2898,6 +2928,21 @@ export async function runRows(
     const sourceWhere = !members ? baseWhere : groupDim === "county"
       ? sql`${baseWhere} and d.county = any(${sql.array(members)}::text[])`
       : sql`${baseWhere} and ${groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array(members)}::bigint[]) and ${memberRange}`;
+    // The page's own rows (never the totals'): on the direct acquisitions the two years' keys (keyBounded), a no-op on contracts.
+    const pageWhere = daRange
+      ? sql`${sourceWhere} and (d.src = 'contracts' or d.ref_id between ${daRange.k0}::bigint and ${daRange.k1}::bigint)` : sourceWhere;
+    // A search read on every direct acquisition (a code, a number, only common words) finds few records or many: its
+    // records' keys are read once, and when there are at most SEARCH_FEW_RECORDS the totals and the page read only them
+    // by key (a DA code nationally: one scan, not two; 3.7 s → ~2 s). More, and the scan stops at the first ones past it.
+    if (words.length && !candidates?.indexed) {
+      const keys = (await readEvidenceQuery(s`
+        select d.src, d.ref_id::text ref from ${txt} d where ${sourceWhere} and ${localWhere} limit ${SEARCH_FEW_RECORDS + 1}
+      `, opts.signal)) as unknown as { src: "da" | "contracts"; ref: string }[];
+      if (keys.length <= SEARCH_FEW_RECORDS) {
+        const of = (src: "da" | "contracts") => sql.array([...new Set(keys.filter((k) => k.src === src).map((k) => k.ref))]);
+        localWhere = sql`${localWhere} and ((d.src = 'da' and d.ref_id = any(${of("da")}::bigint[])) or (d.src = 'contracts' and d.ref_id = any(${of("contracts")}::bigint[])))`;
+      }
+    }
     // A group's page reads its members' rows on the id index. For a group of at most a few hundred
     // thousand records the planner would scan the whole mart instead (it counts each member as an
     // average entity: 3.9 s instead of 0.26 s for the 17,633 new firms of 2025), or walk the primary
@@ -2916,20 +2961,32 @@ export async function runRows(
       && sortKey === "source" && opts.dir !== "asc" && yearB >= maxY - 1;
     const idIndex = groupPage && !plannerPlans || Boolean(fixed && members);
     if (idIndex) await tx.unsafe("set local enable_seqscan = off");
-    // Without a search or another selection, a group's totals are its records in the answer's grouping; „Toate”'s, the selection's.
-    const unscoped = !search && Object.keys(scope).every((key) => key === "role");
+    // Without another selection, a group's totals are its records in the answer's grouping; „Toate”'s, the selection's.
+    // With a search, those are the whole list's figures and only the found records are counted (below).
+    const unscoped = Object.keys(scope).every((key) => key === "role");
     const groupSources = group?.sources ?? (unscoped && selectionSources ? await selectionSources(s) : null);
     const groupTotals = groupSources && unscoped
       ? groupSourceTotals(groupSources, { ...(opts.stream ? { stream: opts.stream } : {}), ...(opts.state ? { state: opts.state } : {}) }) : null;
-    const rolledTotals = !groupTotals && rollup && totalsBlock && localParts.length === 1 && Object.keys(scope).every((key) => key === "role")
+    const rolledTotals = !groupTotals && rollup && totalsBlock && (localParts.length === 1 || search) && unscoped
       ? await rollupSourceTotals(s, rollup, totalsBlock) : null;
-    const totals: SourceTotalsRow[] = groupTotals ?? (rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : (await readEvidenceQuery(s`
+    const whole = groupTotals ?? (rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : null);
+    // With a search the list's figures and the found records are counted apart when the list's are known or the search
+    // reads names first: the found ones over the candidates of its words, the list without reading the search on each
+    // of its records (national 2024–2025: 10 s in one pass). A narrow selection keeps its one pass.
+    const liveTotals = async (filter: typeof localWhere) => (await readEvidenceQuery(s`
       select d.state, count(*) n, coalesce(sum(d.closing_value), 0)::text v,
-             count(*) filter (where ${localWhere}) fn,
-             coalesce(sum(d.closing_value) filter (where ${localWhere}), 0)::text fv,
+             count(*) filter (where ${filter}) fn,
+             coalesce(sum(d.closing_value) filter (where ${filter}), 0)::text fv,
              min(d.finalization_date) date_from, max(d.finalization_date) date_to
       from ${txt} d where ${sourceWhere} group by d.state
-    `, opts.signal)) as unknown as SourceTotalsRow[]);
+    `, opts.signal)) as unknown as SourceTotalsRow[];
+    const found = search && (whole || words.length) ? new Map(((await readEvidenceQuery(s`
+      select d.state, count(*) fn, coalesce(sum(d.closing_value), 0)::text fv
+      from ${txt} d where ${sourceWhere} and ${localWhere} group by d.state
+    `, opts.signal)) as unknown as { state: string | null; fn: string; fv: string }[]).map((r) => [r.state, r])) : null;
+    const totals: SourceTotalsRow[] = found
+      ? (whole ?? await liveTotals(sql`false`)).map((r) => ({ ...r, fn: found.get(r.state)?.fn ?? "0", fv: found.get(r.state)?.fv ?? "0" }))
+      : whole ?? await liveTotals(localWhere);
     const sourceTotal = totals.reduce((n, r) => n + Number(r.n), 0);
     const sourceValue = sumDecimalStrings(totals.map((r) => r.v));
     const total = totals.reduce((n, r) => n + Number(r.fn), 0);
@@ -2971,11 +3028,12 @@ export async function runRows(
       && latestSelectedYear !== null && latestSelectedYear < maxY
       && Object.keys(spec.filters).every((key) => ["yearFrom", "yearTo", "monthFrom", "monthTo"].includes(key) || key === "authorityKind" && kindScan)
       && Object.keys(scope).every((key) => ["years", "excludeCpvPrefixes"].includes(key));
-    const keysOf = (stream: typeof daTx) => sql`(select d.ref_id, d.src, d.supplier_id from ${stream} d where ${sourceWhere} and ${localWhere}
-       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})`;
+    // Bounded by the two years' keys, the direct acquisitions walk their primary key (the key shown); otherwise hidden.
+    const keysOf = (stream: typeof daTx, bounded = false) => sql`(select d.ref_id, d.src, d.supplier_id from ${stream} d where ${pageWhere} and ${localWhere}
+       order by ${bounded ? sql`d.ref_id` : sql`(d.ref_id + 0)`} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})`;
     const annualKeys = !annualScan ? null
-      : dataset === "da" ? sql`(${keysOf(daTx)})` : dataset === "contracts" ? sql`(${keysOf(contractTx)})`
-      : sql`(${keysOf(daTx)} union all ${keysOf(contractTx)})`;
+      : dataset === "da" ? sql`(${keysOf(daTx, daRange !== null)})` : dataset === "contracts" ? sql`(${keysOf(contractTx)})`
+      : sql`(${keysOf(daTx, daRange !== null)} union all ${keysOf(contractTx)})`;
     // A purchase's size inside a county (F3): few of a county's direct acquisitions reach 1 mil. lei, so the
     // key's backward walk reads the whole mart before its ten rows (Buzău, 2025, ≥ 1 mil.: 15.8 s, at the
     // route's 20 s limit; a ranking of its firms 5.4 s). Hidden (`+ 0`), the county index bounds both
@@ -3010,13 +3068,13 @@ export async function runRows(
           and d.supplier_id is not distinct from selected_key.supplier_id
       ) selected_row
     )` : !profile && dataset === "all" && sortKey === "source" ? sql`(
-      (select * from ${daTx} d where ${sourceWhere} and ${localWhere}
+      (select * from ${daTx} d where ${pageWhere} and ${localWhere}
        order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
       union all
-      (select * from ${contractTx} d where ${sourceWhere} and ${localWhere}
+      (select * from ${contractTx} d where ${pageWhere} and ${localWhere}
        order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
     )` : !profile && sortKey === "source" && keyHidden ? sql`(
-      select * from ${txt} d where ${sourceWhere} and ${localWhere}
+      select * from ${txt} d where ${pageWhere} and ${localWhere}
       order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit}
     )` : txt;
     if (opts.capture) await opts.capture.persist(s, s`
@@ -3032,7 +3090,7 @@ export async function runRows(
              d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum, d.estimated_value_ron,
              d.value_suspect, d.state, d.n_winners, d.contract_value_full::text,
              case when d.src='contracts' then (select c.title from core.contracts c where c.id=d.ref_id) else (select r.payload->>'directAcquisitionName' from core.direct_acquisitions a join raw.raw_documents r on r.id=a.raw_id where a.sicap_da_id=d.ref_id) end title
-      from ${pageTxt} d where ${sourceWhere} and ${localWhere}
+      from ${pageTxt} d where ${pageWhere} and ${localWhere}
       order by ${sortFrag} ${dirFrag}, d.src, d.ref_id, d.supplier_id nulls first
       limit ${pageSize} offset ${p * pageSize}
     `, opts.signal)) as unknown as {

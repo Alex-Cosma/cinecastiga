@@ -448,8 +448,57 @@ export async function coverRefReady(sql: DbSql): Promise<boolean> {
   refReady = { ok: Boolean(row?.ok), at: Date.now() };
   return refReady.ok;
 }
+/**
+ * agg_da_year_keys present (S5 PRE-trend, packages/db buildAskYearKeys): the
+ * first and last key of each year's direct acquisitions. Probed apart, as the
+ * other later tables; until the first build with it a „Toate” page reads as
+ * before. Its figures are read per request (daYearKeyRange), never cached.
+ */
+let keysReady: { ok: boolean; at: number } | null = null;
+export async function yearKeysReady(sql: DbSql): Promise<boolean> {
+  if (keysReady && Date.now() - keysReady.at < 600_000) return keysReady.ok;
+  const [row] = (await sql`select to_regclass('marts.agg_da_year_keys') is not null ok`) as unknown as { ok: boolean }[];
+  keysReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return keysReady.ok;
+}
+
+/**
+ * The first and last key of the direct acquisitions of `years`, read in the
+ * caller's snapshot of da_transactions, or null: no record in those years, or a
+ * table of another build. A stale table would hide records, so its first and
+ * last key overall must be the table's own (the primary key's two ends, two
+ * index lookups); every nightly build adds records, so a build that did not
+ * rebuild it (a revert) is caught. Every record of those years has a key in
+ * [k0, k1], so a source page bounded by it is the unbounded page.
+ */
+export async function daYearKeyRange(sql: DbSql, years: readonly number[]): Promise<{ k0: string; k1: string } | null> {
+  const [row] = (await sql`
+    select min(k.k0)::text k0, max(k.k1)::text k1,
+           (select min(k0) from marts.agg_da_year_keys) = (select min(sicap_da_id) from marts.da_transactions)
+             and (select max(k1) from marts.agg_da_year_keys) = (select max(sicap_da_id) from marts.da_transactions) fresh
+    from marts.agg_da_year_keys k
+    where k.y = any(${sql.array(years.map(String))}::text[])
+  `) as unknown as { k0: string | null; k1: string | null; fresh: boolean | null }[];
+  return row?.fresh && row.k0 !== null && row.k1 !== null ? { k0: row.k0, k1: row.k1 } : null;
+}
+
+/**
+ * Every code of da_transactions is SEAP's "DA" and digits (agg_da_year_keys.odd_codes, in the caller's snapshot, from a
+ * table of the same build as daYearKeyRange checks): a drawer's search then reads a word as part of a DA code only
+ * when it can be one (source-search.ts). False without the table or with any other code.
+ */
+export async function daCodesPlain(sql: DbSql): Promise<boolean> {
+  const [row] = (await sql`
+    select coalesce(sum(odd_codes), 1) = 0
+             and (select min(k0) from marts.agg_da_year_keys) = (select min(sicap_da_id) from marts.da_transactions)
+             and (select max(k1) from marts.agg_da_year_keys) = (select max(sicap_da_id) from marts.da_transactions) plain
+    from marts.agg_da_year_keys
+  `) as unknown as { plain: boolean | null }[];
+  return row?.plain === true;
+}
+
 /** Tests only: forget the probes, so the next call reads the database. */
-export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; }
+export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; keysReady = null; }
 
 export interface RollupTableOpts {
   dim: Role;
