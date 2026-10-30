@@ -2,7 +2,7 @@ import { contractAboveValueCap, contractRonValue, type DbSql } from "@seap/db";
 import { ground } from "./ground";
 import { andAll, employeesCond, firmSeatCond, groupPredicates, procedureCond, purchaseKindCond, rowPredicates, seatCountyCond, type PredicateCtx } from "./predicates";
 import {
-  FACET_TTL_MS, facetStamp, inFacetTransaction, kindOfCode, nationalLive, prepare, procedureOf, runner, sizeOf, timedOut,
+  FACET_TTL_MS, domainBound, facetStamp, inFacetTransaction, kindOfCode, nationalLive, prepare, procedureOf, runner, sizeOf, timedOut,
   type FacetFailure, type Prepared, type Runner,
 } from "./facets";
 import { mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
@@ -12,8 +12,8 @@ import { ABOVE_CAP_ROWS, type AboveCapRow, type BarsResult, type MixResult, type
 import type { AskSpec } from "./spec";
 import { martColumns } from "./mart-columns";
 import { readPerCapitaPopulations } from "./per-capita";
-import { assembleMapFacts, domainOnIndex, localAdminMap, mapFactsSql, mapRollupFilters, mapRollupReady, mapRows, type MapFacts, type MapFactsRow } from "./map-facts";
-import { rollupsReady } from "./rollups";
+import { assembleMapFacts, DOMAIN_LIVE_ROWS, domainOnIndex, localAdminMap, mapFactsSql, mapRollupFilters, mapRollupReady, mapRows, type MapFacts, type MapFactsRow } from "./map-facts";
+import { cpvCoverReady, rollupsReady } from "./rollups";
 
 /*
  * Facts asked about an answer once it is on screen (F3), behind the same
@@ -101,6 +101,8 @@ interface MixGrouped { gk: number; gp: number; gs: number; go: number; kind: str
 /** „Din care” of a total (stat): the composition of its selection, or why it is not computed now. */
 export async function mixFacts(sql: DbSql, spec: AskSpec, opts: { signal?: AbortSignal } = {}): Promise<MixResult | FacetFailure> {
   if (spec.block !== "stat") return { error: "„Din care” descrie un total." };
+  // Probed with the pool, before the transaction (rollups.ts).
+  const cover = await rollupsReady(sql) && await cpvCoverReady(sql);
   return await answerFact<MixResult>(sql, spec, "mix", opts.signal, async (tx, p, run, mixReady, checkpoint, started) => {
     const rolled = mixReady ? mixWhere(tx, p.ctx, "p") : null;
     let rows: MixGrouped[];
@@ -121,7 +123,8 @@ export async function mixFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
     } else {
       // A national selection no index anchors and no rollup answers reads the direct acquisitions of every
       // institution (with a domain 2.8–6.2 s, with employees 6.9 s): PRECOMPUTE.md, as the windows' counts (F3f-national-live).
-      if (nationalLive(p)) return { precompute: MIX_LIVE };
+      // A domain the code's covering index bounds is read on it (S5 PRE-answers: medicines 2025 0.34 s; DOMAIN_LIVE_ROWS).
+      if (nationalLive(p) && !(await domainBound(tx, p, cover, DOMAIN_LIVE_ROWS))) return { precompute: MIX_LIVE };
       const source = mixSource(tx, p.dataset);
       const base = andAll(tx, rowPredicates(p.ctx));
       const where = andAll(tx, [base, ...groupPredicates(p.ctx, source, base)]);
@@ -217,13 +220,14 @@ function aboveCapWhere(sql: DbSql, ctx: PredicateCtx): Fragment | null {
 export async function barFacts(sql: DbSql, spec: AskSpec, opts: { signal?: AbortSignal } = {}): Promise<BarsResult | FacetFailure> {
   if (spec.block !== "timeseries") return { error: "Faptele barelor descriu o evoluție." };
   const month = spec.timeseries?.grain === "month";
+  const cover = await rollupsReady(sql) && await cpvCoverReady(sql);
   return await answerFact<BarsResult>(sql, spec, "bars", opts.signal, async (tx, p, run, mixReady, checkpoint, started) => {
     const months = mixReady ? monthsWhere(tx, p.ctx, "p") : null;
     let largest: { k: string | null; src: "da" | "contracts"; mx: string | null }[] | null = null;
     if (months && "where" in months) {
       largest = await run(tx`
         select ${month ? tx`p.y || '-' || p.m` : tx`p.y`} k, p.src, max(p.mx) mx from marts.agg_months p where ${months.where} group by 1, 2`);
-    } else if (!nationalLive(p)) {
+    } else if (!nationalLive(p) || await domainBound(tx, p, cover)) {
       const source = mixSource(tx, p.dataset);
       const base = andAll(tx, rowPredicates(p.ctx));
       largest = await run(tx`
@@ -267,6 +271,7 @@ export async function mapFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
   if (spec.block !== "map") return { error: "Faptele județelor descriu o hartă." };
   // Probed with the pool, before the transaction (mart-columns.ts, map-facts.ts).
   const [ready, columns, rollups] = await Promise.all([mapRollupReady(sql), martColumns(sql), rollupsReady(sql)]);
+  const cover = rollups && await cpvCoverReady(sql);
   return await answerFact<MapFacts>(sql, spec, "map", opts.signal, async (tx, p, run, _mixReady, checkpoint, started) => {
     const local = localAdminMap(p.ctx) ? await readPerCapitaPopulations(tx) : null;
     // Null where neither agg_map_year nor an index answers (PRECOMPUTE.md): a national selection with months or a size,
@@ -274,15 +279,20 @@ export async function mapFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
     const facts = async (ctx: PredicateCtx) => {
       const rolled = ready ? mapRollupFilters(ctx, p.dataset) : null;
       const national = !rolled && nationalLive({ ...p, ctx });
-      if (national && !(rollups && await domainOnIndex(tx, ctx, p.dataset))) return null;
+      // S5 PRE-answers: on the code's covering index (da_tx_cpv_cover_idx) a domain's direct acquisitions come from the
+      // index alone, with the planner's own plan (medicines 2024–2025: 0.55 s warm, against 2.0 s on the plain code
+      // index), up to DOMAIN_LIVE_ROWS; before that build, MAP_DOMAIN_ROWS on the plain code index.
+      if (national && !(rollups && await domainOnIndex(tx, ctx, p.dataset, cover ? DOMAIN_LIVE_ROWS : undefined))) return null;
       const rows = mapRows(tx, { ctx, dataset: p.dataset, rolled, seat: columns.seat, local });
-      // The planner reads both marts' covering indexes whole for a domain (9 s for medicines 2024–2025, at either
-      // random_page_cost); on the code index it reads the domain's rows only (2.0 s): this statement only.
-      if (national) await tx.unsafe("set local enable_seqscan = off; set local enable_indexonlyscan = off");
+      // Without the covering index the planner reads both marts' covering id indexes whole for a domain (9 s for
+      // medicines 2024–2025, at either random_page_cost); on the code index it reads the domain's rows only (2.0 s):
+      // this statement only.
+      const steer = national && !cover;
+      if (steer) await tx.unsafe("set local enable_seqscan = off; set local enable_indexonlyscan = off");
       try {
         return assembleMapFacts(await run<MapFactsRow>(mapFactsSql(tx, rows)), columns.seat);
       } finally {
-        if (national) await tx.unsafe("set local enable_seqscan = on; set local enable_indexonlyscan = on");
+        if (steer) await tx.unsafe("set local enable_seqscan = on; set local enable_indexonlyscan = on");
       }
     };
     const counties = await facts(p.ctx);

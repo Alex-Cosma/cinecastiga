@@ -87,6 +87,48 @@ export const PERF_ENTITIES = {
 type Edit = (q: QuestionSpec) => void;
 const firm = (e: { id: number; name: string } = PERF_ENTITIES.selgros): Edit => (q) => { q.filters.supplierName = e.name; q.filters.supplierId = e.id; };
 const buyer = (e: { id: number; name: string } = PERF_ENTITIES.clujNapoca): Edit => (q) => { q.filters.authorityName = e.name; q.filters.authorityId = e.id; };
+/**
+ * S5 PRE-answers: the answers and window counts PRECOMPUTE.md kept for the marts stage. A purchase kind or a size of
+ * the kit's ranges on a national ranking, trend or "Cine conduce?" of institutions or firms (agg_entity_kind_year), the
+ * windows' counts and the facts of a national selection with a domain (the code's covering index), the comparison.
+ */
+function preAnswersCases(): PerfCase[] {
+  const facet = (part: FacetPart, barMs: 1000 | 2000 = 2000) => ({ facet: { part }, barMs });
+  const goods = set({ purchaseKind: "produse" }), services = set({ purchaseKind: "servicii" }), medicines = set({ cpvTerm: "medicamente" });
+  const series = (options: NonNullable<AskSpec["timeseries"]>): Edit => (q) => { q.timeseries = { ...options }; };
+  return [
+    perfCase("national:table-authorities-goods-2025", "national", "Instituțiile care cumpără cele mai multe produse, 2025", "table", all(top({ dim: "authority" }), goods, years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-services", "national", "Cine câștigă serviciile, național, toți anii", "table", services, { barMs: 2000 }),
+    perfCase("national:table-suppliers-goods-da-2025", "national", "Cine câștigă produsele prin achiziții directe, 2025", "table", all(top({ dataset: "da" }), goods, years(2025)), { barMs: 2000 }),
+    perfCase("national:leader-services-2025", "national", "Care firmă câștigă cel mai mult la servicii, 2025", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), services, years(2025)), { barMs: 2000 }),
+    perfCase("national:trend-authorities-services-2024-2025", "national", "Instituțiile cu cea mai mare schimbare la servicii, 2024 → 2025", "trend",
+      all(top({ dim: "authority" }), services, years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
+    perfCase("national:trend-suppliers-goods-2025-2026", "national", "Firme cu cea mai mare schimbare la produse, 2025 → 2026 (aceleași luni)", "trend",
+      all(goods, years(2025, 2026), lens({ change: "up", months: [1, 6] })), { barMs: 2000, precompute: KIND_ENTITY }),
+    perfCase("national:table-authorities-goods-from-1-9-employees", "national", "Instituțiile care cumpără produse de la firme cu 1–9 angajați", "table",
+      all(top({ dim: "authority" }), goods, set({ minEmployees: 1, maxEmployees: 9 })), { barMs: 2000, precompute: KIND_ENTITY }),
+    perfCase("national:table-suppliers-50k-250k-2025", "national", "Cine câștigă achizițiile de 50.000–250.000 lei, 2025", "table",
+      all(set({ purchaseValueMin: 50_000, purchaseValueMax: 250_000 }), years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-goods-1-9-employees", "national", "Cine câștigă produsele, firme cu 1–9 angajați", "table", all(goods, set({ minEmployees: 1, maxEmployees: 9 })), { barMs: 2000 }),
+    perfCase("national:table-authorities-10k-100k-2025", "national", "Instituțiile după achizițiile de 10.000–100.000 lei, 2025", "table",
+      all(top({ dim: "authority" }), set({ purchaseValueMin: 10_000, purchaseValueMax: 100_000 }), years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-goods-over-1m", "national", "Cine câștigă produsele de peste 1 mil. lei, toți anii", "table", all(goods, set({ purchaseValueMin: 1_000_000 })), { barMs: 2000 }),
+    perfCase("national:table-suppliers-goods-paged", "national", "Cine câștigă produsele, tot clasamentul", "table", all(goods, (q) => { delete q.topN; }), { barMs: 2000 }),
+    perfCase("sources:table-suppliers-goods", "sources", "Sursele clasamentului firmelor la produse, toți anii", "table", goods, { path: "rows", barMs: 2000 }),
+    perfCase("sources:table-suppliers-over-1m-2025", "sources", "Sursele clasamentului firmelor la peste 1 mil. lei, 2025", "table", all(set({ purchaseValueMin: 1_000_000 }), years(2025)), { path: "rows", barMs: 2000 }),
+    perfCase("facets:employees-goods-2025", "facets", "Angajați, produse, 2025", "table", all(goods, years(2025)), facet("employees")),
+    perfCase("facets:seat-services-2025", "facets", "Sediul firmelor, servicii, 2025", "table", all(services, years(2025)), facet("seat")),
+    perfCase("facets:kind-goods-2025", "facets", "Tipul instituției, produse, 2025", "stat", all(goods, years(2025)), facet("kind")),
+    perfCase("facets:kind-over-1m", "facets", "Tipul instituției, achiziții de peste 1 mil. lei, toți anii", "stat", set({ purchaseValueMin: 1_000_000 }), facet("kind")),
+    perfCase("facets:employees-medicines-all", "facets", "Angajați, „medicamente”, toți anii", "table", medicines, facet("employees")),
+    perfCase("facets:mix-medicines-all", "facets", "„Din care”, „medicamente”, toți anii (peste DOMAIN_LIVE_ROWS)", "stat", medicines, { ...facet("mix"), precompute: MIX_LIVE }),
+    perfCase("facets:bars-medicines", "facets", "Faptele barelor, „medicamente”, toți anii", "timeseries", medicines, facet("bars")),
+    perfCase("facets:bars-medicines-months-2025", "facets", "Faptele barelor, „medicamente”, lună de lună, 2025", "timeseries", all(medicines, years(2025), series({ grain: "month" })), facet("bars")),
+    perfCase("facets:map-medicines-all", "facets", "Faptele județelor, „medicamente”, toți anii (peste DOMAIN_LIVE_ROWS)", "map", medicines, { ...facet("map"), precompute: MAP_LIVE }),
+    perfCase("facets:kind-medicines-all", "facets", "Tipul instituției, „medicamente”, toți anii", "stat", medicines, facet("kind")),
+    perfCase("facets:mix-employees-2025", "facets", "„Din care”, firme cu 1–9 angajați, 2025 (fără rollup)", "stat", all(set({ minEmployees: 1, maxEmployees: 9 }), years(2025)), { ...facet("mix"), precompute: MIX_LIVE }),
+  ];
+}
 /** The builder's focal picker (pickEntity, registry writeFocal): the entity, and the answer's role with it. */
 const focal = (role: "authority" | "supplier", e: { id: number; name: string } = role === "authority" ? PERF_ENTITIES.clujNapoca : PERF_ENTITIES.selgros): Edit => (q) => {
   const next = writeFocal(q, role, { name: e.name, id: e.id });
@@ -317,6 +359,7 @@ export function perfCases(): PerfCase[] {
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000 }),
     ...preTrendCases(),
     ...preSourcesCases(),
+    ...preAnswersCases(),
     ...f3Cases(),
     ...facetCases(),
     ...f3RowsCases(),
@@ -494,7 +537,7 @@ function f3RowsCases(): PerfCase[] {
     perfCase("facets:mix-national-2025", "facets", "„Din care”, național, 2025", "stat", y2025, { ...facts("mix"), ref: "„Din care” la stat: național 2025 (baza)" }),
     perfCase("facets:mix-works-2025", "facets", "„Din care”, lucrări, 2025", "stat", all(set({ purchaseKind: "lucrari" }), y2025), facts("mix")),
     perfCase("facets:mix-cluj-2025", "facets", "„Din care”, Cluj, 2025", "stat", all(set({ county: "Cluj" }), y2025), facts("mix", 1000)),
-    perfCase("facets:mix-medicines-2025", "facets", "„Din care”, „medicamente”, 2025 (fără rollup)", "stat", all(set({ cpvTerm: "medicamente" }), y2025), { ...facts("mix"), precompute: MIX_LIVE }),
+    perfCase("facets:mix-medicines-2025", "facets", "„Din care”, „medicamente”, 2025 (indexul acoperitor al codului)", "stat", all(set({ cpvTerm: "medicamente" }), y2025), facts("mix")),
     perfCase("facets:mix-cluj-napoca", "facets", "„Din care”, Municipiul Cluj-Napoca, toți anii", "stat", buyer(), facts("mix", 1000)),
     perfCase("facets:bars-national", "facets", "Faptele barelor, național, toți anii", "timeseries", () => {}, facts("bars")),
     perfCase("facets:bars-national-months-2025", "facets", "Faptele barelor, lună de lună, 2025", "timeseries", all(y2025, series({ grain: "month" })), facts("bars")),
@@ -551,8 +594,8 @@ function facetCases(): PerfCase[] {
 
 /** PRECOMPUTE.md entries the F3 cases wait on (S4 F3-keys). */
 const SIZE_LIVE = "Sursele unei mărimi a achiziției pe o selecție națională";
-const SIZE_RANKING = "Clasamentul național pe mărimea achiziției";
 const SIZE_SOURCES_FIRMS = "Totalurile surselor unui clasament național pe angajați";
+/** What agg_entity_kind_year does not answer (S5 PRE-answers): goods or services with the other side's condition or on the same months. */
 const KIND_ENTITY = "Produsele și serviciile pe instituții și firme, național";
 
 /**
@@ -577,13 +620,13 @@ function f3Cases(): PerfCase[] {
     perfCase("national:trend-suppliers-2024-2025-works-up", "national", "Firme cu cea mai mare creștere la lucrări, 2024 → 2025", "trend",
       all(works, years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
     perfCase("filtered:table-cluj-works-2025", "filtered", "Cine câștigă lucrările în Cluj, 2025", "table", all(works, set({ county: "Cluj" }), years(2025))),
-    // S4 review: goods and services cover most records, so per entity nationally they read both marts whole; the
-    // builder does not offer them there (filters/context.ts nationalEntityScan) until S5's entity × division rollup.
-    perfCase("national:table-suppliers-goods", "national", "Cine câștigă produsele, național, toți anii (link)", "table", set({ purchaseKind: "produse" }), { barMs: 2000, precompute: KIND_ENTITY }),
-    perfCase("national:table-suppliers-services-2025", "national", "Cine câștigă serviciile, național, 2025 (link)", "table", all(set({ purchaseKind: "servicii" }), years(2025)), { barMs: 2000, precompute: KIND_ENTITY }),
-    perfCase("national:leader-goods", "national", "Care firmă câștigă cel mai mult la produse (link)", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), set({ purchaseKind: "produse" })), { barMs: 2000, precompute: KIND_ENTITY }),
+    // S4 review: goods and services cover most records, so per entity nationally they read both marts whole; S5
+    // PRE-answers reads them from agg_entity_kind_year (filters/context.ts kindRollupAnswers: the builder offers them).
+    perfCase("national:table-suppliers-goods", "national", "Cine câștigă produsele, național, toți anii (link)", "table", set({ purchaseKind: "produse" }), { barMs: 2000 }),
+    perfCase("national:table-suppliers-services-2025", "national", "Cine câștigă serviciile, național, 2025 (link)", "table", all(set({ purchaseKind: "servicii" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:leader-goods", "national", "Care firmă câștigă cel mai mult la produse (link)", "entity_card", all(top({ dim: "supplier", rankBy: "value" }), set({ purchaseKind: "produse" })), { barMs: 2000 }),
     perfCase("national:trend-suppliers-goods-2024-2025", "national", "Firme cu cea mai mare schimbare la produse, 2024 → 2025 (link)", "trend",
-      all(set({ purchaseKind: "produse" }), years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000, precompute: KIND_ENTITY }),
+      all(set({ purchaseKind: "produse" }), years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
     perfCase("filtered:table-cluj-goods-2025", "filtered", "Cine câștigă produsele în Cluj, 2025", "table", all(set({ purchaseKind: "produse", county: "Cluj" }), years(2025))),
     // The procedure: the contracts only (1.1M rows), live.
     perfCase("national:stat-open-tender", "national", "Cât valorează contractele din licitații deschise, toți anii", "stat", open, { barMs: 2000 }),
@@ -595,8 +638,8 @@ function f3Cases(): PerfCase[] {
     perfCase("national:stat-over-1m", "national", "Cât valorează achizițiile de peste 1 mil. lei, toți anii", "stat", overMillion, { barMs: 2000 }),
     perfCase("national:stat-over-1m-2025", "national", "Cât valorează achizițiile de peste 1 mil. lei, 2025", "stat", all(overMillion, years(2025)), { barMs: 2000 }),
     perfCase("national:stat-under-10k-2025", "national", "Cât valorează achizițiile sub 10.000 lei, 2025", "stat", all(set({ purchaseValueMax: 10_000 }), years(2025)), { barMs: 2000 }),
-    perfCase("national:table-suppliers-over-1m-2025", "national", "Cine câștigă achizițiile de peste 1 mil. lei, 2025", "table", all(overMillion, years(2025)), { barMs: 2000, precompute: SIZE_RANKING }),
-    perfCase("national:table-suppliers-over-1m", "national", "Cine câștigă achizițiile de peste 1 mil. lei, toți anii", "table", overMillion, { barMs: 2000, precompute: SIZE_RANKING }),
+    perfCase("national:table-suppliers-over-1m-2025", "national", "Cine câștigă achizițiile de peste 1 mil. lei, 2025", "table", all(overMillion, years(2025)), { barMs: 2000 }),
+    perfCase("national:table-suppliers-over-1m", "national", "Cine câștigă achizițiile de peste 1 mil. lei, toți anii", "table", overMillion, { barMs: 2000 }),
     perfCase("filtered:stat-cluj-over-1m-2025", "filtered", "Achizițiile de peste 1 mil. lei din Cluj, 2025", "stat", all(overMillion, set({ county: "Cluj" }), years(2025))),
     // The employee bands (kit §4, band 0 back at stat): the firms' size alone reads entity_profile.
     perfCase("national:table-suppliers-0-employees", "national", "Cine câștigă, național, firme fără angajați", "table", set({ minEmployees: 0, maxEmployees: 0 }), { barMs: 2000 }),
@@ -655,8 +698,8 @@ function f3Cases(): PerfCase[] {
       all(set({ authorityKind: "local_admin" }), years(2025)), { facet: { part: "map" }, barMs: 2000 }),
     perfCase("facets:map-without-cluj-napoca-2025", "facets", "Faptele județelor fără Cluj-Napoca, 2025", "map",
       all((q) => { q.population = withExclusion(q.population, { field: "authority", value: String(PERF_ENTITIES.clujNapoca.id), label: PERF_ENTITIES.clujNapoca.name }); }, years(2025)), { facet: { part: "map" }, barMs: 2000 }),
-    perfCase("facets:map-medicines-2024-2025", "facets", "Faptele județelor, „medicamente”, 2024–2025 (fără rollup)", "map",
-      all(set({ cpvTerm: "medicamente" }), years(2024, 2025)), { facet: { part: "map" }, barMs: 2000, precompute: MAP_LIVE }),
+    perfCase("facets:map-medicines-2024-2025", "facets", "Faptele județelor, „medicamente”, 2024–2025 (indexul acoperitor al codului)", "map",
+      all(set({ cpvTerm: "medicamente" }), years(2024, 2025)), { facet: { part: "map" }, barMs: 2000 }),
     perfCase("facets:map-lemne-2025", "facets", "Faptele județelor, „lemne”, 2025 (indexul codului)", "map",
       all(set({ cpvTerm: "lemne" }), years(2025)), { facet: { part: "map" }, barMs: 2000 }),
     perfCase("sources:map-cluj-2025", "sources", "Sursele județului Cluj pe hartă, 2025", "map", years(2025), { path: "rows", scope: { county: "Cluj" }, barMs: 2000 }),
