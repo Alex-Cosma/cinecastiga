@@ -308,10 +308,13 @@ describe("the selection's filters in words: the kind, the size, the firm's seat 
     // Beside a real subject the word is the subject's ("lucrări de asfaltare"): no kind.
     expect((await ask("lucrari de asfaltare in buzau")).r.spec?.filters).toEqual({ cpvTerm: "asfaltare", county: "Buzău" });
   });
-  it("a kind the question cannot run says why (a national ranking's goods, two kinds at once), never silently", async () => {
-    const goods = await ask("ce firme castiga produse");
+  it("a kind the question cannot run says why (a national ranking's goods from firms of other counties, two kinds at once), never silently", async () => {
+    // S5 PRE-answers: a national ranking's goods read agg_entity_kind_year, so they apply (S4r-national-kind flipped)…
+    expect((await ask("ce firme castiga produse")).r.spec?.filters.purchaseKind).toBe("produse");
+    // …but not beside a condition on the other side (the firms' seat on a ranking of institutions): both marts whole.
+    const goods = await ask("ce institutii cumpara produse de la firme din alte judete");
     expect(goods.r.spec?.filters.purchaseKind).toBeUndefined();
-    expect(goods.r.interpretation.notes.join(" ")).toMatch(/^„produse” nu se aplică aici: Pe toată țara, pe instituții sau firme, cere un calcul pregătit noaptea/);
+    expect(goods.r.interpretation.notes.join(" ")).toMatch(/„produse” nu se aplică aici: Pe toată țara, pe instituții sau firme, cere un calcul pregătit noaptea/);
     // Works are an index range: offered nationally (S4r-national-kind).
     expect((await ask("ce firme castiga lucrari")).r.spec?.filters.purchaseKind).toBe("lucrari");
     const both = await ask("cine castiga lucrari si servicii in cluj");

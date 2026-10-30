@@ -1,6 +1,7 @@
 import { BLOCKS, type Block } from "../spec";
 import { isHistoricalProfile } from "../population";
 import { focalRole, leaderAxis, localityScopeSupport } from "../question-ui";
+import { sizeRanges } from "../purchase";
 import type { AnswerForm, FilterCtx, FilterSpec } from "./types";
 
 export const ANSWER_FORMS: readonly AnswerForm[] = [
@@ -19,8 +20,8 @@ export const formOf = (spec: { block: string; rankBy?: string }): AnswerForm =>
  * A national answer grouped per institution or firm that no index bounds (S4 review; the builder's side of facets.ts
  * nationalLive): a ranking or a trend of institutions or firms, or "Cine conduce?" by value, with no named, compared or
  * person's entity, town hall, county, kind of institution or domain, on both channels or the direct acquisitions. Its
- * goods or services, or its size of purchase, read both marts whole (2–9 s locally) until the marts stage keeps the
- * entities by CPV division and by size (PRECOMPUTE.md, S5): the builder does not offer them there.
+ * goods or services, or its size of purchase, read both marts whole (2–9 s locally) unless the nightly
+ * agg_entity_kind_year answers them (kindRollupAnswers, S5 PRE-answers): the builder offers them only there.
  */
 export function nationalEntityScan(spec: FilterSpec): boolean {
   const f = spec.filters, form = formOf(spec);
@@ -30,6 +31,35 @@ export function nationalEntityScan(spec: FilterSpec): boolean {
 }
 /** Why, said on the options it disables. */
 export const NATIONAL_ENTITY_SCAN = "Pe toată țara, pe instituții sau firme, cere un calcul pregătit noaptea. Alege un județ, un tip de instituție sau un domeniu.";
+
+/**
+ * S5 PRE-answers: whether such a national answer (nationalEntityScan) reads its goods, services or size from the
+ * nightly agg_entity_kind_year (lib/ask/rollups.ts planRollup, entityKind), as the engine decides: conditions on the
+ * ranked role only (on institutions no firms' size, seat, newness or relation; at most entities of the ranked role
+ * left out), no record threshold, whole years (no months, no trend on the same months: `auto` up to this year, as
+ * trend-rules.ts trendMonthsState says without the coverage) and a size of the kit's ranges (sizeRanges). Otherwise
+ * the kind or the size reads both marts whole (1.4–10 s locally: PRECOMPUTE.md) and the builder does not offer it.
+ */
+export function kindRollupAnswers(spec: FilterSpec, ctx: Pick<FilterCtx, "year">): boolean {
+  const f = spec.filters, role = spec.dim === "supplier" ? "supplier" : "authority";
+  if (f.monthFrom !== undefined || f.monthTo !== undefined || spec.minimumRecords) return false;
+  if (formOf(spec) === "trend") {
+    const months = spec.trend?.months;
+    if (Array.isArray(months) || months !== "whole" && (f.yearTo === undefined || Number(f.yearTo) >= ctx.year)) return false;
+  }
+  const bound = (v: unknown) => v === undefined ? null : Number(v);
+  if ((f.purchaseValueMin !== undefined || f.purchaseValueMax !== undefined) && !sizeRanges(bound(f.purchaseValueMin), bound(f.purchaseValueMax))) return false;
+  // The other side's attributes and relations; the firms' own years (archive, register) are a ranking of firms' own.
+  const firmsSide = f.minEmployees !== undefined || f.maxEmployees !== undefined || f.firmSeat || f.seatCounty || f.newSince !== undefined;
+  if (role === "authority" && (firmsSide || f.dominantSupplier)) return false;
+  if (role === "supplier" && (f.mainClient || f.newScope === "buyer")) return false;
+  // „Scoate din calcul” on the ranked role only (rollups.ts sameRoleExclusions): any other precise selection is live.
+  const population = spec.population;
+  if (!population) return true;
+  if (population.operator !== "and" && population.groups.length > 1) return false;
+  return population.groups.every((g) => (g.operator === "and" || g.conditions.length <= 1)
+    && g.conditions.every((c) => c.field === role && c.op === "not_in"));
+}
 
 /**
  * What the pickers of a question know besides the spec (plan §2.2). The
