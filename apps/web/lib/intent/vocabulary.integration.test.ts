@@ -107,12 +107,13 @@ describe.runIf(Boolean(connection))("intent vocabulary SQL (dedicated seap_test_
     expect(hospital.spec).toMatchObject({ block: "distribution", filters: { authorityId: 2144002 } });
 
     const firm = await interpretQuestion(sql, "cu cine lucreaza constructii erbasu anul trecut", { now: NOW });
-    expect(firm.spec).toMatchObject({ block: "table", dim: "authority", filters: { supplierId: 9000001, yearFrom: 2025, yearTo: 2025 } });
+    // S5 (plan §4.8): „Cu cine lucrează [firma]” is the firm's network, no longer a ranking of its clients.
+    expect(firm.spec).toMatchObject({ block: "network", filters: { supplierId: 9000001, yearFrom: 2025, yearTo: 2025 } });
 
     // one word carried by two firms, two buyers with the same name: choices, never a pick
     const erbasu = await interpretQuestion(sql, "cu cine lucreaza erbasu", { now: NOW });
     expect(erbasu.spec).toBeNull();
-    expect(erbasu.alternatives.map((a) => a.spec.filters.supplierId)).toEqual([9000001, 9000002]);
+    expect(erbasu.alternatives.map((a) => [a.spec.block, a.spec.filters.supplierId])).toEqual([["network", 9000001], ["network", 9000002]]);
     const cup = await interpretQuestion(sql, "Compania de Utilitati Publice", { now: NOW });
     expect(cup.spec).toBeNull();
     expect(cup.alternatives.map((a) => a.spec.filters.authorityId)).toEqual([2128336, 2108930]);
