@@ -137,6 +137,23 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    and indexname=any(${TRANSACTION_MART_BUILD_INDEXES.map(i=>i.name)}::text[]) order by indexname collate "C"`).map(r=>({...r}));
   const expected=TRANSACTION_MART_BUILD_INDEXES.map(({name,definition})=>({name,definition})).sort((x,y)=>x.name<y.name?-1:1);
   expect(await indexes()).toEqual(expected);
+  // S5 PRE-answers: agg_entity_kind_year is agg_entity_year by purchase kind and size range, the same groups summed again
+  // to the leu (names and days too); 17001/17002 are goods under 10.000 lei, 17003 works at the ceiling (range 3).
+  expect(first.kindYearMs).toBeGreaterThanOrEqual(0);
+  const [kindParity]=await q`select count(*)::int differ from marts.agg_entity_year e
+    full join (select role, eid, y, src, county, max(nm) nm, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+               from marts.agg_entity_kind_year group by 1, 2, 3, 4, 5) k
+      on k.role = e.role and k.eid = e.eid and k.y is not distinct from e.y and k.src = e.src and k.county is not distinct from e.county
+    where (e.v, e.n, e.d0, e.d1, e.nm) is distinct from (k.v, k.n, k.d0, k.d1, k.nm)`;
+  expect(kindParity!.differ).toBe(0);
+  expect(own(await q`select role,eid::text,y,kind,size::int,v::text,n::int from marts.agg_entity_kind_year order by role,eid::bigint,y,kind`,'eid')).toEqual([
+   {role:'authority',eid:cluj,y:'2024',kind:'lucrari',size:3,v:'2000000',n:1},
+   {role:'authority',eid:cluj,y:'2025',kind:'produse',size:0,v:'1000.50',n:2},
+   {role:'authority',eid:iasi,y:'2024',kind:null,size:0,v:'30',n:1},
+   {role:'supplier',eid:a,y:'2025',kind:'produse',size:0,v:'1000.50',n:2},
+   {role:'supplier',eid:b,y:'2024',kind:'lucrari',size:3,v:'2000000',n:1},
+  ]);
+  expect(first.rollups.agg_entity_kind_year).toBeGreaterThanOrEqual(first.rollups.agg_entity_year);
   // The next night drops and builds them again, and the rollups with them.
   const second=await buildTransactionMarts(q);
   expect(second.rollups).toEqual(first.rollups);
