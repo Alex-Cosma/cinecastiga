@@ -51,6 +51,8 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   whose live query was over the speed bar (3–6 s nationally; F2 review,
  *   under owner-D2-rollups). Rows without an authority are in it, as in the
  *   union; 0 differences with the live grouping.
+ * agg_pair_year has an index on each id (buildAskPairIndexes, S5 PRE-answers),
+ * for the partners of two compared entities.
  * So the build reads the union twice (pair month, CPV), not once per rollup.
  * The whole build, measured on the same copy: 115 s (127–132 s with the
  * county months from the temporary table; 43 s before F2), so F2 adds ~70 s
@@ -98,6 +100,19 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   k0..k1 the walk is exact (no record of those years lies outside). Its
  *   endpoints are those of the table, which the web checks before using it
  *   (a stale table would hide records). See buildAskYearKeys.
+ * - agg_entity_kind_year (role, eid, y, src, county, kind, size): agg_entity_year
+ *   with the purchase kind of the row's code (kind, as agg_map_year: lucrari,
+ *   servicii, produse, null without a code) and the size range of the whole
+ *   purchase (size, as agg_national_mix: ASK_MIX_SIZE_BOUNDS on a contract's
+ *   coalesce(contract_value_full, closing_value), a DA's own value), with the
+ *   same nm, d0 and d1. Grouped again by (role, eid, y, src, county) it is
+ *   agg_entity_year to the leu. The national rankings, trends and „Cine
+ *   conduce?” of institutions or firms with goods or services, or with a size
+ *   of the kit's ranges, and their windows' counts read it (S5 PRE-answers:
+ *   live they grouped both marts whole, 1.4–13 s; works alone were an index
+ *   range). 3.3M rows from 20.7M on the local copy of 30 October 2026; one
+ *   more pass over the union (pairs first, then each role, as
+ *   agg_entity_month). See buildAskKindRollup.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -110,7 +125,7 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year', 'agg_da_year_keys'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year', 'agg_da_year_keys', 'agg_entity_kind_year'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
 /** The F3 rollups (plan §4.1, §4.3): built by buildAskMixRollups, probed apart by the web (mixRollupReady). */
 export const ASK_MIX_TABLES = ['agg_months', 'agg_national_mix'] as const satisfies readonly AskRollupTable[];
@@ -134,12 +149,14 @@ export interface AskRollupsReport {
   mapYearMs: number;
   /** How long agg_da_year_keys took (S5 PRE-trend): the nightly cost of the bounded „Toate” page. */
   yearKeysMs: number;
+  /** How long agg_entity_kind_year took (S5 PRE-answers): the nightly cost of the national kinds and sizes per entity. */
+  kindYearMs: number;
 }
 
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year, marts.agg_da_year_keys`;
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year, marts.agg_da_year_keys, marts.agg_entity_kind_year`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
   // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
   // the yearly pairs and both entity rollups are grouped from it.
@@ -213,6 +230,8 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
     ) x
     group by x.src, substr(x.finalization_date, 1, 4), x.county, x.cpv_code
   `;
+  // S5 PRE-answers: a comparison's partners read the pair rows of its two entities (apps/web rollups.ts comparePairRows).
+  await buildAskPairIndexes(q);
   // Read right after the build: without statistics the planner misjudges the
   // semi-joins (measured 1.27 s before, 0.79 s after, on the national threshold).
   await q`analyze marts.agg_entity_year`;
@@ -226,10 +245,68 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   const mapYearMs = Date.now() - started;
   const keysStarted = Date.now();
   const keys = await buildAskYearKeys(q);
+  const yearKeysMs = Date.now() - keysStarted;
+  const kindStarted = Date.now();
+  const kinds = await buildAskKindRollup(q);
   return {
-    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map, agg_da_year_keys: keys },
-    mapYearMs, yearKeysMs: Date.now() - keysStarted,
+    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map, agg_da_year_keys: keys, agg_entity_kind_year: kinds },
+    mapYearMs, yearKeysMs, kindYearMs: Date.now() - kindStarted,
   };
+}
+
+/**
+ * The firm and institution indexes of agg_pair_year (S5 PRE-answers): the two compared entities' partners from their
+ * pair rows (apps/web rollups.ts comparePairRows, probed by name: pairIndexReady), a few thousand index entries
+ * instead of a pass over their records (SELGROS and DEDEMAN on „Directe”: 0.79 s live) or over the 5M pair rows
+ * (0.2 s, slower than live for small entities). Part of buildAskRollups (the table is new each night); callable
+ * alone on a table that lacks them (their first build).
+ */
+export const ASK_PAIR_INDEXES = ['agg_pair_year_supplier_idx', 'agg_pair_year_authority_idx'] as const;
+export async function buildAskPairIndexes(q: Query): Promise<void> {
+  await q`create index if not exists agg_pair_year_supplier_idx on marts.agg_pair_year (supplier_id)`;
+  await q`create index if not exists agg_pair_year_authority_idx on marts.agg_pair_year (authority_id)`;
+}
+
+/**
+ * agg_entity_kind_year (see the header), from the loaded transaction marts, with the population of every Ask aggregate:
+ * the union grouped by pair, year, channel, buyer county, kind and size, then each pair row once as its authority and
+ * once as its supplier (as agg_entity_month), with core.entities' name. Part of buildAskRollups, so of the same build as
+ * agg_entity_year (the web proves it by their sums, kindRollupReady); callable alone on marts that are not being rebuilt
+ * (its first build).
+ */
+export async function buildAskKindRollup(q: Query): Promise<number> {
+  await q`drop table if exists marts.agg_entity_kind_year`;
+  const [b0, b1, b2] = ASK_MIX_SIZE_BOUNDS;
+  // The kind of agg_map_year (purchaseKindCond of the web), the size of agg_national_mix.
+  const created = await q`
+    create table marts.agg_entity_kind_year as
+    select g.role, g.eid, g.y, g.src, g.county, g.kind, g.size, e.name_display nm, g.v, g.n, g.d0, g.d1
+    from (
+      select r.role, r.eid, x.y, x.src, x.county, x.kind, x.size, sum(x.v) v, sum(x.n)::bigint n, min(x.d0) d0, max(x.d1) d1
+      from (
+        select u.authority_id, u.supplier_id, substr(u.finalization_date, 1, 4) y, u.src, u.county,
+               (case when u.cpv_code like '45%' then 'lucrari' when u.cpv_code >= '50' then 'servicii'
+                     when u.cpv_code < '45' or (u.cpv_code >= '48' and u.cpv_code < '50') then 'produse' end) kind,
+               (case when u.full_value < ${b0}::numeric then 0 when u.full_value < ${b1}::numeric then 1 when u.full_value < ${b2}::numeric then 2 else 3 end)::smallint size,
+               sum(u.closing_value) v, count(*) n,
+               min(left(u.finalization_date, 10) collate "C") d0, max(left(u.finalization_date, 10) collate "C") d1
+        from (
+          select authority_id, supplier_id, county, cpv_code, finalization_date, closing_value, 'da'::text src, closing_value full_value
+          from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+          union all
+          select authority_id, supplier_id, county, cpv_code, finalization_date, closing_value, 'contracts', coalesce(contract_value_full, closing_value)
+          from marts.contract_transactions where closing_value > 0
+        ) u
+        group by 1, 2, 3, 4, 5, 6, 7
+      ) x
+      cross join lateral (values ('authority'::text, x.authority_id), ('supplier'::text, x.supplier_id)) r(role, eid)
+      where r.eid is not null
+      group by 1, 2, 3, 4, 5, 6, 7
+    ) g
+    left join core.entities e on e.id = g.eid
+  `;
+  await q`analyze marts.agg_entity_kind_year`;
+  return created.count;
 }
 
 /**
