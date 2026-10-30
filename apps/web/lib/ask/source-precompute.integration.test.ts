@@ -108,7 +108,7 @@ const ranking2024: AskSpec = { block: "table", measure: "value", dim: "supplier"
 const size2024: AskSpec = { block: "stat", measure: "value", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2024, purchaseValueMin: 400 } };
 const DRAWERS: [string, AskSpec, number, DrillOpts][] = [
   ["firms' profiles", firms, 0, {}], ["firms' profiles, page 2", firms, 1, {}], ["firms' profiles, lowest first", firms, 0, { dir: "asc" }],
-  ["firms' profiles by date", firms, 0, { sort: "date" }], ["institutions' profiles", institutions, 0, {}], ["institutions' profiles, page 3", institutions, 2, {}],
+  ["firms' profiles by date", firms, 0, { sort: "date" }], ["firms' profiles, the CSV's rows", firms, 0, { limit: 1000 }], ["institutions' profiles", institutions, 0, {}], ["institutions' profiles, page 3", institutions, 2, {}],
   ["the national ranking", ranking, 0, {}], ["the ranking of 2024", ranking2024, 0, {}], ["the ranking of 2024, page 2", ranking2024, 1, {}],
   ["at least 400 lei, 2024", size2024, 0, {}], ["at least 400 lei, 2024, page 2", size2024, 1, {}],
 ];
@@ -117,7 +117,7 @@ describe.runIf(Boolean(connection))("the source lists of the marts stage (dedica
   it("lists after the build exactly what the live drawers list before it", async () => {
     await withAskFixture(connection!.sql, "pre_sources", load, async (q) => {
       // A fixture's cohorts are small: every one takes the rollup path once built.
-      profileLimitsForTests({ records: 1, walk: 1000 });
+      profileLimitsForTests({ records: 1, walk: 5000 });
       forgetRollupsReady();
       expect(await valueKeysReady(q)).toBe(false);
       const before = new Map<string, Awaited<ReturnType<typeof drawer>>>();
@@ -139,12 +139,12 @@ describe.runIf(Boolean(connection))("the source lists of the marts stage (dedica
       // `supplier <> authority` being null there, which the sources count, as core does).
       expect([rolled.scopeNotes.filter((n) => n.startsWith("Numărul și suma surselor vin din")).length, rolled.profileReconciled, rolled.profileCount])
         .toEqual([1, before.get("firms' profiles")!.reconciled, 3]);
-      // A walk too short for the page (a sparse cohort): the page reads core as before.
+      // A walk too short for the page (a sparse cohort) is not started: the page reads core as before.
       profileLimitsForTests({ records: 1, walk: 3 });
       for (const [name, spec, page, opts] of DRAWERS.filter(([, s]) => s.block === "scatter"))
         expect([name, await drawer(q, spec, page, opts)]).toEqual([name, before.get(name)]);
       // Below the threshold: core counted live, without the note.
-      profileLimitsForTests({ records: 10_000, walk: 1000 });
+      profileLimitsForTests({ records: 10_000, walk: 5000 });
       const live = await runRows(q, firms, {}, 0);
       if ("error" in live) throw new Error(live.error);
       expect(live.scopeNotes.some((n) => n.startsWith("Numărul și suma surselor vin din"))).toBe(false);

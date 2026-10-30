@@ -553,6 +553,16 @@ export async function profileValueKeys(sql: DbSql, cohort: Fragment, role: Role,
   return rows.map((r) => r.k);
 }
 
+/**
+ * The direct acquisitions' records of every year (agg_da_year_keys.n, every row of da_transactions), in the caller's
+ * snapshot, or null without the table: the value walk's expected length for a cohort (records of all over the
+ * cohort's, per key wanted).
+ */
+export async function daRecordCount(sql: DbSql): Promise<number | null> {
+  const [row] = (await sql`select sum(n)::text n from marts.agg_da_year_keys`) as unknown as { n: string | null }[];
+  return row?.n == null ? null : Number(row.n);
+}
+
 /** Tests only: forget the probes, so the next call reads the database. */
 export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; keysReady = null; valueReady = null; }
 

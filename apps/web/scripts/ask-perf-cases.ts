@@ -732,6 +732,7 @@ function preSourcesCases(): PerfCase[] {
   };
   return [
     perfCase("sources:distribution-selgros-country", "sources", "Sursele grupului SELGROS: toate firmele țării", "distribution", focal("supplier"), rows),
+    perfCase("csv:distribution-selgros-country", "csv", "CSV-ul grupului SELGROS: toate firmele țării (primele 100.000 după valoare)", "distribution", focal("supplier"), { path: "csv", barMs: 2000 }),
     perfCase("sources:distribution-cluj-napoca-country", "sources", "Sursele grupului Cluj-Napoca: toate instituțiile țării", "distribution", focal("authority"), rows),
     perfCase("sources:distribution-selgros-buzau", "sources", "Sursele grupului SELGROS: firmele cu sediul în Buzău", "distribution", all(focal("supplier"), set({ county: "Buzău" })), rows),
     perfCase("sources:distribution-buzau-population", "sources", "Sursele grupului Buzău: primăriile cu 52–207 mii de locuitori", "distribution",
