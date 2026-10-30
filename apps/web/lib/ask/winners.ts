@@ -170,6 +170,13 @@ export async function resolveWinners(sql: DbSql, ctx: PredicateCtx, o: { source:
   if (ctx.dominantSupplier) {
     const rows = (await sql`${dominantOf(sql, withTotals(sql, selectionPairs(sql, selection, o)))} order by 1`) as unknown as { authority_id: string }[];
     authorities = rows.map((r) => String(r.authority_id));
+    // Over the whole archive the list is every institution's (entity_top_partners, 1,191): a kind keeps its own only,
+    // which its records' condition does anyway, so the drawer reads a few ids, not 1,191 next to the kind's thousands
+    // (hospitals: 1; county councils: none; S5 review).
+    if (ctx.kindIds) {
+      const kind = new Set(ctx.kindIds.map(String));
+      authorities = authorities.filter((id) => kind.has(id));
+    }
   }
   ctx.winners = { suppliers, authorities };
 }

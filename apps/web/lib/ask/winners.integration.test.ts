@@ -4,6 +4,7 @@ import { runRows, runSpec } from "./compile";
 import { sumDecimalStrings } from "./evidence";
 import { facetCounts, locate, rowFacts } from "./facets";
 import type { Grounding } from "./ground";
+import { forgetAuthorityKinds } from "./authority-kind";
 import { forgetMartColumns } from "./mart-columns";
 import type { AskSpec } from "./spec";
 import { scoped, testDatabaseUrl } from "./test-fixture";
@@ -148,6 +149,14 @@ describe.runIf(Boolean(connection))("F5: the ranked winners (dedicated rollback 
       const whole = await listed(q, institutions({})), span = await listed(q, institutions({ yearFrom: 2018, yearTo: 2026 }));
       expect([whole.ids, whole.group]).toEqual([["3"], { value: 35, count: 4, entities: 1 }]);
       expect([span.ids, span.group]).toEqual([whole.ids, whole.group]);
+      // A kind keeps its own institutions of the whole archive's list, and its sources are theirs (S5 review: the
+      // drawer reads the kind's ids narrowed to the list); a kind without one gives an empty list and empty sources.
+      forgetAuthorityKinds();
+      const schools = await listed(q, institutions({ authorityKind: "scoala" }));
+      expect([schools.ids, schools.group, schools.sources]).toEqual([["3"], { value: 35, count: 4, entities: 1 }, [35, 4, 35]]);
+      const hospitals = await listed(q, institutions({ authorityKind: "spital" }));
+      expect([hospitals.ids, hospitals.sources]).toEqual([[], [0, 0, 0]]);
+      forgetAuthorityKinds();
       // The window's number is the list after the click, its share of the selection's value.
       // A county anchors the count (nationally, without the rollups, it waits on the marts stage: ENTITY_LIVE).
       const counts = await facetCounts(q, institutions({ county: "Cluj", yearFrom: 2025, yearTo: 2025 }), "winners");
