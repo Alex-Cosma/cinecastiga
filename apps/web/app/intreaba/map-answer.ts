@@ -60,6 +60,10 @@ export function shownLens(spec: AskSpec, options: readonly MapLensOption[]): Map
 /** What a county shows on a lens: its number, or why it is grey (`muted`), or nothing (no record). */
 export interface CountyMetric { metric: number | null; muted: string | null }
 
+/** The county whose local administrations' records are another county's (CJ Ilfov's: București), and why it is grey. */
+const SEAT_ELSEWHERE_COUNTY = "Ilfov";
+export const SEAT_ELSEWHERE_NOTE = "CJ Ilfov e comparat cu București, județul înregistrărilor lui, nu cu Ilfov.";
+
 /** The share of the seat lens and why it is grey (map final §3.9). */
 function seatMetric(f: MapCountyFacts | undefined): CountyMetric {
   if (!f?.seat || f.value <= 0) return { metric: null, muted: null };
@@ -88,7 +92,12 @@ export function countyMetrics(data: Pick<MapData, "counties" | "local">, lens: M
       const population = data.local?.population[c.county];
       const missing = data.local?.missing.includes(c.county);
       out.set(c.county, { metric: population && c.value > 0 ? c.value / population : null, muted: missing ? "Consiliul județean nu e încă în listă." : null });
-    } else if (lens === "seat") out.set(c.county, seatMetric(f));
+    } else if (lens === "seat") {
+      const m = seatMetric(f);
+      // On the local map CJ Ilfov stands at Ilfov, but its records are București's and the seat classes compare the
+      // firm's seat with the record's county (agg_map_year): Ilfov's share counts București firms as local (S5 review).
+      out.set(c.county, data.local && c.county === SEAT_ELSEWHERE_COUNTY && m.metric !== null ? { metric: m.metric, muted: SEAT_ELSEWHERE_NOTE } : m);
+    }
     else if (lens === "share") out.set(c.county, shareMetric(c.value, c.count, f));
     else out.set(c.county, { metric: c.value > 0 ? c.value : null, muted: null });
   }
@@ -103,8 +112,12 @@ export function metricWords(lens: MapLensValue, metric: number): string {
   return formatRon(metric);
 }
 
-/** The country's line under the map (map final §3.8–§3.10: „Pe țară”, with the same denominators). */
-export function nationalMetric(data: Pick<MapData, "counties" | "unknown" | "local">, lens: MapLensValue, facts: MapFacts | null): number | null {
+/**
+ * The country's line under the map (map final §3.8–§3.10: „Pe țară”, with the same denominators). A selection of one
+ * county or town hall (a link's filter) is no country: none (S5 review: its value over 19 M inhabitants).
+ */
+export function nationalMetric(data: Pick<MapData, "counties" | "unknown" | "local">, lens: MapLensValue, facts: MapFacts | null, scoped = false): number | null {
+  if (scoped) return null;
   const sum = (pick: (c: MapData["counties"][number]) => number) => data.counties.reduce((t, c) => t + pick(c), 0);
   if (lens === "value_per_capita") {
     const people = data.local ? Object.values(data.local.population).reduce((t, p) => t + p, 0) : 0;
@@ -139,7 +152,8 @@ export function localNotes(local: MapLocal): { text: string; tip: string }[] {
 
 /**
  * The map's CSV (map final §4 „Surse și CSV”): `inregistrari` for records; per inhabitant on the local map; the
- * card's buyer and record with their shares; the seat split; the firm's share beside a firm. The facts' columns
+ * card's buyer and record with their shares; the seat split (București inside the other counties, as the card's indented
+ * „din care”: `din_care_bucuresti`, S5 review); the firm's share beside a firm. The facts' columns
  * stay empty while they are not read.
  */
 export function mapCsvRows(data: MapData, spec: AskSpec, facts: MapFacts | null, csvQ: (s: string | null | undefined) => string): string[] {
@@ -147,7 +161,7 @@ export function mapCsvRows(data: MapData, spec: AskSpec, facts: MapFacts | null,
   const header = [
     "judet", "valoare_lei", "inregistrari",
     ...(local ? ["populatie", "lei_pe_locuitor"] : []),
-    ...(firm ? ["cota_firmei"] : ["firme_din_judet", "firme_alte_judete", "din_bucuresti", "firme_straine", "sediu_necunoscut"]),
+    ...(firm ? ["cota_firmei"] : ["firme_din_judet", "firme_alte_judete", "din_care_bucuresti", "firme_straine", "sediu_necunoscut"]),
     "cel_mai_mare_cumparator", "pondere_cumparator", "cea_mai_mare_inregistrare", "pondere_inregistrare",
   ];
   const share = (part: number | undefined, whole: number) => part === undefined || whole <= 0 ? "" : String(Math.round((part / whole) * 1e6) / 1e6);
