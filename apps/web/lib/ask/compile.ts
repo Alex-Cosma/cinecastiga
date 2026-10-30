@@ -3073,7 +3073,8 @@ export async function runRows(
     // A search whose every word lists too many names („srl bucuresti”) narrows nothing: today's condition would be read
     // on every record of a broad list (a national trend's two years: 12–32 s, past the route's 20 s). Said at once,
     // with what to add, instead of a timeout (S5 review; a stored search text with a trigram index is PRECOMPUTE.md's).
-    const broad = whole ? whole.reduce((n, r) => n + Number(r.n), 0) > SEARCH_BROAD_RECORDS : true;
+    // A list whose size is not known yet (no rollup totals) keeps its search, within the budget below.
+    const broad = whole ? whole.reduce((n, r) => n + Number(r.n), 0) > SEARCH_BROAD_RECORDS : false;
     if (words.length && !candidates && broad) return { error: commonWordsSearch(search!) };
     // With a search the list's figures and the found records are counted apart when the list's are known or the search
     // reads names first: the found ones over the candidates of its words, the list without reading the search on each
