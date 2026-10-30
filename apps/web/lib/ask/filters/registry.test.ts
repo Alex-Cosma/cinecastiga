@@ -4,7 +4,7 @@ import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, NEWER_VERSION_LINK, par
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { BLOCK_FILTERS } from "./blocks";
-import { filterContext, formOf, NATIONAL_ENTITY_SCAN, nationalEntityScan, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
+import { filterContext, formOf, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan, PROFILE_FORMS, TRANSACTION_FORMS } from "./context";
 import { legacyConditions, presentConditions } from "./legacy-conditions";
 import { selectionOrigin } from "./origin";
 import { choiceState, windowFilters, writeChoice, type Choice } from "./pickers";
@@ -493,12 +493,25 @@ describe("availability (plan §2.2)", () => {
     }
   });
 
-  it("keeps goods and services from a national answer per entity, where they read both marts whole (S4 review)", () => {
+  it("keeps goods and services from a national answer per entity only where they read both marts whole (S4 review, S5 PRE-answers)", () => {
     const firms = base("table firms");
     const kindSlot = { id: "purchaseKind", label: "Ce s-a cumpărat", window: "Ce s-a cumpărat?" } as const;
     const state = (spec: FilterSpec, value: string) => choiceState(kindSlot as never, { filter: "purchaseKind", value } as Choice, spec, ctxOf(spec)).state;
     const at = (spec: FilterSpec) => ["produse", "servicii", "lucrari"].map((value) => state(spec, value));
-    expect([nationalEntityScan(firms), at(firms)]).toEqual([true, ["disabled", "disabled", "offered"]]);
+    // The nightly agg_entity_kind_year answers the national rankings, trends and leaders per entity by kind.
+    expect([nationalEntityScan(firms), kindRollupAnswers(firms, ctxOf(firms)), at(firms)]).toEqual([true, true, ["offered", "offered", "offered"]]);
+    // Not beside the other side's condition (the firms' size on a ranking of institutions), months or a threshold.
+    const institutions = { ...firms, dim: "authority" as const, filters: { ...firms.filters, minEmployees: 1, maxEmployees: 9 } };
+    expect([nationalEntityScan(institutions), at(institutions)]).toEqual([true, ["disabled", "disabled", "offered"]]);
+    expect(at({ ...firms, filters: { ...firms.filters, monthFrom: 1, monthTo: 6, yearFrom: 2025, yearTo: 2025 } })).toEqual(["disabled", "disabled", "offered"]);
+    // Firms left out of a ranking of firms stay on the rollup; institutions left out of it do not.
+    const out = (field: "authority" | "supplier") => ({ ...firms, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field, op: "not_in" as const, values: ["1"] }] }] } });
+    expect([at(out("supplier")), at(out("authority"))]).toEqual([["offered", "offered", "offered"], ["disabled", "disabled", "offered"]]);
+    // A size: the kit's ranges on the rollup, bounds typed in live.
+    const sizeSlot = { id: "purchaseValue", label: "Mărimea achiziției", window: "Cât de mare e fiecare achiziție?" } as const;
+    const size = (spec: FilterSpec, value: object) => choiceState(sizeSlot as never, { filter: "purchaseValue", value } as Choice, spec, ctxOf(spec)).state;
+    expect([size(firms, { purchaseValueMin: 1_000_000 }), size(firms, { purchaseValueMin: 50_000, purchaseValueMax: 250_000 })]).toEqual(["offered", "disabled"]);
+    expect(size({ ...firms, filters: { ...firms.filters, county: "Cluj" } }, { purchaseValueMin: 50_000, purchaseValueMax: 250_000 })).toBe("offered");
     // A county, a kind of institution, a domain or the contracts bound the records; the counties are a rollup's.
     for (const filters of [{ county: "Cluj" }, { authorityKind: "spital" }, { cpvTerm: "medicamente" }] as FilterSpec["filters"][])
       expect(at({ ...firms, filters: { ...firms.filters, ...filters } })).toEqual(["offered", "offered", "offered"]);

@@ -1,6 +1,6 @@
 import { AUTHORITY_KINDS, SEAT_RULES, SELECTION_RULES, WINNERS_RULES, type AskSpec, type AuthorityKind, type Block } from "../spec";
 import { BLOCK_FILTERS, PICKER_FAMILY, populationFits, windowOf } from "./blocks";
-import { filterContext, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "./context";
+import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "./context";
 import { FILTERS } from "./defs";
 import { edited } from "./defs/shared";
 import type { Party } from "./defs/selection";
@@ -159,11 +159,23 @@ export function choiceState(slot: Slot, choice: Choice, spec: FilterSpec, ctx: F
   if (choice.filter === "authorityKind" && kindAfterD1(spec, choice.value)) return { state: "hidden" };
   // A purchase kind a CPV code has no codes of (SELECTION_RULES): shown, with the reason, never chosen (F3, kit §5.3).
   if (choice.filter === "purchaseKind" && choice.value !== undefined) {
-    const reason = SELECTION_RULES.purchaseKind(FILTERS.purchaseKind.write(spec, choice.value) as unknown as AskSpec);
+    const next = FILTERS.purchaseKind.write(spec, choice.value);
+    const reason = SELECTION_RULES.purchaseKind(next as unknown as AskSpec);
     if (reason) return { state: "disabled", reason };
     // Goods and services cover most records: grouped per entity nationally they read both marts whole (S4 review,
-    // 2–9 s); works are an index range of 45 (about 1 s). The current choice stays choosable.
-    if (choice.value !== "lucrari" && choice.value !== spec.filters.purchaseKind && nationalEntityScan(spec)) return { state: "disabled", reason: NATIONAL_ENTITY_SCAN };
+    // 2–9 s) where the nightly agg_entity_kind_year does not answer (S5 PRE-answers: another side's condition, months);
+    // works are an index range of 45 (about 1 s). The current choice stays choosable.
+    if (choice.value !== "lucrari" && choice.value !== spec.filters.purchaseKind && nationalEntityScan(next) && !kindRollupAnswers(next, ctx))
+      return { state: "disabled", reason: NATIONAL_ENTITY_SCAN };
+  }
+  // A size the nightly agg_entity_kind_year cannot answer per entity nationally (bounds typed in, another side's
+  // condition, months: S5 PRE-answers) reads both marts whole (1.4–4.4 s); the current choice stays choosable.
+  if (choice.filter === "purchaseValue" && choice.value !== undefined) {
+    const next = FILTERS.purchaseValue.write(spec, choice.value);
+    type Range = { purchaseValueMin?: number; purchaseValueMax?: number };
+    const current = FILTERS.purchaseValue.read(spec) as Range | undefined, value = choice.value as Range;
+    const same = current?.purchaseValueMin === value.purchaseValueMin && current?.purchaseValueMax === value.purchaseValueMax;
+    if (!same && nationalEntityScan(next) && !kindRollupAnswers(next, ctx)) return { state: "disabled", reason: NATIONAL_ENTITY_SCAN };
   }
   // A foreign firm has no MF filing (SEAT_RULES, F4): beside a size, "În străinătate" is shown with the reason.
   if (choice.filter === "firmSeat" && choice.value !== undefined) {

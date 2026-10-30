@@ -5,7 +5,7 @@ import { questionTitle, type TitleLabels } from "../ask/filters/title";
 import { IMPLEMENTED_KEYS, validateSpec, type AskFilters, type AskSpec, type AuthorityKind, type Block, type Dataset } from "../ask/spec";
 import { defaultTrendYears, isWholeYear, monthsLabel, sameMonthsWindow, trendYearsFrom, type CoveragePeriods } from "../ask/months-window";
 import { FILTERS, offeredFilters, SPEC_PATH_OWNERS } from "../ask/filters/registry";
-import { filterContext, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/filters/context";
+import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "../ask/filters/context";
 import { choiceState } from "../ask/filters/pickers";
 import type { FilterSpec, SpecPath } from "../ask/filters/types";
 import { TREND_CHANGE_LABELS, TREND_FIRST_LABEL } from "../ask/filters/defs/trend";
@@ -85,9 +85,12 @@ export function applyLenses(raw: Record<string, unknown>, lenses: readonly LensM
     const owner = SPEC_PATH_OWNERS[path];
     if (owner === "question" || !IMPLEMENTED_KEYS.has(path)) return false;
     const ctx = filterContext(at);
-    // A national ranking per entity does not invite a size, nor goods and services (S4r-national-kind, blocks.ts): it
-    // reads both marts whole until the marts stage's size column (PRECOMPUTE.md). The reason, not "nu se aplică".
-    if (owner === "purchaseValue" && nationalEntityScan(at)) { held = NATIONAL_ENTITY_SCAN; return false; }
+    // A national ranking per entity takes a size, goods or services only where the nightly agg_entity_kind_year answers
+    // them (S5 PRE-answers; S4r-national-kind, blocks.ts): elsewhere they read both marts whole (PRECOMPUTE.md). The
+    // reason, not "nu se aplică" (goods and services: choiceState's).
+    if (owner === "purchaseValue" && nationalEntityScan(at) && !kindRollupAnswers(FILTERS.purchaseValue.write(at, value as never), ctx)) {
+      held = NATIONAL_ENTITY_SCAN; return false;
+    }
     if (!offeredFilters(at, ctx).has(owner)) {
       if (owner === "purchaseKind" && nationalEntityScan(at)) held = NATIONAL_ENTITY_SCAN;
       return false;
@@ -104,8 +107,12 @@ export function applyLenses(raw: Record<string, unknown>, lenses: readonly LensM
     const owner = SPEC_PATH_OWNERS[path];
     if (owner !== "question") spec = FILTERS[owner].write(spec, value);
   };
-  // The keys a lens needs are written first ("procentual" after "au crescut").
-  const paths = [...byPath.keys()].sort((a, b) => Number(Boolean(LENS_NEEDS[a])) - Number(Boolean(LENS_NEEDS[b])));
+  // The keys a lens needs are written first ("procentual" after "au crescut"); the kind and the size last, so whether
+  // a national ranking per entity can take them is judged with the other lenses written (S5 PRE-answers: the firms'
+  // seat on a ranking of institutions keeps goods off agg_entity_kind_year).
+  const late = (path: SpecPath) => path === "filters.purchaseKind" || path === "filters.purchaseValueMin" || path === "filters.purchaseValueMax" ? 2 : 0;
+  const rank = (path: SpecPath) => Number(Boolean(LENS_NEEDS[path])) + late(path);
+  const paths = [...byPath.keys()].sort((a, b) => rank(a) - rank(b));
   for (const path of paths) {
     const found = byPath.get(path)!;
     const words = [...new Set(found.map((l) => l.matched.text))];
