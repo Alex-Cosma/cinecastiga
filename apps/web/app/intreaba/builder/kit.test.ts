@@ -157,6 +157,16 @@ describe("the condition row (3), the chip (4) and the switch (5)", () => {
     expect(months).toContain("qb-half");
     expect(months).not.toContain("qb-ck");
   });
+  it("says what a switch means in a (?) beside it, on and off, and with its reason at 0 (S5 review)", () => {
+    const tip = { title: "Principalul lor client public", text: "Cel puțin jumătate din tot ce a câștigat firma." };
+    const off = html(Toggle, { id: "main", label: "Principalul lor client public", pressed: false, tip });
+    expect(attr(tags(off, "button")[0]!, "aria-pressed")).toBe("false");
+    expect(off).toContain("qb-tipwrap-sm");
+    expect(off).toContain("Cel puțin jumătate");
+    const zero = html(Toggle, { id: "main", label: "Principalul lor client public", pressed: false, tip, availability: { state: "disabled", reason: "Nicio firmă în selecția de acum." } });
+    expect(describedReason(zero, tags(zero, "button")[0]!)).toBe("Nicio firmă în selecția de acum.");
+    expect(zero).toContain("Cel puțin jumătate");
+  });
 });
 
 describe("the chips under the sentence (6)", () => {
