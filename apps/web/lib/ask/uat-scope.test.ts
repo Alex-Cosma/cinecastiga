@@ -60,6 +60,9 @@ describe("locality scope of Întreabă (finding F15)", () => {
     expect(localAuthorityIdentities(rows, pitesti)).toEqual({ ids: ["2146442"], joined: [] });
     expect(localAuthorityIdentities(rows, luncaIlvei)).toEqual({ ids: ["2032360", "2140013"], joined: [] });
     expect(localAuthorityIdentities(rows, patulele)).toEqual({ ids: ["2137074", "2142681"], joined: ["2142681"] });
+    // An added identity without records is in the list but moves no number: not joined (no uat-2 alert, S5 review).
+    const idle = rows.map((r) => r.id === "2142681" ? { ...r, records: false } : r);
+    expect(localAuthorityIdentities(idle, patulele)).toEqual({ ids: ["2137074", "2142681"], joined: [] });
     // A county-less identity on another unit's code, or with another unit's name, never joins.
     expect(localAuthorityIdsForUnit([row("9", "MUNICIPIUL CLUJ-NAPOCA", null, tibucani)], tibucani)).toEqual([]);
     expect(localAuthorityIdsForUnit([row("9", "SCOALA GIMNAZIALA CLUJ-NAPOCA", null, clujNapoca)], clujNapoca)).toEqual([]);

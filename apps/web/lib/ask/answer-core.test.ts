@@ -67,8 +67,8 @@ describe("the key versions of this release", () => {
     expect(answerVersion(cluj).conditions).toEqual({});
     expect(answerVersion(stat, { uatJoined: true }).conditions).toEqual({});
     expect(KEY_VERSION_NOTES["uat-2"]).toBe("Primăria cuprinde acum toate identitățile ei din SEAP.");
-    // A restored link has not run: it says the rule changed.
-    expect(keyVersionNotes(cluj)).toEqual([KEY_VERSION_NOTES["uat-2"]]);
+    // A restored link has not run: no note on every town hall, the answer carries it where it moved (S5 review).
+    expect(keyVersionNotes(cluj)).toEqual([]);
     // The per-inhabitant list (41 county councils): its rankings, not the map of local_admin, new with F5.
     const perCapita: AskSpec = { block: "table", dim: "authority", measure: "value_per_capita", topN: 10, filters: {} };
     expect(answerVersion(perCapita).conditions).toEqual({ "table:per-capita": "table:per-capita-2" });

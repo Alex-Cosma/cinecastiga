@@ -101,8 +101,9 @@ export const KEY_VERSION_NOTES: Record<string, string> = {
  * gets the note.
  */
 export function keyVersionNotes(spec: AskSpec): string[] {
-  // A restored link has not run: "primăria X" gets the union's note whether or not its town hall gained an identity.
-  return Object.values(answerVersion(spec, { uatJoined: true }).conditions).map((version) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
+  // A restored link has not run: "primăria X" gets no union note, as only 3 of 3,187 town halls gained an identity
+  // with records; the answer that ran carries uat-2 where it moved (runSpec's uatJoined; S5 review).
+  return Object.values(answerVersion(spec).conditions).map((version) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
 }
 
 /** The version of a question's answer: its block's, and those of the keys it carries. */
