@@ -28,7 +28,7 @@ import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
   compareInstitutionParties, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, daCodesPlain, daYearKeyRange, monthRollupReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
+  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, monthRollupReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
@@ -2419,8 +2419,8 @@ export const GROUP_ID_INDEX_RECORDS = 250_000;
  */
 export const PROFILE_ROLLUP_RECORDS = 200_000;
 export const PROFILE_VALUE_WALK = 200_000;
-/** The deepest page the value walk serves: (page + 1) × page size keys. */
-const PROFILE_VALUE_KEYS = 1000;
+/** The most keys the value walk serves ((page + 1) × page size): a CSV's 100,000 rows too, within the walk's bound. */
+const PROFILE_VALUE_KEYS = 100_000;
 /** A county drawer of at most this many records reads them from the county indexes, not by the key (runRows). */
 const FEW_IN_COUNTY = 2000;
 let profileLimits = { records: PROFILE_ROLLUP_RECORDS, walk: PROFILE_VALUE_WALK };
@@ -3058,10 +3058,15 @@ export async function runRows(
     const p = Math.min(requestedPage, Math.max(0, Math.ceil(total / pageSize) - 1));
     const acceptedRows = totals.filter((r) => r.state === "Oferta acceptata");
     // The cohort's page by value from the walk: every key it needs, or none (the cohort ends before, or the walk
-    // stopped first on a sparse cohort: then the page reads core as before).
-    const valueKeys = cohortRolled && profileWalk && (p + 1) * pageSize <= PROFILE_VALUE_KEYS
-      ? await profileValueKeys(s, cohort as unknown as ReturnType<DbSql>, role as "authority" | "supplier", { limit: (p + 1) * pageSize, walk: profileLimits.walk, ceiling: DA_PLAFOND_RON }) : null;
-    const keyedPage = valueKeys && valueKeys.length >= Math.min((p + 1) * pageSize, total) ? valueKeys : null;
+    // stopped first on a sparse cohort: then the page reads core as before). A walk expected to stop first is not
+    // started: it reads (all records ÷ the cohort's) per key wanted, each checked against the cohort (the group of
+    // Rusetu's 100,000 CSV rows: 1.6M records of 19.6M, about 1.2M checks, 20 s; its page of 10: 0.1 s).
+    const wanted = (p + 1) * pageSize;
+    const allDa = cohortRolled && profileWalk && wanted <= PROFILE_VALUE_KEYS ? await daRecordCount(s) : null;
+    const walkLength = allDa === null ? null : wanted * allDa / Math.max(1, Number(cohortFigures?.records ?? 0));
+    const valueKeys = walkLength !== null && walkLength * 1.5 <= profileLimits.walk
+      ? await profileValueKeys(s, cohort as unknown as ReturnType<DbSql>, role as "authority" | "supplier", { limit: wanted, walk: profileLimits.walk, ceiling: DA_PLAFOND_RON }) : null;
+    const keyedPage = valueKeys && valueKeys.length >= Math.min(wanted, total) ? valueKeys : null;
     // Bound each stream before combining it. A global sort on the wide union
     // scans 20M rows even for ten references; each branch can instead stop at
     // its indexed IDs. Taking offset+limit from BOTH branches preserves every
