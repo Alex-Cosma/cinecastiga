@@ -344,6 +344,16 @@ export async function unknownSeatPartners(s: DbSql, q: RelationQuery & { list: N
  * signal when asked. Null when the question lists every partner.
  */
 export function networkMembersCond(s: DbSql, q: RelationQuery & { group: NetworkList; since: number; signals: boolean }): Fragment | null {
+  const list = networkMembersList(s, q);
+  return list ? s`${list.pid} in ${list.members}` : null;
+}
+
+/**
+ * networkMembersCond's parts: the partner column and the subquery of the group's partners, for a caller that reads
+ * the partners once and then their records by id (the sources drawer, compile.ts runRows: the subquery planned
+ * inside the totals and again inside the page grouped SELGROS's whole relation twice, 1.2–1.7 s; S5 PRE-sources).
+ */
+export function networkMembersList(s: DbSql, q: RelationQuery & { group: NetworkList; since: number; signals: boolean }): { pid: Fragment; members: Fragment } | null {
   if (q.group === "all" && !q.signals) return null;
   const pid = partnerOf(s, q.focalRole);
   const rel = andAll(s, [...rowPredicates(relationCtx(q.ctx)), s`${pid} is not null`]);
@@ -363,7 +373,7 @@ export function networkMembersCond(s: DbSql, q: RelationQuery & { group: Network
     where p.ns > 0 and ${group}
       ${q.signals ? s`and cardinality(${relationSignals(s, q.focalRole, q.focalId)}) > 0` : s``}
   )`;
-  return s`${pid} in ${members}`;
+  return { pid: pid as unknown as Fragment, members: members as unknown as Fragment };
 }
 
 interface FlowRow { pid: string; stem: string; src: "da" | "contracts"; v: string; n: string; c: string; ev: string; en: string }

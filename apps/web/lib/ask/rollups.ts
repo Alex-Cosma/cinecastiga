@@ -497,8 +497,64 @@ export async function daCodesPlain(sql: DbSql): Promise<boolean> {
   return row?.plain === true;
 }
 
+/**
+ * da_tx_value_desc_idx present (S5 PRE-sources, TRANSACTION_MART_BUILD_INDEXES): the analysis population of the
+ * direct acquisitions by value, highest first. Probed apart; until the first nightly build with it a national
+ * profile cohort's source page reads as before.
+ */
+let valueReady: { ok: boolean; at: number } | null = null;
+export async function valueKeysReady(sql: DbSql): Promise<boolean> {
+  if (valueReady && Date.now() - valueReady.at < 600_000) return valueReady.ok;
+  const [row] = (await sql`select to_regclass('marts.da_tx_value_desc_idx') is not null ok`) as unknown as { ok: boolean }[];
+  valueReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return valueReady.ok;
+}
+
+/**
+ * The source drawer's totals of a cohort of historical profiles (the risk cloud, a distribution's group): the
+ * records of its entities in their role, from agg_entity_year's direct acquisitions. The profiles count the
+ * accepted direct acquisitions of core with 0 < value <= 2M lei by the same ids (authority_entity_id, the supplier
+ * unless equal to it, as da_transactions writes them), so these rows are the records the live drawer counts on
+ * core at the last build: one state ('Oferta acceptata'), records, value, the first and last day. National
+ * cohorts (19.35M records): 20 s live (the route's limit), ~0.3 s here. `cohort` selects entity_id.
+ */
+export async function profileRollupTotals(sql: DbSql, cohort: Fragment, role: Role):
+  Promise<{ state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[]> {
+  return (await sql`
+    select 'Oferta acceptata'::text state, sum(p.n)::bigint::text n, coalesce(sum(p.v), 0)::text v, sum(p.n)::bigint::text fn,
+           coalesce(sum(p.v), 0)::text fv, min(p.d0) date_from, max(p.d1) date_to
+    from marts.agg_entity_year p
+    where p.role = ${role} and p.src = 'da' and p.eid in (select c.entity_id from ${cohort} c)
+    having count(*) > 0
+  `) as unknown as Awaited<ReturnType<typeof profileRollupTotals>>;
+}
+
+/**
+ * The keys of a profile cohort's first `limit` records by value, highest first, ties by key (the drawer's order
+ * for value, descending), from da_tx_value_desc_idx: the walk reads the index in that order, each record's party
+ * checked against the cohort (a lookup per record, so the order is kept and the walk stops at the `limit`-th), over
+ * at most `walk` records. The page then reads only those records on core (the same records at the last build).
+ * Fewer keys than `limit`: the cohort ends there, or the walk did (a sparse cohort), which the caller tells apart
+ * by the cohort's total.
+ */
+export async function profileValueKeys(sql: DbSql, cohort: Fragment, role: Role, o: { limit: number; walk: number; ceiling: number }): Promise<string[]> {
+  const party = role === "authority" ? sql`m.authority_id` : sql`m.supplier_id`;
+  const rows = (await sql`
+    select w.k::text k from (
+      select m.sicap_da_id k, ${party} p, - m.closing_value nv from marts.da_transactions m
+      where - m.closing_value >= ${-o.ceiling}::numeric and - m.closing_value < 0
+      order by - m.closing_value, m.sicap_da_id
+      limit ${o.walk}
+    ) w
+    where (select true from ${cohort} c where c.entity_id = w.p limit 1)
+    order by w.nv, w.k
+    limit ${o.limit}
+  `) as unknown as { k: string }[];
+  return rows.map((r) => r.k);
+}
+
 /** Tests only: forget the probes, so the next call reads the database. */
-export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; keysReady = null; }
+export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; keysReady = null; valueReady = null; }
 
 export interface RollupTableOpts {
   dim: Role;
@@ -805,8 +861,9 @@ export async function rollupMap(sql: DbSql, plan: { source: RollupSource; filter
  * record of it has its firm; so do the other blocks but the breakdown, on
  * records selected by such an attribute. So does a ranking of firms or institutions
  * (`authorities`) with some of them left out ("Scoate din calcul", F4): the
- * rest of its role's rows. Other blocks (other rankings of entities, network,
- * profiles) are not served. sources:stat-da-2025: 1.57–2.19 s live, 0.05 s here.
+ * rest of its role's rows, and so does a ranking selected only by a channel, a
+ * period and a buyer county (S5 PRE-sources: the national default ranking).
+ * Other blocks (other rankings of entities, network, profiles) are not served. sources:stat-da-2025: 1.57–2.19 s live, 0.05 s here.
  */
 export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSource; filters: RollupFilters },
   block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" | "authorities"):
@@ -818,10 +875,16 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
     // S5 (S4r-from-seat): a ranking of institutions buying from firms of a seat or a size — „De la cine › Ce fel de
     // firme”: every record kept has its firm and its buyer county, so the pairs' rows of agg_pair_year are exactly them
     // (national „în alt județ”, all years: 2.5 s live, the union with the seat's semi-join).
+  } else if ((block === "firms" || block === "authorities") && plan.source.table === "cpv" && byYearAndCounty(plan.filters)) {
+    // S5 PRE-sources: a ranking of firms or institutions whose selection is only a channel, a period and a buyer county
+    // (the national default ranking, a year's): its records are those with an id of its role (the drawer's
+    // `d.supplier_id is not null` / `d.authority_id is not null`), which are exactly that role's rows of agg_entity_year
+    // (the buyer county is the record's own on both). National, all years: 2.1–2.3 s live, the union counted.
+    plan = { source: { table: "entity", role: block === "firms" ? "supplier" : "authority" }, filters: plan.filters };
   } else if (block === "firms" || block === "authorities") {
     const role: Role = block === "firms" ? "supplier" : "authority";
     const out = role === "supplier" ? plan.filters.excludeSuppliers : plan.filters.excludeAuthorities;
-    if (plan.source.table !== "entity" || plan.source.role !== role || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees)))
+    if (plan.source.table !== "entity" || plan.source.role !== role || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees) || byYearAndCounty(plan.filters)))
       return { reason: "a ranking's source totals read agg_entity_year when an attribute of the firm or an exclusion selects its entities" };
   } else if (plan.source.table === "entity") {
     // A total, a map, an evolution or the counties of records selected by an attribute of their firm (F4's seat, the
@@ -842,6 +905,12 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
     group by p.src
   `) as unknown as { state: string | null; n: string; v: string; fn: string; fv: string; date_from: string | null; date_to: string | null }[];
   return { rows };
+}
+
+/** A selection of only a channel, a period and a buyer county: the columns every rollup has, nothing on a code or an id. */
+function byYearAndCounty(f: RollupFilters): boolean {
+  return !f.cpvPrefixes.length && !f.cpvExclude.length && !f.purchaseKind && !f.kind && !f.employees && !f.seat && !f.newFirms
+    && !f.excludeAuthorities.length && !f.excludeSuppliers.length && !f.minimum && !f.months;
 }
 
 /**
@@ -956,6 +1025,91 @@ export async function compareSharedPartners(sql: DbSql, c: CompareQueryParts):
     left join marts.entity_profile ep on ep.entity_id = x.other and ep.role = ${otherRole}
     order by x.sv desc, x.other
   `) as unknown as { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[];
+}
+
+/**
+ * The comparison in two passes over its records instead of six (S5 PRE-sources; PRECOMPUTE „compare-da, one
+ * pass”): each pass groups the two entities' records once, then every query of its kind reads the groups, each
+ * with the rows, order and types of its query of before (the three above and the three inline ones of compile.ts,
+ * which rollups.integration.test.ts keeps as the reference). Run one after the other in a transaction, the six
+ * read the 927k records of SELGROS and DEDEMAN six times (2.05 s on "Directe", 0.14–0.57 s each); the passes
+ * twice (0.47 + 0.43 s).
+ * - compareRecordPass: by entity, channel, year and CPV group (5 digits), so the streams (with the single-bid
+ *   counts of the contracts and the value without a code), the years and the domains.
+ * - comparePartnerPass: by entity and partner, so the partners' number (firms only: two institutions read theirs
+ *   with their suppliers' seats, compareInstitutionParties), the top four partners and the shared ones.
+ */
+export interface CompareRecordRows {
+  streams: { id: string; src: string; value: string; n: number; single_bid: string | number; single_known: string | number; no_cpv: string }[];
+  years: { id: string; y: number; value: string; n: number }[];
+  domains: { id: string; g: string; value: string; groups: number }[];
+}
+export async function compareRecordPass(sql: DbSql, c: CompareQueryParts, o: { src: Fragment; singleBid: boolean; domains: number }): Promise<CompareRecordRows> {
+  const { party } = partnerColumns(sql, c.focalRole);
+  const rows = (await sql`
+    with a as materialized (
+      select ${party}::text id, ${o.src} src, substr(d.finalization_date, 1, 4) y, substr(d.cpv_code, 1, 5) g,
+             sum(d.closing_value) v, count(*) n,
+             ${o.singleBid ? sql`count(*) filter (where d.is_single_bidder)` : sql`0::bigint`} sb,
+             ${o.singleBid ? sql`count(*) filter (where d.is_single_bidder is not null)` : sql`0::bigint`} sk
+      from ${c.source} d where ${c.where} group by 1, 2, 3, 4)
+    select 'streams' k, a.id, a.src x, sum(a.v)::text value, sum(a.n)::text n, sum(a.sb)::bigint::text sb, sum(a.sk)::bigint::text sk,
+           coalesce(sum(a.v) filter (where a.g is null), 0)::text no_cpv
+    from a group by a.id, a.src
+    union all
+    select 'years', a.id, (a.y::int)::text, sum(a.v)::text, sum(a.n)::text, null, null, null
+    from a where a.y is not null group by a.id, a.y::int
+    union all
+    select 'domains', x.id, x.g, x.value::text, x.groups::text, null, null, null from (
+      select a.id, a.g, sum(a.v) value, row_number() over (partition by a.id order by sum(a.v) desc, a.g) r, count(*) over (partition by a.id) groups
+      from a where a.g is not null group by a.id, a.g) x
+    where x.r <= ${o.domains}
+  `) as unknown as { k: "streams" | "years" | "domains"; id: string; x: string; value: string; n: string; sb: string | null; sk: string | null; no_cpv: string | null }[];
+  // The types of the six queries of before: counts as numbers, a contract's single-bid counts as bigint text, a
+  // direct acquisition's as the literal 0.
+  return {
+    streams: rows.filter((r) => r.k === "streams").map((r) => ({ id: r.id, src: r.x, value: r.value, n: Number(r.n),
+      single_bid: o.singleBid ? r.sb! : 0, single_known: o.singleBid ? r.sk! : 0, no_cpv: r.no_cpv! })),
+    years: rows.filter((r) => r.k === "years").map((r) => ({ id: r.id, y: Number(r.x), value: r.value, n: Number(r.n) })),
+    domains: rows.filter((r) => r.k === "domains").map((r) => ({ id: r.id, g: r.x, value: r.value, groups: Number(r.n) })),
+  };
+}
+
+export async function comparePartnerPass(sql: DbSql, c: CompareQueryParts, o: { parties: boolean }): Promise<{
+  parties: Awaited<ReturnType<typeof compareParties>>; top: Awaited<ReturnType<typeof compareTopPartners>>; shared: Awaited<ReturnType<typeof compareSharedPartners>>;
+}> {
+  const { party, other, otherRole } = partnerColumns(sql, c.focalRole);
+  const rows = (await sql`
+    with x as materialized (
+      select ${party} party, ${other} other, sum(d.closing_value) v, count(*) n
+      from ${c.source} d where ${c.where} and ${other} is not null group by 1, 2)
+    select 'parties' k, 0::bigint o, x.party::text id, null::text other_id, null::text name, null::text value, count(*)::text n,
+           null::text value_a, null::int n_a, null::text value_b, null::int n_b, null::int total
+    from x where ${o.parties} group by x.party
+    union all
+    select 'top', row_number() over (order by t.party::text, t.r), t.party::text, t.other::text, ep.name_display, t.v::text, t.n::text, null, null, null, null, null
+    from (select x.*, row_number() over (partition by x.party order by x.v desc, x.other) r from x) t
+    left join marts.entity_profile ep on ep.entity_id = t.other and ep.role = ${otherRole}
+    where t.r <= 4
+    union all
+    select 'shared', row_number() over (order by s.sv desc, s.other), null, s.other::text, ep.name_display, null, null,
+           s.value_a, s.n_a, s.value_b, s.n_b, s.total
+    from (
+      select x.other, sum(x.v) sv,
+             coalesce(sum(x.v) filter (where x.party = ${c.focalId}), 0)::text value_a, coalesce(sum(x.n) filter (where x.party = ${c.focalId}), 0)::int n_a,
+             coalesce(sum(x.v) filter (where x.party = ${c.compareId}), 0)::text value_b, coalesce(sum(x.n) filter (where x.party = ${c.compareId}), 0)::int n_b,
+             count(*) over ()::int total
+      from x group by x.other having min(x.party) <> max(x.party)
+      order by sum(x.v) desc, x.other limit 30) s
+    left join marts.entity_profile ep on ep.entity_id = s.other and ep.role = ${otherRole}
+  `) as unknown as { k: "parties" | "top" | "shared"; o: string; id: string | null; other_id: string | null; name: string | null; value: string | null; n: string | null;
+    value_a: string | null; n_a: number | null; value_b: string | null; n_b: number | null; total: number | null }[];
+  const of = (k: string) => rows.filter((r) => r.k === k).sort((a, b) => Number(a.o) - Number(b.o));
+  return {
+    parties: of("parties").map((r) => ({ id: r.id!, n: Number(r.n) })),
+    top: of("top").map((r) => ({ id: r.id!, other_id: r.other_id!, name: r.name, value: r.value!, n: Number(r.n) })),
+    shared: of("shared").map((r) => ({ other_id: r.other_id!, name: r.name, value_a: r.value_a!, n_a: r.n_a!, value_b: r.value_b!, n_b: r.n_b!, total: r.total! })),
+  };
 }
 
 /**
