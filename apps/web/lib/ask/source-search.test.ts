@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { inDaCode, SEARCH_LIST_CAP, searchCandidates, searchWords, type SearchLists } from "./source-search";
-import { commonWordsSearch, withSearchBudget } from "./compile";
+import { budgetedRead, commonWordsSearch, searchBudgetReason, slowSearch, withSearchBudget } from "./compile";
 
 /*
  * „Caută în surse”, names first (S5 PRE-trend): the words, the forms a word can
@@ -85,11 +85,19 @@ describe("searchCandidates", () => {
 
 describe("a search past its budget on a broad list (S5 review)", () => {
   const timeout = () => Promise.reject(new Error("canceling statement due to statement timeout"));
-  it("says what to add instead of the route's timeout, only for a search", async () => {
-    expect(await withSearchBudget("s.r.l. bucuresti", timeout)).toEqual({ error: commonWordsSearch("s.r.l. bucuresti") });
+  it("says what to add instead of the route's timeout, only for a budgeted read", async () => {
+    expect(await withSearchBudget(() => budgetedRead(commonWordsSearch("srl"), timeout))).toEqual({ error: commonWordsSearch("srl") });
     expect(commonWordsSearch("srl")).toBe("„srl”: cuvintele apar în prea multe nume pentru toată lista. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.");
-    await expect(withSearchBudget(null, timeout)).rejects.toThrow("statement timeout");
-    await expect(withSearchBudget("srl", () => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
-    expect(await withSearchBudget("srl", async () => 7)).toBe(7);
+    // The route's own timeout (the list's figures, an unbudgeted search) stays an error, never „too many names”.
+    await expect(withSearchBudget(timeout)).rejects.toThrow("statement timeout");
+    await expect(withSearchBudget(() => budgetedRead("x", () => Promise.reject(new Error("boom"))))).rejects.toThrow("boom");
+    expect(await withSearchBudget(() => budgetedRead("x", async () => 7))).toBe(7);
+  });
+
+  it("is „too many names” only when no word narrows; a code read on every row keeps the route's limit (P2)", () => {
+    expect(searchBudgetReason("srl", null)).toBe(commonWordsSearch("srl"));
+    expect(searchBudgetReason("s.r.l. bucuresti", { indexed: true })).toBe(slowSearch("s.r.l. bucuresti"));
+    expect(slowSearch("srl bucuresti")).toBe("„srl bucuresti”: căutarea pe toată lista a durat prea mult. Încearcă din nou sau adaugă un cuvânt mai rar.");
+    expect(searchBudgetReason("DA38380070", { indexed: false })).toBeNull();
   });
 });
