@@ -6,7 +6,7 @@ import { readableCpvName } from "@/lib/entity-summary";
 import { IMPLAUSIBLE_BIRTH_DATE_LABEL } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
 import { BLOCK_FILTERS, windowOf } from "@/lib/ask/filters/blocks";
-import { filterContext } from "@/lib/ask/filters/context";
+import { filterContext, kindRollupAnswers, NATIONAL_ENTITY_SCAN, nationalEntityScan } from "@/lib/ask/filters/context";
 import type { Choice } from "@/lib/ask/filters/pickers";
 import type { Excluded } from "@/lib/ask/filters/origin";
 import type { FilterSpec } from "@/lib/ask/filters/types";
@@ -622,17 +622,27 @@ function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: 
   const [from, setFrom] = useState(set && index < 0 && range.purchaseValueMin !== undefined ? String(range.purchaseValueMin) : "");
   const [to, setTo] = useState(set && index < 0 && range.purchaseValueMax !== undefined ? String(range.purchaseValueMax) : "");
   const [error, setError] = useState<string | null>(null);
+  // Nationally per entity only the sizes agg_entity_kind_year answers (S5 PRE-answers: the kit's ranges, the ranked
+  // role's own conditions): bounds typed in, or any size beside the other side's condition, read both marts whole.
+  const ctx = filterContext(draft as FilterSpec);
+  const slow = (value: ValueRange) => {
+    const next = { ...draft, filters: { ...draft.filters, purchaseValueMin: value.purchaseValueMin, purchaseValueMax: value.purchaseValueMax } } as FilterSpec;
+    return nationalEntityScan(next) && !kindRollupAnswers(next, ctx);
+  };
   const use = () => {
     const min = from.trim() ? leiOf(from) : undefined, max = to.trim() ? leiOf(to) : undefined;
     if (min === null || max === null) { setError("Scrie sumele în lei, fără zecimale."); return; }
     if (min === undefined && max === undefined) { setError("Scrie cel puțin o limită."); return; }
     if (min !== undefined && max !== undefined && min >= max) { setError("Limita de sus trebuie să fie peste cea de jos."); return; }
-    onPick([{ filter: "purchaseValue", value: { ...(min !== undefined ? { purchaseValueMin: min } : {}), ...(max !== undefined ? { purchaseValueMax: max } : {}) } }]);
+    const value = { ...(min !== undefined ? { purchaseValueMin: min } : {}), ...(max !== undefined ? { purchaseValueMax: max } : {}) };
+    if (slow(value)) { setError(NATIONAL_ENTITY_SCAN); return; }
+    onPick([{ filter: "purchaseValue", value }]);
   };
   return <>
     <Pills label="Mărimea achiziției" options={VALUE_RANGES.map((r, i) => {
       // Each range's share of the value (R5); an empty one is struck through with the reason.
-      const count = shareText(counts, String(i)), empty = String(i) !== pill ? emptyReason(counts, String(i)) : null;
+      const { label: _label, ...range } = r;
+      const count = shareText(counts, String(i)), empty = String(i) !== pill ? emptyReason(counts, String(i)) ?? (slow(range) ? NATIONAL_ENTITY_SCAN : null) : null;
       return { value: String(i), label: r.label, ...(count ? { count } : {}), ...(empty ? { disabled: empty } : {}) };
     })} value={pill} onChange={(next, source) => {
       setPill(next);
