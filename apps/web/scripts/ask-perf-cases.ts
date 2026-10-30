@@ -595,6 +595,7 @@ function facetCases(): PerfCase[] {
 /** PRECOMPUTE.md entries the F3 cases wait on (S4 F3-keys). */
 const SIZE_LIVE = "Sursele unei mărimi a achiziției pe o selecție națională";
 const SIZE_SOURCES_FIRMS = "Totalurile surselor unui clasament național pe angajați";
+const FIRST_TIME_SOURCES = "Sursele listei „prima dată” pe un an, național";
 /** What agg_entity_kind_year does not answer (S5 PRE-answers): goods or services with the other side's condition or on the same months. */
 const KIND_ENTITY = "Produsele și serviciile pe instituții și firme, național";
 
@@ -679,6 +680,14 @@ function f3Cases(): PerfCase[] {
       all(top({ dim: "authority" }), set({ dominantSupplier: true }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:table-suppliers-registered-2024-2025", "sources", "Sursele firmelor înmatriculate din 2024, 2025", "table",
       all(top({ dim: "supplier" }), set({ newSince: 2024, newScope: "registry" }), years(2025)), { path: "rows", barMs: 2000 }),
+    // S5 tests: the sources and CSV of the national „prima dată” list (all the listed firms' records, 41 k for 2025) and of a
+    // CPV division's drawer (domainSourceQuery: the scope carries the division's prefix), measured next to the answers.
+    perfCase("sources:table-suppliers-first-2025", "sources", "Sursele firmelor cu prima înregistrare din 2025, național", "table",
+      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "rows", barMs: 2000, precompute: FIRST_TIME_SOURCES }),
+    perfCase("csv:table-suppliers-first-2025", "csv", "CSV: sursele firmelor cu prima înregistrare din 2025, național", "table",
+      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "csv", barMs: 2000, precompute: FIRST_TIME_SOURCES }),
+    perfCase("sources:breakdown-division-45-2025", "sources", "Sursele diviziunii CPV 45 din „Domenii”, 2025", "breakdown",
+      all(set({ cpvTerm: "45" }), years(2025)), { path: "rows", scope: { cpvPrefixes: ["45"] }, barMs: 2000 }),
     perfCase("facets:winners-authorities-2025", "facets", "Numărul lui „O firmă ia peste jumătate”, instituții, 2025", "table",
       all(top({ dim: "authority" }), years(2025)), { facet: { part: "winners" }, barMs: 2000 }),
     perfCase("facets:winners-suppliers-2025", "facets", "Numerele lui „Firme noi”, firme, 2025", "table",
