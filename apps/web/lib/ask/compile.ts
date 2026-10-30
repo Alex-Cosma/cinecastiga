@@ -2440,11 +2440,36 @@ const SEARCH_BROAD_RECORDS = 200_000;
 const SEARCH_BUDGET_MS = 6000;
 export const commonWordsSearch = (search: string): string =>
   `„${search}”: cuvintele apar în prea multe nume pentru toată lista. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.`;
-export async function withSearchBudget<T>(search: string | null, work: () => Promise<T>): Promise<T | { error: string }> {
+/** A search narrowed by its names that ran past the budget: on a busy server too, so never „too many names”. */
+export const slowSearch = (search: string): string =>
+  `„${search}”: căutarea pe toată lista a durat prea mult. Încearcă din nou sau adaugă un cuvânt mai rar.`;
+/**
+ * The reason a search on a broad list gives at its budget's end, or null when it keeps the route's limit (S5
+ * review): no word narrows (`candidates` null), its words are too common; the names narrow it (`indexed`), it took
+ * too long, said neutrally. A word read on every row (a DA code, a number: one record, 2–3 s warm, longer under
+ * load) has no budget: its time is the scan's, not the names', and „too many names” would be false.
+ */
+export function searchBudgetReason(search: string, candidates: { indexed: boolean } | null): string | null {
+  if (!candidates) return commonWordsSearch(search);
+  return candidates.indexed ? slowSearch(search) : null;
+}
+/** A budgeted read past its budget, carrying the drawer's reason (withSearchBudget). */
+export class SearchBudgetError extends Error {}
+/** One read under the search's budget: its statement timeout is the budget's end, said with `reason`. */
+export async function budgetedRead<T>(reason: string, read: () => Promise<T>): Promise<T> {
+  try {
+    return await read();
+  } catch (e) {
+    if (e instanceof Error && e.message.includes("statement timeout")) throw new SearchBudgetError(reason);
+    throw e;
+  }
+}
+/** The drawer's reason for a search past its budget; any other error (the route's own timeout too) stays one. */
+export async function withSearchBudget<T>(work: () => Promise<T>): Promise<T | { error: string }> {
   try {
     return await work();
   } catch (e) {
-    if (search !== null && e instanceof Error && e.message.includes("statement timeout")) return { error: commonWordsSearch(search) };
+    if (e instanceof SearchBudgetError) return { error: e.message };
     throw e;
   }
 }
@@ -2967,7 +2992,7 @@ export async function runRows(
   const profileWalk = profileRolled && sortKey === "value" && opts.dir !== "asc" && await valueKeysReady(sql);
 
   // A search on a broad list that runs past its budget (SEARCH_BUDGET, below) says so, with what to add.
-  return await withSearchBudget(words.length > 0 && !opts.capture ? search! : null, () => sql.begin("isolation level repeatable read read only", async (tx) => {
+  return await withSearchBudget(() => sql.begin("isolation level repeatable read read only", async (tx) => {
     await tx.unsafe(FORCE_CUSTOM_PLANS);
     await tx.unsafe(`set local statement_timeout = '${opts.capture ? '15min' : STATEMENT_TIMEOUT}'`);
     // The production database uses SSD costs. Keep the same covering-index
@@ -3020,13 +3045,15 @@ export async function runRows(
     // records' keys are read once, and when there are at most SEARCH_FEW_RECORDS the totals and the page read only them
     // by key (a DA code nationally: one scan, not two; 3.7 s → ~2 s). More, and the scan stops at the first ones past it.
     // The search's own reads (its keys, its count, its page) share SEARCH_BUDGET_MS on a broad list; the list's
-    // figures keep the route's limit. withSearchBudget turns the budget's end into the drawer's reason.
+    // figures keep the route's limit, and so does a search read on every row (searchBudgetReason). withSearchBudget
+    // turns the budget's end into the drawer's reason.
     let searchDeadline: number | null = null;
+    const budgetReason = words.length && !opts.capture ? searchBudgetReason(search!, candidates) : null;
     const budgeted = async <T,>(read: () => Promise<T>): Promise<T> => {
-      if (!words.length || opts.capture) return await read();
+      if (budgetReason === null) return await read();
       searchDeadline ??= Date.now() + SEARCH_BUDGET_MS;
       await tx.unsafe(`set local statement_timeout = '${Math.max(500, searchDeadline - Date.now())}ms'`);
-      try { return await read(); } finally { await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`).catch(() => {}); }
+      try { return await budgetedRead(budgetReason, read); } finally { await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`).catch(() => {}); }
     };
     if (words.length && !candidates?.indexed) {
       const keys = (await budgeted(() => readEvidenceQuery(s`
