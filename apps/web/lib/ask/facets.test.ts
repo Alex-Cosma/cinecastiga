@@ -64,6 +64,16 @@ describe("the key a part's counts are kept under (plan §2.5)", () => {
     expect(facetKey(stat(), "kind", { ...stamp, checkpoint: "c2" })).not.toBe(key);
     expect(facetKey(stat(), "kind", { ...stamp, build: "seap:1:2:4" })).not.toBe(key);
   });
+  it("keeps the winners' chips on the whole draft: each conditions the others' counts (S5 review)", () => {
+    const firms = (filters: AskSpec["filters"]): AskSpec => ({ block: "table", dim: "supplier", measure: "value", filters: { uatSiruta: 54975, ...filters } });
+    const key = facetKey(firms({}), "winners", stamp);
+    expect(facetKey(firms({ mainClient: true }), "winners", stamp)).not.toBe(key);
+    expect(facetKey(firms({ newSince: 2025, newScope: "registry" }), "winners", stamp)).not.toBe(key);
+    expect(facetKey(firms({ newSince: 2024, newScope: "buyer" }), "winners", stamp)).not.toBe(facetKey(firms({ newSince: 2024, newScope: "archive" }), "winners", stamp));
+    expect(facetKey(firms({ minEmployees: 1, maxEmployees: 9 }), "winners", stamp)).not.toBe(key);
+    const buyers: AskSpec = { block: "table", dim: "authority", measure: "value", filters: {} };
+    expect(facetKey({ ...buyers, filters: { dominantSupplier: true } }, "winners", stamp)).not.toBe(facetKey(buyers, "winners", stamp));
+  });
   it("keeps one rank vector per ranking, whatever its length", () => {
     const table: AskSpec = { block: "table", dim: "supplier", measure: "value", topN: 10, filters: {} };
     expect(facetKey(table, "locate", stamp)).toBe(facetKey({ ...table, topN: 25 }, "locate", stamp));

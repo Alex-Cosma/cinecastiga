@@ -523,9 +523,12 @@ export async function facetStamp(sql: DbSql): Promise<{ build: string | null; ch
   return { build, checkpoint };
 }
 
-/** The key of a part's counts (plan §2.5): the draft without the part's key, the part, the checkpoint and the marts build. */
+/**
+ * The key of a part's counts (plan §2.5): the draft without the part's key, the part, the checkpoint and the marts build.
+ * F5: the winners' chips count with the draft's other chips (winnersCounts), so their key keeps the whole draft.
+ */
 export function facetKey(spec: AskSpec, part: FacetPart, stamp: { build: string; checkpoint: string | null }): string {
-  const asked = part === "locate" ? rankingSpec(spec) : facetSpec(spec, part);
+  const asked = part === "locate" ? rankingSpec(spec) : part === "winners" ? spec : facetSpec(spec, part);
   return JSON.stringify([stamp.build, stamp.checkpoint, part, questionKey(asked as unknown as QuestionSpec)]);
 }
 
@@ -606,7 +609,6 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
   if (draft.block === "compare" && draft.filters.sharedPartners) return { error: SHARED_PARTNERS_COUNTS };
   const base = facetSpec(draft, part);
   const stamp = await facetStamp(sql);
-  // F5: the winners' chips count with the draft's other chips (winnersCounts), so they are kept on the draft itself.
   const key = stamp.build ? facetKey(part === "winners" ? draft : base, part, { build: stamp.build, checkpoint: stamp.checkpoint }) : null;
   const kept = key ? counted.get(key) : undefined;
   if (key && kept && Date.now() - kept.at <= FACET_TTL_MS) {
