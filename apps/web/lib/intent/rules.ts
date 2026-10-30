@@ -4,7 +4,7 @@ import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
 import { countWords } from "../ask/answer-text";
 import { placeKey } from "./places";
-import { AMOUNT_LENS, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
+import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
@@ -357,6 +357,13 @@ export class RulesInterpreter implements QuestionInterpreter {
       c.take(h.i, h.j, "modifier");
       range[bound.end === "min" ? "purchaseValueMin" : "purchaseValueMax"] = bound.lei;
       from = Math.min(from, h.i); to = Math.max(to, h.j);
+    }
+    // An entity's total over a bound ("au câștigat peste 10 milioane de lei") is no filter yet: said, and kept from the
+    // domains, whose catalog reads the folded "peste" as pește (S5 review).
+    for (const h of c.all(ANY_AMOUNT)) {
+      if (!amountBound(h.m)) continue;
+      c.take(h.i, h.j, "blocked");
+      out.notes.push(`Un prag pe totalul unei firme sau instituții nu e încă un filtru; „${c.span(h.i, h.j).text}” nu a fost aplicat.`);
     }
     if (to < 0) return;
     // Named as the chip names it ("de peste 1,5 mil. lei"): the tokens lost the typed "1,5" and "1.000.000".
