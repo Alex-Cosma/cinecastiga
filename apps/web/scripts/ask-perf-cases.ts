@@ -667,5 +667,15 @@ function f3Cases(): PerfCase[] {
       all(set({ authorityKind: "local_admin" }), years(2025)), { path: "rows", scope: { county: "Ilfov" }, barMs: 2000 }),
     perfCase("sources:map-cluj-same-seat-2025", "sources", "Sursele firmelor din județ, Cluj, 2025", "map",
       all(set({ firmSeat: "same" }), years(2025)), { path: "rows", scope: { county: "Cluj" }, barMs: 2000 }),
+    // D2 (owner-D2-rollups): the per-inhabitant ranking on agg_entity_year (compile.ts perCapitaPlanFor); the 41 county
+    // councils; "primăria X" with every identity of the town hall (Cluj-Napoca: 2146445 and 2165580).
+    perfCase("national:table-authorities-per-capita-2025", "national", "Instituțiile după valoarea pe locuitor, 2025", "table",
+      all(top({ dim: "authority", measure: "value_per_capita" }), years(2025)), { barMs: 2000 }),
+    perfCase("national:table-councils-per-capita-2025", "national", "Consiliile județene după valoarea pe locuitor, 2025", "table",
+      all(top({ dim: "authority", measure: "value_per_capita" }), set({ authorityKind: "consiliu_judetean" }), years(2025)), { barMs: 2000 }),
+    perfCase("filtered:table-cluj-per-capita", "filtered", "Primăriile din Cluj după valoarea pe locuitor", "table",
+      all(top({ dim: "authority", measure: "value_per_capita" }), set({ county: "Cluj" }))),
+    perfCase("filtered:table-uat-cluj-napoca-2024-2025", "filtered", "Firmele care câștigă de la primăria Cluj-Napoca, 2024–2025", "table",
+      all(set({ uatSiruta: PERF_ENTITIES.clujNapocaUat.siruta, uatName: PERF_ENTITIES.clujNapocaUat.name }), years(2024, 2025))),
   ];
 }

@@ -190,3 +190,58 @@ describe("București sector town halls (owner decision F05, 21 October 2026)", (
     expect(officialUnitPopulation(bucuresti.siruta, "bucuresti")).toBe(1716961);
   });
 });
+
+/** The county councils as SEAP names them on local seap (30 Oct 2026), with the second Suceava identity (no records). */
+const COUNCILS: [id: string, name: string, county: string, cui: string, siruta: number | null, records: boolean][] = [
+  ["2146261", "UAT JUDETUL ALBA", "Alba", "4562583", -100, true], ["2146025", "Consiliul Judetean Arad", "Arad", "3519941", -100, true],
+  ["2146700", "JUDETUL ARGES", "Arges", "4229512", -100, true], ["2146675", "JUDETUL BACAU", "Bacau", "5057580", -100, true],
+  ["2144651", "JUDETUL BIHOR", "Bihor", "4244997", -100, true], ["2146777", "Judetul Bistrita-Nasaud", "Bistrita-Nasaud", "4347550", -100, true],
+  ["2146500", "JUDETUL BOTOSANI", "Botosani", "3372955", -100, true], ["2146353", "CONSILIUL JUDETEAN BRAILA", "Braila", "4205491", -100, true],
+  ["2145843", "Judetul Brasov", "Brasov", "4384150", -100, true], ["2146819", "Consiliul Judetean Buzau", "Buzau", "3662495", -100, true],
+  ["2146458", "Consiliul Judetean Calarasi", "Calarasi", "4294030", -100, true], ["2145265", "JUDETUL CARAS-SEVERIN", "Caras-Severin", "3227890", -100, true],
+  ["2143172", "JUDETUL CLUJ (CONSILIUL JUDETEAN)", "Cluj", "4288110", -100, true], ["2145660", "CONSILIUL JUDETEAN CONSTANTA", "Constanta", "2981739", -100, true],
+  ["2145684", "Judetul Covasna", "Covasna", "4201988", -100, true], ["2146524", "Consiliul Judetean Dambovita", "Dambovita", "4280205", -100, true],
+  ["2146728", "CONSILIUL JUDETEAN DOLJ", "Dolj", "4417150", -100, true], ["2145453", "JUDETUL GALATI", "Galati", "3127476", -100, true],
+  ["2146623", "JUDETUL GIURGIU", "Giurgiu", "4938042", -100, true], ["2146579", "CONSILIUL JUDETEAN GORJ", "Gorj", "4956057", -100, true],
+  ["2145299", "JUDETUL HARGHITA", "Harghita", "4245763", -100, true], ["2145766", "U.A.T. JUDETUL HUNEDOARA", "Hunedoara", "4374474", -100, true],
+  ["2146627", "JUDETUL  IALOMITA", "Ialomita", "4231776", -100, true], ["2144818", "JUDETUL IASI", "Iasi", "4540712", -100, true],
+  ["2146508", "JUDETUL ILFOV - CONSILIUL JUDETEAN", "Bucuresti", "4192545", null, true],
+  ["2144736", "JUDETUL MARAMURES (CONSILIUL JUDETEAN MARAMURES)", "Maramures", "3627315", -100, true],
+  ["2145909", "JUDETUL MEHEDINTI", "Mehedinti", "4337344", -100, true], ["2144560", "Judetul  Mures", "Mures", "4322980", -100, true],
+  ["2146304", "Judetul Neamt", "Neamt", "2612839", -100, true], ["2146448", "CONSILIUL JUDETEAN OLT", "Olt", "4394706", -100, true],
+  ["2146560", "CONSILIUL JUDETUL PRAHOVA, DIRECTIA SERVICII SI ACHIZITII PUBLICE", "Prahova", "2842889", null, true],
+  ["2146440", "JUDETUL SALAJ", "Salaj", "4494764", -100, true], ["2145678", "JUDETUL SATU MARE", "Satu Mare", "3897378", -100, true],
+  ["2144638", "JUDETUL SIBIU", "Sibiu", "4406223", -100, true],
+  ["2136274", "CONSILIUL JUDETEAN SUCEAVA", "Suceava", "6728926", null, false], ["2146734", "CONSILIUL JUDETEAN SUCEAVA", "Suceava", "4244512", -100, true],
+  ["2146691", "JUDETUL TELEORMAN", "Teleorman", "4652686", -100, true], ["2145400", "JUDETUL TIMIS", "Timis", "4358029", -100, true],
+  ["2146196", "JUDETUL TULCEA", "Tulcea", "4321607", -100, true], ["2146496", "JUDETUL VALCEA", "Valcea", "2540929", -100, true],
+  ["2146298", "JUDETUL VASLUI", "Vaslui", "3394171", -100, true], ["2144371", "JUDETUL  VRANCEA(CONSILIUL JUDETEAN)", "Vrancea", "4350394", -100, true],
+];
+const councilRows: PopulationMappingRow[] = COUNCILS.map(([id, name, county, cui, siruta, records]) => ({ id, name, county, cui, siruta, records }));
+
+describe("the 41 county councils of the strict list (D2, map final §7.3)", () => {
+  it("hold every county once, CJ Prahova by its procurement directorate's name and CJ Suceava by the identity with records", () => {
+    const index = uniquePopulationMappings(councilRows);
+    const counties = [...index.values()].map((p) => p.county);
+    expect(index.size).toBe(41);
+    expect(new Set(counties).size).toBe(41);
+    expect([...index.values()].every((p) => p.level === "county")).toBe(true);
+    expect(index.get("2146560")).toMatchObject({ county: "PRAHOVA", value: 695119 });
+    expect(index.get("2146734")).toMatchObject({ county: "SUCEAVA", value: 642551 });
+    expect(index.has("2136274")).toBe(false);
+    // CJ Ilfov sits in București and administers Ilfov.
+    expect(index.get("2146508")).toMatchObject({ county: "ILFOV" });
+    // With București, the counties' residents are the country's.
+    expect(counties.reduce((sum, c) => sum + catalog.counties.find((k) => k.name === c)!.population, 0) + bucuresti.population).toBe(catalog.nationalPopulation);
+  });
+
+  it("keep a unit two identities with records claim out of the denominator, and never take another directorate for the council", () => {
+    // Without the records (before D2) nobody knew which Suceava identity bought: neither entered.
+    const unknown = councilRows.map(({ records: _, ...row }) => row);
+    expect(uniquePopulationMappings(unknown).size).toBe(40);
+    const both = councilRows.map((row) => ({ ...row, records: true }));
+    expect([...uniquePopulationMappings(both).values()].some((p) => p.county === "SUCEAVA")).toBe(false);
+    const other: PopulationMappingRow = { id: "1", name: "CONSILIUL JUDETUL PRAHOVA, DIRECTIA GENERALA DE ASISTENTA SOCIALA", county: "Prahova", cui: "1", siruta: null, records: true };
+    expect(uniquePopulationMappings([other]).size).toBe(0);
+  });
+});

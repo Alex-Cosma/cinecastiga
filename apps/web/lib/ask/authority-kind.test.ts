@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { AUTHORITY_KINDS } from "./spec";
 import {
-  authorityKindCond, authorityKindExpression, authorityPeerKind, classifyAuthorities, classifyAuthority, isClinicalInstitute, nameKind, townHallKind,
+  authorityKindCond, authorityKindExpression, authorityPeerKind, classifyAuthorities, classifyAuthority, countyCouncilKind, isClinicalInstitute, nameKind, townHallKind,
   type AuthorityKindRow, type LocalityRegistry,
 } from "./authority-kind";
 import { authorityPeerKind as peersKind } from "../peers";
@@ -106,6 +106,21 @@ describe("the kind of a town hall from the locality registry", () => {
     expect(townHallKind(row("UAT Comuna Vânători", "Mehedinți", 113849), REGISTRY)).toBe("comuna");
   });
 
+  it("counts every county council of the strict list, whatever its legal form, and none of their institutions (D2)", () => {
+    // The three names the rules missed locally (1,40 + 2,78 + 3,74 mld. lei), the SEAP names as they are.
+    expect(nameKind("UAT JUDETUL ALBA")).toBeNull();
+    expect(classifyAuthority(row("UAT JUDETUL ALBA", "Alba", -100), REGISTRY)).toBe("consiliu_judetean");
+    expect(classifyAuthority(row("U.A.T. JUDETUL HUNEDOARA", "Hunedoara", -100), REGISTRY)).toBe("consiliu_judetean");
+    expect(classifyAuthority(row("CONSILIUL JUDETUL PRAHOVA, DIRECTIA SERVICII SI ACHIZITII PUBLICE", "Prahova"), REGISTRY)).toBe("consiliu_judetean");
+    expect(classifyAuthority(row("CONSILIUL JUDETEAN SUCEAVA", "Suceava", -100), REGISTRY)).toBe("consiliu_judetean");
+    // Another directorate is a subordinate institution with its own CUI; a county the catalog lacks is no council.
+    expect(countyCouncilKind(row("CONSILIUL JUDETUL PRAHOVA, DIRECTIA GENERALA DE ASISTENTA SOCIALA", "Prahova"))).toBeNull();
+    expect(countyCouncilKind(row("DIRECTIA JUDETEANA DE PAZA PRAHOVA", "Prahova"))).toBeNull();
+    expect(countyCouncilKind(row("JUDETUL ATLANTIDA", null))).toBeNull();
+    // Without a valid CUI, the name rules decide, as before.
+    expect(countyCouncilKind(row("UAT JUDETUL ALBA", "Alba", -100, null))).toBeNull();
+  });
+
   it("never uses a code from another county or for a name without a local-administration form", () => {
     // The name decides: a commune by its name, a municipality by its name.
     const vanatori = row("Comuna Vânători (Primaria Vinatori)", "Vrancea", 113849);
@@ -117,8 +132,9 @@ describe("the kind of a town hall from the locality registry", () => {
     // A school or a hospital mapped to its locality's code is still a school or a hospital.
     expect(classifyAuthority(row("Scoala Gimnaziala Patulele", "Mehedinti", 112879), REGISTRY)).toBe("scoala");
     expect(classifyAuthority(row("Spitalul Orasenesc Baneasa", "Constanta", 61069), REGISTRY)).toBe("spital");
-    // Without a county, no code corroborates.
-    expect(townHallKind(row("MUNICIPIUL CLUJ-NAPOCA", null, 54975), REGISTRY)).toBeNull();
+    // D2: without a county, a code corroborates only with a name no other unit in the country carries.
+    expect(townHallKind(row("MUNICIPIUL CLUJ-NAPOCA", null, 54975), REGISTRY)).toBe("oras_municipiu");
+    expect(townHallKind(row("COMUNA VANATORI", null, 113849), REGISTRY)).toBeNull();
     // Without a valid CUI neither (the locality scope reads only valid CUIs): the name rules decide.
     expect(townHallKind(row("PRIMARIA   ARSURA", "Vaslui", 162149, null), REGISTRY)).toBeNull();
     expect(classifyAuthority(row("PRIMARIA   ARSURA", "Vaslui", 162149, null), REGISTRY)).toBe("oras_municipiu");

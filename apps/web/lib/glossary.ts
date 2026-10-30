@@ -193,7 +193,7 @@ export const GLOSSARY = {
   // Kit G9: the one (?) text of the kind, in Întreabă and in the comparisons; /metodologie#tip-institutie has the rules.
   "tip-institutie": {
     title: "Tipul instituției",
-    text: "Primăriile: după registrul localităților, apoi după nume. Spitale (cu institutele clinice), școli și consilii județene: după nume, aproximativ.",
+    text: "Primăriile: după registrul localităților, apoi după nume. Consiliile județene: toate cele 41. Spitale (cu institutele clinice) și școli: după nume, aproximativ.",
   },
   mediana: {
     title: "Mediana",

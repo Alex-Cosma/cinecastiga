@@ -319,6 +319,26 @@ const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" 
   { name: "sources of the counties", spec: base("table", { dim: "county" }), block: "county" },
 ];
 
+/**
+ * D2 (owner-D2-rollups): the per-inhabitant ranking on agg_entity_year (compile.ts perCapitaPlanFor). The fixture's
+ * Comuna Feleacu (Cluj) and Municipiul Iași get a valid CUI and their county below, so the strict list holds both.
+ * `rollup: false`: a selection the planner sends to agg_pair_year, which stays live.
+ */
+const PER_CAPITA: { name: string; spec: AskSpec; g?: Grounding; sort?: "name" | "county" | "count" | "value"; rollup?: false }[] = [
+  { name: "per inhabitant", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10 }) },
+  { name: "per inhabitant, 2025", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10 }, { yearFrom: 2025, yearTo: 2025 }) },
+  { name: "per inhabitant, direct acquisitions", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10, dataset: "da" }) },
+  { name: "per inhabitant, contracts, 2024", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10, dataset: "contracts" }, { yearFrom: 2024, yearTo: 2024 }) },
+  { name: "per inhabitant in Cluj", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10 }, { county: "Cluj" }), g: CLUJ },
+  { name: "per inhabitant, communes", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10 }, { authorityKind: "comuna" }) },
+  { name: "per inhabitant, paged", spec: base("table", { dim: "authority", measure: "value_per_capita" }) },
+  { name: "per inhabitant, paged by name", spec: base("table", { dim: "authority", measure: "value_per_capita" }), sort: "name" },
+  { name: "per inhabitant, paged by records", spec: base("table", { dim: "authority", measure: "value_per_capita" }), sort: "count" },
+  { name: "per inhabitant, institutions with at least 3 records", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10, minimumRecords: { role: "authority", count: 3 } }) },
+  { name: "per inhabitant without Iași", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10, population: without("authority", "3") }) },
+  { name: "per inhabitant, from firms with 1–9 employees", spec: base("table", { dim: "authority", measure: "value_per_capita", topN: 10 }, { minEmployees: 1, maxEmployees: 9 }), rollup: false },
+];
+
 const THRESHOLD_SPECS: { name: string; spec: AskSpec; g?: Grounding }[] = [
   { name: "institutions, firms with at least 4 records", spec: base("table", { topN: 10, dim: "authority", minimumRecords: { role: "supplier", count: 4 } }) },
   { name: "total, institutions with at least 3 records", spec: base("stat", { minimumRecords: { role: "authority", count: 3 } }) },
@@ -360,6 +380,17 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
           liveSources.set(c.name, live);
         }
+        // D2: the per-inhabitant rankings, live, on the two town halls the strict list finds once they have a CUI and a county.
+        await q`update core.entities set cui_canonical = '4' || id::text, county = case id when 2 then 'Cluj' else 'Iasi' end where id in (2, 3)`;
+        const livePerCapita = new Map<string, BlockData>();
+        for (const c of PER_CAPITA) {
+          const live = await runSpec(q, c.spec, c.g ?? {}, c.sort ? { sort: c.sort, dir: "asc" } : {});
+          if ("error" in live) throw new Error(`${c.name}: ${live.error}`);
+          livePerCapita.set(c.name, live.data);
+        }
+        const percap = livePerCapita.get("per inhabitant")!;
+        expect(percap.block === "table" ? percap.rows.map((r) => [r.entityId, r.population]) : null).toEqual([["2", 5693], ["3", 271692]]);
+
         // F2: the groups partition the firms (trend final §3.1), each in its own order.
         const members = (name: string) => { const d = liveAnswers.get(name)!; return d.block === "trend" ? d.rowsTrend.map((r) => r.entityId) : null; };
         expect(Object.fromEntries(TREND_GROUPS.slice(0, 7).map((c) => [c.name, members(c.name)]))).toEqual({
@@ -490,7 +521,21 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           };
           expect([c.name, canonical(tagless(wired.data))]).toEqual([c.name, canonical(tagless(live))]);
         }
+        // D2: the per-inhabitant rankings the planner sends to agg_entity_year, from it alone.
+        for (const c of PER_CAPITA.filter((x) => x.rollup !== false)) {
+          const wired = await runSpec(q, c.spec, c.g ?? {}, c.sort ? { sort: c.sort, dir: "asc" } : {});
+          if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
+          expect([c.name, wired.data]).toEqual([c.name, livePerCapita.get(c.name)]);
+          const d = wired.data;
+          expect([c.name, d.block === "table" && d.rows.length > 0]).toEqual([c.name, true]);
+        }
         await q.unsafe("rollback to savepoint emptied_marts");
+        // The ones it does not answer stay live, with the live answer.
+        for (const c of PER_CAPITA.filter((x) => x.rollup === false)) {
+          const wired = await runSpec(q, c.spec, c.g ?? {});
+          if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
+          expect([c.name, wired.data]).toEqual([c.name, livePerCapita.get(c.name)]);
+        }
 
         // The source drawer's totals (no local filter) of selections without entity conditions.
         for (const c of SOURCE_CASES) {

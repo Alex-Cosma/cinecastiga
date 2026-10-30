@@ -195,7 +195,8 @@ export default function MetodologiePage() {
             Fără cod, căutăm o singură localitate cu același nume în același județ; altfel decide numele („Primăria comunei …” este o comună).
             Primăriile celor șase sectoare ale Bucureștiului sunt numărate cu orașele și municipiile.
             Spitalele sunt numele care încep cu „Spital” și institutele clinice, de exemplu Fundeni sau institutele oncologice;
-            institutele de medicină legală și de cercetare nu intră. Școlile (cu liceele, colegiile și grădinițele, dar și școli de aviație, poliție sau pompieri) și consiliile județene
+            institutele de medicină legală și de cercetare nu intră. Consiliile județene sunt cele 41 din lista valorii pe locuitor, oricum s-ar numi în SEAP
+            („UAT Județul Alba”, „Consiliul Județul Prahova, Direcția Servicii și Achiziții Publice”). Școlile (cu liceele, colegiile și grădinițele, dar și școli de aviație, poliție sau pompieri)
             sunt după nume, aproximativ. Un nume care se potrivește la două tipuri nu are tip, iar o instituție cu nume neobișnuit poate rămâne fără tip.</p>
         </details>
         <details className="method-fold" id="sediul-firmei">
@@ -214,7 +215,7 @@ export default function MetodologiePage() {
             pentru peste 10% din valoare. „Cota firmei” este valoarea firmei din toate achizițiile județului cu aceleași condiții, hașurată sub 3
             înregistrări ale firmei sau 20 ale județului. Fișa județului arată cel mai mare cumpărător și cea mai mare înregistrare, cu procentul lor din județ.</p>
           <p>„Primăriile și consiliile județene” sunt lista strictă de la valoarea pe locuitor (nume, județ și cod SIRUTA concordante, plus primăriile
-            celor șase sectoare), fără instituțiile, serviciile și companiile lor. Fiecare stă în județul pe care îl administrează: Consiliul Județean
+            celor șase sectoare și toate cele 41 de consilii județene), fără instituțiile, serviciile și companiile lor. Fiecare stă în județul pe care îl administrează: Consiliul Județean
             Ilfov, cu sediul în București, e la Ilfov. „Pe locuitor” împarte valoarea lor la populația rezidentă a județului (INS, RPL 2021);
             un județ al cărui consiliu județean nu e încă în listă e hașurat. Pe mai mulți ani, cifra e a întregii perioade, nu o medie pe an.</p>
         </details>

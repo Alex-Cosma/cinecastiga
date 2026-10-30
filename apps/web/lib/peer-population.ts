@@ -102,10 +102,19 @@ export function sectorSuggestions(query: string, county: string): { siruta: numb
     return pos > 0 ? [{ siruta: unit.siruta, name: `Sectorul ${n}`, population: unit.population, pos }] : [];
   });
 }
+// The legal forms of a county council's own name; "Consiliul Județului" (D2: CJ Prahova buys as "Consiliul Judetul
+// Prahova, Directia Servicii si Achizitii Publice") is the council itself.
+const countyForm = /^(?:(?:unitatea administrativ teritoriala|uat) )?(?:consiliul judetean|consiliu judetean|consiliul judetul|judetul|judet) /;
+/**
+ * D2: the one label a county council's own name may carry after the county: its public procurement directorate, a
+ * department of the council under the council's CUI (CJ Prahova, CUI 2842889: county roads, public transport, waste).
+ * A subordinate institution with its own CUI ("Direcția Generală de Asistență Socială …") never has this label.
+ */
+const councilDepartment = / directia servicii si achizitii publice$/;
 export function governmentLevel(name: string): "local" | "county" | "sector" | null {
   const normalized = populationFold(name);
   if (/^(?:(?:primaria|consiliul local)(?: al)? )?sector(?:ul|ului)? [1-6](?: |$)/.test(normalized)) return "sector";
-  if (/^(?:(?:unitatea administrativ teritoriala|uat) )?(consiliul judetean|consiliu judetean|judetul|judet) /.test(normalized)) return "county";
+  if (countyForm.test(normalized)) return "county";
   if (localPrefix.test(normalized) || /^primaria /.test(normalized)) return "local";
   return null;
 }
@@ -131,12 +140,16 @@ function localName(name: string,county:string): string[] | null {
   }
   return [clean(normalized)];
 }
-export interface PopulationMappingRow { id: string; name: string; county: string | null; cui: string | null; siruta: number | null }
+export interface PopulationMappingRow {
+  id: string; name: string; county: string | null; cui: string | null; siruta: number | null;
+  /** D2: false when the identity has no records in the marts (no authority profile); absent when unknown. */
+  records?: boolean;
+}
 export function populationForMapping(row: PopulationMappingRow): PeerPopulation | undefined {
   if (!row.cui) return undefined;
   const level = governmentLevel(row.name);
   if (level === "county") {
-    const countyName = populationFold(row.name).replace(/^(?:(?:unitatea administrativ teritoriala|uat) )?(consiliul judetean|consiliu judetean|judetul|judet) /, "");
+    const countyName = populationFold(row.name).replace(countyForm, "").replace(councilDepartment, "");
     const county = catalog.counties.find(item => {
       const name=populationFold(item.name);
       return item.kind === "county" && [name,`${name} consiliul judetean`,`${name} consiliul judetean ${name}`].includes(countyName);
@@ -156,11 +169,21 @@ export function populationForMapping(row: PopulationMappingRow): PeerPopulation 
     sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:unit.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null,
     mappingMethod:row.siruta!==null&&row.siruta>0?"siruta_name_county":"exact_name_county" };
 }
+/**
+ * One identity per unit, the denominator's: a unit that two identities claim has none. D2: an identity without
+ * records (`records: false`, registered in SEAP as a buyer but never buying) does not compete with one that has
+ * records: CJ Suceava (CUI 4244512, every record) against a second "Consiliul Judetean Suceava" (CUI 6728926, none).
+ */
 export function uniquePopulationMappings(rows: PopulationMappingRow[]): Map<string, PeerPopulation> {
   const perEntity = new Map<string, Map<string,PeerPopulation>>(), perUnit = new Map<string, Set<string>>();
-  for (const row of rows) {
-    const population = populationForMapping(row); if (!population) continue;
-    const key = `${population.level}:${population.siruta ?? populationFold(population.county)}`;
+  const mapped = rows.flatMap((row) => {
+    const population = populationForMapping(row);
+    return population ? [{ row, population, key: `${population.level}:${population.siruta ?? populationFold(population.county)}` }] : [];
+  });
+  // The units an identity with records claims.
+  const bought = new Set(mapped.filter((m) => m.row.records !== false).map((m) => m.key));
+  for (const { row, population, key } of mapped) {
+    if (row.records === false && bought.has(key)) continue;
     if (!perEntity.has(row.id)) perEntity.set(row.id,new Map());
     perEntity.get(row.id)!.set(key,population);
     if (!perUnit.has(key)) perUnit.set(key,new Set());
@@ -189,6 +212,21 @@ const administrationForm = /^(?:uat|unitatea? administrativ teritoriala|consiliu
 /** A name with a legal form of a UAT's own administration (F15): the locality scope's rule, and the town halls' kind (lib/ask/authority-kind.ts). */
 export const localAdministrationName = (name: string): boolean =>
   governmentLevel(name) === "local" || administrationForm.test(populationFold(name));
+// The units of each name key in the whole country (sectors apart): an identity without a county is placed only by a
+// name no other unit carries.
+const unitsByName = new Map<string, number>();
+for (const unit of catalog.units) if (unit.kind !== "sector") for (const key of keysBySiruta.get(unit.siruta)!) unitsByName.set(key, (unitsByName.get(key) ?? 0) + 1);
+/**
+ * D2: a legacy code on an identity without a county (Cluj-Napoca's second identity, 2165580) counts when the name is a
+ * local administration's and names that unit and no other in the country. The code alone cannot place it: it was
+ * matched by name without a county (five Vânători share one), so a name that several units carry adds nothing.
+ */
+export function countylessLegacyCode(row: PopulationMappingRow): boolean {
+  const unit = row.siruta !== null && row.siruta > 0 ? units.get(row.siruta) : undefined;
+  if (!unit || unit.kind === "sector" || row.county || !row.cui) return false;
+  const names = localName(row.name, unit.county);
+  return !!names && names.every((name) => keysBySiruta.get(unit.siruta)!.has(name)) && unitsByName.get(names[0]!) === 1;
+}
 /**
  * Locality scope of Întreabă (finding F15): the valid-CUI authorities that are
  * the local administration of one UAT. The legacy `reference.authority_uat`
@@ -196,55 +234,68 @@ export const localAdministrationName = (name: string): boolean =>
  * counties share one code, Sfântu Gheorghe CV points to an Ialomița commune),
  * so a positive legacy code counts only when the official county of that code
  * is the authority's own county and the name has a local-administration legal
- * form. When no such row exists, the strict exact name+county fallback of the
- * population join applies to authorities without a positive legacy code
- * (Pitești, Târgu Jiu, București), only when it yields a single candidate. As
- * in that join, a conflicting legacy code never falls back to a name guess.
- * Unlike the population index, two corroborated legacy identities of the same
- * administration are both kept: this is a filter, not a denominator, and
- * dropping them would hide the administration's own records. Schools,
- * services, companies, sector institutions and entities without a county never
- * enter. A București sector selects only its own town hall (sectorTownHallUnit),
- * and the city selects Primăria Municipiului București, never the sectors.
+ * form, or, for an identity without a county, when its name names that unit
+ * alone in the country (countylessLegacyCode). Authorities without a positive
+ * legacy code enter by the strict exact name+county match of the population
+ * join (Pitești, Târgu Jiu, București). As in that join, a conflicting legacy
+ * code never falls back to a name guess.
+ *
+ * D2 (plan §9 trusa 10, table 4): "primăria X" is the union of the UAT's
+ * identities, on every question at once. This is a filter, not a denominator
+ * (uniquePopulationMappings keeps one identity per unit): two corroborated
+ * identities, a name match beside a corroborated one and several name matches
+ * are all the same administration's records. Schools, services, companies,
+ * sector institutions and entities of another county never enter. A București
+ * sector selects only its own town hall's identities (sectorTownHallUnit), and
+ * the city selects Primăria Municipiului București, never the sectors.
  */
-export function localAuthorityIdsForUnit(rows: PopulationMappingRow[], siruta: number): string[] {
+export function localAuthorityIdentities(rows: PopulationMappingRow[], siruta: number): { ids: string[]; joined: string[] } {
   const unit = units.get(siruta);
-  if (!unit) return [];
-  const legacy = new Set<string>(), fallback = new Set<string>();
+  if (!unit) return { ids: [], joined: [] };
+  const legacy = new Set<string>(), fallback = new Set<string>(), countyless = new Set<string>();
   if (unit.kind === "sector") {
     // Owner decision F05: a sector selects only its own town hall (sectorTownHallUnit).
     for (const row of rows) if (sectorTownHallUnit(row)?.siruta === siruta) (row.siruta !== null ? legacy : fallback).add(row.id);
-    const ids = legacy.size > 0 ? legacy : fallback.size === 1 ? fallback : new Set<string>();
-    return [...ids].sort((a, b) => Number(a) - Number(b));
-  }
-  for (const row of rows) {
-    if (row.siruta !== null && row.siruta > 0) {
-      if (row.siruta === siruta && row.county && countyFold(row.county) === countyFold(unit.county)
-        && localAdministrationName(row.name)) legacy.add(row.id);
-      continue;
+  } else {
+    for (const row of rows) {
+      if (row.siruta !== null && row.siruta > 0) {
+        if (row.siruta !== siruta || !localAdministrationName(row.name)) continue;
+        if (row.county ? countyFold(row.county) === countyFold(unit.county) : countylessLegacyCode(row)) (row.county ? legacy : countyless).add(row.id);
+        continue;
+      }
+      const population = populationForMapping(row);
+      if (population?.level === "local" && population.siruta === siruta) fallback.add(row.id);
     }
-    const population = populationForMapping(row);
-    if (population?.level === "local" && population.siruta === siruta) fallback.add(row.id);
   }
-  // The name fallback recovers a missing mapping; it never adds a second
-  // identity beside a corroborated one or chooses between several candidates.
-  const ids = legacy.size > 0 ? legacy : fallback.size === 1 ? fallback : new Set<string>();
-  return [...ids].sort((a, b) => Number(a) - Number(b));
+  const sort = (ids: Iterable<string>) => [...new Set(ids)].sort((a, b) => Number(a) - Number(b));
+  // Before D2: the corroborated codes, else a single name match; never a county-less identity.
+  const before = new Set(legacy.size > 0 ? legacy : fallback.size === 1 ? fallback : []);
+  const ids = sort([...legacy, ...countyless, ...fallback]);
+  return { ids, joined: ids.filter((id) => !before.has(id)) };
+}
+/** The ids of "primăria X" (localAuthorityIdentities): the one function every question reads. */
+export function localAuthorityIdsForUnit(rows: PopulationMappingRow[], siruta: number): string[] {
+  return localAuthorityIdentities(rows, siruta).ids;
 }
 export async function readLocalAuthorityIds(q: DbSql, siruta: number): Promise<string[]> {
   return localAuthorityIdsForUnit(await readPopulationMappingRows(q), siruta);
+}
+export async function readLocalAuthorityIdentities(q: DbSql, siruta: number): Promise<{ ids: string[]; joined: string[] }> {
+  return localAuthorityIdentities(await readPopulationMappingRows(q), siruta);
 }
 export async function readPopulationMappings(q: DbSql): Promise<Map<string,PeerPopulation>> {
   return uniquePopulationMappings(await readPopulationMappingRows(q));
 }
 export async function readPopulationMappingRows(q: DbSql): Promise<PopulationMappingRow[]> {
   const [tables] = await q`select to_regclass('reference.authority_uat') is not null present`;
-  const localRows = tables?.present ? await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,au.uat_siruta siruta
+  // D2: whether the identity has records (an authority profile), for uniquePopulationMappings.
+  const records=q`exists(select 1 from marts.entity_profile p where p.entity_id=e.id and p.role='authority') records`;
+  const localRows = tables?.present ? await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,au.uat_siruta siruta,${records}
     from reference.authority_uat au join core.entities e on e.id=au.entity_id where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991 and ${peerRolePredicate(q,"authority")}` : [];
-  const prefixes=['consiliul judetean %','consiliu judetean %','judetul %','judet %','uat %','unitatea administrativ teritoriala %',
+  const prefixes=['consiliul judetean %','consiliu judetean %','consiliul judetul %','judetul %','judet %','uat %','unitatea administrativ teritoriala %',
     'municipiul %','municipiu %','orasul %','oras %','comuna %','primaria %','consiliul local %','u a t %','sector %','sectorul %'];
   const missingMappings=tables?.present?q`not exists(select 1 from reference.authority_uat au where au.entity_id=e.id)`:q`true`;
-  const countyRows = await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,null::integer siruta from core.entities e
+  const countyRows = await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,null::integer siruta,${records} from core.entities e
     where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991
       and e.name_normalized like any(${prefixes}::text[]) and ${missingMappings} and ${peerRolePredicate(q,"authority")}`;
   return [...localRows,...countyRows] as unknown as PopulationMappingRow[];
