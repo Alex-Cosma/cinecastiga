@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { inDaCode, SEARCH_LIST_CAP, searchCandidates, searchWords, type SearchLists } from "./source-search";
+import { commonWordsSearch, withSearchBudget } from "./compile";
 
 /*
  * „Caută în surse”, names first (S5 PRE-trend): the words, the forms a word can
@@ -79,5 +80,16 @@ describe("searchCandidates", () => {
     expect(searchCandidates(fake, ["srl"], [many], { daCodesPlain: true, range: null })).toBeNull();
     const out = searchCandidates(fake, ["srl", "vaslui"], [many, { ...none, counties: ["Vaslui"] }], { daCodesPlain: true, range: null })!;
     expect(render(out.cond).text).toBe("(d.county = any($1::text[]) or (d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $2) > 0))");
+  });
+});
+
+describe("a search past its budget on a broad list (S5 review)", () => {
+  const timeout = () => Promise.reject(new Error("canceling statement due to statement timeout"));
+  it("says what to add instead of the route's timeout, only for a search", async () => {
+    expect(await withSearchBudget("s.r.l. bucuresti", timeout)).toEqual({ error: commonWordsSearch("s.r.l. bucuresti") });
+    expect(commonWordsSearch("srl")).toBe("„srl”: cuvintele apar în prea multe nume pentru toată lista. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.");
+    await expect(withSearchBudget(null, timeout)).rejects.toThrow("statement timeout");
+    await expect(withSearchBudget("srl", () => Promise.reject(new Error("boom")))).rejects.toThrow("boom");
+    expect(await withSearchBudget("srl", async () => 7)).toBe(7);
   });
 });
