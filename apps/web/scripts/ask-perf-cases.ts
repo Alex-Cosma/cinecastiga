@@ -678,6 +678,11 @@ function f3Cases(): PerfCase[] {
       all(top({ dim: "supplier" }), buyer(), years(2024, 2025), set({ mainClient: true }))),
     perfCase("sources:table-authorities-dominant-2025", "sources", "Sursele instituțiilor la care o firmă ia peste jumătate, 2025", "table",
       all(top({ dim: "authority" }), set({ dominantSupplier: true }), years(2025)), { path: "rows", barMs: 2000 }),
+    // S5 review: a kind's institutions one firm dominates over every year (no period: neither the annual scan nor the
+    // years' keys), from none (county councils) to tens of thousands of records (communes, schools).
+    ...(["spital", "consiliu_judetean", "scoala", "comuna"] as const).map((kind) =>
+      perfCase(`sources:table-authorities-dominant-${kind}`, "sources", `Sursele instituțiilor (${kind}) la care o firmă ia peste jumătate, toți anii`, "table",
+        all(top({ dim: "authority" }), set({ dominantSupplier: true, authorityKind: kind })), { path: "rows", barMs: 2000 })),
     perfCase("sources:table-suppliers-registered-2024-2025", "sources", "Sursele firmelor înmatriculate din 2024, 2025", "table",
       all(top({ dim: "supplier" }), set({ newSince: 2024, newScope: "registry" }), years(2025)), { path: "rows", barMs: 2000 }),
     // S5 tests: the sources and CSV of the national „prima dată” list (all the listed firms' records, 41 k for 2025) and of a

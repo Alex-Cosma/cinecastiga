@@ -2428,6 +2428,8 @@ export const PROFILE_VALUE_WALK = 200_000;
 const PROFILE_VALUE_KEYS = 100_000;
 /** A county drawer of at most this many records reads them from the county indexes, not by the key (runRows). */
 const FEW_IN_COUNTY = 2000;
+/** The records of the institutions one firm dominates (F5) up to which their drawer reads them on the authority index. */
+const FEW_WINNER_RECORDS = 200_000;
 let profileLimits = { records: PROFILE_ROLLUP_RECORDS, walk: PROFILE_VALUE_WALK };
 /** Tests only: a fixture's cohorts are a few records; null restores the limits. */
 export function profileLimitsForTests(limits: { records: number; walk: number } | null): void {
@@ -2584,6 +2586,10 @@ export async function runRows(
   if (!profile && ctx.newFirms?.scope === "registry" && !(await martColumns(sql)).registeredYear) return { error: REGISTERED_YEAR_MISSING };
   if (!profile && asksWinners(ctx))
     await resolveWinners(sql, ctx, { source: txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as ReturnType<DbSql>, rollups: await rollupsReady(sql) });
+  // The institutions one firm dominates are of the kind already (resolveWinners): the kind's condition on the records is
+  // their own list, so the planner reads them on the authority indexes, not the whole county index for a kind's
+  // thousands of ids next to a few (every year, warm: schools 2.9 s → 0.54 s, communes 5.4 s → 0.12 s; S5 review).
+  if (ctx.kindIds && ctx.winners?.authorities) ctx.kindIds = ctx.winners.authorities;
   // F4, „Doar clienții comuni”: the answer's P, read the same way (compare-prestep.ts), so a card's records are its own.
   if (!profile && asksSharedPartners(spec, ctx)) {
     ctx.shared = (await sharedPartnersPrestep(sql, ctx, txAggFragment(sql, dataset, false, fullValueUnion(ctx)) as unknown as ReturnType<DbSql>)).ids;
@@ -3128,7 +3134,12 @@ export async function runRows(
     // the key's walk reads the county's records of every year for them (1.7–2.4 s); hidden, the county indexes bound
     // both channels (S5 PRE-sources). A dense selection keeps the key (the firms of Cluj in Cluj: 593,168, 86 ms).
     const fewInCounty = total <= FEW_IN_COUNTY && Boolean(spec.filters.county || scope.county) && !daRange;
-    const keyHidden = sizeInCounty || fewInCounty || spec.filters.firmSeat === "abroad";
+    // The institutions one firm dominates (F5) over every year, or another span the annual scan does not read: a list of
+    // ids, often a few institutions (hospitals: 1, 16 records; county councils: none), so the key's backward walk read
+    // the whole mart for them (20–22 s, the route's limit; S5 review). Hidden, the authority index bounds both channels
+    // (hospitals and county councils 0.07 s warm).
+    const fewWinners = total <= FEW_WINNER_RECORDS && ctx.winners?.authorities != null && !daRange;
+    const keyHidden = sizeInCounty || fewInCounty || fewWinners || spec.filters.firmSeat === "abroad";
     const keyOrder = keyHidden ? sql`(d.ref_id + 0)` : sql`d.ref_id`;
     const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
       : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
