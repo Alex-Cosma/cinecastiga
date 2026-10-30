@@ -6,7 +6,7 @@ import { trendGroupOfRow, trendListOf, trendNoun, trendPartition, trendProfiles,
 import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import {
-  compareParties, compareSharedPartners, compareTopPartners, forgetRollupsReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
+  compareParties, compareSharedPartners, compareTopPartners, forgetKindRollup, forgetRollupsReady, kindRollupReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
   coverRefReady, monthRollupReady, rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
@@ -142,9 +142,9 @@ async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" 
   const band = spec.block === "table" && spec.dim === "supplier" && (spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined)
     ? { min: spec.filters.minEmployees ?? null, max: spec.filters.maxEmployees ?? null } : null;
   const ctx = ctxOf(spec, g);
-  const plan = planRollup(band ? { ...ctx, minEmployees: null, maxEmployees: null } : ctx, needOf(spec), { months: true });
+  const plan = planRollup(band ? { ...ctx, minEmployees: null, maxEmployees: null } : ctx, needOf(spec), { months: true, kinds: true });
   if ("reason" in plan) throw new Error(plan.reason);
-  const source = plan.source.table === "entity" || plan.source.table === "entityMonth" ? `${plan.source.table}:${plan.source.role}` : plan.source.table;
+  const source = plan.source.table === "entity" || plan.source.table === "entityMonth" || plan.source.table === "entityKind" ? `${plan.source.table}:${plan.source.role}` : plan.source.table;
   const num = (rows: { v: string; n: string }[]) => rows.map((r) => ({ value: Number(r.v), count: Number(r.n) }));
   switch (spec.block) {
     case "table": {
@@ -295,6 +295,20 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "map of direct acquisitions", spec: base("map", { dataset: "da" }), source: "cpv" },
   { name: "map of hospitals", spec: base("map", {}, { authorityKind: "spital" }), source: "entity:authority" },
   { name: "map of contracts, 2025", spec: base("map", { dataset: "contracts" }, { yearFrom: 2025, yearTo: 2025 }), source: "cpv" },
+  // S5 PRE-answers: a purchase kind or a size of the kit's ranges per entity of one role, on agg_entity_kind_year
+  // (the fixture's goods are 33…, 09… and 30…, its works 45…; its purchases of at least 1 mil. lei 109, 114, 201 and 203).
+  { name: "firms, goods", spec: base("table", { topN: 10 }, { purchaseKind: "produse" }), source: "entityKind:supplier" },
+  { name: "paged ranking of firms, goods", spec: base("table", {}, { purchaseKind: "produse" }), source: "entityKind:supplier" },
+  { name: "paged ranking of institutions, works, by name", spec: base("table", { dim: "authority" }, { purchaseKind: "lucrari" }), source: "entityKind:authority", sort: "name" },
+  { name: "institutions, works, 2025", spec: base("table", { topN: 10, dim: "authority" }, { purchaseKind: "lucrari", yearFrom: 2025, yearTo: 2025 }), source: "entityKind:authority" },
+  { name: "firms, purchases of at least 1 mil. lei", spec: base("table", { topN: 10 }, { purchaseValueMin: 1_000_000 }), source: "entityKind:supplier" },
+  { name: "institutions, direct acquisitions under 10.000 lei", spec: base("table", { topN: 10, dim: "authority", dataset: "da" }, { purchaseValueMax: 10_000 }), source: "entityKind:authority" },
+  { name: "firms with 1–9 employees, goods", spec: base("table", { topN: 10 }, { purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }), source: "entityKind:supplier" },
+  { name: "firms, goods, one firm left out", spec: base("table", { topN: 10, population: without("supplier", "10") }, { purchaseKind: "produse" }), source: "entityKind:supplier" },
+  { name: "trend of firms, goods", spec: base("trend", { topN: 10, trend: { change: "all" } }, { ...Y, purchaseKind: "produse" }), source: "entityKind:supplier" },
+  { name: "trend of institutions, under 100.000 lei, growths", spec: base("trend", { topN: 10, dim: "authority", trend: { change: "up" } }, { ...Y, purchaseValueMax: 100_000 }), source: "entityKind:authority" },
+  { name: "total of firms with 1–9 employees, goods", spec: base("stat", {}, { purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }), source: "entityKind:supplier" },
+  { name: "map of firms seated in another county, at least 1 mil. lei", spec: base("map", {}, { firmSeat: "other", purchaseValueMin: 1_000_000 }), source: "entityKind:supplier" },
 ];
 
 const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" | "authorities" }[] = [
@@ -317,6 +331,10 @@ const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" 
   { name: "sources of the breakdown in Cluj", spec: base("breakdown", {}, { county: "Cluj" }), g: CLUJ, block: "breakdown" },
   { name: "sources of the years of contracts (one undated)", spec: base("timeseries", { dataset: "contracts" }), block: "timeseries" },
   { name: "sources of the counties", spec: base("table", { dim: "county" }), block: "county" },
+  // S5 PRE-answers: a ranking by a purchase kind or a size, the records an attribute of its firms selects: agg_entity_kind_year's rows.
+  { name: "sources of the firms, goods", spec: base("table", { topN: 10 }, { purchaseKind: "produse" }), block: "firms" },
+  { name: "sources of the institutions, at least 1 mil. lei, 2025", spec: base("table", { topN: 10, dim: "authority" }, { purchaseValueMin: 1_000_000, yearFrom: 2025, yearTo: 2025 }), block: "authorities" },
+  { name: "sources of the total of firms with 1–9 employees, works", spec: base("stat", {}, { purchaseKind: "lucrari", minEmployees: 1, maxEmployees: 9 }), block: "stat" },
 ];
 
 /**
@@ -465,10 +483,12 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         // F3-rows adds agg_months and agg_national_mix (their parity: series.integration.test.ts).
         expect(report.rows).toMatchObject({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36, agg_county_month: 18 });
         // F5 adds agg_map_year (its parity: map-facts.integration.test.ts).
-        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_da_year_keys", "agg_entity_month", "agg_entity_year", "agg_map_year", "agg_months", "agg_national_mix", "agg_pair_year"]);
+        // S5 PRE-answers adds agg_entity_kind_year: agg_entity_year by purchase kind and size range (its sums: the ingestion build test).
+        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_da_year_keys", "agg_entity_kind_year", "agg_entity_month", "agg_entity_year", "agg_map_year", "agg_months", "agg_national_mix", "agg_pair_year"]);
+        expect(report.kindYearMs).toBeGreaterThanOrEqual(0);
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
-        forgetRollupsReady(); forgetMixRollupReady();
-        expect(await rollupsReady(q)).toBe(true);
+        forgetRollupsReady(); forgetMixRollupReady(); forgetKindRollup();
+        expect([await rollupsReady(q), await kindRollupReady(q)]).toEqual([true, true]);
         // The ceiling: 2,000,000.00 counts, 2,000,000.01 does not, a zero never.
         const [ceiling] = await q`select count(*)::int n, sum(v)::text v from marts.agg_pair_year where authority_id in (2, 4) and supplier_id = 10`;
         expect(ceiling).toMatchObject({ n: 2, v: "3999999.99" });
@@ -544,7 +564,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           const wired = await runRows(q, c.spec, g, 0);
           if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
           expect([c.name, drawer(wired)]).toEqual([c.name, drawer(live)]);
-          const plan = planRollup(ctxOf(c.spec, g), needOf(c.spec));
+          const plan = planRollup(ctxOf(c.spec, g), needOf(c.spec), { kinds: true });
           if ("reason" in plan) throw new Error(`${c.name}: ${plan.reason}`);
           const r = await rollupSourceTotals(q, plan, c.block);
           if ("reason" in r) throw new Error(`${c.name}: ${r.reason}`);

@@ -297,13 +297,27 @@ export function localMapSql(sql: DbSql, o: { ctx: PredicateCtx; dataset: Dataset
  * F5-map), so a domain that large waits for a rollup (PRECOMPUTE.md); a fifth of it reads in well under a second.
  */
 export const MAP_DOMAIN_ROWS = 150_000;
+/**
+ * The records a national domain reads at most on the code's covering index (da_tx_cpv_cover_idx: the direct
+ * acquisitions of the domain from the index alone) for „Din care” and the map's county facts to stay in the bar
+ * (S5 PRE-answers, local, warm, rpc 4, 4 MB): medicines 2025 (237k records) „Din care” 0.34 s, 2024–2025 (396k) the
+ * map's facts 0.53 s; every year (1.82M) 1.58 s and 1.44 s (production settings 1.29 s and 1.58 s, first up to
+ * 1.8 s): too near the bar, so above it they wait on PRECOMPUTE.md.
+ */
+export const DOMAIN_LIVE_ROWS = 1_000_000;
+/**
+ * The same for the parts that group a domain once per institution, firm or bar (the windows' counts, the bars'
+ * largest record): medicines every year (1.82M records) 0.35–0.39 s warm, 0.65–0.93 s first.
+ */
+export const DOMAIN_GROUP_ROWS = 2_000_000;
 
 /**
  * Whether a national selection's facts can be read live on the CPV code index: a domain (a term's prefixes), whose
  * records in agg_cpv_year (its years and channel, before the selection's other conditions: an upper bound) are at
- * most MAP_DOMAIN_ROWS. Without a domain (months, a size alone) or above it: no (PRECOMPUTE.md).
+ * most `limit` (MAP_DOMAIN_ROWS on the plain code index, DOMAIN_LIVE_ROWS on its covering twin). Without a domain
+ * (months, a size alone) or above it: no (PRECOMPUTE.md).
  */
-export async function domainOnIndex(sql: DbSql, ctx: PredicateCtx, dataset: Dataset): Promise<boolean> {
+export async function domainOnIndex(sql: DbSql, ctx: PredicateCtx, dataset: Dataset, limit = MAP_DOMAIN_ROWS): Promise<boolean> {
   if (!ctx.cpvPrefixes.length) return false;
   const parts: Fragment[] = [sql`(${ctx.cpvPrefixes.map((x) => sql`p.cpv_code like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`];
   if (ctx.cpvExclude.length) parts.push(sql`not (${ctx.cpvExclude.map((x) => sql`p.cpv_code like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
@@ -311,5 +325,5 @@ export async function domainOnIndex(sql: DbSql, ctx: PredicateCtx, dataset: Data
   if (ctx.yearFrom !== null) parts.push(sql`p.y >= ${String(ctx.yearFrom)}`);
   if (ctx.yearTo !== null) parts.push(sql`p.y <= ${String(ctx.yearTo)}`);
   const [row] = (await sql`select coalesce(sum(p.n), 0)::bigint::text n from marts.agg_cpv_year p where ${andAll(sql, parts)}`) as unknown as { n: string }[];
-  return Number(row?.n ?? 0) <= MAP_DOMAIN_ROWS;
+  return Number(row?.n ?? 0) <= limit;
 }

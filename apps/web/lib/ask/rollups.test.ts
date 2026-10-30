@@ -124,6 +124,36 @@ describe("which rollup answers a selection (24 Oct 2026 slow cases)", () => {
     expect(source({ purchaseValueMax: 10_000 }, { by: "supplier" })).toBe("purchase value: the whole value is not in the rollups");
   });
 
+  it("reads a kind or a size of the kit's ranges per entity of one role from agg_entity_kind_year, once built (S5 PRE-answers)", () => {
+    const kinds = (ctx: Partial<RollupCtx>, need: Parameters<typeof planRollup>[1]) => {
+      const plan = planRollup({ ...national, ...ctx }, need, { kinds: true });
+      return "reason" in plan ? plan.reason : { ...plan.source, size: plan.filters.size, kind: plan.filters.purchaseKind };
+    };
+    // Rankings, trends and leaders of one role, with conditions on that role only (its kind, size, seat, exclusions).
+    expect(kinds({ purchaseKind: "produse" }, { by: "supplier" })).toEqual({ table: "entityKind", role: "supplier", size: null, kind: "produse" });
+    expect(kinds({ purchaseKind: "servicii", county: "Cluj", yearFrom: 2025, yearTo: 2025 }, { by: "authority" })).toEqual({ table: "entityKind", role: "authority", size: null, kind: "servicii" });
+    expect(kinds({ purchaseValueMin: 1_000_000 }, { by: "supplier" })).toEqual({ table: "entityKind", role: "supplier", size: [3], kind: null });
+    expect(kinds({ purchaseValueMin: 10_000, purchaseValueMax: 100_000 }, { by: "authority" })).toEqual({ table: "entityKind", role: "authority", size: [1], kind: null });
+    expect(kinds({ purchaseValueMax: 100_000, purchaseKind: "lucrari", minEmployees: 1, maxEmployees: 9 }, { by: "supplier" }))
+      .toEqual({ table: "entityKind", role: "supplier", size: [0, 1], kind: "lucrari" });
+    expect(kinds({ purchaseKind: "produse", population: without("supplier", "1") }, { by: "supplier" })).toMatchObject({ table: "entityKind", role: "supplier" });
+    // A total of records an attribute of one role selects; without one, a kind stays on agg_cpv_year, a size on agg_national_mix.
+    expect(kinds({ purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }, { by: "total" })).toMatchObject({ table: "entityKind", role: "supplier" });
+    expect(kinds({ purchaseKind: "produse" }, { by: "total" })).toMatchObject({ table: "cpv" });
+    expect(kinds({ purchaseValueMin: 1_000_000 }, { by: "total" })).toBe("purchase value: agg_entity_kind_year holds one role, with conditions on that role only");
+    // Live: the other role's condition, a domain, a threshold, months, bounds typed in, exclusions on a total, breakdowns.
+    expect(kinds({ purchaseKind: "produse", minEmployees: 1 }, { by: "authority" })).toBe("CPV with an entity ranking: not in the rollups");
+    expect(kinds({ purchaseValueMin: 1_000_000, kind: "spital", kindIds: HOSPITALS }, { by: "supplier" })).toBe("purchase value: agg_entity_kind_year holds one role, with conditions on that role only");
+    expect(kinds({ purchaseKind: "produse", cpvPrefixes: ["33"] }, { by: "supplier" })).toBe("CPV with an entity ranking: not in the rollups");
+    expect(kinds({ purchaseValueMin: 1_000_000, cpvPrefixes: ["33"] }, { by: "supplier" })).toBe("purchase value: with a domain, months or a threshold, not in the rollups");
+    expect(kinds({ purchaseKind: "produse", minimumRecords: { role: "supplier", count: 5 } }, { by: "supplier" })).toBe("CPV with an entity ranking: not in the rollups");
+    expect(kinds({ purchaseValueMin: 50_000, purchaseValueMax: 250_000 }, { by: "supplier" })).toBe("purchase value: the whole value is not in the rollups");
+    expect(kinds({ purchaseKind: "produse", population: without("supplier", "1"), minEmployees: 1 }, { by: "total" })).toBe("CPV with an entity condition: not in the rollups");
+    expect(kinds({ purchaseValueMin: 1_000_000 }, { by: "cpv" })).toBe("purchase value: agg_entity_kind_year holds one role, with conditions on that role only");
+    // Not built yet (kindRollupReady): as before.
+    expect(source({ purchaseKind: "produse" }, { by: "supplier" })).toBe("CPV with an entity ranking: not in the rollups");
+  });
+
   it("fails closed on a condition it does not know (a key of a later stage)", () => {
     // Keys of the filter registry that are not in the rollups: refused while they hold a value…
     for (const [key, value] of Object.entries({ registeredFrom: 2024, firmAgeFrom: 2024, localAdminIds: ["1"] }))

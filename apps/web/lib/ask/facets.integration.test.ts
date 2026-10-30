@@ -258,8 +258,15 @@ describe.runIf(Boolean(connection))("the windows' counts (dedicated rollback fix
       expect(seats.options.reduce((n, o) => n + o.n, seats.rest?.n ?? 0)).toBeGreaterThan(seats.total.n);
       expect([seats.total.n, cents(seats.total.value_ron)]).toEqual(Object.values(await answer(q, table("supplier", Y))));
       expect(seats.rest).toMatchObject({ label: "Nu se poate compara", n: 3 });
-      // A kind of purchase per institution stays live (the rollups keep no code per entity): it waits on the marts stage.
-      expect(await facetCounts(q, stat({ ...Y, purchaseKind: "lucrari" }), "kind")).toEqual({ precompute: ENTITY_LIVE });
+      // S5 PRE-answers: a kind of purchase per institution or firm nationally reads agg_entity_kind_year (it waited on the
+      // marts stage before, ENTITY_LIVE above): each option is its answer.
+      // So does a domain the code's covering index bounds (domainBound, once the nightly build has the index): counted
+      // live, each option its answer.
+      await q`create index da_tx_cpv_cover_idx on marts.da_transactions (cpv_code text_pattern_ops, finalization_date)`;
+      await q`insert into core.cpv_codes (code, name_ro, revision, division) values ('33600000-6', 'Produse farmaceutice', '2008', '33')`;
+      forgetRollupsReady();
+      for (const c of entityParts("nationally, works", { ...Y, purchaseKind: "lucrari" })) await expectAnswers(q, c, counts(await facetCounts(q, c.draft, c.part)));
+      for (const c of entityParts("nationally, medicines", { ...Y, cpvTerm: "336" })) await expectAnswers(q, c, counts(await facetCounts(q, c.draft, c.part)));
     }, { globals: [...ENGINE_GLOBAL_TABLES, "app.monitoring_refreshes"] });
   });
 

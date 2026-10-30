@@ -13,7 +13,8 @@ import { buyerRowsSql, dominantIdsSql, rankedFacts, RELATION_MIN_RECORDS, RELATI
 import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "./months-window";
 import { isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { retarget } from "./filters/retarget";
-import { monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
+import { cpvCoverReady, kindRollupReady, monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
+import { DOMAIN_GROUP_ROWS, domainOnIndex } from "./map-facts";
 import { mixRollupReady, mixWhere } from "./series-rollups";
 import { countyDisplay } from "./resolved-spec";
 import { martColumns } from "./mart-columns";
@@ -192,7 +193,7 @@ interface Rows {
 async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: Ready, opts: { full?: boolean } = {}): Promise<Rows> {
   const { ctx, trend } = p;
   // A trend's same months read agg_entity_month / agg_county_month once a build has made them (as its answer).
-  const plan = need && ready.rollups ? planRollup(ctx, need, { months: ready.months }) : null;
+  const plan = need && ready.rollups ? planRollup(ctx, need, { months: ready.months, kinds: ready.kinds }) : null;
   if (plan && "source" in plan) {
     const r = rollupRows(sql, plan, "p", { years: !trend });
     const where: Fragment = trend ? sql`${r.where} and p.y in (${String(trend.yearA)}, ${String(trend.yearB)})` : r.where;
@@ -213,11 +214,12 @@ async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: R
 }
 
 /** The rollups the nightly build has made (probed with the pool, before the transaction: rollups.ts, series-rollups.ts). */
-export interface Ready { rollups: boolean; months: boolean; mix: boolean }
-const NO_ROLLUPS: Ready = { rollups: false, months: false, mix: false };
+export interface Ready { rollups: boolean; months: boolean; mix: boolean; kinds: boolean; cpvCover: boolean }
+const NO_ROLLUPS: Ready = { rollups: false, months: false, mix: false, kinds: false, cpvCover: false };
 export async function readyOf(sql: DbSql): Promise<Ready> {
   const rollups = await rollupsReady(sql);
-  return { rollups, months: rollups && await monthRollupReady(sql), mix: await mixRollupReady(sql) };
+  return { rollups, months: rollups && await monthRollupReady(sql), mix: await mixRollupReady(sql), kinds: rollups && await kindRollupReady(sql),
+    cpvCover: rollups && await cpvCoverReady(sql) };
 }
 
 /**
@@ -236,9 +238,10 @@ const mixOf = (sql: DbSql, p: Prepared, ready: Ready): Fragment | null => {
  * person's firms, county or kind of institution) on the direct acquisitions:
  * grouped live per institution or firm it reads millions of records (a
  * domain nationally, 2025: 3–5 s, S4 F3-facets). Its windows show their
- * options without numbers until the marts stage keeps the entities per CPV
- * division (PRECOMPUTE.md, ENTITY_LIVE); the contracts alone (1.1M records)
- * stay counted.
+ * options without numbers (PRECOMPUTE.md, ENTITY_LIVE) unless a rollup answers
+ * them (a kind or a size: agg_entity_kind_year) or the code's covering index
+ * bounds its domain (domainBound, S5 PRE-answers); the contracts alone (1.1M
+ * records) stay counted.
  */
 export function nationalLive(p: Prepared): boolean {
   const w = p.ctx;
@@ -247,6 +250,19 @@ export function nationalLive(p: Prepared): boolean {
 }
 /** The PRECOMPUTE.md entry the national live entity counts wait on. */
 export const ENTITY_LIVE = "Numerele ferestrelor pe instituții și firme, cu domeniu, național";
+/**
+ * A national selection (nationalLive) whose domain the code's covering index bounds (S5 PRE-answers): at most `limit`
+ * records of the domain in its years and channel (agg_cpv_year, an upper bound of the selection's; map-facts.ts
+ * DOMAIN_GROUP_ROWS, DOMAIN_LIVE_ROWS), once the index is built (`cover`: cpvCoverReady). Its parts are then counted
+ * live like an anchored selection's.
+ */
+export async function domainBound(sql: DbSql, p: Pick<Prepared, "ctx" | "dataset">, cover: boolean, limit: number = DOMAIN_GROUP_ROWS): Promise<boolean> {
+  return cover && p.ctx.cpvPrefixes.length > 0 && await domainOnIndex(sql, p.ctx, p.dataset, limit);
+}
+/** Whether a part of a national selection waits on PRECOMPUTE.md: no index anchors it and no small domain bounds it. */
+async function waitsOnRollup(sql: DbSql, p: Prepared, ready: Ready): Promise<boolean> {
+  return nationalLive(p) && !(await domainBound(sql, p, ready.cpvCover));
+}
 
 /** A grouped row: the group's key (null: no option holds it), the value and the count; `f`, a seat's foreign flag. */
 interface Grouped { k: string | null; v: string; n: string; f?: boolean }
@@ -330,7 +346,7 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
     case "kind": {
       // Per institution, then its kind (plan §2.5: 16 s on the records, a few hundred ms grouped).
       const r = await rowsOf(sql, p, { by: "authority" }, ready);
-      if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+      if (r.live && await waitsOnRollup(sql, p, ready)) return { precompute: ENTITY_LIVE };
       const id = r.id("authority") ?? sql`d.authority_id`;
       const kinds = await readAuthorityKinds(sql);
       return { unit: "institutions", rows: await run<Grouped>(sql`
@@ -357,7 +373,7 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
         `) };
       }
       const r = await rowsOf(sql, p, { by: "supplier" }, ready);
-      if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+      if (r.live && await waitsOnRollup(sql, p, ready)) return { precompute: ENTITY_LIVE };
       const id = r.id("supplier") ?? sql`d.supplier_id`;
       return { unit: "firms", rows: await run<Grouped>(sql`
         select ${key}, coalesce(sum(g.v), 0) v, count(*) n
@@ -384,7 +400,7 @@ async function transactionCounts(sql: DbSql, p: Prepared, part: CountPart, ready
  */
 async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit; whole: number } | { precompute: string }> {
   const r = await rowsOf(sql, p, { by: "supplier" }, ready);
-  if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+  if (r.live && await waitsOnRollup(sql, p, ready)) return { precompute: ENTITY_LIVE };
   const id = r.id("supplier") ?? sql`d.supplier_id`;
   const seat = seatOf(sql, p.ctx.seatColumn);
   const rows = await run<Grouped & { t: boolean }>(sql`
@@ -656,7 +672,7 @@ async function winnersCounts(sql: DbSql, p: Prepared, draft: AskSpec, ready: Rea
   const share = (v: number, total: number) => total ? v / total : 0;
   if (p.spec.dim === "authority") {
     const r = await rowsOf(sql, p, { by: "authority" }, ready);
-    if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+    if (r.live && await waitsOnRollup(sql, p, ready)) return { precompute: ENTITY_LIVE };
     const id = r.id("authority") ?? sql`d.authority_id`;
     const dominant = dominantIdsSql(sql, p.ctx, { source: txAggFragment(sql, p.dataset, false, fullValueUnion(p.ctx)) as unknown as Fragment, rollups: ready.rollups });
     // The institutions once (a materialized list), then both sums over the grouped selection.
@@ -673,7 +689,7 @@ async function winnersCounts(sql: DbSql, p: Prepared, draft: AskSpec, ready: Rea
   if (everyRecord(p, true)) grouped = sql`select ep.entity_id id, ep.total_ron_split v from marts.entity_profile ep where ep.role = 'supplier' and ep.total_ron_split > 0`;
   else {
     const r = await rowsOf(sql, p, { by: "supplier" }, ready);
-    if (r.live && nationalLive(p)) return { precompute: ENTITY_LIVE };
+    if (r.live && await waitsOnRollup(sql, p, ready)) return { precompute: ENTITY_LIVE };
     const id = r.id("supplier") ?? sql`d.supplier_id`;
     grouped = sql`select ${id} id, ${r.v} v from ${r.from} where ${r.where} and ${id} is not null group by 1`;
   }

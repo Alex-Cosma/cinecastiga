@@ -1,7 +1,9 @@
 import type { DbSql } from "@seap/db";
 import { ROLLUP_CTX_KEYS, type RollupCtx } from "./rollups";
 import { procedureCond, purchaseKindCond } from "./predicates";
-import { VALUE_RANGES } from "./purchase";
+import { sizeRanges } from "./purchase";
+
+export { sizeRanges };
 
 /**
  * The F3 rollups of the nightly build (packages/db/src/ask-rollups.ts
@@ -35,19 +37,6 @@ export async function mixRollupReady(sql: DbSql): Promise<boolean> {
 }
 /** Tests only: forget the probe. */
 export function forgetMixRollupReady(): void { ready = null; }
-
-/**
- * The size ranges (VALUE_RANGES, [min, max)) a size covers when its bounds are
- * the ranges' own (a pill, or two of them in a row); null for bounds typed in
- * (50.000–250.000 lei), which agg_national_mix cannot split.
- */
-export function sizeRanges(min: number | null, max: number | null): number[] | null {
-  const lows = VALUE_RANGES.map((r) => r.purchaseValueMin ?? 0);
-  const from = min === null || min === 0 ? 0 : lows.indexOf(min);
-  const to = max === null ? VALUE_RANGES.length : lows.indexOf(max);
-  if (from < 0 || to < 0 || to <= from) return null;
-  return Array.from({ length: to - from }, (_, i) => from + i);
-}
 
 /**
  * The conditions each rollup reads; any other one holding a value sends the question live (fail closed, as planRollup).

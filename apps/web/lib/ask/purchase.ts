@@ -159,6 +159,19 @@ export function valueWords(range: ValueRange): string | null {
   return `între ${valueBound(min)} și ${valueBound(max)} lei`;
 }
 
+/**
+ * The size ranges (VALUE_RANGES, [min, max)) a size covers when its bounds are
+ * the ranges' own (a pill, or two of them in a row); null for bounds typed in
+ * (50.000–250.000 lei), which agg_national_mix and agg_entity_kind_year cannot split.
+ */
+export function sizeRanges(min: number | null, max: number | null): number[] | null {
+  const lows = VALUE_RANGES.map((r) => r.purchaseValueMin ?? 0);
+  const from = min === null || min === 0 ? 0 : lows.indexOf(min);
+  const to = max === null ? VALUE_RANGES.length : lows.indexOf(max);
+  if (from < 0 || to < 0 || to <= from) return null;
+  return Array.from({ length: to - from }, (_, i) => from + i);
+}
+
 /** The kit's range a size is on, or null for a range typed in ("Între … și … lei"). */
 export function valueRangeIndex(range: ValueRange): number {
   return VALUE_RANGES.findIndex((r) => r.purchaseValueMin === range.purchaseValueMin && r.purchaseValueMax === range.purchaseValueMax);

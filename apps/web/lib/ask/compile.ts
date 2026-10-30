@@ -27,8 +27,8 @@ import { asksSharedPartners, sharedPartnersPrestep } from "./compare-prestep";
 import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
-  compareInstitutionParties, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, monthRollupReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
+  compareInstitutionParties, comparePairRows, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
+  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions, scatterDensity,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import {
@@ -756,8 +756,9 @@ function rollupNeed(spec: AskSpec): RollupNeed | null {
 async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Promise<{ source: RollupSource; filters: RollupFilters } | null> {
   const need = rollupNeed(spec);
   if (!need || spec.measure === "value_per_capita" || !(await rollupsReady(sql))) return null;
-  // A trend's same months read agg_entity_month once a build has made it.
-  const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false });
+  // A trend's same months read agg_entity_month, a kind or a size per entity agg_entity_kind_year, once a build has made them.
+  const kinds = ctx.purchaseKind !== null || ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null ? await kindRollupReady(sql) : false;
+  const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false, kinds });
   return "source" in plan ? plan : null;
 }
 
@@ -1274,6 +1275,8 @@ export async function runSpec(
   // keep: agg_national_mix holds it to the leu (the same rows as „Din care”'s „Doar acestea ›”; S4 review: national,
   // under 10.000 lei in 2025, 2.4–3.3 s live over 8–10M buffers). A size typed in, months, an entity stay live.
   const statMix = spec.block === "stat" && !rollup && !unfiltered && await mixRollupReady(sql) ? mixWhere(sql, w, "p") : null;
+  // A comparison's partners from agg_pair_year where its selection is a channel, a period and a buyer county (rollups.ts comparePairRows).
+  const comparePairs = spec.block === "compare" && await rollupsReady(sql) && await pairIndexReady(sql);
 
   // The relations (network, sankey; relations.ts): the question's conditions on the centre's records, an old link's
   // record threshold, and the same question on every channel for the strip's shares (none where a procedure or a
@@ -1848,7 +1851,9 @@ export async function runSpec(
           // Two passes over the two entities' records (rollups.ts compareRecordPass, comparePartnerPass), each read by
           // the queries of its kind: six reads of the records before (SELGROS and DEDEMAN on „Directe”: 2.05 s, 0.9 s so).
           const recordPass = compareRecordPass(s, partners, { src: src as unknown as ReturnType<DbSql>, singleBid: dataset !== "da", domains: COMPARE_DOMAINS });
-          const partnerPass = comparePartnerPass(s, partners, { parties: !institutions });
+          const partnerPass = comparePartnerPass(s, partners, {
+            parties: !institutions, grouped: comparePairs ? comparePairRows(s, w, { focalRole, focalId: String(focalId!), compareId: String(compareId!) }) : null,
+          });
           const [streams, parties, years, domains, top, shared, joint, profiles, risk] = await Promise.all([
             recordPass.then((r) => r.streams),
             institutions ? institutions.then((r) => r.parties) : partnerPass.then((r) => r.parties),
