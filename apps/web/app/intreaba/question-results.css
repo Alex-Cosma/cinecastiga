@@ -343,6 +343,8 @@
   color: var(--muted);
   margin: 18px 0;
   line-height: 1.7;
+  /* A (?) in the note opens over this line, not over the page's top (the map's lens note). */
+  position: relative;
 }
 .cq-result .ask-bigstat {
   padding: 32px 0;

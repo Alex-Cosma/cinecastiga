@@ -39,3 +39,4 @@
   .ev-party>a{display:inline-flex;align-items:center;min-width:44px;min-height:44px}
   .ev-formula-profile>a{display:flex;align-items:center;min-height:44px}
 }
+@media(max-width:599px){.evidence-drawer .ev-filtered-summary button{min-height:44px;padding:12px 0}}
