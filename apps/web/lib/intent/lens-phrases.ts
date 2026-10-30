@@ -92,7 +92,13 @@ const AMOUNT_WORDS: Readonly<Record<string, number>> = { un: 1, o: 1, una: 1, do
  * entity's total is not a purchase's size: "au cheltuit peste 10 milioane",
  * "a câștigat peste …" are not read.
  */
-export const AMOUNT_LENS = new RegExp(String.raw`(?<!\b(?:cheltuit|cheltuie|cheltuiesc|castigat|castiga|incasat|primit|totalizat|insumat|adunat)(?: \w+)?\s)\b(?:de )?(peste|mai mari de|mai mare de|de minimum|sub|mai mici de|mai mica de|de maximum)\s+${AMOUNT_NUMBER}(?:\s+(?:de\s+)?(mie|mii|mil|milion|milioane|mld|miliard|miliarde))?(?:\s+(?:de\s+)?(lei|ron))?\b`);
+const AMOUNT_BODY = String.raw`\b(?:de )?(peste|mai mari de|mai mare de|de minimum|sub|mai mici de|mai mica de|de maximum)\s+${AMOUNT_NUMBER}(?:\s+(?:de\s+)?(mie|mii|mil|milion|milioane|mld|miliard|miliarde))?(?:\s+(?:de\s+)?(lei|ron))?\b`;
+export const AMOUNT_LENS = new RegExp(String.raw`(?<!\b(?:cheltuit|cheltuie|cheltuiesc|castigat|castiga|incasat|primit|totalizat|insumat|adunat)(?: \w+)?\s)${AMOUNT_BODY}`);
+/**
+ * Any amount with a bound ("peste 10 milioane de lei"), a purchase's size or not: what AMOUNT_LENS leaves (an
+ * entity's total, "au câștigat peste …") is read once more, so its "peste" never reaches the domains (pește, S5 review).
+ */
+export const ANY_AMOUNT = new RegExp(AMOUNT_BODY);
 
 /** The bound in lei of an AMOUNT_LENS match, and which end it is; null without lei or a magnitude, or under 1 leu. */
 export function amountBound(m: RegExpExecArray): { end: "min" | "max"; lei: number } | null {

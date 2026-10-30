@@ -343,7 +343,16 @@ describe("the selection's filters in words: the kind, the size, the firm's seat 
   it("an entity's total is not a purchase's size: «au cheltuit peste …», «câștigă peste …» are not read", async () => {
     const spent = await ask("ce primarii din cluj au cheltuit peste 10 milioane de lei");
     expect(spent.r.spec?.filters.purchaseValueMin).toBeUndefined();
+    // Reported as unread, said, and kept from the domains: the catalog read the folded "peste" as pește (S5 review).
     expect(spent.i.leftover).toEqual(expect.arrayContaining(["peste"]));
+    expect(spent.r.interpretation.notes).toContain("Un prag pe totalul unei firme sau instituții nu e încă un filtru; „peste 10 milioane de lei” nu a fost aplicat.");
+    for (const q of ["Care firme au câștigat peste 10 milioane de lei în 2025?", "Ce primării au cheltuit peste 1 milion de lei pe servicii?"]) {
+      const { i, r } = await ask(q);
+      expect(i.subjects).toEqual([]);
+      expect(r.spec?.filters).not.toHaveProperty("cpvTerm");
+      expect(r.spec?.filters).not.toHaveProperty("purchaseValueMin");
+      expect(r.interpretation.notes.join(" ")).toMatch(/^Un prag pe totalul unei firme sau instituții nu e încă un filtru; „peste 1/);
+    }
   });
   it("a size the question cannot run says why: over the direct acquisitions' ceiling, a national ranking per firm", async () => {
     const da = await ask("cine castiga achizitiile directe de peste 3 milioane de lei in cluj");
