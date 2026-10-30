@@ -964,7 +964,10 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
   } else if (block === "firms" || block === "authorities") {
     const role: Role = block === "firms" ? "supplier" : "authority";
     const out = role === "supplier" ? plan.filters.excludeSuppliers : plan.filters.excludeAuthorities;
-    if (plan.source.table !== "entity" || plan.source.role !== role || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees) || byYearAndCounty(plan.filters)))
+    // S5 review: a firm's own year (F5's „Prima dată”, „Înmatriculate”) is such an attribute too (national „prima dată”
+    // 2025: 2.95 s live, an index-only walk of the year's 2.39M direct acquisitions against 17,508 firms).
+    if (plan.source.table !== "entity" || plan.source.role !== role
+      || !(out.length || role === "supplier" && (plan.filters.seat || plan.filters.employees || plan.filters.newFirms) || byYearAndCounty(plan.filters)))
       return { reason: "a ranking's source totals read agg_entity_year when an attribute of the firm or an exclusion selects its entities" };
   } else if (plan.source.table === "entity" || plan.source.table === "entityKind") {
     // A total, a map, an evolution or the counties of records selected by an attribute of their firm (F4's seat, the
