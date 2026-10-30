@@ -24,6 +24,8 @@ export interface EntityHit {
   county: string | null;
   roles: string[];
   total: number;
+  /** D2, only with `uat=1`: the locality this town hall is an identity of (lib/ask/town-hall-pick.ts). */
+  uat?: { siruta: number; name: string; tip: string; county: string };
 }
 
 export interface SearchResult {
