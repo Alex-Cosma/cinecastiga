@@ -97,7 +97,7 @@ const isCode = (term: string) => /^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+
 const TIP_PREFIX: Record<string, string> = { municipiu: "Municipiul", "oraș": "Orașul", "comună": "Comuna" };
 const countyOf = (folded: string) => COUNTIES.find((name) => foldQuestion(name).replace(/[^a-z]+/g, " ") === foldQuestion(folded).replace(/[^a-z]+/g, " ")) ?? folded;
 /** "Municipiul Buzău (Buzău)", the stored label of a locality (today's builder). */
-const localityLabel = (item: NonNullable<SuggestionData["uat"]>[number]) => {
+const localityLabel = (item: Pick<NonNullable<SuggestionData["uat"]>[number], "name" | "tip" | "county">) => {
   const prefix = TIP_PREFIX[item.tip];
   return `${prefix ? `${prefix} ` : ""}${item.name} (${countyOf(item.county)})`;
 };
@@ -107,7 +107,7 @@ const localityLabel = (item: NonNullable<SuggestionData["uat"]>[number]) => {
  * and /api/search for entities by name or CUI. The last text wins; "" asks
  * for the starters where there are some (the biggest entities, CPV divisions).
  */
-function useSuggestions(entities: boolean, county?: string, remote = true) {
+function useSuggestions(entities: boolean, county?: string, remote = true, townHalls = false) {
   const [state, setState] = useState<{ query: string; loading: boolean; data: SuggestionData; hits: EntityHit[] }>({ query: "", loading: false, data: {}, hits: [] });
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
@@ -121,20 +121,25 @@ function useSuggestions(entities: boolean, county?: string, remote = true) {
     if (county) params.set("county", foldQuestion(county));
     void Promise.allSettled([
       fetch(`/api/suggest?${params}`, { signal: ctrl.signal }).then(async (r) => { if (!r.ok) throw new Error("suggest"); return r.json() as Promise<SuggestionData>; }),
-      entities && query.length >= 2 ? fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal }).then(async (r) => { if (!r.ok) throw new Error("search"); return r.json() as Promise<{ hits: EntityHit[] }>; }) : Promise.resolve({ hits: [] as EntityHit[] }),
+      entities && query.length >= 2 ? fetch(`/api/search?q=${encodeURIComponent(query)}${townHalls ? "&uat=1" : ""}`, { signal: ctrl.signal }).then(async (r) => { if (!r.ok) throw new Error("search"); return r.json() as Promise<{ hits: EntityHit[] }>; }) : Promise.resolve({ hits: [] as EntityHit[] }),
     ]).then(([data, hits]) => {
       if (ctrl.signal.aborted) return;
       setState({ query, loading: false, data: data.status === "fulfilled" ? data.value : {}, hits: hits.status === "fulfilled" ? hits.value.hits ?? [] : [] });
     });
-  }, [entities, county, remote]);
+  }, [entities, county, remote, townHalls]);
   return { ...state, search };
 }
 
-/** Entities of a role: exact search hits first (with their id), then the suggestions not already listed, then the exact name typed. */
-function entityResults(role: Role, data: SuggestionData, hits: readonly EntityHit[], query: string, group?: string): Found[] {
+/**
+ * Entities of a role: exact search hits first (with their id), then the suggestions not already listed, then the exact
+ * name typed. D2 (final table §3.2): with `townHalls`, a town hall's hit is written as its locality, the union of its
+ * identities, as the locality search writes it (the server says which hits are: /api/search `uat=1`).
+ */
+function entityResults(role: Role, data: SuggestionData, hits: readonly EntityHit[], query: string, group?: string, townHalls = false): Found[] {
   const exact = hits.filter((hit) => hit.roles.includes(role)).map((hit): Found => ({
     id: `${role}:h${hit.id}`, name: hit.name, detail: [hit.county, hit.cui ? `CUI ${hit.cui}` : null].filter(Boolean).join(" · "),
-    ...(group ? { group } : {}), choices: [{ filter: role, value: { name: hit.name, id: hit.id } }],
+    ...(group ? { group } : {}),
+    choices: townHalls && hit.uat ? [{ filter: "locality", value: { siruta: hit.uat.siruta, name: localityLabel(hit.uat) } }] : [{ filter: role, value: { name: hit.name, id: hit.id } }],
   }));
   const seen = new Set(exact.map((hit) => `${foldQuestion(hit.name)}|${foldQuestion(hit.detail?.split(" · ")[0] ?? "")}`));
   const suggested = (data[role] ?? []).filter((item) => !seen.has(`${foldQuestion(item.name)}|${foldQuestion(item.county ?? "")}`)).map((item, i): Found => ({
@@ -427,10 +432,10 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
 }
 
 function InstitutionSearch({ draft, authority, locality, onPick }: { draft: QuestionSpec; authority: boolean; locality: boolean; onPick: (choices: Choice[]) => void }) {
-  const s = useSuggestions(authority, draft.filters.county ? String(draft.filters.county) : undefined);
+  const s = useSuggestions(authority, draft.filters.county ? String(draft.filters.county) : undefined, true, locality);
   const results = useMemo(() => [
     ...(locality ? localityResults(s.data, "Primăria localității") : []),
-    ...(authority && s.query.length >= 2 ? entityResults("authority", s.data, s.hits, s.query, "Instituții") : []),
+    ...(authority && s.query.length >= 2 ? entityResults("authority", s.data, s.hits, s.query, "Instituții", locality) : []),
   ], [s.data, s.hits, s.query, authority, locality]);
   return <>
     <p className="qb-opt-group">Sau una anume</p>

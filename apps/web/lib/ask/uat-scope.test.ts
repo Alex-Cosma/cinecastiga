@@ -5,6 +5,7 @@ import { ground } from "./ground";
 import type { AskSpec } from "./spec";
 import { localAuthorityIdentities, localAuthorityIdsForUnit, type PopulationMappingRow } from "../peer-population";
 import catalog from "../reference/population-rpl2021.json";
+import { townHallSirutas } from "./town-hall-pick";
 
 const unit = (name: string, county: string) => catalog.units.find((u) => u.name === name && u.county === county)!.siruta;
 const vanatoriMH = unit("VÂNĂTORI", "MEHEDINȚI"), vanatoriGL = unit("VÂNĂTORI", "GALAȚI");
@@ -37,6 +38,16 @@ const rows: PopulationMappingRow[] = [
   row("2137074", "Primaria comunei Patulele", "Mehedinti", patulele),
   row("2142681", "COMUNA PATULELE (PRIMARIA PATULELE)", "Mehedinti", null),
 ];
+
+describe("a town hall found by the institution search is its locality (D2, final table §3.2; S5 review)", () => {
+  it("names the locality of each identity the union holds, and nothing else", () => {
+    const cluj = [...rows, row("2146445", "Municipiul Cluj-Napoca", "Cluj", clujNapoca), row("2165580", "MUNICIPIUL CLUJ-NAPOCA", null, clujNapoca)];
+    const found = townHallSirutas(cluj, ["2146445", "2165580", "2142681", "2129990", "2142023", "2146546", "999"]);
+    // Both Cluj-Napoca identities, Pătulele's name match; not the town's service, Galați's Vânători with Mehedinți's
+    // code, Covasna's municipality pointed at an Ialomița commune, nor an unknown id.
+    expect(Object.fromEntries(found)).toEqual({ "2146445": clujNapoca, "2165580": clujNapoca, "2142681": patulele });
+  });
+});
 
 describe("locality scope of Întreabă (finding F15)", () => {
   it("keeps only authorities whose legacy code is in their own county, and recovers unmapped administrations by exact name+county", () => {
