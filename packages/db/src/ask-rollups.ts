@@ -86,6 +86,18 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   of institution or with institutions left out read it (national map facts
  *   of 2025, live: 3.4–4.2 s). Needs the seats the marts stage writes on
  *   entity_profile. See buildAskMapRollup.
+ * - agg_da_year_keys (y, k0, k1, n, odd_codes): the first and last key
+ *   (sicap_da_id) of the direct acquisitions of each year, over every row of
+ *   da_transactions (the analysis population is inside them), their number,
+ *   and how many of their codes are not SEAP's form, "DA" and digits (0 on the
+ *   local copy of 30 October 2026: a drawer's search reads a word as part of a
+ *   DA code only in that form while it stays 0, apps/web/lib/ask/source-search.ts). The source
+ *   page of a trend's „Toate” (plan F2; PRECOMPUTE, S5 PRE-trend) walks the
+ *   primary key from the last key of its years instead of reading the whole
+ *   covering index of the two years (4.6M entries, 2.5–3.2 s); bounded by
+ *   k0..k1 the walk is exact (no record of those years lies outside). Its
+ *   endpoints are those of the table, which the web checks before using it
+ *   (a stale table would hide records). See buildAskYearKeys.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -98,7 +110,7 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year', 'agg_da_year_keys'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
 /** The F3 rollups (plan §4.1, §4.3): built by buildAskMixRollups, probed apart by the web (mixRollupReady). */
 export const ASK_MIX_TABLES = ['agg_months', 'agg_national_mix'] as const satisfies readonly AskRollupTable[];
@@ -120,12 +132,14 @@ export interface AskRollupsReport {
   rows: Record<AskRollupTable, number>;
   /** How long agg_map_year took (F5): the nightly cost of the map's county facts. */
   mapYearMs: number;
+  /** How long agg_da_year_keys took (S5 PRE-trend): the nightly cost of the bounded „Toate” page. */
+  yearKeysMs: number;
 }
 
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year`;
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year, marts.agg_da_year_keys`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
   // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
   // the yearly pairs and both entity rollups are grouped from it.
@@ -209,10 +223,32 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   const mix = await buildAskMixRollups(q);
   const started = Date.now();
   const map = await buildAskMapRollup(q);
+  const mapYearMs = Date.now() - started;
+  const keysStarted = Date.now();
+  const keys = await buildAskYearKeys(q);
   return {
-    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map },
-    mapYearMs: Date.now() - started,
+    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map, agg_da_year_keys: keys },
+    mapYearMs, yearKeysMs: Date.now() - keysStarted,
   };
+}
+
+/**
+ * agg_da_year_keys (see the header): one row per year of da_transactions (and
+ * one for the undated), from every row, so min(k0) and max(k1) are the
+ * table's own first and last key. Part of buildAskRollups, in the transaction
+ * that loads da_transactions; callable alone on marts that are not being
+ * rebuilt (its first build).
+ */
+export async function buildAskYearKeys(q: Query): Promise<number> {
+  await q`drop table if exists marts.agg_da_year_keys`;
+  const created = await q`
+    create table marts.agg_da_year_keys as
+    select substr(finalization_date, 1, 4) y, min(sicap_da_id) k0, max(sicap_da_id) k1, count(*)::bigint n,
+           count(*) filter (where da_code is null or da_code !~ '^DA[0-9]+$')::bigint odd_codes
+    from marts.da_transactions
+    group by 1
+  `;
+  return created.count;
 }
 
 /**
