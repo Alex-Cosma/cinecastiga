@@ -271,7 +271,10 @@ export function localAuthorityIdentities(rows: PopulationMappingRow[], siruta: n
   // Before D2: the corroborated codes, else a single name match; never a county-less identity.
   const before = new Set(legacy.size > 0 ? legacy : fallback.size === 1 ? fallback : []);
   const ids = sort([...legacy, ...countyless, ...fallback]);
-  return { ids, joined: ids.filter((id) => !before.has(id)) };
+  // `joined` moves a number only with records: an identity without an authority profile (`records: false`, Pătulele's
+  // second) is in the list but changes no answer, so it raises no methodology alert (uat-2, S5 review).
+  const bought = new Set(rows.filter((row) => row.records !== false).map((row) => row.id));
+  return { ids, joined: ids.filter((id) => !before.has(id) && bought.has(id)) };
 }
 /** The ids of "primăria X" (localAuthorityIdentities): the one function every question reads. */
 export function localAuthorityIdsForUnit(rows: PopulationMappingRow[], siruta: number): string[] {
