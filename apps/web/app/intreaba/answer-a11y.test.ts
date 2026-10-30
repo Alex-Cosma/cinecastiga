@@ -87,6 +87,13 @@ describe("the answer's targets and contrast", () => {
     expect(compare).toMatch(/\.cmp-sub \{ position: relative;/);
     expect(compare).toMatch(/\.cmp-big \{ position: relative;/);
     expect(css("./builder/filters-kit.css")).toContain(".qb-tipwrap{position:relative}");
+    // S5 tests: the map's note under the lens (Primăriile și consiliile județene, Sediul firmei) holds a (?) too.
+    expect(css("./question-results.css")).toMatch(/\.cq-result \.ask-fine \{[^}]*position: relative;/);
+  });
+
+  it("gives the drawer's „Șterge filtrele listei” 44 px under 600 px (S5 tests: the search's summary)", () => {
+    const drawer = css("./evidence-drawer.css").replace(/\s+/g, "");
+    expect(drawer).toContain("@media(max-width:599px){.evidence-drawer.ev-filtered-summarybutton{min-height:44px;");
   });
 
   it("lets a line break before a part kept whole: no nowrap starts with its own space (S4 tests: the network's summary)", () => {
