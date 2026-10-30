@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import HelpTip, { DisabledReason } from "./HelpTip";
-import type { KitAvailability } from "./kit-types";
+import type { KitAvailability, KitTip } from "./kit-types";
 
 /*
  * Component 5, the switch: a condition without values ("Clientul lor
@@ -23,9 +23,11 @@ export interface ToggleProps {
   /** "half" draws the half disc of "Aceleași luni" in both states instead of + / ✓. */
   glyph?: "half";
   className?: string;
+  /** What the condition means (the explanations live in (?) tips): beside the switch, in both states. */
+  tip?: KitTip;
 }
 
-export default function Toggle({ id, label, pressed, count, onToggle, availability, auto = false, glyph, className }: ToggleProps) {
+export default function Toggle({ id, label, pressed, count, onToggle, availability, auto = false, glyph, className, tip }: ToggleProps) {
   const reasonId = useId();
   const disabled = availability?.state === "disabled" ? availability : null;
   const mark = glyph === "half" ? <i className="qb-half" aria-hidden="true" /> : pressed ? <i className="qb-ck" aria-hidden="true" /> : <span className="qb-plus" aria-hidden="true">+</span>;
@@ -37,6 +39,7 @@ export default function Toggle({ id, label, pressed, count, onToggle, availabili
     aria-describedby={disabled ? reasonId : undefined}
     onClick={() => { if (!disabled) onToggle?.(id, !pressed); }}
   >{mark}{label}{count && <span className="qb-n">{count}</span>}</button>;
-  if (!disabled) return button;
-  return <span className="qb-pair qb-tipwrap-sm">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{disabled.tip && <HelpTip tip={disabled.tip} />}</span>;
+  if (!disabled) return tip ? <span className="qb-pair qb-tipwrap-sm">{button}<HelpTip tip={tip} /></span> : button;
+  const why = disabled.tip ?? tip;
+  return <span className="qb-pair qb-tipwrap-sm">{button}<DisabledReason id={reasonId} reason={disabled.reason} />{why && <HelpTip tip={why} />}</span>;
 }

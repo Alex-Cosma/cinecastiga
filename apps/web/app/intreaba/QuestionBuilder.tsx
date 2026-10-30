@@ -22,7 +22,7 @@ import BuilderWindow from "./builder/BuilderWindow";
 import { useCoverage } from "./builder/coverage";
 import Chip from "./builder/Chip";
 import ConditionRow from "./builder/ConditionRow";
-import Toggle from "./builder/Toggle";
+import Toggle, { type ToggleProps } from "./builder/Toggle";
 import Invitations from "./builder/Invitations";
 import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
@@ -30,7 +30,8 @@ import Sentence, { Presentation } from "./builder/Sentence";
 import UnderChips from "./builder/UnderChips";
 import { useEntityNames } from "./builder/use-entity-names";
 import { useFacet } from "./builder/use-facet";
-import { winnerCount } from "./builder/window-model";
+import { emptyReason, winnerCount } from "./builder/window-model";
+import type { GlossaryId } from "@/lib/glossary";
 import { usePeerDialog } from "./builder/use-peer-dialog";
 import { peerDataFor } from "./builder/PeersWindow";
 import { peerFollowUp } from "../../lib/ask/peer-groups-shared";
@@ -112,6 +113,8 @@ const isCode = (term: string) => /^(?:\d{2,8}|\d{8}-\d)$/.test(term.replace(/\s+
 
 /** F5: the switches of the ranked winners and their option in the part `winners` (facet-parts.ts winnerOption). */
 const WINNER_TOGGLES: Partial<Record<string, string>> = { mainClient: "main", dominantSupplier: "dominant" };
+/** Their (?) (final table §3.6, §3.7): the glossary's words. */
+const WINNER_TIPS: Partial<Record<string, GlossaryId>> = { mainClient: "client-principal", dominantSupplier: "o-firma-ia-jumatate" };
 
 export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, initialNotes, stripPatch = null, onTrendList }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
@@ -156,6 +159,13 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   // F5: the switches of the ranked winners say their number before the click (final table §4), read lazily.
   const winnerToggles = view.rows.some((row) => row.chips.some((chip) => chip.toggle && WINNER_TOGGLES[chip.id]));
   const winners = useFacet(draft, winnerToggles ? "winners" : null);
+  // Their number, their (?) and, with 0, disabled with the reason (kit component 5; an active one still turns off).
+  const winnerToggle = (chip: { id: string; active: boolean }): Pick<ToggleProps, "count" | "tip" | "availability"> => {
+    const value = WINNER_TOGGLES[chip.id];
+    if (!value) return {};
+    const count = winnerCount(winners, value), empty = chip.active ? null : emptyReason(winners, value), tip = WINNER_TIPS[chip.id];
+    return { ...(count ? { count } : {}), ...(tip ? { tip: { id: tip } } : {}), ...(empty ? { availability: { state: "disabled", reason: empty } } : {}) };
+  };
   const dirty = questionKey(draft) !== questionKey(applied ?? seed.spec);
   // A refused link condition says its reason on its chip: the list under the buttons keeps the rest.
   const reasons = new Set(view.refused.map((c) => c.reason));
@@ -359,7 +369,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
         {row.chips.map((chip) => chip.toggle
           // A switch (kit component 5): a second press turns it off, so it has no × and no window.
           ? <Toggle key={chip.key} id={chip.key} label={chip.name} pressed={chip.active}
-            {...(WINNER_TOGGLES[chip.id] && winnerCount(winners, WINNER_TOGGLES[chip.id]!) ? { count: winnerCount(winners, WINNER_TOGGLES[chip.id]!)! } : {})}
+            {...winnerToggle(chip)}
             onToggle={(_id, pressed) => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: pressed ? true : undefined }]); }} />
           : <Chip key={chip.key} id={chip.key} label={chip.label} name={chip.name} active={chip.active} open={open?.key === chip.key} onOpen={openWindow}
             onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
