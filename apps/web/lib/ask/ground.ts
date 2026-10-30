@@ -1,7 +1,7 @@
 import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
-import { readLocalAuthorityIds, sectorUnit } from "../peer-population";
+import { readLocalAuthorityIdentities, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
 import { retiredText, type RetiredTerm } from "./retired-terms";
 import { cpvTermParts } from "./cpv-terms";
@@ -60,6 +60,8 @@ export interface UatGrounding {
    * located in the UAT are not included. */
   authorityIds: string[];
   nAuthorities: number;
+  /** D2: the identities among them that the rule of before D2 left out (answer version uat-2); absent when none. */
+  joined?: string[];
 }
 
 export interface AdminGrounding {
@@ -558,13 +560,14 @@ async function groundUat(sql: DbSql, siruta: number): Promise<UatGrounding> {
   const sector = sectorUnit(siruta);
   const r = rows[0] ?? (sector ? { name: sector.name, county: "bucuresti" } : undefined);
   // Audit F15: never the raw legacy code, which links communes of other counties.
-  const authorityIds = r ? await readLocalAuthorityIds(sql, siruta) : [];
+  const { ids: authorityIds, joined } = r ? await readLocalAuthorityIdentities(sql, siruta) : { ids: [], joined: [] };
   return {
     siruta,
     name: r?.name ?? null,
     county: r?.county ?? null,
     authorityIds,
     nAuthorities: authorityIds.length,
+    ...(joined.length ? { joined } : {}),
   };
 }
 

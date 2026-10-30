@@ -53,11 +53,14 @@ export interface KeyVersion {
  * (the employees of a firm ranking become a group, plan §2.6), whose
  * methodology note a watch on such a ranking gets once; F4: seat (a firm's
  * county is its seat, owner-seat-switch), on every answer of before F4 that
- * shows a firm's own county or selects firms by it (seat.ts seatSwitched).
+ * shows a firm's own county or selects firms by it (seat.ts seatSwitched); D2:
+ * uat ("primăria X" with every identity, only where the town hall gained one)
+ * and "table:per-capita" (the 41 county councils of the per-inhabitant list).
  */
 export const KEY_VERSIONS: Record<string, KeyVersion> = {
-  // Only the kinds D1 corrected: schools and county councils keep their institutions and records
-  // (0 in, 0 out locally); the local administrations (local_admin, F5) are new with F5, so no answer before it.
+  // Only the kinds D1 and D2 corrected: schools keep their institutions and records (0 in, 0 out locally); the county
+  // councils gain the three of the strict list whose names the rules missed (D2: Alba, Hunedoara, Prahova); the local
+  // administrations (local_admin, F5) are new with F5, so no answer before it.
   kind: { version: "kind-2", label: "Tipul instituției", paths: ["filters.authorityKind"], when: (spec) => KIND_2.has(namedKind(spec.filters.authorityKind) ?? "") },
   // F3 (plan §4.2, §2.6): on a ranking of firms the employees narrow the list (CÂȘTIGĂTORII), the same rows and
   // values; the totals and „% din total” are the whole selection's. "Cine conduce?" by value shows place 1 only: no change.
@@ -70,12 +73,23 @@ export const KEY_VERSIONS: Record<string, KeyVersion> = {
   // county on firm profiles selects other firms. Every question has a block: "block" is always present. A question with
   // only F4's own seat keys could not be asked before: no version, as F3's keys (seat.ts seatSwitched).
   seat: { version: "seat-2", label: "Sediul firmei", paths: ["block"], when: (spec) => seatSwitched(spec) },
+  // D2 (plan §9 trusa 10): "primăria X" is every identity of the town hall. Only an answer whose town hall gained one
+  // (runSpec's uatJoined) carries it: a town hall with one identity computes as before.
+  uat: { version: "uat-2", label: "Primăria", paths: ["filters.uatSiruta"] },
+  // D2 (map final §7.3): the per-inhabitant list has all 41 county councils (CJ Prahova, CJ Suceava) and a town hall
+  // whose second identity never bought (Pătulele); every ranking per inhabitant can hold them.
+  "table:per-capita": {
+    version: "table:per-capita-2", label: "Lista pe locuitor", paths: ["measure"], blocks: ["table"],
+    when: (spec) => spec.measure === "value_per_capita",
+  },
 };
-const KIND_2: ReadonlySet<string> = new Set<AuthorityKind>(["comuna", "oras_municipiu", "spital"]);
+const KIND_2: ReadonlySet<string> = new Set<AuthorityKind>(["comuna", "oras_municipiu", "spital", "consiliu_judetean"]);
 
 /** What changed in the methodology with each key version, for "Ce s-a schimbat" (plan §2.6). */
 export const KEY_VERSION_NOTES: Record<string, string> = {
-  "kind-2": "Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice).",
+  "kind-2": "Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice, toate cele 41 de consilii județene).",
+  "uat-2": "Primăria cuprinde acum toate identitățile ei din SEAP.",
+  "table:per-capita-2": "Lista pe locuitor are acum toate cele 41 de consilii județene.",
   "table:employees-2": "Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.",
   "seat-2": "Județul firmei e acum sediul ei: ultima înmatriculare la Registrul Comerțului, apoi SEAP; firmele străine apar separat.",
 };
@@ -87,7 +101,8 @@ export const KEY_VERSION_NOTES: Record<string, string> = {
  * gets the note.
  */
 export function keyVersionNotes(spec: AskSpec): string[] {
-  return Object.values(answerVersion(spec).conditions).map((version) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
+  // A restored link has not run: "primăria X" gets the union's note whether or not its town hall gained an identity.
+  return Object.values(answerVersion(spec, { uatJoined: true }).conditions).map((version) => KEY_VERSION_NOTES[version]).filter((note): note is string => Boolean(note));
 }
 
 /** The version of a question's answer: its block's, and those of the keys it carries. */
@@ -114,12 +129,13 @@ const presentPaths = (spec: AskSpec): Set<string> => {
  * then hears of the switch once, when the seat is read (S4 review: else seat-2 first on the old counties, then a
  * "Rezultat recalculat" when they changed under the same version).
  */
-export function answerVersion(spec: AskSpec, ran: { seatColumn?: false } = {}): AnswerVersion {
+export function answerVersion(spec: AskSpec, ran: { seatColumn?: false; uatJoined?: true } = {}): AnswerVersion {
   const present = presentPaths(spec);
   const conditions: Record<string, string> = {};
   for (const [id, key] of Object.entries(KEY_VERSIONS)) {
     if (key.blocks && !key.blocks.includes(spec.block)) continue;
     if (id === "seat" && ran.seatColumn === false) continue;
+    if (id === "uat" && !ran.uatJoined) continue;
     if (!key.paths.some((path) => present.has(path)) || key.when && !key.when(spec)) continue;
     conditions[id] = key.version;
   }

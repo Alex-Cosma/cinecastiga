@@ -41,7 +41,7 @@ afterEach(() => {
 
 describe("the key versions of this release", () => {
   it("are D1's kind and F3's employees on a ranking of firms: one alert each, with its note", () => {
-    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees", "seat"]);
+    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees", "seat", "uat", "table:per-capita"]);
     // F3 (plan §4.2, DECISIONS F1b-s-employees): the employees of a ranking of firms are a group (CÂȘTIGĂTORII); only „% din total” changes.
     expect(DECLARED["table:employees"]).toMatchObject({ version: "table:employees-2", label: "Angajații firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"], blocks: ["table"] });
     expect(KEY_VERSION_NOTES["table:employees-2"]).toBe("Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.");
@@ -51,12 +51,30 @@ describe("the key versions of this release", () => {
     expect(answerVersion(stat)).toEqual({ question: "stat-1", conditions: {} });
     // The local administrations (F5's local_admin, the map's) are new with F5: no D1 version.
     expect(answerVersion({ ...hospitals, filters: { authorityKind: "local_admin" } })).toEqual({ question: "stat-1", conditions: {} });
-    // Only the kinds D1 corrected: schools and county councils keep their institutions and records.
-    for (const kind of ["comuna", "oras_municipiu", "spital"] as const)
+    // Only the kinds D1 and D2 corrected: schools keep their institutions and records; D2 adds three county councils.
+    for (const kind of ["comuna", "oras_municipiu", "spital", "consiliu_judetean"] as const)
       expect([kind, answerVersion({ ...hospitals, filters: { authorityKind: kind } }).conditions]).toEqual([kind, { kind: "kind-2" }]);
-    for (const kind of ["scoala", "consiliu_judetean"] as const)
+    for (const kind of ["scoala"] as const)
       expect([kind, answerVersion({ ...hospitals, filters: { authorityKind: kind } }).conditions]).toEqual([kind, {}]);
-    expect(KEY_VERSION_NOTES["kind-2"]).toBe("Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice).");
+    expect(KEY_VERSION_NOTES["kind-2"]).toBe("Tipul instituției a fost corectat (primăriile din registrul localităților, spitalele cu institutele clinice, toate cele 41 de consilii județene).");
+  });
+
+  it("are D2's town hall, only where it gained an identity, and the per-inhabitant list on a ranking: one alert each", () => {
+    Object.assign(KEY_VERSIONS, DECLARED);
+    const cluj: AskSpec = { block: "stat", dataset: "all", measure: "value", filters: { uatSiruta: 54975, uatName: "Municipiul Cluj-Napoca (Cluj)" } };
+    // The answer of a town hall that gained an identity (runSpec's uatJoined), and only that one.
+    expect(answerVersion(cluj, { uatJoined: true }).conditions).toEqual({ uat: "uat-2" });
+    expect(answerVersion(cluj).conditions).toEqual({});
+    expect(answerVersion(stat, { uatJoined: true }).conditions).toEqual({});
+    expect(KEY_VERSION_NOTES["uat-2"]).toBe("Primăria cuprinde acum toate identitățile ei din SEAP.");
+    // A restored link has not run: it says the rule changed.
+    expect(keyVersionNotes(cluj)).toEqual([KEY_VERSION_NOTES["uat-2"]]);
+    // The per-inhabitant list (41 county councils): its rankings, not the map of local_admin, new with F5.
+    const perCapita: AskSpec = { block: "table", dim: "authority", measure: "value_per_capita", topN: 10, filters: {} };
+    expect(answerVersion(perCapita).conditions).toEqual({ "table:per-capita": "table:per-capita-2" });
+    expect(answerVersion({ ...perCapita, measure: "value" }).conditions).toEqual({});
+    expect(answerVersion({ block: "map", measure: "value_per_capita", filters: { authorityKind: "local_admin" } } as AskSpec).conditions).toEqual({});
+    expect(KEY_VERSION_NOTES["table:per-capita-2"]).toBe("Lista pe locuitor are acum toate cele 41 de consilii județene.");
   });
 
   it("give a restored question the note of each key version it carries («Ce se schimbă»)", () => {

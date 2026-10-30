@@ -374,12 +374,17 @@ export interface EngineResult {
    * is computed as before seat-2, so it carries no seat version (answer-core.ts answerVersion).
    */
   seatColumn?: false;
+  /**
+   * D2: "primăria X" (uatSiruta) took identities the rule of before D2 left out (ground.ts UatGrounding.joined): the
+   * answer carries uat-2 (answer-core.ts answerVersion), so a watch on that town hall hears of the union once.
+   */
+  uatJoined?: true;
 }
 
 // Audit F15: the locality filter is the UAT's own administration, strictly
 // associated (localAuthorityIdsForUnit) — never every institution in the UAT.
 const UAT_SCOPE_METHOD =
-  "Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.";
+  "Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ, ori fără județ cu un nume unic în țară, sau nume și județ identice; CUI valid); asocierile din alt județ sau nesigure sunt excluse.";
 const BUCURESTI_SIRUTA = 179132;
 export function uatScopeCaveat(label: string, n: number, siruta?: number): string {
   const sector = siruta !== undefined && sectorUnit(siruta) !== undefined;
@@ -753,6 +758,19 @@ async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Prom
   // A trend's same months read agg_entity_month once a build has made it.
   const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false });
   return "source" in plan ? plan : null;
+}
+
+/**
+ * D2 (owner-D2-rollups): the per-inhabitant ranking groups its institutions on agg_entity_year when the planner answers
+ * the selection there (the institutions' own rollup: years, channel, buyer county, kind, exclusions, a threshold on
+ * institutions). Live it groups the union over the strict list's ids: 2,1 s nationally, 1,7 s on 2025, 1,4 s on one
+ * county, 3,4 s with 50 records (warm, local, 30 Oct 2026). The same sums, counts, names and counties
+ * (rollups.integration.test.ts); any other selection stays live.
+ */
+async function perCapitaPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Promise<{ source: RollupSource; filters: RollupFilters } | null> {
+  if (spec.block !== "table" || spec.measure !== "value_per_capita" || spec.dim !== "authority" || !(await rollupsReady(sql))) return null;
+  const plan = planRollup(ctx, { by: "authority" });
+  return "source" in plan && plan.source.table === "entity" ? plan : null;
 }
 
 /**
@@ -1242,6 +1260,7 @@ export async function runSpec(
 
   // The nightly rollups answer the selections that otherwise group the transaction marts.
   const rollup = isHistoricalProfile(spec) ? null : await rollupPlanFor(sql, spec, wSel);
+  const perCapitaRollup = perCapita ? await perCapitaPlanFor(sql, spec, wSel) : null;
   // F5: the map of the local administrations reads the strict list and agg_map_year (map-facts.ts), probed with the pool.
   const localMap = spec.block === "map" && localAdminMap(w) ? await readPerCapitaPopulations(sql) : null;
   const localRollup = localMap ? await mapRollupReady(sql) : false;
@@ -1600,6 +1619,35 @@ export async function runSpec(
               percap: s`coalesce(sum(d.closing_value), 0) / max(rpl.population)`,
             }[tableOpts.sort ?? "percap"];
             const populations = s`unnest(${s.array(perCapita!.ids)}::bigint[], ${s.array(perCapita!.populations)}::integer[]) rpl(entity_id, population)`;
+            if (perCapitaRollup) {
+              // D2: the institutions' rollup (perCapitaPlanFor), the live query's columns on agg_entity_year.
+              const p = rollupRows(s, perCapitaRollup, "p");
+              const sortBy = {
+                name: s`max(p.nm)`, county: s`max(p.county)`, value: s`coalesce(sum(p.v), 0)`, count: s`sum(p.n)`,
+                percap: s`coalesce(sum(p.v), 0) / max(rpl.population)`,
+              }[tableOpts.sort ?? "percap"];
+              const where = s`${p.where} and p.eid = any(${s.array(perCapita!.ids)}::bigint[])`;
+              const count = () => s`
+                select count(distinct p.eid) t from ${p.from} join ${populations} on rpl.entity_id = p.eid where ${where}
+              ` as unknown as Promise<{ t: string }[]>;
+              const r = (await s`
+                select p.eid id, max(p.nm) nm, max(p.county) co, coalesce(sum(p.v), 0) v, sum(p.n) n, max(rpl.population) pop,
+                       count(*) over () te
+                from ${p.from}
+                join ${populations} on rpl.entity_id = p.eid
+                where ${where}
+                group by p.eid
+                order by ${sortBy} ${tableOpts.sort ? dir : s`desc`}, p.eid
+                ${limitFrag}
+              `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; pop: string; te: string }[];
+              return {
+                block: "table",
+                rows: r.map((row) => ({
+                  entityId: String(row.id), name: row.nm, county: row.co, value: Number(row.v), count: Number(row.n), population: Number(row.pop),
+                })),
+                ...(await pagedMeta(r, count)),
+              };
+            }
             // Repeating the id list as a predicate lets it reach the authority indexes of both streams.
             const eligible = perCapitaPredicate(s, perCapita!.ids);
             const count = () => s`
@@ -2254,7 +2302,7 @@ export async function runSpec(
   const ran = trendWindow ?? seriesWindow;
   const executed: ExecutedWindow | null = ran ? { months: [ran.from, ran.to], mode: ran.mode, checkpoint: ran.checkpoint } : null;
   return { data, displaySql, caveats, tookMs: Date.now() - started, ...(partial ? { partialYears: partial } : {}), ...(executed ? { executed } : {}),
-    ...(seat ? {} : { seatColumn: false as const }),
+    ...(seat ? {} : { seatColumn: false as const }), ...(spec.filters.uatSiruta && grounding.uat?.joined?.length ? { uatJoined: true as const } : {}),
     ...(frozenMembers ? { groupMembers: frozenMembers } : {}), ...(movement ? { movement } : {}), ...(displaySqlByMeasure ? { displaySqlByMeasure } : {}),
     ...(displaySqlByList ? { displaySqlByList } : {}) };
 }

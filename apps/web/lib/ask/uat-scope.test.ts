@@ -3,7 +3,7 @@ import type { DbSql } from "@seap/db";
 import { runRows, runSpec, uatScopeCaveat } from "./compile";
 import { ground } from "./ground";
 import type { AskSpec } from "./spec";
-import { localAuthorityIdsForUnit, type PopulationMappingRow } from "../peer-population";
+import { localAuthorityIdentities, localAuthorityIdsForUnit, type PopulationMappingRow } from "../peer-population";
 import catalog from "../reference/population-rpl2021.json";
 
 const unit = (name: string, county: string) => catalog.units.find((u) => u.name === name && u.county === county)!.siruta;
@@ -11,6 +11,7 @@ const vanatoriMH = unit("VÂNĂTORI", "MEHEDINȚI"), vanatoriGL = unit("VÂNĂTO
 const sfGheorgheIL = unit("SFÂNTU GHEORGHE", "IALOMIȚA"), sfGheorgheCV = unit("MUNICIPIUL SFÂNTU GHEORGHE", "COVASNA");
 const pitesti = unit("MUNICIPIUL PITEȘTI", "ARGEȘ"), slanic = unit("ORAȘ SLĂNIC-MOLDOVA", "BACĂU");
 const luncaIlvei = unit("LUNCA ILVEI", "BISTRIȚA-NĂSĂUD"), patulele = unit("PĂTULELE", "MEHEDINȚI"), gagesti = unit("GĂGEȘTI", "VASLUI");
+const clujNapoca = unit("MUNICIPIUL CLUJ-NAPOCA", "CLUJ"), tibucani = unit("ȚIBUCANI", "NEAMȚ");
 
 const row = (id: string, name: string, county: string | null, siruta: number | null): PopulationMappingRow => ({ id, name, county, cui: `4${id}`, siruta });
 /** reference.authority_uat rows as seen on the 1 Oct 2026 snapshot (finding F15). */
@@ -32,7 +33,7 @@ const rows: PopulationMappingRow[] = [
   // Two corroborated identities of the same administration are both kept.
   row("2032360", "Comuna Lunca Ilvei", "Bistrita-Nasaud", luncaIlvei),
   row("2140013", "Comunei Lunca Ilvei (Primaria Lunca Ilvei)", "Bistrita-Nasaud", luncaIlvei),
-  // The name fallback never adds a second identity beside a corroborated one.
+  // D2: a name match beside a corroborated identity is the same administration.
   row("2137074", "Primaria comunei Patulele", "Mehedinti", patulele),
   row("2142681", "COMUNA PATULELE (PRIMARIA PATULELE)", "Mehedinti", null),
 ];
@@ -45,15 +46,30 @@ describe("locality scope of Întreabă (finding F15)", () => {
     expect(localAuthorityIdsForUnit(rows, slanic)).toEqual(["2144064"]);
     expect(localAuthorityIdsForUnit(rows, gagesti)).toEqual([]);
     expect(localAuthorityIdsForUnit(rows, luncaIlvei)).toEqual(["2032360", "2140013"]);
-    expect(localAuthorityIdsForUnit(rows, patulele)).toEqual(["2137074"]);
+    expect(localAuthorityIdsForUnit(rows, patulele)).toEqual(["2137074", "2142681"]);
   });
 
-  it("never turns a conflicting legacy code into a name guess, and rejects ambiguous or county-less identities", () => {
+  it("joins every identity of a town hall, and says which ones the rule of before D2 left out (plan §9 trusa 10, table 4)", () => {
+    // Cluj-Napoca's second identity has its legacy code and no county; the name is the unit's alone in the country.
+    const cluj = [row("2146445", "Municipiul Cluj-Napoca", "Cluj", clujNapoca), row("2165580", "MUNICIPIUL CLUJ-NAPOCA", null, clujNapoca)];
+    expect(localAuthorityIdentities(cluj, clujNapoca)).toEqual({ ids: ["2146445", "2165580"], joined: ["2165580"] });
+    expect(localAuthorityIdentities([row("2205736", "Comuna Tibucani", null, tibucani)], tibucani)).toEqual({ ids: ["2205736"], joined: ["2205736"] });
+    // Several name matches are one administration; one alone, or two corroborated codes, are as before.
+    const pitestiTwo = [row("1", "MUNICIPIUL PITESTI", "Arges", null), row("2", "Primaria Municipiului Pitesti", "Arges", null)];
+    expect(localAuthorityIdentities(pitestiTwo, pitesti)).toEqual({ ids: ["1", "2"], joined: ["1", "2"] });
+    expect(localAuthorityIdentities(rows, pitesti)).toEqual({ ids: ["2146442"], joined: [] });
+    expect(localAuthorityIdentities(rows, luncaIlvei)).toEqual({ ids: ["2032360", "2140013"], joined: [] });
+    expect(localAuthorityIdentities(rows, patulele)).toEqual({ ids: ["2137074", "2142681"], joined: ["2142681"] });
+    // A county-less identity on another unit's code, or with another unit's name, never joins.
+    expect(localAuthorityIdsForUnit([row("9", "MUNICIPIUL CLUJ-NAPOCA", null, tibucani)], tibucani)).toEqual([]);
+    expect(localAuthorityIdsForUnit([row("9", "SCOALA GIMNAZIALA CLUJ-NAPOCA", null, clujNapoca)], clujNapoca)).toEqual([]);
+  });
+
+  it("never turns a conflicting legacy code into a name guess, and rejects a county-less identity a common name cannot place", () => {
     // Galați's Vânători and Covasna's Sfântu Gheorghe hold a wrong legacy code: no silent re-mapping.
     expect(localAuthorityIdsForUnit(rows, vanatoriGL)).toEqual([]);
     expect(localAuthorityIdsForUnit(rows, sfGheorgheCV)).toEqual([]);
-    const twoCandidates = [row("1", "MUNICIPIUL PITESTI", "Arges", null), row("2", "Primaria Municipiului Pitesti", "Arges", null)];
-    expect(localAuthorityIdsForUnit(twoCandidates, pitesti)).toEqual([]);
+    // A county-less identity on a code five communes share: the name places nothing (D2 joins only a unique name).
     expect(localAuthorityIdsForUnit([row("3", "COMUNA VANATORI", null, vanatoriMH)], vanatoriMH)).toEqual([]);
   });
 
@@ -128,6 +144,23 @@ describe("Întreabă locality filter (finding F15)", () => {
     if ("error" in sources) throw new Error(sources.error);
     expect(rowsDb.statements.some((s) => s.includes("d.authority_id = any("))).toBe(true);
     expect(rowsDb.values).toContainEqual(["2139010"]);
+  });
+
+  it("says when the town hall gained an identity with D2, so the answer carries uat-2 (answer-core.ts)", async () => {
+    const joined = [...rows, row("2165580", "MUNICIPIUL CLUJ-NAPOCA", null, clujNapoca), row("2146445", "Municipiul Cluj-Napoca", "Cluj", clujNapoca)];
+    const cluj: AskSpec = { block: "stat", dataset: "all", measure: "value", filters: { uatSiruta: clujNapoca, uatName: "Municipiul Cluj-Napoca (Cluj)" } };
+    const db = database(joined);
+    const grounding = await ground(db.sql, cluj.filters);
+    expect(grounding.uat).toMatchObject({ authorityIds: ["2146445", "2165580"], nAuthorities: 2, joined: ["2165580"] });
+    const result = await runSpec(db.sql, cluj, grounding);
+    if ("error" in result) throw new Error(result.error);
+    expect(result.uatJoined).toBe(true);
+    expect(db.values).toContainEqual(["2146445", "2165580"]);
+    // A town hall with the identity of before: no flag.
+    const one = database(rows);
+    const vanatori = await runSpec(one.sql, stat(vanatoriMH), await ground(one.sql, stat(vanatoriMH).filters));
+    if ("error" in vanatori) throw new Error(vanatori.error);
+    expect(vanatori.uatJoined).toBeUndefined();
   });
 
   it("discloses an unassociated locality instead of claiming it has no contracting authorities", async () => {

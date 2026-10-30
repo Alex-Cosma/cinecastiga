@@ -16816,7 +16816,7 @@
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
+     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ, ori fără județ cu un nume unic în țară, sau nume și județ identice; CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
     ],
@@ -16938,7 +16938,7 @@
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
+     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ, ori fără județ cu un nume unic în țară, sau nume și județ identice; CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
@@ -21764,7 +21764,7 @@
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
+     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ, ori fără județ cu un nume unic în țară, sau nume și județ identice; CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
@@ -24499,7 +24499,7 @@
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ sau nume și județ identice, CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
+     "Localitatea „mun. Aiud (Alba)”: includ doar administrația locală a UAT-ului (primăria / consiliul local), nu și școlile, spitalele sau alte instituții din localitate. Asocierea autoritate–UAT este o inferență a aplicației (cod SIRUTA din același județ, ori fără județ cu un nume unic în țară, sau nume și județ identice; CUI valid); asocierile din alt județ sau nesigure sunt excluse.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata."
     ],
@@ -26301,16 +26301,16 @@
       "count": 0
      }
     },
-    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (după nume)\ngroup by county;",
+    "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (lista strictă a valorii pe locuitor, apoi numele)\ngroup by county;",
     "variants": {
      "measure": {
       "value": {
        "pills": ["pe județe (hartă)","valoarea înregistrată","doar consilii județene","toți anii","toate achizițiile: directe și din proceduri"],
-       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (după nume)\ngroup by county;"
+       "displaySql": "select county, sum(closing_value)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (lista strictă a valorii pe locuitor, apoi numele)\ngroup by county;"
       },
       "count": {
        "pills": ["pe județe (hartă)","numărul de înregistrări","doar consilii județene","toți anii","toate achizițiile: directe și din proceduri"],
-       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (după nume)\ngroup by county;"
+       "displaySql": "select county, count(*)\nfrom (marts.da_transactions ∪ marts.contract_transactions)  -- canale disjuncte\nwhere closing_value > 0\n  and (src = 'contracts' or closing_value <= 2000000)  -- plafon doar pe achizițiile directe\n  and authority_id in (…)  -- doar consilii județene / județe: 1 instituție (lista strictă a valorii pe locuitor, apoi numele)\ngroup by county;"
       }
      }
     }

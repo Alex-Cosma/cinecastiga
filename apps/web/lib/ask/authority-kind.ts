@@ -1,5 +1,5 @@
 import type { DbSql } from "@seap/db";
-import { countyFold, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
+import { countyFold, countylessLegacyCode, localAdministrationName, populationFold, populationForMapping, sectorTownHallUnit, type PopulationMappingRow } from "../peer-population";
 import { readPerCapitaPopulations } from "./per-capita";
 import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, type AuthorityKind, type ParsedAuthorityKind } from "./spec";
 
@@ -13,10 +13,13 @@ import { AUTHORITY_KINDS, LOCAL_ADMIN_KIND, type AuthorityKind, type ParsedAutho
  *   municipiu, oraș, București), with the rule of the locality scope (F15,
  *   localAuthorityIdsForUnit): a legacy code counts only in the institution's
  *   own county, for a valid CUI and for a name with a local-administration
- *   legal form. Without a code, the strict name + county match of the
+ *   legal form (D2: without a county, a name no other unit in the country
+ *   carries, countylessLegacyCode). Without a code, the strict name + county match of the
  *   population join (one candidate, valid CUI), also once without a trailing
  *   bare county name; the six București sector town halls (owner decision F05) are
  *   town halls. A legacy code that does not corroborate is not used.
+ * - County councils (D2): the strict list's county level (populationForMapping,
+ *   valid CUI), whatever the legal form of the name, then the name rules.
  * - Every other institution, and a town hall the registry does not place, by
  *   strict name rules. Hospitals include the clinical institutes
  *   (final/entity_card.md §3.1), not forensic medicine or research.
@@ -42,7 +45,7 @@ export const KIND_SOURCE: Record<ParsedAuthorityKind, string> = {
   local_admin: "nume, județ și cod SIRUTA concordante, cu populația INS RPL 2021",
   comuna: "registrul localităților, apoi numele",
   oras_municipiu: "registrul localităților, apoi numele",
-  consiliu_judetean: "după nume",
+  consiliu_judetean: "lista strictă a valorii pe locuitor, apoi numele",
   spital: "după nume, cu institutele clinice",
   scoala: "după nume",
 };
@@ -109,7 +112,9 @@ export function townHallKind(row: AuthorityKindRow, registry: LocalityRegistry):
   if (row.siruta !== null && row.siruta > 0) {
     // A valid CUI, as the locality scope reads only those (readPopulationMappingRows).
     const unit = registry.get(row.siruta);
-    const corroborated = row.cui && unit && row.county && unit.county && countyFold(row.county) === countyFold(unit.county) && localAdministrationName(row.name);
+    // D2: without a county, a name that names the code's unit alone in the country (the locality scope's rule).
+    const corroborated = row.cui && unit && (row.county ? unit.county && countyFold(row.county) === countyFold(unit.county) && localAdministrationName(row.name)
+      : countylessLegacyCode(row));
     return corroborated ? unitKind(unit.tip) : null;
   }
   // No positive legacy code: the exact name + county match of the population join, one candidate;
@@ -119,9 +124,18 @@ export function townHallKind(row: AuthorityKindRow, registry: LocalityRegistry):
   return population?.level === "local" && population.siruta !== undefined ? unitKind(registry.get(population.siruta)?.tip) : null;
 }
 
-/** The kind of one institution: a town hall the registry places, else its name. */
+/**
+ * D2: a county council of the strict list (the population join's county level, valid CUI), whatever the legal form of
+ * its name: "UAT Judetul Alba", "U.A.T. Judetul Hunedoara", "Consiliul Judetul Prahova, Directia Servicii si Achizitii
+ * Publice", which the name rules miss. Both identities of CJ Suceava: a kind is a filter, not a denominator.
+ */
+export function countyCouncilKind(row: AuthorityKindRow): "consiliu_judetean" | null {
+  return populationForMapping({ ...row, siruta: null })?.level === "county" ? "consiliu_judetean" : null;
+}
+
+/** The kind of one institution: a town hall the registry places, a county council of the strict list, else its name. */
 export function classifyAuthority(row: AuthorityKindRow, registry: LocalityRegistry): AuthorityKind | null {
-  return townHallKind(row, registry) ?? nameKind(row.name);
+  return townHallKind(row, registry) ?? countyCouncilKind(row) ?? nameKind(row.name);
 }
 
 export interface AuthorityKinds {

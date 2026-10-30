@@ -32,8 +32,8 @@ import { trendChannelColumns } from "./trend-partition";
  * engine runs its live query): months, CPV together with an entity condition
  * or an entity ranking, a single bidder, a named authority, firm, locality or
  * administrator (their indexes already answer in milliseconds), population
- * conditions other than excluding authorities or firms, per-capita rankings,
- * name or county sorts on a cross-role selection, and any condition the
+ * conditions other than excluding authorities or firms, per-capita rankings
+ * (but those of compile.ts perCapitaPlanFor on agg_entity_year, D2), name or county sorts on a cross-role selection, and any condition the
  * planner does not know (it fails closed).
  */
 
