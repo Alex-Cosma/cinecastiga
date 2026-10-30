@@ -200,7 +200,8 @@ export default function MapBlock({
     .sort((a, b) => Number(Boolean(a.m.muted)) - Number(Boolean(b.m.muted)) || b.m.metric! - a.m.metric!)
     .slice(0, 10);
   const sold = counties.filter((c) => c.count > 0).length;
-  const country = lens === "value_per_capita" || lens === "seat" || lens === "share" ? nationalMetric({ counties, unknown, ...(local ? { local } : {}) }, lens, ready) : null;
+  const country = lens === "value_per_capita" || lens === "seat" || lens === "share" ? nationalMetric({ counties, unknown, ...(local ? { local } : {}) }, lens, ready,
+    Boolean(asked.filters.county) || asked.filters.uatSiruta != null) : null;
   const tipRow = tip ? rowByKey.get(tip.key) : undefined;
 
   return (

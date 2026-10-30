@@ -101,11 +101,11 @@ describe("«Rezultatul afișat · CSV» with the strip's state", () => {
     const map: BlockData = { block: "map", counties: [{ county: "Cluj", value: 5, count: 3 }], unknown: { value: 0, count: 0 } } as BlockData;
     const lens = answerCsv(map, { block: "map", measure: "count", filters: {} }, "Hartă", { lens: "count" });
     // F5 (map final §4): `inregistrari`, the card's and the seat's columns (empty until the county facts are read).
-    expect(lens.text.split("\r\n")[0]).toBe("﻿judet,valoare_lei,inregistrari,firme_din_judet,firme_alte_judete,din_bucuresti,firme_straine,sediu_necunoscut," +
+    expect(lens.text.split("\r\n")[0]).toBe("﻿judet,valoare_lei,inregistrari,firme_din_judet,firme_alte_judete,din_care_bucuresti,firme_straine,sediu_necunoscut," +
       "cel_mai_mare_cumparator,pondere_cumparator,cea_mai_mare_inregistrare,pondere_inregistrare,harta_arata");
     expect(lens.filename).toBe("harta-inregistrari.csv");
     const plain = answerCsv(map, { block: "map", measure: "value", filters: {} }, "Hartă");
-    expect(plain.text).toBe('﻿judet,valoare_lei,inregistrari,firme_din_judet,firme_alte_judete,din_bucuresti,firme_straine,sediu_necunoscut,' +
+    expect(plain.text).toBe('﻿judet,valoare_lei,inregistrari,firme_din_judet,firme_alte_judete,din_care_bucuresti,firme_straine,sediu_necunoscut,' +
       'cel_mai_mare_cumparator,pondere_cumparator,cea_mai_mare_inregistrare,pondere_inregistrare\r\n"Cluj",5,3,,,,,,"",,,\r\n');
     expect(plain.filename).toBe("harta.csv");
   });

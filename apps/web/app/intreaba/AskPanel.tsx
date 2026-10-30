@@ -125,6 +125,8 @@ export type PanelMode = "search" | "ask" | "build";
 const MAP_LENS_TIP = { title: "Harta arată", text: "Schimbă doar culoarea și ordinea. Selecția rămâne aceeași. „Înregistrări”: un rând per câștigător la asocieri." };
 /** „Pe locuitor →” (map final §3.7). */
 const PER_INHABITANT_TIP = { title: "Pe locuitor", text: "Doar pentru primării și consilii județene: companiile și instituțiile naționale apar în județul sediului, nu unde locuiesc oamenii. Linkul schimbă cumpărătorii din propoziție." };
+/** The lens „Pe locuitor” itself (map final §3.8): the figure's words, in place of the lens's tip while it is chosen. */
+const PER_INHABITANT_LENS_TIP = { title: "Pe locuitor", text: "Valoarea înregistrată a primăriilor și consiliilor județene, împărțită la populația rezidentă a județului (INS, RPL 2021). Nu sunt plăți. Nu intră ce cumpără serviciile lor sau asociațiile intercomunitare." };
 /**
  * The lead of the total line (G8): the answer's total where it has one,
  * "Selecția" where its rows are not one sum (a comparison, a trend, relations).
@@ -1207,7 +1209,7 @@ export default function AskPanel({
                         onChange={(value) => { if (value !== mapLens) applyStripChange("measure", value); }}
                       />
                     </StripLabelled>
-                    <HelpTip tip={MAP_LENS_TIP} />
+                    <HelpTip tip={mapLens === "value_per_capita" ? PER_INHABITANT_LENS_TIP : MAP_LENS_TIP} />
                     {/* Per inhabitant only for the local administrations (map final §3.7): the link changes the buyers, in view. */}
                     {!mapFirm(applied) && !mapLocalAdmin(applied) && (
                       <span className="qb-row ask-percap-link">

@@ -13,7 +13,7 @@ import { askedLens, withLens, withoutFirm } from "../../lib/ask/map-lens";
 import { appliedAfterStrip } from "./answer-state";
 import { answerCsv } from "./answer-csv";
 import MapBlock from "./MapBlock";
-import { countyMetrics, FACTS_LOADING, FACTS_NONE, localNotes, mapLensOptions, nationalMetric, SEAT_WAITS, shownLens } from "./map-answer";
+import { countyMetrics, FACTS_LOADING, FACTS_NONE, localNotes, mapLensOptions, nationalMetric, SEAT_ELSEWHERE_NOTE, SEAT_WAITS, shownLens } from "./map-answer";
 
 /*
  * F5, the map's lens, local administrations and county card (plan §4.4, map
@@ -110,6 +110,8 @@ describe("„Primăriile și consiliile județene” (map final §3.3)", () => {
     expect(m.get("Cluj")!.muted).toBeNull();
     expect(m.get("Prahova")!.muted).toMatch(/Consiliul județean/);
     expect(Math.round(nationalMetric({ ...data, unknown: { value: 0, count: 0 } }, "value_per_capita", null)!)).toBe(Math.round(3_932_000_000 / (679141 + 695119 + 1716961)));
+    // A link's county is no country (S5 review): no „Pe țară”.
+    expect(nationalMetric({ ...data, unknown: { value: 0, count: 0 } }, "value_per_capita", null, true)).toBeNull();
     expect(localNotes(LOCAL).map((n) => n.text)).toEqual(["Lista strictă: 3.015 primării și consilii județene", "Fără consiliul județean: Prahova, Suceava"]);
     const answer = { block: "map", counties: data.counties, unknown: { value: 0, count: 0 }, local: LOCAL };
     expect(answerCore("map", answer)).toEqual({ block: "map", counties: data.counties, unknown: { value: 0, count: 0 } });
@@ -127,6 +129,11 @@ describe("the county's number and card (map final §3.9–§3.11)", () => {
     const seatM = countyMetrics({ counties }, "seat", read.value);
     expect(seatM.get("Giurgiu")).toEqual({ metric: 110 / 1_300, muted: "Sub 20 de înregistrări." });
     expect(seatM.get("Cluj")).toEqual({ metric: 2_200 / 9_800, muted: null });
+    // On the local map, Ilfov (CJ Ilfov, whose records are București's) is grey and says why (S5 review); elsewhere not.
+    const ilfov = facts({ Ilfov: { value: 9_800, count: 445, seat: seat(2_200, 6_800, 3_000, 300, 500), buyer: null, buyers: 1, record: null } });
+    expect(countyMetrics({ counties: [{ county: "Ilfov", value: 9_800, count: 445 }], local: LOCAL }, "seat", ilfov.value).get("Ilfov"))
+      .toEqual({ metric: 2_200 / 9_800, muted: SEAT_ELSEWHERE_NOTE });
+    expect(countyMetrics({ counties: [{ county: "Ilfov", value: 9_800, count: 445 }] }, "seat", ilfov.value).get("Ilfov")!.muted).toBeNull();
     const share = countyMetrics({ counties: [{ county: "Giurgiu", value: 181, count: 2 }, { county: "Cluj", value: 1_000, count: 37 }] }, "share", read.value);
     expect(share.get("Giurgiu")!.muted).toMatch(/sub 3/);
     expect(share.get("Cluj")).toEqual({ metric: 1_000 / 98_000, muted: null });
@@ -146,7 +153,7 @@ describe("the county's number and card (map final §3.9–§3.11)", () => {
   it("writes the card's and the lens' columns in the CSV, `inregistrari` for records", () => {
     const data = { block: "map" as const, counties, unknown: { value: 5, count: 1 } };
     const csv = answerCsv(data, map(Y25, { map: { lens: "seat" } }), "Hartă", { lens: "seat" }, { mapFacts: read.value }).text.split("\r\n");
-    expect(csv[0]).toBe("﻿judet,valoare_lei,inregistrari,firme_din_judet,firme_alte_judete,din_bucuresti,firme_straine,sediu_necunoscut,cel_mai_mare_cumparator,pondere_cumparator,cea_mai_mare_inregistrare,pondere_inregistrare,harta_arata");
+    expect(csv[0]).toBe("﻿judet,valoare_lei,inregistrari,firme_din_judet,firme_alte_judete,din_care_bucuresti,firme_straine,sediu_necunoscut,cel_mai_mare_cumparator,pondere_cumparator,cea_mai_mare_inregistrare,pondere_inregistrare,harta_arata");
     expect(csv[1]).toBe('"Giurgiu",1300,16,110,1110,462,77,3,"JUDETUL GIURGIU",0.428462,122,0.093846,"firme-din-judet"');
     const firm = answerCsv(data, map({ ...Y25, ...PORR }, { map: { lens: "share" } }), "Hartă", { lens: "share" }, { mapFacts: read.value }).text.split("\r\n");
     expect(firm[0]).toContain("inregistrari,cota_firmei,cel_mai_mare_cumparator");
