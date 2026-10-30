@@ -1,0 +1,83 @@
+import { describe, expect, it } from "vitest";
+import type { DbSql } from "@seap/db";
+import { inDaCode, SEARCH_LIST_CAP, searchCandidates, searchWords, type SearchLists } from "./source-search";
+
+/*
+ * „Caută în surse”, names first (S5 PRE-trend): the words, the forms a word can
+ * take in a code, and the candidates' condition, rendered by a fake `sql` (as
+ * predicates.test.ts). That the candidates hold every record today's condition
+ * keeps is the parity test's (source-search.integration.test.ts).
+ */
+const fake = Object.assign(
+  (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings: [...strings], values }),
+  { array: (values: unknown[]) => ({ array: [...values] }) },
+) as unknown as DbSql;
+function render(fragment: unknown): { text: string; params: unknown[] } {
+  const params: unknown[] = [];
+  const walk = (x: unknown): string => {
+    const f = x as { strings?: string[]; values?: unknown[]; array?: unknown[] };
+    if (f && Array.isArray(f.strings)) return f.strings.reduce((out, s, i) => out + s + (i < f.values!.length ? walk(f.values![i]) : ""), "");
+    params.push(f && typeof f === "object" && "array" in f ? f.array : x);
+    return `$${params.length}`;
+  };
+  return { text: walk(fragment).replace(/\s+/g, " ").trim(), params };
+}
+const none: SearchLists = { ids: [], codes: [], counties: [] };
+const range = fake`d.finalization_date >= ${"2024"} and d.finalization_date < ${"2026"}` as unknown as ReturnType<DbSql>;
+
+describe("searchWords", () => {
+  it("folds as the drawer's condition does and splits at any whitespace, each word once", () => {
+    expect(searchWords("  Spitalul   JUDEȚEAN\tspitalul ")).toEqual(["spitalul", "judetean"]);
+    expect(searchWords("Țară șină")).toEqual(["tara", "sina"]);
+    expect(searchWords("DA38380070")).toEqual(["da38380070"]);
+  });
+});
+
+describe("inDaCode", () => {
+  it("accepts only what can lie inside „DA” and digits", () => {
+    for (const word of ["d", "da", "a", "da38380070", "a383", "383", "0"]) expect(inDaCode(word), word).toBe(true);
+    for (const word of ["dab", "ad", "d3", "medicamente", "selgros", "38a", "-6", ""]) expect(inDaCode(word), word).toBe(false);
+  });
+});
+
+describe("searchCandidates", () => {
+  it("reads a name's word on the ids, codes and counties, bounded by the period, and the contract number on the row", () => {
+    const out = searchCandidates(fake, ["medicamente"], [{ ids: ["7", "9"], codes: ["33600000-6"], counties: [] }], { daCodesPlain: true, range });
+    expect(out?.indexed).toBe(true);
+    const { text, params } = render(out!.cond);
+    expect(text).toBe("((d.authority_id = any($1::bigint[]) and d.finalization_date >= $2 and d.finalization_date < $3) or "
+      + "(d.supplier_id = any($4::bigint[]) and d.finalization_date >= $5 and d.finalization_date < $6) or "
+      + "(d.cpv_code = any($7::text[]) and d.finalization_date >= $8 and d.finalization_date < $9) or "
+      + "(d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $10) > 0))");
+    expect(params).toEqual([["7", "9"], "2024", "2026", ["7", "9"], "2024", "2026", ["33600000-6"], "2024", "2026", "medicamente"]);
+  });
+
+  it("reads a code's word on every row: the record number, the CPV code and the DA code", () => {
+    const code = searchCandidates(fake, ["da38380070"], [none], { daCodesPlain: true, range: null })!;
+    expect(code.indexed).toBe(false);
+    expect(render(code.cond).text).toBe("((d.src = 'da' and strpos(lower(unaccent(d.da_code)), $1) > 0) or (d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $2) > 0))");
+    const digits = render(searchCandidates(fake, ["3360"], [{ ...none, codes: ["33600000-6"] }], { daCodesPlain: true, range: null })!.cond).text;
+    expect(digits).toBe("((d.cpv_code = any($1::text[])) or strpos(d.ref_id::text, $2) > 0 or strpos(lower(unaccent(d.cpv_code)), $3) > 0 or "
+      + "(d.src = 'da' and strpos(lower(unaccent(d.da_code)), $4) > 0) or (d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $5) > 0))");
+  });
+
+  it("reads every word on the DA code when a code of another form exists", () => {
+    const out = searchCandidates(fake, ["selgros"], [{ ...none, ids: ["1"] }], { daCodesPlain: false, range: null })!;
+    expect(out.indexed).toBe(false);
+    expect(render(out.cond).text).toContain("(d.src = 'da' and strpos(lower(unaccent(d.da_code)), $3) > 0)");
+  });
+
+  it("ANDs the words; a word found nowhere keeps only the contract numbers", () => {
+    const out = searchCandidates(fake, ["spitalul", "zzz"], [{ ...none, ids: ["1"] }, none], { daCodesPlain: true, range: null })!;
+    expect(out.indexed).toBe(true);
+    expect(render(out.cond).text).toBe("((d.authority_id = any($1::bigint[])) or (d.supplier_id = any($2::bigint[])) or "
+      + "(d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $3) > 0)) and ((d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $4) > 0))");
+  });
+
+  it("leaves a word listing too many names to the recheck, and returns null when no word narrows", () => {
+    const many: SearchLists = { ...none, ids: Array.from({ length: SEARCH_LIST_CAP + 1 }, (_, i) => String(i)) };
+    expect(searchCandidates(fake, ["srl"], [many], { daCodesPlain: true, range: null })).toBeNull();
+    const out = searchCandidates(fake, ["srl", "vaslui"], [many, { ...none, counties: ["Vaslui"] }], { daCodesPlain: true, range: null })!;
+    expect(render(out.cond).text).toBe("(d.county = any($1::text[]) or (d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), $2) > 0))");
+  });
+});

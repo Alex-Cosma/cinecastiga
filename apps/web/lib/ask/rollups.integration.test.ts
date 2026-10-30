@@ -465,7 +465,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         // F3-rows adds agg_months and agg_national_mix (their parity: series.integration.test.ts).
         expect(report.rows).toMatchObject({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36, agg_county_month: 18 });
         // F5 adds agg_map_year (its parity: map-facts.integration.test.ts).
-        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_entity_month", "agg_entity_year", "agg_map_year", "agg_months", "agg_national_mix", "agg_pair_year"]);
+        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_da_year_keys", "agg_entity_month", "agg_entity_year", "agg_map_year", "agg_months", "agg_national_mix", "agg_pair_year"]);
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
         forgetRollupsReady(); forgetMixRollupReady();
         expect(await rollupsReady(q)).toBe(true);
