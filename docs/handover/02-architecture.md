@@ -304,7 +304,7 @@ Inventarul de la 30 octombrie 2026 (`feat/ask-filters-registry`, nepublicat): to
 | `da_tx_cpv_cover_idx` | codul CPV (`text_pattern_ops`) + dată | același | `transactions` | `cpvCoverReady` |
 | `da_tx_value_desc_idx` | `(- closing_value), sicap_da_id` | același | `transactions` | `valueKeysReady` |
 | `agg_map_county` (+20 coloane de sediu) | harta nefiltrată pe județul cumpărătorului, împărțită după sediul firmei | `buildAggMapCounty` (`apps/ingestion/src/normalize/agg-map-county.ts`) | `transactions` | `martColumns().mapSeat` |
-| `agg_map_county_top` | fișa județului: cel mai mare cumpărător și cea mai mare înregistrare | `buildAggMapCountyTop` (același fișier) | `transactions` | `martColumns().mapTop` |
+| `agg_map_county_top` (scos la revizia S5: nimic nu-l citea; fișa citește `agg_map_year`, etapa șterge tabelul rămas) | — | — | `transactions` | — |
 | `ask_pair_month` (temporar, `on commit drop`) | perechile pe lună, citite o dată din uniune | `buildAskRollups` | `transactions` | — |
 | `agg_pair_year` + `agg_pair_year_supplier_idx`/`_authority_idx` | instituție × firmă × an × canal × județ, `d0`/`d1` | `buildAskRollups`, `buildAskPairIndexes` | `transactions` | `rollupsReady`, `pairIndexReady` |
 | `agg_entity_month`, `agg_entity_year` | o entitate pe rol, pe lună / an, cu numele și `d0`/`d1` | `buildAskRollups` (din tabelul temporar, apoi din lunar) | `transactions` | `monthRollupReady`, `rollupsReady`, `rollupDaysReady` |

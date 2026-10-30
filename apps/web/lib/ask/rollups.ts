@@ -997,22 +997,6 @@ function byYearAndCounty(f: RollupFilters): boolean {
 }
 
 /**
- * The map's county card on the unfiltered maps (agg_map_county_top, built with
- * agg_map_county): per county, its total and the largest buyer and record of
- * one scope ('plaf' = the 2M DA ceiling, as every Ask aggregate) and channel.
- * Filtered maps compute the card live (or the buyer from agg_entity_year).
- */
-export async function mapCountyTop(sql: DbSql, o: { scope: "plaf" | "all"; channel: "all" | "da" | "contracts" }):
-  Promise<{ county: string; v: string; n: string; top_buyer_id: string | null; top_buyer_name: string | null; top_buyer_v: string | null;
-    top_buyer_n: string | null; top_record_src: "da" | "contracts" | null; top_record_id: string | null; top_record_v: string | null }[]> {
-  return (await sql`
-    select county, v::text, n::text, top_buyer_id::text, top_buyer_name, top_buyer_v::text, top_buyer_n::text,
-           top_record_src, top_record_id::text, top_record_v::text
-    from marts.agg_map_county_top where scope = ${o.scope} and channel = ${o.channel} order by v desc, county
-  `) as unknown as Awaited<ReturnType<typeof mapCountyTop>>;
-}
-
-/**
  * case "compare", three of its nine queries. The other four transaction
  * queries (streams, years, domains, joint) stay as they are: with
  * da_tx_supplier_cover_idx / da_tx_authority_cover_idx they read the index
