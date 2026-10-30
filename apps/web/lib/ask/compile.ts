@@ -2430,6 +2430,24 @@ const PROFILE_VALUE_KEYS = 100_000;
 const FEW_IN_COUNTY = 2000;
 /** The records of the institutions one firm dominates (F5) up to which their drawer reads them on the authority index. */
 const FEW_WINNER_RECORDS = 200_000;
+/** A list over which a search of only common words (no word narrows it, source-search.ts) is refused with its reason. */
+const SEARCH_BROAD_RECORDS = 200_000;
+/**
+ * The time a search on a broad list may take for its count and page (S5 review): a text of common words over two
+ * fields („s.r.l. bucuresti”: thousands of names, few records with both together) reads every candidate, 12–32 s
+ * nationally, past the route's 20 s. Past it the drawer says what to add instead of a timeout.
+ */
+const SEARCH_BUDGET_MS = 6000;
+export const commonWordsSearch = (search: string): string =>
+  `„${search}”: cuvintele apar în prea multe nume pentru toată lista. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.`;
+export async function withSearchBudget<T>(search: string | null, work: () => Promise<T>): Promise<T | { error: string }> {
+  try {
+    return await work();
+  } catch (e) {
+    if (search !== null && e instanceof Error && e.message.includes("statement timeout")) return { error: commonWordsSearch(search) };
+    throw e;
+  }
+}
 let profileLimits = { records: PROFILE_ROLLUP_RECORDS, walk: PROFILE_VALUE_WALK };
 /** Tests only: a fixture's cohorts are a few records; null restores the limits. */
 export function profileLimitsForTests(limits: { records: number; walk: number } | null): void {
@@ -2948,7 +2966,8 @@ export async function runRows(
   const profileRolled = profile && localParts.length === 1 && await rollupDaysReady(sql);
   const profileWalk = profileRolled && sortKey === "value" && opts.dir !== "asc" && await valueKeysReady(sql);
 
-  return await sql.begin("isolation level repeatable read read only", async (tx) => {
+  // A search on a broad list that runs past its budget (SEARCH_BUDGET, below) says so, with what to add.
+  return await withSearchBudget(words.length > 0 && !opts.capture ? search! : null, () => sql.begin("isolation level repeatable read read only", async (tx) => {
     await tx.unsafe(FORCE_CUSTOM_PLANS);
     await tx.unsafe(`set local statement_timeout = '${opts.capture ? '15min' : STATEMENT_TIMEOUT}'`);
     // The production database uses SSD costs. Keep the same covering-index
@@ -3000,10 +3019,19 @@ export async function runRows(
     // A search read on every direct acquisition (a code, a number, only common words) finds few records or many: its
     // records' keys are read once, and when there are at most SEARCH_FEW_RECORDS the totals and the page read only them
     // by key (a DA code nationally: one scan, not two; 3.7 s → ~2 s). More, and the scan stops at the first ones past it.
+    // The search's own reads (its keys, its count, its page) share SEARCH_BUDGET_MS on a broad list; the list's
+    // figures keep the route's limit. withSearchBudget turns the budget's end into the drawer's reason.
+    let searchDeadline: number | null = null;
+    const budgeted = async <T,>(read: () => Promise<T>): Promise<T> => {
+      if (!words.length || opts.capture) return await read();
+      searchDeadline ??= Date.now() + SEARCH_BUDGET_MS;
+      await tx.unsafe(`set local statement_timeout = '${Math.max(500, searchDeadline - Date.now())}ms'`);
+      try { return await read(); } finally { await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`).catch(() => {}); }
+    };
     if (words.length && !candidates?.indexed) {
-      const keys = (await readEvidenceQuery(s`
+      const keys = (await budgeted(() => readEvidenceQuery(s`
         select d.src, d.ref_id::text ref from ${txt} d where ${sourceWhere} and ${localWhere} limit ${SEARCH_FEW_RECORDS + 1}
-      `, opts.signal)) as unknown as { src: "da" | "contracts"; ref: string }[];
+      `, opts.signal))) as unknown as { src: "da" | "contracts"; ref: string }[];
       if (keys.length <= SEARCH_FEW_RECORDS) {
         const of = (src: "da" | "contracts") => sql.array([...new Set(keys.filter((k) => k.src === src).map((k) => k.ref))]);
         localWhere = sql`${localWhere} and ((d.src = 'da' and d.ref_id = any(${of("da")}::bigint[])) or (d.src = 'contracts' and d.ref_id = any(${of("contracts")}::bigint[])))`;
@@ -3042,6 +3070,11 @@ export async function runRows(
     const profileTotals = cohortRolled ? await profileRollupTotals(s, cohort as unknown as ReturnType<DbSql>, role as "authority" | "supplier") : null;
     if (profileTotals) notes.push("Numărul și suma surselor vin din înregistrările profilurilor, grupate la ultima prelucrare a datelor; lista e citită din înregistrări.");
     const whole = groupTotals ?? (rolledTotals && "rows" in rolledTotals ? rolledTotals.rows : null) ?? profileTotals;
+    // A search whose every word lists too many names („srl bucuresti”) narrows nothing: today's condition would be read
+    // on every record of a broad list (a national trend's two years: 12–32 s, past the route's 20 s). Said at once,
+    // with what to add, instead of a timeout (S5 review; a stored search text with a trigram index is PRECOMPUTE.md's).
+    const broad = whole ? whole.reduce((n, r) => n + Number(r.n), 0) > SEARCH_BROAD_RECORDS : true;
+    if (words.length && !candidates && broad) return { error: commonWordsSearch(search!) };
     // With a search the list's figures and the found records are counted apart when the list's are known or the search
     // reads names first: the found ones over the candidates of its words, the list without reading the search on each
     // of its records (national 2024–2025: 10 s in one pass). A narrow selection keeps its one pass.
@@ -3052,10 +3085,10 @@ export async function runRows(
              min(d.finalization_date) date_from, max(d.finalization_date) date_to
       from ${txt} d where ${sourceWhere} group by d.state
     `, opts.signal)) as unknown as SourceTotalsRow[];
-    const found = search && (whole || words.length) ? new Map(((await readEvidenceQuery(s`
+    const found = search && (whole || words.length) ? new Map(((await budgeted(() => readEvidenceQuery(s`
       select d.state, count(*) fn, coalesce(sum(d.closing_value), 0)::text fv
       from ${txt} d where ${sourceWhere} and ${localWhere} group by d.state
-    `, opts.signal)) as unknown as { state: string | null; fn: string; fv: string }[]).map((r) => [r.state, r])) : null;
+    `, opts.signal))) as unknown as { state: string | null; fn: string; fv: string }[]).map((r) => [r.state, r])) : null;
     const totals: SourceTotalsRow[] = found
       ? (whole ?? await liveTotals(sql`false`)).map((r) => ({ ...r, fn: found.get(r.state)?.fn ?? "0", fv: found.get(r.state)?.fv ?? "0" }))
       : whole ?? await liveTotals(localWhere);
@@ -3188,7 +3221,7 @@ export async function runRows(
              d.value_suspect, d.state, d.n_winners, d.contract_value_full::text
       from ${txt} d where ${sourceWhere} and ${localWhere}
     `);
-    const rows = (opts.capture ? [] : await readEvidenceQuery(s`
+    const rows = (opts.capture ? [] : await budgeted(() => readEvidenceQuery(s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,
              d.supplier_id, d.supplier_name, d.county, d.cpv_code, d.cpv_name, d.closing_value::text,
              d.src, d.ref_id, d.ca_notice_id, d.ted_pubnum, d.estimated_value_ron,
@@ -3197,7 +3230,7 @@ export async function runRows(
       from ${pageTxt} d where ${pageWhere} and ${localWhere} ${keyedPage ? sql`and d.ref_id = any(${sql.array(keyedPage)}::bigint[])` : sql``}
       order by ${sortFrag} ${dirFrag}, d.src, d.ref_id, d.supplier_id nulls first
       limit ${pageSize} offset ${p * pageSize}
-    `, opts.signal)) as unknown as {
+    `, opts.signal))) as unknown as {
       title: string | null; da_code: string | null; finalization_date: string | null; authority_id: string | null; authority_name: string | null;
       supplier_id: string | null; supplier_name: string | null; county: string | null; cpv_code: string | null; cpv_name: string | null;
       closing_value: string; src: "da" | "contracts"; ref_id: string | null; ca_notice_id: string | null; ted_pubnum: string | null;
@@ -3239,7 +3272,7 @@ export async function runRows(
         selection: group.selection ? { count: group.selection.da.n + group.selection.contracts.n, value: sumDecimalStrings([group.selection.da.v, group.selection.contracts.v]) } : null,
       } } : {}),
     };
-  });
+  }));
 }
 
 /** trendGroupSql as text for the shown SQL; every change (no options) keeps today's text. */
