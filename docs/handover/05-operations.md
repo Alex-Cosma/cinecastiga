@@ -279,6 +279,83 @@ Revenire: revert-ul codului, apoi `drop table marts.agg_entity_year, marts.agg_p
 
 Un fix postgres.js folosește shutdown cu timeout pentru conexiuni rezervate expirate. Un proces care pare blocat după „toate verificările trecute” poate fi în cleanup, nu în calcul; inspectează activitatea DB/logul înainte de a rerula pipeline-ul.
 
+### Filtrele pe întrebare: costul nopții și runbook-ul de deploy (30 octombrie 2026, `feat/ask-filters-registry`, nepublicat)
+
+Paragrafele de mai sus descriu fiecare obiect nou al nopții. Aici sunt adunate, față de producția de azi (`4e90b00`, migrații până la 0083), ce adaugă ele procesării zilnice și ordinea în care se publică. Inventarul obiectelor, cu constructorul și sonda fiecăruia, e în [arhitectură](02-architecture.md#obiectele-nocturne-ale-întreabă). Nimic de aici nu a rulat pe producție.
+
+**Costul nopții, măsurat pe datele locale întregi** (19,6 mil. de achiziții directe, 20,7 mil. de înregistrări în populația Întreabă; `work_mem` 64 MB ca pe producție). Hărțile și toate rollup-urile au rulat pe 30 octombrie, într-o singură sesiune, prin funcțiile repo-ului (`buildAggMapCounty`, `buildAggMapCountyTop`, `buildAskRollups`), cu tabelele scrise în schema temporară a sesiunii, deci fără să blocheze vreun cititor (load 4–5, 226 s în total). Indexurile de build, pașii etapei `marts` și VACUUM-ul vin din măsurătorile separate ale părților, tot pe datele întregi.
+
+| Pas | Etapa | Adus de | Local |
+|---|---|---|---|
+| `da_tx_supplier_cover_idx`, `da_tx_authority_cover_idx` | `transactions` | pistele marts / F2 | 26–38 s |
+| `agg_map_county_top` | `transactions` | pistele marts | 8,9 s |
+| tabelul temporar pe luni + `agg_pair_year`, `agg_entity_month`, `agg_entity_year`, `agg_county_month`, `agg_cpv_year` și `analyze` | `transactions` | pistele marts / F2 | 103 s (16,3 + 8,0 + 45,2 + 10,6 + 3,2 + 18,8 + 1,2) |
+| `vacuum (analyze) marts.da_transactions`, după commit | `transactions` | pistele marts | ~15 s |
+| `agg_months` + `agg_national_mix` | `transactions` | S4 (F3) | 32 s (17,8 + 14,1) |
+| împărțirea `agg_map_county` pe sediu | `transactions` | S4 (F4) | +4–7 s (8,9 s față de 1,9–5,2 s fără sediu) |
+| `applyFirmRegistry` + `buildSpendByCounty` | `marts` | S4 (F4) | 4–8 s |
+| `agg_map_year` | `transactions` | S5 | 21,3 s |
+| `da_tx_cpv_cover_idx` | `transactions` | S5 | 32–36 s |
+| `agg_da_year_keys` | `transactions` | S5 | 3,1 s |
+| `da_tx_value_desc_idx` | `transactions` | S5 | 18,5–26,8 s |
+| `agg_entity_kind_year` | `transactions` | S5 | 46,9 s |
+| indexurile `agg_pair_year` | `transactions` | S5 | 2,1 s |
+| `main_cpv_div` | `flag-marts` (duminică) | pistele marts | 15,9 s |
+
+Total pe noapte: S4 ~40–47 s, S5 ~2,1–2,3 min, deci S4 + S5 ~2,7–3,1 min; cu pistele marts, toată ramura adaugă ~5,3–5,8 min față de producție, plus ~16 s duminica. Partea S5 D2 nu adaugă nimic (citește `agg_entity_year`). Nu există pas de căutare: indexul trigram pe textul surselor nu s-a construit (decizia proprietarului rămâne deschisă, cu cifrele în PRECOMPUTE). Rularea zilnică de ~85 min ajunge la ~90–91 min: sub 2 h, la limita de 1,5 h a țintei. Valorile reale se citesc dimineața din raportul etapelor (mai jos). Etapa `transactions` ține `ACCESS EXCLUSIVE` pe `da_transactions` cu ~4,5–5 min mai mult; o așteaptă doar rutele exceptate de la 503.
+
+**Fereastra 503 crește cu tot acest timp.** Ambele etape rulează în `run refresh`, între `backup-verified` și `reopen`. Niciun pas nou nu poate ieși din fereastră fără un cost pe care nu-l plătește azi niciun răspuns:
+- rollup-urile și cheile anilor se calculează din `da_transactions` reîncărcat în aceeași tranzacție. Construite după redeschidere, ar servi câteva minute cifrele nopții trecute lângă tranzacțiile noi, sau, șterse înainte, răspunsurile ar merge live (2–13 s; „Cine conduce?” la produse până la limita de 20 s);
+- indexurile de build nu schimbă răspunsuri, dar fără ele sertarele profilurilor naționale ajung din nou la limita de 20 s, iar domeniile naționale trec de bară. Un `CREATE INDEX CONCURRENTLY` după redeschidere ar ține ~1–2 min (mai lent decât în tranzacție), iar sondele, ținute 10 minute în proces după repornirea webului, ar păstra calea lentă până la 10 minute după fiecare noapte;
+- `applyFirmRegistry` scrie sediul pe care îl citesc `agg_map_county` și `agg_map_year`, în aceeași noapte.
+
+Decizia e `S5N-window-in-place` (jurnalul etapei). Pârghiile care ar compensa sunt ale proprietarului: scoaterea indexurilor redundante `da_tx_supplier_idx`/`da_tx_authority_idx` (A2-cover-indexes, ~1,5 GB întreținuți rând cu rând la încărcare; câștigul nu e măsurat) sau scoaterea datelor rollup-urilor din dump. Backup-ul (site deschis) citește ~2,3 GB de date în plus (rollup-urile; indexurile nu intră în dump), adică ~1,5–2 min la ritmul de azi. Un restore reconstruiește în plus cele șase indexuri de build (~7 GB).
+
+**Spațiu.** În regim stabil, ~+9 GB (gemenii 3,7 GB, indexul CPV 1,8 GB, cel pe valoare 0,9 GB, rollup-urile ~2,4 GB). În tranzacția etapei, fișierele vechi rămân până la commit, deci vârful crește cu ~18 GB față de azi (plus ~0,8 GB pentru tabelul temporar). `CREATE INDEX` și `CREATE TABLE AS` scriu ~9 GB de WAL pe noapte, peste `max_wal_size=8GB`, deci checkpoint-uri în plus. Înainte de prima noapte, verifică `df` după backup: marja trebuie să fie de cel puțin ~25 GB. Altfel ridică poarta din `process-nightly.sh` (azi 20 GB înainte de dump).
+
+**Runbook: întâi etapa `transactions` cu acest cod, apoi webul.** Webul acestei ramuri merge corect și fără obiectele noi, pentru că fiecare sondă îl trimite pe calea live. Dar pe calea live alegerile pe care le oferă constructorul durează 2–13 s, iar sertarele profilurilor naționale ajung la limita de 20 s. De aceea publicarea are două livrări:
+
+1. **Livrarea „marts”.** Pe `main` intră codul nopții: `packages/db` (migrațiile 0084–0086, `ask-rollups.ts`, `transaction-mart-indexes.ts`, `firm-seat.ts`, `monitoring.ts`) și `apps/ingestion` (`normalize/marts.ts`, `firm-registry.ts`, `agg-map-county.ts`, `transaction-marts.ts`, `flags/marts.ts`). Webul rămâne cel de producție. Se poate uni cu livrarea singură a F0a (R0 + F0a), pe care planul o cere oricum înaintea oricărui scriitor de chei, cu o publicare și o noapte. Livrarea o compune orchestratorul și trebuie să treacă CI (webul vechi se construiește pe `packages/db` nou: exporturile sunt doar adăugate). La deploy: 0084 nu construiește nimic (lacăt `SHARE`); 0085 rescrie `entity_flags`, ~3 s sub `ACCESS EXCLUSIVE`; 0086 schimbă doar catalogul. Webul vechi nu citește obiectele noi. Singurul efect vizibil, de la prima noapte: `/harta` pe „Furnizori” trece pe sediul firmelor (`spend_by_county`, decizia owner-seat-switch). Nota care explică asta (`seat-2`) vine abia cu livrarea a doua.
+2. **Noaptea următoare** (05:00, `daily`) face totul: etapa `marts` (sediul, anul), apoi `transactions` (indexurile de build, `agg_*`, rollup-urile, VACUUM). `main_cpv_div` se umple abia la prima rulare `full` de duminică; până atunci „același domeniu principal” rămâne dezactivat, cu motivul afișat. Dacă noaptea cade, mentenanța rămâne activă: procedura obișnuită de mai sus, fără nimic specific acestei livrări.
+3. **Dimineața, verificare prin citire.** Raportul etapelor și fereastra:
+   ```sql
+   BEGIN READ ONLY; SET LOCAL statement_timeout = '60s';
+   select status, stages->'marts'->>'durationMs' marts_ms, stages->'transactions'->>'durationMs' transactions_ms,
+          (stages->'restart'->>'completedAt')::timestamptz - (stages->'backup-verified'->>'startedAt')::timestamptz window_503
+   from app.processing_runs order by started_at desc limit 1;
+   select validation->'stages'->'transactions'->'createdIndexes' created, validation->'stages'->'transactions'->>'buildIndexesMs' build_indexes_ms,
+          validation->'stages'->'transactions'->>'mapYearMs' map_year_ms, validation->'stages'->'transactions'->>'yearKeysMs' year_keys_ms,
+          validation->'stages'->'transactions'->>'kindYearMs' kind_year_ms, validation->'stages'->'transactions'->>'vacuumMs' vacuum_ms,
+          validation->'stages'->'marts'->>'firmRegistryMs' firm_registry_ms, validation->'stages'->'marts'->'firmRegistry' firm_registry
+   from app.monitoring_refreshes where status = 'ready' order by version desc limit 1;
+   COMMIT;
+   ```
+   `created` trebuie să fie `[]` (altfel lipseau indexurile 0084). `firm_registry.seat` are cheile `onrc`, `seap`, `foreign`, `unknown`. Apoi sondele webului, cu aceleași interogări pe care le face webul (`S5-F5-D2-PRE/S5-nightly-runbook/probes.sql` în notele etapei; pe copia locală, 30 octombrie, toate `t` în afară de `main_cpv_div`):
+
+   | Sondă (fișier) | Ce citește | Trebuie |
+   |---|---|---|
+   | `rollupsReady` (`lib/ask/rollups.ts`) | există `agg_entity_year`, `agg_pair_year`, `agg_cpv_year` | `t` |
+   | `rollupDaysReady` | coloana `d0` pe `agg_entity_year`, `agg_pair_year`, `agg_entity_month` (3) | `t` |
+   | `monthRollupReady` | există `agg_entity_month`, `agg_county_month`, plus `rollupDaysReady` | `t` |
+   | `coverRefReady` | ambii gemeni includ `sicap_da_id` | `t` |
+   | `cpvCoverReady` | există `da_tx_cpv_cover_idx` | `t` |
+   | `valueKeysReady` | există `da_tx_value_desc_idx` | `t` |
+   | `pairIndexReady` | există `agg_pair_year_supplier_idx`, `agg_pair_year_authority_idx` | `t` |
+   | `yearKeysReady` + `daYearKeyRange` / `daCodesPlain` (la fiecare cerere) | există `agg_da_year_keys`; `min(k0)`/`max(k1)` = capetele `da_transactions`; `sum(odd_codes) = 0` | `t`, `t`, `t` (cu `f` căutarea citește codul pe fiecare rând: corect, mai lent) |
+   | `mixRollupReady` (`series-rollups.ts`) | există `agg_months`, `agg_national_mix` | `t` |
+   | `mapRollupReady` (`map-facts.ts`) | `sum(n)` din `agg_map_year` = cel din `agg_cpv_year` | `t` |
+   | `kindRollupReady` | `sum(n)` din `agg_entity_kind_year` = cel din `agg_entity_year` | `t` |
+   | `martColumns` (`mart-columns.ts`) | `seat`, `registeredYear` (cere `reference.onrc_firm`), `mainCpvDiv` (după duminică), `mapSeat`, `logTotal`, `mapTop` | `t` (`mainCpvDiv` poate fi `f` până duminică) |
+
+   Mai sunt două verificări. Cele șase indexuri de build trebuie să fie `indisvalid` și să aibă definițiile din cod. `sum(n_plaf)` din `agg_national` trebuie să fie egal cu `sum(n)` din `agg_cpv_year`, `agg_pair_year`, `agg_county_month`, `agg_months`, `agg_national_mix`, `agg_map_year` și cu `sum(n)` al instituțiilor din `agg_entity_year`. Local, toate dau 20.718.842. Pe lângă acestea rămâne condiția F2: `contractReporting` = `contract-reporting-4` (paragraful „Condiția de lansare a F2”). Dacă o sondă e `f`, webul nu se publică. Cauza se caută în logul etapei.
+4. **Livrarea webului.** Restul ramurii, prin deploy-ul obișnuit. Webul repornit citește sondele la prima întrebare. La prima verificare după publicare, urmăririle primesc o singură alertă „metodologie” pentru versiunile mărite (`trend-2`, `network-2`, `sankey-2`, `distribution-2`, `fact_check-2`, `kind-2`, `table:employees-2`, `seat-2`, `uat-2`, `table:per-capita-2`), fiecare doar acolo unde se aplică. E adevărat, nu o regresie. Dacă între cele două livrări codul nopții s-a mai schimbat, se repetă pașii 1–3 pentru diferență.
+5. **Revenire.**
+   - *Doar webul:* revert la livrarea webului, fără să cobori vreodată sub F0a (regula de mai sus). Obiectele nopții rămân, iar webul vechi nu le citește. Urmăririle primesc încă o alertă de metodologie, adevărată.
+   - *Și codul nopții:* întâi revert-ul (sau repornirea webului), apoi, după ce niciun proces nu mai ține o sondă `t` (10 minute sau o repornire): `drop table marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year, marts.agg_da_year_keys, marts.agg_entity_kind_year, marts.agg_map_county_top` (indexurile `agg_pair_year` pleacă odată cu tabelul) și `drop index marts.da_tx_supplier_cover_idx, marts.da_tx_authority_cover_idx, marts.da_tx_cpv_cover_idx, marts.da_tx_value_desc_idx`. Fără `drop`, build-ul codului vechi ar întreține indexurile rând cu rând, iar tabelele ar rămâne mai vechi decât marts. Noaptea următoare, `agg_map_county` și `spend_by_county` revin la județul SEAP.
+   - Migrațiile nu se întorc. Release-ul de revert păstrează fișierele 0084–0086 și intrările lor din jurnal: `deploy-migrate.mjs` refuză o bază al cărei istoric nu e al release-ului. Coloanele 0085/0086 rămân, inofensive pentru codul vechi. Ca să dispară, e nevoie de o migrație nouă, niciodată de editarea celor vechi.
+
+**Fără livrarea „marts” separată.** Dacă ramura se publică într-un singur deploy, până la prima noapte webul merge pe căile live (lent, dar cu aceleași cifre). Repo-ul nu are încă o comandă de producție care să construiască obiectele noi în afara nopții. Funcțiile (`ensureTransactionMartBuildIndexes`, `buildAskRollups` pe o bază fără rollup-uri) pot rula cu site-ul deschis, dar trebuie întâi împachetate într-un script al imaginii `processor`. Fără el rămâne doar așteptarea nopții.
+
 ### Import TED automat
 
 Adăugat pe 16 octombrie 2026 și trecut în aceeași zi pe pachetul zilnic OJ S. **Este oprit până la activarea explicită.** Importă anunțurile de atribuire românești din TED (`can-standard`, eForms) ca **flux de colectare `ted`**, cu același protocol ca SEAP. Le arhivează în `raw` exact ca importul manual (`source='ted'`, `ted-eforms:v1`). Normalizarea, asocierea și `ted-mart` din noaptea următoare le preiau. Exemplu de lipsă reparată astfel: TED 506645-2026, „Oferte primite: —”.
@@ -307,6 +384,7 @@ Adăugat pe 16 octombrie 2026 și trecut în aceeași zi pe pachetul zilnic OJ S
 - Indexul pe CPV și cheile anilor (30 octombrie 2026, local, load 8–12): `da_tx_cpv_cover_idx` 32–36 s, `agg_da_year_keys` 3–6 s, în etapa `transactions`. Pe producție, valorile se citesc din `stages.transactions.buildIndexesMs` (cele trei indexuri de build) și `yearKeysMs`.
 - Indexul pe valoare (30 octombrie 2026, local, load 8–15): `da_tx_value_desc_idx` 18,5–26,8 s, 933 MB, în etapa `transactions`. Pe producție, valoarea intră în `stages.transactions.buildIndexesMs` (cele patru indexuri de build).
 - Tipul și mărimea pe entitate (30 octombrie 2026, local, load 5): `agg_entity_kind_year` 47,9 s, 460 MB; indexurile `agg_pair_year` ~2 s, 70 MB, în etapa `transactions`. Pe producție, valoarea se citește din `stages.transactions.kindYearMs`.
+- Toate obiectele nocturne noi ale Întreabă, la un loc (30 octombrie 2026, local, date întregi; hărțile și rollup-urile într-o sesiune pe tabele temporare, 226 s la load 4–5): S4 ~40–47 s, S5 ~2,1–2,3 min, întreaga ramură față de producție ~5,3–5,8 min pe noapte (+16 s duminica), toate în fereastra 503 (secțiunea „Filtrele pe întrebare: costul nopții și runbook-ul de deploy”). Pe producție: `stages.transactions.durationMs` din `app.processing_runs`, comparat cu ~11 min înainte.
 - Durata unei nopți viitoare depinde de volume și resurse; vezi `app.processing_runs`, nu extrapola un cron 05:00 în „gata la 05:01”.
 
 ## Inspecție read-only
