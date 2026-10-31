@@ -1,5 +1,6 @@
 "use client";
 
+import { countyName } from "../../lib/counties";
 import Link from "next/link";
 import { useId, useRef, useState } from "react";
 import type { EntityCardData } from "../../lib/ask/compile";
@@ -259,7 +260,7 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
       </h3>}
       <div className="badges">
         <span className="badge">{card.role === "authority" ? "Autoritate" : "Furnizor"}</span>
-        {card.county && <span className="badge">{card.county}</span>}
+        {card.county && <span className="badge">{countyName(card.county)}</span>}
         {card.population !== null && card.population > 0 && <span className="badge">{countWords(card.population, "locuitor", "locuitori")}</span>}
       </div>
       <div className="kpis">

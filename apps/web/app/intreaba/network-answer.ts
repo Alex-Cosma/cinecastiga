@@ -1,3 +1,4 @@
+import { countyName } from "../../lib/counties";
 import { countWords, fileSlug, formatShare } from "../../lib/ask/answer-text";
 import type { EvidenceScope } from "../../lib/ask/evidence";
 import {
@@ -175,7 +176,7 @@ export function networkRowView(row: NetworkRow, data: NetworkData, list: Network
   const partner = data.partners[row.entityId] ?? { entityId: row.entityId, name: "?", county: null, employees: null, first: 0, last: 0, years: [], signals: [], firmShare: null };
   const name = cleanName(partner.name);
   const firm = data.focal.role === "authority";
-  const place = [partner.county, firm && partner.employees !== null ? countWords(partner.employees, "angajat", "angajați") : null].filter(Boolean).join(" · ") || null;
+  const place = [countyName(partner.county), firm && partner.employees !== null ? countWords(partner.employees, "angajat", "angajați") : null].filter(Boolean).join(" · ") || null;
   const own = data.lists[list];
   const group = list === "all" ? null : list;
   // A bounded answer has no relation's years yet (part=network brings them): no band until then.
@@ -236,7 +237,7 @@ export function networkCsvRows(data: NetworkData, spec: Pick<AskSpec, "network">
   return [head, ...rows.map((row) => {
     const p = data.partners[row.entityId];
     return [
-      csvQ(cleanName(p?.name)), csvQ(p?.county ?? ""), row.value, row.count, csvQ(group), p?.first ?? "", p?.last ?? "", csvQ(p?.years.join(" ") ?? ""),
+      csvQ(cleanName(p?.name)), csvQ(countyName(p?.county) ?? ""), row.value, row.count, csvQ(group), p?.first ?? "", p?.last ?? "", csvQ(p?.years.join(" ") ?? ""),
       own.value > 0 ? (row.value / own.value * 100).toFixed(2) : "", row.joint, p?.firmShare !== null && p?.firmShare !== undefined ? (p.firmShare * 100).toFixed(1) : "",
       csvQ((p?.signals ?? []).map((code) => RELATION_SIGNAL_LABELS[code] ?? code).join("; ")),
     ].join(",");

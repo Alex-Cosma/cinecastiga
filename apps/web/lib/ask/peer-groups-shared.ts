@@ -1,4 +1,4 @@
-import { COUNTIES } from "../counties";
+import { countyKnown } from "../counties";
 import { flagEntityRule, flagLabel } from "../flags";
 import { formatInt } from "../format";
 import { GLOSSARY } from "../glossary";
@@ -95,10 +95,7 @@ export interface PeerCoverage { inBand: number; identified: number; missing: str
 
 /** Romanian county name as COUNTIES spells it ("Buzau" → "Buzău"), or null. */
 export function countyDisplay(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim();
-  const key = fold(raw).replace(/^municipiul /, "");
-  return COUNTIES.find((name) => fold(name) === key) ?? null;
+  return countyKnown(raw);
 }
 const sameCounty = (a: unknown, b: string | null) => typeof a === "string" && b !== null && countyDisplay(a) === b;
 

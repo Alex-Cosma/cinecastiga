@@ -12,6 +12,7 @@ import type { TrendMemberPart, TrendPartTotals } from "../../lib/ask/trend-parti
 import {
   TREND_LISTS, foreignCountry, specTrendList, specTrendPart, trendGroupOfRow, trendPartLabel, trendRowLabels, type TrendList, type TrendRowFacts, type TrendRowLabel,
 } from "../../lib/ask/trend-shared";
+import { countyName } from "../../lib/counties";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import { MONITORING_MEMBERS_MAX, membersTooManyWords, type MonitoringMembers } from "../../lib/monitoring-shared";
 import type { RowFact } from "./answer/RowFacts";
@@ -369,8 +370,9 @@ export function trendRowView(row: TrendRow, list: TrendList, data: TrendData, sp
     : list === "gone" && group === "gone" ? { value: bareRon(row.valueA), when: `în ${a}${starA}` } : null;
   const country = facts ? foreignCountry(facts) : null;
   // A firm's county is its seat since F4 (owner-seat-switch, decision TB-county-firm flipped): beside it as an institution's.
-  const place = spec.dim === "county" ? null : country ? countryWords(country) : row.county;
-  const name = row.entityId ? cleanName(row.name) : row.name;
+  const place = spec.dim === "county" ? null : country ? countryWords(country) : countyName(row.county);
+  // A county is named as the pages spell it (lib/counties.ts); its scope below keeps the data's spelling.
+  const name = row.entityId ? cleanName(row.name) : countyName(row.name);
   return {
     key: row.entityId ?? row.name, name, href: row.entityId ? `/entitati/${row.entityId}` : null, place, group, groupWords,
     facts: labels.map(labelFact), kinds: labels.map((l) => l.kind), partner,

@@ -1,5 +1,6 @@
 "use client";
 
+import { countyName } from "../../../lib/counties";
 import { useEffect, useRef, useState } from "react";
 import { formatRonFull } from "../../../lib/format";
 import { LOCATE_DEBOUNCE_MS, LOCATE_MIN_CHARS, type LocateMatch, type LocateResult } from "../../../lib/ask/facet-parts";
@@ -52,7 +53,7 @@ export default function RankingLocate({ spec, shown, onWhole }: RankingLocatePro
       setResults(answer.matches.map((match) => ({
         id: match.id, name: match.name, match,
         detail: match.rank === null ? "nu intră în clasament" : `${placeWords(match.rank, answer.total)}${match.value !== null ? ` · ${formatRonFull(match.value)}` : ""}`,
-        ...(match.county ? { side: match.county } : {}),
+        ...(match.county ? { side: countyName(match.county) } : {}),
       })));
     }).catch(() => { if (!own.signal.aborted) { setLoading(false); setResults([]); } });
   };

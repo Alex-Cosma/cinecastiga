@@ -1,5 +1,6 @@
 "use client";
 
+import { countyName } from "../../lib/counties";
 import Link from "next/link";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import type { AskSpec } from "@/lib/ask/spec";
@@ -574,7 +575,7 @@ export function ScatterBlock({
       const h = locate(ev);
       if (h) {
         tipRef.current.show(
-          `${cleanName(h.p.name)}${h.p.county ? ` (${h.p.county})` : ""}`,
+          `${cleanName(h.p.name)}${h.p.county ? ` (${countyName(h.p.county)})` : ""}`,
           `CRI ${formatDecimal(h.p.cri, 2)} · ${formatRon(h.p.value)}`,
           `${countWords(h.p.nFlags, "semnal", "semnale")} de risc · click → pagina entității`,
           ev.clientX,

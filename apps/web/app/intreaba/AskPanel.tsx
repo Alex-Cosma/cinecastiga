@@ -65,6 +65,7 @@ import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, typ
 import type { WinnerFacts } from "@/lib/ask/winners";
 import EmptyState from "./answer/EmptyState";
 import { emptyAnswer, emptyMessage, relaxations } from "./answer-empty";
+import { countyName } from "../../lib/counties";
 import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { entityRowActions } from "./answer/row-actions";
@@ -1530,7 +1531,9 @@ function RankingBars({
     <>
       <div className="cq-ranking">
         {rows.map((r, i) => {
-          const records = () => onSources(spec, entitySourceScope(spec, r), `${cleanName(r.name)} · înregistrările din clasament`);
+          // A county's row is named as the pages spell it (lib/counties.ts); its scope keeps the data's.
+          const shown = r.entityId ? cleanName(r.name) : countyName(cleanName(r.name));
+          const records = () => onSources(spec, entitySourceScope(spec, r), `${shown} · înregistrările din clasament`);
           const entity = r.entityId ? { id: r.entityId, name: cleanName(r.name) } : null;
           const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
           const row = (
@@ -1544,7 +1547,7 @@ function RankingBars({
               {String(i + 1).padStart(2, "0")}
             </span>
             <span className="cq-rank-name">
-              <strong>{cleanName(r.name)}</strong>
+              <strong>{shown}</strong>
               <FactTags tags={r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : []} />
               <span className="cq-bar-track">
                 <i
@@ -1714,7 +1717,7 @@ function CountyValues({
             const f = facts?.counties[r.county], m = metrics.get(r.county);
             return (
             <tr key={r.county}>
-              <th>{r.county}</th>
+              <th>{countyName(r.county)}</th>
               <td data-label="Valoare">{formatRonFull(r.value)}</td>
               <td data-label="Înregistrări">{formatInt(r.count)}</td>
               {lensColumn && <td data-label={lensColumn}>{m?.metric !== null && m?.metric !== undefined ? `${metricWords(lens, m.metric)}${m.muted ? " ·" : ""}` : "—"}</td>}
@@ -1724,7 +1727,7 @@ function CountyValues({
                 <button
                   type="button"
                   onClick={() =>
-                    onSources(spec, { county:r.county }, `${r.county} · înregistrările județului`)
+                    onSources(spec, { county:r.county }, `${countyName(r.county)} · înregistrările județului`)
                   }
                 >
                   Vezi înregistrările →
@@ -1883,11 +1886,11 @@ function TableBlock({
                     {cleanName(r.name)}
                   </Link>
                 ) : (
-                  cleanName(r.name)
+                  countyName(cleanName(r.name))
                 )}
                 {r.entityId && spec ? <FactTags tags={winnerFactTags(spec as AskSpec, facts?.[r.entityId], undefined, r.value)} /> : null}
               </td>
-              <td>{r.county ?? "—"}</td>
+              <td>{countyName(r.county) ?? "—"}</td>
               {perCapita && (
                 <td className="num">
                   {r.population ? formatInt(r.population) : "—"}

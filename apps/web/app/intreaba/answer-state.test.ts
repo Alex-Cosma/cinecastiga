@@ -113,7 +113,7 @@ describe("«Rezultatul afișat · CSV» with the strip's state", () => {
   it("names a firm's place its seat and says the band CÂȘTIGĂTORII narrows to (S4t-firm-csv-column, S4t-band-csv)", () => {
     const table = (county: string): BlockData => ({ block: "table", rows: [{ entityId: 1, name: "PORR", county, value: 10, count: 2 }] }) as unknown as BlockData;
     const firms = answerCsv(table("Bucuresti"), { block: "table", dim: "supplier", measure: "value", filters: {} }, "Firme").text.replace(/^﻿/, "").split("\r\n");
-    expect(firms.slice(0, 2)).toEqual(["nume,sediu,valoare_lei,achizitii,populatie", '"PORR","Bucuresti",10,2,']);
+    expect(firms.slice(0, 2)).toEqual(["nume,sediu,valoare_lei,achizitii,populatie", '"PORR","București",10,2,']);
     const band = answerCsv(table("Cluj"), { block: "table", dim: "supplier", measure: "value", filters: { minEmployees: 1, maxEmployees: 9 } }, "Firme").text.replace(/^﻿/, "").split("\r\n");
     expect(band.slice(0, 2)).toEqual(["nume,sediu,valoare_lei,achizitii,populatie,angajati", '"PORR","Cluj",10,2,,"1–9 angajați"']);
     const none = answerCsv(table("Cluj"), { block: "table", dim: "supplier", measure: "value", filters: { maxEmployees: 0 } }, "Firme").text.split("\r\n");

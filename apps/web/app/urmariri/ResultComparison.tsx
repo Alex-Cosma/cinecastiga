@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { comparableMethodologies, type MonitoringRunDetail } from "../../lib/monitoring-shared";
 import { answerCore, KEY_VERSION_NOTES, KEY_VERSIONS } from "../../lib/ask/answer-core";
 import { formatExactDecimal } from "../../lib/format";
+import { countyName } from "../../lib/counties";
 import { countWords } from "../../lib/ask/answer-text";
 import { FLAG_META, flagLabel } from "../../lib/flags";
 import { TREND_EQUAL_LABEL, TREND_LIST_LABELS } from "../../lib/ask/filters/defs/trend";
@@ -92,7 +93,7 @@ function rowContext(value: unknown, index: number, names?: EntityNames): string 
   if (value.entityId != null && names?.has(String(value.entityId))) return names.get(String(value.entityId))!;
   if (value.from != null && value.to != null) return `Indice ${formatResultValue(value.from, "cri")}–${formatResultValue(value.to, "cri")}`;
   if (value.valueBand != null && value.riskBand != null) return `Grupa valorii ${value.valueBand} · grupa de risc ${value.riskBand}`;
-  if (value.county != null) return String(value.county);
+  if (value.county != null) return countyName(String(value.county));
   if (value.year != null) return `Anul ${value.year}`;
   if (value.src != null) return channels[String(value.src)] ?? String(value.src);
   if (value.daCode != null) return String(value.daCode);

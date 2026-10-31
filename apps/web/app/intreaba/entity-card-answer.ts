@@ -3,7 +3,7 @@ import {
   buyerForm, jointShare, levelWords, oneRecordShare, placeShare, signalsWords, TIES_SHOWN, tiesNotDistinct,
   type Podium, type PodiumFact, type PodiumPlace, type Ties, type TiePlace,
 } from "../../lib/ask/entity-card-shared";
-import { countyOfFolded } from "../../lib/ask/facet-parts";
+import { countyName } from "../../lib/counties";
 import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
 import { employeesWords } from "../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, type QuestionSpec } from "../../lib/ask/question-ui";
@@ -28,7 +28,7 @@ const OLD_BALANCE_YEARS = 2;
 export function placeWords(place: Pick<PodiumPlace, "county">, spec: Spec, population: number | null = null): string {
   const firm = spec.dim === "supplier";
   // The data writes a county without diacritics ("Bucuresti"): the list's own spelling.
-  const county = place.county && place.county !== SEAT_ABROAD ? countyOfFolded(place.county) ?? place.county : place.county;
+  const county = place.county && place.county !== SEAT_ABROAD ? countyName(place.county) : place.county;
   const named = county && county !== SEAT_ABROAD ? (/^bucure[sș]ti$/i.test(county) ? county : `județul ${county}`) : null;
   const where = !county ? null : county === SEAT_ABROAD ? (firm ? "din străinătate" : null) : firm ? `sediul în ${named}` : named;
   return [firm ? "Firmă" : "Instituție", where, population !== null && population > 0 ? countWords(population, "locuitor", "locuitori") : null].filter(Boolean).join(" · ");
@@ -158,7 +158,7 @@ export function tieFacts(row: TiePlace, spec: Spec): RowFact[] {
 }
 
 /** A profile's line beside its name: its county and its direct acquisitions. */
-export const tiePlace = (row: TiePlace): string => [row.county ? countyOfFolded(row.county) ?? row.county : null, countWords(row.count, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
+export const tiePlace = (row: TiePlace): string => [row.county ? countyName(row.county) : null, countWords(row.count, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
 
 /** With no signal in the group, what the sources and the CSV hold (runRows: the first profiles by value): „Sursele: primele 50 după valoare, fără semnale.” */
 export const tiesNoneSources = (ties: Pick<Ties, "rows">): string =>

@@ -175,8 +175,8 @@ describe("the shown CSV", () => {
   it("holds the podium's places with their share, then what the three leave", () => {
     const lines = answerCsv({ block: "entity_card", card: card(), podium: PODIUM }, spec, "Cine").text.split("\r\n");
     expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,procent_din_total,inregistrari");
-    expect(lines[1]).toBe('1,"ALLIANCE HEALTHCARE ROMANIA","Bucuresti",5577504292,0.2108,13669');
-    expect(lines[3]).toBe('3,"FARMEXIM S.A.","Bucuresti",3494973799,0.1321,25590');
+    expect(lines[1]).toBe('1,"ALLIANCE HEALTHCARE ROMANIA","București",5577504292,0.2108,13669');
+    expect(lines[3]).toBe('3,"FARMEXIM S.A.","București",3494973799,0.1321,25590');
     // 26.459.251.841 − 13.438.327.530 left over the other 1.464 firms, and their records.
     expect(lines[4]).toBe(',"celelalte 1464",,13020924311,0.4921,180961');
   });

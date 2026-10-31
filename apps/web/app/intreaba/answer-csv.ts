@@ -1,3 +1,4 @@
+import { countyName } from "../../lib/counties";
 import { fileSlug } from "../../lib/ask/answer-text";
 import type { BlockData, DistributionDataV1, DistributionMember } from "../../lib/ask/compile";
 import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
@@ -72,7 +73,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       const firms = spec.dim === "supplier";
       const band = firms ? employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees)?.replace(/^cu /, "") ?? null : null;
       return [`nume,${firms ? "sediu" : "judet"},valoare_lei,achizitii,populatie${band ? ",angajati" : ""}`,
-        ...data.rows.map((r) => `${csvQ(r.name)},${csvQ(r.county)},${r.value},${r.count},${r.population ?? ""}${band ? `,${csvQ(band)}` : ""}`)];
+        ...data.rows.map((r) => `${csvQ(r.entityId ? r.name : countyName(r.name))},${csvQ(countyName(r.county))},${r.value},${r.count},${r.population ?? ""}${band ? `,${csvQ(band)}` : ""}`)];
     }
     case "timeseries": {
       // F3: a month's column on a series month by month, a value per part of a split (its parts' labels as columns).
@@ -91,7 +92,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       // Selection totals by stream; the risk columns are the historical profile.
       return [
         "nume,judet,valoare_lei,inregistrari,valoare_proceduri_lei,contracte_proceduri,o_singura_oferta,oferte_cunoscute,valoare_directe_lei,achizitii_directe,parteneri,cri_istoric,semnale_istorice,flags",
-        ...data.entities.map((e) => [csvQ(e.name), csvQ(e.county), e.value, e.count, e.streams?.contracts.value ?? "", e.streams?.contracts.count ?? "",
+        ...data.entities.map((e) => [csvQ(e.name), csvQ(countyName(e.county)), e.value, e.count, e.streams?.contracts.value ?? "", e.streams?.contracts.count ?? "",
           e.streams?.contracts.singleBid ?? "", e.streams?.contracts.bidsKnown ?? "", e.streams?.da.value ?? "", e.streams?.da.count ?? "",
           e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(",")),
       ];
@@ -102,7 +103,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       if (d.version !== 2) return ["cri_de,cri_pana,entitati", ...(d as unknown as DistributionDataV1).buckets.map((b) => `${b.from},${b.to},${b.n}`)];
       const row = (cells: (string | number)[]) => cells.join(",");
       const member = (part: string, m: DistributionMember, own: string) =>
-        row([csvQ(part), m.nFlags, m.nFlags / max, "", csvQ(m.name), csvQ(m.county), m.population ?? "", csvQ(m.flags.join("|")), m.nDas, "", "", own]);
+        row([csvQ(part), m.nFlags, m.nFlags / max, "", csvQ(m.name), csvQ(countyName(m.county)), m.population ?? "", csvQ(m.flags.join("|")), m.nDas, "", "", own]);
       return [
         "sectiune,criterii,indice_de_risc,criteriu,nume,judet,populatie,semnale,achizitii_directe,din_grup,din_tara,entitatea",
         ...(d.hist ?? []).map((h) => row([csvQ("criterii"), h.k, h.k / max, "", "", "", "", "", "", h.n, "", h.k === Math.min(f.nFlags, max) ? "da" : ""])),
@@ -123,7 +124,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       // (the rates' shares come after the answer: AskPanel completes them before the export, ensureScatterFacts);
       // an answer stored before it keeps its sample of points.
       if ("scatter" in data) return scatterCsv(data.scatter, csvAny, keptScatterFacts(spec));
-      return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(p.county)},${p.value},${p.cri},${p.nFlags}`)];
+      return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(countyName(p.county))},${p.value},${p.cri},${p.nFlags}`)];
     // F4: the flows on screen, the partners past „Arată” folded (sankey-2); the partners of the list on screen, in its order and length (network-2).
     case "sankey":
       return sankeyCsvRows(data, spec, csvAny);
@@ -137,18 +138,18 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
         // Under a band of CÂȘTIGĂTORII the share is of the category (the firms in the band), the selection's total a row of its own.
         return [
           `loc,nume,judet,valoare_lei,${selection ? "procent_din_categorie" : "procent_din_total"},inregistrari`,
-          ...places.map((place, i) => [i + 1, csvQ(place.name), csvQ(place.county), place.value, placeShare(place, total)?.toFixed(4) ?? "", place.count].join(",")),
+          ...places.map((place, i) => [i + 1, csvQ(place.name), csvQ(countyName(place.county)), place.value, placeShare(place, total)?.toFixed(4) ?? "", place.count].join(",")),
           ...(rest && total ? [["", csvQ(`celelalte ${rest.entities}${selection ? " din categorie" : ""}`), "", rest.value, rest.share.toFixed(4), Math.max(0, total.count - places.reduce((n, place) => n + place.count, 0))].join(",")] : []),
           ...(selection && total ? [["", csvQ(`toată selecția: ${selection.entities}`), "", selection.value, "", selection.count].join(",")] : []),
         ];
       }
       if (data.ties) return [
         "nume,judet,valoare_lei,achizitii,cri,semnale,flags",
-        ...data.ties.rows.map((row) => [csvQ(row.name), csvQ(row.county), row.value, row.count, data.ties!.level, row.nFlags, csvQ(row.flags.join("|"))].join(",")),
+        ...data.ties.rows.map((row) => [csvQ(row.name), csvQ(countyName(row.county)), row.value, row.count, data.ties!.level, row.nFlags, csvQ(row.flags.join("|"))].join(",")),
       ];
       return [
         profile ? "nume,judet,valoare_lei,achizitii,cri,semnale,flags" : "nume,judet,valoare_lei,inregistrari",
-        `${csvQ(c.name)},${csvQ(c.county)},${c.value},${c.count}${profile ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
+        `${csvQ(c.name)},${csvQ(countyName(c.county))},${c.value},${c.count}${profile ? `,${c.cri ?? ""},${c.nFlags},${csvQ(c.flags.join("|"))}` : ""}`,
       ];
     }
     case "fact_check": {
