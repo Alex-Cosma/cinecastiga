@@ -74,6 +74,21 @@ export function flaggedRecordKeys(sql: DbSql, role: ScatterRole, flag: ScatterFl
   }
 }
 
+/**
+ * Before the first nightly build with da_tx_flagged_idx (rollups.ts flaggedIndexReady), the row signals' keys are
+ * read through the cohort's records on its party's index: a cohort of up to FLAG_LIVE_RECORDS acquisitions answers
+ * so (rapid on the firms of the whole country, 1.68M: 2.1 s warm, 8.3 s cold); a larger one (a possible split on
+ * the institutions of the country, 10.8M: 3.6 s warm, 14.3 s cold, past the 20 s limit under load) says it waits
+ * for that build instead of failing at the limit (S6, F6b verify). Its own profiles' sources stay open.
+ */
+export const ROW_FLAGS: ReadonlySet<ScatterFlag> = new Set<ScatterFlag>(["da_split", "da_rapid", "da_round"]);
+export const FLAG_LIVE_RECORDS = 2_500_000;
+export const FLAG_INDEX_PENDING =
+  "Sursele acestui semnal pe tot grupul sunt gata după următoarea prelucrare a datelor. Până atunci, deschide sursele unui profil din listă sau restrânge grupul (un județ, un tip).";
+/** Whether a signal's sources wait for da_tx_flagged_idx: a row signal, a cohort of more than FLAG_LIVE_RECORDS acquisitions, no index. */
+export const flagSourcesWait = (flag: ScatterFlag, cohortRecords: number, indexReady: boolean): boolean =>
+  ROW_FLAGS.has(flag) && !indexReady && cohortRecords > FLAG_LIVE_RECORDS;
+
 /** The ids (sicap_da_id) of the records behind `flag` (flaggedRecordKeys), as a subquery. */
 export function flaggedRecordIds(sql: DbSql, role: ScatterRole, flag: ScatterFlag, entities: Fragment): Fragment {
   return frag(sql`(select k.ref_id from ${flaggedRecordKeys(sql, role, flag, entities)} k)`);
@@ -165,13 +180,17 @@ export async function recordFacts(sql: DbSql, role: ScatterRole, ids: readonly s
  */
 export const RECONCILE_MAX = 200;
 export async function builtFlagTotals(sql: DbSql, role: ScatterRole, flag: ScatterFlag, entities: Fragment): Promise<{ records: number | null; value: string } | null> {
-  const party = role === "authority" ? sql`da.authority_entity_id` : sql`nullif(da.supplier_entity_id, da.authority_entity_id)`;
+  // A firm is the acquisition's supplier unless it is the authority itself (audit F12, as marts.da_transactions). Said
+  // on the bare column, so its index answers: `nullif(supplier, authority) in (…)` read all 19.6M acquisitions (one
+  // firm's rapid: 5.9–13.6 s; S6, F6b verify). Same rows: one firm 20 ms; DEDEMAN's 160,404 rapid ones 1.4 s warm.
+  const party = role === "authority" ? sql`da.authority_entity_id in (${entities})`
+    : sql`da.supplier_entity_id in (${entities}) and da.supplier_entity_id is distinct from da.authority_entity_id`;
   if (flag === "da_rapid" || flag === "da_round") {
     const [row] = (await sql`
       select count(*)::text n, coalesce(sum(da.closing_value), 0)::text v
       from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
       where f.subject_type = 'da' and f.flag_code = ${flag} and f.triggered and da.state = 'Oferta acceptata'
-        and da.closing_value > 0 and da.closing_value <= ${DA_PLAFOND_RON} and ${party} in (${entities})`) as unknown as { n: string; v: string }[];
+        and da.closing_value > 0 and da.closing_value <= ${DA_PLAFOND_RON} and ${party}`) as unknown as { n: string; v: string }[];
     return row ? { records: Number(row.n), value: row.v } : null;
   }
   if (flag === "da_split") {

@@ -576,6 +576,20 @@ export async function valueKeysReady(sql: DbSql): Promise<boolean> {
 }
 
 /**
+ * da_tx_flagged_idx present (F6b, TRANSACTION_MART_BUILD_INDEXES): the flagged rows of da_transactions alone, from
+ * which a signal's sources on the risk cloud read their keys (scatter-records.ts flaggedRecordKeys). Probed apart:
+ * until the first nightly build with it the same query reads the cohort's records by its party's index, which a
+ * small cohort answers and a large one does not (scatter-records.ts FLAG_LIVE_RECORDS).
+ */
+let flaggedReady: { ok: boolean; at: number } | null = null;
+export async function flaggedIndexReady(sql: DbSql): Promise<boolean> {
+  if (flaggedReady && Date.now() - flaggedReady.at < 600_000) return flaggedReady.ok;
+  const [row] = (await sql`select to_regclass('marts.da_tx_flagged_idx') is not null ok`) as unknown as { ok: boolean }[];
+  flaggedReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return flaggedReady.ok;
+}
+
+/**
  * The source drawer's totals of a cohort of historical profiles (the risk cloud, a distribution's group): the
  * records of its entities in their role, from agg_entity_year's direct acquisitions. The profiles count the
  * accepted direct acquisitions of core with 0 < value <= 2M lei by the same ids (authority_entity_id, the supplier

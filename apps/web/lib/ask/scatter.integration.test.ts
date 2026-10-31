@@ -5,7 +5,7 @@ import { runRows, runSpec } from "./compile";
 import { locate, profileFacts } from "./facets";
 import { ground } from "./ground";
 import { scatterWithFacts } from "./scatter";
-import { flaggedRecordKeys } from "./scatter-records";
+import { builtFlagTotals, flaggedRecordKeys } from "./scatter-records";
 import type { ScatterData } from "./scatter-shared";
 import { pointPlace, type ScatterV2 } from "../../app/intreaba/scatter-answer";
 import { validateSpec, type AskSpec } from "./spec";
@@ -303,5 +303,32 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
     }, { globals: [...ENGINE_GLOBAL_TABLES, "core.flags"] });
     expect(out.before).toEqual({ rapid: [14, true, false], split: [3, true, false], december: [4, true, false], main: [15, null, false] });
     expect(out.after).toEqual([14, false, true]);
+  });
+
+  it("reconciles a firm's rapid and round on its own acquisitions, never one where the authority supplies itself (S6, F6b verify)", async () => {
+    const firm = BASE + 101, own = BASE + 1;
+    const fill = async (q: DbSql) => {
+      await seed(q);
+      // The firm 101 sells to Alfa and Beta; Alfa also "buys" from itself (a supplier equal to the authority is none).
+      const da = [
+        { id: 1, authority: BASE + 1, supplier: firm, value: 100, flag: "da_rapid" }, { id: 2, authority: BASE + 2, supplier: firm, value: 250, flag: "da_rapid" },
+        { id: 3, authority: BASE + 2, supplier: firm, value: 40, flag: "da_round" }, { id: 4, authority: own, supplier: own, value: 900, flag: "da_rapid" },
+        { id: 5, authority: BASE + 2, supplier: own, value: 70, flag: "da_rapid" },
+      ].map((r) => ({ ...r, id: BASE + 900 + r.id }));
+      await q`insert into core.entities (id, name_display, name_normalized, cui_canonical, cui_valid, county, country_code, is_foreign)
+        values (${firm}, 'Furnizor 1', 'furnizor 1', ${String(firm)}, true, 'Buzau', 'RO', false) on conflict do nothing`;
+      await q`insert into core.direct_acquisitions (id, da_code, sicap_da_id, authority_entity_id, supplier_entity_id, closing_value, finalization_date, state)
+        select (r->>'id')::bigint, 'F' || (r->>'id'), (r->>'id')::bigint, (r->>'authority')::bigint, (r->>'supplier')::bigint, (r->>'value')::numeric,
+               '2021-06-15', 'Oferta acceptata' from jsonb_array_elements(${JSON.stringify(da)}::jsonb) r`;
+      await q`insert into core.flags (subject_type, subject_id, flag_code, triggered, methodology_version)
+        select 'da', (r->>'id')::bigint, r->>'flag', true, 'rf-test' from jsonb_array_elements(${JSON.stringify(da)}::jsonb) r`;
+    };
+    const out = await withAskFixture(connection!.sql, "scatter_firm_built", fill, async (q) => ({
+      rapid: await builtFlagTotals(q, "supplier", "da_rapid", q`select ${firm}::bigint`),
+      round: await builtFlagTotals(q, "supplier", "da_round", q`select ${firm}::bigint`),
+      // Alfa as a firm: only what it sold to Beta, not its acquisition from itself.
+      self: await builtFlagTotals(q, "supplier", "da_rapid", q`select ${own}::bigint`),
+    }), { globals: [...ENGINE_GLOBAL_TABLES, "core.flags"] });
+    expect(out).toEqual({ rapid: { records: 2, value: "350" }, round: { records: 1, value: "40" }, self: { records: 1, value: "70" } });
   });
 });
