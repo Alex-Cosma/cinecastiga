@@ -109,7 +109,10 @@ date -u '+completed=%FT%TZ'
 # Outside the 503 window, with the site open (S6): the stored search text of the
 # source drawers, from the marts just published. Until it ends they search by
 # names first; a failure changes nothing published, and the next run builds it.
-docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/source-search.js </dev/null || echo 'Source search build failed; the drawers keep the names-first search.'
+# It holds the deploy lock, so it is bounded: 40 min (local full data 8.5-8.9
+# min; the build's own lock and statement limits end its database work first),
+# then SIGTERM and a minute later SIGKILL; a timeout is a failure like any other.
+timeout --kill-after=60s 40m docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/source-search.js </dev/null || echo 'Source search build failed; the drawers keep the names-first search.'
 date -u '+search_text_completed=%FT%TZ'
 # Keep the two latest successful restore points plus the latest successful full
 # (weekly) one; a failed run's dump goes once a later run succeeds. The dated

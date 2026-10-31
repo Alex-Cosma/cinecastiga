@@ -26,7 +26,9 @@ esac`;
   const curl='echo "curl $*" >> "$TEST_LOG"\ncase "$*" in *api/health*) echo 200;; *) if [ "$TEST_FAILURE" = open ]; then echo 200; else echo 503; fi;; esac';
   // Gate retries and the in-flight grace are logged, not waited; the heartbeat keeps real sleep.
   const sleep='case "$1" in 3|30) echo "sleep $1" >> "$TEST_LOG";; *) exec /bin/sleep "$@";; esac';
-  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl,sleep,sha256sum:`cat >/dev/null; case "$TEST_FAILURE" in checksum) exit 1;; checksum-empty) exit 0;; esac; echo '${digest}  -'`};
+  // The search step's bound is logged, then its command runs (options, then the duration, then the command).
+  const timeout='echo "timeout $*" >> "$TEST_LOG"\nwhile [ "${1#-}" != "$1" ]; do shift; done\nshift\nexec "$@"';
+  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl,sleep,timeout,sha256sum:`cat >/dev/null; case "$TEST_FAILURE" in checksum) exit 1;; checksum-empty) exit 0;; esac; echo '${digest}  -'`};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
   const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no'},encoding:'utf8'});
   const backup=join(dir,'backups',runId);
@@ -70,6 +72,8 @@ test('the stored search text is built after the reopen, never on a failed run, a
  const failed=await run('search');assert.equal(failed.status,0);
  assert.match(failed.calls,/processing.js finish [\s\S]*source-search\.js/);assert.doesNotMatch(failed.calls,/processing.js fail /);
  for(const failure of ['backup','refresh']){const f=await run(failure);assert.doesNotMatch(f.calls,/source-search\.js/,failure);}
+ // Bounded, as it holds the deploy lock: a hang ends as a failure, not as skipped nights.
+ assert.match(r.calls,/timeout --kill-after=60s 40m docker compose --profile processing run --rm --no-deps -T processor node apps\/ingestion\/dist\/scripts\/source-search\.js\n/);
 });
 
 test('readers keep the site through drain and backup; it must answer 503 before data changes',async()=>{

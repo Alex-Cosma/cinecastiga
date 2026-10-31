@@ -47,6 +47,18 @@ export interface SourceSearchReport {
   brinBytes: number;
 }
 
+/** The longest wait for the SHARE lock on the marts (a load or a VACUUM FULL holds them): then the build fails. */
+export const SOURCE_SEARCH_LOCK_WAIT = "2min";
+/** The longest any statement of the build runs (local, full data: fill 2.1 min, trigram index 6.3–6.8 min). */
+export const SOURCE_SEARCH_STATEMENT = "20min";
+/** One statement in its own transaction, under the build's statement limit. */
+async function bounded(sql: DbSql, statement: string): Promise<void> {
+  await sql.begin(async (q) => {
+    await q.unsafe(`set local statement_timeout = '${SOURCE_SEARCH_STATEMENT}'`);
+    await q.unsafe(statement);
+  });
+}
+
 const year = (column: string) => `case when ${column} ~ '^[0-9]{4}' then substr(${column}, 1, 4)::smallint end`;
 
 /**
@@ -56,6 +68,9 @@ const year = (column: string) => `case when ${column} ~ '^[0-9]{4}' then substr(
  * ACCESS EXCLUSIVE on the state and the old table for a moment; a reader in
  * the middle of a drawer holds them, so the swap waits for it (lock_timeout,
  * retried). Never inside the nightly window: run it with the site open.
+ * Bounded (S6 review): it runs holding the nightly deploy lock, so a wait or
+ * a stall must fail into the caller's `|| echo` path, never hang: the SHARE
+ * lock waits SOURCE_SEARCH_LOCK_WAIT, each statement SOURCE_SEARCH_STATEMENT.
  */
 export async function buildSourceSearch(sql: DbSql, opts: { log?: (message: string) => void } = {}): Promise<SourceSearchReport> {
   const log = opts.log ?? (() => {});
@@ -63,6 +78,8 @@ export async function buildSourceSearch(sql: DbSql, opts: { log?: (message: stri
   await sql`drop table if exists marts.source_search_next`;
   let started = Date.now();
   const nodes = await sql.begin("isolation level repeatable read", async (q) => {
+    await q.unsafe(`set local lock_timeout = '${SOURCE_SEARCH_LOCK_WAIT}'`);
+    await q.unsafe(`set local statement_timeout = '${SOURCE_SEARCH_STATEMENT}'`);
     await q`lock table marts.da_transactions, marts.contract_transactions in share mode`;
     await q.unsafe(`
       create unlogged table marts.source_search_next (
@@ -87,14 +104,14 @@ export async function buildSourceSearch(sql: DbSql, opts: { log?: (message: stri
   const fillMs = ms(started);
   log(`source search: ${nodes.n} rows in ${fillMs} ms`);
   started = Date.now();
-  await sql.unsafe(`create index source_search_next_trgm_idx on marts.source_search_next using gin (t gin_trgm_ops) with (fastupdate = off)`);
+  await bounded(sql, `create index source_search_next_trgm_idx on marts.source_search_next using gin (t gin_trgm_ops) with (fastupdate = off)`);
   const trigramMs = ms(started);
   log(`source search: trigram index ${trigramMs} ms`);
   started = Date.now();
-  await sql.unsafe(`create index source_search_next_y_idx on marts.source_search_next using brin (y)`);
+  await bounded(sql, `create index source_search_next_y_idx on marts.source_search_next using brin (y)`);
   const brinMs = ms(started);
   started = Date.now();
-  await sql`analyze marts.source_search_next`;
+  await bounded(sql, `analyze marts.source_search_next`);
   const analyzeMs = ms(started);
   started = Date.now();
   for (let attempt = 1; ; attempt++) {
