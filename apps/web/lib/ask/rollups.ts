@@ -31,6 +31,9 @@ import { trendChannelColumns } from "./trend-partition";
  * A purchase kind or a size of the kit's ranges on a ranking, trend or total
  * of one role with conditions on that role only reads agg_entity_kind_year
  * (S5 PRE-answers: entityKind), once a build has made it (kindRollupReady).
+ * A kind (no size) on a trend's same months reads agg_entity_kind_month, and on
+ * a ranking or trend with a condition on the other side agg_pair_kind_year (S6
+ * over-bar: entityKindMonth, pairKind; kindMonthRollupReady).
  *
  * What the rollups cannot answer (the planner returns the reason and the
  * engine runs its live query): months, a domain together with an entity
@@ -131,9 +134,11 @@ export type RollupNeed = { by: Role } | { by: "county" } | { by: "total" } | { b
  * entityMonth: agg_entity_month, the entity rollup with the month, for a trend's same months (F2);
  * countyMonth: agg_county_month, every row by county and month, for the county trend on the same months.
  * entityKind: agg_entity_kind_year, the entity rollup with the purchase kind and the size range (S5 PRE-answers).
+ * entityKindMonth, pairKind: agg_entity_kind_month and agg_pair_kind_year, agg_entity_month and agg_pair_year with the
+ * purchase kind (S6 over-bar).
  */
 export type RollupSource = { table: "entity"; role: Role } | { table: "entityMonth"; role: Role } | { table: "entityKind"; role: Role }
-  | { table: "countyMonth" } | { table: "pair" } | { table: "cpv" };
+  | { table: "entityKindMonth"; role: Role } | { table: "countyMonth" } | { table: "pair" } | { table: "pairKind" } | { table: "cpv" };
 
 /** The selection, in the terms of the rollup columns. */
 export interface RollupFilters {
@@ -143,7 +148,7 @@ export interface RollupFilters {
   county: string | null;
   cpvPrefixes: readonly string[];
   cpvExclude: readonly string[];
-  /** The purchase kind on the code (purchaseKindCond on agg_cpv_year.cpv_code; agg_entity_kind_year's kind). */
+  /** The purchase kind on the code (purchaseKindCond on agg_cpv_year.cpv_code; the kind column of the kind rollups). */
   purchaseKind: PurchaseKind | null;
   /** The size ranges of a size of the kit's ranges (sizeRanges), on agg_entity_kind_year only. */
   size: readonly number[] | null;
@@ -209,10 +214,14 @@ export function sameRoleExclusions(population: QueryPopulation | undefined | nul
  * (`kinds`: kindRollupReady): a ranking or trend of that role, or a total of
  * records selected by an attribute of that role; a kind alone on a total
  * stays on agg_cpv_year, a size alone on agg_national_mix (series-rollups.ts).
+ * A kind without a size, a domain or a threshold, once agg_entity_kind_month
+ * and agg_pair_kind_year are built (`kindMonths`: kindMonthRollupReady): on a
+ * trend's same months of one role with conditions on that role, the former;
+ * ranking or trending a role with a condition on the other side, the latter.
  * Fails closed: a context key outside ROLLUP_CTX_KEYS that holds a condition
  * (a filter of a later stage) returns its name as the reason.
  */
-export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: boolean; kinds?: boolean } = {}): RollupPlan {
+export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: boolean; kinds?: boolean; kindMonths?: boolean } = {}): RollupPlan {
   for (const [key, value] of Object.entries(ctx))
     if (!KNOWN_KEYS.has(key) && holdsCondition(value)) return { reason: `${key}: a condition the rollups do not know` };
   if (ctx.comparison) return { reason: "comparison: its own queries (compareParties …)" };
@@ -266,6 +275,12 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
     if (size) return { reason: plain ? "purchase value: agg_entity_kind_year holds one role, with conditions on that role only"
       : "purchase value: with a domain, months or a threshold, not in the rollups" };
   }
+  // S6 over-bar: a kind on a trend's same months (2025 → 2026 while 2026 runs) or with the other side's condition (the
+  // institutions buying goods from firms with 1–9 employees), which read both marts whole live (2.0–3.4 s nationally).
+  if (opts.kindMonths && filters.purchaseKind && !size && !domain && !filters.minimum && (need.by === "authority" || need.by === "supplier")) {
+    if (filters.months && [...sides].every((side) => side === need.by)) return { source: { table: "entityKindMonth", role: need.by }, filters };
+    if (!filters.months) return { source: { table: "pairKind" }, filters };
+  }
   // The purchase kind is a condition on the code, as the domain is: agg_cpv_year only.
   const cpv = domain || filters.purchaseKind !== null;
   if (filters.months) {
@@ -295,14 +310,16 @@ export function planRollup(ctx: RollupCtx, need: RollupNeed, opts: { months?: bo
 /** Column of one role on a rollup source, or null when the source has none. */
 function idColumn(sql: DbSql, source: RollupSource, role: Role, alias: string): Fragment | null {
   if (source.table === "cpv" || source.table === "countyMonth") return null;
-  if (source.table === "entity" || source.table === "entityMonth" || source.table === "entityKind") return source.role === role ? sql`${sql(alias)}.eid` : null;
+  if (source.table === "entity" || source.table === "entityMonth" || source.table === "entityKind" || source.table === "entityKindMonth")
+    return source.role === role ? sql`${sql(alias)}.eid` : null;
   return role === "authority" ? sql`${sql(alias)}.authority_id` : sql`${sql(alias)}.supplier_id`;
 }
 
 function fromSource(sql: DbSql, source: RollupSource, alias: string): Fragment {
   const name = source.table === "entity" ? sql`marts.agg_entity_year` : source.table === "entityMonth" ? sql`marts.agg_entity_month`
-    : source.table === "entityKind" ? sql`marts.agg_entity_kind_year`
-    : source.table === "countyMonth" ? sql`marts.agg_county_month` : source.table === "pair" ? sql`marts.agg_pair_year` : sql`marts.agg_cpv_year`;
+    : source.table === "entityKind" ? sql`marts.agg_entity_kind_year` : source.table === "entityKindMonth" ? sql`marts.agg_entity_kind_month`
+    : source.table === "countyMonth" ? sql`marts.agg_county_month` : source.table === "pair" ? sql`marts.agg_pair_year`
+    : source.table === "pairKind" ? sql`marts.agg_pair_kind_year` : sql`marts.agg_cpv_year`;
   return sql`${name} ${sql(alias)}`;
 }
 
@@ -314,7 +331,8 @@ function fromSource(sql: DbSql, source: RollupSource, alias: string): Fragment {
 function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: string, opts: { years?: boolean } = {}): Fragment {
   const p = (column: string) => sql`${sql(alias)}.${sql(column)}`;
   const parts: Fragment[] = [];
-  if (source.table === "entity" || source.table === "entityMonth" || source.table === "entityKind") parts.push(sql`${p("role")} = ${source.role}`);
+  if (source.table === "entity" || source.table === "entityMonth" || source.table === "entityKind" || source.table === "entityKindMonth")
+    parts.push(sql`${p("role")} = ${source.role}`);
   // The same months of both years: trendYearsPredicate on the rows.
   if (f.months) parts.push(sql`${p("m")} between ${String(f.months[0]).padStart(2, "0")} and ${String(f.months[1]).padStart(2, "0")}`);
   if (f.dataset !== "all") parts.push(sql`${p("src")} = ${f.dataset}`);
@@ -325,8 +343,8 @@ function rollupWhere(sql: DbSql, source: RollupSource, f: RollupFilters, alias: 
     parts.push(sql`(${f.cpvPrefixes.map((x) => sql`${p("cpv_code")} like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
   if (f.cpvExclude.length > 0)
     parts.push(sql`not (${f.cpvExclude.map((x) => sql`${p("cpv_code")} like ${x + "%"}`).reduce((a, b) => sql`${a} or ${b}`)})`);
-  // agg_entity_kind_year keeps the kind of the code (purchaseKindCond's classes) and the size range.
-  if (f.purchaseKind && source.table === "entityKind") parts.push(sql`${p("kind")} = ${f.purchaseKind}`);
+  // The kind rollups keep the kind of the code (purchaseKindCond's classes); agg_entity_kind_year the size range too.
+  if (f.purchaseKind && (source.table === "entityKind" || source.table === "entityKindMonth" || source.table === "pairKind")) parts.push(sql`${p("kind")} = ${f.purchaseKind}`);
   else if (f.purchaseKind) { const code: Fragment = sql`${sql(alias)}.cpv_code`; parts.push(purchaseKindCond(sql, f.purchaseKind, code)); }
   if (f.size) parts.push(sql`${p("size")} = any(${sql.array([...f.size])}::smallint[])`);
   const authority = idColumn(sql, source, "authority", alias), supplier = idColumn(sql, source, "supplier", alias);
@@ -444,7 +462,25 @@ export async function kindRollupReady(sql: DbSql): Promise<boolean> {
   return kindReady.ok;
 }
 /** Tests: probe again. */
-export function forgetKindRollup(): void { kindReady = null; }
+export function forgetKindRollup(): void { kindReady = null; kindMonthReady = null; }
+/**
+ * agg_entity_kind_month and agg_pair_kind_year present and of the same build as their twins, agg_entity_month and
+ * agg_pair_year (S6 over-bar): the build writes each twin's oid (a new table each night) on its comment, so a table
+ * left by an earlier build (a revert's build drops and rebuilds only the others) names an older twin and is not read.
+ * No rows are read (their sums would cost ~1 s a probe). Until the first build with them the kinds on a trend's same
+ * months or with the other side's condition run live. Cached 10 minutes per process, as the others; call it with the
+ * pool, before sql.begin.
+ */
+let kindMonthReady: { ok: boolean; at: number } | null = null;
+export async function kindMonthRollupReady(sql: DbSql): Promise<boolean> {
+  if (kindMonthReady && Date.now() - kindMonthReady.at < 600_000) return kindMonthReady.ok;
+  const [row] = (await sql`
+    select obj_description(to_regclass('marts.agg_entity_kind_month'), 'pg_class') = 'agg_entity_month ' || to_regclass('marts.agg_entity_month')::oid::text
+       and obj_description(to_regclass('marts.agg_pair_kind_year'), 'pg_class') = 'agg_pair_year ' || to_regclass('marts.agg_pair_year')::oid::text ok
+  `) as unknown as { ok: boolean | null }[];
+  kindMonthReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return kindMonthReady.ok;
+}
 /**
  * agg_entity_month and agg_county_month present (F2) and of the same build as the yearly rollups.
  * Built with the three above by the same build, it is probed apart: a deploy
@@ -643,7 +679,7 @@ export async function daRecordCount(sql: DbSql): Promise<number | null> {
 }
 
 /** Tests only: forget the probes, so the next call reads the database. */
-export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; keysReady = null; valueReady = null; kindReady = null; cpvCover = null; pairIndexes = null; }
+export function forgetRollupsReady(): void { ready = null; monthReady = null; daysReady = null; refReady = null; keysReady = null; valueReady = null; kindReady = null; kindMonthReady = null; cpvCover = null; pairIndexes = null; }
 
 export interface RollupTableOpts {
   dim: Role;
@@ -960,7 +996,7 @@ export async function rollupSourceTotals(sql: DbSql, plan: { source: RollupSourc
   // A ranking of firms selected by an attribute of the firm (F4's seat, the employees), or of either role with some of
   // them left out: its records are those of the selected entities, every one with its entity, so agg_entity_year's rows
   // of that role (and their d0/d1) are exactly them.
-  if (block === "authorities" && plan.source.table === "pair" && (plan.filters.seat || plan.filters.employees)) {
+  if (block === "authorities" && (plan.source.table === "pair" || plan.source.table === "pairKind") && (plan.filters.seat || plan.filters.employees)) {
     // S5 (S4r-from-seat): a ranking of institutions buying from firms of a seat or a size — „De la cine › Ce fel de
     // firme”: every record kept has its firm and its buyer county, so the pairs' rows of agg_pair_year are exactly them
     // (national „în alt județ”, all years: 2.5 s live, the union with the seat's semi-join).

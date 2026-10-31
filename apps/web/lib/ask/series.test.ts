@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { assembleSeries, CHANNEL_PARTS, MAX_SERIES_DIVISIONS, OTHER_PART, pickDivisions, seriesMonthsSpan, type SeriesRow } from "./series";
 import { divisionShortName, SHORT_DIVISIONS } from "./cpv-divisions";
+import { ASK_EMPLOYEE_BANDS } from "@seap/db";
+import { employeeBands } from "./series-rollups";
+import { EMPLOYEE_BAND_FROM, EMPLOYEE_BAND_TO } from "./filters/words";
 
 // The evolution's options as the engine assembles them (plan §4.3; final timeseries §3.7–§3.9).
 
@@ -82,5 +85,17 @@ describe("a series assembled from the grouped rows", () => {
     // A split adds its parts' same months.
     const split = [row("2024", "da", "60", 6, ["20", 2]), row("2024", "contracts", "40", 4, ["20", 2]), row("2025", "da", "30", 3, ["30", 3])];
     expect(assembleSeries(split, { grain: "year", split: "channel", ref: { year: 2025, to: 5 } }).ref).toMatchObject({ value: 40, count: 4 });
+  });
+});
+
+describe("the employee bands of agg_mix_employees (S6 over-bar)", () => {
+  it("are the kit's bands, built with the same bounds", () => {
+    expect([...ASK_EMPLOYEE_BANDS]).toEqual([...EMPLOYEE_BAND_TO]);
+    expect(EMPLOYEE_BAND_FROM).toEqual([0, 1, 10, 50, 250]);
+  });
+  it("read every range of the kit as a union of bands, and none off them", () => {
+    expect([employeeBands(0, 0), employeeBands(1, 9), employeeBands(250, null), employeeBands(10, 249), employeeBands(null, 9), employeeBands(1, null)])
+      .toEqual([[0], [1], [4], [2, 3], [0, 1], [1, 2, 3, 4]]);
+    expect([employeeBands(2, 9), employeeBands(1, 10), employeeBands(10, 9), employeeBands(null, 100)]).toEqual([null, null, null, null]);
   });
 });

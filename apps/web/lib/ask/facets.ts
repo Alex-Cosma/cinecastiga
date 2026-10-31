@@ -14,7 +14,7 @@ import { buyerRowsSql, dominantIdsSql, rankedFacts, RELATION_MIN_RECORDS, RELATI
 import { partialMonths, sameMonthsWindow, WHOLE_YEAR, type MonthsWindow } from "./months-window";
 import { isHistoricalProfile, unsupportedPopulationView } from "./population";
 import { retarget } from "./filters/retarget";
-import { cpvCoverReady, kindRollupReady, monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
+import { cpvCoverReady, kindMonthRollupReady, kindRollupReady, monthRollupReady, planRollup, rollupRows, rollupsReady, type RollupNeed } from "./rollups";
 import { DOMAIN_GROUP_ROWS, domainOnIndex } from "./map-facts";
 import { mixRollupReady, mixWhere } from "./series-rollups";
 import { countyDisplay } from "./resolved-spec";
@@ -194,7 +194,7 @@ interface Rows {
 async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: Ready, opts: { full?: boolean } = {}): Promise<Rows> {
   const { ctx, trend } = p;
   // A trend's same months read agg_entity_month / agg_county_month once a build has made them (as its answer).
-  const plan = need && ready.rollups ? planRollup(ctx, need, { months: ready.months, kinds: ready.kinds }) : null;
+  const plan = need && ready.rollups ? planRollup(ctx, need, { months: ready.months, kinds: ready.kinds, kindMonths: ready.kindMonths }) : null;
   if (plan && "source" in plan) {
     const r = rollupRows(sql, plan, "p", { years: !trend });
     const where: Fragment = trend ? sql`${r.where} and p.y in (${String(trend.yearA)}, ${String(trend.yearB)})` : r.where;
@@ -215,12 +215,12 @@ async function rowsOf(sql: DbSql, p: Prepared, need: RollupNeed | null, ready: R
 }
 
 /** The rollups the nightly build has made (probed with the pool, before the transaction: rollups.ts, series-rollups.ts). */
-export interface Ready { rollups: boolean; months: boolean; mix: boolean; kinds: boolean; cpvCover: boolean }
-const NO_ROLLUPS: Ready = { rollups: false, months: false, mix: false, kinds: false, cpvCover: false };
+export interface Ready { rollups: boolean; months: boolean; mix: boolean; kinds: boolean; kindMonths: boolean; cpvCover: boolean }
+const NO_ROLLUPS: Ready = { rollups: false, months: false, mix: false, kinds: false, kindMonths: false, cpvCover: false };
 export async function readyOf(sql: DbSql): Promise<Ready> {
   const rollups = await rollupsReady(sql);
   return { rollups, months: rollups && await monthRollupReady(sql), mix: await mixRollupReady(sql), kinds: rollups && await kindRollupReady(sql),
-    cpvCover: rollups && await cpvCoverReady(sql) };
+    kindMonths: rollups && await kindMonthRollupReady(sql), cpvCover: rollups && await cpvCoverReady(sql) };
 }
 
 /**

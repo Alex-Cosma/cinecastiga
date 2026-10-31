@@ -311,10 +311,13 @@ describe("the selection's filters in words: the kind, the size, the firm's seat 
   it("a kind the question cannot run says why (a national ranking's goods from firms of other counties, two kinds at once), never silently", async () => {
     // S5 PRE-answers: a national ranking's goods read agg_entity_kind_year, so they apply (S4r-national-kind flipped)…
     expect((await ask("ce firme castiga produse")).r.spec?.filters.purchaseKind).toBe("produse");
-    // …but not beside a condition on the other side (the firms' seat on a ranking of institutions): both marts whole.
+    // …and, S6 over-bar, beside a condition on the other side (the firms' seat on a ranking of institutions), on agg_pair_kind_year…
     const goods = await ask("ce institutii cumpara produse de la firme din alte judete");
-    expect(goods.r.spec?.filters.purchaseKind).toBeUndefined();
-    expect(goods.r.interpretation.notes.join(" ")).toMatch(/„produse” nu se aplică aici: Pe toată țara, pe instituții sau firme, cere un calcul pregătit noaptea/);
+    expect(goods.r.spec?.filters).toMatchObject({ purchaseKind: "produse", firmSeat: "other" });
+    // …but a size there still reads both marts whole: said, not applied.
+    const sized = await ask("ce institutii cumpara de peste 1 milion de lei de la firme din alte judete");
+    expect(sized.r.spec?.filters.purchaseValueMin).toBeUndefined();
+    expect(sized.r.interpretation.notes.join(" ")).toMatch(/nu se aplică aici: Pe toată țara, pe instituții sau firme, cere un calcul pregătit noaptea/);
     // Works are an index range: offered nationally (S4r-national-kind).
     expect((await ask("ce firme castiga lucrari")).r.spec?.filters.purchaseKind).toBe("lucrari");
     const both = await ask("cine castiga lucrari si servicii in cluj");

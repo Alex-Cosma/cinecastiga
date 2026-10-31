@@ -5,7 +5,7 @@ import {
   FACET_TTL_MS, domainBound, facetStamp, inFacetTransaction, kindOfCode, nationalLive, prepare, procedureOf, runner, sizeOf, timedOut,
   type FacetFailure, type Prepared, type Runner,
 } from "./facets";
-import { mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
+import { mixEmployeesReady, mixEmployeesWhere, mixRollupReady, mixWhere, monthsWhere } from "./series-rollups";
 import { PROCEDURE_ORDER, VALUE_RANGES } from "./purchase";
 import { questionKey, type QuestionSpec } from "./question-ui";
 import { ABOVE_CAP_ROWS, type AboveCapRow, type BarsResult, type MixResult, type MixRow, type PodiumResult } from "./facet-parts";
@@ -109,8 +109,12 @@ export async function mixFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
   if (spec.block !== "stat") return { error: "„Din care” descrie un total." };
   // Probed with the pool, before the transaction (rollups.ts).
   const cover = await rollupsReady(sql) && await cpvCoverReady(sql);
+  const bands = (spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined) && await mixEmployeesReady(sql);
   return await answerFact<MixResult>(sql, spec, "mix", opts.signal, async (tx, p, run, mixReady, checkpoint, started) => {
-    const rolled = mixReady ? mixWhere(tx, p.ctx, "p") : null;
+    // Firms of a size (the kit's bands) on agg_mix_employees, the same pass as agg_national_mix (S6 over-bar).
+    const banded = mixReady && bands ? mixEmployeesWhere(tx, p.ctx, "p") : null;
+    const table = banded && "where" in banded ? tx`marts.agg_mix_employees` : tx`marts.agg_national_mix`;
+    const rolled = banded && "where" in banded ? banded : mixReady ? mixWhere(tx, p.ctx, "p") : null;
     let rows: MixGrouped[];
     // The tabs' groupings over the same rows, once (grouping sets on the aliases: a parameter repeated in an
     // expression of the GROUP BY would not match its select-list twin).
@@ -124,7 +128,7 @@ export async function mixFacts(sql: DbSql, spec: AskSpec, opts: { signal?: Abort
         select ${kindOfCode(tx, tx`p.cpv2`)} kind,
                (case when p.src = 'da' then 'da' else ${procedureOf(tx, tx`p.procedure_type`)} end) proc,
                p.size::text size, (case when p.src = 'contracts' then coalesce(p.offers::text, 'unknown') end) offers, p.v v, p.n n
-        from marts.agg_national_mix p where ${rolled.where}
+        from ${table} p where ${rolled.where}
       )`, tx`sum(n)`));
     } else {
       // A national selection no index anchors and no rollup answers reads the direct acquisitions of every

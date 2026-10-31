@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { ASK_EMPLOYEE_BANDS, type DbSql } from "@seap/db";
 import { ROLLUP_CTX_KEYS, type RollupCtx } from "./rollups";
 import { procedureCond, purchaseKindCond } from "./predicates";
 import { sizeRanges } from "./purchase";
@@ -100,4 +100,50 @@ export function mixWhere(sql: DbSql, ctx: RollupCtx, alias = "p"): { where: Frag
   if (ctx.singleBidder) parts.push(sql`${p("offers")} = true`);
   parts.push(...periodOn(sql, ctx, alias, false));
   return { where: parts.length ? parts.reduce((a, b) => sql`${a} and ${b}`) : sql`true` };
+}
+
+/**
+ * agg_mix_employees (S6 over-bar, packages/db buildAskMixRollups): agg_national_mix with the firm's employee band, of
+ * the same build (its comment names agg_national_mix's oid, a new table each night; a revert's build leaves an older
+ * one behind, not read). Until the first build with it „Din care” of firms of a size waits on PRECOMPUTE.md as before.
+ * Cached 10 minutes per process; call with the pool, before sql.begin.
+ */
+let employeesReady: { ok: boolean; at: number } | null = null;
+export async function mixEmployeesReady(sql: DbSql): Promise<boolean> {
+  if (employeesReady && Date.now() - employeesReady.at < 600_000) return employeesReady.ok;
+  const [row] = (await sql`
+    select obj_description(to_regclass('marts.agg_mix_employees'), 'pg_class') = 'agg_national_mix ' || to_regclass('marts.agg_national_mix')::oid::text ok
+  `) as unknown as { ok: boolean | null }[];
+  employeesReady = { ok: Boolean(row?.ok), at: Date.now() };
+  return employeesReady.ok;
+}
+/** Tests only: forget the probe. */
+export function forgetMixEmployeesReady(): void { employeesReady = null; }
+
+/** The kit's employee bands (filters/words.ts EMPLOYEE_BAND_FROM/TO): band i holds [FROM[i], TO[i]]. */
+const BAND_FROM = [0, 1, 10, 50, 250] as const;
+const BAND_TO = [...ASK_EMPLOYEE_BANDS, Infinity] as const;
+/**
+ * The bands of agg_mix_employees a range of employees is the union of (min and max as employeesBounds reads them:
+ * `employees >= min`, `<= max`, a firm without a filing in none), or null for a range off the kit's bands.
+ */
+export function employeeBands(min: number | null, max: number | null): number[] | null {
+  const lo = min ?? 0, hi = max ?? Infinity;
+  if (!(BAND_FROM as readonly number[]).includes(lo) || !(BAND_TO as readonly number[]).includes(hi)) return null;
+  const bands = BAND_FROM.map((from, i) => i).filter((i) => BAND_FROM[i]! >= lo && BAND_TO[i]! <= hi);
+  return bands.length ? bands : null;
+}
+
+/**
+ * „Din care” of a total of firms of a size (S6 over-bar): the selection mixWhere reads, with the employees of the kit's
+ * bands, on agg_mix_employees (alias `alias`), or why not. Live it read every direct acquisition with the firms'
+ * semi-join (6.9 s nationally).
+ */
+export function mixEmployeesWhere(sql: DbSql, ctx: RollupCtx, alias = "p"): { where: Fragment } | { reason: string } {
+  if (ctx.minEmployees === null && ctx.maxEmployees === null) return { reason: "employees: no band" };
+  const bands = employeeBands(ctx.minEmployees, ctx.maxEmployees);
+  if (!bands) return { reason: "employees: a range off the kit's bands" };
+  const rest = mixWhere(sql, { ...ctx, minEmployees: null, maxEmployees: null }, alias);
+  if ("reason" in rest) return { reason: rest.reason.replace("agg_national_mix", "agg_mix_employees") };
+  return { where: sql`${rest.where} and ${sql(alias)}.emp = any(${sql.array(bands)}::smallint[])` };
 }

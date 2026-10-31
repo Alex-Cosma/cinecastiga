@@ -302,9 +302,11 @@ export const MAP_DOMAIN_ROWS = 150_000;
  * acquisitions of the domain from the index alone) for „Din care” and the map's county facts to stay in the bar
  * (S5 PRE-answers, local, warm, rpc 4, 4 MB): medicines 2025 (237k records) „Din care” 0.34 s, 2024–2025 (396k) the
  * map's facts 0.53 s; every year (1.82M) 1.58 s and 1.44 s (production settings 1.29 s and 1.58 s, first up to
- * 1.8 s): too near the bar, so above it they wait on PRECOMPUTE.md.
+ * 1.8 s). S6 over-bar, measured alone (load 3–6): every year 1.48–1.49 s and 1.31 s (rpc 1.1: 1.48 s and 1.67 s),
+ * first 1.6–3.0 s, inside the 2 s bar of these lazy facts (they never delay the answer), so the bound is the
+ * windows' (DOMAIN_GROUP_ROWS); above it they wait on PRECOMPUTE.md.
  */
-export const DOMAIN_LIVE_ROWS = 1_000_000;
+export const DOMAIN_LIVE_ROWS = 2_000_000;
 /**
  * The same for the parts that group a domain once per institution, firm or bar (the windows' counts, the bars'
  * largest record): medicines every year (1.82M records) 0.35–0.39 s warm, 0.65–0.93 s first.

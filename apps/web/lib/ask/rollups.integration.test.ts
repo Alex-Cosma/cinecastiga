@@ -6,8 +6,8 @@ import { trendGroupOfRow, trendListOf, trendNoun, trendPartition, trendProfiles,
 import { evidenceCsv, sumDecimalStrings } from "./evidence";
 import { forgetTrendGroups, trendGroupStats } from "./group-ids";
 import {
-  compareParties, compareSharedPartners, compareTopPartners, forgetKindRollup, forgetRollupsReady, kindRollupReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
-  coverRefReady, monthRollupReady, rollupDaysReady, rollupMinimumCond, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
+  compareParties, compareSharedPartners, compareTopPartners, forgetKindRollup, forgetRollupsReady, kindMonthRollupReady, kindRollupReady, planRollup, rollupBreakdown, rollupCountyTable, rollupMap,
+  coverRefReady, monthRollupReady, rollupDaysReady, rollupMinimumCond, valueKeysReady, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, scatterDensity, type RollupCtx, type RollupNeed,
 } from "./rollups";
 import { namedKind, type AskSpec } from "./spec";
 import { forgetAuthorityKinds, readAuthorityKinds, type AuthorityKinds } from "./authority-kind";
@@ -142,9 +142,10 @@ async function fromRollups(q: DbSql, spec: AskSpec, g: Grounding, sort?: "name" 
   const band = spec.block === "table" && spec.dim === "supplier" && (spec.filters.minEmployees !== undefined || spec.filters.maxEmployees !== undefined)
     ? { min: spec.filters.minEmployees ?? null, max: spec.filters.maxEmployees ?? null } : null;
   const ctx = ctxOf(spec, g);
-  const plan = planRollup(band ? { ...ctx, minEmployees: null, maxEmployees: null } : ctx, needOf(spec), { months: true, kinds: true });
+  const plan = planRollup(band ? { ...ctx, minEmployees: null, maxEmployees: null } : ctx, needOf(spec), { months: true, kinds: true, kindMonths: true });
   if ("reason" in plan) throw new Error(plan.reason);
-  const source = plan.source.table === "entity" || plan.source.table === "entityMonth" || plan.source.table === "entityKind" ? `${plan.source.table}:${plan.source.role}` : plan.source.table;
+  const source = plan.source.table === "entity" || plan.source.table === "entityMonth" || plan.source.table === "entityKind" || plan.source.table === "entityKindMonth"
+    ? `${plan.source.table}:${plan.source.role}` : plan.source.table;
   const num = (rows: { v: string; n: string }[]) => rows.map((r) => ({ value: Number(r.v), count: Number(r.n) }));
   switch (spec.block) {
     case "table": {
@@ -245,6 +246,9 @@ const TREND_GROUPS: { name: string; spec: AskSpec; g?: Grounding; source: string
   // Counties on the same months, from agg_county_month (F2 review: 3–6 s live nationally).
   { name: "trend of counties, February–May", spec: base("trend", { dim: "county", trend: { months: [2, 5] } }, Y), source: "countyMonth" },
   { name: "trend of counties, decreases, March–September, direct acquisitions", spec: base("trend", { dim: "county", dataset: "da", trend: { change: "down", months: [3, 9] } }, Y), source: "countyMonth" },
+  // S6 over-bar: a kind on the same months (agg_entity_kind_month) and with the other side's condition (agg_pair_kind_year).
+  { name: "trend of firms, goods, growths, February–May", spec: base("trend", { trend: { change: "up", months: [2, 5] } }, { ...Y, purchaseKind: "produse" }), source: "entityKindMonth:supplier" },
+  { name: "trend of institutions buying goods from small firms, growths", spec: base("trend", { dim: "authority", trend: { change: "up" } }, { ...Y, purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }), source: "pairKind" },
 ];
 // Bare national stat, timeseries and map (all channels) are agg_national / agg_years /
 // agg_map_county today; every case here takes the live scan.
@@ -309,6 +313,14 @@ const CASES: { name: string; spec: AskSpec; g?: Grounding; source: string; sort?
   { name: "trend of institutions, under 100.000 lei, growths", spec: base("trend", { topN: 10, dim: "authority", trend: { change: "up" } }, { ...Y, purchaseValueMax: 100_000 }), source: "entityKind:authority" },
   { name: "total of firms with 1–9 employees, goods", spec: base("stat", {}, { purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }), source: "entityKind:supplier" },
   { name: "map of firms seated in another county, at least 1 mil. lei", spec: base("map", {}, { firmSeat: "other", purchaseValueMin: 1_000_000 }), source: "entityKind:supplier" },
+  // S6 over-bar: goods or services on a trend's same months (the fixture's goods: 33…, 09…, 30…), and beside the other side's condition.
+  { name: "trend of firms, goods, February–May", spec: base("trend", { topN: 10, trend: { months: [2, 5] } }, { ...Y, purchaseKind: "produse" }), source: "entityKindMonth:supplier" },
+  { name: "trend of institutions, works, January–September", spec: base("trend", { topN: 10, dim: "authority", trend: { months: [1, 9] } }, { ...Y, purchaseKind: "lucrari" }), source: "entityKindMonth:authority" },
+  { name: "trend of firms in Cluj, goods, new, February–September", spec: base("trend", { topN: 10, trend: { change: "new", months: [2, 9] } }, { ...Y, county: "Cluj", purchaseKind: "produse" }), g: CLUJ, source: "entityKindMonth:supplier" },
+  { name: "institutions buying goods from firms with 1–9 employees", spec: base("table", { topN: 10, dim: "authority" }, { purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }), source: "pairKind" },
+  { name: "paged institutions buying works from firms seated in another county", spec: base("table", { dim: "authority" }, { purchaseKind: "lucrari", firmSeat: "other" }), source: "pairKind" },
+  { name: "firms, goods, without one institution", spec: base("table", { topN: 10, population: without("authority", "1") }, { purchaseKind: "produse" }), source: "pairKind" },
+  { name: "institutions, goods, from firms first in the archive since 2025", spec: base("table", { topN: 10, dim: "authority" }, { purchaseKind: "produse", newSince: 2025, newScope: "archive" }), source: "pairKind" },
 ];
 
 const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" | "map" | "breakdown" | "timeseries" | "county" | "firms" | "authorities" }[] = [
@@ -338,6 +350,9 @@ const SOURCE_CASES: { name: string; spec: AskSpec; g?: Grounding; block: "stat" 
   { name: "sources of the firms, goods", spec: base("table", { topN: 10 }, { purchaseKind: "produse" }), block: "firms" },
   { name: "sources of the institutions, at least 1 mil. lei, 2025", spec: base("table", { topN: 10, dim: "authority" }, { purchaseValueMin: 1_000_000, yearFrom: 2025, yearTo: 2025 }), block: "authorities" },
   { name: "sources of the total of firms with 1–9 employees, works", spec: base("stat", {}, { purchaseKind: "lucrari", minEmployees: 1, maxEmployees: 9 }), block: "stat" },
+  // S6 over-bar: a ranking of institutions buying goods from firms of a size or a seat: agg_pair_kind_year's rows.
+  { name: "sources of the institutions buying goods from firms with 1–9 employees", spec: base("table", { topN: 10, dim: "authority" }, { purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }), block: "authorities" },
+  { name: "sources of the institutions buying works from firms seated in another county", spec: base("table", { topN: 10, dim: "authority" }, { purchaseKind: "lucrari", firmSeat: "other" }), block: "authorities" },
 ];
 
 /**
@@ -487,11 +502,13 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         expect(report.rows).toMatchObject({ agg_entity_year: 29, agg_pair_year: 19, agg_cpv_year: 15, agg_entity_month: 36, agg_county_month: 18 });
         // F5 adds agg_map_year (its parity: map-facts.integration.test.ts).
         // S5 PRE-answers adds agg_entity_kind_year: agg_entity_year by purchase kind and size range (its sums: the ingestion build test).
-        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_da_year_keys", "agg_entity_kind_year", "agg_entity_month", "agg_entity_year", "agg_map_year", "agg_months", "agg_national_mix", "agg_pair_year"]);
-        expect(report.kindYearMs).toBeGreaterThanOrEqual(0);
+        // S6 over-bar adds agg_entity_kind_month, agg_pair_kind_year (their sums: the ingestion build test) and agg_mix_employees (series.integration.test.ts).
+        expect(Object.keys(report.rows).sort()).toEqual(["agg_county_month", "agg_cpv_year", "agg_da_year_keys", "agg_entity_kind_month", "agg_entity_kind_year", "agg_entity_month", "agg_entity_year",
+          "agg_map_year", "agg_mix_employees", "agg_months", "agg_national_mix", "agg_pair_kind_year", "agg_pair_year"]);
+        expect([report.kindYearMs >= 0, report.kindMonthMs >= 0]).toEqual([true, true]);
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
         forgetRollupsReady(); forgetMixRollupReady(); forgetKindRollup();
-        expect([await rollupsReady(q), await kindRollupReady(q)]).toEqual([true, true]);
+        expect([await rollupsReady(q), await kindRollupReady(q), await kindMonthRollupReady(q)]).toEqual([true, true, true]);
         // The ceiling: 2,000,000.00 counts, 2,000,000.01 does not, a zero never.
         const [ceiling] = await q`select count(*)::int n, sum(v)::text v from marts.agg_pair_year where authority_id in (2, 4) and supplier_id = 10`;
         expect(ceiling).toMatchObject({ n: 2, v: "3999999.99" });
@@ -567,7 +584,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           const wired = await runRows(q, c.spec, g, 0);
           if ("error" in wired) throw new Error(`${c.name}: ${wired.error}`);
           expect([c.name, drawer(wired)]).toEqual([c.name, drawer(live)]);
-          const plan = planRollup(ctxOf(c.spec, g), needOf(c.spec), { kinds: true });
+          const plan = planRollup(ctxOf(c.spec, g), needOf(c.spec), { kinds: true, kindMonths: true });
           if ("reason" in plan) throw new Error(`${c.name}: ${plan.reason}`);
           const r = await rollupSourceTotals(q, plan, c.block);
           if ("reason" in r) throw new Error(`${c.name}: ${r.reason}`);
@@ -693,12 +710,40 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         }
         expect(bandDrawers[0]).toEqual(bandDrawers[1]);
         forgetRollupsReady(); forgetTrendGroups();
+        // S6 over-bar: „Toate” by value, highest first, walks da_tx_value_desc_idx once the build has made it (below): the
+        // same pages and CSV as the sort of every record.
+        const everyTrend = base("trend", { trend: { change: "all", months: "whole" } }, Y);
+        const byValue = async () => {
+          const out: unknown[] = [];
+          for (const opts of [{}, { page: 1 }, { page: 2 }, { limit: CSV_MAX_ROWS }] as const) {
+            const r = await runRows(q, everyTrend, {}, "page" in opts ? opts.page : 0, { sort: "value", dir: "desc", ...("limit" in opts ? { limit: opts.limit } : {}) });
+            if ("error" in r) throw new Error(r.error);
+            out.push([r.total, r.sourceValue, r.rows]);
+          }
+          return out;
+        };
+        const valuePages = await byValue();
+        expect((valuePages[0] as [number, string, unknown[]])[2].length).toBe(10);
+        // The „Firme noi” drawers (F5) read their firms' keys on the firm indexes: the records of those firms, in each
+        // order and page, as a scope of their ids lists them.
+        const fresh = base("table", { topN: 10 }, { newSince: 2024, newScope: "archive" });
+        const freshIds = (await q`select entity_id::text id from marts.entity_profile where role = 'supplier' and first_activity >= '2024'`).map((r) => String(r["id"]));
+        expect(freshIds.length).toBeGreaterThan(1);
+        for (const dir of ["desc", "asc"] as const) for (const page of [0, 1]) for (const limit of [undefined, CSV_MAX_ROWS]) {
+          const [mine, theirs] = [await runRows(q, fresh, {}, page, { sort: "source", dir, ...(limit ? { limit } : {}) }),
+            await runRows(q, base("table", { topN: 10 }), {}, page, { sort: "source", dir, ...(limit ? { limit } : {}), scope: { entityIds: freshIds, role: "supplier" } })];
+          if ("error" in mine || "error" in theirs) throw new Error("rows expected");
+          expect([dir, page, limit, mine.total, mine.rows]).toEqual([dir, page, limit, theirs.total, theirs.rows]);
+          if (page === 0) expect([dir, limit, mine.rows.length > 0]).toEqual([dir, limit, true]);
+        }
         // The covering id indexes with sicap_da_id (built nightly, F2 review): every group's page takes its direct
         // acquisitions' first keys from them; the same drawers, CSVs and 14 orders.
         await q.unsafe("savepoint keyed_indexes");
         for (const index of TRANSACTION_MART_BUILD_INDEXES) await q.unsafe(index.definition);
         forgetRollupsReady();
-        expect(await coverRefReady(q)).toBe(true);
+        expect([await coverRefReady(q), await valueKeysReady(q)]).toEqual([true, true]);
+        forgetTrendGroups();
+        expect(await byValue()).toEqual(valuePages);
         await groupDrawers("rollups with days, keys from the covering index", true);
         await q.unsafe("rollback to savepoint keyed_indexes");
         forgetRollupsReady();
