@@ -299,6 +299,10 @@ export function perfCases(): PerfCase[] {
     // The source paths whose conditions F0 moved into lib/ask/predicates.ts: the DA bound
     // on direct acquisitions only, a comparison, and a profile population chosen by kind.
     perfCase("sources:stat-da-2025", "sources", "Sursele achizițiilor directe din 2025", "stat", all(top({ dataset: "da" }), years(2025)), { path: "rows", barMs: 2000 }),
+    // The golden link legacy:population-exclude-cpv: a year without a domain, its page on the year's keys (S6 review).
+    perfCase("sources:stat-2025-without-works", "sources", "Sursele anului 2025 fără lucrări (CPV 45 scos din calcul)", "stat",
+      all(years(2025), top({ population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "cpv", op: "not_in", values: ["45"] }] }] } })),
+      { path: "rows", barMs: 2000 }),
     perfCase("sources:compare-selgros-dedeman-2025", "sources", "Sursele comparației SELGROS cu DEDEMAN, 2025", "compare", all(CATALOG_CHOICES.compare!.edit, years(2025)), { path: "rows" }),
     perfCase("sources:compare-selgros-dedeman", "sources", "Sursele comparației SELGROS cu DEDEMAN, toți anii (catalogul)", "compare", CATALOG_CHOICES.compare!.edit, { path: "rows", barMs: 2000 }),
     perfCase("sources:entity-card-risk-hospitals", "sources", "Sursele spitalului cu cel mai ridicat indice de risc", "entity_card",

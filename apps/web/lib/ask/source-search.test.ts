@@ -130,4 +130,12 @@ describe("the stored text (S6)", () => {
   it("says a text found in too many records as such", () => {
     expect(broadSearch("srl")).toBe("„srl”: textul apare în prea multe înregistrări. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.");
   });
+
+  it("says a stored search past its budget took too long, never that its text is in too many records (S6 review)", async () => {
+    // A cold first „33600000” (51,284 records, under the cap) ran 7 s past the 6 s budget: its count is not known.
+    for (const candidates of [null, { indexed: false }, { indexed: true }])
+      expect(searchBudgetReason("33600000", candidates, true)).toBe(slowSearch("33600000"));
+    const timeout = () => Promise.reject(new Error("canceling statement due to statement timeout"));
+    expect(await withSearchBudget(() => budgetedRead(searchBudgetReason("33600000", null, true)!, timeout))).toEqual({ error: slowSearch("33600000") });
+  });
 });

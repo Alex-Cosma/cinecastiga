@@ -2477,7 +2477,7 @@ const SEARCH_BROAD_RECORDS = 200_000;
 const SEARCH_BUDGET_MS = 6000;
 export const commonWordsSearch = (search: string): string =>
   `„${search}”: cuvintele apar în prea multe nume pentru toată lista. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.`;
-/** A search on the stored text (S6) in too many records of the selection's years to count in time, or past the budget. */
+/** A search on the stored text (S6) in more records of a broad list's years than the keys' cap (STORED_SEARCH_KEYS). */
 export const broadSearch = (search: string): string =>
   `„${search}”: textul apare în prea multe înregistrări. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.`;
 /** A search narrowed by its names that ran past the budget: on a busy server too, so never „too many names”. */
@@ -2487,9 +2487,13 @@ export const slowSearch = (search: string): string =>
  * The reason a search on a broad list gives at its budget's end, or null when it keeps the route's limit (S5
  * review): no word narrows (`candidates` null), its words are too common; the names narrow it (`indexed`), it took
  * too long, said neutrally. A word read on every row (a DA code, a number: one record, 2–3 s warm, longer under
- * load) has no budget: its time is the scan's, not the names', and „too many names” would be false.
+ * load) has no budget: its time is the scan's, not the names', and „too many names” would be false. On the stored
+ * text (`stored`) the budget's end says nothing of the count either: the first „33600000” after a restart, 51,284
+ * records, under the cap, read its trigram pages from disk for 7 s (1.0–1.3 s warm). Neutral too; a count over the
+ * cap says broadSearch on its own (S6 review).
  */
-export function searchBudgetReason(search: string, candidates: { indexed: boolean } | null): string | null {
+export function searchBudgetReason(search: string, candidates: { indexed: boolean } | null, stored = false): string | null {
+  if (stored) return slowSearch(search);
   if (!candidates) return commonWordsSearch(search);
   return candidates.indexed ? slowSearch(search) : null;
 }
@@ -3072,11 +3076,13 @@ export async function runRows(
   // (2025: 1.18M records of 2026 walked first, ~1 s) or through a covering index of every record of the period (a
   // year's national ranking: 2.8 s for its page; S5 PRE-sources). The bound only cuts the walk's start: every record of
   // those years lies inside it. Not with a hidden key (a size in a county, a firm abroad), which reads other indexes.
+  // A domain left out („Scoate din calcul”, at most five codes: 2025 without works) too: most of the year's records stay,
+  // so the walk meets the page's ten among its first; the annual scan read the whole mart for them (4.2 s; S6 review).
   const PERIOD_KEYED_FILTERS = ["yearFrom", "yearTo", "monthFrom", "monthTo", "county", "firmSeat", "seatCounty", "minEmployees", "maxEmployees", "dominantSupplier"];
   const periodKeyed = !keyBounded && !profile && !trendGroup && sortKey === "source" && opts.dir !== "asc" && dataset !== "contracts"
     && yearTo !== null && yearTo < maxY && !spec.minimumRecords && spec.filters.firmSeat !== "abroad"
     && Object.keys(spec.filters).every((key) => PERIOD_KEYED_FILTERS.includes(key))
-    && (spec.population?.groups ?? []).every((g) => g.conditions.every((c) => (c.field === "authority" || c.field === "supplier") && c.op === "not_in"))
+    && (spec.population?.groups ?? []).every((g) => g.conditions.every((c) => (c.field === "authority" || c.field === "supplier" || c.field === "cpv") && c.op === "not_in"))
     && Object.keys(scope).every((key) => key === "role" || key === "county") && !(scope.county && localAdminMap(ctx))
     && await yearKeysReady(sql);
   // A named entity's page in an order of the covering id indexes' columns (below, anchoredBranches).
@@ -3158,7 +3164,7 @@ export async function runRows(
     // figures keep the route's limit, and so does a search read on every row (searchBudgetReason). withSearchBudget
     // turns the budget's end into the drawer's reason.
     let searchDeadline: number | null = null;
-    let budgetReason = words.length && !opts.capture ? stored ? broadSearch(search!) : searchBudgetReason(search!, candidates) : null;
+    let budgetReason = words.length && !opts.capture ? searchBudgetReason(search!, candidates, stored) : null;
     const budgeted = async <T,>(read: () => Promise<T>): Promise<T> => {
       if (budgetReason === null) return await read();
       searchDeadline ??= Date.now() + SEARCH_BUDGET_MS;
