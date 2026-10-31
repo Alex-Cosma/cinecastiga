@@ -259,6 +259,28 @@ describe("the chart's geometry and words", () => {
     }
   });
 
+  it("keeps the chosen or found point's name at every width, shortened to its room, the list's names off it (S6 review)", () => {
+    for (const width of [320, 390, 1280]) {
+      const geo = geometry(BUZAU_CLOUD, width);
+      const all = dots(BUZAU_CLOUD, geo, new Set(BUZAU_CLOUD.list.map((r) => r.entityId)));
+      const names = BUZAU_CLOUD.list.slice(0, geo.box.compact ? 3 : 6).map((r) => ({ id: r.entityId, text: r.name }));
+      for (const row of BUZAU_CLOUD.list) {
+        const labels = chartLabels(names, all, geo, BUZAU_CLOUD.p90, [{ id: row.entityId, text: row.name }]);
+        const chosen = labels.find((l) => l.id === row.entityId);
+        expect(chosen, `${width} ${row.name}`).toBeDefined();
+        const w = chosen!.text.length * 6.3, x0 = chosen!.anchor === "end" ? chosen!.x - w : chosen!.x;
+        // Inside the chart, its own name or the start of it.
+        expect(x0 >= 0 && x0 + w <= geo.box.width + 1, `${width} ${row.name}`).toBe(true);
+        expect(row.name.startsWith(chosen!.text.replace(/…$/, "")), `${width} ${chosen!.text}`).toBe(true);
+        // No other name on it.
+        for (const l of labels.filter((x) => x.id !== row.entityId)) {
+          const lw = l.text.length * 6.3, lx0 = l.anchor === "end" ? l.x - lw : l.x;
+          expect(lx0 < x0 + w && x0 < lx0 + lw && Math.abs(l.y - chosen!.y) < 14, `${width} ${l.text} on ${chosen!.text}`).toBe(false);
+        }
+      }
+    }
+  });
+
   it("finds the nearest point within reach, and marks the chosen signal's points", () => {
     const g = geometry(BUZAU_SPLIT, 800);
     const all = dots(BUZAU_SPLIT, g, new Set(["2144803"]));

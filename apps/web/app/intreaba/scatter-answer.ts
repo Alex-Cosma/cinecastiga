@@ -143,27 +143,58 @@ export interface ChartLabel { id: string; x: number; y: number; anchor: "start" 
  * the chart), then the other. A name that would sit on another label, on the words of the top 10% or on another
  * point, or cross the line, is left to the list (a phone's narrow chart; F6b review: at 390 px a firm's name crossed
  * the line and its points; S6: a commune's name covered another commune's dot).
+ *
+ * `focus`, the point chosen and the ones „Unde e …?” found, keeps its name at every width (final §3.6, „inel + nume”;
+ * S6 review: at 390 px no name was left): placed first, where it fits if it can; else on the side with more room,
+ * shortened to it, over whatever lies there. The list's names then keep off it.
  */
-export function chartLabels(names: readonly { id: string; text: string }[], all: readonly Dot[], g: Geometry, p90: number): ChartLabel[] {
+export function chartLabels(names: readonly { id: string; text: string }[], all: readonly Dot[], g: Geometry, p90: number,
+  focus: readonly { id: string; text: string }[] = []): ChartLabel[] {
   const line = p90 > 0 ? g.x(p90) : null;
   const placed: LabelBox[] = line === null ? [] : [p90Label(g, p90).box], out: ChartLabel[] = [];
+  for (const { id, text } of focus) {
+    const d = all.find((x) => x.point.id === id);
+    if (!d || out.some((l) => l.id === id)) continue;
+    const fit = fitLabel(d, text, all, g, line, placed);
+    const right = fit ? fit.right : g.box.width - d.x >= d.x - g.pad.l;
+    const room = right ? g.box.width - (d.x + 8) : d.x - 8 - g.pad.l;
+    const shown = fit ? text : shorten(text, room);
+    if (!shown) continue;
+    const x = d.x + (right ? 8 : -8), w = textWidth(shown);
+    placed.push({ x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 });
+    out.push({ id, x, y: d.y + 3, anchor: right ? "start" : "end", text: shown });
+  }
   for (const { id, text } of names) {
     const d = all.find((x) => x.point.id === id);
-    if (!d) continue;
-    const w = textWidth(text);
-    const sides = (d.x < g.box.width * 0.62 ? [true, false] : [false, true]).map((right) => {
-      const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
-      const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && (line === null || line <= box.x0 || line >= box.x1)
-        && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
-      const covers = all.some((o) => o !== d && o.x + LABEL_DOT_R > box.x0 && o.x - LABEL_DOT_R < box.x1 && o.y + LABEL_DOT_R > box.y0 && o.y - LABEL_DOT_R < box.y1);
-      return { right, x, box, fits: fits && !covers };
-    }).filter((side) => side.fits);
-    const side = sides[0];
+    if (!d || out.some((l) => l.id === id)) continue;
+    const side = fitLabel(d, text, all, g, line, placed);
     if (!side) continue;
     placed.push(side.box);
     out.push({ id, x: side.x, y: d.y + 3, anchor: side.right ? "start" : "end", text });
   }
   return out;
+}
+
+/** A name shortened to `room` px with „…”, or null when not even a few letters fit. */
+function shorten(text: string, room: number): string | null {
+  if (textWidth(text) <= room) return text;
+  const n = Math.floor(room / 6.3) - 1;
+  return n >= 4 ? `${text.slice(0, n).trimEnd()}…` : null;
+}
+
+/** The first side of a dot where its name fits: inside the chart, off the line, the other labels and every other point. */
+function fitLabel(d: Dot, text: string, all: readonly Dot[], g: Geometry, line: number | null, placed: readonly LabelBox[]):
+  { right: boolean; x: number; box: LabelBox } | null {
+  const w = textWidth(text);
+  const sides = (d.x < g.box.width * 0.62 ? [true, false] : [false, true]).map((right) => {
+    const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
+    const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && (line === null || line <= box.x0 || line >= box.x1)
+      && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
+    const covers = all.some((o) => o !== d && o.x + LABEL_DOT_R > box.x0 && o.x - LABEL_DOT_R < box.x1 && o.y + LABEL_DOT_R > box.y0 && o.y - LABEL_DOT_R < box.y1);
+    return { right, x, box, fits: fits && !covers };
+  }).filter((side) => side.fits);
+  const side = sides[0];
+  return side ? { right: side.right, x: side.x, box: side.box } : null;
 }
 
 /** A point of the cloud with its marks (the chosen signal, in the list), for drawing and for the nearest-point search. */
