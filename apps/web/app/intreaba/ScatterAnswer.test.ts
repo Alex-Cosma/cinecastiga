@@ -237,6 +237,28 @@ describe("the chart's geometry and words", () => {
     expect(chartLabels([{ id: "a", text: "EPIC CONSTRUCT S.R.L" }], all, g, 0).map((l) => l.anchor)).toEqual(["start"]);
   });
 
+  it("never draws a name over another point: the other side, or the list (S6, F6b verify: Sageata over Largu at 390 px)", () => {
+    const g = geometry(BUZAU_CLOUD, 390);
+    const dot = (id: string, x: number, y: number): Dot => ({ point: { id } as Dot["point"], x, y, flagged: false, listed: true });
+    const y = g.yBand(2), x = g.pad.l + 40;
+    // A neighbour where the name would go on the right: the name goes left if it fits, else it is left to the list.
+    const right = [dot("a", x, y), dot("n", x + 30, y + 2)];
+    expect(chartLabels([{ id: "a", text: "Comuna Sageata" }], right, g, 0)).toEqual([]);
+    const middle = g.pad.l + g.plotW / 2, both = [dot("a", middle, y), dot("n", middle + 30, y)];
+    expect(chartLabels([{ id: "a", text: "Comuna Sageata" }], both, g, 0).map((l) => l.anchor)).toEqual(["end"]);
+    // On the fixture of the Buzău communes, at 390 and 1280 px: no drawn name's box comes within a dot's radius of another point.
+    for (const width of [390, 1280]) {
+      const geo = geometry(BUZAU_CLOUD, width);
+      const all = dots(BUZAU_CLOUD, geo, new Set(BUZAU_CLOUD.list.map((r) => r.entityId)));
+      const names = BUZAU_CLOUD.list.slice(0, geo.box.compact ? 3 : 6).map((r) => ({ id: r.entityId, text: r.name }));
+      for (const l of chartLabels(names, all, geo, BUZAU_CLOUD.p90)) {
+        const w = l.text.length * 6.3, x0 = l.anchor === "end" ? l.x - w : l.x, y0 = l.y - 11, y1 = l.y + 3;
+        const others = all.filter((d) => d.point.id !== l.id && d.x + 4.5 > x0 && d.x - 4.5 < x0 + w && d.y + 4.5 > y0 && d.y - 4.5 < y1);
+        expect(others.map((d) => d.point.id), `${width} ${l.text}`).toEqual([]);
+      }
+    }
+  });
+
   it("finds the nearest point within reach, and marks the chosen signal's points", () => {
     const g = geometry(BUZAU_SPLIT, 800);
     const all = dots(BUZAU_SPLIT, g, new Set(["2144803"]));
