@@ -234,9 +234,9 @@ const presentation: BlockFilters["presentation"] = (spec) => sentenceSlots(prese
  * value, which runs that ranking (its place 1 is the same firm). On the risk
  * index (F6c) the band selects the profiles of the firms in it (profilePredicates:
  * a size is the firm's, not the record's), on both axes the same chip.
- * „Firme noi” (final entity_card §3.7) joins this row by value when F5 builds
- * its engine (newSince/newScope, table:new-1): this is its place, nothing is
- * offered before the key is implemented (READ_AHEAD_KEYS, registry.test.ts).
+ * „Firme noi” (final entity_card §3.7, F5's newSince/newScope) leads this row
+ * by value as on "Cine câștigă?"; on the index it is not offered (a profile
+ * has no ranking to narrow).
  */
 function winners(spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
   // F5 (plan §4.2 P3a): on a ranking of institutions their row INSTITUȚIILE, „O firmă ia peste jumătate”.
@@ -244,8 +244,9 @@ function winners(spec: FilterSpec, ctx: FilterCtx): ConditionRow[] {
   if (spec.dim !== "supplier") return [];
   // F6c: on the index the band is a selection of the profiles (there is no total in lei to keep); by value it is a group.
   if (ctx.form === "entity_card:risk") return [{ label: "Câștigătorii", kind: "selection", chips: [employeesInvite] }];
-  // "Cine conduce?" by value applies „Firme noi” too (its place 1 is this ranking's): its row is the F6c track's
-  // (DECISIONS F5t-entity-card).
+  // "Cine conduce?" by value runs the ranking of "Cine câștigă?" stopped at place 3: „Firme noi” first there too
+  // (DECISIONS F5t-entity-card, S5R-entity-card-new-firms-merge). „Principalul lor client public” is the table's only.
+  if (ctx.form === "entity_card:value") return [{ label: "Câștigătorii", kind: "group", chips: [placed("newSince", "newFirms"), employeesInvite] }];
   if (ctx.block !== "table") return [{ label: "Câștigătorii", kind: "group", chips: [employeesInvite] }];
   // F5 on "Cine câștigă?": „Firme noi” first, and „Principalul lor client public” where one buyer is named.
   const main = FILTERS.mainClient.choices(spec, ctx).includes(true) ? [placed("mainClient", "mainClient")] : [];

@@ -46,6 +46,17 @@ describe("the tags of a place (P8)", () => {
     expect(energomontaj.map((t) => t.text)).toEqual(["100% în asociere", "1 contract: 100%", "0 angajați · bilanț 2024"]);
   });
 
+  it("put the sense of „Firme noi” first, as the rows of „Cine câștigă?” (S5R-entity-card-new-firms-merge)", () => {
+    const registry = { dim: "supplier", filters: { newSince: 2024, newScope: "registry" } } as const;
+    const facts = fact({ joint: 0.47 * alliance.value, firstActivity: "2024-05-02", registeredYear: 2024, firstHere: "2024-10-02" });
+    expect(placeFacts(alliance, facts, registry, 2025).map((t) => t.text)).toEqual(["înmatriculată în 2024", "47% în asociere"]);
+    expect(placeFacts(alliance, facts, { dim: "supplier", filters: { newSince: 2024, newScope: "archive" } }, 2025)[0]?.text).toBe("prima dată în 2024");
+    expect(placeFacts(alliance, facts, { dim: "supplier", filters: { newSince: 2024, newScope: "buyer", authorityId: 7 } }, 2025)[0]?.text).toBe("prima dată aici: 02.10.2024");
+    // Without the chip, or before the facts are read, no tag of its own.
+    expect(placeFacts(alliance, facts, firm, 2025).map((t) => t.text)).toEqual(["47% în asociere"]);
+    expect(placeFacts(alliance, fact({ registeredYear: null }), registry, 2025)).toEqual([]);
+  });
+
   it("say „în asociere” of a firm only: an institution has no share in a contract of several winners", () => {
     const oncology = { ...alliance, name: "Institutul Oncologic Cluj", county: "Cluj" };
     expect(placeFacts(oncology, fact({ joint: 0.47 * oncology.value }), hospitals, 2025)).toEqual([]);

@@ -88,10 +88,11 @@ export interface PodiumFact {
   employeesYear: number | null;
   firstActivity: string | null;
   /**
-   * S5 (F5-table builds the engine side): the year of the ONRC registration, for the „Firme noi” row's tag
-   * „înmatriculată în 2024”. Not read before the column is on this base (see PRECOMPUTE.md, F6c).
+   * With „Firme noi” (F5's newSince/newScope, S6): the year of the ONRC registration („înmatriculată în 2024”) and,
+   * beside a named buyer, the firm's first record with it („prima dată aici: 02.10.2024”); read only with the chip.
    */
   registeredYear?: number | null;
+  firstHere?: string | null;
 }
 
 /** The card of an answer with no entity (`empty`): nothing to show, never read. */

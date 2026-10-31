@@ -12,7 +12,7 @@ import { questionTitle } from "./filters/title";
 import { newScopesOf, newYearsOf } from "./filters/defs/winners";
 import type { FilterId, FilterSpec, Slot } from "./filters/types";
 import { answerVersion } from "./answer-core";
-import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags } from "./winner-words";
+import { newFirmTag, RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags } from "./winner-words";
 
 /*
  * F5, the ranked winners (plan §3, §4.2; final table §3.3, §3.6, §3.7, §4):
@@ -63,6 +63,19 @@ describe("the places that offer them (BLOCK_FILTERS)", () => {
     for (const id of ["newSince", "mainClient", "dominantSupplier"] as FilterId[]) expect(FILTERS[id].scope("table", firms() as never)).toBe("group");
   });
 
+  it("puts „Firme noi” first on „Cine conduce?” by value, never on the index (S5R-entity-card-new-firms-merge)", () => {
+    const leader = (rankBy: "value" | "risk", filters: QuestionSpec["filters"] = {}) => q({ block: "entity_card", dim: "supplier", rankBy, filters });
+    const rows = (spec: FilterSpec) => BLOCK_FILTERS.entity_card.rows(spec, filterContext(spec)).map((row) => [row.label, row.kind, row.chips.map((chip) => chip.id)]);
+    expect(rows(leader("value"))).toEqual([["Câștigătorii", "group", ["newSince", "employees"]]]);
+    // The main public client stays the table's (WINNERS_RULES.mainClient), even with a named buyer.
+    expect(rows(leader("value", cluj))).toEqual([["Câștigătorii", "group", ["newSince", "employees"]]]);
+    expect(rows(leader("risk"))).toEqual([["Câștigătorii", "selection", ["employees"]]]);
+    const ctx = (spec: FilterSpec) => ({ ...filterContext(spec), year: 2026 });
+    expect(newScopesOf(leader("value", cluj), ctx(leader("value", cluj)))).toEqual(["buyer", "archive", "registry"]);
+    expect(newScopesOf(leader("risk"), ctx(leader("risk")))).toEqual([]);
+    expect(errorOf(leader("value", { ...cluj, newSince: 2024, newScope: "buyer" }))).toBeNull();
+  });
+
   it("offers new for the buyer only with one, the last four years up to the period's end, the archive's from 2020", () => {
     const ctx = (spec: FilterSpec) => ({ ...filterContext(spec), year: 2026 });
     expect(newScopesOf(firms(), ctx(firms()))).toEqual(["archive", "registry"]);
@@ -110,8 +123,30 @@ describe("their words", () => {
     const top = { id: "5", name: "DAROCONSTRUCT", value: 17, count: 1, share: 0.17 };
     expect(winnerFactTags(institutions(), { top }, 2026)).toEqual([{ text: "cel mai mare furnizor: DAROCONSTRUCT · 17,0%" }]);
     expect(winnerFactTags(institutions(), { top: { ...top, share: 0.6, count: 3 } }, 2026)[0]?.tone).toBe("accent");
-    expect([rowFactsWanted(firms()), rowFactsWanted(firms({ maxEmployees: 0 })), rowFactsWanted(institutions())]).toEqual([false, true, true]);
+    // S6: any ranking of firms with contracts reads its rows' joint value („în asociere”); direct acquisitions alone, only with a chip.
+    const da = (filters: QuestionSpec["filters"] = {}) => ({ ...firms(filters), dataset: "da" }) as FilterSpec;
+    expect([rowFactsWanted(firms()), rowFactsWanted(da()), rowFactsWanted(da({ maxEmployees: 0 })), rowFactsWanted(institutions())]).toEqual([true, false, true, true]);
     expect(RANKING_PAGE_SIZE).toBe(TABLE_PAGE_SIZE);
+  });
+
+  it("tags a row „în asociere” from a quarter of its value, after the chips' tags and before the seat (S5R-joint-tag-deferred)", () => {
+    const facts = { first: "2019-01-01", registered: 2010, employees: 12, filed: 2025, foreign: true, joint: 25 };
+    expect(winnerFactTags(firms(), facts, 2026, 100)).toEqual([{ text: "în asociere" }, { text: "din străinătate" }]);
+    expect(winnerFactTags(firms(), { ...facts, joint: 24.9 }, 2026, 100)).toEqual([{ text: "din străinătate" }]);
+    // Without the row's value (or with none in the selection) no share, no tag.
+    expect(winnerFactTags(firms(), facts, 2026)).toEqual([{ text: "din străinătate" }]);
+    expect(winnerFactTags(firms({ maxEmployees: 20, minEmployees: 10 }), facts, 2026, 50)).toEqual([
+      { text: "12 angajați · bilanț 2025" }, { text: "în asociere" }, { text: "din străinătate" },
+    ]);
+  });
+
+  it("names the sense of „Firme noi” once for the ranking and the podium (newFirmTag)", () => {
+    const facts = { first: "2025-04-01", registered: 2024, firstHere: "2024-10-02" };
+    expect(newFirmTag(firms({ ...cluj, newSince: 2024, newScope: "buyer" }), facts)).toEqual({ text: "prima dată aici: 02.10.2024" });
+    expect(newFirmTag(firms({ newSince: 2025, newScope: "archive" }), facts)).toEqual({ text: "prima dată în 2025" });
+    expect(newFirmTag(firms({ newSince: 2024, newScope: "registry" }), facts)).toEqual({ text: "înmatriculată în 2024" });
+    expect(newFirmTag(firms(), facts)).toBeNull();
+    expect(newFirmTag(firms({ newSince: 2024, newScope: "registry" }), { ...facts, registered: null })).toBeNull();
   });
 });
 

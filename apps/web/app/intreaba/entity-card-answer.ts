@@ -9,6 +9,7 @@ import { employeesWords } from "../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, type QuestionSpec } from "../../lib/ask/question-ui";
 import { SEAT_ABROAD } from "../../lib/ask/seat";
 import { formatInt, formatRon } from "../../lib/format";
+import { newFirmTag } from "../../lib/ask/winner-words";
 import type { RowFact } from "./answer/RowFacts";
 
 /*
@@ -37,12 +38,16 @@ export function placeWords(place: Pick<PodiumPlace, "county">, spec: Spec, popul
  * The tags of a place (P8, at most three, final §3.9): the share of its value that comes from contracts with
  * several winners (from a quarter), a single record with at least half of it (amber), and the band of
  * CÂȘTIGĂTORII the question set, with the year of the balance sheet it was read from (amber when old).
- * „Firme noi” (F5) adds its own tag here — „înmatriculată în 2024”, „prima dată în 2025” — when its key is implemented.
+ * „Firme noi” (F5, S6) puts its own tag first — „prima dată aici: 02.10.2024”, „prima dată în 2025”, „înmatriculată
+ * în 2024” — as on the rows of "Cine câștigă?" (winner-words.ts newFirmTag).
  * „În asociere” is a firm's tag (plan P8: an institution's would be its largest supplier): a buyer has no share in a
  * contract of several winners, and its (?) speaks of firms.
  */
 export function placeFacts(place: PodiumPlace, fact: PodiumFact | undefined, spec: Spec, lastYear: number | null): RowFact[] {
   const tags: RowFact[] = [];
+  const chosen = spec.dim === "supplier" && fact
+    ? newFirmTag(spec, { first: fact.firstActivity, registered: fact.registeredYear ?? null, firstHere: fact.firstHere ?? null }) : null;
+  if (chosen) tags.push(chosen);
   const joint = spec.dim === "supplier" ? jointShare(place.value, fact) : null;
   if (joint !== null) tags.push({ text: `${Math.round(joint * 100)}% în asociere`, tip: { id: "in-asociere" } });
   const one = oneRecordShare(place, fact);
