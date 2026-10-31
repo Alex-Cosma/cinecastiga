@@ -37,28 +37,33 @@ export const NATIONAL_ENTITY_SCAN = "Pe toată țara, pe instituții sau firme, 
  * nightly agg_entity_kind_year (lib/ask/rollups.ts planRollup, entityKind), as the engine decides: conditions on the
  * ranked role only (on institutions no firms' size, seat, newness or relation; at most entities of the ranked role
  * left out), no record threshold, whole years (no months, no trend on the same months: `auto` up to this year, as
- * trend-rules.ts trendMonthsState says without the coverage) and a size of the kit's ranges (sizeRanges). Otherwise
- * the kind or the size reads both marts whole (1.4–10 s locally: PRECOMPUTE.md) and the builder does not offer it.
+ * trend-rules.ts trendMonthsState says without the coverage) and a size of the kit's ranges (sizeRanges). S6
+ * over-bar: goods or services without a size also on a trend's same months, with conditions on the ranked role
+ * (agg_entity_kind_month), and on whole years with the other side's condition or exclusions (agg_pair_kind_year:
+ * the institutions buying goods from firms with 1–9 employees). Otherwise the kind or the size reads both marts
+ * whole (1.4–10 s locally: PRECOMPUTE.md) and the builder does not offer it.
  */
 export function kindRollupAnswers(spec: FilterSpec, ctx: Pick<FilterCtx, "year">): boolean {
   const f = spec.filters, role = spec.dim === "supplier" ? "supplier" : "authority";
   if (f.monthFrom !== undefined || f.monthTo !== undefined || spec.minimumRecords) return false;
-  if (formOf(spec) === "trend") {
-    const months = spec.trend?.months;
-    if (Array.isArray(months) || months !== "whole" && (f.yearTo === undefined || Number(f.yearTo) >= ctx.year)) return false;
-  }
   const bound = (v: unknown) => v === undefined ? null : Number(v);
-  if ((f.purchaseValueMin !== undefined || f.purchaseValueMax !== undefined) && !sizeRanges(bound(f.purchaseValueMin), bound(f.purchaseValueMax))) return false;
+  const sized = f.purchaseValueMin !== undefined || f.purchaseValueMax !== undefined;
+  if (sized && !sizeRanges(bound(f.purchaseValueMin), bound(f.purchaseValueMax))) return false;
+  const months = spec.trend?.months;
+  const sameMonths = formOf(spec) === "trend" && (Array.isArray(months) || months !== "whole" && (f.yearTo === undefined || Number(f.yearTo) >= ctx.year));
+  if (sameMonths && sized) return false;
+  // The other side read on its pairs: a kind alone, on whole years.
+  const pairs = !sized && !sameMonths;
   // The other side's attributes and relations; the firms' own years (archive, register) are a ranking of firms' own.
   const firmsSide = f.minEmployees !== undefined || f.maxEmployees !== undefined || f.firmSeat || f.seatCounty || f.newSince !== undefined;
-  if (role === "authority" && (firmsSide || f.dominantSupplier)) return false;
+  if (role === "authority" && (firmsSide && !pairs || f.dominantSupplier)) return false;
   if (role === "supplier" && (f.mainClient || f.newScope === "buyer")) return false;
-  // „Scoate din calcul” on the ranked role only (rollups.ts sameRoleExclusions): any other precise selection is live.
+  // „Scoate din calcul” on the ranked role (rollups.ts sameRoleExclusions), or on either with the pairs: any other precise selection is live.
   const population = spec.population;
   if (!population) return true;
   if (population.operator !== "and" && population.groups.length > 1) return false;
   return population.groups.every((g) => (g.operator === "and" || g.conditions.length <= 1)
-    && g.conditions.every((c) => c.field === role && c.op === "not_in"));
+    && g.conditions.every((c) => (c.field === role || pairs && (c.field === "authority" || c.field === "supplier")) && c.op === "not_in"));
 }
 
 /**

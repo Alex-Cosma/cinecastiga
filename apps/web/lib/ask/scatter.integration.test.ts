@@ -235,14 +235,22 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-2, isolated Postgre
       await q.unsafe("set local enable_seqscan = off");
       const keys = flaggedRecordKeys(q, "supplier", "da_rapid", q`select ${BASE + 107}::bigint`);
       const plan = (await q`explain select count(*), sum(k.closing_value) from ${keys} k`) as unknown as { "QUERY PLAN": string }[];
+      // S6 over-bar: its twin keyed on the firm answers one firm's signal (DEDEMAN: 0.7 s on its supplier index, 25 ms
+      // here), with the same records in every order and page.
+      await q.unsafe(TRANSACTION_MART_BUILD_INDEXES.find((index) => index.name === "da_tx_flagged_supplier_idx")!.definition);
+      const firmPlan = (await q`explain select count(*), sum(k.closing_value) from ${keys} k`) as unknown as { "QUERY PLAN": string }[];
       await q.unsafe("set local enable_seqscan = on");
-      return { pairs, plan: plan.map((line) => line["QUERY PLAN"]).join("\n") };
+      const twin: unknown[] = [];
+      for (const [sort, dir] of [["value", "desc"], ["date", "asc"], ["source", "desc"]]) for (const page of [0, 1]) twin.push(await run(sort!, dir!, page));
+      return { pairs, twin, plan: plan.map((line) => line["QUERY PLAN"]).join("\n"), firmPlan: firmPlan.map((line) => line["QUERY PLAN"]).join("\n") };
     });
     for (const [keyed, whole] of out.pairs) expect(keyed).toEqual(whole);
+    expect(out.twin).toEqual(out.pairs.map(([keyed]) => keyed));
     // Alfa's 8 and Gama's 6, ten on the first page and four on the second.
     expect(out.pairs.map(([keyed]) => (keyed as { ids: string[] }).ids.length)).toEqual([10, 4, 10, 4, 10, 4]);
     // The partial index is usable only when the query repeats its predicate (an unvacuumed copy reads it by bitmap or index scan).
     expect(out.plan).toMatch(/(Scan using|Scan on) da_tx_flagged_idx/);
+    expect(out.firmPlan).toMatch(/(Scan using|Scan on) da_tx_flagged_supplier_idx/);
   });
 
   it("refuses a signal the role cannot have, and a signal on another question", async () => {

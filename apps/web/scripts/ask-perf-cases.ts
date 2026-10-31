@@ -107,9 +107,9 @@ function preAnswersCases(): PerfCase[] {
     perfCase("national:trend-authorities-services-2024-2025", "national", "Instituțiile cu cea mai mare schimbare la servicii, 2024 → 2025", "trend",
       all(top({ dim: "authority" }), services, years(2024, 2025), lens({ change: "up", months: "auto" })), { barMs: 2000 }),
     perfCase("national:trend-suppliers-goods-2025-2026", "national", "Firme cu cea mai mare schimbare la produse, 2025 → 2026 (aceleași luni)", "trend",
-      all(goods, years(2025, 2026), lens({ change: "up", months: [1, 6] })), { barMs: 2000, precompute: KIND_ENTITY }),
+      all(goods, years(2025, 2026), lens({ change: "up", months: [1, 6] })), { barMs: 2000 }),
     perfCase("national:table-authorities-goods-from-1-9-employees", "national", "Instituțiile care cumpără produse de la firme cu 1–9 angajați", "table",
-      all(top({ dim: "authority" }), goods, set({ minEmployees: 1, maxEmployees: 9 })), { barMs: 2000, precompute: KIND_ENTITY }),
+      all(top({ dim: "authority" }), goods, set({ minEmployees: 1, maxEmployees: 9 })), { barMs: 2000 }),
     perfCase("national:table-suppliers-50k-250k-2025", "national", "Cine câștigă achizițiile de 50.000–250.000 lei, 2025", "table",
       all(set({ purchaseValueMin: 50_000, purchaseValueMax: 250_000 }), years(2025)), { barMs: 2000 }),
     perfCase("national:table-suppliers-goods-1-9-employees", "national", "Cine câștigă produsele, firme cu 1–9 angajați", "table", all(goods, set({ minEmployees: 1, maxEmployees: 9 })), { barMs: 2000 }),
@@ -124,12 +124,12 @@ function preAnswersCases(): PerfCase[] {
     perfCase("facets:kind-goods-2025", "facets", "Tipul instituției, produse, 2025", "stat", all(goods, years(2025)), facet("kind")),
     perfCase("facets:kind-over-1m", "facets", "Tipul instituției, achiziții de peste 1 mil. lei, toți anii", "stat", set({ purchaseValueMin: 1_000_000 }), facet("kind")),
     perfCase("facets:employees-medicines-all", "facets", "Angajați, „medicamente”, toți anii", "table", medicines, facet("employees")),
-    perfCase("facets:mix-medicines-all", "facets", "„Din care”, „medicamente”, toți anii (peste DOMAIN_LIVE_ROWS)", "stat", medicines, { ...facet("mix"), precompute: MIX_LIVE }),
+    perfCase("facets:mix-medicines-all", "facets", "„Din care”, „medicamente”, toți anii (1,82 mil. înregistrări, sub DOMAIN_LIVE_ROWS din S6)", "stat", medicines, facet("mix")),
     perfCase("facets:bars-medicines", "facets", "Faptele barelor, „medicamente”, toți anii", "timeseries", medicines, facet("bars")),
     perfCase("facets:bars-medicines-months-2025", "facets", "Faptele barelor, „medicamente”, lună de lună, 2025", "timeseries", all(medicines, years(2025), series({ grain: "month" })), facet("bars")),
-    perfCase("facets:map-medicines-all", "facets", "Faptele județelor, „medicamente”, toți anii (peste DOMAIN_LIVE_ROWS)", "map", medicines, { ...facet("map"), precompute: MAP_LIVE }),
+    perfCase("facets:map-medicines-all", "facets", "Faptele județelor, „medicamente”, toți anii (1,82 mil. înregistrări, sub DOMAIN_LIVE_ROWS din S6)", "map", medicines, facet("map")),
     perfCase("facets:kind-medicines-all", "facets", "Tipul instituției, „medicamente”, toți anii", "stat", medicines, facet("kind")),
-    perfCase("facets:mix-employees-2025", "facets", "„Din care”, firme cu 1–9 angajați, 2025 (fără rollup)", "stat", all(set({ minEmployees: 1, maxEmployees: 9 }), years(2025)), { ...facet("mix"), precompute: MIX_LIVE }),
+    perfCase("facets:mix-employees-2025", "facets", "„Din care”, firme cu 1–9 angajați, 2025 (agg_mix_employees, S6)", "stat", all(set({ minEmployees: 1, maxEmployees: 9 }), years(2025)), facet("mix")),
   ];
 }
 /** The builder's focal picker (pickEntity, registry writeFocal): the entity, and the answer's role with it. */
@@ -189,7 +189,7 @@ const CATALOG_CHOICES: Partial<Record<Block, { note: string; edit: Edit }>> = {
 };
 
 const SELGROS_ROW: EvidenceScope = { entityIds: [String(PERF_ENTITIES.selgros.id)], role: "supplier" };
-/** The PRECOMPUTE.md entry the orders of „Toate” other than the default still wait on (S3 review; S5 PRE-trend closed the rest). */
+/** The PRECOMPUTE.md entry the oldest-first order of „Toate” still waits on (S3 review; S5 PRE-trend and S6 over-bar closed the rest). */
 const ALL_DRAWER = "Sertarul „Toate” al trendului";
 
 export function perfCases(): PerfCase[] {
@@ -362,7 +362,7 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:trend-2021-2022-all-after-answer", "sources", "„Toate” la firme, 2021 → 2022, după răspuns", "trend",
       all(years(2021, 2022), lens({ change: "all", months: "auto" })), { path: "rows", afterAnswer: true, barMs: 2000 }),
     perfCase("sources:trend-2024-2025-all-by-value-after-answer", "sources", "„Toate” la firme, 2024 → 2025, după valoare, după răspuns", "trend",
-      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "value", dir: "desc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
+      all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "value", dir: "desc" }, afterAnswer: true, barMs: 2000 }),
     perfCase("sources:trend-2024-2025-all-source-asc-after-answer", "sources", "„Toate” la firme, 2024 → 2025, cele mai vechi surse întâi, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { sort: "source", dir: "asc" }, afterAnswer: true, barMs: 2000, precompute: ALL_DRAWER }),
     perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
@@ -370,6 +370,7 @@ export function perfCases(): PerfCase[] {
     ...preTrendCases(),
     ...storedSearchCases(),
     ...preSourcesCases(),
+    ...overBarCases(),
     ...preAnswersCases(),
     ...f3Cases(),
     ...facetCases(),
@@ -672,9 +673,6 @@ function facetCases(): PerfCase[] {
 /** PRECOMPUTE.md entries the F3 cases wait on (S4 F3-keys). */
 const SIZE_LIVE = "Sursele unei mărimi a achiziției pe o selecție națională";
 const SIZE_SOURCES_FIRMS = "Totalurile surselor unui clasament național pe angajați";
-const FIRST_TIME_SOURCES = "Sursele listei „prima dată” pe un an, național";
-/** What agg_entity_kind_year does not answer (S5 PRE-answers): goods or services with the other side's condition or on the same months. */
-const KIND_ENTITY = "Produsele și serviciile pe instituții și firme, național";
 
 /**
  * F3 (S4, F3-keys): the purchase kind, the procedure, the size of a purchase and the employee bands,
@@ -765,9 +763,9 @@ function f3Cases(): PerfCase[] {
     // S5 tests: the sources and CSV of the national „prima dată” list (all the listed firms' records, 41 k for 2025) and of a
     // CPV division's drawer (domainSourceQuery: the scope carries the division's prefix), measured next to the answers.
     perfCase("sources:table-suppliers-first-2025", "sources", "Sursele firmelor cu prima înregistrare din 2025, național", "table",
-      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "rows", barMs: 2000, precompute: FIRST_TIME_SOURCES }),
+      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("csv:table-suppliers-first-2025", "csv", "CSV: sursele firmelor cu prima înregistrare din 2025, național", "table",
-      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "csv", barMs: 2000, precompute: FIRST_TIME_SOURCES }),
+      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "csv", barMs: 2000 }),
     perfCase("sources:breakdown-division-45-2025", "sources", "Sursele diviziunii CPV 45 din „Domenii”, 2025", "breakdown",
       all(set({ cpvTerm: "45" }), years(2025)), { path: "rows", scope: { cpvPrefixes: ["45"] }, barMs: 2000 }),
     perfCase("facets:winners-authorities-2025", "facets", "Numărul lui „O firmă ia peste jumătate”, instituții, 2025", "table",
@@ -878,6 +876,44 @@ function storedSearchCases(): PerfCase[] {
 }
 
 /**
+ * S6 over-bar: the cases the stage closed, each beside the path it opened, and the ones still waiting. A kind on a
+ * trend's same months (the default 2025 → 2026 while 2026 runs: agg_entity_kind_month) and with the other side's
+ * condition (agg_pair_kind_year), „Din care” of firms of a size (agg_mix_employees), a domain above DOMAIN_LIVE_ROWS
+ * (food, 2.54M records: still waiting), „Toate” by value past its first page (da_tx_value_desc_idx), the „Firme noi”
+ * drawers on their firms' indexes, a firm's signal on the risk cloud (da_tx_flagged_supplier_idx).
+ */
+function overBarCases(): PerfCase[] {
+  const goods = set({ purchaseKind: "produse" }), services = set({ purchaseKind: "servicii" }), food = set({ cpvTerm: "15" });
+  const facet = (part: FacetPart) => ({ facet: { part }, barMs: 2000 as const });
+  const every = lens({ change: "all", months: "auto" });
+  return [
+    perfCase("national:trend-suppliers-goods-2025-2026-jan-aug", "national", "Firme cu cea mai mare creștere la produse, ian.–aug. 2025 → 2026", "trend",
+      all(goods, years(2025, 2026), lens({ change: "up", months: [1, 8] })), { barMs: 2000 }),
+    perfCase("national:trend-authorities-services-2025-2026-jan-aug", "national", "Instituțiile cu cea mai mare creștere la servicii, ian.–aug. 2025 → 2026", "trend",
+      all(top({ dim: "authority" }), services, years(2025, 2026), lens({ change: "up", months: [1, 8] })), { barMs: 2000 }),
+    perfCase("sources:trend-suppliers-goods-2025-2026-jan-aug-up", "sources", "Sursele creșterilor la produse, ian.–aug. 2025 → 2026", "trend",
+      all(goods, years(2025, 2026), lens({ change: "up", months: [1, 8] })), { path: "rows", barMs: 2000 }),
+    perfCase("national:table-authorities-goods-from-other-county-2025", "national", "Instituțiile care cumpără produse de la firme din alte județe, 2025", "table",
+      all(top({ dim: "authority" }), goods, set({ firmSeat: "other" }), years(2025)), { barMs: 2000 }),
+    perfCase("sources:table-authorities-goods-from-1-9-employees", "sources", "Sursele instituțiilor care cumpără produse de la firme cu 1–9 angajați", "table",
+      all(top({ dim: "authority" }), goods, set({ minEmployees: 1, maxEmployees: 9 })), { path: "rows", barMs: 2000 }),
+    perfCase("facets:kind-authorities-from-1-9-employees", "facets", "Tipul achiziției pe instituțiile care cumpără de la firme cu 1–9 angajați", "table",
+      all(top({ dim: "authority" }), set({ minEmployees: 1, maxEmployees: 9 })), facet("kind")),
+    perfCase("facets:mix-employees-all", "facets", "„Din care”, firme cu 250+ angajați, toți anii", "stat", set({ minEmployees: 250 }), facet("mix")),
+    perfCase("facets:mix-food-all", "facets", "„Din care”, CPV 15, toți anii (2,54 mil. înregistrări, peste DOMAIN_LIVE_ROWS)", "stat", food, { ...facet("mix"), precompute: MIX_LIVE }),
+    perfCase("facets:map-food-all", "facets", "Faptele județelor, CPV 15, toți anii (peste DOMAIN_LIVE_ROWS)", "map", food, { ...facet("map"), precompute: MAP_LIVE }),
+    perfCase("sources:trend-2024-2025-all-by-value-page-3-after-answer", "sources", "„Toate” la firme, 2024 → 2025, după valoare, pagina 3, după răspuns", "trend",
+      all(years(2024, 2025), every), { path: "rows", drawer: { sort: "value", dir: "desc" }, page: 2, afterAnswer: true, barMs: 2000 }),
+    perfCase("sources:trend-2025-2026-jan-aug-all-by-value-after-answer", "sources", "„Toate” la firme, ian.–aug. 2025 → 2026, după valoare, după răspuns", "trend",
+      all(years(2025, 2026), lens({ change: "all", months: [1, 8] })), { path: "rows", drawer: { sort: "value", dir: "desc" }, afterAnswer: true, barMs: 2000 }),
+    perfCase("csv:table-suppliers-registered-2024-2025", "csv", "CSV: sursele firmelor înmatriculate din 2024, 2025", "table",
+      all(top({ dim: "supplier" }), set({ newSince: 2024, newScope: "registry" }), years(2025)), { path: "csv", barMs: 2000 }),
+    perfCase("sources:table-suppliers-first-2025-page-3", "sources", "Sursele firmelor cu prima înregistrare din 2025, pagina 3", "table",
+      all(top({ dim: "supplier" }), set({ newSince: 2025, newScope: "archive" }), years(2025)), { path: "rows", page: 2, barMs: 2000 }),
+  ];
+}
+
+/**
  * S5 PRE-sources: the source lists PRECOMPUTE.md kept for the marts stage. The historical profiles' cohorts nationally
  * (a distribution's group of the whole country, of a county: the risk cloud's old links list the same cohorts, which
  * ask-golden runs, since the builder's cloud has no source rows), a precise selection of OR groups, the seat's sparse
@@ -899,6 +935,8 @@ function preSourcesCases(): PerfCase[] {
     perfCase("sources:distribution-buzau-population", "sources", "Sursele grupului Buzău: primăriile cu 52–207 mii de locuitori", "distribution",
       all(focal("authority", PERF_ENTITIES.buzau), top({ peers: { similar: true } })), rows),
     perfCase("sources:timeseries-population-or-groups", "sources", "Sursele unei selecții precise SAU (Cluj-Napoca la CPV 45, DEDEMAN sau Buzău)", "timeseries", orGroups, rows),
+    // S6 over-bar: the answer of the same selection, beside its drawer.
+    perfCase("national:timeseries-population-or-groups", "national", "Evoluția unei selecții precise SAU (Cluj-Napoca la CPV 45, DEDEMAN sau Buzău)", "timeseries", orGroups, { barMs: 2000 }),
     perfCase("sources:table-suppliers-seat-tulcea-satu-mare", "sources", "Sursele firmelor cu sediul în Tulcea care vând în Satu Mare", "table",
       all(top({ dim: "supplier" }), set({ seatCounty: "Tulcea", county: "Satu Mare" })), rows),
     perfCase("sources:table-authorities-per-capita", "sources", "Sursele clasamentului pe locuitor, național", "table", top({ dim: "authority", measure: "value_per_capita" }), rows),

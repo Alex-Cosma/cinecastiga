@@ -28,7 +28,7 @@ import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
   compareInstitutionParties, comparePairRows, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, flaggedIndexReady, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
+  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, flaggedIndexReady, kindMonthRollupReady, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import { hasFlag, scatterAnswer } from "./scatter";
@@ -774,9 +774,11 @@ function rollupNeed(spec: AskSpec): RollupNeed | null {
 async function rollupPlanFor(sql: DbSql, spec: AskSpec, ctx: PredicateCtx): Promise<{ source: RollupSource; filters: RollupFilters } | null> {
   const need = rollupNeed(spec);
   if (!need || spec.measure === "value_per_capita" || !(await rollupsReady(sql))) return null;
-  // A trend's same months read agg_entity_month, a kind or a size per entity agg_entity_kind_year, once a build has made them.
+  // A trend's same months read agg_entity_month, a kind or a size per entity agg_entity_kind_year, a kind on the same
+  // months or with the other side's condition agg_entity_kind_month or agg_pair_kind_year, once a build has made them.
   const kinds = ctx.purchaseKind !== null || ctx.purchaseValueMin !== null || ctx.purchaseValueMax !== null ? await kindRollupReady(sql) : false;
-  const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false, kinds });
+  const kindMonths = ctx.purchaseKind !== null ? await kindMonthRollupReady(sql) : false;
+  const plan = planRollup(ctx, need, { months: ctx.trendMonths ? await monthRollupReady(sql) : false, kinds, kindMonths });
   return "source" in plan ? plan : null;
 }
 
@@ -3026,6 +3028,13 @@ export async function runRows(
   // records (2025's first is among 2020's), so a forward walk from it read millions of other years' rows (5.4 s, against
   // 3.05 s by the covering index).
   const keyBounded = everyChange && sortKey === "source" && opts.dir !== "asc" && dataset !== "contracts" && await yearKeysReady(sql);
+  // „Toate” of a whole national selection by value, highest first: the direct acquisitions' first rows walk
+  // da_tx_value_desc_idx (its order is the drawer's: value descending, then the key), each checked against the two
+  // years, instead of sorting every record of both (a sequential scan of the 19.6M rows: 2.1–2.9 s; walked, the
+  // first ten of 2024 → 2025 in ~45 entries). The contracts keep their branch. Not with a narrowing condition or a
+  // search, whose few matches the walk would look for among every value (S6 over-bar).
+  const valueWalk = everyChange && !narrowed && !search && sortKey === "value" && opts.dir !== "asc" && dataset !== "contracts"
+    && await valueKeysReady(sql);
   // A period of a selection otherwise whole or narrowed only by its firms' seat or size or the buyer county (a year's
   // national ranking, total or map, with or without entities left out; „În alt județ”, 2025) reads its direct
   // acquisitions the same way: the primary key back from the last key of its years, not from the archive's last record
@@ -3279,6 +3288,14 @@ export async function runRows(
     // (hospitals and county councils 0.07 s warm).
     const fewWinners = total <= FEW_WINNER_RECORDS && ctx.winners?.authorities != null && !daRange;
     const keyHidden = sizeInCounty || fewInCounty || fewWinners || spec.filters.firmSeat === "abroad";
+    // „Firme noi” in the archive or the register (F5): a list of firms, whose direct acquisitions' keys in the
+    // drawer's order come from the firm's covering index alone (every column of the selection is in it), then only
+    // those rows are read. The planner instead scanned the whole mart for the year and joined the firms to it (the
+    // first records of 2025, nationally: the CSV of their 41,084 rows 4.3–5.7 s), or walked the key back through the
+    // newer years' records for a page (0.7 s each channel; S6 over-bar). The key is hidden (`+ 0`, as the annual scan)
+    // and sequential scans are off for the page, as for a trend group's members (idIndex): the firms' indexes answer.
+    const firmsKeyed = !profile && !groupBranches && !anchoredKeys && !annualScan && !daRange && !search && sortKey === "source"
+      && dataset !== "contracts" && ctx.newFirms !== null && ctx.newFirms.scope !== "buyer";
     const keyOrder = keyHidden ? sql`(d.ref_id + 0)` : sql`d.ref_id`;
     const branchOrder = sortKey !== "source" ? sql`${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first`
       : idIndex ? sql`(d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first` : sql`d.ref_id ${dirFrag}, d.supplier_id nulls first`;
@@ -3310,6 +3327,17 @@ export async function runRows(
         where selected_key.src = 'contracts' and d.ref_id = selected_key.ref_id
           and d.supplier_id is not distinct from selected_key.supplier_id
       ) selected_row
+    )` : firmsKeyed ? sql`(
+      (select * from ${daTx} d where d.ref_id in (
+        select d.ref_id from ${daTx} d where ${pageWhere} and ${localWhere} order by (d.ref_id + 0) ${dirFrag} limit ${branchLimit}))
+      ${dataset === "all" ? sql`union all
+      (select * from ${contractTx} d where ${pageWhere} and ${localWhere}
+       order by (d.ref_id + 0) ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})` : sql``}
+    )` : valueWalk ? sql`(
+      (select * from ${daTx} d where ${pageWhere} and ${localWhere} order by (- d.closing_value), d.ref_id limit ${branchLimit})
+      ${dataset === "all" ? sql`union all
+      (select * from ${contractTx} d where ${pageWhere} and ${localWhere}
+       order by d.closing_value desc nulls last, d.ref_id, d.supplier_id nulls first limit ${branchLimit})` : sql``}
     )` : !profile && dataset === "all" && sortKey === "source" ? sql`(
       (select * from ${daTx} d where ${pageWhere} and ${localWhere}
        order by ${keyOrder} ${dirFrag}, d.supplier_id nulls first limit ${branchLimit})
@@ -3323,6 +3351,7 @@ export async function runRows(
       select * from ${daTx} d where d.ref_id in (
         select d.ref_id from ${flagKeyed} d where ${localWhere} order by ${sortFrag} ${dirFrag}, d.ref_id limit ${branchLimit})
     )` : txt;
+    if (firmsKeyed && !idIndex) await tx.unsafe("set local enable_seqscan = off");
     if (opts.capture) await opts.capture.persist(s, s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,
              d.supplier_id, d.supplier_name, d.county, d.cpv_code, d.cpv_name, d.closing_value::text,
@@ -3345,7 +3374,7 @@ export async function runRows(
       closing_value: string; src: "da" | "contracts"; ref_id: string | null; ca_notice_id: string | null; ted_pubnum: string | null;
       estimated_value_ron: string | null; value_suspect: boolean | null; state: string | null; n_winners: number | null; contract_value_full: string | null;
     }[];
-    if (idIndex) await tx.unsafe("set local enable_seqscan to default");
+    if (idIndex || firmsKeyed) await tx.unsafe("set local enable_seqscan to default");
     let profiles: EvidenceProfile[] = [];
     let profileCount = 0;
     let profileReconciled: boolean | null = null;

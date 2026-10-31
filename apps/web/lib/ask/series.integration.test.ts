@@ -7,7 +7,7 @@ import { forgetFacets } from "./facets";
 import type { BarsResult, MixResult } from "./facet-parts";
 import { forgetAuthorityKinds } from "./authority-kind";
 import { forgetRollupsReady } from "./rollups";
-import { forgetMixRollupReady, mixRollupReady } from "./series-rollups";
+import { forgetMixEmployeesReady, forgetMixRollupReady, mixEmployeesReady, mixRollupReady } from "./series-rollups";
 import { forgetMartColumns } from "./mart-columns";
 import { sumDecimalStrings } from "./evidence";
 import { VALUE_RANGES } from "./purchase";
@@ -162,8 +162,8 @@ const SERIES: { name: string; spec: AskSpec }[] = [
 describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din care”, the bars' facts and the ranked firms' employees (dedicated rollback fixture)", () => {
   it("add up, give their sources and the rollups' answers to the leu", async () => {
     await withAskFixture(connection!.sql, "series_fixture", load, async (q) => {
-      forgetAuthorityKinds(); forgetRollupsReady(); forgetMixRollupReady(); forgetMartColumns(); forgetFacets(); forgetAnswerFacts();
-      expect(await mixRollupReady(q)).toBe(false);
+      forgetAuthorityKinds(); forgetRollupsReady(); forgetMixRollupReady(); forgetMixEmployeesReady(); forgetMartColumns(); forgetFacets(); forgetAnswerFacts();
+      expect([await mixRollupReady(q), await mixEmployeesReady(q)]).toEqual([false, false]);
 
       // 1. Live: every series of the fixture.
       const live = new Map<string, Extract<BlockData, { block: "timeseries" }>>();
@@ -218,6 +218,12 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       expect(mixCluj.kind.map((r) => r.value)).toEqual(["lucrari", "servicii", "produse", "none"]);
       // The offers of Cluj's contracts: one (201, 206), several (205).
       expect(mixCluj.offers!.rows.map((r) => [r.value, r.n])).toEqual([["one", 2], ["several", 1]]);
+      // S6 over-bar: of firms of a size, live on a county; nationally it waits on agg_mix_employees (step 5).
+      const band = { minEmployees: 1, maxEmployees: 9 };
+      const clujBand = stat({ ...Y, county: "Cluj", ...band }), draftBand = stat(band);
+      expect(await mixFacts(q, draftBand)).toEqual({ precompute: MIX_LIVE });
+      const mixClujBand = mixOf(await mixFacts(q, clujBand));
+      await expectMix(q, clujBand, mixClujBand);
       // The totals by a size of the ranges, a procedure, the single bidder: live here, from agg_national_mix after step 5
       // (S4 review: national, under 10.000 lei in 2025, 2.4–3.3 s live).
       const MIXED: AskSpec[] = [stat({ ...Y, purchaseValueMin: 1_000_000 }), stat({ ...Y, purchaseValueMax: 10_000 }), stat({ purchaseValueMin: 10_000, purchaseValueMax: 100_000 }),
@@ -251,7 +257,6 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
 
       // 4. The ranked firms' employees (CÂȘTIGĂTORII, table:employees-2): the list narrows to the band, the total and
       // „% din total” stay the selection's, the band's figures are those of a total over the same firms.
-      const band = { minEmployees: 1, maxEmployees: 9 };
       const rankingLive = await answer(q, { block: "table", dim: "supplier", measure: "value", topN: 10, filters: { ...Y, ...band } });
       const checkRanking = async (d: BlockData, label: string) => {
         if (d.block !== "table") throw new Error("table expected");
@@ -268,8 +273,8 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       // 5. The rollups: agg_months and agg_national_mix give every answer above to the leu.
       const report = await buildAskRollups(q);
       expect([report.rows.agg_months! > 0, report.rows.agg_national_mix! > 0]).toEqual([true, true]);
-      forgetRollupsReady(); forgetMixRollupReady(); forgetFacets(); forgetAnswerFacts();
-      expect(await mixRollupReady(q)).toBe(true);
+      forgetRollupsReady(); forgetMixRollupReady(); forgetMixEmployeesReady(); forgetFacets(); forgetAnswerFacts();
+      expect([await mixRollupReady(q), await mixEmployeesReady(q), report.rows.agg_mix_employees > 0]).toEqual([true, true, true]);
       for (const c of SERIES) expect([c.name, await points(q, c.spec)]).toEqual([c.name, live.get(c.name)]);
       expect(strip(mixOf(await mixFacts(q, cluj)))).toEqual(strip(mixCluj));
       // Nationally from agg_national_mix: each row is its answer and its sources too.
@@ -279,6 +284,14 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       expect(mixNational.kind.map((r) => r.value)).toEqual(["lucrari", "produse", "servicii", "none"]);
       // The offers of the contracts: one (201, 206), several (the two winners of 202, and 205), unknown (203, 204).
       expect(mixNational.offers!.rows.map((r) => [r.value, r.n])).toEqual([["one", 2], ["several", 3], ["unknown", 2]]);
+      // Of firms of a size: from agg_mix_employees, the county's the same as live, the country's each row its answer and
+      // sources; a range off the kit's bands still waits.
+      expect(strip(mixOf(await mixFacts(q, clujBand)))).toEqual(strip(mixClujBand));
+      const mixNationalBand = mixOf(await mixFacts(q, draftBand));
+      await expectMix(q, draftBand, mixNationalBand);
+      expect(mixNationalBand.total.n).toBeGreaterThan(0);
+      expect(mixNationalBand.total.n).toBeLessThan(mixNational.total.n);
+      expect(await mixFacts(q, stat({ minEmployees: 2, maxEmployees: 9 }))).toEqual({ precompute: MIX_LIVE });
       // The totals by a size of the ranges, a procedure, the single bidder: from agg_national_mix now (the marts emptied
       // change none of them), the live ones.
       await q.unsafe("savepoint mixed_only");
@@ -298,7 +311,8 @@ describe.runIf(Boolean(connection))("F3-rows: the evolution's options, „Din ca
       await checkRanking(await answer(q, { block: "table", dim: "supplier", measure: "value", topN: 10, filters: { ...Y, ...band } }), "rollups");
       // Without the mix rollups (a build before F3-rows): the live answers, the same.
       await q`drop table marts.agg_months, marts.agg_national_mix`;
-      forgetMixRollupReady(); forgetAnswerFacts();
+      forgetMixRollupReady(); forgetMixEmployeesReady(); forgetAnswerFacts();
+      expect(await mixEmployeesReady(q)).toBe(false);
       for (const c of SERIES.slice(0, 3)) expect([c.name, await points(q, c.spec)]).toEqual([c.name, live.get(c.name)]);
       expect(strip(mixOf(await mixFacts(q, cluj)))).toEqual(strip(mixCluj));
     }, {

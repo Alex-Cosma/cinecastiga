@@ -104,7 +104,7 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
   </section>;
   if (fact.status === "none") return <section className="qb qb-mix" aria-label="Din care">
     <p className="qb-mix-head qb-tipwrap">Din care: {fact.precompute ? "nu e calculat pe această selecție" : "nu a putut fi calculat acum"}
-      {fact.precompute && <> <HelpTip tip={{ title: "Din care", text: "Pe toată țara, cu un domeniu, cu angajați sau cu o mărime aleasă de mână, compoziția cere un calcul pregătit noaptea. Cifra de mai sus e completă." }} /></>}</p>
+      {fact.precompute && <> <HelpTip tip={{ title: "Din care", text: "Pe toată țara, cu un domeniu foarte mare, cu luni, cu sediul firmelor sau cu o plajă scrisă de mână, compoziția cere un calcul pregătit noaptea. Cifra de mai sus e completă." }} /></>}</p>
   </section>;
   const mix = fact.value;
   const tabs = mixTabs(spec, mix);

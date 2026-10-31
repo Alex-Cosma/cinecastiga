@@ -500,13 +500,25 @@ describe("availability (plan §2.2)", () => {
     const at = (spec: FilterSpec) => ["produse", "servicii", "lucrari"].map((value) => state(spec, value));
     // The nightly agg_entity_kind_year answers the national rankings, trends and leaders per entity by kind.
     expect([nationalEntityScan(firms), kindRollupAnswers(firms, ctxOf(firms)), at(firms)]).toEqual([true, true, ["offered", "offered", "offered"]]);
-    // Not beside the other side's condition (the firms' size on a ranking of institutions), months or a threshold.
+    // S6 over-bar: beside the other side's condition (the firms' size on a ranking of institutions) agg_pair_kind_year
+    // answers; a month window or a threshold does not.
     const institutions = { ...firms, dim: "authority" as const, filters: { ...firms.filters, minEmployees: 1, maxEmployees: 9 } };
-    expect([nationalEntityScan(institutions), at(institutions)]).toEqual([true, ["disabled", "disabled", "offered"]]);
+    expect([nationalEntityScan(institutions), at(institutions)]).toEqual([true, ["offered", "offered", "offered"]]);
     expect(at({ ...firms, filters: { ...firms.filters, monthFrom: 1, monthTo: 6, yearFrom: 2025, yearTo: 2025 } })).toEqual(["disabled", "disabled", "offered"]);
-    // Firms left out of a ranking of firms stay on the rollup; institutions left out of it do not.
+    expect(at({ ...firms, minimumRecords: { role: "supplier", count: 5 } } as FilterSpec)).toEqual(["disabled", "disabled", "offered"]);
+    // Firms left out of a ranking of firms stay on agg_entity_kind_year; institutions left out of it on the pairs.
     const out = (field: "authority" | "supplier") => ({ ...firms, population: { operator: "and" as const, groups: [{ operator: "and" as const, conditions: [{ field, op: "not_in" as const, values: ["1"] }] }] } });
-    expect([at(out("supplier")), at(out("authority"))]).toEqual([["offered", "offered", "offered"], ["disabled", "disabled", "offered"]]);
+    expect([at(out("supplier")), at(out("authority"))]).toEqual([["offered", "offered", "offered"], ["offered", "offered", "offered"]]);
+    // A trend on the same months (2025 → 2026 while 2026 runs) reads agg_entity_kind_month, with the ranked role's conditions only.
+    const trend = (filters: FilterSpec["filters"], dim: "authority" | "supplier" = "supplier") =>
+      ({ block: "trend", dim, measure: "value", filters: { yearFrom: 2025, yearTo: 2026, ...filters }, trend: { change: "up", months: "auto" } }) as FilterSpec;
+    const year = { year: 2026 };
+    expect([kindRollupAnswers(trend({ purchaseKind: "produse" }), year), kindRollupAnswers(trend({ purchaseKind: "servicii", minEmployees: 1, maxEmployees: 9 }), year)]).toEqual([true, true]);
+    expect(kindRollupAnswers(trend({ purchaseKind: "produse", minEmployees: 1, maxEmployees: 9 }, "authority"), year)).toBe(false);
+    expect(kindRollupAnswers(trend({ purchaseValueMin: 1_000_000 }), year)).toBe(false);
+    expect(kindRollupAnswers(trend({ purchaseKind: "produse", minEmployees: 1, maxEmployees: 9, yearFrom: 2024, yearTo: 2025 }, "authority"), year)).toBe(true);
+    // A size beside the other side's condition stays live (agg_pair_kind_year has no size).
+    expect(kindRollupAnswers({ ...institutions, filters: { ...institutions.filters, purchaseValueMin: 1_000_000 } }, year)).toBe(false);
     // A size: the kit's ranges on the rollup, bounds typed in live.
     const sizeSlot = { id: "purchaseValue", label: "Mărimea achiziției", window: "Cât de mare e fiecare achiziție?" } as const;
     const size = (spec: FilterSpec, value: object) => choiceState(sizeSlot as never, { filter: "purchaseValue", value } as Choice, spec, ctxOf(spec)).state;
