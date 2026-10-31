@@ -164,9 +164,11 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const wanted = useMemo(() => [...visible.map((r) => r.entityId), ...(picked ? [picked.id] : [])], [visible, picked]);
   const { facts } = useProfileFacts(spec, wanted);
   const rank = data.rankBy;
-  // The first names of the list on the chart, each where it fits (chartLabels).
-  const labels = useMemo(() => chartLabels(rows.slice(0, g.box.compact ? 3 : 6).map((row) => ({ id: row.entityId, text: chartName(row.name) })), all, g, data.p90),
-    [rows, all, g, data.p90]);
+  // The first names of the list on the chart, each where it fits; the chosen and the found points' always (chartLabels).
+  const focus = useMemo(() => [...(picked ? [{ id: picked.id, text: chartName(picked.name) }] : []),
+    ...(found?.results ?? []).slice(0, 3).map((m) => ({ id: m.id, text: chartName(m.name) }))], [picked, found]);
+  const labels = useMemo(() => chartLabels(rows.slice(0, g.box.compact ? 3 : 6).map((row) => ({ id: row.entityId, text: chartName(row.name) })), drawn, g, data.p90, focus),
+    [rows, drawn, g, data.p90, focus]);
   const p90At = data.p90 > 0 ? p90Label(g, data.p90) : null;
 
   // The legend, the cloud and the list speak of the same profiles with the same classes.
