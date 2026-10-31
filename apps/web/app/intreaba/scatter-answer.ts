@@ -131,15 +131,18 @@ export function p90Label(g: Geometry, p90: number): { x: number; y: number; anch
   return { x, y, anchor: end ? "end" : "start", box: { x0: end ? x - w : x, x1: end ? x : x + w, y0: y - 10, y1: y + 3 } };
 }
 
-/** A name on the chart is skipped when its box would sit on more points than this. */
-export const LABEL_COVER_MAX = 3;
+/**
+ * The largest dot's radius (a listed point, ScatterAnswer.tsx): a name's box keeps this far from every other point,
+ * so a name never sits on another dot (S6, F6b verify: at 390 px „Comuna Sageata” covered Largu's dot).
+ */
+export const LABEL_DOT_R = 4.5;
 export interface ChartLabel { id: string; x: number; y: number; anchor: "start" | "end"; text: string }
 
 /**
  * The first names of the list on the chart, each where it fits: the side with the room first (right on the left of
- * the chart), then the side over fewer points. A name that would sit on another label or on the words of the top 10%,
- * cross its line, or cover a cluster on both sides is left to the list (a phone's narrow chart; F6b review: at 390 px
- * a firm's name crossed the line and its points).
+ * the chart), then the other. A name that would sit on another label, on the words of the top 10% or on another
+ * point, or cross the line, is left to the list (a phone's narrow chart; F6b review: at 390 px a firm's name crossed
+ * the line and its points; S6: a commune's name covered another commune's dot).
  */
 export function chartLabels(names: readonly { id: string; text: string }[], all: readonly Dot[], g: Geometry, p90: number): ChartLabel[] {
   const line = p90 > 0 ? g.x(p90) : null;
@@ -152,9 +155,10 @@ export function chartLabels(names: readonly { id: string; text: string }[], all:
       const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
       const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && (line === null || line <= box.x0 || line >= box.x1)
         && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
-      return { right, x, box, fits, covers: all.filter((o) => o !== d && o.x >= box.x0 && o.x <= box.x1 && o.y >= box.y0 && o.y <= box.y1).length };
-    }).filter((side) => side.fits && side.covers <= LABEL_COVER_MAX);
-    const side = sides.sort((a, b) => a.covers - b.covers)[0];
+      const covers = all.some((o) => o !== d && o.x + LABEL_DOT_R > box.x0 && o.x - LABEL_DOT_R < box.x1 && o.y + LABEL_DOT_R > box.y0 && o.y - LABEL_DOT_R < box.y1);
+      return { right, x, box, fits: fits && !covers };
+    }).filter((side) => side.fits);
+    const side = sides[0];
     if (!side) continue;
     placed.push(side.box);
     out.push({ id, x: side.x, y: d.y + 3, anchor: side.right ? "start" : "end", text });
