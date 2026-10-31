@@ -8,7 +8,7 @@ import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-tex
 import { leadOverSecond, podiumRest, type Podium, type PodiumFact, type Ties } from "../../lib/ask/entity-card-shared";
 import { retarget } from "../../lib/ask/filters/retarget";
 import { employeesWords } from "../../lib/ask/filters/words";
-import { criBand, FLAG_META } from "../../lib/flags";
+import { criBand, FLAG_META, flagLabel } from "../../lib/flags";
 import { askLink, leaderAlone, leaderAloneSpecs } from "../../lib/ask/source-spec";
 import type { QuestionSpec } from "../../lib/ask/question-ui";
 import type { AskSpec } from "../../lib/ask/spec";
@@ -295,7 +295,7 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
       )}
       {card.flags.length > 0 && (
         <div className="ask-fchips">
-          {card.flags.map((f) => <span key={f} className="ask-fchip" title={FLAG_META[f]?.short}>{FLAG_META[f]?.title ?? f}</span>)}
+          {card.flags.map((f) => <span key={f} className="ask-fchip" title={FLAG_META[f]?.short}>{flagLabel(f)}</span>)}
         </div>
       )}
       {historical && <p className="ask-methnote">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatRonFull, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
-import { FLAG_META } from "@/lib/flags";
+import { FLAG_META, flagLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/blocks";
 import type { DaTx } from "@/lib/marts";
@@ -148,7 +148,7 @@ export default function TxTable({
               setPage(1);
             }}
           >
-            {FLAG_META[f]?.title ?? f}
+            {flagLabel(f)}
           </button>
         ))}
       </div>
@@ -156,7 +156,7 @@ export default function TxTable({
         <div className="txf-active">
           Filtrat:
           {years.length > 0 && <> {years.length === 1 ? "anul" : "anii"} <b>{[...years].sort().join(", ")}</b></>}
-          {flag && <> semnalul <b>„{FLAG_META[flag]?.title ?? flag}”</b></>}
+          {flag && <> semnalul <b>„{flagLabel(flag)}”</b></>}
           {" · "}
           <button type="button" onClick={() => { setFlag(null); setYears([]); setPage(1); }}>
             ✕ scoate filtrele
@@ -280,7 +280,7 @@ export default function TxTable({
                 <td className="clip c-flags" data-empty={t.daFlags.length === 0 ? "1" : undefined}>
                   {t.daFlags.map((f) => (
                     <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>
-                      {FLAG_META[f]?.title ?? f}
+                      {flagLabel(f)}
                     </span>
                   ))}
                 </td>

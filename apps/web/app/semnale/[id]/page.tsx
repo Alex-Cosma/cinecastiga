@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSignalSources } from "@/lib/signal-sources";
-import { FLAG_META } from "@/lib/flags";
+import { FLAG_META, flagLabel } from "@/lib/flags";
 import { noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote, thresholdTypeLabel } from "@/lib/risk-presentation";
 import { daUrl } from "@/lib/elicitatie";
 import { coverageDate } from "@/lib/coverage";
@@ -51,9 +51,9 @@ export default async function SignalSourcesPage({ params, searchParams }: {
   return <>
     <Link href={`/semnale?tip=${encodeURIComponent(finding.code)}`} className="back">← Înapoi la semnale</Link>
     <h1 className="page-title">Sursele semnalului</h1>
-    <p className="page-sub">{meta?.title ?? finding.code}{finding.period && finding.period !== "all" ? ` · ${signalPeriodLabel(finding.period, evidence)}` : ""}</p>
+    <p className="page-sub">{flagLabel(finding.code)}{finding.period && finding.period !== "all" ? ` · ${signalPeriodLabel(finding.period, evidence)}` : ""}</p>
     <p>Metodologie {finding.methodology} · pistă de verificat, nu dovadă.</p>
-    <ClipButton kind="signal" refId={id} label={meta?.title ?? finding.code} />
+    <ClipButton kind="signal" refId={id} label={flagLabel(finding.code)} />
     <p><a href={`/api/evidence/sources?kind=signal&id=${id}`} download>Descarcă înregistrările disponibile · CSV ↓</a></p>
     {finding.sourceIds.length > 0 && <section className="section">
       <h2 id="achizitii-semnal" className="list-anchor">Achizițiile care au declanșat acest semnal</h2>

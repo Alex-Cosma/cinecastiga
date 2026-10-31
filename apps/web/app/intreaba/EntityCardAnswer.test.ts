@@ -166,7 +166,9 @@ describe("the other forms", () => {
     const old = text(render({ card: card({ cri: 0.5, nFlags: 2, flags: ["da_split"] }) }, { ...valueSpec, rankBy: "risk" }, true));
     expect(old).toContain("valoare înregistrată în profil");
     expect(old).toContain("indice risc");
-    expect(old).toContain("Posibilă fracționare sub prag");
+    // The signal's short name, as everywhere outside the methodology (plan §9 F6b; S6 review).
+    expect(old).toContain("Posibilă fracționare");
+    expect(old).not.toContain("Posibilă fracționare sub prag");
   });
 });
 

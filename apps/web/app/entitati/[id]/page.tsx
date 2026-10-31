@@ -21,7 +21,7 @@ import {
 } from "@/lib/marts";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
-import { FLAG_META, FLAG_ORDER, criBand } from "@/lib/flags";
+import { FLAG_META, FLAG_ORDER, criBand, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
 import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
@@ -293,7 +293,7 @@ export default async function EntityPage({
           la ultima recalculare; filtrul de an din tabel nu schimbă scorul.</p>
         <ul>{criteria.map(code => <li key={code}>
           <strong>{row.flags.includes(code) ? "Îndeplinit" : "Neîndeplinit în datele evaluate"}</strong>{" · "}
-          <Link href={`/metodologie#${code}`}>{FLAG_META[code]!.title}</Link>
+          <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
         </li>)}</ul>
         <p>Scorul nu este o probabilitate de corupție.
           Semnalele din contracte prin proceduri, bilanțuri și ONRC nu intră în acest scor; sunt listate la{" "}
@@ -378,7 +378,7 @@ export default async function EntityPage({
               <div className="method-card ent-card" key={code}>
                 <div className="method-head ent-tip-col">
                   <h3>
-                    {m.title}
+                    {flagLabel(code)}
                     {code === "da_round" && row.flags.includes("da_split") && <> <Term tip id="prag-vs-fractionare" /></>}
                   </h3>
                   <p className="mh-desc">{m.description}</p>
@@ -484,7 +484,7 @@ export default async function EntityPage({
                 return (
                   <tr key={code}>
                     <td>
-                      <Link href={entitySignalsUrl(code)}>{m.title}</Link>
+                      <Link href={entitySignalsUrl(code)}>{flagLabel(code)}</Link>
                       <div className="note">{m.short}</div>
                     </td>
                     <td className="county">
