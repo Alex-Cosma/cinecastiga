@@ -1,10 +1,10 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { buildAskRollups, buildSourceSearch, createDb, type DbSql } from "@seap/db";
-import { runRows } from "./compile";
+import { broadSearch, runRows, searchLimitsForTests } from "./compile";
 import { forgetMartColumns } from "./mart-columns";
 import { fold } from "./predicates";
 import { forgetRollupsReady, yearKeysReady } from "./rollups";
-import { forgetSourceSearch, SEARCH_LIST_CAP, sourceSearchFresh, sourceSearchPresent } from "./source-search";
+import { forgetSourceSearch, SEARCH_LIST_CAP, sourceSearchFresh, sourceSearchPresent, STORED_SEARCH_KEYS } from "./source-search";
 import type { AskSpec } from "./spec";
 import { testDatabaseUrl, withAskFixture } from "./test-fixture";
 
@@ -21,7 +21,7 @@ import { testDatabaseUrl, withAskFixture } from "./test-fixture";
 
 const url = testDatabaseUrl("PRE-trend search fixtures");
 const connection = url ? createDb(url, { max: 1 }) : null;
-afterAll(async () => { forgetRollupsReady(); forgetMartColumns(); forgetSourceSearch(); await connection?.sql.end(); });
+afterAll(async () => { searchLimitsForTests(null); forgetRollupsReady(); forgetMartColumns(); forgetSourceSearch(); await connection?.sql.end(); });
 
 /**
  * Institutions 1 (Cluj), 2 (Iași, with diacritics in its name), firms 10–13, one recorded supplier equal to its
@@ -102,7 +102,8 @@ describe.runIf(Boolean(connection))("„Caută în surse” by names first (dedi
       for (const stage of ["before", "built", "stored"] as const) {
         const built = stage !== "before";
         if (stage === "built") await buildAskRollups(q);
-        if (stage === "stored") await buildSourceSearch(q);
+        // The stored text serves a list too broad to read whole (SEARCH_BROAD_RECORDS): every fixture list is one here.
+        if (stage === "stored") { await buildSourceSearch(q); searchLimitsForTests({ storedKeys: STORED_SEARCH_KEYS, broad: 0 }); }
         forgetRollupsReady(); forgetSourceSearch();
         expect(await yearKeysReady(q)).toBe(built);
         expect([stage, await sourceSearchPresent(q) && await sourceSearchFresh(q)]).toEqual([stage, stage === "stored"]);
@@ -129,6 +130,33 @@ describe.runIf(Boolean(connection))("„Caută în surse” by names first (dedi
         if ("error" in page) throw new Error(page.error);
         expect([stage, page.rows.map((r) => `${r.src}:${r.refId}:${r.supplierId ?? "-"}`)]).toEqual([stage, want.keys]);
       }
+      // S6 review: a text in more stored records of the years than the keys hold, on a list narrower than those years (a
+      // value band, a channel), or a list known narrow: the list's records as today's condition finds them, never „too
+      // many records”; a list that broad is refused with that reason at once.
+      const years = q`substr(d.finalization_date, 1, 4) between '2024' and '2025' and d.supplier_id is not null`;
+      const band: AskSpec = { ...ranking, filters: { ...ranking.filters, purchaseValueMin: 5000 } };
+      const lists = [
+        ["ranking", ranking, years, {}],
+        ["band", band, q`${years} and (d.src = 'da' and d.closing_value >= 5000
+          or d.src = 'contracts' and d.ref_id in (select contract_id from marts.contract_transactions where contract_value_full >= 5000))`, {}],
+        ["contracts", ranking, q`${years} and d.src = 'contracts'`, { stream: "contracts" as const }],
+      ] as const;
+      for (const storedKeys of [1, STORED_SEARCH_KEYS]) {
+        searchLimitsForTests({ storedKeys, broad: 1_000_000 });
+        for (const [name, spec, where, opts] of lists) {
+          for (const search of ["srl", "33600000", "alfa", "s.r.l.", "srl produse farmaceutice", "zzz"]) {
+            const want = await today(q, where as unknown as Fragment, search);
+            const got = await runRows(q, spec, {}, 0, { limit: 100, search, ...opts });
+            const at = [`overflow ${storedKeys}`, name, search];
+            if ("error" in got) throw new Error(`${at.join(" ")}: ${got.error}`);
+            expect([...at, got.total, Number(got.value)]).toEqual([...at, want.count, want.value]);
+            expect([...at, got.rows.map((r) => `${r.src}:${r.refId}:${r.supplierId ?? "-"}`)]).toEqual([...at, want.keys]);
+          }
+        }
+      }
+      searchLimitsForTests({ storedKeys: 1, broad: 0 });
+      expect(await runRows(q, ranking, {}, 0, { limit: 100, search: "srl" })).toEqual({ error: broadSearch("srl") });
+      searchLimitsForTests({ storedKeys: STORED_SEARCH_KEYS, broad: 0 });
       // A code no name narrows is read on the stored text: without its row there, it is not found ...
       const code = async () => { const got = await runRows(q, trendAll, {}, 0, { limit: 100, search: "da102" }); if ("error" in got) throw new Error(got.error); return got.total; };
       expect(await code()).toBe(1);

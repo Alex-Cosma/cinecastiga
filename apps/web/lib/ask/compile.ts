@@ -2492,6 +2492,11 @@ let profileLimits = { records: PROFILE_ROLLUP_RECORDS, walk: PROFILE_VALUE_WALK 
 export function profileLimitsForTests(limits: { records: number; walk: number } | null): void {
   profileLimits = limits ?? { records: PROFILE_ROLLUP_RECORDS, walk: PROFILE_VALUE_WALK };
 }
+let searchLimits = { storedKeys: STORED_SEARCH_KEYS, broad: SEARCH_BROAD_RECORDS };
+/** Tests only: a fixture's text is in a few records, its lists of a few; null restores the limits. */
+export function searchLimitsForTests(limits: { storedKeys: number; broad: number } | null): void {
+  searchLimits = limits ?? { storedKeys: STORED_SEARCH_KEYS, broad: SEARCH_BROAD_RECORDS };
+}
 /** Hard cap for full-result CSV exports (~15MB of CSV). */
 export const CSV_MAX_ROWS = EVIDENCE_CSV_LIMIT;
 /** Blocks whose result is an aggregate over da_transactions — drillable to rows. */
@@ -3084,7 +3089,9 @@ export async function runRows(
     // record of București for a phrase none has) reads the stored text of the night's marts instead (S6): the records
     // whose text holds it, on the trigram index, within the selection's years. A search each of whose words the names
     // narrow keeps them (their indexes are bounded by the period: „medicamente” 0.6 s, against 1.5 s for its keys).
-    const searchYears: SearchYears = periodLo !== null && periodHi !== null ? [periodLo, periodHi] : null;
+    // A trend's two years when others lie between them (2018 → 2025): the stored rows of those two alone.
+    const searchYears: SearchYears = periodLo === null || periodHi === null ? null
+      : spec.block === "trend" && periodHi - periodLo > 1 ? { from: periodLo, to: periodHi, only: [periodLo, periodHi] } : { from: periodLo, to: periodHi };
     const stored = storedText && !(candidates?.indexed && candidates.every) && await sourceSearchFresh(s);
     // Today's condition only on a candidate (CASE keeps that order: on a scanned channel, the contracts, the planner
     // would read it first, on every row).
@@ -3093,7 +3100,7 @@ export async function runRows(
     // A search read on every direct acquisition (a code, a number) keeps the page's scan: walking the key for its few
     // records read millions (a DA code: 9.2 s). The stored text finds them on its index.
     const scanned = !stored && candidates?.indexed === false;
-    const daRange = keyBounded && !scanned ? await daYearKeyRange(s, [yearA, yearB])
+    let daRange = keyBounded && !scanned ? await daYearKeyRange(s, [yearA, yearB])
       : periodKeyed && !scanned
         ? await daYearKeyRange(s, Array.from({ length: yearTo! - (yearFrom ?? minY) + 1 }, (_, i) => (yearFrom ?? minY) + i)) : null;
     const group = groupMembers ? await groupMembers(s) : null;
@@ -3116,7 +3123,7 @@ export async function runRows(
       ? sql`${scopedWhere} and d.county = any(${sql.array(members)}::text[])`
       : sql`${scopedWhere} and ${groupDim === "supplier" ? sql`d.supplier_id` : sql`d.authority_id`} = any(${sql.array(members)}::bigint[]) and ${memberRange}`;
     // The page's own rows (never the totals'): on the direct acquisitions the two years' keys (keyBounded), a no-op on contracts.
-    const pageWhere = daRange
+    let pageWhere = daRange
       ? sql`${sourceWhere} and (d.src = 'contracts' or d.ref_id between ${daRange.k0}::bigint and ${daRange.k1}::bigint)` : sourceWhere;
     // A search read on every direct acquisition (a code, a number, only common words) finds few records or many: its
     // records' keys are read once, and when there are at most SEARCH_FEW_RECORDS the totals and the page read only them
@@ -3125,23 +3132,15 @@ export async function runRows(
     // figures keep the route's limit, and so does a search read on every row (searchBudgetReason). withSearchBudget
     // turns the budget's end into the drawer's reason.
     let searchDeadline: number | null = null;
-    const budgetReason = words.length && !opts.capture ? stored ? broadSearch(search!) : searchBudgetReason(search!, candidates) : null;
+    let budgetReason = words.length && !opts.capture ? stored ? broadSearch(search!) : searchBudgetReason(search!, candidates) : null;
     const budgeted = async <T,>(read: () => Promise<T>): Promise<T> => {
       if (budgetReason === null) return await read();
       searchDeadline ??= Date.now() + SEARCH_BUDGET_MS;
       await tx.unsafe(`set local statement_timeout = '${Math.max(500, searchDeadline - Date.now())}ms'`);
       try { return await budgetedRead(budgetReason, read); } finally { await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`).catch(() => {}); }
     };
-    // The stored text's own keys, of every record of the selection's years that holds the text, read once: at most
-    // STORED_SEARCH_KEYS, the totals and the page read only them, by key (each read joining the stored rows again cost
-    // its scan once more: „33600000” 6.5 s, past the budget). More: on a list of those years (not a group's members or
-    // a network's partners) the text is in too many of its records, said at once („srl”: 6.2 s to the budget's end);
-    // a group's search joins them, within the budget.
-    if (stored) {
-      const keys = await budgeted(() => storedSearchKeys(s, fold(search!), searchYears, STORED_SEARCH_KEYS + 1));
-      if (keys.length <= STORED_SEARCH_KEYS) localWhere = sql`${localOthers} and ${storedKeyCond(s, keys, searchCond!)}`;
-      else if (!members && !partnerIds) return { error: broadSearch(search!) };
-    } else if (words.length && !candidates?.indexed) {
+    // A search read on every row of the list finds few records or many: at most SEARCH_FEW_RECORDS, read by key.
+    const fewSearchKeys = async () => {
       const keys = (await budgeted(() => readEvidenceQuery(s`
         select d.src, d.ref_id::text ref from ${txt} d where ${sourceWhere} and ${localWhere} limit ${SEARCH_FEW_RECORDS + 1}
       `, opts.signal))) as unknown as { src: "da" | "contracts"; ref: string }[];
@@ -3149,7 +3148,8 @@ export async function runRows(
         const of = (src: "da" | "contracts") => sql.array([...new Set(keys.filter((k) => k.src === src).map((k) => k.ref))]);
         localWhere = sql`${localWhere} and ((d.src = 'da' and d.ref_id = any(${of("da")}::bigint[])) or (d.src = 'contracts' and d.ref_id = any(${of("contracts")}::bigint[])))`;
       }
-    }
+    };
+    if (!stored && words.length && !candidates?.indexed) await fewSearchKeys();
     // A group's page reads its members' rows on the id index. For a group of at most a few hundred
     // thousand records the planner would scan the whole mart instead (it counts each member as an
     // average entity: 3.9 s instead of 0.26 s for the 17,633 new firms of 2025), or walk the primary
@@ -3188,8 +3188,31 @@ export async function runRows(
     // on every record of a broad list (a national trend's two years: 12–32 s, past the route's 20 s). Said at once,
     // with what to add, instead of a timeout (S5 review; a stored search text with a trigram index is PRECOMPUTE.md's).
     // A list whose size is not known yet (no rollup totals) keeps its search, within the budget below.
-    const broad = whole ? whole.reduce((n, r) => n + Number(r.n), 0) > SEARCH_BROAD_RECORDS : false;
+    const broad = whole ? whole.reduce((n, r) => n + Number(r.n), 0) > searchLimits.broad : false;
     if (words.length && !candidates && !stored && broad) return { error: commonWordsSearch(search!) };
+    // The stored text's own keys, of every record of the selection's years that holds the text, read once: at most
+    // STORED_SEARCH_KEYS, the totals and the page read only them, by key (each read joining the stored rows again cost
+    // its scan once more: „33600000” 6.5 s, past the budget). More, on a list of those years (not a group's members or
+    // a network's partners): the text is in too many of the list's records only when the list itself is that broad,
+    // said at once („srl”: 6.2 s to the budget's end); a group's search joins them, within the budget. The stored rows
+    // know the drawer's channel (src) and the years, not the list's other conditions (a value band, a procedure, a
+    // seat, the entities left out): a list known narrower than that (the country's purchases over 1 mil. lei in 2025,
+    // 18,241 records; „srl” in 1.06M of the year's) and one whose keys run over are searched as before the stored text
+    // (S5), names first or today's condition on the list's records, with that path's page, budget and reason; a known
+    // narrow one without reading the keys (200,000 of „srl”: ~1 s; S6 review).
+    if (stored) {
+      const plainList = !members && !partnerIds;
+      const keys = plainList && whole && !broad ? null
+        : await budgeted(() => storedSearchKeys(s, fold(search!), searchYears, searchLimits.storedKeys + 1, opts.stream));
+      if (keys && keys.length <= searchLimits.storedKeys) localWhere = sql`${localOthers} and ${storedKeyCond(s, keys, searchCond!)}`;
+      else if (plainList) {
+        if (broad) return { error: broadSearch(search!) };
+        localWhere = candidates ? sql`${localOthers} and ${candidates.cond} and (case when ${candidates.cond} then ${searchCond!} else false end)` : localBase;
+        budgetReason = searchBudgetReason(search!, candidates);
+        if (candidates?.indexed === false && daRange) { daRange = null; pageWhere = sourceWhere; }
+        if (!candidates?.indexed) await fewSearchKeys();
+      }
+    }
     // With a search the list's figures and the found records are counted apart when the list's are known or the search
     // reads names first: the found ones over the candidates of its words, the list without reading the search on each
     // of its records (national 2024–2025: 10 s in one pass). A narrow selection keeps its one pass.
