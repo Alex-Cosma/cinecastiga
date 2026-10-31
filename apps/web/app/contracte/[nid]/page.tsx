@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { getContractDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
-import { FLAG_META } from "@/lib/flags";
+import { FLAG_META, flagLabel } from "@/lib/flags";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
@@ -196,7 +196,7 @@ export default async function ContractPage({
             const val = f.evidence?.["value"];
             return (
               <div className="role-card" key={f.code}>
-                <h3>{m?.title ?? f.code}</h3>
+                <h3>{flagLabel(f.code)}</h3>
                 <p>{m?.short}</p>
                 {val != null && (
                   <p className="note">

@@ -1,5 +1,5 @@
 import { cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, type DbSql } from "@seap/db";
-import { FLAG_META } from "./flags";
+import { flagLabel } from "./flags";
 import { numericSourceIds } from "./signal-sources";
 import { awardUrl, daUrl } from "./elicitatie";
 import { readDaEvidence, readContractEvidence, sourceEvidence, type SourceEvidence } from "./source-evidence";
@@ -91,7 +91,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     } else warnings.push("Identitatea reprezentantului nu poate fi reconstituită fără ambiguitate. Nu am substituit un grup de firme ales doar după nume.");
     warnings.push("Relațiile sunt cele din registrul disponibil acum. Un reprezentant legal nu este automat beneficiar real, iar relația curentă nu dovedește o legătură la data atribuirii.");
   } else warnings.push("Acest tip de semnal nu are încă o selecție de surse reproductibilă. Contextul calculat poate fi păstrat, dar nu înlocuiește documentele originale.");
-  const result = sourceEvidence({ title: FLAG_META[code]?.title ?? code, methodology: String(flag.methodology_version), records, context, warnings });
+  const result = sourceEvidence({ title: flagLabel(code), methodology: String(flag.methodology_version), records, context, warnings });
   if (context.membership === "reconstructed_from_current_records") warnings.push("Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării.");
   if (flag.subject_type !== "award" && typeof flag.recorded_total === "string" && /^-?\d+(\.\d+)?$/.test(flag.recorded_total)) {
     const [check] = await sql`select ${result.totalExact}::numeric = ${flag.recorded_total}::numeric matches`;
