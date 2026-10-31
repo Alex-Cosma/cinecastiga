@@ -320,7 +320,7 @@ Inventarul de la 30 octombrie 2026 (`feat/ask-filters-registry`, nepublicat): to
 | `agg_map_county` (+20 coloane de sediu) | harta nefiltrată pe județul cumpărătorului, împărțită după sediul firmei | `buildAggMapCounty` (`apps/ingestion/src/normalize/agg-map-county.ts`) | `transactions` | `martColumns().mapSeat` |
 | `agg_map_county_top` (scos la revizia S5: nimic nu-l citea; fișa citește `agg_map_year`, etapa șterge tabelul rămas) | — | — | `transactions` | — |
 | `ask_pair_month` (temporar, `on commit drop`) | perechile pe lună, citite o dată din uniune | `buildAskRollups` | `transactions` | — |
-| `agg_pair_year` + `agg_pair_year_supplier_idx`/`_authority_idx` | instituție × firmă × an × canal × județ, `d0`/`d1` | `buildAskRollups`, `buildAskPairIndexes` | `transactions` | `rollupsReady`, `pairIndexReady` |
+| `agg_pair_year` + `agg_pair_year_supplier_idx`/`_authority_idx` | instituție × firmă × an × canal × județ, `d0`/`d1`; scris în ordinea instituției (revizia S6: un tip de instituții citește ~9.700 de pagini, nu toate cele 62.000; spitalele 2024–2025 0,31 → 0,09 s; +0,5 s noaptea) | `buildAskRollups`, `buildAskPairIndexes` | `transactions` | `rollupsReady`, `pairIndexReady` |
 | `agg_entity_month`, `agg_entity_year` | o entitate pe rol, pe lună / an, cu numele și `d0`/`d1` | `buildAskRollups` (din tabelul temporar, apoi din lunar) | `transactions` | `monthRollupReady`, `rollupsReady`, `rollupDaysReady` |
 | `agg_county_month` | județul cumpărătorului pe lună | `buildAskRollups` | `transactions` | `monthRollupReady` |
 | `agg_cpv_year` | codul CPV complet × an × județ × canal, `d0`/`d1` | `buildAskRollups` | `transactions` | `rollupsReady` |
