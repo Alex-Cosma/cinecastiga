@@ -73,6 +73,12 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   unknown and on a DA). Live, the national composition read every DA (2.2 s,
  *   3.4 s with the contracts). Both read the union once more (one statement
  *   each); see buildAskMixRollups.
+ * - agg_mix_employees: agg_national_mix with the employee band of the row's
+ *   firm (emp: the kit's bands ASK_EMPLOYEE_BANDS on entity_profile.employees,
+ *   the snapshot the live condition reads), only the rows whose firm has one:
+ *   „Din care” of a total of firms of a size (S6 over-bar: live 6.9 s
+ *   nationally, so it waited on PRECOMPUTE.md). The same pass as
+ *   agg_national_mix, which is it grouped without the band.
  * - agg_map_year (src, y, county, authority_id, seat, kind): the map's county
  *   facts (plan §4.4, F5; map final §3.7–§3.11): every row by its buyer and
  *   buyer county, the seat of its firm against that county and the purchase
@@ -113,6 +119,18 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  *   range). 3.3M rows from 20.7M on the local copy of 30 October 2026; one
  *   more pass over the union (pairs first, then each role, as
  *   agg_entity_month). See buildAskKindRollup.
+ * - agg_entity_kind_month (role, eid, y, m, src, county, kind) and
+ *   agg_pair_kind_year (authority_id, supplier_id, y, src, county, kind): the
+ *   purchase kind (as agg_entity_kind_year, without the size) on the month
+ *   grain of agg_entity_month and on the pairs of agg_pair_year, with the same
+ *   nm (entity rows), d0 and d1. Grouped again without the kind each is its
+ *   twin to the leu. A national trend of institutions or firms with goods or
+ *   services on the same months of two years (2025 → 2026, the default while
+ *   2026 runs), and a national ranking of institutions by goods or services
+ *   bought from firms of a size, a seat or a year (the other side's
+ *   condition), read them (S6 over-bar: live they grouped both marts whole,
+ *   2.0–3.4 s, so the builder did not offer them). One more pass over the
+ *   union into a pair-month table, then each. See buildAskKindMonthRollups.
  *
  * Rebuilt with the agg_* shortcuts (DROP + CREATE AS) in the transaction that
  * loads da_transactions, so they always agree with it. contract_transactions
@@ -125,8 +143,10 @@ type Query = DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0];
  * migration-owned: readers probe for them (apps/web/lib/ask/rollups.ts) and
  * fall back to the live query until the first build with this code.
  */
-export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year', 'agg_da_year_keys', 'agg_entity_kind_year'] as const;
+export const ASK_ROLLUP_TABLES = ['agg_entity_year', 'agg_pair_year', 'agg_cpv_year', 'agg_entity_month', 'agg_county_month', 'agg_months', 'agg_national_mix', 'agg_map_year', 'agg_da_year_keys', 'agg_entity_kind_year', 'agg_entity_kind_month', 'agg_pair_kind_year', 'agg_mix_employees'] as const;
 export type AskRollupTable = (typeof ASK_ROLLUP_TABLES)[number];
+/** The kind on the month and pair grains (S6 over-bar): built by buildAskKindMonthRollups, probed apart by the web (kindMonthRollupReady). */
+export const ASK_KIND_MONTH_TABLES = ['agg_entity_kind_month', 'agg_pair_kind_year'] as const satisfies readonly AskRollupTable[];
 /** The F3 rollups (plan §4.1, §4.3): built by buildAskMixRollups, probed apart by the web (mixRollupReady). */
 export const ASK_MIX_TABLES = ['agg_months', 'agg_national_mix'] as const satisfies readonly AskRollupTable[];
 
@@ -142,6 +162,13 @@ export const ASK_ROLLUP_DA_CEILING = 2_000_000;
  */
 export const ASK_MIX_SIZE_BOUNDS = [10_000, 100_000, 1_000_000] as const;
 
+/**
+ * The upper bounds of the employee bands before the last (agg_mix_employees.emp: band 0 is 0 employees, 1 is 1–9,
+ * 2 is 10–49, 3 is 50–249, 4 from 250). Equal to EMPLOYEE_BAND_TO in apps/web/lib/ask/filters/words.ts (the web's test
+ * checks it), whose ranges are unions of these bands.
+ */
+export const ASK_EMPLOYEE_BANDS = [0, 9, 49, 249] as const;
+
 export interface AskRollupsReport {
   /** Rows written per rollup. */
   rows: Record<AskRollupTable, number>;
@@ -151,12 +178,14 @@ export interface AskRollupsReport {
   yearKeysMs: number;
   /** How long agg_entity_kind_year took (S5 PRE-answers): the nightly cost of the national kinds and sizes per entity. */
   kindYearMs: number;
+  /** How long agg_entity_kind_month and agg_pair_kind_year took (S6 over-bar): the kinds on the same months and with the other side. */
+  kindMonthMs: number;
 }
 
 /** Build the three rollups from the loaded transaction marts. Call inside the
  * build transaction, after da_transactions is final (da_split stamped). */
 export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
-  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year, marts.agg_da_year_keys, marts.agg_entity_kind_year`;
+  await q`drop table if exists marts.agg_entity_year, marts.agg_pair_year, marts.agg_cpv_year, marts.agg_entity_month, marts.agg_county_month, marts.agg_months, marts.agg_national_mix, marts.agg_map_year, marts.agg_da_year_keys, marts.agg_entity_kind_year, marts.agg_entity_kind_month, marts.agg_pair_kind_year, marts.agg_mix_employees`;
   // One pass over the union at the month grain (9,965,281 groups on the local copy of
   // 25 October 2026, 21 s; 26 s plain and 32 s with d0/d1 measured side by side at load 7);
   // the yearly pairs and both entity rollups are grouped from it.
@@ -248,9 +277,12 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
   const yearKeysMs = Date.now() - keysStarted;
   const kindStarted = Date.now();
   const kinds = await buildAskKindRollup(q);
+  const kindYearMs = Date.now() - kindStarted;
+  const kindMonthStarted = Date.now();
+  const kindMonths = await buildAskKindMonthRollups(q);
   return {
-    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map, agg_da_year_keys: keys, agg_entity_kind_year: kinds },
-    mapYearMs, yearKeysMs, kindYearMs: Date.now() - kindStarted,
+    rows: { agg_entity_year: entity.count, agg_pair_year: pair.count, agg_cpv_year: cpv.count, agg_entity_month: month.count, agg_county_month: county.count, ...mix, agg_map_year: map, agg_da_year_keys: keys, agg_entity_kind_year: kinds, ...kindMonths },
+    mapYearMs, yearKeysMs, kindYearMs, kindMonthMs: Date.now() - kindMonthStarted,
   };
 }
 
@@ -307,6 +339,62 @@ export async function buildAskKindRollup(q: Query): Promise<number> {
   `;
   await q`analyze marts.agg_entity_kind_year`;
   return created.count;
+}
+
+/**
+ * agg_entity_kind_month and agg_pair_kind_year (see the header), from the loaded transaction marts, with the
+ * population of every Ask aggregate: the union grouped by pair, year, month, channel, buyer county and the kind of
+ * agg_entity_kind_year, once, into a temporary table; the pairs' years and each pair month once as its authority and
+ * once as its supplier (as agg_entity_month), with core.entities' name, come from it. Part of buildAskRollups, so of
+ * the same build as their twins (each table's comment names its twin's oid, which the web compares: kindMonthRollupReady); callable alone on marts
+ * that are not being rebuilt (its first build), inside a transaction (the temporary table drops at its commit).
+ */
+export async function buildAskKindMonthRollups(q: Query): Promise<Record<(typeof ASK_KIND_MONTH_TABLES)[number], number>> {
+  await q`drop table if exists marts.agg_entity_kind_month, marts.agg_pair_kind_year`;
+  await q`drop table if exists pg_temp.ask_pair_kind_month`;
+  await q`
+    create temp table ask_pair_kind_month on commit drop as
+    select u.authority_id, u.supplier_id, substr(u.finalization_date, 1, 4) y, substr(u.finalization_date, 6, 2) m, u.src, u.county,
+           (case when u.cpv_code like '45%' then 'lucrari' when u.cpv_code >= '50' then 'servicii'
+                 when u.cpv_code < '45' or (u.cpv_code >= '48' and u.cpv_code < '50') then 'produse' end) kind,
+           sum(u.closing_value) v, count(*) n,
+           min(left(u.finalization_date, 10) collate "C") d0, max(left(u.finalization_date, 10) collate "C") d1
+    from (
+      select authority_id, supplier_id, county, cpv_code, finalization_date, closing_value, 'da'::text src
+      from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
+      union all
+      select authority_id, supplier_id, county, cpv_code, finalization_date, closing_value, 'contracts'
+      from marts.contract_transactions where closing_value > 0
+    ) u
+    group by 1, 2, 3, 4, 5, 6, 7
+  `;
+  const pairs = await q`
+    create table marts.agg_pair_kind_year as
+    select authority_id, supplier_id, y, src, county, kind, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+    from pg_temp.ask_pair_kind_month
+    group by authority_id, supplier_id, y, src, county, kind
+  `;
+  const months = await q`
+    create table marts.agg_entity_kind_month as
+    select g.role, g.eid, g.y, g.m, g.src, g.county, g.kind, e.name_display nm, g.v, g.n, g.d0, g.d1
+    from (
+      select r.role, r.eid, p.y, p.m, p.src, p.county, p.kind, sum(p.v) v, sum(p.n)::bigint n, min(p.d0) d0, max(p.d1) d1
+      from pg_temp.ask_pair_kind_month p
+      cross join lateral (values ('authority'::text, p.authority_id), ('supplier'::text, p.supplier_id)) r(role, eid)
+      where r.eid is not null
+      group by r.role, r.eid, p.y, p.m, p.src, p.county, p.kind
+    ) g
+    left join core.entities e on e.id = g.eid
+  `;
+  await q`drop table pg_temp.ask_pair_kind_month`;
+  await q`analyze marts.agg_pair_kind_year`;
+  await q`analyze marts.agg_entity_kind_month`;
+  // Which build each one is of: its twin's oid (a new table each night), compared by the web's probe without reading
+  // the rows (kindMonthRollupReady). A build of code without them (a revert) makes new twins, so these are not read.
+  const [twins] = await q`select to_regclass('marts.agg_entity_month')::oid::text as month_oid, to_regclass('marts.agg_pair_year')::oid::text as pair_oid`;
+  await q.unsafe(`comment on table marts.agg_entity_kind_month is 'agg_entity_month ${Number(twins?.['month_oid'] ?? 0)}'`);
+  await q.unsafe(`comment on table marts.agg_pair_kind_year is 'agg_pair_year ${Number(twins?.['pair_oid'] ?? 0)}'`);
+  return { agg_entity_kind_month: months.count, agg_pair_kind_year: pairs.count };
 }
 
 /**
@@ -371,8 +459,8 @@ export async function buildAskMapRollup(q: Query): Promise<number> {
  * buildAskRollups; callable alone on marts that are not being rebuilt (a
  * first build of these two). Each one statement over the union.
  */
-export async function buildAskMixRollups(q: Query): Promise<Record<(typeof ASK_MIX_TABLES)[number], number>> {
-  await q`drop table if exists marts.agg_months, marts.agg_national_mix`;
+export async function buildAskMixRollups(q: Query): Promise<Record<(typeof ASK_MIX_TABLES)[number] | 'agg_mix_employees', number>> {
+  await q`drop table if exists marts.agg_months, marts.agg_national_mix, marts.agg_mix_employees`;
   const months = await q`
     create table marts.agg_months as
     select x.src, substr(x.finalization_date, 1, 4) y, substr(x.finalization_date, 6, 2) m, x.county, substr(x.cpv_code, 1, 2) cpv2,
@@ -387,22 +475,45 @@ export async function buildAskMixRollups(q: Query): Promise<Record<(typeof ASK_M
     group by 1, 2, 3, 4, 5
   `;
   const [b0, b1, b2] = ASK_MIX_SIZE_BOUNDS;
-  // The size of the whole purchase: a contract's whole value (never null in the mart), a DA's own.
-  const mix = await q`
-    create table marts.agg_national_mix as
+  const [e0, e1, e2, e3] = ASK_EMPLOYEE_BANDS;
+  // The size of the whole purchase: a contract's whole value (never null in the mart), a DA's own. The firm's band from
+  // its profile (none without a firm, a profile or a filing), once, then each table from it (314k groups locally).
+  await q`drop table if exists pg_temp.ask_mix_employees`;
+  await q`
+    create temp table ask_mix_employees on commit drop as
     select x.src, substr(x.finalization_date, 1, 4) y, x.county, substr(x.cpv_code, 1, 2) cpv2, x.procedure_type,
            (case when x.full_value < ${b0}::numeric then 0 when x.full_value < ${b1}::numeric then 1 when x.full_value < ${b2}::numeric then 2 else 3 end)::smallint size,
-           x.offers, sum(x.closing_value) v, count(*) n
+           x.offers,
+           (case when ep.employees is null then null when ep.employees <= ${e0}::int then 0 when ep.employees <= ${e1}::int then 1
+                 when ep.employees <= ${e2}::int then 2 when ep.employees <= ${e3}::int then 3 else 4 end)::smallint emp,
+           sum(x.closing_value) v, count(*) n
     from (
-      select county, cpv_code, finalization_date, closing_value, 'da'::text src, null::text procedure_type, closing_value full_value, null::boolean offers
+      select supplier_id, county, cpv_code, finalization_date, closing_value, 'da'::text src, null::text procedure_type, closing_value full_value, null::boolean offers
       from marts.da_transactions where closing_value > 0 and closing_value <= 2000000
       union all
-      select county, cpv_code, finalization_date, closing_value, 'contracts', procedure_type, coalesce(contract_value_full, closing_value), is_single_bidder
+      select supplier_id, county, cpv_code, finalization_date, closing_value, 'contracts', procedure_type, coalesce(contract_value_full, closing_value), is_single_bidder
       from marts.contract_transactions where closing_value > 0
     ) x
+    left join marts.entity_profile ep on ep.entity_id = x.supplier_id and ep.role = 'supplier'
+    group by 1, 2, 3, 4, 5, 6, 7, 8
+  `;
+  const mix = await q`
+    create table marts.agg_national_mix as
+    select src, y, county, cpv2, procedure_type, size, offers, sum(v) v, sum(n)::bigint n
+    from pg_temp.ask_mix_employees
     group by 1, 2, 3, 4, 5, 6, 7
   `;
+  const employees = await q`
+    create table marts.agg_mix_employees as
+    select src, y, county, cpv2, procedure_type, size, offers, emp, v, n
+    from pg_temp.ask_mix_employees where emp is not null
+  `;
+  await q`drop table pg_temp.ask_mix_employees`;
   await q`analyze marts.agg_months`;
   await q`analyze marts.agg_national_mix`;
-  return { agg_months: months.count, agg_national_mix: mix.count };
+  await q`analyze marts.agg_mix_employees`;
+  // Which build it is of: agg_national_mix's oid, which the web's probe compares (mixEmployeesReady), as the kind's month rollups.
+  const [twin] = await q`select to_regclass('marts.agg_national_mix')::oid::text oid`;
+  await q.unsafe(`comment on table marts.agg_mix_employees is 'agg_national_mix ${Number(twin?.['oid'] ?? 0)}'`);
+  return { agg_months: months.count, agg_national_mix: mix.count, agg_mix_employees: employees.count };
 }

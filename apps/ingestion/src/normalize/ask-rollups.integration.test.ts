@@ -28,7 +28,7 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    (17006,${iasi},${a},70,'Oferta refuzata','2024-09-25','45000000-7'),
    (17007,${iasi},${iasi},30,'Oferta acceptata','2024-09-26',null)`;
   const first=await buildTransactionMarts(q);
-  expect(first.buildIndexes).toEqual(['da_tx_supplier_cover_idx','da_tx_authority_cover_idx','da_tx_cpv_cover_idx','da_tx_value_desc_idx','da_tx_flagged_idx']);
+  expect(first.buildIndexes).toEqual(['da_tx_supplier_cover_idx','da_tx_authority_cover_idx','da_tx_cpv_cover_idx','da_tx_value_desc_idx','da_tx_flagged_idx','da_tx_flagged_supplier_idx']);
   const ids=new Set([cluj,iasi,a,b]);
   const own=<T extends Record<string,unknown>>(rows:T[],key:keyof T)=>rows.filter(r=>ids.has(String(r[key]))).map(r=>({...r}));
   // Only accepted, positive DAs up to the 2M ceiling; the authority as its own supplier has no supplier.
@@ -128,6 +128,7 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   // S5 PRE-answers: agg_entity_kind_year is agg_entity_year by purchase kind and size range, the same groups summed again
   // to the leu (names and days too); 17001/17002 are goods under 10.000 lei, 17003 works at the ceiling (range 3).
   expect(first.kindYearMs).toBeGreaterThanOrEqual(0);
+  expect(first.kindMonthMs).toBeGreaterThanOrEqual(0);
   const [kindParity]=await q`select count(*)::int differ from marts.agg_entity_year e
     full join (select role, eid, y, src, county, max(nm) nm, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
                from marts.agg_entity_kind_year group by 1, 2, 3, 4, 5) k
@@ -142,6 +143,31 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
    {role:'supplier',eid:b,y:'2024',kind:'lucrari',size:3,v:'2000000',n:1},
   ]);
   expect(first.rollups.agg_entity_kind_year).toBeGreaterThanOrEqual(first.rollups.agg_entity_year);
+  // S6 over-bar: the kind on the month grain and on the pairs, each its twin summed again over the kind (names and days too).
+  const [monthParity]=await q`select count(*)::int differ from marts.agg_entity_month e
+    full join (select role, eid, y, m, src, county, max(nm) nm, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+               from marts.agg_entity_kind_month group by 1, 2, 3, 4, 5, 6) k
+      on k.role = e.role and k.eid = e.eid and k.y is not distinct from e.y and k.m is not distinct from e.m and k.src = e.src and k.county is not distinct from e.county
+    where (e.v, e.n, e.d0, e.d1, e.nm) is distinct from (k.v, k.n, k.d0, k.d1, k.nm)`;
+  expect(monthParity!.differ).toBe(0);
+  const [pairParity]=await q`select count(*)::int differ from marts.agg_pair_year e
+    full join (select authority_id, supplier_id, y, src, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
+               from marts.agg_pair_kind_year group by 1, 2, 3, 4, 5) k
+      on k.authority_id is not distinct from e.authority_id and k.supplier_id is not distinct from e.supplier_id
+     and k.y is not distinct from e.y and k.src = e.src and k.county is not distinct from e.county
+    where (e.v, e.n, e.d0, e.d1) is distinct from (k.v, k.n, k.d0, k.d1)`;
+  expect(pairParity!.differ).toBe(0);
+  expect(own(await q`select role,eid::text,y,m,kind,v::text,n::int from marts.agg_entity_kind_month where role='supplier' order by eid::bigint,y,m,kind`,'eid')).toEqual([
+   {role:'supplier',eid:a,y:'2025',m:'03',kind:'produse',v:'900.50',n:1},
+   {role:'supplier',eid:a,y:'2025',m:'09',kind:'produse',v:'100',n:1},
+   {role:'supplier',eid:b,y:'2024',m:'09',kind:'lucrari',v:'2000000',n:1},
+  ]);
+  expect(first.rollups.agg_pair_kind_year).toBeGreaterThanOrEqual(first.rollups.agg_pair_year);
+  // Each names its twin of this build (the web's probes), and the employee bands are a part of agg_national_mix.
+  expect((await q`select obj_description('marts.agg_entity_kind_month'::regclass,'pg_class')='agg_entity_month '||'marts.agg_entity_month'::regclass::oid::text a,
+    obj_description('marts.agg_pair_kind_year'::regclass,'pg_class')='agg_pair_year '||'marts.agg_pair_year'::regclass::oid::text b,
+    obj_description('marts.agg_mix_employees'::regclass,'pg_class')='agg_national_mix '||'marts.agg_national_mix'::regclass::oid::text c,
+    (select coalesce(sum(n),0) from marts.agg_mix_employees)<=(select sum(n) from marts.agg_national_mix) d`).map(r=>({...r}))).toEqual([{a:true,b:true,c:true,d:true}]);
   // The next night drops and builds them again, and the rollups with them.
   const second=await buildTransactionMarts(q);
   expect(second.rollups).toEqual(first.rollups);

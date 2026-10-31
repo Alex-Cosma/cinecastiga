@@ -94,6 +94,14 @@ export type TransactionMartTable = (typeof TRANSACTION_MART_INDEXES)[number]["ta
  * (possible split on the institutions, rapid on the firms); with it 0.1–0.6 s.
  * 269 MB, built in 7.7 s on a copy of the local mart (F6b review, 30 Oct 2026).
  * The query repeats its predicate word for word, so the planner can use it.
+ *
+ * The sixth, da_tx_flagged_supplier_idx (S6 over-bar), is the same partial
+ * index keyed on the firm: one firm's signal ("Vezi înregistrările" on a firm
+ * of the cloud) read its flagged rows through da_tx_supplier_idx, every one of
+ * the firm's records on the heap (DEDEMAN's 461,798 for its 160,404 rapid
+ * ones: 0.7 s for the totals and 0.6 s for the page, 2.4–3.1 s with the
+ * reconciliation), or the whole authority-keyed index filtered on the firm
+ * (0.36–0.64 s each). The same rows, keyed on the firm.
  */
 export const TRANSACTION_MART_BUILD_INDEXES = [
   { table: "da_transactions", name: "da_tx_supplier_cover_idx",
@@ -106,6 +114,8 @@ export const TRANSACTION_MART_BUILD_INDEXES = [
     definition: "CREATE INDEX da_tx_value_desc_idx ON marts.da_transactions USING btree (((- closing_value)), sicap_da_id) INCLUDE (authority_id, supplier_id)" },
   { table: "da_transactions", name: "da_tx_flagged_idx",
     definition: "CREATE INDEX da_tx_flagged_idx ON marts.da_transactions USING btree (authority_id) INCLUDE (supplier_id, sicap_da_id, closing_value, finalization_date, da_flags) WHERE (cardinality(da_flags) > 0)" },
+  { table: "da_transactions", name: "da_tx_flagged_supplier_idx",
+    definition: "CREATE INDEX da_tx_flagged_supplier_idx ON marts.da_transactions USING btree (supplier_id) INCLUDE (authority_id, sicap_da_id, closing_value, finalization_date, da_flags) WHERE (cardinality(da_flags) > 0)" },
 ] as const;
 
 /** Before loading da_transactions (inside the build transaction, which holds the table). */
