@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { createDb, type DbSql } from "@seap/db";
 import { NEWER_VERSION_LINK, parseSpec, unimplementedSpecKeys, validateSpec, type AskSpec, type SpecError } from "@/lib/ask/spec";
 import { localityScopeError } from "@/lib/ask/question-ui";
-import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, rowFacts, type FacetFailure } from "@/lib/ask/facets";
+import { aborted, FACET_SLOTS, facetCounts, facetRequest, inFacetSlot, locate, profileFacts, rowFacts, type FacetFailure } from "@/lib/ask/facets";
 import { barFacts, mapFacts, mixFacts, podiumFacts } from "@/lib/ask/answer-facts";
 import { comparePeers, pairFacts } from "@/lib/ask/compare-engine";
 import { networkFacts, type NetworkFacts } from "@/lib/ask/network-facts";
 import type { ComparePeersResult, PairResult } from "@/lib/ask/compare-shared";
-import type { BarsResult, FacetCounts, LocateResult, MixResult, PodiumResult, RowsResult } from "@/lib/ask/facet-parts";
+import type { BarsResult, FacetCounts, LocateResult, MixResult, PodiumResult, ProfileFactsResult, RowsResult } from "@/lib/ask/facet-parts";
 import type { MapFacts } from "@/lib/ask/map-facts";
 import { devlog } from "@/lib/devlog";
 
@@ -17,6 +17,8 @@ import { devlog } from "@/lib/devlog";
  *   { spec, part }      → { ok, part, unit, options, rest, total, checkpoint, tookMs }
  *   { spec, part: "locate", q } → { ok, part, total, measure, matches, checkpoint, tookMs }
  *   { spec, part: "mix" }  → stat's „Din care” (lib/ask/answer-facts.ts): { ok, part, kind, procedure, size, offers, total, … }
+ *   { spec, part: "locate", q } on the risk cloud → the profiles of its group whose name holds q, with their place in the list.
+ *   { spec, part: "profile", ids } on the risk cloud → { ok, part, rows: [{ id, nDas, flags: [{ code, years|share, rows }] }], … }
  *   { spec, part: "bars" } → an evolution's bar facts: { ok, part, max, above, checkpoint, tookMs }
  *   { spec, part: "pair" } → a comparison's pair for its windows (lib/ask/compare-engine.ts): { ok, part, years, domains, general, kinds, counties, … }
  *   { spec, part: "compare-peers" } → the suggestions of "Cu cine comparăm?": { ok, part, label, tip, peers, … };
@@ -56,9 +58,10 @@ export async function POST(req: Request) {
   if (localityError) return NextResponse.json({ ok: false, error: localityError }, { status: 400 });
   const signal = req.signal;
   try {
-    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PodiumResult | PairResult | ComparePeersResult | NetworkFacts | RowsResult | MapFacts | FacetFailure>(signal, () => asked.part === "locate"
+    const result = await inFacetSlot<FacetCounts | LocateResult | MixResult | BarsResult | PodiumResult | PairResult | ComparePeersResult | NetworkFacts | RowsResult | MapFacts | ProfileFactsResult | FacetFailure>(signal, () => asked.part === "locate"
       ? locate(db(), v, asked.q!, { signal })
       : asked.part === "rows" ? rowFacts(db(), v, asked.ids!, { signal })
+      : asked.part === "profile" ? profileFacts(db(), v, asked.ids!)
       : asked.part === "mix" ? mixFacts(db(), v, { signal })
         : asked.part === "bars" ? barFacts(db(), v, { signal })
         : asked.part === "map" ? mapFacts(db(), v, { signal })

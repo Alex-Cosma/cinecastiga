@@ -19,7 +19,8 @@ describe("ask-perf cases", () => {
       expect(validateSpec(c.question), c.id).toEqual(c.spec);
       if (c.scope) expect(validateEvidenceScope(c.scope), c.id).toEqual(c.scope);
       // The risk cloud has no source rows; its windows' counts are its profiles.
-      if (c.path === "rows" || c.path === "csv") expect(c.spec.block, c.id).not.toBe("scatter");
+      // (F6b: the sources of a signal are its records, a case of its own).
+      if (c.path === "rows" || c.path === "csv") expect(c.spec.block === "scatter" ? Boolean(c.scope?.flag || c.spec.scatter?.flag) : true, c.id).toBe(true);
       expect(Boolean(c.facet), c.id).toBe(c.path === "facet");
     }
   });

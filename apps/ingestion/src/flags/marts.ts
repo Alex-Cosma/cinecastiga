@@ -1,4 +1,4 @@
-import type { DbSql } from "@seap/db";
+import { PROFILE_FLAGS_APPLICABLE, type DbSql } from "@seap/db";
 import {buildTransactionMarts} from "../normalize/transaction-marts.js";
 
 /**
@@ -8,7 +8,7 @@ import {buildTransactionMarts} from "../normalize/transaction-marts.js";
  * (entity_flags), and a browsable flag_instances explorer. Same plausibility
  * bound as the flag rules so corrupt values can't distort totals.
  */
-const APPLICABLE = { authority: 5, supplier: 4 } as const;
+const APPLICABLE = PROFILE_FLAGS_APPLICABLE;
 
 export interface FlagMartsReport {
   authorityConcentration: number;

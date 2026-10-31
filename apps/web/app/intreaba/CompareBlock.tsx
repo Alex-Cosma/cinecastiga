@@ -6,7 +6,7 @@ import { countWords, formatDecimal } from "@/lib/ask/answer-text";
 import type { CompareData, CompareEntity, ComparePartner, PartialYear } from "@/lib/ask/compile";
 import { readableCpvName } from "@/lib/entity-summary";
 import { glossaryEntry } from "@/lib/glossary";
-import { FLAG_META, criBand } from "@/lib/flags";
+import { FLAG_META, criBand, flagLabel } from "@/lib/flags";
 import { cleanName, formatInt, formatRon } from "@/lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import { useTip } from "./blocks";
@@ -211,7 +211,7 @@ function RiskProfile({ entity: e }: { entity: CompareEntity }) {
         {" "}<Term id="profil-risc" tip />
       </p>
       {e.flags.length > 0 && (
-        <div className="cmp-flags">{e.flags.map((flag) => <span key={flag} title={FLAG_META[flag]?.short}>{FLAG_META[flag]?.title ?? flag}</span>)}</div>
+        <div className="cmp-flags">{e.flags.map((flag) => <span key={flag} title={FLAG_META[flag]?.short}>{flagLabel(flag)}</span>)}</div>
       )}
       <small>Tot istoricul de achiziții directe; nu urmează filtrele.</small>
     </div>

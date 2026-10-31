@@ -31,7 +31,8 @@ import { NEWER_VERSION_LINK } from "../../../lib/ask/spec";
 
 beforeEach(() => { sql.mockClear(); sql.begin.mockClear(); });
 const post = (body: unknown) => new Request("http://localhost/api/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-const newer = { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } };
+// A key that stays read ahead after the main stage lands F5 (peers.domain: phase 2 of F6a).
+const newer = { block: "scatter", dim: "authority", measure: "value", filters: {}, peers: { domain: true } };
 // The bound selections replace the spec they were sent with; the refusal comes first.
 const peer = { version: "peer-evidence-2", checkpointId: "00000000-0000-0000-0000-000000000000" };
 const connection = { version: "connection-evidence-1", checkpointId: "00000000-0000-0000-0000-000000000000", pairs: [] };

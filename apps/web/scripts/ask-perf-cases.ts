@@ -19,7 +19,7 @@ export interface PerfDrawer { sort?: "source" | "value" | "date"; dir?: "asc" | 
 export type PerfGroup = "catalog" | "national" | "filtered" | "sources" | "csv" | "facets";
 /**
  * facet only: the window's part (lib/ask/facets.ts), and the text "Unde e …?" searches. `ids`: the rows shown
- * (part `rows`, F5) or the podium's places (part `podium`, F6c).
+ * (part `rows`, F5), the podium's places (part `podium`, F6c) or the risk cloud's profiles (part `profile`, F6b).
  */
 export interface PerfFacet { part: FacetPart; q?: string; ids?: string[] }
 export interface PerfCase {
@@ -144,6 +144,8 @@ const top = (spec: Partial<Omit<QuestionSpec, "filters">>): Edit => (q) => { Obj
 const all = (...edits: Edit[]): Edit => (q) => { for (const edit of edits) edit(q); };
 /** The trend's options (F2). */
 const lens = (trend: NonNullable<AskSpec["trend"]>): Edit => (q) => { q.trend = { ...trend }; };
+/** The risk cloud's order and signal (F6b). */
+const cloudOf = (options: NonNullable<AskSpec["scatter"]>): Edit => (q) => { q.scatter = { ...options }; };
 
 /** One builder question: the catalogue choice, the edits, then the builder's own normalization. */
 export function builderQuestion(block: Block, edit: Edit = () => {}): QuestionSpec {
@@ -227,6 +229,11 @@ export function perfCases(): PerfCase[] {
     perfCase("national:stat-hospitals-2025-h1", "national", "Cât valorează achizițiile spitalelor, ianuarie–iunie 2025", "stat", all(set({ authorityKind: "spital", monthFrom: 1, monthTo: 6 }), years(2025)), { barMs: 2000 }),
     perfCase("national:breakdown-communes-2025", "national", "Ce cumpără primăriile de comună, 2025", "breakdown", all(set({ authorityKind: "comuna" }), years(2025)), { barMs: 2000 }),
     perfCase("national:scatter-towns", "national", "Primăriile de oraș și municipiu care ies din tipar", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "oras_municipiu" })), { barMs: 1000 }),
+    // F6b: the risk cloud's strip (a signal, the order) is a short new query; the whole group is read once.
+    perfCase("national:scatter-signal-institutions", "national", "Instituțiile cu „posibilă fracționare” pe norul de risc", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" }))),
+    perfCase("national:scatter-firms-risk", "national", "Norul de risc al firmelor, după semnale", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk" }))),
+    perfCase("national:scatter-firms-value-signal", "national", "Firmele dependente de o autoritate, după valoare", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "value", flag: "da_dependence" }))),
+    perfCase("national:scatter-communes-value", "national", "Primăriile de comună pe norul de risc, după valoare", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "comuna" }), cloudOf({ rankBy: "value" }))),
     perfCase("national:entity-card-value-hospitals-2025", "national", "Spitalul care cumpără cel mai mult, 2025", "entity_card", all(top({ dim: "authority", rankBy: "value" }), set({ authorityKind: "spital" }), years(2025)), { barMs: 2000 }),
     // Narrow selections: county, locality, CPV, authority, supplier, year and month ranges.
     perfCase("filtered:table-cluj", "filtered", "Cine câștigă în județul Cluj", "table", set({ county: "Cluj" })),
@@ -518,6 +525,25 @@ function seatCases(): PerfCase[] {
       all(top({ dim: "supplier", rankBy: "value" }), set({ seatCounty: "Bucuresti" })), { barMs: 2000 }),
     perfCase("national:entity-card-value-seat-abroad", "national", "Care firmă cu sediul în străinătate câștigă cel mai mult", "entity_card",
       all(top({ dim: "supplier", rankBy: "value" }), set({ firmSeat: "abroad" })), { barMs: 2000 }),
+    perfCase("filtered:scatter-communes-buzau-signal", "filtered", "Primăriile de comună din Buzău cu „posibilă fracționare”", "scatter",
+      all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk", flag: "da_split" }))),
+    perfCase("filtered:scatter-firms-buzau", "filtered", "Firmele cu sediul în județul Buzău pe norul de risc", "scatter", all(firms, set({ seatCounty: "Buzău" }), cloudOf({ rankBy: "risk" }))),
+    perfCase("filtered:scatter-hospitals-buzau-small", "filtered", "Spitalele din Buzău: prea puține pentru un nor", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "spital", county: "Buzău" }))),
+    // The sources of one criterion: the records it flags, of a profile (the row's link) and of a small group.
+    perfCase("sources:scatter-signal-profile", "sources", "„9 înregistrări →” pe rândul Sageata, posibilă fracționare", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk" })),
+      { path: "rows", scope: { role: "authority", entityIds: ["2144803"], flag: "da_split" } }),
+    perfCase("sources:scatter-signal-communes-buzau", "sources", "Sursele „finalizare rapidă” ale primăriilor de comună din Buzău", "scatter",
+      all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-signal-national-small", "sources", "Sursele „concentrare pe un furnizor”, instituțiile din țară", "scatter",
+      all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_concentration" })), { path: "rows", barMs: 2000 }),
+    // F6b verify: a national signal of the rows scanned the mart twice (20 s, HTTP 500); its keys now come from
+    // da_tx_flagged_idx (built nightly) and December's from the authority index.
+    perfCase("sources:scatter-split-national", "sources", "Sursele „posibilă fracționare”, instituțiile din țară", "scatter",
+      all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-rapid-firms-national", "sources", "Sursele „finalizare rapidă”, firmele din țară", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-year-end-national", "sources", "Sursele „vârf în decembrie”, instituțiile din țară", "scatter",
+      all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_year_end" })), { path: "rows", barMs: 2000 }),
     perfCase("filtered:scatter-suppliers-seat-cluj", "filtered", "Ce firme cu sediul în județul Cluj ies din tipar", "scatter", all(firms, set({ seatCounty: "Cluj" }))),
     perfCase("filtered:entity-card-risk-seat-cluj", "filtered", "Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc", "entity_card",
       all(top({ dim: "supplier", rankBy: "risk" }), set({ seatCounty: "Cluj" }))),
@@ -585,6 +611,7 @@ function f3RowsCases(): PerfCase[] {
  */
 function facetCases(): PerfCase[] {
   const facet = (part: FacetPart, q?: string, barMs: 1000 | 2000 = 2000) => ({ facet: { part, ...(q ? { q } : {}) }, barMs });
+  const profileFacts = (ids: string[]) => ({ facet: { part: "profile" as const, ids }, barMs: 2000 as const });
   const y2025 = years(2025);
   const medicines = set({ cpvTerm: "medicamente" });
   return [
@@ -609,6 +636,13 @@ function facetCases(): PerfCase[] {
     perfCase("facets:employees-medicines-2025", "facets", "Angajați, „medicamente”, 2025", "table", all(medicines, y2025), facet("employees")),
     perfCase("facets:seat-national-2025", "facets", "Sediul firmelor, clasamentul firmelor, 2025", "table", y2025, facet("seat")),
     perfCase("facets:kind-trend-2024-2025", "facets", "Tipul instituției pe trendul firmelor, 2024 → 2025", "trend", years(2024, 2025), facet("kind")),
+    // F6b: „Unde e o instituție / firmă?” in the cloud and the facts of the profiles on screen (part=profile).
+    perfCase("facets:locate-scatter-institutions", "facets", "„Unde e o instituție?” pe norul de risc național", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk" })), facet("locate", "sageata", 1000)),
+    perfCase("facets:locate-scatter-firms", "facets", "„Unde e o firmă?” pe norul de risc al firmelor", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk" })), facet("locate", "dedeman", 1000)),
+    perfCase("facets:profile-scatter-sageata", "facets", "Faptele unei comune pe rândul din listă", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk" })), profileFacts(["2144803"])),
+    perfCase("facets:profile-scatter-large-institutions", "facets", "Faptele celor mai mari instituții din listă (după valoare)", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "value" })),
+      profileFacts(["2146445", "2144364", "2144903", "2146647", "2146264"])),
+    perfCase("facets:profile-scatter-large-firms", "facets", "Faptele celor mai mari firme din listă (după valoare)", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "value" })), profileFacts(["2124387", "2115381"])),
     perfCase("facets:kind-scatter", "facets", "Tipul instituției pe norul de risc (profiluri)", "scatter", top({ dim: "authority" }), facet("kind", undefined, 1000)),
     perfCase("facets:kind-medicines-cluj-2025", "facets", "Tipul instituției, „medicamente” în Cluj, 2025", "stat", all(medicines, set({ county: "Cluj" }), y2025), facet("kind", undefined, 1000)),
     perfCase("facets:size-medicines-2025", "facets", "Mărimea, „medicamente”, 2025", "stat", all(medicines, y2025), facet("size")),

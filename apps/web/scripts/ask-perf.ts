@@ -225,9 +225,17 @@ export function medianRun(samples: RunResult[]): RunResult {
 const fingerprint = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 16);
 /** The scatter's density cells come from an unordered group by: their order is not part of the answer. */
 export function answerFingerprint(data: BlockData): string {
-  if (data.block !== "scatter" || !data.density) return fingerprint(data);
-  const cells = [...data.density.cells].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  return fingerprint({ ...data, density: { ...data.density, cells } });
+  if (data.block !== "scatter") return fingerprint(data);
+  const sorted = (cells: [number, number, number][]) => [...cells].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  // scatter-2: the grey layer and the chosen signal's, likewise unordered.
+  if ("scatter" in data) {
+    const cloud = data.scatter.cloud;
+    if ("points" in cloud) return fingerprint(data);
+    return fingerprint({ ...data, scatter: { ...data.scatter, cloud: { ...cloud, bands: { ...cloud.bands, cells: sorted(cloud.bands.cells) },
+      ...(cloud.flagged ? { flagged: { ...cloud.flagged, cells: sorted(cloud.flagged.cells) } } : {}) } } });
+  }
+  if (!data.density) return fingerprint(data);
+  return fingerprint({ ...data, density: { ...data.density, cells: sorted(data.density.cells) } });
 }
 export function answerRows(data: BlockData): number {
   switch (data.block) {
@@ -238,7 +246,7 @@ export function answerRows(data: BlockData): number {
     case "compare": return data.entities.length;
     case "distribution": return data.distribution.members?.length ?? data.distribution.hist?.length ?? 1;
     case "breakdown": return data.slices.length;
-    case "scatter": return data.points.length;
+    case "scatter": return "scatter" in data ? data.scatter.list.length : data.points.length;
     case "sankey": return data.flows.length;
     case "network": return data.lists[data.list].rows.length;
     case "trend": return data.rowsTrend.length;
@@ -266,7 +274,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
     // A window's counts (POST /api/ask/facets): grounding is inside; counts are counted again on every run,
     // "Unde e …?" keeps its rank vector (its warm runs are the next searches).
     if (c.path === "facet" && c.facet) {
-      const { facetCounts, locate, forgetFacets, rowFacts } = await import("../lib/ask/facets");
+      const { facetCounts, locate, forgetFacets, profileFacts, rowFacts } = await import("../lib/ask/facets");
       // An answer's facts (F3: „Din care”, the bars of an evolution) are asked as a part too, counted afresh each run.
       const { barFacts, forgetAnswerFacts, mapFacts, mixFacts, podiumFacts } = await import("../lib/ask/answer-facts");
       // F4: a comparison's pair and the suggestions of "Cu cine comparăm?".
@@ -275,7 +283,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       const { forgetNetworkFacts, networkFacts } = await import("../lib/ask/network-facts");
       if (c.facet.part !== "locate") { forgetFacets(); forgetAnswerFacts(); forgetCompareFacets(); forgetNetworkFacts(); }
       const part = c.facet.part;
-      const result = part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : part === "mix" ? await mixFacts(sql, c.spec)
+      const result = part === "locate" ? await locate(sql, c.spec, c.facet.q ?? "") : part === "profile" ? await profileFacts(sql, c.spec, c.facet.ids ?? []) : part === "mix" ? await mixFacts(sql, c.spec)
         : part === "bars" ? await barFacts(sql, c.spec) : part === "map" ? await mapFacts(sql, c.spec) : part === "pair" ? await pairFacts(sql, c.spec)
           : part === "compare-peers" ? await comparePeers(sql, c.spec) : part === "network" ? await networkFacts(sql, c.spec)
             : part === "rows" ? await rowFacts(sql, c.spec, c.facet.ids ?? [])
@@ -286,7 +294,7 @@ async function runCase(sql: DbSql, c: PerfCase): Promise<RunResult> {
       // Refused up front, without a query: reported as such, with the PRECOMPUTE.md entry it waits on.
       if ("precompute" in result) return { ms, groundMs: 0, rows: 0, hash: `precompute: ${result.precompute}` };
       const { tookMs: _took, ...answer } = result;
-      const rows = "places" in answer ? answer.places.length : "matches" in answer ? answer.matches.length : "options" in answer ? answer.options.length
+      const rows = "places" in answer ? answer.places.length : "matches" in answer ? answer.matches.length : "rows" in answer ? answer.rows.length : "options" in answer ? answer.options.length
         : "procedure" in answer ? answer.kind.length + answer.procedure.length + answer.size.length
           : "years" in answer ? answer.years.length + answer.domains.length : "peers" in answer ? answer.peers.length
             : "data" in answer ? Object.keys(answer.data.partners).length : "facts" in answer ? Object.keys(answer.facts).length

@@ -16,8 +16,6 @@ const table = { block: "table", dim: "supplier", measure: "value", filters: {} }
 /** One well-formed sample per key read ahead, on a question that otherwise runs today. */
 const SAMPLES: Record<keyof typeof READ_AHEAD_KEYS, Record<string, unknown>> = {
   "peers.domain": { block: "distribution", measure: "value", filters: { supplierId: 1 }, peers: { domain: true } },
-  "scatter.flag": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } },
-  "scatter.rankBy": { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { rankBy: "value" } },
 };
 
 /** Any query fails the test: the refusal comes before grounding, coverage or identities. */
@@ -158,6 +156,8 @@ describe("today's questions", () => {
       "filters.newSince", "filters.newScope", "filters.mainClient", "filters.dominantSupplier",
       // F5: the map's local administrations and its lens, from the builder's „Cine a cumpărat?”, the strip and links.
       "filters.authorityKind=local_admin", "map.lens",
+      // F6b: the risk cloud's order and signal, from the strip beside the chart and the rules interpreter.
+      "scatter.flag", "scatter.rankBy",
     ];
     const schema = new Set([...Object.keys(SPEC_JSON_SCHEMA.properties).filter(key => key !== "filters"),
       ...Object.keys(SPEC_JSON_SCHEMA.properties.filters.properties).map(key => `filters.${key}`)]);

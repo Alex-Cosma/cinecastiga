@@ -111,10 +111,13 @@ const cpvGroundings: (Grounding["cpv"] | undefined)[] = [
 const relabelled = (spec: AskSpec) => Boolean(selectionOrigin(spec.population) || splitExcluded(spec.population).excluded.length);
 /**
  * A trend with its key (F2, the corpus' builderTrend entries), F3's kind, procedure or size, an evolution with its options (F3-rows), F4's seat, shared clients or the network's
- * and the flow's options (builderNetwork): the six grammars
+ * and the flow's options (builderNetwork), the risk cloud's signal and order (F6b): the six grammars
  * came before them; their words are tested below.
  */
 const keyed = (spec: AskSpec) => spec.trend !== undefined || spec.timeseries !== undefined || spec.network !== undefined || spec.sankey !== undefined
+  || spec.scatter?.flag !== undefined || spec.scatter?.rankBy === "value"
+  // F6a-2's main-domain group, read ahead (the corpus' newer-key case): no grammar before it, its words are F6a's.
+  || spec.peers?.domain !== undefined
   || ["purchaseKind", "procedure", "purchaseValueMin", "purchaseValueMax", "firmSeat", "seatCounty", "sharedPartners"].some((key) => spec.filters[key as keyof AskSpec["filters"]] !== undefined);
 
 describe("describeConditions says what the six grammars said (plan §2.2)", () => {

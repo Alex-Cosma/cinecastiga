@@ -328,6 +328,21 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.interpretation.notes.join(" ")).toMatch(/nu am aplicat domeniul, perioada/);
   });
 
+  it("34b. a signal named in words is the cloud's signal (F6b), and «cele mai mari valori» its order", async () => {
+    const split = await ask("ce primării din județul Buzău au fracționare");
+    expect(split.i.intent).toBe("signals");
+    expect(split.r.spec).toMatchObject({ block: "scatter", dim: "authority", scatter: { flag: "da_split" }, filters: { county: "Buzău" } });
+    const december = await ask("ce instituții au vârf în decembrie");
+    expect(december.r.spec).toMatchObject({ block: "scatter", scatter: { flag: "da_year_end" } });
+    const firms = await ask("ce firme sunt dependente de un client");
+    expect(firms.r.spec).toMatchObject({ block: "scatter", dim: "supplier", scatter: { flag: "da_dependence" } });
+    const value = await ask("ce instituții ies din tipar, cele mai mari valori");
+    expect(value.r.spec).toMatchObject({ block: "scatter", scatter: { rankBy: "value" } });
+    // A signal a role cannot have is said, not applied: the firms' question keeps no concentration.
+    const wrong = await ask("ce firme au concentrare pe un furnizor");
+    expect(wrong.r.spec?.scatter?.flag).toBeUndefined();
+  });
+
   it("35. «care spital are cel mai ridicat indice de risc» → one superlative profile", async () => {
     const { r } = await ask("care spital are cel mai ridicat indice de risc");
     expect(r.spec).toEqual({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { authorityKind: "spital" } });

@@ -58,7 +58,7 @@ export function questionTitle(input: QuestionSpec | AskSpec, labels: TitleLabels
  * years when the spec has none (the archive's first and last, data.yearA/yearB)
  * and the months `auto` counted (executed.months, plan §2.8).
  */
-export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<TitleLabels, "executedMonths" | "trendYears" | "networkSince" | "peerGroup"> {
+export function answerLabels(answer: { data?: BlockData | undefined; executed?: ExecutedWindow | undefined } | null | undefined): Pick<TitleLabels, "executedMonths" | "trendYears" | "networkSince" | "peerGroup"> & { scatterGroup?: number } {
   const data = answer?.data;
   return {
     ...(answer?.executed ? { executedMonths: answer.executed.months } : {}),
@@ -67,6 +67,8 @@ export function answerLabels(answer: { data?: BlockData | undefined; executed?: 
     ...(data?.block === "network" ? { networkSince: data.since } : {}),
     // distribution-2: the bounds of the group it compared ("primăriile cu 52–207 mii de locuitori").
     ...(data?.block === "distribution" && data.distribution.version === 2 ? { peerGroup: data.distribution.group.facts } : {}),
+    // scatter-2: the pill counts the group the cloud drew.
+    ...(data?.block === "scatter" && "scatter" in data ? { scatterGroup: data.scatter.group.n } : {}),
   };
 }
 
