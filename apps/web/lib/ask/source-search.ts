@@ -76,15 +76,19 @@ export const storedSearchable = (folded: string): boolean => /[a-z0-9]{3}/.test(
 /** `like` of the folded text anywhere, as strpos reads it: \, % and _ written literally. */
 export const likeAnywhere = (folded: string): string => `%${folded.replace(/[\\%_]/g, "\\$&")}%`;
 
-/** The years of a selection on the stored rows (y, the BRIN): a range holding every record of it, or none. */
-export type SearchYears = readonly [number, number] | null;
+/**
+ * The years of a selection on the stored rows (y, the BRIN): a range holding every record of it, or none. `only`: the
+ * years themselves when the range holds others (a trend's two years, 2018 → 2025), checked on each stored row.
+ */
+export type SearchYears = { from: number; to: number; only?: readonly number[] } | null;
 
-const storedRows = (sql: DbSql, folded: string, years: SearchYears): Fragment => sql`
-  marts.source_search s where s.t like ${likeAnywhere(folded)}${years ? sql` and s.y between ${years[0]} and ${years[1]}` : sql``}`;
+const storedRows = (sql: DbSql, folded: string, years: SearchYears, src?: "da" | "contracts"): Fragment => sql`
+  marts.source_search s where s.t like ${likeAnywhere(folded)}${years ? sql` and s.y between ${years.from} and ${years.to}` : sql``}${
+    years?.only ? sql` and s.y = any(${sql.array([...years.only])}::int[])` : sql``}${src ? sql` and s.src = ${src}` : sql``}`;
 
-/** The first `limit` stored records the text is in (src, key), for a search that finds few. */
-export async function storedSearchKeys(sql: DbSql, folded: string, years: SearchYears, limit: number): Promise<{ src: "da" | "contracts"; ref: string }[]> {
-  return (await sql`select s.src, s.ref_id::text ref from ${storedRows(sql, folded, years)} limit ${limit}`) as unknown as { src: "da" | "contracts"; ref: string }[];
+/** The first `limit` stored records the text is in (src, key), of the drawer's channel when it has one, for a search that finds few. */
+export async function storedSearchKeys(sql: DbSql, folded: string, years: SearchYears, limit: number, src?: "da" | "contracts"): Promise<{ src: "da" | "contracts"; ref: string }[]> {
+  return (await sql`select s.src, s.ref_id::text ref from ${storedRows(sql, folded, years, src)} limit ${limit}`) as unknown as { src: "da" | "contracts"; ref: string }[];
 }
 
 /**

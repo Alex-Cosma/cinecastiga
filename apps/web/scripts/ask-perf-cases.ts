@@ -872,6 +872,9 @@ function storedSearchCases(): PerfCase[] {
       () => {}, search("33600000")),
     perfCase("sources:table-national-2024-2025-search-number", "sources", "Sursele clasamentului național 2024–2025, căutare „33600000”", "table",
       years(2024, 2025), search("33600000")),
+    // S6 review: a narrow list (18,241 records) whose text is in more stored records of the year than the keys hold.
+    perfCase("sources:table-over-1m-2025-search-srl", "sources", "Sursele clasamentului de peste 1 mil. lei, 2025, căutare „srl”", "table",
+      all(set({ purchaseValueMin: 1_000_000 }), years(2025)), search("srl")),
   ];
 }
 

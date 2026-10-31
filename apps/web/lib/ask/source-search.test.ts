@@ -116,11 +116,15 @@ describe("the stored text (S6)", () => {
   });
 
   it("joins the drawer's row to its stored key, a contract with its winner, within the selection's years", () => {
-    const { text, params } = render(storedSearchCond(fake, "33600000", [2024, 2025]));
+    const { text, params } = render(storedSearchCond(fake, "33600000", { from: 2024, to: 2025 }));
     expect(text).toBe("(d.src, d.ref_id, case when d.src = 'da' then 0::bigint else d.supplier_id end) in ( "
       + "select s.src, s.ref_id, s.sid from marts.source_search s where s.t like $1 and s.y between $2 and $3)");
     expect(params).toEqual(["%33600000%", 2024, 2025]);
     expect(render(storedSearchCond(fake, "x1y", null)).text).toMatch(/where s\.t like \$1\)$/);
+    // A trend's two years with others between them: the range for the BRIN, then the two years alone.
+    const pair = render(storedSearchCond(fake, "srl", { from: 2018, to: 2025, only: [2018, 2025] }));
+    expect(pair.text).toMatch(/where s\.t like \$1 and s\.y between \$2 and \$3 and s\.y = any\(\$4::int\[\]\)\)$/);
+    expect(pair.params).toEqual(["%srl%", 2018, 2025, [2018, 2025]]);
   });
 
   it("says a text found in too many records as such", () => {
