@@ -20,6 +20,7 @@
     "reconcile": "tsx src/scripts/reconcile.ts",
     "merge-exact-name": "tsx src/scripts/merge-exact-name.ts",
     "marts": "tsx src/scripts/marts.ts",
+    "source-search": "tsx src/scripts/source-search.ts",
     "coverage": "tsx src/scripts/coverage.ts",
     "ted-mart": "tsx src/scripts/ted-mart.ts",
     "import-old": "tsx src/scripts/import-old.ts",
