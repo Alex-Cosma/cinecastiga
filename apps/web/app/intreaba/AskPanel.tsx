@@ -1534,7 +1534,7 @@ function RankingBars({
             </span>
             <span className="cq-rank-name">
               <strong>{cleanName(r.name)}</strong>
-              <FactTags tags={r.entityId ? winnerFactTags(spec, facts?.[r.entityId]) : []} />
+              <FactTags tags={r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : []} />
               <span className="cq-bar-track">
                 <i
                   style={{
@@ -1874,7 +1874,7 @@ function TableBlock({
                 ) : (
                   cleanName(r.name)
                 )}
-                {r.entityId && spec ? <FactTags tags={winnerFactTags(spec as AskSpec, facts?.[r.entityId])} /> : null}
+                {r.entityId && spec ? <FactTags tags={winnerFactTags(spec as AskSpec, facts?.[r.entityId], undefined, r.value)} /> : null}
               </td>
               <td>{r.county ?? "—"}</td>
               {perCapita && (

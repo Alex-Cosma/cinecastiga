@@ -12,6 +12,7 @@ import { ABOVE_CAP_ROWS, type AboveCapRow, type BarsResult, type MixResult, type
 import { podiumFactsOf, type PodiumFactRows, type PodiumProfileRows } from "./entity-card";
 import { PODIUM_PLACES } from "./entity-card-shared";
 import { factsSource } from "./trend-partition";
+import { rankedFacts, type FirmFacts } from "./winners";
 import type { AskSpec } from "./spec";
 import { martColumns } from "./mart-columns";
 import { readPerCapitaPopulations } from "./per-capita";
@@ -347,6 +348,13 @@ export async function podiumFacts(sql: DbSql, spec: AskSpec, ids: readonly strin
     const [latest] = role === "supplier"
       ? await run<{ y: number | null }>(tx`select max(ep.employees_year) y from marts.entity_profile ep where ep.role = 'supplier'`) : [];
     const balanceYear = latest?.y === null || latest?.y === undefined ? null : Number(latest.y);
-    return { part: "podium", places: podiumFactsOf(records, profiles, places), balanceYear, checkpoint, tookMs: Date.now() - started };
+    // „Firme noi” (S6): the firm's register year and its first record with the named buyer, as the ranking's rows read them.
+    const chosen = role === "supplier" && p.ctx.newFirms
+      ? await rankedFacts(tx, p.ctx, { dim: "supplier", ids: places, source, rollups: false }) : null;
+    const facts = podiumFactsOf(records, profiles, places).map((fact) => {
+      const firm = chosen?.[fact.entityId] as FirmFacts | undefined;
+      return firm ? { ...fact, registeredYear: firm.registered, ...(firm.firstHere !== undefined ? { firstHere: firm.firstHere } : {}) } : fact;
+    });
+    return { part: "podium", places: facts, balanceYear, checkpoint, tookMs: Date.now() - started };
   }, places.join(","));
 }

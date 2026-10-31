@@ -1,6 +1,7 @@
 import type { DbSql } from "@seap/db";
 import { andAll, asksWinners, DA_PLAFOND_RON, groupPredicates, rowPredicates, seatOf, type PredicateCtx } from "./predicates";
 import { planRollup, rollupRows } from "./rollups";
+import { factsSource } from "./trend-partition";
 
 /*
  * F5, the ranked winners (plan §4.2, final table §3.3, §3.6, §3.7): the
@@ -192,6 +193,11 @@ export interface FirmFacts {
   /** With a named buyer: its first record with it, and whether the buyer is its main public client. */
   firstHere?: string | null;
   main?: boolean;
+  /**
+   * S6: of its value in the selection, the contract shares with more than one winner (lei; n_winners > 1, divided
+   * equally), for the tag „în asociere”. Absent on direct acquisitions only (they have no consortium).
+   */
+  joint?: number;
 }
 /** An institution's largest firm in the selection (final table §3.7: on every row, with or without the condition). */
 export interface InstitutionFacts {
@@ -199,16 +205,36 @@ export interface InstitutionFacts {
 }
 export type WinnerFacts = FirmFacts | InstitutionFacts;
 
+/** Of each firm's contracts in the selection, the shares of contracts with more than one winner (lei, by firm id). */
+async function jointOf(sql: DbSql, ctx: PredicateCtx, ids: readonly string[]): Promise<Map<string, number>> {
+  const source = factsSource(sql, "contracts", false, true);
+  const base = andAll(sql, rowPredicates(ctx));
+  const where = andAll(sql, [base, ...groupPredicates(ctx, source, base)]);
+  const rows = (await sql`
+    select d.supplier_id::text id, sum(d.closing_value)::text joint
+    from ${source} d
+    where ${where} and d.supplier_id = any(${sql.array([...ids])}::bigint[]) and d.n_winners > 1
+    group by 1
+  `) as unknown as { id: string; joint: string }[];
+  return new Map(rows.map((r) => [r.id, Number(r.joint)]));
+}
+
 /**
  * The facts of the rows shown (plan §4.2 P8, data.rowFacts): on firms their years, size and seat and, with a named
  * buyer, their first record with it and whether it is their main public client; on institutions their largest
  * firm in the selection. One read on the ids shown; never part of what a watch compares (answer-core.ts).
  */
-export async function rankedFacts(sql: DbSql, ctx: PredicateCtx, o: { dim: "supplier" | "authority"; ids: readonly string[]; source: Fragment; rollups: boolean }):
-  Promise<Record<string, WinnerFacts>> {
+export async function rankedFacts(sql: DbSql, ctx: PredicateCtx, o: {
+  dim: "supplier" | "authority"; ids: readonly string[]; source: Fragment; rollups: boolean;
+  /** S6: the question's channel; beside contracts, a firm's joint value in the selection (FirmFacts.joint). */
+  dataset?: "all" | "da" | "contracts";
+}): Promise<Record<string, WinnerFacts>> {
   if (!o.ids.length) return {};
   const ids = sql.array([...o.ids]);
   if (o.dim === "supplier") {
+    // „În asociere” (plan §4.2 P8, final table §3.3; DECISIONS S5R-joint-tag-deferred): the selection's contracts of the
+    // firms shown, on their id index (the 10 largest firms over the whole archive: 134k contracts, 15 ms warm, 2.5 s cold).
+    const joint = o.dataset !== undefined && o.dataset !== "da" ? await jointOf(sql, ctx, o.ids) : null;
     const seat = seatOf(sql, ctx.seatColumn);
     const buyer = ctx.buyerIds.length > 0;
     const rows = (await sql`
@@ -225,6 +251,7 @@ export async function rankedFacts(sql: DbSql, ctx: PredicateCtx, o: { dim: "supp
     return Object.fromEntries(rows.map((r) => [r.id, {
       first: r.first, registered: r.registered, employees: r.employees, filed: r.filed, foreign: r.foreign,
       ...(buyer ? { firstHere: r.first_here ?? null, main: r.main === true } : {}),
+      ...(joint ? { joint: joint.get(r.id) ?? 0 } : {}),
     } satisfies FirmFacts]));
   }
   // The selection's pairs of the institutions shown only: their id index, or the rollup's rows of those ids.

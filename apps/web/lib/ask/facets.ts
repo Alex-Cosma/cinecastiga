@@ -675,7 +675,9 @@ export async function facetCounts(sql: DbSql, draft: AskSpec, part: CountPart, o
  * key), so its number is the list after that click. Shares are of the whole selection's value, as the answer's.
  */
 async function winnersCounts(sql: DbSql, p: Prepared, draft: AskSpec, ready: Ready, run: Runner, meta: { checkpoint: string | null; started: number }): Promise<FacetCounts | FacetFailure> {
-  if (p.profile || p.spec.block !== "table" || (p.spec.dim !== "supplier" && p.spec.dim !== "authority")) return { error: "Numerele se calculează doar pe clasamente." };
+  // "Cine conduce?" by value is the ranking of firms stopped at place 3 (S6): the same counts.
+  const podium = p.spec.block === "entity_card" && p.spec.rankBy === "value" && p.spec.dim === "supplier";
+  if (p.profile || (p.spec.block !== "table" && !podium) || (p.spec.dim !== "supplier" && p.spec.dim !== "authority")) return { error: "Numerele se calculează doar pe clasamente." };
   const done = (unit: FacetUnit, options: FacetCount[], total: { n: number; v: number }): FacetCounts =>
     ({ part: "winners", unit, options, rest: null, total: { n: total.n, value_ron: total.v }, checkpoint: meta.checkpoint, tookMs: Date.now() - meta.started });
   const share = (v: number, total: number) => total ? v / total : 0;
@@ -760,7 +762,7 @@ export async function rowFacts(sql: DbSql, spec: AskSpec, ids: readonly string[]
       if ("error" in p) return p;
       opts.signal?.throwIfAborted();
       const facts = await rankedFacts(tx, p.ctx, {
-        dim: spec.dim as "supplier" | "authority", ids, rollups: ready.rollups,
+        dim: spec.dim as "supplier" | "authority", ids, rollups: ready.rollups, dataset: p.dataset,
         source: txAggFragment(tx, p.dataset, false, fullValueUnion(p.ctx)) as unknown as Fragment,
       });
       return { part: "rows" as const, facts, checkpoint: stamp.checkpoint, tookMs: Date.now() - started };
