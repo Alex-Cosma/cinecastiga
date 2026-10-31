@@ -86,6 +86,15 @@ describe.runIf(Boolean(connection))("F5: the map's county facts (dedicated rollb
       const report = await buildAskRollups(q);
       expect(report.rows.agg_map_year).toBeGreaterThan(0);
       expect(await mapRollupReady(q)).toBe(true);
+      // Marts audit 2: the probe reads the build's comment (agg_cpv_year's oid), not the rows; a table of another build is not read.
+      const [comment] = await q`select obj_description(to_regclass('marts.agg_map_year'), 'pg_class') d, to_regclass('marts.agg_cpv_year')::oid::text oid` as unknown as { d: string; oid: string }[];
+      expect(comment!.d).toBe(`agg_cpv_year ${comment!.oid}`);
+      await q.unsafe(`comment on table marts.agg_map_year is 'agg_cpv_year ${Number(comment!.oid) + 1}'`);
+      forgetMapRollup();
+      expect(await mapRollupReady(q)).toBe(false);
+      await q.unsafe(`comment on table marts.agg_map_year is '${comment!.d}'`);
+      forgetMapRollup();
+      expect(await mapRollupReady(q)).toBe(true);
       for (const [name, spec, ids] of SPECS) {
         const rolled = await facts(q, spec, ids, true);
         expect([name, rolled]).toEqual([name, live.get(name)]);

@@ -303,8 +303,8 @@ export async function buildAskPairIndexes(q: Query): Promise<void> {
  * agg_entity_kind_year (see the header), from the loaded transaction marts, with the population of every Ask aggregate:
  * the union grouped by pair, year, channel, buyer county, kind and size, then each pair row once as its authority and
  * once as its supplier (as agg_entity_month), with core.entities' name. Part of buildAskRollups, so of the same build as
- * agg_entity_year (the web proves it by their sums, kindRollupReady); callable alone on marts that are not being rebuilt
- * (its first build).
+ * agg_entity_year (its comment names agg_entity_year's oid, which the web compares: kindRollupReady); callable alone on
+ * marts that are not being rebuilt (its first build).
  */
 export async function buildAskKindRollup(q: Query): Promise<number> {
   await q`drop table if exists marts.agg_entity_kind_year`;
@@ -338,6 +338,10 @@ export async function buildAskKindRollup(q: Query): Promise<number> {
     left join core.entities e on e.id = g.eid
   `;
   await q`analyze marts.agg_entity_kind_year`;
+  // Which build it is of: agg_entity_year's oid, compared by the web's probe without reading rows (kindRollupReady; their
+  // sums cost 0.2 s warm and 1.4 s cold a probe on the local copy, marts audit 2), as the kind's month rollups.
+  const [twin] = await q`select to_regclass('marts.agg_entity_year')::oid::text oid`;
+  await q.unsafe(`comment on table marts.agg_entity_kind_year is 'agg_entity_year ${Number(twin?.['oid'] ?? 0)}'`);
   return created.count;
 }
 
@@ -420,8 +424,8 @@ export async function buildAskYearKeys(q: Query): Promise<number> {
  * agg_map_year (see the header), from the loaded transaction marts and the
  * firms' seats on marts.entity_profile (the marts stage writes them before
  * this one), with the population of every Ask aggregate. Part of
- * buildAskRollups, so it is of the same build as the other rollups (the web
- * proves it: the same transaction created both, mapRollupReady); callable
+ * buildAskRollups, so it is of the same build as the other rollups (its
+ * comment names agg_cpv_year's oid, which the web compares: mapRollupReady); callable
  * alone on marts that are not being rebuilt (its first build). One statement
  * over the union: 817,927 rows from 20.7M on the local copy of 30 October
  * 2026 (18 s read-only, at load 12).
@@ -450,6 +454,10 @@ export async function buildAskMapRollup(q: Query): Promise<number> {
     group by 1, 2, 3, 4, 5, 6
   `;
   await q`analyze marts.agg_map_year`;
+  // Which build it is of: agg_cpv_year's oid, compared by the web's probe without reading rows (mapRollupReady; their sums
+  // cost 0.07 s warm and 0.44 s cold a probe on the local copy, marts audit 2).
+  const [twin] = await q`select to_regclass('marts.agg_cpv_year')::oid::text oid`;
+  await q.unsafe(`comment on table marts.agg_map_year is 'agg_cpv_year ${Number(twin?.['oid'] ?? 0)}'`);
   return created.count;
 }
 

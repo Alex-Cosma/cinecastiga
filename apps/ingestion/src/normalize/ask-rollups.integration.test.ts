@@ -167,10 +167,18 @@ it.skipIf(!connection)('builds the Ask rollups and the covering indexes with eve
   expect((await q`select obj_description('marts.agg_entity_kind_month'::regclass,'pg_class')='agg_entity_month '||'marts.agg_entity_month'::regclass::oid::text a,
     obj_description('marts.agg_pair_kind_year'::regclass,'pg_class')='agg_pair_year '||'marts.agg_pair_year'::regclass::oid::text b,
     obj_description('marts.agg_mix_employees'::regclass,'pg_class')='agg_national_mix '||'marts.agg_national_mix'::regclass::oid::text c,
-    (select coalesce(sum(n),0) from marts.agg_mix_employees)<=(select sum(n) from marts.agg_national_mix) d`).map(r=>({...r}))).toEqual([{a:true,b:true,c:true,d:true}]);
+    (select coalesce(sum(n),0) from marts.agg_mix_employees)<=(select sum(n) from marts.agg_national_mix) d,
+    obj_description('marts.agg_entity_kind_year'::regclass,'pg_class')='agg_entity_year '||'marts.agg_entity_year'::regclass::oid::text e,
+    obj_description('marts.agg_map_year'::regclass,'pg_class')='agg_cpv_year '||'marts.agg_cpv_year'::regclass::oid::text f`).map(r=>({...r}))).toEqual([{a:true,b:true,c:true,d:true,e:true,f:true}]);
+  // Marts audit 2: the kind and map probes read these comments, not the rows; the next build names its own new tables.
+  const twins=async()=>(await q`select 'marts.agg_entity_year'::regclass::oid::text ey,'marts.agg_cpv_year'::regclass::oid::text cy,
+    obj_description('marts.agg_entity_kind_year'::regclass,'pg_class') kd,obj_description('marts.agg_map_year'::regclass,'pg_class') md`)[0]!;
+  const before=await twins();
   // The next night drops and builds them again, and the rollups with them.
   const second=await buildTransactionMarts(q);
   expect(second.rollups).toEqual(first.rollups);
+  const after=await twins();
+  expect([after.ey===before.ey,after.cy===before.cy,after.kd,after.md]).toEqual([false,false,`agg_entity_year ${after.ey}`,`agg_cpv_year ${after.cy}`]);
   expect(await indexes()).toEqual(expected);
   throw rollback;
  })).rejects.toBe(rollback);

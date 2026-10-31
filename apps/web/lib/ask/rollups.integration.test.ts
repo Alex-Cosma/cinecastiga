@@ -509,6 +509,14 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
         expect(await rollupsReady(q)).toBe(false); // the process cache, 10 minutes
         forgetRollupsReady(); forgetMixRollupReady(); forgetKindRollup();
         expect([await rollupsReady(q), await kindRollupReady(q), await kindMonthRollupReady(q)]).toEqual([true, true, true]);
+        // Marts audit 2: kindRollupReady reads the build's comment (agg_entity_year's oid), not the rows; another build's table is not read.
+        const [kindComment] = await q`select obj_description(to_regclass('marts.agg_entity_kind_year'), 'pg_class') d` as unknown as { d: string }[];
+        await q.unsafe(`comment on table marts.agg_entity_kind_year is 'agg_entity_year 1'`);
+        forgetKindRollup();
+        expect(await kindRollupReady(q)).toBe(false);
+        await q.unsafe(`comment on table marts.agg_entity_kind_year is '${kindComment!.d}'`);
+        forgetKindRollup();
+        expect(await kindRollupReady(q)).toBe(true);
         // The ceiling: 2,000,000.00 counts, 2,000,000.01 does not, a zero never.
         const [ceiling] = await q`select count(*)::int n, sum(v)::text v from marts.agg_pair_year where authority_id in (2, 4) and supplier_id = 10`;
         expect(ceiling).toMatchObject({ n: 2, v: "3999999.99" });
