@@ -216,7 +216,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Ce fel de achiziții</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate achizițiile</option><option value="da">Achizițiile directe</option><option value="contracts">Contractele din proceduri</option></select></label>}
       </div>
       <div className="ev-list-toolbar">
-        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
+        <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result && !error ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
         <label className="ev-sort"><span className="ev-sr-only">Ordonează sursele</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
           <option value="source:desc">Ordinea sursei</option><option value="value:desc">Valoare ↓</option><option value="value:asc">Valoare ↑</option><option value="date:desc">Cele mai recente</option><option value="date:asc">Cele mai vechi</option><option value="supplier:asc">Furnizor A–Z</option><option value="authority:asc">Instituție A–Z</option>
         </select></label>
@@ -225,7 +225,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Încearcă din nou</button></div>}
       <div className={`ev-records${busy ? " ev-loading" : ""}`} aria-busy={busy} inert={busy}>
         {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate înregistrările." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
-        {result && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
+        {result && !error && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Stare și sursă</th></tr></thead>
           <tbody>{result.rows.map((r) => {
             const links = evidenceLinks(r);
@@ -240,7 +240,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
           })}</tbody>
         </table>}
       </div>
-      {result && result.total > result.pageSize && <nav className="ev-pagination" aria-label="Pagini de înregistrări"><button type="button" disabled={busy || result.page === 0} onClick={() => setPage(result.page - 1)}>← Înapoi</button><span>Pagina {count(result.page + 1)} din {count(Math.ceil(result.total / result.pageSize))}</span><button type="button" disabled={busy || (result.page + 1) * result.pageSize >= result.total} onClick={() => setPage(result.page + 1)}>Înainte →</button></nav>}
+      {result && !error && result.total > result.pageSize && <nav className="ev-pagination" aria-label="Pagini de înregistrări"><button type="button" disabled={busy || result.page === 0} onClick={() => setPage(result.page - 1)}>← Înapoi</button><span>Pagina {count(result.page + 1)} din {count(Math.ceil(result.total / result.pageSize))}</span><button type="button" disabled={busy || (result.page + 1) * result.pageSize >= result.total} onClick={() => setPage(result.page + 1)}>Înainte →</button></nav>}
       {result && result.sourceTotal > EVIDENCE_CSV_LIMIT && <p className="ev-export-limit">Export: max. 100.000 de rânduri; fișierul spune dacă e parțial.</p>}
       {exportMessage && <p className="ev-export-message" role="status">{exportMessage}</p>}
     </div>
