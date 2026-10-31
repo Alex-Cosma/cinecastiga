@@ -544,6 +544,14 @@ function seatCases(): PerfCase[] {
       all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
     perfCase("sources:scatter-year-end-national", "sources", "Sursele „vârf în decembrie”, instituțiile din țară", "scatter",
       all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_year_end" })), { path: "rows", barMs: 2000 }),
+    // S6 (F6b verify): one firm's signal is reconciled with the build's flags (builtFlagTotals), which read every
+    // acquisition on a firm until its predicate kept the supplier's index (ADDA CONSTRUCT rapid: 13.6 s, HTTP 500).
+    perfCase("sources:scatter-rapid-one-firm", "sources", "„Vezi înregistrările” cu „finalizare rapidă” ale unei firme (ADDA CONSTRUCT)", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2108473"], flag: "da_rapid" } }),
+    perfCase("sources:scatter-round-one-firm", "sources", "„Vezi înregistrările” cu „aproape de prag” ale unei firme (ADDA CONSTRUCT)", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_round" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2108473"], flag: "da_round" } }),
+    perfCase("sources:scatter-rapid-largest-firm", "sources", "„Vezi înregistrările” cu „finalizare rapidă” ale celei mai mari firme (DEDEMAN)", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2124387"], flag: "da_rapid" } }),
     perfCase("filtered:scatter-suppliers-seat-cluj", "filtered", "Ce firme cu sediul în județul Cluj ies din tipar", "scatter", all(firms, set({ seatCounty: "Cluj" }))),
     perfCase("filtered:entity-card-risk-seat-cluj", "filtered", "Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc", "entity_card",
       all(top({ dim: "supplier", rankBy: "risk" }), set({ seatCounty: "Cluj" }))),

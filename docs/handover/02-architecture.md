@@ -311,6 +311,7 @@ Inventarul de la 30 octombrie 2026 (`feat/ask-filters-registry`, nepublicat): to
 | `da_tx_supplier_cover_idx`, `da_tx_authority_cover_idx` | firmă/instituție + dată, cu `sicap_da_id` | `dropTransactionMartBuildIndexes` înainte de încărcare, `createTransactionMartBuildIndexes` după (`TRANSACTION_MART_BUILD_INDEXES`) | `transactions` | `coverRefReady` |
 | `da_tx_cpv_cover_idx` | codul CPV (`text_pattern_ops`) + dată | același | `transactions` | `cpvCoverReady` |
 | `da_tx_value_desc_idx` | `(- closing_value), sicap_da_id` | același | `transactions` | `valueKeysReady` |
+| `da_tx_flagged_idx` (F6b) | doar rândurile marcate (`cardinality(da_flags) > 0`): instituție, cu firma, cheia, valoarea, data și marcajele | același | `transactions` | `flaggedIndexReady` (fără el, sursele unui semnal pe un grup de peste 2,5 mil. de achiziții spun că așteaptă noaptea) |
 | `agg_map_county` (+20 coloane de sediu) | harta nefiltrată pe județul cumpărătorului, împărțită după sediul firmei | `buildAggMapCounty` (`apps/ingestion/src/normalize/agg-map-county.ts`) | `transactions` | `martColumns().mapSeat` |
 | `agg_map_county_top` (scos la revizia S5: nimic nu-l citea; fișa citește `agg_map_year`, etapa șterge tabelul rămas) | — | — | `transactions` | — |
 | `ask_pair_month` (temporar, `on commit drop`) | perechile pe lună, citite o dată din uniune | `buildAskRollups` | `transactions` | — |

@@ -28,11 +28,11 @@ import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
 import {
   compareInstitutionParties, comparePairRows, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
-  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
+  coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, flaggedIndexReady, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
   type RollupFilters, type RollupNeed, type RollupSource,
 } from "./rollups";
 import { hasFlag, scatterAnswer } from "./scatter";
-import { builtFlagTotals, flagRecordsNote, flaggedRecordKeys, RECONCILE_MAX } from "./scatter-records";
+import { builtFlagTotals, FLAG_INDEX_PENDING, flagRecordsNote, flagSourcesWait, flaggedRecordKeys, RECONCILE_MAX, ROW_FLAGS } from "./scatter-records";
 import { SCATTER_LIST_MAX, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
 import { flagLabel } from "../flags";
 import {
@@ -3040,6 +3040,8 @@ export async function runRows(
   // limit, so the drawer failed). Without a local filter (a search, a channel, a state); probed before the snapshot.
   // Not a signal's records (F6b): those are the acquisitions it flags, counted on their own keys (flagKeyed).
   const profileRolled = profile && !flag && localParts.length === 1 && await rollupDaysReady(sql);
+  // A row signal's keys come from da_tx_flagged_idx once the nightly build has made it (FLAG_LIVE_RECORDS).
+  const flaggedIndex = flagKeys && flag && ROW_FLAGS.has(flag) ? await flaggedIndexReady(sql) : true;
   const profileWalk = profileRolled && sortKey === "value" && opts.dir !== "asc" && await valueKeysReady(sql);
 
   // A search on a broad list that runs past its budget (SEARCH_BUDGET, below) says so, with what to add.
@@ -3144,6 +3146,7 @@ export async function runRows(
     // The cohort's own figures (count, records and value of its profiles), read once: the threshold below and the
     // reconciliation after the page.
     const cohortFigures = profile ? ((await readEvidenceQuery(s`select count(*) n, coalesce(sum(n_das), 0) records, coalesce(sum(total_ron), 0)::text v from ${cohort} selected_profiles`, opts.signal)) as unknown as { n: string; records: string; v: string }[])[0] : undefined;
+    if (flag && flagSourcesWait(flag, Number(cohortFigures?.records ?? 0), flaggedIndex)) return { error: FLAG_INDEX_PENDING };
     const cohortRolled = profileRolled && Number(cohortFigures?.records ?? 0) >= profileLimits.records;
     const profileTotals = cohortRolled ? await profileRollupTotals(s, cohort as unknown as ReturnType<DbSql>, role as "authority" | "supplier") : null;
     if (profileTotals) notes.push("Numărul și suma surselor vin din înregistrările profilurilor, grupate la ultima prelucrare a datelor; lista e citită din înregistrări.");
