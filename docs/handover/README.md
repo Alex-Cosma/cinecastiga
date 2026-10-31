@@ -2,6 +2,8 @@
 
 **Consolidare: 11 octombrie 2026.** Acesta este ghidul pentru un coleg și modelul său LLM, fără acces la conversația inițială. Începe cu [predarea integrală](20261011/README.md). Indexul anterior, cu toate notele deja existente și stările datate, este păstrat integral în [HISTORY-INDEX.md](HISTORY-INDEX.md).
 
+**31 octombrie: filtrele pe întrebare din „Întreabă”, pe ramura `feat/ask-filters-registry`.** Lucrul e local și nepublicat. Producția rămâne la `4e90b00`, cu migrațiile până la 0083. Ramura se publică în două livrări: întâi F0a singur (`90cf64d`), apoi restul. Ordinea, verificările pe server, migrațiile 0084–0086 cu lacătele lor, ce arată site-ul până la prima noapte și revenirea sunt în [runbook-ul pentru operator](05-operations.md#runbook-pentru-operator-revizia-din-31-octombrie-2026). Costul nopții (~+7 min în fereastra 503, ~+9 min după redeschidere) și discul (~+18,6 GB) sunt în [costul nopții](05-operations.md#filtrele-pe-întrebare-costul-nopții-și-runbook-ul-de-deploy-30-octombrie-2026-featask-filters-registry-nepublicat). Obiectele nopții, cu sondele lor, sunt în [inventar](02-architecture.md#obiectele-nocturne-ale-întreabă), iar textul stocat al căutării în surse are [secțiunea lui](05-operations.md#căutarea-în-surse-pe-textul-stocat-s6). Regulile sediului și ale anului firmelor sunt în [date și calcule](20261011/data-and-calculations.md#entități-și-geografie), iar snapshotul ONRC e [aici](20261011/data-and-calculations.md#onrc-și-bilanțuri-mf).
+
 **15 octombrie — „Ce bate la ochi” în producție, numai pentru administratori:** cod pe `main`; poveștile în lucru sunt fișiere JSON numai pe server (`/srv/seap/stories/`), nu în repository. Vizitatorii și watchdogii nu văd secțiunea. Vezi [implementarea](../implementation/editorial-stories.md) și [operațiunile](05-operations.md#povești-ce-bate-la-ochi-în-lucru). Notele de mai jos păstrează cronologia lucrului local.
 
 **2 octombrie, a doua documentare reală:** [Aquapark Buzău](../research/20261002-aquapark-buzau/README.md) este adăugată exclusiv local, alături de Școala 311. Leagă achiziția din septembrie de calendar, auditul de conformitate și proprietatea constructorului. Nu s-au trimis solicitări și nu s-a publicat. Catalogul de producție rămâne gol.
@@ -19,6 +21,7 @@
 | Funcționalități, UX și cod | [Produs și implementare](20261011/product-and-code.md) |
 | Identități, sume, versiuni, surse | [Date și calcule](20261011/data-and-calculations.md) |
 | Crawl, proxy-uri, PDF/OCR, calendar, deploy | [Operare actualizată](20261011/operations.md) |
+| Publicarea filtrelor „Întreabă” (două livrări, noaptea, revenirea) | [Runbook pentru operator](05-operations.md#runbook-pentru-operator-revizia-din-31-octombrie-2026) |
 | Istoric și documentație pe funcționalități | [Index tematic](20261011/history-and-reference-map.md) |
 | Lucru nepublicat și pașii următori | [Stare și continuare](20261011/status-and-continuation.md) |
 | Planul de clarificare a grupurilor excluse | [Checkpoint 12 octombrie: motive, dovezi și pași de reluare](continuation-20261012-contract-ambiguities.md) |

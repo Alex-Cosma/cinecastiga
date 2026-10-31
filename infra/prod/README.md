@@ -144,7 +144,9 @@ new dumps on the Mac, upload, `pg_restore --clean` on the data schemas only
 ## Backups
 
 The nightly processing (`process-nightly.sh`) takes a full `pg_dump` of the
-whole database before every run into `/srv/seap/backups/processing/<run>/`.
+whole database before every run into `/srv/seap/backups/processing/<run>/`
+(from the Ask filters release, without the rows of `marts.source_search`, the
+derived search text rebuilt after every run).
 `retain-processing-backups.py` keeps the two latest successful runs plus the
 latest successful full (weekly) run. These dumps include `auth` and `app`, so
 the separate nightly `state-*.dump` cron was removed on 19 October 2026. The
