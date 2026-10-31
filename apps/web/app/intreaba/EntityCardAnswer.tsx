@@ -24,7 +24,7 @@ import TotalLine from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
 import {
-  largestWords, leadWords, placeFacts, placeWords, restWords, shareWords, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead,
+  categoryLead, largestWords, leadWords, placeFacts, placeWords, restWords, shareWords, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead,
 } from "./entity-card-answer";
 import "./entity-card.css";
 
@@ -146,7 +146,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
       {total && podium.total && (
         <div className="qb ec-total"><TotalLine conditions={conditions}>
           {podium.selection
-            ? <>{total.who} {employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees)}: <span className="qb-num">{formatRonFull(podium.total.value)}</span>, {formatShare(podium.total.value / podium.selection.value)} din <span className="qb-num">{formatRonFull(podium.selection.value)}</span></>
+            ? <>{categoryLead(podium, spec)}: <span className="qb-num">{formatRonFull(podium.total.value)}</span>, {formatShare(podium.total.value / podium.selection.value)} din <span className="qb-num">{formatRonFull(podium.selection.value)}</span></>
             : <>Din <span className="qb-num">{total.value}</span>{total.link}{total.who}</>}
         </TotalLine></div>
       )}

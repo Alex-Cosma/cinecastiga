@@ -9,7 +9,7 @@ import { employeesWords } from "../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, type QuestionSpec } from "../../lib/ask/question-ui";
 import { SEAT_ABROAD } from "../../lib/ask/seat";
 import { formatInt, formatRon } from "../../lib/format";
-import { newFirmTag } from "../../lib/ask/winner-words";
+import { newFirmTag, rankedGroupLead } from "../../lib/ask/winner-words";
 import type { RowFact } from "./answer/RowFacts";
 
 /*
@@ -96,6 +96,19 @@ export function totalLead(podium: Pick<Podium, "total">, spec: Spec): { value: s
   if (!total) return null;
   const nouns = subjectNouns(spec);
   return { value: formatRon(total.value), link: spec.dim === "supplier" ? ", câștigați de " : ", la ", who: countWords(total.entities, nouns.one, nouns.many) };
+}
+
+/**
+ * The words before the category's sum on the total line, under CÂȘTIGĂTORII (the podium's `selection`): the list as
+ * "Cine câștigă?" says it with „Firme noi” („3.658 de firme înmatriculate din 2024, cu 1–9 angajați”,
+ * winner-words.ts rankedGroupLead), else the firms of the band („412 firme cu 1–9 angajați”).
+ */
+export function categoryLead(podium: Pick<Podium, "total">, spec: Spec): string | null {
+  if (!podium.total) return null;
+  const listed = rankedGroupLead({ block: "entity_card", dim: spec.dim, filters: spec.filters }, podium.total.entities);
+  if (listed) return listed;
+  const nouns = subjectNouns(spec), band = employeesWords(spec.filters.minEmployees, spec.filters.maxEmployees);
+  return [countWords(podium.total.entities, nouns.one, nouns.many), band].filter(Boolean).join(" ");
 }
 
 /** What the three places leave: "celelalte 1.464 firme · 49,2%". */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PodiumFact, PodiumPlace, TiePlace, Ties } from "../../lib/ask/entity-card-shared";
-import { leadWords, placeFacts, placeWords, restWords, shareWords, signalWord, subjectNouns, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead } from "./entity-card-answer";
+import { categoryLead, leadWords, placeFacts, placeWords, restWords, shareWords, signalWord, subjectNouns, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead } from "./entity-card-answer";
 
 /*
  * „Cine conduce?” (entity_card-2) as the answer draws it (final entity_card §3.9–§3.10, frames C, E, F): the place
@@ -89,6 +89,15 @@ describe("the tags of a place (P8)", () => {
     expect(totalLead(podium, firm)).toEqual({ value: "26,5 mld. lei", link: ", câștigați de ", who: "1.467 de firme" });
     expect(totalLead({ total: { value: 2_296_574_007, count: 1, entities: 17 } }, hospitals)).toEqual({ value: "2,3 mld. lei", link: ", la ", who: "17 spitale" });
     expect(totalLead({ total: null }, firm)).toBeNull();
+  });
+
+  it("name the category under CÂȘTIGĂTORII as „Cine câștigă?” names its list, „Firme noi” included (S6)", () => {
+    const podium = { total: { value: 1_226_153_468, count: 24_928, entities: 3_658 } };
+    expect(categoryLead(podium, { dim: "supplier", filters: { newSince: 2024, newScope: "registry" } })).toBe("3.658 de firme înmatriculate din 2024");
+    expect(categoryLead(podium, { dim: "supplier", filters: { newSince: 2024, newScope: "registry", minEmployees: 1, maxEmployees: 9 } })).toBe("3.658 de firme înmatriculate din 2024, cu 1–9 angajați");
+    // The band alone keeps its words of F6c; never an empty lead before the colon.
+    expect(categoryLead(podium, { dim: "supplier", filters: { maxEmployees: 0 } })).toBe("3.658 de firme fără angajați");
+    expect(categoryLead({ total: null }, firm)).toBeNull();
   });
 });
 
