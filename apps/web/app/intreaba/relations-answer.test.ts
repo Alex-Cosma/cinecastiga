@@ -83,7 +83,7 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
   it("draws a row with its place, at most two facts, its share and its band of years", () => {
     const view = networkRowView(NETWORK.lists.all.rows[2]!, NETWORK, "all", 2026);
     expect([view.name, view.place, view.facts.map((f) => [f.text, f.tone ?? "neutral"]), view.share, view.records, view.yearsText]).toEqual([
-      "URBAN SCOPE", "Buzau · 12 angajați", [["posibilă fracționare +1", "signal"]], "3,3% din total", "58 de înregistrări", "≤2018–2026 · 9 ani",
+      "URBAN SCOPE", "Buzău · 12 angajați", [["posibilă fracționare +1", "signal"]], "3,3% din total", "58 de înregistrări", "≤2018–2026 · 9 ani",
     ]);
     expect(view.band.map((c) => `${c.label}${c.on ? "+" : "-"}${c.partial ? "~" : ""}${c.gap ? "|" : ""}`).join(" "))
       .toBe("≤2018+ 2019+ 2020+ 2021+ 2022+ 2023+ 2024+ 2025+| 2026+~");
@@ -111,8 +111,8 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     const lines = text.trim().split("\r\n");
     expect(lines[0]).toBe("partener,judet,valoare_lei,inregistrari,grupa,primul_an,ultimul_an,ani,procent_din_total,valoare_in_asociere_lei,pondere_in_castigurile_firmei,semnale");
     expect(lines.slice(1)).toEqual([
-      `"RER SUD","Buzau",332540727,14,"Continuă din 2025",2019,2025,"2019 2020 2021 2022 2023 2024 2025",86.68,0,65.4,""`,
-      `"URBAN SCOPE","Buzau",51111529,58,"Continuă din 2025",2018,2026,"2018 2019 2020 2021 2022 2023 2024 2025 2026",13.32,0,,"posibilă fracționare; reprezentant comun"`,
+      `"RER SUD","Buzău",332540727,14,"Continuă din 2025",2019,2025,"2019 2020 2021 2022 2023 2024 2025",86.68,0,65.4,""`,
+      `"URBAN SCOPE","Buzău",51111529,58,"Continuă din 2025",2018,2026,"2018 2019 2020 2021 2022 2023 2024 2025 2026",13.32,0,,"posibilă fracționare; reprezentant comun"`,
     ]);
     expect(filename).toMatch(/\.csv$/);
     // With the strip's group (AskPanel's band): one „grupa” column, the file named after the group (S4 tests: it was twice).

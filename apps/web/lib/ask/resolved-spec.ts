@@ -1,12 +1,11 @@
 import type { AskSpec } from "./spec";
 import type { Grounding } from "./ground";
-import { COUNTIES } from "../counties";
+import { countyKnown } from "../counties";
 import { kindApplies } from "./purchase";
 
-const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim();
-/** The marts store "Buzau"; links, titles and the builder show "Buzău". Grounding folds either. */
+/** The marts store "Buzau"; links, titles and the builder show "Buzău". Grounding folds either (lib/counties.ts). */
 export function countyDisplay(canonical: string): string {
-  return COUNTIES.find((name) => fold(name) === fold(canonical)) ?? canonical;
+  return countyKnown(canonical) ?? canonical;
 }
 
 /** Persist the identities actually executed, so a saved question cannot later

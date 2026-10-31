@@ -1,5 +1,5 @@
 import { formatInt } from "../format";
-import { COUNTIES } from "../counties";
+import { countyKnown } from "../counties";
 import { formatShare } from "./answer-text";
 import { isHistoricalProfile } from "./population";
 import type { ScatterFlagFact } from "./scatter-shared";
@@ -245,12 +245,8 @@ export function facetSpec<T extends { block: string; dataset?: string; dim?: str
   return out;
 }
 
-/** The county of the list (the data writes them without diacritics, in any case), or null for anything else. */
-const FOLDED_COUNTIES = new Map(COUNTIES.map((name) => [fold(name), name]));
-function fold(text: string): string {
-  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z]+/g, " ").trim();
-}
-export const countyOfFolded = (text: string | null | undefined): string | null => text ? FOLDED_COUNTIES.get(fold(text)) ?? null : null;
+/** The county of the list (the data writes them without diacritics, in any case), or null for anything else (lib/counties.ts). */
+export const countyOfFolded = (text: string | null | undefined): string | null => countyKnown(text);
 
 /** A count as the window shows it (kit R5): „32,0% · 88”. */
 export function facetCountText(count: { n: number; share: number }): string {

@@ -1,4 +1,5 @@
 "use client";
+import { countyName } from "../../lib/counties";
 import Link from "next/link";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import Term from "@/components/Term";
@@ -110,7 +111,7 @@ function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: 
     <article className={`cmp-card cmp-${side}${empty ? " cmp-card-empty" : ""}`}>
       <h3><Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link></h3>
       <p className="cmp-sub">{subtitle ?? <>
-        {e.county ?? (firms ? "sediu necunoscut" : "județ necunoscut")} · <RoleWord entity={e} />
+        {countyName(e.county) ?? (firms ? "sediu necunoscut" : "județ necunoscut")} · <RoleWord entity={e} />
         {span.years && ` · ${span.years}`}{span.older > 0 && ` · +${formatInt(span.older)} mai vechi`}
       </>}</p>
       {empty

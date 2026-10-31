@@ -1,3 +1,4 @@
+import { countyName } from "../../lib/counties";
 import { formatInt, formatRon } from "../../lib/format";
 import { countWords, formatShare } from "../../lib/ask/answer-text";
 import { countyDisplay } from "../../lib/ask/resolved-spec";
@@ -170,7 +171,7 @@ export function mapCsvRows(data: MapData, spec: AskSpec, facts: MapFacts | null,
     const population = data.local?.population[c.county];
     const seat = (k: "same" | "other" | "bucuresti" | "foreign" | "unknown") => f?.seat ? String(f.seat[k].value) : "";
     return [
-      csvQ(c.county), c.value, c.count,
+      csvQ(countyName(c.county)), c.value, c.count,
       ...(local ? [population ?? "", population && !data.local!.missing.includes(c.county) ? Math.round((c.value / population) * 100) / 100 : ""] : []),
       ...(firm ? [f?.base ? share(c.value, f.base.value) : ""] : [seat("same"), seat("other"), seat("bucuresti"), seat("foreign"), seat("unknown")]),
       csvQ(f?.buyer?.name ?? ""), share(f?.buyer?.value, c.value), f?.record?.value ?? "", share(f?.record?.value, c.value),
