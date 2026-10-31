@@ -142,7 +142,7 @@ export async function POST(req: Request) {
       spec: resolvedSpec(spec, grounding),
       ...(codeName ? { cpvName: readableCpvName(codeName) } : {}),
       executedAt: new Date().toISOString(),
-      pills: buildPills(spec, grounding, { executedMonths: result.executed?.months, peerGroup: answerLabels(result).peerGroup }),
+      pills: buildPills(spec, grounding, { executedMonths: result.executed?.months, ...answerLabels(result) }),
       caveats: result.caveats,
       data: result.data,
       ...(result.partialYears ? { partialYears: result.partialYears } : {}),

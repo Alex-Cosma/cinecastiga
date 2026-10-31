@@ -18,7 +18,6 @@ import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import { employeesWords } from "@/lib/ask/filters/words";
-import { LEADER_MIN_DAS } from "@/lib/ask/entity-card-shared";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -32,6 +31,10 @@ import {
   useTip,
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
+import ScatterAnswer from "./ScatterAnswer";
+import { ensureScatterFacts } from "./scatter-answer";
+import { RANK_WORDS, scatterRank } from "@/lib/ask/scatter-shared";
+import { flagLabel } from "@/lib/flags";
 import NetworkAnswer from "./NetworkAnswer";
 import SankeyAnswer from "./SankeyAnswer";
 import { NETWORK_LIST_CSV, networkWatch, shownList as shownNetworkList } from "./network-answer";
@@ -61,7 +64,7 @@ import { useRowFacts } from "./answer/use-row-facts";
 import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
 import type { WinnerFacts } from "@/lib/ask/winners";
 import EmptyState from "./answer/EmptyState";
-import { emptyAnswer, relaxations } from "./answer-empty";
+import { emptyAnswer, emptyMessage, relaxations } from "./answer-empty";
 import KitLink from "./answer/KitLink";
 import RowMenu from "./answer/RowMenu";
 import { entityRowActions } from "./answer/row-actions";
@@ -604,6 +607,11 @@ export default function AskPanel({
       groupFile: TREND_LIST_CSV[specTrendList(applied)],
     } : {}),
     ...(resp?.data?.block === "trend" && resp.data.months && !isWholeYear(resp.data.months) ? { months: monthsLabel(resp.data.months) } : {}),
+    // F6b: the risk cloud's order and signal beside the chart, in the header (and the signal in the file name).
+    ...(resp?.data?.block === "scatter" && "scatter" in resp.data ? {
+      rank: RANK_WORDS[scatterRank(applied)],
+      ...(applied.scatter?.flag ? { signal: flagLabel(applied.scatter.flag), signalFile: fileSlug(flagLabel(applied.scatter.flag), "") } : {}),
+    } : {}),
     // F4: the network's group on screen, with its year (the file name says the group).
     ...(resp?.data?.block === "network" && shownNetworkList(applied) !== "all" ? {
       group: `${NETWORK_LIST_LABELS[shownNetworkList(applied)]} din ${resp.data.since}`, groupFile: NETWORK_LIST_CSV[shownNetworkList(applied)],
@@ -1092,7 +1100,7 @@ export default function AskPanel({
                   onClick={() => openEvidence()}
                 >
                   <DiscoveryIcon name="database"/>
-                  {count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
+                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>}
@@ -1244,7 +1252,7 @@ export default function AskPanel({
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
               <EmptyState
-                message={data.block === "entity_card" ? isProfile ? `Niciun profil cu cel puțin ${LEADER_MIN_DAS} de achiziții directe aici.` : "Nicio înregistrare aici." : "Nicio înregistrare pentru această întrebare."}
+                message={emptyMessage(data, isProfile)}
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               />
@@ -1351,9 +1359,12 @@ export default function AskPanel({
                   onMeasure={(measure) => { if (measure !== (applied.measure === "count" ? "count" : "value")) applyStripChange("measure", measure); }}
                 />
               )}
-              {data.block === "scatter" && (
-                <ScatterBlock points={data.points} density={data.density} />
-              )}
+              {data.block === "scatter" && ("scatter" in data
+                ? <ScatterAnswer data={data.scatter} spec={applied} onStrip={(value) => applyStripChange("scatter", value)} />
+                : <>
+                  <p className="cq-oldnote">Captură veche: norul de dinainte de semnale și de lista cu locuri.</p>
+                  <ScatterBlock points={data.points} density={data.density} />
+                </>)}
               {data.block === "sankey" && (
                 <SankeyAnswer data={data} spec={applied} layout={layout}
                   deeperHref={(code) => threadHref(applied, code, deeperThread(thread, applied, code, domainName(data.domains.find((d) => d.code === code) ?? { code, name: null })))} />
@@ -1423,7 +1434,7 @@ export default function AskPanel({
                 <CopyIcon />
                 Copiază linkul
               </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={()=>downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}))}
+              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}));}}
                 months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
               {mode === "ask" && (
                 <button

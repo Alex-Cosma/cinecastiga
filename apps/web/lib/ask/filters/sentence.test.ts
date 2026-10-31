@@ -504,7 +504,7 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:locality-map-refused": "Cum se împart achizițiile făcute de instituțiile publice pe județe, în toți anii? · sub propoziție: locality",
       "legacy:locality-stat": "Cât valorează achizițiile făcute de primăria Aiud (Alba), în toți anii?",
       "legacy:locality-ranking": "Ce firme câștigă achizițiile făcute de primăria Aiud (Alba), în toți anii?",
-      "legacy:newer-key-refused": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: scatterFlag",
+      "legacy:newer-key-refused": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: peersDomain",
       // F3: month by month is said by the sentence; the split and the same months sit beside the answer.
       "legacy:timeseries-months": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, lună de lună, 2024–2025?",
       "legacy:timeseries-channel": "Cum evoluează valoarea tuturor achizițiilor făcute de instituțiile publice din toată țara, an de an? · sub propoziție: timeseriesSplit",

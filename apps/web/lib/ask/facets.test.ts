@@ -47,8 +47,8 @@ describe("facetSpec: a window counts without its own key (R5)", () => {
     // F3-rows: the answer's facts after the answer, „Din care” (mix) and a bar's card (bars); F4: a comparison's pair and
     // suggestions, and a bounded network's whole relation (S4 review).
     // F5: the facts of a ranking's rows shown (rows), a map's county facts (map); F6c: the facts of "Cine conduce?"
-    // by value for its places (podium).
-    expect(FACET_PARTS.slice(-8)).toEqual(["mix", "bars", "pair", "compare-peers", "network", "rows", "map", "podium"]);
+    // by value for its places (podium); F6b: the facts of the risk cloud's profiles (profile).
+    expect(FACET_PARTS.slice(-9)).toEqual(["mix", "bars", "pair", "compare-peers", "network", "rows", "map", "podium", "profile"]);
     expect(["facts", "peers", "", null, 3].some(isFacetPart)).toBe(false);
   });
 });

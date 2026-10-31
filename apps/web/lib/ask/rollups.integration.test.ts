@@ -374,7 +374,7 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
     try {
       await sql.begin(async (tx) => {
         await tx.unsafe(`create schema ${prefix}`);
-        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national"])
+        for (const table of ["da_transactions", "contract_transactions", "national_stats", "entity_profile", "agg_top_entities", "agg_national", "flag_instances"])
           await tx.unsafe(`create table ${prefix}.${table} as table marts.${table} with no data`);
         // With its generated log_total_ron (migration 0085).
         await tx.unsafe(`create table ${prefix}.entity_flags (like marts.entity_flags including all)`);
@@ -824,16 +824,17 @@ describe.runIf(Boolean(connection))("rollups give the live answers (dedicated ro
           .toEqual(liveCompare.data.shared);
         expect(liveCompare.data.shared?.rows.length).toBeGreaterThan(0);
 
-        // scatter: the density layer from the stored column equals the live log() bins.
+        // scatter: the density layer from the stored column equals the live log() bins (scatter-2 draws its own bands from the
+        // same column, lib/ask/scatter.ts; this checks the column against the expression it replaces).
         const scatter: AskSpec = { block: "scatter", measure: "value", dim: "supplier", filters: {} };
         const liveScatter = await runSpec(q, scatter, {});
-        if ("error" in liveScatter || liveScatter.data.block !== "scatter") throw new Error("scatter expected");
+        if ("error" in liveScatter || liveScatter.data.block !== "scatter" || !("scatter" in liveScatter.data)) throw new Error("scatter expected");
         const density = await scatterDensity(q, q`ef.role = ${"supplier"} and ef.n_das >= ${10}`, true);
         expect(density).toBeDefined();
         const cells = (d: typeof density) => d && { ...d, cells: [...d.cells].sort((a, b) => a[0] - b[0] || a[1] - b[1]) };
-        expect(cells(density)).toEqual(cells(liveScatter.data.density));
         const live = await scatterDensity(q, q`ef.role = ${"supplier"} and ef.n_das >= ${10}`, false);
-        expect(cells(live)).toEqual(cells(liveScatter.data.density));
+        expect(cells(live)).toEqual(cells(density));
+        expect(liveScatter.data.scatter.group.n).toBe(density!.total);
         const [stored] = await q`select count(*)::int n from marts.entity_flags where log_total_ron is distinct from log(greatest(coalesce(total_ron, 0), 1))`;
         expect(stored!.n).toBe(0);
         throw rollback;

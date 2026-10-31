@@ -44,6 +44,9 @@ export interface CorpusIdentities {
   /** Profiles with at least ten direct acquisitions; one entity without a profile. */
   profileAuthority: Party;
   profileSupplier: Party;
+  /** Profiles carrying a signal of the risk cloud (F6b): December's share (an institution), dependence (a firm). */
+  signalAuthority: Party;
+  signalSupplier: Party;
   noProfile: Party;
   /** A buyer without records in the `cpv.quietWord` domain. */
   quietAuthority: Party;
@@ -282,7 +285,8 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   legacy("locality-ranking", "localitate pe clasamentul firmelor", { block: "table", dim: "supplier", measure: "value", topN: 10, filters: { uatSiruta: ids.uat.siruta, uatName: ids.uat.name } });
   legacy("unknown-key-refused", "o cheie necunoscută", { block: "stat", measure: "value", filters: {}, future: 1 });
   legacy("unknown-filter-refused", "un filtru necunoscut", { block: "stat", measure: "value", filters: { color: "verde" } });
-  legacy("newer-key-refused", "o cheie din versiunea următoare (F0a)", { block: "scatter", dim: "authority", measure: "value", filters: {}, scatter: { flag: "da_split" } });
+  // A key that stays read ahead after the main stage lands F5 (peers.domain waits for phase 2 of F6a).
+  legacy("newer-key-refused", "o cheie din versiunea următoare (F0a)", { block: "scatter", dim: "authority", measure: "value", filters: {}, peers: { domain: true } });
   // F3: the evolution month by month, split by channel or domain, on the same months (as the builder writes them).
   legacy("timeseries-months", "evoluția lună de lună (F3)", { block: "timeseries", measure: "value", filters: { yearFrom: a, yearTo: b }, timeseries: { grain: "month" } });
   legacy("timeseries-channel", "evoluția pe directe și proceduri (F3)", { block: "timeseries", measure: "value", filters: {}, timeseries: { split: "channel" } });
@@ -484,6 +488,12 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   combo("suppliers", "scatter", () => {});
   combo("county", "scatter", all(top({ dim: "authority" }), set({ county: ids.county })));
   combo("kind", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "comuna" })), { rows: { scope: { role: "authority", entityIds: [String(authority.id)] } } });
+  // F6b: the cloud's signal and order as the strip writes them, and the sources of a signal, whole and of one profile.
+  const cloudOf = (options: NonNullable<QuestionSpec["scatter"]>): Edit => (q) => { q.scatter = { ...options }; };
+  combo("signal", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" })), { rows: {} });
+  combo("by-value", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "value" })));
+  combo("firms-signal", "scatter", all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_dependence" })), { rows: { scope: { role: "supplier", entityIds: [String(ids.signalSupplier.id)] } } });
+  combo("signal-profile", "scatter", all(top({ dim: "authority" }), cloudOf({ rankBy: "risk" })), { rows: { scope: { role: "authority", entityIds: [String(ids.signalAuthority.id)], flag: "da_year_end" } } });
   // entity_card
   combo("risk-authority", "entity_card", top({ rankBy: "risk", dim: "authority" }));
   combo("risk-supplier", "entity_card", top({ rankBy: "risk", dim: "supplier" }));

@@ -1,4 +1,5 @@
 import { COUNTIES } from "../counties";
+import { flagEntityRule, flagLabel } from "../flags";
 import { formatInt } from "../format";
 import { GLOSSARY } from "../glossary";
 import { countWords } from "./answer-text";
@@ -412,27 +413,17 @@ export function coverageWords(c: PeerCoverage): string {
 }
 
 /*
- * The criteria (final §3.7, kit §4 "Semnalele"): the short labels the kit
- * sets for every signal and the rule of each at the level of an entity,
- * not the `short` texts of lib/flags.ts, which describe one acquisition.
- * F6b moves the labels into FLAG_META.label (plan §4.12); until then the
- * distribution keeps them here.
+ * The criteria (final §3.7, kit §4 "Semnalele"): the codes a role can meet, in
+ * their order. The short label and the rule of each at the level of an entity
+ * are FLAG_META.label and .entityRule (lib/flags.ts, F6b), which the risk cloud
+ * speaks too; the codes are @seap/db's PROFILE_FLAG_CODES (equal, tested).
  */
 export const CRITERIA: Readonly<Record<"authority" | "supplier", readonly string[]>> = {
   authority: ["da_split", "da_year_end", "da_round", "da_rapid", "da_concentration"],
   supplier: ["da_split", "da_dependence", "da_rapid", "da_round"],
 };
-export const CRITERION_LABEL: Readonly<Record<string, string>> = {
-  da_split: "Posibilă fracționare", da_year_end: "Vârf în decembrie", da_rapid: "Finalizare rapidă",
-  da_round: "Aproape de prag", da_concentration: "Concentrare pe un furnizor", da_dependence: "Dependență de o autoritate",
-};
-export const CRITERION_RULE: Readonly<Record<string, string>> = {
-  da_split: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an și aceeași clasă CPV, fiecare sub plafon, cu suma peste plafon. Apare mai des la cine cumpără mult și de mulți ani.",
-  da_year_end: "Cel puțin un an în care decembrie are 35% din valoarea anuală, la un total anual de cel puțin 100.000 lei. Doar anii întregi ai arhivei (2019–2025).",
-  da_round: "Peste 10% din achizițiile directe au între 90% și 100% din plafon. Cere cel puțin 5 achiziții.",
-  da_rapid: "Peste 25% din achizițiile directe sunt finalizate la scurt timp după publicare. Cere cel puțin 5 achiziții.",
-  da_concentration: "Un furnizor are o pondere mare în valoarea achizițiilor directe ale instituției.",
-  da_dependence: "O singură instituție aduce cea mai mare parte din valoarea achizițiilor directe ale firmei.",
-};
+const CRITERIA_CODES = [...new Set([...CRITERIA.authority, ...CRITERIA.supplier])];
+export const CRITERION_LABEL: Readonly<Record<string, string>> = Object.fromEntries(CRITERIA_CODES.map((code) => [code, flagLabel(code)]));
+export const CRITERION_RULE: Readonly<Record<string, string>> = Object.fromEntries(CRITERIA_CODES.map((code) => [code, flagEntityRule(code)]));
 /** "3 din 5 criterii" (final §3.6): the criteria a role can meet. */
 export const criteriaOf = (role: "authority" | "supplier") => CRITERIA[role];

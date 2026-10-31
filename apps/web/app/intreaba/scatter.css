@@ -1,0 +1,77 @@
+/* "Ce instituții / firme ies din tipar?" (scatter-2, final scatter §3.3–§3.6, §4.6): the strip, the chart by
+   bands, the search, the card and the list. Tokens only (approved.css, filters-kit.css), both themes; orange is the
+   official signals' mark (kit R7), green what is in the list or chosen. No horizontal scroll at any width; under
+   600 px every control is 44 px tall. */
+
+.sc{display:grid;gap:16px;min-width:0}
+.sc-tip-list{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.sc-tip-list li{font-size:12.5px}
+
+.sc-figure{margin:0;position:relative;min-width:0}
+.sc-chart{display:block;width:100%;max-width:100%;height:auto;touch-action:manipulation;cursor:crosshair}
+.sc-stripe{fill:var(--sunk);opacity:.55}
+.sc-stripe.is-alt{opacity:.2}
+.sc-idx{font-family:var(--mono);font-size:12px;fill:var(--ink)}
+.sc-ratio{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+.sc-grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+.sc-tick{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.sc-axis{font-size:11.5px;fill:var(--muted)}
+.sc-p90 line{stroke:var(--ink2);stroke-width:1.2;stroke-dasharray:5 4;opacity:.7}
+.sc-p90 text{font-size:11px;fill:var(--muted)}
+.sc-p90.is-on line{stroke:var(--accent);stroke-width:2;opacity:1}
+.sc-p90.is-on text{fill:var(--ink);font-weight:600}
+/* The group is grey, the chosen signal orange, the list green; the ring is what was picked or found. */
+.sc-dot{fill:var(--muted);opacity:.5}
+.sc-dot.is-flag{fill:var(--orange);opacity:.9}
+.sc-dot.is-list{fill:var(--accent);opacity:1;stroke:var(--surface);stroke-width:1.2}
+.sc-dot.is-list.is-flag{fill:var(--orange);stroke:var(--accent);stroke-width:1.6}
+.sc-cell{fill:var(--muted)}
+.sc-cells.is-flag .sc-cell{fill:var(--orange)}
+.sc-ring{fill:none;stroke:var(--ink);stroke-width:2}
+.sc-ring.is-find{stroke-dasharray:3 3}
+.sc-name{font-size:11.5px;fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.sc-hover{position:absolute;z-index:3;display:grid;gap:2px;max-width:200px;padding:6px 9px;border-radius:8px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--fk-pop-shadow,0 6px 20px #0003);font-size:12px;color:var(--ink2);pointer-events:none}
+.sc-hover b{color:var(--ink);font-size:12.5px;overflow-wrap:anywhere}
+
+.sc-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:6px 0 0;font-size:12px;color:var(--muted)}
+.sc-legend span{display:inline-flex;align-items:center;gap:6px}
+.sc-key{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);opacity:.6;flex:none}
+.sc-key.is-flag{background:var(--orange);opacity:.95}
+.sc-key.is-list{background:var(--accent);opacity:1}
+.sc-key.is-ring{background:none;border:2px solid var(--ink);opacity:1;box-sizing:border-box}
+.sc-key.is-line{width:18px;height:0;border-radius:0;background:none;border-top:2px dashed var(--ink2);opacity:.8}
+
+.sc-small{margin:0;font-size:13px;color:var(--ink2);background:var(--sunk);border-radius:8px;padding:10px 12px}
+
+.sc-find{min-width:0}
+.sc-wide{margin-top:8px}
+.sc-list-wrap{display:grid;gap:8px;min-width:0}
+.sc-list-head{margin:0;font-size:14px;font-weight:600;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.sc-list{list-style:none;margin:0;padding:0;display:grid}
+.sc-row{display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0}
+.sc-row.is-picked{background:var(--fk-sel);border-radius:8px;border-bottom-color:transparent}
+.sc-rank{color:var(--muted);font-size:12.5px;padding-top:2px}
+.sc-who{display:grid;gap:3px;min-width:0}
+.sc-who small{font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.sc-name-btn{border:0;background:none;padding:0;margin:0;font:inherit;font-size:13.5px;font-weight:600;color:var(--accent);text-align:left;cursor:pointer;overflow-wrap:anywhere;min-height:28px}
+.sc-name-btn:hover{text-decoration:underline}
+.sc-who .qb-tags{margin-top:2px}
+.sc-val,.sc-cri{font-size:12.5px;color:var(--ink2);text-align:right;white-space:nowrap;padding-top:2px}
+.sc-rec{justify-self:end;white-space:nowrap}
+.sc-more{margin:0}
+.sc-none{margin:0;font-size:13px;color:var(--muted)}
+.sc-foot{margin:0;font-size:11.5px;color:var(--muted)}
+
+@media (max-width:640px){
+  .sc-chart{max-height:300px}
+  .sc-row{grid-template-columns:24px minmax(0,1fr);grid-template-areas:"rank who" ". val" ". cri" ". rec"}
+  .sc-rank{grid-area:rank}
+  .sc-who{grid-area:who}
+  .sc-val{grid-area:val;text-align:left}
+  .sc-cri{grid-area:cri;text-align:left}
+  .sc-rec{grid-area:rec;justify-self:start}
+  .sc-name-btn,.sc-rec{min-height:44px;display:inline-flex;align-items:center}
+  .sc-small .qb-relax-link,.sc-wide{min-height:44px}
+  .sc-legend{gap:6px 12px}
+}
+.cq-oldnote{margin:0 0 8px;font-size:12.5px;color:var(--muted)}

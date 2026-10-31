@@ -6,6 +6,7 @@ import type { CaptureRequest, CaptureSummary, CaptureStatus, FrozenRecord } from
 import { contractSnapshot, freezeRow, validateCaptureRequest } from "./evidence-capture-input";
 import { ground } from "./ask/ground";
 import { runRows, runSpec } from "./ask/compile";
+import { scatterWithFacts } from "./ask/scatter";
 import { canonicalAskIdentities } from "./ask/canonical-identities";
 import { buildPills } from "./ask/pills";
 import { answerLabels } from "./ask/filters/title";
@@ -173,8 +174,10 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   const canonical=await canonicalAskIdentities(database,spec,grounding,request.options.scope);
   spec=canonical.spec;grounding=canonical.grounding;
   const options={...request.options,...(canonical.scope?{scope:canonical.scope}:{})};
-  const answer = await runSpec(database, spec, grounding, {}, { entities });
-  if ("error" in answer) throw new CaptureError(answer.error);
+  const ran = await runSpec(database, spec, grounding, {}, { entities });
+  if ("error" in ran) throw new CaptureError(ran.error);
+  // scatter-2: the frozen list keeps the records behind each signal and the rates' shares the screen asks afterwards.
+  const answer = ran.data.block === "scatter" && "scatter" in ran.data ? { ...ran, data: { ...ran.data, scatter: await scatterWithFacts(database, ran.data.scatter) } } : ran;
   const sources = await runRows(database, spec, grounding, 0, { ...options, ...(entities ? { entities } : {}),
     capture: { persist: (database, query) => persistQueryRows(database, captureId, query) } });
   if ("error" in sources) throw new CaptureError(sources.error);
@@ -188,7 +191,7 @@ async function queryCapture(q: DbSql, captureId: string, spec: AskSpec, request:
   });
   if (connectionSources?.some(pair => pair.rowCount === 0)) throw new CaptureError("Filtrele nu păstrează surse pentru fiecare legătură a traseului. Elimină filtrele listei sau salvează separat legătura care are surse. Nu am păstrat un traseu incomplet ca legătură documentată.");
   const { rows: _rows, ...sourceMetadata } = sources;
-  const pills = buildPills(spec, grounding, { entities, executedMonths: answer.executed?.months, peerGroup: answerLabels(answer).peerGroup });
+  const pills = buildPills(spec, grounding, { entities, executedMonths: answer.executed?.months, peerGroup: answerLabels(answer).peerGroup, ...(answerLabels(answer).scatterGroup !== undefined ? { scatterGroup: answerLabels(answer).scatterGroup! } : {}) });
   return { summary: { title: connection?.context.title ?? pills.join(" · "), pills, ...(connection ? { connection: connection.selection, connectionContext: {...connection.context,sourcePairs:connectionSources} } : {}), evidenceScope: options.scope ?? {},
     evidenceOptions: { search: request.options.search, state: request.options.state, stream: request.options.stream },
     grounding, effectiveSpec: spec, sources: sourceMetadata, warnings: [...answer.caveats, ...sources.scopeNotes] },

@@ -1,4 +1,5 @@
 import type { BlockData } from "../../lib/ask/compile";
+import { LEADER_MIN_DAS } from "../../lib/ask/entity-card-shared";
 import { BLOCK_FILTERS } from "../../lib/ask/filters/blocks";
 import { filterContext } from "../../lib/ask/filters/context";
 import { FILTERS } from "../../lib/ask/filters/registry";
@@ -31,12 +32,21 @@ export function emptyAnswer(data: BlockData): boolean {
     // F4: an empty group of a network with partners says so in its own list (NetworkAnswer).
     case "network": return data.lists.all.partners === 0 && data.lists.new.partners + data.lists.continuing.partners + data.lists.gone.partners === 0;
     case "sankey": return data.flows.length === 0;
-    case "scatter": return data.points.length === 0;
+    case "scatter": return "scatter" in data ? data.scatter.group.n === 0 : data.points.length === 0;
     // „Cine conduce?” (F6c): no firm or institution in the selection, or no profile with enough acquisitions.
     case "entity_card": return data.empty === true;
     default: return false;
   }
 }
+
+/**
+ * The empty answer's sentence: a risk cloud's group has no profile (final scatter §4.4); „Cine conduce?” (F6c) has
+ * no record, or on the index (`profile`) no profile with enough direct acquisitions; the others no record.
+ */
+export const emptyMessage = (data: BlockData, profile = false): string =>
+  data.block === "scatter" ? "Niciun profil în acest grup."
+    : data.block === "entity_card" ? profile ? `Niciun profil cu cel puțin ${LEADER_MIN_DAS} de achiziții directe aici.` : "Nicio înregistrare aici."
+      : "Nicio înregistrare pentru această întrebare.";
 
 /** The first row of each phrase's window (kit §4), the words of its relaxation. */
 const FIRST_ROW: Partial<Record<FilterId, string>> = {

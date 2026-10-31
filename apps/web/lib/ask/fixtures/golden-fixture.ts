@@ -46,6 +46,8 @@ export const FIXTURE_IDENTITIES: CorpusIdentities = {
   unrelated: { authority: { id: F.scoala.id, name: F.scoala.name }, supplier: { id: F.servicii.id, name: F.servicii.name } },
   profileAuthority: { id: F.consiliu.id, name: F.consiliu.name },
   profileSupplier: { id: F.medical.id, name: F.medical.name },
+  signalAuthority: { id: F.municipiu.id, name: F.municipiu.name },
+  signalSupplier: { id: F.medical.id, name: F.medical.name },
   noProfile: { id: F.agentie.id, name: F.agentie.name },
   quietAuthority: { id: F.scoala.id, name: F.scoala.name },
   county: "Cluj",

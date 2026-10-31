@@ -48,6 +48,8 @@ describe("legacy conditions of old links (plan §2.6)", () => {
       // The trend says no person (plan §4.7): applied, as a chip.
       "legacy:admin-trend": ["applied · Din link: firmele conduse azi de POPESCU FIXTURE ION"],
       "legacy:months-trend-refused": ["refused · Din link: în ian. 2024 – iun. 2025"],
+      // A key of a newer release (F0a): the link is refused before it runs, its condition said as refused.
+      "legacy:newer-key-refused": ["refused · Din link: același domeniu principal"],
       // CPV codes included are the sentence's domain: "Selecție avansată" only leaves codes out (blocks.ts advancedFields).
       "legacy:population-or-groups": ["applied · Din link: selecție avansată, 4 condiții"],
       "legacy:population-on-trend": ["applied · Din link: doar CPV 45"],

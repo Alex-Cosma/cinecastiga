@@ -1,9 +1,10 @@
-import { LOCAL_ADMIN_KIND, type AskSpec } from "./spec";
+import { LOCAL_ADMIN_KIND, namedKind, type AskSpec } from "./spec";
 import type { Grounding } from "./ground";
 import { isHistoricalProfile } from "./population";
 import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
 import { countWords } from "./answer-text";
 import { describeConditions, PROFILE_SOURCE_PILL, type ConditionLabels } from "./filters/describe";
+import { groupNoun } from "./scatter-shared";
 
 /**
  * The "am înțeles" pills — the spec, restated in plain Romanian: the shape of
@@ -50,12 +51,16 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
  * `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture);
  * `labels.executedMonths`: the months a trend's answer counted; `labels.peerGroup`: a distribution's group facts.
  */
-export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths" | "peerGroup"> = {}): string[] {
+export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths" | "peerGroup"> & { scatterGroup?: number } = {}): string[] {
   const pills: string[] = [];
   // An evolution month by month says so in its first pill (F3); its other options are conditions (describe.ts).
+  // The risk cloud counts its group first (scatter-2, final scatter §1): „82 de primării de comună”.
   pills.push(spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni"
     // entity_card-2 (F6c): the podium by value; the index shows every profile at the top, not one name.
-    : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii la egalitate" : "locurile 1–3") : BLOCK_LABEL[spec.block]);
+    : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii la egalitate" : "locurile 1–3")
+      : spec.block === "scatter" && labels.scatterGroup !== undefined
+        ? groupNoun(labels.scatterGroup, spec.dim === "supplier" ? "supplier" : "authority", namedKind(spec.filters.authorityKind))
+        : BLOCK_LABEL[spec.block]);
   const dim = DIM_LABEL[spec.dim ?? "authority"];
   // A ranking without topN is the complete one, in pages (compile.ts); a trend shows its first 10.
   if (spec.block === "table" && spec.topN == null) pills.push(dim[2]);
