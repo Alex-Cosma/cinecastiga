@@ -106,11 +106,15 @@ const institutions: AskSpec = { block: "scatter", measure: "value", dim: "author
 const ranking: AskSpec = { block: "table", measure: "value", dim: "supplier", filters: {} };
 const ranking2024: AskSpec = { block: "table", measure: "value", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2024 } };
 const size2024: AskSpec = { block: "stat", measure: "value", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2024, purchaseValueMin: 400 } };
+// A domain left out of a year (S6 review): the page bounded by the year's keys too.
+const noWorks2024: AskSpec = { block: "stat", measure: "value", filters: { yearFrom: 2024, yearTo: 2024 },
+  population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "cpv", op: "not_in", values: ["45"] }] }] } };
 const DRAWERS: [string, AskSpec, number, DrillOpts][] = [
   ["firms' profiles", firms, 0, {}], ["firms' profiles, page 2", firms, 1, {}], ["firms' profiles, lowest first", firms, 0, { dir: "asc" }],
   ["firms' profiles by date", firms, 0, { sort: "date" }], ["firms' profiles, the CSV's rows", firms, 0, { limit: 1000 }], ["institutions' profiles", institutions, 0, {}], ["institutions' profiles, page 3", institutions, 2, {}],
   ["the national ranking", ranking, 0, {}], ["the ranking of 2024", ranking2024, 0, {}], ["the ranking of 2024, page 2", ranking2024, 1, {}],
   ["at least 400 lei, 2024", size2024, 0, {}], ["at least 400 lei, 2024, page 2", size2024, 1, {}],
+  ["2024 without works", noWorks2024, 0, {}], ["2024 without works, page 2", noWorks2024, 1, {}],
 ];
 
 describe.runIf(Boolean(connection))("the source lists of the marts stage (dedicated rollback fixture)", () => {
@@ -126,6 +130,7 @@ describe.runIf(Boolean(connection))("the source lists of the marts stage (dedica
       // 10's two at institutions 3 and 4; not the self-supply (no supplier, as core counts it) nor firm 13 (two records).
       expect(before.get("firms' profiles")!.sourceTotal).toBe(154);
       expect(before.get("at least 400 lei, 2024")!.sourceTotal).toBeGreaterThan(10);
+      expect(before.get("2024 without works, page 2")!.rows.length).toBe(10);
 
       await buildAskRollups(q);
       for (const index of TRANSACTION_MART_BUILD_INDEXES) await q.unsafe(index.definition);
