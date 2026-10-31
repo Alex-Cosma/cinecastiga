@@ -243,17 +243,17 @@ export const localAdminMap = (ctx: Pick<PredicateCtx, "kind">): boolean => ctx.k
 /**
  * agg_map_year present and of the rows the other rollups hold. Built inside buildAskRollups, it can still be the
  * table of an older build where a build of the code before F5 (a revert) rebuilt the others and left it behind: its
- * records must be agg_cpv_year's (the sum of n, 20.7M on the local copy; 0.2–0.3 s, once per 10 minutes in the
- * process). Until then the facts read the records live. Call it with the pool, before the transaction.
+ * comment must name agg_cpv_year's oid (a new table each night), which the build writes. No rows are read: comparing
+ * their sums, as this probe did until marts audit 2, cost 0.07 s warm and 0.44 s cold on the local copy, once per
+ * 10 minutes in the process. Until then the facts read the records live. Call it with the pool, before the transaction.
  */
 let mapReady: { ok: boolean; at: number } | null = null;
 export async function mapRollupReady(sql: DbSql): Promise<boolean> {
   if (mapReady && Date.now() - mapReady.at < 600_000) return mapReady.ok;
-  const [present] = (await sql`select to_regclass('marts.agg_map_year') is not null and to_regclass('marts.agg_cpv_year') is not null ok`) as unknown as { ok: boolean }[];
-  const [same] = present?.ok
-    ? (await sql`select (select sum(n) from marts.agg_map_year) = (select sum(n) from marts.agg_cpv_year) ok`) as unknown as { ok: boolean | null }[]
-    : [];
-  mapReady = { ok: Boolean(same?.ok), at: Date.now() };
+  const [row] = (await sql`
+    select obj_description(to_regclass('marts.agg_map_year'), 'pg_class') = 'agg_cpv_year ' || to_regclass('marts.agg_cpv_year')::oid::text ok
+  `) as unknown as { ok: boolean | null }[];
+  mapReady = { ok: Boolean(row?.ok), at: Date.now() };
   return mapReady.ok;
 }
 /** Tests: probe again. */

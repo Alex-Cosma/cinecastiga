@@ -446,19 +446,20 @@ export async function rollupsReady(sql: DbSql): Promise<boolean> {
   return ready.ok;
 }
 /**
- * agg_entity_kind_year present and of the same build as agg_entity_year (S5 PRE-answers): both hold the same rows
- * once per role, so their records add up alike; a table left by an earlier build (a revert's build drops and rebuilds
- * only the others) differs and is not read. Until the first build with it a kind or a size per entity runs live.
- * Cached 10 minutes per process, as the others; call it with the pool, before sql.begin.
+ * agg_entity_kind_year present and of the same build as agg_entity_year (S5 PRE-answers): the build writes
+ * agg_entity_year's oid (a new table each night) on its comment, so a table left by an earlier build (a revert's build
+ * drops and rebuilds only the others) names an older table and is not read. No rows are read: comparing their sums, as
+ * this probe did until marts audit 2, cost 0.2 s warm and 1.4 s cold on the local copy, in the answer that ran it. Until
+ * the first build with it a kind or a size per entity runs live. Cached 10 minutes per process, as the others; call it
+ * with the pool, before sql.begin.
  */
 let kindReady: { ok: boolean; at: number } | null = null;
 export async function kindRollupReady(sql: DbSql): Promise<boolean> {
   if (kindReady && Date.now() - kindReady.at < 600_000) return kindReady.ok;
-  const [present] = (await sql`select to_regclass('marts.agg_entity_kind_year') is not null and to_regclass('marts.agg_entity_year') is not null ok`) as unknown as { ok: boolean }[];
-  const [same] = present?.ok
-    ? (await sql`select (select sum(n) from marts.agg_entity_kind_year) = (select sum(n) from marts.agg_entity_year) ok`) as unknown as { ok: boolean | null }[]
-    : [];
-  kindReady = { ok: Boolean(same?.ok), at: Date.now() };
+  const [row] = (await sql`
+    select obj_description(to_regclass('marts.agg_entity_kind_year'), 'pg_class') = 'agg_entity_year ' || to_regclass('marts.agg_entity_year')::oid::text ok
+  `) as unknown as { ok: boolean | null }[];
+  kindReady = { ok: Boolean(row?.ok), at: Date.now() };
   return kindReady.ok;
 }
 /** Tests: probe again. */
