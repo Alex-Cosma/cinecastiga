@@ -39,6 +39,8 @@
 .ec-total{margin:0}
 .ec-actions{display:flex;flex-wrap:wrap;gap:10px;margin:0}
 .ec-actions .qb-secondary,.ec-actions .qb-more-btn{text-decoration:none}
+/* „Pe harta riscului ›” with its (?) when the cloud leaves a band of employees out. */
+.ec-cloud{display:inline-flex;align-items:center;gap:4px;min-width:0}
 
 /* The group at the top of the index. */
 .ec-ties-head{display:grid;gap:4px}
@@ -60,5 +62,6 @@
   .ec-kpis{gap:8px 22px}
   .ec-kpi b{font-size:23px}
   .ec-actions>*{flex:1 1 100%;justify-content:center;min-height:44px}
+  .ec-cloud>.qb-secondary{flex:1 1 auto;justify-content:center;min-height:44px}
   .ec-meth a{min-height:44px}
 }

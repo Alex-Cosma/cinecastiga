@@ -24,7 +24,8 @@ import TotalLine from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
 import {
-  categoryLead, largestWords, leadWords, placeFacts, placeWords, restWords, shareWords, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead,
+  categoryLead, largestWords, leadWords, placeFacts, placeWords, restWords, riskCloudLink, shareWords, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest,
+  tiesShown, totalLead,
 } from "./entity-card-answer";
 import "./entity-card.css";
 
@@ -184,8 +185,9 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
   const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
   const open = (row: { entityId: string; name: string }) => evidence
     ? () => evidence.open(undefined, { entityIds: [row.entityId], role }, `${cleanName(row.name)} · înregistrările profilului`) : undefined;
-  // „Pe harta riscului ›”: the same group of profiles as the risk cloud (the cloud applies the county, the seat and the kind).
-  const cloud = retarget(spec, "scatter");
+  // „Pe harta riscului ›”: the same group of profiles as the risk cloud (the cloud applies the county, the seat and the
+  // kind; a band of employees is left out, with its (?)).
+  const cloud = riskCloudLink(spec);
   const rest = tiesRest(ties, hidden);
   return (
     <div className="qb ec">
@@ -232,7 +234,12 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
             {ties.rows.length === ties.count ? `Arată toate cele ${formatInt(ties.count)}` : `Arată primele ${formatInt(ties.rows.length)}`}
           </button>
         )}
-        <KitLink className="qb-secondary" link={{ label: "Pe harta riscului", glyph: "›", href: askLink(cloud) }} />
+        {cloud.tip ? (
+          <span className="ec-cloud qb-tipwrap-sm">
+            <KitLink className="qb-secondary" link={{ label: "Pe harta riscului", glyph: "›", href: askLink(cloud.spec) }} />
+            <HelpTip tip={{ title: "Pe harta riscului", text: cloud.tip }} />
+          </span>
+        ) : <KitLink className="qb-secondary" link={{ label: "Pe harta riscului", glyph: "›", href: askLink(cloud.spec) }} />}
       </div>
       <p className="ec-meth">Semnal statistic, nu dovadă de neregulă · <Link href="/metodologie">Cum se calculează</Link></p>
     </div>
