@@ -51,8 +51,9 @@ export const SCOPE_CHANGES: readonly { filter: FilterId; form: AnswerForm; dim?:
   { filter: "employees", form: "trend", version: "trend-2" },
   // F3 (plan §4.2, §2.6): the same rows and values, „% din total” of the whole selection.
   { filter: "employees", form: "table", dim: "supplier", version: "table:employees-2" },
-  // "Cine conduce?" by value shows place 1 only, the same firm: its answer does not change (no version, F3r-leader-version).
-  { filter: "employees", form: "entity_card:value", dim: "supplier", version: "entity_card-1" },
+  // "Cine conduce?" by value: the band narrows the list its places come from and the total they are counted against is
+  // the band's (owner decision entity_card 4); the answer is entity_card-2's (F6c: the podium).
+  { filter: "employees", form: "entity_card:value", dim: "supplier", version: "entity_card-2" },
 ];
 
 /** A choice today's builder offers on a question, and what follows it. */

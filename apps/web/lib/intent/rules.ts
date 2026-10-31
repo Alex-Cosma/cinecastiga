@@ -193,7 +193,7 @@ const GENERIC_SUBJECT = new Set(["lucrari", "lucrare", "lucrarile", "servicii", 
 /** Generic words that keep a curated subject's meaning: "lucrări de drumuri" is "drumuri". */
 const WORKS_OR_SERVICES = new Set(["lucrari", "lucrare", "lucrarile", "lucrarilor", "servicii", "serviciu", "serviciile", "serviciilor"]);
 /** Words that only modify a cue ("cel mai mare", "cele mai multe"). */
-const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|riscant\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
+const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
 
 const PREPOSITION = new Set(["in", "din", "la", "pentru", "spre", "catre", "dinspre", "de"]);
 /** Place aliases people use for București. */
@@ -455,21 +455,25 @@ export class RulesInterpreter implements QuestionInterpreter {
     once(/\bfara\s+angajat(?:i|ii)\b/, () => { out.employees = { max: 0 }; });
     once(/(?<=\b(?:firme|firmele|companii|companiile|furnizori)\s)mici\b/, () => { out.employees = { max: 49 }; out.notes.push("„Firme mici” = cel mult 49 de angajați, din ultimul bilanț depus; firmele fără bilanț sunt excluse."); });
     once(/(?<=\b(?:firme|firmele|companii|companiile|furnizori)\s)mari\b/, () => { out.employees = { min: 250 }; out.notes.push("„Firme mari” = cel puțin 250 de angajați, din ultimul bilanț depus; firmele fără bilanț sunt excluse."); });
-    // "care firmă / care spital": one superlative entity; the noun stays for kinds and dims
-    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate)\b/)) {
+    // "care firmă / care spital": one superlative entity; the noun stays for kinds and dims. „cea mai riscantă firmă”,
+    // „cel mai mare spital” (F6c, plan §2.7): the adjective stays where it is (the signals' cue and the modifier read it), only the noun is taken.
+    const superlative = (h: { i: number; j: number; m: RegExpExecArray }, adjective: boolean) => {
       out.superlative = true;
-      const noun = h.m[1]!;
-      if (/^(firma|companie|societate)$/.test(noun)) { out.dimHint = "supplier"; c.take(h.i, h.j, "cue"); }
-      else if (/^(institutie|autoritate|primarie)$/.test(noun)) {
+      const noun = h.m[1]!, from = adjective ? h.j - 1 : h.i;
+      if (/^(firma|companie|societate)$/.test(noun)) { out.dimHint = "supplier"; c.take(from, h.j, "cue"); }
+      else if (/^(institutie|autoritate|primarie|client|clientul)$/.test(noun)) {
         out.dimHint = "authority";
-        c.take(h.i, h.j, "cue");
+        c.take(from, h.j, "cue");
         if (noun === "primarie") {
           out.askedTownHalls = true;
           out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); clasamentul cuprinde toate instituțiile.");
         }
       }
-      else { out.dimHint = "authority"; c.take(h.i, h.i + 1, "cue"); }
-    }
+      // The noun of a kind (a hospital, a school) stays free: it is the kind, which the rules read next.
+      else { out.dimHint = "authority"; if (!adjective) c.take(from, from + 1, "cue"); }
+    };
+    for (const h of c.all(/\b(?:care|ce)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate)\b/)) superlative(h, false);
+    for (const h of c.all(/\b(?:cel|cea)\s+mai\s+(?:riscant\w*|mare|bogat\w*|important\w*)\s+(institutie|firma|primarie|spital|scoala|companie|societate|autoritate|client|clientul)\b/)) superlative(h, true);
     for (const h of c.all(MODIFIER)) c.take(h.i, h.j, "modifier");
   }
 

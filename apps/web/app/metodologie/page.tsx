@@ -90,6 +90,12 @@ export default function MetodologiePage() {
           împreună; doar primăriile identificate sigur), consiliile județene între ele, primăriile de sector între ele, spitalele și școlile
           după tipul instituției, același județ și activitatea apropiată (între jumătate și dublul achizițiilor directe acceptate).
           Intră doar profilurile cu cel puțin 10 achiziții directe, iar comparația cere cel puțin 5 alți membri.</p>
+        <p id="cine-conduce"><strong>Cine conduce?</strong> După valoare, „Cine conduce?” arată primele trei locuri ale clasamentului
+          „Cine câștigă?”, cu partea din total a fiecăruia (valoare înregistrată, nu plăți; în contractele în asociere, cotele sunt egale).
+          Pe indicele de risc arată toate profilurile de la nivelul maxim, în ordinea valorii achizițiilor directe: indicele ia puține valori
+          (câte semnale din cele 4 ale unei firme sau 5 ale unei instituții), deci mai multe profiluri îl au deodată, și el nu le deosebește.
+          Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei societăți sau a unei
+          asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
       </section>
 
       <section className="section" id="acoperire">

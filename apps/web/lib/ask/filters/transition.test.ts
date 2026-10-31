@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { questionKey, transitionQuestion, type QuestionSpec } from "../question-ui";
-import { parseSpec } from "../spec";
+import { parseSpec, runnableError } from "../spec";
 import { BLOCK_FILTERS } from "./blocks";
 import { filterContext } from "./context";
 import { legacyConditions, presentConditions } from "./legacy-conditions";
@@ -63,6 +63,22 @@ describe("the axis of «Cine conduce?» is a lens (kit §5.43, plan §4.13)", ()
     // Without it, the buyer's kind and place are the sentence's, and both wait for the value axis.
     expect(choose(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { county: "Cluj", authorityKind: "comuna" } }), "rankBy", { filter: "rankBy", value: "risk" }).parked?.items.map((item) => item.id))
       .toEqual(["authorityKind", "county"]);
+  });
+
+  it("keeps the size of the firms on both axes (F6c: the index takes it), and parks the period and the domain beside it", () => {
+    const value = q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { maxEmployees: 0, seatCounty: "Cluj", cpvTerm: "medicamente", yearFrom: 2025, yearTo: 2025 } });
+    const risk = choose(value, "rankBy", { filter: "rankBy", value: "risk" });
+    expect(risk.spec.filters).toEqual({ maxEmployees: 0, seatCounty: "Cluj" });
+    expect(risk.notes).toEqual([]);
+    expect(risk.parked?.items.map((item) => item.id)).toEqual(["cpvTerm", "period"]);
+    // The size is on the row CÂȘTIGĂTORII on the index too, and the question runs.
+    expect(BLOCK_FILTERS.entity_card.rows(risk.spec, filterContext(risk.spec)).map((row) => [row.label, row.kind, row.chips.map((chip) => chip.id)])).toEqual([["Câștigătorii", "selection", ["employees"]]]);
+    expect(runnableError(risk.spec as never)).toBeNull();
+    // Back to the value axis brings everything back, the size included.
+    expect(questionKey(restoreParked(risk.spec, risk.parked!).spec)).toBe(questionKey(value));
+    // Institutions have no firm size of their own: on the index it is a link's chip, refused with the engine's words.
+    const institutions = q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { maxEmployees: 0 } });
+    expect(runnableError(institutions as never)).toMatch(/profiluri istorice/);
   });
 
   it("parks a link's chips the index refuses, and lets the value axis apply them again", () => {

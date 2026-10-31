@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { BarsResult, MixResult } from "../../../lib/ask/facet-parts";
+import type { BarsResult, MixResult, PodiumResult } from "../../../lib/ask/facet-parts";
 import type { NetworkFacts } from "../../../lib/ask/network-facts";
 import type { MapFacts } from "../../../lib/ask/map-facts";
 import { questionKey, type QuestionSpec } from "../../../lib/ask/question-ui";
@@ -15,19 +15,20 @@ import type { AskSpec } from "../../../lib/ask/spec";
  * applied question changes or the answer leaves; a fact read is kept in the
  * page for five minutes. A limit passed, a selection the marts stage will
  * precompute or an error: `none` (the screen says what it can without it).
+ * `podium` (F6c): the facts of "Cine conduce?" by value for the places `ids`.
  */
 
 export type AnswerFact<T> = { status: "loading" } | { status: "ready"; value: T } | { status: "none"; precompute?: boolean };
-type Part = "mix" | "bars" | "network" | "map";
-type Value<P extends Part> = P extends "mix" ? MixResult : P extends "bars" ? BarsResult : P extends "map" ? MapFacts : NetworkFacts;
+type Part = "mix" | "bars" | "network" | "map" | "podium";
+type Value<P extends Part> = P extends "mix" ? MixResult : P extends "bars" ? BarsResult : P extends "map" ? MapFacts : P extends "podium" ? PodiumResult : NetworkFacts;
 
 const KEPT_MS = 300_000;
-const kept = new Map<string, { value: MixResult | BarsResult | NetworkFacts | MapFacts; at: number }>();
+const kept = new Map<string, { value: MixResult | BarsResult | NetworkFacts | MapFacts | PodiumResult; at: number }>();
 /** Tests: forget the facts kept in the page. */
 export function forgetPageAnswerFacts(): void { kept.clear(); }
 
-export function useAnswerFact<P extends Part>(spec: AskSpec | null, part: P): AnswerFact<Value<P>> {
-  const key = spec ? `${part}|${questionKey(spec as unknown as QuestionSpec)}` : null;
+export function useAnswerFact<P extends Part>(spec: AskSpec | null, part: P, ids?: readonly string[]): AnswerFact<Value<P>> {
+  const key = spec ? `${part}|${ids?.join(",") ?? ""}|${questionKey(spec as unknown as QuestionSpec)}` : null;
   const known = (): AnswerFact<Value<P>> => {
     const hit = key ? kept.get(key) : undefined;
     return hit && Date.now() - hit.at <= KEPT_MS ? { status: "ready", value: hit.value as Value<P> } : key ? { status: "loading" } : { status: "none" };
@@ -41,7 +42,7 @@ export function useAnswerFact<P extends Part>(spec: AskSpec | null, part: P): An
     void fetch("/api/ask/facets", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ spec, part }),
+      body: JSON.stringify({ spec, part, ...(ids ? { ids } : {}) }),
       signal: controller.signal,
     }).then(async (r) => (await r.json().catch(() => null)) as ({ ok: boolean; precompute?: string } & Value<P>) | null).then((answer) => {
       if (controller.signal.aborted) return;

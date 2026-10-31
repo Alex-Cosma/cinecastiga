@@ -43,6 +43,6 @@ export default function AnswerRow({ name, place, facts = [], value, share, recor
 }
 
 /** The rows of an answer, as a list; `listRef` lets ListFoot focus the first new row. */
-export function AnswerList({ label, listRef, children }: { label: string; listRef?: Ref<HTMLDivElement>; children: ReactNode }) {
-  return <div ref={listRef} className="qb-alist" role="list" aria-label={label}>{children}</div>;
+export function AnswerList({ label, listRef, describedBy, children }: { label: string; listRef?: Ref<HTMLDivElement>; describedBy?: string; children: ReactNode }) {
+  return <div ref={listRef} className="qb-alist" role="list" aria-label={label} {...(describedBy ? { "aria-describedby": describedBy } : {})}>{children}</div>;
 }
