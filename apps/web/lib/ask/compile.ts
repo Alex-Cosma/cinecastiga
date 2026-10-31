@@ -342,6 +342,30 @@ export const TREND_2018_NOTE: Record<"all" | "da" | "contracts", string | null> 
  */
 export const TREND_NO_JIT = "set local jit = off";
 
+/** Whether a plan (EXPLAIN's JSON) reads a covering index of a transaction mart whole: an Index Only Scan with no Index Cond. */
+export function readsWholeMartIndex(plan: unknown): boolean {
+  const node = plan as { "Node Type"?: string; "Relation Name"?: string; "Index Cond"?: string; Plans?: unknown[] } | null;
+  if (!node || typeof node !== "object") return false;
+  if (node["Node Type"] === "Index Only Scan" && (node["Relation Name"] === "da_transactions" || node["Relation Name"] === "contract_transactions")
+    && !node["Index Cond"]) return true;
+  return (node.Plans ?? []).some(readsWholeMartIndex);
+}
+
+/**
+ * A live national grouping without a county (S6 review): once VACUUM has set the marts' visibility map (each night's
+ * transactions step), the production planner (random_page_cost 1.1) reads the county covering index whole,
+ * index-only, for a selection it does not narrow: fewer pages (163,000 against 611,000 for the direct acquisitions)
+ * but its 19.6M entries at about a third of the parallel sequential scan's rate (the 50,000–250,000 lei of 2025:
+ * 2.83 s against 1.44 s). The statement is planned first (costs only, a few ms); a plan that reads a mart's covering
+ * index whole runs with index-only scans off, for that statement alone. A narrowed one keeps its index.
+ */
+async function withoutWholeIndexScan<T>(s: DbSql, query: ReturnType<DbSql>): Promise<T> {
+  const [row] = (await s`explain (format json) ${query}`) as unknown as { "QUERY PLAN": { Plan: unknown }[] }[];
+  if (!readsWholeMartIndex(row?.["QUERY PLAN"]?.[0]?.Plan)) return (await query) as unknown as T;
+  await s.unsafe("set local enable_indexonlyscan = off");
+  try { return (await query) as unknown as T; } finally { await s.unsafe("set local enable_indexonlyscan to default"); }
+}
+
 /** The months a trend's answer counted and the data checkpoint it read them at; its sources send them back (runRows `months`). */
 export interface ExecutedWindow { months: MonthWindow; mode: MonthsMode; checkpoint: string | null }
 const monthsOf = (window: MonthsWindow | null): MonthsWindow => window ? { from: window.from, to: window.to, mode: window.mode } : { ...WHOLE_YEAR };
@@ -1771,9 +1795,11 @@ export async function runSpec(
             // would force a heap fetch per row, a full seq scan on big
             // counties), then attach display names for just the winners.
             const aggSort = sortKey === "count" ? s`n` : s`v`;
+            // Without a county, a plan reading the county index whole runs as a sequential scan (withoutWholeIndexScan).
+            const run = <T,>(query: ReturnType<DbSql>): Promise<T> => w.county ? query as unknown as Promise<T> : withoutWholeIndexScan<T>(s, query);
             if (keep) {
               // The selection grouped once: its totals over every firm, the band's over the firms kept.
-              const r = (await s`
+              const r = await run<BandRow[]>(s`
                 with g as (
                   select ${idCol} id, coalesce(sum(d.closing_value), 0) v, count(*) n
                   from ${txtAgg} d
@@ -1792,7 +1818,7 @@ export async function runSpec(
                 left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
                 group by t.id, t.v, t.n, t.tv, t.tn, t.te, t.gv, t.gn, t.ge
                 order by ${sortKey === "count" ? s`t.n` : s`t.v`} ${tableOpts.sort ? dir : s`desc`}, t.id
-              `) as unknown as BandRow[];
+              `);
               return {
                 block: "table",
                 rows: r.map((p) => ({ entityId: String(p.id), name: p.nm, county: p.co, value: Number(p.v), count: Number(p.n), population: null })),
@@ -1803,7 +1829,7 @@ export async function runSpec(
             // Window totals are evaluated after grouping and before the limit:
             // the whole ranking's value, records and entities, at no extra scan,
             // so the answer can say "% din total" and "Alte N firme".
-            const r = (await s`
+            const r = await run<{ id: string; nm: string; co: string | null; v: string; n: string; tv: string; tn: string; te: string }[]>(s`
               with topg as (
                 select ${idCol} id, coalesce(sum(d.closing_value), 0) v, count(*) n,
                        sum(coalesce(sum(d.closing_value), 0)) over () tv,
@@ -1821,7 +1847,7 @@ export async function runSpec(
               left join marts.entity_profile ep on ep.entity_id = t.id and ep.role = ${dim}
               group by t.id, t.v, t.n, t.tv, t.tn, t.te
               order by ${sortKey === "count" ? s`t.n` : s`t.v`} ${tableOpts.sort ? dir : s`desc`}, t.id
-            `) as unknown as { id: string; nm: string; co: string | null; v: string; n: string; tv: string; tn: string; te: string }[];
+            `);
             const first = r[0];
             return {
               block: "table",
