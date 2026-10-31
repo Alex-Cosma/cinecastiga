@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { inDaCode, SEARCH_LIST_CAP, searchCandidates, searchWords, type SearchLists } from "./source-search";
-import { budgetedRead, commonWordsSearch, searchBudgetReason, slowSearch, withSearchBudget } from "./compile";
+import {
+  inDaCode, likeAnywhere, SEARCH_LIST_CAP, searchCandidates, searchWords, storedSearchable, storedSearchCond, type SearchLists,
+} from "./source-search";
+import { broadSearch, budgetedRead, commonWordsSearch, searchBudgetReason, slowSearch, withSearchBudget } from "./compile";
 
 /*
  * „Caută în surse”, names first (S5 PRE-trend): the words, the forms a word can
@@ -99,5 +101,29 @@ describe("a search past its budget on a broad list (S5 review)", () => {
     expect(searchBudgetReason("s.r.l. bucuresti", { indexed: true })).toBe(slowSearch("s.r.l. bucuresti"));
     expect(slowSearch("srl bucuresti")).toBe("„srl bucuresti”: căutarea pe toată lista a durat prea mult. Încearcă din nou sau adaugă un cuvânt mai rar.");
     expect(searchBudgetReason("DA38380070", { indexed: false })).toBeNull();
+  });
+});
+
+describe("the stored text (S6)", () => {
+  it("reads only a text with three letters or digits in a row, which the trigram index narrows", () => {
+    for (const text of ["33600000", "da38380070", "s.r.l. bucuresti", "srl", "c20_"]) expect(storedSearchable(text), text).toBe(true);
+    for (const text of ["10", "-6", "a.b", "s r l", "", "ab_c"]) expect(storedSearchable(text), text).toBe(false);
+  });
+
+  it("is strpos as like: the text anywhere, with \\, % and _ written literally", () => {
+    expect(likeAnywhere("medicamente")).toBe("%medicamente%");
+    expect(likeAnywhere("10%_a\\b")).toBe("%10\\%\\_a\\\\b%");
+  });
+
+  it("joins the drawer's row to its stored key, a contract with its winner, within the selection's years", () => {
+    const { text, params } = render(storedSearchCond(fake, "33600000", [2024, 2025]));
+    expect(text).toBe("(d.src, d.ref_id, case when d.src = 'da' then 0::bigint else d.supplier_id end) in ( "
+      + "select s.src, s.ref_id, s.sid from marts.source_search s where s.t like $1 and s.y between $2 and $3)");
+    expect(params).toEqual(["%33600000%", 2024, 2025]);
+    expect(render(storedSearchCond(fake, "x1y", null)).text).toMatch(/where s\.t like \$1\)$/);
+  });
+
+  it("says a text found in too many records as such", () => {
+    expect(broadSearch("srl")).toBe("„srl”: textul apare în prea multe înregistrări. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.");
   });
 });

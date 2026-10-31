@@ -368,6 +368,7 @@ export function perfCases(): PerfCase[] {
     perfCase("sources:trend-2024-2025-all-search-after-answer", "sources", "„Toate” la firme, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
       all(years(2024, 2025), lens({ change: "all", months: "auto" })), { path: "rows", drawer: { search: "medicamente" }, afterAnswer: true, barMs: 2000 }),
     ...preTrendCases(),
+    ...storedSearchCases(),
     ...preSourcesCases(),
     ...preAnswersCases(),
     ...f3Cases(),
@@ -846,6 +847,33 @@ function preTrendCases(): PerfCase[] {
       all(years(2024, 2025), lens({ change: "up", months: "auto" })), search("medicamente")),
     perfCase("sources:trend-cluj-2024-2025-all-search", "sources", "„Toate” în Cluj, 2024 → 2025, căutare „medicamente”, după răspuns", "trend",
       all(set({ county: "Cluj" }), years(2024, 2025), every), search("medicamente")),
+  ];
+}
+
+/**
+ * S6 search-trigram: „Caută în surse” on the stored text (marts.source_search, after the night's build), for the texts
+ * no name narrows: a contract number, a code's fragment, a word in most firms' names, a word of a place with and
+ * without diacritics, on the national two years; a national ranking of every year (no years on the stored rows) and
+ * of two. The cases above (number, common words, code) are the same path.
+ */
+function storedSearchCases(): PerfCase[] {
+  const every = lens({ change: "all", months: "auto" });
+  const search = (text: string) => ({ path: "rows" as const, drawer: { search: text }, afterAnswer: true as const, barMs: 2000 as const });
+  return [
+    perfCase("sources:trend-2024-2025-all-search-contract-no-after-answer", "sources", "„Toate”, 2024 → 2025, căutare după nr. de contract „SG/3630”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("SG/3630")),
+    perfCase("sources:trend-2024-2025-all-search-code-part-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „da3110”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("da3110")),
+    perfCase("sources:trend-2024-2025-all-search-srl-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „srl”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("srl")),
+    perfCase("sources:trend-2024-2025-all-search-place-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „Târgu Mureș”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("Târgu Mureș")),
+    perfCase("sources:trend-2024-2025-all-search-place-plain-after-answer", "sources", "„Toate”, 2024 → 2025, căutare „targu mures”, după răspuns", "trend",
+      all(years(2024, 2025), every), search("targu mures")),
+    perfCase("sources:table-national-search-number", "sources", "Sursele clasamentului național, toți anii, căutare „33600000”", "table",
+      () => {}, search("33600000")),
+    perfCase("sources:table-national-2024-2025-search-number", "sources", "Sursele clasamentului național 2024–2025, căutare „33600000”", "table",
+      years(2024, 2025), search("33600000")),
   ];
 }
 

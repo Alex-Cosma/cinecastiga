@@ -55,7 +55,10 @@ import type { SankeyData } from "./sankey-shared";
 import { distributionData, distributionGroup } from "./distribution";
 import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 import { factCheckData } from "./fact-check";
-import { SEARCH_FEW_RECORDS, searchCandidates, searchLists, searchWords } from "./source-search";
+import {
+  SEARCH_FEW_RECORDS, searchCandidates, searchLists, searchWords, sourceSearchFresh, sourceSearchPresent, STORED_SEARCH_KEYS,
+  storedKeyCond, storedSearchable, storedSearchCond, storedSearchKeys, type SearchYears,
+} from "./source-search";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
 import { bareNational, nationalTotals, podiumOf, tiesOf } from "./entity-card";
 import { blankCard, PODIUM_PLACES, podiumPlaceIds, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
@@ -2446,6 +2449,9 @@ const SEARCH_BROAD_RECORDS = 200_000;
 const SEARCH_BUDGET_MS = 6000;
 export const commonWordsSearch = (search: string): string =>
   `„${search}”: cuvintele apar în prea multe nume pentru toată lista. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.`;
+/** A search on the stored text (S6) in too many records of the selection's years to count in time, or past the budget. */
+export const broadSearch = (search: string): string =>
+  `„${search}”: textul apare în prea multe înregistrări. Adaugă un cuvânt mai rar: un nume, un cod sau o localitate.`;
 /** A search narrowed by its names that ran past the budget: on a busy server too, so never „too many names”. */
 export const slowSearch = (search: string): string =>
   `„${search}”: căutarea pe toată lista a durat prea mult. Încearcă din nou sau adaugă un cuvânt mai rar.`;
@@ -2995,6 +3001,8 @@ export async function runRows(
   const words = search && !profile && !narrowed && !scope.county && !scope.counties && !scope.entityIds && !fixed && !own
     ? searchWords(search) : [];
   const keysForSearch = words.length > 0 && await yearKeysReady(sql);
+  // The stored text with its trigram index (S6, source-search.ts), once a build with this code ran; checked fresh below.
+  const storedText = words.length > 0 && storedSearchable(fold(search!)) && await sourceSearchPresent(sql);
   // A signal's records without a search, on their keys: the channel and the state are the mart's own, and a
   // profile's sources have no other condition (sourceWhere is `true`), so the totals and the first keys need no row.
   const flagKeyed = flagKeys && !search
@@ -3063,14 +3071,21 @@ export async function runRows(
       ? sql`d.finalization_date >= ${String(periodLo)} and d.finalization_date < ${String(periodHi + 1)}` : null;
     const candidates = words.length ? searchCandidates(s, words, await searchLists(s, words),
       { daCodesPlain: keysForSearch && await daCodesPlain(s), range: searchRange }) : null;
+    // A search the names do not narrow whole (a number, a code, a word in too many names: „s.r.l. bucuresti” read every
+    // record of București for a phrase none has) reads the stored text of the night's marts instead (S6): the records
+    // whose text holds it, on the trigram index, within the selection's years. A search each of whose words the names
+    // narrow keeps them (their indexes are bounded by the period: „medicamente” 0.6 s, against 1.5 s for its keys).
+    const searchYears: SearchYears = periodLo !== null && periodHi !== null ? [periodLo, periodHi] : null;
+    const stored = storedText && !(candidates?.indexed && candidates.every) && await sourceSearchFresh(s);
     // Today's condition only on a candidate (CASE keeps that order: on a scanned channel, the contracts, the planner
     // would read it first, on every row).
-    let localWhere = candidates
-      ? sql`${localOthers} and ${candidates.cond} and (case when ${candidates.cond} then ${searchCond!} else false end)` : localBase;
+    let localWhere = stored ? sql`${localOthers} and ${storedSearchCond(s, fold(search!), searchYears)}`
+      : candidates ? sql`${localOthers} and ${candidates.cond} and (case when ${candidates.cond} then ${searchCond!} else false end)` : localBase;
     // A search read on every direct acquisition (a code, a number) keeps the page's scan: walking the key for its few
-    // records read millions (a DA code: 9.2 s).
-    const daRange = keyBounded && candidates?.indexed !== false ? await daYearKeyRange(s, [yearA, yearB])
-      : periodKeyed && candidates?.indexed !== false
+    // records read millions (a DA code: 9.2 s). The stored text finds them on its index.
+    const scanned = !stored && candidates?.indexed === false;
+    const daRange = keyBounded && !scanned ? await daYearKeyRange(s, [yearA, yearB])
+      : periodKeyed && !scanned
         ? await daYearKeyRange(s, Array.from({ length: yearTo! - (yearFrom ?? minY) + 1 }, (_, i) => (yearFrom ?? minY) + i)) : null;
     const group = groupMembers ? await groupMembers(s) : null;
     const members = group ? memberList(group.members) : null;
@@ -3101,14 +3116,23 @@ export async function runRows(
     // figures keep the route's limit, and so does a search read on every row (searchBudgetReason). withSearchBudget
     // turns the budget's end into the drawer's reason.
     let searchDeadline: number | null = null;
-    const budgetReason = words.length && !opts.capture ? searchBudgetReason(search!, candidates) : null;
+    const budgetReason = words.length && !opts.capture ? stored ? broadSearch(search!) : searchBudgetReason(search!, candidates) : null;
     const budgeted = async <T,>(read: () => Promise<T>): Promise<T> => {
       if (budgetReason === null) return await read();
       searchDeadline ??= Date.now() + SEARCH_BUDGET_MS;
       await tx.unsafe(`set local statement_timeout = '${Math.max(500, searchDeadline - Date.now())}ms'`);
       try { return await budgetedRead(budgetReason, read); } finally { await tx.unsafe(`set local statement_timeout = '${STATEMENT_TIMEOUT}'`).catch(() => {}); }
     };
-    if (words.length && !candidates?.indexed) {
+    // The stored text's own keys, of every record of the selection's years that holds the text, read once: at most
+    // STORED_SEARCH_KEYS, the totals and the page read only them, by key (each read joining the stored rows again cost
+    // its scan once more: „33600000” 6.5 s, past the budget). More: on a list of those years (not a group's members or
+    // a network's partners) the text is in too many of its records, said at once („srl”: 6.2 s to the budget's end);
+    // a group's search joins them, within the budget.
+    if (stored) {
+      const keys = await budgeted(() => storedSearchKeys(s, fold(search!), searchYears, STORED_SEARCH_KEYS + 1));
+      if (keys.length <= STORED_SEARCH_KEYS) localWhere = sql`${localOthers} and ${storedKeyCond(s, keys, searchCond!)}`;
+      else if (!members && !partnerIds) return { error: broadSearch(search!) };
+    } else if (words.length && !candidates?.indexed) {
       const keys = (await budgeted(() => readEvidenceQuery(s`
         select d.src, d.ref_id::text ref from ${txt} d where ${sourceWhere} and ${localWhere} limit ${SEARCH_FEW_RECORDS + 1}
       `, opts.signal))) as unknown as { src: "da" | "contracts"; ref: string }[];
@@ -3156,7 +3180,7 @@ export async function runRows(
     // with what to add, instead of a timeout (S5 review; a stored search text with a trigram index is PRECOMPUTE.md's).
     // A list whose size is not known yet (no rollup totals) keeps its search, within the budget below.
     const broad = whole ? whole.reduce((n, r) => n + Number(r.n), 0) > SEARCH_BROAD_RECORDS : false;
-    if (words.length && !candidates && broad) return { error: commonWordsSearch(search!) };
+    if (words.length && !candidates && !stored && broad) return { error: commonWordsSearch(search!) };
     // With a search the list's figures and the found records are counted apart when the list's are known or the search
     // reads names first: the found ones over the candidates of its words, the list without reading the search on each
     // of its records (national 2024–2025: 10 s in one pass). A narrow selection keeps its one pass.

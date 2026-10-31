@@ -1,10 +1,10 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { buildAskRollups, createDb, type DbSql } from "@seap/db";
+import { buildAskRollups, buildSourceSearch, createDb, type DbSql } from "@seap/db";
 import { runRows } from "./compile";
 import { forgetMartColumns } from "./mart-columns";
 import { fold } from "./predicates";
 import { forgetRollupsReady, yearKeysReady } from "./rollups";
-import { SEARCH_LIST_CAP } from "./source-search";
+import { forgetSourceSearch, SEARCH_LIST_CAP, sourceSearchFresh, sourceSearchPresent } from "./source-search";
 import type { AskSpec } from "./spec";
 import { testDatabaseUrl, withAskFixture } from "./test-fixture";
 
@@ -21,7 +21,7 @@ import { testDatabaseUrl, withAskFixture } from "./test-fixture";
 
 const url = testDatabaseUrl("PRE-trend search fixtures");
 const connection = url ? createDb(url, { max: 1 }) : null;
-afterAll(async () => { forgetRollupsReady(); forgetMartColumns(); await connection?.sql.end(); });
+afterAll(async () => { forgetRollupsReady(); forgetMartColumns(); forgetSourceSearch(); await connection?.sql.end(); });
 
 /**
  * Institutions 1 (Cluj), 2 (Iași, with diacritics in its name), firms 10–13, one recorded supplier equal to its
@@ -88,6 +88,8 @@ async function today(q: DbSql, where: Fragment, search: string) {
 const SEARCHES = [
   "alfa", "ALFA srl", "srl produse", "medicamente", "spitalul judetean", "Spitalul Județean Iași", "iasi", "IAȘI", "farmaceutice",
   "33600000", "336", "-6", "da101", "DA1", "a10", "101", "10", "c202", "nr. 12/2025", "farmacie", "cluj srl", "srl", "srl cluj", "zzz", "unu   alfa",
+  // S6, the stored text: a phrase over two fields, LIKE's own characters written literally, a code's fragment.
+  "srl produse farmaceutice", "s.r.l.", "c20_", "da10%", "0000-6", "ceutice 33600",
 ];
 
 const trendAll: AskSpec = { block: "trend", measure: "value", dim: "supplier", filters: { yearFrom: 2024, yearTo: 2025 } };
@@ -96,10 +98,14 @@ const ranking: AskSpec = { block: "table", measure: "value", dim: "supplier", fi
 describe.runIf(Boolean(connection))("„Caută în surse” by names first (dedicated rollback fixture)", () => {
   it("finds today's records, totals and page on a national trend's „Toate” and a national ranking, before and after the build", async () => {
     await withAskFixture(connection!.sql, "pre_trend_search", load, async (q) => {
-      for (const built of [false, true]) {
-        if (built) await buildAskRollups(q);
-        forgetRollupsReady();
+      // Before the nightly build, after it, then with the stored text (S6): the same records every time.
+      for (const stage of ["before", "built", "stored"] as const) {
+        const built = stage !== "before";
+        if (stage === "built") await buildAskRollups(q);
+        if (stage === "stored") await buildSourceSearch(q);
+        forgetRollupsReady(); forgetSourceSearch();
         expect(await yearKeysReady(q)).toBe(built);
+        expect([stage, await sourceSearchPresent(q) && await sourceSearchFresh(q)]).toEqual([stage, stage === "stored"]);
         for (const [name, spec] of [["trend", trendAll], ["ranking", ranking]] as const) {
           const selection = (spec.block === "trend"
             ? q`substr(d.finalization_date, 1, 4) in ('2024', '2025') and d.supplier_id is not null`
@@ -110,7 +116,7 @@ describe.runIf(Boolean(connection))("„Caută în surse” by names first (dedi
             const want = await today(q, selection, search);
             const got = await runRows(q, spec, {}, 0, { limit: 100, search });
             if ("error" in got) throw new Error(got.error);
-            const at = [built, name, search];
+            const at = [stage, name, search];
             expect([...at, got.total, Number(got.value)]).toEqual([...at, want.count, want.value]);
             expect([...at, got.rows.map((r) => `${r.src}:${r.refId}:${r.supplierId ?? "-"}`)]).toEqual([...at, want.keys]);
             // The whole list's figures stay those of the selection.
@@ -121,8 +127,17 @@ describe.runIf(Boolean(connection))("„Caută în surse” by names first (dedi
         const want = await today(q, q`substr(d.finalization_date, 1, 4) in ('2024', '2025') and d.supplier_id is not null` as unknown as Fragment, "");
         const page = await runRows(q, trendAll, {}, 0, { limit: 100 });
         if ("error" in page) throw new Error(page.error);
-        expect([built, page.rows.map((r) => `${r.src}:${r.refId}:${r.supplierId ?? "-"}`)]).toEqual([built, want.keys]);
+        expect([stage, page.rows.map((r) => `${r.src}:${r.refId}:${r.supplierId ?? "-"}`)]).toEqual([stage, want.keys]);
       }
+      // A code no name narrows is read on the stored text: without its row there, it is not found ...
+      const code = async () => { const got = await runRows(q, trendAll, {}, 0, { limit: 100, search: "da102" }); if ("error" in got) throw new Error(got.error); return got.total; };
+      expect(await code()).toBe(1);
+      await q`delete from marts.source_search where src = 'da' and ref_id = 102`;
+      expect(await code()).toBe(0);
+      // ... and a state naming another load of the marts (the next night's) sends it back to names first, as today.
+      await q`update marts.source_search_state set da_node = 0`;
+      expect(await sourceSearchFresh(q)).toBe(false);
+      expect(await code()).toBe(1);
     });
   });
 });

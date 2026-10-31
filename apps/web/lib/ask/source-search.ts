@@ -27,6 +27,93 @@ type Fragment = ReturnType<DbSql>;
  * "srl") narrows nothing and is left to the recheck.
  */
 
+/**
+ * The stored text (S6; owner, 30 October 2026): a search no name narrows (a
+ * number fragment, a record code, only common words) read today's condition
+ * on every record of the list (5 s for „33600000” on a national trend's two
+ * years; „s.r.l. bucuresti” past the budget). marts.source_search holds that
+ * folded text once per record, with a trigram index (packages/db
+ * source-search-text.ts, built after the site reopens each night): the
+ * search is `t like '%text%'`, today's strpos on the same bytes, so the
+ * records found are today's. A search the names narrow keeps them (faster:
+ * their id and code indexes are bounded by the period). Until the night's
+ * build is in, or whenever its state does not name the marts read, the
+ * names-first path above is the one.
+ */
+let storedPresent: { ok: boolean; at: number } | null = null;
+/** The state table exists (a build with this code ran once); cached ten minutes, as the other probes. */
+export async function sourceSearchPresent(sql: DbSql): Promise<boolean> {
+  if (storedPresent && Date.now() - storedPresent.at < 600_000) return storedPresent.ok;
+  const [row] = (await sql`select to_regclass('marts.source_search_state') is not null ok`) as unknown as { ok: boolean }[];
+  storedPresent = { ok: Boolean(row?.ok), at: Date.now() };
+  return storedPresent.ok;
+}
+/** Tests: probe again. */
+export function forgetSourceSearch(): void { storedPresent = null; }
+
+/**
+ * In the caller's snapshot, the stored text is that of the marts read: its
+ * state names this source_search (a reader older than a swap sees the old
+ * state and is refused) and the file nodes of both marts (each night's load
+ * truncates them, so a build of an earlier night is refused). Per request,
+ * never cached.
+ */
+export async function sourceSearchFresh(sql: DbSql): Promise<boolean> {
+  const [row] = (await sql`
+    select exists (
+      select 1 from marts.source_search_state st
+      where st.search_rel = to_regclass('marts.source_search')
+        and st.da_node = pg_relation_filenode('marts.da_transactions')
+        and st.ctx_node = pg_relation_filenode('marts.contract_transactions')
+    ) ok
+  `) as unknown as { ok: boolean }[];
+  return Boolean(row?.ok);
+}
+
+/** A folded text the trigram index narrows: three letters or digits in a row hold a trigram of every match (else it reads the whole index). */
+export const storedSearchable = (folded: string): boolean => /[a-z0-9]{3}/.test(folded);
+
+/** `like` of the folded text anywhere, as strpos reads it: \, % and _ written literally. */
+export const likeAnywhere = (folded: string): string => `%${folded.replace(/[\\%_]/g, "\\$&")}%`;
+
+/** The years of a selection on the stored rows (y, the BRIN): a range holding every record of it, or none. */
+export type SearchYears = readonly [number, number] | null;
+
+const storedRows = (sql: DbSql, folded: string, years: SearchYears): Fragment => sql`
+  marts.source_search s where s.t like ${likeAnywhere(folded)}${years ? sql` and s.y between ${years[0]} and ${years[1]}` : sql``}`;
+
+/** The first `limit` stored records the text is in (src, key), for a search that finds few. */
+export async function storedSearchKeys(sql: DbSql, folded: string, years: SearchYears, limit: number): Promise<{ src: "da" | "contracts"; ref: string }[]> {
+  return (await sql`select s.src, s.ref_id::text ref from ${storedRows(sql, folded, years)} limit ${limit}`) as unknown as { src: "da" | "contracts"; ref: string }[];
+}
+
+/**
+ * The drawer's rows `d` (the union, or one mart with its constant src) whose
+ * stored text holds the folded search: a semi-join on the row's key (a
+ * contract's winner too, 0 on a direct acquisition), at the top of the
+ * statement's conditions so the planner joins it.
+ */
+export function storedSearchCond(sql: DbSql, folded: string, years: SearchYears): Fragment {
+  return sql`(d.src, d.ref_id, case when d.src = 'da' then 0::bigint else d.supplier_id end) in (
+    select s.src, s.ref_id, s.sid from ${storedRows(sql, folded, years)})`;
+}
+
+/**
+ * The stored keys of a search that finds at most this many records in the selection's years: read once, then the
+ * totals and the page read only them, by key (each read joining the stored rows again: ~0.5 s for 60,000 records,
+ * 2.5 s for a phrase of common words). More, and each read joins them, within the search's budget.
+ */
+export const STORED_SEARCH_KEYS = 200_000;
+
+/**
+ * The drawer's rows `d` among stored keys: a direct acquisition by its key alone; a contract's key holds each of its
+ * winners, so today's condition (`recheck`) checks its few rows.
+ */
+export function storedKeyCond(sql: DbSql, keys: readonly { src: "da" | "contracts"; ref: string }[], recheck: Fragment): Fragment {
+  const of = (src: "da" | "contracts") => sql.array([...new Set(keys.filter((k) => k.src === src).map((k) => k.ref))]);
+  return sql`((d.src = 'da' and d.ref_id = any(${of("da")}::bigint[])) or (d.src = 'contracts' and d.ref_id = any(${of("contracts")}::bigint[]) and ${recheck}))`;
+}
+
 /** Ids, codes or counties one word may list before it stops narrowing: more would cost more than the rows they find. */
 export const SEARCH_LIST_CAP = 5000;
 
@@ -73,15 +160,17 @@ export async function searchLists(sql: DbSql, words: readonly string[]): Promise
  * `indexed`: some word finds its direct acquisitions on indexes alone; else
  * every direct acquisition of the selection is read (a code, a number), and a
  * page should not walk the primary key looking for them (one record: 9.2 s).
+ * `every`: each word narrows (none lists too many names); else the candidates
+ * are those of the rarer words alone, rechecked against the whole text.
  */
 export function searchCandidates(sql: DbSql, words: readonly string[], lists: readonly SearchLists[],
-  o: { daCodesPlain: boolean; range: Fragment | null }): { cond: Fragment; indexed: boolean } | null {
+  o: { daCodesPlain: boolean; range: Fragment | null }): { cond: Fragment; indexed: boolean; every: boolean } | null {
   const conds: Fragment[] = [];
-  let indexed = false;
+  let indexed = false, every = true;
   words.forEach((word, i) => {
     // A word without its lists, or listing too many, narrows nothing: the recheck alone reads it.
     const list = lists[i];
-    if (!list || list.ids.length > SEARCH_LIST_CAP || list.codes.length > SEARCH_LIST_CAP) return;
+    if (!list || list.ids.length > SEARCH_LIST_CAP || list.codes.length > SEARCH_LIST_CAP) { every = false; return; }
     const parts: Fragment[] = [];
     const within = o.range ? sql` and ${o.range}` : sql``;
     if (list.ids.length) {
@@ -99,5 +188,5 @@ export function searchCandidates(sql: DbSql, words: readonly string[], lists: re
     parts.push(sql`(d.src = 'contracts' and strpos(lower(unaccent(d.da_code)), ${word}) > 0)`);
     conds.push(sql`(${parts.reduce((a, b) => sql`${a} or ${b}`)})`);
   });
-  return conds.length ? { cond: conds.reduce((a, b) => sql`${a} and ${b}`), indexed } : null;
+  return conds.length ? { cond: conds.reduce((a, b) => sql`${a} and ${b}`), indexed, every } : null;
 }
