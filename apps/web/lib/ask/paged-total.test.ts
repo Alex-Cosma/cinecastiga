@@ -56,7 +56,8 @@ describe("paged ranking total", () => {
     const data = await table(db.sql, spec, opts, 2);
     expect(data).toMatchObject({ total: 23, page: 2, pageSize: TABLE_PAGE_SIZE });
     expect(db.statements.filter((s) => s.includes("count(distinct"))).toEqual([]);
-    expect(db.statements.filter((s) => s.includes("count(*) over ()"))).toHaveLength(1);
+    // A national ranking is planned first (withoutWholeIndexScan: an EXPLAIN, never run): one statement runs.
+    expect(db.statements.filter((s) => s.includes("count(*) over ()") && !s.startsWith("explain"))).toHaveLength(1);
   });
 
   it.each(RANKINGS)("%s: a page past the end still states the total", async (_label, spec, opts) => {
