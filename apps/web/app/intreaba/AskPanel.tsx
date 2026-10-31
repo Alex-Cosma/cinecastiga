@@ -18,6 +18,7 @@ import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import { employeesWords } from "@/lib/ask/filters/words";
+import { LEADER_MIN_DAS } from "@/lib/ask/entity-card-shared";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -165,6 +166,9 @@ function sourceCount(data: BlockData, applied?: AskSpec): number | null {
       return data.counties.reduce((n, r) => n + r.count, 0);
     case "breakdown":
       return data.slices.reduce((n, r) => n + r.count, 0) + data.other.count;
+    // entity_card-2 (F6c): the sources are place 1's records by value, the tied profiles' on the index (runRows).
+    case "entity_card":
+      return data.ties ? data.ties.rows.reduce((n, r) => n + r.count, 0) : data.podium ? data.card.count : null;
     default:
       return null; // A displayed top N is never the full source population.
   }
@@ -1081,7 +1085,8 @@ export default function AskPanel({
                 )}
               </div>
               <div className="cq-answer-actions">
-                <button
+                {/* G2: an empty answer has no records to open; its relaxations are below. */}
+                {!empty && <button
                   type="button"
                   className="cq-source-main"
                   onClick={() => openEvidence()}
@@ -1090,7 +1095,7 @@ export default function AskPanel({
                   {count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
-                </button>
+                </button>}
                 <button
                   type="button"
                   className="cq-share"
@@ -1239,7 +1244,7 @@ export default function AskPanel({
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
               <EmptyState
-                message="Nicio înregistrare pentru această întrebare."
+                message={data.block === "entity_card" ? isProfile ? `Niciun profil cu cel puțin ${LEADER_MIN_DAS} de achiziții directe aici.` : "Nicio înregistrare aici." : "Nicio înregistrare pentru această întrebare."}
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               />
@@ -1359,7 +1364,7 @@ export default function AskPanel({
                   onList={(list) => applyNetwork({ list })} onOrder={(order) => applyNetwork({ order })} onSince={applyNetworkSince} />
               )}
               {data.block === "entity_card" && (
-                <EntityCardBlock card={data.card} historical={isProfile} spec={applied} />
+                <EntityCardBlock data={data} historical={isProfile} spec={applied} conditions={totalWords} />
               )}
               {data.block === "fact_check" && (
                 <FactCheckBlock fact={data.fact} spec={applied} onWider={runWider} />
@@ -1378,7 +1383,7 @@ export default function AskPanel({
             </div>}
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
-            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && (
+            {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && data.block !== "entity_card" && (
               <div className="qb cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}

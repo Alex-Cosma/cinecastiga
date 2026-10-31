@@ -11,7 +11,7 @@ import { isHistoricalProfile } from "./population";
  * a count ("32,0% · 88"). Plain TypeScript, no SQL: lib/ask/facets.ts counts.
  */
 
-export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "winners", "locate", "mix", "bars", "pair", "compare-peers", "network", "rows", "map"] as const;
+export const FACET_PARTS = ["channel", "procedure", "domain", "size", "kind", "county", "seat", "employees", "years", "winners", "locate", "mix", "bars", "pair", "compare-peers", "network", "rows", "map", "podium"] as const;
 export type FacetPart = (typeof FACET_PARTS)[number];
 /**
  * The parts that count a window's options; `locate` finds an entity's place in an answer ("Unde e o firmă?"),
@@ -21,9 +21,10 @@ export type FacetPart = (typeof FACET_PARTS)[number];
  * „Toți” on one channel or in a period was answered from the records it bounds (lib/ask/network-facts.ts).
  * F5: `winners` counts the ranked winners' chips (WINNERS_OPTIONS), `rows` reads the facts of the rows shown
  * (lib/ask/winners.ts rankedFacts). `map`: the county facts of a map (lib/ask/map-facts.ts): the seat split, the
- * largest buyer and record, „Cota firmei”.
+ * largest buyer and record, „Cota firmei”. `podium`: the facts of "Cine conduce?" by value for places 1–3 (F6c,
+ * lib/ask/answer-facts.ts).
  */
-export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network" | "rows" | "map">;
+export type CountPart = Exclude<FacetPart, "locate" | "mix" | "bars" | "pair" | "compare-peers" | "network" | "rows" | "map" | "podium">;
 export const isFacetPart = (value: unknown): value is FacetPart => (FACET_PARTS as readonly unknown[]).includes(value);
 
 /**
@@ -214,7 +215,7 @@ function ownKeys(spec: { block: string; dim?: string; rankBy?: string }, part: C
  * contracts. `locate` keeps the question: it finds a place in its answer.
  */
 export function facetSpec<T extends { block: string; dataset?: string; dim?: string; rankBy?: string; filters: object }>(spec: T, part: FacetPart): T {
-  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network" || part === "rows" || part === "map") return spec;
+  if (part === "locate" || part === "mix" || part === "bars" || part === "pair" || part === "compare-peers" || part === "network" || part === "rows" || part === "map" || part === "podium") return spec;
   const filters = { ...spec.filters } as Record<string, unknown>;
   for (const key of ownKeys(spec, part)) delete filters[key];
   const out = { ...spec, filters } as T;
@@ -238,3 +239,13 @@ export function facetCountText(count: { n: number; share: number }): string {
 export const facetTotalText = (counts: Pick<FacetCounts, "total">): string => formatInt(counts.total.n);
 /** While the counts load (kit, final table §5: „până atunci „…””); on a timeout or an error the options stay without numbers. */
 export const FACET_PENDING = "…";
+
+/** F6c: the facts of "Cine conduce?" by value for its places (answer-facts.ts podiumFacts), asked once the podium is drawn. */
+export interface PodiumResult {
+  part: "podium";
+  places: import("./entity-card-shared").PodiumFact[];
+  /** The latest balance-sheet year of the firms' profiles: what a place's filing is old against (never the wall clock); null without one. */
+  balanceYear: number | null;
+  checkpoint: string | null;
+  tookMs: number;
+}

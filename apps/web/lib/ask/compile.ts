@@ -53,6 +53,8 @@ import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
 import { factCheckData } from "./fact-check";
 import { SEARCH_FEW_RECORDS, searchCandidates, searchLists, searchWords } from "./source-search";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
+import { bareNational, nationalTotals, podiumOf, tiesOf } from "./entity-card";
+import { blankCard, PODIUM_PLACES, podiumPlaceIds, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -79,6 +81,9 @@ export const CONTRACT_CAP_CAVEAT =
 const DA_ACCEPTED_CAVEAT =
   "Doar achizițiile directe acceptate («Ofertă acceptată»); cele refuzate sau expirate (~6%) sunt excluse. Acceptarea nu dovedește plata.";
 const STATEMENT_TIMEOUT = "20s";
+/** A ranking of firms under a band of CÂȘTIGĂTORII: its denominator, in „Cum am calculat”; the podium's is the band's (F6c). */
+const RANKED_BAND_TOTALS = "totalul și „% din total” sunt ale întregii selecții";
+const PODIUM_BAND_TOTALS = "„% din categorie” este din valoarea firmelor din categorie; totalul întregii selecții e arătat alături";
 
 export interface TableRow {
   entityId: string | null;
@@ -285,7 +290,10 @@ export type BlockData =
   // first 14 nodes) is read by ResultComparison as plain data.
   | SankeyData
   | NetworkData
-  | { block: "entity_card"; card: EntityCardData }
+  // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3 and the total), on the index the group at the top
+  // (every profile at the best level). `card` stays the first of them; absent from answers stored before entity_card-2.
+  // `empty`: no firm or institution in the selection (G2: the answer offers its relaxations, it is not an error); `card` is blank then.
+  | { block: "entity_card"; card: EntityCardData; podium?: Podium; ties?: Ties; empty?: true }
   | { block: "fact_check"; fact: FactCheckData }
   // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
   // the first N of every group, the composition, the group noun and the facts of the shown rows (trend-partition.ts).
@@ -832,6 +840,27 @@ function trendGrouping(s: DbSql, o: Parameters<typeof trendGroupedInput>[1]): { 
   };
 }
 
+/**
+ * „Cine conduce?” by value: the podium's places kept per marts build (the trend groups' stamp, group-ids.ts) for its
+ * source drawer, so opening, paging or narrowing the sources does not rank the selection again (~1,5 s live at
+ * „medicamente”, 2025). Written by the answer and by the drawer; a miss ranks again. Never taken from the client.
+ */
+const podiumsKept = new Map<string, { places: string[]; at: number }>();
+const PODIUMS_KEPT = 200;
+const PODIUM_TTL_MS = 10 * 60_000;
+/** Tests and ask-perf: forget the kept podiums. */
+export function forgetPodiums(): void { podiumsKept.clear(); }
+const podiumKey = (stamp: string, spec: AskSpec, grounding: Grounding): string => JSON.stringify([stamp, { ...spec, measure: "value" }, grounding]);
+function keepPodium(key: string, places: string[]): void {
+  podiumsKept.delete(key);
+  podiumsKept.set(key, { places, at: Date.now() });
+  for (const oldest of podiumsKept.keys()) { if (podiumsKept.size <= PODIUMS_KEPT) break; podiumsKept.delete(oldest); }
+}
+function keptPodium(key: string): string[] | null {
+  const hit = podiumsKept.get(key);
+  return hit && Date.now() - hit.at <= PODIUM_TTL_MS ? hit.places : null;
+}
+
 export async function runSpec(
   sql: DbSql,
   spec: AskSpec,
@@ -846,15 +875,28 @@ export async function runSpec(
   ({spec,grounding}=await canonicalAskIdentities(sql,spec,grounding));
   // Value superlatives share the transaction ranking, including both streams,
   // its filters, allocation rules and deterministic tie break. CRI stays historical.
+  // entity_card-2 (F6c): the podium is the same ranking stopped at place 3, with the selection's total, which the
+  // precomputed national ranking does not carry (agg_national and the profiles give it).
   if (spec.block === "entity_card" && spec.rankBy === "value") {
-    const ranked = await runSpec(sql, { ...retarget(spec, "table"), measure: "value", topN: 1 }, grounding);
+    const ranked = await runSpec(sql, { ...retarget(spec, "table"), measure: "value", topN: PODIUM_PLACES }, grounding);
     if ("error" in ranked) return ranked;
-    const winner = ranked.data.block === "table" ? ranked.data.rows[0] : undefined;
-    if (!winner?.entityId) return { error: "Niciun rezultat pentru aceste filtre.", caveats: ranked.caveats };
-    return { ...ranked, data: { block: "entity_card", card: {
-      ...winner, entityId: winner.entityId, role: spec.dim === "supplier" ? "supplier" : "authority",
-      cri: null, nFlags: 0, flags: [],
-    } } };
+    const table = ranked.data.block === "table" ? ranked.data : undefined;
+    const places = (table?.rows ?? []).flatMap((row) => row.entityId ? [{ ...row, entityId: row.entityId }] : []);
+    const winner = places[0];
+    const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
+    if (!winner) return { ...ranked, data: { block: "entity_card", card: blankCard(role), empty: true } };
+    const totals = table?.totals ?? (bareNational(spec) ? await nationalTotals(sql, role) : null);
+    const podium = podiumOf(places, totals, table?.group);
+    const stamp = await trendCacheStamp(sql);
+    if (stamp) keepPodium(podiumKey(stamp, spec, grounding), podiumPlaceIds({ card: winner, podium }));
+    // Under a band the podium's shares are the category's (owner decision entity_card 4), not the selection's as the
+    // ranking's own text says: „Cum am calculat” says the podium's.
+    const displaySql = podium.selection ? ranked.displaySql.replace(RANKED_BAND_TOTALS, PODIUM_BAND_TOTALS) : ranked.displaySql;
+    return { ...ranked, displaySql, data: {
+      block: "entity_card",
+      card: { ...winner, role, cri: null, nFlags: 0, flags: [] },
+      podium,
+    } };
   }
   const caveats: string[] = [];
   const started = Date.now();
@@ -1212,8 +1254,9 @@ export async function runSpec(
     ...(rankedMain ? ["doar firmele al căror principal client public e instituția aleasă (cel puțin jumătate din valoare, toată arhiva)"] : []),
     ...(rankedDominant ? ["doar instituțiile la care cea mai mare firmă are cel puțin jumătate din valoare, din cel puțin 3 înregistrări"] : []),
   ];
+  // The podium of "Cine conduce?" replaces RANKED_BAND_TOTALS with its own denominator (F6c): keep the constant here.
   const displaySql = ranked
-    ? `${buildDisplaySql(spec, wSel)}\n-- lista: ${listWords.join("; ")}; totalul și „% din total” sunt ale întregii selecții`
+    ? `${buildDisplaySql(spec, wSel)}\n-- lista: ${listWords.join("; ")}; ${RANKED_BAND_TOTALS}`
     // F4: P is read in the answer's transaction (case "compare"), after this text: its rule in words.
     : `${buildDisplaySql(spec, w)}${asksSharedPartners(spec, w) ? "\n-- doar clienții comuni: authority_id în instituțiile care au cumpărat de la ambele firme în această selecție (pre-pasul P)" : ""}`;
   // The map answers both lenses from the same rows (value and records per county): the strip switches without a query.
@@ -2118,49 +2161,30 @@ export async function runSpec(
         }
 
         case "entity_card": {
+          // The index (entity_card-2, F6c): the group at the top, not one name chosen by value among the tied.
           const role = spec.dim === "supplier" ? ("supplier" as const) : ("authority" as const);
           const minDas = profileMinDas(spec.block);
-          const order =
-            (spec.rankBy ?? "risk") === "risk"
-              ? s`ef.cri desc nulls last, ef.total_ron desc nulls last, ef.entity_id`
-              : s`ef.total_ron desc nulls last, ef.entity_id`;
-          const r = (await s`
-            select ef.entity_id, ef.name_display, ${profileCounty(s, role)} county, ef.role, ef.n_das, ef.total_ron,
-                   ef.cri, ef.n_flags, ef.flags
-            from marts.entity_flags ef
-            where ${efWhere(role, minDas)}
-            order by ${order}
-            limit 1
-          `) as unknown as {
-            entity_id: string;
-            name_display: string | null;
-            county: string | null;
-            role: string;
-            n_das: number;
-            total_ron: string | null;
-            cri: string | null;
-            n_flags: number;
-            flags: string[] | null;
-          }[];
-          if (r.length === 0) return { error: "Niciun rezultat pentru aceste filtre." };
-          const e = r[0]!;
+          const ties = await tiesOf(s, { role, where: efWhere(role, minDas), county: profileCounty(s, role) });
+          const e = ties?.rows[0];
+          if (!ties || !e) return { block: "entity_card", card: blankCard(role), empty: true };
           const cardPopulation = role === "authority"
-            ? (await readPerCapitaPopulations(s)).byEntity.get(String(e.entity_id)) ?? null : null;
+            ? (await readPerCapitaPopulations(s)).byEntity.get(e.entityId) ?? null : null;
           if (cardPopulation !== null) caveats.push(POPULATION_CARD_NOTE);
           return {
             block: "entity_card",
             card: {
-              entityId: String(e.entity_id),
-              name: e.name_display ?? "?",
+              entityId: e.entityId,
+              name: e.name,
               county: e.county,
-              role: e.role,
-              value: Number(e.total_ron ?? 0),
-              count: Number(e.n_das),
-              cri: e.cri === null ? null : Number(e.cri),
-              nFlags: Number(e.n_flags),
-              flags: e.flags ?? [],
+              role,
+              value: e.value,
+              count: e.count,
+              cri: ties.level,
+              nFlags: e.nFlags,
+              flags: e.flags,
               population: cardPopulation,
             },
+            ties,
           };
         }
 
@@ -2563,15 +2587,26 @@ export async function runRows(
   const profile = isHistoricalProfile(spec);
   // Resolve the winner from the original population before any drawer filters.
   // Intersect it below, so a caller cannot substitute a different entity.
-  let valueWinner: string | null = null;
+  // entity_card-2 (F6c): the podium's places 2 and 3 have their own records; a scope naming places of the podium
+  // narrows to them, any other id is refused (the podium is recomputed here or kept by the server for this build,
+  // never taken from the client).
+  let valueWinner: string[] | null = null;
   if (spec.block === "entity_card" && spec.rankBy === "value") {
-    const result = await runSpec(sql, spec, grounding);
-    opts.signal?.throwIfAborted();
-    if ("error" in result) return { error: result.error };
-    if (result.data.block !== "entity_card") return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
-    valueWinner = result.data.card.entityId;
+    const stamp = await trendCacheStamp(sql);
+    let kept = stamp ? keptPodium(podiumKey(stamp, spec, grounding)) : null;
+    if (!kept) {
+      const result = await runSpec(sql, spec, grounding);
+      opts.signal?.throwIfAborted();
+      if ("error" in result) return { error: result.error };
+      if (result.data.block !== "entity_card" || result.data.empty) return { error: "Nu am putut identifica entitatea cu valoarea maximă." };
+      kept = podiumPlaceIds(result.data);
+    }
+    const places = kept;
     if (scope.role && scope.role !== (spec.dim === "supplier" ? "supplier" : "authority"))
       return { error: "Rolul selectat nu aparține entității din răspuns." };
+    if (scope.entityIds && !scope.entityIds.every((id) => places.includes(id)))
+      return { error: "Entitatea selectată nu este pe podiumul răspunsului." };
+    valueWinner = scope.entityIds ? [...scope.entityIds] : [places[0]!];
   }
 
   if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
@@ -2666,8 +2701,12 @@ export async function runRows(
     : sql`ef.total_ron desc nulls last, ef.entity_id`;
   // Select the winner before intersecting a requested profile ID, so a client
   // cannot replace the superlative with an arbitrary lower-ranked entity.
+  // entity_card-2 (F6c): on the index the answer is the group at the top, every profile at the best level (the first
+  // TIES_LISTED by value, as the answer lists them); a row's "⋯ › Vezi înregistrările" narrows it to that profile.
   const profileBase = spec.block === "entity_card"
-    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere} order by ${profileOrder} limit 1)`
+    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null
+        and ef.cri = (select max(ef.cri) from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null)
+        order by ${profileOrder} limit ${TIES_LISTED})`
     : sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere})`;
   const selectionParts: ReturnType<DbSql>[] = [sql`true`];
   if (scope.county) selectionParts.push(sql`lower(unaccent(ef.county)) = ${fold(scope.county)}`);
@@ -2678,8 +2717,12 @@ export async function runRows(
   if (scope.criteria !== undefined) selectionParts.push(sql`ef.n_flags = ${scope.criteria}`);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
-  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12).
+  // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12). A small, bounded
+  // cohort of firms (the group at the top of the index, at most TIES_LISTED; a scope's own ids) is also asked on the bare
+  // column, which the nullif() hides from the index (F6c: 3.2 s → 2 ms for one firm). Never on a whole population
+  // (the risk cloud, a distribution's group): there the semi-join made the plan 2–3× slower (F6c review).
   const partyCore = role === "authority" ? sql`da.authority_entity_id` : sql`nullif(da.supplier_entity_id, da.authority_entity_id)`;
+  const smallFirmCohort = role === "supplier" && (spec.block === "entity_card" || Boolean(scope.entityIds));
   const daTx = sql`(
     select sicap_da_id as ref_id, da_code, finalization_date, authority_id, authority_name,
            supplier_id, supplier_name, county, cpv_code, cpv_name, closing_value,
@@ -2711,6 +2754,7 @@ export async function runRows(
     left join core.cpv_codes cpv on cpv.code = da.cpv_code
     where da.state = 'Oferta acceptata' and da.closing_value > 0 and da.closing_value <= ${DA_PLAFOND_RON}
       and ${partyCore} in (select entity_id from ${cohort} selected_profiles)
+      ${smallFirmCohort ? sql`and da.supplier_entity_id in (select entity_id from ${cohort} indexed_profiles)` : sql``}
   )` : dataset === "da" ? daTx : dataset === "contracts" ? contractTx : sql`(select * from ${daTx} direct_rows union all select * from ${contractTx} contract_rows)`;
 
   // Only what is proper to the sources is added below: the relationship's focal entity,
@@ -2719,6 +2763,12 @@ export async function runRows(
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
+    // entity_card-2: a group at level 0 („Nu are semnale în profil”) shows no row; its sources are still the first profiles by value.
+    if (spec.block === "entity_card" && !scope.entityIds) {
+      const [top] = (await sql`select max(ef.cri)::text lvl from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null`) as unknown as { lvl: string | null }[];
+      if (top?.lvl !== null && top?.lvl !== undefined && Number(top.lvl) === 0)
+        notes.push(`Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare (cel mult ${TIES_LISTED}), toate fără semnale.`);
+    }
   } else {
     // The precise selection and the record threshold, in the words of describeConditions.
     const conditions = describeConditions(spec, { grounding, origin: opts.origin, entities: opts.entities }).byId;
@@ -2783,8 +2833,11 @@ export async function runRows(
       if (conditions.minimumRecords?.note) notes.push(conditions.minimumRecords.note);
     } else parts.push(...winnersPredicates(ctx));
     if (valueWinner) {
-      parts.push(spec.dim === "supplier" ? sql`d.supplier_id = ${valueWinner}` : sql`d.authority_id = ${valueWinner}`);
-      notes.push("Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul.");
+      const ids = sql.array(valueWinner);
+      parts.push(spec.dim === "supplier" ? sql`d.supplier_id = any(${ids}::bigint[])` : sql`d.authority_id = any(${ids}::bigint[])`);
+      notes.push(valueWinner.length === 1 && !scope.entityIds
+        ? "Sursele sunt limitate la entitatea cu cea mai mare valoare în selecția întrebării; filtrele din listă nu schimbă câștigătorul."
+        : "Sursele sunt limitate la locul ales de pe podiumul răspunsului (primele trei după valoare); filtrele din listă nu schimbă podiumul.");
     }
     // F5: a county of the local administrations' map holds the administrations of that county, wherever they sit
     // (CJ Ilfov at Ilfov, map final §3.3): the strict list's ids, as the answer groups them.
@@ -3385,7 +3438,10 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "network":
       return `select partener, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by partener\norder by 2 desc;`;
     case "entity_card":
-      return `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by ${(spec.rankBy ?? "risk") === "risk" ? "cri" : "total_ron"} desc\nlimit 1;`;
+      // entity_card-2: the index shows every profile at the best level, by value; the podium is the ranking's first three.
+      return (spec.rankBy ?? "risk") === "risk"
+        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit ${TIES_LISTED};\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)`
+        : `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by total_ron desc\nlimit ${PODIUM_PLACES};`;
     case "fact_check":
       // fact_check-2: the verdict counts these records, then what the sums leave out of the pair (lib/ask/fact-check.ts).
       return `select count(*), sum(closing_value)\nfrom ${dtable}\nwhere ${where};` +

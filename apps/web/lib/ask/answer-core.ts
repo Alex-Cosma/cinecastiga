@@ -32,6 +32,10 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   // fact_check-2 (F6a, plan §4.10): three verdicts (Da · Acord-cadru · Nu), the rows outside the sums say "Da"
   // ("Da · nu intră în sume"), framework ceilings never do; the profile, the weight and the whole relation beside it.
   fact_check: "fact_check-2",
+  // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3, the distance from place 2, the share of the
+  // total, the total of the band under CÂȘTIGĂTORII); on the index every profile at the top level, in the order of
+  // value, where one name was crowned among the tied. Place 1 stays the card.
+  entity_card: "entity_card-2",
 };
 
 /** A key whose meaning a release changed, on the questions that carry it. */
@@ -208,6 +212,7 @@ export function answerCore(block: string, data: unknown): unknown {
   if (block === "breakdown" && object(data)) { const { base: _base, streams: _streams, ...core } = data; return core; }
   // F5: the local map's populations and the councils its list lacks are for the screen: a watch compares the counties.
   if (block === "map" && object(data)) { const { local: _local, ...core } = data; return core; }
+  if (block === "entity_card") return entityCardCore(data);
   if (block === "distribution") return distributionCore(data);
   if (block === "fact_check") return factCheckCore(data);
   if (block !== "trend" || !object(data) || !object(data.groups)) return data;
@@ -236,6 +241,37 @@ function compareCore(data: Record<string, unknown>): Record<string, unknown> {
     }),
   } : data.shared;
   return { ...data, entities, ...(data.shared !== undefined ? { shared } : {}) };
+}
+
+/**
+ * entity_card-2 (F6c): place 1 and the places of the podium with the total they are counted against, or the level
+ * of the index with the profiles at it. The names and counties are descriptions; the pool, the next level and the
+ * facts of the places (loaded apart) are references, not the answer: a firm added to a pool of fifty thousand does
+ * not change a watch on the six at the top. An answer stored before entity_card-2 is whole.
+ */
+function entityCardCore(data: unknown): unknown {
+  if (!object(data) || (!object(data.podium) && !object(data.ties))) return data;
+  const card = object(data.card) ? data.card : {};
+  const core: Record<string, unknown> = {
+    block: "entity_card",
+    card: { entityId: card.entityId, role: card.role, value: card.value, count: card.count, cri: card.cri, nFlags: card.nFlags, flags: card.flags },
+  };
+  if (object(data.podium)) {
+    const places = Array.isArray(data.podium.places) ? data.podium.places : [];
+    core.podium = {
+      places: places.map((place) => object(place) ? { entityId: place.entityId, value: place.value, count: place.count } : place),
+      // Under a band of CÂȘTIGĂTORII the total is the category's (podiumOf), and a watch names it so.
+      ...(object(data.podium.selection) ? { categoryTotals: data.podium.total } : { totals: data.podium.total }),
+    };
+  }
+  if (object(data.ties)) {
+    const rows = Array.isArray(data.ties.rows) ? data.ties.rows : [];
+    core.ties = {
+      level: data.ties.level, maxFlags: data.ties.maxFlags, count: data.ties.count,
+      rows: rows.map((row) => object(row) ? { entityId: row.entityId, value: row.value, count: row.count, nFlags: row.nFlags } : row),
+    };
+  }
+  return core;
 }
 
 /**

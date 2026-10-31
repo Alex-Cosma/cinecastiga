@@ -44,12 +44,23 @@ describe("human-readable monitoring result comparisons", () => {
     expect(reshapedAnswer(before, after)).toEqual({ from: "distribution-1", to: "distribution-2" });
     expect(reshapedAnswer(after, after)).toBeNull();
     // The reader sees the new shape in words, never the engine's slug.
-    for (const version of ["distribution-2", "fact_check-2", "trend-2"]) expect(RESHAPED_WORDS[version]).toMatch(/^[a-zăâîșț ,]+$/);
+    for (const version of ["distribution-2", "fact_check-2", "trend-2", "entity_card-2"]) expect(RESHAPED_WORDS[version]).toMatch(/^[a-zăâîșț ,]+$/);
     // distribution-2 names its fields: the position among the others, the group.
     const v2 = (more: number) => ({ block: "distribution", distribution: { version: 2, position: { more, same: 0, fewer: 29 - more }, group: { others: 29 } } });
     expect(resultDifferences(v2(0), v2(1)).map((row) => [row.context, row.field])).toEqual([
       ["Distribuția riscului · Poziția în grup", "Cu mai multe criterii"], ["Distribuția riscului · Poziția în grup", "Cu mai puține criterii"],
     ]);
+  });
+  it("names «Cine conduce?»'s fields (entity_card-2): the places, their total, the group at the top of the index", () => {
+    const podium = (value: number, total: number) => ({ block: "entity_card", podium: { places: [{ entityId: "1", value, count: 3 }], totals: { value: total, count: 9, entities: 40 } } });
+    expect(resultDifferences(podium(100, 300), podium(120, 320)).map((row) => [row.context, row.field])).toEqual([
+      ["Podiumul · Locurile 1–3 · Elementul 1", "Valoare înregistrată"], ["Podiumul · Totalul selecției", "Valoare înregistrată"],
+    ]);
+    // Under a band of CÂȘTIGĂTORII the total is the category's, and named so.
+    const band = (total: number) => ({ block: "entity_card", podium: { places: [], categoryTotals: { value: total, count: 2, entities: 2 } } });
+    expect(resultDifferences(band(5000), band(5100)).map((row) => [row.context, row.field])).toEqual([["Podiumul · Totalul categoriei", "Valoare înregistrată"]]);
+    const ties = (count: number) => ({ block: "entity_card", ties: { level: 0.2, maxFlags: 1, count, rows: [] } });
+    expect(resultDifferences(ties(13), ties(14)).map((row) => [row.context, row.field])).toEqual([["Grupul de la egalitate pe primul loc", "Profiluri la indicele maxim"]]);
   });
   it("names the map records whose authority has no county in Romanian", () => {
     const before = { block: "map", counties: [{ county: "Buzău", value: 1 }], unknown: { value: 60, count: 2 } };
