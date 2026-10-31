@@ -5,6 +5,7 @@ import {
 } from "../../lib/ask/entity-card-shared";
 import { countyName } from "../../lib/counties";
 import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
+import { retarget } from "../../lib/ask/filters/retarget";
 import { employeesWords } from "../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, type QuestionSpec } from "../../lib/ask/question-ui";
 import { SEAT_ABROAD } from "../../lib/ask/seat";
@@ -192,4 +193,17 @@ export function tiesRest(ties: Ties, hidden: number): string | null {
   if (unlisted > 0) parts.push(`${formatInt(unlisted)} nu încap în listă`);
   if (ties.nextLevel === 0 && ties.nextCount > 0 && hidden > 0) parts.push(`${formatInt(ties.nextCount)} fără semnale`);
   return parts.length ? `+ ${parts.join(" · ")}` : null;
+}
+
+/**
+ * „Pe harta riscului ›” of the index (F6c, final entity_card §3.10): the same profiles as the risk cloud, which applies
+ * the county, the seat and the kind but not a firm's size (unsupportedPopulationView refuses it there; plan §3 gives
+ * the employees to the index alone). A band is left out of the link and said in its tip, never carried into a refusal.
+ */
+export function riskCloudLink(spec: QuestionSpec): { spec: QuestionSpec; tip: string | null } {
+  const cloud = retarget(spec, "scatter");
+  const band = employeesWords(cloud.filters.minEmployees, cloud.filters.maxEmployees);
+  if (cloud.filters.minEmployees === undefined && cloud.filters.maxEmployees === undefined) return { spec: cloud, tip: null };
+  const { minEmployees: _min, maxEmployees: _max, ...filters } = cloud.filters;
+  return { spec: { ...cloud, filters }, tip: `Norul nu se restrânge după angajați: arată toate firmele, nu doar cele ${band ?? "din banda aleasă"}.` };
 }

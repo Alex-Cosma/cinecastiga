@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { PodiumFact, PodiumPlace, TiePlace, Ties } from "../../lib/ask/entity-card-shared";
-import { categoryLead, leadWords, placeFacts, placeWords, restWords, shareWords, signalWord, subjectNouns, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest, tiesShown, totalLead } from "./entity-card-answer";
+import { unsupportedPopulationView } from "../../lib/ask/population";
+import type { QuestionSpec } from "../../lib/ask/question-ui";
+import { validateSpec } from "../../lib/ask/spec";
+import {
+  categoryLead, leadWords, placeFacts, placeWords, restWords, riskCloudLink, shareWords, signalWord, subjectNouns, tieFacts, tiePlace, tiesHeadline, tiesNoneSources,
+  tiesRest, tiesShown, totalLead,
+} from "./entity-card-answer";
 
 /*
  * „Cine conduce?” (entity_card-2) as the answer draws it (final entity_card §3.9–§3.10, frames C, E, F): the place
@@ -148,5 +154,27 @@ describe("the group at the top of the index", () => {
     expect(tieFacts(tie(2, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text)).toEqual(["posibilă fracționare", "societate"]);
     expect(tieFacts(tie(3, { name: "Eco Rural Consulting SRL", flags: [] }), firm)).toEqual([]);
     expect(tiePlace(tie(1, { county: "Bucuresti", count: 1 }))).toBe("București · 1 achiziție directă");
+  });
+});
+
+describe("„Pe harta riscului ›” of the index (S6 review)", () => {
+  const index = (filters: Record<string, unknown>) => ({ block: "entity_card", dim: "supplier", measure: "value", rankBy: "risk", filters } as unknown as QuestionSpec);
+
+  it("opens the cloud of the same firms, leaving a band of employees out with its tip, never a refusal", () => {
+    const banded = index({ minEmployees: 1, maxEmployees: 9, seatCounty: "Cluj" });
+    // The index takes the band; the cloud refuses it.
+    expect(unsupportedPopulationView(banded as never)).toBeNull();
+    const link = riskCloudLink(banded);
+    expect(link.spec.block).toBe("scatter");
+    expect(link.spec.filters).toEqual({ seatCounty: "Cluj" });
+    expect(unsupportedPopulationView(link.spec as never)).toBeNull();
+    expect("error" in validateSpec(link.spec)).toBe(false);
+    expect(link.tip).toBe("Norul nu se restrânge după angajați: arată toate firmele, nu doar cele cu 1–9 angajați.");
+    expect(riskCloudLink(index({ maxEmployees: 0 })).tip).toBe("Norul nu se restrânge după angajați: arată toate firmele, nu doar cele fără angajați.");
+  });
+
+  it("keeps every condition and no tip without a band", () => {
+    const link = riskCloudLink(index({ seatCounty: "Cluj" }));
+    expect(link).toEqual({ spec: expect.objectContaining({ block: "scatter", filters: { seatCounty: "Cluj" } }), tip: null });
   });
 });
