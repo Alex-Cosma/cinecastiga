@@ -71,9 +71,11 @@ test "$(df -Pk "$root" | awk 'NR==2 {print $4}')" -ge 20971520
 # Fresh, private full backup: custom format, zstd level 1 (restore needs pg_restore
 # 16+). The SHA-256 comes from the same stream tee writes, so the file is not read
 # again; pipefail fails the backup if pg_dump, tee or sha256sum fails. An
-# incomplete .partial file is never a restore point.
+# incomplete .partial file is never a restore point. The drawers' stored search
+# text is derived and rebuilt after every run (below): its rows stay out (~3.7 GB,
+# and a restore would rebuild its trigram index); restored, it is not ready.
 dump="$root/$run_id/database.dump"
-docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc --compress=zstd:1 | tee "$dump.partial" | sha256sum > "$root/$run_id/database.sha256.partial"
+docker exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc --compress=zstd:1 --exclude-table-data=marts.source_search | tee "$dump.partial" | sha256sum > "$root/$run_id/database.sha256.partial"
 read -r digest _ < "$root/$run_id/database.sha256.partial"
 [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
 mv "$dump.partial" "$dump"
@@ -104,6 +106,11 @@ test "$(curl -sS -o /dev/null -w '%{http_code}' https://cinecastiga.ro/api/healt
 run stage "$run_id" reopen
 run finish "$run_id"
 date -u '+completed=%FT%TZ'
+# Outside the 503 window, with the site open (S6): the stored search text of the
+# source drawers, from the marts just published. Until it ends they search by
+# names first; a failure changes nothing published, and the next run builds it.
+docker compose --profile processing run --rm --no-deps -T processor node apps/ingestion/dist/scripts/source-search.js </dev/null || echo 'Source search build failed; the drawers keep the names-first search.'
+date -u '+search_text_completed=%FT%TZ'
 # Keep the two latest successful restore points plus the latest successful full
 # (weekly) one; a failed run's dump goes once a later run succeeds. The dated
 # TED/benchmark backups outside this directory are never removed.

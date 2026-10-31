@@ -20,6 +20,7 @@ case "$*" in
  *"pg_dump "*) echo backup; if [ "$TEST_FAILURE" = backup ]; then exit 1; fi;;
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
+ *"source-search.js"*) if [ "$TEST_FAILURE" = search ]; then exit 1; fi;;
 esac`;
   // The public page answers 200 only when the test says the proxy never closed.
   const curl='echo "curl $*" >> "$TEST_LOG"\ncase "$*" in *api/health*) echo 200;; *) if [ "$TEST_FAILURE" = open ]; then echo 200; else echo 503; fi;; esac';
@@ -50,7 +51,7 @@ test('a failed dump or streamed checksum leaves only a .partial file, never a re
 });
 test('the dump is zstd-compressed and its streamed SHA-256 names the final file',async()=>{
  const r=await run();assert.equal(r.status,0);
- assert.match(r.calls,/exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc --compress=zstd:1\n/);
+ assert.match(r.calls,/exec cinecastiga-postgres-1 pg_dump -U seap -d seap -Fc --compress=zstd:1 --exclude-table-data=marts\.source_search\n/);
  assert.equal(r.dump,'backup\n');
  assert.equal(r.checksum,`${digest}  ${join(r.backup,'database.dump')}\n`);
  assert.deepEqual(r.files,['database.dump','database.list','database.sha256','run.log']);
@@ -60,6 +61,15 @@ test('drains, backs up, verifies and restarts before the guarded reopen',async()
  const steps=['psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc','stop collection documents','processing.js freeze ','pg_dump ','pg_restore --list','processing.js stage 00000000-0000-4000-8000-000000000001 backup-verified','sleep 30','processing.js refresh ','restart web','up -d --no-deps collection','processing.js finish '];
  let previous=-1;for(const step of steps){const position=r.calls.indexOf(step);assert.ok(position>previous,step);previous=position;}
  assert.doesNotMatch(r.calls,/processing.js fail /);
+});
+
+test('the stored search text is built after the reopen, never on a failed run, and its failure keeps the publication',async()=>{
+ const r=await run();assert.equal(r.status,0);
+ const finish=r.calls.indexOf('processing.js finish '),search=r.calls.indexOf('dist/scripts/source-search.js');
+ assert.ok(finish>=0&&search>finish);
+ const failed=await run('search');assert.equal(failed.status,0);
+ assert.match(failed.calls,/processing.js finish [\s\S]*source-search\.js/);assert.doesNotMatch(failed.calls,/processing.js fail /);
+ for(const failure of ['backup','refresh']){const f=await run(failure);assert.doesNotMatch(f.calls,/source-search\.js/,failure);}
 });
 
 test('readers keep the site through drain and backup; it must answer 503 before data changes',async()=>{
