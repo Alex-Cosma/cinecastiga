@@ -204,11 +204,16 @@ export async function buildAskRollups(q: Query): Promise<AskRollupsReport> {
     ) x
     group by x.authority_id, x.supplier_id, substr(x.finalization_date, 1, 4), substr(x.finalization_date, 6, 2), x.src, x.county
   `;
+  // Written in the order of the institution (S6 review): a kind's or a group's institutions read their pairs on
+  // agg_pair_year_authority_idx, and in the order a hash aggregate leaves them each institution's rows lay over the
+  // whole table (the hospitals' 2024–2025 ranking read all 62,000 pages: 0.31 s; so ordered, 9,700 pages, 0.09 s,
+  // as before marts audit 2). The sort costs about 12 s of the night (a copy of the local 4.94M rows).
   const pair = await q`
     create table marts.agg_pair_year as
     select authority_id, supplier_id, y, src, county, sum(v) v, sum(n)::bigint n, min(d0) d0, max(d1) d1
     from pg_temp.ask_pair_month
     group by authority_id, supplier_id, y, src, county
+    order by authority_id, supplier_id, y
   `;
   // Each pair row once as its authority and once as its supplier: the same groups,
   // names and types as grouping the union (6,574,205 months, then 1,907,017 years,
