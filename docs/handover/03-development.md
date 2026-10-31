@@ -89,6 +89,8 @@ MEILISEARCH_KEY=seap_dev_master_key \
 
 Această comandă pregătește și indexul PostgreSQL de titluri (`marts.topic_acquisitions`, migrațiile 0039–0040), apoi indexul de entități Meilisearch, fără SEAP. Prima pregătire a titlurilor parcurge arhiva publică și poate dura; pentru a o rula separat există `pnpm --filter ingestion index-topics`. Păstrează URL-urile explicite: utilitarele nu încarcă toate automat `apps/web/.env.local`. Căutarea poate fi goală până se încheie indexarea. Nu sunt necesare recalcularea marts sau risc pentru a folosi snapshot-ul restaurat.
 
+Textul stocat al căutării din sertarele „Întreabă” (S6) nu e în dump: fără el sertarele caută pe nume, corect, dar „33600000” sau „s.r.l. bucuresti” pe toată țara durează secunde. Îl face, după `@seap/db build`, `PGOPTIONS='-c maintenance_work_mem=2GB' DATABASE_URL=… pnpm --filter ingestion source-search` (~9 min și ~7 GB pe copia întreagă; `maintenance_work_mem` local e 64 MB, de aici setarea producției). Scrie doar `marts.source_search*`.
+
 ## 5. Cont admin local
 
 Din rădăcină; parola se citește fără a o salva în istoricul shell:
