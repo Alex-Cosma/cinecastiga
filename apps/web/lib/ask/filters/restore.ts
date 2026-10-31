@@ -1,5 +1,6 @@
 import { localityScopeError, transitionQuestion, type QuestionSpec } from "../question-ui";
 import { keyVersionNotes } from "../answer-core";
+import { kindApplies, kindLeftOutNote, type PurchaseKind } from "../purchase";
 import { NEWER_VERSION_LINK, parseSpec, runnableError, unimplementedSpecKeys, type AskSpec } from "../spec";
 import type { ConditionLabels } from "./describe";
 import { advancedConditions, legacyConditions, withoutConditions, type AdvancedCondition, type LegacyCondition } from "./legacy-conditions";
@@ -37,7 +38,11 @@ export type RestoredLink =
     reason: string | null;
   };
 
-/** A link's spec, opened as the builder will draft it. */
+/**
+ * A link's spec, opened as the builder will draft it. With the answer's grounding (`labels.grounding`), a kind its
+ * domain has no codes of is left out of the draft with the engine's note, as the answer and the spec it returns
+ * leave it out (resolvedSpec; S6, S5T-kind-domain): the sentence never says „de produse” beside „drumuri”.
+ */
 export function restoreLink(raw: unknown, labels: ConditionLabels = {}): RestoredLink {
   const parsed = parseSpec(raw);
   if ("error" in parsed) return { kind: "error", error: INVALID_LINK };
@@ -45,7 +50,10 @@ export function restoreLink(raw: unknown, labels: ConditionLabels = {}): Restore
   // parseSpec omits the default stream; a link that names it keeps it.
   const named = raw && typeof raw === "object" && "dataset" in raw ? (raw as { dataset?: unknown }).dataset : undefined;
   const given = (typeof named === "string" && !parsed.dataset ? { ...parsed, dataset: named } : parsed) as unknown as QuestionSpec;
-  const { spec, changes } = transitionQuestion(given);
+  const opened = transitionQuestion(given);
+  const kind = opened.spec.filters.purchaseKind as PurchaseKind | undefined;
+  const leftOut = kind && labels.grounding?.cpv && !kindApplies(kind, labels.grounding) ? kind : null;
+  const { spec, changes } = leftOut ? { spec: withoutKind(opened.spec), changes: [...opened.changes, kindLeftOutNote(leftOut, labels.grounding?.cpv?.term ?? opened.spec.filters.cpvTerm)] } : opened;
   const errorOf = (s: QuestionSpec) => runnableError(s as unknown as AskSpec) ?? localityScopeError(s);
   const reason = errorOf(spec);
   return {
@@ -53,6 +61,11 @@ export function restoreLink(raw: unknown, labels: ConditionLabels = {}): Restore
     conditions: legacyConditions(spec, labels), advanced: advancedConditions(spec, labels),
     run: reason === null && errorOf(given) === null, reason,
   };
+}
+
+function withoutKind(spec: QuestionSpec): QuestionSpec {
+  const { purchaseKind: _kind, ...filters } = spec.filters;
+  return { ...spec, filters };
 }
 
 /**

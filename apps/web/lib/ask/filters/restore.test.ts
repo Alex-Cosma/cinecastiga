@@ -47,6 +47,19 @@ describe("a link opened in the builder", () => {
     expect(named.kind === "draft" && named.spec.dataset).toBe("all");
   });
 
+  it("leaves out a kind its domain has no codes of, as the engine does, once the answer's grounding is known (S5T-kind-domain)", () => {
+    const link = { block: "timeseries", measure: "value", filters: { purchaseKind: "produse", cpvTerm: "drumuri" } };
+    const roads = { cpv: { term: "drumuri", prefixes: ["452331", "452332"], matchedNames: ["Lucrări de construcții de drumuri"], method: "synonym" as const } };
+    const restored = restoreLink(link, { grounding: roads });
+    expect(restored.kind === "draft" && restored.spec.filters.purchaseKind).toBeUndefined();
+    expect(restored.kind === "draft" && restored.notes).toContain("„drumuri” nu are coduri de produse: am numărat domeniul întreg, fără tipul ales.");
+    // The link itself is kept as it came: it runs as /api/ask runs it, and the answer leaves the kind out the same way.
+    expect(restored.kind === "draft" && [restored.link.filters.purchaseKind, restored.run]).toEqual(["produse", true]);
+    // Works of roads keep their kind; without the grounding (before the answer) the draft keeps what the link says.
+    expect((restoreLink({ ...link, filters: { ...link.filters, purchaseKind: "lucrari" } }, { grounding: roads }) as { spec: { filters: object } }).spec.filters).toMatchObject({ purchaseKind: "lucrari" });
+    expect((restoreLink(link) as { spec: { filters: object } }).spec.filters).toMatchObject({ purchaseKind: "produse" });
+  });
+
   it("opens a refused link with the chips that cause the refusal; removing them runs it", () => {
     let refusedLinks = 0;
     for (const entry of corpus) {
