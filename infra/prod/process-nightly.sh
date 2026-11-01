@@ -15,6 +15,8 @@ case "${1:-}" in
  --reference-repair-now) run_id=$(run claim-repair reference-import-v1);;
  # Operator-authorized retry of the latest failed publication (full scope).
  --recover-failed) [[ "${2:-}" =~ ^[a-f0-9-]{36}$ ]] || exit 2; run_id=$(run claim-recovery "$2");;
+ # Operator-authorized full publication right after a new signals methodology (refused otherwise).
+ --methodology-now) run_id=$(run claim-methodology);;
  *) echo 'Unsupported processing invocation' >&2; exit 2;;
 esac
 [[ -n "$run_id" ]] || exit 0

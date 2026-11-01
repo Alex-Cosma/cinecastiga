@@ -1,6 +1,6 @@
 import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
-import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,processingStage,failProcessing,finishProcessing,processingSchedule,publicSiteGate} from '../src/processing.js';
+import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,claimMethodologyProcessing,processingStage,failProcessing,finishProcessing,processingSchedule,publicSiteGate} from '../src/processing.js';
 import {CONTRACT_REPORTING_VERSION} from '../src/contract-reporting.js';
 import {FLAGS_METHODOLOGY_VERSION} from '../src/profile-flags.js';
 const url=process.env['TEST_DATABASE_URL'];
@@ -29,6 +29,15 @@ suite('scheduled publication state machine (no network)',()=>{
   expect(await claimProcessing(q,new Date('2026-09-28T04:00:00Z'))).toBeNull();
   await q`update app.collection_control set processing_enabled_at='2026-09-26T00:00:00Z'`;
   expect((await claimProcessing(q,monday))?.scope).toBe('daily');
+ });
+ it('starts one authorized full run now only after a new signals methodology, never under maintenance or twice',async()=>{
+  await expect(claimMethodologyProcessing(q)).rejects.toThrow('already published');
+  await q`update app.monitoring_refreshes set methodology=methodology||${JSON.stringify({flags:'rf-2026.17'})}::jsonb`;
+  const run=await claimMethodologyProcessing(q);
+  expect(run.scope).toBe('full');
+  expect((await q`select trigger,scope,status from app.processing_runs where id=${run.id}::uuid`)[0]).toMatchObject({trigger:'manual',scope:'full',status:'running'});
+  expect((await q`select paused,maintenance from app.collection_control`)[0]).toMatchObject({paused:true,maintenance:true});
+  await expect(claimMethodologyProcessing(q)).rejects.toThrow('maintenance');
  });
  it('runs full on a weekday after a new signals methodology, so the risk is rebuilt before a daily run needs it',async()=>{
   await q`update app.monitoring_refreshes set methodology=methodology||${JSON.stringify({flags:'rf-2026.17'})}::jsonb`;
