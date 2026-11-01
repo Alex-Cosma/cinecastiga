@@ -6,6 +6,7 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
+import { keepAnswer, recallAnswer } from "@/lib/ask/answer-memory";
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { LOCAL_ADMIN_KIND, NEWER_VERSION_LINK, validateSpec, type AskSpec } from "@/lib/ask/spec";
 import { withLens } from "@/lib/ask/map-lens";
@@ -294,6 +295,10 @@ export default function AskPanel({
       opts: {
         strip?: { path: StripPatch["path"]; value: string }; thread?: Thread | null; drillLabel?: string | ((answer: AskResponse) => string); reloaded?: true;
         held?: { waits: () => Promise<boolean>; run: () => void };
+        /** `replace`: a link opened or restored («Înapoi», «Înainte») stays its step; `push`: a new step even for a page. */
+        history?: "push" | "replace";
+        /** The link's own `spec` parameter, the key its answer was kept under (answer-memory.ts). */
+        memo?: string;
       } = {},
     ) => {
       if (!NATURAL_LANGUAGE_ENABLED && typeof body.question === "string") {
@@ -310,13 +315,23 @@ export default function AskPanel({
       setErrorDetail(null);
       setEvidence(null);
       try {
-        const r = await fetch("/api/ask", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-          signal: controller.signal,
-        });
-        const answer = (await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }))) as AskResponse;
+        // A question this tab answered a moment ago shows at once (owner, 1 November 2026); a reload for a 409 asks again.
+        const memo = Object.keys(body).length === 1 && body.spec ? opts.memo ?? encodeSpec(body.spec as AskSpec) : null;
+        const kept = memo && !opts.reloaded ? recallAnswer<AskResponse>(memo) : undefined;
+        let status = 200;
+        let answer: AskResponse;
+        // Awaited like a request: the caller's own history step (interpret's `q`) is written before this answer's.
+        if (kept) answer = await Promise.resolve(kept);
+        else {
+          const r = await fetch("/api/ask", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
+          status = r.status;
+          answer = (await r.json().catch(() => ({ ok: false, error: `HTTP ${r.status}` }))) as AskResponse;
+        }
         if (seq !== request.current.seq) return false;
         if (!answer.ok || !answer.data || !answer.spec) {
           if (opts.held && await opts.held.waits()) {
@@ -324,9 +339,9 @@ export default function AskPanel({
             return false;
           }
           // Explanations written for people stay visible; technical text goes under "Detalii tehnice".
-          const human = isHumanError(r.status, answer.error);
+          const human = isHumanError(status, answer.error);
           setError(human ? answer.error! : ANSWER_ERROR);
-          setErrorDetail(human ? null : answer.error ?? `HTTP ${r.status}`);
+          setErrorDetail(human ? null : answer.error ?? `HTTP ${status}`);
           revealError();
           return false;
         }
@@ -337,6 +352,7 @@ export default function AskPanel({
         const submitted = body.spec as AskSpec | undefined;
         const executed = submitted?.dataset && !answer.spec.dataset ? { ...answer.spec, dataset: submitted.dataset } : answer.spec;
         setAppliedSpec(executed);
+        if (memo && !kept) keepAnswer([memo, encodeSpec(executed)], answer);
         if (!("tablePage" in body)) setThread(opts.thread ?? null);
         // The builder gets the stream the engine resolved, not the one asked (validateSpec can put it back).
         if (opts.strip) {
@@ -374,7 +390,13 @@ export default function AskPanel({
         url.searchParams.delete("drill");
         url.searchParams.delete("evidence");
         url.searchParams.delete("sourceFilters");
-        window.history.replaceState(null, "", url);
+        // A new question is a new step, so «Înapoi» brings the answer before it (owner, 1 November 2026). A link opened or
+        // restored, a page or an order of the table and the page's first answer replace the step. A click while an answer
+        // loads aborts it before it writes here, so quick clicks make one step.
+        const shown = new URLSearchParams(window.location.search).get("spec");
+        const step = opts.history ?? ("tablePage" in body || shown === null || shown === url.searchParams.get("spec") ? "replace" : "push");
+        if (step === "push") window.history.pushState(null, "", url);
+        else window.history.replaceState(null, "", url);
         if (drill)
           setEvidence({
             spec: answer.spec,
@@ -563,7 +585,7 @@ export default function AskPanel({
           },
           run: () => { setResp(null); setAppliedSpec(null); setLinkRuns(false); setBuilderCollapsed(false); },
         } : null;
-        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, true, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}) });
+        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, true, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}), history: "replace", memo: encoded });
       }
     };
     restore();
@@ -667,7 +689,6 @@ export default function AskPanel({
    */
   const applySharedPartners = (on: boolean) => {
     if (!applied) return;
-    window.history.pushState(null, "", window.location.href);
     applyStripChange("sharedPartners", on ? "true" : "");
   };
   /**
@@ -861,7 +882,6 @@ export default function AskPanel({
   const perInhabitant = () => {
     if (!applied) return;
     const next = withLens({ ...applied, filters: { ...applied.filters, authorityKind: LOCAL_ADMIN_KIND } }, "value_per_capita") as AskSpec;
-    window.history.pushState(null, "", window.location.href);
     setBuilderInit(next as unknown as QuestionSpec);
     setLinkRuns(true);
     void execute({ spec: next }, false, undefined, undefined, false);
@@ -885,7 +905,6 @@ export default function AskPanel({
     const role = question ? entity.field ?? excludedRole(question) : null;
     const next = question && role ? excludeEntity(question, { field: role, value: entity.id, label: entity.name }) : null;
     if (!next) return;
-    window.history.pushState(null, "", window.location.href);
     refocusRow.current = index;
     setBuilderInit(next);
     setLinkRuns(true);
@@ -899,12 +918,11 @@ export default function AskPanel({
     if (!applied) return;
     const { topN: _topN, ...rest } = applied;
     const page = Math.floor((rank - 1) / RANKING_PAGE_SIZE);
-    window.history.pushState(null, "", window.location.href);
     setBuilderInit(rest as unknown as QuestionSpec);
     setLinkRuns(true);
     setLayout("table");
     setTableOpts({ page });
-    void execute({ spec: rest, tablePage: page }, false, undefined, undefined, false);
+    void execute({ spec: rest, tablePage: page }, false, undefined, undefined, false, { history: "push" });
   };
   useEffect(() => {
     const index = refocusRow.current;
@@ -1263,7 +1281,7 @@ export default function AskPanel({
                 <StatBlock stat={data.stat} measure={applied.measure} />
                 {/* „Din care” (F3): asked once the number is drawn; „Doar acestea ›” asks the total again with that row, a
                     restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
-                <StatMix spec={applied} onOnly={(next, words) => { window.history.pushState(null, "", window.location.href); runWider(next); showToast(`${words}.`); }} />
+                <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
               </>}
               {data.block === "table" && applied && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0 && (
                 <RankingLocate spec={applied} onWhole={wholeRanking}

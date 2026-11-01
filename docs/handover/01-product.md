@@ -45,6 +45,8 @@ Decizia proprietarului („da, e ok ce ai propus”), pe ramura `feat/onrc-ident
 
 „Întreabă” (în meniu; până la 22 octombrie 2026 „Explorează”)/`/intreaba` înlocuiește vechiul builder cu o propoziție românească editabilă. Există 13 tipuri, definite în `apps/web/lib/ask/spec.ts`, nu 13 modele SQL inventate de un LLM:
 
+**Înapoi (decizia proprietarului din 1 noiembrie 2026).** Fiecare întrebare nouă (un filtru, o perioadă, un canal, un rând scos din calcul) este un pas în istoricul browserului, așa că „Înapoi” aduce răspunsul de dinainte, iar „Înainte” pe cel următor. Primul răspuns al paginii, un link deschis sau restaurat, pagina și ordinea tabelului și schimbările doar de afișare (Vizual/Tabel, „Arată 6 · 10 · 15”, grupurile trendului și ale rețelei) nu adaugă pași. Click-urile date cât se încarcă un răspuns fac un singur pas. Tab-ul păstrează în memorie ultimele răspunsuri (cel mult 10 chei, câte 30 de minute, fără nimic pe disc), deci „Înapoi” le arată fără o cerere nouă. Un reload le uită.
+
 | Cod | Utilizare |
 |---|---|
 | `table` | Clasamente |
