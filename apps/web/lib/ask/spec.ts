@@ -85,7 +85,17 @@ export type NewScope = (typeof NEW_SCOPES)[number];
 export const TREND_CHANGES = ["all", "up", "down", "new", "gone"] as const;
 export type TrendChange = (typeof TREND_CHANGES)[number];
 export const NETWORK_PARTNERS = ["new", "continuing", "gone"] as const;
-export const SCATTER_FLAGS = ["da_split", "da_year_end", "da_rapid", "da_round", "da_concentration", "da_dependence"] as const;
+/**
+ * The risk cloud's signals (scatter-3, rf-2026.18): the criteria of the risk score (lib/risk-score.ts RISK_CRITERIA,
+ * equal by scatter-shared.test.ts), in the order a profile lists them.
+ */
+export const SCATTER_FLAGS = ["da_split", "da_round", "da_year_end", "da_concentration", "da_dependence", "da_above_ceiling"] as const;
+/**
+ * A signal an older link or watch may still carry after its retirement ("Finalizare rapidă", owner decision of
+ * 1 November 2026): accepted by the shape, never applied. The cloud answers the whole group and says it took the
+ * signal away (ScatterAnswer.tsx); scatter-shared.ts keeps its old label for that note.
+ */
+export const SCATTER_RETIRED_FLAGS = ["da_rapid"] as const;
 /** First and last month (1–12) of a window repeated in each year. */
 export type MonthWindow = readonly [number, number];
 export interface TrendOptions {
@@ -421,7 +431,7 @@ const OPTION_SHAPES: Record<OptionKey, Record<string, (v: unknown) => boolean>> 
   network: { partners: among(NETWORK_PARTNERS), since: between(2021, 2100), order: among(["value", "count", "years"]),
     show: among([10, 15, 25, 50]), signals: isTrue },
   sankey: { shown: among([6, 10, 15]) },
-  scatter: { flag: among(SCATTER_FLAGS), rankBy: among(RANK_BYS) },
+  scatter: { flag: among([...SCATTER_FLAGS, ...SCATTER_RETIRED_FLAGS]), rankBy: among(RANK_BYS) },
   map: { lens: among(MAP_LENSES) },
   peers: { similar: isTrue, activity: isTrue, domain: isTrue },
 };
@@ -874,10 +884,13 @@ export function peersRule(spec: AskSpec): string | null {
   return null;
 }
 
-/** The signals of each role's profile on the risk cloud (plan §4.12): concentration is an institution's, dependence a firm's. */
+/**
+ * The signals of each role's profile on the risk cloud (plan §4.12; rf-2026.18): the risk score's criteria of the role
+ * (RISK_CRITERIA), concentration an institution's, dependence a firm's, "Peste plafon" both.
+ */
 export const SCATTER_FLAGS_BY_ROLE: Readonly<Record<"authority" | "supplier", readonly (typeof SCATTER_FLAGS)[number][]>> = {
-  authority: ["da_split", "da_year_end", "da_rapid", "da_round", "da_concentration"],
-  supplier: ["da_split", "da_rapid", "da_round", "da_dependence"],
+  authority: ["da_split", "da_round", "da_year_end", "da_concentration", "da_above_ceiling"],
+  supplier: ["da_split", "da_round", "da_dependence", "da_above_ceiling"],
 };
 
 /**
@@ -885,13 +898,14 @@ export const SCATTER_FLAGS_BY_ROLE: Readonly<Record<"authority" | "supplier", re
  * signals are the role's own, so the one an institution has is not offered on
  * firms (and the other way round). The builder takes the signal away with a
  * note when the subject changes (transitionQuestion); a link that carries
- * one across is refused, never run on a group that cannot have it.
+ * one across is refused, never run on a group that cannot have it. A retired
+ * signal (SCATTER_RETIRED_FLAGS) is no refusal: the answer drops it with a note.
  * FilterDef.validate of lib/ask/filters/defs/profile.ts; runnableError runs it.
  */
 export const SCATTER_RULES: Readonly<Record<"flag", (spec: AskSpec) => string | null>> = {
   flag: (spec) => {
     const flag = spec.scatter?.flag;
-    if (!flag) return null;
+    if (!flag || !(SCATTER_FLAGS as readonly string[]).includes(flag)) return null;
     const role = spec.dim === "supplier" ? "supplier" : "authority";
     // The chosen signal's own name: "Vârf în decembrie" on firms is refused as itself, never as another one.
     return SCATTER_FLAGS_BY_ROLE[role].includes(flag) ? null

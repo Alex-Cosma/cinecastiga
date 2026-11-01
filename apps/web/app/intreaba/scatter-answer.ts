@@ -1,23 +1,32 @@
 import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-text";
-import { flagLabel } from "../../lib/flags";
 import { KIND_ONE, questionKey, type QuestionSpec } from "../../lib/ask/question-ui";
 import type { ProfileFactsResult } from "../../lib/ask/facet-parts";
-import type { AskSpec } from "../../lib/ask/spec";
+import type { AskSpec, RankBy } from "../../lib/ask/spec";
 import {
-  RANK_WORDS, SCATTER_CLOUD_MIN_DAS, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, flagBit, flagDetail, scatterFlagsOf, withScatterChoice,
-  type ScatterBands, type ScatterCloudPoint, type ScatterData, type ScatterFlag, type ScatterFlagFact, type ScatterListRow, type ScatterRole,
+  RANK_WORDS, RANK_WORDS_V2, SCATTER_CLOUD_MIN_DAS, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, codeBit, flagDetail, isScatterFlag, scatterCodes, scatterFlagLabel, scatterFlagsOf, withScatterChoice,
+  type ScatterBands, type ScatterCloudPoint, type ScatterCloudPointV2, type ScatterData, type ScatterDataV2, type ScatterDataV3, type ScatterFlag, type ScatterFlagFact,
+  type ScatterListRow, type ScatterListRowV2, type ScatterRole,
 } from "../../lib/ask/scatter-shared";
+import { RISK_BAND_MIN, RISK_BAND_WORD, riskBand, riskPercent } from "../../lib/risk-score";
 import { formatInt, formatRon } from "../../lib/format";
 import type { RowFact } from "./answer/RowFacts";
 
 /*
- * The risk cloud as the screen draws it (scatter-2, final scatter §3.6): the
- * chart's geometry (one band per number of criteria, the value on a log
- * scale), the points, the words of a list row and of the card, and the CSV.
- * Pure: ScatterAnswer.tsx draws it, answer-csv.ts exports the same rows.
+ * The risk cloud as the screen draws it (scatter-3, rf-2026.18; final scatter
+ * §3.6): the chart's geometry (the risk score from 0 to 100% upwards, the
+ * value on a log scale), the points, the words of a list row and of the card,
+ * and the CSV. A stored scatter-2 (a watch's, a capture's) keeps its own
+ * geometry, one band per number of criteria with the index beside it, and its
+ * words. Pure: ScatterAnswer.tsx draws it, answer-csv.ts exports the same rows.
  */
 
-export type ScatterV2 = Extract<ScatterData, { version: 2 }>;
+export type ScatterV3 = ScatterDataV3;
+/** A stored scatter-2 answer (before rf-2026.18). */
+export type ScatterV2 = ScatterDataV2;
+/** A point of either version. */
+export type AnyCloudPoint = ScatterCloudPoint | ScatterCloudPointV2;
+/** A row of either version. */
+export type AnyListRow = ScatterListRow | ScatterListRowV2;
 
 /** The chart's size in px: 400 tall on a desktop, 300 on a phone (final §3.6). */
 export interface ChartBox { width: number; height: number; compact: boolean }
@@ -26,12 +35,12 @@ export const chartBox = (width: number): ChartBox => {
   return { width: Math.max(260, Math.round(width)), height: compact ? 300 : 400, compact };
 };
 
-/** Room around the plot: the bands' labels on the left, the decades under it, the words of the top 10% over it. */
+/** Room around the plot: the risk's labels on the left, the decades under it, the words of the top 10% over it. */
 export function plotPad(box: ChartBox) {
   return { l: box.compact ? 44 : 58, r: 14, t: 24, b: box.compact ? 40 : 46 };
 }
 
-/** A stable spread inside a band: -0.5…0.5 from the id, so a point does not move between runs (no Math.random). */
+/** A stable spread: -0.5…0.5 from the id, so a point does not move between runs (no Math.random). */
 export function jitter(id: string): number {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) { h ^= id.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -68,20 +77,43 @@ export function axisTicks(x0: number, x1: number, compact: boolean): { lg: numbe
   return every > 1 ? out.filter((_, i) => i % every === 0) : out;
 }
 
+/**
+ * The risk axis (scatter-3): a line at the lowest score of a pattern (20%: one criterion at level 1) and at the first
+ * score of each stronger band (moderat 40%, puternic 68%), the bands of lib/risk-score.ts.
+ */
+export const RISK_GRID: readonly number[] = [20, RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic];
+/** The labels beside the risk axis, in %. */
+export const RISK_AXIS: readonly number[] = [0, ...RISK_GRID, 100];
+/** The tinted zones of the bands: slab 20–39, moderat 40–67, puternic 68–100 (0 has none). */
+export const RISK_ZONES: readonly { from: number; to: number; band: "slab" | "moderat" | "puternic" }[] = [
+  { from: 20, to: RISK_BAND_MIN.moderat, band: "slab" },
+  { from: RISK_BAND_MIN.moderat, to: RISK_BAND_MIN.puternic, band: "moderat" },
+  { from: RISK_BAND_MIN.puternic, to: 100, band: "puternic" },
+];
+/** A point's spread around its score, in px (±half): it tells apart the profiles of one score, never moves one by a band. */
+export const SCORE_SPREAD = 4;
+/** Room inside the plot at 0 and 100, so the spread stays inside it. */
+const SCORE_INSET = 6;
+
 export interface Geometry {
   box: ChartBox;
   pad: ReturnType<typeof plotPad>;
   x0: number; x1: number;
-  plotW: number; plotH: number; bandH: number;
-  /** Pixels of a value / a band (0 at the bottom) / a point spread inside its band. */
+  plotW: number; plotH: number;
+  /** A stored scatter-2: one band per number of criteria met, this tall. 0 on scatter-3's continuous risk axis. */
+  bandH: number;
+  /** Pixels of a value; of a level (scatter-3: the score 0–100; scatter-2: the middle of the band of k criteria). */
   x(value: number): number;
-  yBand(k: number): number;
-  y(k: number, id: string): number;
+  yAt(level: number): number;
+  /** A point at its level, spread by a stable hash (inside its band on scatter-2; SCORE_SPREAD px on scatter-3). */
+  y(level: number, id: string): number;
   ticks: { lg: number; text: string; x: number }[];
+  /** scatter-2's bands. */
+  legacy: boolean;
 }
 
 /** The log10 range of the cloud: the points' or the cells' own, a little wider. */
-export function logRange(data: ScatterV2): [number, number] {
+export function logRange(data: ScatterData): [number, number] {
   const c = data.cloud;
   const values = "points" in c ? c.points.map((p) => Math.log10(Math.max(p.value, 1))) : [c.bands.minLog, c.bands.maxLog, ...c.named.map((p) => Math.log10(Math.max(p.value, 1)))];
   const lo = values.length ? Math.min(...values) : 3, hi = Math.max(values.length ? Math.max(...values) : 9, lo + 0.5);
@@ -89,27 +121,39 @@ export function logRange(data: ScatterV2): [number, number] {
   return [lo - pad, hi + pad];
 }
 
-export function geometry(data: ScatterV2, width: number): Geometry {
+export function geometry(data: ScatterData, width: number): Geometry {
   const box = chartBox(width), pad = plotPad(box);
   const [x0, x1] = logRange(data);
-  const plotW = box.width - pad.l - pad.r, plotH = box.height - pad.t - pad.b, bandH = plotH / (data.levels + 1);
+  const plotW = box.width - pad.l - pad.r, plotH = box.height - pad.t - pad.b, bottom = box.height - pad.b;
   const x = (value: number) => pad.l + ((Math.log10(Math.max(value, 1)) - x0) / (x1 - x0)) * plotW;
-  const yBand = (k: number) => box.height - pad.b - (k + 0.5) * bandH;
   const ticks = axisTicks(x0, x1, box.compact).map((t) => ({ ...t, x: pad.l + ((t.lg - x0) / (x1 - x0)) * plotW }));
-  return { box, pad, x0, x1, plotW, plotH, bandH, x, yBand, y: (k, id) => yBand(k) + jitter(id) * bandH * 0.62, ticks };
+  if (data.version === 2) {
+    const bandH = plotH / (data.levels + 1);
+    const yAt = (k: number) => bottom - (k + 0.5) * bandH;
+    return { box, pad, x0, x1, plotW, plotH, bandH, x, yAt, y: (k, id) => yAt(k) + jitter(id) * bandH * 0.62, ticks, legacy: true };
+  }
+  const yAt = (score: number) => bottom - SCORE_INSET - (Math.min(100, Math.max(0, score)) / 100) * (plotH - 2 * SCORE_INSET);
+  return { box, pad, x0, x1, plotW, plotH, bandH: 0, x, yAt, y: (score, id) => yAt(score) + jitter(id) * SCORE_SPREAD, ticks, legacy: false };
 }
 
-/** The index beside a band: "0,6" with "3/5" under it (the index is shown unchanged, decision 22.10). */
+/** The index beside a band of a stored scatter-2: "0,6" with "3/5" under it (the index was shown unchanged, decision 22.10). */
 export const bandIndex = (k: number, levels: number): { index: string; ratio: string } => ({ index: formatDecimal(k / levels, levels === 4 ? 2 : 1), ratio: `${k}/${levels}` });
 
-/** The cells of the grey layer as rectangles, with an opacity that follows the square root of the count. */
+/**
+ * The cells of the grey layer as rectangles, with an opacity that follows the square root of the count: a tenth of the
+ * score each (scatter-3), or a band of criteria (scatter-2).
+ */
 export function cellRects(bands: ScatterBands, g: Geometry): { x: number; y: number; w: number; h: number; o: number; n: number }[] {
   const peak = Math.max(1, ...bands.cells.map((c) => c[2]));
   const cw = (bands.maxLog - bands.minLog) / bands.nx;
   return bands.cells.map(([bx, k, n]) => {
     const lg0 = bands.minLog + (bx - 1) * cw;
     const left = g.pad.l + ((lg0 - g.x0) / (g.x1 - g.x0)) * g.plotW, right = g.pad.l + ((lg0 + cw - g.x0) / (g.x1 - g.x0)) * g.plotW;
-    return { x: left, y: g.yBand(k) - g.bandH * 0.36, w: Math.max(2, right - left), h: g.bandH * 0.72, o: 0.12 + 0.78 * Math.sqrt(n / peak), n };
+    const o = 0.12 + 0.78 * Math.sqrt(n / peak), w = Math.max(2, right - left);
+    if (g.legacy) return { x: left, y: g.yAt(k) - g.bandH * 0.36, w, h: g.bandH * 0.72, o, n };
+    // A tenth: from its lowest score to the next tenth's (90–100 the last), a pixel apart from its neighbours.
+    const top = g.yAt(Math.min(100, (k + 1) * 10)), low = g.yAt(k * 10);
+    return { x: left, y: top + 0.5, w, h: Math.max(1, low - top - 1), o, n };
   });
 }
 
@@ -123,7 +167,7 @@ const textWidth = (text: string): number => text.length * 6.3;
 
 /**
  * The words of the top 10% over the plot, beside the line (before it when they would leave the chart): above the
- * top band, so they never sit on its points (F6b review: on a phone they covered a point of the band 4/4).
+ * plot, so they never sit on its points (F6b review: on a phone they covered a point of the top band).
  */
 export function p90Label(g: Geometry, p90: number): { x: number; y: number; anchor: "start" | "end"; box: LabelBox } {
   const line = g.x(p90), w = textWidth(p90Words), end = line + 4 + w > g.box.width;
@@ -198,24 +242,34 @@ function fitLabel(d: Dot, text: string, all: readonly Dot[], g: Geometry, line: 
 }
 
 /** A point of the cloud with its marks (the chosen signal, in the list), for drawing and for the nearest-point search. */
-export interface Dot { point: ScatterCloudPoint; x: number; y: number; flagged: boolean; listed: boolean }
+export interface Dot { point: AnyCloudPoint; x: number; y: number; flagged: boolean; listed: boolean }
 
-export function dots(data: ScatterV2, g: Geometry, listed: ReadonlySet<string>): Dot[] {
-  const c = data.cloud, flag = data.flag;
-  const mask = flag ? flagBit(data.role, flag) : 0;
-  const points = "points" in c ? c.points : c.named;
-  return points.map((point) => ({ point, x: g.x(point.value), y: g.y(point.nFlags, point.id), flagged: mask !== 0 && (point.flags & mask) !== 0, listed: listed.has(point.id) }));
+/** A point's level on the chart: its unrounded score (scatter-3), or its number of criteria (scatter-2's band). */
+export const pointLevel = (data: ScatterData, point: AnyCloudPoint): number =>
+  data.version === 2 ? point.nFlags : (point as ScatterCloudPoint).scoreRaw;
+
+/** The bit of the chosen signal on the answer's points (0 without one). */
+const chosenMask = (data: ScatterData): number => (data.flag ? codeBit(scatterCodes(data), data.flag) : 0);
+
+export function dots(data: ScatterData, g: Geometry, listed: ReadonlySet<string>): Dot[] {
+  const c = data.cloud, mask = chosenMask(data);
+  const points: readonly AnyCloudPoint[] = "points" in c ? c.points : c.named;
+  return points.map((point) => ({ point, x: g.x(point.value), y: g.y(pointLevel(data, point), point.id), flagged: mask !== 0 && (point.flags & mask) !== 0, listed: listed.has(point.id) }));
 }
 
 /**
  * A profile the search found or a row of the list's tail, exact on a chart of cells (final §3.6: the named, found and
- * chosen points stay exact): from its value, its criteria and its signals, with no request.
+ * chosen points stay exact): from its value, its level (the score, or the criteria of a scatter-2) and its signals,
+ * with no request.
  */
-export function exactDot(data: ScatterV2, g: Geometry, p: { id: string; name: string; value: number; nFlags: number; nDas: number; codes: readonly string[] }): Dot {
-  const point: ScatterCloudPoint = { id: p.id, name: p.name, value: p.value, nFlags: p.nFlags, nDas: p.nDas, flags: 0 };
-  for (const code of scatterFlagsOf(data.role)) if (p.codes.includes(code)) point.flags |= flagBit(data.role, code);
-  const mask = data.flag ? flagBit(data.role, data.flag) : 0;
-  return { point, x: g.x(point.value), y: g.y(point.nFlags, point.id), flagged: mask !== 0 && (point.flags & mask) !== 0, listed: false };
+export function exactDot(data: ScatterData, g: Geometry, p: { id: string; name: string; value: number; level: number; nFlags: number; nDas: number; codes: readonly string[] }): Dot {
+  const codes = scatterCodes(data);
+  let flags = 0;
+  for (const code of codes) if (p.codes.includes(code)) flags |= codeBit(codes, code);
+  const point: AnyCloudPoint = data.version === 2 ? { id: p.id, name: p.name, value: p.value, nFlags: p.nFlags, nDas: p.nDas, flags }
+    : { id: p.id, name: p.name, value: p.value, score: p.level, scoreRaw: p.level, nFlags: p.nFlags, nDas: p.nDas, flags };
+  const mask = chosenMask(data);
+  return { point, x: g.x(point.value), y: g.y(p.level, point.id), flagged: mask !== 0 && (flags & mask) !== 0, listed: false };
 }
 
 /** Whether id `a` comes before `b` (bigint ids as text: shorter is smaller), the list's last tie-break. */
@@ -223,19 +277,24 @@ const idBefore = (a: string, b: string): boolean => a.length !== b.length ? a.le
 
 /**
  * A point's place in the list of the strip's order and signal, from the cloud drawn point by point (every profile of
- * the group is there): the same order as the server (scatter.ts scatterOrder), so a point past the first 50 still says
- * "locul 73 din 120". Null when it is not in the list (under the floor, without the signal) or the cloud is cells.
+ * the group is there): the same order as the server (scatter.ts scatterOrder: the unrounded score, then the value, then
+ * the id), so a point past the first 50 still says "locul 73 din 120". Null when it is not in the list (under the
+ * floor, without the signal) or the cloud is cells.
  */
-export function pointPlace(data: ScatterV2, id: string): number | null {
+export function pointPlace(data: ScatterData, id: string): number | null {
   if (!("points" in data.cloud)) return null;
   const floor = data.group.small ? SCATTER_CLOUD_MIN_DAS : SCATTER_LIST_MIN_DAS;
-  const mask = data.flag ? flagBit(data.role, data.flag) : 0;
-  const listed = data.cloud.points.filter((p) => p.nDas >= floor && (mask === 0 || (p.flags & mask) !== 0));
+  const mask = chosenMask(data);
+  const points: readonly AnyCloudPoint[] = data.cloud.points;
+  const listed = points.filter((p) => p.nDas >= floor && (mask === 0 || (p.flags & mask) !== 0));
   const me = listed.find((p) => p.id === id);
   if (!me) return null;
-  const ahead = (p: ScatterCloudPoint) => data.rankBy === "risk"
-    ? p.nFlags > me.nFlags || p.nFlags === me.nFlags && (p.value > me.value || p.value === me.value && idBefore(p.id, me.id))
-    : p.value > me.value || p.value === me.value && idBefore(p.id, me.id);
+  const mine = pointLevel(data, me);
+  const ahead = (p: AnyCloudPoint) => {
+    const level = pointLevel(data, p);
+    const byValue = p.value > me.value || p.value === me.value && idBefore(p.id, me.id);
+    return data.rankBy === "risk" ? level > mine || level === mine && byValue : byValue;
+  };
   return 1 + listed.filter((p) => p !== me && ahead(p)).length;
 }
 
@@ -251,6 +310,9 @@ export function nearest(all: readonly Dot[], x: number, y: number, reach = 16): 
 
 // --- the words
 
+/** The strip's words for the order: "risc" (scatter-3), "semnale" on a stored scatter-2. */
+export const rankWords = (data: { version: 2 | 3 }): Readonly<Record<RankBy, string>> => (data.version === 2 ? RANK_WORDS_V2 : RANK_WORDS);
+
 /** "Primărie de comună", "Spital" (in the mixed group each row says its kind, final §3.6). */
 export const kindWords = (kind: string | null | undefined): string | null => {
   const one = kind ? KIND_ONE[kind] : undefined;
@@ -262,39 +324,57 @@ export const employeesWords = (employees: number | null | undefined, year: numbe
   employees === null || employees === undefined ? "fără bilanț" : `${countWords(employees, "angajat", "angajați")} · bilanț ${year ?? "—"}`;
 
 /** The line under a name in the list: the kind or the employees, the county, the acquisitions. */
-export function rowMeta(row: ScatterListRow, role: ScatterRole): string {
+export function rowMeta(row: AnyListRow, role: ScatterRole): string {
   const first = role === "supplier" ? employeesWords(row.employees, row.employeesYear) : kindWords(row.kind);
   return [first, row.county, countWords(row.nDas, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
 }
 
 /** A signal's tag in the list and the card: the label with its years or share, orange (the official signals only). */
-export function flagTag(fact: ScatterFlagFact): RowFact {
+export function flagTag(fact: ScatterFlagFact<string>): RowFact {
   const detail = flagDetail(fact);
-  return { text: detail ? `${flagLabel(fact.code)} · ${detail}` : flagLabel(fact.code), tone: "signal" };
+  const label = scatterFlagLabel(fact.code);
+  return { text: detail ? `${label} · ${detail}` : label, tone: "signal" };
 }
 
-/** A row's signals with the facts that came after the answer (shares of the two rates, the records behind each). */
-export function withFacts(flags: readonly ScatterFlagFact[], facts: readonly ScatterFlagFact[] | undefined): ScatterFlagFact[] {
+/** A row's signals with the facts that came after the answer (shares of the per-acquisition signals, the records behind each). */
+export function withFacts<C extends string>(flags: readonly ScatterFlagFact<C>[], facts: readonly ScatterFlagFact<string>[] | undefined): ScatterFlagFact<C>[] {
   if (!facts) return [...flags];
-  return flags.map((flag) => ({ ...flag, ...facts.find((f) => f.code === flag.code) }));
+  return flags.map((flag) => ({ ...flag, ...facts.find((f) => f.code === flag.code), code: flag.code }));
 }
 
 /** "Primele 10 din 82": the list head — the shown rows of the signal's list (all of the group's without one). */
-export function listHeadWords(data: ScatterV2, shown: number): string {
+export function listHeadWords(data: ScatterData, shown: number): string {
   const total = data.chosen ? data.chosen.nList : data.group.nList;
   return `Primele ${formatInt(Math.min(shown, total))} din ${formatInt(total)}`;
 }
 
 /** The (?) of the head: the order, the 20-acquisition floor and how many are in the cloud alone. */
-export function listHeadTip(data: ScatterV2): string {
-  const order = data.rankBy === "risk" ? "Cele mai multe semnale; la egalitate, valoarea mai mare întâi." : "Cea mai mare valoare a achizițiilor directe.";
+export function listHeadTip(data: ScatterData): string {
+  const order = data.rankBy === "value" ? "Cea mai mare valoare a achizițiilor directe."
+    : data.version === 2 ? "Cele mai multe semnale; la egalitate, valoarea mai mare întâi." : "Cel mai mare risc; la egalitate, valoarea mai mare întâi.";
   if (data.group.small) return `${order} Grupul e mic: sunt listate toate profilurile cu cel puțin ${countWords(SCATTER_CLOUD_MIN_DAS, "achiziție directă", "achiziții directe")}.`;
   const only = data.group.n - data.group.nList;
   return `${order} În listă intră cine are cel puțin ${countWords(SCATTER_LIST_MIN_DAS, "achiziție directă", "achiziții directe")}.${only > 0 ? ` ${countWords(only, "profil e", "profiluri sunt")} doar în nor (${SCATTER_CLOUD_MIN_DAS}–${SCATTER_LIST_MIN_DAS - 1} achiziții).` : ""}`;
 }
 
-/** The sheet's facts line: "Achiziții directe: 21,0 mil. lei · Indice 0,6 · 3 din 5 semnale". */
-export function cardFacts(value: number, cri: number, nFlags: number, levels: number): { label: string; value: string }[] {
+/** The band's word beside a score: "puternic", "moderat", "slab", or "niciun tipar găsit" at 0. */
+export const scoreBandWord = (score: number): string => RISK_BAND_WORD[riskBand(score)];
+/** A score in words, for the chart's tip and the card: "73% · risc puternic", "0% · niciun tipar găsit". */
+export function scoreWords(score: number): string {
+  const band = riskBand(score);
+  return `${riskPercent(score)} · ${band === "none" ? RISK_BAND_WORD.none : `risc ${RISK_BAND_WORD[band]}`}`;
+}
+
+/** The sheet's facts line (scatter-3): "Achiziții directe: 21 mil. lei · Risc 73% · puternic · 2 tipare". */
+export function cardFacts(value: number, score: number, nFlags: number): { label: string; value: string }[] {
+  return [
+    { label: "Achiziții directe:", value: formatRon(value) },
+    { label: "Risc", value: `${riskPercent(score)} · ${scoreBandWord(score)}` },
+    ...(nFlags > 0 ? [{ label: "", value: countWords(nFlags, "tipar", "tipare") }] : []),
+  ];
+}
+/** The sheet's facts line of a stored scatter-2: "Achiziții directe: 21,0 mil. lei · Indice 0,6 · 3 din 5 semnale". */
+export function cardFactsV2(value: number, cri: number, nFlags: number, levels: number): { label: string; value: string }[] {
   return [
     { label: "Achiziții directe:", value: formatRon(value) },
     { label: "Indice", value: formatDecimal(cri, levels === 4 ? 2 : 1) },
@@ -303,17 +383,23 @@ export function cardFacts(value: number, cri: number, nFlags: number, levels: nu
 }
 
 /**
- * The shown list as CSV rows (one row per profile of the 50): a place, the group's, the number of signals, their codes
- * and their tags with the years or shares — the shares of the two rates from `facts` (part=profile), as on screen.
+ * The shown list as CSV rows (one row per profile of the 50): a place, the group's, the risk (the score in %, its
+ * band), the number of patterns, their codes and their tags with the years or shares — the shares of the
+ * per-acquisition signals from `facts` (part=profile), as on screen. A stored scatter-2 exports its index and signals.
  */
-export function scatterCsv(data: ScatterV2, csv: (value: unknown) => string, facts?: ReadonlyMap<string, ScatterFlagFact[]>): string[] {
+export function scatterCsv(data: ScatterData, csv: (value: unknown) => string, facts?: ReadonlyMap<string, ScatterFlagFact[]>): string[] {
   const firm = data.role === "supplier";
-  const head = firm ? "loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale"
-    : "loc,nume,tip,judet,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale";
-  return [head, ...data.list.map((r, i) => {
+  const own = (r: AnyListRow) => firm ? [r.employees ?? "", r.employeesYear ?? "", csv(r.county)] : [csv(kindWords(r.kind) ?? ""), csv(r.county)];
+  const who = firm ? "loc,nume,angajati,an_bilant,sediu" : "loc,nume,tip,judet";
+  if (data.version === 2) {
+    return [`${who},valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale`, ...data.list.map((r, i) => {
+      const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f).text);
+      return [i + 1, csv(r.name), ...own(r), r.value, r.nDas, r.cri, r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
+    })];
+  }
+  return [`${who},valoare_lei,achizitii_directe,risc_pct,banda,nr_tipare,tipare,detalii_tipare`, ...data.list.map((r, i) => {
     const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f).text);
-    const own = firm ? [r.employees ?? "", r.employeesYear ?? "", csv(r.county)] : [csv(kindWords(r.kind) ?? ""), csv(r.county)];
-    return [i + 1, csv(r.name), ...own, r.value, r.nDas, r.cri, r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
+    return [i + 1, csv(r.name), ...own(r), r.value, r.nDas, r.score, csv(scoreBandWord(r.score)), r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
   })];
 }
 
@@ -352,23 +438,24 @@ export const groupCounty = (spec: AskSpec, role: ScatterRole): string | null =>
   (role === "supplier" ? spec.filters.seatCounty ?? spec.filters.county : spec.filters.county) ?? null;
 
 /**
- * "Toată lista pe /semnale": without a signal the index's list (view=cri), with one the signal's own list; the county
- * of the group either way. A profile's signal (concentration, dependence) lists profiles; the others list occurrences.
+ * "Toată lista pe /semnale": without a signal the risk list (view=cri, by the score), with one the signal's own list;
+ * the county of the group either way. A profile's signal (concentration, dependence) lists profiles; the others list
+ * occurrences. A retired signal of a stored answer has no list: the risk list.
  */
-export function signalsPageLink(data: ScatterV2, spec: AskSpec): { href: string; label: string } {
-  const q = new URLSearchParams(data.flag ? { tip: data.flag, rol: data.role } : { view: "cri", rol: data.role });
+export function signalsPageLink(data: ScatterData, spec: AskSpec): { href: string; label: string } {
+  const flag = data.flag && isScatterFlag(data.flag) ? data.flag : null;
+  const q = new URLSearchParams(flag ? { tip: flag, rol: data.role } : { view: "cri", rol: data.role });
   const county = groupCounty(spec, data.role);
   if (county) q.set("jud", county);
-  const profiles = !data.flag || data.flag === "da_concentration" || data.flag === "da_dependence";
+  const profiles = !flag || flag === "da_concentration" || flag === "da_dependence";
   return { href: `/semnale?${q.toString()}`, label: profiles ? "Toată lista pe /semnale" : "Aparițiile semnalului pe /semnale" };
 }
 
-/** What a screen reader hears when the strip's answer arrives: "46 cu Posibilă fracționare, după semnale". */
-export function stripStatusWords(data: ScatterV2): string {
+/** What a screen reader hears when the strip's answer arrives: "46 cu Chiar sub plafon, după risc". */
+export function stripStatusWords(data: ScatterData): string {
   const total = data.chosen ? data.chosen.nList : data.group.nList;
-  return `${formatInt(total)} ${data.flag ? `cu ${flagLabel(data.flag)}` : "în listă"}, după ${RANK_WORDS[data.rankBy]}`;
+  return `${formatInt(total)} ${data.flag ? `cu ${scatterFlagLabel(data.flag)}` : "în listă"}, după ${rankWords(data)[data.rankBy]}`;
 }
 
-export const rankHeading = (rank: "risk" | "value") => `după ${RANK_WORDS[rank]}`;
 export const pctWords = (share: number) => formatShare(share).replace(/,0%$/, "%");
 export { scatterFlagsOf, type ScatterFlag };

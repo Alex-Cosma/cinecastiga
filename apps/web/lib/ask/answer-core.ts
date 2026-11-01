@@ -42,7 +42,9 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   entity_card: "entity_card-3",
   // scatter-2 (F6b, plan §4.12): the group's cloud by number of criteria, the list of the strip's order and signal with
   // its places, instead of two samples of 200 and a density; a watch hears of it once.
-  scatter: "scatter-2",
+  // scatter-3 (rf-2026.18, 1 November 2026): the cloud and the list's order on the risk score (0–100%), the score's
+  // criteria as signals ("Peste plafon" in, "Finalizare rapidă" out); a watch hears of it once.
+  scatter: "scatter-3",
 };
 
 /** A key whose meaning a release changed, on the questions that carry it. */
@@ -335,13 +337,19 @@ function distributionCore(data: unknown): unknown {
 }
 
 /**
- * scatter-2 (F6b): the group, the criteria's counts and the list the question asks for (who, in which order, with which
- * signals and how much); not the points of the chart, the top 10% line, the names' spelling, the county and the years or
- * shares a signal carries (descriptions that move with every refresh). An answer stored before scatter-2 is whole.
+ * scatter-3 (rf-2026.18): the group, the criteria's counts and the named list as places and scores (who is where, at
+ * what risk); not the points of the chart, the top 10% line, the names' spelling, the county, the values and the years
+ * or shares a signal carries (descriptions that move with every refresh). scatter-2 (F6b), stored before it, keeps its
+ * core (who, in which order, with which signals and how much). An answer stored before scatter-2 is whole.
  */
 function scatterCore(data: unknown): unknown {
-  if (!object(data) || !object(data.scatter) || data.scatter.version !== 2) return data;
+  if (!object(data) || !object(data.scatter)) return data;
   const s = data.scatter;
+  if (s.version === 3) return { ...data, scatter: {
+    version: 3, role: s.role, rankBy: s.rankBy, flag: s.flag, group: s.group, criteria: s.criteria, chosen: s.chosen,
+    list: Array.isArray(s.list) ? s.list.map((r, i) => object(r) ? { entityId: r.entityId, place: i + 1, score: r.score } : r) : s.list,
+  } };
+  if (s.version !== 2) return data;
   return { ...data, scatter: {
     version: 2, role: s.role, rankBy: s.rankBy, flag: s.flag, group: s.group, criteria: s.criteria, chosen: s.chosen,
     list: Array.isArray(s.list) ? s.list.map((r) => object(r) ? { entityId: r.entityId, value: r.value, nDas: r.nDas, nFlags: r.nFlags,

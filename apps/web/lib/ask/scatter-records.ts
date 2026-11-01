@@ -7,14 +7,15 @@ import type { ScatterFlag, ScatterFlagFact, ScatterRole } from "./scatter-shared
  * The records behind a profile's signal (final scatter §3.6): the sources of
  * one criterion are exactly the direct acquisitions it flags, never the
  * profile's whole history. All of them are rows of marts.da_transactions:
- *   da_split, da_rapid, da_round  the rows carrying the flag (da_flags);
- *   da_year_end                   the acquisitions finalized in December of the years it flags (flag_instances.period);
- *   da_concentration              the acquisitions with the institution's main supplier, by value;
- *   da_dependence                 the acquisitions with the firm's main institution, by value.
+ *   da_split, da_round, da_above_ceiling  the rows carrying the flag (da_flags);
+ *   da_year_end                           the acquisitions finalized in December of the years it flags (flag_instances.period);
+ *   da_concentration                      the acquisitions with the institution's main supplier, by value;
+ *   da_dependence                         the acquisitions with the firm's main institution, by value.
  * A profile's own signal is in marts.entity_flags.flags (the nightly build); a
  * row flagged in da_flags belongs to a profile without the signal when the
- * profile is under the rule's thresholds (5 acquisitions, 25%), so callers
- * select the profiles that have it (`ef.flags ? code`) before they read the rows.
+ * profile is under the rule's thresholds (just under the ceiling: more than
+ * 10% of at least 5; above it: at least 2), so callers select the profiles
+ * that have it (`ef.flags ? code`) before they read the rows.
  */
 
 type Fragment = ReturnType<DbSql>;
@@ -28,11 +29,11 @@ const PARTNER: Record<ScatterRole, string> = { authority: "supplier_id", supplie
 export function flagRecordsNote(flag: ScatterFlag): string {
   const which: Record<ScatterFlag, string> = {
     da_split: "achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon",
-    da_year_end: "achizițiile finalizate în decembrie, în anii în care decembrie a avut cel puțin 35% din valoarea anuală",
-    da_rapid: "achizițiile finalizate în mai puțin de o oră de la publicare",
-    da_round: "achizițiile cu valoarea între 90% și 100% din plafon",
+    da_year_end: "achizițiile finalizate în decembrie, în anii semnalați",
+    da_round: "achizițiile cu valoarea între 96% și 100% din plafon",
     da_concentration: "achizițiile de la furnizorul principal al instituției (cea mai mare valoare)",
     da_dependence: "achizițiile de la instituția principală a firmei (cea mai mare valoare)",
+    da_above_ceiling: "achizițiile înregistrate cu peste 10% peste plafon, unde excepțiile cunoscute nu se aplică",
   };
   return `Sursele semnalului „${flagLabel(flag)}”: ${which[flag]}, nu tot istoricul profilurilor.`;
 }
@@ -42,7 +43,7 @@ export function flagRecordsNote(flag: ScatterFlag): string {
  * the value and the date (ref_id, closing_value, finalization_date): the drawer counts and orders them on these
  * columns and reads whole rows only for the page it shows. Each case reads an index alone (F6b review: a national
  * signal scanned the 19.6M rows twice, past the drawer's 20 s limit):
- *   da_split, da_rapid, da_round     da_tx_flagged_idx, whose predicate the query repeats word for word (0.1–0.6 s);
+ *   da_split, da_round, da_above_ceiling  da_tx_flagged_idx, whose predicate the query repeats word for word (0.1–0.6 s);
  *   da_year_end                      the authority's covering index, on December's range of each flagged year (11 s → 1.3 s);
  *   da_concentration, da_dependence  the party's covering index (the main partner over all its records: 3.3 s nationally).
  * A role cannot have the other's signal: the caller checks (SCATTER_RULES).
@@ -51,8 +52,8 @@ export function flaggedRecordKeys(sql: DbSql, role: ScatterRole, flag: ScatterFl
   const party = sql(PARTY[role]), partner = sql(PARTNER[role]);
   switch (flag) {
     case "da_split":
-    case "da_rapid":
     case "da_round":
+    case "da_above_ceiling":
       return frag(sql`(select d.sicap_da_id ref_id, d.closing_value, d.finalization_date from marts.da_transactions d
         where d.${party} in (${entities}) and cardinality(d.da_flags) > 0 and ${flag} = any(d.da_flags))`);
     case "da_year_end":
@@ -77,11 +78,11 @@ export function flaggedRecordKeys(sql: DbSql, role: ScatterRole, flag: ScatterFl
 /**
  * Before the first nightly build with da_tx_flagged_idx (rollups.ts flaggedIndexReady), the row signals' keys are
  * read through the cohort's records on its party's index: a cohort of up to FLAG_LIVE_RECORDS acquisitions answers
- * so (rapid on the firms of the whole country, 1.68M: 2.1 s warm, 8.3 s cold); a larger one (a possible split on
+ * so (a row signal on the firms of the whole country, 1.68M: 2.1 s warm, 8.3 s cold); a larger one (a split on
  * the institutions of the country, 10.8M: 3.6 s warm, 14.3 s cold, past the 20 s limit under load) says it waits
  * for that build instead of failing at the limit (S6, F6b verify). Its own profiles' sources stay open.
  */
-export const ROW_FLAGS: ReadonlySet<ScatterFlag> = new Set<ScatterFlag>(["da_split", "da_rapid", "da_round"]);
+export const ROW_FLAGS: ReadonlySet<ScatterFlag> = new Set<ScatterFlag>(["da_split", "da_round", "da_above_ceiling"]);
 export const FLAG_LIVE_RECORDS = 2_500_000;
 export const FLAG_INDEX_PENDING =
   "Sursele acestui semnal pe tot grupul sunt gata după următoarea prelucrare a datelor. Până atunci, deschide sursele unui profil din listă sau restrânge grupul (un județ, un tip).";
@@ -132,8 +133,9 @@ export async function instanceFacts(sql: DbSql, role: ScatterRole, ids: readonly
 }
 
 /**
- * The records of every signal of the profiles `ids` (the card's rows, "9 înregistrări →") and the shares of
- * rapid and round (flagged records over the direct acquisitions), in one pass over each profile's records.
+ * The records of every signal of the profiles `ids` (the card's rows, "9 înregistrări →") and the shares of the
+ * two per-acquisition signals, just under and above the ceiling (flagged records over the direct acquisitions), in one
+ * pass over each profile's records.
  */
 export async function recordFacts(sql: DbSql, role: ScatterRole, ids: readonly string[], nDas: ReadonlyMap<string, number>, flags: ReadonlyMap<string, readonly string[]>): Promise<Map<string, ScatterFlagFact[]>> {
   const out = new Map<string, ScatterFlagFact[]>();
@@ -141,9 +143,9 @@ export async function recordFacts(sql: DbSql, role: ScatterRole, ids: readonly s
   const party = sql(PARTY[role]), list = sql.array([...ids]);
   const counts = (await sql`
     select d.${party}::text id, count(*) filter (where 'da_split' = any(d.da_flags))::int split,
-           count(*) filter (where 'da_rapid' = any(d.da_flags))::int rapid, count(*) filter (where 'da_round' = any(d.da_flags))::int round
+           count(*) filter (where 'da_round' = any(d.da_flags))::int round, count(*) filter (where 'da_above_ceiling' = any(d.da_flags))::int above
     from marts.da_transactions d where d.${party} = any(${list}::bigint[]) group by 1
-  `) as unknown as { id: string; split: number; rapid: number; round: number }[];
+  `) as unknown as { id: string; split: number; round: number; above: number }[];
   const byId = new Map(counts.map((c) => [c.id, c]));
   const entities = frag(sql`select unnest(${list}::bigint[])`);
   const more: Partial<Record<ScatterFlag, Map<string, number>>> = {};
@@ -161,8 +163,8 @@ export async function recordFacts(sql: DbSql, role: ScatterRole, ids: readonly s
     for (const code of have) {
       const fact: ScatterFlagFact = { code };
       if (code === "da_split") fact.rows = c?.split ?? 0;
-      else if (code === "da_rapid" || code === "da_round") {
-        fact.rows = (code === "da_rapid" ? c?.rapid : c?.round) ?? 0;
+      else if (code === "da_round" || code === "da_above_ceiling") {
+        fact.rows = (code === "da_round" ? c?.round : c?.above) ?? 0;
         if (n > 0) fact.share = fact.rows / n;
       } else fact.rows = more[code]?.get(id) ?? 0;
       facts.push(fact);
@@ -182,10 +184,10 @@ export const RECONCILE_MAX = 200;
 export async function builtFlagTotals(sql: DbSql, role: ScatterRole, flag: ScatterFlag, entities: Fragment): Promise<{ records: number | null; value: string } | null> {
   // A firm is the acquisition's supplier unless it is the authority itself (audit F12, as marts.da_transactions). Said
   // on the bare column, so its index answers: `nullif(supplier, authority) in (…)` read all 19.6M acquisitions (one
-  // firm's rapid: 5.9–13.6 s; S6, F6b verify). Same rows: one firm 20 ms; DEDEMAN's 160,404 rapid ones 1.4 s warm.
+  // firm's row signal: 5.9–13.6 s; S6, F6b verify). Same rows: one firm 20 ms; DEDEMAN's 160,404 flagged ones 1.4 s warm.
   const party = role === "authority" ? sql`da.authority_entity_id in (${entities})`
     : sql`da.supplier_entity_id in (${entities}) and da.supplier_entity_id is distinct from da.authority_entity_id`;
-  if (flag === "da_rapid" || flag === "da_round") {
+  if (flag === "da_round" || flag === "da_above_ceiling") {
     const [row] = (await sql`
       select count(*)::text n, coalesce(sum(da.closing_value), 0)::text v
       from core.flags f join core.direct_acquisitions da on da.id = f.subject_id

@@ -124,9 +124,9 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
         ...(shown.rest.count > 0 || !data.base ? [`"alte domenii",,${shown.rest.value},${shown.rest.count}`] : [])];
     }
     case "scatter":
-      // scatter-2: the list on screen — the 50 profiles of the strip's order and signal, with their signals' years or shares
-      // (the rates' shares come after the answer: AskPanel completes them before the export, ensureScatterFacts);
-      // an answer stored before it keeps its sample of points.
+      // scatter-3: the list on screen — the 50 profiles of the strip's order and signal, with their risk (`risc_pct`, `banda`),
+      // their patterns and the years or shares (the shares come after the answer: AskPanel completes them before the
+      // export, ensureScatterFacts); a stored scatter-2 keeps its index columns, an answer before it its sample of points.
       if ("scatter" in data) return scatterCsv(data.scatter, csvAny, keptScatterFacts(spec));
       return ["nume,judet,valoare_lei,cri,semnale", ...data.points.map((p) => `${csvQ(p.name)},${csvQ(countyName(p.county))},${p.value},${p.cri},${p.nFlags}`)];
     // F4: the flows on screen, the partners past „Arată” folded (sankey-2); the partners of the list on screen, in its order and length (network-2).
