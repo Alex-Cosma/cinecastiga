@@ -8,7 +8,7 @@ import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-tex
 import { leadOverSecond, podiumRest, type Podium, type PodiumFact, type Ties } from "../../lib/ask/entity-card-shared";
 import { retarget } from "../../lib/ask/filters/retarget";
 import { employeesWords } from "../../lib/ask/filters/words";
-import { criBand, FLAG_META, flagLabel } from "../../lib/flags";
+import { FLAG_META, flagLabel } from "../../lib/flags";
 import { askLink, leaderAlone, leaderAloneSpecs } from "../../lib/ask/source-spec";
 import type { QuestionSpec } from "../../lib/ask/question-ui";
 import type { AskSpec } from "../../lib/ask/spec";
@@ -248,9 +248,14 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
 
 /* ── an answer stored before entity_card-2 ──────────────────────────────── */
 
+/** The bands such an answer showed (the index before rf-2026.18): it stays as captured. */
+function legacyBand(cri: number): string {
+  return cri >= 0.6 ? "Ridicat" : cri >= 0.3 ? "Mediu" : cri > 0 ? "Scăzut" : "Niciun criteriu îndeplinit";
+}
+
 function LegacyCard({ card, historical, spec }: { card: EntityCardData; historical: boolean; spec?: QuestionSpec | undefined }) {
   const evidence = useAnswerEvidence();
-  const band = card.cri !== null ? criBand(card.cri) : null;
+  const band = card.cri !== null ? legacyBand(card.cri) : null;
   // P7 on place 1 by value (F4, plan §4.13): its records, "Scoate din calcul" (the next one is crowned), its page.
   const records = evidence ? () => evidence.open(undefined, { entityIds: [card.entityId], role: card.role === "supplier" ? "supplier" : "authority" },
     `${cleanName(card.name)} · ${historical ? "înregistrările profilului" : "achizițiile selectate"}`) : undefined;
@@ -281,7 +286,7 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
         </div>
         {historical && <div className="kpi">
           <div className="v num risk">{card.cri !== null ? formatDecimal(card.cri, 2) : "—"}</div>
-          <div className="l">indice risc{band ? ` · ${band.label}` : ""}</div>
+          <div className="l">indice risc{band ? ` · ${band}` : ""}</div>
         </div>}
         {historical && <div className="kpi">
           <div className="v num risk">{card.nFlags}</div>

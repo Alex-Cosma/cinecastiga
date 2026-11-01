@@ -7,7 +7,8 @@ import { countWords, formatDecimal } from "@/lib/ask/answer-text";
 import type { CompareData, CompareEntity, ComparePartner, PartialYear } from "@/lib/ask/compile";
 import { readableCpvName } from "@/lib/entity-summary";
 import { glossaryEntry } from "@/lib/glossary";
-import { FLAG_META, criBand, flagLabel } from "@/lib/flags";
+import { FLAG_META, flagLabel } from "@/lib/flags";
+import { riskLabel, riskPercent } from "@/lib/risk-score";
 import { cleanName, formatInt, formatRon } from "@/lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import { useTip } from "./blocks";
@@ -202,13 +203,15 @@ function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: 
 
 function RiskProfile({ entity: e }: { entity: CompareEntity }) {
   if (e.hasProfile === undefined) return null;
-  const scored = e.hasProfile && e.cri !== null && e.cri > 0;
+  // A saved answer from before rf-2026.18 has no score: it keeps the index it showed.
+  const score = e.score ?? null;
+  const scored = e.hasProfile && (score !== null ? score > 0 : e.cri !== null && e.cri > 0);
   return (
     <div className={`cmp-risk${scored ? "" : " cmp-risk-none"}`}>
       <p>
         {!e.hasProfile ? "Fără profil de risc: prea puține achiziții directe"
-          : scored ? <>Profil de risc <b>{formatDecimal(e.cri!, 2)} · {criBand(e.cri!).label.toLowerCase()}</b> · {countWords(e.nFlags, "semnal", "semnale")}</>
-          : <>Profil de risc <b>{formatDecimal(e.cri ?? 0, 2)}</b> · niciun criteriu îndeplinit</>}
+          : score !== null ? <>Risc <b>{riskPercent(score)}</b> · {riskLabel(score).replace(/^risc · /, "")}{score > 0 && <> · {countWords(e.nFlags, "tipar", "tipare")}</>}</>
+          : <>Indice de risc <b>{formatDecimal(e.cri ?? 0, 2)}</b> · {countWords(e.nFlags, "semnal", "semnale")}</>}
         {" "}<Term id="profil-risc" tip />
       </p>
       {e.flags.length > 0 && (

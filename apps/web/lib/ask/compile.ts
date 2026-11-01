@@ -119,11 +119,13 @@ export interface CompareEntity {
   role: string;
   value: number;
   count: number;
-  /** Historical risk profile (all direct acquisitions, not the selection). */
+  /** Historical risk profile (all direct acquisitions, not the selection). Since rf-2026.18 cri = score / 100. */
   cri: number | null;
   nFlags: number;
   flags: string[];
   population: number | null;
+  /** The risk score over 100 (rf-2026.18); older saved answers lack it and show their index. */
+  score?: number | null;
   // Since 24 Oct 2026; older saved answers lack the fields below.
   hasProfile?: boolean;
   /**
@@ -1954,7 +1956,7 @@ export async function runSpec(
             s`select ep.entity_id::text id, ep.first_activity, ep.last_activity, ep.employees, ep.employees_year, ep.net_turnover::text turnover,
                      ${ownCountySql(s, focalRole, seat)} county
               from marts.entity_profile ep where ep.role = ${focalRole} and ep.entity_id = any(${s.array(ids)}::bigint[])`,
-            s`select entity_id::text id, cri, n_flags, flags from marts.entity_flags where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
+            s`select entity_id::text id, cri, n_flags, flags, score from marts.entity_flags where role = ${focalRole} and entity_id = any(${s.array(ids)}::bigint[])`,
           ]) as unknown as [
             { id: string; src: string; value: string; n: number; single_bid: string; single_known: string; no_cpv: string }[],
             { id: string; n: number }[],
@@ -1964,7 +1966,7 @@ export async function runSpec(
             { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[],
             { nid: string; authority: string | null; date: string | null; value: string; total: number }[],
             { id: string; first_activity: string | null; last_activity: string | null; employees: number | null; employees_year: number | null; turnover: string | null; county: string | null }[],
-            { id: string; cri: string | null; n_flags: number; flags: string[] | null }[],
+            { id: string; cri: string | null; n_flags: number; flags: string[] | null; score: number | null }[],
           ];
           // F4 (plan §4.6 Motor, final compare §4): the cards' context rows, each its own small grouping.
           // - The value coded above a CPV domain (its division, group, class…), on the selection without the domain.
@@ -2020,6 +2022,7 @@ export async function runSpec(
                 value: Number(sumDecimalStrings(mine.map((r) => r.value))),
                 count: mine.reduce((sum, r) => sum + r.n, 0),
                 cri: flags?.cri == null ? null : Number(flags.cri),
+                score: flags ? Number(flags.score ?? 0) : null,
                 nFlags: flags?.n_flags ?? 0,
                 flags: flags?.flags ?? [],
                 population: populations?.get(identity.id) ?? null,

@@ -24,14 +24,14 @@ const ROWS = [
   })),
   // Statistical cutoffs, calibrated against the 2020 DA distribution (2026-07-13).
   { key: "da_max_plausible", validFrom: BASE, validTo: null, valueNum: "2000000", note: "exclude corrupt closing values >2M (>4x works ceiling)" },
-  { key: "da_rapid_hours", validFrom: BASE, validTo: null, valueNum: "0.1667", note: "10 min — DAs are inherently fast, so tight cutoff (~8.5%)" },
   { key: "da_conc_top_pct", validFrom: BASE, validTo: null, valueNum: "0.6", note: "top supplier >=60% of authority DA spend" },
   { key: "da_conc_min_suppliers", validFrom: BASE, validTo: null, valueNum: "3", note: "min distinct suppliers to call it a choice" },
   { key: "da_conc_min_total", validFrom: BASE, validTo: null, valueNum: "100000", note: "materiality floor" },
   { key: "da_dep_top_pct", validFrom: BASE, validTo: null, valueNum: "0.85", note: "supplier >=85% revenue from one authority" },
-  { key: "da_dep_min_total", validFrom: BASE, validTo: null, valueNum: "50000", note: "materiality floor" },
+  { key: "da_dep_min_total", validFrom: BASE, validTo: null, valueNum: "250000", note: "rf-2026.18: 250,000 lei (was 50,000)" },
+  { key: "da_dep_min_count", validFrom: BASE, validTo: null, valueNum: "5", note: "rf-2026.18: direct acquisitions with the main institution" },
   { key: "da_split_min_count", validFrom: BASE, validTo: null, valueNum: "3", note: "min sub-ceiling DAs in a pair-year" },
-  { key: "da_round_floor_pct", validFrom: BASE, validTo: null, valueNum: "0.9", note: ">=90% of applicable ceiling" },
+  { key: "da_round_floor_pct", validFrom: BASE, validTo: null, valueNum: "0.96", note: "rf-2026.18: 96% of the ceiling (was 0.9)" },
   { key: "da_year_end_share", validFrom: BASE, validTo: null, valueNum: "0.35", note: "December >=35% of annual (vs 8.3% uniform)" },
   { key: "da_year_end_min_total", validFrom: BASE, validTo: null, valueNum: "100000", note: "materiality floor" },
 ];

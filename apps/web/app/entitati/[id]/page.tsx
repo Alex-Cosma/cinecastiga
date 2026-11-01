@@ -21,10 +21,12 @@ import {
 } from "@/lib/marts";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
-import { FLAG_META, FLAG_ORDER, criBand, flagLabel } from "@/lib/flags";
+import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
-import { CRI_CRITERIA, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
+import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
+import { RISK_BAND_CLASS, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "@/lib/risk-score";
+import { getRiskPeerLine } from "@/lib/risk-peers";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -97,6 +99,8 @@ export default async function EntityPage({
             nDas: pr.nDas,
             totalRon: pr.totalRonFull,
             flags: [],
+            score: 0,
+            scoreParts: {},
           }))
         : [];
   if (flagRows.length === 0) notFound();
@@ -111,7 +115,7 @@ export default async function EntityPage({
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
@@ -125,6 +129,8 @@ export default async function EntityPage({
       getEntitySubjects(id, role),
       // Page 1 of the partner list: "Pe scurt" uses its top rows, PartnersTable shows it without refetching.
       getEntityPartnersPaged(id, role, 1, 10),
+      // "Mai multe tipare decât X% dintre …": moderate and strong scores only, Ask's default group.
+      flagRowsRaw.some((r) => r.role === role) ? getRiskPeerLine(id, role, row.score).catch(() => null) : null,
     ]);
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
@@ -132,17 +138,17 @@ export default async function EntityPage({
   const registryCollision = cuiUncorroborated ? reviewedRegistryCollision(id, cui) : null;
 
   const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
-  const criteria = CRI_CRITERIA[role];
-  const band = criBand(row.cri);
+  const criteria = RISK_CRITERIA[role];
+  const band = riskBand(row.score);
+  const points = riskPoints(row.scoreParts, row.score);
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
   // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
   // the CRI section alone hid procedure, MF and ONRC signals from the profile.
-  const signalTypes = [...FLAG_ORDER, ...Object.keys(signalCounts).filter((c) => !FLAG_ORDER.includes(c))]
+  // The criteria of the risk score first, in the role's order, then every other signal.
+  const signalTypes = [...criteria, ...FLAG_ORDER.filter((c) => !(criteria as readonly string[]).includes(c)), ...Object.keys(signalCounts).filter((c) => !FLAG_ORDER.includes(c))]
     .filter((code) => (signalCounts[code] ?? 0) > 0 && FLAG_META[code]);
   const inCri = (code: string) => (criteria as readonly string[]).includes(code);
-  const nOutsideCri = signalTypes.filter((code) => !inCri(code)).length;
-  const unmetWithOccurrences = hasRiskScore && signalTypes.some((code) => inCri(code) && !row.flags.includes(code));
   const entitySignalsUrl = (code: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: id }));
   // "Pe scurt": the KPI numbers above, the same selection by CPV division, the partner list's top rows.
   const summary = composeEntitySummary({
@@ -211,14 +217,14 @@ export default async function EntityPage({
 
       {/* Risk summary */}
       <div className="stat-grid ent-stats">
-        <div className="stat">
+        <div className="stat risk-stat">
           <div className="n">
-            <span className={`cri-pill ${hasRiskScore ? band.className : "risk-none"}`}>{hasRiskScore ? row.cri.toFixed(2).replace(".", ",") : "—"}</span>
+            <span className={`cri-pill ${hasRiskScore ? RISK_BAND_CLASS[band] : "risk-none"}`}>{hasRiskScore ? riskPercent(row.score) : "—"}</span>
           </div>
-          <div className="l">{hasRiskScore ? `indice de risc · ${band.label.toLowerCase()}` : "Indice de risc necalculat"}</div>
-          {hasRiskScore && <p className="note">{row.nFlags} din {criteria.length} criterii · achiziții directe</p>}
-          {hasRiskScore && <a href="#criterii-scor" className="hint">Cum se explică scorul?</a>}
-          {nOutsideCri > 0 && <p className="note"><a href="#toate-semnalele">{nOutsideCri === 1 ? "Un tip de semnal" : `${formatInt(nOutsideCri)} tipuri de semnale`} în afara indicelui →</a></p>}
+          {hasRiskScore && <div className="risk-meter" aria-hidden="true"><span className={RISK_BAND_CLASS[band]} style={{ width: `${row.score}%` }} /></div>}
+          <div className="l ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" /></div>
+          {peerLine && <p className="note">Mai multe tipare decât {formatInt(Math.round(peerLine.share * 100))}% dintre {peerLine.groupWords}</p>}
+          {hasRiskScore && row.score > 0 && <a href="#calcul-scor" className="hint">Cum se formează?</a>}
         </div>
         <div className="stat">
           <div className="n">
@@ -287,18 +293,17 @@ export default async function EntityPage({
       </details>
 
       {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
-        <summary>Cum se calculează scorul?</summary>
-        <p id="criterii-scor">Scorul împarte numărul criteriilor îndeplinite la {criteria.length}. Fiecare criteriu contează o singură dată,
-          indiferent de numărul achizițiilor semnalate. Folosește achizițiile directe din întreaga perioadă disponibilă
-          la ultima recalculare; filtrul de an din tabel nu schimbă scorul.</p>
+        <summary>Cum se formează riscul?</summary>
+        <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
+          pronunțat e. Un singur tipar ajunge cel mult la 60%. Filtrul de an din tabel nu schimbă scorul.</p>
         <ul>{criteria.map(code => <li key={code}>
-          <strong>{row.flags.includes(code) ? "Îndeplinit" : "Neîndeplinit în datele evaluate"}</strong>{" · "}
+          <strong>{row.scoreParts[code] ? `+${formatInt(points[code] ?? 0)}` : "fără tipar"}</strong>{" · "}
           <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
+          {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!)}</>}
         </li>)}</ul>
-        <p>Scorul nu este o probabilitate de corupție.
-          Semnalele din contracte prin proceduri, bilanțuri și ONRC nu intră în acest scor; sunt listate la{" "}
-          <a href="#toate-semnalele">toate semnalele</a>.
-          Lipsa unui semnal nu certifică absența neregulilor. <Link href="/metodologie#indice">Formula și limitele scorului →</Link></p>
+        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
+          <a href="#toate-semnalele">toate semnalele</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
+          <Link href="/metodologie#indice">Formula și limitele →</Link></p>
       </details>}
 
       <SectionNav
@@ -363,7 +368,7 @@ export default async function EntityPage({
         </section>
       )}
 
-      {/* CRI breakdown */}
+      {/* The criteria behind the risk score */}
       {row.flags.length > 0 ? (
         <section className="section" id="semnale">
           <h2>De ce este semnalată</h2>
@@ -380,7 +385,9 @@ export default async function EntityPage({
                   <h3>
                     {flagLabel(code)}
                     {code === "da_round" && row.flags.includes("da_split") && <> <Term tip id="prag-vs-fractionare" /></>}
+                    {row.scoreParts[code as RiskCriterion] && <span className="risk-points"> +{formatInt(points[code as RiskCriterion] ?? 0)}</span>}
                   </h3>
+                  {row.scoreParts[code as RiskCriterion] && <p className="mh-fact">{riskFact(code as RiskCriterion, row.scoreParts[code as RiskCriterion]!)}</p>}
                   <p className="mh-desc">{m.description}</p>
                   <Link href={`/metodologie#${code}`} className="mh-link">
                     cum se calculează →
@@ -452,7 +459,7 @@ export default async function EntityPage({
                       />
                     ))}
 
-                {code === "da_rapid" || code === "da_round" ? (
+                {code === "da_round" || code === "da_above_ceiling" ? (
                   <p>
                     <b>{roCount(flagRowCounts[code] ?? 0, "o achiziție", "achiziții")}</b> cu acest semnal ·{" "}
                     <a href={`${q(base, { sem: code, p: undefined })}#achizitii`}>Vezi în tabel →</a>
@@ -473,7 +480,7 @@ export default async function EntityPage({
             <thead>
               <tr>
                 <th scope="col">Semnal</th>
-                <th scope="col">Indicele de risc{unmetWithOccurrences && <> <Term tip id="criteriu-neindeplinit" /></>}</th>
+                <th scope="col">În risc <Term tip id="scor-risc" /></th>
                 <th scope="col" className="num">Apariții</th>
               </tr>
             </thead>
@@ -488,7 +495,9 @@ export default async function EntityPage({
                       <div className="note">{m.short}</div>
                     </td>
                     <td className="county">
-                      {!inCri(code) ? "Nu intră în indice" : !hasRiskScore ? "Indice necalculat" : row.flags.includes(code) ? "Criteriu îndeplinit" : "Criteriu neîndeplinit"}
+                      {!inCri(code) ? "nu intră" : !hasRiskScore ? "necalculat" : row.scoreParts[code as RiskCriterion]
+                        ? <span className="risk-part"><span className="risk-meter" aria-hidden="true"><span className={RISK_BAND_CLASS[band]} style={{ width: `${Math.round((row.scoreParts[code as RiskCriterion]!.x / 3) * 100)}%` }} /></span>+{formatInt(points[code as RiskCriterion] ?? 0)}</span>
+                        : "sub prag"}
                     </td>
                     <td className="num">
                       <Link href={entitySignalsUrl(code)}>{formatInt(n)}</Link>

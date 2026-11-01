@@ -30,8 +30,8 @@ export const AWARD_COUNTING_CAVEAT = "Semnalul se numără o dată pentru fiecar
 export const FLAG_META: Record<string, FlagMeta> = {
   da_split: {
     code: "da_split",
-    title: "Posibilă fracționare sub prag",
-    label: "Posibilă fracționare",
+    title: "Achiziții repetate, peste plafon cumulat",
+    label: "Achiziții repetate, peste plafon cumulat",
     entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Apare mai des la cine cumpără mult și de mulți ani.",
     subject: "pair",
     short: "Achiziții din aceeași clasă CPV și același tip, însumând peste plafonul de referință.",
@@ -59,56 +59,57 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_dependence",
     title: "Dependență de o autoritate",
     label: "Dependență de o autoritate",
-    entityRule: "O instituție aduce cel puțin 85% din valoarea achizițiilor directe ale firmei (minimum 50.000 lei). Cine are un singur client public primește semnalul automat.",
+    entityRule: "O instituție aduce cel puțin 85% din valoarea achizițiilor directe ale firmei, la minimum 250.000 lei și cel puțin 5 achiziții cu ea.",
     subject: "supplier",
     short: "Majoritatea valorii achizițiilor directe ale furnizorului provine de la o autoritate.",
     description:
-      "O singură autoritate reprezintă cea mai mare parte din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile.",
+      "O singură autoritate reprezintă cel puțin 85% din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile, pentru un total de cel puțin 250.000 lei și cel puțin 5 achiziții directe cu acea autoritate.",
     rationale: "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
     caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat, dacă valoarea totală atinge pragul folosit la calcul. Dependența de un singur client este chiar pista pe care o arată semnalul, nu o dovadă de neregulă. Un client public principal poate fi explicat de specializare sau de piața locală.",
   },
-  da_rapid: {
-    code: "da_rapid",
-    title: "Finalizare rapidă",
-    label: "Finalizare rapidă",
-    entityRule: "Peste 25% din achizițiile directe sunt finalizate în mai puțin de o oră de la publicare. Cere cel puțin 5 achiziții.",
-    subject: "da",
-    short: "Achiziție finalizată în câteva minute de la publicare.",
-    description:
-      "Interval scurt între publicarea și finalizarea achiziției directe, sub limita de durată folosită la calcul. Durata observată este afișată pentru fiecare achiziție.",
-    rationale:
-      "Merită verificat ce etape au precedat publicarea în SEAP și dacă documentele justifică alegerea furnizorului.",
-    caveat: "Durata din SEAP nu descrie întreaga pregătire a achiziției. Achizițiile simple pot fi finalizate rapid; intervalul scurt nu dovedește o înțelegere între părți.",
-  },
   da_round: {
     code: "da_round",
-    title: "Valoare aproape de prag",
-    label: "Aproape de prag",
-    entityRule: "Peste 10% din achizițiile directe au între 90% și 100% din plafon. Cere cel puțin 5 achiziții.",
+    title: "Chiar sub plafonul achiziției directe",
+    label: "Chiar sub plafon",
+    entityRule: "Peste 10% din achizițiile directe au între 96% și 100% din plafon (cel puțin 5 achiziții); la instituții și de la 5 astfel de achiziții, dacă sunt cel puțin 1%.",
     subject: "da",
-    short: "O achiziție între 90% și 100% din plafonul de referință.",
+    short: "O achiziție între 96% și 100% din plafonul achiziției directe.",
     description:
-      "Valoarea de închidere este de cel puțin 90%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
+      "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
     rationale:
       "Merită verificată estimarea necesarului și existența altor achiziții pentru aceeași nevoie. Apropierea de prag nu stabilește intenția de a evita o procedură.",
     caveat: "O achiziție sub plafon este normală. Legea privește valoarea estimată, iar semnalul compară valoarea de închidere. Publicarea aproximează inițierea; finalizarea o înlocuiește numai dacă lipsește. Tipul poate fi dedus din CPV când nu este declarat; necunoscut înseamnă neclasificat, nu suspect.",
+  },
+  da_above_ceiling: {
+    code: "da_above_ceiling",
+    title: "Peste plafonul achiziției directe",
+    label: "Peste plafon",
+    entityRule: "Cel puțin 2 achiziții directe înregistrate cu peste 10% peste plafon, acolo unde excepțiile cunoscute nu se pot aplica.",
+    subject: "da",
+    short: "Achiziție directă înregistrată cu peste 10% peste plafon.",
+    description:
+      "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe pentru tipul și data de referință ale achiziției. Numărăm doar cazurile în care excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2 (procedură proprie), nu medicamente și echipamente medicale (CPV 33, cumpărate și prin centrale de achiziții), nu la companii, asociații sau operatori de utilități (alte reguli), nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când valoarea de închidere depășește de peste două ori estimarea (posibilă greșeală de introducere). În profil contează de la două cazuri.",
+    rationale:
+      "Legea 98/2016 art. 7(5) permite achiziția directă doar sub plafon; peste el se aplică o procedură. Merită verificată estimarea, tipul achiziției și dacă a existat o procedură.",
+    caveat:
+      "Valoarea de închidere poate include ajustări, iar tipul achiziției poate fi greșit declarat în SEAP. Legea privește valoarea estimată, nu cea de închidere. Un caz nu dovedește o încălcare; e o pistă de verificat în documente.",
   },
   da_year_end: {
     code: "da_year_end",
     title: "Achiziții concentrate în decembrie",
     label: "Vârf în decembrie",
-    entityRule: "Cel puțin un an în care decembrie are 35% din valoarea anuală, la un total anual de cel puțin 100.000 lei. Doar anii întregi ai arhivei (2019–2025).",
+    entityRule: "Cel puțin un an în care ponderea lui decembrie e printre cele mai mari 5% la instituțiile de același tip și de cel puțin 35%, la un total anual de cel puțin 100.000 lei. Doar anii întregi ai arhivei.",
     subject: "authority",
     short: "O pondere mare din valoarea anuală a achizițiilor directe este finalizată în decembrie.",
     description:
-      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
+      "Ponderea lunii decembrie în valoarea achizițiilor directe finalizate într-un an este printre cele mai mari 5% la instituțiile de același tip în același an (primării de comună, de oraș și municipiu, consilii județene, spitale, școli, alte instituții) și de cel puțin 35%, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
     rationale:
       "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
     caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",
   },
   award_no_competition: {
     code: "award_no_competition",
-    title: "Negociere fără publicare prealabilă",
+    title: "Negociere fără anunț prealabil",
     subject: "award",
     short: "Procedură fără anunț prealabil; numărul ofertelor se verifică separat.",
     description:
@@ -202,8 +203,8 @@ export const FLAG_ORDER = [
   "da_concentration",
   "da_dependence",
   "da_year_end",
-  "da_rapid",
   "da_round",
+  "da_above_ceiling",
   "award_no_competition",
   "award_single_bid",
   "award_concentration",
@@ -212,11 +213,3 @@ export const FLAG_ORDER = [
   "fin_public_reliance",
   "net_shared_admin",
 ];
-
-/** Risk band for a CRI score, for coloring. */
-export function criBand(cri: number): { label: string; className: string } {
-  if (cri >= 0.6) return { label: "Ridicat", className: "risk-high" };
-  if (cri >= 0.3) return { label: "Mediu", className: "risk-mid" };
-  if (cri > 0) return { label: "Scăzut", className: "risk-low" };
-  return { label: "Niciun criteriu îndeplinit", className: "risk-none" };
-}

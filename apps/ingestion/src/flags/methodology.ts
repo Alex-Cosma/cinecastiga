@@ -16,7 +16,10 @@
 // rf-2026.15: award_no_competition/award_single_bid count once per award notice (same authority and notice number, across SEAP versions) and take the year of its first contract.
 // rf-2026.16: net_shared_admin ignores ONRC insolvency/liquidation roles (administrator provizoriu stays) and records the person's role(s) at each firm (audit F31).
 // rf-2026.17: fin_* and net_shared_admin skip the reviewed ONRC name collisions of Romanian-looking entities (audit F03, option b).
-export const METHODOLOGY_VERSION = "rf-2026.17";
+// rf-2026.18: the profile index becomes a risk score over 100 (owner decision, 1 November 2026): continuous strengths of
+//   the DA criteria (score.ts); da_round from 96% of the ceiling; da_dependence needs 250k lei and 5 DAs with the main
+//   institution; da_year_end against the kind-year 95th percentile; new da_above_ceiling (safe scope); da_rapid retired.
+export const METHODOLOGY_VERSION = "rf-2026.18";
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 
@@ -35,7 +38,7 @@ export interface FlagDef {
 export const FLAG_DEFS: FlagDef[] = [
   {
     code: "da_split",
-    title: "Posibilă fracționare sub prag",
+    title: "Achiziții repetate, peste plafon cumulat",
     subject: "pair",
     description:
       "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului.",
@@ -60,38 +63,38 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Dependență de o autoritate",
     subject: "supplier",
     description:
-      "O singură autoritate reprezintă cea mai mare parte din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile.",
+      "O singură autoritate reprezintă cel puțin 85% din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile, pentru un total de cel puțin 250.000 lei și cel puțin 5 achiziții directe cu acea autoritate.",
     rationale:
       "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
     caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat, dacă valoarea totală atinge pragul folosit la calcul. Dependența de un singur client este chiar pista pe care o arată semnalul, nu o dovadă de neregulă. Un client public principal poate fi explicat de specializare sau de piața locală.",
   },
   {
-    code: "da_rapid",
-    title: "Finalizare rapidă",
-    subject: "da",
-    description:
-      "Interval scurt între publicarea și finalizarea achiziției directe, sub limita de durată folosită la calcul. Durata observată este afișată pentru fiecare achiziție.",
-    rationale:
-      "Merită verificat ce etape au precedat publicarea în SEAP și dacă documentele justifică alegerea furnizorului.",
-    caveat:
-      "Durata din SEAP nu descrie întreaga pregătire a achiziției. Achizițiile simple pot fi finalizate rapid; intervalul scurt nu dovedește o înțelegere între părți.",
-  },
-  {
     code: "da_round",
-    title: "Valoare aproape de prag",
+    title: "Chiar sub plafonul achiziției directe",
     subject: "da",
     description:
-      "Valoarea de închidere este de cel puțin 90%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
+      "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției (de exemplu 130.000 lei la un plafon de 135.060 lei). Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
     rationale:
       "Merită verificată estimarea necesarului și existența altor achiziții pentru aceeași nevoie. Apropierea de prag nu stabilește intenția de a evita o procedură.",
     caveat: "O achiziție sub plafon este normală. Legea privește valoarea estimată, iar semnalul compară valoarea de închidere. Publicarea aproximează inițierea; finalizarea o înlocuiește numai dacă lipsește. Tipul poate fi dedus din CPV când nu este declarat; necunoscut înseamnă neclasificat, nu suspect.",
+  },
+  {
+    code: "da_above_ceiling",
+    title: "Peste plafonul achiziției directe",
+    subject: "da",
+    description:
+      "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe pentru tipul și data de referință ale achiziției. Numărăm doar cazurile în care excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2 (procedură proprie), nu medicamente și echipamente medicale (CPV 33, cumpărate și prin centrale de achiziții), nu la companii, asociații sau operatori de utilități (alte reguli), nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când valoarea de închidere depășește de peste două ori estimarea (posibilă greșeală de introducere). În profil contează de la două cazuri.",
+    rationale:
+      "Legea 98/2016 art. 7(5) permite achiziția directă doar sub plafon; peste el se aplică o procedură. Merită verificată estimarea, tipul achiziției și dacă a existat o procedură.",
+    caveat:
+      "Valoarea de închidere poate include ajustări, iar tipul achiziției poate fi greșit declarat în SEAP. Legea privește valoarea estimată, nu cea de închidere. Un caz nu dovedește o încălcare; e o pistă de verificat în documente.",
   },
   {
     code: "da_year_end",
     title: "Achiziții concentrate în decembrie",
     subject: "authority",
     description:
-      "Cel puțin 35% din valoarea achizițiilor directe finalizate într-un an este concentrată în decembrie, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
+      "Ponderea lunii decembrie în valoarea achizițiilor directe finalizate într-un an este printre cele mai mari 5% la instituțiile de același tip în același an (primării de comună, de oraș și municipiu, consilii județene, spitale, școli, alte instituții), și de cel puțin 35%, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
     rationale:
       "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
     caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",

@@ -9,6 +9,7 @@ import {
   pgSchema,
   primaryKey,
   real,
+  smallint,
   text,
 } from "drizzle-orm/pg-core";
 
@@ -293,10 +294,20 @@ export const entityFlags = martsSchema.table(
      * expression it binned at read time, ~0.8 s a pass on numeric. Stored by
      * PostgreSQL on every insert, so it cannot drift from total_ron (0085). */
     logTotalRon: numeric("log_total_ron").generatedAlwaysAs(sql`log(greatest(coalesce(total_ron, 0), 1))`),
-    /** 0–1 binary CRI. */
+    /** The risk score over 100 (rf-2026.18, 0087), kept as 0–1 so a link's
+     *  criMin/criMax still selects the same percentages: cri = score / 100. */
     cri: numeric("cri"),
-    /** Distinct flag types triggered. */
+    /** Criteria met (strength ≥ 1). */
     nFlags: integer("n_flags").notNull().default(0),
+    /** The risk score shown as a percentage (rf-2026.18, owner decision of
+     *  1 November 2026): 100 × (1 − Π (1 − 0.6 · x / 3)) over the strengths x
+     *  (0–3) of the role's criteria, rounded. 0 when no criterion is met. */
+    score: smallint("score").notNull().default(0),
+    /** The unrounded score, for ties and the peer comparison. */
+    scoreRaw: real("score_raw").notNull().default(0),
+    /** { code: { x, ...facts } } for each criterion with x > 0: the strength
+     *  and the plain facts behind it ("3 grupuri, 13% din valoare"). */
+    scoreParts: jsonb("score_parts").notNull().default({}),
     /** [{ code, severity, evidence }] for the triggered flags. */
     flags: jsonb("flags"),
     /** Suppliers only (F6a phase 2, 0086): the CPV division (two digits) with
@@ -307,6 +318,7 @@ export const entityFlags = martsSchema.table(
   (t) => [
     primaryKey({ columns: [t.entityId, t.role] }),
     index("entity_flags_role_cri_idx").on(t.role, t.cri),
+    index("entity_flags_role_score_idx").on(t.role, t.score),
   ],
 );
 

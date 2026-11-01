@@ -3,6 +3,7 @@ import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
 import { confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
+import { annex2Sql, authorityDecemberSql } from "./score.js";
 
 /**
  * DA red-flag build (red-flags DEC-005). Truncate + recompute `core.flags` from
@@ -16,17 +17,22 @@ import { confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competiti
  */
 const V = METHODOLOGY_VERSION;
 
+/** Buyers whose legal status the archive cannot confirm (companies, associations, private clinics): no above-ceiling hit. */
+const BUYER_NONCLASSIC = String.raw`(\m(srl|sa|s a|ra|regia|regie|compania|societatea|cn|sn|ag|sca)\M)|^(asociatia|ouai|organizatia|fundatia|federatia|clubul|cooperativa|uniunea)|clinic|policlinic|centrul medical|medical center`;
+/** Buyers that look sectoral (utilities, transport, energy): Legea 99 ceilings and exemptions apply, not checked here. */
+const BUYER_SECTORAL = String.raw`(apa|canal|termic|termo|transgaz|transelectrica|electrica|hidroelectrica|nuclearelectrica|romgaz|cfr|metrorex|\mstb\M|transport|aeroport|\mport\M|posta|distributie|energie|gaz|salubr|ecolog|aquaserv|apavital|apaserv|raja)`;
+
 const DEFAULTS: Record<string, number> = {
   // Analytical plausibility cutoff, distinct from the date-aware legal limits.
   da_max_plausible: 2_000_000,
-  da_rapid_hours: 1,
   da_conc_top_pct: 0.6,
   da_conc_min_suppliers: 3,
   da_conc_min_total: 100_000,
   da_dep_top_pct: 0.85,
-  da_dep_min_total: 50_000,
+  da_dep_min_total: 250_000,
+  da_dep_min_count: 5,
   da_split_min_count: 3,
-  da_round_floor_pct: 0.9,
+  da_round_floor_pct: 0.96,
   da_year_end_share: 0.35,
   da_year_end_min_total: 100_000,
   // ── award (contract-award) thresholds ──────────────────────────────────────
@@ -102,39 +108,27 @@ async function buildFlags(
   if (maxPlausible !== 2_000_000 || awMaxPlausible !== 1_000_000_000) {
     throw new Error("Plausibility bounds differ from the canonical transaction population; update all consumers together before rebuilding flags");
   }
-  const rapidHours = await t("da_rapid_hours");
   const concTopPct = await t("da_conc_top_pct");
   const concMinSup = await t("da_conc_min_suppliers");
   const concMinTot = await t("da_conc_min_total");
   const depTopPct = await t("da_dep_top_pct");
   const depMinTot = await t("da_dep_min_total");
+  const depMinCount = await t("da_dep_min_count");
   const splitMinN = await t("da_split_min_count");
   const roundFloor = await t("da_round_floor_pct");
   const yeShare = await t("da_year_end_share");
   const yeMinTot = await t("da_year_end_min_total");
   log(
-    `thresholds: ceilings=date-aware (${ceilingEras} era rows) rapidH=${rapidHours} concTop=${concTopPct} ` +
-      `depTop=${depTopPct} splitN=${splitMinN} roundFloor=${roundFloor} yeShare=${yeShare}`,
+    `thresholds: ceilings=date-aware (${ceilingEras} era rows) concTop=${concTopPct} ` +
+      `depTop=${depTopPct} depMin=${depMinTot}/${depMinCount} splitN=${splitMinN} roundFloor=${roundFloor} yeShare=${yeShare}`,
   );
 
   await sql`truncate core.flags`;
 
-  // ── da_rapid (per DA) ────────────────────────────────────────────────────
-  await sql`
-    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    select 'da', id, 'da_rapid', to_char(finalization_date,'YYYY'), true,
-      greatest(0, least(1, 1 - (extract(epoch from (finalization_date - publication_date))/3600) / ${rapidHours}::float8)),
-      jsonb_build_object(
-        'minutes', round(extract(epoch from (finalization_date - publication_date))/60)::int,
-        'closing', closing_value),
-      ${V}
-    from core.direct_acquisitions
-    where state = 'Oferta acceptata'
-      and publication_date is not null and finalization_date is not null
-      and finalization_date >= publication_date
-      and closing_value > 0 and closing_value <= ${maxPlausible}
-      and extract(epoch from (finalization_date - publication_date)) < ${rapidHours}::float8 * 3600
-  `;
+  // da_rapid ("Finalizare rapidă") was RETIRED in rf-2026.18 (owner decision,
+  // 1 November 2026): it marked 11.5% of all DAs and 87.5% of institutions,
+  // with no legal basis. The minutes between publication and finalization stay
+  // on every record (marts.da_transactions.gap_minutes).
 
   // da_estimate_match was DROPPED after calibration: closing == estimate holds
   // for ~96% of DAs (the catalog-price process norm), so it carries no signal.
@@ -234,7 +228,7 @@ async function buildFlags(
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with per as (
-      select supplier_entity_id s, authority_entity_id a, sum(closing_value) st
+      select supplier_entity_id s, authority_entity_id a, sum(closing_value) st, count(*) n
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
@@ -244,13 +238,16 @@ async function buildFlags(
     ),
     agg as (
       select s, sum(st) total, count(*) authorities, max(st) top from per group by s
-    )
-    select 'supplier', s, 'da_dependence', 'all', true,
+    ),
+    -- rf-2026.18: the main institution (ties: the smaller id) must have at least
+    -- da_dep_min_count of the firm's DAs, so one-off sellers do not read as dependent.
+    main as (select distinct on (s) s, a, n from per order by s, st desc, a)
+    select 'supplier', agg.s, 'da_dependence', 'all', true,
       least(1, top / nullif(total,0)),
       jsonb_build_object('total', total, 'authorities', authorities,
-        'top_authority_pct', round(top/nullif(total,0),4)), ${V}
-    from agg
-    where total >= ${depMinTot} and top/nullif(total,0) >= ${depTopPct}
+        'top_authority_pct', round(top/nullif(total,0),4), 'top_authority', main.a, 'top_authority_count', main.n), ${V}
+    from agg join main using (s)
+    where total >= ${depMinTot} and top/nullif(total,0) >= ${depTopPct} and main.n >= ${depMinCount}
   `;
 
   // ── da_year_end: December spend spike (per authority-year) ────────────────
@@ -258,29 +255,63 @@ async function buildFlags(
   // (audit F20): the archive starts on 2 April 2018, and the current year has
   // no December yet, so a partial year would inflate or hide December's share.
   // The span is the same first/last finalization day as marts.data_coverage.
+  // rf-2026.18: December is compared with institutions of the same kind in the
+  // same year: flagged at max(their 95th percentile, da_year_end_share), so a
+  // school's December is judged against schools (score.ts, authorityDecemberSql).
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
-    with span as (
-      select min(finalization_date)::date date_from, max(finalization_date)::date date_to
-      from core.direct_acquisitions
-    ),
-    m as (
-      select authority_entity_id a, extract(year from finalization_date)::int y,
-        sum(closing_value) tot,
-        sum(case when extract(month from finalization_date) = 12 then closing_value else 0 end) dec
-      from core.direct_acquisitions
-      where state = 'Oferta acceptata'
-        and authority_entity_id is not null and closing_value > 0
-        and closing_value <= ${maxPlausible} and finalization_date is not null
-      group by a, y
-    )
     select 'authority', a, 'da_year_end', y::text, true,
-      least(1, dec / nullif(tot,0)),
+      least(1, share),
       jsonb_build_object('year', y, 'total', tot, 'december', dec,
-        'december_pct', round(dec/nullif(tot,0),4)), ${V}
-    from m cross join span
-    where tot >= ${yeMinTot} and dec/nullif(tot,0) >= ${yeShare}
-      and span.date_from <= make_date(y, 1, 1) and span.date_to >= make_date(y, 12, 31)
+        'december_pct', round(share::numeric, 4), 'kind', kind,
+        'peer_p95', round(p95::numeric, 4), 'threshold', round(threshold::numeric, 4)), ${V}
+    from (${authorityDecemberSql(sql, { maxPlausible, minTotal: yeMinTot, shareFloor: yeShare })}) d
+    where flagged
+  `;
+
+  // ── da_above_ceiling: a DA recorded above the legal ceiling (per DA) ──────
+  // rf-2026.18, the review's safe scope only, so a named institution is never
+  // wrongly accused: not an exact Annex 2 CPV (own procedure, art. 111), not
+  // CPV 33 (central purchasing cannot be seen), not a company, association or
+  // sectoral-looking buyer, not 26.02–14.05.2020 (COVID onset), not the state
+  // supplier Unifarm, more than 1.1× the ceiling, not goods/services that a
+  // works ceiling would cover (≥ 90% of it, or building-like CPVs 44, 71, 34,
+  // 31, 39 under it), and the closing at most twice the estimate.
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    select 'da', id, 'da_above_ceiling', to_char(finalization_date, 'YYYY'), true,
+      least(1, (closing_value / ceil - 1) / 2),
+      jsonb_build_object('closing', closing_value, 'ceiling', ceil, 'ratio', round(closing_value / ceil, 4), 'type', typ,
+        'works_ceiling', works_ceil, 'threshold_date', threshold_date, 'threshold_law', threshold_law), ${V}
+    from (
+      select da.id, da.finalization_date, da.closing_value, btrim(da.cpv_code) cpv, da.estimated_value_ron est,
+        th.value_num::numeric ceil, th.key typ, tw.value_num::numeric works_ceil, ${daDate} threshold_date, th.note threshold_law,
+        ea.name_normalized buyer, es.name_normalized supplier
+      from core.direct_acquisitions da
+      join core.risk_thresholds th
+        on th.key = ${daKey}
+       and (th.valid_from at time zone 'UTC')::date <= ${daDate}
+       and (th.valid_to is null or (th.valid_to at time zone 'UTC')::date > ${daDate})
+      join core.risk_thresholds tw
+        on tw.key = 'da_ceiling_works'
+       and (tw.valid_from at time zone 'UTC')::date <= ${daDate}
+       and (tw.valid_to is null or (tw.valid_to at time zone 'UTC')::date > ${daDate})
+      join core.entities ea on ea.id = da.authority_entity_id
+      join core.entities es on es.id = da.supplier_entity_id
+      where da.state = 'Oferta acceptata'
+        and da.closing_value > 0 and da.closing_value <= ${maxPlausible}
+        and da.finalization_date is not null
+        and da.supplier_entity_id <> da.authority_entity_id
+        and da.closing_value > 1.1 * th.value_num
+    ) d
+    -- A buyer or supplier without a normalized name is left out (unknown status).
+    where not ${annex2Sql(sql, sql`d.cpv`)} and left(d.cpv, 2) <> '33'
+      and d.buyer !~ ${BUYER_NONCLASSIC} and d.buyer !~ ${BUYER_SECTORAL}
+      and d.supplier !~ 'unifarm'
+      and not (d.threshold_date between date '2020-02-26' and date '2020-05-14')
+      and not (d.typ = 'da_ceiling_goods_services' and d.closing_value >= 0.9 * d.works_ceil and d.closing_value <= d.works_ceil)
+      and not (d.typ = 'da_ceiling_goods_services' and d.closing_value <= d.works_ceil and left(d.cpv, 2) in ('44', '71', '34', '31', '39'))
+      and not (d.est > 0 and d.closing_value > 2 * d.est)
   `;
 
   // ══ Procedure flags ═══════════════════════════════════════════════════════
