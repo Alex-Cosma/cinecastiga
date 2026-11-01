@@ -57,6 +57,33 @@ export async function claimRepairProcessing(q: DbSql, repairId: string) {
  });
 }
 
+/**
+ * Explicit host invocation only (`process-nightly.sh --methodology-now`), with the
+ * owner's consent: one full publication now, instead of waiting for the next
+ * scheduled run, when the signals methodology changed since the last ready
+ * publication (a deploy of a new FLAGS_METHODOLOGY_VERSION; the site shows no
+ * risk until a full run). Refused in any other case, under maintenance, or with
+ * a publication running. Never consumes or rewrites a scheduled run.
+ */
+export async function claimMethodologyProcessing(q: DbSql) {
+ return q.begin(async tx=>{
+  const [c]=await tx`select *, (clock_timestamp() at time zone 'Europe/Bucharest')::date::text as run_day
+    from app.collection_control where id=1 for update`;
+  if(!c||c.maintenance)throw Error('An existing maintenance must be resolved first');
+  if((await tx`select id from app.processing_runs where status='running' limit 1`).length)throw Error('An unfinished publication requires recovery');
+  const [previous]=await tx`select methodology from app.monitoring_refreshes where status='ready' order by version desc limit 1`;
+  if(previous?.methodology?.flags===FLAGS_METHODOLOGY_VERSION)throw Error('The signals methodology is already published; wait for the scheduled run');
+  const [run]=await tx`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control)
+    values(${c.run_day}::date,'manual','full',${c.revision+1},${JSON.stringify({paused:c.paused,maintenance:c.maintenance,revision:c.revision,methodology:FLAGS_METHODOLOGY_VERSION})}::jsonb)
+    returning id,scope`;
+  await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+  await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+    values('system:processor','Metodologie nouă, rulare autorizată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,
+      ${JSON.stringify({runId:run!.id,scope:'full',trigger:'manual',methodology:FLAGS_METHODOLOGY_VERSION,maintenance:true})}::jsonb)`;
+  return {id:String(run!.id),scope:'full'};
+ });
+}
+
 /** Explicit host invocation only: one full publication retry for the latest
  * failed run, while its retained maintenance and operator control are unchanged.
  * Never resets the failed run; the scheduled run for a later day stays separate. */
