@@ -10,3 +10,22 @@ table.rank.method-thresholds th,table.rank.method-thresholds td{padding:6px 10px
 .method-fold>p{margin:10px 0 4px}
 .method-card>.method-list{padding-left:18px;margin-top:4px;margin-bottom:6px}
 .method-list>li{margin:3px 0}
+.method-fold>.method-list{padding-left:18px;margin:10px 0 4px;max-width:78ch}
+/* The risk score (rf-2026.18): sub-headings, the levels table, the formula and the bands. */
+#indice>h3{font-size:16px;margin:22px 0 6px}
+#indice>p{max-width:78ch}
+table.rank.method-levels{width:100%;max-width:960px;margin:10px 0 8px}
+table.rank.method-levels th,table.rank.method-levels td{padding:7px 10px}
+table.rank.method-levels tbody th{text-align:left;font-weight:600;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);vertical-align:top}
+table.rank.method-levels tbody th .county{display:block;font-weight:400}
+.method-formula code{font-family:var(--mono);font-size:13px;overflow-wrap:anywhere}
+.method-bands{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+.method-bands>span{white-space:nowrap}
+/* Phones: one block per pattern, the level named before its rule; never a horizontal scroll. */
+@media (max-width:640px){
+  table.rank.method-levels,table.rank.method-levels tbody,table.rank.method-levels tr,table.rank.method-levels th,table.rank.method-levels td{display:block;width:auto;overflow:visible}
+  table.rank.method-levels thead{display:none}
+  table.rank.method-levels tr{border-bottom:1px solid var(--line);padding:8px 0}
+  table.rank.method-levels tbody th,table.rank.method-levels td{border:0;padding:2px 0}
+  table.rank.method-levels td::before{content:attr(data-l) " · ";color:var(--muted);font-size:12px}
+}
