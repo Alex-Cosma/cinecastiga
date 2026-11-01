@@ -142,16 +142,75 @@
   margin: 12px 0 16px;
   overflow-wrap: anywhere;
 }
+/* How a typed question was understood (owner, 1 November 2026): one quiet line under the title, its other readings
+   inline buttons that answer at once. Inline targets in a line of text (WCAG 2.5.8). */
+.cq-understood {
+  margin: -6px 0 12px;
+  max-width: 780px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.cq-understood a,
+.cq-understood-alt {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-underline-offset: 3px;
+}
+.cq-understood-alt {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.cq-understood-alt > span { margin-left: 3px; text-decoration: none; display: inline-block; }
+.cq-understood a:hover,
+.cq-understood-alt:hover { text-decoration-color: currentColor; }
+/* The pills: what the answer counted. A pill with a window of the builder is that phrase (its tint, dashed line and
+   chevron, filters-kit.css) and opens it in place (AnswerPills); the others are text. */
 .cq-scope {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px;
-  font-size: 12px;
+  align-items: center;
+  gap: 2px 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
   color: var(--muted);
 }
-.cq-scope span + span:before {
-  content: "·";
-  margin-right: 7px;
+.cq-scope-text { min-width: 0; overflow-wrap: anywhere; }
+.cq-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fk-green);
+  font: 500 12.5px / 1.45 var(--body);
+  text-align: left;
+  cursor: pointer;
+}
+.cq-pill > span {
+  min-width: 0;
+  padding: 1px 6px 0;
+  border-bottom: 1px dashed var(--fk-phrase-line);
+  border-radius: 4px 4px 0 0;
+  background: var(--fk-phrase-bg);
+  overflow-wrap: anywhere;
+}
+.cq-pill:hover > span,
+.cq-pill[aria-expanded="true"] > span {
+  background: var(--fk-phrase-hover);
+  border-bottom-color: var(--fk-green);
 }
 .cq-answer-actions {
   display: flex;
@@ -960,8 +1019,11 @@
   }
 }
 
-.cq-answer {
-  scroll-margin-top: 112px;
+/* The answer and its title land under the sticky header, never beneath it: its real height (SiteNav sets
+   --site-header-h, 91 px on a desktop, 108 px on a phone) and a small gap. */
+.cq-answer,
+.cq-answer-head h2 {
+  scroll-margin-top: calc(var(--site-header-h, 91px) + 12px);
 }
 
 .cq-source-main .d-icon,.cq-export .d-icon{width:18px;height:18px;flex-shrink:0}
@@ -1005,7 +1067,7 @@
 .cq-error-detail { margin-top: 14px; font-size: 12px; color: var(--ink2, var(--muted)); }
 .cq-error-detail summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 .cq-error-detail p { margin: 6px 0 0; overflow-wrap: anywhere; font-family: var(--mono); }
-#raspuns-eroare { scroll-margin-top: 112px; }
+#raspuns-eroare { scroll-margin-top: calc(var(--site-header-h, 91px) + 12px); }
 .cq-result .ask-table th.pos, .cq-result .ask-table td.pos { white-space: nowrap; width: auto; min-width: 26px; }
 .cq-result .ask-complegend .vv .cq-record-link { margin-left: 12px; }
 @media (max-width: 720px) {
@@ -1033,4 +1095,8 @@
 .cq-locate { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 14px; min-width: 0; }
 .cq-locate .qb-find { flex: 1 1 280px; min-width: 0; }
 .cq-locate-whole { min-height: 44px; }
+/* A ranking's „Vizual | Tabel” (owner, 1 November 2026): it had a tinted strip to itself; now at the end of „Unde e o
+   firmă?”, or on its own line where the ranking has no search. */
+.cq-locate-end { margin-left: auto; }
+.cq-layout-row { display: flex; justify-content: flex-end; margin: 0 0 14px; }
 

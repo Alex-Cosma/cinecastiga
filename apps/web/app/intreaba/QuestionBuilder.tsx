@@ -66,10 +66,6 @@ export interface QuestionBuilderProps {
   onRun: (spec: QuestionSpec) => RunOutcome | Promise<RunOutcome>;
   running: boolean;
   onDraftChange?: (dirty: boolean) => void;
-  /** Shown above the editable sentence ("Am înțeles așa…"). */
-  intro?: ReactNode;
-  /** Shown under the run button (alternatives, words not understood). */
-  outro?: ReactNode;
   /** False when `initial` is a proposal (an interpreted question or a link that waits) that has not been run yet. */
   initialApplied?: boolean;
   /** What opening a link changed (restoreLink's notes, e.g. a measure only rankings of institutions have): said with the builder's own notes. */
@@ -116,7 +112,7 @@ const WINNER_TOGGLES: Partial<Record<string, string>> = { mainClient: "main", do
 /** Their (?) (final table §3.6, §3.7): the glossary's words. */
 const WINNER_TIPS: Partial<Record<string, GlossaryId>> = { mainClient: "client-principal", dominantSupplier: "o-firma-ia-jumatate" };
 
-export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, intro, outro, initialApplied = true, initialNotes, stripPatch = null, onTrendList }: QuestionBuilderProps) {
+export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, initialApplied = true, initialNotes, stripPatch = null, onTrendList }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
@@ -354,13 +350,12 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   }
 
   const catalogResults = QUESTION_TYPES.filter((item) => foldQuestion(`${item.label} ${item.description} ${item.keywords}`).includes(foldQuestion(search.trim())));
-  const navigation = <div className={`qb-navigation${intro ? " qb-navigation-after" : ""}`}><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "compare", label: "Compară" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openCatalogue(event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
+  const navigation = <div className="qb-navigation"><div className="qb-shortcuts" aria-label="Aceleași date, altă perspectivă">{[{ id: "table", label: "Cine câștigă?" }, { id: "timeseries", label: "Cum se schimbă?" }, { id: "compare", label: "Compară" }].map((item) => <button type="button" aria-pressed={draft.block === item.id} key={item.id} onClick={() => chooseType(item.id)}><Glyph name={item.id} />{item.label}</button>)}</div><button type="button" className="qb-catalogue-trigger" aria-haspopup="dialog" onClick={(event) => openCatalogue(event.currentTarget)}><Glyph name="plus" />Toate întrebările<span>13</span></button></div>;
   const removal = open ? view.removals[open.key] : undefined;
 
   return <div className="question-builder qb">
-    {!intro && navigation}
+    {navigation}
     <section className={`qb-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
-      {intro}
       {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}
       <Sentence tokens={view.sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
@@ -398,11 +393,9 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
           <button type="button" className="qb-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>
         </div>
       </div>
-      {outro}
       {errors.length > 0 && <div className="qb-validation" aria-live="polite">{errors.map((error) => <p key={error}>{error}</p>)}</div>}
       {dirty && <p className="qb-pending-line" role="status"><span />Modificări neaplicate</p>}
     </section>
-    {intro && navigation}
     <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
       onClose={closeWindow} onChoose={(choices, opts) => { if (win) choose(win, choices, opts); }} onReplace={replace} onRemoveExclusions={removeExclusions} peers={peerState}
       onCpvName={(code, name) => setCpvNames(current => ({ ...current, [code]: name }))} coverage={coverage} />

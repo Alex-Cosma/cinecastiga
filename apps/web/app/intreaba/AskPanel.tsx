@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -46,7 +46,7 @@ import { TREND_LIST_CSV, retimeScopeLabel, trendWatch } from "./trend-answer";
 import { specTrendList, specTrendPartLabel, type TrendList } from "@/lib/ask/trend-shared";
 import { isWholeYear, monthsLabel } from "@/lib/ask/months-window";
 import QuestionBuilder, { type StripPatch } from "./QuestionBuilder";
-import { patchDraft } from "./builder/view";
+import { patchDraft, trendListSwitch } from "./builder/view";
 import { readCoverage } from "./builder/coverage";
 import SaveQuestionButton from "./SaveQuestionButton";
 import type { SavedQuestion } from "./SavedQuestions";
@@ -95,7 +95,9 @@ import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
-import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentIntro, IntentOutro, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
+import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
+import { understoodLine } from "./intent-line";
+import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
 
@@ -259,6 +261,11 @@ export default function AskPanel({
   const [intentLoading, setIntentLoading] = useState(false);
   const [intentError, setIntentError] = useState<string | null>(null);
   const [chosen, setChosen] = useState<IntentChoice | null>(null);
+  /**
+   * The readings of the typed question answered so far, by their answer's link (`spec`): the interpretation line stays
+   * with the answer its reading gave, also back and forth between two readings («Înapoi»).
+   */
+  const [understood, setUnderstood] = useState<Record<string, IntentChoice>>({});
   const [builderOpen, setBuilderOpen] = useState(false);
   const askRef = useRef<HTMLInputElement>(null);
   const intentRequest = useRef<AbortController | null>(null);
@@ -410,10 +417,11 @@ export default function AskPanel({
             ...(answer.executed ? { months: answer.executed.months } : {}),
           });
         if (!drill && scroll)
-          // Two frames: the answer is rendered before it is brought under the sticky header.
+          // Two frames: the answer is rendered before it is brought under the sticky header (its scroll-margin-top
+          // is the header's real height). One scroll (owner, 1 November 2026): a folded builder's "Schimbă întrebarea",
+          // right above the answer, comes into view with it; the focus goes to the answer's title.
           requestAnimationFrame(() => requestAnimationFrame(() => {
-            document
-              .getElementById("raspuns")
+            (document.querySelector("#intrebarea.ia-builder-collapsed:not([hidden])") ?? document.getElementById("raspuns"))
               ?.scrollIntoView({
                 behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
                   .matches
@@ -437,20 +445,26 @@ export default function AskPanel({
     },
     [revealError],
   );
-  /** Bring the understood question (or the choice to make) into view and move focus to its heading. */
-  const focusResult = useCallback((id: string, scrollTo: string) => {
+  /**
+   * The choice to make or the words not understood, under the box: focus on its heading; the page moves only when the
+   * heading is out of view, so the question stays in sight.
+   */
+  const focusResult = useCallback(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      document.getElementById(scrollTo)?.scrollIntoView({
+      const heading = document.getElementById("ia-result-title");
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView({
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth",
-        block: "start",
+        block: "nearest",
       });
-      document.getElementById(id)?.focus({ preventScroll: true });
     }));
   }, []);
   /**
    * One reading is chosen: the interpreter's only reading, a choice the person
-   * clicked, or "Sau întreabă altfel". Each already holds a whole question, so it
-   * is answered at once; the editable builder stays above the answer.
+   * clicked, or one of the line's "Sau: … ›". Each already holds a whole
+   * question, so it is answered at once, and opens as a linked answer does
+   * (owner, 1 November 2026): the builder folded under "Schimbă întrebarea",
+   * the interpretation one line under the answer's title, one scroll.
    */
   const adopt = useCallback((choice: IntentChoice) => {
     setChosen(choice);
@@ -459,11 +473,15 @@ export default function AskPanel({
     setBuilderResolution(null);
     setBuilderFromAi(false);
     setBuilderOpen(true);
-    setBuilderCollapsed(false);
+    setBuilderCollapsed(true);
+    // The folded builder is not mounted: an earlier draft's "modificat" does not stay on this answer.
+    setDirty(false);
     setMode("build");
-    focusResult("ia-understood", "intrebarea");
-    void execute({ spec: choice.spec });
-  }, [focusResult, execute]);
+    void execute({ spec: choice.spec }).then((ran) => {
+      const link = ran ? new URLSearchParams(window.location.search).get("spec") : null;
+      if (link) setUnderstood((readings) => ({ ...readings, [link]: choice }));
+    });
+  }, [execute]);
   const interpret = useCallback(async (raw: string, fromHistory = false) => {
     const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
     if (text.length < 2) return;
@@ -481,6 +499,7 @@ export default function AskPanel({
         return;
       }
       setIntent(body);
+      setUnderstood({});
       // A new question starts a new answer: the previous one belonged to other words.
       setResp(null);
       setError(null);
@@ -490,7 +509,7 @@ export default function AskPanel({
         setChosen(null);
         setBuilderInit(null);
         setBuilderOpen(false);
-        focusResult("ia-result-title", "ia-result-title");
+        focusResult();
       }
       if (!fromHistory) {
         const url = new URL(window.location.href);
@@ -619,6 +638,11 @@ export default function AskPanel({
   // The strip beside the answer (P6): the keys BLOCK_FILTERS puts there, on the applied question.
   const stripKeys = applied ? BLOCK_FILTERS[applied.block]?.strip ?? [] : [];
   const shown = resp && applied ? shownWords(resp, applied) : { pills: [] as string[] };
+  // What the answer adds to the pills' words (a trend's months, a cloud's group): which pill states what (pill-filters.ts).
+  const pillLabels = useMemo(() => answerLabels(resp), [resp]);
+  // The interpretation line stays with the answer its reading gave (a pill, the strip or the builder make another question).
+  const reading = intent && applied ? understood[encodeSpec(applied)] : undefined;
+  const line = intent && reading ? understoodLine(intent, reading) : null;
   const crumbs = thread && applied ? threadCrumbs(thread, applied) : null;
   const band: BandState = applied ? {
     ...(stripKeys.includes("dataset") ? { stream: (applied.dataset ?? "all") as NonNullable<BandState["stream"]> } : {}),
@@ -893,6 +917,18 @@ export default function AskPanel({
     void execute({ spec: next });
   };
   /**
+   * A pill's window chose (owner, 1 November 2026): a new question in a new history entry, the builder's draft, the
+   * page where it is; what the choice changed besides is said. A trend's group the answer holds switches as its button.
+   */
+  const applyPill = (next: QuestionSpec, notes: string[]) => {
+    const list = trendListSwitch(next, applied as unknown as QuestionSpec);
+    if (list && trendListFromBuilder(list)) return;
+    setBuilderInit(next);
+    setLinkRuns(true);
+    void execute({ spec: next as unknown as AskSpec }, false, undefined, undefined, false);
+    if (notes.length) showToast(notes.join(" "));
+  };
+  /**
    * "Scoate din calcul" (F4, plan §2.3 "restrângere"): the applied question without the row's entity, a new
    * answer in a new history entry, so "Înapoi" brings the one before back (popstate restores the link). The page
    * stays where it is; the total line says the new total (aria-live) and the "⋯" of the row that took the place of
@@ -934,6 +970,14 @@ export default function AskPanel({
       (row?.querySelector<HTMLElement>(".qb-more") ?? document.getElementById("raspuns-titlu"))?.focus();
     });
   }, [resp, loading]);
+  /** „Vizual | Tabel”: the strip's last control; a ranking, with no strip of its own, has it beside „Unde e o firmă?”. */
+  const layoutToggle = <Segmented
+    label="Cum arată răspunsul"
+    size="sm"
+    value={layout}
+    options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel" }]}
+    onChange={(value) => setLayout(value as "visual" | "table")}
+  />;
   return (
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
@@ -1047,7 +1091,7 @@ export default function AskPanel({
         </div>
       ) : builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
-          {!chosen && <h2 className="ia-builder-title">Construiește întrebarea pas cu pas</h2>}
+          <h2 className="ia-builder-title">Construiește întrebarea pas cu pas</h2>
           <QuestionBuilder
             key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
@@ -1060,10 +1104,6 @@ export default function AskPanel({
             {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
             stripPatch={stripPatch}
             onTrendList={trendListFromBuilder}
-            {...(chosen && intent ? {
-              intro: <IntentIntro />,
-              outro: <IntentOutro result={intent} chosen={chosen} onAdopt={adopt} />,
-            } : {})}
           />
         </div>
       ) : (
@@ -1101,11 +1141,8 @@ export default function AskPanel({
             <div className="cq-answer-head">
               <div>
                 <h2 id="raspuns-titlu" tabIndex={-1}>{title}</h2>
-                <div className="cq-scope">
-                  {shown.pills.map((p) => (
-                    <span key={p}>{p}</span>
-                  ))}
-                </div>
+                {line && <IntentLine line={line} onAdopt={adopt} />}
+                <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} />
                 {dirty && (
                   <p className="cq-pending" role="status">
                     Răspuns pentru întrebarea anterioară
@@ -1160,8 +1197,9 @@ export default function AskPanel({
             </div>
             {/* The profile line under the sentence and the pill say the basis; the banner stays where the answer shows lei (not payments). */}
             {isProfile && applied.block !== "distribution" && <ProfileNotice />}
-            {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. */}
-            {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["table", "timeseries", "map"].includes(data.block)) && (
+            {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. A ranking's
+                strip would hold only „Vizual | Tabel” (owner, 1 November 2026): it ends the row of „Unde e o firmă?” instead. */}
+            {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
               <div className="qb cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (() => {
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
@@ -1253,17 +1291,7 @@ export default function AskPanel({
                   </span>
                 )}
                 {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
-                {["table", "timeseries", "map", "sankey"].includes(data.block) && (
-                  <StripEnd>
-                    <Segmented
-                      label="Cum arată răspunsul"
-                      size="sm"
-                      value={layout}
-                      options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel" }]}
-                      onChange={(value) => setLayout(value as "visual" | "table")}
-                    />
-                  </StripEnd>
-                )}
+                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd>{layoutToggle}</StripEnd>}
               </AnswerStrip></div>
             )}
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
@@ -1283,10 +1311,10 @@ export default function AskPanel({
                     restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
                 <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
               </>}
-              {data.block === "table" && applied && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0 && (
-                <RankingLocate spec={applied} onWhole={wholeRanking}
+              {data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
+                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle}
                   shown={data.total !== undefined ? ((data.page ?? 0) + 1) * (data.pageSize ?? RANKING_PAGE_SIZE) : data.rows.length} />
-              )}
+                : data.block === "table" && <div className="qb cq-layout-row">{layoutToggle}</div>}
               {data.block === "table" &&
                 (layout === "visual" ? (
                   <RankingBars

@@ -10,6 +10,7 @@
   --accent: #233c9c; --accent-ink: #1a2d78; --accent-soft: #e6eafb; --accent-line: #b9c4f0; --on-accent: #ffffff;
   --risk: #c0311c; --risk-soft: #fbe4df; --risk-line: #efb3a7;
   --amber: #a86f12; --amber-soft: #fbefd6; --amber-line: #ecd095; --amber-ink: #6e5427;
+  --amber-pill: #8f5d0d; /* the "moderat" pill's text on --amber-soft: 4.9:1 (--amber is 3.7:1) */
   --ok: #2f7a4f; --ok-soft: #e1f2e7;
   --slate: #6d7a90; --slate-soft: #dde2ea;
   --glass: rgba(255,255,255,.74);
@@ -32,7 +33,7 @@
   --line: #262d39; --line2: #323b4a;
   --accent: #9fb0ff; --accent-ink: #c3cdff; --accent-soft: #1b2342; --accent-line: #33418a; --on-accent: #0e1218;
   --risk: #ff8a75; --risk-soft: #3a1b16; --risk-line: #7a3327;
-  --amber: #e5b04e; --amber-soft: #382a10; --amber-line: #6b5220; --amber-ink: #e5b04e;
+  --amber: #e5b04e; --amber-soft: #382a10; --amber-line: #6b5220; --amber-ink: #e5b04e; --amber-pill: #e5b04e;
   --ok: #6cc48f; --ok-soft: #173225;
   --slate: #8d9ab0; --slate-soft: #2a3342;
   --glass: rgba(21,26,34,.74);
@@ -46,7 +47,7 @@
   --line: #262d39; --line2: #323b4a;
   --accent: #9fb0ff; --accent-ink: #c3cdff; --accent-soft: #1b2342; --accent-line: #33418a; --on-accent: #0e1218;
   --risk: #ff8a75; --risk-soft: #3a1b16; --risk-line: #7a3327;
-  --amber: #e5b04e; --amber-soft: #382a10; --amber-line: #6b5220; --amber-ink: #e5b04e;
+  --amber: #e5b04e; --amber-soft: #382a10; --amber-line: #6b5220; --amber-ink: #e5b04e; --amber-pill: #e5b04e;
   --ok: #6cc48f; --ok-soft: #173225;
   --slate: #8d9ab0; --slate-soft: #2a3342;
   --glass: rgba(21,26,34,.74);
@@ -244,6 +245,8 @@ table.rank .county { color: var(--muted); font-size: 12px; }
 }
 .risk-high { background: var(--risk-soft); color: var(--risk); }
 .risk-mid { background: var(--amber-soft); color: var(--amber); }
+/* The "moderat" pill's text: a darker amber, ≥ 4.5:1 on its fill in both themes; the meter and the dots keep --amber. */
+.cri-pill.risk-mid { color: var(--amber-pill); }
 .risk-low { background: var(--ok-soft); color: var(--ok); }
 .risk-none { background: var(--line); color: var(--muted); }
 /* The risk score (rf-2026.18): a weak pattern is neutral, never the "safe" green. */

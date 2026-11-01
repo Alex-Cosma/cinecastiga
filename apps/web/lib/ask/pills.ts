@@ -4,6 +4,7 @@ import { isHistoricalProfile } from "./population";
 import { COUNT_MEASURE_BLOCKS, leaderAxis } from "./question-ui";
 import { countWords } from "./answer-text";
 import { describeConditions, PROFILE_SOURCE_PILL, type ConditionLabels } from "./filters/describe";
+import type { FilterId } from "./filters/types";
 import { groupNoun } from "./scatter-shared";
 
 /**
@@ -47,41 +48,56 @@ function shownMeasure(spec: AskSpec): AskSpec["measure"] {
   return spec.measure === "value_per_capita" && !perCapita ? "value" : spec.measure;
 }
 
+/** A pill and the filter it states (null: the answer's shape, which no window changes). */
+export interface PillPart { text: string; filter: FilterId | null }
+
+/**
+ * The answer's own pills, before its conditions: its shape, its list and its measure. Their number depends on the
+ * spec alone (the answer head maps the server's pills to their windows from it: pill-filters.ts).
+ */
+export function ownPills(spec: AskSpec, labels: { scatterGroup?: number } = {}): PillPart[] {
+  const pills: PillPart[] = [];
+  // An evolution month by month says so in its first pill (F3); its other options are conditions (describe.ts).
+  // The risk cloud counts its group first (scatter-2, final scatter §1): „82 de primării de comună”, the subject's words.
+  const group = spec.block === "scatter" && labels.scatterGroup !== undefined;
+  pills.push({
+    text: spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni"
+      // entity_card (F6c): the podium by value; the first profiles by the risk score (entity_card-3, rf-2026.18).
+      : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii după risc" : "locurile 1–3")
+        : group ? groupNoun(labels.scatterGroup!, spec.dim === "supplier" ? "supplier" : "authority", namedKind(spec.filters.authorityKind))
+          : BLOCK_LABEL[spec.block],
+    filter: group ? "dim" : null,
+  });
+  const dim = DIM_LABEL[spec.dim ?? "authority"];
+  // A ranking without topN is the complete one, in pages (compile.ts); a trend shows its first 10.
+  if (spec.block === "table" && spec.topN == null) pills.push({ text: dim[2], filter: "topN" });
+  else if (spec.block === "table" || spec.block === "trend") pills.push({ text: `top ${countWords(spec.topN ?? 10, dim[0], dim[1])}`, filter: "topN" });
+  if (spec.block === "entity_card") {
+    pills.push({ text: leaderAxis(spec) === "risk" ? "cel mai ridicat risc" : "cea mai mare valoare", filter: "rankBy" });
+    pills.push({ text: dim[1], filter: "dim" });
+  }
+  if (!isHistoricalProfile(spec) && spec.block !== "fact_check") {
+    const measure = shownMeasure(spec);
+    // Kit §4 "Măsura": the measure in the words of the presentation line.
+    pills.push({
+      text: measure === "count"
+        ? "numărul de înregistrări"
+        : measure === "value_per_capita"
+          ? "valoarea pe locuitor"
+          : "valoarea înregistrată",
+      filter: "measure",
+    });
+  }
+  return pills;
+}
+
 /**
  * `labels.entities`: names of the ids a population lists, where the caller knows them (an entity capture);
  * `labels.executedMonths`: the months a trend's answer counted; `labels.peerGroup`: a distribution's group facts.
  */
 export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<ConditionLabels, "entities" | "executedMonths" | "peerGroup"> & { scatterGroup?: number } = {}): string[] {
-  const pills: string[] = [];
-  // An evolution month by month says so in its first pill (F3); its other options are conditions (describe.ts).
-  // The risk cloud counts its group first (scatter-2, final scatter §1): „82 de primării de comună”.
-  pills.push(spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni"
-    // entity_card (F6c): the podium by value; the first profiles by the risk score (entity_card-3, rf-2026.18).
-    : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii după risc" : "locurile 1–3")
-      : spec.block === "scatter" && labels.scatterGroup !== undefined
-        ? groupNoun(labels.scatterGroup, spec.dim === "supplier" ? "supplier" : "authority", namedKind(spec.filters.authorityKind))
-        : BLOCK_LABEL[spec.block]);
-  const dim = DIM_LABEL[spec.dim ?? "authority"];
-  // A ranking without topN is the complete one, in pages (compile.ts); a trend shows its first 10.
-  if (spec.block === "table" && spec.topN == null) pills.push(dim[2]);
-  else if (spec.block === "table" || spec.block === "trend") pills.push(`top ${countWords(spec.topN ?? 10, dim[0], dim[1])}`);
-  if (spec.block === "entity_card") {
-    pills.push(
-      leaderAxis(spec) === "risk" ? "cel mai ridicat risc" : "cea mai mare valoare",
-    );
-    pills.push(dim[1]);
-  }
-  if (!isHistoricalProfile(spec) && spec.block !== "fact_check") {
-    const measure = shownMeasure(spec);
-    // Kit §4 "Măsura": the measure in the words of the presentation line.
-    pills.push(
-      measure === "count"
-        ? "numărul de înregistrări"
-        : measure === "value_per_capita"
-          ? "valoarea pe locuitor"
-          : "valoarea înregistrată",
-    );
-  }
-  pills.push(...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths, peerGroup: labels.peerGroup }).pills);
-  return pills;
+  return [
+    ...ownPills(spec, labels).map((pill) => pill.text),
+    ...describeConditions(spec, { grounding, entities: labels.entities, executedMonths: labels.executedMonths, peerGroup: labels.peerGroup }).pills,
+  ];
 }
