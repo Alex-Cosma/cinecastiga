@@ -60,8 +60,8 @@ import {
   storedKeyCond, storedSearchable, storedSearchCond, storedSearchKeys, type SearchYears,
 } from "./source-search";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
-import { bareNational, nationalTotals, podiumOf, tiesOf } from "./entity-card";
-import { blankCard, PODIUM_PLACES, podiumPlaceIds, TIES_LISTED, type Podium, type Ties } from "./entity-card-shared";
+import { bareNational, hasRiskScore, nationalTotals, podiumOf, riskRankingOf, riskRankingOrder } from "./entity-card";
+import { blankCard, PODIUM_PLACES, podiumPlaceIds, RISK_LISTED, type LegacyTies, type Podium, type RiskRanking } from "./entity-card-shared";
 
 /**
  * Compile a validated AskSpec + grounding into parameterized SQL and execute it
@@ -263,6 +263,8 @@ export interface EntityCardData {
   nFlags: number;
   flags: string[];
   population: number | null;
+  /** entity_card-3: the risk score over 100 of the first profile on the risk axis (`cri` is null); absent elsewhere and from older answers. */
+  score?: number;
 }
 /** fact_check-2 (plan §4.10): the verdict, the profile, the rows outside the sums (fact-check-shared.ts). */
 export type { FactCheckData } from "./fact-check-shared";
@@ -302,10 +304,12 @@ export type BlockData =
   // first 14 nodes) is read by ResultComparison as plain data.
   | SankeyData
   | NetworkData
-  // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3 and the total), on the index the group at the top
-  // (every profile at the best level). `card` stays the first of them; absent from answers stored before entity_card-2.
-  // `empty`: no firm or institution in the selection (G2: the answer offers its relaxations, it is not an error); `card` is blank then.
-  | { block: "entity_card"; card: EntityCardData; podium?: Podium; ties?: Ties; empty?: true }
+  // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3 and the total). entity_card-3 (rf-2026.18): on the
+  // risk axis the first profiles of the group by the risk score (`ranking`); an answer stored as entity_card-2 holds the
+  // group at the top of the old index (`ties`). `card` stays the first of them; both are absent from answers stored
+  // before entity_card-2. `empty`: no firm or institution in the selection (G2: the answer offers its relaxations, it is
+  // not an error); `card` is blank then.
+  | { block: "entity_card"; card: EntityCardData; podium?: Podium; ranking?: RiskRanking; ties?: LegacyTies; empty?: true }
   | { block: "fact_check"; fact: FactCheckData }
   // trend-2 (F2, plan §4.7): rowsTrend is the chosen group (today's shape; every change without trend options), beside
   // the first N of every group, the composition, the group noun and the facts of the shown rows (trend-partition.ts).
@@ -2177,12 +2181,13 @@ export async function runSpec(
         }
 
         case "entity_card": {
-          // The index (entity_card-2, F6c): the group at the top, not one name chosen by value among the tied.
+          // The risk axis (entity_card-3, rf-2026.18): the first profiles of the group by the risk score; those sharing
+          // the best displayed score are said to be tied. `card` is the first of them.
           const role = spec.dim === "supplier" ? ("supplier" as const) : ("authority" as const);
           const minDas = profileMinDas(spec.block);
-          const ties = await tiesOf(s, { role, where: efWhere(role, minDas), county: profileCounty(s, role) });
-          const e = ties?.rows[0];
-          if (!ties || !e) return { block: "entity_card", card: blankCard(role), empty: true };
+          const ranking = await riskRankingOf(s, { where: efWhere(role, minDas), county: profileCounty(s, role) });
+          const e = ranking?.rows[0];
+          if (!ranking || !e) return { block: "entity_card", card: blankCard(role), empty: true };
           const cardPopulation = role === "authority"
             ? (await readPerCapitaPopulations(s)).byEntity.get(e.entityId) ?? null : null;
           if (cardPopulation !== null) caveats.push(POPULATION_CARD_NOTE);
@@ -2195,12 +2200,13 @@ export async function runSpec(
               role,
               value: e.value,
               count: e.count,
-              cri: ties.level,
+              cri: null,
+              score: e.score,
               nFlags: e.nFlags,
               flags: e.flags,
               population: cardPopulation,
             },
-            ties,
+            ranking,
           };
         }
 
@@ -2728,17 +2734,15 @@ export async function runRows(
     }
   }
   const baseProfileWhere = profileParts.reduce((a, b) => sql`${a} and ${b}`);
-  const profileOrder = (spec.rankBy ?? "risk") === "risk"
-    ? sql`ef.cri desc nulls last, ef.total_ron desc nulls last, ef.entity_id`
-    : sql`ef.total_ron desc nulls last, ef.entity_id`;
   // Select the winner before intersecting a requested profile ID, so a client
   // cannot replace the superlative with an arbitrary lower-ranked entity.
-  // entity_card-2 (F6c): on the index the answer is the group at the top, every profile at the best level (the first
-  // TIES_LISTED by value, as the answer lists them); a row's "⋯ › Vezi înregistrările" narrows it to that profile.
+  // entity_card-3 (rf-2026.18): on the risk axis the answer lists the first RISK_LISTED profiles of the group by the
+  // risk score, those with a score (when nobody has one, the first by value), as riskRankingOf does; a row's
+  // "⋯ › Vezi înregistrările" narrows it to that profile.
   const profileBase = spec.block === "entity_card"
-    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null
-        and ef.cri = (select max(ef.cri) from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null)
-        order by ${profileOrder} limit ${TIES_LISTED})`
+    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere}
+        and (${hasRiskScore(sql, "ef")} or not exists (select 1 from marts.entity_flags ef where ${baseProfileWhere} and ${hasRiskScore(sql, "ef")}))
+        order by ${riskRankingOrder(sql, "ef")} limit ${RISK_LISTED})`
     : sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere})`;
   const selectionParts: ReturnType<DbSql>[] = [sql`true`];
   if (scope.county) selectionParts.push(sql`lower(unaccent(ef.county)) = ${fold(scope.county)}`);
@@ -2751,7 +2755,7 @@ export async function runRows(
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
   const cohort = sql`(select ef.* from ${profileBase} ef where ${profileSelection})`;
   // Same supplier as marts.da_transactions: one equal to the authority is not a supplier (audit F12). A small, bounded
-  // cohort of firms (the group at the top of the index, at most TIES_LISTED; a scope's own ids) is also asked on the bare
+  // cohort of firms (the first of the risk ranking, at most RISK_LISTED; a scope's own ids) is also asked on the bare
   // column, which the nullif() hides from the index (F6c: 3.2 s → 2 ms for one firm). Never on a whole population
   // (the risk cloud, a distribution's group): there the semi-join made the plan 2–3× slower (F6c review).
   const partyCore = role === "authority" ? sql`da.authority_entity_id` : sql`nullif(da.supplier_entity_id, da.authority_entity_id)`;
@@ -2801,11 +2805,12 @@ export async function runRows(
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
     notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
-    // entity_card-2: a group at level 0 („Nu are semnale în profil”) shows no row; its sources are still the first profiles by value.
+    // entity_card-3: a group in which nobody has a score („Nu are semnale în profil”) shows no row; its sources are still
+    // the first profiles by value.
     if (spec.block === "entity_card" && !scope.entityIds) {
-      const [top] = (await sql`select max(ef.cri)::text lvl from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null`) as unknown as { lvl: string | null }[];
-      if (top?.lvl !== null && top?.lvl !== undefined && Number(top.lvl) === 0)
-        notes.push(`Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare (cel mult ${TIES_LISTED}), toate fără semnale.`);
+      const [top] = (await sql`select max(coalesce(ef.score, 0))::int top from marts.entity_flags ef where ${baseProfileWhere}`) as unknown as { top: number | null }[];
+      if (top?.top === 0)
+        notes.push(`Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare (cel mult ${RISK_LISTED}), toate fără semnale.`);
     }
     if (flag) notes.push(flagRecordsNote(flag));
   } else {
@@ -3577,9 +3582,9 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "network":
       return `select partener, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by partener\norder by 2 desc;`;
     case "entity_card":
-      // entity_card-2: the index shows every profile at the best level, by value; the podium is the ranking's first three.
+      // entity_card-3: the risk axis lists the first profiles by the risk score; the podium is the ranking's first three.
       return (spec.rankBy ?? "risk") === "risk"
-        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit ${TIES_LISTED};\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)`
+        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit ${RISK_LISTED};\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare`
         : `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by total_ron desc\nlimit ${PODIUM_PLACES};`;
     case "fact_check":
       // fact_check-2: the verdict counts these records, then what the sums leave out of the pair (lib/ask/fact-check.ts).

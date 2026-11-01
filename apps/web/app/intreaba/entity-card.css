@@ -1,6 +1,7 @@
-/* "Cine conduce?" (entity_card-2, final entity_card §3.9–§3.10, §4.1, frames C and E): place 1 and the
-   podium by value, the group at the top of the index. Tokens only (approved.css, filters-kit.css), both
-   themes; orange is the signals' (kit R7), so only the level of the index and the signals' tags use it.
+/* "Cine conduce?" (entity_card-3; entity_card-2: final entity_card §3.9–§3.10, §4.1, frames C and E): place 1
+   and the podium by value, the ranking by the risk score (and an old answer's group at the top of the index).
+   Tokens only (approved.css, filters-kit.css, globals.css .cri-pill/.risk-*), both themes; orange is the
+   signals' (kit R7), so only the old index's level and the patterns' tags use it.
    No horizontal scroll at any width; under 600 px every control is 44 px tall. */
 
 .ec{display:grid;gap:14px;min-width:0}
@@ -52,6 +53,12 @@
 .ec-level i.on{background:var(--orange);border-color:var(--orange)}
 .ec-order{margin:0;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:2px}
 .ec-rest{margin:-6px 0 0;font-size:12.5px;color:var(--muted)}
+/* The ranking by the risk score (entity_card-3): the score pill and its band between the name and the value, the same
+   width on every row so the scores read down the list; never colour alone (the band's word is beside the pill). */
+.ec-rval{display:flex;align-items:center;justify-content:flex-end;gap:18px}
+.ec-score{display:inline-flex;align-items:center;gap:7px;min-width:9.5em;font-size:12px;color:var(--muted);white-space:nowrap}
+.ec-score .cri-pill{font-size:12.5px;padding:2px 9px}
+.ec-rval .qb-num{min-width:9em;text-align:right}
 .ec-meth{margin:0;font-size:12px;color:var(--muted)}
 .ec-meth a{display:inline-flex;align-items:center;min-height:24px;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
 
@@ -64,4 +71,7 @@
   .ec-actions>*{flex:1 1 100%;justify-content:center;min-height:44px}
   .ec-cloud>.qb-secondary{flex:1 1 auto;justify-content:center;min-height:44px}
   .ec-meth a{min-height:44px}
+  .ec-rval{justify-content:flex-start;gap:10px}
+  .ec-score{min-width:0}
+  .ec-rval .qb-num{min-width:0;text-align:left}
 }

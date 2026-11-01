@@ -2,23 +2,24 @@ import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { EntityCardData } from "../../lib/ask/compile";
-import type { Podium, Ties } from "../../lib/ask/entity-card-shared";
+import type { LegacyTies, Podium, RiskRanking } from "../../lib/ask/entity-card-shared";
 import type { QuestionSpec } from "../../lib/ask/question-ui";
 import { answerCsv } from "./answer-csv";
 import { AnswerEvidence } from "./AnswerEvidence";
 import EntityCardAnswer from "./EntityCardAnswer";
 
 /*
- * „Cine conduce?” (entity_card-2) as markup (final entity_card §3.9–§3.10, §4.1, frames C, E, F): the podium's place 1 with
- * its three figures, the bar and its legend, places 2 and 3 as rows, the total line and the two buttons; the group at the top
- * of the index in the order of value with „Arată toate”, „Pe harta riscului ›” and the official words of the signals; a
- * group of one, and an answer stored before entity_card-2. The facts of the places, the focus and the sheets are checked in
- * the browser (par-f6c/screens).
+ * „Cine conduce?” (entity_card-3; entity_card-2: final entity_card §3.9–§3.10, §4.1, frames C, E, F) as markup: the
+ * podium's place 1 with its three figures, the bar and its legend, places 2 and 3 as rows, the total line and the two
+ * buttons; on the risk axis the first profiles by the risk score with their places, score pills and patterns, „Arată
+ * toate” and „Pe harta riscului ›”; an answer stored as entity_card-2 (the group at the top of the old index) as it was;
+ * a group of one, and an answer stored before entity_card-2. The facts of the places, the focus and the sheets are
+ * checked in the browser (par-f6c/screens).
  */
 
 const text = (markup: string) => markup.replace(/<span[^>]*role="tooltip"[^>]*>.*?<\/span>(<\/span>)?/g, " ").replace(/<span class="term-mark"[^>]*>\?<\/span>/g, " ")
   .replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/\s+/g, " ").replace(/ ([,.:;])/g, "$1").trim();
-const render = (data: { card: EntityCardData; podium?: Podium; ties?: Ties }, spec: QuestionSpec, historical: boolean, conditions: string[] = []) =>
+const render = (data: { card: EntityCardData; podium?: Podium; ranking?: RiskRanking; ties?: LegacyTies }, spec: QuestionSpec, historical: boolean, conditions: string[] = []) =>
   renderToStaticMarkup(createElement(AnswerEvidence.Provider, { value: { open: vi.fn(), exclude: vi.fn() } },
     createElement(EntityCardAnswer, { data, spec, historical, conditions }) as ReactNode));
 
@@ -96,11 +97,93 @@ describe("by value: the podium", () => {
   });
 });
 
-const tie = (n: number, extra: Record<string, unknown> = {}) => ({ entityId: String(n), name: `Spital ${n}`, county: "Cluj", count: 1000 * n, value: 200_000_000 - n * 10_000_000, nFlags: 1, flags: ["da_split"], ...extra });
-const TIES: Ties = { version: 2, level: 0.2, maxFlags: 1, criteria: 5, count: 14, pool: 19, nextLevel: 0, nextCount: 5, rows: Array.from({ length: 14 }, (_, i) => tie(i + 1)) };
 const riskSpec: QuestionSpec = { block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { authorityKind: "spital", county: "Cluj" } };
+const scored = (n: number, score: number, extra: Record<string, unknown> = {}) => ({
+  entityId: String(n), name: `Spital ${n}`, county: "Cluj", count: 1000 * n, value: 200_000_000 - n * 10_000_000, score, nFlags: 1, flags: ["da_split"], ...extra,
+});
+/** The mockup's hospitals: 71 alone, then three at 60, two at 58, then 40… (14 with a score of 19). */
+const SCORES = [71, 60, 60, 60, 58, 58, 40, 40, 30, 25, 20, 20, 20, 20];
+const RANKING: RiskRanking = {
+  version: 3, pool: 19, scored: 14, top: 71, topCount: 1,
+  rows: SCORES.map((score, i) => scored(i + 1, score, i === 0 ? { name: "SPITALUL ORASENESC AGNITA", county: "Sibiu", flags: ["da_split", "da_year_end", "da_above_ceiling"], nFlags: 3 } : {})),
+};
 
-describe("on the index: the group at the top", () => {
+describe("on the risk axis: the first profiles by the risk score (entity_card-3)", () => {
+  it("names the first with its score and band, lists five with their place, score pill and patterns, and the value at the right", () => {
+    const markup = render({ card: card({ role: "authority", score: 71, nFlags: 3 }), ranking: RANKING }, riskSpec, true);
+    const words = text(markup);
+    expect(words).toContain("Primul: SPITALUL ORASENESC AGNITA, 71% · puternic.");
+    // The score is no probability: its (?) beside the headline.
+    expect(markup).toContain("Riscul, în procente");
+    expect(words).not.toContain("la egalitate");
+    // One with the best score: the order is the score's, not the value's.
+    expect(words).not.toContain("În ordinea valorii");
+    expect(markup.match(/class="qb-arow ec-rrow"/g)).toHaveLength(5);
+    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat vârf în decembrie +1 71% puternic 190 mil. lei");
+    expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat 60% moderat 180 mil. lei");
+    // Tied rows share their place: 2, 2, 2, then 5.
+    expect(words).toContain("2. Spital 4 Cluj");
+    expect(words).toContain("5. Spital 5 Cluj");
+    expect(markup).toContain('class="cri-pill risk-high">71%');
+    expect(markup).toContain('class="cri-pill risk-mid">60%');
+    expect(markup).toContain('class="qb-tag qb-tag--signal"');
+    // No dots of the old index.
+    expect(markup).not.toContain("ec-level");
+    expect(words).toContain("Arată toate cele 14");
+    expect(words).not.toContain("fără semnale");
+    expect(words).toContain("Pe harta riscului ›");
+    expect(words).toContain("Semnal statistic, nu dovadă de neregulă · Cum se calculează");
+    // Each row has its own menu: its records and its page; none leaves it out of a calculation.
+    expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(5);
+    expect(words).not.toContain("Scoate din calcul");
+    // The headline names the list.
+    const head = /<p class="ec-ties-text" id="([^"]+)"/.exec(markup)?.[1];
+    expect(head).toBeTruthy();
+    expect(markup).toContain(`aria-describedby="${head}"`);
+  });
+
+  it("says the profiles tied on the best score, with the (?) of a tie, and the order of value when every shown row is tied", () => {
+    const tied: RiskRanking = { version: 3, pool: 40, scored: 12, top: 60, topCount: 12, rows: Array.from({ length: 12 }, (_, i) => scored(i + 1, 60)) };
+    const markup = render({ card: card({ role: "authority", score: 60 }), ranking: tied }, riskSpec, true);
+    const words = text(markup);
+    expect(words).toContain("12 la egalitate pe primul loc, 60% · moderat.");
+    expect(markup).toContain("La egalitate");
+    expect(words).toContain("În ordinea valorii, nu a riscului");
+    expect(words).toContain("1. Spital 5 Cluj");
+    expect(words).not.toContain("2. Spital");
+    expect(words).toContain("Arată toate cele 12");
+  });
+
+  it("says when nobody in the group has a score: no rows, the sources said", () => {
+    const none: RiskRanking = { version: 3, pool: 17, scored: 0, top: 0, topCount: 17, rows: Array.from({ length: 17 }, (_, i) => scored(i + 1, 0, { flags: [], nFlags: 0 })) };
+    const words = text(render({ card: card({ role: "authority", score: 0 }), ranking: none }, riskSpec, true));
+    expect(words).toContain("Nu are semnale în profil");
+    expect(words).toContain("Niciuna din 17 spitale nu are semnale în profil.");
+    expect(words).toContain("Sursele: primele 17 profiluri după valoare, fără semnale.");
+    expect(words).not.toContain("Spital 1");
+    expect(words).not.toContain("Arată toate");
+    expect(words).toContain("Pe harta riscului ›");
+  });
+
+  it("says the profiles without a score once the whole list is shown", () => {
+    const short: RiskRanking = { ...RANKING, rows: RANKING.rows.slice(0, 3), scored: 3 };
+    const words = text(render({ card: card({ role: "authority" }), ranking: short }, riskSpec, true));
+    expect(words).toContain("+ 16 fără semnale");
+    expect(words).not.toContain("Arată toate");
+  });
+
+  it("opens the cloud on the same group of profiles: its county and kind stay", () => {
+    const markup = render({ card: card({ role: "authority" }), ranking: RANKING }, riskSpec, true);
+    const href = /href="([^"]*intreaba\?spec=[^"]*)"[^>]*>Pe harta riscului/.exec(markup)?.[1] ?? "";
+    const spec = JSON.parse(Buffer.from(decodeURIComponent(href.split("spec=")[1]!), "base64").toString("utf8")) as QuestionSpec;
+    expect(spec).toMatchObject({ block: "scatter", dim: "authority", filters: { authorityKind: "spital", county: "Cluj" } });
+  });
+});
+
+const tie = (n: number, extra: Record<string, unknown> = {}) => ({ entityId: String(n), name: `Spital ${n}`, county: "Cluj", count: 1000 * n, value: 200_000_000 - n * 10_000_000, nFlags: 1, flags: ["da_split"], ...extra });
+const TIES: LegacyTies = { version: 2, level: 0.2, maxFlags: 1, criteria: 5, count: 14, pool: 19, nextLevel: 0, nextCount: 5, rows: Array.from({ length: 14 }, (_, i) => tie(i + 1)) };
+
+describe("an answer stored as entity_card-2: the group at the top of the old index, as it was", () => {
   it("says the index does not tell them apart, lists five in the order of value with the official words, and what waits", () => {
     const markup = render({ card: card({ role: "authority", cri: 0.2, nFlags: 1 }), ties: TIES }, riskSpec, true);
     const words = text(markup);
@@ -108,7 +191,7 @@ describe("on the index: the group at the top", () => {
     expect(words).toContain("14 din 19 spitale au același indice, 0,20 1 semnal din 5.");
     expect(words).toContain("În ordinea valorii, nu a riscului");
     expect(markup.match(/class="qb-arow"/g)).toHaveLength(5);
-    expect(words).toContain("Spital 1 Cluj · 1.000 de achiziții directe posibilă fracționare 190 mil. lei");
+    expect(words).toContain("Spital 1 Cluj · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat 190 mil. lei");
     expect(markup).toContain('class="qb-tag qb-tag--signal"');
     expect(words).toContain("+ încă 9 cu același indice · 5 fără semnale");
     expect(words).toContain("Arată toate cele 14");
@@ -129,14 +212,14 @@ describe("on the index: the group at the top", () => {
   });
 
   it("names a single leader, the next level, and a group in which nobody has a signal", () => {
-    const single: Ties = { version: 2, level: 1, maxFlags: 4, criteria: 4, count: 1, pool: 2_483, nextLevel: 0.75, nextCount: 13, rows: [tie(1, { name: "NOVAGROCHIM", flags: ["da_split", "da_dependence", "da_rapid", "da_round"], nFlags: 4 })] };
+    const single: LegacyTies = { version: 2, level: 1, maxFlags: 4, criteria: 4, count: 1, pool: 2_483, nextLevel: 0.75, nextCount: 13, rows: [tie(1, { name: "NOVAGROCHIM", flags: ["da_split", "da_dependence", "da_rapid", "da_round"], nFlags: 4 })] };
     const firms: QuestionSpec = { block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: { seatCounty: "Cluj" } };
     const words = text(render({ card: card(), ties: single }, firms, true));
     expect(words).toContain("Singur pe primul loc");
     expect(words).toContain("1,00 4 semnale din 4. Următorul nivel, 0,75: 13 din 2.483 de firme.");
-    expect(words).toContain("posibilă fracționare dependență de o autoritate +2");
+    expect(words).toContain("achiziții repetate, peste plafon cumulat dependență de o autoritate +2");
     expect(words).not.toContain("Arată toate");
-    const none: Ties = { ...TIES, level: 0, maxFlags: 0, count: 17, pool: 17, nextLevel: null, nextCount: 0, rows: [] };
+    const none: LegacyTies = { ...TIES, level: 0, maxFlags: 0, count: 17, pool: 17, nextLevel: null, nextCount: 0, rows: [] };
     const zero = text(render({ card: card({ role: "authority" }), ties: none }, riskSpec, true));
     expect(zero).toContain("Nu are semnale în profil");
     expect(zero).toContain("Niciuna din 17 spitale nu are semnale în profil");
@@ -145,11 +228,11 @@ describe("on the index: the group at the top", () => {
 
   it("marks a buyer that shows a company or an association in its name", () => {
     const rows = [tie(1, { name: "Eco Rural Consulting SRL-D" }), tie(2, { name: "ASOCIATIA CLUB SPORTIV PROGRESUL PECICA" }), tie(3, { name: "EURO APAVOL" })];
-    const ties: Ties = { ...TIES, count: 3, pool: 14_972, level: 0.8, maxFlags: 4, rows };
+    const ties: LegacyTies = { ...TIES, count: 3, pool: 14_972, level: 0.8, maxFlags: 4, rows };
     const words = text(render({ card: card({ role: "authority" }), ties }, { ...riskSpec, filters: {} }, true));
-    expect(words).toContain("Eco Rural Consulting SRL-D Cluj · 1.000 de achiziții directe posibilă fracționare societate");
-    expect(words).toContain("ASOCIATIA CLUB SPORTIV PROGRESUL PECICA Cluj · 2.000 de achiziții directe posibilă fracționare asociație");
-    expect(words).toMatch(/EURO APAVOL Cluj · 3\.000 de achiziții directe posibilă fracționare 1\d\d mil\. lei/);
+    expect(words).toContain("Eco Rural Consulting SRL-D Cluj · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat societate");
+    expect(words).toContain("ASOCIATIA CLUB SPORTIV PROGRESUL PECICA Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat asociație");
+    expect(words).toMatch(/EURO APAVOL Cluj · 3\.000 de achiziții directe achiziții repetate, peste plafon cumulat 1\d\d mil\. lei/);
   });
 });
 
@@ -166,9 +249,10 @@ describe("the other forms", () => {
     const old = text(render({ card: card({ cri: 0.5, nFlags: 2, flags: ["da_split"] }) }, { ...valueSpec, rankBy: "risk" }, true));
     expect(old).toContain("valoare înregistrată în profil");
     expect(old).toContain("indice risc");
-    // The signal's short name, as everywhere outside the methodology (plan §9 F6b; S6 review).
-    expect(old).toContain("Posibilă fracționare");
-    expect(old).not.toContain("Posibilă fracționare sub prag");
+    expect(old).toContain("0,50");
+    // The signal's short name today (lib/flags.ts, rf-2026.18); a retired code shows as stored.
+    expect(old).toContain("Achiziții repetate, peste plafon cumulat");
+    expect(text(render({ card: card({ cri: 0.4, nFlags: 2, flags: ["da_split", "da_rapid"] }) }, { ...valueSpec, rankBy: "risk" }, true))).toContain("da_rapid");
   });
 });
 
@@ -192,7 +276,26 @@ describe("the shown CSV", () => {
     expect(lines.slice(3)).toEqual([',"celelalte 1 din categorie",,1000,0.2000,1', ',"toată selecția: 6",,11804,,9']);
   });
 
-  it("holds every profile at the top level, with the level and its signals", () => {
+  it("holds the listed profiles of the risk axis: their place, the score over 100, its band and their patterns (entity_card-3)", () => {
+    const rows = [scored(1, 71, { flags: ["da_split", "da_year_end"], nFlags: 2 }), scored(2, 60), scored(3, 60), scored(4, 25, { county: "Bucuresti" })];
+    const ranking: RiskRanking = { version: 3, pool: 9, scored: 4, top: 71, topCount: 1, rows };
+    const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ranking }, { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n").filter(Boolean);
+    expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,achizitii,risc_pct,banda,tipare");
+    expect(lines.slice(1)).toEqual([
+      '1,"Spital 1","Cluj",190000000,1000,71,"puternic","da_split|da_year_end"',
+      '2,"Spital 2","Cluj",180000000,2000,60,"moderat","da_split"',
+      '2,"Spital 3","Cluj",170000000,3000,60,"moderat","da_split"',
+      '4,"Spital 4","București",160000000,4000,25,"slab","da_split"',
+    ]);
+    // A firm's place is its seat, as on the ranking's CSV.
+    const firms = answerCsv({ block: "entity_card", card: card(), ranking: { ...ranking, rows: [scored(1, 40, { name: "ALFA SRL" })] } },
+      { block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} } as never, "Cine").text.split("\r\n");
+    expect(lines[0]).toContain("judet");
+    expect(firms[0]).toBe("﻿loc,nume,sediu,valoare_lei,achizitii,risc_pct,banda,tipare");
+    expect(firms[1]).toBe('1,"ALFA SRL","Cluj",190000000,1000,40,"moderat","da_split"');
+  });
+
+  it("holds every profile at the top level of an answer stored as entity_card-2, as it was exported", () => {
     const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ties: { ...TIES, count: 2, rows: [tie(1), tie(2, { flags: ["da_split", "da_rapid"], nFlags: 2 })] } },
       { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n");
     expect(lines[0]).toBe("﻿nume,judet,valoare_lei,achizitii,cri,semnale,flags");

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useId, useRef, useState } from "react";
 import type { EntityCardData } from "../../lib/ask/compile";
 import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-text";
-import { leadOverSecond, podiumRest, type Podium, type PodiumFact, type Ties } from "../../lib/ask/entity-card-shared";
+import { leadOverSecond, podiumRest, riskPlaces, type LegacyTies, type Podium, type PodiumFact, type RiskPlace, type RiskRanking } from "../../lib/ask/entity-card-shared";
 import { retarget } from "../../lib/ask/filters/retarget";
 import { employeesWords } from "../../lib/ask/filters/words";
 import { FLAG_META, flagLabel } from "../../lib/flags";
@@ -17,30 +17,32 @@ import { useAnswerEvidence } from "./AnswerEvidence";
 import AnswerRow, { AnswerList } from "./answer/AnswerRow";
 import KitLink, { recordsWords } from "./answer/KitLink";
 import { focusFirstNew } from "./answer/ListFoot";
-import { FactTag, type RowFact } from "./answer/RowFacts";
-import RowMenu from "./answer/RowMenu";
+import RowFacts, { FactTag, type RowFact } from "./answer/RowFacts";
+import RowMenu, { type RowAction } from "./answer/RowMenu";
 import { entityRowActions } from "./answer/row-actions";
 import TotalLine from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
 import {
-  categoryLead, largestWords, leadWords, placeFacts, placeWords, restWords, riskCloudLink, shareWords, tieFacts, tiePlace, tiesHeadline, tiesNoneSources, tiesRest,
-  tiesShown, totalLead,
+  categoryLead, largestWords, leadWords, legacyTieFacts, legacyTiesHeadline, legacyTiesRest, noneSources, placeFacts, placeWords, profilePlace, rankingHeadline,
+  rankingRest, restWords, riskCloudLink, riskFacts, scorePill, shareWords, showAllWords, shownRows, shownTied, totalLead,
 } from "./entity-card-answer";
 import "./entity-card.css";
 
 /*
- * "Cine conduce?" (entity_card-2, plan §4.13, final entity_card §3.9–§3.10, frames C, E, F).
+ * "Cine conduce?" (entity_card-3; entity_card-2: plan §4.13, final entity_card §3.9–§3.10, frames C, E, F).
  * By value: place 1 with its three figures, its tags (the part in joint contracts, a single large record, the band
  * of CÂȘTIGĂTORII it was chosen under), the distance from place 2, the bar of places 1–3 against the total, places 2
  * and 3 as rows, the total line, then "Vezi cele N înregistrări →" and "Tot clasamentul ›". The facts of the places
- * are asked once the podium is drawn (part `podium`): "…" until they come. On the index: the group at the top, never
- * one name chosen among the tied, in the order of value ("Indicele nu le deosebește"), "Arată toate cele 14" and
- * "Pe harta riscului ›". A group of one (a county council) and an answer stored before entity_card-2 keep their
- * own, older, forms. Signals are leads, not proof; recorded values, not payments.
+ * are asked once the podium is drawn (part `podium`): "…" until they come. On the risk axis (entity_card-3, the
+ * owner-approved mockup of 1 November 2026): the first profiles of the group by the risk score, "Primul: …, 71% ·
+ * puternic." or "3 la egalitate pe primul loc", each row with its place, its score pill and its patterns, "Arată toate
+ * cele 14" and "Pe harta riscului ›". A group of one (a county council), an answer stored as entity_card-2 (the group
+ * at the top of the old index) and one stored before it keep their own, older, forms. Signals are leads, not proof;
+ * the score is no probability; recorded values, not payments.
  */
 
-type Data = { card: EntityCardData; podium?: Podium; ties?: Ties };
+type Data = { card: EntityCardData; podium?: Podium; ranking?: RiskRanking; ties?: LegacyTies };
 
 
 export default function EntityCardAnswer({ data, spec, historical = true, conditions = [] }: { data: Data; spec?: QuestionSpec; historical?: boolean; conditions?: readonly string[] }) {
@@ -60,7 +62,8 @@ export default function EntityCardAnswer({ data, spec, historical = true, condit
     );
   }
   if (data.podium && spec) return <PodiumAnswer podium={data.podium} spec={spec} conditions={conditions} />;
-  if (data.ties && spec) return <TiesAnswer ties={data.ties} spec={spec} />;
+  if (data.ranking && spec) return <RankingAnswer ranking={data.ranking} spec={spec} />;
+  if (data.ties && spec) return <LegacyTiesAnswer ties={data.ties} spec={spec} />;
   return <LegacyCard card={card} historical={historical} spec={spec} />;
 }
 
@@ -166,7 +169,97 @@ function PlaceTags({ tags, loading }: { tags: readonly RowFact[]; loading: boole
   return <>{tags.map((tag, index) => <FactTag key={`${index}:${tag.text}`} fact={tag} />)}</>;
 }
 
-/* ── the index ──────────────────────────────────────────────────────────── */
+/* ── the risk axis (entity_card-3) ──────────────────────────────────────── */
+
+/** „Pe harta riscului ›”: the same group of profiles as the risk cloud (the cloud applies the county, the seat and the kind; a band of employees is left out, with its (?)). */
+function CloudLink({ spec }: { spec: QuestionSpec }) {
+  const cloud = riskCloudLink(spec);
+  const link = <KitLink className="qb-secondary" link={{ label: "Pe harta riscului", glyph: "›", href: askLink(cloud.spec) }} />;
+  return cloud.tip ? <span className="ec-cloud qb-tipwrap-sm">{link}<HelpTip tip={{ title: "Pe harta riscului", text: cloud.tip }} /></span> : link;
+}
+
+function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: QuestionSpec }) {
+  const evidence = useAnswerEvidence();
+  const [all, setAll] = useState(false);
+  const list = useRef<HTMLDivElement>(null);
+  const head = rankingHeadline(ranking, spec);
+  // The headline names the list (final §4, „Accesibilitate”): one id per answer, two answers on a page never share it.
+  const headId = `${useId()}-head`;
+  const { rows, hidden } = shownRows(ranking.rows, all);
+  const places = riskPlaces(ranking.rows);
+  const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
+  const open = (row: { entityId: string; name: string }) => evidence
+    ? () => evidence.open(undefined, { entityIds: [row.entityId], role }, `${cleanName(row.name)} · înregistrările profilului`) : undefined;
+  const rest = rankingRest(ranking, hidden);
+  return (
+    <div className="qb ec">
+      <div className="ec-ties-head">
+        {head.kind === "none" ? <>
+          <p className="ec-kicker" id={headId}>{head.kicker}</p>
+          <p className="ec-ties-text">{head.lead}.</p>
+          {/* The sources and the CSV still hold the first profiles by value (runRows): said, never silent. */}
+          {ranking.rows.length > 0 && <p className="ec-rest">{noneSources(ranking.rows)}</p>}
+        </> : (
+          <p className="ec-ties-text" id={headId}>
+            <b>{head.lead}</b>{head.kind === "tied" && <> <HelpTip tip={{ id: "indice-egalitate" }} /></>}, <b className="num">{head.score}</b> · {head.band}.{" "}
+            {/* The score is no probability of corruption (rf-2026.18): its (?) beside it. */}
+            <HelpTip tip={{ id: "scor-risc" }} />
+          </p>
+        )}
+      </div>
+      {head.kind !== "none" && (
+        <>
+          {shownTied(rows) && <p className="ec-order">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
+          <AnswerList label="Primii după scorul de risc" listRef={list} describedBy={headId}>
+            {rows.map((row, i) => {
+              const records = open(row);
+              const entity = { id: row.entityId, name: cleanName(row.name) };
+              return <RiskRow
+                key={row.entityId}
+                place={places[i]!}
+                row={row}
+                facts={riskFacts(row, spec)}
+                actions={entityRowActions(spec as unknown as AskSpec, entity, { ...(records ? { records } : {}) })}
+              />;
+            })}
+          </AnswerList>
+          {rest && <p className="ec-rest">{rest}</p>}
+        </>
+      )}
+      <div className="ec-actions">
+        {head.kind !== "none" && hidden > 0 && (
+          <button type="button" className="qb-more-btn" onClick={() => { setAll(true); requestAnimationFrame(() => focusFirstNew(list.current, rows.length)); }}>
+            {showAllWords(ranking)}
+          </button>
+        )}
+        <CloudLink spec={spec} />
+      </div>
+      <p className="ec-meth">Semnal statistic, nu dovadă de neregulă · <Link href="/metodologie">Cum se calculează</Link></p>
+    </div>
+  );
+}
+
+/**
+ * A row of the ranking (component 15's layout, with the score between the name and the value): its place, the name with
+ * its county and direct acquisitions, its patterns, the score pill with the band's word (never colour alone), the value
+ * and the "⋯" menu. On a phone the score and the value go under the name.
+ */
+function RiskRow({ place, row, facts, actions }: { place: number; row: RiskPlace; facts: readonly RowFact[]; actions: readonly RowAction[] }) {
+  const name = `${place}. ${cleanName(row.name)}`, pill = scorePill(row.score);
+  return <div className="qb-arow ec-rrow" role="listitem" tabIndex={-1} data-qb-arow="">
+    <div>
+      <div className="qb-arow-name">{name}<small>{profilePlace(row)}</small></div>
+      <RowFacts facts={facts} />
+    </div>
+    <div className="qb-arow-val ec-rval">
+      <span className="ec-score"><b className={`cri-pill ${pill.className}`}>{pill.text}</b>{pill.band}</span>
+      <span className="qb-num">{formatRon(row.value)}</span>
+    </div>
+    {actions.length > 0 && <RowMenu name={name} actions={actions} />}
+  </div>;
+}
+
+/* ── an answer stored as entity_card-2: the group at the top of the old index, as it was drawn ── */
 
 function Level({ n, of }: { n: number; of: number }) {
   return <span className="ec-level" role="img" aria-label={`${countWords(n, "semnal", "semnale")} din ${of}`}>
@@ -174,21 +267,18 @@ function Level({ n, of }: { n: number; of: number }) {
   </span>;
 }
 
-function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
+function LegacyTiesAnswer({ ties, spec }: { ties: LegacyTies; spec: QuestionSpec }) {
   const evidence = useAnswerEvidence();
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
-  const head = tiesHeadline(ties, spec);
+  const head = legacyTiesHeadline(ties, spec);
   // The kicker names the list (final §4, „Accesibilitate”): one id per answer, two answers on a page never share it.
   const kickerId = `${useId()}-kicker`;
-  const { rows, hidden } = tiesShown(ties, all);
+  const { rows, hidden } = shownRows(ties.rows, all);
   const role = spec.dim === "supplier" ? "supplier" as const : "authority" as const;
   const open = (row: { entityId: string; name: string }) => evidence
     ? () => evidence.open(undefined, { entityIds: [row.entityId], role }, `${cleanName(row.name)} · înregistrările profilului`) : undefined;
-  // „Pe harta riscului ›”: the same group of profiles as the risk cloud (the cloud applies the county, the seat and the
-  // kind; a band of employees is left out, with its (?)).
-  const cloud = riskCloudLink(spec);
-  const rest = tiesRest(ties, hidden);
+  const rest = legacyTiesRest(ties, hidden);
   return (
     <div className="qb ec">
       <div className="ec-ties-head">
@@ -198,7 +288,7 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
         {head.none ? <>
           <p className="ec-ties-text">{head.lead}.</p>
           {/* The sources and the CSV still hold the first profiles by value (runRows): said, never silent. */}
-          {ties.rows.length > 0 && <p className="ec-rest">{tiesNoneSources(ties)}</p>}
+          {ties.rows.length > 0 && <p className="ec-rest">{noneSources(ties.rows)}</p>}
         </> : head.lead ? (
           <p className="ec-ties-text">
             <b>{head.lead}</b>, <b className="num">{head.level}</b> <Level n={ties.maxFlags} of={ties.criteria} /> {head.signals}.
@@ -218,8 +308,8 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
               return <AnswerRow
                 key={row.entityId}
                 name={entity.name}
-                place={tiePlace(row)}
-                facts={tieFacts(row, spec)}
+                place={profilePlace(row)}
+                facts={legacyTieFacts(row, spec)}
                 value={formatRon(row.value)}
                 actions={actions}
               />;
@@ -234,12 +324,7 @@ function TiesAnswer({ ties, spec }: { ties: Ties; spec: QuestionSpec }) {
             {ties.rows.length === ties.count ? `Arată toate cele ${formatInt(ties.count)}` : `Arată primele ${formatInt(ties.rows.length)}`}
           </button>
         )}
-        {cloud.tip ? (
-          <span className="ec-cloud qb-tipwrap-sm">
-            <KitLink className="qb-secondary" link={{ label: "Pe harta riscului", glyph: "›", href: askLink(cloud.spec) }} />
-            <HelpTip tip={{ title: "Pe harta riscului", text: cloud.tip }} />
-          </span>
-        ) : <KitLink className="qb-secondary" link={{ label: "Pe harta riscului", glyph: "›", href: askLink(cloud.spec) }} />}
+        <CloudLink spec={spec} />
       </div>
       <p className="ec-meth">Semnal statistic, nu dovadă de neregulă · <Link href="/metodologie">Cum se calculează</Link></p>
     </div>

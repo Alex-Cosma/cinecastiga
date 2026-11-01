@@ -15,14 +15,15 @@ import { validateSpec, type AskSpec } from "./spec";
 import { testDatabaseUrl, withAskFixture } from "./test-fixture";
 
 /*
- * entity_card-2 (F6c, plan §4.13, §6.2) on a rolled-back fixture of the engine's tables: by value the podium is the
- * ranking's first three with its total (live, under a band, and on the precomputed national ranking, where the total is
- * agg_national's); the facts of the places are their own records'; on the index the answer is every profile at the top
- * level, in the order of value, and the sources are exactly those profiles; a firm's size and seat select the profiles;
- * an institution's kind (D1) too. A dedicated seap_test_* database, one transaction rolled back.
+ * entity_card-3 (rf-2026.18; entity_card-2: F6c, plan §4.13, §6.2) on a rolled-back fixture of the engine's tables: by
+ * value the podium is the ranking's first three with its total (live, under a band, and on the precomputed national
+ * ranking, where the total is agg_national's); the facts of the places are their own records'; on the risk axis the
+ * answer lists the profiles with a score by the displayed score, the unrounded one, then the value, and the sources are
+ * exactly those profiles; a firm's size and seat select the profiles; an institution's kind (D1) too. A dedicated
+ * seap_test_* database (schema through migration 0087, the score columns), one transaction rolled back.
  */
 
-const url = testDatabaseUrl("entity_card-2 fixtures");
+const url = testDatabaseUrl("entity_card-3 fixtures");
 const connection = url ? createDb(url, { max: 1 }) : null;
 afterAll(async () => { forgetMartColumns(); await connection?.sql.end(); });
 
@@ -37,24 +38,28 @@ const FIRMS: [number, string, string, string | null, number | null, number | nul
   [5, "Epsilon Fara Bilant SRL", "Cluj", "Cluj", null, null],
   [6, "Zeta Mare SRL", "Ilfov", "Ilfov", 50, 2025],
 ];
-/** Institutions: n, name, county, n_das, signals. */
-const AUTHORITIES: [number, string, string, number, string[]][] = [
-  [50, "Primaria Fixture", "Cluj", 40, []],
-  [61, "Spitalul Fixture 1", "Cluj", 30, ["da_split"]],
-  [62, "Spitalul Fixture 2", "Cluj", 60, ["da_year_end"]],
-  [63, "Institutul Oncologic Fixture Cluj-Napoca", "Cluj", 25, ["da_round"]],
-  [64, "Spitalul Fixture 4", "Cluj", 90, ["da_split", "da_rapid"]],
-  [65, "Spitalul Fixture 5", "Cluj", 50, []],
-  [66, "Scoala Fixture 6", "Cluj", 45, ["da_split"]],
+/** Institutions: n, name, county, n_das, patterns, unrounded score (the value is n_das × 10). */
+const AUTHORITIES: [number, string, string, number, string[], number][] = [
+  [50, "Primaria Fixture", "Cluj", 40, [], 0],
+  [61, "Spitalul Fixture 1", "Cluj", 30, ["da_split"], 40],
+  [62, "Spitalul Fixture 2", "Cluj", 60, ["da_year_end"], 40],
+  [63, "Institutul Oncologic Fixture Cluj-Napoca", "Cluj", 25, ["da_round"], 40],
+  [64, "Spitalul Fixture 4", "Cluj", 90, ["da_split", "da_above_ceiling"], 64],
+  [65, "Spitalul Fixture 5", "Cluj", 50, [], 0],
+  [66, "Scoala Fixture 6", "Cluj", 45, ["da_split"], 40],
 ];
-/** Firms with profiles: n, accepted direct acquisitions, value, signals. */
-const FLAGGED: [number, number, number, string[]][] = [
-  [1, 30, 6200, ["da_split", "da_dependence", "da_rapid"]],
-  [2, 25, 3000, ["da_split", "da_dependence", "da_round"]],
-  [3, 40, 2000, ["da_split", "da_dependence", "da_round"]],
-  [4, 22, 500, ["da_split", "da_rapid"]],
-  [5, 50, 100, ["da_split"]],
-  [6, 100, 9000, ["da_split", "da_dependence", "da_rapid"]],
+/**
+ * Firms with profiles: n, accepted direct acquisitions, value, patterns, unrounded score. Zeta 79; Gama, Alfa and Beta
+ * all show 78, Gama a little above (78,45) despite its lower value, Alfa and Beta exactly equal (by value); Epsilon 20;
+ * Delta without a pattern.
+ */
+const FLAGGED: [number, number, number, string[], number][] = [
+  [1, 30, 6200, ["da_split", "da_dependence", "da_above_ceiling"], 78.4],
+  [2, 25, 3000, ["da_split", "da_dependence", "da_round"], 78.4],
+  [3, 40, 2000, ["da_split", "da_dependence", "da_round"], 78.45],
+  [4, 22, 500, [], 0],
+  [5, 50, 100, ["da_split"], 20],
+  [6, 100, 9000, ["da_split", "da_dependence", "da_above_ceiling"], 78.6],
 ];
 
 async function seed(q: DbSql): Promise<void> {
@@ -69,13 +74,16 @@ async function seed(q: DbSql): Promise<void> {
     from jsonb_array_elements(${JSON.stringify(FIRMS.map(([n, name, county, seat, emp, year]) => ({ id: id(n), name, county, seat, emp, year, value: 1000 })))}::jsonb) r`;
   await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign)
     select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'n')::int, 0, 1000, 1000, false from jsonb_array_elements(${JSON.stringify(AUTHORITIES.map(([n, name, county, nDas]) => ({ id: id(n), name, county, n: nDas })))}::jsonb) r`;
-  // The profiles with enough acquisitions: the firms' (cri = signals / 4) and the institutions' (signals / 5).
-  await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags)
-    select (r->>'id')::bigint, 'supplier', r->>'name', r->>'county', (r->>'n')::int, (r->>'value')::numeric, jsonb_array_length(r->'flags')::numeric / 4, jsonb_array_length(r->'flags'), r->'flags'
-    from jsonb_array_elements(${JSON.stringify(FLAGGED.map(([n, nDas, value, flags]) => ({ id: id(n), name: FIRMS.find((f) => f[0] === n)![1], county: FIRMS.find((f) => f[0] === n)![2], n: nDas, value, flags })))}::jsonb) r`;
-  await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags)
-    select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'n')::int, (r->>'n')::numeric * 10, jsonb_array_length(r->'flags')::numeric / 5, jsonb_array_length(r->'flags'), r->'flags'
-    from jsonb_array_elements(${JSON.stringify(AUTHORITIES.map(([n, name, county, nDas, flags]) => ({ id: id(n), name, county, n: nDas, flags })))}::jsonb) r`;
+  // The profiles with enough acquisitions, with their score as the build writes it (score.ts): the unrounded score, the
+  // displayed one rounded, cri = score / 100 (old links), the patterns met.
+  await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, score_raw, score, cri, n_flags, flags)
+    select (r->>'id')::bigint, 'supplier', r->>'name', r->>'county', (r->>'n')::int, (r->>'value')::numeric, (r->>'raw')::real, round((r->>'raw')::numeric),
+           round(round((r->>'raw')::numeric) / 100, 4), jsonb_array_length(r->'flags'), r->'flags'
+    from jsonb_array_elements(${JSON.stringify(FLAGGED.map(([n, nDas, value, flags, raw]) => ({ id: id(n), name: FIRMS.find((f) => f[0] === n)![1], county: FIRMS.find((f) => f[0] === n)![2], n: nDas, value, flags, raw })))}::jsonb) r`;
+  await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, score_raw, score, cri, n_flags, flags)
+    select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'n')::int, (r->>'n')::numeric * 10, (r->>'raw')::real, round((r->>'raw')::numeric),
+           round(round((r->>'raw')::numeric) / 100, 4), jsonb_array_length(r->'flags'), r->'flags'
+    from jsonb_array_elements(${JSON.stringify(AUTHORITIES.map(([n, name, county, nDas, flags, raw]) => ({ id: id(n), name, county, n: nDas, flags, raw })))}::jsonb) r`;
   await q`insert into marts.national_stats (kind,year) values ('da',2025),('award',2025)`;
   await q`insert into marts.spend_by_county (county, role, n, total_ron) values ('Cluj','authority',1,0),('Ilfov','authority',1,0),('Cluj','supplier',1,0),('Ilfov','supplier',1,0)`;
   // The records by value: A 6200 (200 direct, 1000 in a joint contract of 2, 5000 in one), B 3000 (a joint contract of 3), C 2000 (one
@@ -119,7 +127,7 @@ const answer = async (q: DbSql, raw: Record<string, unknown>) => {
   return { data: card(result.data), spec, grounding };
 };
 
-describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolated PostgreSQL)", () => {
+describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolated PostgreSQL)", () => {
   it("by value: the podium is the ranking's first three, the total the selection's, place 1 the card", async () => {
     const out = await withAskFixture(connection!.sql, "ec_value", seed, async (q) => {
       const podium = await answer(q, { dim: "supplier", rankBy: "value", filters: T });
@@ -131,7 +139,9 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     const ranked = "error" in out.ranking.result ? null : out.ranking.result.data;
     if (ranked?.block !== "table") throw new Error("no ranking");
     const { podium } = out.podium.data;
+    expect(out.podium.data.ranking).toBeUndefined();
     expect(out.podium.data.ties).toBeUndefined();
+    expect(podium!.version).toBe(2);
     expect(podium!.places.map((p) => [p.entityId, p.value, p.count])).toEqual(ranked.rows.slice(0, 3).map((r) => [r.entityId, r.value, r.count]));
     expect(podium!.places.map((p) => p.name)).toEqual(["Alfa Constructii SRL", "Beta Asociere SRL", "Gama Unica SRL"]);
     // The total is the whole selection's, the same as the ranking's: 6 firms, 11.804 lei.
@@ -226,26 +236,33 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     expect(out.facts.balanceYear).toBe(2025);
   }, 60000);
 
-  it("on the index: every profile at the top level, in the order of value; the card is the first, the next level counted", async () => {
-    const out = await withAskFixture(connection!.sql, "ec_ties", seed, async (q) => ({
+  it("on the risk axis: the profiles with a score by the displayed score, the unrounded one, then the value; the card is the first", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_ranking", seed, async (q) => ({
       firms: await answer(q, { dim: "supplier", rankBy: "risk", filters: {} }),
       cluj: await answer(q, { dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj" } }),
       none: await answer(q, { dim: "supplier", rankBy: "risk", filters: { maxEmployees: 0 } }),
       band: await answer(q, { dim: "supplier", rankBy: "risk", filters: { minEmployees: 1, maxEmployees: 9 } }),
     }));
-    const { ties } = out.firms.data;
+    const { ranking } = out.firms.data;
     expect(out.firms.data.podium).toBeUndefined();
-    // Four firms at 0,75 (three signals of four), by value: Zeta 9000, Alfa 6200, Beta 3000, Gama 2000; Delta at 0,50, Epsilon 0,25.
-    expect(ties).toMatchObject({ level: 0.75, maxFlags: 3, criteria: 4, count: 4, pool: 6, nextLevel: 0.5, nextCount: 1 });
-    expect(ties!.rows.map((r) => r.name)).toEqual(["Zeta Mare SRL", "Alfa Constructii SRL", "Beta Asociere SRL", "Gama Unica SRL"]);
-    expect(out.firms.data.card).toMatchObject({ entityId: id(6), cri: 0.75, nFlags: 3 });
-    // The seat (the profiles' county): Alfa and Gama in Cluj, then Epsilon at 0,25.
-    expect(out.cluj.data.ties).toMatchObject({ level: 0.75, count: 2, pool: 3, nextLevel: 0.25, nextCount: 1 });
-    expect(out.cluj.data.ties!.rows.map((r) => r.name)).toEqual(["Alfa Constructii SRL", "Gama Unica SRL"]);
-    // The size of the firms (their latest filing) selects the profiles: no employees = Beta and Gama; 1–9 = Delta alone.
-    expect(out.none.data.ties!.rows.map((r) => r.name)).toEqual(["Beta Asociere SRL", "Gama Unica SRL"]);
-    expect(out.none.data.ties).toMatchObject({ level: 0.75, count: 2, pool: 2, nextLevel: null, nextCount: 0 });
-    expect(out.band.data.ties).toMatchObject({ level: 0.5, count: 1, pool: 1 });
+    expect(out.firms.data.ties).toBeUndefined();
+    // Zeta 79 alone; Gama (78,45) before Alfa and Beta (78,4, by value) though its value is lower; Epsilon 20; Delta, without
+    // a pattern, not listed.
+    expect(ranking).toMatchObject({ version: 3, pool: 6, scored: 5, top: 79, topCount: 1 });
+    expect(ranking!.rows.map((r) => [r.name, r.score])).toEqual([
+      ["Zeta Mare SRL", 79], ["Gama Unica SRL", 78], ["Alfa Constructii SRL", 78], ["Beta Asociere SRL", 78], ["Epsilon Fara Bilant SRL", 20],
+    ]);
+    expect(ranking!.rows[0]).toMatchObject({ entityId: id(6), county: "Ilfov", count: 100, value: 9000, nFlags: 3, flags: ["da_split", "da_dependence", "da_above_ceiling"] });
+    expect(out.firms.data.card).toMatchObject({ entityId: id(6), cri: null, score: 79, nFlags: 3 });
+    // The seat (the profiles' county): Gama and Alfa tied on 78 in Cluj, then Epsilon.
+    expect(out.cluj.data.ranking).toMatchObject({ pool: 3, scored: 3, top: 78, topCount: 2 });
+    expect(out.cluj.data.ranking!.rows.map((r) => r.name)).toEqual(["Gama Unica SRL", "Alfa Constructii SRL", "Epsilon Fara Bilant SRL"]);
+    // The size of the firms (their latest filing) selects the profiles: no employees = Gama and Beta; 1–9 = Delta alone,
+    // who has no score: „Nu are semnale în profil”, the profile still listed by value for the sources.
+    expect(out.none.data.ranking!.rows.map((r) => r.name)).toEqual(["Gama Unica SRL", "Beta Asociere SRL"]);
+    expect(out.none.data.ranking).toMatchObject({ pool: 2, scored: 2, top: 78, topCount: 2 });
+    expect(out.band.data.ranking).toMatchObject({ pool: 1, scored: 0, top: 0, topCount: 1 });
+    expect(out.band.data.ranking!.rows.map((r) => [r.name, r.score])).toEqual([["Delta Mica SRL", 0]]);
     expect(out.band.data.card.name).toBe("Delta Mica SRL");
   }, 60000);
 
@@ -263,9 +280,12 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
       // The fixture has no hospital with records: the answer by value is empty, not an error.
       value: await answer(q, { dim: "authority", rankBy: "value", filters: { ...T, authorityKind: "spital" } }),
     }));
-    // Spitalul 4 has two signals (0,40) alone at the top; the institute and the hospitals follow, the school is no hospital.
-    expect(out.hospitals.data.ties).toMatchObject({ level: 0.4, maxFlags: 2, criteria: 5, count: 1, pool: 5, nextLevel: 0.2, nextCount: 3 });
-    expect(out.hospitals.data.ties!.rows.map((r) => r.name)).toEqual(["Spitalul Fixture 4"]);
+    // Spitalul 4 (64) alone at the top; the institute and the hospitals at 40 follow by value, Spitalul 5 has no score and
+    // the school is no hospital.
+    expect(out.hospitals.data.ranking).toMatchObject({ pool: 5, scored: 4, top: 64, topCount: 1 });
+    expect(out.hospitals.data.ranking!.rows.map((r) => [r.name, r.score])).toEqual([
+      ["Spitalul Fixture 4", 64], ["Spitalul Fixture 2", 40], ["Spitalul Fixture 1", 40], ["Institutul Oncologic Fixture Cluj-Napoca", 40],
+    ]);
     expect(out.value.data).toMatchObject({ block: "entity_card", empty: true });
   }, 60000);
 
@@ -274,16 +294,23 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
       const { spec, grounding } = await answer(q, { dim: "supplier", rankBy: "risk", filters: {} });
       const group = await runRows(q, spec, grounding, 0, { limit: 100 });
       const one = await runRows(q, spec, grounding, 0, { limit: 100, scope: { entityIds: [id(1)], role: "supplier" } });
-      // A profile below the top is not in the answer: its sources are refused empty, not listed.
+      // A profile the answer does not list (Delta, no score) is not in it: its sources are refused empty, not listed.
       const below = await runRows(q, spec, grounding, 0, { limit: 100, scope: { entityIds: [id(4)], role: "supplier" } });
-      return { group, one, below };
+      // A group in which nobody has a score (1–9 employees: Delta): the sources are its profiles by value, and say so.
+      const nobody = await answer(q, { dim: "supplier", rankBy: "risk", filters: { minEmployees: 1, maxEmployees: 9 } });
+      const none = await runRows(q, nobody.spec, nobody.grounding, 0, { limit: 100 });
+      return { group, one, below, none };
     });
-    if ("error" in out.group || "error" in out.one || "error" in out.below) throw new Error(JSON.stringify(out));
-    // Zeta (2), Alfa (3), Beta (1), Gama (1) of the seeded acquisitions; Delta's one is not at the top.
-    expect([out.group.sourceTotal, out.group.profileCount]).toEqual([7, 4]);
+    if ("error" in out.group || "error" in out.one || "error" in out.below || "error" in out.none) throw new Error(JSON.stringify(out));
+    // The five listed: Zeta (2), Gama (1), Alfa (3), Beta (1), Epsilon (none) of the seeded acquisitions; Delta's is not listed.
+    expect([out.group.sourceTotal, out.group.profileCount]).toEqual([7, 5]);
+    expect([...new Set(out.group.rows.map((row) => row.supplierId))].sort()).toEqual([id(1), id(2), id(3), id(6)]);
     expect([out.one.sourceTotal, out.one.profileCount]).toEqual([3, 1]);
     expect([out.below.sourceTotal, out.below.profileCount]).toEqual([0, 0]);
     expect(evidenceCsv(out.group.rows).trim().split("\n")).toHaveLength(8);
+    expect([out.none.sourceTotal, out.none.profileCount]).toEqual([1, 1]);
+    expect(out.none.scopeNotes.join(" ")).toMatch(/Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare \(cel mult 50\)/);
+    expect(out.group.scopeNotes.join(" ")).not.toMatch(/Niciun profil din grup/);
   }, 60000);
 
   it("by value: each podium place's records are its own, place 1 by default, and an id off the podium is refused", async () => {
@@ -348,15 +375,18 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     expect("error" in out.institutions).toBe(true);
   }, 60000);
 
-  it("changes what a watch compares only when the group at the top changes, not when the pool does", async () => {
+  it("changes what a watch compares only when the listed profiles or their scores change, not their values or the pool", async () => {
     const out = await withAskFixture(connection!.sql, "ec_watch", seed, async (q) => {
       const raw = { dim: "supplier", rankBy: "risk", filters: {} };
       const before = (await answer(q, raw)).data;
-      // A profile far below the top: the pool grows, the group at the top is the same.
-      await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags) values (${id(70)}, 'supplier', 'Mica SRL', 'Cluj', 21, 5, 0, 0, '[]')`;
+      // A profile without a score: the pool grows, the list is the same.
+      await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags, score, score_raw) values (${id(70)}, 'supplier', 'Mica SRL', 'Cluj', 21, 5, 0, 0, '[]', 0, 0)`;
+      // A listed profile's value grows past another's with the same score: the screen's order moves, the answer does not.
+      await q`update marts.entity_flags set total_ron = 7000 where entity_id = ${id(2)} and role = 'supplier'`;
       const poolOnly = (await answer(q, raw)).data;
-      // A new profile at the top level: the group changes.
-      await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags) values (${id(71)}, 'supplier', 'Noua SRL', 'Cluj', 30, 70, 0.75, 3, '["da_split","da_dependence","da_rapid"]')`;
+      // A new profile tied on the best score: the list and the tie change.
+      await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags, score, score_raw)
+        values (${id(71)}, 'supplier', 'Noua SRL', 'Cluj', 30, 70, 0.79, 3, '["da_split","da_dependence","da_round"]', 79, 78.6)`;
       const grown = (await answer(q, raw)).data;
       const podiumBefore = (await answer(q, { dim: "supplier", rankBy: "value", filters: T })).data;
       await q`insert into marts.da_transactions (sicap_da_id,da_code,authority_id,authority_name,supplier_id,supplier_name,county,cpv_code,closing_value,finalization_date)
@@ -364,16 +394,17 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
       const podiumAfter = (await answer(q, { dim: "supplier", rankBy: "value", filters: T })).data;
       return { before, poolOnly, grown, podiumBefore, podiumAfter };
     });
-    expect(out.poolOnly.ties!.pool).toBe(out.before.ties!.pool + 1);
+    expect(out.poolOnly.ranking!.pool).toBe(out.before.ranking!.pool + 1);
+    expect(out.poolOnly.ranking!.rows.map((r) => r.name).slice(2, 4)).toEqual(["Beta Asociere SRL", "Alfa Constructii SRL"]);
     expect(sameAnswerCore("entity_card", out.before, out.poolOnly)).toBe(true);
-    expect(out.grown.ties!.count).toBe(5);
+    expect(out.grown.ranking).toMatchObject({ top: 79, topCount: 2 });
     expect(sameAnswerCore("entity_card", out.before, out.grown)).toBe(false);
     // The podium: a firm that climbs to place 1 changes it; its names alone would not.
     expect(out.podiumAfter.podium!.places[0]!.name).toBe("Delta Mica SRL");
     expect(sameAnswerCore("entity_card", out.podiumBefore, out.podiumAfter)).toBe(false);
   }, 60000);
 
-  it("answers an empty selection as an empty answer (G2), not as an error: by value and on the index", async () => {
+  it("answers an empty selection as an empty answer (G2), not as an error: by value and on the risk axis", async () => {
     const out = await withAskFixture(connection!.sql, "ec_empty", seed, async (q) => ({
       value: await answer(q, { dim: "supplier", rankBy: "value", filters: { yearFrom: 2025, yearTo: 2025, minEmployees: 250 } }),
       index: await answer(q, { dim: "supplier", rankBy: "risk", filters: { minEmployees: 250 } }),
@@ -381,6 +412,7 @@ describe.runIf(Boolean(connection))("entity_card-2: „Cine conduce?” (isolate
     for (const empty of [out.value.data, out.index.data]) {
       expect(empty).toMatchObject({ block: "entity_card", empty: true, card: { entityId: "", role: "supplier" } });
       expect(empty.podium).toBeUndefined();
+      expect(empty.ranking).toBeUndefined();
       expect(empty.ties).toBeUndefined();
     }
   }, 60000);
