@@ -4,9 +4,12 @@ import { BUZAU_DIALOG, BUZAU_FACTS, HOSPITAL_DIALOG } from "./fixtures/distribut
 import { legacyCounty, peerRows, peerTickError, populationCoverage, resolvePeerFacts } from "./peer-groups";
 import { profileCounty, profileCountyCond, profilePredicates, type PredicateCtx } from "./predicates";
 import {
+  CRITERIA, CRITERION_LABEL, CRITERION_RULE,
   PEER_MINIMUM, PROFILE_MIN_DAS, bandWords, countyDisplay, coverageWords, defaultPeerTicks, peerCountWords, peerFollowUp, peerGroupValue, peerGroupWords, peerKey,
   peerRowState, peerTicks, peerWindowTip, togglePeerRow, withPeerGroup, writePeerTicks, type PeerDialogData, type PeerFacts,
 } from "./peer-groups-shared";
+import { flagLabel } from "../flags";
+import { RISK_CRITERIA } from "../risk-score";
 import { localityScopeError, transitionQuestion, type QuestionSpec } from "./question-ui";
 import { validateSpec } from "./spec";
 
@@ -173,6 +176,18 @@ describe("the rows of the window (final §3.1 table)", () => {
     // The group's words, the window and "→ N" do not know a locality, so the routes refuse it before runSpec (localityScopeError).
     const spec = { block: "distribution", measure: "value", filters: { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU", uatSiruta: 44818, uatName: "Buzău" }, peers: { similar: true } } as QuestionSpec;
     expect(localityScopeError(spec)).toMatch(/^Indicele de risc compară profiluri între ele, deci aici poți alege doar județul\. Elimină localitatea „Buzău”/);
+  });
+});
+
+describe("the criteria of a group (rf-2026.18)", () => {
+  it("are the risk score's, in its order: no „Finalizare rapidă”, the new „Peste plafonul achiziției directe”", () => {
+    expect(CRITERIA).toEqual(RISK_CRITERIA);
+    expect(CRITERIA.authority).toEqual(["da_split", "da_round", "da_year_end", "da_concentration", "da_above_ceiling"]);
+    expect(CRITERIA.supplier).toEqual(["da_split", "da_round", "da_dependence", "da_above_ceiling"]);
+    expect(CRITERION_LABEL.da_above_ceiling).toBe(flagLabel("da_above_ceiling"));
+    expect(CRITERION_RULE.da_above_ceiling).toBeTruthy();
+    // A code retired since (an answer stored before) has no label here: its renderer shows the code.
+    expect(CRITERION_LABEL.da_rapid).toBeUndefined();
   });
 });
 

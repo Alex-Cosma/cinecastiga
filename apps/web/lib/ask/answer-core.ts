@@ -28,7 +28,9 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   sankey: "sankey-2",
   // distribution-2 (F6a, plan §4.11): the criteria against the group the ticks choose, instead of ten
   // CRI buckets and a percentile over every profile; position more · same · fewer of the others.
-  distribution: "distribution-2",
+  // distribution-3 (rf-2026.18, 1 November 2026): the risk score (0–100%) against the same group, instead of the
+  // number of criteria; position higher · equal · lower on the displayed score, the members with their scores.
+  distribution: "distribution-3",
   // fact_check-2 (F6a, plan §4.10): three verdicts (Da · Acord-cadru · Nu), the rows outside the sums say "Da"
   // ("Da · nu intră în sume"), framework ceilings never do; the profile, the weight and the whole relation beside it.
   fact_check: "fact_check-2",
@@ -298,8 +300,27 @@ function entityCardCore(data: unknown): unknown {
  * the group, the band's coverage and the country's marks are references, not
  * the answer: a member added nationally does not change a watch on 29 town
  * halls. An answer stored before distribution-2 is whole.
+ *
+ * distribution-3 (rf-2026.18): the entity's score, its group (the ticks, its
+ * size and members) and the counts with a higher, the same and a lower score.
+ * The members' own scores, the bands, the patterns of the group and the
+ * country, the points and facts of the entity's patterns are the screen's: a
+ * member whose score moves a point inside the same side does not change the
+ * watch; its crossing the entity's score does (the counts).
  */
 function distributionCore(data: unknown): unknown {
+  if (object(data) && object(data.distribution) && data.distribution.version === 3) {
+    const d = data.distribution;
+    const focal = object(d.focal) ? d.focal : {}, group = object(d.group) ? d.group : {};
+    return { ...data, distribution: {
+      version: 3, role: d.role, status: d.status,
+      focal: { entityId: focal.entityId, score: focal.score, inGroup: focal.inGroup },
+      // The members as a set: the list is in the order of their scores, which move every night.
+      group: { ticks: group.ticks, legacy: group.legacy, others: group.others,
+        memberIds: Array.isArray(group.memberIds) ? [...(group.memberIds as unknown[])].map(String).sort() : group.memberIds },
+      position: d.position,
+    } };
+  }
   if (!object(data) || !object(data.distribution) || data.distribution.version !== 2) return data;
   const d = data.distribution;
   const focal = object(d.focal) ? d.focal : {}, group = object(d.group) ? d.group : {};

@@ -1,7 +1,8 @@
 import { countyName } from "../../lib/counties";
 import { fileSlug } from "../../lib/ask/answer-text";
-import type { BlockData, DistributionDataV1, DistributionMember } from "../../lib/ask/compile";
-import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
+import type { BlockData, DistributionDataV1, DistributionDataV3, DistributionMember, ScoredMember } from "../../lib/ask/compile";
+import { CRITERION_LABEL, scoreBandOf } from "../../lib/ask/peer-groups-shared";
+import { RISK_BAND_WORD, riskBand, riskFact, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
 import { employeesWords } from "../../lib/ask/filters/words";
 import { isHistoricalProfile } from "../../lib/ask/population";
@@ -97,9 +98,12 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
           e.partners ?? "", e.cri ?? "", e.hasProfile === false ? "" : e.nFlags, csvQ(e.flags.join("|"))].join(",")),
       ];
     case "distribution": {
-      // distribution-2 (final §7.7 "criterii,entitati + criterii + membri"): one table, by `sectiune`: the group's others by
-      // number of criteria (the chart), each criterion among them and in the country, the entity, then the list on screen (≤ 50).
-      const d = data.distribution, f = d.focal, max = d.criteria.length;
+      // distribution-3: the score (distributionScoreCsv). An answer stored before it keeps its table: distribution-2 (final
+      // §7.7 "criterii,entitati + criterii + membri"), one table by `sectiune`: the group's others by number of criteria
+      // (the chart), each criterion among them and in the country, the entity, then the list on screen (≤ 50).
+      const d = data.distribution;
+      if (d.version === 3) return distributionScoreCsv(d);
+      const f = d.focal, max = d.criteria.length;
       if (d.version !== 2) return ["cri_de,cri_pana,entitati", ...(d as unknown as DistributionDataV1).buckets.map((b) => `${b.from},${b.to},${b.n}`)];
       const row = (cells: (string | number)[]) => cells.join(",");
       const member = (part: string, m: DistributionMember, own: string) =>
@@ -193,6 +197,33 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       ];
     }
   }
+}
+
+/**
+ * distribution-3 (rf-2026.18): one table, by `sectiune`: the entity with its score and band, each pattern of the role
+ * with the entity's points and fact and how many of the group and of the country have it, the group's others by band
+ * of the score (the chart), then the members on screen (≤ 50) with their scores. The score is the displayed one (0–100).
+ */
+function distributionScoreCsv(d: DistributionDataV3): string[] {
+  const f = d.focal, points = riskPoints(f.parts, f.score), own = scoreBandOf(f.score);
+  const row = (cells: (string | number)[]) => cells.join(",");
+  const member = (part: string, m: Pick<ScoredMember, "name" | "county" | "population" | "score" | "flags" | "nDas">, mine: string) =>
+    row([csvQ(part), csvQ(m.name), csvQ(countyName(m.county)), m.population ?? "", m.score, csvQ(RISK_BAND_WORD[riskBand(m.score)]), csvQ(m.flags.join("|")), m.nDas,
+      "", "", "", "", "", "", "", mine]);
+  // Below the threshold or in a group under 5, the entity's own patterns without the group's counts.
+  const per: { code: string; others?: number; country?: number }[] = d.perCriterion ?? d.criteria.map((code) => ({ code }));
+  return [
+    "sectiune,nume,judet,populatie,scor,risc,tipare,achizitii_directe,criteriu,puncte,fapt,scor_de,scor_pana,din_grup,din_tara,entitatea",
+    member("entitatea", f, "da"),
+    ...per.map((c) => {
+      const part = f.parts[c.code as RiskCriterion];
+      return row([csvQ("criteriu"), "", "", "", "", "", "", "", csvQ(`${CRITERION_LABEL[c.code] ?? c.code} (${c.code})`), part ? points[c.code as RiskCriterion] ?? 0 : 0,
+        csvQ(part ? riskFact(c.code as RiskCriterion, part) : ""), "", "", c.others ?? "", c.country ?? "", part ? "da" : "nu"]);
+    }),
+    ...(d.hist ?? []).map((h) => row([csvQ("scor"), "", "", "", "", "", "", "", "", "", "", h.from, h.to, h.n, "",
+      own && own.from === h.from ? "da" : ""])),
+    ...(d.members ?? []).map((m) => member("grup", m, "")),
+  ];
 }
 
 /** The strip's columns, in a fixed order: their name and the value on every row. */

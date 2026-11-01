@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
 import { runRows, runSpec, CONTRACT_CAP_CAVEAT, DA_PLAFOND_CAVEAT, DRILLABLE_BLOCKS, type DrillRow } from "./compile";
 import { BLOCKS, type AskSpec } from "./spec";
-import { evidenceCsv, evidenceLinks, formatEvidenceAmount, sumDecimalStrings, validateEvidenceScope } from "./evidence";
+import { evidenceCsv, evidenceLinks, formatEvidenceAmount, riskBucketScore, sumDecimalStrings, validateEvidenceScope } from "./evidence";
 import { evidenceOptions } from "./evidence-request";
 import type { Grounding } from "./ground";
 
@@ -29,8 +29,8 @@ function database(profileValue = "30.01") {
       ]));
       if (this.text.includes("coalesce(sum(n_das)")) return Promise.resolve(resolve([{ n: "1", records: "3", v: profileValue }]));
       // distribution-2: the entity placed in its group (peer-groups.ts readPeerFocal), with a profile.
-      if (this.text.includes("ef.entity_id::text id, ef.name_display, ef.county, ef.n_das")) return Promise.resolve(resolve([
-        { id: "123", name_display: "Spitalul X", county: "Cluj", n_das: 12, n_flags: 1, cri: "0.2", flags: ["da_split"] },
+      if (this.text.includes("ef.entity_id::text id, ef.name_display, ef.county county, ef.n_das, ef.n_flags, ef.cri, ef.flags,")) return Promise.resolve(resolve([
+        { id: "123", name_display: "Spitalul X", county: "Cluj", n_das: 12, n_flags: 1, cri: "0.2", flags: ["da_split"], score: 20, score_raw: 20, score_parts: { da_split: { x: 1 } } },
       ]));
       if (this.text.includes("select entity_id, name_display, role")) return Promise.resolve(resolve([
         { entity_id: "123", name_display: "Spitalul X", role: "authority", n_das: 3, total_ron: profileValue, cri: "0.2", flags: ["da_split"] },
@@ -96,6 +96,16 @@ describe("source selection validation", () => {
     const scope = { role: "supplier", excludeEntityIds: ["9007199254740993"], excludeCpvPrefixes: ["45"], county: "Cluj", years: [2020, 2026] };
     expect(validateEvidenceScope(scope)).toEqual(scope);
     expect(validateEvidenceScope({ riskBucket: { from: 0.2, to: 0.3 } })).not.toHaveProperty("error");
+  });
+  it("accepts a band of the risk score (distribution-3) and keeps an old link's tenth of the index and number of criteria", () => {
+    expect(validateEvidenceScope({ score: { from: 20, to: 29 } })).toEqual({ score: { from: 20, to: 29 } });
+    expect(validateEvidenceScope({ score: { from: 0, to: 0 } })).toEqual({ score: { from: 0, to: 0 } });
+    for (const score of [{ from: 30, to: 20 }, { from: -1, to: 9 }, { from: 90, to: 101 }, { from: 2.5, to: 9 }, { from: "20", to: 29 }, { from: 20 }, { from: 20, to: 29, k: 1 }, [20, 29], null])
+      expect(validateEvidenceScope({ score })).toEqual({ error: "Interval de scor invalid." });
+    expect(validateEvidenceScope({ criteria: 2 })).toEqual({ criteria: 2 });
+    expect(validateEvidenceScope({ criteria: 6 })).toEqual({ error: "Număr de criterii invalid." });
+    // The same percents: the first tenth is a score of 0 (none from 1 to 19), the last keeps 100.
+    expect([{ from: 0, to: 0.1 }, { from: 0.2, to: 0.3 }, { from: 0.9, to: 1 }].map(riskBucketScore)).toEqual([{ from: 0, to: 9 }, { from: 20, to: 29 }, { from: 90, to: 100 }]);
   });
   it("accepts several counties (a county trend's group), at most 42, trimmed once each", () => {
     expect(validateEvidenceScope({ counties: [" Cluj", "Iași", "Cluj"] })).toEqual({ counties: ["Cluj", "Iași"] });
@@ -245,14 +255,27 @@ describe("source query regression", () => {
     const result = await runRows(db.sql, { ...stat, block: "entity_card", dim: "authority", filters:{} }, {}, 0);
     expect(result).toMatchObject({ profileReconciled: false });
   });
-  it("uses the same histogram bucket expression and population minimum as the displayed risk distribution", async () => {
+  it("selects an old link's tenth of the index as the band of the score with the same percents, on the profiles' population minimum", async () => {
     const db = database();
     await runRows(db.sql, { ...stat, block: "distribution" }, grounding, 0, { scope: { riskBucket: { from: 0.2, to: 0.3 } } });
     const query = db.statements.find((s) => s.includes("group by d.state"))!;
-    expect(query).toContain("width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10)");
+    const band = query.match(/ef\.score between \?(\d+) and \?(\d+)/);
+    expect(band && [db.values[Number(band[1]) - 1], db.values[Number(band[2]) - 1]]).toEqual([20, 29]);
+    expect(query).not.toContain("width_bucket");
     expect(query).toContain("ef.n_das >=");
-    expect(db.values).toContain(3);
     expect(db.values).toContain(10);
+  });
+  it("selects a bar of distribution-3 by its band of the score, an old bar of distribution-2 by its criteria, only on a distribution", async () => {
+    const bar = database();
+    await runRows(bar.sql, { ...stat, block: "distribution" }, grounding, 0, { scope: { score: { from: 90, to: 100 } } });
+    const query = bar.statements.find((s) => s.includes("group by d.state"))!;
+    const band = query.match(/ef\.score between \?(\d+) and \?(\d+)/);
+    expect(band && [bar.values[Number(band[1]) - 1], bar.values[Number(band[2]) - 1]]).toEqual([90, 100]);
+    const old = database();
+    await runRows(old.sql, { ...stat, block: "distribution" }, grounding, 0, { scope: { criteria: 2 } });
+    expect(old.statements.find((s) => s.includes("group by d.state"))).toMatch(/ef\.n_flags = \?\d+/);
+    expect(await runRows(database().sql, stat, grounding, 0, { scope: { score: { from: 20, to: 29 } } }))
+      .toEqual({ error: "Intervalul de risc se aplică distribuției." });
   });
   it("trend sources contain only the endpoint years, even if month filters are present", async () => {
     const db = database();

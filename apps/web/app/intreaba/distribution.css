@@ -1,7 +1,11 @@
-/* "Unde se situează?" (distribution-2, final distribution §3.6–§3.8, §4.6): the group
-   line, the score and the position, the list or the chart by criteria, each criterion.
+/* "Unde se situează?" (distribution-3, rf-2026.18; the group of final distribution §3,
+   §4.6): the group line, the risk score and the position, the strip of the group on
+   0–100% and the list with scores, or the chart by tenths of the score, what the score
+   is made of. An answer stored before it (distribution-2) keeps the criteria's rules
+   (dots, the chart by number of criteria, "Criteriu cu criteriu").
    Tokens only (approved.css, filters-kit.css), both themes; orange is the signals' and
-   the entity's own mark (kit R7). Under 600 px every control is 44 px tall. */
+   the entity's own mark (kit R7), the score's bands are globals.css's (risk-*).
+   Under 600 px every control is 44 px tall. */
 
 .dist{display:grid;gap:18px;min-width:0}
 .dist-group{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 14px;font-size:13px;color:var(--muted)}
@@ -61,6 +65,55 @@ button.dist-col:hover .dist-bar{background:var(--accent)}
 .dist-close:hover{color:var(--ink);background:var(--sunk)}
 .dist-bar-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin-top:6px}
 
+/* distribution-3: the score ("54%" in its band's pill, "risc · moderat" (?)). */
+.dist-pill-line{line-height:1}
+.dist .dist-pill{font-family:var(--mono);font-size:32px;font-weight:600;line-height:1;padding:7px 14px;border-radius:10px}
+.dist-score .dist-band{margin-top:10px;font-size:13.5px;color:var(--ink2)}
+/* The group on 0–100: each member a dot in its band's colour, stacked where they meet; the entity dark, named above. */
+.dist-strip{border:1px solid var(--line);border-radius:12px;padding:12px 16px 10px;min-width:0;overflow:hidden}
+.dist-strip-plot{position:relative;height:calc(var(--rows) * 12px + 26px);margin:0 7px}
+.dist-strip-plot::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:1px;
+  background:linear-gradient(to right,var(--line2) 0 20%,var(--faint) 20% 40%,var(--amber) 40% 68%,var(--risk) 68% 100%)}
+.dist-dot{display:inline-block;flex:none;width:10px;height:10px;border-radius:50%;box-sizing:border-box;background:var(--muted)}
+.dist-dot.risk-none{background:transparent;border:1.5px solid var(--muted)}
+.dist-dot.risk-slab{background:var(--muted)}
+.dist-dot.risk-mid{background:var(--amber)}
+.dist-dot.risk-high{background:var(--risk)}
+.dist-dot.is-focal{background:var(--ink)}
+.dist-strip-plot .dist-dot{position:absolute;left:calc(var(--x) * 1%);bottom:calc(var(--l) * 12px + 5px);transform:translateX(-50%);box-shadow:0 0 0 1.5px var(--surface)}
+.dist-strip-plot .dist-dot.is-focal{z-index:1;width:12px;height:12px;bottom:4px;box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--ink)}
+.dist-strip-name,.dist-strip-over,.dist-strip-tick{position:absolute;left:calc(var(--x) * 1%);transform:translateX(-50%);white-space:nowrap;line-height:1.2}
+.dist-strip-name{top:0;max-width:50%;overflow:hidden;text-overflow:ellipsis;font-size:11.5px;font-weight:600;color:var(--ink)}
+.dist-strip-over{bottom:calc(var(--l) * 12px + 4px);font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.dist-strip-axis{position:relative;height:15px;margin:5px 7px 0;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.dist-strip-tick{top:0}
+.dist-strip .is-start{transform:none}
+.dist-strip .is-end{transform:translateX(-100%)}
+.dist-strip-legend{gap:4px 12px;margin-top:8px}
+.dist-strip-legend span{display:inline-flex;align-items:center;gap:5px;min-width:0;overflow-wrap:anywhere}
+.dist-strip-legend .dist-dot{width:9px;height:9px}
+/* A member's score: its band's bar and the percent. */
+.dist-member-s{display:inline-flex;align-items:center;gap:10px;flex:none}
+.dist-member-s .risk-meter{width:120px}
+.dist-member-s b{min-width:44px;text-align:right;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink)}
+/* Above 50: the others by tenth of the score (0, 20–29 … 90–100), a bar opens its members. */
+.dist-hist{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:8px;height:190px;align-items:end}
+.dist-hcol{display:grid;grid-template-rows:auto 1fr auto;grid-template-areas:"n" "bar" "axis";align-items:end;height:100%;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:center}
+.dist-hcol .dist-n{grid-area:n}
+.dist-hcol .dist-axis{grid-area:axis}
+button.dist-hcol{cursor:pointer;border-radius:6px}
+button.dist-hcol:hover .dist-hbar{background:var(--accent)}
+.dist-hbar{grid-area:bar;display:block;align-self:end;width:100%;height:max(2px,calc(var(--h) * 100%));background:var(--accent-line);border-radius:4px 4px 0 0}
+.dist-hcol.is-here .dist-hbar{background:var(--orange)}
+.dist-hcol.is-would .dist-hbar{box-shadow:inset 0 0 0 1.5px var(--orange)}
+.dist-hcol.is-open .dist-hbar{background:var(--accent)}
+.dist-hcol.is-here.is-open .dist-hbar{background:var(--orange);box-shadow:0 0 0 2px var(--accent)}
+/* What the score is made of: each pattern's points and fact, how many of the group have it. */
+.dist-part{grid-template-columns:minmax(0,1.6fr) 84px minmax(0,1.2fr) 96px 112px}
+.dist-fact{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.dist-part-pts{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.dist-part-pts.is-met{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--amber-ink)}
+
 .dist-criteria ul{list-style:none;margin:0;padding:0;display:grid}
 .dist-crit{display:grid;grid-template-columns:minmax(0,1.5fr) 52px minmax(0,1.6fr) 96px 112px;align-items:center;gap:8px 12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .dist-crit-name{color:var(--ink);min-width:0;overflow-wrap:anywhere}
@@ -83,10 +136,11 @@ button.dist-col:hover .dist-bar{background:var(--accent)}
 @media (max-width:760px){
   .dist-top{grid-template-columns:minmax(0,1fr)}
   .dist-crit{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name own" "bar n" "cases cases"}
-  .dist-crit-name{grid-area:name}.dist-crit-own{grid-area:own}.dist-crit-bar{grid-area:bar}.dist-crit-n{grid-area:n}.dist-crit-cases{grid-area:cases}
+  .dist-crit-name{grid-area:name}.dist-crit-own,.dist-part-pts{grid-area:own}.dist-crit-bar{grid-area:bar}.dist-crit-n{grid-area:n}.dist-crit-cases{grid-area:cases}
+  .dist-part-pts{justify-self:end}
 }
 @media (max-width:600px){
-  .dist-change,.dist-all,.dist-crit-cases,.dist-member-t a,button.dist-col{min-height:44px}
+  .dist-change,.dist-all,.dist-crit-cases,.dist-member-t a,button.dist-col,button.dist-hcol{min-height:44px}
   .dist-close{width:44px;height:44px}
   /* The heading's (?) keeps its 44 px target in the heading's own line: it would reach the first criterion's (?) below. */
   .dist .dist-criteria h3 .term-tip>.term-trigger{margin-block:0}
@@ -95,6 +149,18 @@ button.dist-col:hover .dist-bar{background:var(--accent)}
   .dist-box{padding:8px}
   .dist-box b{font-size:19px}
   .dist-bars{gap:5px;height:170px}
+  /* distribution-3: nine bands do not fit 44 px wide on a phone: one row per band, its bar across. */
+  .dist-hist{grid-template-columns:minmax(0,1fr);height:auto;gap:2px}
+  .dist-hcol{grid-template-columns:56px minmax(0,1fr) auto;grid-template-rows:none;grid-template-areas:"axis bar n";align-items:center;gap:10px;height:auto;padding:0 4px;text-align:left}
+  .dist-hbar{align-self:center;width:max(2px,calc(var(--h) * 100%));height:10px;border-radius:0 4px 4px 0}
+  .dist-hcol .dist-axis{display:flex;align-items:baseline;gap:1px;padding-top:0;border-top:0}
+  .dist-hcol .dist-n{display:flex;align-items:baseline;justify-content:flex-end;gap:6px}
+  /* Two points apart are 7 px on a phone: smaller dots overlap less. */
+  .dist-strip-plot .dist-dot{width:8px;height:8px}
+  .dist-strip-plot .dist-dot.is-focal{width:10px;height:10px}
+  .dist-member-s{gap:8px}
+  .dist-member-s .risk-meter{width:56px}
+  .dist .dist-pill{font-size:28px}
 }
 /* Six columns stay 44 px wide at 320 px (5 px gaps left them at 43). */
 @media (max-width:360px){
