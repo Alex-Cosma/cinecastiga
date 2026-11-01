@@ -43,7 +43,8 @@ function isolatedSql(connection: DbSql, prefix: string): DbSql {
 const tables = {
   core: ["risk_thresholds", "contracts", "awards", "contract_winners", "entities", "cpv_codes", "direct_acquisitions", "notices", "ted_lot_results", "ted_notices", "flags"],
   marts: ["cui_corroborations", "contract_identity_exclusions", "contract_identity_archives", "contract_identity_members", "contract_identity_decisions", "contract_identity_candidates", "contract_identity_observations", "national_stats", "spend_by_type", "spend_by_cpv", "spend_by_county", "entity_profile", "entity_top_partners", "top_entities", "authority_concentration", "contract_transactions", "contract_competition", "da_transactions", "data_coverage"],
-  reference: ["authority_uat", "company_financials", "company_reps", "onrc_firm"],
+  // uat: the December comparison's institution kinds (rf-2026.18, flags/score.ts authorityKindSql).
+  reference: ["authority_uat", "uat", "company_financials", "company_reps", "onrc_firm"],
   raw: ["raw_documents"],
 };
 
@@ -73,8 +74,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       expect((await q`select finalization_date from marts.contract_transactions order by contract_id`).map(r => r.finalization_date))
         .toEqual(["2025-07-16", "2025-01-16", "2026-01-01"]);
       await buildTransactionMarts(q as unknown as Parameters<typeof buildTransactionMarts>[0]);
-      expect((await q`select publication_date,finalization_date,gap_minutes from marts.da_transactions`)[0])
-        .toMatchObject({ publication_date: "2025-12-31 23:55", finalization_date: "2026-01-01 00:15", gap_minutes: 20 });
+      expect((await q`select publication_date,finalization_date from marts.da_transactions`)[0])
+        .toMatchObject({ publication_date: "2025-12-31 23:55", finalization_date: "2026-01-01 00:15" });
       expect((await q`select y,v_plaf::text value from marts.agg_years order by y`).map(r => [r.y,r.value]))
         .toEqual([["2025","200.00"],["2026","112.34"]]);
       throw rollback;
@@ -239,7 +240,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
           values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
       }
       await q`insert into core.entities(id,name_display) values(1,'CB Palatul Copiilor'),(2,'Furnizor'),(3,'Autoritate')`;
-      // DAs 1 and 2: the authority recorded as its own supplier (DA 1 finalised in 20 minutes); DA 3: a real supplier.
+      // DAs 1 and 2: the authority recorded as its own supplier (DA 1 finalised in 20 minutes, no signal since
+      // rf-2026.18 retired "Finalizare rapidă"); DA 3: a real supplier.
       // DA 4: entity 1 as the supplier of another authority, which stays supplier revenue.
       await q`insert into core.direct_acquisitions(id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,publication_date,finalization_date) values
         (1,100060303,1,1,'Oferta acceptata',60000,'2024-03-01T08:00:00Z','2024-03-01T08:20:00Z'),
@@ -260,15 +262,19 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
       await runFlags(q);
       // 70.000,5 lei from a single authority would have made the authority "dependent" on itself.
       expect(await q`select 1 from core.flags where flag_code in ('da_dependence','da_concentration','da_split') or subject_id = 1 and subject_type = 'supplier'`).toHaveLength(0);
-      expect(await q`select 1 from core.flags where flag_code='da_rapid' and subject_id=1`).toHaveLength(1);
+      expect(await q`select 1 from core.flags where flag_code='da_rapid'`).toHaveLength(0);
+      // A DA signal on the authority's own DA (the rule's fixture rows are elsewhere) and an award signal.
       await q`insert into core.flags(id,subject_type,subject_id,flag_code,period,triggered,severity,evidence,methodology_version)
-        values(9001,'award',1,'award_no_competition','2024',true,0.9,'{"value":2000}','fixture')`;
+        values(9001,'award',1,'award_no_competition','2024',true,0.9,'{"value":2000}','fixture'),
+          (9002,'da',1,'da_round','2024',true,0.97,'{"closing":60000}','fixture')`;
       await runFlagMarts(q);
-      expect((await q`select entity_id::int e, role, n_das n from marts.entity_flags order by 1, 2`).map(r => [r.e, r.role, r.n]))
-        .toEqual([[1, "authority", 3], [1, "supplier", 1], [2, "supplier", 1], [3, "authority", 1]]);
+      // No criterion is met: every profile is scored 0 with no parts.
+      expect((await q`select entity_id::int e, role, n_das n, score, n_flags, flags, score_parts from marts.entity_flags order by 1, 2`)
+        .map(r => [r.e, r.role, r.n, r.score, r.n_flags, r.flags, r.score_parts]))
+        .toEqual([[1, "authority", 3, 0, 0, [], {}], [1, "supplier", 1, 0, 0, [], {}], [2, "supplier", 1, 0, 0, [], {}], [3, "authority", 1, 0, 0, [], {}]]);
       expect((await q`select flag_code, entity_id::int e, partner_id, partner_name from marts.flag_instances order by flag_code`).map(r => [r.flag_code, r.e, r.partner_id, r.partner_name]))
-        .toEqual([["award_no_competition", 3, null, null], ["da_rapid", 1, null, null]]);
-      expect((await q`select entity_id::int e, partner_id from marts.signal_lookup where flag_code='da_rapid'`)).toEqual([{ e: 1, partner_id: null }]);
+        .toEqual([["award_no_competition", 3, null, null], ["da_round", 1, null, null]]);
+      expect((await q`select entity_id::int e, partner_id from marts.signal_lookup where flag_code='da_round'`)).toEqual([{ e: 1, partner_id: null }]);
       // The source row keeps the recorded name; it just has no supplier entity.
       expect((await q`select sicap_da_id::text id, supplier_id, supplier_name from marts.da_transactions order by 1`).map(r => [r.id, r.supplier_id, r.supplier_name]))
         .toEqual([["100060303", null, "CB Palatul Copiilor"], ["100060304", null, "CB Palatul Copiilor"], ["100060305", "2", "Furnizor"], ["100060306", "1", "CB Palatul Copiilor"]]);
@@ -516,7 +522,7 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         }
         const lowThresholds = {
           da_conc_min_total: 1, da_conc_min_suppliers: 1, da_conc_top_pct: 0.1,
-          da_dep_min_total: 1, da_dep_top_pct: 0.1, da_year_end_min_total: 1, da_year_end_share: 0,
+          da_dep_min_total: 1, da_dep_top_pct: 0.1, da_dep_min_count: 1, da_year_end_min_total: 1, da_year_end_share: 0,
           award_conc_min_total: 1, award_conc_min_suppliers: 3, award_conc_top_pct: 0.1,
           award_dep_min_total: 1, award_dep_min_auth: 1, award_dep_top_pct: 0.1,
           fin_tiny_min_value: 1, fin_reliance_min_public: 1, fin_reliance_min_turnover: 1,
@@ -566,7 +572,8 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         // The financial comparison must use each contract's year, not its notice publication year.
         await q`update core.awards set state_date='2024-01-01'`;
         const report = await runFlags(q);
-        expect(report["da_rapid"]).toBe(5); // excludes refused/null/zero/negative/outlier records.
+        // "Finalizare rapidă" is retired (rf-2026.18): DAs finalised 30 minutes after publication carry no signal.
+        expect(report["da_rapid"]).toBeUndefined();
         const flags = await q`select flag_code,subject_id::text subject,evidence from core.flags`;
         const evidence = (code: string, subject: string) => flags.find((r) => r["flag_code"]===code && r["subject"]===subject)?.["evidence"] as Record<string,number>;
         expect(evidence("da_concentration","1")["total"]).toBe(20);
@@ -954,4 +961,117 @@ describe('approved publication identity in actual statistical builders',()=>{
    throw rollback;
   })).rejects.toBe(rollback);
  });
+});
+
+// The risk score (rf-2026.18, owner decision of 1 November 2026): the sharper
+// DA rules and the score marts.entity_flags gets from applyProfileScores
+// (flags/score.ts). Ceilings in 2024: 270.120 lei goods/services, 900.400 lei
+// works; in 2020: 135.060 lei goods/services. Every name is fictitious.
+describe("risk score rules and profile score (rf-2026.18)", () => {
+  it("flags the sharper DA signals, the safe above-ceiling scope and writes each profile's score", async () => {
+    const prefix = `risk_score_fixture_${process.pid}_${Date.now()}`;
+    const rollback = Error("rollback risk score fixture");
+    await expect(sql.begin(async tx => {
+      await tx`select set_config('TimeZone', 'UTC', true)`;
+      for (const [schema, names] of Object.entries(tables)) {
+        await tx.unsafe(`create schema ${prefix}_${schema}`);
+        for (const table of [...names, ...(schema === "marts" ? ["entity_flags", "flag_instances"] : [])])
+          await tx.unsafe(`create table ${prefix}_${schema}.${table} as table ${schema}.${table} with no data`);
+      }
+      const q = isolatedSql(tx as unknown as DbSql, prefix);
+      for (const threshold of DA_CEILING_SEED_ROWS) {
+        await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
+          values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
+      }
+      const entities: [number, string][] = [
+        [1, "Primaria Comunei Alfa"], [20, "Primaria Orasului Delta"], [21, "Compania Municipala Epsilon SA"],
+        [22, "Serviciul Public de Apa Zeta"], [60, "Scoala Gimnaziala Eta"], [61, "Directia Lambda"],
+        [70, "Scoala Gimnaziala Nr 1 Teta"], [71, "Scoala Gimnaziala Nr 2 Teta"], [80, "Directia Iota"], [90, "Spitalul Kappa"],
+        [37, "Unifarm SA"],
+        ...[10, 11, 12, 13, 14, 31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 50, 51, 52, 53, 99].map((id): [number, string] => [id, `Furnizor ${id} SRL`]),
+      ];
+      for (const [id, name] of entities)
+        await q`insert into core.entities (id,name_display,name_normalized) values (${id},${name},${name.toLowerCase()})`;
+      // [id, authority, supplier, closing, cpv, publication]; the estimate equals the closing value unless given.
+      const goods = "30190000-7", works = "45233140-2", march = "2024-03-04T09:00:00Z";
+      const das: [number, number, number, number, string | null, string, number?][] = [
+        // da_round from 96% of the ceiling, strictly under it (authority 1, one DA per firm: no repeated purchases).
+        [101, 1, 10, 259_400, goods, march], [102, 1, 11, 270_119, goods, march], [103, 1, 12, 259_000, goods, march],
+        [104, 1, 13, 270_120, goods, march], [105, 1, 14, 1_000, goods, march],
+        [106, 1, 42, 400_000, goods, march], [107, 1, 43, 1_000_000, works, march],
+        // da_above_ceiling: more than 1.1 × the ceiling, only where the known exceptions cannot apply.
+        [201, 20, 31, 400_000, goods, march], [202, 20, 32, 1_000_000, works, march], [203, 20, 33, 400_000, goods, "2020-05-20T09:00:00Z"],
+        [204, 20, 34, 290_000, goods, march], // 1.07 × the ceiling
+        [205, 20, 35, 400_000, "85121000-3", march], // Annex 2 (own procedure)
+        [206, 20, 36, 400_000, "33600000-6", march], // CPV 33 (central purchasing)
+        [207, 20, 37, 400_000, goods, march], // Unifarm
+        [208, 20, 38, 400_000, "44110000-4", march], // building-like goods under the works ceiling
+        [209, 20, 39, 850_000, goods, march], // 90–100% of the works ceiling
+        [210, 20, 40, 400_000, goods, march, 150_000], // more than twice the estimate
+        [211, 20, 41, 400_000, goods, "2020-03-15T09:00:00Z"], // 26.02–14.05.2020
+        [212, 21, 44, 400_000, goods, march], // a company buyer
+        [213, 22, 45, 400_000, goods, march], // a sectoral-looking buyer
+        // da_year_end: 2024's December share against the same kind in the same year (no CPV: no ceiling rules).
+        [301, 70, 99, 80_000, null, "2024-03-10T09:00:00Z"], [302, 70, 99, 120_000, null, "2024-12-10T09:00:00Z"],
+        [303, 71, 99, 100_000, null, "2024-03-10T09:00:00Z"], [304, 71, 99, 100_000, null, "2024-12-10T09:00:00Z"],
+        [305, 80, 99, 100_000, null, "2024-03-10T09:00:00Z"], [306, 80, 99, 100_000, null, "2024-12-10T09:00:00Z"],
+        [307, 90, 99, 140_000, null, "2024-03-10T09:00:00Z"], [308, 90, 99, 60_000, null, "2024-12-10T09:00:00Z"],
+        // da_dependence: ≥ 85% of the firm's sales, ≥ 250.000 lei and ≥ 5 DAs with the main institution.
+        ...Array.from({ length: 20 }, (_, i): [number, number, number, number, null, string] => [401 + i, 60, 50, 30_000, null, "2024-04-10T09:00:00Z"]),
+        ...Array.from({ length: 4 }, (_, i): [number, number, number, number, null, string] => [421 + i, 60, 51, 70_000, null, "2024-04-10T09:00:00Z"]),
+        ...Array.from({ length: 5 }, (_, i): [number, number, number, number, null, string] => [425 + i, 60, 52, 49_000, null, "2024-04-10T09:00:00Z"]),
+        ...Array.from({ length: 5 }, (_, i): [number, number, number, number, null, string] => [430 + i, 60, 53, 60_000, null, "2024-04-10T09:00:00Z"]),
+        [435, 61, 53, 100_000, null, "2024-04-10T09:00:00Z"],
+      ];
+      for (const [id, authority, supplier, closing, cpv, publication, estimate] of das)
+        await q`insert into core.direct_acquisitions (id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,estimated_value_ron,cpv_code,publication_date,finalization_date)
+          values (${id},${900_000 + id},${authority},${supplier},'Oferta acceptata',${closing},${estimate ?? closing},${cpv},${publication},${publication}::timestamptz + interval '1 day')`;
+      // A refused record on 5 January 2025 closes 2024 in the archive, so December 2024 is evaluated.
+      await q`insert into core.direct_acquisitions (id,sicap_da_id,authority_entity_id,supplier_entity_id,state,closing_value,finalization_date)
+        values (902,900902,1,10,'Oferta refuzata',1,'2025-01-05T09:00:00Z')`;
+
+      const report = await runFlags(q);
+      expect(report["da_rapid"]).toBeUndefined();
+      const subjects = async (code: string) => (await q`select subject_id::int s from core.flags where flag_code=${code} order by subject_id`).map(r => r["s"]);
+      // 96% and 99,99% of 270.120 lei; 95,9% and exactly the ceiling are not.
+      expect(await subjects("da_round")).toEqual([101, 102]);
+      // Above the ceiling: the two at authority 1 and three of authority 20's eleven (the 2020 one after the COVID window).
+      expect(await subjects("da_above_ceiling")).toEqual([106, 107, 201, 202, 203]);
+      const [above] = await q`select evidence from core.flags where flag_code='da_above_ceiling' and subject_id=201`;
+      expect(above?.["evidence"]).toMatchObject({ closing: 400000, ceiling: 270120, ratio: 1.4808, works_ceiling: 900400 });
+      // Firm 51 has 4 DAs with its institution, 52 only 245.000 lei, 53 sells 75% to it.
+      expect(await subjects("da_dependence")).toEqual([50]);
+      const [dependence] = await q`select evidence from core.flags where flag_code='da_dependence'`;
+      expect(dependence?.["evidence"]).toMatchObject({ total: 600000, top_authority_pct: 1, top_authority: 60, top_authority_count: 20 });
+      // 50% in December: flagged at a 'alta' institution (its kind's 95th percentile is 42,5%), not at a school
+      // (59%: the other school has 60%); a lone hospital at 30% stays under the 35% floor.
+      const yearEnd = await q`select subject_id::int s, period, evidence from core.flags where flag_code='da_year_end' order by subject_id`;
+      expect(yearEnd.map(r => [r["s"], r["period"]])).toEqual([[70, "2024"], [80, "2024"]]);
+      expect(yearEnd[0]!["evidence"]).toMatchObject({ kind: "scoala", december_pct: 0.6, peer_p95: 0.59, threshold: 0.59 });
+      expect(yearEnd[1]!["evidence"]).toMatchObject({ kind: "alta", december_pct: 0.5, peer_p95: 0.425, threshold: 0.425 });
+      expect(await subjects("da_split")).toEqual([]);
+      expect(await subjects("da_concentration")).toEqual([]);
+
+      await runFlagMarts(q, { transactions: false });
+      const profiles = Object.fromEntries((await q`select entity_id::int e, role, score, score_raw, score_parts, cri::float8 cri, n_flags, flags
+        from marts.entity_flags order by entity_id, role`).map(r => [`${r["e"]}:${r["role"]}`, r]));
+      // Without the gate (20 DAs and 500.000 lei) each met criterion has strength 1: one gives 20, two 36.
+      expect(profiles["1:authority"]).toMatchObject({ score: 36, cri: 0.36, n_flags: 2, flags: ["da_round", "da_above_ceiling"],
+        score_parts: { da_round: { x: 1, n: 2, share: 0.2857 }, da_above_ceiling: { x: 1, n: 2, value: 1400000, share: 0.5692 } } });
+      expect(profiles["1:authority"]!["score_raw"]).toBeCloseTo(36, 4);
+      expect(profiles["20:authority"]).toMatchObject({ score: 20, cri: 0.2, n_flags: 1, flags: ["da_above_ceiling"],
+        score_parts: { da_above_ceiling: { x: 1, n: 3, value: 1800000, share: 0.3371 } } });
+      expect(profiles["70:authority"]).toMatchObject({ score: 20, flags: ["da_year_end"], score_parts: { da_year_end: { x: 1, years: [{ y: 2024, pct: 0.6 }] } } });
+      expect(profiles["80:authority"]).toMatchObject({ score: 20, flags: ["da_year_end"] });
+      // Gated (20 DAs, 600.000 lei): the firm holds 42,1% of its institution's DA value, strength 2 + (0,421 − 0,2) / 0,3.
+      expect(profiles["50:supplier"]).toMatchObject({ score: 55, cri: 0.55, n_flags: 1, flags: ["da_dependence"],
+        score_parts: { da_dependence: { x: 2.7368, share: 1, partnerShare: 0.4211, partnerId: "60" } } });
+      expect(profiles["50:supplier"]!["score_raw"]).toBeCloseTo(54.7368, 3);
+      const scored = ["1:authority", "20:authority", "50:supplier", "70:authority", "80:authority"];
+      for (const [key, row] of Object.entries(profiles)) if (!scored.includes(key))
+        expect([key, row["score"], row["score_raw"], row["cri"], row["n_flags"], row["flags"], row["score_parts"]]).toEqual([key, 0, 0, 0, 0, [], {}]);
+      throw rollback;
+    })).rejects.toBe(rollback);
+    expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);
+  }, 30_000);
 });
