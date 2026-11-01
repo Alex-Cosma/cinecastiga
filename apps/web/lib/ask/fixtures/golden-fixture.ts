@@ -128,25 +128,29 @@ const CONTRACTS: Contract[] = [
   [9, "scoala", "medical", "15000000-8", "8800.00", "8800.00", 1, "2026-06-20 09:00", null, null],
 ];
 
-/** Historical risk profiles (marts.entity_flags): a different population from the transactions. */
-type Profile = [entity: keyof typeof F, role: "authority" | "supplier", nDas: number, total: string | null, cri: string | null, flags: string[]];
+/**
+ * Historical risk profiles (marts.entity_flags): a different population from the transactions. The score is the
+ * profile's risk over 100 (rf-2026.18) and cri = score / 100, as the build writes them; a profile without patterns
+ * scores 0. The patterns' strengths are 1 (the score's parts carry no facts here).
+ */
+type Profile = [entity: keyof typeof F, role: "authority" | "supplier", nDas: number, total: string | null, score: number, flags: string[]];
 const PROFILES: Profile[] = [
-  ["municipiu", "authority", 34, "51234.50", "0.4210", ["da_split", "da_year_end"]],
-  ["comuna", "authority", 18, "30500.00", "0.6630", ["da_split", "da_rapid", "da_round"]],
-  ["spital", "authority", 45, "98700.10", "0.8120", ["da_split", "da_year_end", "da_rapid", "da_concentration"]],
+  ["municipiu", "authority", 34, "51234.50", 42, ["da_split", "da_year_end"]],
+  ["comuna", "authority", 18, "30500.00", 66, ["da_split", "da_round", "da_above_ceiling"]],
+  ["spital", "authority", 45, "98700.10", 81, ["da_split", "da_year_end", "da_round", "da_concentration"]],
   // total and count are those of its core.direct_acquisitions below: its sources reconcile
-  ["consiliu", "authority", 12, null, "0.2740", ["da_concentration"]],
-  ["aiud", "authority", 10, null, "0.1510", []],
-  ["scoala", "authority", 9, "4100.00", "0.5050", ["da_round"]],
-  ["profilUnu", "authority", 22, "77000.00", "0.9330", ["da_split", "da_year_end", "da_rapid", "da_round", "da_concentration"]],
-  ["profilDoi", "authority", 27, "15500.00", "0.0520", []],
-  ["profilTrei", "authority", 31, "260000.00", null, []],
-  ["construct", "supplier", 24, "88000.00", "0.5810", ["da_concentration", "da_dependence"]],
-  ["medical", "supplier", 40, "140000.00", "0.3620", ["da_dependence"]],
-  ["servicii", "supplier", 15, "60000.00", "0.7140", ["da_round", "da_concentration", "da_dependence"]],
-  ["mic", "supplier", 11, "13000.00", "0.1240", []],
-  ["firmaUnu", "supplier", 26, "45000.00", "0.8870", ["da_split", "da_round", "da_concentration", "da_dependence"]],
-  ["firmaDoi", "supplier", 13, "9000.00", "0.4730", ["da_rapid"]],
+  ["consiliu", "authority", 12, null, 27, ["da_concentration"]],
+  ["aiud", "authority", 10, null, 0, []],
+  ["scoala", "authority", 9, "4100.00", 50, ["da_round"]],
+  ["profilUnu", "authority", 22, "77000.00", 93, ["da_split", "da_round", "da_year_end", "da_concentration", "da_above_ceiling"]],
+  ["profilDoi", "authority", 27, "15500.00", 0, []],
+  ["profilTrei", "authority", 31, "260000.00", 0, []],
+  ["construct", "supplier", 24, "88000.00", 58, ["da_split", "da_dependence"]],
+  ["medical", "supplier", 40, "140000.00", 36, ["da_dependence"]],
+  ["servicii", "supplier", 15, "60000.00", 71, ["da_split", "da_round", "da_dependence"]],
+  ["mic", "supplier", 11, "13000.00", 0, []],
+  ["firmaUnu", "supplier", 26, "45000.00", 89, ["da_split", "da_round", "da_dependence", "da_above_ceiling"]],
+  ["firmaDoi", "supplier", 13, "9000.00", 20, ["da_above_ceiling"]],
 ];
 
 /** Latest MF filing (employees, year, turnover) of the firms that filed one. */
@@ -264,12 +268,14 @@ export async function seedGoldenFixture(q: DbSql): Promise<void> {
           ${role === "supplier" ? filing?.[0] ?? null : null}, ${role === "supplier" ? filing?.[1] ?? null : null}, ${role === "supplier" ? filing?.[2] ?? null : null})`;
     }
   }
-  for (const [key, role, nDas, total, cri, flags] of PROFILES) {
+  for (const [key, role, nDas, total, score, flags] of PROFILES) {
     const e = F[key];
     const [own] = total === null ? await q`select coalesce(sum(closing_value), 0)::text v from core.direct_acquisitions
       where authority_entity_id = ${e.id} and state = 'Oferta acceptata'` as unknown as { v: string }[] : [{ v: total }];
-    await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags, cui_canonical)
-      values (${e.id}, ${role}, ${e.name}, ${e.county}, ${nDas}, ${own!.v}, ${cri}, ${flags.length}, ${JSON.stringify(flags)}::jsonb, ${String(91_000_000 + (e.id % 1000))})`;
+    const parts = Object.fromEntries(flags.map((code) => [code, { x: 1 }]));
+    await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags, score, score_raw, score_parts, cui_canonical)
+      values (${e.id}, ${role}, ${e.name}, ${e.county}, ${nDas}, ${own!.v}, ${(score / 100).toFixed(4)}, ${flags.length}, ${JSON.stringify(flags)}::jsonb,
+        ${score}, ${score}, ${JSON.stringify(parts)}::jsonb, ${String(91_000_000 + (e.id % 1000))})`;
   }
 
   // The agg_* fast paths, with the marts build's own definitions (transaction-marts.ts).
