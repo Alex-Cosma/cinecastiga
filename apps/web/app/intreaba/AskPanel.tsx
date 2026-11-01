@@ -1475,6 +1475,9 @@ export default function AskPanel({
   );
 }
 
+/** «conduse azi de»: an individual practice in by its holder's name only (owner, 1 November 2026), first among the facts. */
+const byNameTag = (r: TableRow): WinnerTag[] => r.byName ? [{ text: "după nume", tone: "caveat" }] : [];
+
 /** F5 (kit P8): a ranking row's facts, inline in the row (a span: the row is a button), at most three. */
 function FactTags({ tags }: { tags: readonly WinnerTag[] }) {
   if (!tags.length) return null;
@@ -1549,7 +1552,7 @@ function RankingBars({
             </span>
             <span className="cq-rank-name">
               <strong>{shown}</strong>
-              <FactTags tags={r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : []} />
+              <FactTags tags={[...byNameTag(r), ...(r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : [])]} />
               <span className="cq-bar-track">
                 <i
                   style={{
@@ -1889,7 +1892,7 @@ function TableBlock({
                 ) : (
                   countyName(cleanName(r.name))
                 )}
-                {r.entityId && spec ? <FactTags tags={winnerFactTags(spec as AskSpec, facts?.[r.entityId], undefined, r.value)} /> : null}
+                <FactTags tags={[...byNameTag(r), ...(r.entityId && spec ? winnerFactTags(spec as AskSpec, facts?.[r.entityId], undefined, r.value) : [])]} />
               </td>
               <td>{countyName(r.county) ?? "—"}</td>
               {perCapita && (

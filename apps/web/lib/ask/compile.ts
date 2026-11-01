@@ -2,7 +2,7 @@ import { canonicalAskIdentities } from "./canonical-identities";
 import { retiredChoicesText } from "./retired-terms";
 import { countWords } from "./answer-text";
 import { FORCE_CUSTOM_PLANS } from "../plan-cache";
-import type { DbSql } from "@seap/db";
+import { entityRedirectMap, type DbSql } from "@seap/db";
 import { LOCAL_ADMIN_KIND, namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type MonthWindow, type TrendChange } from "./spec";
 import type { Grounding } from "./ground";
 import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, riskBucketScore, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
@@ -100,6 +100,8 @@ export interface TableRow {
   value: number;
   count: number;
   population: number | null;
+  /** «conduse azi de»: an individual practice in by its holder's name only (grounding.admin.holderIds). */
+  byName?: boolean;
 }
 export type { SeriesPart, SeriesPoint, SeriesRef } from "./series";
 export interface CountyValue {
@@ -955,6 +957,22 @@ export async function runSpec(
   /** Server-only: names of the ids a population lists, where the caller knows them (an entity capture). */
   labels: Pick<ConditionLabels, "entities"> = {},
 ): Promise<EngineResult | { error: string; caveats: string[] }> {
+  const result = await runSpecData(sql, spec, grounding, tableOpts, labels);
+  const holderIds = grounding.admin?.holderIds;
+  if (!holderIds?.length || "error" in result || result.data.block !== "table") return result;
+  // The rows of «conduse azi de» an individual practice joins by its holder's name only, under any redirect of its id.
+  const redirects = await entityRedirectMap(sql, holderIds);
+  const byName = new Set(holderIds.flatMap((id) => [id, redirects.get(id) ?? id]));
+  return { ...result, data: { ...result.data, rows: result.data.rows.map((row) => row.entityId && byName.has(row.entityId) ? { ...row, byName: true } : row) } };
+}
+
+async function runSpecData(
+  sql: DbSql,
+  spec: AskSpec,
+  grounding: Grounding,
+  tableOpts: TableOpts,
+  labels: Pick<ConditionLabels, "entities">,
+): Promise<EngineResult | { error: string; caveats: string[] }> {
   // Read first, write later (plan F0a): a key this release parses but does not
   // apply is refused before any query, on every path that runs a spec.
   if (unimplementedSpecKeys(spec).length) return { error: NEWER_VERSION_LINK, caveats: [] };
@@ -1215,13 +1233,23 @@ export async function runSpec(
       "Filtrul «conduse azi de» folosește reprezentanții legali din Registrul Comerțului (instantaneu lunar): " +
         "administratorul de AZI, nu neapărat cel de la momentul achiziției; administratorii nu sunt neapărat asociații/proprietarii.",
     );
-    if (grounding.admin.nFirms > grounding.admin.supplierIds.length) {
-      const n = grounding.admin.supplierIds.length;
+    // Owner, 1 November 2026: an individual practice with the person's name (no ONRC administrator) is in, "după nume".
+    const holders = grounding.admin.holderIds?.length ?? 0;
+    if (holders > 0) {
+      caveats.push(
+        `${holders === 1 ? "Un cabinet, PFA sau II poartă" : `${holders} cabinete, PFA-uri sau II-uri poartă`} numele persoanei și nu ${holders === 1 ? "are" : "au"} administrator în Registrul Comerțului: ` +
+          "intră „după nume”, fiindcă persoana e singura din registru cu acest nume. Titularul poate fi totuși alt om cu același nume.",
+      );
+    }
+    const registered = grounding.admin.supplierIds.length - holders;
+    if (grounding.admin.nFirms > registered) {
       caveats.push(
         `${grounding.admin.display ?? "Persoana"} reprezintă ${countWords(grounding.admin.nFirms, "firmă", "firme")} la Registrul Comerțului; ` +
-          (n === 1
-            ? "doar una apare cu bani publici în datele noastre — restul nu au achiziții publice."
-            : `doar ${n} apar cu bani publici în datele noastre — restul nu au achiziții publice.`),
+          (registered === 0
+            ? "niciuna nu apare cu bani publici în datele noastre."
+            : registered === 1
+              ? "doar una apare cu bani publici în datele noastre — restul nu au achiziții publice."
+              : `doar ${registered} apar cu bani publici în datele noastre — restul nu au achiziții publice.`),
       );
     }
     if (grounding.admin.alternatives.length > 0) {
