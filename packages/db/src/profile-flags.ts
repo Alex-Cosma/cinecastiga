@@ -13,6 +13,14 @@
  * score = 100 × (1 − Π (1 − 0.6 · x / 3)). One criterion at full strength
  * gives 60; level 1 alone gives 20. "Finalizare rapidă" no longer counts.
  */
+/**
+ * The methodology of the signals and the risk score, stamped on every flag
+ * (apps/ingestion/src/flags/methodology.ts keeps its history). A ready
+ * publication records it; when it differs, the next scheduled run is full
+ * (processing.ts), since a daily run keeps the previous risk.
+ */
+export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.18';
+
 export const PROFILE_FLAG_CODES = {
   authority: ['da_split', 'da_round', 'da_year_end', 'da_concentration', 'da_above_ceiling'],
   supplier: ['da_split', 'da_round', 'da_dependence', 'da_above_ceiling'],
