@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDiscoverySummary } from "@/lib/discovery";
 import { formatRon, formatInt } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 import type { AskSpec } from "@/lib/ask/spec";
 import { askHref } from "@/lib/discovery-links";
 import { CONTRACT_WINNERS_SPEC, HOSPITALS_BREAKDOWN_SPEC, NATIONAL_CONTRACT_COUNT_SPEC, NATIONAL_DA_COUNT_SPEC, NATIONAL_VALUE_SPEC, ROADS_RANKING_SPEC } from "@/lib/ask/site-links";
@@ -57,6 +58,8 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const [headline, inventory, signedIn] = await Promise.all([getDiscoverySummary(), getCoverage(), sessionUserId().then(id => id !== null, () => false)]);
   const contractInventory = inventory?.observations.find(o => o.dataset === "contracts")?.observation;
   const aboveCap = contractInventory?.above_value_cap === undefined ? null : Number(contractInventory.above_value_cap);
+  // Every record behind the figures, both streams: the unit the map readout counts per county.
+  const records = headline.directRecords + headline.contractRecords;
   const coverage = headline.yearFrom && headline.yearTo ? headline.yearFrom === headline.yearTo ? headline.yearFrom : `${headline.yearFrom}–${headline.yearTo}` : "arhiva importată";
   return <div className="discovery-page">
     <section className="d-hero" aria-labelledby="d-hero-title">
@@ -71,12 +74,17 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     </section>
 
     <section className="d-national-strip" aria-label="Datele din arhiva publică">
-      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>Înregistrări din {coverage}</small></div></div>
+      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>{countWords(records, "înregistrare", "înregistrări")} · {coverage}</small></div></div>
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
       <div className="d-national-item"><Link href={questionHref(NATIONAL_DA_COUNT_SPEC)}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term id="valoare-inregistrata" tip>valoare înregistrată · nu plăți</Term></small></div>
+      {/* What the figures include opens under them, in the strip; closed it is one line. */}
+      <CoverageDisclosure summary={<>Ce include? <span aria-hidden="true">›</span></>}>
+        <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă de cel mult 1 miliard lei.{aboveCap ? ` ${countWords(aboveCap, "contract", "contracte")} peste acest plafon, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt separate de totaluri și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
+        <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
+      </CoverageDisclosure>
     </section>
 
     <section className="d-starts" aria-labelledby="d-starts-title">
@@ -91,10 +99,5 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     </Link>)}</section>
 
     {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
-
-    <CoverageDisclosure>
-      <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă de cel mult 1 miliard lei.{aboveCap ? ` ${formatInt(aboveCap)} contracte peste acest plafon, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt separate de totaluri și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
-      <p>Publicațiile TED se consultă separat și nu se adaugă încă o dată la total. Valorile înregistrate nu confirmă plăți efectuate.</p>
-    </CoverageDisclosure>
   </div>;
 }

@@ -7,8 +7,9 @@ import { isHistoricalProfile } from "@/lib/ask/population";
 import { COVERAGE_LABELS, coverageSources, publicationDay, sourceDay, type PublicCoverage } from "@/lib/coverage-summary";
 import "./coverage-disclosure.css";
 
-/** Read on demand: opening a page or running a question never waits for coverage. */
-export default function CoverageDisclosure({ spec, children }: { spec?: AskSpec; children?: ReactNode }) {
+/** Read on demand: opening a page or running a question never waits for coverage.
+ *  `summary` replaces the default trigger text (the home strip's short "Ce include? ›"). */
+export default function CoverageDisclosure({ spec, summary, children }: { spec?: AskSpec; summary?: ReactNode; children?: ReactNode }) {
   const disclosure = useRef<HTMLDetailsElement>(null);
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<PublicCoverage | null>(null);
@@ -36,7 +37,7 @@ export default function CoverageDisclosure({ spec, children }: { spec?: AskSpec;
 
   return <details ref={disclosure} className={`coverage-disclosure ${spec ? "coverage-disclosure-answer" : "coverage-disclosure-home"}`}
     onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>{spec ? "Datele și calculul" : "Ce date includ aceste cifre?"}</summary>
+    <summary>{summary ?? (spec ? "Datele și calculul" : "Ce date includ aceste cifre?")}</summary>
     <div className="coverage-disclosure-body">
       <div className="coverage-periods" aria-busy={open && !data && !error}>
         {!data && !error && <p role="status">Se încarcă perioadele disponibile…</p>}

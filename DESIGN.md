@@ -129,7 +129,7 @@ Dark-prefixed frontmatter values are the existing dark-theme overrides of the co
 
 Display and section headings use Bricolage Grotesque; body copy and actions use IBM Plex Sans; optional technical records use IBM Plex Mono. Latin and Latin Extended subsets support Romanian content. The font declarations and fallbacks remain shared.
 
-The display role describes the discovery headline; it is not a required size for tool pages. Investigation headings use the recorded headline role. Monitoring uses a responsive headline of 34–52px, smaller 30–42px watch titles, and the recorded title role for sections. Body text retains a comfortable reading line height. Metadata may be smaller but cannot replace the readable source values or main explanation. Numeric comparisons use tabular numerals and preserve exact values.
+The display role describes the discovery headline; it is not a required size for tool pages. Investigation headings use the recorded headline role. Monitoring uses a responsive headline of 34–52px, smaller 30–42px watch titles, and the recorded title role for sections. Body text retains a comfortable reading line height. Metadata may be smaller but cannot replace the readable source values or main explanation. On phones (≤700px) no text goes below 12px, except all-caps labels at 11px; figure captions and the map readout are 13px and search fields 16px (owner, 1 November 2026). Numeric comparisons use tabular numerals and preserve exact values.
 
 ## Layout
 
