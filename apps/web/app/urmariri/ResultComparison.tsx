@@ -198,6 +198,7 @@ export const RESHAPED_WORDS: Readonly<Record<string, string>> = {
   "distribution-3": "riscul față de un grup ales",
   "entity_card-3": "primii după risc",
   "scatter-3": "riscul în procente și lista cu locuri",
+  "compare-2": "profilul de risc al fiecăruia, în procente",
 };
 
 /**

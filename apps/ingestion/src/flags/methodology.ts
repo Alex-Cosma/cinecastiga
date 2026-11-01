@@ -105,7 +105,7 @@ export const FLAG_DEFS: FlagDef[] = [
   // ── Award (contract-award notice) flags ─────────────────────────────────────
   {
     code: "award_no_competition",
-    title: "Negociere fără publicare prealabilă",
+    title: "Negociere fără anunț prealabil",
     subject: "award",
     description:
       "Anunț de atribuire de valoare mare care declară procedura „negociere fără publicare prealabilă”. Denumirea procedurii nu stabilește câte oferte au fost primite.",
