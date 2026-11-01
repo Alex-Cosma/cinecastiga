@@ -159,16 +159,15 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   const top = input.partners[0];
   const topDivision = input.divisions.find((d) => d.code != null);
   const second: Segment[] = [];
+  // Short labels, so that the line fits the card (owner, 1 November 2026): the share says whether it is a majority.
   if (top && top.partnerId !== "0" && top.totalRon > 0) {
-    second.push(isAuth ? "Cel mai mare furnizor este " : "Cel mai mare client este ",
+    second.push(isAuth ? "Cel mai mare furnizor: " : "Cel mai mare client: ",
       { text: cleanName(top.partnerName), href: `/entitati/${top.partnerId}` },
-      `, cu ${shareLabel(top.pct)} din valoare${top.nConsortium > 0 ? " (inclusiv părți din contracte în consorțiu)" : ""}.`);
+      ` (${shareLabel(top.pct)}${top.nConsortium > 0 ? ", inclusiv părți din contracte în consorțiu" : ""}).`);
   }
   if (topDivision) {
     const share = Number(topDivision.valueExact) / total;
-    // "Cea mai mare parte" only for a real majority of the value.
-    const lead = share > 0.5 ? "Cea mai mare parte din valoare privește " : "Cel mai mare domeniu: ";
-    second.push(`${second.length > 0 ? " " : ""}${lead}${lowerFirst(divisionLabel(topDivision))} (${shareLabel(share)}).`);
+    second.push(`${second.length > 0 ? " " : ""}Domeniu principal: ${lowerFirst(divisionLabel(topDivision))} (${shareLabel(share)}).`);
   }
   if (second.length > 0) sentences.push(second);
 
