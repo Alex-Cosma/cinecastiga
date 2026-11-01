@@ -8,7 +8,11 @@ import type { NetworkGroup } from "../../lib/ask/network-shared";
 /** The question's row of a network's group (describeConditions networkPartners). */
 const NETWORK_PARTNERS_ROW = "Partenerii";
 import { countWords } from "../../lib/ask/answer-text";
-import { formatBucharestDay } from "../../lib/format";
+import { formatBucharestDay, formatInt } from "../../lib/format";
+/** An old link's tenth of the index (0–1) as the band of the score it selects: 0.2–0.3 → 20–29, 0.9–1 → 90–100 (evidence.ts riskBucketScore). */
+const bucketBand = (bucket: { from: number; to: number }) => ({ from: Math.round(bucket.from * 10) * 10, to: bucket.to >= 1 ? 100 : Math.round(bucket.to * 10) * 10 - 1 });
+/** "20–29%", or "0%" for the band without patterns. */
+const bandWords = (band: { from: number; to: number }) => band.from === band.to ? `${formatInt(band.from)}%` : `${formatInt(band.from)}–${formatInt(band.to)}%`;
 export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   const { spec, options } = scope, subgroup = options.scope, members = options.members;
   // The question's conditions in the words of describeConditions; the receipt keeps a precise selection group by group.
@@ -33,9 +37,13 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   if (subgroup?.cpvPrefixes) selection.push({ label: "Doar ramurile CPV", value: subgroup.cpvPrefixes.join(", ") });
   if (subgroup?.excludeCpvPrefixes) selection.push({ label: "Exclude ramurile CPV", value: subgroup.excludeCpvPrefixes.join(", ") });
   if (subgroup?.years) selection.push({ label: "Ani selectați din rezultat", value: subgroup.years.join(", ") });
-  if (subgroup?.riskBucket) selection.push({ label: "Interval CRI", value: `${subgroup.riskBucket.from} — ${subgroup.riskBucket.to}` });
-  // distribution-2: a bar of the chart, the group's profiles with exactly that many criteria.
-  if (subgroup?.criteria !== undefined) selection.push({ label: "Criterii de risc", value: `Doar profilurile cu ${countWords(subgroup.criteria, "criteriu", "criterii")}` });
+  // An old link's bar of the index (0–1): the band of the score it selects since rf-2026.18.
+  if (subgroup?.riskBucket) selection.push({ label: "Risc", value: `Doar profilurile cu ${bandWords(bucketBand(subgroup.riskBucket))}` });
+  // distribution-3: a bar of the chart, the profiles whose displayed score is in the band (both bounds inclusive).
+  const scoreBand = (subgroup as { score?: { from: number; to: number } } | undefined)?.score;
+  if (scoreBand) selection.push({ label: "Risc", value: `Doar profilurile cu ${bandWords(scoreBand)}` });
+  // distribution-2: a bar of the chart, the group's profiles with exactly that many criteria ("tipare").
+  if (subgroup?.criteria !== undefined) selection.push({ label: "Tipare", value: `Doar profilurile cu ${countWords(subgroup.criteria, "tipar", "tipare")}` });
   // fact_check-2: the lines of a verification's answer, as it names them.
   if (subgroup?.consortium) selection.push({ label: "Contracte", value: "Doar cele în asociere" });
   if (subgroup?.singleBid) selection.push({ label: "Concurență", value: "Doar licitațiile cu o singură ofertă (TED)" });

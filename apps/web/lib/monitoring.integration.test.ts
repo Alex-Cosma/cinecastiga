@@ -41,8 +41,8 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
       values(${contract},${supplier},${authority},'Monitoring Authority','Monitoring Supplier','Cluj',0.0033,0.01,3,889770088,'2025-01-02','45000000-7'),
       (${contract},${supplier2},${authority},'Monitoring Authority','Consortium B','Cluj',0.0033,0.01,3,889770088,'2025-01-02','45000000-7'),
       (${contract},${supplier3},${authority},'Monitoring Authority','Consortium C','Cluj',0.0034,0.01,3,889770088,'2025-01-02','45000000-7')`;
-    await sql`insert into marts.entity_flags(entity_id,role,name_display,county,n_das,total_ron,cri,n_flags,flags)
-      values(${authority},'authority','Monitoring Authority','Cluj',20,200,0.2,1,'["da_split"]'),(${authority2},'authority','Monitoring Authority B','Cluj',20,200,0,0,'[]'),(${supplier},'supplier','Monitoring Supplier','Cluj',40,400,0,0,'[]')`;
+    await sql`insert into marts.entity_flags(entity_id,role,name_display,county,n_das,total_ron,cri,n_flags,flags,score,score_raw,score_parts)
+      values(${authority},'authority','Monitoring Authority','Cluj',20,200,0.2,1,'["da_split"]',20,20,'{"da_split":{"x":1,"groups":1,"share":0.1}}'),(${authority2},'authority','Monitoring Authority B','Cluj',20,200,0,0,'[]',0,0,'{}'),(${supplier},'supplier','Monitoring Supplier','Cluj',40,400,0,0,'[]',0,0,'{}')`;
     await sql`insert into marts.entity_profile(entity_id,role,name_display,county,n_das,total_ron_full)
       values(${authority},'authority','Monitoring Authority','Cluj',20,200.01),(${authority2},'authority','Monitoring Authority B','Cluj',20,200),(${supplier},'supplier','Monitoring Supplier','Cluj',40,400.0033)`;
     await checkpoint();
@@ -166,7 +166,7 @@ describe.skipIf(!url)("immutable monitoring (isolated PostgreSQL)",()=>{
   it("separates profile-only recalculations and methodology changes from source changes",async()=>{
     const spec:AskSpec={...base,block:"compare",comparisonMode:"profiles",dataset:"da",filters:{...base.filters,compareWithId:Number(authority2)}};
     const watch=await createMonitoringWatch(uid,{spec},sql);await evaluateMonitoringWatch(watch.id,checkpointId,sql);
-    await sql`update marts.entity_flags set cri=0.4 where entity_id=${authority} and role='authority'`;await checkpoint();
+    await sql`update marts.entity_flags set score=40,score_raw=40,cri=0.4 where entity_id=${authority} and role='authority'`;await checkpoint();
     const recalculated=(await evaluateMonitoringWatch(watch.id,checkpointId,sql))!;
     expect((await getMonitoringRun(uid,watch.id,recalculated,sql))?.run).toMatchObject({resultChanged:true,methodologyChanged:false,hasAlert:true,counts:{added:0,removed:0,changed:0}});
     await checkpoint("ready","fixture-v2");const method=(await evaluateMonitoringWatch(watch.id,checkpointId,sql))!;

@@ -29,7 +29,7 @@ export const CAPTURE_METHODOLOGY = {
   contracts: "Rândurile contractelor reprezintă cotele canonice ale furnizorilor; valoarea integrală a contractului rămâne separată și nu se adună pentru fiecare membru al consorțiului.",
   completeness: "O captură completă conține toate rândurile selecției efective. O eroare anulează toate rândurile versiunii; nu se publică un eșantion ca rezultat complet.",
   sources: "Datele normalizate și linkurile originale sunt incluse; paginile externe și documentele lor nu sunt arhivate în acest pachet.",
-  risk: "Semnalele statistice sunt piste de verificare, nu dovezi de nereguli.",
+  risk: "Semnalele statistice sunt piste de verificare, nu dovezi de nereguli. Riscul (0–100%) nu este o probabilitate de corupție.",
 } as const;
 class CaptureError extends Error {}
 export function captureRequestError(error:unknown):string|null{
@@ -304,12 +304,14 @@ async function entityOrPerson(q: DbSql, captureId: string, request: CaptureReque
   const [entity] = await q`select name_display name,county,cui_canonical cui from core.entities where id=${id}`;
   if (!entity) throw new CaptureError("Entitatea nu mai este disponibilă.");
   const profiles = await q`select role,n_das,n_contracts,total_ron_full::text value from marts.entity_profile where entity_id=${id}`;
-  const flags = await q`select role,cri::text,n_flags,to_jsonb(flags) flags from marts.entity_flags where entity_id=${id}`;
+  // The risk score per role (rf-2026.18), the highest first: the summary's score is that role's, as a dossier clip's.
+  const flags = await q`select role,score,n_flags,to_jsonb(flags) flags,score_parts parts from marts.entity_flags where entity_id=${id}
+    order by score_raw desc,n_flags desc,role`;
   // The name is known here: "Activitatea entității: <nume>", not the id.
   const result = await queryCapture(q,captureId,entityCaptureSpec(id),request,undefined,{ [String(id)]: String(entity.name) });
   result.summary = { ...result.summary, ...{ entityId:id,requestedEntityId:request.refId,title: entity.name, name: entity.name, county: entity.county, cui: entity.cui,
     roles: Object.fromEntries(profiles.map(r => [r.role,{ nDas:r.n_das,nContracts:r.n_contracts,totalRon:r.value }])),
-    riskProfiles: flags, cri: flags[0]?.cri ?? null, nFlags: flags[0]?.n_flags ?? 0 } };
+    riskProfiles: flags, score: flags[0] ? Number(flags[0].score) : null, nFlags: flags[0] ? Number(flags[0].n_flags) : 0 } };
   return result;
 }
 
