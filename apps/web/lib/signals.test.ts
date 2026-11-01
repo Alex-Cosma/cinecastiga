@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readSignalOverview, readSignalRiskGroup, readEntitySignalCounts, signalTypeCountLabel } from "./signals";
+import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readRiskScoreDistribution, readSignalRiskGroup, readEntitySignalCounts, signalTypeCountLabel } from "./signals";
 
 /** Captures parameterized queries, without reading or mutating a database. */
-function database(total = 125) {
+function database(total = 125, bins: { bin: number; n: string }[] = []) {
   const statements: string[] = [], values: unknown[] = [];
   class Fragment {
     constructor(public text: string) {}
     then(resolve: (value: unknown[]) => unknown) {
       statements.push(this.text);
       if (this.text.includes("select count(*)::text n")) return Promise.resolve(resolve([{ n: String(total) }]));
+      if (this.text.includes("score / 10")) return Promise.resolve(resolve(bins));
       return Promise.resolve(resolve([]));
     }
   }
@@ -25,11 +26,14 @@ function database(total = 125) {
 
 describe("signal navigation", () => {
   it("preserves county and role when switching signal type and clears the previous band/page", () => {
-    const state = parseSignalState({ tip: "da_rapid", rol: "supplier", jud: "cluj", p: "12", criMin: "0.1", criMax: "0.2" });
+    const state = parseSignalState({ tip: "da_round", rol: "supplier", jud: "cluj", p: "12", criMin: "0.1", criMax: "0.2" });
     const url = new URL(signalUrl(state, { code: "fin_tiny_staff", band: null }), "http://local");
     expect(Object.fromEntries(url.searchParams)).toEqual({ tip: "fin_tiny_staff", rol: "supplier", jud: "Cluj" });
   });
-  it("preserves a full CRI selection and sorting while paging", () => {
+  it("opens an old link to the retired \"Finalizare rapidă\" on the default signal, keeping its role and county", () => {
+    expect(parseSignalState({ tip: "da_rapid", rol: "supplier", jud: "cluj" })).toMatchObject({ code: "da_split", role: "supplier", county: "Cluj", view: "signals" });
+  });
+  it("preserves a full risk selection and sorting while paging", () => {
     const state = parseSignalState({ rol: "supplier", jud: "Bucuresti", criMin: "0.2", criMax: "0.3", sort: "name", dir: "asc" });
     const decoded = parseSignalState(Object.fromEntries(new URL(signalUrl(state, { page: 3 }), "http://local").searchParams));
     expect(decoded).toEqual({ ...state, page: 3 });
@@ -53,7 +57,7 @@ describe("signal navigation", () => {
 describe("complete signal population", () => {
   it("reads the complete published population beyond the sample mart and applies supplier county to the supplier endpoint", async () => {
     const db = database();
-    await signalPopulation(db.sql, { role: "supplier", county: "Cluj" }, "da_rapid");
+    await signalPopulation(db.sql, { role: "supplier", county: "Cluj" }, "da_round");
     const query = db.statements[0]!;
     expect(query).toContain("marts.signal_lookup");
     expect(query).not.toContain("flag_instances");
@@ -74,7 +78,7 @@ describe("complete signal population", () => {
   });
   it("preserves totals and clamps a page beyond the final complete page", async () => {
     const db = database(625);
-    const result = await readSignalPage(db.sql, parseSignalState({ p: "99999", tip: "da_rapid" }));
+    const result = await readSignalPage(db.sql, parseSignalState({ p: "99999", tip: "da_round" }));
     expect(result).toMatchObject({ total: 625, page: 62, pageSize: 10 });
     const page = db.statements.find((q) => q.includes("select selected.*"))!;
     expect(page).toContain("order by total_ron desc nulls last, severity desc nulls last, id");
@@ -86,24 +90,41 @@ describe("complete signal population", () => {
     const db = database(0);
     expect(await readSignalPage(db.sql, parseSignalState({ p: "30" }))).toMatchObject({ total: 0, page: 0 });
   });
-  it("scopes both the profile histogram and the leaderboard to role/county without changing CRI rules", async () => {
-    const db = database();
-    await readSignalOverview(db.sql, parseSignalState({ rol: "supplier", jud: "Cluj" }));
-    const profiles = db.statements.filter((q) => q.includes("marts.entity_flags"));
-    expect(profiles).toHaveLength(2);
-    for (const q of profiles) {
-      expect(q).toContain("where role = ?");
-      expect(q).toContain("lower(unaccent(county)) = lower(unaccent(?");
-    }
-    expect(profiles[0]).toContain("n_das >= 10");
-    expect(profiles[1]).toContain("cri > 0");
+  it("bins the risk score of the role's profiles (≥ 10 DAs) by tenths, 0 alone and 90–100 together", async () => {
+    const db = database(0, [{ bin: 0, n: "9205" }, { bin: 20, n: "2686" }, { bin: 90, n: "3" }]);
+    expect(await readRiskScoreDistribution(db.sql, parseSignalState({ view: "cri", rol: "supplier", jud: "Cluj" })))
+      .toEqual([{ bin: 0, n: 9205 }, { bin: 20, n: 2686 }, { bin: 90, n: 3 }]);
+    const [query] = db.statements.filter((q) => q.includes("marts.entity_flags"));
+    expect(query).toContain("least(score / 10, 9) * 10 bin");
+    expect(query).toContain("where role = ?");
+    expect(query).toContain("n_das >= 10");
+    expect(query).toContain("lower(unaccent(county)) = lower(unaccent(?");
+    expect(db.values).toEqual(expect.arrayContaining(["supplier", "Cluj"]));
   });
-  it("drills histogram bins using the identical bucket expression, including boundary-valued CRIs", async () => {
+  it("drills a histogram bar as a range of the score; the last includes 100", async () => {
     const db = database(243);
-    const result = await readSignalRiskGroup(db.sql, parseSignalState({ criMin: "0.1", criMax: "0.2", p: "99999", jud: "Cluj" }));
+    const result = await readSignalRiskGroup(db.sql, parseSignalState({ criMin: "0.4", criMax: "0.5", p: "99999", jud: "Cluj" }));
     expect(result).toMatchObject({ total: 243, page: 24, pageSize: 10 });
     const queries = db.statements.filter((q) => q.includes("marts.entity_flags"));
-    for (const query of queries) expect(query).toContain("width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) between");
+    for (const query of queries) expect(query).toMatch(/score >= \?\d+ and score < \?\d+/);
+    expect(db.values).toEqual(expect.arrayContaining([40, 50]));
+    // Ordered by the unrounded score, then the value.
+    expect(queries.at(-1)).toContain("order by score_raw desc, total_ron desc nulls last, entity_id");
+    const top = database(3);
+    await readSignalRiskGroup(top.sql, parseSignalState({ criMin: "0.9", criMax: "1" }));
+    for (const query of top.statements.filter((q) => q.includes("marts.entity_flags"))) {
+      expect(query).toMatch(/score >= \?\d+/);
+      expect(query).not.toContain("score <");
+    }
+    expect(top.values).toContain(90);
+  });
+  it("selects a number of patterns met, not a band", async () => {
+    const db = database(12);
+    await readSignalRiskGroup(db.sql, parseSignalState({ view: "cri", criteria: "2" }));
+    for (const query of db.statements.filter((q) => q.includes("marts.entity_flags"))) {
+      expect(query).toMatch(/n_flags = \?\d+/);
+      expect(query).not.toContain("score >=");
+    }
     expect(db.values).toContain(2);
   });
 });
@@ -126,7 +147,7 @@ describe("redesigned signal navigation", () => {
     const href=signalUrl(parseSignalState({tip:"fin_tiny_staff",jud:"Buzau",p:"3"}),{role:"authority"});
     expect(parseSignalState(Object.fromEntries(new URL(href,"http://local").searchParams))).toMatchObject({code:"da_concentration",role:"authority",county:"Buzău",page:0});
   });
-  it("retains explicit all-CRI mode without requiring a band", () => {
+  it("retains the explicit risk list without requiring a band", () => {
     const state=parseSignalState({view:"cri",rol:"supplier",sort:"name",dir:"asc"});
     expect(parseSignalState(Object.fromEntries(new URL(signalUrl(state,{page:4}),"http://local").searchParams))).toEqual({...state,page:4});
   });
@@ -138,7 +159,7 @@ describe("redesigned signal navigation", () => {
   it.each(["-1","1.5","Infinity","6"])("rejects invalid criteria %s", criteria=>{
     expect(parseSignalState({view:"cri",criteria}).criteria).toBeNull();
   });
-  it("uses the correct denominator for supplier selections",()=>{
+  it("caps the number of patterns at the role's criteria (5 institutions, 4 firms)",()=>{
     expect(parseSignalState({view:"cri",rol:"supplier",criteria:"5"}).criteria).toBeNull();
     expect(parseSignalState({view:"cri",criteria:"0"}).criteria).toBe(0);
   });
@@ -159,7 +180,7 @@ describe("signals of one entity (audit F24)", () => {
   it.each(["0", "-1", "12a", "1.5", "1".repeat(19), ""])("ignores the invalid entity id %j", (ent) => {
     expect(parseSignalState({ ent }).entity).toBeNull();
   });
-  it("does not carry the entity into the CRI cohort view", () => {
+  it("does not carry the entity into the risk list", () => {
     expect(parseSignalState({ view: "cri", ent: "5" }).entity).toBeNull();
     expect(signalUrl(parseSignalState({ ent: "5" }), { view: "cri" })).not.toContain("ent=");
   });
