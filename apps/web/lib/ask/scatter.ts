@@ -46,7 +46,8 @@ export interface ScatterInput {
 
 /** The list's order (final §3.3): the unrounded risk score, then value, then id; or value. */
 export function scatterOrder(s: DbSql, rank: RankBy): Fragment {
-  return frag(rank === "risk" ? s`coalesce(ef.score_raw, 0) desc, ef.total_ron desc nulls last, ef.entity_id` : s`ef.total_ron desc nulls last, ef.entity_id`);
+  // The same percentage reads as a tie: by value (as „Cine conduce?” and /semnale), not by the unrounded score.
+  return frag(rank === "risk" ? s`coalesce(ef.score, 0) desc, ef.total_ron desc nulls last, ef.entity_id` : s`ef.total_ron desc nulls last, ef.entity_id`);
 }
 
 /** The profiles of a group that have the signal: the cloud's group, narrowed by the strip's choice. */
@@ -233,9 +234,9 @@ export async function scatterLocate(s: DbSql, input: ScatterInput, q: string, li
   const placed = new Map<string, number>();
   if (eligible.length) {
     const places = (await s`
-      with m as (select * from unnest(${s.array(eligible.map((r) => r.id))}::bigint[], ${s.array(eligible.map((r) => String(Number(r.score_raw))))}::real[], ${s.array(eligible.map((r) => String(Number(r.total_ron ?? 0))))}::numeric[]) t(id, score_raw, total_ron))
+      with m as (select * from unnest(${s.array(eligible.map((r) => r.id))}::bigint[], ${s.array(eligible.map((r) => String(Number(r.score))))}::int[], ${s.array(eligible.map((r) => String(Number(r.total_ron ?? 0))))}::numeric[]) t(id, score, total_ron))
       select m.id::text id, (select count(*) from marts.entity_flags ef where ${listCond} and ${rank === "risk"
-        ? s`(coalesce(ef.score_raw, 0) > m.score_raw or (coalesce(ef.score_raw, 0) = m.score_raw and (coalesce(ef.total_ron, 0) > m.total_ron or (coalesce(ef.total_ron, 0) = m.total_ron and ef.entity_id < m.id))))`
+        ? s`(coalesce(ef.score, 0) > m.score or (coalesce(ef.score, 0) = m.score and (coalesce(ef.total_ron, 0) > m.total_ron or (coalesce(ef.total_ron, 0) = m.total_ron and ef.entity_id < m.id))))`
         : s`(coalesce(ef.total_ron, 0) > m.total_ron or (coalesce(ef.total_ron, 0) = m.total_ron and ef.entity_id < m.id))`})::int + 1 place
       from m
     `) as unknown as { id: string; place: number }[];

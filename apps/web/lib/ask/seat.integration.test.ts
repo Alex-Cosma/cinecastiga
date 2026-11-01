@@ -193,7 +193,7 @@ describe.runIf(Boolean(connection))("F4: the firm's seat (dedicated rollback fix
     ];
     const group = async (q: DbSql, county?: string) => {
       const d = data(await runSpec(q, ...firm(county)));
-      if (d.block !== "distribution" || d.distribution.version !== 2) throw new Error(d.block);
+      if (d.block !== "distribution" || d.distribution.version !== 3) throw new Error(d.block);
       return d.distribution;
     };
     await inFixture("f4_seat_peers", true, async (q) => {

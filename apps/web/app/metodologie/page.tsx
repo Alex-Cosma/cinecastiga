@@ -145,7 +145,7 @@ export default function MetodologiePage() {
           10 achiziții directe; comparația cere cel puțin 5 alți membri.</p>
         <p id="cine-conduce"><strong>Cine conduce?</strong> După valoare, „Cine conduce?” arată primele trei locuri ale clasamentului
           „Cine câștigă?”, cu partea din total a fiecăruia (valoare înregistrată, nu plăți; în contractele în asociere, cotele sunt egale).
-          După risc arată profilurile cu tipare în ordinea scorului (la același procent, după scorul cu zecimale, apoi după valoarea
+          După risc arată profilurile cu tipare în ordinea scorului (la același procent, după valoarea
           achizițiilor directe), cu tiparele fiecăruia. Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei
           societăți sau a unei asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
 
