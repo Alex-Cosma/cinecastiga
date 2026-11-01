@@ -1,29 +1,34 @@
 import { countWords } from "./answer-text";
-import { criteriaOf } from "./peer-groups-shared";
+import { RISK_BAND_WORD, riskBand } from "../risk-score";
 
 /*
- * "Cine conduce?" (entity_card-2, plan §4.13, final entity_card §3.9–§3.10):
- * the shape of the answer and its words, shared by the engine (compile.ts,
- * entity-card.ts), the answer (app/intreaba/EntityCardAnswer.tsx), its CSV and
- * a watch's core. Plain TypeScript, no SQL and no React.
+ * "Cine conduce?" (entity_card-3; entity_card-2: plan §4.13, final entity_card
+ * §3.9–§3.10): the shape of the answer and its words, shared by the engine
+ * (compile.ts, entity-card.ts), the answer (app/intreaba/EntityCardAnswer.tsx),
+ * its CSV and a watch's core. Plain TypeScript, no SQL and no React.
  *
  * By value the question is the ranking "Cine câștigă?" stopped at place 1: the
  * podium holds places 1–3 with the whole selection's total, from which the
  * answer says the share of each, the distance from place 2 and the rest. On the
- * index it is the group at the top: every profile at the maximum level, never
- * one name crowned by chance, in the order of value (the index does not tell
- * them apart).
+ * risk axis (entity_card-3, rf-2026.18, owner decision of 1 November 2026) it
+ * is the first profiles of the question's group by the risk score: the
+ * unrounded score, then the value, then the id; the profiles that share the
+ * best displayed score are said to be tied. An answer stored as entity_card-2
+ * holds the group at the top of the old index instead (LegacyTies), drawn as it
+ * was.
  */
 
-export const ENTITY_CARD_VERSION = 2;
-/** The direct acquisitions a profile needs to be ranked on the index (predicates.ts ENTITY_CARD_MIN_DAS keeps them equal, entity-card-shared.test.ts). */
+export const ENTITY_CARD_VERSION = 3;
+/** The podium's shape, unchanged since entity_card-2 (entity_card-3 changed the risk axis only). */
+export const PODIUM_VERSION = 2;
+/** The direct acquisitions a profile needs to be ranked on the risk axis (predicates.ts ENTITY_CARD_MIN_DAS keeps them equal, entity-card-shared.test.ts). */
 export const LEADER_MIN_DAS = 20;
 /** The podium: places 1–3. */
 export const PODIUM_PLACES = 3;
-/** The tied profiles listed at most (the answer's "Arată toate cele 14", final §3.10). */
-export const TIES_LISTED = 50;
-/** Tied profiles shown before „Arată toate” (final frame E). */
-export const TIES_SHOWN = 5;
+/** The profiles listed at most on the risk axis (the answer's „Arată primele 50”; entity_card-2: the tied ones). */
+export const RISK_LISTED = 50;
+/** Profiles shown before „Arată toate” (final frame E). */
+export const RISK_SHOWN = 5;
 
 export interface PodiumPlace {
   entityId: string;
@@ -35,7 +40,7 @@ export interface PodiumPlace {
 }
 export interface PodiumTotals { value: number; count: number; entities: number }
 export interface Podium {
-  version: typeof ENTITY_CARD_VERSION;
+  version: typeof PODIUM_VERSION;
   /** Places 1–3 by value (fewer when the selection has fewer). */
   places: PodiumPlace[];
   /**
@@ -47,8 +52,40 @@ export interface Podium {
   selection?: PodiumTotals;
 }
 
-/** A profile at the top of the index. */
-export interface TiePlace {
+/** A profile of the ranking by the risk score (entity_card-3). */
+export interface RiskPlace {
+  entityId: string;
+  name: string;
+  /** An institution's county, a firm's seat (the profile row's own). */
+  county: string | null;
+  /** Direct acquisitions in the profile. */
+  count: number;
+  value: number;
+  /** The risk score over 100, as displayed (marts.entity_flags.score). */
+  score: number;
+  /** The criteria met (x ≥ 1) and their codes. */
+  nFlags: number;
+  flags: string[];
+}
+/** The risk axis of "Cine conduce?" (entity_card-3): the first profiles of the question's group by the risk score. */
+export interface RiskRanking {
+  version: typeof ENTITY_CARD_VERSION;
+  /** Profiles ranked (the question's group). */
+  pool: number;
+  /** Of them, the profiles with a score above 0 (at least one criterion met). */
+  scored: number;
+  /** The best displayed score in the group, and how many profiles of the whole group have it. */
+  top: number;
+  topCount: number;
+  /**
+   * The first RISK_LISTED by the unrounded score, then the value, then the id: the profiles with a score above 0; when
+   * nobody has one, the first by value (the sources of „Nu are semnale în profil”).
+   */
+  rows: RiskPlace[];
+}
+
+/** A profile at the top of the old index, in an answer stored as entity_card-2. */
+export interface LegacyTiePlace {
   entityId: string;
   name: string;
   county: string | null;
@@ -58,22 +95,23 @@ export interface TiePlace {
   nFlags: number;
   flags: string[];
 }
-export interface Ties {
-  version: typeof ENTITY_CARD_VERSION;
-  /** The top level (cri) and the signals it stands for. */
+/** The group at the top of the old index (entity_card-2): only in answers stored before entity_card-3. */
+export interface LegacyTies {
+  version: 2;
+  /** The top level (cri) and the signals it stood for. */
   level: number;
   maxFlags: number;
-  /** The signals a profile of this role can meet (5 for an institution, 4 for a firm). */
+  /** The signals a profile of this role could meet (5 for an institution, 4 for a firm). */
   criteria: number;
   /** Profiles at the top level. */
   count: number;
   /** Profiles ranked (the group's pool). */
   pool: number;
-  /** The level below and how many are on it; null when the top is the only level. */
+  /** The level below and how many were on it; null when the top was the only level. */
   nextLevel: number | null;
   nextCount: number;
-  /** The first TIES_LISTED at the top level, by value. */
-  rows: TiePlace[];
+  /** The first 50 at the top level, by value. */
+  rows: LegacyTiePlace[];
 }
 
 /** The facts of the podium's places, asked once the answer is on screen (POST /api/ask/facets, part `podium`). */
@@ -99,6 +137,19 @@ export interface PodiumFact {
 export const blankCard = (role: "authority" | "supplier") => ({
   entityId: "", name: "", county: null, role, value: 0, count: 0, cri: null, nFlags: 0, flags: [] as string[], population: null,
 });
+
+/**
+ * The places of the ranking by the risk score as the answer numbers them: the same place for the same displayed score
+ * („3 la egalitate pe primul loc” are all 1), the next one after them (1, 1, 1, 4).
+ */
+export function riskPlaces(rows: readonly Pick<RiskPlace, "score">[]): number[] {
+  const places: number[] = [];
+  rows.forEach((row, i) => places.push(i > 0 && rows[i - 1]!.score === row.score ? places[i - 1]! : i + 1));
+  return places;
+}
+
+/** The band's word of a score, as beside its pill: „puternic”, „slab”, „niciun tipar găsit”. */
+export const riskBandWord = (score: number): string => RISK_BAND_WORD[riskBand(score)];
 
 /** The ids of the podium's places (place 1 alone for an answer stored before entity_card-2): what a records drawer may narrow to. */
 export function podiumPlaceIds(data: { card: { entityId: string }; podium?: Pick<Podium, "places"> | undefined }): string[] {
@@ -159,20 +210,19 @@ export function buyerForm(name: string): BuyerForm | null {
   return null;
 }
 
-/** "1,00" / "0,20": a level of the index as the answer writes it. */
+/* ── an answer stored as entity_card-2 (the old index) ───────────────────── */
+
+/** "1,00" / "0,20": a level of the old index as the answer wrote it. */
 export const levelWords = (level: number): string => level.toFixed(2).replace(".", ",");
 
 /**
- * Whether the index tells the group apart from the pool (final §3.10): over half of the pool at the top, or a single
- * signal as the top level — then the answer says „Indicele nu le deosebește”.
+ * Whether the old index told the group apart from the pool (final §3.10): over half of the pool at the top, or a single
+ * signal as the top level — then the answer said „Indicele nu le deosebește”.
  */
-export function tiesNotDistinct(ties: Pick<Ties, "count" | "pool" | "maxFlags">): boolean {
+export function tiesNotDistinct(ties: Pick<LegacyTies, "count" | "pool" | "maxFlags">): boolean {
   return ties.count > 1 && (ties.maxFlags <= 1 || ties.count * 2 > ties.pool);
 }
 
-/** The signals out of those a role can meet, from the top level: „1 semnal din 5”. */
-export const signalsWords = (ties: Pick<Ties, "maxFlags" | "criteria">): string =>
+/** The signals out of those a role could meet, from the old top level: „1 semnal din 5”. */
+export const signalsWords = (ties: Pick<LegacyTies, "maxFlags" | "criteria">): string =>
   `${countWords(ties.maxFlags, "semnal", "semnale")} din ${ties.criteria}`;
-
-/** The criteria of a role (5 for an institution, 4 for a firm). */
-export const criteriaCount = (role: "authority" | "supplier"): number => criteriaOf(role).length;
