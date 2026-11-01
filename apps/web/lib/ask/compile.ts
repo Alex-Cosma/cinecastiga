@@ -26,6 +26,7 @@ import { localAdminMap, localMapSql, mapLocal, mapRollupFilters, mapRollupReady,
 import { asksSharedPartners, sharedPartnersPrestep } from "./compare-prestep";
 import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
+import type { ScoreParts } from "../risk-score";
 import {
   compareInstitutionParties, comparePairRows, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
   coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, flaggedIndexReady, kindMonthRollupReady, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
@@ -1332,12 +1333,12 @@ export async function runSpec(
       "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
     );
     caveats.push(
-      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile.",
+      "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile.",
     );
   }
   if (isHistoricalProfile(spec) && (w.cpvPrefixes.length > 0 || w.yearFrom !== null)) {
     caveats.push(
-      "Indicele de risc și semnalele sunt calculate pe TOATĂ activitatea entității — filtrele de subiect/perioadă nu li se aplică.",
+      "Riscul și semnalele sunt calculate pe TOATĂ activitatea entității — filtrele de subiect/perioadă nu li se aplică.",
     );
   }
 
@@ -2800,12 +2801,12 @@ export async function runRows(
   const parts: ReturnType<DbSql>[] = profile ? [sql`true`] : rowPredicates(ctx, { years: spec.block !== "trend" });
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
-    notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
-    // entity_card-2: a group at level 0 („Nu are semnale în profil”) shows no row; its sources are still the first profiles by value.
+    notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.");
+    // entity_card: a group where no profile has a pattern (every score 0) shows no row; its sources are still the first profiles by value.
     if (spec.block === "entity_card" && !scope.entityIds) {
-      const [top] = (await sql`select max(ef.cri)::text lvl from marts.entity_flags ef where ${baseProfileWhere} and ef.cri is not null`) as unknown as { lvl: string | null }[];
+      const [top] = (await sql`select max(ef.score)::text lvl from marts.entity_flags ef where ${baseProfileWhere}`) as unknown as { lvl: string | null }[];
       if (top?.lvl !== null && top?.lvl !== undefined && Number(top.lvl) === 0)
-        notes.push(`Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare (cel mult ${TIES_LISTED}), toate fără semnale.`);
+        notes.push(`Niciun profil din grup nu are tipare de risc: sursele sunt ale primelor profiluri după valoare (cel mult ${TIES_LISTED}), toate la 0%.`);
     }
     if (flag) notes.push(flagRecordsNote(flag));
   } else {
@@ -3453,8 +3454,8 @@ export async function runRows(
           ? "Sursele nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import."
           : "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile.");
       }
-      const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, cri, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; cri: string | null; flags: string[] | null }[];
-      profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, cri: r.cri === null ? null : Number(r.cri), flags: r.flags ?? [], applicable: r.role === "authority" ? 5 : 4 }));
+      const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, score, score_parts, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; score: number | null; score_parts: ScoreParts | null; flags: string[] | null }[];
+      profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, score: Number(r.score ?? 0), parts: r.score_parts ?? {}, flags: r.flags ?? [] }));
     }
     return {
       rows: rows.map((r) => ({

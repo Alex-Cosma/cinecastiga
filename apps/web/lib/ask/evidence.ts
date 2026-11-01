@@ -2,6 +2,7 @@ import type { AskSpec } from "./spec";
 import { SCATTER_FLAGS } from "./spec";
 import type { DrillRow } from "./compile";
 import type { ScatterFlag } from "./scatter-shared";
+import type { ScoreParts } from "../risk-score";
 
 /** An exact selection inside the applied answer, independent of display limits. */
 export interface EvidenceScope {
@@ -59,9 +60,10 @@ export interface EvidenceProfile {
   role: "authority" | "supplier";
   count: number;
   value: string;
-  cri: number | null;
+  /** The risk score 0–100 and the strength of each criterion met (rf-2026.18, entity_flags.score / score_parts). */
+  score: number;
+  parts: ScoreParts;
   flags: string[];
-  applicable: number;
 }
 
 /** PostgreSQL numeric values retain all digits (including consortium fractions). */

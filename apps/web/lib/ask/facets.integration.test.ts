@@ -88,10 +88,10 @@ async function load(q: DbSql) {
     union all
     select 'contracts', sum(closing_value), count(*), sum(closing_value), count(*) from marts.contract_transactions where closing_value > 0`;
   // Risk profiles of institutions for the cloud (at least 10 direct acquisitions).
-  await q`insert into marts.entity_flags (entity_id,role,name_display,county,n_das,total_ron,cri,n_flags,flags) values
-    (1,'authority','Spitalul Judetean Cluj','Cluj',20,4000,0.4,2,'[]'),(2,'authority','Comuna Feleacu','Cluj',12,300,0.2,1,'[]'),
-    (3,'authority','Municipiul Iasi','Iasi',30,9000,0.6,3,'[]'),(4,'authority','Spitalul Clinic Iasi','Iasi',9,10,0.1,0,'[]'),
-    (5,'authority','Autoritate fara judet',null,11,50,0.3,1,'[]')`;
+  await q`insert into marts.entity_flags (entity_id,role,name_display,county,n_das,total_ron,cri,n_flags,flags,score,score_raw) values
+    (1,'authority','Spitalul Judetean Cluj','Cluj',20,4000,0.4,2,'[]',40,40),(2,'authority','Comuna Feleacu','Cluj',12,300,0.2,1,'[]',20,20),
+    (3,'authority','Municipiul Iasi','Iasi',30,9000,0.6,3,'[]',60,60),(4,'authority','Spitalul Clinic Iasi','Iasi',9,10,0.1,0,'[]',10,10),
+    (5,'authority','Autoritate fara judet',null,11,50,0.3,1,'[]',30,30)`;
 }
 
 const Y: AskSpec["filters"] = { yearFrom: 2024, yearTo: 2025 };
