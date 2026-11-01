@@ -17,15 +17,15 @@ const labels: Record<string, string> = {
   fact: "Relația comercială verificată", samples: "Exemplele din rezultat", rowsTrend: "Comparația dintre ani", byStream: "Canalele de achiziție",
   value: "Valoare înregistrată", valueA: "Valoare în primul an", valueB: "Valoare în al doilea an",
   count: "Număr de înregistrări", total: "Număr total de rezultate", totalEntities: "Entități comparate",
-  population: "Populație de referință", cri: "Indice de risc (CRI)", nFlags: "Număr de semnale", flags: "Semnale active",
+  population: "Populație de referință", cri: "Risc (scara 0–1)", score: "Riscul", nFlags: "Număr de tipare", flags: "Semnale active",
   name: "Denumire", county: "Județ", role: "Rol", code: "Cod CPV", categoryCode: "Cod CPV", category: "Domeniu",
   partner: "Partener comercial", year: "An", yearA: "Primul an", yearB: "Al doilea an", yearFirst: "Prima achiziție · an",
   yearLast: "Ultima achiziție · an", date: "Data achiziției", daCode: "Codul achiziției", cpvName: "Ce s-a cumpărat",
   src: "Ce fel de achiziție", verdict: "Există achiziții între cele două entități", authority: "Autoritatea", supplier: "Furnizorul",
-  percentile: "Entități cu indice cel mult egal · procent", from: "Limita inferioară", to: "Limita superioară", n: "Entități în interval",
+  percentile: "Entități cu risc cel mult egal · procent", from: "Limita inferioară", to: "Limita superioară", n: "Entități în interval",
   minLog: "Valoare minimă · scară logaritmică", maxLog: "Valoare maximă · scară logaritmică",
   valueBand: "Grupa valorii", riskBand: "Grupa de risc",
-  version: "Versiunea metodologiei", riskVersion: "Versiunea indicatorilor de risc", values: "Interpretarea valorilor",
+  version: "Versiunea metodologiei", riskVersion: "Versiunea calculului de risc", values: "Interpretarea valorilor",
   contracts: "Valorile contractelor", completeness: "Completitudinea selecției", sources: "Păstrarea surselor",
   risk: "Interpretarea semnalelor", identity: "Identitatea înregistrărilor", discovery: "Momentul observării",
   classification: "Clasificarea schimbărilor", refresh: "Metodologia actualizării datelor", monitoring: "Versiunea monitorizării",
@@ -36,26 +36,34 @@ const labels: Record<string, string> = {
   composition: "Totalurile grupei", groups: "Grupele", members: "Grupa fixată", frozen: "Membri fixați", frozenAt: "Fixată la",
   // The groups in the trend's vocabulary (defs/trend.ts), as on the answer's buttons.
   ...TREND_LIST_LABELS, equal: TREND_EQUAL_LABEL, eligible: `${TREND_LIST_LABELS.up} de la pragul ales`,
-  // distribution-2 (F6a): the group, the criteria and the position among the others.
-  status: "Starea comparației", criteria: "Criteriile", nDas: "Achiziții directe acceptate", inGroup: "Entitatea face parte din grup",
+  // distribution-2 (F6a): the group, the criteria ("tipare" since rf-2026.18) and the position among the others.
+  status: "Starea comparației", criteria: "Tiparele", nDas: "Achiziții directe acceptate", inGroup: "Entitatea face parte din grup",
   ticks: "Grupul ales", legacy: "Condiții din link", others: "Ceilalți membri", memberIds: "Membrii grupului",
-  position: "Poziția în grup", more: "Cu mai multe criterii", same: "Cu tot atâtea criterii", fewer: "Cu mai puține criterii",
-  hist: "Membrii după numărul de criterii", k: "Număr de criterii", perCriterion: "Criteriu cu criteriu",
+  position: "Poziția în grup", more: "Cu mai multe tipare", same: "Cu tot atâtea tipare", fewer: "Cu mai puține tipare",
+  hist: "Membrii după numărul de tipare", k: "Număr de tipare", perCriterion: "Tipar cu tipar",
   // fact_check-2 (F6a): the verdict and what the sums leave out.
   state: "Verdictul", undated: "Contracte fără dată plauzibilă", channels: "Pe canale", frameworks: "Acorduri-cadru (plafoane)",
   ceiling: "Plafon", excluded: "Rânduri în afara sumelor",
-  // entity_card-2 (F6c): the podium's places and total, the group at the top of the index.
-  podium: "Podiumul", places: "Locurile 1–3", totals: "Totalul selecției", categoryTotals: "Totalul categoriei", ties: "Grupul de la egalitate pe primul loc", level: "Indicele maxim", maxFlags: "Semnale la indicele maxim",
+  // entity_card-2 (F6c): the podium's places and total, the group at the top of the old index (its level 0–1).
+  // entity_card-3 (rf-2026.18): on the risk axis the first profiles by the score, and how many share the best one.
+  ranking: "Primii după risc", topCount: "La egalitate pe primul loc",
+  podium: "Podiumul", places: "Locurile 1–3", totals: "Totalul selecției", categoryTotals: "Totalul categoriei", ties: "Grupul de la egalitate pe primul loc", level: "Riscul maxim", maxFlags: "Tipare la riscul maxim",
 };
 /** scatter-2 (F6b): the risk cloud's group, its signals and its list, in the answer's words (its keys say other things elsewhere). */
 const scatterLabels: Record<string, string> = {
   scatter: "Norul de risc", version: "Versiunea răspunsului", group: "Grupul", n: "Profiluri în nor", nList: "Profiluri în listă",
   small: "Prea puține pentru un nor", criteria: "Profiluri cu fiecare semnal", chosen: "Cu semnalul ales", list: "Lista",
-  rankBy: "Primele după", flag: "Semnalul ales", flags: "Semnale", nFlags: "Număr de semnale", value: "Valoare înregistrată (achiziții directe)",
+  rankBy: "Primele după", flag: "Semnalul ales", flags: "Semnale", nFlags: "Număr de tipare", value: "Valoare înregistrată (achiziții directe)",
+  // scatter-3 (rf-2026.18): each listed profile's place and score.
+  place: "Locul", score: "Risc (%)",
 };
+const POSITION_LABELS: Readonly<Record<string, string>> = { higher: "Cu risc mai mare", equal: "La egalitate", lower: "Cu risc mai mic" };
 /** A group's count is of its entities or counties, not of records (TrendPartTotals.count); a distribution's members are its group. */
 const fieldName = (key: string, path: readonly string[]) => key === "count" && path.includes("composition") ? "Număr în grupă"
-  : key === "count" && path.includes("ties") ? "Profiluri la indicele maxim"
+  : key === "count" && path.includes("ties") ? "Profiluri la riscul maxim"
+  // distribution-3: the others with a higher, the same and a lower displayed score (a trend's "equal" is its own group).
+  : path.includes("position") && POSITION_LABELS[key] ? POSITION_LABELS[key]!
+  : key === "places" && path.includes("ranking") ? "Locurile"
   : key === "members" && path.includes("distribution") ? "Membrii grupului" : key === "others" && path.includes("perCriterion") ? "La ceilalți membri"
     : path[0] === "scatter" && scatterLabels[key] ? scatterLabels[key]! : FLAG_META[key] ? flagLabel(key) : name(key);
 const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "entityId", "partnerId", "nx", "ny", "rowFacts", "noun"]);
@@ -91,7 +99,8 @@ function rowContext(value: unknown, index: number, names?: EntityNames): string 
   if (value.partner != null) return `${value.partner}${value.category || value.categoryCode ? ` · ${value.category ?? `CPV ${value.categoryCode}`}` : ""}`;
   if (value.name != null) return String(value.name);
   if (value.entityId != null && names?.has(String(value.entityId))) return names.get(String(value.entityId))!;
-  if (value.from != null && value.to != null) return `Indice ${formatResultValue(value.from, "cri")}–${formatResultValue(value.to, "cri")}`;
+  // distribution-1's buckets of the old index (0–1), read as the percentages an old link's criMin/criMax select.
+  if (value.from != null && value.to != null) return `Risc ${riskShare(value.from)}–${riskShare(value.to)}%`;
   if (value.valueBand != null && value.riskBand != null) return `Grupa valorii ${value.valueBand} · grupa de risc ${value.riskBand}`;
   if (value.county != null) return countyName(String(value.county));
   if (value.year != null) return `Anul ${value.year}`;
@@ -101,6 +110,8 @@ function rowContext(value: unknown, index: number, names?: EntityNames): string 
   if (value.date != null || value.cpvName != null) return [value.date, value.cpvName].filter(Boolean).join(" · ");
   return `Elementul ${index + 1}`;
 }
+/** A bound of the old index (0–1) as a whole percentage: 0.3 → "30". */
+const riskShare = (value: unknown): string => formatExactDecimal(String(Math.round(Number(value) * 1000) / 10), { money: false });
 function indexed(values: unknown[], field: string) {
   const map = new Map<string, { value: unknown; index: number }>();
   values.forEach((original, index) => {
@@ -142,6 +153,8 @@ export function resultDifferences(before: unknown, after: unknown, names?: Entit
   return differences;
 }
 
+/** A signal's name; the retired "Finalizare rapidă" of an older watch too (rf-2026.18, as scatter-shared's scatterFlagLabel). */
+const signalName = (code: string): string => code === "da_rapid" ? "Finalizare rapidă" : flagLabel(code);
 /** Expand exponent notation without changing the stored numeric digits. */
 function expandedNumber(value: number): string {
   const text = String(value), match = text.match(/^(-?)(\d+)(?:\.(\d+))?e([+-]?\d+)$/i);
@@ -151,8 +164,9 @@ function expandedNumber(value: number): string {
 }
 export function formatResultValue(value: unknown, field: string): string {
   // scatter-2: the strip's choices in its own words ("Tot grupul" is no signal chosen).
-  if (field === "flag" && value !== undefined) return value === null ? "Tot grupul" : flagLabel(String(value));
-  if (field === "rankBy" && (value === "risk" || value === "value")) return value === "risk" ? "Semnale" : "Valoare";
+  if (field === "flag" && value !== undefined) return value === null ? "Tot grupul" : signalName(String(value));
+  // scatter-3 orders "risk" by the score; a scatter-2's "risk" was its criteria, a risk order too.
+  if (field === "rankBy" && (value === "risk" || value === "value")) return value === "risk" ? "Risc" : "Valoare";
   if (value === undefined) return "Nu figura în această versiune";
   if (value === null) return "Necunoscut / indisponibil";
   if (typeof value === "boolean") return value ? "Da" : "Nu";
@@ -162,7 +176,7 @@ export function formatResultValue(value: unknown, field: string): string {
     if (["year", "yearA", "yearB", "yearFirst", "yearLast", "code", "categoryCode", "daCode"].includes(field)) return text;
     const money = ["value", "valueA", "valueB", "valueExact", "contractValueFull"].includes(field);
     const numeric = formatExactDecimal(text, { money });
-    return money ? `${numeric} lei` : field === "percentile" ? `${numeric}%` : numeric;
+    return money ? `${numeric} lei` : field === "percentile" || field === "score" ? `${numeric}%` : numeric;
   }
   return channels[String(value)] ?? String(value);
 }
@@ -180,6 +194,10 @@ export const RESHAPED_WORDS: Readonly<Record<string, string>> = {
   "trend-2": "grupele schimbării",
   "entity_card-2": "podiumul sau grupul de la egalitate pe primul loc",
   "scatter-2": "semnale pe grup și lista cu locuri",
+  // rf-2026.18: the risk score over 100 replaces the index (the answers' -3 versions).
+  "distribution-3": "riscul față de un grup ales",
+  "entity_card-3": "primii după risc",
+  "scatter-3": "riscul în procente și lista cu locuri",
 };
 
 /**

@@ -634,7 +634,7 @@ const factCheck: Write = (out, spec, _ctx, labels) => {
 };
 
 /**
- * §4.11 "Unde se situează [X] după indicele de risc, față de [primăriile cu 52–207 mii de locuitori]?"
+ * §4.11 "Unde se situează [X] după risc, față de [primăriile cu 52–207 mii de locuitori]?"
  * (final distribution §1.1): the group in words, from the ticks of "Față de cine?" (`peers` and the
  * county) and the entity's facts that bound them (labels.peerGroup: the window's or the answer's);
  * without them, the rules by name ("cu populație apropiată"). An old link's kind is said too. Kit §4:
@@ -647,7 +647,7 @@ const distribution: Write = (out, spec, ctx, labels) => {
   const id = String(spec.filters[ctx.role === "authority" ? "authorityId" : "supplierId"] ?? "");
   const facts = labels.peerGroup && labels.peerGroup.role === ctx.role && labels.peerGroup.entityId === id ? labels.peerGroup : null;
   focal(out.text("Unde se situează "), spec, ctx);
-  out.text(" după indicele de risc, față de ").slot("peers", "peers", peerGroupWords(spec, ctx.role, facts), {
+  out.text(" după risc, față de ").slot("peers", "peers", peerGroupWords(spec, ctx.role, facts), {
     says: [...(peers ? ["peers" as const] : []), ...(county ? ["county" as const] : []), ...(kind ? ["authorityKind" as const] : [])],
     writes: ctx.role === "authority" ? ["county", "authorityKind"] : ["county"], picker: "peers",
   });
@@ -673,8 +673,8 @@ const scatter: Write = (out, spec, ctx) => {
 /**
  * §4.13 "Care [firmă] {condusă azi de [X]} [câștigă cel mai mult] din [achizițiile] {pentru […]} făcute de
  * [instituțiile publice] din [toată țara], în [toți anii]?"; institutions "Care [spital] din [județul
- * Cluj] [cumpără cel mai mult] {de la [X]}, prin [toate achizițiile], în […]?"; on the index "Care
- * [firmă] {cu sediul [în județul Cluj]} [are cel mai ridicat indice de risc]?". The axis is the verb.
+ * Cluj] [cumpără cel mai mult] {de la [X]}, prin [toate achizițiile], în […]?"; on the risk score "Care
+ * [firmă] {cu sediul [în județul Cluj]} [are cel mai ridicat risc]?". The axis is the verb.
  */
 const entityCard: Write = (out, spec, ctx, labels) => {
   const firms = spec.dim === "supplier", risk = leaderAxis(spec) === "risk";
@@ -688,7 +688,7 @@ const entityCard: Write = (out, spec, ctx, labels) => {
   } else if (!risk && ctx.locality.ok && hasLocality(spec)) out.text(" a primăriei ").slot("locality", "place", localityName(String(spec.filters.uatName ?? `SIRUTA ${spec.filters.uatSiruta}`)), { writes: ["county"] });
   // Institutions compete in a county only: a town hall would be the answer itself (final §3.3).
   else place(out, spec, ctx, false);
-  out.text(" ").slot("rankBy", "axis", risk ? "are cel mai ridicat indice de risc" : firms ? "câștigă cel mai mult" : "cumpără cel mai mult", {
+  out.text(" ").slot("rankBy", "axis", risk ? "are cel mai ridicat risc" : firms ? "câștigă cel mai mult" : "cumpără cel mai mult", {
     says: spec.rankBy ? ["rankBy"] : [],
   });
   if (risk) { out.text("?"); return; }

@@ -162,7 +162,7 @@ export interface TransitionContext { coverage?: CoveragePeriods | null | undefin
  * A choice in a window of the question (pickers.ts): the window writes it, the
  * question normalizes (transitionQuestion, same block), then every other
  * condition is accounted for. Changing the axis of "Cine conduce?" is a lens:
- * what the new axis cannot apply is parked ("Nu se aplică indicelui"), and
+ * what the new axis cannot apply is parked ("Nu se aplică riscului"), and
  * going back to the axis it came from brings it back. On a trend, what follows
  * the choice comes before (trend-rules.ts trendFollows: counties back to the
  * growths, an incomplete year's same months).

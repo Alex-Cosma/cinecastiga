@@ -40,7 +40,7 @@ describe("the distribution's group in words", () => {
     const r = await ask("semnale la primaria buzau");
     const ticked = await withPeerGroup(sql, r, dialog(BUZAU_DIALOG));
     expect(ticked.spec?.peers).toEqual({ similar: true });
-    expect(ticked.sentence).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de primăriile cu 52–207 mii de locuitori?");
+    expect(ticked.sentence).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de primăriile cu 52–207 mii de locuitori?");
     // The whole country said in words: no default, no read.
     const national = await ask("semnale la primaria buzau la nivel national");
     expect(await withPeerGroup(sql, national, async () => { throw new Error("read"); })).toBe(national);

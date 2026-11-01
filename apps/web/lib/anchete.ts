@@ -50,6 +50,8 @@ export interface ClipRow {
   /** present on dosar reads for kinds we recompute */
   live?: Record<string, unknown> | null;
   drift?: string[];
+  /** The saved risk is the old index (before rf-2026.18): it is not compared with today's score. */
+  methodologyChanged?: boolean;
   capture?: CaptureSummary | null;
   captures?: CaptureSummary[];
 }
@@ -148,11 +150,13 @@ async function snapEntity(
     n_contracts: number;
     total_ron_full: string | null;
   }[];
+  // The risk score of the role that scores highest (rf-2026.18), as an entity capture's summary has it.
   const flags = (await sql`
-    select role, cri, n_flags, flags from marts.entity_flags where entity_id = ${Number(refId)}
+    select role, score, n_flags, flags from marts.entity_flags where entity_id = ${Number(refId)}
+    order by score_raw desc, n_flags desc, role
   `) as unknown as {
     role: string;
-    cri: string | null;
+    score: number;
     n_flags: number;
     flags: string[] | null;
   }[];
@@ -171,12 +175,12 @@ async function snapEntity(
       totalRon: p.total_ron_full ?? "0",
     };
   }
-  const f = flags.sort((a, b) => Number(b.cri ?? 0) - Number(a.cri ?? 0))[0];
+  const f = flags[0];
   return {
     name: prof[0]?.name_display ?? "?",
     county: prof[0]?.county ?? null,
     roles,
-    cri: f?.cri !== null && f?.cri !== undefined ? Number(f.cri) : null,
+    score: f ? Number(f.score) : null,
     nFlags: f ? Number(f.n_flags) : 0,
     flags: f?.flags ?? [],
   };
@@ -374,8 +378,7 @@ export async function deleteClip(userId:string,investigationId:string,clipId:str
 
 function driftKeys(kind: ClipKind): string[] {
   switch (kind) {
-    case "entity":
-      return ["cri", "nFlags"];
+    // An entity's risk is compared by entityRiskDrift.
     case "contract":
       return ["valueRon"];
     case "notice":
@@ -385,6 +388,29 @@ function driftKeys(kind: ClipKind): string[] {
     default:
       return [];
   }
+}
+
+const savedScore = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : typeof value === "string" && /^\d+$/.test(value) ? Number(value) : null;
+
+/**
+ * The entity's risk against the saved one (rf-2026.18): the score and the
+ * number of patterns, only when both sides have a score. A clip or capture
+ * saved before holds the old index (cri, nFlags): its numbers mean something
+ * else, so they are not reported as a change; the dossier says the
+ * methodology changed instead.
+ */
+export function entityRiskDrift(
+  snap: Record<string, unknown>,
+  live: Record<string, unknown>,
+): { drift: string[]; methodologyChanged: boolean } {
+  const before = savedScore(snap["score"]), now = savedScore(live["score"]);
+  if (before === null) return { drift: [], methodologyChanged: now !== null && ("cri" in snap || "nFlags" in snap) };
+  if (now === null) return { drift: [], methodologyChanged: false };
+  const drift: string[] = [];
+  if (before !== now) drift.push("riscul");
+  if (Number(snap["nFlags"] ?? 0) !== Number(live["nFlags"] ?? 0)) drift.push("tiparele");
+  return { drift, methodologyChanged: false };
 }
 
 /** Entity totals drift nightly by design; only count a role total as drifted
@@ -613,7 +639,11 @@ export async function getDosar(
       if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null))
         drift.push(k);
     }
-    if (c.kind === "entity") drift.push(...entityTotalsDrift(c.snapshot, live));
+    if (c.kind === "entity") {
+      const risk = entityRiskDrift(c.snapshot, live);
+      drift.push(...risk.drift, ...entityTotalsDrift(c.snapshot, live));
+      if (risk.methodologyChanged) c.methodologyChanged = true;
+    }
     if (drift.length) c.drift = drift;
   }
   const cast = await castRelations(clips);

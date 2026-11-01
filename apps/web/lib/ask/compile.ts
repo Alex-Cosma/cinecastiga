@@ -1380,12 +1380,12 @@ export async function runSpec(
       "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
     );
     caveats.push(
-      "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile.",
+      "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile.",
     );
   }
   if (isHistoricalProfile(spec) && (w.cpvPrefixes.length > 0 || w.yearFrom !== null)) {
     caveats.push(
-      "Indicele de risc și semnalele sunt calculate pe TOATĂ activitatea entității — filtrele de subiect/perioadă nu li se aplică.",
+      "Riscul și semnalele sunt calculate pe TOATĂ activitatea entității — filtrele de subiect/perioadă nu li se aplică.",
     );
   }
 
@@ -2853,13 +2853,13 @@ export async function runRows(
   const parts: ReturnType<DbSql>[] = profile ? [sql`true`] : rowPredicates(ctx, { years: spec.block !== "trend" });
   if (profile) {
     notes.push("Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.");
-    notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.");
+    notes.push("Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.");
     // entity_card-3: a group in which nobody has a score („Nu are semnale în profil”) shows no row; its sources are still
     // the first profiles by value.
     if (spec.block === "entity_card" && !scope.entityIds) {
       const [top] = (await sql`select max(coalesce(ef.score, 0))::int top from marts.entity_flags ef where ${baseProfileWhere}`) as unknown as { top: number | null }[];
       if (top?.top === 0)
-        notes.push(`Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare (cel mult ${RISK_LISTED}), toate fără semnale.`);
+        notes.push(`Niciun profil din grup nu are tipare de risc: sursele sunt ale primelor profiluri după valoare (cel mult ${RISK_LISTED}), toate la 0%.`);
     }
     if (flag) notes.push(flagRecordsNote(flag));
   } else {
@@ -3507,8 +3507,8 @@ export async function runRows(
           ? "Sursele nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import."
           : "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile.");
       }
-      const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, cri, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; cri: string | null; flags: string[] | null }[];
-      profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, cri: r.cri === null ? null : Number(r.cri), flags: r.flags ?? [], applicable: r.role === "authority" ? 5 : 4 }));
+      const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, score, score_parts, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; score: number | null; score_parts: EvidenceProfile["parts"] | null; flags: string[] | null }[];
+      profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, score: Number(r.score ?? 0), parts: r.score_parts ?? {}, flags: r.flags ?? [] }));
     }
     return {
       rows: rows.map((r) => ({

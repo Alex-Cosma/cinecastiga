@@ -199,11 +199,11 @@ describe("the chips under the sentence (6)", () => {
     expect(markup).toContain('aria-label="Scoate «cele 3 excluderi»"');
   });
   it("brings a parked condition back from a button, announced, and never as an error", () => {
-    const markup = html(ParkedRow, { label: "Nu se aplică indicelui", items: [{ id: "y", label: "2025" }, { id: "c", label: "„medicamente”" }] });
+    const markup = html(ParkedRow, { label: "Nu se aplică riscului", items: [{ id: "y", label: "2025" }, { id: "c", label: "„medicamente”" }] });
     expect(tags(markup, "button").filter(button => attr(button, "class") === "qb-chip--parked").map(button => attr(button, "aria-label"))).toEqual(["Readu «2025»", "Readu «„medicamente”»"]);
     expect(markup).toContain('role="status" aria-live="polite"');
     expect(markup).not.toMatch(/<s>|line-through|eroare/i);
-    expect(html(ParkedRow, { label: "Nu se aplică indicelui", items: [] })).toBe('<span class="qb-sr" role="status" aria-live="polite"></span>');
+    expect(html(ParkedRow, { label: "Nu se aplică riscului", items: [] })).toBe('<span class="qb-sr" role="status" aria-live="polite"></span>');
     expect(restoredMessage("2025")).toBe("«2025» se aplică din nou.");
   });
 });

@@ -18,8 +18,8 @@ const BLOCK_LABEL: Record<AskSpec["block"], string> = {
   timeseries: "evoluție pe ani",
   map: "pe județe (hartă)",
   compare: "comparație",
-  // distribution-2 counts the criteria the entity meets against its group (final distribution §1.1: "spune ce se numără").
-  distribution: "criterii de risc față de grup",
+  // The distribution places the entity's risk score in its group (rf-2026.18; final distribution §1.1: "spune ce se numără").
+  distribution: "risc față de grup",
   // Values are recorded, not paid; the cloud plots risk against recorded value.
   breakdown: "pe domenii",
   scatter: "risc și valoare",
@@ -56,8 +56,8 @@ export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<Con
   // An evolution month by month says so in its first pill (F3); its other options are conditions (describe.ts).
   // The risk cloud counts its group first (scatter-2, final scatter §1): „82 de primării de comună”.
   pills.push(spec.block === "timeseries" && spec.timeseries?.grain === "month" ? "evoluție pe luni"
-    // entity_card-2 (F6c): the podium by value; the index shows every profile at the top, not one name.
-    : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii la egalitate" : "locurile 1–3")
+    // entity_card (F6c): the podium by value; the first profiles by the risk score (entity_card-3, rf-2026.18).
+    : spec.block === "entity_card" ? (leaderAxis(spec) === "risk" ? "primii după risc" : "locurile 1–3")
       : spec.block === "scatter" && labels.scatterGroup !== undefined
         ? groupNoun(labels.scatterGroup, spec.dim === "supplier" ? "supplier" : "authority", namedKind(spec.filters.authorityKind))
         : BLOCK_LABEL[spec.block]);
@@ -67,7 +67,7 @@ export function buildPills(spec: AskSpec, grounding: Grounding, labels: Pick<Con
   else if (spec.block === "table" || spec.block === "trend") pills.push(`top ${countWords(spec.topN ?? 10, dim[0], dim[1])}`);
   if (spec.block === "entity_card") {
     pills.push(
-      leaderAxis(spec) === "risk" ? "cea mai riscantă (CRI)" : "cea mai mare valoare",
+      leaderAxis(spec) === "risk" ? "cel mai ridicat risc" : "cea mai mare valoare",
     );
     pills.push(dim[1]);
   }

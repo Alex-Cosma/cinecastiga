@@ -25,7 +25,7 @@ Sarcina ta: tradu întrebarea utilizatorului în specificația structurată (too
 - "din ce se compune / pe ce se duc banii (pe categorii)" → block=breakdown (opțional authorityName dacă e despre o entitate).
 - "outlieri / risc mare dar volum mic" → block=scatter.
 - "urmărește banii X / fluxul banilor" → block=sankey + entitatea. "rețeaua de furnizori/parteneri a X" → block=network + entitatea.
-- "CARE E cea mai riscantă / cea mai mare" (UNA singură, superlativ) → block=entity_card + rankBy (risk|value) + dim; NU table.
+- "CARE E cea mai riscantă / are cel mai ridicat risc / cea mai mare" (UNA singură, superlativ) → block=entity_card + rankBy (risk|value) + dim; NU table.
 - "a cumpărat X de la Y? / au avut contracte?" → block=fact_check + authorityName=X + supplierName=Y.
 - "cum s-a schimbat între ANUL1 și ANUL2 / creșteri-scăderi" → block=trend + yearFrom=ANUL1 + yearTo=ANUL2 + dim.
 - Subiectul cumpărat (lemne, medicamente, asfalt...) → filters.cpvTerm, EXACT cum l-a spus omul, netradus în coduri.

@@ -64,9 +64,9 @@ const TREND: CountGroup[] = [
 ];
 const SIGNALS: PillOption[] = [
   { value: "all", label: "Tot grupul", count: "82" },
-  { value: "split", label: "Posibilă fracționare", count: "46", signal: true },
+  { value: "split", label: "Achiziții repetate, peste plafon cumulat", count: "46", signal: true },
   { value: "december", label: "Vârf în decembrie", count: "15", signal: true },
-  { value: "fast", label: "Finalizare rapidă", count: "15", signal: true },
+  { value: "round", label: "Chiar sub plafon", count: "15", signal: true },
 ];
 const UNDER: UnderChipItem[] = [
   { kind: "legacy", id: "min", words: "doar firmele cu cel puțin 5 înregistrări", tip: { title: "Din link", text: "Condiție dintr-un link mai vechi; se aplică la fel. Scoate rândurile firmelor mici și schimbă totalurile. Nu se mai oferă aici." } },
@@ -76,7 +76,7 @@ const UNDER: UnderChipItem[] = [
   { kind: "auto", id: "months", label: "Aceleași luni: ian.–mai", name: "Aceleași luni" },
 ];
 const PARKED: ParkedItem[] = [{ id: "year", label: "2025" }, { id: "cpv", label: "„medicamente”" }, { id: "kind", label: "făcute de spitale" }];
-const PARKED_TIP = { title: "Nu se aplică indicelui", text: "Indicele nu are perioadă sau domeniu. Condițiile stau aici; atinge una ca să revii la „cel mai mult”." };
+const PARKED_TIP = { title: "Nu se aplică riscului", text: "Riscul nu are perioadă sau domeniu. Condițiile stau aici; atinge una ca să revii la „cel mai mult”." };
 
 type Window = "subject" | "seat" | "what" | "period" | "size" | "new";
 const TITLES: Record<Window, string> = { subject: "Ce clasăm?", seat: "Unde au sediul firmele?", what: "Ce s-a cumpărat?", period: "În ce perioadă?", size: "Cât de mare e fiecare achiziție?", new: "Firme noi" };
@@ -184,11 +184,11 @@ export default function KitDemo() {
         <Cell cap="comutator oprit / pornit (evoluție)"><div className="qb-row"><Toggle id="m1" label="Aceleași luni: ian.–iun." glyph="half" pressed={false} /><Toggle id="m2" label="Aceleași luni: ian.–iun." glyph="half" pressed /></div></Cell>
         <Cell cap="din altă pagină a site-ului (aplicată, nu veche)"><UnderChips items={[UNDER[2]!]} onRemove={() => undefined} /></Cell>
         <Cell cap="din link" wide><UnderChips items={[UNDER[0]!]} onRemove={() => undefined} /></Cell>
-        <Cell cap="puse deoparte (axa „indice”): implicit · hover · focus" wide><ParkedRow label="Nu se aplică indicelui" tip={PARKED_TIP} items={PARKED} itemClassName={id => id === "cpv" ? "is-hover" : id === "kind" ? "is-focus" : undefined} /></Cell>
+        <Cell cap="puse deoparte (axa „risc”): implicit · hover · focus" wide><ParkedRow label="Nu se aplică riscului" tip={PARKED_TIP} items={PARKED} itemClassName={id => id === "cpv" ? "is-hover" : id === "kind" ? "is-focus" : undefined} /></Cell>
       </div>
       <Live>
         <UnderChips items={under} openId={win?.id ?? null} onOpen={(id, anchor) => id === "size" && open("size", anchor)} onRemove={id => setUnder(items => items.filter(item => item.id !== id))} />
-        <ParkedRow label="Nu se aplică indicelui" tip={PARKED_TIP} items={parked} onRestore={id => setParked(items => items.filter(item => item.id !== id))} />
+        <ParkedRow label="Nu se aplică riscului" tip={PARKED_TIP} items={parked} onRestore={id => setParked(items => items.filter(item => item.id !== id))} />
         {(under.length < UNDER.length || parked.length < PARKED.length) && <button type="button" className="qb-secondary" onClick={() => { setUnder(UNDER); setParked(PARKED); }}>Pune-le la loc</button>}
       </Live>
     </Section>
@@ -270,7 +270,7 @@ export default function KitDemo() {
       </div>
       <div className="kd-gap" />
       <Cap>semnal (în bandă): tot grupul · ales · hover · focus</Cap>
-      <Pills label="Semnal" value="split" options={SIGNALS.map(option => option.value === "december" ? { ...option, className: "is-hover" } : option.value === "fast" ? { ...option, className: "is-focus" } : option)} />
+      <Pills label="Semnal" value="split" options={SIGNALS.map(option => option.value === "december" ? { ...option, className: "is-hover" } : option.value === "round" ? { ...option, className: "is-focus" } : option)} />
       <Live><Pills label="Semnal" value={signal} onChange={value => setSignal(value)} options={SIGNALS} /></Live>
     </Section>
 

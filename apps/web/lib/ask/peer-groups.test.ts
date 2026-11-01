@@ -175,7 +175,7 @@ describe("the rows of the window (final §3.1 table)", () => {
   it("never carry an old link's locality into a group: /api/ask, its sources, CSV and watches refuse it, with the link's chip", () => {
     // The group's words, the window and "→ N" do not know a locality, so the routes refuse it before runSpec (localityScopeError).
     const spec = { block: "distribution", measure: "value", filters: { authorityId: 2144364, authorityName: "MUNICIPIUL BUZAU", uatSiruta: 44818, uatName: "Buzău" }, peers: { similar: true } } as QuestionSpec;
-    expect(localityScopeError(spec)).toMatch(/^Indicele de risc compară profiluri între ele, deci aici poți alege doar județul\. Elimină localitatea „Buzău”/);
+    expect(localityScopeError(spec)).toMatch(/^Profilurile de risc se compară între ele, deci aici poți alege doar județul\. Elimină localitatea „Buzău”/);
   });
 });
 

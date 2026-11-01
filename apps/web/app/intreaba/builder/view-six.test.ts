@@ -66,7 +66,7 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect(sentence(q({ block: "sankey", dim: "authority", filters: { ...BUZAU } }))).toBe("Ce cumpără MUNICIPIUL BUZAU și de la cine, în toți anii?");
     expect(sentence(SIX.sankey!)).toBe("Cine cumpără ce de la PORR CONSTRUCT, în 2024–2025?");
     expect(sentence(SIX.fact_check!)).toBe("A cumpărat MUNICIPIUL BUZAU de la URBAN SCOPE până acum?");
-    expect(sentence(SIX.distribution!)).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de toate instituțiile publice?");
+    expect(sentence(SIX.distribution!)).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de toate instituțiile publice?");
     // A county council has one per county: "din toată țara" is a fixed phrase, text and not a button (component 1b).
     const councils = renderToStaticMarkup(createElement(Sentence, { tokens: builderView(SIX.scatter!).sentence }));
     expect(text(councils.replace(/<span class="term[\s\S]*?<\/span><\/span>(?=<\/span>)/, ""))).toBe("Ce consilii județene din toată țara ies din tipar după risc și valoarea achizițiilor directe?");
@@ -76,7 +76,7 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect(councils).toContain("Un consiliu pe județ.");
     expect(sentence(q({ block: "scatter", dim: "supplier", rankBy: "risk", filters: { county: "Buzău" } }))).toBe("Ce firme cu sediul în județul Buzău ies din tipar după risc și valoarea achizițiilor directe?");
     expect(sentence(SIX.entity_card!)).toBe("Care firmă câștigă cel mai mult din achizițiile pentru „medicamente” făcute de instituțiile publice din toată țara, în 2025?");
-    expect(sentence(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc?");
+    expect(sentence(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat risc?");
   });
 
   it("draw the partners by role: the network's firms by seat, size, signals and person, the flow's by seat and size, the clients by place and kind (P3b)", () => {
@@ -108,13 +108,13 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     expect([windowKind(group), group.title]).toEqual(["peers", "Față de cine?"]);
     expect(group.slot).toMatchObject({ id: "peers", picker: "peers", writes: ["county", "authorityKind"] });
     const chosen = chooseValue(SIX.distribution!, group.slot, { filter: "county", value: "Buzău" });
-    expect(sentence(chosen.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de instituțiile publice din județul Buzău?");
+    expect(sentence(chosen.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de instituțiile publice din județul Buzău?");
     // A tick is a choice of the same window: written as the group, no note.
     const ticked = chooseValue(SIX.distribution!, group.slot, { filter: "peers", value: { similar: true } });
     expect([ticked.spec.peers, ticked.notes]).toEqual([{ similar: true }, []]);
-    expect(sentence(ticked.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după indicele de risc, față de instituțiile de același tip?");
+    expect(sentence(ticked.spec)).toBe("Unde se situează MUNICIPIUL BUZAU după risc, față de instituțiile de același tip?");
     const firm = q({ block: "distribution", dim: "supplier", filters: { ...URBAN, county: "Bucuresti" } });
-    expect(sentence(firm)).toBe("Unde se situează URBAN SCOPE după indicele de risc, față de firmele cu sediul în București?");
+    expect(sentence(firm)).toBe("Unde se situează URBAN SCOPE după risc, față de firmele cu sediul în București?");
     expect(win(firm, "Față de cine").slot.writes).toEqual(["county"]);
     expect(windowTip(group, SIX.distribution!)).toMatchObject({ title: "Grupul de comparație" });
   });
@@ -140,9 +140,9 @@ describe("the six questions from the registry (F1b-builder-b)", () => {
     const axis = win(SIX.entity_card!, "Ce cauți");
     expect(listOptions(axis, SIX.entity_card!).options.map((o) => [o.label, o.detail])).toEqual([
       ["Câștigă cel mai mult", "Valoarea înregistrată, în perioada aleasă."],
-      ["Are cel mai ridicat indice de risc", "Tot istoricul, doar achiziții directe. Perioada, domeniul și cumpărătorul nu se aplică."],
+      ["Are cel mai ridicat risc", "Tot istoricul, doar achiziții directe. Perioada, domeniul și cumpărătorul nu se aplică."],
     ]);
-    expect(windowTip(axis, SIX.entity_card!)).toEqual({ title: "Indicele de risc", text: "Un semnal statistic, nu o dovadă." });
+    expect(windowTip(axis, SIX.entity_card!)).toEqual({ id: "scor-risc" });
     // Value → index parks the period and the domain (component 6); the spec carries none of them.
     const risk = chooseValue(SIX.entity_card!, axis.slot, { filter: "rankBy", value: "risk" });
     expect(risk.parked?.items.map((i) => i.label)).toEqual(["„medicamente”", "2025"]);
