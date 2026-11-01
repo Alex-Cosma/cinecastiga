@@ -1,7 +1,9 @@
+import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
+
 /**
  * Red-flag methodology registry (red-flags DEC-007). Single source of truth for
  * flag definitions — consumed by the flag build (evidence/labels) and the web
- * `/metodologie` page. Bump `METHODOLOGY_VERSION` when a rule or threshold
+ * `/metodologie` page. Bump the version (FLAGS_METHODOLOGY_VERSION in @seap/db) when a rule or threshold
  * changes; every flag instance is stamped with it.
  */
 // rf-2026.6: annual/monthly periods use Europe/Bucharest consistently with the source calendar.
@@ -19,7 +21,8 @@
 // rf-2026.18: the profile index becomes a risk score over 100 (owner decision, 1 November 2026): continuous strengths of
 //   the DA criteria (score.ts); da_round from 96% of the ceiling; da_dependence needs 250k lei and 5 DAs with the main
 //   institution; da_year_end against the kind-year 95th percentile; new da_above_ceiling (safe scope); da_rapid retired.
-export const METHODOLOGY_VERSION = "rf-2026.18";
+// The version itself lives in @seap/db, where the nightly scheduler reads it.
+export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 
 export type FlagSubject = "da" | "award" | "authority" | "supplier" | "pair";
 

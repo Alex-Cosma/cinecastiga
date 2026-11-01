@@ -2,6 +2,7 @@ import {afterAll,beforeEach,describe,expect,it} from 'vitest';
 import {createDb} from '../src/client.js';
 import {claimProcessing,claimRepairProcessing,claimRecoveryProcessing,processingStage,failProcessing,finishProcessing,processingSchedule,publicSiteGate} from '../src/processing.js';
 import {CONTRACT_REPORTING_VERSION} from '../src/contract-reporting.js';
+import {FLAGS_METHODOLOGY_VERSION} from '../src/profile-flags.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test database required');
 const suite=url?describe:describe.skip;
@@ -13,7 +14,7 @@ suite('scheduled publication state machine (no network)',()=>{
   await q`update app.collection_control set revision=1,paused=false,maintenance=false,collection_during_maintenance=false,blocked_reason=null,
     processing_enabled=true,processing_enabled_at='2026-09-26T00:00:00Z',processing_time='05:00',risk_weekday=0 where id=1`;
   await q`insert into app.monitoring_refreshes(kind,status,completed_at,methodology)
-    values('coordinated','ready',clock_timestamp(),${JSON.stringify({contractReporting:CONTRACT_REPORTING_VERSION})}::jsonb)`;
+    values('coordinated','ready',clock_timestamp(),${JSON.stringify({contractReporting:CONTRACT_REPORTING_VERSION,flags:FLAGS_METHODOLOGY_VERSION})}::jsonb)`;
  });
  afterAll(async()=>{await q.end({timeout:5});});
  const sunday=new Date('2026-09-27T02:00:00Z'),monday=new Date('2026-09-28T02:00:00Z');
@@ -28,6 +29,11 @@ suite('scheduled publication state machine (no network)',()=>{
   expect(await claimProcessing(q,new Date('2026-09-28T04:00:00Z'))).toBeNull();
   await q`update app.collection_control set processing_enabled_at='2026-09-26T00:00:00Z'`;
   expect((await claimProcessing(q,monday))?.scope).toBe('daily');
+ });
+ it('runs full on a weekday after a new signals methodology, so the risk is rebuilt before a daily run needs it',async()=>{
+  await q`update app.monitoring_refreshes set methodology=methodology||${JSON.stringify({flags:'rf-2026.17'})}::jsonb`;
+  expect((await claimProcessing(q,monday))?.scope).toBe('full');
+  expect((await q`select after->>'flagsChanged' changed from app.collection_audit where action='processing-start'`)[0]?.changed).toBe('true');
  });
  it('accounts for winter offset and does not repeat a local day',async()=>{
   expect(await claimProcessing(q,new Date('2026-10-25T02:59:59Z'))).toBeNull();

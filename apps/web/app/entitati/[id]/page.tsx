@@ -137,7 +137,9 @@ export default async function EntityPage({
   // number ONRC registers to another firm, not a foreign number.
   const registryCollision = cuiUncorroborated ? reviewedRegistryCollision(id, cui) : null;
 
-  const hasRiskScore = flagRowsRaw.some((r) => r.role === role);
+  // A profile built before rf-2026.18 has criteria (n_flags) but no score yet: "risc necalculat" until the
+  // first full run after the deploy, never a false 0% (after a new build a score of 0 has no criteria).
+  const hasRiskScore = flagRowsRaw.some((r) => r.role === role) && !(row.score === 0 && row.nFlags > 0);
   const criteria = RISK_CRITERIA[role];
   const band = riskBand(row.score);
   const points = riskPoints(row.scoreParts, row.score);

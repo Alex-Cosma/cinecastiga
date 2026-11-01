@@ -1,5 +1,6 @@
 import type { DbSql } from './client.js';
 import { CONTRACT_REPORTING_VERSION } from './contract-reporting.js';
+import { FLAGS_METHODOLOGY_VERSION } from './profile-flags.js';
 
 /** Host runner holds the deployment lock before calling these operations. */
 export async function claimProcessing(q: DbSql, at?: Date) {
@@ -20,14 +21,17 @@ export async function claimProcessing(q: DbSql, at?: Date) {
   // once on the next scheduled day rather than reusing its old provenance.
   const [previous]=await tx`select methodology from app.monitoring_refreshes where status='ready' order by version desc limit 1`;
   const reportingChanged=previous?.methodology?.contractReporting!==CONTRACT_REPORTING_VERSION;
-  const scope=reportingChanged||(c.maintenance&&c.collection_during_maintenance)||c.weekday===c.risk_weekday?'full':'daily';
+  // A new signals methodology (rf-2026.18: the risk score) cannot keep the previous
+  // risk: a daily run would refuse it and leave the site closed until the next day.
+  const flagsChanged=previous?.methodology?.flags!==FLAGS_METHODOLOGY_VERSION;
+  const scope=reportingChanged||flagsChanged||(c.maintenance&&c.collection_during_maintenance)||c.weekday===c.risk_weekday?'full':'daily';
   const [run]=await tx`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control)
     values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,maintenance:c.maintenance,revision:c.revision})}::jsonb)
     on conflict(scheduled_day) where trigger='scheduled' do nothing returning id,scope`;
   if(!run)return null;
   await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
-    values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,maintenance:true,reportingChanged})}::jsonb)`;
+    values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,maintenance:true,reportingChanged,flagsChanged})}::jsonb)`;
   return {id:String(run.id),scope:String(run.scope)};
  });
 }
@@ -159,7 +163,8 @@ export async function publicSiteGate(q:DbSql):Promise<boolean>{
 /** Romanian wall-clock schedule, computed in PostgreSQL; one row/day handles DST repeats. */
 export async function processingSchedule(q:DbSql) {
  const [schedule]=await q`with policy as (
-   select coalesce((select methodology->>'contractReporting' from app.monitoring_refreshes where status='ready' order by version desc limit 1),'')<>${CONTRACT_REPORTING_VERSION} changed
+   select coalesce((select methodology->>'contractReporting' from app.monitoring_refreshes where status='ready' order by version desc limit 1),'')<>${CONTRACT_REPORTING_VERSION}
+     or coalesce((select methodology->>'flags' from app.monitoring_refreshes where status='ready' order by version desc limit 1),'')<>${FLAGS_METHODOLOGY_VERSION} changed
  ), days as (
    select c.*,d::date as scheduled_day,((d::date+c.processing_time::time) at time zone 'Europe/Bucharest') as scheduled_at
    from app.collection_control c cross join generate_series((now() at time zone 'Europe/Bucharest')::date,
