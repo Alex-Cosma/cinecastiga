@@ -25,10 +25,20 @@ function sources(dir: string, out: string[] = []): string[] {
 
 describe("a signal's name outside the methodology (S6 review)", () => {
   it("is its short label", () => {
-    expect(flagLabel("da_round")).toBe("Aproape de prag");
-    expect(FLAG_META.da_round!.title).toBe("Valoare aproape de prag");
+    // The names of 1 November 2026 (rf-2026.18).
+    expect(flagLabel("da_round")).toBe("Chiar sub plafon");
+    expect(FLAG_META.da_round!.title).toBe("Chiar sub plafonul achiziției directe");
+    expect(flagLabel("da_split")).toBe("Achiziții repetate, peste plafon cumulat");
+    expect(flagLabel("da_above_ceiling")).toBe("Peste plafon");
+    expect(FLAG_META.da_above_ceiling!.title).toBe("Peste plafonul achiziției directe");
     // A signal without a short label keeps its title.
     expect(flagLabel("award_single_bid")).toBe(FLAG_META.award_single_bid!.title);
+    expect(flagLabel("award_no_competition")).toBe("Negociere fără anunț prealabil");
+  });
+
+  it("is the stored code for the retired \"Finalizare rapidă\", so an old saved answer still renders", () => {
+    expect(FLAG_META.da_rapid).toBeUndefined();
+    expect(flagLabel("da_rapid")).toBe("da_rapid");
   });
 
   it("is never printed from FLAG_META's title by a page", () => {

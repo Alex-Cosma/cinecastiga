@@ -1,8 +1,9 @@
 import { DA_CEILING_ERAS } from "@seap/domain";
 import DataCoverage from "@/components/DataCoverage";
-import { AWARD_COUNTING_CAVEAT, FLAG_META, FLAG_ORDER } from "@/lib/flags";
+import { AWARD_COUNTING_CAVEAT, FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { coverageDate } from "@/lib/coverage";
 import { formatInt } from "@/lib/format";
+import { RISK_BAND_CLASS, RISK_CRITERIA, type RiskCriterion } from "@/lib/risk-score";
 import "./metodologie.css";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,34 @@ const SUBJECT_LABEL: Record<string, string> = {
   pair: "Per relație",
   award: "Per anunț de atribuire",
 };
+
+/** Who a criterion of the risk score applies to (RISK_CRITERIA, both roles or one). */
+function scoreRoles(code: string): string | null {
+  const inst = (RISK_CRITERIA.authority as readonly string[]).includes(code);
+  const firm = (RISK_CRITERIA.supplier as readonly string[]).includes(code);
+  return inst && firm ? "instituții și firme" : inst ? "instituții" : firm ? "firme" : null;
+}
+
+/**
+ * The strength levels of each pattern of the risk score (rf-2026.18,
+ * packages/db/src/profile-flags.ts): level 1 is the pattern itself (its rule on
+ * the card below); levels 2 and 3 need a profile of 20 DAs and 500.000 lei.
+ */
+const LEVELS: { code: RiskCriterion; l1: string; l2: string; l3: string }[] = [
+  { code: "da_split", l1: "cel puțin un grup", l2: "grupurile au 10% din valoare (firme: 25%)", l3: "25% (firme: 50%)" },
+  { code: "da_round", l1: "peste 10% din achiziții la 96–100% din plafon (minimum 5); la instituții și 5 astfel de achiziții, dacă sunt 1%", l2: "peste 25%", l3: "peste 50%" },
+  { code: "da_year_end", l1: "un an", l2: "doi ani", l3: "trei ani sau mai mulți" },
+  { code: "da_concentration", l1: "60% din valoare la un furnizor", l2: "75%", l3: "90%" },
+  { code: "da_dependence", l1: "85% din vânzări la o instituție (minimum 250.000 lei și 5 achiziții cu ea)", l2: "firma are 20% din achizițiile directe ale instituției", l3: "50%" },
+  { code: "da_above_ceiling", l1: "2 cazuri", l2: "4 cazuri, sau 3 cu 5% din valoare", l3: "10 cazuri, sau 4 cu 20% din valoare" },
+];
+
+const BANDS: { band: keyof typeof RISK_BAND_CLASS; range: string; word: string }[] = [
+  { band: "none", range: "0%", word: "niciun tipar găsit" },
+  { band: "slab", range: "20–39%", word: "slab" },
+  { band: "moderat", range: "40–67%", word: "moderat" },
+  { band: "puternic", range: "68–100%", word: "puternic" },
+];
 
 export default function MetodologiePage() {
   return (
@@ -31,8 +60,8 @@ export default function MetodologiePage() {
             verificat, nu o ilegalitate. Fiecare are limite (fals-pozitive) documentate mai jos.
           </li>
           <li>
-            <strong>Transparent și reproductibil.</strong> Indicele compus de risc (CRI) este
-            ponderea semnalelor declanșate din cele aplicabile — fără scoruri ascunse.
+            <strong>Transparent și reproductibil.</strong> Scorul de risc pornește de la tiparele de mai jos, cu
+            pragurile lor; tăria fiecărui tipar și formula sunt publice, fără ponderi ascunse.
           </li>
           <li>
             <strong>Praguri legale, în funcție de dată și tip.</strong> Valorile sunt fără TVA (<a href="https://legislatie.just.ro/Public/DetaliiDocument/178667" target="_blank" rel="noreferrer">Legea 98/2016, art. 7 alin. 5</a>).
@@ -65,37 +94,77 @@ export default function MetodologiePage() {
       </section>
 
       <section className="section" id="indice">
-        <h2>Ce intră în indicele de risc?</h2>
-        <p>Indicele compus de risc (CRI) folosește doar achizițiile directe acceptate, cu valoare pozitivă
-          de cel mult 2 milioane lei, din întreaga perioadă disponibilă la calcul. Fiecare criteriu îndeplinit
-          contează o singură dată. Criteriile neîndeplinite rămân în numitor, inclusiv când lipsesc date necesare verificării lor.</p>
+        <h2>Cum se calculează riscul?</h2>
+        <p className="hint">Scorul de risc, de la 0 la 100%, arată câte tipare au achizițiile directe ale unei instituții sau firme
+          și cât de pronunțate sunt. <strong>Nu este o probabilitate de corupție.</strong> Un tipar este o pistă de verificat, nu o dovadă.</p>
         <ul className="prose">
-          <li><strong>Autorități: 5 criterii.</strong> Posibilă fracționare sub prag, concentrare pe un furnizor,
-            achiziții concentrate în decembrie, finalizare rapidă și valori aproape de prag.</li>
-          <li><strong>Furnizori: 4 criterii.</strong> Posibilă fracționare sub prag, dependență de o autoritate,
-            finalizare rapidă și valori aproape de prag.</li>
+          <li><strong>Datele.</strong> Achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, din toată arhiva.
+            Filtrele unei pagini sau ale unei întrebări nu schimbă scorul.</li>
+          <li><strong>Instituții, {RISK_CRITERIA.authority.length} tipare:</strong>{" "}
+            {RISK_CRITERIA.authority.map((c, i) => <span key={c}>{i ? ", " : ""}<a href={`#${c}`}>{flagLabel(c)}</a></span>)}.</li>
+          <li><strong>Firme, {RISK_CRITERIA.supplier.length} tipare:</strong>{" "}
+            {RISK_CRITERIA.supplier.map((c, i) => <span key={c}>{i ? ", " : ""}<a href={`#${c}`}>{flagLabel(c)}</a></span>)}.</li>
+          <li>Semnalele din proceduri, bilanțuri și ONRC nu intră în scor; pagina entității le arată separat.</li>
         </ul>
-        <p>La finalizarea rapidă, criteriul din profil cere cel puțin 5 achiziții eligibile și mai mult de 25% dintre ele
-          cu acest semnal. La valorile aproape de prag, cere cel puțin 5 achiziții și mai mult de 10% cu semnal.
-          Pentru celelalte criterii este suficient cel puțin un semnal calculat, inclusiv într-un an istoric.</p>
-        <p><strong>Exemplu: 3 / 5 = 0,60.</strong> Acesta nu este un procent de corupție. Etichetele sunt scăzut
-          (peste 0 și sub 0,30), mediu (de la 0,30 până sub 0,60) și ridicat (de la 0,60).
-          Scorul 0 înseamnă că aceste criterii nu au fost îndeplinite în datele evaluate, nu că am certificat lipsa neregulilor.</p>
-        <p>Semnalele despre contracte prin proceduri, bilanțuri și reprezentanți ONRC nu intră în CRI.
-          În profil, filtrele tabelului de achiziții nu recalculează acest scor. Datele incomplete pot schimba rezultatul;
-          verifică perioada fiecărui semnal și sursele sale înainte de a trage o concluzie.</p>
-        <p id="grup-comparatie"><strong>Față de cine?</strong> În „Întreabă”, „Unde se situează?” numără criteriile entității
-          și câți dintre ceilalți membri ai grupului ales au mai multe, tot atâtea sau mai puține. Grupul folosește regulile paginii
-          Comparații: primăriile după populația RPL 2021, între jumătate și dublul populației entității (comunele, orașele și municipiile
-          împreună; doar primăriile identificate sigur), consiliile județene între ele, primăriile de sector între ele, spitalele și școlile
-          după tipul instituției, același județ și activitatea apropiată (între jumătate și dublul achizițiilor directe acceptate).
-          Intră doar profilurile cu cel puțin 10 achiziții directe, iar comparația cere cel puțin 5 alți membri.</p>
+
+        <h3 id="niveluri">Cât de pronunțat e un tipar</h3>
+        <p>Fiecare tipar găsit are o tărie de la 1 la 3, după nivelul atins; între praguri crește proporțional (de exemplu 2,5 la
+          jumătatea drumului spre nivelul 3). <strong>Nivelurile 2 și 3 cer cel puțin 20 de achiziții directe și 500.000 lei</strong>;
+          sub acestea, un tipar găsit are tăria 1.</p>
+        <table className="rank method-levels">
+          <thead><tr><th scope="col">Tipar</th><th scope="col">Nivelul 1</th><th scope="col">Nivelul 2</th><th scope="col">Nivelul 3</th></tr></thead>
+          <tbody>{LEVELS.map((l) => <tr key={l.code}>
+            <th scope="row"><a href={`#${l.code}`}>{flagLabel(l.code)}</a> <span className="county">{scoreRoles(l.code)}</span></th>
+            <td data-l="Nivelul 1">{l.l1}</td><td data-l="Nivelul 2">{l.l2}</td><td data-l="Nivelul 3">{l.l3}</td>
+          </tr>)}</tbody>
+        </table>
+        <p className="note">La achizițiile repetate, valoarea din CPV-urile Anexei 2 (servicii cu procedură proprie) nu ridică nivelul.
+          În decembrie, un an contează când ponderea lunii e printre cele mai mari 5% la instituțiile de același tip și de cel puțin 35%;
+          între niveluri contează cât de aproape de prag a fost cel mai înalt decembrie nesemnalat.</p>
+
+        <h3 id="formula">Formula</h3>
+        <p>Un tipar la tăria x ia 20% × x din ce a rămas până la 100%: la tăria maximă, 60%. Tiparele se combină, nu se adună peste 100%:</p>
+        <p className="method-formula"><code>risc = 100 × (1 − (1 − 0,2·x₁) × (1 − 0,2·x₂) × …)</code></p>
+        <ul className="prose">
+          <li>Un singur tipar ajunge cel mult la 60%; nivelul 1 singur dă 20%; două tipare la nivelul 1 dau 36%.</li>
+          <li><strong>Exemplu:</strong> achiziții repetate la tăria 2,51 și chiar sub plafon la 2,24: 100 × (1 − 0,498 × 0,552) ≈ 73%.
+            Pagina entității îl împarte în puncte: 73% = 39 + 34, partea fiecărui tipar, rotunjită ca suma să fie scorul.</li>
+        </ul>
+
+        <h3 id="benzi">Benzile</h3>
+        <p className="method-bands">{BANDS.map((b) => <span key={b.band}><span className={`cri-pill ${RISK_BAND_CLASS[b.band]}`}>{b.range}</span> {b.word}</span>)}</p>
+        <p>Sub 20% nu există: cel mai slab tipar dă 20%. 0% înseamnă că tiparele nu apar în datele evaluate, nu că am certificat lipsa
+          neregulilor. Datele incomplete pot schimba rezultatul; verifică perioada fiecărui semnal și sursele lui.</p>
+
+        <p id="grup-comparatie"><strong>Față de cine?</strong> „Mai multe tipare decât X% dintre …” (pagina entității) apare doar la riscul
+          moderat și puternic: o firmă slabă ar trece înaintea multor firme fără niciun tipar. X% sunt membrii grupului cu un scor mai mic.
+          „Unde se situează?” din „Întreabă” arată câți au un scor mai mare, egal sau mai mic. Grupurile: primăriile după populație
+          (RPL 2021, între jumătate și dublul populației; comune, orașe și municipii împreună, doar cele identificate sigur), consiliile
+          județene, primăriile de sector, spitalele și școlile după tip; firmele și instituțiile fără un tip sigur, toată țara. În „Întreabă”
+          se mai pot alege județul și activitatea apropiată (între jumătate și dublul achizițiilor directe). Intră profilurile cu cel puțin
+          10 achiziții directe; comparația cere cel puțin 5 alți membri.</p>
         <p id="cine-conduce"><strong>Cine conduce?</strong> După valoare, „Cine conduce?” arată primele trei locuri ale clasamentului
           „Cine câștigă?”, cu partea din total a fiecăruia (valoare înregistrată, nu plăți; în contractele în asociere, cotele sunt egale).
-          Pe indicele de risc arată toate profilurile de la nivelul maxim, în ordinea valorii achizițiilor directe: indicele ia puține valori
-          (câte semnale din cele 4 ale unei firme sau 5 ale unei instituții), deci mai multe profiluri îl au deodată, și el nu le deosebește.
-          Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei societăți sau a unei
-          asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
+          După risc arată profilurile cu tipare în ordinea scorului (la același procent, după scorul cu zecimale, apoi după valoarea
+          achizițiilor directe), cu tiparele fiecăruia. Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei
+          societăți sau a unei asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
+
+        <details className="method-fold" id="schimbari-risc">
+          <summary>Ce s-a schimbat la 1 noiembrie 2026</summary>
+          <ul className="method-list">
+            <li>Indicele de risc (criteriile îndeplinite împărțite la 5 sau 4: 0; 0,20; 0,25 …) devine scorul de risc, de la 0 la 100%,
+              care ține seama și de cât de pronunțat e fiecare tipar. Metodologia: versiunea rf‑2026.18.</li>
+            <li>„Finalizare rapidă” a fost retrasă: nu are temei în lege și apărea la majoritatea instituțiilor.</li>
+            <li>Tipar nou: <a href="#da_above_ceiling">„Peste plafonul achiziției directe”</a>, doar unde excepțiile cunoscute nu se pot aplica
+              (Anexa 2, CPV 33, companii și operatori de utilități, 26.02–14.05.2020, Unifarm, plafonul de lucrări, valori de peste două ori estimarea).</li>
+            <li>„Chiar sub plafon” (fost „Aproape de prag”) începe de la 96% din plafon, nu de la 90%.</li>
+            <li>„Dependență de o autoritate” cere 250.000 lei (nu 50.000) și cel puțin 5 achiziții cu instituția principală.</li>
+            <li>„Vârf în decembrie” compară fiecare an cu instituțiile de același tip din același an, nu doar cu pragul de 35%.</li>
+            <li>„Posibilă fracționare” se numește „Achiziții repetate, peste plafon cumulat”; regula nu s-a schimbat.</li>
+            <li>Un link vechi cu un interval al indicelui (0–1) selectează aceleași procente; o urmărire primește o singură notificare
+              „Metodologie modificată”. Un răspuns salvat înainte își păstrează cifrele de atunci.</li>
+          </ul>
+        </details>
       </section>
 
       <section className="section" id="acoperire">
@@ -189,10 +258,10 @@ export default function MetodologiePage() {
             Până la verificarea legăturii cu contractul inițial, totalurile nu includ separat aceste sume și pot să nu reflecte toate ajustările.</p>
         </details>
         <details className="method-fold">
-          <summary>Întrebări și CRI</summary>
+          <summary>Întrebări și scorul de risc</summary>
           <p>Întrebările care numără înregistrări pot include valori pozitive peste filtrul de plauzibilitate; rezultatul și lista
-            surselor declară această selecție. Analizele CRI folosesc istoricul achizițiilor directe acceptate și explică filtrele
-            pe care le pot aplica. CRI este proporția unor criterii declanșate, nu probabilitatea unei ilegalități.</p>
+            surselor declară această selecție. Răspunsurile despre risc folosesc tot istoricul achizițiilor directe acceptate și spun
+            ce filtre pot aplica. Scorul arată tipare de verificat, nu probabilitatea unei ilegalități (<a href="#indice">cum se calculează</a>).</p>
         </details>
         <details className="method-fold" id="tip-institutie">
           <summary>Tipul instituției</summary>
@@ -250,12 +319,14 @@ export default function MetodologiePage() {
         <h2>Semnale</h2>
         {FLAG_ORDER.map((c) => {
           const m = FLAG_META[c]!;
+          const roles = scoreRoles(c);
           return (
             <div className="method-card" key={c} id={c}>
               <div className="method-head">
                 <h3>{m.title}</h3>
                 <span className="badge">{SUBJECT_LABEL[m.subject]}</span>
               </div>
+              {roles && <p className="hint">În scorul de risc ({roles}): <a href="#niveluri">nivelurile</a>.</p>}
               <p>
                 <strong>Ce măsoară:</strong> {m.description}
               </p>
