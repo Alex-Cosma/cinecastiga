@@ -1,45 +1,518 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-19T19:49:53.482Z",
+  "generatedAt": "2026-11-01T21:38:21Z",
   "title": "Design System: cinecâștigă?",
   "extensions": {
     "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Ivory paper",
+        "canonical": "#f7f8f2",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252522",
+          "#42423e",
+          "#61625d",
+          "#82837e",
+          "#a5a6a0",
+          "#c9c9c6",
+          "#eeeeed"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Form surface",
+        "canonical": "#fffefa",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#262523",
+          "#43423f",
+          "#62615e",
+          "#83827f",
+          "#a6a5a2",
+          "#cac9c7",
+          "#efeeee"
+        ]
+      },
+      "sunk": {
+        "role": "neutral",
+        "displayName": "Inset evidence surface",
+        "canonical": "#edf0e5",
+        "tonalRamp": [
+          "#0b0b09",
+          "#242620",
+          "#41433a",
+          "#606359",
+          "#81847a",
+          "#a4a69d",
+          "#c8cac4",
+          "#eeefed"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Reading ink",
+        "canonical": "#243a30",
+        "tonalRamp": [
+          "#070d0a",
+          "#1a2922",
+          "#31483d",
+          "#50675c",
+          "#71897d",
+          "#94aba0",
+          "#becdc6",
+          "#ebf0ed"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary reading ink",
+        "canonical": "#3f5043",
+        "tonalRamp": [
+          "#080d09",
+          "#1d2820",
+          "#36473a",
+          "#556659",
+          "#75887a",
+          "#99aa9d",
+          "#c1cdc3",
+          "#ecf0ec"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Supporting label",
+        "canonical": "#6c746b",
+        "tonalRamp": [
+          "#0a0c09",
+          "#222721",
+          "#3d443c",
+          "#5c645b",
+          "#7d857c",
+          "#a0a89f",
+          "#c6cbc5",
+          "#edefed"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Section separator",
+        "canonical": "#dfe3d8",
+        "tonalRamp": [
+          "#0b0c09",
+          "#242620",
+          "#40433b",
+          "#5f6359",
+          "#80847a",
+          "#a3a79d",
+          "#c8cac4",
+          "#eeefed"
+        ]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Control border",
+        "canonical": "#cbd4c3",
+        "tonalRamp": [
+          "#0a0c08",
+          "#22271d",
+          "#3e4537",
+          "#5d6455",
+          "#7d8676",
+          "#a0a899",
+          "#c6cbc1",
+          "#edefec"
+        ]
+      },
       "accent": {
         "role": "primary",
         "displayName": "Forest action",
         "canonical": "#204c3c",
         "tonalRamp": [
-          "#355d40",
-          "#617f51",
-          "#8fa877",
-          "#b4c8a3",
-          "#d2dec5"
+          "#030e09",
+          "#0d2c21",
+          "#204c3c",
+          "#406c5a",
+          "#618e7b",
+          "#86b09e",
+          "#b5d1c5",
+          "#e8f1ed"
         ]
       },
-      "paper": {
-        "role": "neutral",
-        "displayName": "Ivory paper",
-        "canonical": "#f7f8f2"
-      },
-      "surface": {
-        "role": "neutral",
-        "displayName": "Form surface",
-        "canonical": "#fffefa"
-      },
-      "sunk": {
-        "role": "neutral",
-        "displayName": "Inset evidence surface",
-        "canonical": "#edf0e5"
-      },
-      "dark-accent": {
+      "accent-ink": {
         "role": "primary",
-        "displayName": "Dark-theme action",
-        "canonical": "#c0d8ad"
+        "displayName": "Forest accent text",
+        "canonical": "#173e2e",
+        "tonalRamp": [
+          "#040e09",
+          "#102b20",
+          "#244b3a",
+          "#446b59",
+          "#658d7a",
+          "#8aaf9d",
+          "#b7d0c4",
+          "#e9f1ed"
+        ]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Quiet accent state",
+        "canonical": "#e6eddd",
+        "tonalRamp": [
+          "#0a0c08",
+          "#23271e",
+          "#3f4437",
+          "#5e6456",
+          "#7f8577",
+          "#a2a89a",
+          "#c7cbc2",
+          "#eeefec"
+        ]
+      },
+      "accent-line": {
+        "role": "primary",
+        "displayName": "Accent border",
+        "canonical": "#b8c9a8",
+        "tonalRamp": [
+          "#090d05",
+          "#1f2915",
+          "#39472b",
+          "#586749",
+          "#79896a",
+          "#9cab8e",
+          "#c3cdba",
+          "#ecf0e9"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "Text on forest action",
+        "canonical": "#fffefa",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#262523",
+          "#43423f",
+          "#62615e",
+          "#83827f",
+          "#a6a5a2",
+          "#cac9c7",
+          "#efeeee"
+        ]
+      },
+      "orange": {
+        "role": "secondary",
+        "displayName": "Identity orange",
+        "canonical": "#c7522d",
+        "tonalRamp": [
+          "#1c0300",
+          "#461000",
+          "#752001",
+          "#a73407",
+          "#cf5934",
+          "#f18160",
+          "#feb59e",
+          "#fee9e3"
+        ]
+      },
+      "risk": {
+        "role": "status",
+        "displayName": "Risk text",
+        "canonical": "#c0311c",
+        "tonalRamp": [
+          "#1f0000",
+          "#4b0600",
+          "#7d0f01",
+          "#b22009",
+          "#da4b35",
+          "#fc7760",
+          "#ffb4a5",
+          "#ffe9e4"
+        ]
+      },
+      "risk-soft": {
+        "role": "status",
+        "displayName": "Risk background",
+        "canonical": "#fbe4df",
+        "tonalRamp": [
+          "#0f0a09",
+          "#2e221f",
+          "#4f3d39",
+          "#6f5c58",
+          "#917d79",
+          "#b4a09c",
+          "#d3c6c3",
+          "#f2edec"
+        ]
+      },
+      "amber-soft": {
+        "role": "status",
+        "displayName": "Caution background",
+        "canonical": "#fbefd6",
+        "tonalRamp": [
+          "#0e0b05",
+          "#2b2416",
+          "#4b412c",
+          "#6a604a",
+          "#8c816b",
+          "#aea48f",
+          "#cfc8ba",
+          "#f0eee9"
+        ]
       },
       "dark-paper": {
         "role": "neutral",
-        "displayName": "Dark green paper",
-        "canonical": "#111d18"
+        "displayName": "Dark-theme ivory paper",
+        "canonical": "#111d18",
+        "tonalRamp": [
+          "#080c0a",
+          "#1e2723",
+          "#384540",
+          "#57655f",
+          "#788680",
+          "#9ba9a2",
+          "#c2ccc7",
+          "#ecefee"
+        ]
+      },
+      "dark-surface": {
+        "role": "neutral",
+        "displayName": "Dark-theme form surface",
+        "canonical": "#18271f",
+        "tonalRamp": [
+          "#080c0a",
+          "#1d2822",
+          "#36463d",
+          "#55665c",
+          "#76877d",
+          "#99aaa0",
+          "#c1ccc6",
+          "#ecefed"
+        ]
+      },
+      "dark-sunk": {
+        "role": "neutral",
+        "displayName": "Dark-theme inset evidence surface",
+        "canonical": "#203328",
+        "tonalRamp": [
+          "#070d09",
+          "#1b2921",
+          "#34473c",
+          "#52675a",
+          "#73887b",
+          "#96ab9e",
+          "#bfcdc5",
+          "#ebf0ed"
+        ]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Dark-theme reading ink",
+        "canonical": "#e7eddf",
+        "tonalRamp": [
+          "#0a0c08",
+          "#23261f",
+          "#3f4439",
+          "#5e6357",
+          "#7f8578",
+          "#a2a79b",
+          "#c7cbc2",
+          "#eeefec"
+        ]
+      },
+      "dark-ink-secondary": {
+        "role": "neutral",
+        "displayName": "Dark-theme secondary reading ink",
+        "canonical": "#ccd8c4",
+        "tonalRamp": [
+          "#090c08",
+          "#21271c",
+          "#3c4635",
+          "#5b6554",
+          "#7c8674",
+          "#9fa997",
+          "#c5ccc0",
+          "#edefeb"
+        ]
+      },
+      "dark-muted": {
+        "role": "neutral",
+        "displayName": "Dark-theme supporting label",
+        "canonical": "#a5b39e",
+        "tonalRamp": [
+          "#090c07",
+          "#20281c",
+          "#3a4634",
+          "#596653",
+          "#7a8773",
+          "#9daa97",
+          "#c4ccbf",
+          "#edefeb"
+        ]
+      },
+      "dark-line": {
+        "role": "neutral",
+        "displayName": "Dark-theme section separator",
+        "canonical": "#314437",
+        "tonalRamp": [
+          "#070d09",
+          "#1c2920",
+          "#34473a",
+          "#536759",
+          "#73887a",
+          "#97ab9d",
+          "#c0cdc4",
+          "#ebf0ed"
+        ]
+      },
+      "dark-line-strong": {
+        "role": "neutral",
+        "displayName": "Dark-theme control border",
+        "canonical": "#456047",
+        "tonalRamp": [
+          "#060d07",
+          "#182a1a",
+          "#2f4932",
+          "#4e6950",
+          "#6f8b70",
+          "#92ad94",
+          "#bdcfbe",
+          "#eaf0eb"
+        ]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Dark-theme forest action",
+        "canonical": "#c0d8ad",
+        "tonalRamp": [
+          "#080d04",
+          "#1d2a10",
+          "#364924",
+          "#546942",
+          "#758b63",
+          "#98ad87",
+          "#c0cfb5",
+          "#ecf0e8"
+        ]
+      },
+      "dark-accent-ink": {
+        "role": "primary",
+        "displayName": "Dark-theme forest accent text",
+        "canonical": "#d1e6bf",
+        "tonalRamp": [
+          "#080d05",
+          "#1e2913",
+          "#384827",
+          "#566846",
+          "#778a66",
+          "#9aac8a",
+          "#c2ceb7",
+          "#ecf0e9"
+        ]
+      },
+      "dark-accent-soft": {
+        "role": "primary",
+        "displayName": "Dark-theme quiet accent state",
+        "canonical": "#263e2b",
+        "tonalRamp": [
+          "#060d08",
+          "#192a1c",
+          "#304935",
+          "#4f6954",
+          "#708a74",
+          "#94ad98",
+          "#becec0",
+          "#ebf0eb"
+        ]
+      },
+      "dark-accent-line": {
+        "role": "primary",
+        "displayName": "Dark-theme accent border",
+        "canonical": "#526c47",
+        "tonalRamp": [
+          "#070d04",
+          "#1a2a12",
+          "#314a27",
+          "#506a45",
+          "#708c65",
+          "#94ae8a",
+          "#becfb7",
+          "#ebf0e8"
+        ]
+      },
+      "dark-on-accent": {
+        "role": "primary",
+        "displayName": "Dark-theme text on forest action",
+        "canonical": "#18271f",
+        "tonalRamp": [
+          "#080c0a",
+          "#1d2822",
+          "#36463d",
+          "#55665c",
+          "#76877d",
+          "#99aaa0",
+          "#c1ccc6",
+          "#ecefed"
+        ]
+      },
+      "dark-orange": {
+        "role": "secondary",
+        "displayName": "Dark-theme identity orange",
+        "canonical": "#ec9672",
+        "tonalRamp": [
+          "#190500",
+          "#421400",
+          "#702800",
+          "#964825",
+          "#bb6947",
+          "#dd8f6e",
+          "#f1bba6",
+          "#fceae3"
+        ]
+      },
+      "dark-risk": {
+        "role": "status",
+        "displayName": "Dark-theme risk text",
+        "canonical": "#ff8a75",
+        "tonalRamp": [
+          "#1d0200",
+          "#4b0500",
+          "#7e0e00",
+          "#a43827",
+          "#cb5b48",
+          "#ed8370",
+          "#fdb5a7",
+          "#fee9e5"
+        ]
+      },
+      "dark-risk-soft": {
+        "role": "status",
+        "displayName": "Dark-theme risk background",
+        "canonical": "#3a1b16",
+        "tonalRamp": [
+          "#120807",
+          "#351e1a",
+          "#5a3832",
+          "#7b5750",
+          "#9e7870",
+          "#c09b94",
+          "#dcc2be",
+          "#f5eceb"
+        ]
+      },
+      "dark-amber-soft": {
+        "role": "status",
+        "displayName": "Dark-theme caution background",
+        "canonical": "#382a10",
+        "tonalRamp": [
+          "#0f0a04",
+          "#2d2311",
+          "#4e4025",
+          "#6e5f44",
+          "#908064",
+          "#b2a388",
+          "#d2c8b6",
+          "#f1eee8"
+        ]
       }
     },
     "typographyMeta": {
@@ -59,6 +532,10 @@
         "displayName": "Reading text",
         "purpose": "Romanian explanations and source context."
       },
+      "label": {
+        "displayName": "Field label",
+        "purpose": "Visible labels above fields and compact action text."
+      },
       "technical": {
         "displayName": "Optional technical record",
         "purpose": "Complete structured data behind an explicit disclosure."
@@ -73,7 +550,7 @@
       {
         "name": "approved-overlay",
         "value": "0 10px 35px #204c3c14",
-        "purpose": "Existing search overlays."
+        "purpose": "Search overlays, the mobile navigation panel and the floating loading status."
       },
       {
         "name": "approved-soft-dark",
@@ -96,6 +573,16 @@
         "name": "source-entry",
         "value": ".22s ease; opacity 0→1; translateY(4px)→none",
         "purpose": "Monitoring record entry; disabled for reduced motion."
+      },
+      {
+        "name": "busy-dim",
+        "value": "opacity .15s ease .25s; 1→.55",
+        "purpose": "The answer already on screen stays in place, dimmed, while a new one loads; immediate for reduced motion."
+      },
+      {
+        "name": "loading-bars",
+        "value": ".9s ease-in-out infinite; scaleY .25→1→.25; .15s stagger",
+        "purpose": "The three bars of the floating loading status; held still at scaleY .6 for reduced motion."
       },
       {
         "name": "global-ease",
@@ -144,6 +631,13 @@
       "css": ".ds-field{display:grid;gap:7px;font:600 13px var(--body,\"IBM Plex Sans\",sans-serif);color:var(--ink)}.ds-field input{box-sizing:border-box;font:400 14px var(--body,\"IBM Plex Sans\",sans-serif);width:100%;min-width:0;padding:11px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;color:var(--ink)}.ds-field input:focus-visible{outline:2px solid var(--accent);outline-offset:4px}"
     },
     {
+      "name": "Shared Header Navigation",
+      "kind": "nav",
+      "description": "The site header destinations; the current section carries the accent and its underline, and aria-current states it.",
+      "html": "<nav class=\"ds-main-nav\" aria-label=\"Navigare principală\"><a href=\"#descopera\">Descoperă</a><a href=\"#intreaba\" class=\"on\" aria-current=\"page\">Întreabă</a><a href=\"#ghid\">Ghid</a></nav>",
+      "css": ".ds-main-nav{display:flex;gap:29px;height:56px;border-bottom:1px solid var(--line);font:400 13px var(--body,\"IBM Plex Sans\",sans-serif)}.ds-main-nav a{position:relative;display:flex;align-items:center;gap:7px;color:var(--muted);text-decoration:none;white-space:nowrap}.ds-main-nav a:hover{color:var(--ink)}.ds-main-nav a.on{color:var(--accent)}.ds-main-nav a.on:after{content:\"\";position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--accent)}.ds-main-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}"
+    },
+    {
       "name": "Private Workspace Navigation",
       "kind": "nav",
       "description": "Existing local destinations beneath the shared header; current state stays explicit.",
@@ -165,6 +659,13 @@
       "description": "The existing investigation evidence panel with two frozen source actions.",
       "html": "<section class=\"ds-evidence\"><strong>Ambele versiuni sunt păstrate</strong><p>Înregistrările afectate rămân exact cum au fost observate.</p><div><a href=\"#before\">Sursele înainte</a><a href=\"#after\">Sursele după</a></div></section>",
       "css": ".ds-evidence{padding:16px 18px;background:var(--sunk);color:var(--ink);border-radius:8px;font:400 13px/1.6 var(--body,\"IBM Plex Sans\",sans-serif)}.ds-evidence strong{font-weight:600}.ds-evidence p{margin:8px 0;color:var(--muted)}.ds-evidence>div{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px}.ds-evidence a{font-size:14px;font-weight:600;color:var(--accent);text-decoration:none;text-underline-offset:4px}.ds-evidence a:hover{text-decoration:underline}.ds-evidence a:focus-visible{outline:2px solid var(--accent);outline-offset:4px}"
+    },
+    {
+      "name": "Floating Loading Status",
+      "kind": "custom",
+      "description": "Loading over an answer already on screen: in the app it is fixed under the sticky header (top: header height + 12px, centred) so the page never moves; shown here in place.",
+      "html": "<div class=\"ds-loader\" role=\"status\" aria-live=\"polite\"><span class=\"ds-bars\" aria-hidden=\"true\"><i></i><i></i><i></i></span><span>Căutăm răspunsul în date…</span></div>",
+      "css": ".ds-loader{display:inline-flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);box-sizing:border-box;padding:9px 16px;border:1px solid var(--line2);border-radius:18px;background:var(--surface);color:var(--ink2);font:400 13px/1.4 var(--body,\"IBM Plex Sans\",sans-serif);box-shadow:var(--shadow2)}.ds-bars{display:inline-flex;align-items:flex-end;gap:3px;height:16px}.ds-bars i{width:4px;height:100%;border-radius:2px;background:var(--accent);transform-origin:bottom;animation:ds-bar .9s ease-in-out infinite}.ds-bars i:nth-child(2){animation-delay:.15s}.ds-bars i:nth-child(3){animation-delay:.3s}@keyframes ds-bar{0%,100%{transform:scaleY(.25);opacity:.55}50%{transform:scaleY(1);opacity:1}}@media(prefers-reduced-motion:reduce){.ds-bars i{animation:none;transform:scaleY(.6)}}"
     }
   ],
   "narrative": {
