@@ -383,11 +383,18 @@ table.rank td .src a:hover { color: var(--accent); }
 .search-dropdown li.search-empty { color: var(--muted); font-size: 13px; cursor: default; }
 .ask-hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; max-width: 720px; }
 .ask-loading { margin-top: 22px; color: var(--muted); font-size: 14px; }
-.ask-loader {
-  display: flex; align-items: center; gap: 10px;
-  margin: 22px 0 6px; color: var(--muted); font-size: 14px;
+/* Loading never moves the page: the status floats under the sticky header and the
+   answer it replaces stays in place, dimmed (owner, 1 Nov 2026). */
+.ask-loader, .px-updating {
+  position: fixed; top: calc(var(--site-header-h) + 12px); left: 50%; transform: translateX(-50%); z-index: 35;
+  display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box;
+  margin: 0; padding: 9px 16px; border: 1px solid var(--line2); border-radius: 18px;
+  background: var(--surface); color: var(--ink2); font-size: 13px; line-height: 1.4; box-shadow: var(--shadow2);
+  pointer-events: none;
 }
-.ask-loader .bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.cq-answer[aria-busy="true"] { opacity: .55; transition: opacity .15s ease .25s; }
+@media (prefers-reduced-motion: reduce) { .cq-answer[aria-busy="true"] { transition: none; } }
+.ask-loader .bars { display: inline-flex; flex-direction: row; align-items: flex-end; gap: 3px; height: 16px; }
 .ask-loader .bars i {
   width: 4px; height: 100%; border-radius: 2px; background: var(--accent);
   animation: ask-bar 0.9s ease-in-out infinite; transform-origin: bottom;
@@ -1511,7 +1518,6 @@ th.on a { color: var(--ink); }
 .ask-main .ask-lab { font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--ink); text-transform: none; letter-spacing: -.01em; margin-bottom: 12px; }
 .ask-main .ask-lab .ask-meth { font-family: var(--body); font-size: 13px; font-weight: 400; }
 .ask-main .ask-detback { font-size: 13px; }
-.ask-loader { border: 1px solid var(--line); border-radius: var(--r2); background: var(--surface); padding: 14px 18px; margin-top: 20px; }
 .ask-error { border-radius: var(--r2); }
 .ask-toast { border-radius: 999px; box-shadow: var(--shadow2); }
 /* builder */
