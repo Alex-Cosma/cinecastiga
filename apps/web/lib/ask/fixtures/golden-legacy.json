@@ -976,9 +976,10 @@
        "role": "supplier",
        "value": 515570.7,
        "count": 10,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -1053,6 +1054,7 @@
        "value": 47100.01,
        "count": 2,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -2370,29 +2372,34 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "ok",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
-       "nFlags": 1,
-       "cri": 0.274,
-       "flags": ["da_concentration"],
        "nDas": 12,
        "county": "Alba",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 27,
+       "parts": {
+        "da_concentration": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_concentration"]
       },
       "group": {
        "words": "toate instituțiile publice",
@@ -2416,33 +2423,54 @@
        "memberIds": ["9100000011","9100000003","9100000001","9100000002","9100000013","9100000012","9100000006"]
       },
       "position": {
-       "more": 4,
-       "same": 0,
-       "fewer": 3
+       "higher": 4,
+       "equal": 0,
+       "lower": 3
       },
       "hist": [
        {
-        "k": 0,
+        "from": 0,
+        "to": 0,
         "n": 3
        },
        {
-        "k": 1,
+        "from": 20,
+        "to": 29,
         "n": 0
        },
        {
-        "k": 2,
+        "from": 30,
+        "to": 39,
+        "n": 0
+       },
+       {
+        "from": 40,
+        "to": 49,
         "n": 1
        },
        {
-        "k": 3,
+        "from": 50,
+        "to": 59,
+        "n": 0
+       },
+       {
+        "from": 60,
+        "to": 69,
         "n": 1
        },
        {
-        "k": 4,
+        "from": 70,
+        "to": 79,
+        "n": 0
+       },
+       {
+        "from": 80,
+        "to": 89,
         "n": 1
        },
        {
-        "k": 5,
+        "from": 90,
+        "to": 100,
         "n": 1
        }
       ],
@@ -2453,17 +2481,12 @@
         "country": 4
        },
        {
-        "code": "da_year_end",
+        "code": "da_round",
         "others": 3,
         "country": 3
        },
        {
-        "code": "da_round",
-        "others": 2,
-        "country": 2
-       },
-       {
-        "code": "da_rapid",
+        "code": "da_year_end",
         "others": 3,
         "country": 3
        },
@@ -2471,6 +2494,11 @@
         "code": "da_concentration",
         "others": 2,
         "country": 3
+       },
+       {
+        "code": "da_above_ceiling",
+        "others": 2,
+        "country": 2
        }
       ],
       "countryTotal": 8,
@@ -2481,8 +2509,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 5,
-        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-        "nDas": 22
+        "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
+        "nDas": 22,
+        "score": 93
        },
        {
         "entityId": "9100000003",
@@ -2490,8 +2519,9 @@
         "county": "Buzău",
         "population": null,
         "nFlags": 4,
-        "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-        "nDas": 45
+        "flags": ["da_split","da_year_end","da_round","da_concentration"],
+        "nDas": 45,
+        "score": 81
        },
        {
         "entityId": "9100000001",
@@ -2499,8 +2529,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 3,
-        "flags": ["da_split","da_rapid","da_round"],
-        "nDas": 18
+        "flags": ["da_split","da_round","da_above_ceiling"],
+        "nDas": 18,
+        "score": 66
        },
        {
         "entityId": "9100000002",
@@ -2509,7 +2540,8 @@
         "population": null,
         "nFlags": 2,
         "flags": ["da_split","da_year_end"],
-        "nDas": 34
+        "nDas": 34,
+        "score": 42
        },
        {
         "entityId": "9100000013",
@@ -2518,7 +2550,8 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 31
+        "nDas": 31,
+        "score": 0
        },
        {
         "entityId": "9100000012",
@@ -2527,7 +2560,8 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 27
+        "nDas": 27,
+        "score": 0
        },
        {
         "entityId": "9100000006",
@@ -2536,12 +2570,13 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 10
+        "nDas": 10,
+        "score": 0
        }
       ]
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -2566,9 +2601,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -2576,9 +2621,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -2586,9 +2638,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000006",
@@ -2596,9 +2661,9 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000011",
@@ -2606,9 +2671,25 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      },
      {
       "entityId": "9100000012",
@@ -2616,9 +2697,9 @@
       "role": "authority",
       "count": 27,
       "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000013",
@@ -2626,16 +2707,16 @@
       "role": "authority",
       "count": 31,
       "value": "260000.00",
-      "cri": null,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
     "profileCount": 7,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -2706,14 +2787,13 @@
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
-      "levels": 4,
       "rankBy": "risk",
       "flag": null,
       "group": {
@@ -2722,10 +2802,10 @@
        "small": true
       },
       "criteria": {
-       "da_split": 1,
-       "da_rapid": 1,
+       "da_split": 3,
        "da_round": 2,
-       "da_dependence": 4
+       "da_dependence": 4,
+       "da_above_ceiling": 2
       },
       "p90": 114000,
       "cloud": {
@@ -2738,7 +2818,8 @@
         "county": "Buzău",
         "value": 45000,
         "nDas": 26,
-        "cri": 0.887,
+        "score": 89,
+        "scoreRaw": 89,
         "nFlags": 4,
         "flags": [
          {
@@ -2749,6 +2830,9 @@
          },
          {
           "code": "da_dependence"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "employees": 7,
@@ -2760,9 +2844,13 @@
         "county": "Alba",
         "value": 60000,
         "nDas": 15,
-        "cri": 0.714,
+        "score": 71,
+        "scoreRaw": 71,
         "nFlags": 3,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_round"
          },
@@ -2779,9 +2867,13 @@
         "county": "Cluj",
         "value": 88000,
         "nDas": 24,
-        "cri": 0.581,
+        "score": 58,
+        "scoreRaw": 58,
         "nFlags": 2,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_dependence"
          }
@@ -2790,28 +2882,13 @@
         "employeesYear": 2024
        },
        {
-        "entityId": "9100000112",
-        "name": "Profil Firma Doi SRL",
-        "county": "Cluj",
-        "value": 9000,
-        "nDas": 13,
-        "cri": 0.473,
-        "nFlags": 1,
-        "flags": [
-         {
-          "code": "da_rapid"
-         }
-        ],
-        "employees": 55,
-        "employeesYear": 2024
-       },
-       {
         "entityId": "9100000102",
         "name": "Fixture Medical SRL",
         "county": "Buzău",
         "value": 140000,
         "nDas": 40,
-        "cri": 0.362,
+        "score": 36,
+        "scoreRaw": 36,
         "nFlags": 1,
         "flags": [
          {
@@ -2822,12 +2899,30 @@
         "employeesYear": 2024
        },
        {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "value": 9000,
+        "nDas": 13,
+        "score": 20,
+        "scoreRaw": 20,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_above_ceiling"
+         }
+        ],
+        "employees": 55,
+        "employeesYear": 2024
+       },
+       {
         "entityId": "9100000105",
         "name": "Fixture Mic SRL",
         "county": "Cluj",
         "value": 13000,
         "nDas": 11,
-        "cri": 0.124,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "employees": 0,
@@ -2836,7 +2931,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -2861,9 +2956,16 @@
       "role": "supplier",
       "count": 24,
       "value": "88000.00",
-      "cri": 0.581,
-      "flags": ["da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
      },
      {
       "entityId": "9100000102",
@@ -2871,9 +2973,13 @@
       "role": "supplier",
       "count": 40,
       "value": "140000.00",
-      "cri": 0.362,
-      "flags": ["da_dependence"],
-      "applicable": 4
+      "score": 36,
+      "parts": {
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_dependence"]
      },
      {
       "entityId": "9100000103",
@@ -2881,9 +2987,19 @@
       "role": "supplier",
       "count": 15,
       "value": "60000.00",
-      "cri": 0.714,
-      "flags": ["da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 71,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence"]
      },
      {
       "entityId": "9100000105",
@@ -2891,9 +3007,9 @@
       "role": "supplier",
       "count": 11,
       "value": "13000.00",
-      "cri": 0.124,
-      "flags": [],
-      "applicable": 4
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000111",
@@ -2901,9 +3017,22 @@
       "role": "supplier",
       "count": 26,
       "value": "45000.00",
-      "cri": 0.887,
-      "flags": ["da_split","da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 89,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
      },
      {
       "entityId": "9100000112",
@@ -2911,16 +3040,20 @@
       "role": "supplier",
       "count": 13,
       "value": "9000.00",
-      "cri": 0.473,
-      "flags": ["da_rapid"],
-      "applicable": 4
+      "score": 20,
+      "parts": {
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_above_ceiling"]
      }
     ],
     "profileCount": 6,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -8907,29 +9040,34 @@
      },
      "dim": "authority"
     },
-    "pills": ["criterii de risc față de grup","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "small",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
-       "nFlags": 1,
-       "cri": 0.274,
-       "flags": ["da_concentration"],
        "nDas": 12,
        "county": "Alba",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 27,
+       "parts": {
+        "da_concentration": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_concentration"]
       },
       "group": {
        "words": "consiliile județene",
@@ -8955,7 +9093,7 @@
       }
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and entity_id in (…)  -- doar consilii județene / județe\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and entity_id in (…)  -- doar consilii județene / județe\n;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -8978,7 +9116,7 @@
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [],
     "rows": []
@@ -9830,7 +9968,8 @@
        "role": "authority",
        "value": 408950.75,
        "count": 7,
-       "cri": 0.421,
+       "cri": 0.42,
+       "score": 42,
        "nFlags": 2,
        "flags": ["da_split","da_year_end"],
        "population": null,
@@ -9930,9 +10069,10 @@
        "role": "authority",
        "value": 3421602.35,
        "count": 7,
-       "cri": 0.812,
+       "cri": 0.81,
+       "score": 81,
        "nFlags": 4,
-       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+       "flags": ["da_split","da_year_end","da_round","da_concentration"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -11179,9 +11319,10 @@
        "role": "supplier",
        "value": 459569.95,
        "count": 9,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -11251,6 +11392,7 @@
        "value": 45000.01,
        "count": 1,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -11894,33 +12036,32 @@
      "dataset": "da",
      "dim": "authority"
     },
-    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": null,
       "group": {
-       "n": 7,
-       "nList": 7,
+       "n": 8,
+       "nList": 8,
        "small": true
       },
       "criteria": {
        "da_split": 4,
+       "da_round": 3,
        "da_year_end": 3,
-       "da_rapid": 3,
-       "da_round": 2,
-       "da_concentration": 3
+       "da_concentration": 3,
+       "da_above_ceiling": 2
       },
-      "p90": 85680.04000000001,
+      "p90": 147090.07000000004,
       "cloud": {
        "points": []
       },
@@ -11931,23 +12072,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -11958,17 +12100,18 @@
         "county": "Buzău",
         "value": 98700.1,
         "nDas": 45,
-        "cri": 0.812,
+        "score": 81,
+        "scoreRaw": 81,
         "nFlags": 4,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
+          "code": "da_round"
          },
          {
-          "code": "da_rapid"
+          "code": "da_year_end"
          },
          {
           "code": "da_concentration"
@@ -11982,17 +12125,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -12003,7 +12147,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -12021,7 +12166,8 @@
         "county": "Alba",
         "value": 40463.46,
         "nDas": 12,
-        "cri": 0.274,
+        "score": 27,
+        "scoreRaw": 27,
         "nFlags": 1,
         "flags": [
          {
@@ -12031,12 +12177,25 @@
         "kind": "consiliu_judetean"
        },
        {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "value": 260000,
+        "nDas": 31,
+        "score": 0,
+        "scoreRaw": 0,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "spital"
+       },
+       {
         "entityId": "9100000006",
         "name": "Municipiul Aiud",
         "county": "Alba",
         "value": 17542.15,
         "nDas": 10,
-        "cri": 0.151,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "oras_municipiu"
@@ -12047,7 +12206,8 @@
         "county": "Buzău",
         "value": 15500,
         "nDas": 27,
-        "cri": 0.052,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "comuna"
@@ -12055,7 +12215,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -12080,9 +12240,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -12090,9 +12260,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -12100,9 +12277,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000004",
@@ -12110,9 +12300,13 @@
       "role": "authority",
       "count": 12,
       "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
+      "score": 27,
+      "parts": {
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_concentration"]
      },
      {
       "entityId": "9100000006",
@@ -12120,9 +12314,9 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000011",
@@ -12130,9 +12324,25 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      },
      {
       "entityId": "9100000012",
@@ -12140,16 +12350,26 @@
       "role": "authority",
       "count": 27,
       "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
+     },
+     {
+      "entityId": "9100000013",
+      "name": "Spitalul Profil Trei",
+      "role": "authority",
+      "count": 31,
+      "value": "260000.00",
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
-    "profileCount": 7,
+    "profileCount": 8,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -12217,14 +12437,13 @@
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
-      "levels": 4,
       "rankBy": "risk",
       "flag": null,
       "group": {
@@ -12233,10 +12452,10 @@
        "small": true
       },
       "criteria": {
-       "da_split": 0,
-       "da_rapid": 1,
+       "da_split": 1,
        "da_round": 0,
-       "da_dependence": 1
+       "da_dependence": 1,
+       "da_above_ceiling": 1
       },
       "p90": 73000,
       "cloud": {
@@ -12249,9 +12468,13 @@
         "county": "Cluj",
         "value": 88000,
         "nDas": 24,
-        "cri": 0.581,
+        "score": 58,
+        "scoreRaw": 58,
         "nFlags": 2,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_dependence"
          }
@@ -12265,11 +12488,12 @@
         "county": "Cluj",
         "value": 9000,
         "nDas": 13,
-        "cri": 0.473,
+        "score": 20,
+        "scoreRaw": 20,
         "nFlags": 1,
         "flags": [
          {
-          "code": "da_rapid"
+          "code": "da_above_ceiling"
          }
         ],
         "employees": 55,
@@ -12281,7 +12505,8 @@
         "county": "Cluj",
         "value": 13000,
         "nDas": 11,
-        "cri": 0.124,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "employees": 0,
@@ -12291,7 +12516,7 @@
       "wider": 6
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -12316,9 +12541,16 @@
       "role": "supplier",
       "count": 24,
       "value": "88000.00",
-      "cri": 0.581,
-      "flags": ["da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
      },
      {
       "entityId": "9100000105",
@@ -12326,9 +12558,9 @@
       "role": "supplier",
       "count": 11,
       "value": "13000.00",
-      "cri": 0.124,
-      "flags": [],
-      "applicable": 4
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000112",
@@ -12336,16 +12568,20 @@
       "role": "supplier",
       "count": 13,
       "value": "9000.00",
-      "cri": 0.473,
-      "flags": ["da_rapid"],
-      "applicable": 4
+      "score": 20,
+      "parts": {
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_above_ceiling"]
      }
     ],
     "profileCount": 3,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -12397,11 +12633,11 @@
      "filters": {},
      "dim": "authority"
     },
-    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -12412,20 +12648,18 @@
       "role": "authority",
       "value": 77000,
       "count": 22,
-      "cri": 0.933,
+      "cri": null,
+      "score": 93,
       "nFlags": 5,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "population": null
      },
-     "ties": {
-      "version": 2,
-      "level": 0.933,
-      "maxFlags": 5,
-      "criteria": 5,
-      "count": 1,
-      "pool": 4,
-      "nextLevel": 0.812,
-      "nextCount": 1,
+     "ranking": {
+      "version": 3,
+      "pool": 5,
+      "scored": 3,
+      "top": 93,
+      "topCount": 1,
       "rows": [
        {
         "entityId": "9100000011",
@@ -12433,62 +12667,147 @@
         "county": "Cluj",
         "count": 22,
         "value": 77000,
+        "score": 93,
         "nFlags": 5,
-        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"]
+        "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "count": 45,
+        "value": 98700.1,
+        "score": 81,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_round","da_concentration"]
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "count": 34,
+        "value": 51234.5,
+        "score": 42,
+        "nFlags": 2,
+        "flags": ["da_split","da_year_end"]
        }
       ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit 50;\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 0,
-    "value": "0.00",
-    "sourceTotal": 0,
-    "sourceValue": "0.00",
+    "total": 1,
+    "value": "12500.10",
+    "sourceTotal": 1,
+    "sourceValue": "12500.10",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 0,
-     "value": "0.00"
+     "count": 1,
+     "value": "12500.10"
     },
-    "dateFrom": null,
-    "dateTo": null,
+    "dateFrom": "2025-03-14",
+    "dateTo": "2025-03-14",
     "profile": true,
     "profiles": [
+     {
+      "entityId": "9100000002",
+      "name": "Municipiul Fixture Nord",
+      "role": "authority",
+      "count": 34,
+      "value": "51234.50",
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
+     },
+     {
+      "entityId": "9100000003",
+      "name": "Spitalul Judetean Fixture",
+      "role": "authority",
+      "count": 45,
+      "value": "98700.10",
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
+     },
      {
       "entityId": "9100000011",
       "name": "Comuna Profil Unu",
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      }
     ],
-    "profileCount": 1,
+    "profileCount": 3,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
-    "statuses": [],
-    "rows": []
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 1,
+      "value": "12500.10"
+     }
+    ],
+    "rows": [
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"]
+    ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-0.csv",
-    "x-total-rows": "0",
-    "x-exported-rows": "0",
-    "x-source-rows": "0",
-    "x-source-value": "0.00",
-    "x-filtered-value": "0.00",
-    "lines": 1,
-    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+    "file": "randuri-1.csv",
+    "x-total-rows": "1",
+    "x-exported-rows": "1",
+    "x-source-rows": "1",
+    "x-source-value": "12500.10",
+    "x-filtered-value": "12500.10",
+    "lines": 2,
+    "sha256": "464ce6bba3aa50edad189e9be25e39cabc58b5e541465262f694a31b12376d15"
    }
   },
   {
@@ -16549,33 +16868,32 @@
      "dim": "authority",
      "rankBy": "value"
     },
-    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": null,
       "group": {
-       "n": 7,
-       "nList": 7,
+       "n": 8,
+       "nList": 8,
        "small": true
       },
       "criteria": {
        "da_split": 4,
+       "da_round": 3,
        "da_year_end": 3,
-       "da_rapid": 3,
-       "da_round": 2,
-       "da_concentration": 3
+       "da_concentration": 3,
+       "da_above_ceiling": 2
       },
-      "p90": 85680.04000000001,
+      "p90": 147090.07000000004,
       "cloud": {
        "points": []
       },
@@ -16586,23 +16904,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -16613,17 +16932,18 @@
         "county": "Buzău",
         "value": 98700.1,
         "nDas": 45,
-        "cri": 0.812,
+        "score": 81,
+        "scoreRaw": 81,
         "nFlags": 4,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
+          "code": "da_round"
          },
          {
-          "code": "da_rapid"
+          "code": "da_year_end"
          },
          {
           "code": "da_concentration"
@@ -16637,17 +16957,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -16658,7 +16979,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -16676,7 +16998,8 @@
         "county": "Alba",
         "value": 40463.46,
         "nDas": 12,
-        "cri": 0.274,
+        "score": 27,
+        "scoreRaw": 27,
         "nFlags": 1,
         "flags": [
          {
@@ -16686,12 +17009,25 @@
         "kind": "consiliu_judetean"
        },
        {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "value": 260000,
+        "nDas": 31,
+        "score": 0,
+        "scoreRaw": 0,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "spital"
+       },
+       {
         "entityId": "9100000006",
         "name": "Municipiul Aiud",
         "county": "Alba",
         "value": 17542.15,
         "nDas": 10,
-        "cri": 0.151,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "oras_municipiu"
@@ -16702,7 +17038,8 @@
         "county": "Buzău",
         "value": 15500,
         "nDas": 27,
-        "cri": 0.052,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "comuna"
@@ -16710,7 +17047,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -16735,9 +17072,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -16745,9 +17092,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -16755,9 +17109,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000004",
@@ -16765,9 +17132,13 @@
       "role": "authority",
       "count": 12,
       "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
+      "score": 27,
+      "parts": {
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_concentration"]
      },
      {
       "entityId": "9100000006",
@@ -16775,9 +17146,9 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000011",
@@ -16785,9 +17156,25 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      },
      {
       "entityId": "9100000012",
@@ -16795,16 +17182,26 @@
       "role": "authority",
       "count": 27,
       "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
+     },
+     {
+      "entityId": "9100000013",
+      "name": "Spitalul Profil Trei",
+      "role": "authority",
+      "count": 31,
+      "value": "260000.00",
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
-    "profileCount": 7,
+    "profileCount": 8,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -19199,29 +19596,30 @@
      },
      "dim": "authority"
     },
-    "pills": ["criterii de risc față de grup","Agentia Fixture Nationala","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Agentia Fixture Nationala","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "below",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000007",
        "name": "Agentia Fixture Nationala",
-       "nFlags": 0,
-       "cri": null,
-       "flags": [],
        "nDas": 0,
        "county": null,
        "population": null,
-       "inGroup": false
+       "inGroup": false,
+       "score": 0,
+       "parts": {},
+       "nFlags": 0,
+       "flags": []
       },
       "group": {
        "words": "toate instituțiile publice",
@@ -19240,7 +19638,7 @@
       }
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -19438,13 +19836,13 @@
      "dim": "supplier",
      "rankBy": "risk"
     },
-    "pills": ["primii la egalitate","cea mai riscantă (CRI)","furnizori","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","furnizori","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -19462,7 +19860,7 @@
      },
      "empty": true
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit 50;\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare"
    },
    "sources": {
     "status": 200,
@@ -19485,7 +19883,7 @@
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [],
     "rows": []
@@ -28496,7 +28894,8 @@
        "role": "authority",
        "value": 408950.75,
        "count": 7,
-       "cri": 0.421,
+       "cri": 0.42,
+       "score": 42,
        "nFlags": 2,
        "flags": ["da_split","da_year_end"],
        "population": null,
@@ -28596,9 +28995,10 @@
        "role": "authority",
        "value": 3421602.35,
        "count": 7,
-       "cri": 0.812,
+       "cri": 0.81,
+       "score": 81,
        "nFlags": 4,
-       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+       "flags": ["da_split","da_year_end","da_round","da_concentration"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -28815,9 +29215,10 @@
        "role": "supplier",
        "value": 515570.7,
        "count": 10,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -28892,6 +29293,7 @@
        "value": 47100.01,
        "count": 2,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -29117,7 +29519,8 @@
        "role": "authority",
        "value": 361750.75,
        "count": 4,
-       "cri": 0.421,
+       "cri": 0.42,
+       "score": 42,
        "nFlags": 2,
        "flags": ["da_split","da_year_end"],
        "population": null,
@@ -29190,9 +29593,10 @@
        "role": "authority",
        "value": 64300.8,
        "count": 3,
-       "cri": 0.812,
+       "cri": 0.81,
+       "score": 81,
        "nFlags": 4,
-       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+       "flags": ["da_split","da_year_end","da_round","da_concentration"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -29380,9 +29784,10 @@
        "role": "supplier",
        "value": 74569.94,
        "count": 7,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -29452,6 +29857,7 @@
        "value": 2100,
        "count": 1,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -29644,7 +30050,8 @@
        "role": "authority",
        "value": 360800.35,
        "count": 3,
-       "cri": 0.421,
+       "cri": 0.42,
+       "score": 42,
        "nFlags": 2,
        "flags": ["da_split","da_year_end"],
        "population": null,
@@ -29707,9 +30114,10 @@
        "role": "authority",
        "value": 0,
        "count": 0,
-       "cri": 0.812,
+       "cri": 0.81,
+       "score": 81,
        "nFlags": 4,
-       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+       "flags": ["da_split","da_year_end","da_round","da_concentration"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -29879,9 +30287,10 @@
        "role": "supplier",
        "value": 454101.61,
        "count": 6,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -29954,6 +30363,7 @@
        "value": 47100.01,
        "count": 2,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -30194,9 +30604,10 @@
        "role": "supplier",
        "value": 20800.35,
        "count": 2,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -30259,6 +30670,7 @@
        "value": 2100,
        "count": 1,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -30452,9 +30864,10 @@
        "role": "supplier",
        "value": 454101.61,
        "count": 6,
-       "cri": 0.581,
+       "cri": 0.58,
+       "score": 58,
        "nFlags": 2,
-       "flags": ["da_concentration","da_dependence"],
+       "flags": ["da_split","da_dependence"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -30518,6 +30931,7 @@
        "value": 47100.01,
        "count": 2,
        "cri": null,
+       "score": null,
        "nFlags": 0,
        "flags": [],
        "population": null,
@@ -30755,7 +31169,8 @@
        "role": "authority",
        "value": 360800.35,
        "count": 3,
-       "cri": 0.421,
+       "cri": 0.42,
+       "score": 42,
        "nFlags": 2,
        "flags": ["da_split","da_year_end"],
        "population": null,
@@ -30818,9 +31233,10 @@
        "role": "authority",
        "value": 0,
        "count": 0,
-       "cri": 0.812,
+       "cri": 0.81,
+       "score": 81,
        "nFlags": 4,
-       "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+       "flags": ["da_split","da_year_end","da_round","da_concentration"],
        "population": null,
        "hasProfile": true,
        "streams": {
@@ -38267,14 +38683,13 @@
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
-      "levels": 4,
       "rankBy": "risk",
       "flag": null,
       "group": {
@@ -38283,10 +38698,10 @@
        "small": true
       },
       "criteria": {
-       "da_split": 0,
-       "da_rapid": 1,
+       "da_split": 1,
        "da_round": 0,
-       "da_dependence": 1
+       "da_dependence": 1,
+       "da_above_ceiling": 1
       },
       "p90": 73000,
       "cloud": {
@@ -38299,9 +38714,13 @@
         "county": "Cluj",
         "value": 88000,
         "nDas": 24,
-        "cri": 0.581,
+        "score": 58,
+        "scoreRaw": 58,
         "nFlags": 2,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_dependence"
          }
@@ -38315,11 +38734,12 @@
         "county": "Cluj",
         "value": 9000,
         "nDas": 13,
-        "cri": 0.473,
+        "score": 20,
+        "scoreRaw": 20,
         "nFlags": 1,
         "flags": [
          {
-          "code": "da_rapid"
+          "code": "da_above_ceiling"
          }
         ],
         "employees": 55,
@@ -38331,7 +38751,8 @@
         "county": "Cluj",
         "value": 13000,
         "nDas": 11,
-        "cri": 0.124,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "employees": 0,
@@ -38341,7 +38762,7 @@
       "wider": 6
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -38366,9 +38787,16 @@
       "role": "supplier",
       "count": 24,
       "value": "88000.00",
-      "cri": 0.581,
-      "flags": ["da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
      },
      {
       "entityId": "9100000105",
@@ -38376,9 +38804,9 @@
       "role": "supplier",
       "count": 11,
       "value": "13000.00",
-      "cri": 0.124,
-      "flags": [],
-      "applicable": 4
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000112",
@@ -38386,16 +38814,20 @@
       "role": "supplier",
       "count": 13,
       "value": "9000.00",
-      "cri": 0.473,
-      "flags": ["da_rapid"],
-      "applicable": 4
+      "score": 20,
+      "parts": {
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_above_ceiling"]
      }
     ],
     "profileCount": 3,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -44956,29 +45388,34 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "ok",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
-       "nFlags": 1,
-       "cri": 0.274,
-       "flags": ["da_concentration"],
        "nDas": 12,
        "county": "Alba",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 27,
+       "parts": {
+        "da_concentration": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_concentration"]
       },
       "group": {
        "words": "toate instituțiile publice",
@@ -45002,33 +45439,54 @@
        "memberIds": ["9100000011","9100000003","9100000001","9100000002","9100000013","9100000012","9100000006"]
       },
       "position": {
-       "more": 4,
-       "same": 0,
-       "fewer": 3
+       "higher": 4,
+       "equal": 0,
+       "lower": 3
       },
       "hist": [
        {
-        "k": 0,
+        "from": 0,
+        "to": 0,
         "n": 3
        },
        {
-        "k": 1,
+        "from": 20,
+        "to": 29,
         "n": 0
        },
        {
-        "k": 2,
+        "from": 30,
+        "to": 39,
+        "n": 0
+       },
+       {
+        "from": 40,
+        "to": 49,
         "n": 1
        },
        {
-        "k": 3,
+        "from": 50,
+        "to": 59,
+        "n": 0
+       },
+       {
+        "from": 60,
+        "to": 69,
         "n": 1
        },
        {
-        "k": 4,
+        "from": 70,
+        "to": 79,
+        "n": 0
+       },
+       {
+        "from": 80,
+        "to": 89,
         "n": 1
        },
        {
-        "k": 5,
+        "from": 90,
+        "to": 100,
         "n": 1
        }
       ],
@@ -45039,17 +45497,12 @@
         "country": 4
        },
        {
-        "code": "da_year_end",
+        "code": "da_round",
         "others": 3,
         "country": 3
        },
        {
-        "code": "da_round",
-        "others": 2,
-        "country": 2
-       },
-       {
-        "code": "da_rapid",
+        "code": "da_year_end",
         "others": 3,
         "country": 3
        },
@@ -45057,6 +45510,11 @@
         "code": "da_concentration",
         "others": 2,
         "country": 3
+       },
+       {
+        "code": "da_above_ceiling",
+        "others": 2,
+        "country": 2
        }
       ],
       "countryTotal": 8,
@@ -45067,8 +45525,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 5,
-        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-        "nDas": 22
+        "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
+        "nDas": 22,
+        "score": 93
        },
        {
         "entityId": "9100000003",
@@ -45076,8 +45535,9 @@
         "county": "Buzău",
         "population": null,
         "nFlags": 4,
-        "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-        "nDas": 45
+        "flags": ["da_split","da_year_end","da_round","da_concentration"],
+        "nDas": 45,
+        "score": 81
        },
        {
         "entityId": "9100000001",
@@ -45085,8 +45545,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 3,
-        "flags": ["da_split","da_rapid","da_round"],
-        "nDas": 18
+        "flags": ["da_split","da_round","da_above_ceiling"],
+        "nDas": 18,
+        "score": 66
        },
        {
         "entityId": "9100000002",
@@ -45095,7 +45556,8 @@
         "population": null,
         "nFlags": 2,
         "flags": ["da_split","da_year_end"],
-        "nDas": 34
+        "nDas": 34,
+        "score": 42
        },
        {
         "entityId": "9100000013",
@@ -45104,7 +45566,8 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 31
+        "nDas": 31,
+        "score": 0
        },
        {
         "entityId": "9100000012",
@@ -45113,7 +45576,8 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 27
+        "nDas": 27,
+        "score": 0
        },
        {
         "entityId": "9100000006",
@@ -45122,12 +45586,13 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 10
+        "nDas": 10,
+        "score": 0
        }
       ]
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -45152,9 +45617,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -45162,9 +45637,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -45172,9 +45654,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000006",
@@ -45182,9 +45677,9 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000011",
@@ -45192,9 +45687,25 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      },
      {
       "entityId": "9100000012",
@@ -45202,9 +45713,9 @@
       "role": "authority",
       "count": 27,
       "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000013",
@@ -45212,16 +45723,16 @@
       "role": "authority",
       "count": 31,
       "value": "260000.00",
-      "cri": null,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
     "profileCount": 7,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -45289,30 +45800,35 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "small",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
-       "nFlags": 1,
-       "cri": 0.274,
-       "flags": ["da_concentration"],
        "nDas": 12,
        "county": "Alba",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 27,
+       "parts": {
+        "da_concentration": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_concentration"]
       },
       "group": {
        "words": "instituțiile publice din județul Alba",
@@ -45336,7 +45852,7 @@
       }
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'alba'\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'alba';\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -45361,16 +45877,16 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
     "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [
      {
@@ -45458,30 +45974,35 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "small",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
-       "nFlags": 1,
-       "cri": 0.274,
-       "flags": ["da_concentration"],
        "nDas": 12,
        "county": "Alba",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 27,
+       "parts": {
+        "da_concentration": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_concentration"]
       },
       "group": {
        "words": "instituțiile publice din județul Alba",
@@ -45505,7 +46026,7 @@
       }
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'alba'\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'alba';\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -45530,16 +46051,20 @@
       "role": "authority",
       "count": 12,
       "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
+      "score": 27,
+      "parts": {
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_concentration"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [
      {
@@ -45612,29 +46137,34 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "ok",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000004",
        "name": "Consiliul Judetean Alba",
-       "nFlags": 1,
-       "cri": 0.274,
-       "flags": ["da_concentration"],
        "nDas": 12,
        "county": "Alba",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 27,
+       "parts": {
+        "da_concentration": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_concentration"]
       },
       "group": {
        "words": "toate instituțiile publice",
@@ -45658,33 +46188,54 @@
        "memberIds": ["9100000011","9100000003","9100000001","9100000002","9100000013","9100000012","9100000006"]
       },
       "position": {
-       "more": 4,
-       "same": 0,
-       "fewer": 3
+       "higher": 4,
+       "equal": 0,
+       "lower": 3
       },
       "hist": [
        {
-        "k": 0,
+        "from": 0,
+        "to": 0,
         "n": 3
        },
        {
-        "k": 1,
+        "from": 20,
+        "to": 29,
         "n": 0
        },
        {
-        "k": 2,
+        "from": 30,
+        "to": 39,
+        "n": 0
+       },
+       {
+        "from": 40,
+        "to": 49,
         "n": 1
        },
        {
-        "k": 3,
+        "from": 50,
+        "to": 59,
+        "n": 0
+       },
+       {
+        "from": 60,
+        "to": 69,
         "n": 1
        },
        {
-        "k": 4,
+        "from": 70,
+        "to": 79,
+        "n": 0
+       },
+       {
+        "from": 80,
+        "to": 89,
         "n": 1
        },
        {
-        "k": 5,
+        "from": 90,
+        "to": 100,
         "n": 1
        }
       ],
@@ -45695,17 +46246,12 @@
         "country": 4
        },
        {
-        "code": "da_year_end",
+        "code": "da_round",
         "others": 3,
         "country": 3
        },
        {
-        "code": "da_round",
-        "others": 2,
-        "country": 2
-       },
-       {
-        "code": "da_rapid",
+        "code": "da_year_end",
         "others": 3,
         "country": 3
        },
@@ -45713,6 +46259,11 @@
         "code": "da_concentration",
         "others": 2,
         "country": 3
+       },
+       {
+        "code": "da_above_ceiling",
+        "others": 2,
+        "country": 2
        }
       ],
       "countryTotal": 8,
@@ -45723,8 +46274,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 5,
-        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-        "nDas": 22
+        "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
+        "nDas": 22,
+        "score": 93
        },
        {
         "entityId": "9100000003",
@@ -45732,8 +46284,9 @@
         "county": "Buzău",
         "population": null,
         "nFlags": 4,
-        "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-        "nDas": 45
+        "flags": ["da_split","da_year_end","da_round","da_concentration"],
+        "nDas": 45,
+        "score": 81
        },
        {
         "entityId": "9100000001",
@@ -45741,8 +46294,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 3,
-        "flags": ["da_split","da_rapid","da_round"],
-        "nDas": 18
+        "flags": ["da_split","da_round","da_above_ceiling"],
+        "nDas": 18,
+        "score": 66
        },
        {
         "entityId": "9100000002",
@@ -45751,7 +46305,8 @@
         "population": null,
         "nFlags": 2,
         "flags": ["da_split","da_year_end"],
-        "nDas": 34
+        "nDas": 34,
+        "score": 42
        },
        {
         "entityId": "9100000013",
@@ -45760,7 +46315,8 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 31
+        "nDas": 31,
+        "score": 0
        },
        {
         "entityId": "9100000012",
@@ -45769,7 +46325,8 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 27
+        "nDas": 27,
+        "score": 0
        },
        {
         "entityId": "9100000006",
@@ -45778,12 +46335,13 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 10
+        "nDas": 10,
+        "score": 0
        }
       ]
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -45808,16 +46366,20 @@
       "role": "authority",
       "count": 12,
       "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
+      "score": 27,
+      "parts": {
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_concentration"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [
      {
@@ -45884,29 +46446,37 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
       "status": "small",
-      "criteria": ["da_split","da_year_end","da_round","da_rapid","da_concentration"],
+      "criteria": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "focal": {
        "entityId": "9100000002",
        "name": "Municipiul Fixture Nord",
-       "nFlags": 2,
-       "cri": 0.421,
-       "flags": ["da_split","da_year_end"],
        "nDas": 34,
        "county": "Cluj",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 42,
+       "parts": {
+        "da_split": {
+         "x": 1
+        },
+        "da_year_end": {
+         "x": 1
+        }
+       },
+       "nFlags": 2,
+       "flags": ["da_split","da_year_end"]
       },
       "group": {
        "words": "primăriile de oraș și municipiu",
@@ -45931,7 +46501,7 @@
       }
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and entity_id in (…)  -- doar primării de oraș și municipiu\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10\n  and entity_id <> <entitatea>\n  and entity_id in (…)  -- doar primării de oraș și municipiu\n;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -45956,16 +46526,16 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
     "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [
      {
@@ -46045,29 +46615,34 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
       "status": "ok",
-      "criteria": ["da_split","da_dependence","da_rapid","da_round"],
+      "criteria": ["da_split","da_round","da_dependence","da_above_ceiling"],
       "focal": {
        "entityId": "9100000102",
        "name": "Fixture Medical SRL",
-       "nFlags": 1,
-       "cri": 0.362,
-       "flags": ["da_dependence"],
        "nDas": 40,
        "county": "Buzău",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 36,
+       "parts": {
+        "da_dependence": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_dependence"]
       },
       "group": {
        "words": "toate firmele",
@@ -46089,37 +46664,67 @@
        "memberIds": ["9100000111","9100000103","9100000101","9100000112","9100000105"]
       },
       "position": {
-       "more": 3,
-       "same": 1,
-       "fewer": 1
+       "higher": 3,
+       "equal": 0,
+       "lower": 2
       },
       "hist": [
        {
-        "k": 0,
+        "from": 0,
+        "to": 0,
         "n": 1
        },
        {
-        "k": 1,
+        "from": 20,
+        "to": 29,
         "n": 1
        },
        {
-        "k": 2,
+        "from": 30,
+        "to": 39,
+        "n": 0
+       },
+       {
+        "from": 40,
+        "to": 49,
+        "n": 0
+       },
+       {
+        "from": 50,
+        "to": 59,
         "n": 1
        },
        {
-        "k": 3,
+        "from": 60,
+        "to": 69,
+        "n": 0
+       },
+       {
+        "from": 70,
+        "to": 79,
         "n": 1
        },
        {
-        "k": 4,
+        "from": 80,
+        "to": 89,
         "n": 1
+       },
+       {
+        "from": 90,
+        "to": 100,
+        "n": 0
        }
       ],
       "perCriterion": [
        {
         "code": "da_split",
-        "others": 1,
-        "country": 1
+        "others": 3,
+        "country": 3
+       },
+       {
+        "code": "da_round",
+        "others": 2,
+        "country": 2
        },
        {
         "code": "da_dependence",
@@ -46127,12 +46732,7 @@
         "country": 4
        },
        {
-        "code": "da_rapid",
-        "others": 1,
-        "country": 1
-       },
-       {
-        "code": "da_round",
+        "code": "da_above_ceiling",
         "others": 2,
         "country": 2
        }
@@ -46145,8 +46745,9 @@
         "county": "Buzău",
         "population": null,
         "nFlags": 4,
-        "flags": ["da_split","da_round","da_concentration","da_dependence"],
-        "nDas": 26
+        "flags": ["da_split","da_round","da_dependence","da_above_ceiling"],
+        "nDas": 26,
+        "score": 89
        },
        {
         "entityId": "9100000103",
@@ -46154,8 +46755,9 @@
         "county": "Alba",
         "population": null,
         "nFlags": 3,
-        "flags": ["da_round","da_concentration","da_dependence"],
-        "nDas": 15
+        "flags": ["da_split","da_round","da_dependence"],
+        "nDas": 15,
+        "score": 71
        },
        {
         "entityId": "9100000101",
@@ -46163,8 +46765,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 2,
-        "flags": ["da_concentration","da_dependence"],
-        "nDas": 24
+        "flags": ["da_split","da_dependence"],
+        "nDas": 24,
+        "score": 58
        },
        {
         "entityId": "9100000112",
@@ -46172,8 +46775,9 @@
         "county": "Cluj",
         "population": null,
         "nFlags": 1,
-        "flags": ["da_rapid"],
-        "nDas": 13
+        "flags": ["da_above_ceiling"],
+        "nDas": 13,
+        "score": 20
        },
        {
         "entityId": "9100000105",
@@ -46182,12 +46786,13 @@
         "population": null,
         "nFlags": 0,
         "flags": [],
-        "nDas": 11
+        "nDas": 11,
+        "score": 0
        }
       ]
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10\n  and entity_id <> <entitatea>\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10\n  and entity_id <> <entitatea>;\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -46212,9 +46817,16 @@
       "role": "supplier",
       "count": 24,
       "value": "88000.00",
-      "cri": 0.581,
-      "flags": ["da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
      },
      {
       "entityId": "9100000103",
@@ -46222,9 +46834,19 @@
       "role": "supplier",
       "count": 15,
       "value": "60000.00",
-      "cri": 0.714,
-      "flags": ["da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 71,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence"]
      },
      {
       "entityId": "9100000105",
@@ -46232,9 +46854,9 @@
       "role": "supplier",
       "count": 11,
       "value": "13000.00",
-      "cri": 0.124,
-      "flags": [],
-      "applicable": 4
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000111",
@@ -46242,9 +46864,22 @@
       "role": "supplier",
       "count": 26,
       "value": "45000.00",
-      "cri": 0.887,
-      "flags": ["da_split","da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 89,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
      },
      {
       "entityId": "9100000112",
@@ -46252,16 +46887,20 @@
       "role": "supplier",
       "count": 13,
       "value": "9000.00",
-      "cri": 0.473,
-      "flags": ["da_rapid"],
-      "applicable": 4
+      "score": 20,
+      "parts": {
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_above_ceiling"]
      }
     ],
     "profileCount": 5,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -46329,31 +46968,36 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["criterii de risc față de grup","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
      "distribution": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
       "status": "small",
-      "criteria": ["da_split","da_dependence","da_rapid","da_round"],
+      "criteria": ["da_split","da_round","da_dependence","da_above_ceiling"],
       "focal": {
        "entityId": "9100000102",
        "name": "Fixture Medical SRL",
-       "nFlags": 1,
-       "cri": 0.362,
-       "flags": ["da_dependence"],
        "nDas": 40,
        "county": "Buzău",
        "population": null,
-       "inGroup": true
+       "inGroup": true,
+       "score": 36,
+       "parts": {
+        "da_dependence": {
+         "x": 1
+        }
+       },
+       "nFlags": 1,
+       "flags": ["da_dependence"]
       },
       "group": {
        "words": "firmele cu sediul în județul Buzău",
@@ -46375,7 +47019,7 @@
       }
      }
     },
-    "displaySql": "select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'buzau'\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una"
+    "displaySql": "select count(*) filter (where score > <scorul entității>) mai_mare,\n       count(*) filter (where score = <scorul entității>) egal,\n       count(*) filter (where score < <scorul entității>) mai_mic\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10\n  and entity_id <> <entitatea>\n  and unaccent(county) ilike 'buzau';\n-- + scorul fiecărui membru (până la 50) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul"
    },
    "sources": {
     "status": 200,
@@ -46400,16 +47044,29 @@
       "role": "supplier",
       "count": 26,
       "value": "45000.00",
-      "cri": 0.887,
-      "flags": ["da_split","da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 89,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [],
@@ -46458,33 +47115,32 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": null,
       "group": {
-       "n": 7,
-       "nList": 7,
+       "n": 8,
+       "nList": 8,
        "small": true
       },
       "criteria": {
        "da_split": 4,
+       "da_round": 3,
        "da_year_end": 3,
-       "da_rapid": 3,
-       "da_round": 2,
-       "da_concentration": 3
+       "da_concentration": 3,
+       "da_above_ceiling": 2
       },
-      "p90": 85680.04000000001,
+      "p90": 147090.07000000004,
       "cloud": {
        "points": []
       },
@@ -46495,23 +47151,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -46522,17 +47179,18 @@
         "county": "Buzău",
         "value": 98700.1,
         "nDas": 45,
-        "cri": 0.812,
+        "score": 81,
+        "scoreRaw": 81,
         "nFlags": 4,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
+          "code": "da_round"
          },
          {
-          "code": "da_rapid"
+          "code": "da_year_end"
          },
          {
           "code": "da_concentration"
@@ -46546,17 +47204,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -46567,7 +47226,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -46585,7 +47245,8 @@
         "county": "Alba",
         "value": 40463.46,
         "nDas": 12,
-        "cri": 0.274,
+        "score": 27,
+        "scoreRaw": 27,
         "nFlags": 1,
         "flags": [
          {
@@ -46595,12 +47256,25 @@
         "kind": "consiliu_judetean"
        },
        {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "value": 260000,
+        "nDas": 31,
+        "score": 0,
+        "scoreRaw": 0,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "spital"
+       },
+       {
         "entityId": "9100000006",
         "name": "Municipiul Aiud",
         "county": "Alba",
         "value": 17542.15,
         "nDas": 10,
-        "cri": 0.151,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "oras_municipiu"
@@ -46611,7 +47285,8 @@
         "county": "Buzău",
         "value": 15500,
         "nDas": 27,
-        "cri": 0.052,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "comuna"
@@ -46619,7 +47294,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -46644,9 +47319,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -46654,9 +47339,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -46664,9 +47356,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000004",
@@ -46674,9 +47379,13 @@
       "role": "authority",
       "count": 12,
       "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
+      "score": 27,
+      "parts": {
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_concentration"]
      },
      {
       "entityId": "9100000006",
@@ -46684,9 +47393,9 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000011",
@@ -46694,9 +47403,25 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      },
      {
       "entityId": "9100000012",
@@ -46704,16 +47429,26 @@
       "role": "authority",
       "count": 27,
       "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
+     },
+     {
+      "entityId": "9100000013",
+      "name": "Spitalul Profil Trei",
+      "role": "authority",
+      "count": 31,
+      "value": "260000.00",
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
-    "profileCount": 7,
+    "profileCount": 8,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -46784,14 +47519,13 @@
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
-      "levels": 4,
       "rankBy": "risk",
       "flag": null,
       "group": {
@@ -46800,10 +47534,10 @@
        "small": true
       },
       "criteria": {
-       "da_split": 1,
-       "da_rapid": 1,
+       "da_split": 3,
        "da_round": 2,
-       "da_dependence": 4
+       "da_dependence": 4,
+       "da_above_ceiling": 2
       },
       "p90": 114000,
       "cloud": {
@@ -46816,7 +47550,8 @@
         "county": "Buzău",
         "value": 45000,
         "nDas": 26,
-        "cri": 0.887,
+        "score": 89,
+        "scoreRaw": 89,
         "nFlags": 4,
         "flags": [
          {
@@ -46827,6 +47562,9 @@
          },
          {
           "code": "da_dependence"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "employees": 7,
@@ -46838,9 +47576,13 @@
         "county": "Alba",
         "value": 60000,
         "nDas": 15,
-        "cri": 0.714,
+        "score": 71,
+        "scoreRaw": 71,
         "nFlags": 3,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_round"
          },
@@ -46857,9 +47599,13 @@
         "county": "Cluj",
         "value": 88000,
         "nDas": 24,
-        "cri": 0.581,
+        "score": 58,
+        "scoreRaw": 58,
         "nFlags": 2,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_dependence"
          }
@@ -46868,28 +47614,13 @@
         "employeesYear": 2024
        },
        {
-        "entityId": "9100000112",
-        "name": "Profil Firma Doi SRL",
-        "county": "Cluj",
-        "value": 9000,
-        "nDas": 13,
-        "cri": 0.473,
-        "nFlags": 1,
-        "flags": [
-         {
-          "code": "da_rapid"
-         }
-        ],
-        "employees": 55,
-        "employeesYear": 2024
-       },
-       {
         "entityId": "9100000102",
         "name": "Fixture Medical SRL",
         "county": "Buzău",
         "value": 140000,
         "nDas": 40,
-        "cri": 0.362,
+        "score": 36,
+        "scoreRaw": 36,
         "nFlags": 1,
         "flags": [
          {
@@ -46900,12 +47631,30 @@
         "employeesYear": 2024
        },
        {
+        "entityId": "9100000112",
+        "name": "Profil Firma Doi SRL",
+        "county": "Cluj",
+        "value": 9000,
+        "nDas": 13,
+        "score": 20,
+        "scoreRaw": 20,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_above_ceiling"
+         }
+        ],
+        "employees": 55,
+        "employeesYear": 2024
+       },
+       {
         "entityId": "9100000105",
         "name": "Fixture Mic SRL",
         "county": "Cluj",
         "value": 13000,
         "nDas": 11,
-        "cri": 0.124,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "employees": 0,
@@ -46914,7 +47663,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -46939,9 +47688,16 @@
       "role": "supplier",
       "count": 24,
       "value": "88000.00",
-      "cri": 0.581,
-      "flags": ["da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
      },
      {
       "entityId": "9100000102",
@@ -46949,9 +47705,13 @@
       "role": "supplier",
       "count": 40,
       "value": "140000.00",
-      "cri": 0.362,
-      "flags": ["da_dependence"],
-      "applicable": 4
+      "score": 36,
+      "parts": {
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_dependence"]
      },
      {
       "entityId": "9100000103",
@@ -46959,9 +47719,19 @@
       "role": "supplier",
       "count": 15,
       "value": "60000.00",
-      "cri": 0.714,
-      "flags": ["da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 71,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence"]
      },
      {
       "entityId": "9100000105",
@@ -46969,9 +47739,9 @@
       "role": "supplier",
       "count": 11,
       "value": "13000.00",
-      "cri": 0.124,
-      "flags": [],
-      "applicable": 4
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000111",
@@ -46979,9 +47749,22 @@
       "role": "supplier",
       "count": 26,
       "value": "45000.00",
-      "cri": 0.887,
-      "flags": ["da_split","da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 89,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
      },
      {
       "entityId": "9100000112",
@@ -46989,16 +47772,20 @@
       "role": "supplier",
       "count": 13,
       "value": "9000.00",
-      "cri": 0.473,
-      "flags": ["da_rapid"],
-      "applicable": 4
+      "score": 20,
+      "parts": {
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_above_ceiling"]
      }
     ],
     "profileCount": 6,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -47068,34 +47855,33 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["3 instituții publice","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["4 instituții publice","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": null,
       "group": {
-       "n": 3,
-       "nList": 3,
+       "n": 4,
+       "nList": 4,
        "small": true
       },
       "criteria": {
        "da_split": 3,
-       "da_year_end": 2,
-       "da_rapid": 2,
        "da_round": 2,
-       "da_concentration": 1
+       "da_year_end": 2,
+       "da_concentration": 1,
+       "da_above_ceiling": 2
       },
-      "p90": 71846.9,
+      "p90": 205100,
       "cloud": {
        "points": []
       },
@@ -47106,23 +47892,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -47133,17 +47920,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -47154,7 +47942,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -47165,12 +47954,24 @@
          }
         ],
         "kind": "oras_municipiu"
+       },
+       {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "value": 260000,
+        "nDas": 31,
+        "score": 0,
+        "scoreRaw": 0,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "spital"
        }
       ],
-      "wider": 7
+      "wider": 8
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47195,9 +47996,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -47205,9 +48016,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000011",
@@ -47215,16 +48033,42 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
+     },
+     {
+      "entityId": "9100000013",
+      "name": "Spitalul Profil Trei",
+      "role": "authority",
+      "count": 31,
+      "value": "260000.00",
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
-    "profileCount": 3,
+    "profileCount": 4,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -47295,14 +48139,13 @@
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": null,
       "group": {
@@ -47312,10 +48155,10 @@
       },
       "criteria": {
        "da_split": 2,
-       "da_year_end": 1,
-       "da_rapid": 2,
        "da_round": 2,
-       "da_concentration": 1
+       "da_year_end": 1,
+       "da_concentration": 1,
+       "da_above_ceiling": 2
       },
       "p90": 67700,
       "cloud": {
@@ -47328,23 +48171,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ]
        },
@@ -47354,17 +48198,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ]
        },
@@ -47374,14 +48219,15 @@
         "county": "Buzău",
         "value": 15500,
         "nDas": 27,
-        "cri": 0.052,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": []
        }
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and entity_id in (…)  -- doar primării de comună\n;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and entity_id in (…)  -- doar primării de comună\n;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47404,7 +48250,7 @@
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă."
     ],
     "statuses": [],
     "rows": []
@@ -47455,33 +48301,32 @@
       "flag": "da_split"
      }
     },
-    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","semnal: posibilă fracționare"],
+    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","semnal: achiziții repetate, peste plafon cumulat"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": "da_split",
       "group": {
-       "n": 7,
-       "nList": 7,
+       "n": 8,
+       "nList": 8,
        "small": true
       },
       "criteria": {
        "da_split": 4,
+       "da_round": 3,
        "da_year_end": 3,
-       "da_rapid": 3,
-       "da_round": 2,
-       "da_concentration": 3
+       "da_concentration": 3,
+       "da_above_ceiling": 2
       },
-      "p90": 85680.04000000001,
+      "p90": 147090.07000000004,
       "cloud": {
        "points": []
       },
@@ -47492,23 +48337,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -47519,17 +48365,18 @@
         "county": "Buzău",
         "value": 98700.1,
         "nDas": 45,
-        "cri": 0.812,
+        "score": 81,
+        "scoreRaw": 81,
         "nFlags": 4,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
+          "code": "da_round"
          },
          {
-          "code": "da_rapid"
+          "code": "da_year_end"
          },
          {
           "code": "da_concentration"
@@ -47543,17 +48390,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -47564,7 +48412,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -47583,7 +48432,7 @@
       }
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_split'  -- Posibilă fracționare\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_split'  -- Achiziții repetate, peste plafon cumulat\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47608,9 +48457,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -47618,9 +48477,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -47628,9 +48494,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000011",
@@ -47638,17 +48517,33 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      }
     ],
     "profileCount": 4,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Posibilă fracționare”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele semnalului „Achiziții repetate, peste plafon cumulat”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
     ],
     "statuses": [],
     "rows": []
@@ -47696,54 +48591,66 @@
       "rankBy": "value"
      }
     },
-    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","primele după valoare"],
+    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","primele după valoare"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "value",
       "flag": null,
       "group": {
-       "n": 7,
-       "nList": 7,
+       "n": 8,
+       "nList": 8,
        "small": true
       },
       "criteria": {
        "da_split": 4,
+       "da_round": 3,
        "da_year_end": 3,
-       "da_rapid": 3,
-       "da_round": 2,
-       "da_concentration": 3
+       "da_concentration": 3,
+       "da_above_ceiling": 2
       },
-      "p90": 85680.04000000001,
+      "p90": 147090.07000000004,
       "cloud": {
        "points": []
       },
       "list": [
+       {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "value": 260000,
+        "nDas": 31,
+        "score": 0,
+        "scoreRaw": 0,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "spital"
+       },
        {
         "entityId": "9100000003",
         "name": "Spitalul Judetean Fixture",
         "county": "Buzău",
         "value": 98700.1,
         "nDas": 45,
-        "cri": 0.812,
+        "score": 81,
+        "scoreRaw": 81,
         "nFlags": 4,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
+          "code": "da_round"
          },
          {
-          "code": "da_rapid"
+          "code": "da_year_end"
          },
          {
           "code": "da_concentration"
@@ -47757,23 +48664,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -47784,7 +48692,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -47802,7 +48711,8 @@
         "county": "Alba",
         "value": 40463.46,
         "nDas": 12,
-        "cri": 0.274,
+        "score": 27,
+        "scoreRaw": 27,
         "nFlags": 1,
         "flags": [
          {
@@ -47817,17 +48727,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -47838,7 +48749,8 @@
         "county": "Alba",
         "value": 17542.15,
         "nDas": 10,
-        "cri": 0.151,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "oras_municipiu"
@@ -47849,7 +48761,8 @@
         "county": "Buzău",
         "value": 15500,
         "nDas": 27,
-        "cri": 0.052,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "comuna"
@@ -47857,7 +48770,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by total_ron desc, entity_id\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -47882,9 +48795,19 @@
       "role": "authority",
       "count": 18,
       "value": "30500.00",
-      "cri": 0.663,
-      "flags": ["da_split","da_rapid","da_round"],
-      "applicable": 5
+      "score": 66,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_above_ceiling"]
      },
      {
       "entityId": "9100000002",
@@ -47892,9 +48815,16 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      },
      {
       "entityId": "9100000003",
@@ -47902,9 +48832,22 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      },
      {
       "entityId": "9100000004",
@@ -47912,9 +48855,13 @@
       "role": "authority",
       "count": 12,
       "value": "40463.46",
-      "cri": 0.274,
-      "flags": ["da_concentration"],
-      "applicable": 5
+      "score": 27,
+      "parts": {
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_concentration"]
      },
      {
       "entityId": "9100000006",
@@ -47922,9 +48869,9 @@
       "role": "authority",
       "count": 10,
       "value": "17542.15",
-      "cri": 0.151,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
      },
      {
       "entityId": "9100000011",
@@ -47932,9 +48879,25 @@
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      },
      {
       "entityId": "9100000012",
@@ -47942,16 +48905,26 @@
       "role": "authority",
       "count": 27,
       "value": "15500.00",
-      "cri": 0.052,
-      "flags": [],
-      "applicable": 5
+      "score": 0,
+      "parts": {},
+      "flags": []
+     },
+     {
+      "entityId": "9100000013",
+      "name": "Spitalul Profil Trei",
+      "role": "authority",
+      "count": 31,
+      "value": "260000.00",
+      "score": 0,
+      "parts": {},
+      "flags": []
      }
     ],
-    "profileCount": 7,
+    "profileCount": 8,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [
@@ -48030,14 +49003,13 @@
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "supplier",
-      "levels": 4,
       "rankBy": "risk",
       "flag": "da_dependence",
       "group": {
@@ -48046,10 +49018,10 @@
        "small": true
       },
       "criteria": {
-       "da_split": 1,
-       "da_rapid": 1,
+       "da_split": 3,
        "da_round": 2,
-       "da_dependence": 4
+       "da_dependence": 4,
+       "da_above_ceiling": 2
       },
       "p90": 114000,
       "cloud": {
@@ -48062,7 +49034,8 @@
         "county": "Buzău",
         "value": 45000,
         "nDas": 26,
-        "cri": 0.887,
+        "score": 89,
+        "scoreRaw": 89,
         "nFlags": 4,
         "flags": [
          {
@@ -48073,6 +49046,9 @@
          },
          {
           "code": "da_dependence"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "employees": 7,
@@ -48084,9 +49060,13 @@
         "county": "Alba",
         "value": 60000,
         "nDas": 15,
-        "cri": 0.714,
+        "score": 71,
+        "scoreRaw": 71,
         "nFlags": 3,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_round"
          },
@@ -48103,9 +49083,13 @@
         "county": "Cluj",
         "value": 88000,
         "nDas": 24,
-        "cri": 0.581,
+        "score": 58,
+        "scoreRaw": 58,
         "nFlags": 2,
         "flags": [
+         {
+          "code": "da_split"
+         },
          {
           "code": "da_dependence"
          }
@@ -48119,7 +49103,8 @@
         "county": "Buzău",
         "value": 140000,
         "nDas": 40,
-        "cri": 0.362,
+        "score": 36,
+        "scoreRaw": 36,
         "nFlags": 1,
         "flags": [
          {
@@ -48136,7 +49121,7 @@
       }
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Dependență de o autoritate\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Dependență de o autoritate\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -48161,16 +49146,20 @@
       "role": "supplier",
       "count": 40,
       "value": "140000.00",
-      "cri": 0.362,
-      "flags": ["da_dependence"],
-      "applicable": 4
+      "score": 36,
+      "parts": {
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_dependence"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": null,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele semnalului „Dependență de o autoritate”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
     ],
     "statuses": [
@@ -48237,33 +49226,32 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["7 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
      "scatter": {
-      "version": 2,
+      "version": 3,
       "role": "authority",
-      "levels": 5,
       "rankBy": "risk",
       "flag": null,
       "group": {
-       "n": 7,
-       "nList": 7,
+       "n": 8,
+       "nList": 8,
        "small": true
       },
       "criteria": {
        "da_split": 4,
+       "da_round": 3,
        "da_year_end": 3,
-       "da_rapid": 3,
-       "da_round": 2,
-       "da_concentration": 3
+       "da_concentration": 3,
+       "da_above_ceiling": 2
       },
-      "p90": 85680.04000000001,
+      "p90": 147090.07000000004,
       "cloud": {
        "points": []
       },
@@ -48274,23 +49262,24 @@
         "county": "Cluj",
         "value": 77000,
         "nDas": 22,
-        "cri": 0.933,
+        "score": 93,
+        "scoreRaw": 93,
         "nFlags": 5,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
-         },
-         {
-          "code": "da_rapid"
-         },
-         {
           "code": "da_round"
          },
          {
+          "code": "da_year_end"
+         },
+         {
           "code": "da_concentration"
+         },
+         {
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -48301,17 +49290,18 @@
         "county": "Buzău",
         "value": 98700.1,
         "nDas": 45,
-        "cri": 0.812,
+        "score": 81,
+        "scoreRaw": 81,
         "nFlags": 4,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_year_end"
+          "code": "da_round"
          },
          {
-          "code": "da_rapid"
+          "code": "da_year_end"
          },
          {
           "code": "da_concentration"
@@ -48325,17 +49315,18 @@
         "county": "Cluj",
         "value": 30500,
         "nDas": 18,
-        "cri": 0.663,
+        "score": 66,
+        "scoreRaw": 66,
         "nFlags": 3,
         "flags": [
          {
           "code": "da_split"
          },
          {
-          "code": "da_rapid"
+          "code": "da_round"
          },
          {
-          "code": "da_round"
+          "code": "da_above_ceiling"
          }
         ],
         "kind": "comuna"
@@ -48346,7 +49337,8 @@
         "county": "Cluj",
         "value": 51234.5,
         "nDas": 34,
-        "cri": 0.421,
+        "score": 42,
+        "scoreRaw": 42,
         "nFlags": 2,
         "flags": [
          {
@@ -48364,7 +49356,8 @@
         "county": "Alba",
         "value": 40463.46,
         "nDas": 12,
-        "cri": 0.274,
+        "score": 27,
+        "scoreRaw": 27,
         "nFlags": 1,
         "flags": [
          {
@@ -48374,12 +49367,25 @@
         "kind": "consiliu_judetean"
        },
        {
+        "entityId": "9100000013",
+        "name": "Spitalul Profil Trei",
+        "county": "Cluj",
+        "value": 260000,
+        "nDas": 31,
+        "score": 0,
+        "scoreRaw": 0,
+        "nFlags": 0,
+        "flags": [],
+        "kind": "spital"
+       },
+       {
         "entityId": "9100000006",
         "name": "Municipiul Aiud",
         "county": "Alba",
         "value": 17542.15,
         "nDas": 10,
-        "cri": 0.151,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "oras_municipiu"
@@ -48390,7 +49396,8 @@
         "county": "Buzău",
         "value": 15500,
         "nDas": 27,
-        "cri": 0.052,
+        "score": 0,
+        "scoreRaw": 0,
         "nFlags": 0,
         "flags": [],
         "kind": "comuna"
@@ -48398,7 +49405,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by cri desc, total_ron desc, entity_id\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -48423,17 +49430,24 @@
       "role": "authority",
       "count": 34,
       "value": "51234.50",
-      "cri": 0.421,
-      "flags": ["da_split","da_year_end"],
-      "applicable": 5
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": true,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Vârf în decembrie”: achizițiile finalizate în decembrie, în anii în care decembrie a avut cel puțin 35% din valoarea anuală, nu tot istoricul profilurilor."
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele semnalului „Vârf în decembrie”: achizițiile finalizate în decembrie, în anii semnalați, nu tot istoricul profilurilor."
     ],
     "statuses": [],
     "rows": []
@@ -48477,11 +49491,11 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -48492,20 +49506,18 @@
       "role": "authority",
       "value": 77000,
       "count": 22,
-      "cri": 0.933,
+      "cri": null,
+      "score": 93,
       "nFlags": 5,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"],
       "population": null
      },
-     "ties": {
-      "version": 2,
-      "level": 0.933,
-      "maxFlags": 5,
-      "criteria": 5,
-      "count": 1,
-      "pool": 4,
-      "nextLevel": 0.812,
-      "nextCount": 1,
+     "ranking": {
+      "version": 3,
+      "pool": 5,
+      "scored": 3,
+      "top": 93,
+      "topCount": 1,
       "rows": [
        {
         "entityId": "9100000011",
@@ -48513,62 +49525,147 @@
         "county": "Cluj",
         "count": 22,
         "value": 77000,
+        "score": 93,
         "nFlags": 5,
-        "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"]
+        "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
+       },
+       {
+        "entityId": "9100000003",
+        "name": "Spitalul Judetean Fixture",
+        "county": "Buzau",
+        "count": 45,
+        "value": 98700.1,
+        "score": 81,
+        "nFlags": 4,
+        "flags": ["da_split","da_year_end","da_round","da_concentration"]
+       },
+       {
+        "entityId": "9100000002",
+        "name": "Municipiul Fixture Nord",
+        "county": "Cluj",
+        "count": 34,
+        "value": 51234.5,
+        "score": 42,
+        "nFlags": 2,
+        "flags": ["da_split","da_year_end"]
        }
       ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit 50;\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 0,
-    "value": "0.00",
-    "sourceTotal": 0,
-    "sourceValue": "0.00",
+    "total": 1,
+    "value": "12500.10",
+    "sourceTotal": 1,
+    "sourceValue": "12500.10",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 0,
-     "value": "0.00"
+     "count": 1,
+     "value": "12500.10"
     },
-    "dateFrom": null,
-    "dateTo": null,
+    "dateFrom": "2025-03-14",
+    "dateTo": "2025-03-14",
     "profile": true,
     "profiles": [
+     {
+      "entityId": "9100000002",
+      "name": "Municipiul Fixture Nord",
+      "role": "authority",
+      "count": 34,
+      "value": "51234.50",
+      "score": 42,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end"]
+     },
+     {
+      "entityId": "9100000003",
+      "name": "Spitalul Judetean Fixture",
+      "role": "authority",
+      "count": 45,
+      "value": "98700.10",
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
+     },
      {
       "entityId": "9100000011",
       "name": "Comuna Profil Unu",
       "role": "authority",
       "count": 22,
       "value": "77000.00",
-      "cri": 0.933,
-      "flags": ["da_split","da_year_end","da_rapid","da_round","da_concentration"],
-      "applicable": 5
+      "score": 93,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_year_end","da_concentration","da_above_ceiling"]
      }
     ],
-    "profileCount": 1,
+    "profileCount": 3,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
-    "statuses": [],
-    "rows": []
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 1,
+      "value": "12500.10"
+     }
+    ],
+    "rows": [
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"]
+    ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-0.csv",
-    "x-total-rows": "0",
-    "x-exported-rows": "0",
-    "x-source-rows": "0",
-    "x-source-value": "0.00",
-    "x-filtered-value": "0.00",
-    "lines": 1,
-    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+    "file": "randuri-1.csv",
+    "x-total-rows": "1",
+    "x-exported-rows": "1",
+    "x-source-rows": "1",
+    "x-source-value": "12500.10",
+    "x-filtered-value": "12500.10",
+    "lines": 2,
+    "sha256": "464ce6bba3aa50edad189e9be25e39cabc58b5e541465262f694a31b12376d15"
    }
   },
   {
@@ -48598,12 +49695,12 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii la egalitate","cea mai riscantă (CRI)","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -48614,20 +49711,18 @@
       "role": "supplier",
       "value": 45000,
       "count": 26,
-      "cri": 0.887,
+      "cri": null,
+      "score": 89,
       "nFlags": 4,
-      "flags": ["da_split","da_round","da_concentration","da_dependence"],
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"],
       "population": null
      },
-     "ties": {
-      "version": 2,
-      "level": 0.887,
-      "maxFlags": 4,
-      "criteria": 4,
-      "count": 1,
+     "ranking": {
+      "version": 3,
       "pool": 3,
-      "nextLevel": 0.581,
-      "nextCount": 1,
+      "scored": 3,
+      "top": 89,
+      "topCount": 1,
       "rows": [
        {
         "entityId": "9100000111",
@@ -48635,62 +49730,144 @@
         "county": "Buzau",
         "count": 26,
         "value": 45000,
+        "score": 89,
         "nFlags": 4,
-        "flags": ["da_split","da_round","da_concentration","da_dependence"]
+        "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "count": 24,
+        "value": 88000,
+        "score": 58,
+        "nFlags": 2,
+        "flags": ["da_split","da_dependence"]
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzau",
+        "count": 40,
+        "value": 140000,
+        "score": 36,
+        "nFlags": 1,
+        "flags": ["da_dependence"]
        }
       ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit 50;\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 0,
-    "value": "0.00",
-    "sourceTotal": 0,
-    "sourceValue": "0.00",
+    "total": 10,
+    "value": "38833.38",
+    "sourceTotal": 10,
+    "sourceValue": "38833.38",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 0,
-     "value": "0.00"
+     "count": 10,
+     "value": "38833.38"
     },
-    "dateFrom": null,
-    "dateTo": null,
+    "dateFrom": "2024-01-12",
+    "dateTo": "2026-05-18",
     "profile": true,
     "profiles": [
+     {
+      "entityId": "9100000101",
+      "name": "Fixture Construct SRL",
+      "role": "supplier",
+      "count": 24,
+      "value": "88000.00",
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
+     },
+     {
+      "entityId": "9100000102",
+      "name": "Fixture Medical SRL",
+      "role": "supplier",
+      "count": 40,
+      "value": "140000.00",
+      "score": 36,
+      "parts": {
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_dependence"]
+     },
      {
       "entityId": "9100000111",
       "name": "Profil Firma Unu SRL",
       "role": "supplier",
       "count": 26,
       "value": "45000.00",
-      "cri": 0.887,
-      "flags": ["da_split","da_round","da_concentration","da_dependence"],
-      "applicable": 4
+      "score": 89,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
      }
     ],
-    "profileCount": 1,
+    "profileCount": 3,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
-    "statuses": [],
-    "rows": []
+    "statuses": [
+     {
+      "state": "Oferta acceptata",
+      "count": 10,
+      "value": "38833.38"
+     }
+    ],
+    "rows": [
+     ["da","9100100001","DA-FX-1","2025-03-14","9100000002","9100000101","Cluj","45233140-2","12500.10","Oferta acceptata",null,null,false,"Reparații drum comunal"],
+     ["da","9100100212","DA-FX-212","2024-01-12","9100000004","9100000102","Alba","33690000-3","4532.84","Oferta acceptata",null,null,false,null],
+     ["da","9100100210","DA-FX-210","2025-03-10","9100000004","9100000102","Alba","33690000-3","4110.70","Oferta acceptata",null,null,false,null],
+     ["da","9100100208","DA-FX-208","2026-05-18","9100000004","9100000102","Alba","33690000-3","3688.56","Oferta acceptata",null,null,false,null],
+     ["da","9100100206","DA-FX-206","2024-01-16","9100000004","9100000102","Alba","33690000-3","3266.42","Oferta acceptata",null,null,false,null],
+     ["da","9100100204","DA-FX-204","2025-03-14","9100000004","9100000102","Alba","33690000-3","2844.28","Oferta acceptata",null,null,false,null],
+     ["da","9100100202","DA-FX-202","2026-05-12","9100000004","9100000102","Alba","33690000-3","2422.14","Oferta acceptata",null,null,false,null],
+     ["da","9100100109","DA-FX-109","2025-09-01","9100000006","9100000101","Alba","45233140-2","2234.17","Oferta acceptata",null,null,false,null],
+     ["da","9100100106","DA-FX-106","2025-06-07","9100000006","9100000101","Alba","45233140-2","1822.78","Oferta acceptata",null,null,false,null],
+     ["da","9100100103","DA-FX-103","2025-03-04","9100000006","9100000101","Alba","45233140-2","1411.39","Oferta acceptata",null,null,false,null]
+    ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-0.csv",
-    "x-total-rows": "0",
-    "x-exported-rows": "0",
-    "x-source-rows": "0",
-    "x-source-value": "0.00",
-    "x-filtered-value": "0.00",
-    "lines": 1,
-    "sha256": "6cfa432ea55acf009d6f6a29c760ed5eb8d2f4dc9be462798f728262accb7246"
+    "file": "randuri-10.csv",
+    "x-total-rows": "10",
+    "x-exported-rows": "10",
+    "x-source-rows": "10",
+    "x-source-value": "38833.38",
+    "x-filtered-value": "38833.38",
+    "lines": 11,
+    "sha256": "03b12d95240c4e083c93c39d1995c89e84c662f868db0ecb0c1a19cb0dfc9136"
    }
   },
   {
@@ -48724,12 +49901,12 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -48740,20 +49917,18 @@
       "role": "authority",
       "value": 98700.1,
       "count": 45,
-      "cri": 0.812,
+      "cri": null,
+      "score": 81,
       "nFlags": 4,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+      "flags": ["da_split","da_year_end","da_round","da_concentration"],
       "population": null
      },
-     "ties": {
-      "version": 2,
-      "level": 0.812,
-      "maxFlags": 4,
-      "criteria": 5,
-      "count": 1,
+     "ranking": {
+      "version": 3,
       "pool": 2,
-      "nextLevel": 0.052,
-      "nextCount": 1,
+      "scored": 1,
+      "top": 81,
+      "topCount": 1,
       "rows": [
        {
         "entityId": "9100000003",
@@ -48761,13 +49936,14 @@
         "county": "Buzau",
         "count": 45,
         "value": 98700.1,
+        "score": 81,
         "nFlags": 4,
-        "flags": ["da_split","da_year_end","da_rapid","da_concentration"]
+        "flags": ["da_split","da_year_end","da_round","da_concentration"]
        }
       ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 \n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit 50;\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare"
    },
    "sources": {
     "status": 200,
@@ -48792,16 +49968,29 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [],
@@ -48850,11 +50039,11 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii la egalitate","cea mai riscantă (CRI)","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Indicele de risc este un semnal statistic, nu o dovadă de neregulă. Semnalele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -48865,20 +50054,18 @@
       "role": "authority",
       "value": 98700.1,
       "count": 45,
-      "cri": 0.812,
+      "cri": null,
+      "score": 81,
       "nFlags": 4,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
+      "flags": ["da_split","da_year_end","da_round","da_concentration"],
       "population": null
      },
-     "ties": {
-      "version": 2,
-      "level": 0.812,
-      "maxFlags": 4,
-      "criteria": 5,
-      "count": 1,
-      "pool": 1,
-      "nextLevel": null,
-      "nextCount": 0,
+     "ranking": {
+      "version": 3,
+      "pool": 2,
+      "scored": 1,
+      "top": 81,
+      "topCount": 1,
       "rows": [
        {
         "entityId": "9100000003",
@@ -48886,13 +50073,14 @@
         "county": "Buzau",
         "count": 45,
         "value": 98700.1,
+        "score": 81,
         "nFlags": 4,
-        "flags": ["da_split","da_year_end","da_rapid","da_concentration"]
+        "flags": ["da_split","da_year_end","da_round","da_concentration"]
        }
       ]
      }
     },
-    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 -- doar spitale\n  and cri = (select max(cri) from marts.entity_flags /* aceeași selecție */)\norder by total_ron desc\nlimit 50;\n-- toți cei la egalitate pe primul loc, în ordinea valorii (indicele nu îi deosebește)"
+    "displaySql": "select *\nfrom marts.entity_flags\nwhere n_das >= 20 -- doar spitale\n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit 50;\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare"
    },
    "sources": {
     "status": 200,
@@ -48917,16 +50105,29 @@
       "role": "authority",
       "count": 45,
       "value": "98700.10",
-      "cri": 0.812,
-      "flags": ["da_split","da_year_end","da_rapid","da_concentration"],
-      "applicable": 5
+      "score": 81,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_year_end": {
+        "x": 1
+       },
+       "da_concentration": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_year_end","da_round","da_concentration"]
      }
     ],
     "profileCount": 1,
     "profileReconciled": false,
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
-     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. CRI este un semnal statistic, nu o dovadă de neregulă.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
      "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile."
     ],
     "statuses": [],
