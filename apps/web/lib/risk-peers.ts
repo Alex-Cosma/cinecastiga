@@ -6,9 +6,21 @@ import { riskBand } from "./risk-score";
 const g = globalThis as unknown as { __seapRiskPeersSql?: DbSql };
 const db = (): DbSql => (g.__seapRiskPeersSql ??= createDb().sql);
 
+/**
+ * "Mai multe tipare decât 93% dintre primăriile cu …", or "decât toate …" when every other member is lower;
+ * a share short of all never rounds up to 100%.
+ */
+export function riskPeerWords(line: RiskPeerLine): string {
+  const group = line.groupWords.startsWith("toate ") ? line.groupWords : `toate ${line.groupWords}`;
+  if (line.all) return `Mai multe tipare decât ${group}`;
+  return `Mai multe tipare decât ${Math.min(99, Math.round(line.share * 100))}% dintre ${line.groupWords.replace(/^toate /, "")}`;
+}
+
 export interface RiskPeerLine {
   /** Share of the other members with a lower score (0–1). */
   share: number;
+  /** Every other member has a lower score. */
+  all: boolean;
   /** The other members of the group (profiles with at least 10 DAs). */
   n: number;
   /** "primăriile cu 32–126 mii de locuitori", "toate firmele" … */
@@ -45,7 +57,7 @@ export async function readRiskPeerLine(q: DbSql, entityId: string, role: "author
   if (similar && row.n < PEER_MINIMUM) { similar = false; row = await count(false); }
   if (row.n < PEER_MINIMUM) return null;
   const spec = { peers: similar ? { similar: true as const } : undefined, filters: {} };
-  return { share: row.lower / row.n, n: row.n, groupWords: peerGroupWords(spec, role, resolution.facts) };
+  return { share: row.lower / row.n, all: row.lower === row.n, n: row.n, groupWords: peerGroupWords(spec, role, resolution.facts) };
 }
 
 export const getRiskPeerLine = (entityId: string, role: "authority" | "supplier", score: number) => readRiskPeerLine(db(), entityId, role, score);

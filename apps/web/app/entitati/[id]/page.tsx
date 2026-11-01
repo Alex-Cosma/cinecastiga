@@ -26,7 +26,7 @@ import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "@/lib/risk-score";
-import { getRiskPeerLine } from "@/lib/risk-peers";
+import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -225,7 +225,7 @@ export default async function EntityPage({
           </div>
           {hasRiskScore && <div className="risk-meter" aria-hidden="true"><span className={RISK_BAND_CLASS[band]} style={{ width: `${row.score}%` }} /></div>}
           <div className="l ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" /></div>
-          {peerLine && <p className="note">Mai multe tipare decât {formatInt(Math.round(peerLine.share * 100))}% dintre {peerLine.groupWords}</p>}
+          {peerLine && <p className="note">{riskPeerWords(peerLine)}</p>}
           {hasRiskScore && row.score > 0 && <a href="#calcul-scor" className="hint">Cum se formează?</a>}
         </div>
         <div className="stat">

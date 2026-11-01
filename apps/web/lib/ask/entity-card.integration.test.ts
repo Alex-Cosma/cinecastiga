@@ -18,7 +18,7 @@ import { testDatabaseUrl, withAskFixture } from "./test-fixture";
  * entity_card-3 (rf-2026.18; entity_card-2: F6c, plan §4.13, §6.2) on a rolled-back fixture of the engine's tables: by
  * value the podium is the ranking's first three with its total (live, under a band, and on the precomputed national
  * ranking, where the total is agg_national's); the facts of the places are their own records'; on the risk axis the
- * answer lists the profiles with a score by the displayed score, the unrounded one, then the value, and the sources are
+ * answer lists the profiles with a score by the displayed score, then the value, and the sources are
  * exactly those profiles; a firm's size and seat select the profiles; an institution's kind (D1) too. A dedicated
  * seap_test_* database (schema through migration 0087, the score columns), one transaction rolled back.
  */
@@ -50,7 +50,7 @@ const AUTHORITIES: [number, string, string, number, string[], number][] = [
 ];
 /**
  * Firms with profiles: n, accepted direct acquisitions, value, patterns, unrounded score. Zeta 79; Gama, Alfa and Beta
- * all show 78, Gama a little above (78,45) despite its lower value, Alfa and Beta exactly equal (by value); Epsilon 20;
+ * all show 78 and are ordered by value (Gama's 78,45 does not put it first: the screen shows the same 78%); Epsilon 20;
  * Delta without a pattern.
  */
 const FLAGGED: [number, number, number, string[], number][] = [
@@ -236,7 +236,7 @@ describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolate
     expect(out.facts.balanceYear).toBe(2025);
   }, 60000);
 
-  it("on the risk axis: the profiles with a score by the displayed score, the unrounded one, then the value; the card is the first", async () => {
+  it("on the risk axis: the profiles with a score by the displayed score, then the value; the card is the first", async () => {
     const out = await withAskFixture(connection!.sql, "ec_ranking", seed, async (q) => ({
       firms: await answer(q, { dim: "supplier", rankBy: "risk", filters: {} }),
       cluj: await answer(q, { dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj" } }),
@@ -246,20 +246,20 @@ describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolate
     const { ranking } = out.firms.data;
     expect(out.firms.data.podium).toBeUndefined();
     expect(out.firms.data.ties).toBeUndefined();
-    // Zeta 79 alone; Gama (78,45) before Alfa and Beta (78,4, by value) though its value is lower; Epsilon 20; Delta, without
-    // a pattern, not listed.
+    // Zeta 79 alone; Alfa, Beta and Gama at 78 by value (Gama's unrounded 78,45 does not count); Epsilon 20; Delta,
+    // without a pattern, not listed.
     expect(ranking).toMatchObject({ version: 3, pool: 6, scored: 5, top: 79, topCount: 1 });
     expect(ranking!.rows.map((r) => [r.name, r.score])).toEqual([
-      ["Zeta Mare SRL", 79], ["Gama Unica SRL", 78], ["Alfa Constructii SRL", 78], ["Beta Asociere SRL", 78], ["Epsilon Fara Bilant SRL", 20],
+      ["Zeta Mare SRL", 79], ["Alfa Constructii SRL", 78], ["Beta Asociere SRL", 78], ["Gama Unica SRL", 78], ["Epsilon Fara Bilant SRL", 20],
     ]);
     expect(ranking!.rows[0]).toMatchObject({ entityId: id(6), county: "Ilfov", count: 100, value: 9000, nFlags: 3, flags: ["da_split", "da_dependence", "da_above_ceiling"] });
     expect(out.firms.data.card).toMatchObject({ entityId: id(6), cri: null, score: 79, nFlags: 3 });
-    // The seat (the profiles' county): Gama and Alfa tied on 78 in Cluj, then Epsilon.
+    // The seat (the profiles' county): Alfa and Gama tied on 78 in Cluj (by value), then Epsilon.
     expect(out.cluj.data.ranking).toMatchObject({ pool: 3, scored: 3, top: 78, topCount: 2 });
-    expect(out.cluj.data.ranking!.rows.map((r) => r.name)).toEqual(["Gama Unica SRL", "Alfa Constructii SRL", "Epsilon Fara Bilant SRL"]);
+    expect(out.cluj.data.ranking!.rows.map((r) => r.name)).toEqual(["Alfa Constructii SRL", "Gama Unica SRL", "Epsilon Fara Bilant SRL"]);
     // The size of the firms (their latest filing) selects the profiles: no employees = Gama and Beta; 1–9 = Delta alone,
     // who has no score: „Nu are semnale în profil”, the profile still listed by value for the sources.
-    expect(out.none.data.ranking!.rows.map((r) => r.name)).toEqual(["Gama Unica SRL", "Beta Asociere SRL"]);
+    expect(out.none.data.ranking!.rows.map((r) => r.name)).toEqual(["Beta Asociere SRL", "Gama Unica SRL"]);
     expect(out.none.data.ranking).toMatchObject({ pool: 2, scored: 2, top: 78, topCount: 2 });
     expect(out.band.data.ranking).toMatchObject({ pool: 1, scored: 0, top: 0, topCount: 1 });
     expect(out.band.data.ranking!.rows.map((r) => [r.name, r.score])).toEqual([["Delta Mica SRL", 0]]);
@@ -302,14 +302,14 @@ describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolate
       return { group, one, below, none };
     });
     if ("error" in out.group || "error" in out.one || "error" in out.below || "error" in out.none) throw new Error(JSON.stringify(out));
-    // The five listed: Zeta (2), Gama (1), Alfa (3), Beta (1), Epsilon (none) of the seeded acquisitions; Delta's is not listed.
+    // The five listed: Zeta (2), Alfa (3), Beta (1), Gama (1), Epsilon (none) of the seeded acquisitions; Delta's is not listed.
     expect([out.group.sourceTotal, out.group.profileCount]).toEqual([7, 5]);
     expect([...new Set(out.group.rows.map((row) => row.supplierId))].sort()).toEqual([id(1), id(2), id(3), id(6)]);
     expect([out.one.sourceTotal, out.one.profileCount]).toEqual([3, 1]);
     expect([out.below.sourceTotal, out.below.profileCount]).toEqual([0, 0]);
     expect(evidenceCsv(out.group.rows).trim().split("\n")).toHaveLength(8);
     expect([out.none.sourceTotal, out.none.profileCount]).toEqual([1, 1]);
-    expect(out.none.scopeNotes.join(" ")).toMatch(/Niciun profil din grup nu are semnale: sursele sunt ale primelor profiluri după valoare \(cel mult 50\)/);
+    expect(out.none.scopeNotes.join(" ")).toMatch(/Niciun profil din grup nu are tipare de risc: sursele sunt ale primelor profiluri după valoare \(cel mult 50\)/);
     expect(out.group.scopeNotes.join(" ")).not.toMatch(/Niciun profil din grup/);
   }, 60000);
 
@@ -395,7 +395,7 @@ describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolate
       return { before, poolOnly, grown, podiumBefore, podiumAfter };
     });
     expect(out.poolOnly.ranking!.pool).toBe(out.before.ranking!.pool + 1);
-    expect(out.poolOnly.ranking!.rows.map((r) => r.name).slice(2, 4)).toEqual(["Beta Asociere SRL", "Alfa Constructii SRL"]);
+    expect(out.poolOnly.ranking!.rows.map((r) => r.name).slice(1, 3)).toEqual(["Beta Asociere SRL", "Alfa Constructii SRL"]);
     expect(sameAnswerCore("entity_card", out.before, out.poolOnly)).toBe(true);
     expect(out.grown.ranking).toMatchObject({ top: 79, topCount: 2 });
     expect(sameAnswerCore("entity_card", out.before, out.grown)).toBe(false);

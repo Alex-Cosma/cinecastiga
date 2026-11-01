@@ -108,8 +108,8 @@ describe("complete signal population", () => {
     const queries = db.statements.filter((q) => q.includes("marts.entity_flags"));
     for (const query of queries) expect(query).toMatch(/score >= \?\d+ and score < \?\d+/);
     expect(db.values).toEqual(expect.arrayContaining([40, 50]));
-    // Ordered by the unrounded score, then the value.
-    expect(queries.at(-1)).toContain("order by score_raw desc, total_ron desc nulls last, entity_id");
+    // Ordered by the displayed score, then the value (the same percentage reads as a tie).
+    expect(queries.at(-1)).toContain("order by score desc, total_ron desc nulls last, entity_id");
     const top = database(3);
     await readSignalRiskGroup(top.sql, parseSignalState({ criMin: "0.9", criMax: "1" }));
     for (const query of top.statements.filter((q) => q.includes("marts.entity_flags"))) {

@@ -118,7 +118,7 @@ export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
     const totals = await q`select count(*)::text n from marts.entity_flags where ${where}`;
     const total = Number(totals[0]?.n ?? 0);
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / RISK_PAGE_SIZE) - 1));
-    const col = { cri: q`score_raw`, flags: q`n_flags`, das: q`n_das`, total: q`coalesce(total_ron, 0)`, name: q`lower(unaccent(coalesce(name_display, '')))` }[state.sort];
+    const col = { cri: q`score`, flags: q`n_flags`, das: q`n_das`, total: q`coalesce(total_ron, 0)`, name: q`lower(unaccent(coalesce(name_display, '')))` }[state.sort];
     const order = state.dir === "asc" ? q`${col} asc` : q`${col} desc`;
     const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags, score
       from marts.entity_flags where ${where} order by ${order}, total_ron desc nulls last, entity_id
