@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { navItems } from "@/lib/site-nav";
@@ -34,7 +34,15 @@ export default function SiteNav({ storiesPublished, sessionHint = false }: { sto
   const admin = known && (data?.user as { role?: string } | undefined)?.role === "admin";
   const signedIn = known ? Boolean(data) : sessionHint;
   const items = navItems({ pathname, storiesPublished, admin, signedIn });
+  // The page already open with a question in its address (Întreabă with ?spec=…): a Link to the same route keeps the
+  // answer on screen, so the item loads the bare page instead (owner, 1 November 2026). A new tab keeps the browser's way.
+  const toBarePage = (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (window.location.pathname !== href || !window.location.search) return;
+    event.preventDefault();
+    window.location.assign(href);
+  };
   return <nav ref={ref} className="main-nav d-main-nav" aria-label="Navigare principală">
-    {items.map((item) => <Link key={item.href} href={item.href} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}{item.dot ? <span className="d-nav-dot" aria-hidden="true" /> : null}</Link>)}
+    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}{item.dot ? <span className="d-nav-dot" aria-hidden="true" /> : null}</Link>)}
   </nav>;
 }
