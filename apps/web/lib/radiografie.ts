@@ -28,8 +28,6 @@ export interface RxProfile {
   totalContracts: number;
   nContracts: number;
   nDas: number;
-  cri: number | null;
-  nFlags: number;
   firstYear: string | null;
   lastYear: string | null;
 }
@@ -126,7 +124,7 @@ export interface SliceRow {
   dateFallbackCount?: number;
   typeInferredCount?: number;
   methodologyVersion?: string;
-  points: { d: string; v: number; cls: string; cpvName: string; gap: number | null;
+  points: { d: string; v: number; cls: string; cpvName: string;
     id?: string; ceiling?: number | null; purchaseType?: DaPurchaseType | null; referenceDate?: string }[];
 }
 
@@ -158,11 +156,9 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
   const prof = (await sql`
     select ep.entity_id::text id, ep.name_display, ep.county, ep.n_contracts, ep.n_das,
            ep.total_ron_full, substr(ep.first_activity, 1, 4) y0, substr(ep.last_activity, 1, 4) y1,
-           ef.cri, ef.n_flags,
            (select coalesce(sum(closing_value), 0) from marts.contract_transactions
              where authority_id = ep.entity_id and closing_value > 0) total_contracts
     from marts.entity_profile ep
-    left join marts.entity_flags ef on ef.entity_id = ep.entity_id and ef.role = 'authority'
     where ep.entity_id = ${id} and ep.role = 'authority'
   `) as unknown as Record<string, unknown>[];
   if (prof.length === 0) return null;
@@ -175,8 +171,6 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     totalContracts,
     nContracts: num(p["n_contracts"]),
     nDas: num(p["n_das"]),
-    cri: numOrNull(p["cri"]),
-    nFlags: num(p["n_flags"]),
     firstYear: (p["y0"] as string | null) ?? null,
     lastYear: (p["y1"] as string | null) ?? null,
   };
@@ -338,7 +332,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
   const dpts = sids.length
     ? ((await sql`
         select dt.sicap_da_id::text id, dt.supplier_id::text sid, left(dt.finalization_date, 10) d,
-          dt.closing_value v, left(btrim(da.cpv_code), 4) cls, dt.cpv_name, dt.gap_minutes gap,
+          dt.closing_value v, left(btrim(da.cpv_code), 4) cls, dt.cpv_name,
           da.cpv_code, da.acquisition_type,
           to_char(coalesce(da.publication_date, da.finalization_date) at time zone 'Europe/Bucharest', 'YYYY-MM-DD') reference_date
         from marts.da_transactions dt
@@ -355,7 +349,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     const cpv = r["cpv_code"] as string | null;
     const acquisitionType = r["acquisition_type"] as string | null;
     const referenceDate = String(r["reference_date"] ?? "");
-    l.push({ d: String(r["d"]), v: num(r["v"]), cls: String(r["cls"] ?? ""), cpvName: String(r["cpv_name"] ?? ""), gap: numOrNull(r["gap"]),
+    l.push({ d: String(r["d"]), v: num(r["v"]), cls: String(r["cls"] ?? ""), cpvName: String(r["cpv_name"] ?? ""),
       id: String(r["id"]), referenceDate, ceiling: daCeiling(referenceDate, cpv, acquisitionType), purchaseType: daPurchaseType(cpv, acquisitionType) });
   }
   const slices: SliceRow[] = sr.map((r) => ({
