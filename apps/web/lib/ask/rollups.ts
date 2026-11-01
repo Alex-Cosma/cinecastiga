@@ -1,6 +1,6 @@
 import type { DbSql } from "@seap/db";
 import type { MinimumRecords, QueryPopulation } from "./population";
-import type { ScatterDensity, TableSort } from "./compile";
+import type { TableSort } from "./compile";
 import { AUTHORITY_KINDS, type AuthorityKind, type FirmSeat, type ParsedAuthorityKind } from "./spec";
 import { authorityKindCond } from "./authority-kind";
 import { employeesCond, firmSeatCond, newFirmCond, ownCountySql, purchaseKindCond, seatCountyCond } from "./predicates";
@@ -1260,34 +1260,4 @@ export async function comparePartnerPass(sql: DbSql, c: CompareQueryParts, o: { 
     top: of("top").map((r) => ({ id: r.id!, other_id: r.other_id!, name: r.name, value: r.value!, n: Number(r.n) })),
     shared: of("shared").map((r) => ({ other_id: r.other_id!, name: r.name, value_a: r.value_a!, n_a: r.n_a!, value_b: r.value_b!, n_b: r.n_b!, total: r.total! })),
   };
-}
-
-/**
- * case "scatter", the density layer: the live extent and cells queries with the
- * stored log_total_ron (the same expression, computed by PostgreSQL at insert)
- * instead of log() on every read; the live expression until 0085 is applied.
- * `where` is efWhere(role, RISK_MIN_DAS) of compile.ts; the cri condition is
- * added here, as live. `logTotal` is martColumns(pool).logTotal, read before
- * the answer's transaction.
- */
-export async function scatterDensity(sql: DbSql, where: Fragment, logTotal: boolean, nx = 80, ny = 46): Promise<ScatterDensity | undefined> {
-  const x = logTotal ? sql`ef.log_total_ron` : sql`log(greatest(coalesce(ef.total_ron, 0), 1))`;
-  const ext = (await sql`
-    select min(${x}) mn, max(${x}) mx, count(*) n
-    from marts.entity_flags ef
-    where ${where} and ef.cri is not null
-  `) as unknown as { mn: string | null; mx: string | null; n: string }[];
-  const popN = Number(ext[0]?.n ?? 0);
-  if (popN === 0 || ext[0]!.mn === null) return undefined;
-  const mn = Number(ext[0]!.mn);
-  const mx = Math.max(Number(ext[0]!.mx), mn + 0.01);
-  const cells = (await sql`
-    select width_bucket(${x}, ${mn}, ${mx + 1e-9}, ${nx}) bx,
-           width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, ${ny}) by,
-           count(*) n
-    from marts.entity_flags ef
-    where ${where} and ef.cri is not null
-    group by 1, 2
-  `) as unknown as { bx: number; by: number; n: string }[];
-  return { minLog: mn, maxLog: mx, nx, ny, total: popN, cells: cells.map((c) => [Number(c.bx), Number(c.by), Number(c.n)]) };
 }
