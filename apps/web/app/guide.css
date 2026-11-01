@@ -5,7 +5,7 @@
 /* ---- <Term>: a word with a one-tap explanation, opened in the page flow ---- */
 .term{display:inline}
 .term-trigger{display:inline;padding:0;margin:0;border:0;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-align:inherit;cursor:pointer;text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:.22em;text-decoration-color:var(--faint)}
-/* Small labels (10 px) still get a ≥ 28 px touch target, without changing the line. */
+/* Small labels still get a ≥ 28 px touch target, without changing the line. */
 .term-trigger{position:relative}
 /* The extra area grows only downward and sideways, never over a link above the label. */
 .term-trigger:after{content:"";position:absolute;left:-4px;right:-4px;top:0;height:100%;min-height:28px}
@@ -24,14 +24,16 @@
 .d-national-strip>.d-national-item{border-left:1px solid var(--line);padding-left:23px;color:var(--ink);min-width:0}
 .d-national-item>a{color:var(--ink);display:block;width:max-content;max-width:100%}
 .d-national-item>a:hover strong{color:var(--orange)}
-.d-national-item>small{font-size:10px;color:var(--muted);margin-top:4px;display:block}
+.d-national-item>small{color:var(--muted);margin-top:4px;display:block}
+/* A wrapped label splits evenly instead of leaving its (?) alone on a line. */
+.d-national-item .term-trigger{text-wrap:balance}
 .d-invite-note{margin:34px 0 46px;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
 @media(max-width:1100px){.d-national-strip>.d-national-item{padding-left:20px}}
 @media(max-width:900px){.d-national-label+.d-national-item{border-left:0;padding-left:0}}
 @media(max-width:700px){
   .d-national-strip>.d-national-item{padding-left:13px}
-  .d-national-item>small{font-size:10px;line-height:1.6}
-  .discovery-page .d-national-strip>.d-national-item:last-child{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding:16px 0 0}
+  .d-national-item>small{line-height:1.5}
+  .discovery-page .d-national-strip>.d-national-item:last-of-type{grid-column:1/-1;border-left:0;border-top:1px solid var(--line);padding:16px 0 0}
   .term-def{font-size:12.5px}
   .d-invite-note{margin:24px 0 32px}
 }
@@ -72,30 +74,44 @@
   .guide-paths a{padding:15px 14px;gap:12px}
 }
 
-/* ---- Readable microcopy on desktop and tablet (23 Oct): body text ≥13px,
-   captions 12px, eyebrows 11px. Phones keep their tuned sizes; the map
-   credit stays a footnote. Last in the cascade, so it wins over the
-   per-breakpoint sizes in approved.css. ---- */
-@media(min-width:701px){
-  .discovery-page .d-reassurance{font-size:13px!important;line-height:1.6}
-  .d-quick-links,.d-quick-links>a{font-size:13px}
-  .discovery-page .d-hero-eyebrow{font-size:11px!important}
-  .discovery-page .eyebrow,.d-map-head .eyebrow,.d-question-top,.d-dialog-head .eyebrow{font-size:11px}
-  .discovery-page .d-map-current{font-size:12px!important}
-  .discovery-page .d-map-basis{font-size:12px}
-  .d-map-legend{font-size:11px}
-  .d-national-label{font-size:13px}
-  .d-national-label small,.d-national-strip>a>small,.d-national-item>small{font-size:12px}
-  .d-text-link,.d-section-heading>.d-text-link{font-size:13px}
-  .d-section-heading p{font-size:13px}
-  .d-question-card>p,.d-question-bottom{font-size:13px}
-  .d-invite-note{font-size:13px}
-  .site-footer .wrap{font-size:13px}
-  .site-footer h4{font-size:11px}
-  .d-search-results small{font-size:12px}
-  .d-search-dialog>.d-dialog-hint,.d-search-state>p,.d-search-pending{font-size:13px}
-  .d-search-group-title{font-size:11px}
+/* ---- Readable microcopy at every width (23 Oct; phones too since 1 Nov 2026,
+   owner): body text ≥13px, captions 12px, all-caps eyebrows 11px. On phones
+   nothing is under 12px except those eyebrows; the strip's figure labels and
+   the map readout are 13px, and search fields 16px so iOS Safari does not
+   zoom on focus. Last in the cascade, so it wins over the per-breakpoint
+   sizes in approved.css (its !important sizes are matched here). ---- */
+.discovery-page .d-reassurance{font-size:13px!important;line-height:1.6}
+.d-quick-links,.d-quick-links>a{font-size:13px}
+.discovery-page .d-hero-eyebrow{font-size:11px!important}
+.discovery-page .eyebrow,.d-map-head .eyebrow,.d-question-top,.d-dialog-head .eyebrow{font-size:11px}
+.discovery-page .d-map-current{font-size:12px!important}
+.discovery-page .d-map-basis{font-size:12px}
+.d-map-legend{font-size:11px}
+.d-national-label{font-size:13px}
+.d-national-label small,.d-national-strip>a>small,.d-national-item>small{font-size:12px}
+.d-text-link,.d-section-heading>.d-text-link{font-size:13px}
+.d-section-heading p{font-size:13px}
+.d-question-card>p,.d-question-bottom{font-size:13px}
+.d-invite-note{font-size:13px}
+.hdr-right .user-nav{font-size:12px}
+.site-footer .wrap{font-size:13px}
+.site-footer h4{font-size:11px}
+.d-search-results small{font-size:12px}
+.d-search-dialog>.d-dialog-hint,.d-search-state>p,.d-search-pending{font-size:13px}
+.d-search-group-title{font-size:11px}
+/* Inside the mint map card, muted reads 4.0:1; ink2 keeps the legend and readout above 4.5:1. */
+.d-map-legend,.discovery-page .d-map-current{color:var(--ink2)}
+@media(max-width:700px){
+  .discovery-page .d-map-current{font-size:13px!important}
+  .d-national-item>small{font-size:13px}
+  .d-map-legend{font-size:12px}
+  .d-quick-links,.d-quick-links>a{font-size:12px}
+  /* iOS zooms on a field under 16px; the hint stays smaller so it fits from 375 px up. */
+  .d-search input{font-size:16px;text-overflow:ellipsis}
+  .d-search input::placeholder{font-size:13px}
+  .d-search-results b,.d-search-results .d-search-all,.d-search-dialog>p,.d-investigation-invite p:not(.eyebrow){font-size:12px}
 }
+@media(max-width:380px){.hdr-right .user-nav a[href="/login"]:after{font-size:12px}}
 @media(min-width:901px){
   .hdr-right .user-nav{font-size:13px}
   .d-global-search{font-size:12px}
@@ -112,7 +128,20 @@
 .term-tip.term-below>.term-def{top:calc(100% + 6px);bottom:auto}
 .d-map-current-row{position:relative;display:flex;align-items:center;gap:2px;margin-top:10px}
 .discovery-page .d-map-current-row>.d-map-current{margin:0}
-.coverage-disclosure.coverage-disclosure-home .coverage-disclosure-body{max-width:none}
+/* A narrow card wraps the readout between its figures, never inside "414.522 de înregistrări". */
+.d-map-current>span{white-space:nowrap}
+/* Home strip: "Ce include? ›" sits under the figures (beside the label's text on
+   desktop) and opens what they include in place; closed, it is one short line.
+   The chevron is an inline-block, so the hover underline stays on the words. */
+.d-national-strip>.coverage-disclosure{grid-column:1/-1;min-width:0;margin:-8px 0 0}
+.d-national-strip>.coverage-disclosure>summary{display:block;min-height:0;padding:0;line-height:24px;list-style:none;font-size:13px}
+.d-national-strip>.coverage-disclosure>summary::-webkit-details-marker{display:none}
+.d-national-strip>.coverage-disclosure>summary>span{display:inline-block;margin-left:2px;transition:transform .15s ease-out}
+.d-national-strip>.coverage-disclosure[open]>summary>span{transform:rotate(90deg)}
+.d-national-strip>.coverage-disclosure>.coverage-disclosure-body{max-width:75ch;padding:8px 0 2px}
+@media(min-width:901px){.d-national-strip>.coverage-disclosure{margin-top:-16px;padding-left:49px}}
+@media(max-width:700px){.d-national-strip>.coverage-disclosure{margin-top:-14px}.d-national-strip>.coverage-disclosure>summary{padding:10px 0}}
+@media(prefers-reduced-motion:reduce){.d-national-strip>.coverage-disclosure>summary>span{transition:none}}
 .d-footer-motto{font-weight:600;color:var(--ink2);margin:0 0 8px}
 /* Footer (?) tips float above their own paragraph or column */
 .d-footer-note,.coverage-summary{position:relative}
@@ -122,7 +151,7 @@
 .term-tip-text>.term-trigger>.term-mark{margin-left:.35em}
 .d-national-item{position:relative}
 .d-national-item .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;left:0;right:auto;width:min(340px,calc(100vw - 40px))}
-.d-national-item:last-child .term-tip>.term-def{left:auto;right:0}
+.d-national-item:last-of-type .term-tip>.term-def{left:auto;right:0}
 .term-tip>.term-def{max-height:min(320px,60vh);overflow:auto}
 
 /* Home: three ways further in, smaller than the question cards */
