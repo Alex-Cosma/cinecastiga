@@ -1,4 +1,4 @@
-import { cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, type DbSql } from "@seap/db";
+import { canonicalPersonKey, cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, type DbSql } from "@seap/db";
 
 /*
  * "De la cine?" at a verification finds a firm through a person (plan §4.10,
@@ -25,7 +25,8 @@ export interface PersonFirms {
 }
 export const PERSON_FIRMS_LIMIT = 50;
 
-export async function personFirms(sql: DbSql, personKey: string): Promise<PersonFirms> {
+export async function personFirms(sql: DbSql, key: string): Promise<PersonFirms> {
+  const personKey = canonicalPersonKey(key);
   const [row] = (await sql`
     with reps as (
       select r.cui, r.calitate from reference.company_reps r

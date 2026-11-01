@@ -1,6 +1,6 @@
 import { contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractRonValue } from "@seap/db";
 import { randomUUID } from "node:crypto";
-import { canonicalEntityId, createDb, MonitoringRefreshUnavailableError, withMonitoringSnapshot, type DbSql } from "@seap/db";
+import { canonicalEntityId, canonicalPersonKey, createDb, MonitoringRefreshUnavailableError, withMonitoringSnapshot, type DbSql } from "@seap/db";
 import { getInvestigationAccess, isWorkspaceId, withInvestigationAccess } from "./investigation-access";
 import type { CaptureRequest, CaptureSummary, CaptureStatus, FrozenRecord } from "./evidence-captures-shared";
 import { contractSnapshot, freezeRow, validateCaptureRequest } from "./evidence-capture-input";
@@ -292,7 +292,7 @@ async function namedCapture(q: DbSql, captureId: string, request: CaptureRequest
 }
 
 async function entityOrPerson(q: DbSql, captureId: string, request: CaptureRequest) {
-  const id = request.kind==='entity' ? await canonicalEntityId(q,request.refId!) : request.refId!;
+  const id = request.kind==='entity' ? await canonicalEntityId(q,request.refId!) : canonicalPersonKey(request.refId!);
   if (request.kind === "person") {
     const [person] = await q`select max(person_name) name,count(distinct cui)::int n_firms,
       to_jsonb(array_agg(distinct cui)) cuis from reference.company_reps where person_key=${id} group by person_key`;

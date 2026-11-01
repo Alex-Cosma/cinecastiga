@@ -19,7 +19,7 @@
  * publication records it; when it differs, the next scheduled run is full
  * (processing.ts), since a daily run keeps the previous risk.
  */
-export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.18';
+export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.19';
 
 export const PROFILE_FLAG_CODES = {
   authority: ['da_split', 'da_round', 'da_year_end', 'da_concentration', 'da_above_ceiling'],

@@ -1,4 +1,4 @@
-import { contractRonValue, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
+import { canonicalPersonKey, contractRonValue, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { createDb, type DbSql } from "@seap/db";
 import { isWorkspaceId, withInvestigationAccess, type InvestigationAccess } from "./investigation-access";
 import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./evidence-captures-shared";
@@ -260,7 +260,7 @@ async function snapPerson(
            count(distinct r.cui) n_firms
     from reference.company_reps r
     left join reference.onrc_firm f on f.cui = r.cui
-    where r.person_key = ${refId}
+    where r.person_key = ${canonicalPersonKey(refId)}
     group by r.person_key
   `) as unknown as { nm: string; firms: string[] | null; n_firms: string }[];
   const r = rows[0];
@@ -554,19 +554,22 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
       select r.person_key pk, e.id eid, max(r.person_name) nm
       from reference.company_reps r
       join core.entities e on e.cui_canonical = r.cui
-      where r.person_key = any(${sql.array(personKeys)}::text[])
+      where r.person_key = any(${sql.array(personKeys.map(canonicalPersonKey))}::text[])
         and ${onrcIdentityBirthDate(sql, "r")}
         and e.id = any(${sql.array(entityIds)}::bigint[])
         and ${cuiCorroborated(sql, "e")}
       group by 1, 2
     `) as unknown as { pk: string; eid: string; nm: string }[];
+    // A clip saved before the name fold (0090) keeps its own key as the member id.
     for (const arow of adminOf) {
-      relations.push({
-        a: arow.pk,
-        b: String(arow.eid),
-        type: "shared_admin",
-        label: "administrator al firmei",
-      });
+      for (const key of personKeys.filter((k) => canonicalPersonKey(k) === arow.pk)) {
+        relations.push({
+          a: key,
+          b: String(arow.eid),
+          type: "shared_admin",
+          label: "administrator al firmei",
+        });
+      }
     }
   }
   return { members, relations };

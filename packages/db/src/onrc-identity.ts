@@ -35,6 +35,31 @@ export function onrcIdentityBirthDate(q: Query, alias = 'r') {
       - ${ONRC_REPRESENTATIVE_MIN_AGE}::int)`;
 }
 
+/**
+ * The person key of an ONRC representative (reference.company_reps.person_key):
+ * folded name | birth date | folded birth locality. Since 1 November 2026 the
+ * name folds its punctuation and spacing too (lower case, no diacritics, every
+ * run of other characters one space): ONRC writes one person as "NASTASĂ MARIA
+ * MONICA" on one firm and "NASTASĂ MARIA-MONICA" on another, and 19,290 dated
+ * persons were split that way into 39,472 keys (local copy). The birth date
+ * still tells namesakes apart; the locality keeps its old fold.
+ */
+export function personKeySql(q: Query, name: ReturnType<Query>, birthDate: ReturnType<Query>, locality: ReturnType<Query>) {
+  return q`btrim(regexp_replace(lower(unaccent(${name})), '[^a-z]+', ' ', 'g')) || '|' || coalesce(${birthDate}::text, '') || '|' || lower(unaccent(coalesce(${locality}, '')))`;
+}
+
+/**
+ * A person key received from outside (a link, a saved question, a watch, a
+ * dossier) in today's form: an older key had the name's punctuation and
+ * spacing as ONRC wrote them. Keys are already lower case without diacritics.
+ */
+export function canonicalPersonKey(key: string): string {
+  const parts = key.split('|');
+  if (parts.length < 3) return key;
+  const name = parts[0]!.replace(/[^a-z]+/g, ' ').trim();
+  return [name, ...parts.slice(1)].join('|');
+}
+
 /** Same rule for a birth date read as text (YYYY-MM-DD, `birth_date::text`). */
 export function isOnrcIdentityBirthDate(
   birthDate: string | null | undefined,

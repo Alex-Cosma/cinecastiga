@@ -4,7 +4,7 @@ import { createInterface } from "node:readline";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import type { DbSql } from "@seap/db";
+import { personKeySql, type DbSql } from "@seap/db";
 import { financialSpecCodes, onrcDate } from "./parsers.js";
 import { parseName, parseTxt } from "./financials.js";
 
@@ -87,11 +87,11 @@ export async function repairOnrc(sql: DbSql, path: string, snapshot: string) {
     throw new Error("ONRC source differs from stored snapshot in row count; repair refused");
   }
   await sql`update repair_reps r set cui=f.cui from reference.onrc_firm f where f.j_number=r.j_number and f.cui is not null`;
-  await sql`update repair_reps set person_key=lower(unaccent(person_name))||'|'||coalesce(birth_date::text,'')||'|'||lower(unaccent(coalesce(birth_locality,'')))`;
+  await sql`update repair_reps set person_key=${personKeySql(sql, sql`person_name`, sql`birth_date`, sql`birth_locality`)}`;
   await sql`analyze repair_reps`;
   const differs = async (legacy: boolean) => {
     const projection = legacy
-      ? repColumns.replace("birth_date", "legacy_birth_date as birth_date").replace("person_key", "lower(unaccent(person_name))||'|'||coalesce(legacy_birth_date::text,'')||'|'||lower(unaccent(coalesce(birth_locality,''))) as person_key")
+      ? repColumns.replace("birth_date", "legacy_birth_date as birth_date").replace("person_key", "btrim(regexp_replace(lower(unaccent(person_name)), '[^a-z]+', ' ', 'g'))||'|'||coalesce(legacy_birth_date::text,'')||'|'||lower(unaccent(coalesce(birth_locality,''))) as person_key")
       : repColumns;
     // With equal cardinality (checked above), an empty one-way EXCEPT ALL
     // proves multiset equality, including duplicates; no second wide sort needed.
@@ -108,11 +108,13 @@ export async function repairOnrc(sql: DbSql, path: string, snapshot: string) {
     await sql`drop index if exists reference.company_reps_cui_idx`;
     await sql`drop index if exists reference.company_reps_person_key_idx`;
     await sql`drop index if exists reference.company_reps_name_trgm_idx`;
+    await sql`drop index if exists reference.company_reps_person_name_key_idx`;
     await sql`truncate reference.company_reps`;
     await sql.unsafe(`insert into reference.company_reps (${repColumns}) select ${repColumns} from repair_reps`);
     await sql`create index company_reps_cui_idx on reference.company_reps(cui)`;
     await sql`create index company_reps_person_key_idx on reference.company_reps(person_key)`;
     await sql`create index company_reps_name_trgm_idx on reference.company_reps using gin(person_name gin_trgm_ops)`;
+    await sql`create index company_reps_person_name_key_idx on reference.company_reps(split_part(person_key, '|', 1))`;
     changed = formats.date_time ?? 0;
     await sql`analyze reference.company_reps`;
   }

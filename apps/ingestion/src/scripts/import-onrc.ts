@@ -5,7 +5,7 @@ import { rename } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
-import { createDb, type DbSql } from "@seap/db";
+import { createDb, personKeySql, type DbSql } from "@seap/db";
 
 /**
  * ONRC open-data monthly snapshot → company legal representatives.
@@ -179,6 +179,7 @@ async function main(): Promise<void> {
       await sql`drop index if exists reference.company_reps_cui_idx`;
       await sql`drop index if exists reference.company_reps_person_key_idx`;
       await sql`drop index if exists reference.company_reps_name_trgm_idx`;
+      await sql`drop index if exists reference.company_reps_person_name_key_idx`;
       await sql`truncate reference.onrc_firm, reference.company_reps`;
 
       // ── OD_FIRME: DENUMIRE^CUI^COD_INMATRICULARE^…^FORMA_JURIDICA^ADR_TARA^ADR_JUDET^ADR_LOCALITATE^… (20 cols)
@@ -249,16 +250,16 @@ async function main(): Promise<void> {
         from reference.onrc_firm f
         where f.j_number = r.j_number and f.cui is not null
       `;
-      // homonym disambiguator: folded name + birth date + folded birth locality
+      // homonym disambiguator: folded name + birth date + folded birth locality (personKeySql, @seap/db)
       await sql`
         update reference.company_reps
-        set person_key = lower(unaccent(person_name)) || '|' ||
-                         coalesce(birth_date::text, '') || '|' ||
-                         lower(unaccent(coalesce(birth_locality, '')))
+        set person_key = ${personKeySql(sql, sql`person_name`, sql`birth_date`, sql`birth_locality`)}
       `;
       console.log("indexes…");
       await sql`create index company_reps_cui_idx on reference.company_reps (cui)`;
       await sql`create index company_reps_person_key_idx on reference.company_reps (person_key)`;
+      // The name part alone: an individual practice's holder is found by name (entity page, "același nume").
+      await sql`create index company_reps_person_name_key_idx on reference.company_reps (split_part(person_key, '|', 1))`;
       await sql`create index company_reps_name_trgm_idx on reference.company_reps using gin (person_name gin_trgm_ops)`;
       await sql`analyze reference.onrc_firm`;
       await sql`analyze reference.company_reps`;

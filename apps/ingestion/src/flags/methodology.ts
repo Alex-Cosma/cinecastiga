@@ -21,6 +21,8 @@ import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 // rf-2026.18: the profile index becomes a risk score over 100 (owner decision, 1 November 2026): continuous strengths of
 //   the DA criteria (score.ts); da_round from 96% of the ceiling; da_dependence needs 250k lei and 5 DAs with the main
 //   institution; da_year_end against the kind-year 95th percentile; new da_above_ceiling (safe scope); da_rapid retired.
+// rf-2026.19: net_shared_admin and Radiografie's shared administrators read the ONRC person key with the name's
+//   punctuation and spacing folded ("MARIA-MONICA" = "MARIA MONICA", migration 0090): one person, one key.
 // The version itself lives in @seap/db, where the nightly scheduler reads it.
 export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOnrcIdentityBirthDate } from './onrc-identity.js';
+import { canonicalPersonKey, isOnrcIdentityBirthDate } from './onrc-identity.js';
 
 describe('ONRC birth dates that may identify a person (audit F37)', () => {
   it('rejects the 1910 placeholders, so namesakes under them never share an identity', () => {
@@ -20,5 +20,17 @@ describe('ONRC birth dates that may identify a person (audit F37)', () => {
     expect(isOnrcIdentityBirthDate(null, '2026-07-08')).toBe(false);
     expect(isOnrcIdentityBirthDate('', '2026-07-08')).toBe(false);
     expect(isOnrcIdentityBirthDate('01.02.1970', '2026-07-08')).toBe(false);
+  });
+});
+
+describe('the person key with the name\'s punctuation and spacing folded (0090, 1 November 2026)', () => {
+  it('makes the spellings of one name one key, and leaves the date and the locality as they were', () => {
+    expect(canonicalPersonKey('nastasa maria-monica|1981-05-05|loc. macin')).toBe('nastasa maria monica|1981-05-05|loc. macin');
+    expect(canonicalPersonKey('nastasa maria monica|1981-05-05|loc. macin')).toBe('nastasa maria monica|1981-05-05|loc. macin');
+    expect(canonicalPersonKey('ionescu  maria -ana|1961-02-03|campina,prahova')).toBe('ionescu maria ana|1961-02-03|campina,prahova');
+    expect(canonicalPersonKey('ana - maria popa|1982-04-12|bucuresti')).toBe('ana maria popa|1982-04-12|bucuresti');
+  });
+  it('leaves anything that is not a person key alone', () => {
+    expect(canonicalPersonKey('not a key')).toBe('not a key');
   });
 });
