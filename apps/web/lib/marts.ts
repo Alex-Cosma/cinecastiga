@@ -603,7 +603,7 @@ export async function getEntityPartners(
   }));
 }
 
-/** How many of the entity's DA rows carry each row-level flag (da_round, da_rapid…). */
+/** How many of the entity's DA rows carry each row-level flag (da_round, da_above_ceiling, da_split). */
 export async function getEntityFlagRowCounts(
   entityId: string,
   role: Role,
