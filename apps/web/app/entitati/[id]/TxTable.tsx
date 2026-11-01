@@ -27,13 +27,6 @@ interface Resp {
   error?: string;
 }
 
-function gapLabel(min: number | null): string {
-  if (min == null) return "—";
-  if (min < 60) return `${min} min`;
-  if (min < 1440) return `${Math.round(min / 60)} h`;
-  return `${Math.round(min / 1440)} zile`;
-}
-
 export default function TxTable({
   entityId,
   role,
@@ -48,7 +41,7 @@ export default function TxTable({
   initialFlag?: string | undefined;
 }) {
   const [page, setPage] = useState(1);
-  const [sort, setSort] = useState<"value" | "date" | "gap">("value");
+  const [sort, setSort] = useState<"value" | "date">("value");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [years, setYears] = useState<string[]>([]);
   const [yearsOpen, setYearsOpen] = useState(false);
@@ -63,11 +56,11 @@ export default function TxTable({
   if (src !== "all") p.set("tip", src);
   const { data, loading, error, retry } = useEntityTable<Resp>(`/api/entity-tx?${p.toString()}`);
 
-  const sortBy = (key: "value" | "date" | "gap") => {
+  const sortBy = (key: "value" | "date") => {
     if (sort === key) setDir(dir === "desc" ? "asc" : "desc");
     else {
       setSort(key);
-      setDir(key === "gap" ? "asc" : "desc");
+      setDir("desc");
     }
     setPage(1);
   };
@@ -81,7 +74,7 @@ export default function TxTable({
 
   const showTip = src === "all";
   const republished = republishedContractKeys(data?.rows ?? []);
-  const nCols = showTip ? 8 : 7;
+  const nCols = showTip ? 7 : 6;
   return (
     <div>
       {tip.el}
@@ -183,13 +176,6 @@ export default function TxTable({
               >
                 Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
               </th>
-              <th
-                className="col-gap sortable"
-                onClick={() => sortBy("gap")}
-                title="publicare → finalizare"
-              >
-                Interval{sort === "gap" ? (dir === "desc" ? " ▾" : " ▴") : ""}
-              </th>
               <th className="col-flags">Semnale</th>
               <th className="col-links">Sursă</th>
             </tr>
@@ -276,7 +262,6 @@ export default function TxTable({
                     return kind ? <span className="cons-line kind-line" title={kind.title}>{kind.text}</span> : null;
                   })()}
                 </td>
-                <td className="c-gap" data-empty={t.gapMinutes == null ? "1" : undefined}>{gapLabel(t.gapMinutes)}</td>
                 <td className="clip c-flags" data-empty={t.daFlags.length === 0 ? "1" : undefined}>
                   {t.daFlags.map((f) => (
                     <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>

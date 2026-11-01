@@ -579,7 +579,6 @@ table.rank td .src a:hover { color: var(--accent); }
 .ask-drill th.col-county { width: 96px; }
 .ask-drill th.col-value { width: 128px; }
 .ask-drill th.col-links { width: 118px; }
-.ask-drill th.col-gap { width: 64px; }
 .ask-drill th.col-flags { width: 132px; }
 /* col-authority / col-supplier: unset — they split the remaining width evenly */
 .ask-table tr:last-child td { border-bottom: 0; }

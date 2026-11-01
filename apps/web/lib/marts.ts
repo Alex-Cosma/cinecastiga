@@ -296,7 +296,6 @@ export interface DaTx {
   estimatedValueRon: number | null;
   closingValue: number | null;
   finalizationDate: string | null;
-  gapMinutes: number | null;
   daFlags: string[];
   /** Contract rows only. */
   procedureType: string | null;
@@ -317,7 +316,7 @@ export interface DaTx {
 }
 
 export interface TxQuery {
-  sort?: "value" | "date" | "gap";
+  sort?: "value" | "date";
   dir?: "asc" | "desc";
   year?: string;
   /** Multi-select year filter (wins over `year` when set). */
@@ -453,9 +452,9 @@ export async function getEntityTransactions(
   const pageSize = q.pageSize ?? 50;
   const offset = ((q.page ?? 1) - 1) * pageSize;
   const col =
-    q.sort === "date" ? sql`finalization_date` : q.sort === "gap" ? sql`gap_minutes` : sql`closing_value`;
+    q.sort === "date" ? sql`finalization_date` : sql`closing_value`;
   // defaults per column: gap = fastest first, others = biggest/newest first
-  const asc = q.dir ? q.dir === "asc" : q.sort === "gap";
+  const asc = q.dir === "asc";
   const order = asc ? sql`${col} asc nulls last` : sql`${col} desc nulls last`;
   const yearCond =
     q.years && q.years.length > 0
@@ -473,7 +472,7 @@ export async function getEntityTransactions(
   const daSel = sql`
     select 'da' src, sicap_da_id::text rid, da_code code, ${cpName} cp_name, ${cpId} cp_id,
            county, cpv_code, cpv_name, estimated_value_ron, closing_value,
-           finalization_date, gap_minutes, da_flags,
+           finalization_date, da_flags,
            null::text procedure_type, null::bigint ca_notice_id, null::boolean single_bidder,
            null::bigint nat_id, value_suspect,
            null::int n_winners, null::numeric contract_value_full, null::text financial_kind
@@ -484,7 +483,7 @@ export async function getEntityTransactions(
   const ctSel = sql`
     select 'contract' src, t.contract_id::text rid, t.contract_no code, t.${cpName} cp_name, t.${cpId} cp_id,
            t.county, t.cpv_code, t.cpv_name, null::numeric estimated_value_ron, t.closing_value,
-           t.finalization_date, null::int gap_minutes, array[]::text[] da_flags,
+           t.finalization_date, array[]::text[] da_flags,
            t.procedure_type, t.ca_notice_id, t.is_single_bidder single_bidder,
            cc.ca_notice_contract_id nat_id, false value_suspect,
            t.n_winners, t.contract_value_full, ${contractKind(sql, "cc")} financial_kind
@@ -537,7 +536,6 @@ export async function getEntityTransactions(
       estimatedValueRon: r["estimated_value_ron"] != null ? Number(r["estimated_value_ron"]) : null,
       closingValue: r["closing_value"] != null ? Number(r["closing_value"]) : null,
       finalizationDate: (r["finalization_date"] as string | null) ?? null,
-      gapMinutes: r["gap_minutes"] != null ? Number(r["gap_minutes"]) : null,
       daFlags: (r["da_flags"] as string[] | null) ?? [],
       procedureType: (r["procedure_type"] as string | null) ?? null,
       caNoticeId: r["ca_notice_id"] != null ? String(r["ca_notice_id"]) : null,
