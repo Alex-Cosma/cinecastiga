@@ -7,7 +7,7 @@ import type { KitTip } from "./kit-types";
 
 /*
  * Component 6, the parked conditions (kit §5.43): conditions a change of lens
- * made inapplicable ("Nu se aplică indicelui: ↺ 2025 · ↺ „medicamente”"),
+ * made inapplicable ("Nu se aplică riscului: ↺ 2025 · ↺ „medicamente”"),
  * kept on the draft instead of an error. They never enter the link. Each is a
  * button that brings its condition back; the return is announced. The live
  * region stays mounted after the last one leaves, so that announcement is heard.

@@ -218,7 +218,7 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
   else if (i.singleBidder) raw.dataset = "contracts";
   if (i.singleBidder) notes.push(i.dataset === "da" ? SINGLE_OFFER_DA_NOTE : SINGLE_OFFER_NOTE);
   const named = Boolean(f.authorityName || f.supplierName);
-  // `keepSize`: the index of firms takes their size (F6c, final entity_card §3.6), as the profile of a firm's own peers does not.
+  // `keepSize`: the risk score of firms takes their size (F6c, final entity_card §3.6), as the profile of a firm's own peers does not.
   const dropForProfiles = (keepEntity: boolean, keepSize = false) => {
     const dropped = PROFILE_DROPPED.filter((k) => f[k] !== undefined && !(keepSize && (k === "minEmployees" || k === "maxEmployees")));
     for (const k of dropped) delete f[k];
@@ -232,7 +232,7 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
         dropped.some((k) => k.startsWith("admin")) ? "persoana" : null,
         dropped.includes("procedure") ? "procedura" : null,
       ].filter(Boolean);
-      notes.push(`Indicele de risc și semnalele sunt calculate pe toată activitatea din achizițiile directe, deci nu am aplicat ${what.join(", ")}. Semnalele sunt piste de verificat, nu dovezi.`);
+      notes.push(`Riscul și semnalele sunt calculate pe toată activitatea din achizițiile directe, deci nu am aplicat ${what.join(", ")}. Semnalele sunt piste de verificat, nu dovezi.`);
     }
   };
   const place = choice.place === undefined ? i.place : choice.place;

@@ -31,7 +31,7 @@ describe("the axis of «Cine conduce?» is a lens (kit §5.43, plan §4.13)", ()
   it("parks what the index cannot apply, with the phrases the reader saw", () => {
     const risk = choose(hospitals, "rankBy", { filter: "rankBy", value: "risk" });
     expect(risk.spec.rankBy).toBe("risk");
-    expect(risk.parked).toMatchObject({ label: "Nu se aplică indicelui", lens: "value" });
+    expect(risk.parked).toMatchObject({ label: "Nu se aplică riscului", lens: "value" });
     expect(risk.parked?.items.map((item) => [item.id, item.label])).toEqual([["cpvTerm", "„medicamente”"], ["period", "2025"]]);
     // An institution's county and kind are the index's too, and direct acquisitions are its archive (the profile line
     // says so): they stay; nothing else changes, nothing is noted.

@@ -232,7 +232,7 @@ describe("a restored or edited question keeps what it asked", () => {
     expect(edited.rankBy).toBeUndefined();
     expect(leaderAxis(edited)).toBe("risk");
     expect(isHistoricalProfile(edited)).toBe(true);
-    expect(questionTitle(edited)).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc?");
+    expect(questionTitle(edited)).toBe("Care firmă cu sediul în județul Cluj are cel mai ridicat risc?");
     expect(questionTitle({ ...edited, rankBy: "risk" })).toBe(questionTitle(edited));
   });
 
@@ -285,7 +285,7 @@ describe("locality scope in the place picker", () => {
   });
   it("the API refuses what the builder flags: one shared rule (localityScopeError)", () => {
     expect(localityScopeError({ block: "map", measure: "value", filters: { ...locality } })).toMatch(/Harta arată județele/);
-    expect(localityScopeError({ block: "scatter", dim: "authority", measure: "value", filters: { ...locality } })).toMatch(/Indicele de risc/);
+    expect(localityScopeError({ block: "scatter", dim: "authority", measure: "value", filters: { ...locality } })).toMatch(/Profilurile de risc/);
     expect(localityScopeError({ block: "stat", measure: "value", filters: { ...locality } })).toBeNull();
     expect(localityScopeError({ block: "map", measure: "value", filters: {} })).toBeNull();
   });

@@ -2,9 +2,9 @@ import type { FilterId, FilterSpec } from "./types";
 
 /*
  * The conditions set aside (plan §2.4, kit §5.43, component 6): when a change
- * of lens makes a condition inapplicable ("Cine conduce?", value → index), it
+ * of lens makes a condition inapplicable ("Cine conduce?", value → risk), it
  * leaves the spec, so the link, a saved question and a watch never carry it,
- * and waits in the builder's draft state: "Nu se aplică indicelui: ↺ 2025 ·
+ * and waits in the builder's draft state: "Nu se aplică riscului: ↺ 2025 ·
  * ↺ „medicamente”". Touching one goes back to the lens it came from and brings
  * every one of them back. Leaving a trend sets its own options aside the same
  * way ("Doar la schimbare: ↺ Noi față de 2024"). A reload loses them: a draft,
@@ -59,13 +59,13 @@ export function parkedRow(lens: Parked["lens"], items: readonly ParkedItem[]): P
     tip: "Perioada se aplică doar la toți partenerii; grupele se socotesc față de un an. Atinge-o ca să revii la Toți.",
   };
   if (lens === "value") return {
-    label: "Nu se aplică indicelui", lens, items,
-    tip: "Indicele de risc se calculează pe profilurile istorice, fără aceste condiții. Atinge una ca să revii la valoare.",
+    label: "Nu se aplică riscului", lens, items,
+    tip: "Riscul se calculează pe profilurile istorice, fără aceste condiții. Atinge una ca să revii la valoare.",
   };
   return {
     label: "Nu se aplică valorii", lens, items,
     tip: items.every((item) => item.id === "county")
-      ? "Pe valoare, județul e locul instituției care cumpără, nu sediul firmei. Atinge-l ca să revii la indice."
-      : "Pe valoare, aceste condiții nu se aplică. Atinge una ca să revii la indice.",
+      ? "Pe valoare, județul e locul instituției care cumpără, nu sediul firmei. Atinge-l ca să revii la risc."
+      : "Pe valoare, aceste condiții nu se aplică. Atinge una ca să revii la risc.",
   };
 }

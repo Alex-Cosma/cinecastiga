@@ -52,8 +52,8 @@ export const SCOPE_CHANGES: readonly { filter: FilterId; form: AnswerForm; dim?:
   // F3 (plan §4.2, §2.6): the same rows and values, „% din total” of the whole selection.
   { filter: "employees", form: "table", dim: "supplier", version: "table:employees-2" },
   // "Cine conduce?" by value: the band narrows the list its places come from and the total they are counted against is
-  // the band's (owner decision entity_card 4); the answer is entity_card-2's (F6c: the podium).
-  { filter: "employees", form: "entity_card:value", dim: "supplier", version: "entity_card-2" },
+  // the band's (owner decision entity_card 4); the answer is entity_card-2's (F6c: the podium), kept by entity_card-3.
+  { filter: "employees", form: "entity_card:value", dim: "supplier", version: "entity_card-3" },
 ];
 
 /** A choice today's builder offers on a question, and what follows it. */
@@ -86,7 +86,7 @@ const buyerPlace = (spec: FilterSpec) => Boolean(spec.filters.authorityKind || s
 const defined = (value: unknown) => value !== undefined;
 const PROFILE_REASON = "Acest răspuns folosește profiluri istorice de achiziții directe și nu poate respecta selecția de tranzacții.";
 const FIRM_PROFILE_REASON = "Profilurile firmelor nu pot fi restrânse după tipul sau localitatea cumpărătorului.";
-const PARK = "F1b: the conditions the index cannot apply are set aside (onTransition park, component 6: «Nu se aplică indicelui: ↺ …») and come back with the value axis.";
+const PARK = "F1b: the conditions the risk score cannot apply are set aside (onTransition park, component 6: «Nu se aplică riscului: ↺ …») and come back with the value axis.";
 
 /**
  * The choices today's builder offers on a question it can run, and then
@@ -111,7 +111,7 @@ export const TODAY_REFUSALS: readonly TodayRefusal[] = [
   { id: "risk-firm-buyer", filter: "rankBy", values: (value) => value === "risk", when: (spec, ctx) => ctx.form === "entity_card:value" && spec.dim === "supplier" && buyerPlace(spec),
     kind: "engine", reason: FIRM_PROFILE_REASON, fix: PARK },
   { id: "risk-locality", filter: "rankBy", values: (value) => value === "risk", when: (spec, ctx) => ctx.form === "entity_card:value" && Boolean(spec.filters.uatSiruta),
-    kind: "engine", reason: "Indicele de risc compară profiluri între ele, deci aici poți alege doar județul.", fix: PARK },
+    kind: "engine", reason: "Profilurile de risc se compară între ele, deci aici poți alege doar județul.", fix: PARK },
   { id: "firm-profile-buyer", filter: "dim", values: (value) => value === "supplier", when: (spec, ctx) => ["scatter", "entity_card:risk"].includes(ctx.form) && buyerPlace(spec),
     kind: "engine", reason: FIRM_PROFILE_REASON,
     fix: "F1b: the kind of institution is a phrase of the institutions' sentence; changing the subject to firms drops it with a note (onTransition)." },

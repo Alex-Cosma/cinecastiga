@@ -26,7 +26,7 @@ describe("«Cine conduce?» in words", () => {
       .toEqual({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { county: "Buzău" } });
     const hospital = await ask("care este cel mai riscant spital din Buzău");
     expect(hospital.spec).toEqual({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { county: "Buzău", authorityKind: "spital" } });
-    expect(hospital.sentence).toBe("Care spital din județul Buzău are cel mai ridicat indice de risc?");
+    expect(hospital.sentence).toBe("Care spital din județul Buzău are cel mai ridicat risc?");
     // The plural is the cloud, as before.
     expect((await ask("care sunt cele mai riscante firme")).spec).toMatchObject({ block: "scatter", dim: "supplier" });
   });

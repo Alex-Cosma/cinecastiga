@@ -65,8 +65,8 @@ export function answerLabels(answer: { data?: BlockData | undefined; executed?: 
     ...(data?.block === "trend" ? { trendYears: { yearA: data.yearA, yearB: data.yearB } } : {}),
     // A network's group counts from the year its answer used (the spec writes it; an old link's „din …” says the answer's).
     ...(data?.block === "network" ? { networkSince: data.since } : {}),
-    // distribution-2: the bounds of the group it compared ("primăriile cu 52–207 mii de locuitori").
-    ...(data?.block === "distribution" && data.distribution.version === 2 ? { peerGroup: data.distribution.group.facts } : {}),
+    // distribution-2 and -3: the bounds of the group it compared ("primăriile cu 52–207 mii de locuitori").
+    ...(data?.block === "distribution" && data.distribution.version >= 2 ? { peerGroup: data.distribution.group.facts } : {}),
     // scatter-2: the pill counts the group the cloud drew.
     ...(data?.block === "scatter" && "scatter" in data ? { scatterGroup: data.scatter.group.n } : {}),
   };

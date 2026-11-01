@@ -16,6 +16,15 @@ describe("answer pills", () => {
     for (const text of [...all, ...profiles]) expect(text).not.toMatch(/s-au dus banii|outlier|\bvs\b/);
   });
 
+  // rf-2026.18: the risk score's words, never the old index's ("CRI", "criterii", "la egalitate").
+  it("names the risk axis and the distribution in the risk score's words", () => {
+    const leader = pills({ block: "entity_card", measure: "value", dim: "authority", rankBy: "risk", filters: {} });
+    expect(leader.slice(0, 2)).toEqual(["primii după risc", "cel mai ridicat risc"]);
+    expect(pills({ block: "entity_card", measure: "value", dim: "authority", rankBy: "value", filters: {} }).slice(0, 2)).toEqual(["locurile 1–3", "cea mai mare valoare"]);
+    expect(pills({ block: "distribution", measure: "value", dim: "authority", filters: { authorityId: 1 } })[0]).toBe("risc față de grup");
+    for (const text of leader) expect(text).not.toMatch(/CRI|criteri|egalitate|indice/);
+  });
+
   it.each([
     ["distribution", { authorityId: 1 }, undefined],
     ["scatter", {}, undefined],

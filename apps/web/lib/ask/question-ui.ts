@@ -136,21 +136,21 @@ export const QUESTION_TYPES: {
     id: "distribution",
     group: "signals",
     label: "Cât de neobișnuit este un profil?",
-    description: "Câte criterii de risc îndeplinește, față de grupul ales.",
-    keywords: "distributie percentila neobisnuit risc criterii grup comparatie",
+    description: "Riscul unei entități, față de grupul ales.",
+    keywords: "distributie percentila neobisnuit risc scor tipare criterii grup comparatie",
   },
   {
     id: "scatter",
     group: "signals",
     label: "Cine iese din tipar?",
-    description: "Valoarea achizițiilor în raport cu indicele de risc.",
-    keywords: "risc volum scatter outlier anomalii",
+    description: "Valoarea achizițiilor în raport cu riscul (0–100%).",
+    keywords: "risc scor tipare volum scatter outlier anomalii",
   },
   {
     id: "entity_card",
     group: "signals",
     label: "Cine conduce într-o categorie?",
-    description: "Cea mai mare valoare a achizițiilor sau cel mai ridicat indice de risc.",
+    description: "Cea mai mare valoare a achizițiilor sau cel mai ridicat risc.",
     keywords: "fisa campion superlativ cea mai mare risc",
   },
 ];
@@ -178,7 +178,7 @@ export const isProfileQuestion = (spec: QuestionSpec) =>
  */
 export const COUNT_MEASURE_BLOCKS: readonly string[] = ["table", "stat", "timeseries", "map", "breakdown"];
 /**
- * The axis of "Cine conduce?". A spec without rankBy runs as the risk index
+ * The axis of "Cine conduce?". A spec without rankBy runs as the risk score
  * (compile.ts `rankBy ?? "risk"`, isHistoricalProfile), so it reads as one.
  */
 export const leaderAxis = (spec: { rankBy?: string }): "value" | "risk" =>
@@ -355,7 +355,7 @@ export function transitionQuestion(
   // combinations remain editable and questionErrors explains how to resolve them.
   if (entering && block === "entity_card") {
     // A new leader question says its axis. Without rankBy it is the risk
-    // index (leaderAxis), so a restored or edited one keeps that meaning.
+    // score (leaderAxis), so a restored or edited one keeps that meaning.
     spec.rankBy = spec.rankBy ?? "value";
     spec.dim = spec.dim === "supplier" ? "supplier" : "authority";
   }
@@ -506,7 +506,7 @@ export function questionErrors(spec: QuestionSpec): string[] {
  */
 export function localityScopeSupport(spec: QuestionSpec): { ok: true } | { ok: false; reason: string } {
   if (isHistoricalProfile(spec))
-    return { ok: false, reason: "Indicele de risc compară profiluri între ele, deci aici poți alege doar județul." };
+    return { ok: false, reason: "Profilurile de risc se compară între ele, deci aici poți alege doar județul." };
   if (["map", "compare", "network", "sankey", "fact_check"].includes(spec.block))
     return { ok: false, reason: spec.block === "map" ? "Harta arată județele, deci aici poți alege doar județul." : "Această întrebare pornește de la instituții sau firme anume, deci aici poți alege doar județul." };
   if ((spec.block === "table" || spec.block === "trend") && spec.dim === "county")
