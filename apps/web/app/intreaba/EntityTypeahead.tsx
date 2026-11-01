@@ -148,6 +148,7 @@ export default function EntityTypeahead({
               <span className="sd-meta">
                 {h.roles.map((r) => ROLE_RO[r] ?? r).join(" · ")}
                 {h.county ? ` · ${h.county}` : ""}
+                {h.registryName ? ` · în registru: ${h.registryName}` : ""}
                 {h.cui ? ` · CUI ${h.cui}` : ""}
                 {h.total > 0 ? ` · ${formatRon(h.total)}` : ""}
               </span>

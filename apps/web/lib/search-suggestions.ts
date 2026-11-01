@@ -158,7 +158,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     push(authority ? "authorities" : "suppliers", {
       id: `entity:${e.id}`,
       label: cleanName(e.name),
-      detail: [authority ? "Instituție publică" : "Firmă", e.county, e.cui ? `CUI ${e.cui}` : null].filter(Boolean).join(" · "),
+      detail: [authority ? "Instituție publică" : "Firmă", e.county, e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
       href: `/entitati/${e.id}`,
       icon: authority ? "building" : "network",
     });

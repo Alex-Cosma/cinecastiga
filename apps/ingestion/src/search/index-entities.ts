@@ -1,12 +1,14 @@
 import { Meilisearch } from "meilisearch";
-import type { DbSql } from "@seap/db";
+import { corroboratedCui, otherRegistryNames, type DbSql } from "@seap/db";
 
 /**
  * Build the Meilisearch `entities` index from core + marts. One document per
  * canonical entity, searchable by name + CUI, filterable by role/county,
  * sortable by spend. Read side (web) queries this instead of the DB for
  * free-text lookup. Meili folds diacritics and tolerates typos by default,
- * matching the diacritic-free SICAP data.
+ * matching the diacritic-free SICAP data. A firm renamed in ONRC is found by
+ * either name: `registryNames` holds ONRC's names for its corroborated CUI that
+ * are not the SICAP name (1 November 2026).
  */
 export const ENTITIES_INDEX = "entities";
 
@@ -20,6 +22,8 @@ export function meiliClient(): Meilisearch {
 interface EntityDoc {
   id: number;
   name: string;
+  /** ONRC's other names for the CUI (otherRegistryNames), searchable. */
+  registryNames: string[];
   cui: string | null;
   county: string | null;
   roles: string[];
@@ -63,7 +67,7 @@ export async function indexEntities(
   const wipeTask = await index.deleteAllDocuments();
   await waitForSuccess(wipeTask.taskUid, 300_000);
   const settingsTask = await index.updateSettings({
-    searchableAttributes: ["name", "cui"],
+    searchableAttributes: ["name", "registryNames", "cui"],
     filterableAttributes: ["roles", "county"],
     sortableAttributes: ["total"],
     // All query words + typo tolerance first, then spend (callers pass
@@ -106,6 +110,19 @@ export async function indexEntities(
     authority_total: string;
   }[];
 
+  // ONRC's names by corroborated CUI; a database without the ONRC import has none.
+  const [onrc] = (await sql`select to_regclass('reference.onrc_firm') is not null present`) as unknown as { present: boolean }[];
+  const registryRows = onrc?.present
+    ? ((await sql`
+        select e.id, array_agg(o.name order by o.j_number) names
+        from core.entities e
+        join reference.onrc_firm o on o.cui = ${corroboratedCui(sql, "e")}
+        where e.cui_canonical is not null and exists (select 1 from marts.entity_profile ep where ep.entity_id = e.id)
+        group by e.id
+      `) as unknown as { id: bigint; names: string[] }[])
+    : [];
+  const registryNames = new Map(registryRows.map((r) => [String(r.id), r.names]));
+
   log(`indexing ${rows.length} entities...`);
 
   let sent = 0;
@@ -116,6 +133,7 @@ export async function indexEntities(
       return {
         id: Number(r.id),
         name: r.name_display ?? "(fără nume)",
+        registryNames: otherRegistryNames(r.name_display, registryNames.get(String(r.id)) ?? []),
         cui: r.cui_canonical,
         county: r.county,
         roles: r.roles,

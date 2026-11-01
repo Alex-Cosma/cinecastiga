@@ -110,6 +110,7 @@ export default function SearchBox() {
               <span className="sd-meta">
                 {h.cui ? `CUI ${h.cui}` : ""}
                 {h.county ? ` · ${h.county}` : ""}
+                {h.registryName ? ` · în registru: ${h.registryName}` : ""}
               </span>
             </li>
           ))}
