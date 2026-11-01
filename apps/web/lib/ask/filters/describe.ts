@@ -14,6 +14,7 @@ import {
 import { formatExactDecimal, formatInt, formatRon } from "../../format";
 import { monthsLabel } from "../months-window";
 import { flagLabel } from "../../flags";
+import { isScatterFlag } from "../scatter-shared";
 import { kindApplies, PROCEDURE_WORDS, PURCHASE_KIND_WORDS, valueWords, type Procedure, type PurchaseKind } from "../purchase";
 import { TREND_ALL_CHANGES, TREND_FIRST_LABEL, TREND_GROUP_ROW, firstTimeWords, trendGroupLabel } from "./defs/trend";
 import { networkGroupLabel } from "./defs/network";
@@ -598,7 +599,8 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
   // what is counted: the pill and the receipt say them, the title and the total line do not (SHAPE).
   scatterFlag: (spec) => {
     const flag = spec.scatter?.flag;
-    if (!flag) return null;
+    // A retired signal (rf-2026.18: da_rapid, an older link or watch) is not applied: no pill, the answer says it dropped it.
+    if (!flag || !isScatterFlag(flag)) return null;
     const label = flagLabel(flag), lower = label.toLocaleLowerCase("ro-RO");
     return { words: `semnal: ${lower}`, chip: `Semnal: ${label}`, pills: [`semnal: ${lower}`], scope: [{ label: "Semnal", value: label }], summary: `Semnal: ${label}` };
   },

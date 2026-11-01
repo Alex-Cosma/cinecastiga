@@ -176,6 +176,28 @@ describe.skipIf(!url)("server evidence captures (dedicated PostgreSQL database)"
       await sql`delete from core.entities where id=${alias}`;
     }
   });
+  // rf-2026.18: an entity's capture freezes the risk score of its highest-scoring role, whichever role the database lists first.
+  it("freezes the risk score of the entity's highest-scoring role, with every role's score and parts",async()=>{
+    await sql`insert into marts.entity_flags(entity_id,role,name_display,n_das,total_ron,cri,n_flags,flags,score,score_raw,score_parts)
+      values(${authority},'authority','Fixture authority',30,1000,0.2,1,'["da_round"]',20,20.4,'{"da_round":{"x":1,"n":6,"share":0.12}}'),
+      (${authority},'supplier','Fixture authority',12,500,0.73,2,'["da_split","da_round"]',73,72.8,'{"da_split":{"x":2.1},"da_round":{"x":1.8}}')`;
+    try{
+      const {capture}=await queued('entity',authority);
+      await processCapture(uid,inv,capture.id,sql);
+      const frozen=await getCapturedRows(uid,inv,capture.id,0,sql);
+      expect(frozen?.capture.status,frozen?.capture.error??undefined).toBe('complete');
+      const summary=frozen!.capture.summary!;
+      expect(summary).toMatchObject({score:73,nFlags:2});
+      expect(summary).not.toHaveProperty('cri');
+      expect(summary.riskProfiles).toEqual([
+        {role:'supplier',score:73,n_flags:2,flags:['da_split','da_round'],parts:{da_split:{x:2.1},da_round:{x:1.8}}},
+        {role:'authority',score:20,n_flags:1,flags:['da_round'],parts:{da_round:{x:1,n:6,share:0.12}}},
+      ]);
+      expect(frozen?.capture.methodology?.risk).toContain('nu este o probabilitate de corupție');
+    }finally{
+      await sql`delete from marts.entity_flags where entity_id=${authority}`;
+    }
+  });
   // F0a: a query capture queued by a newer release fails with the reason; it never freezes the selection without the condition.
   it("fails a queued query capture whose spec carries a key this release does not apply",async()=>{
     const spec={block:"stat",measure:"value",filters:{authorityId:Number(authority)}};

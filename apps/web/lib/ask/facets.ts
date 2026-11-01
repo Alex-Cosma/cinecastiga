@@ -420,7 +420,7 @@ async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): 
 
 /**
  * Counts of a profile question (the risk cloud, "Cine conduce?" on the
- * index): its profiles (profilePredicates), by kind or by county (a firm's
+ * risk score): its profiles (profilePredicates), by kind or by county (a firm's
  * seat on firm profiles: its profile row's, F4). A distribution's group is its own window (F6a,
  * /api/ask/peers); the other parts are conditions on records, which a
  * profile does not take.
@@ -428,12 +428,12 @@ async function seatClasses(sql: DbSql, p: Prepared, ready: Ready, run: Runner): 
 async function profileCounts(sql: DbSql, p: Prepared, part: CountPart, run: Runner): Promise<{ rows: Grouped[]; unit: FacetUnit } | { error: string }> {
   const { spec, ctx } = p;
   const role: Role = spec.dim === "supplier" ? "supplier" : "authority";
-  // F6c: the size of the firms on "Cine conduce?" by the index (final entity_card §3.6): the profiles of each band.
+  // F6c: the size of the firms on "Cine conduce?" by risk (final entity_card §3.6): the profiles of each band.
   const offered = spec.block !== "distribution" && (part === "county" || (part === "kind" && role === "authority") || (part === "seat" && role === "supplier")
     || (part === "employees" && role === "supplier" && spec.block === "entity_card"));
   if (!offered) return { error: "Profilurile istorice nu se numără după această condiție." };
+  // Every profile has a score since rf-2026.18 (0 without a pattern), so the risk cloud's group is the predicates alone.
   const parts: Fragment[] = [...profilePredicates(ctx, role, profileMinDas(spec.block))];
-  if (spec.block === "scatter") parts.push(sql`ef.cri is not null`);
   const where = andAll(sql, parts);
   const seat: Fragment = role === "supplier" && ctx.seatColumn
     ? sql`(select ep.seat_county from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = 'supplier')` : sql`ef.county`;

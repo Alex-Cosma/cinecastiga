@@ -211,7 +211,7 @@ export interface AskSpec {
   measure: Measure;
   /** table/trend only; capped at MAX_TOP_N. */
   topN?: number;
-  /** entity_card: superlative axis (risk = CRI, value = spend). */
+  /** entity_card: superlative axis (risk = the risk score 0–100, value = spend). */
   rankBy?: RankBy;
   filters: AskFilters;
   /** Explicit transaction conditions, shared by every compatible view and source export. */
@@ -242,7 +242,7 @@ export const SPEC_JSON_SCHEMA = {
       type: "string",
       enum: [...BLOCKS],
       description:
-        "table = clasament/top pe o dimensiune; stat = un singur număr total; timeseries = evoluție pe ani; map = valori pe județe (hartă); compare = două entități față în față; distribution = unde se situează o entitate în distribuția indicelui de risc; breakdown = compoziția cheltuielii pe categorii CPV; scatter = risc vs volum, cu outlieri; sankey = ce cumpără o entitate și de la cine (parteneri → domenii); network = partenerii unei entități (cu cine lucrează); entity_card = O SINGURĂ entitate-superlativ (cea mai riscantă / cea mai mare); fact_check = a cumpărat X de la Y? (Da/Nu cu dovezi); trend = schimbarea între doi ani, pe entități",
+        "table = clasament/top pe o dimensiune; stat = un singur număr total; timeseries = evoluție pe ani; map = valori pe județe (hartă); compare = două entități față în față; distribution = unde se situează o entitate după risc (scor 0–100%), față de grupul ei; breakdown = compoziția cheltuielii pe categorii CPV; scatter = risc vs volum, cu outlieri; sankey = ce cumpără o entitate și de la cine (parteneri → domenii); network = partenerii unei entități (cu cine lucrează); entity_card = O SINGURĂ entitate-superlativ (cea mai riscantă / cea mai mare); fact_check = a cumpărat X de la Y? (Da/Nu cu dovezi); trend = schimbarea între doi ani, pe entități",
     },
     dataset: {
       type: "string",
@@ -267,7 +267,7 @@ export const SPEC_JSON_SCHEMA = {
       type: "string",
       enum: [...RANK_BYS],
       description:
-        "Doar pentru entity_card: risk = cea mai riscantă (indice de risc), value = cea mai mare cheltuială.",
+        "Doar pentru entity_card: risk = cel mai ridicat risc (scor 0–100%), value = cea mai mare cheltuială.",
     },
     filters: {
       type: "object",

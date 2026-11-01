@@ -11,8 +11,8 @@ import { alwaysScope, edited, readAhead } from "./shared";
 
 export const rankBy: FilterDef<"value" | "risk"> = {
   id: "rankBy", keys: ["rankBy"], placement: "sentence", control: "list",
-  label: "Axa", windowTitle: "Ce vrei să descoperi?", windowNote: "Un indice ridicat este un punct de plecare pentru verificări.",
-  // The answer itself: the transaction ranking or the profiles (a missing rankBy is the index).
+  label: "Axa", windowTitle: "Ce vrei să descoperi?", windowNote: "Un risc ridicat este un punct de plecare pentru verificări.",
+  // The answer itself: the transaction ranking or the profiles (a missing rankBy is the risk score).
   // Old scatter links carry it from "Cine conduce?"; accepted there and ignored (F0a, scatter.rankBy).
   engine: { "entity_card:value": "block", "entity_card:risk": "block" }, scope: alwaysScope("display"),
   read: (spec) => spec.rankBy as "value" | "risk" | undefined,

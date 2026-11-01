@@ -113,9 +113,9 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return `${s("count")} achiziții în ${s("year")}${evidence.cpv_class ? ` · CPV ${s("cpv_class")}` : ""}, plafon de referință ${money("ceiling")}.`;
     case "da_year_end":
       return `${s("year")}: ${pct("december_pct")} din valoarea achizițiilor directe finalizate în acel an revine lunii decembrie (${money("december")} din ${money("total")}).`;
-    case "da_above_ceiling":
-      return `${money("closing")}, de ${n("ratio") === null ? "?" : String(Math.round(n("ratio")! * 100) / 100).replace(".", ",")} ori plafonul de ${money("ceiling")} (${thresholdTypeLabel(evidence.type)}).`;
+    // Both compare one acquisition's closing value with its own ceiling (rf-2026.18: closing, ceiling, type).
     case "da_round":
+    case "da_above_ceiling":
       return nearThresholdEvidence(evidence);
     case "da_concentration":
       return `Furnizorul principal: ${pct("top_supplier_pct")} din valoarea achizițiilor directe (${money("total")} în total, ${s("suppliers")} furnizori, HHI ${s("hhi")}).`;

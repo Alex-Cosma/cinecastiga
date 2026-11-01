@@ -52,7 +52,7 @@ export function validatePopulation(raw: unknown): QueryPopulation | { error: str
 }
 
 /**
- * Historical CRI renderers cannot apply transaction-level populations. A
+ * Historical risk-profile renderers cannot apply transaction-level populations. A
  * comparison is always on the selection (24 Oct 2026); it shows each risk
  * profile beside it, labelled apart. `comparisonMode` from older links is ignored.
  */

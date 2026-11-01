@@ -26,7 +26,7 @@ export const GLOSSARY = {
   },
   semnal: {
     title: "Semnal",
-    text: "Un tipar din date care merită verificat, de exemplu posibila fracționare: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului. Este o pistă, nu o acuzație și nu dovedește o ilegalitate.",
+    text: "Un tipar din date care merită verificat, de exemplu achizițiile repetate peste plafonul cumulat: cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip, fiecare sub plafonul ei de achiziție directă, dar care împreună depășesc cel mai mare plafon aplicabil grupului. Este o pistă, nu o acuzație și nu dovedește o ilegalitate.",
   },
   cpv: {
     title: "Subiect (cod CPV)",
@@ -131,8 +131,8 @@ export const GLOSSARY = {
     text: "Un tipar poate avea apariții fără să intre în risc: „chiar sub plafon” cere o pondere minimă din achizițiile directe, iar „peste plafon” cel puțin două cazuri.",
   },
   "prag-vs-fractionare": {
-    title: "Aproape de prag sau fracționare",
-    text: "Aproape de prag: o achiziție față de plafonul ei. Fracționare: suma unui grup față de plafon. Aceeași achiziție poate apărea în ambele; niciunul nu arată intenția de a evita o procedură.",
+    title: "Chiar sub plafon sau achiziții repetate",
+    text: "Chiar sub plafon: o achiziție față de plafonul ei. Achiziții repetate: suma unui grup față de plafon. Aceeași achiziție poate apărea în ambele; niciunul nu arată intenția de a evita o procedură.",
   },
   "conducere-onrc": {
     title: "Conducere",

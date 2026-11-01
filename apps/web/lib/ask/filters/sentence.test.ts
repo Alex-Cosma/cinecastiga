@@ -267,7 +267,7 @@ describe("the sentence of each question (plan §4)", () => {
     expect(marked(q({ block: "table", dim: "supplier", filters: { county: "Buzău" } }), { allInstitutions: true }))
       .toBe("Ce [firme] câștigă [achizițiile] făcute de [instituțiile publice] (toate, nu doar primăriile) din [județul Buzău], în [toți anii]?");
     expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { county: "Buzău" } }), { allInstitutions: true }))
-      .toBe("Care [instituție] (oricare, nu doar primăriile) din [județul Buzău] [are cel mai ridicat indice de risc]?");
+      .toBe("Care [instituție] (oricare, nu doar primăriile) din [județul Buzău] [are cel mai ridicat risc]?");
     // A kind is said: nothing to add.
     expect(marked(q({ block: "stat", filters: { authorityKind: "spital" } }), { allInstitutions: true })).not.toContain("nu doar");
   });
@@ -314,13 +314,13 @@ describe("the sentence of each question (plan §4)", () => {
   });
 
   it("distribution: the group the entity is placed in (§4.11)", () => {
-    expect(marked(q({ block: "distribution", dim: "authority", filters: BUZAU }))).toBe("Unde se situează [MUNICIPIUL BUZAU] după indicele de risc, față de [toate instituțiile publice]?");
-    expect(marked(q({ block: "distribution", dim: "authority", filters: { ...BUZAU, county: "Buzău" } }))).toBe("Unde se situează [MUNICIPIUL BUZAU] după indicele de risc, față de [instituțiile publice din județul Buzău]?");
+    expect(marked(q({ block: "distribution", dim: "authority", filters: BUZAU }))).toBe("Unde se situează [MUNICIPIUL BUZAU] după risc, față de [toate instituțiile publice]?");
+    expect(marked(q({ block: "distribution", dim: "authority", filters: { ...BUZAU, county: "Buzău" } }))).toBe("Unde se situează [MUNICIPIUL BUZAU] după risc, față de [instituțiile publice din județul Buzău]?");
     expect(marked(q({ block: "distribution", dim: "authority", filters: { authorityName: "Spitalul Județean Cluj", authorityKind: "spital", county: "Cluj" } })))
-      .toBe("Unde se situează [Spitalul Județean Cluj] după indicele de risc, față de [spitalele din județul Cluj]?");
-    expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN" } }))).toBe("Unde se situează [DEDEMAN] după indicele de risc, față de [toate firmele]?");
+      .toBe("Unde se situează [Spitalul Județean Cluj] după risc, față de [spitalele din județul Cluj]?");
+    expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN" } }))).toBe("Unde se situează [DEDEMAN] după risc, față de [toate firmele]?");
     // On firm profiles the county is the seat (R9).
-    expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN", county: "Bacău" } }))).toBe("Unde se situează [DEDEMAN] după indicele de risc, față de [firmele cu sediul în județul Bacău]?");
+    expect(marked(q({ block: "distribution", dim: "supplier", filters: { supplierName: "DEDEMAN", county: "Bacău" } }))).toBe("Unde se situează [DEDEMAN] după risc, față de [firmele cu sediul în județul Bacău]?");
     // F6a: one phrase for the group; an old link's kind is said by it too (the window shows it apart, with ×).
     expect(slotOf(q({ block: "distribution", dim: "authority", filters: { ...BUZAU, authorityKind: "comuna", county: "Buzău" } }), "peers"))
       .toMatchObject({ says: ["county", "authorityKind"], writes: ["county", "authorityKind"], picker: "peers", window: "Față de cine?" });
@@ -332,9 +332,9 @@ describe("the sentence of each question (plan §4)", () => {
     const facts: PeerFacts = { role: "authority", entityId: "11", name: "MUNICIPIUL BUZAU", county: "Buzău", nDas: 782,
       similar: { rule: "population", value: 103_481, min: 51_741, max: 206_962 }, activity: { min: 391, max: 1_564 } };
     const similar = q({ block: "distribution", dim: "authority", filters: BUZAU, peers: { similar: true } });
-    expect(marked(similar, { peerGroup: facts })).toBe("Unde se situează [MUNICIPIUL BUZAU] după indicele de risc, față de [primăriile cu 52–207 mii de locuitori]?");
+    expect(marked(similar, { peerGroup: facts })).toBe("Unde se situează [MUNICIPIUL BUZAU] după risc, față de [primăriile cu 52–207 mii de locuitori]?");
     // Without the facts (a saved question's summary, before the window's numbers): the rule by name.
-    expect(marked(similar)).toBe("Unde se situează [MUNICIPIUL BUZAU] după indicele de risc, față de [instituțiile de același tip]?");
+    expect(marked(similar)).toBe("Unde se situează [MUNICIPIUL BUZAU] după risc, față de [instituțiile de același tip]?");
     // Another entity's facts never bound this one's group.
     expect(marked(similar, { peerGroup: { ...facts, entityId: "12" } })).toContain("[instituțiile de același tip]");
     const commune: PeerFacts = { ...facts, similar: { rule: "population", value: 3_173, min: 1_587, max: 6_346 } };
@@ -375,11 +375,11 @@ describe("the sentence of each question (plan §4)", () => {
       .toBe("Care [firmă] condusă azi de [POPESCU ION (n. 1970)] [câștigă cel mai mult] din [achizițiile] pentru [„medicamente”] făcute de [instituțiile publice] din [toată țara], în [2025]?");
     expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { authorityKind: "comuna", county: "Cluj", supplierName: "ALLIANCE HEALTHCARE ROMANIA" } })))
       .toBe("Care [primărie de comună] din [județul Cluj] [cumpără cel mai mult] de la [ALLIANCE HEALTHCARE ROMANIA], prin [toate achizițiile], în [toți anii]?");
-    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care [firmă] cu sediul [în județul Cluj] [are cel mai ridicat indice de risc]?");
+    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { county: "Cluj" } }))).toBe("Care [firmă] cu sediul [în județul Cluj] [are cel mai ridicat risc]?");
     expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { county: "Cluj", authorityKind: "consiliu_judetean" } })))
-      .toBe("Care [consiliu județean] din [județul Cluj] [are cel mai ridicat indice de risc]?");
+      .toBe("Care [consiliu județean] din [județul Cluj] [are cel mai ridicat risc]?");
     // Without rankBy the question runs as the index (leaderAxis): it reads as one.
-    expect(marked(q({ block: "entity_card", dim: "authority" }))).toBe("Care [instituție] din [toată țara] [are cel mai ridicat indice de risc]?");
+    expect(marked(q({ block: "entity_card", dim: "authority" }))).toBe("Care [instituție] din [toată țara] [are cel mai ridicat risc]?");
     const axis = slotOf(q({ block: "entity_card", dim: "supplier", rankBy: "value" }), "rankBy");
     expect(axis).toMatchObject({ window: "Ce cauți?", says: ["rankBy"] });
     expect(slotOf(q({ block: "entity_card", dim: "supplier", rankBy: "value" }), "dim")?.window).toBe("Cine concurează?");
@@ -397,7 +397,7 @@ describe("the sentence of each question (plan §4)", () => {
     const hospitals = q({ block: "entity_card", dim: "authority", rankBy: "value", filters: { authorityKind: "spital", county: "Cluj" } });
     expect(marked(hospitals)).toBe("Care [spital] din [județul Cluj] [cumpără cel mai mult], prin [toate achizițiile], în [toți anii]?");
     expect(under(hospitals)).toEqual([]);
-    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "spital" } }))).toBe("Care [spital] din [toată țara] [are cel mai ridicat indice de risc]?");
+    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "spital" } }))).toBe("Care [spital] din [toată țara] [are cel mai ridicat risc]?");
     // The buyers of a ranking of firms keep every kind, as on "Cine câștigă?" (review S2-F1b).
     const toHospitals = q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { authorityKind: "spital", yearFrom: 2025, yearTo: 2025 } });
     expect(marked(toHospitals)).toBe("Care [firmă] [câștigă cel mai mult] din [achizițiile] făcute de [spitalele] din [toată țara], în [2025]?");
@@ -406,7 +406,7 @@ describe("the sentence of each question (plan §4)", () => {
     expect(kindAfterD1(hospitals, "spital")).toBe(false);
     // Elsewhere the kinds are said as today.
     expect(marked(q({ block: "table", dim: "authority", filters: { authorityKind: "oras_municipiu" } }))).toMatch(/^Ce \[primării de oraș și municipiu\] din/);
-    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "scoala" } }))).toBe("Care [școală] din [toată țara] [are cel mai ridicat indice de risc]?");
+    expect(marked(q({ block: "entity_card", dim: "authority", rankBy: "risk", filters: { authorityKind: "scoala" } }))).toBe("Care [școală] din [toată țara] [are cel mai ridicat risc]?");
   });
 });
 
@@ -457,7 +457,7 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "site:node-records": "Cu cine lucrează Municipiul Fixture Nord, în toți anii?",
       "site:ribbon-records": "Ce cumpără Municipiul Fixture Nord și de la cine, în toți anii?",
       "site:map-county-records": "Cum se împart achizițiile făcute de instituțiile publice pe județe, în toți anii?",
-      "site:leader-alone-peers": "Unde se situează Consiliul Judetean Alba după indicele de risc, față de consiliile județene?",
+      "site:leader-alone-peers": "Unde se situează Consiliul Judetean Alba după risc, față de consiliile județene?",
       "site:leader-alone-total": "Cât valorează achizițiile făcute de Consiliul Judetean Alba, în 2025?",
       "legacy:minimum-table-supplier-role": "Ce instituții publice din toată țara cumpără cel mai mult, prin toate achizițiile, în 2025? · sub propoziție: minimumRecords",
       "legacy:minimum-table-authority-role": "Ce instituții publice din toată țara cumpără cel mai mult, prin toate achizițiile, în 2025? · sub propoziție: minimumRecords",
@@ -465,7 +465,7 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:minimum-map": "Cum se împart achizițiile făcute de instituțiile publice pe județe, în toți anii? · sub propoziție: minimumRecords",
       "legacy:minimum-leader-value": "Care firmă câștigă cel mai mult din achizițiile făcute de instituțiile publice din toată țara, în toți anii? · sub propoziție: minimumRecords",
       "legacy:minimum-trend-refused": "Ce firme au cea mai mare schimbare între 2024 și 2025? · sub propoziție: minimumRecords",
-      "legacy:minimum-profile-refused": "Unde se situează Entitatea #9100000004 după indicele de risc, față de toate instituțiile publice? · sub propoziție: minimumRecords",
+      "legacy:minimum-profile-refused": "Unde se situează Entitatea #9100000004 după risc, față de toate instituțiile publice? · sub propoziție: minimumRecords",
       "legacy:single-bidder-stat": "Cât valorează contractele din proceduri încheiate de instituțiile publice din toată țara, în toți anii? · sub propoziție: singleBidder",
       "legacy:single-bidder-table": "Ce firme câștigă contractele din proceduri încheiate de instituțiile publice din toată țara, în toți anii? · sub propoziție: singleBidder",
       "legacy:comparison-mode-transactions": "Compară Fixture Construct SRL cu Fixture Partener SRL la toate achizițiile, în 2025.",
@@ -473,11 +473,11 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:employees-under-5": "Ce firme câștigă achizițiile făcute de instituțiile publice din toată țara, în toți anii? · sub propoziție: employees",
       "legacy:employees-250-plus": "Cât valorează achizițiile făcute de instituțiile publice din toată țara de la firme cu cel puțin 250 de angajați, în toți anii?",
       "legacy:employees-on-authorities": "Ce instituții publice din toată țara cumpără cel mai mult de la firme cu 1–49 de angajați, prin toate achizițiile, în toți anii?",
-      "legacy:contracts-distribution-refused": "Unde se situează Entitatea #9100000004 după indicele de risc, față de toate instituțiile publice? · sub propoziție: dataset",
+      "legacy:contracts-distribution-refused": "Unde se situează Entitatea #9100000004 după risc, față de toate instituțiile publice? · sub propoziție: dataset",
       "legacy:contracts-scatter-refused": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: dataset",
       "legacy:da-scatter": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: dataset",
       "legacy:county-scatter-firms": "Ce firme cu sediul în județul Cluj ies din tipar după risc și valoarea achizițiilor directe?",
-      "legacy:leader-without-rankBy": "Care instituție din toată țara are cel mai ridicat indice de risc?",
+      "legacy:leader-without-rankBy": "Care instituție din toată țara are cel mai ridicat risc?",
       "legacy:trend-without-years": "Ce firme au cea mai mare schimbare între primul an și ultimul an?",
       "legacy:trend-without-topN": "Ce firme au cea mai mare schimbare între 2024 și 2025?",
       "legacy:count-on-breakdown": "Ce cumpără instituțiile publice din județul Cluj, în toți anii?",
@@ -519,13 +519,13 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "legacy:county-unknown": "Cât valorează achizițiile făcute de instituțiile publice din județul Atlantida, în toți anii?",
       "legacy:authority-unknown": "Cât valorează achizițiile făcute de Instituția Inexistentă Zzz, în toți anii?",
       "legacy:fact-check-no": "A cumpărat Scoala Gimnaziala Fixture de la Fixture Servicii SA până acum?",
-      "legacy:distribution-no-profile": "Unde se situează Agentia Fixture Nationala după indicele de risc, față de toate instituțiile publice?",
+      "legacy:distribution-no-profile": "Unde se situează Agentia Fixture Nationala după risc, față de toate instituțiile publice?",
       "legacy:network-empty": "Cu cine lucrează Scoala Gimnaziala Fixture pentru „parcuri”, în toți anii?",
       "legacy:sankey-empty": "Ce cumpără Scoala Gimnaziala Fixture în domeniul „parcuri” și de la cine, în toți anii?",
-      "legacy:leader-none": "Care firmă cu sediul în județul Alba are cel mai ridicat indice de risc?",
+      "legacy:leader-none": "Care firmă cu sediul în județul Alba are cel mai ridicat risc?",
       "legacy:trend-same-year": "Ce firme au cea mai mare schimbare între 2025 și 2025?",
       "legacy:profile-years-refused": "Ce instituții publice din toată țara ies din tipar după risc și valoarea achizițiilor directe? · sub propoziție: period",
-      "legacy:profile-firm-kind-refused": "Care firmă are cel mai ridicat indice de risc? · sub propoziție: authorityKind",
+      "legacy:profile-firm-kind-refused": "Care firmă are cel mai ridicat risc? · sub propoziție: authorityKind",
     });
   });
 
@@ -638,7 +638,7 @@ describe("one vocabulary (kit §4, plan G3, G10)", () => {
     expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { seatCounty: "Cluj", county: "Iasi" } })))
       .toBe("Care [firmă] cu sediul [în județul Cluj] [câștigă cel mai mult] din [achizițiile] făcute de [instituțiile publice] din [județul Iasi], în [toți anii]?");
     expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "value", filters: { firmSeat: "abroad" } }))).toContain("Care [firmă] cu sediul [în străinătate] [câștigă cel mai mult]");
-    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj" } }))).toBe("Care [firmă] cu sediul [în județul Cluj] [are cel mai ridicat indice de risc]?");
+    expect(marked(q({ block: "entity_card", dim: "supplier", rankBy: "risk", filters: { seatCounty: "Cluj" } }))).toBe("Care [firmă] cu sediul [în județul Cluj] [are cel mai ridicat risc]?");
     expect(marked(q({ block: "scatter", dim: "supplier", filters: { seatCounty: "Buzău" } }))).toMatch(/^Ce \[firme\] cu sediul \[în județul Buzău\] ies din tipar/);
     // The phrase is glued (the total line repeats it, G8) and its window writes either key; on a profile, only the county.
     expect(slotOf(firms({ firmSeat: "other" }), "firmSeat")).toMatchObject({ glued: true, window: "Unde au sediul firmele?", writes: ["seatCounty"] });

@@ -148,7 +148,7 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
       return { label: spec.block === "timeseries" ? "Valoarea" : "Valoarea înregistrată" };
     case "topN": return { label: value === undefined ? "Tot clasamentul" : value === 1 ? "Primul" : `Primele ${value}` };
     case "rankBy": return value === "risk"
-      ? { label: "Are cel mai ridicat indice de risc", detail: AXIS_DETAIL.risk }
+      ? { label: "Are cel mai ridicat risc", detail: AXIS_DETAIL.risk }
       : { label: spec.dim === "supplier" ? "Câștigă cel mai mult" : "Cumpără cel mai mult", detail: AXIS_DETAIL.value };
     case "authorityKind": return value === undefined ? { ...ALL_INSTITUTIONS } : { label: capital(KIND_WORDS[String(value)]?.bare ?? String(value)) };
     case "dim": {
@@ -188,14 +188,14 @@ export function choiceWords(choice: Choice, spec: QuestionSpec): { label: string
 /**
  * The (?) beside a window's title, where its rows need one more sentence
  * than their own words (kit §4: short labels, the rest in a tip): how the
- * kinds are told apart, what the index is, what the comparison group holds.
+ * kinds are told apart, what the risk score is, what the comparison group holds.
  */
 export function windowTip(win: BuilderWindowSpec, spec: QuestionSpec): KitTip | undefined {
   const { block } = spec;
   if (win.slot.picker === "subject" && block === "scatter")
     return { title: "Tipul instituției", text: `${GLOSSARY["tip-institutie"].text} „Alte instituții” nu se poate alege: e restul grupului.` };
   if (win.slot.picker === "subject" && block === "entity_card") return { id: "tip-institutie" };
-  if (win.slot.id === "rankBy") return { title: "Indicele de risc", text: "Un semnal statistic, nu o dovadă." };
+  if (win.slot.id === "rankBy") return { id: "scor-risc" };
   if (win.slot.picker === "peers")
     return { title: "Grupul de comparație", text: `Profilurile cu cel puțin 10 achiziții directe. ${GLOSSARY["tip-institutie"].text}` };
   // The trend's years start in 2019 (trend final §3.2); its months are the same in both years (§3.3).
