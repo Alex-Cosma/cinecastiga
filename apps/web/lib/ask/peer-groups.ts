@@ -4,12 +4,13 @@ import { readPopulationMappingRows, sectorTownHallPopulations, uniquePopulationM
 import { readAuthorityKinds } from "./authority-kind";
 import {
   PEER_MEMBERS_PAGE, PEER_MINIMUM, PEER_ROW_ORDER, PROFILE_MIN_DAS, countyDisplay, peerKey, peerRowLabel, peerRowTip, peerTicks, similarRuleName,
-  type PeerCoverage, type PeerDialogData, type PeerFacts, type PeerRow, type PeerRowId, type SimilarFacts,
+  type PeerCoverage, type PeerDialogData, type PeerFacts, type PeerRow, type PeerRowId, type ScoreBand, type SimilarFacts,
 } from "./peer-groups-shared";
 import { martColumns } from "./mart-columns";
 import { SEAT_ABROAD } from "./seat";
 import { profileCounty, profileCountyCond } from "./predicates";
-import type { DistributionMember } from "./compile";
+import type { ScoredMember } from "./compile";
+import type { ScoreParts } from "../risk-score";
 import { namedKind, type ParsedAuthorityKind, type PeersOptions } from "./spec";
 
 /*
@@ -38,17 +39,26 @@ export const seatFilled = async (q: DbSql, role: "authority" | "supplier"): Prom
 /** The profile of the entity placed in its group (marts.entity_flags), at any number of direct acquisitions. */
 export interface PeerFocalRow {
   entityId: string; name: string; county: string | null; nDas: number; nFlags: number; cri: number | null; flags: string[];
+  /** The risk score (rf-2026.18): displayed (0–100), unrounded, and the strength and facts of each pattern met. */
+  score: number; scoreRaw: number; scoreParts: ScoreParts;
 }
+
+const scoreParts = (raw: unknown): ScoreParts => raw && typeof raw === "object" && !Array.isArray(raw) ? raw as ScoreParts : {};
 
 export async function readPeerFocal(q: DbSql, role: "authority" | "supplier", entityId: string): Promise<PeerFocalRow | null> {
   const [row] = await q`
-    select ef.entity_id::text id, ef.name_display, ${profileCounty(q, role, await seatFilled(q, role))} county, ef.n_das, ef.n_flags, ef.cri, ef.flags
+    select ef.entity_id::text id, ef.name_display, ${profileCounty(q, role, await seatFilled(q, role))} county, ef.n_das, ef.n_flags, ef.cri, ef.flags,
+           ef.score, ef.score_raw, ef.score_parts
     from marts.entity_flags ef where ef.role = ${role} and ef.entity_id = ${entityId}
-  ` as unknown as { id: string; name_display: string | null; county: string | null; n_das: number; n_flags: number; cri: string | null; flags: string[] | null }[];
+  ` as unknown as {
+    id: string; name_display: string | null; county: string | null; n_das: number; n_flags: number; cri: string | null; flags: string[] | null;
+    score: number | null; score_raw: number | null; score_parts: unknown;
+  }[];
   if (!row) return null;
   return {
     entityId: row.id, name: row.name_display ?? "?", county: row.county, nDas: Number(row.n_das), nFlags: Number(row.n_flags ?? 0),
     cri: row.cri === null ? null : Number(row.cri), flags: Array.isArray(row.flags) ? row.flags : [],
+    score: Number(row.score ?? 0), scoreRaw: Number(row.score_raw ?? row.score ?? 0), scoreParts: scoreParts(row.score_parts),
   };
 }
 
@@ -108,7 +118,7 @@ export interface PeerResolution {
 
 const half = (n: number) => Math.ceil(n / 2);
 
-export async function resolvePeerFacts(q: DbSql, role: "authority" | "supplier", focal: PeerFocalRow): Promise<PeerResolution> {
+export async function resolvePeerFacts(q: DbSql, role: "authority" | "supplier", focal: Pick<PeerFocalRow, "entityId" | "name" | "county" | "nDas">): Promise<PeerResolution> {
   const facts: PeerFacts = {
     role, entityId: focal.entityId, name: focal.name, county: countyDisplay(focal.county), nDas: focal.nDas, similar: null,
     activity: focal.nDas >= PROFILE_MIN_DAS ? { min: half(focal.nDas), max: focal.nDas * 2 } : null,
@@ -253,16 +263,18 @@ export async function peerDialog(
 
 /**
  * GET /api/ask/peers/members (final distribution §3.6, §3.8): above 50 the
- * chart replaces the list, and a bar opens the members of the group with
- * exactly that many criteria, by direct acquisitions, a page at a time. The
+ * chart replaces the list, and a bar opens its members, a page at a time. The
  * group is the answer's: the ticks, the county (the entity's own or an old
  * link's other one) and an old link's kind, the role, the profile's threshold,
- * never the entity itself (distribution.ts runs the same conditions).
+ * never the entity itself (distribution.ts runs the same conditions). The bar
+ * is a band of the displayed risk score (distribution-3), its members by score,
+ * then direct acquisitions; or, from an answer stored before it, a number of
+ * criteria (`bar` a number, distribution-2), its members by direct acquisitions.
  */
 export async function peerMembers(
   q: DbSql, role: "authority" | "supplier", entityId: string, spec: { peers?: PeersOptions | undefined; filters: Record<string, unknown> },
-  criteria: number, offset: number,
-): Promise<{ members: DistributionMember[]; total: number } | { error: string } | null> {
+  bar: number | ScoreBand, offset: number,
+): Promise<{ members: ScoredMember[]; total: number } | { error: string } | null> {
   const focal = await readPeerFocal(q, role, entityId);
   if (!focal || focal.nDas < PROFILE_MIN_DAS) return null;
   const resolution = await resolvePeerFacts(q, role, focal);
@@ -272,26 +284,29 @@ export async function peerMembers(
   const kind = role === "authority" ? namedKind(spec.filters.authorityKind as ParsedAuthorityKind | undefined) ?? null : null;
   const kindIds = kind ? (await readAuthorityKinds(q)).ids[kind] : null;
   const seat = await seatFilled(q, role);
+  const criteria = typeof bar === "number";
   const where = [
-    q`ef.role = ${role}`, q`ef.n_das >= ${PROFILE_MIN_DAS}`, q`ef.entity_id <> ${entityId}`, q`ef.n_flags = ${criteria}`,
+    q`ef.role = ${role}`, q`ef.n_das >= ${PROFILE_MIN_DAS}`, q`ef.entity_id <> ${entityId}`,
+    criteria ? q`ef.n_flags = ${bar}` : q`ef.score between ${bar.from} and ${bar.to}`,
     ...(county ? [profileCountyCond(q, county, role, seat)] : []),
     ...(kindIds ? [q`ef.entity_id = any(${q.array([...kindIds])}::bigint[])`] : []),
     ...peerConditions(q, resolution, spec.peers),
   ].reduce((a, b) => q`${a} and ${b}`);
   const rows = await q`
-    select ef.entity_id::text id, ef.name_display, ${profileCounty(q, role, seat)} county, ef.n_flags, ef.flags, ef.n_das, count(*) over ()::int total
+    select ef.entity_id::text id, ef.name_display, ${profileCounty(q, role, seat)} county, ef.n_flags, ef.flags, ef.n_das, ef.score, count(*) over ()::int total
     from marts.entity_flags ef where ${where}
-    order by ef.n_das desc, ef.entity_id
+    order by ${criteria ? q`ef.n_das desc` : q`ef.score desc, ef.score_raw desc, ef.n_das desc`}, ef.entity_id
     limit ${PEER_MEMBERS_PAGE} offset ${offset}
-  ` as unknown as { id: string; name_display: string | null; county: string | null; n_flags: number; flags: string[] | null; n_das: number; total: number }[];
-  return {
-    total: rows[0]?.total ?? 0,
-    members: rows.map((m): DistributionMember => ({
-      entityId: m.id, name: m.name_display ?? "?", county: countyDisplay(m.county), population: resolution.populations?.get(m.id) ?? null,
-      nFlags: Number(m.n_flags ?? 0), flags: Array.isArray(m.flags) ? m.flags : [], nDas: Number(m.n_das),
-    })),
-  };
+  ` as unknown as MemberRow[];
+  return { total: rows[0]?.total ?? 0, members: rows.map((m) => scoredMember(m, resolution)) };
 }
+
+/** A member's row of marts.entity_flags, as distribution.ts and peerMembers read it. */
+export interface MemberRow { id: string; name_display: string | null; county: string | null; n_flags: number; flags: string[] | null; n_das: number; score: number | null; total?: number }
+export const scoredMember = (m: MemberRow, resolution: Pick<PeerResolution, "populations">): ScoredMember => ({
+  entityId: m.id, name: m.name_display ?? "?", county: countyDisplay(m.county), population: resolution.populations?.get(m.id) ?? null,
+  nFlags: Number(m.n_flags ?? 0), flags: Array.isArray(m.flags) ? m.flags : [], nDas: Number(m.n_das), score: Number(m.score ?? 0),
+});
 
 /** The ticks of a spec on this entity, for the answer and its sources (peerTicks with the entity's county). */
 export const ticksOf = (spec: { peers?: PeersOptions | undefined; filters: Record<string, unknown> }, facts: PeerFacts): PeerRowId[] => peerTicks(spec, facts);
