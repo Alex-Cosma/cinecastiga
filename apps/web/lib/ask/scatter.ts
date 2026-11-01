@@ -4,27 +4,32 @@ import { fold } from "./predicates";
 import { countyDisplay } from "./resolved-spec";
 import { instanceFacts, recordFacts } from "./scatter-records";
 import {
-  SCATTER_CLOUD_MIN_DAS, SCATTER_CLOUD_MIN_PROFILES, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, SCATTER_POINTS_MAX, flagBit, scatterFlagsOf, scatterLevels, scatterRank,
-  type ScatterBands, type ScatterCloudPoint, type ScatterData, type ScatterFlag, type ScatterFlagFact, type ScatterListRow, type ScatterRole,
+  SCATTER_CLOUD_MIN_DAS, SCATTER_CLOUD_MIN_PROFILES, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, SCATTER_POINTS_MAX, activeScatterFlag, flagBit, scatterFlagsOf, scatterRank,
+  type ScatterBands, type ScatterCloudPoint, type ScatterData, type ScatterDataV3, type ScatterFlag, type ScatterFlagFact, type ScatterListRow, type ScatterRole,
 } from "./scatter-shared";
 import type { AskSpec, RankBy } from "./spec";
 import type { LocateMatch } from "./facet-parts";
 
 /*
- * The risk cloud's answer (scatter-2, plan §4.12, final scatter §3): one pass
- * over marts.entity_flags counts the group (the profiles with at least 10
- * direct acquisitions) and, per signal, those that have it; then the group's
- * points (every one up to 2,000, else the cells of the grey layer with the
- * named points exact) and the list (at least 20 acquisitions, the order and
- * the signal of the strip). The signals' years and shares come from
- * marts.flag_instances, for the 50 listed alone; the records behind each
- * signal and the shares of the two rates are the answer's facts, asked once it
- * is drawn (part=profile, facets.ts), never before it.
+ * The risk cloud's answer (scatter-3, plan §4.12, final scatter §3; rf-2026.18):
+ * one pass over marts.entity_flags counts the group (the profiles with at
+ * least 10 direct acquisitions) and, per signal, those that have it; then the
+ * group's points at their risk score (every one up to 2,000, else the cells of
+ * the grey layer by tenths of the score, with the named points exact) and the
+ * list (at least 20 acquisitions, the order and the signal of the strip). The
+ * signals' years and shares come from marts.flag_instances, for the 50 listed
+ * alone; the records behind each signal and the shares of the two
+ * per-acquisition signals are the answer's facts, asked once it is drawn
+ * (part=profile, facets.ts), never before it. The score is read from `score`
+ * and `score_raw` (0 where a profile was built before them); `cri is not null`
+ * stays the group's test, the same as the windows' counts (facets.ts).
  */
 
 type Fragment = ReturnType<DbSql>;
 /** A fragment is a query nobody has awaited: the tagged template types it by its rows. */
 const frag = (query: unknown): Fragment => query as Fragment;
+/** A profile as the answer reads it: the score as displayed (0–100) and unrounded (real, the order). */
+interface ScoredRow { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; score: number; score_raw: number; n_flags: number; flags: string[] | null }
 
 export interface ScatterInput {
   spec: AskSpec;
@@ -39,9 +44,9 @@ export interface ScatterInput {
   wider?: Fragment | null;
 }
 
-/** The list's order (final §3.3): signals, then value, then id — the order of "Cine conduce?" on the index; or value. */
+/** The list's order (final §3.3): the unrounded risk score, then value, then id; or value. */
 export function scatterOrder(s: DbSql, rank: RankBy): Fragment {
-  return frag(rank === "risk" ? s`ef.cri desc nulls last, ef.total_ron desc nulls last, ef.entity_id` : s`ef.total_ron desc nulls last, ef.entity_id`);
+  return frag(rank === "risk" ? s`coalesce(ef.score_raw, 0) desc, ef.total_ron desc nulls last, ef.entity_id` : s`ef.total_ron desc nulls last, ef.entity_id`);
 }
 
 /** The profiles of a group that have the signal: the cloud's group, narrowed by the strip's choice. */
@@ -55,17 +60,19 @@ const bit = (role: ScatterRole, flags: unknown): number => {
 };
 
 const BAND_CELLS = 80;
+/** The grey layer above 2,000 profiles: 80 cells of value by the tenth of the score (0 for 0–9 … 9 for 90–100). */
 async function bands(s: DbSql, where: Fragment, x: Fragment, minLog: number, maxLog: number): Promise<ScatterBands> {
   const cells = (await s`
-    select width_bucket(${x}, ${minLog}, ${maxLog + 1e-9}, ${BAND_CELLS}) bx, ef.n_flags k, count(*)::int n
+    select width_bucket(${x}, ${minLog}, ${maxLog + 1e-9}, ${BAND_CELLS}) bx, least(coalesce(ef.score, 0) / 10, 9)::int k, count(*)::int n
     from marts.entity_flags ef where ${where} group by 1, 2
   `) as unknown as { bx: number; k: number; n: number }[];
   return { minLog, maxLog, nx: BAND_CELLS, total: cells.reduce((t, c) => t + c.n, 0), cells: cells.map((c) => [Number(c.bx), Number(c.k), Number(c.n)]) };
 }
 
-export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<ScatterData> {
+export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<ScatterDataV3> {
   const { spec, role } = input;
-  const rank = scatterRank(spec), flag = spec.scatter?.flag ?? null, flags = scatterFlagsOf(role);
+  // A retired signal an older link carries is none: the whole group, which the screen says it gave (ScatterAnswer).
+  const rank = scatterRank(spec), flag = activeScatterFlag(spec), flags = scatterFlagsOf(role);
   const group = frag(s`${input.where} and ef.cri is not null`);
   const x = frag(input.logTotal ? s`ef.log_total_ron` : s`log(greatest(coalesce(ef.total_ron, 0), 1))`);
   const per = flags.map((code, i) => s`count(*) filter (where ef.flags ? ${code})::int ${s(`c${i}`)}`);
@@ -81,8 +88,8 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
   // A group of fewer than 10 profiles is no cloud: the whole group is the list, from 10 acquisitions (final §4.4).
   const small = n < SCATTER_CLOUD_MIN_PROFILES;
   const listMin = small ? SCATTER_CLOUD_MIN_DAS : SCATTER_LIST_MIN_DAS;
-  const data: ScatterData = {
-    version: 2, role, levels: scatterLevels(role), rankBy: rank, flag,
+  const data: ScatterDataV3 = {
+    version: 3, role, rankBy: rank, flag,
     group: { n, nList: small ? n : Number(count?.n_list ?? 0), ...(small ? { small: true as const } : {}) },
     criteria, p90: Number(count?.p90 ?? 0), cloud: { points: [] }, list: [],
     ...(flag ? { chosen: { n: criteria[flag] ?? 0, nList: small ? criteria[flag] ?? 0 : Number(count?.chosen_list ?? 0) } } : {}),
@@ -96,11 +103,12 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
 
   // The list: the strip's order and signal, at least 20 acquisitions, the first 50.
   const listed = (await s`
-    select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_das, ef.cri, ef.n_flags, ef.flags
+    select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_das,
+           coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
     from marts.entity_flags ef
     where ${group} and ef.n_das >= ${listMin} and ${hasFlag(s, flag)}
     order by ${scatterOrder(s, rank)} limit ${SCATTER_LIST_MAX}
-  `) as unknown as { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; cri: string; n_flags: number; flags: string[] | null }[];
+  `) as unknown as ScoredRow[];
   const ids = listed.map((r) => r.id);
   const years = await instanceFacts(s, role, ids);
   const kinds = role === "authority" && !spec.filters.authorityKind && ids.length ? (await readAuthorityKinds(s)).byId : null;
@@ -115,14 +123,15 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
     // Every signal of the profile, in the strip's order, with the years or the share its instances say.
     const facts: ScatterFlagFact[] = flags.filter((code) => have.includes(code)).map((code) => cheap.find((f) => f.code === code) ?? { code });
     const row: ScatterListRow = {
-      entityId: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, value: Number(r.total_ron ?? 0), nDas: Number(r.n_das), cri: Number(r.cri), nFlags: Number(r.n_flags), flags: facts,
+      entityId: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, value: Number(r.total_ron ?? 0), nDas: Number(r.n_das),
+      score: Number(r.score), scoreRaw: Number(r.score_raw), nFlags: Number(r.n_flags), flags: facts,
     };
     if (kinds) row.kind = kinds.get(r.id) ?? null;
     if (role === "supplier") { const f = filed.get(r.id); row.employees = f?.employees ?? null; row.employeesYear = f?.employees_year ?? null; }
     return row;
   });
   const named = (): ScatterCloudPoint[] => data.list.map((r) => ({
-    id: r.entityId, name: r.name, value: r.value, nFlags: r.nFlags, nDas: r.nDas, flags: bit(role, r.flags.map((f) => f.code)),
+    id: r.entityId, name: r.name, value: r.value, score: r.score, scoreRaw: r.scoreRaw, nFlags: r.nFlags, nDas: r.nDas, flags: bit(role, r.flags.map((f) => f.code)),
   }));
 
   // The cloud: every point up to 2,000; above, the grey cells of the group with the named points exact.
@@ -130,12 +139,13 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
   if (n <= SCATTER_POINTS_MAX) {
     // Each point with its county, so a point past the list's 50 still says where it is and its place (ScatterAnswer).
     const rows = (await s`
-      select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_flags, ef.n_das, ef.flags
+      select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw,
+             ef.n_flags, ef.n_das, ef.flags
       from marts.entity_flags ef where ${group} order by ef.entity_id
-    `) as unknown as { id: string; name: string | null; county: string | null; total_ron: string | null; n_flags: number; n_das: number; flags: string[] | null }[];
+    `) as unknown as ScoredRow[];
     data.cloud = { points: rows.map((r) => ({
-      id: r.id, name: r.name ?? "?", value: Number(r.total_ron ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), flags: bit(role, r.flags),
-      county: r.county ? countyDisplay(r.county) : null,
+      id: r.id, name: r.name ?? "?", value: Number(r.total_ron ?? 0), score: Number(r.score), scoreRaw: Number(r.score_raw), nFlags: Number(r.n_flags), nDas: Number(r.n_das),
+      flags: bit(role, r.flags), county: r.county ? countyDisplay(r.county) : null,
     })) };
     return data;
   }
@@ -183,13 +193,14 @@ export async function scatterProfileFacts(s: DbSql, role: ScatterRole, ids: read
 
 /**
  * The answer as a capture freezes it (final scatter §5, frozen evidence): each listed row's signals with the records
- * behind them and the shares of the two rates, which the screen asks after the answer (part=profile). The group's
- * definition is in the capture's answer version (kind-2, seat-2) and its spec.
+ * behind them and the shares of the per-acquisition signals, which the screen asks after the answer (part=profile). The
+ * group's definition is in the capture's answer version (scatter-3, kind-2, seat-2) and its spec. A stored scatter-2
+ * stays as it was.
  */
-export async function scatterWithFacts(s: DbSql, data: ScatterData): Promise<ScatterData> {
-  if (!data.list.length) return data;
+export async function scatterWithFacts<D extends ScatterData>(s: DbSql, data: D): Promise<D> {
+  if (data.version !== 3 || !data.list.length) return data;
   const facts = new Map((await scatterProfileFacts(s, data.role, data.list.map((r) => r.entityId))).map((p) => [p.id, p.flags]));
-  return { ...data, list: data.list.map((r) => ({ ...r, flags: r.flags.map((f) => ({ ...f, ...facts.get(r.entityId)?.find((x) => x.code === f.code) })) })) };
+  return { ...data, list: data.list.map((r) => ({ ...r, flags: r.flags.map((f) => ({ ...f, ...facts.get(r.entityId)?.find((x) => x.code === f.code) })) })) } as D;
 }
 
 /** The names a search matches: folded, every word of the text (the locate part's pattern). */
@@ -198,31 +209,33 @@ const namePattern = (q: string) => `%${fold(q).replace(/[\\%_]/g, (c) => `\\${c}
 /**
  * "Unde e o instituție / firmă?" in the cloud (final scatter §3.5): the profiles of the group whose name holds the
  * text, up to `limit`, each with its place in the list's order (the strip's signal and order), or why it has none.
- * Same predicates as the answer, so a profile out of the group is not found.
+ * Same predicates as the answer, so a profile out of the group is not found. A match's `profile.cri` is its score over
+ * one (score / 100, as marts.entity_flags.cri): the screen reads the score from it (facet-parts.ts LocateMatch).
  */
 export async function scatterLocate(s: DbSql, input: ScatterInput, q: string, limit: number): Promise<{ total: number; by: RankBy; matches: LocateMatch[] }> {
   const { spec, role } = input;
-  const rank = scatterRank(spec), flag = spec.scatter?.flag ?? null;
+  const rank = scatterRank(spec), flag = activeScatterFlag(spec);
   const group = frag(s`${input.where} and ef.cri is not null`);
   const [size] = (await s`select count(*)::int n from marts.entity_flags ef where ${group}`) as unknown as { n: number }[];
   const listMin = Number(size?.n ?? 0) < SCATTER_CLOUD_MIN_PROFILES ? SCATTER_CLOUD_MIN_DAS : SCATTER_LIST_MIN_DAS;
   const listCond = frag(s`${group} and ef.n_das >= ${listMin} and ${hasFlag(s, flag)}`);
   const [total] = (await s`select count(*)::int n from marts.entity_flags ef where ${listCond}`) as unknown as { n: number }[];
   const found = (await s`
-    select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_das, ef.cri, ef.n_flags, ef.flags
+    select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_das,
+           coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
     from marts.entity_flags ef
     where ${group} and lower(unaccent(ef.name_display)) like ${namePattern(q)}
     order by ${scatterOrder(s, rank)}
     limit ${limit * 5}
-  `) as unknown as { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; cri: string; n_flags: number; flags: string[] | null }[];
+  `) as unknown as ScoredRow[];
   // The place of each: the profiles of the list before it in the order (value ties by id).
   const eligible = found.filter((r) => Number(r.n_das) >= listMin && (!flag || (r.flags ?? []).includes(flag)));
   const placed = new Map<string, number>();
   if (eligible.length) {
     const places = (await s`
-      with m as (select * from unnest(${s.array(eligible.map((r) => r.id))}::bigint[], ${s.array(eligible.map((r) => String(Number(r.cri))))}::numeric[], ${s.array(eligible.map((r) => String(Number(r.total_ron ?? 0))))}::numeric[]) t(id, cri, total_ron))
+      with m as (select * from unnest(${s.array(eligible.map((r) => r.id))}::bigint[], ${s.array(eligible.map((r) => String(Number(r.score_raw))))}::real[], ${s.array(eligible.map((r) => String(Number(r.total_ron ?? 0))))}::numeric[]) t(id, score_raw, total_ron))
       select m.id::text id, (select count(*) from marts.entity_flags ef where ${listCond} and ${rank === "risk"
-        ? s`(ef.cri > m.cri or (ef.cri = m.cri and (coalesce(ef.total_ron, 0) > m.total_ron or (coalesce(ef.total_ron, 0) = m.total_ron and ef.entity_id < m.id))))`
+        ? s`(coalesce(ef.score_raw, 0) > m.score_raw or (coalesce(ef.score_raw, 0) = m.score_raw and (coalesce(ef.total_ron, 0) > m.total_ron or (coalesce(ef.total_ron, 0) = m.total_ron and ef.entity_id < m.id))))`
         : s`(coalesce(ef.total_ron, 0) > m.total_ron or (coalesce(ef.total_ron, 0) = m.total_ron and ef.entity_id < m.id))`})::int + 1 place
       from m
     `) as unknown as { id: string; place: number }[];
@@ -234,7 +247,7 @@ export async function scatterLocate(s: DbSql, input: ScatterInput, q: string, li
     const why = rankIn !== null ? null : Number(r.n_das) < listMin ? "below" as const : "signal" as const;
     return {
       id: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, rank: rankIn, value: Number(r.total_ron ?? 0), n: Number(r.n_das),
-      profile: { flags: have, nFlags: Number(r.n_flags), cri: Number(r.cri), why },
+      profile: { flags: have, nFlags: Number(r.n_flags), cri: Number(r.score) / 100, why },
     };
   });
   // The ones with a place first, by place; the rest in the order of the list.

@@ -1,7 +1,8 @@
-/* "Ce instituții / firme ies din tipar?" (scatter-2, final scatter §3.3–§3.6, §4.6): the strip, the chart by
-   bands, the search, the card and the list. Tokens only (approved.css, filters-kit.css), both themes; orange is the
-   official signals' mark (kit R7), green what is in the list or chosen. No horizontal scroll at any width; under
-   600 px every control is 44 px tall. */
+/* "Ce instituții / firme ies din tipar?" (scatter-3, rf-2026.18; final scatter §3.3–§3.6, §4.6): the strip, the
+   chart on the risk score (the bands of lib/risk-score.ts tinted, lines at 20, 40 and 68%; a stored scatter-2 keeps its
+   bands by criteria), the search, the card and the list. Tokens only (approved.css, filters-kit.css), both themes;
+   orange is the official signals' mark (kit R7), green what is in the list or chosen. No horizontal scroll at any
+   width; under 600 px every control is 44 px tall. */
 
 .sc{display:grid;gap:16px;min-width:0}
 .sc-tip-list{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:6px}
@@ -14,6 +15,12 @@
 .sc-idx{font-family:var(--mono);font-size:12px;fill:var(--ink)}
 .sc-ratio{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
 .sc-grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+/* The score's bands behind the points: faint, so the grey, orange and green dots stay readable in both themes. */
+.sc-zone{stroke:none}
+.sc-zone.risk-slab{fill:var(--sunk);opacity:.6}
+.sc-zone.risk-mid{fill:var(--amber-soft);opacity:.55}
+.sc-zone.risk-high{fill:var(--risk-soft);opacity:.6}
+.sc-grid-y{stroke:var(--ink2);opacity:.35;stroke-dasharray:4 4}
 .sc-tick{font-family:var(--mono);font-size:11px;fill:var(--muted)}
 .sc-axis{font-size:11.5px;fill:var(--muted)}
 .sc-p90 line{stroke:var(--ink2);stroke-width:1.2;stroke-dasharray:5 4;opacity:.7}
@@ -57,6 +64,10 @@
 .sc-name-btn:hover{text-decoration:underline}
 .sc-who .qb-tags{margin-top:2px}
 .sc-val,.sc-cri{font-size:12.5px;color:var(--ink2);text-align:right;white-space:nowrap;padding-top:2px}
+/* A row's risk: the score's pill, its band under it. */
+.sc-risk{display:grid;justify-items:end;gap:2px;padding-top:0}
+.sc-risk .cri-pill{font-size:12.5px;padding:2px 9px}
+.sc-risk small{font-size:11.5px;color:var(--muted)}
 .sc-rec{justify-self:end;white-space:nowrap}
 .sc-more{margin:0}
 .sc-none{margin:0;font-size:13px;color:var(--muted)}
@@ -69,6 +80,7 @@
   .sc-who{grid-area:who}
   .sc-val{grid-area:val;text-align:left}
   .sc-cri{grid-area:cri;text-align:left}
+  .sc-risk{display:flex;align-items:center;justify-content:flex-start;gap:8px}
   .sc-rec{grid-area:rec;justify-self:start}
   .sc-name-btn,.sc-rec{min-height:44px;display:inline-flex;align-items:center}
   .sc-small .qb-relax-link,.sc-wide{min-height:44px}
