@@ -107,13 +107,17 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["flow", /\bsi de la cine\b/],
   // "față de" before a year is the period of a change ("în 2025 față de 2024"), not a comparison of two entities.
   ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de(?!\s+(?:anul\s+)?20[0-3]\d)|versus|vs)\b/],
-  ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor)\b/],
+  ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor)\b/],
   ["trend", new RegExp(String.raw`\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) disparut|(?:a|au) iesit din (?:piata|achizitii\w*)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b`)],
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
   ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor))\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
   ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul)?|in total|cheltuit|cheltuiala|cheltuielile|cheltuieli)\b/],
 ];
+
+/** The retired signal's words (rules.cues): a signals question without a signal, and its note. */
+const RETIRED_RAPID = /\b(?:finalizar\w* rapid\w*|finalizat\w* rapid)\b/;
+export const RETIRED_RAPID_NOTE = "„Finalizare rapidă” nu mai este un semnal: nu intră în risc. Arătăm tot grupul.";
 
 const KIND_CUES: [AuthorityKind, RegExp][] = [
   ["consiliu_judetean", /\b(?:consili(?:ul|ului|ile|ilor|i) judetean\w*|consiliile judetene|cj)\b/],
@@ -479,6 +483,13 @@ export class RulesInterpreter implements QuestionInterpreter {
 
   private cues(c: Cursor, out: Interpretation): { intent: IntentKind; at: number }[] {
     const found: { intent: IntentKind; at: number }[] = [];
+    // rf-2026.18: „finalizare rapidă” is no signal any more (owner decision, 1 November 2026). The words still ask the
+    // signals' question, on the whole group, and the answer says why none is applied.
+    for (const h of c.all(RETIRED_RAPID)) {
+      c.take(h.i, h.j, "cue");
+      found.push({ intent: "signals", at: h.i });
+      if (!out.notes.includes(RETIRED_RAPID_NOTE)) out.notes.push(RETIRED_RAPID_NOTE);
+    }
     for (const [intent, re] of INTENT_CUES) {
       for (const h of c.all(re)) {
         c.take(h.i, h.j, "cue");
