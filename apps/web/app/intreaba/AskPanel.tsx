@@ -172,7 +172,8 @@ function sourceCount(data: BlockData, applied?: AskSpec): number | null {
       return data.slices.reduce((n, r) => n + r.count, 0) + data.other.count;
     // entity_card-2 (F6c): the sources are place 1's records by value, the tied profiles' on the index (runRows).
     case "entity_card":
-      return data.ties ? data.ties.rows.reduce((n, r) => n + r.count, 0) : data.podium ? data.card.count : null;
+      return data.ranking ? data.ranking.rows.reduce((n, r) => n + r.count, 0)
+        : data.ties ? data.ties.rows.reduce((n, r) => n + r.count, 0) : data.podium ? data.card.count : null;
     default:
       return null; // A displayed top N is never the full source population.
   }

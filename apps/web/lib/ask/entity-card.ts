@@ -79,7 +79,8 @@ export function podiumOf(rows: readonly PodiumPlace[], totals: RankingTotalsInpu
  */
 export const riskRankingOrder = (sql: DbSql, alias: string): Fragment => {
   const t = sql(alias);
-  return sql`coalesce(${t}.score, 0) desc, coalesce(${t}.score_raw, 0) desc, ${t}.total_ron desc nulls last, ${t}.entity_id`;
+  // Same displayed percentage: by value (the (?) "La egalitate" says so), not by the unrounded score.
+  return sql`coalesce(${t}.score, 0) desc, ${t}.total_ron desc nulls last, ${t}.entity_id`;
 };
 /** A profile has a score: at least one criterion met (riskRankingOrder's reading of a missing one). */
 export const hasRiskScore = (sql: DbSql, alias: string): Fragment => sql`coalesce(${sql(alias)}.score, 0) > 0`;
