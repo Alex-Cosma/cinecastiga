@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateSpec } from "../ask/spec";
 import { memoryVocabulary } from "./memory-vocabulary";
 import { buildPlaces, catalogUatSource, countyDisplay, placeKey } from "./places";
-import { RulesInterpreter, strongNameMatch } from "./rules";
+import { RETIRED_RAPID_NOTE, RulesInterpreter, strongNameMatch } from "./rules";
 import { FIXTURE } from "./rules.fixture";
 import { stems, tokenize, wordMatches } from "./text";
 import { SINGLE_OFFER_NOTE, resultFor, sentenceFor } from "./to-spec";
@@ -343,14 +343,17 @@ describe("beginner phrasings → interpretation", () => {
     expect(wrong.r.spec?.scatter?.flag).toBeUndefined();
   });
 
-  it("34c. the ceiling's patterns are signals questions (rf-2026.18); the retired «finalizare rapidă» is not", async () => {
+  it("34c. the ceiling's patterns are signals questions (rf-2026.18); the retired «finalizare rapidă» asks the whole group and says why", async () => {
     for (const phrase of ["ce primarii din judetul buzau au achizitii chiar sub plafon", "ce institutii au achizitii directe peste plafon",
       "ce institutii au achizitii imediat sub plafon", "ce institutii au achizitii repetate peste plafonul cumulat"]) {
       const asked = await ask(phrase);
       expect(asked.i.intent, phrase).toBe("signals");
       expect(asked.r.spec, phrase).toMatchObject({ block: "scatter", dim: "authority" });
     }
-    expect((await ask("ce institutii au finalizare rapida")).i.intent).not.toBe("signals");
+    const rapid = await ask("ce institutii ies din tipar cu finalizare rapida");
+    expect(rapid.i.intent).toBe("signals");
+    expect(rapid.r.spec).toMatchObject({ block: "scatter", dim: "authority" });
+    expect(rapid.r.interpretation.notes).toContain(RETIRED_RAPID_NOTE);
   });
 
   it("35. «care spital are cel mai ridicat indice de risc» → one superlative profile", async () => {

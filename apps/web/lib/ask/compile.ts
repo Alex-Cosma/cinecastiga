@@ -26,7 +26,6 @@ import { localAdminMap, localMapSql, mapLocal, mapRollupFilters, mapRollupReady,
 import { asksSharedPartners, sharedPartnersPrestep } from "./compare-prestep";
 import { generalCodes } from "./compare-shared";
 import { martColumns } from "./mart-columns";
-import type { ScoreParts } from "../risk-score";
 import {
   compareInstitutionParties, comparePairRows, comparePartnerPass, compareRecordPass, planRollup, rankedWithout, rollupBreakdown, rollupCountyTable, rollupMap, rollupMinimumCond,
   coverRefReady, daCodesPlain, daRecordCount, daYearKeyRange, flaggedIndexReady, kindMonthRollupReady, kindRollupReady, monthRollupReady, pairIndexReady, profileRollupTotals, profileValueKeys, rollupDaysReady, valueKeysReady, yearKeysReady, rollupRows, rollupSourceTotals, rollupStat, rollupsReady, rollupTable, rollupTimeseries, rollupTrendGrouped, sameRoleExclusions,
@@ -3454,7 +3453,7 @@ export async function runRows(
           ? "Sursele nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import."
           : "Sursele disponibile acum nu coincid exact cu instantaneul agregat al profilurilor. Recalcularea agregatelor poate rămâne în urmă față de import; totalul de mai sus este calculat direct din înregistrările disponibile.");
       }
-      const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, score, score_parts, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; score: number | null; score_parts: ScoreParts | null; flags: string[] | null }[];
+      const ps = (await readEvidenceQuery(s`select entity_id, name_display, role, n_das, total_ron::text, score, score_parts, flags from ${cohort} selected_profiles order by entity_id limit 20`, opts.signal)) as unknown as { entity_id: string; name_display: string | null; role: "authority" | "supplier"; n_das: number; total_ron: string; score: number | null; score_parts: EvidenceProfile["parts"] | null; flags: string[] | null }[];
       profiles = ps.map((r) => ({ entityId: String(r.entity_id), name: r.name_display ?? "?", role: r.role, count: Number(r.n_das), value: r.total_ron, score: Number(r.score ?? 0), parts: r.score_parts ?? {}, flags: r.flags ?? [] }));
     }
     return {
