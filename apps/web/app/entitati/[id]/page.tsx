@@ -280,44 +280,6 @@ export default async function EntityPage({
 
       {summary && <EntityBrief summary={summary} isAuth={isAuth} />}
 
-      <details className="data-context entity-data-context">
-        <summary>Ce includ aceste cifre?</summary>
-        <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
-          cu valoare pozitivă de cel mult 1 miliard lei.
-          Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
-        {cuiUncorroborated && (registryCollision
-          ? <p>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual
-            diferența: firmă străină, sediu în afara României sau o formă juridică ce nu poate avea acest număr. Nu afișăm
-            pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>
-          : <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
-            iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
-            reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
-        {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
-          integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
-          {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}
-        <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
-          Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
-          Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
-        <p>Înregistrări datate: {txCounts.dateFrom ? formatCalendarDate(txCounts.dateFrom) : "dată necunoscută"} — {txCounts.dateTo ? formatCalendarDate(txCounts.dateTo) : "dată necunoscută"}.
-          {txCounts.excludedDa > 0 ? ` ${formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.` : ""}
-          {" "}<Link href="/metodologie#acoperire">Acoperirea surselor și limitele datelor</Link>.</p>
-
-      </details>
-
-      {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
-        <summary>Cum se formează riscul?</summary>
-        <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
-          pronunțat e. Un singur tipar ajunge cel mult la 60%. Filtrul de an din tabel nu schimbă scorul.</p>
-        <ul>{criteria.map(code => <li key={code}>
-          <strong>{row.scoreParts[code] ? `+${formatInt(points[code] ?? 0)}` : "fără tipar"}</strong>{" · "}
-          <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
-          {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!)}</>}
-        </li>)}</ul>
-        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
-          <a href="#toate-semnalele">toate semnalele</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
-          <Link href="/metodologie#indice">Formula și limitele →</Link></p>
-      </details>}
-
       <SectionNav
         items={[
           { id: "top", label: "Rezumat" },
@@ -577,6 +539,45 @@ export default async function EntityPage({
           {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
         </details>}
       </section>
+
+      {/* What the numbers include and how the risk is formed: the last blocks before the footer (owner, 1 November 2026). */}
+      <details className="data-context entity-data-context">
+        <summary>Ce includ aceste cifre?</summary>
+        <p>Achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte prin proceduri
+          cu valoare pozitivă de cel mult 1 miliard lei.
+          Valorile sunt înregistrate în achiziții; nu confirmă plăți. Totalul și lista partenerilor folosesc aceeași selecție.</p>
+        {cuiUncorroborated && (registryCollision
+          ? <p>Numărul {cui} apare în SEAP la această firmă, dar ONRC îl înregistrează la o altă firmă. Am verificat manual
+            diferența: firmă străină, sediu în afara României sau o formă juridică ce nu poate avea acest număr. Nu afișăm
+            pentru el reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>
+          : <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
+            iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
+            reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
+        {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
+          integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
+          {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}
+        <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
+          Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
+          Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
+        <p>Înregistrări datate: {txCounts.dateFrom ? formatCalendarDate(txCounts.dateFrom) : "dată necunoscută"} — {txCounts.dateTo ? formatCalendarDate(txCounts.dateTo) : "dată necunoscută"}.
+          {txCounts.excludedDa > 0 ? ` ${formatInt(txCounts.excludedDa)} achiziții directe cu valori nule, nepozitive sau peste plafon sunt separate de total.` : ""}
+          {" "}<Link href="/metodologie#acoperire">Acoperirea surselor și limitele datelor</Link>.</p>
+
+      </details>
+
+      {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
+        <summary>Cum se formează riscul?</summary>
+        <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
+          pronunțat e. Un singur tipar ajunge cel mult la 60%. Filtrul de an din tabel nu schimbă scorul.</p>
+        <ul>{criteria.map(code => <li key={code}>
+          <strong>{row.scoreParts[code] ? `+${formatInt(points[code] ?? 0)}` : "fără tipar"}</strong>{" · "}
+          <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
+          {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!)}</>}
+        </li>)}</ul>
+        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
+          <a href="#toate-semnalele">toate semnalele</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
+          <Link href="/metodologie#indice">Formula și limitele →</Link></p>
+      </details>}
     </>
   );
 }
