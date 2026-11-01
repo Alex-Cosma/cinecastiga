@@ -1,4 +1,4 @@
-import { createDb, onrcIdentityBirthDate, type DbSql } from "@seap/db";
+import { createDb, cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { onrcBirthYear } from "./format";
 
 /*
@@ -12,8 +12,9 @@ import { onrcBirthYear } from "./format";
  * Owner decision of 1 November 2026 (variant B): when the holder's name matches
  * exactly one dated ONRC representative, the page says so as a lead, never as a
  * fact: "Același nume în Registrul Comerțului …, potrivire doar după nume". The
- * match never enters a signal, the risk score, Ask's "conduse azi de" or any
- * count of a person's firms.
+ * same evening the owner added the practice to Ask's "conduse azi de" for that
+ * person, as a row marked "după nume" (readHolderPractices). The match never
+ * enters a signal, the risk score or any count of a person's firms.
  */
 
 const fold = (text: string) => text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
@@ -70,6 +71,32 @@ export async function readHolderTwin(q: DbSql, entityName: string | null | undef
   const r = rows[0]!;
   const { birthYear } = onrcBirthYear(r.by, r.sy);
   return { personKey: r.person_key, name: r.nm, birthYear, locality: r.bl && /\p{L}/u.test(r.bl) ? r.bl : null, firms: Number(r.firms) };
+}
+
+/**
+ * The other way round, for Ask's "conduse azi de": the supplier ids of the individual practices whose holder has the
+ * person's name, with no ONRC representative of their own, when the person is the one dated ONRC representative with
+ * that name (the rule of readHolderTwin). The key must already be a dated identity.
+ */
+export async function readHolderPractices(q: DbSql, personKey: string): Promise<string[]> {
+  const name = personKey.split("|")[0] ?? "";
+  const words = name.split(" ").filter(Boolean);
+  if (words.length < 2 || name.length < 5 || !/^[a-z ]+$/.test(name)) return [];
+  const [namesakes] = (await q`
+    select count(distinct r.person_key)::int n from reference.company_reps r
+    where split_part(r.person_key, '|', 1) = ${name} and ${onrcIdentityBirthDate(q, "r")}
+  `) as unknown as { n: number }[];
+  if (namesakes?.n !== 1) return [];
+  // The holder's words in order, any punctuation between them (trigram index on name_normalized); the exact rule below.
+  const rows = (await q`
+    select e.id::text id, e.name_display name from core.entities e
+    join marts.entity_profile ep on ep.entity_id = e.id and ep.role = 'supplier'
+    where e.name_normalized like ${`%${words.join("%")}%`}
+      and not exists (select 1 from reference.company_reps r where r.cui = e.cui_canonical and ${cuiCorroborated(q, "e")})
+    order by e.id
+    limit 50
+  `) as unknown as { id: string; name: string }[];
+  return rows.filter((r) => individualHolder(r.name)?.holder === name).map((r) => r.id);
 }
 
 const g = globalThis as unknown as { __seapHolderSql?: DbSql };

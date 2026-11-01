@@ -217,7 +217,7 @@ export const GLOSSARY = {
   // Variant B (owner, 1 November 2026): an individual practice's holder found only by name.
   "acelasi-nume": {
     title: "Același nume, nu aceeași persoană",
-    text: "Cabinetele individuale, PFA-urile și întreprinderile individuale nu au administrator în Registrul Comerțului. Arătăm persoana din registru cu același nume doar când e una singură; titularul poate fi totuși alt om cu același nume. Legătura nu intră în semnale, în risc și nici în filtre.",
+    text: "Cabinetele individuale, PFA-urile și întreprinderile individuale nu au administrator în Registrul Comerțului. Arătăm persoana din registru cu același nume doar când e una singură; titularul poate fi totuși alt om cu același nume. Legătura apare și la «conduse azi de», marcată „după nume”, dar nu intră în semnale și nici în risc.",
   },
   "profil-risc": {
     title: "Profil de risc",

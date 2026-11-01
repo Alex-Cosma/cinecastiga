@@ -14,7 +14,7 @@ export function mapAskIdentities(spec:AskSpec, grounding:Grounding, scope:Eviden
   if(spec.population)mappedSpec.population={...spec.population,groups:spec.population.groups.map(g=>({...g,conditions:g.conditions.map(c=>(c.field==='authority'||c.field==='supplier')?{...c,values:[...new Set(c.values.map(id))]}:c)}))};
   const mappedGrounding={...grounding};
   for(const key of ['authority','supplier','compare'] as const){const entity=grounding[key];if(entity?.entityId)mappedGrounding[key]={...entity,entityId:id(entity.entityId)};}
-  if(grounding.admin)mappedGrounding.admin={...grounding.admin,supplierIds:[...new Set(grounding.admin.supplierIds.map(id))]};
+  if(grounding.admin)mappedGrounding.admin={...grounding.admin,supplierIds:[...new Set(grounding.admin.supplierIds.map(id))],...(grounding.admin.holderIds?{holderIds:[...new Set(grounding.admin.holderIds.map(id))]}:{})};
   if(grounding.uat?.authorityIds)mappedGrounding.uat={...grounding.uat,authorityIds:[...new Set(grounding.uat.authorityIds.map(id))]};
   const mappedScope=scope?{...scope}:undefined;
   if(mappedScope?.entityIds)mappedScope.entityIds=[...new Set(mappedScope.entityIds.map(id))];

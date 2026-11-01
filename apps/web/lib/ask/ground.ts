@@ -3,6 +3,7 @@ import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIdentities, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
+import { readHolderPractices } from "../individual-holder";
 import { retiredText, type RetiredTerm } from "./retired-terms";
 import { cpvTermParts } from "./cpv-terms";
 import { readableCpvName } from "../entity-summary";
@@ -69,10 +70,13 @@ export interface AdminGrounding {
   personKey: string | null;
   /** "POPESCU ION (n. 1974, Cluj-Napoca)" — pill display. */
   display: string | null;
-  /** Supplier entity ids of the person's firms present in our data. */
+  /** Supplier entity ids of the person's firms present in our data, the holderIds included. */
   supplierIds: string[];
   /** Total firms the person represents (incl. ones not in our data). */
   nFirms: number;
+  /** Among supplierIds: individual practices with the person's name and no ONRC representative, matched by name only
+   *  (owner, 1 November 2026); their rows say "după nume". Absent on answers from before. */
+  holderIds?: string[];
   alternatives: string[];
   /** The key exists in ONRC, but without a birth date that may identify a
    *  person (none, a placeholder or an implausible one; audit F32/F37). */
@@ -529,13 +533,16 @@ async function groundAdmin(
   // ONRC birth localities can be punctuation-only junk (".") — drop those
   const loc = r.bl && /\p{L}/u.test(r.bl) ? r.bl : null;
   const { birthYear } = onrcBirthYear(r.by, r.sy);
+  const firmIds = (r.ids ?? []).map(String).slice(0, 1000);
+  const holderIds = (await readHolderPractices(sql, personKey)).filter((id) => !firmIds.includes(id));
   return {
     query: q.name ?? r.nm,
     personKey,
     display: `${r.nm}${birthYear ? ` (n. ${birthYear}${loc ? `, ${loc}` : ""})` : ""}`,
-    supplierIds: (r.ids ?? []).map(String).slice(0, 1000),
+    supplierIds: [...firmIds, ...holderIds],
     nFirms: Number(r.nf ?? 0),
     alternatives,
+    ...(holderIds.length ? { holderIds } : {}),
   };
 }
 
