@@ -274,10 +274,12 @@ export const authorityConcentration = martsSchema.table(
 );
 
 /**
- * Per-entity red-flag summary (red-flags Phase 4). One row per (entity, role).
- * `cri` is the binary Corruption Risk Index — share of *applicable* flags
- * triggered for that role (DEC-003). `flags` carries the triggered codes +
- * evidence for display. Denormalized name/county so the web reads marts only.
+ * Per-entity risk profile (red-flags Phase 4). One row per (entity, role):
+ * the accepted DAs of the whole archive (0 < value ≤ 2M lei; a supplier equal
+ * to the authority is not a supplier). Since rf-2026.18 (1 November 2026) the
+ * profile is the risk score (`score`, built by apps/ingestion/src/flags/score.ts
+ * in the flag marts stage), not the binary index of DEC-003 (criteria met ÷
+ * criteria applicable). Denormalized name/county so the web reads marts only.
  */
 export const entityFlags = martsSchema.table(
   "entity_flags",
@@ -305,10 +307,11 @@ export const entityFlags = martsSchema.table(
     score: smallint("score").notNull().default(0),
     /** The unrounded score, for ties and the peer comparison. */
     scoreRaw: real("score_raw").notNull().default(0),
-    /** { code: { x, ...facts } } for each criterion with x > 0: the strength
+    /** { code: { x, ...facts } } for each criterion met (x ≥ 1): the strength
      *  and the plain facts behind it ("3 grupuri, 13% din valoare"). */
     scoreParts: jsonb("score_parts").notNull().default({}),
-    /** [{ code, severity, evidence }] for the triggered flags. */
+    /** The codes of the criteria met (strength ≥ 1), a JSON array of strings in
+     *  the role's order (PROFILE_FLAG_CODES), e.g. ["da_split","da_round"]. */
     flags: jsonb("flags"),
     /** Suppliers only (F6a phase 2, 0086): the CPV division (two digits) with
      *  at least half of `total_ron`, the same DA population. Null when no

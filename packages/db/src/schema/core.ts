@@ -661,9 +661,11 @@ export const normalizeWatermarks = coreSchema.table("normalize_watermarks", {
  * Red-flag store (red-flags DEC-005). One row per (subject, flag_code) — subject
  * is polymorphic: 'da' → direct_acquisitions.id; 'authority'/'supplier' →
  * entities.id; 'pair' → subject_id = authority entity, partner_id = supplier
- * entity. `triggered` is the binary CRI signal; `severity` (0–1) is for sorting
- * and detail only. `evidence` carries the numbers behind the flag. Recomputed by
- * truncate + rebuild from core, stamped with `methodology_version`.
+ * entity. `triggered` says the rule fired; `severity` (0–1) is for sorting and
+ * detail only. `evidence` carries the numbers behind the flag. Recomputed by
+ * truncate + rebuild from core, stamped with `methodology_version`. The risk
+ * score of a profile (marts.entity_flags, rf-2026.18) is measured from these
+ * rows and the DAs behind them (apps/ingestion/src/flags/score.ts).
  */
 export const flags = coreSchema.table(
   "flags",
@@ -674,7 +676,7 @@ export const flags = coreSchema.table(
     subjectId: bigint("subject_id", { mode: "bigint" }).notNull(),
     /** Supplier entity for 'pair' flags; NULL otherwise. */
     partnerId: bigint("partner_id", { mode: "bigint" }),
-    /** 'da_split' | 'da_concentration' | 'da_dependence' | 'da_rapid' | … */
+    /** 'da_split' | 'da_concentration' | 'da_dependence' | 'da_above_ceiling' | … ('da_rapid' retired in rf-2026.18) */
     flagCode: text("flag_code").notNull(),
     /** Calendar year or 'all'; NULL when not period-scoped. */
     period: text("period"),
@@ -698,7 +700,7 @@ export const flags = coreSchema.table(
 export const riskThresholds = coreSchema.table(
   "risk_thresholds",
   {
-    /** e.g. 'da_ceiling_goods_services' | 'da_ceiling_works' | 'da_rapid_hours'. */
+    /** e.g. 'da_ceiling_goods_services' | 'da_ceiling_works' | 'da_round_floor_pct' | 'da_dep_min_count'. */
     key: text("key").notNull(),
     validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
     /** NULL = open-ended (still in force). */
