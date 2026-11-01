@@ -161,3 +161,14 @@ describe("common representative role (audit F31)", () => {
     expect(description).toContain("insolvență sau lichidare (administrator judiciar sau special, administrator concordatar, lichidator)");
   });
 });
+
+// rf-2026.18: an acquisition above its ceiling says the exact distance; the retired "finalizare rapidă" has no line.
+describe("direct acquisitions against their ceiling", () => {
+  it("says how far above the ceiling an acquisition closed", () => {
+    expect(riskEvidenceLine("da_above_ceiling", { closing: "300000", ceiling: "270120", type: "da_ceiling_goods_services" }))
+      .toBe("300.000 lei — cu 29.880 lei peste pragul de 270.120 lei (produse / servicii).");
+  });
+  it("has no line for the retired da_rapid", () => {
+    expect(riskEvidenceLine("da_rapid", { minutes: 3, closing: "1000" })).toBeNull();
+  });
+});
