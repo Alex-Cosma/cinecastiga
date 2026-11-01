@@ -538,28 +538,26 @@ function seatCases(): PerfCase[] {
     // The sources of one criterion: the records it flags, of a profile (the row's link) and of a small group.
     perfCase("sources:scatter-signal-profile", "sources", "„9 înregistrări →” pe rândul Sageata, posibilă fracționare", "scatter", all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk" })),
       { path: "rows", scope: { role: "authority", entityIds: ["2144803"], flag: "da_split" } }),
-    perfCase("sources:scatter-signal-communes-buzau", "sources", "Sursele „finalizare rapidă” ale primăriilor de comună din Buzău", "scatter",
-      all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-signal-communes-buzau", "sources", "Sursele „chiar sub plafon” ale primăriilor de comună din Buzău", "scatter",
+      all(top({ dim: "authority" }), set({ authorityKind: "comuna", county: "Buzău" }), cloudOf({ rankBy: "risk", flag: "da_round" })), { path: "rows", barMs: 2000 }),
     perfCase("sources:scatter-signal-national-small", "sources", "Sursele „concentrare pe un furnizor”, instituțiile din țară", "scatter",
       all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_concentration" })), { path: "rows", barMs: 2000 }),
     // F6b verify: a national signal of the rows scanned the mart twice (20 s, HTTP 500); its keys now come from
     // da_tx_flagged_idx (built nightly) and December's from the authority index.
-    perfCase("sources:scatter-split-national", "sources", "Sursele „posibilă fracționare”, instituțiile din țară", "scatter",
+    perfCase("sources:scatter-split-national", "sources", "Sursele „achiziții repetate, peste plafon cumulat”, instituțiile din țară", "scatter",
       all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_split" })), { path: "rows", barMs: 2000 }),
-    perfCase("sources:scatter-rapid-firms-national", "sources", "Sursele „finalizare rapidă”, firmele din țară", "scatter",
-      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000 }),
+    perfCase("sources:scatter-above-firms-national", "sources", "Sursele „peste plafon”, firmele din țară", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_above_ceiling" })), { path: "rows", barMs: 2000 }),
     perfCase("sources:scatter-year-end-national", "sources", "Sursele „vârf în decembrie”, instituțiile din țară", "scatter",
       all(top({ dim: "authority" }), cloudOf({ rankBy: "risk", flag: "da_year_end" })), { path: "rows", barMs: 2000 }),
     // S6 (F6b verify): one firm's signal is reconciled with the build's flags (builtFlagTotals), which read every
-    // acquisition on a firm until its predicate kept the supplier's index (ADDA CONSTRUCT rapid: 13.6 s, HTTP 500).
-    perfCase("sources:scatter-rapid-one-firm", "sources", "„Vezi înregistrările” cu „finalizare rapidă” ale unei firme (ADDA CONSTRUCT)", "scatter",
-      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2108473"], flag: "da_rapid" } }),
-    perfCase("sources:scatter-round-one-firm", "sources", "„Vezi înregistrările” cu „aproape de prag” ale unei firme (ADDA CONSTRUCT)", "scatter",
+    // acquisition on a firm until its predicate kept the supplier's index (ADDA CONSTRUCT, 13.6 s, HTTP 500).
+    perfCase("sources:scatter-round-one-firm", "sources", "„Vezi înregistrările” cu „chiar sub plafon” ale unei firme (ADDA CONSTRUCT)", "scatter",
       all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_round" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2108473"], flag: "da_round" } }),
-    perfCase("sources:scatter-rapid-largest-firm", "sources", "„Vezi înregistrările” cu „finalizare rapidă” ale celei mai mari firme (DEDEMAN)", "scatter",
-      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_rapid" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2124387"], flag: "da_rapid" } }),
+    perfCase("sources:scatter-round-largest-firm", "sources", "„Vezi înregistrările” cu „chiar sub plafon” ale celei mai mari firme (DEDEMAN)", "scatter",
+      all(top({ dim: "supplier" }), cloudOf({ rankBy: "risk", flag: "da_round" })), { path: "rows", barMs: 2000, scope: { role: "supplier", entityIds: ["2124387"], flag: "da_round" } }),
     perfCase("filtered:scatter-suppliers-seat-cluj", "filtered", "Ce firme cu sediul în județul Cluj ies din tipar", "scatter", all(firms, set({ seatCounty: "Cluj" }))),
-    perfCase("filtered:entity-card-risk-seat-cluj", "filtered", "Care firmă cu sediul în județul Cluj are cel mai ridicat indice de risc", "entity_card",
+    perfCase("filtered:entity-card-risk-seat-cluj", "filtered", "Care firmă cu sediul în județul Cluj are cel mai ridicat risc", "entity_card",
       all(top({ dim: "supplier", rankBy: "risk" }), set({ seatCounty: "Cluj" }))),
     perfCase("sources:table-suppliers-seat-other-2025", "sources", "Sursele firmelor cu sediul în alt județ, 2025", "table", all(firms, set({ firmSeat: "other" }), years(2025)), { path: "rows", barMs: 2000 }),
     perfCase("sources:table-suppliers-seat-cluj", "sources", "Sursele firmelor cu sediul în județul Cluj", "table", all(firms, set({ seatCounty: "Cluj" })), { path: "rows", barMs: 2000 }),

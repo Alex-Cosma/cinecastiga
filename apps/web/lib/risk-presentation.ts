@@ -113,8 +113,8 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return `${s("count")} achiziții în ${s("year")}${evidence.cpv_class ? ` · CPV ${s("cpv_class")}` : ""}, plafon de referință ${money("ceiling")}.`;
     case "da_year_end":
       return `${s("year")}: ${pct("december_pct")} din valoarea achizițiilor directe finalizate în acel an revine lunii decembrie (${money("december")} din ${money("total")}).`;
-    case "da_rapid":
-      return `Interval publicare–finalizare: ${n("minutes") === null ? "necunoscut" : `${formatInt(n("minutes"))} min. (rotunjit)`} · ${money("closing")}.`;
+    case "da_above_ceiling":
+      return `${money("closing")}, de ${n("ratio") === null ? "?" : String(Math.round(n("ratio")! * 100) / 100).replace(".", ",")} ori plafonul de ${money("ceiling")} (${thresholdTypeLabel(evidence.type)}).`;
     case "da_round":
       return nearThresholdEvidence(evidence);
     case "da_concentration":
