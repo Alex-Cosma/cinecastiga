@@ -1,6 +1,6 @@
 /**
- * The risk cloud on a restored copy, by hand (F6b). Read-only: it never writes.
- * pnpm --filter web exec tsx scripts/scatter-smoke.ts [--db=<url>] [--spec='{"block":"scatter",…}'] [--locate=text] [--facts=id,id] [--rows[=flag]]
+ * The risk cloud on a restored copy, by hand (F6b; scatter-3, the risk score). Read-only: it never writes.
+ * pnpm --filter web exec tsx scripts/scatter-smoke.ts [--db=<url>] [--spec='{"block":"scatter",…}'] [--locate=text] [--facts=id,id] [--rows[=flag, e.g. da_above_ceiling]]
  * Prints the answer's size and timing, the first rows of the list, and optionally the search, the facts of profiles
  * or the sources page; one JSON line per call, so a stage can paste it into its notes.
  */
@@ -36,7 +36,9 @@ async function main() {
     line({
       ms: Math.round(performance.now() - started), group: s.group, criteria: s.criteria, chosen: s.chosen ?? null, p90: s.p90,
       cloud: "points" in s.cloud ? { points: s.cloud.points.length } : { cells: s.cloud.bands.cells.length, flagged: s.cloud.flagged?.cells.length ?? 0, named: s.cloud.named.length },
-      list: s.list.slice(0, 5).map((r) => [r.entityId, r.name, r.nFlags, r.nDas, r.flags.map((f) => f.code)]),
+      // scatter-3: each row's risk score (displayed and unrounded, the order), its patterns, its acquisitions.
+      version: s.version,
+      list: s.list.slice(0, 5).map((r) => [r.entityId, r.name, "score" in r ? r.score : null, "scoreRaw" in r ? r.scoreRaw : null, r.nFlags, r.nDas, r.flags.map((f) => f.code)]),
     });
     const text = arg("locate");
     if (text) {

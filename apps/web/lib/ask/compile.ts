@@ -33,7 +33,7 @@ import {
 } from "./rollups";
 import { hasFlag, scatterAnswer } from "./scatter";
 import { builtFlagTotals, FLAG_INDEX_PENDING, flagRecordsNote, flagSourcesWait, flaggedRecordKeys, RECONCILE_MAX, ROW_FLAGS } from "./scatter-records";
-import { SCATTER_LIST_MAX, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
+import { SCATTER_LIST_MAX, activeScatterFlag, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
 import { flagLabel } from "../flags";
 import {
   factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
@@ -232,6 +232,7 @@ export interface BreakdownSlice {
 }
 /** A group of a breakdown's level (F3): its code, name, value and records, and its largest record with the channel. */
 export interface BreakdownGroup extends BreakdownSlice { max?: number; maxSrc?: "da" | "contracts" }
+/** The risk cloud before scatter-2 (a sample of points on the index 0–1), as stored answers keep it (blocks.tsx ScatterBlock). */
 export interface ScatterPoint {
   entityId: string;
   name: string;
@@ -294,8 +295,9 @@ export type BlockData =
   // F3: every group of the level (base, with its largest record where known) and each channel's totals in the same
   // selection with every channel (streams); absent from older answers. Not compared by a watch (answerCore).
   | { block: "breakdown"; slices: BreakdownSlice[]; other: { value: number; count: number }; base?: BreakdownGroup[]; streams?: Record<"da" | "contracts", { value: number; count: number }> }
-  // scatter-2 (F6b, plan §4.12): the group's cloud, its signals and the list (scatter-shared.ts). `points` and
-  // `density` are the answer stored before it (captures, watch runs), which an old branch still draws.
+  // scatter-3 (rf-2026.18; F6b, plan §4.12): the group's cloud on the risk score, its signals and the list
+  // (scatter-shared.ts); `scatter` holds a stored scatter-2 too (bands by criteria met). `points` and `density` are
+  // the answer stored before scatter-2 (captures, watch runs), which an old branch still draws.
   | { block: "scatter"; scatter: ScatterData }
   | { block: "scatter"; points: ScatterPoint[]; density?: ScatterDensity | undefined }
   // sankey-2 and network-2 (F4, plan §4.8–§4.9): relations.ts. An answer stored before them (flows only, the
@@ -2137,7 +2139,8 @@ export async function runSpec(
 
         case "scatter": {
           const role: Dim = spec.dim === "supplier" ? "supplier" : "authority";
-          // scatter-2 (F6b, plan §4.12): the group's cloud and the list of the strip's order and signal (lib/ask/scatter.ts).
+          // scatter-3 (F6b, plan §4.12; rf-2026.18): the group's cloud on the risk score and the list of the strip's order
+          // and signal (lib/ask/scatter.ts); a retired signal of an older link is dropped there.
           // A small group's way out (final §4.4): the same kind in the whole country, counted only where a place narrows it.
           const placed = w.county !== null || w.seatCounty !== null || w.uatSiruta !== null;
           const wider = placed ? andAll(s, profilePredicates({ ...w, county: null, seatCounty: null, uatSiruta: null, uatAuthorityIds: [] }, role as "authority" | "supplier", RISK_MIN_DAS)) : null;
@@ -2647,8 +2650,9 @@ export async function runRows(
   const role = spec.block === "compare" || spec.block === "distribution"
     ? focalRole : spec.dim === "supplier" ? "supplier" : "authority";
   if (profile && scope.role && scope.role !== role) return { error: "Rolul selectat nu aparține acestei populații de profiluri." };
-  // scatter-2 (F6b): the records behind a signal, the drawer's own or the cloud's chosen one; the role keeps its signals.
-  const flag = spec.block === "scatter" ? scope.flag ?? spec.scatter?.flag ?? null : null;
+  // scatter-3 (F6b): the records behind a signal, the drawer's own or the cloud's chosen one (a retired one is none);
+  // the role keeps its signals.
+  const flag = spec.block === "scatter" ? scope.flag ?? activeScatterFlag(spec) : null;
   if (flag && !scatterFlagsOf(role).includes(flag)) return { error: "Semnalul ales nu se aplică acestui tip de profil." };
   if (spec.block === "compare" && (!focalId || !grounding.compare?.entityId))
     return { error: "Comparația necesită două entități identificate." };
@@ -3557,20 +3561,20 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       // The groups by value or by records (F3: the legend's headers order them); both are on every row.
       return `select categoria_cpv, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by categoria_cpv\norder by ${spec.measure === "count" ? 3 : 2} desc;`;
     case "scatter": {
-      // scatter-2 (F6b, lib/ask/scatter.ts): the cloud is the group; the list is its profiles with 20 acquisitions (all of a
-      // group under 10), with the strip's signal, in the strip's order.
+      // scatter-3 (F6b, lib/ask/scatter.ts; rf-2026.18): the cloud is the group at its risk score; the list is its profiles
+      // with 20 acquisitions (all of a group under 10), with the strip's signal, in the strip's order.
       const role = spec.dim === "supplier" ? "supplier" : "authority";
       const county = role === "supplier" ? w.seatCounty ?? w.county : w.county;
-      const flag = spec.scatter?.flag;
+      const flag = activeScatterFlag(spec);
       const group = [
         `role = '${role}' and n_das >= ${RISK_MIN_DAS} and cri is not null`,
         ...(county ? [`unaccent(county) ilike '${fold(county)}'${role === "supplier" && w.seatColumn ? "  -- sediul firmei" : ""}`] : []),
         ...(w.kind && role === "authority" ? [`entity_id in (…)  -- doar ${KIND_LABEL[w.kind]}`] : []),
       ];
       // The statement's end stays out of a condition's trailing comment.
-      return `-- norul: grupul\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere ${group.join("\n  and ")}${group.at(-1)!.includes("--") ? "\n" : ""};` +
-        `\n-- lista: primele ${SCATTER_LIST_MAX}\nselect name_display, total_ron, cri, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= ${ENTITY_CARD_MIN_DAS}  -- un grup sub 10 profiluri: toate, de la ${RISK_MIN_DAS}` +
-        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}\norder by ${scatterRank(spec) === "risk" ? "cri desc, total_ron desc, entity_id" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
+      return `-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere ${group.join("\n  and ")}${group.at(-1)!.includes("--") ? "\n" : ""};` +
+        `\n-- lista: primele ${SCATTER_LIST_MAX}\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= ${ENTITY_CARD_MIN_DAS}  -- un grup sub 10 profiluri: toate, de la ${RISK_MIN_DAS}` +
+        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}\norder by ${scatterRank(spec) === "risk" ? "score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
     }
     case "sankey":
       return `select partener, categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by partener, categoria_cpv;`;
