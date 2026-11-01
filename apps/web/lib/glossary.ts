@@ -124,11 +124,11 @@ export const GLOSSARY = {
   // Detail pages: entity, contract, award notice, direct acquisition, documents, radiografie, comparisons.
   "semnale-numarare": {
     title: "Cum se numără semnalele",
-    text: "Doar criteriile pentru achiziții directe intră în indicele de risc. Aparițiile se pot suprapune și nu se adună. Semnalele din proceduri se numără o dată pe anunț, indiferent de versiuni, cu anul primului contract; un contract republicat sau un acord-cadru și subsecventul pot apărea separat.",
+    text: "Doar tiparele din achizițiile directe intră în risc. Aparițiile se pot suprapune și nu se adună. Semnalele din proceduri se numără o dată pe anunț, indiferent de versiuni, cu anul primului contract.",
   },
   "criteriu-neindeplinit": {
-    title: "Criteriu neîndeplinit",
-    text: "Un criteriu al indicelui poate rămâne neîndeplinit chiar dacă există apariții: finalizarea rapidă și valorile aproape de prag cer o pondere minimă din achizițiile directe ale entității.",
+    title: "Sub prag",
+    text: "Un tipar poate avea apariții fără să intre în risc: „chiar sub plafon” cere o pondere minimă din achizițiile directe, iar „peste plafon” cel puțin două cazuri.",
   },
   "prag-vs-fractionare": {
     title: "Aproape de prag sau fracționare",
@@ -204,9 +204,14 @@ export const GLOSSARY = {
     text: "Un domeniu CPV ales include toate subdomeniile sale.",
   },
   // Ask comparison of two entities.
+  // The risk score (rf-2026.18, owner decision of 1 November 2026): the (?) beside "73% · risc · puternic".
+  "scor-risc": {
+    title: "Riscul, în procente",
+    text: "Cât de multe și cât de pronunțate sunt tiparele din achizițiile directe: 0% fără niciun tipar, 20–39% slab, 40–67% moderat, 68% și peste puternic. Un singur tipar ajunge cel mult la 60%. Nu este o probabilitate de corupție.",
+  },
   "profil-risc": {
     title: "Profil de risc",
-    text: "Indicele de risc (CRI) și semnalele sunt calculate pe tot istoricul de achiziții directe al entității, nu pe selecția de mai sus. Un semnal este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
+    text: "Riscul și semnalele sunt calculate pe tot istoricul de achiziții directe al entității, nu pe selecția de mai sus. Un semnal este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
   },
   // Kit §4 "Prima înregistrare a firmei" (trusa 6): "Prima dată", never "La prima apariție"; the (?) never says
   // "din aprilie 2018": 953 suppliers have older records (entity_card §3.7).
@@ -243,8 +248,8 @@ export const GLOSSARY = {
     text: "Primăriile cu între jumătate și dublul populației rezidente (INS, RPL 2021). Comunele, orașele și municipiile stau în același grup: contează populația, nu rangul.",
   },
   "criterii-risc": {
-    title: "Criteriile de risc",
-    text: "Cinci criterii la instituții și patru la firme, din achizițiile directe acceptate ale întregii arhive. Un criteriu îndeplinit e un semnal de verificat, nu o dovadă.",
+    title: "Tiparele riscului",
+    text: "Cinci tipare la instituții și patru la firme, din achizițiile directe acceptate ale întregii arhive. Fiecare adaugă puncte după cât de pronunțat e; un singur tipar ajunge cel mult la 60%. Un semnal de verificat, nu o dovadă.",
   },
   // Ask's verification (fact_check-2, final fact_check §4.1, §4.4): its third verdict and its line "Concurență".
   "acord-cadru": {
@@ -316,12 +321,12 @@ export const GLOSSARY = {
   },
   // "Cine conduce?" (entity_card-2, F6c, final entity_card §3.9–§3.10).
   "indice-egalitate": {
-    title: "Indicele nu le deosebește",
-    text: "Indicele e proporția semnalelor întâlnite din cele posibile (4 la o firmă, 5 la o instituție), deci ia puține valori și mulți au aceeași. Când peste jumătate din grup îl are, sau când e un singur semnal, indicele nu poate numi pe unul. Semnal statistic, nu dovadă.",
+    title: "La egalitate",
+    text: "Riscul ia valori de la 0 la 100%, deci egalitățile sunt rare. Când mai multe profiluri au același procent, le ordonăm după valoarea achizițiilor directe. Semnal statistic, nu dovadă.",
   },
   "ordinea-valorii": {
     title: "În ordinea valorii",
-    text: "Toți cei de pe listă au același indice. Îi ordonăm după valoarea achizițiilor directe din profil, nu după risc: locul în listă nu spune cine ar fi mai riscant.",
+    text: "Cei de pe listă au același procent de risc. Îi ordonăm după valoarea achizițiilor directe din profil: locul în listă nu spune cine ar fi mai riscant.",
   },
   "diferenta-locul-doi": {
     title: "Diferența față de locul 2",

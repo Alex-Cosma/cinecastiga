@@ -14,11 +14,6 @@ export interface SignalInstance extends FlagInstance {
   winners: { entityId: string; name: string | null; county: string | null }[];
 }
 export interface SignalPage { rows: SignalInstance[]; total: number; page: number; pageSize: number }
-export interface SignalOverview {
-  counts: Record<string, number>;
-  distribution: { from: number; to: number; n: number }[];
-  leaderboard: RiskEntity[];
-}
 const globalDb = globalThis as unknown as { __seapSignalSql?: DbSql };
 const database = () => globalDb.__seapSignalSql ??= createDb().sql;
 
@@ -64,28 +59,9 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
   )`;
 }
 
-interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null }
-const riskRow = (r: RiskRow): RiskEntity => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [] });
+interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null; score: number }
+const riskRow = (r: RiskRow): RiskEntity => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [], score: Number(r.score ?? 0) });
 const profileCounty = (sql: DbSql, county: string | null) => county ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))` : sql``;
-
-export async function readSignalOverview(sql: DbSql, state: SignalState): Promise<SignalOverview> {
-  return sql.begin("isolation level repeatable read read only", async (tx) => {
-    const q = tx as unknown as DbSql;
-    await q`set local statement_timeout = '20s'`;
-    const population = signalPopulation(q, state);
-    const counts = await q`select flag_code, count(*)::text n from ${population} population group by flag_code`;
-    const county = profileCounty(q, state.county);
-    const dist = await q`select width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) b, count(*)::text n
-      from marts.entity_flags where role = ${state.role} and n_das >= 10 ${county} group by 1`;
-    const leaders = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags
-      from marts.entity_flags where role = ${state.role} and n_das >= ${state.role === "authority" ? 30 : 10} and cri > 0 ${county}
-      order by cri desc, total_ron desc nulls last, entity_id limit 12`;
-    const by = new Map(dist.map((r) => [Number(r.b), Number(r.n)]));
-    return { counts: Object.fromEntries(counts.map((r) => [String(r.flag_code), Number(r.n)])),
-      distribution: Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: by.get(i + 1) ?? 0 })),
-      leaderboard: (leaders as unknown as RiskRow[]).map(riskRow) };
-  });
-}
 
 export async function readSignalPage(sql: DbSql, state: SignalState): Promise<SignalPage> {
   return sql.begin("isolation level repeatable read read only", async (tx) => {
@@ -125,30 +101,32 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
   });
 }
 
-/** Complete CRI cohort, retaining the existing ≥10-DA rule and histogram's
- * actual width_bucket boundaries (not rounded labels such as 0.2). */
+/**
+ * The profiles of /semnale's risk list (≥ 10 DAs). A band is a range of the
+ * risk score: the link keeps it on 0–1 (criMin=0.4&criMax=0.5 is 40–49%),
+ * the last one includes 100%. `criteria` is the number of patterns met.
+ */
 export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
   const { from, to } = state.band ?? { from: 0, to: 1 };
   return sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
-    const tenthBand = Math.abs(from * 10 - Math.round(from * 10)) < 1e-8 && Math.abs(to * 10 - Math.round(to * 10)) < 1e-8;
-    const band = state.criteria !== null ? q`n_flags = ${state.criteria}` : !state.band ? q`true` : tenthBand ? q`width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) between ${Math.round(from * 10) + 1} and ${Math.round(to * 10)}`
-      : to === 1 ? q`coalesce(cri, 0) >= ${from} and coalesce(cri, 0) <= ${to}` : q`coalesce(cri, 0) >= ${from} and coalesce(cri, 0) < ${to}`;
+    const lo = Math.round(from * 100), hi = Math.round(to * 100);
+    const band = state.criteria !== null ? q`n_flags = ${state.criteria}` : !state.band ? q`true`
+      : hi >= 100 ? q`score >= ${lo}` : q`score >= ${lo} and score < ${hi}`;
     const where = q`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(q, state.county)}`;
     const totals = await q`select count(*)::text n from marts.entity_flags where ${where}`;
     const total = Number(totals[0]?.n ?? 0);
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / RISK_PAGE_SIZE) - 1));
-    const col = { cri: q`coalesce(cri, 0)`, flags: q`n_flags`, das: q`n_das`, total: q`coalesce(total_ron, 0)`, name: q`lower(unaccent(coalesce(name_display, '')))` }[state.sort];
+    const col = { cri: q`score_raw`, flags: q`n_flags`, das: q`n_das`, total: q`coalesce(total_ron, 0)`, name: q`lower(unaccent(coalesce(name_display, '')))` }[state.sort];
     const order = state.dir === "asc" ? q`${col} asc` : q`${col} desc`;
-    const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags
+    const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags, score
       from marts.entity_flags where ${where} order by ${order}, total_ron desc nulls last, entity_id
       limit ${RISK_PAGE_SIZE} offset ${page * RISK_PAGE_SIZE}`;
     return { total, page, pageSize: RISK_PAGE_SIZE, rows: (rows as unknown as RiskRow[]).map(riskRow) };
   });
 }
 
-export const getSignalOverview = (state: SignalState) => readSignalOverview(database(), state);
 export const getSignalPage = (state: SignalState) => readSignalPage(database(), state);
 export const getSignalRiskGroup = (state: SignalState) => readSignalRiskGroup(database(), state);
 
@@ -162,13 +140,14 @@ export async function readSignalTypeCounts(sql: DbSql, state: SignalState): Prom
     return Object.fromEntries(rows.map(r => [String(r.flag_code), Number(r.n)]));
   });
 }
-export async function readRiskCriteriaDistribution(sql: DbSql, state: SignalState) {
+/** How many profiles (≥ 10 DAs) in each tenth of the risk score: 0 alone, then 20–29 … 90–100 (none score 1–19). */
+export async function readRiskScoreDistribution(sql: DbSql, state: SignalState): Promise<{ bin: number; n: number }[]> {
   return sql.begin("isolation level repeatable read read only", async tx => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
-    const rows = await q`select n_flags, count(*)::text n from marts.entity_flags
-      where role = ${state.role} and n_das >= 10 ${profileCounty(q, state.county)} group by n_flags order by n_flags`;
-    return rows.map(r => ({ criteria: Number(r.n_flags), n: Number(r.n) }));
+    const rows = await q`select least(score / 10, 9) * 10 bin, count(*)::text n from marts.entity_flags
+      where role = ${state.role} and n_das >= 10 ${profileCounty(q, state.county)} group by 1 order by 1`;
+    return rows.map(r => ({ bin: Number(r.bin), n: Number(r.n) }));
   });
 }
 export const getSignalTypeCounts = (state: SignalState) => readSignalTypeCounts(database(), state);
@@ -193,4 +172,4 @@ export async function readSignalEntityName(sql: DbSql, entityId: string): Promis
   return rows[0] ? String(rows[0].name_display ?? "") : null;
 }
 export const getSignalEntityName = (entityId: string) => readSignalEntityName(database(), entityId);
-export const getRiskCriteriaDistribution = (state: SignalState) => readRiskCriteriaDistribution(database(), state);
+export const getRiskScoreDistribution = (state: SignalState) => readRiskScoreDistribution(database(), state);

@@ -2,6 +2,7 @@ import { contractRonValue, contractOriginalValue, contractOriginalCurrency, cont
 import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { onrcBirthYear } from "./format";
+import type { ScoreParts } from "./risk-score";
 import { createDb, type DbSql } from "@seap/db";
 
 /**
@@ -207,6 +208,9 @@ export interface EntityFlagRow {
   nDas: number;
   totalRon: number;
   flags: string[];
+  /** The risk score over 100 (rf-2026.18) and the strengths and facts behind it. */
+  score: number;
+  scoreParts: ScoreParts;
 }
 
 /** Per-role red-flag summary + DA activity for an entity (all roles it has). */
@@ -214,9 +218,9 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
   const sql = db();
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const rows = (await sql`
-    select role, name_display, cui_canonical, county, cri, n_flags, n_das, total_ron, flags
+    select role, name_display, cui_canonical, county, cri, n_flags, n_das, total_ron, flags, score, score_parts
     from marts.entity_flags where entity_id = ${id}
-    order by n_flags desc, n_das desc
+    order by score desc, n_das desc
   `) as unknown as {
     role: Role;
     name_display: string | null;
@@ -227,6 +231,8 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
     n_das: number;
     total_ron: string | null;
     flags: string[] | null;
+    score: number;
+    score_parts: ScoreParts | null;
   }[];
   return rows.map((r) => ({
     role: r.role,
@@ -238,6 +244,8 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
     nDas: Number(r.n_das),
     totalRon: Number(r.total_ron ?? 0),
     flags: r.flags ?? [],
+    score: Number(r.score ?? 0),
+    scoreParts: r.score_parts ?? {},
   }));
 }
 
@@ -915,110 +923,12 @@ export interface RiskEntity {
   nDas: number;
   totalRon: number;
   flags: string[];
+  /** The risk score over 100 (rf-2026.18). */
+  score: number;
 }
 
-/** Highest-CRI entities for a role (risk leaderboard). */
-export async function getRiskLeaderboard(role: Role, limit = 25): Promise<RiskEntity[]> {
-  const sql = db();
-  const minDas = role === "authority" ? 30 : 10;
-  const rows = (await sql`
-    select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags
-    from marts.entity_flags
-    where role = ${role} and n_das >= ${minDas} and cri > 0
-    order by cri desc, total_ron desc nulls last
-    limit ${limit}
-  `) as unknown as {
-    entity_id: string;
-    name_display: string | null;
-    county: string | null;
-    cri: string | null;
-    n_flags: number;
-    n_das: number;
-    total_ron: string | null;
-    flags: string[] | null;
-  }[];
-  return rows.map((r) => ({
-    entityId: String(r.entity_id),
-    name: r.name_display,
-    county: r.county,
-    cri: Number(r.cri ?? 0),
-    nFlags: Number(r.n_flags),
-    nDas: Number(r.n_das),
-    totalRon: Number(r.total_ron ?? 0),
-    flags: r.flags ?? [],
-  }));
-}
-
-export interface RiskGroupPage {
-  rows: RiskEntity[];
-  total: number;
-}
-
-/**
- * Entities inside a CRI band — the landing list for a clicked bar of the
- * "cât de neobișnuit e" distribution. Same population rule as the ask
- * engine's distribution block: role + at least 10 direct acquisitions.
- */
+/** The orders of /semnale's risk list (signals-shared.ts RISK_SORTS): "cri" is the risk score. */
 export type RiskGroupSort = "cri" | "flags" | "das" | "total" | "name";
-
-export async function getRiskGroup(
-  role: Role,
-  criMin: number,
-  criMax: number,
-  county: string | null,
-  page = 0,
-  pageSize = 10,
-  sort: RiskGroupSort = "cri",
-  dir: "asc" | "desc" = "desc",
-): Promise<RiskGroupPage> {
-  const sql = db();
-  const jud = county
-    ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))`
-    : sql``;
-  // upper bound inclusive only for the last bucket (criMax >= 1)
-  const ub =
-    criMax >= 1 ? sql`coalesce(cri, 0) <= ${criMax}` : sql`coalesce(cri, 0) < ${criMax}`;
-  const col = {
-    cri: sql`coalesce(cri, 0)`,
-    flags: sql`n_flags`,
-    das: sql`n_das`,
-    total: sql`coalesce(total_ron, 0)`,
-    name: sql`lower(unaccent(coalesce(name_display, '')))`,
-  }[sort];
-  const ord = dir === "asc" ? sql`${col} asc` : sql`${col} desc`;
-  const rows = (await sql`
-    select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags,
-           count(*) over () as total
-    from marts.entity_flags
-    where role = ${role} and n_das >= 10
-      and coalesce(cri, 0) >= ${criMin} and ${ub} ${jud}
-    order by ${ord}, total_ron desc nulls last, entity_id
-    limit ${pageSize} offset ${page * pageSize}
-  `) as unknown as {
-    entity_id: string;
-    name_display: string | null;
-    county: string | null;
-    cri: string | null;
-    n_flags: number;
-    n_das: number;
-    total_ron: string | null;
-    flags: string[] | null;
-    total: string;
-  }[];
-  return {
-    total: rows.length > 0 ? Number(rows[0]!.total) : 0,
-    rows: rows.map((r) => ({
-      entityId: String(r.entity_id),
-      name: r.name_display,
-      county: r.county,
-      cri: Number(r.cri ?? 0),
-      nFlags: Number(r.n_flags),
-      nDas: Number(r.n_das),
-      totalRon: Number(r.total_ron ?? 0),
-      flags: r.flags ?? [],
-    })),
-  };
-}
 
 export interface FlagInstance {
   flagCode: string;
@@ -1778,23 +1688,3 @@ export async function getFlagInstanceCount(): Promise<number> {
   return Number(rows[0]?.n ?? 0);
 }
 
-/**
- * CRI histogram for the /semnale side panel: 10 buckets over [0,1], same
- * population rule as the group list (role + ≥10 direct acquisitions),
- * optionally within one county.
- */
-export async function getCriDistribution(
-  role: Role,
-  county: string | null,
-): Promise<{ from: number; to: number; n: number }[]> {
-  const sql = db();
-  const jud = county ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))` : sql``;
-  const rows = (await sql`
-    select width_bucket(coalesce(cri, 0), 0, 1.0000001, 10) b, count(*) n
-    from marts.entity_flags
-    where role = ${role} and n_das >= 10 ${jud}
-    group by 1 order by 1
-  `) as unknown as { b: number; n: string }[];
-  const by = new Map(rows.map((r) => [Number(r.b), Number(r.n)]));
-  return Array.from({ length: 10 }, (_, i) => ({ from: i / 10, to: (i + 1) / 10, n: by.get(i + 1) ?? 0 }));
-}

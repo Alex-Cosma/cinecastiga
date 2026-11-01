@@ -1,14 +1,22 @@
-import { PROFILE_FLAGS_APPLICABLE, type DbSql } from "@seap/db";
+import type { DbSql } from "@seap/db";
 import {buildTransactionMarts} from "../normalize/transaction-marts.js";
+import { applyProfileScores } from "./score.js";
 
 /**
  * Flag marts (red-flags Phase 4): recompute the read models over core.flags +
  * core.direct_acquisitions. Fills the previously-empty authority_concentration
- * and entity_top_partners from the DA pair spine, builds per-entity CRI
- * (entity_flags), and a browsable flag_instances explorer. Same plausibility
- * bound as the flag rules so corrupt values can't distort totals.
+ * and entity_top_partners from the DA pair spine, builds the per-entity risk
+ * score (entity_flags, score.ts), and a browsable flag_instances explorer.
+ * Same plausibility bound as the flag rules so corrupt values can't distort totals.
  */
-const APPLICABLE = PROFILE_FLAGS_APPLICABLE;
+
+async function threshold(sql: DbSql, key: string, fallback: number): Promise<number> {
+  const r = (await sql`
+    select value_num from core.risk_thresholds where key = ${key}
+    order by valid_from desc limit 1
+  `) as unknown as { value_num: string }[];
+  return r[0] ? Number(r[0].value_num) : fallback;
+}
 
 export interface FlagMartsReport {
   authorityConcentration: number;
@@ -75,7 +83,9 @@ export async function runFlagMarts(
     // rebuilt here — doing so would clobber the award-inclusive versions with a
     // DA-only one. This job owns only the flag-specific marts below.
 
-    // ── entity_flags (CRI per entity+role) ──────────────────────────────────
+    // ── entity_flags (risk score per entity+role) ───────────────────────────
+    // The profiles first, then their score (score.ts): cri, n_flags and flags
+    // are rewritten by applyProfileScores from the strengths of the criteria.
     await q`truncate marts.entity_flags`;
     await q`
       insert into marts.entity_flags
@@ -91,57 +101,16 @@ export async function runFlagMarts(
         from core.direct_acquisitions
         where supplier_entity_id is not null and supplier_entity_id <> authority_entity_id and state = 'Oferta acceptata' and closing_value > 0 and closing_value <= ${b}
         group by supplier_entity_id
-      ),
-      daf_pivot as (
-        select eid, role,
-          count(*) filter (where flag_code = 'da_rapid') rapid_ct,
-          count(*) filter (where flag_code = 'da_round') round_ct
-        from (
-          select da.authority_entity_id eid, 'authority' role, f.flag_code
-          from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
-          where f.subject_type = 'da' and f.triggered and da.state = 'Oferta acceptata'
-            and da.closing_value > 0 and da.closing_value <= ${b}
-          union all
-          select nullif(da.supplier_entity_id, da.authority_entity_id), 'supplier', f.flag_code
-          from core.flags f join core.direct_acquisitions da on da.id = f.subject_id
-          where f.subject_type = 'da' and f.triggered and da.state = 'Oferta acceptata'
-            and da.closing_value > 0 and da.closing_value <= ${b}
-        ) z where eid is not null group by eid, role
-      ),
-      ent_flag as (
-        select subject_id eid, 'authority' role, 'da_concentration' code from core.flags where flag_code='da_concentration'
-        union all select subject_id, 'supplier', 'da_dependence' from core.flags where flag_code='da_dependence'
-        union all select distinct subject_id, 'authority', 'da_year_end' from core.flags where flag_code='da_year_end'
-        union all select subject_id, 'authority', 'da_split' from core.flags where flag_code='da_split'
-        union all select partner_id, 'supplier', 'da_split' from core.flags where flag_code='da_split'
-      ),
-      ecodes as (
-        select eid, role, array_agg(distinct code) codes from ent_flag group by eid, role
-      ),
-      scored as (
-        select b.eid, b.role, b.n, b.total,
-          coalesce(ec.codes, array[]::text[]) ecodes,
-          coalesce(dp.rapid_ct, 0) rapid_ct,
-          coalesce(dp.round_ct, 0) round_ct
-        from base b
-        left join ecodes ec on ec.eid = b.eid and ec.role = b.role
-        left join daf_pivot dp on dp.eid = b.eid and dp.role = b.role
-      ),
-      final as (
-        select eid, role, n, total,
-          ecodes
-            || case when n >= 5 and rapid_ct::numeric/n > 0.25 then array['da_rapid'] else array[]::text[] end
-            || case when n >= 5 and round_ct::numeric/n > 0.10 then array['da_round'] else array[]::text[] end
-          as codes,
-          case when role = 'authority' then ${APPLICABLE.authority}::int else ${APPLICABLE.supplier}::int end applicable
-        from scored
       )
-      select f.eid, f.role, e.name_display, e.cui_canonical, e.county, f.n, f.total,
-        round(coalesce(array_length(f.codes,1),0)::numeric / f.applicable, 4),
-        coalesce(array_length(f.codes,1),0),
-        to_jsonb(f.codes)
-      from final f join core.entities e on e.id = f.eid
+      select b.eid, b.role, e.name_display, e.cui_canonical, e.county, b.n, b.total, 0, 0, '[]'::jsonb
+      from base b join core.entities e on e.id = b.eid
     `;
+    const scores = await applyProfileScores(q as unknown as DbSql, {
+      maxPlausible: b,
+      yearEndMinTotal: await threshold(q as unknown as DbSql, 'da_year_end_min_total', 100_000),
+      yearEndShare: await threshold(q as unknown as DbSql, 'da_year_end_share', 0.35),
+    });
+    log(`risk score: profiles=${scores.profiles} scored=${scores.scored}`);
     const mainCpvDivisions = await applyMainCpvDivisions(q, b);
 
     // ── flag_instances (browsable): entity/pair flags + top per-DA examples ─

@@ -610,6 +610,20 @@
       "when": 1792849584193,
       "tag": "0086_firm_seat_registry_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1793533927876,
+      "tag": "0087_entity_flags_risk_score",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1793533971891,
+      "tag": "0088_risk_score_thresholds",
+      "breakpoints": true
     }
   ]
 }

@@ -246,6 +246,19 @@ table.rank .county { color: var(--muted); font-size: 12px; }
 .risk-mid { background: var(--amber-soft); color: var(--amber); }
 .risk-low { background: var(--ok-soft); color: var(--ok); }
 .risk-none { background: var(--line); color: var(--muted); }
+/* The risk score (rf-2026.18): a weak pattern is neutral, never the "safe" green. */
+.risk-slab { background: var(--sunk); color: var(--ink2); }
+.risk-meter { position: relative; display: block; height: 5px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.risk-meter > span { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.risk-meter > .risk-high { background: var(--risk); }
+.risk-meter > .risk-mid { background: var(--amber); }
+.risk-meter > .risk-slab { background: var(--faint); }
+.risk-meter > .risk-none { background: transparent; }
+.risk-stat .risk-meter { max-width: 180px; margin: 10px 0 8px; }
+.risk-part { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; color: var(--ink2); }
+.risk-part .risk-meter { width: 72px; }
+.risk-points { font-family: var(--mono); font-size: .8em; font-weight: 500; color: var(--amber); }
+.mh-fact { margin: 2px 0 6px; font-size: 14px; color: var(--ink2); }
 .flags-panel {
   border: 1px solid var(--line); border-left: 4px solid var(--accent);
   border-radius: var(--radius); background: var(--surface); padding: 18px 20px; margin-bottom: 24px;

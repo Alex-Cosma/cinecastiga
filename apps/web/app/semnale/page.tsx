@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import RiskFreshness from "@/components/RiskFreshness";
-import { getSignalPage, getSignalRiskGroup, getSignalTypeCounts, getRiskCriteriaDistribution, getSignalEntityName, parseSignalState } from "@/lib/signals";
+import { getSignalPage, getSignalRiskGroup, getSignalTypeCounts, getRiskScoreDistribution, getSignalEntityName, parseSignalState } from "@/lib/signals";
 import SignalsExplorer from "./SignalsExplorer";
 import "./signals.css";
 
@@ -14,11 +14,11 @@ export default async function SemnalePage({ searchParams }: { searchParams: Prom
     state.view === "signals" ? getSignalPage(state) : null,
     state.view === "cri" ? getSignalRiskGroup(state) : null,
     state.view === "signals" ? getSignalTypeCounts(state) : {} as Record<string, number>,
-    state.view === "cri" ? getRiskCriteriaDistribution(state) : [],
+    state.view === "cri" ? getRiskScoreDistribution(state) : [],
     state.entity ? getSignalEntityName(state.entity) : null,
   ]).catch(() => {
     error = "Selecția ta este păstrată. Încearcă din nou pentru a vedea rezultatele.";
-    return [null, null, {} as Record<string, number>, [] as { criteria: number; n: number }[], null] as const;
+    return [null, null, {} as Record<string, number>, [] as { bin: number; n: number }[], null] as const;
   });
   if (signals) counts[state.code] = signals.total;
   const page = signals?.page ?? risk?.page ?? 0;

@@ -1,11 +1,5 @@
 import { formatExactDecimal, formatInt, formatRon } from "./format";
 
-/** Mirrors the fixed CRI denominator in ingestion/flags/marts.ts, not all 13 flags. */
-export const CRI_CRITERIA = {
-  authority: ["da_split", "da_concentration", "da_year_end", "da_rapid", "da_round"],
-  supplier: ["da_split", "da_dependence", "da_rapid", "da_round"],
-} as const;
-
 export function thresholdTypeLabel(type: unknown): string {
   return type === "da_ceiling_works" ? "lucrări"
     : type === "da_ceiling_goods_services" ? "produse / servicii" : "tip neprecizat";
