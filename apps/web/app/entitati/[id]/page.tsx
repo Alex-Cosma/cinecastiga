@@ -294,23 +294,6 @@ export default async function EntityPage({
         ]}
       />
 
-      {/* An individual practice has no ONRC representative: the one register person with its holder's name, a lead
-          (owner decision of 1 November 2026, variant B); never a signal, a risk or a count of the person's firms. */}
-      {reps.length === 0 && holderTwin && (
-        <section className="section" id="conducere">
-          <h2 className="ent-tip">Titular <Term tip id="acelasi-nume" /></h2>
-          <p className="holder-twin">
-            Același nume în Registrul Comerțului:{" "}
-            <a href={personFirmsUrl(holderTwin.personKey, cleanName(holderTwin.name))}>{cleanName(holderTwin.name)}</a>
-            {holderTwin.birthYear && (
-              <span className="county"> {birthNote({ birthYear: holderTwin.birthYear, birthLocality: holderTwin.locality ? cleanName(holderTwin.locality) : null })}</span>
-            )}
-            {" · "}{holderTwin.firms === 1 ? "administrator la o firmă" : `administrator la ${formatInt(holderTwin.firms)} firme`}
-            {" · "}<span className="county">potrivire doar după nume</span>
-          </p>
-        </section>
-      )}
-
       {/* Legal representatives (ONRC snapshot) */}
       {reps.length > 0 && (
         <section className="section" id="conducere">
@@ -539,6 +522,24 @@ export default async function EntityPage({
           {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
         </details>}
       </section>
+
+      {/* An individual practice has no ONRC representative: the one register person with its holder's name, a lead
+          (owner decision of 1 November 2026, variant B); never a signal, a risk or a count of the person's firms. Last before
+          the explanations at the foot of the page (owner, same day). */}
+      {reps.length === 0 && holderTwin && (
+        <section className="section" id="conducere">
+          <h2 className="ent-tip">Titular <Term tip id="acelasi-nume" /></h2>
+          <p className="holder-twin">
+            Același nume în Registrul Comerțului:{" "}
+            <a href={personFirmsUrl(holderTwin.personKey, cleanName(holderTwin.name))}>{cleanName(holderTwin.name)}</a>
+            {holderTwin.birthYear && (
+              <span className="county"> {birthNote({ birthYear: holderTwin.birthYear, birthLocality: holderTwin.locality ? cleanName(holderTwin.locality) : null })}</span>
+            )}
+            {" · "}{holderTwin.firms === 1 ? "administrator la o firmă" : `administrator la ${formatInt(holderTwin.firms)} firme`}
+            {" · "}<span className="county">potrivire doar după nume</span>
+          </p>
+        </section>
+      )}
 
       {/* What the numbers include and how the risk is formed: the last blocks before the footer (owner, 1 November 2026). */}
       <details className="data-context entity-data-context">
