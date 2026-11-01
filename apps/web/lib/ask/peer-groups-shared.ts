@@ -2,6 +2,7 @@ import { countyKnown } from "../counties";
 import { flagEntityRule, flagLabel } from "../flags";
 import { formatInt } from "../format";
 import { GLOSSARY } from "../glossary";
+import { RISK_CRITERIA, type RiskCriterion } from "../risk-score";
 import { countWords } from "./answer-text";
 import { KIND_WORDS, countyWords } from "./question-ui";
 import type { PeersOptions } from "./spec";
@@ -375,15 +376,33 @@ export function withPeerGroup<S extends { peers?: PeersOptions | undefined; filt
 }
 
 /**
+ * The bars of distribution-3 above 50 members (owner decision, 1 November
+ * 2026): the score by tenths, 0 alone (a score is 0 or at least 20: one
+ * pattern at its lowest strength is 20%), then 20–29 … 90–100. Both bounds
+ * are on the displayed score and inclusive.
+ */
+export interface ScoreBand { from: number; to: number }
+export const SCORE_BANDS: readonly ScoreBand[] = [
+  { from: 0, to: 0 }, ...[20, 30, 40, 50, 60, 70, 80, 90].map((from) => ({ from, to: from === 90 ? 100 : from + 9 })),
+];
+/** The bar a displayed score falls in; null for 1–19, which the formula never gives. */
+export const scoreBandOf = (score: number): ScoreBand | null =>
+  SCORE_BANDS.find((band) => score >= band.from && score <= band.to) ?? null;
+/** "0%", "20–29%", "90–100%". */
+export const scoreBandWords = (band: ScoreBand): string => band.from === band.to ? `${band.from}%` : `${band.from}–${band.to}%`;
+
+/**
  * The request of a bar's members (GET /api/ask/peers/members): the group as the
  * answer computed it, its ticks, the county (the entity's own, or an old link's
- * other one) and an old link's kind, not as the draft may say it now.
+ * other one) and an old link's kind, not as the draft may say it now. The bar
+ * is a band of the score (distribution-3), or, on an answer stored before it,
+ * a number of criteria (distribution-2, `k`).
  */
 export function barMembersQuery(
   d: { role: "authority" | "supplier"; focal: { entityId: string }; group: { ticks: readonly PeerRowId[]; facts: Pick<PeerFacts, "county">; legacy: { county?: string; authorityKind?: string } } },
-  k: number, offset: number,
+  bar: number | ScoreBand, offset: number,
 ): string {
-  const params = new URLSearchParams({ role: d.role, id: d.focal.entityId, k: String(k) });
+  const params = new URLSearchParams({ role: d.role, id: d.focal.entityId, ...(typeof bar === "number" ? { k: String(bar) } : { from: String(bar.from), to: String(bar.to) }) });
   if (offset > 0) params.set("offset", String(offset));
   if (d.group.ticks.includes("similar")) params.set("similar", "1");
   if (d.group.ticks.includes("activity")) params.set("activity", "1");
@@ -413,12 +432,11 @@ export function coverageWords(c: PeerCoverage): string {
  * The criteria (final §3.7, kit §4 "Semnalele"): the codes a role can meet, in
  * their order. The short label and the rule of each at the level of an entity
  * are FLAG_META.label and .entityRule (lib/flags.ts, F6b), which the risk cloud
- * speaks too; the codes are @seap/db's PROFILE_FLAG_CODES (equal, tested).
+ * speaks too; the codes and their order are the risk score's (lib/risk-score.ts
+ * RISK_CRITERIA, equal to @seap/db's PROFILE_FLAG_CODES, tested). An answer
+ * stored before rf-2026.18 names its own codes, a retired one by its code.
  */
-export const CRITERIA: Readonly<Record<"authority" | "supplier", readonly string[]>> = {
-  authority: ["da_split", "da_year_end", "da_round", "da_rapid", "da_concentration"],
-  supplier: ["da_split", "da_dependence", "da_rapid", "da_round"],
-};
+export const CRITERIA: Readonly<Record<"authority" | "supplier", readonly RiskCriterion[]>> = RISK_CRITERIA;
 const CRITERIA_CODES = [...new Set([...CRITERIA.authority, ...CRITERIA.supplier])];
 export const CRITERION_LABEL: Readonly<Record<string, string>> = Object.fromEntries(CRITERIA_CODES.map((code) => [code, flagLabel(code)]));
 export const CRITERION_RULE: Readonly<Record<string, string>> = Object.fromEntries(CRITERIA_CODES.map((code) => [code, flagEntityRule(code)]));

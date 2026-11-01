@@ -11,9 +11,15 @@ export interface EvidenceScope {
   county?: string;
   /** Several buyer counties at once: a group of a county trend (at most 42, plan §2.5). */
   counties?: readonly string[];
+  /**
+   * distribution-1 (an old link's bar): a tenth of the index, 0–1. Since rf-2026.18 it selects the band of the score
+   * with the same percents (riskBucketScore: 0.2–0.3 → 20–29%, 0.9–1 → 90–100%), on the population it always had.
+   */
   riskBucket?: { from: number; to: number };
-  /** distribution-2: the group's profiles that meet exactly this many criteria (a bar of the chart, 0–5). */
+  /** distribution-2 (an old link's bar): the group's profiles that meet exactly this many criteria (0–5). */
   criteria?: number;
+  /** distribution-3: the group's profiles whose displayed risk score is in this band, both bounds inclusive (a bar of the chart, 0–100). */
+  score?: { from: number; to: number };
   /**
    * scatter-2 (F6b): the records behind one signal of the risk cloud's profiles, not their whole history: the profiles
    * that have it, and of each the acquisitions it flags (lib/ask/scatter-records.ts). The cloud's chosen signal is the default.
@@ -91,7 +97,7 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
   if (raw === undefined || raw === null) return {};
   if (typeof raw !== "object" || Array.isArray(raw)) return { error: "Selecție de surse invalidă." };
   const o = raw as Record<string, unknown>;
-  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "flag", "cpvPrefixes", "excludeCpvPrefixes", "years", "consortium", "singleBid"];
+  const allowed = ["entityIds", "excludeEntityIds", "role", "county", "counties", "riskBucket", "criteria", "score", "flag", "cpvPrefixes", "excludeCpvPrefixes", "years", "consortium", "singleBid"];
   if (Object.keys(o).some((k) => !allowed.includes(k))) return { error: "Filtru de surse necunoscut." };
   const scope: EvidenceScope = {};
   if (o["county"] !== undefined) {
@@ -142,6 +148,14 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
     if (typeof k !== "number" || !Number.isInteger(k) || k < 0 || k > 5) return { error: "Număr de criterii invalid." };
     scope.criteria = k;
   }
+  if (o["score"] !== undefined) {
+    const b = o["score"] as Record<string, unknown> | null;
+    const whole = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 100;
+    if (!b || typeof b !== "object" || Array.isArray(b) || Object.keys(b).some((key) => key !== "from" && key !== "to")
+      || !whole(b["from"]) || !whole(b["to"]) || b["from"] > b["to"])
+      return { error: "Interval de scor invalid." };
+    scope.score = { from: b["from"], to: b["to"] };
+  }
   if (o["flag"] !== undefined) {
     if (typeof o["flag"] !== "string" || !(SCATTER_FLAGS as readonly string[]).includes(o["flag"])) return { error: "Semnal invalid în selecție." };
     scope.flag = o["flag"] as ScatterFlag;
@@ -152,6 +166,15 @@ export function validateEvidenceScope(raw: unknown): EvidenceScope | { error: st
     scope[key] = true;
   }
   return scope;
+}
+
+/**
+ * The band of the risk score an old link's tenth of the index selects (distribution-1, riskBucket): the same percents,
+ * both bounds inclusive on the displayed score; the last tenth keeps 100 (the index's 1 was in it).
+ */
+export function riskBucketScore(bucket: { from: number; to: number }): { from: number; to: number } {
+  const from = Math.round(bucket.from * 10) * 10;
+  return { from, to: bucket.to >= 1 ? 100 : Math.round(bucket.to * 10) * 10 - 1 };
 }
 
 /** Source links identify imported primary records, never an invented search result. */

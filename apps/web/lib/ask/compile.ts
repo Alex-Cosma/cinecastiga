@@ -5,7 +5,7 @@ import { FORCE_CUSTOM_PLANS } from "../plan-cache";
 import type { DbSql } from "@seap/db";
 import { LOCAL_ADMIN_KIND, namedKind, NEWER_VERSION_LINK, unimplementedSpecKeys, type AskSpec, type Dim, type MonthWindow, type TrendChange } from "./spec";
 import type { Grounding } from "./ground";
-import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
+import { EVIDENCE_CSV_LIMIT, PROFILE_BLOCKS, riskBucketScore, sumDecimalStrings, validateEvidenceScope, type EvidenceScope, type EvidenceStatus, type EvidenceProfile } from "./evidence";
 import {
   andAll, asksWinners, DA_PLAFOND_RON, displayPredicates, employeesBounds, employeesCond, ENTITY_CARD_MIN_DAS, fold, fullValueUnion, groupPredicates, isEveryChange, newFirmCond, ownCountySql, perCapitaPredicate, plafondFor, predicateContext,
   profileCounty as profileCountyOf, profileMinDas, profilePredicates, RISK_MIN_DAS, rowPredicates, seatOf, trendGroupOf, trendGroupSql, trendYearsPredicate, winnersPredicates, type PredicateCtx, type TrendGroup,
@@ -53,7 +53,8 @@ import { networkAnswer, networkMembersCond, networkMembersList, sankeyAnswer, un
 import type { NetworkData, NetworkGroup } from "./network-shared";
 import type { SankeyData } from "./sankey-shared";
 import { distributionData, distributionGroup } from "./distribution";
-import type { PeerCoverage, PeerFacts, PeerRowId } from "./peer-groups-shared";
+import { PEER_LIST_LIMIT, type PeerCoverage, type PeerFacts, type PeerRowId } from "./peer-groups-shared";
+import type { ScoreParts } from "../risk-score";
 import { factCheckData } from "./fact-check";
 import {
   SEARCH_FEW_RECORDS, searchCandidates, searchLists, searchWords, sourceSearchFresh, sourceSearchPresent, STORED_SEARCH_KEYS,
@@ -184,6 +185,58 @@ export interface DistributionDataV1 {
 }
 /** A member of the group, listed up to PEER_LIST_LIMIT (final distribution §3.8). */
 export interface DistributionMember { entityId: string; name: string; county: string | null; population: number | null; nFlags: number; flags: string[]; nDas: number }
+/** distribution-3: a member with its risk score (0–100, displayed), its patterns being `flags`. */
+export interface ScoredMember extends DistributionMember { score: number }
+/** The group of a distribution, the same in every version since distribution-2 ("Față de cine?"). */
+export interface DistributionGroup {
+  /** The words after "față de" and the facts that name them (sentence.ts reads these). */
+  words: string;
+  facts: PeerFacts;
+  ticks: PeerRowId[];
+  /** An old link's conditions, applied (final §5). */
+  legacy: { county?: string; authorityKind?: string };
+  others: number;
+  coverage?: PeerCoverage;
+  populationVersion?: string;
+  /** The members' ids when they are at most 50: a capture freezes the group it compared. */
+  memberIds?: string[];
+}
+/**
+ * distribution-3 (rf-2026.18, owner decision of 1 November 2026): the entity's
+ * risk score against its group. The group is distribution-2's, the other
+ * profiles (≥ 10 accepted direct acquisitions) that the ticks select; the
+ * entity is never one of its own others, so higher + equal + lower = others,
+ * on the displayed score. `status` as distribution-2.
+ */
+export interface DistributionDataV3 {
+  version: 3;
+  role: "authority" | "supplier";
+  status: "ok" | "below" | "small";
+  /** The criteria of the role's score, in their order (RISK_CRITERIA). */
+  criteria: string[];
+  focal: {
+    entityId: string; name: string; nDas: number; county: string | null; population: number | null; inGroup: boolean;
+    /** The displayed score (0–100) and its parts (marts.entity_flags.score_parts): the points and facts of each pattern. */
+    score: number; parts: ScoreParts;
+    /** The patterns met (x ≥ 1), as entity_flags.flags. */
+    nFlags: number; flags: string[];
+  };
+  group: DistributionGroup;
+  /** The others with a higher, the same and a lower displayed score. */
+  position?: { higher: number; equal: number; lower: number };
+  /** The others by band of the score (SCORE_BANDS: 0, 20–29 … 90–100): the chart above 50, every answer's CSV. */
+  hist?: { from: number; to: number; n: number }[];
+  /** Each pattern: the others that have it, and every profile of the role (the country's mark). */
+  perCriterion?: { code: string; others: number; country: number }[];
+  /** Profiles of the role with ≥ 10 accepted direct acquisitions, nationally. */
+  countryTotal?: number;
+  /** The others, when they are at most 50, by score then direct acquisitions. */
+  members?: ScoredMember[];
+  /** Two members with the same name (SICAP identities): the list says so. */
+  sameNames?: true;
+}
+/** The distribution's answer: distribution-3, or one stored before it (distribution-2; distribution-1 is DistributionDataV1). */
+export type DistributionData = DistributionDataV3 | DistributionDataV2;
 /**
  * distribution-2 (F6a, plan §4.11, final distribution §3.6–§3.8): how many
  * criteria the entity meets against its group. The group is the other
@@ -191,27 +244,16 @@ export interface DistributionMember { entityId: string; name: string; county: st
  * entity is never one of its own others, so more + same + fewer = others.
  * `status`: "below" the entity has fewer than 10 (no position); "small" the
  * group has fewer than 5 others (no position, the ticks to remove); "ok".
+ * Only in answers stored before distribution-3 (watches, captures).
  */
-export interface DistributionData {
+export interface DistributionDataV2 {
   version: 2;
   role: "authority" | "supplier";
   status: "ok" | "below" | "small";
   /** The criteria a role can meet, in their order (5 for institutions, 4 for firms). */
   criteria: string[];
   focal: { entityId: string; name: string; nFlags: number; cri: number | null; flags: string[]; nDas: number; county: string | null; population: number | null; inGroup: boolean };
-  group: {
-    /** The words after "față de" and the facts that name them (sentence.ts reads these). */
-    words: string;
-    facts: PeerFacts;
-    ticks: PeerRowId[];
-    /** An old link's conditions, applied (final §5). */
-    legacy: { county?: string; authorityKind?: string };
-    others: number;
-    coverage?: PeerCoverage;
-    populationVersion?: string;
-    /** The members' ids when they are at most 50: a capture freezes the group it compared. */
-    memberIds?: string[];
-  };
+  group: DistributionGroup;
   position?: { more: number; same: number; fewer: number };
   /** The others by number of criteria, 0…criteria.length. */
   hist?: { k: number; n: number }[];
@@ -2068,7 +2110,7 @@ export async function runSpec(
         }
 
         case "distribution": {
-          // distribution-2 (F6a): the criteria against the group the ticks choose (lib/ask/distribution.ts).
+          // distribution-3 (rf-2026.18): the risk score against the group the ticks choose (lib/ask/distribution.ts).
           const distribution = await distributionData(s, { spec, role: focalRole, entityId: String(focalId), name: focalName, profileWhere: efWhere(focalRole, RISK_MIN_DAS) });
           if ("error" in distribution) return distribution;
           return { block: "distribution", distribution };
@@ -2643,7 +2685,7 @@ export async function runRows(
     valueWinner = scope.entityIds ? [...scope.entityIds] : [places[0]!];
   }
 
-  if ((scope.riskBucket || scope.criteria !== undefined) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
+  if ((scope.riskBucket || scope.criteria !== undefined || scope.score) && spec.block !== "distribution") return { error: "Intervalul de risc se aplică distribuției." };
   if (scope.flag && spec.block !== "scatter") return { error: "Semnalul se aplică norului de risc." };
   if (profile && (scope.cpvPrefixes || scope.excludeCpvPrefixes || scope.years || scope.consortium || scope.singleBid))
     return { error: "Profilul istoric nu se restrânge la CPV sau perioadă. Deschide o întrebare despre achiziții pentru aceste filtre." };
@@ -2724,7 +2766,7 @@ export async function runRows(
   } else {
     profileParts = profilePredicates(ctx, role, profileMinDas(spec.block));
     if (spec.block === "scatter") profileParts.push(sql`ef.cri is not null`);
-    // distribution-2: the group's sources are its other members, as the answer counts them (lib/ask/distribution.ts).
+    // distribution-2 and -3: the group's sources are its other members, as the answer counts them (lib/ask/distribution.ts).
     // An old link's bar (distribution-1: `riskBucket`, no ticks) keeps its population, the entity included (final §5).
     if (spec.block === "distribution" && focalId && !(scope.riskBucket && !spec.peers)) {
       const group = await distributionGroup(sql, spec, role, String(focalId));
@@ -2749,7 +2791,10 @@ export async function runRows(
   if (scope.counties) selectionParts.push(sql`lower(unaccent(ef.county)) = any(${sql.array(scope.counties.map(fold))}::text[])`);
   if (scope.entityIds) selectionParts.push(sql`ef.entity_id = any(${sql.array([...scope.entityIds])}::bigint[])`);
   if (scope.excludeEntityIds) selectionParts.push(sql`not (ef.entity_id = any(${sql.array([...scope.excludeEntityIds])}::bigint[]))`);
-  if (scope.riskBucket) selectionParts.push(sql`width_bucket(coalesce(ef.cri, 0), 0, 1.0000001, 10) = ${Math.round(scope.riskBucket.from * 10) + 1}`);
+  // distribution-3: a bar of the chart, a band of the displayed score; an old link's tenth of the index (distribution-1)
+  // selects the band of the same percents (rf-2026.18), an old link's bar of distribution-2 its number of criteria.
+  const scoreBand = scope.score ?? (scope.riskBucket ? riskBucketScore(scope.riskBucket) : null);
+  if (scoreBand) selectionParts.push(sql`ef.score between ${scoreBand.from} and ${scoreBand.to}`);
   if (scope.criteria !== undefined) selectionParts.push(sql`ef.n_flags = ${scope.criteria}`);
   if (flag) selectionParts.push(hasFlag(sql, flag) as ReturnType<DbSql>);
   const profileSelection = selectionParts.reduce((a, b) => sql`${a} and ${b}`);
@@ -3548,7 +3593,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "compare":
       return `select ${w.authorityId ? "authority_id" : "supplier_id"}, sum(closing_value), count(*)\nfrom ${dtable}\nwhere ${where}\ngroup by ${w.authorityId ? "authority_id" : "supplier_id"};\n-- + ani, domenii, parteneri comuni pe aceeași selecție\n-- + profilul de risc istoric: marts.entity_flags (toate achizițiile directe)`;
     case "distribution": {
-      // distribution-2: the others of the group by number of criteria (lib/ask/distribution.ts).
+      // distribution-3: the others of the group by their risk score against the entity's (lib/ask/distribution.ts).
       const p = spec.peers ?? {};
       const group = [
         ...(w.county ? [`unaccent(county) ilike '${fold(w.county)}'`] : []),
@@ -3556,7 +3601,11 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
         ...(p.similar ? ["entity_id in (…)  -- același tip: populație apropiată ½–2× (RPL 2021) sau același tip de instituție"] : []),
         ...(p.activity ? ["n_das between ⌈n/2⌉ and 2n  -- activitate apropiată"] : []),
       ];
-      return `select n_flags criterii, count(*)\nfrom marts.entity_flags\nwhere role = '${w.authorityId ? "authority" : "supplier"}' and n_das >= ${RISK_MIN_DAS}\n  and entity_id <> <entitatea>${group.map((c) => `\n  and ${c}`).join("")}\ngroup by 1;\n-- + criteriile entității și ale grupului, una câte una`;
+      return "select count(*) filter (where score > <scorul entității>) mai_mare,\n" +
+        "       count(*) filter (where score = <scorul entității>) egal,\n" +
+        "       count(*) filter (where score < <scorul entității>) mai_mic\n" +
+        `from marts.entity_flags\nwhere role = '${w.authorityId ? "authority" : "supplier"}' and n_das >= ${RISK_MIN_DAS}\n  and entity_id <> <entitatea>${group.map((c) => `\n  and ${c}`).join("")}${group.at(-1)?.includes("--") ? "\n" : ""};` +
+        `\n-- + scorul fiecărui membru (până la ${PEER_LIST_LIMIT}) sau membrii pe zecimi de scor; fiecare tipar al grupului, unul câte unul`;
     }
     case "breakdown":
       // The groups by value or by records (F3: the legend's headers order them); both are on every row.
