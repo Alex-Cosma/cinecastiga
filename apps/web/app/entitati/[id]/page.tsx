@@ -27,6 +27,8 @@ import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
+import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
+import { getRegistryNames } from "@/lib/registry-names";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
@@ -115,7 +117,7 @@ export default async function EntityPage({
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
@@ -131,6 +133,9 @@ export default async function EntityPage({
       getEntityPartnersPaged(id, role, 1, 10),
       // "Mai multe tipare decât X% dintre …": moderate and strong scores only, Ask's default group.
       flagRowsRaw.some((r) => r.role === role) ? getRiskPeerLine(id, role, row.score).catch(() => null) : null,
+      // An individual practice (PFA, II, cabinet): the one ONRC person with its holder's name, as a lead only.
+      individualHolder(row.name) ? getHolderTwin(row.name).catch(() => null) : null,
+      registryCuiLookup.then((registry) => (registry ? getRegistryNames(registry, row.name) : [])).catch(() => [] as string[]),
     ]);
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
@@ -186,6 +191,11 @@ export default async function EntityPage({
             ) : null}
             {county && !(profile?.isForeign && isAbroadCounty(county)) ? <span>{countyLabel(county)}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}
+            {registryNames.length > 0 ? (
+              <span className="ent-tip">
+                în registru: {registryNames.slice(0, 2).join(" · ")} <Term tip id="nume-registru" />
+              </span>
+            ) : null}
             {cuiUncorroborated ? (
               <span title={registryCollision
                 ? "La verificarea manuală, ONRC înregistrează acest număr la o altă firmă decât cea din SEAP. Nu afișăm reprezentanți, bilanț sau linkuri de registru pentru el."
@@ -317,10 +327,27 @@ export default async function EntityPage({
             : []),
           { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
           { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
-          ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
+          ...(reps.length > 0 || holderTwin ? [{ id: "conducere", label: reps.length > 0 ? "Conducere" : "Titular" }] : []),
           ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
         ]}
       />
+
+      {/* An individual practice has no ONRC representative: the one register person with its holder's name, a lead
+          (owner decision of 1 November 2026, variant B); never a signal, a risk or a count of the person's firms. */}
+      {reps.length === 0 && holderTwin && (
+        <section className="section" id="conducere">
+          <h2 className="ent-tip">Titular <Term tip id="acelasi-nume" /></h2>
+          <p className="holder-twin">
+            Același nume în Registrul Comerțului:{" "}
+            <a href={personFirmsUrl(holderTwin.personKey, cleanName(holderTwin.name))}>{cleanName(holderTwin.name)}</a>
+            {holderTwin.birthYear && (
+              <span className="county"> {birthNote({ birthYear: holderTwin.birthYear, birthLocality: holderTwin.locality ? cleanName(holderTwin.locality) : null })}</span>
+            )}
+            {" · "}{holderTwin.firms === 1 ? "administrator la o firmă" : `administrator la ${formatInt(holderTwin.firms)} firme`}
+            {" · "}<span className="county">potrivire doar după nume</span>
+          </p>
+        </section>
+      )}
 
       {/* Legal representatives (ONRC snapshot) */}
       {reps.length > 0 && (

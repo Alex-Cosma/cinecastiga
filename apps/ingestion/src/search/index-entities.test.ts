@@ -51,3 +51,17 @@ describe('entity search publication',()=>{
   expect(mocks.getStats).not.toHaveBeenCalled();
  });
 });
+describe('ONRC names in the entity index (a renamed firm, 1 November 2026)',()=>{
+ it('makes the other ONRC names of the corroborated CUI searchable, never the SICAP name again',async()=>{
+  vi.mocked(sql).mockImplementation(((strings:TemplateStringsArray|string)=>{
+   const text=Array.isArray(strings)?strings.join(' '):String(strings);
+   if(text.includes('to_regclass')) return Promise.resolve([{present:true}]);
+   if(text.includes('reference.onrc_firm o')) return Promise.resolve([{id:42n,names:['PSIHO POLIGRAF S.R.L.','STRATEGIC CONNECT S.R.L.']}]);
+   if(text.includes('marts.entity_profile ep on')) return Promise.resolve([{id:42n,name_display:'PSIHO POLIGRAF',cui_canonical:'40363501',county:'DB',roles:['supplier'],supplier_total:'100',authority_total:'0'}]);
+   return Promise.resolve([]);
+  }) as never);
+  await indexEntities(sql);
+  expect(mocks.updateSettings.mock.calls[0]![0].searchableAttributes).toEqual(['name','registryNames','cui']);
+  expect(mocks.addDocuments.mock.calls[0]![0][0].registryNames).toEqual(['STRATEGIC CONNECT S.R.L.']);
+ });
+});

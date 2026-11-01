@@ -33,6 +33,14 @@ Decizia proprietarului din 1 noiembrie 2026, metodologia `rf-2026.18` (local pe 
 - **`/semnale`.** Lista riscului e ordonată după scorul cu zecimale; histograma are zecimi (0, 20–29 … 90–100; între 1 și 19 nu există scoruri), iar o bară deschide banda ei. Un link vechi `criMin`/`criMax` (0–1) alege aceleași procente (0,4–0,5 = 40–49%); `criteria=k` rămâne numărul de tipare.
 - **Întreabă.** Comparația arată scorul (o comparație salvată înainte își păstrează indicele). „Cine conduce?” după risc (`entity_card-3`), „Unde se situează?” (`distribution-3`) și norul (`scatter-3`) sunt descrise în paragrafele lor de mai jos. Urmăririle acestor răspunsuri primesc o singură notificare „Metodologie modificată”. Cuvintele întrebărilor și ale urmăririlor, anchetelor și capturilor sunt ale părții lor din livrare (de completat aici la unire).
 
+## Identitatea din Registrul Comerțului (1 noiembrie 2026)
+
+Decizia proprietarului („da, e ok ce ai propus”), pe ramura `feat/onrc-identity-20261101`; nepublicată până la acordul lui.
+
+- **O persoană, o cheie.** Cheia unei persoane din ONRC (nume · data nașterii · localitatea nașterii) nu mai desparte un nume după punctuație sau spații: „NASTASĂ MARIA MONICA” și „NASTASĂ MARIA-MONICA” cu aceeași dată și localitate sunt un singur om, deci firmele lui apar împreună în „Conducere”, în „conduse azi de” din Întreabă și în semnalul de administrator comun. Local: 19.290 de persoane datate erau împărțite în 39.472 de chei.
+- **Titularul unui cabinet, PFA sau II (varianta B).** Aceste forme n-au administrator în registru. Când numele titularului din numele entității se potrivește cu exact o persoană datată din ONRC, pagina are secțiunea „Titular”: „Același nume în Registrul Comerțului: NUME (n. AN, LOCALITATE) · administrator la N firme · potrivire doar după nume (?)”, cu link la firmele persoanei. E o pistă: nu intră în semnale, în risc, în filtre sau în numărul firmelor unei persoane. La mai mulți omonimi nu arătăm nimic. Local: 465 din 2.790 de forme individuale verificate (17%).
+- **Alt nume în registru.** Când ONRC ține CUI-ul coroborat și sub alt nume (o redenumire sau o mutare în alt județ, cu alt număr J), antetul arată „în registru: STRATEGIC CONNECT S.R.L. (?)” (cel mult două nume), iar căutarea găsește firma și după acel nume; rândul din sugestii spune „în registru: …” când cuvintele scrise sunt doar în numele din registru. Datele ONRC n-au date calendaristice, deci nu spunem care nume e cel actual. Variantele de scriere ale aceluiași nume („R.B.R.”/„RBR”, „SIMTUR”/„SIM TUR”, o greșeală de tipar, forma juridică scrisă întreg) nu contează ca alt nume. Local: 3.082 de entități.
+
 ## Întrebările și sursele
 
 „Întreabă” (în meniu; până la 22 octombrie 2026 „Explorează”)/`/intreaba` înlocuiește vechiul builder cu o propoziție românească editabilă. Există 13 tipuri, definite în `apps/web/lib/ask/spec.ts`, nu 13 modele SQL inventate de un LLM:

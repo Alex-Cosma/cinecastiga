@@ -180,6 +180,7 @@ async function main(): Promise<void> {
       await sql`drop index if exists reference.company_reps_person_key_idx`;
       await sql`drop index if exists reference.company_reps_name_trgm_idx`;
       await sql`drop index if exists reference.company_reps_person_name_key_idx`;
+      await sql`drop index if exists reference.onrc_firm_cui_idx`;
       await sql`truncate reference.onrc_firm, reference.company_reps`;
 
       // ── OD_FIRME: DENUMIRE^CUI^COD_INMATRICULARE^…^FORMA_JURIDICA^ADR_TARA^ADR_JUDET^ADR_LOCALITATE^… (20 cols)
@@ -261,6 +262,8 @@ async function main(): Promise<void> {
       // The name part alone: an individual practice's holder is found by name (entity page, "același nume").
       await sql`create index company_reps_person_name_key_idx on reference.company_reps (split_part(person_key, '|', 1))`;
       await sql`create index company_reps_name_trgm_idx on reference.company_reps using gin (person_name gin_trgm_ops)`;
+      // ONRC's names for a CUI (a renamed firm): the entity page reads them by CUI.
+      await sql`create index onrc_firm_cui_idx on reference.onrc_firm (cui)`;
       await sql`analyze reference.onrc_firm`;
       await sql`analyze reference.company_reps`;
 

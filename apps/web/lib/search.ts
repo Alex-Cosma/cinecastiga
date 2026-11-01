@@ -24,8 +24,31 @@ export interface EntityHit {
   county: string | null;
   roles: string[];
   total: number;
+  /** ONRC's other name the words matched when the SICAP name does not (a renamed firm). */
+  registryName?: string;
   /** D2, only with `uat=1`: the locality this town hall is an identity of (lib/ask/town-hall-pick.ts). */
   uat?: { siruta: number; name: string; tip: string; county: string };
+}
+
+const words = (text: string) =>
+  text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+
+/** The ONRC name that explains a hit when the typed words are not all in its name, or undefined. */
+export function matchedRegistryName(query: string, name: string, registryNames: readonly string[] | undefined): string | undefined {
+  const typed = words(query);
+  if (!typed.length || !registryNames?.length) return undefined;
+  const covered = (target: string) => {
+    const targetWords = words(target);
+    return typed.filter((w) => targetWords.some((t) => t.startsWith(w))).length;
+  };
+  let best: string | undefined;
+  let bestCovered = covered(name);
+  if (bestCovered === typed.length) return undefined;
+  for (const other of registryNames) {
+    const n = covered(other);
+    if (n > bestCovered) [best, bestCovered] = [other, n];
+  }
+  return best;
 }
 
 export interface SearchResult {
@@ -48,10 +71,14 @@ export async function searchEntities(
       // param that rule is skipped and tiny entities leapfrog big ones.
       sort: ["total:desc"],
       ...(filter ? { filter } : {}),
-      attributesToRetrieve: ["id", "name", "cui", "county", "roles", "total"],
+      attributesToRetrieve: ["id", "name", "registryNames", "cui", "county", "roles", "total"],
     });
+  const hits = (res.hits as unknown as (EntityHit & { registryNames?: string[] })[]).map(({ registryNames, ...hit }) => {
+    const registryName = matchedRegistryName(query, hit.name, registryNames);
+    return registryName ? { ...hit, registryName } : hit;
+  });
   return {
-    hits: res.hits as unknown as EntityHit[],
+    hits,
     total: res.estimatedTotalHits ?? res.hits.length,
   };
 }

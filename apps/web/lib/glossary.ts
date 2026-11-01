@@ -209,6 +209,16 @@ export const GLOSSARY = {
     title: "Riscul, în procente",
     text: "Cât de multe și cât de pronunțate sunt tiparele din achizițiile directe: 0% fără niciun tipar, 20–39% slab, 40–67% moderat, 68% și peste puternic. Un singur tipar ajunge cel mult la 60%. Nu este o probabilitate de corupție.",
   },
+  // ONRC's other names for the CUI (owner, 1 November 2026).
+  "nume-registru": {
+    title: "Alt nume în Registrul Comerțului",
+    text: "Registrul Comerțului ține acest CUI și sub alt nume, de obicei după o redenumire sau o mutare în alt județ. SEAP păstrează numele din anunțuri, iar căutarea găsește firma după oricare dintre ele.",
+  },
+  // Variant B (owner, 1 November 2026): an individual practice's holder found only by name.
+  "acelasi-nume": {
+    title: "Același nume, nu aceeași persoană",
+    text: "Cabinetele individuale, PFA-urile și întreprinderile individuale nu au administrator în Registrul Comerțului. Arătăm persoana din registru cu același nume doar când e una singură; titularul poate fi totuși alt om cu același nume. Legătura nu intră în semnale, în risc și nici în filtre.",
+  },
   "profil-risc": {
     title: "Profil de risc",
     text: "Riscul și semnalele sunt calculate pe tot istoricul de achiziții directe al entității, nu pe selecția de mai sus. Un semnal este o pistă de verificat, nu o acuzație și nu dovedește o ilegalitate.",
