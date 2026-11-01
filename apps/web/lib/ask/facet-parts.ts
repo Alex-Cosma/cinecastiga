@@ -63,7 +63,10 @@ export type FacetView = { status: "loading" } | { status: "ready"; counts: Facet
 /** A name found in an answer's ranking: its place, or null when the ranking does not hold it. */
 export interface LocateMatch {
   id: string; name: string; county: string | null; rank: number | null; value: number | null; n: number | null;
-  /** The risk cloud (F6b): the signals the profile has, the criteria it meets, and why it has no place in the list. */
+  /**
+   * The risk cloud (F6b): the signals the profile has, the criteria it meets, its risk and why it has no place in the
+   * list. `cri` is the risk score over one since rf-2026.18 (entity_flags.cri = score / 100; the cloud shows ×100).
+   */
   profile?: { flags: string[]; nFlags: number; cri: number; why: "below" | "signal" | null };
 }
 export interface LocateResult {
