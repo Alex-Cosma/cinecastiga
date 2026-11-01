@@ -1,7 +1,7 @@
 "use client";
 
 import { countyName } from "../../../lib/counties";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formatRonFull } from "../../../lib/format";
 import { LOCATE_DEBOUNCE_MS, LOCATE_MIN_CHARS, type LocateMatch, type LocateResult } from "../../../lib/ask/facet-parts";
 import type { AskSpec } from "../../../lib/ask/spec";
@@ -23,9 +23,11 @@ export interface RankingLocateProps {
   shown: number;
   /** Open the whole ranking on the page that holds `rank` (1-based). */
   onWhole: (rank: number) => void;
+  /** At the row's end: the ranking's „Vizual | Tabel”, which has no strip of its own. */
+  end?: ReactNode;
 }
 
-export default function RankingLocate({ spec, shown, onWhole }: RankingLocateProps) {
+export default function RankingLocate({ spec, shown, onWhole, end }: RankingLocateProps) {
   const firms = spec.dim === "supplier";
   const [results, setResults] = useState<(SearchResult & { match: LocateMatch })[]>([]);
   const [total, setTotal] = useState(0);
@@ -67,5 +69,6 @@ export default function RankingLocate({ spec, shown, onWhole }: RankingLocatePro
     {found?.rank != null && found.rank > shown && (
       <button type="button" className="qb-link cq-locate-whole" onClick={() => onWhole(found.rank!)}>Vezi în tot clasamentul ›</button>
     )}
+    {end && <span className="cq-locate-end">{end}</span>}
   </div>;
 }

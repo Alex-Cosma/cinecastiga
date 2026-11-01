@@ -14,6 +14,8 @@ const files = [
   "../../app/intreaba/AskPanel.tsx",
   "../../app/intreaba/QuestionBuilder.tsx",
   "../../app/intreaba/blocks.tsx",
+  // The example questions are the reader's first words for an answer (1 November 2026: "Pe ce cheltuie primăria…").
+  "../../app/intreaba/ask-examples.ts",
   "./compile.ts",
   "./pills.ts",
   "../../app/entitati/[id]/YearMiniChart.tsx",

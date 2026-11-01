@@ -22,7 +22,7 @@ export const ASK_EXAMPLE_GROUPS: AskExampleGroup[] = [
     id: "money",
     title: "Unde se duc banii",
     examples: [
-      { text: "Pe ce cheltuie primăria din Râmnicu Sărat?" },
+      { text: "Ce cumpără primăria din Râmnicu Sărat?" },
       { text: "Cât au costat medicamentele spitalelor din Cluj în 2024?" },
       { text: "Cum au evoluat achizițiile de lemne de foc ale comunelor din Vaslui?" },
     ],

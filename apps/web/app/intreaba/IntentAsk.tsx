@@ -1,19 +1,14 @@
 "use client";
 
-import type { RefObject } from "react";
-import type { AskSpec } from "@/lib/ask/spec";
+import { Fragment, type RefObject } from "react";
 import type { IntentResult } from "@/lib/intent/types";
 import { countWords } from "@/lib/ask/answer-text";
 import { ASK_EXAMPLE_GROUPS, FALLBACK_EXAMPLES, type AskExample } from "./ask-examples";
+import type { IntentChoice, UnderstoodLine } from "./intent-line";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AskExampleArt from "./AskExampleArt";
 
-/** The interpretation the builder was seeded with: the main one or an alternative. */
-export interface IntentChoice {
-  spec: AskSpec;
-  sentence: string;
-  label?: string;
-}
+export type { IntentChoice } from "./intent-line";
 
 export const MAX_QUESTION_CHARS = 300;
 
@@ -131,49 +126,18 @@ export function IntentAnnouncer({ result, error }: { result: IntentResult | null
   return <p className="d-sr-only" role="status" aria-live="polite">{text}</p>;
 }
 
-export function IntentIntro() {
-  return (
-    <div className="ia-intro">
-      <h2 id="ia-understood" className="ia-eyebrow" tabIndex={-1}>Am înțeles așa</h2>
-    </div>
-  );
-}
-
-/** Under the run button: what we assumed, what we did not understand, other readings. */
-export function IntentOutro({ result, chosen, onAdopt }: { result: IntentResult; chosen: IntentChoice; onAdopt: (choice: IntentChoice) => void }) {
-  const words = result.interpretation.leftover;
-  const main: IntentChoice | null = result.spec && result.sentence ? { spec: result.spec, sentence: result.sentence, label: "Cum am înțeles la început" } : null;
-  const key = (spec: AskSpec) => JSON.stringify(spec);
-  const options = [
-    ...(main && key(main.spec) !== key(chosen.spec) ? [main] : []),
-    ...result.alternatives.filter((alt) => key(alt.spec) !== key(chosen.spec)).map((alt) => ({ spec: alt.spec, sentence: alt.sentence, label: alt.label })),
+/**
+ * Under the answer's title (owner, 1 November 2026): what was assumed, the other readings (each answered at once)
+ * and the words left out, one muted line; a part with nothing to say is left out.
+ */
+export function IntentLine({ line, onAdopt }: { line: UnderstoodLine; onAdopt: (choice: IntentChoice) => void }) {
+  const parts = [
+    ...(line.notes.length ? [<>Am înțeles: {line.notes.join(" · ")}</>] : []),
+    ...(line.options.length ? [<>Sau:{" "}{line.options.map((option, i) => <Fragment key={i}>{i > 0 && " · "}
+      <button type="button" className="cq-understood-alt" title={option.sentence} {...(option.short ? { "aria-label": option.label } : {})}
+        onClick={() => onAdopt(option)}>{option.short ?? option.label ?? option.sentence}<span aria-hidden="true">›</span></button>
+    </Fragment>)}</>] : []),
+    ...(line.ignored.length ? [<>Am ignorat {line.ignored.map((word) => `„${word}”`).join(", ")} · <a href={`/cauta?q=${encodeURIComponent(line.ignored.join(" "))}`}>caută în titluri</a></>] : []),
   ];
-  // the reason for the main place choice only describes the main reading
-  const isMain = !!main && key(main.spec) === key(chosen.spec);
-  const notes = [...(isMain && result.interpretation.placeNote ? [result.interpretation.placeNote] : []), ...result.interpretation.notes];
-  if (!words.length && !options.length && !notes.length) return null;
-  return (
-    <div className="ia-outro">
-      {words.length > 0 && (
-        <p className="ia-leftover">
-          Am ignorat: {words.map((w, i) => <span key={i}>{i > 0 ? ", " : ""}<q>{w}</q></span>)} · <a href={`/cauta?q=${encodeURIComponent(words.join(" "))}`}>caută în titluri</a>
-        </p>
-      )}
-      {notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
-      {options.length > 0 && (
-        <div className="ia-alts">
-          <h3 className="ia-alts-title">Sau întreabă altfel:</h3>
-          <ul>
-            {options.map((option, i) => (
-              <li key={i}>
-                <button type="button" title={option.sentence} onClick={() => onAdopt(option)}>
-                  <strong>{option.label}</strong>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
+  return <p className="cq-understood">{parts.map((part, i) => <Fragment key={i}>{i > 0 && " · "}{part}</Fragment>)}</p>;
 }

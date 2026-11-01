@@ -81,6 +81,8 @@
   .cq-answer td a, .cq-answer .ask-complegend .nm a, .cq-answer .qb-trow-name a, .cq-answer .cmp-card h3 a, .cq-answer .ask-ecard h3 a, .cq-answer .ec-name a,
   .cq-answer .coverage-disclosure-body > a { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
   .cq-answer .cmp-mirror-name { display:flex; align-items:center; min-height:44px; }
+  /* A pill under the title (AnswerPills): its tint stays the phrase's height, the button around it 44 px. */
+  .cq-answer .cq-pill { min-height:44px; }
   .cq-answer .term-tip > .term-trigger { min-width:44px; min-height:44px; margin-block:-10px; }
 }
 /* Dialog input colors follow the theme; the external catalogue button is unchanged. */
