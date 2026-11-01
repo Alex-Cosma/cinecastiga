@@ -35,7 +35,9 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   // entity_card-2 (F6c, plan §4.13): by value the podium (places 1–3, the distance from place 2, the share of the
   // total, the total of the band under CÂȘTIGĂTORII); on the index every profile at the top level, in the order of
   // value, where one name was crowned among the tied. Place 1 stays the card.
-  entity_card: "entity_card-2",
+  // entity_card-3 (rf-2026.18, 1 November 2026): on the risk axis the first profiles of the group by the risk score
+  // (0–100), instead of the group tied at the top of the old index; the podium by value is unchanged.
+  entity_card: "entity_card-3",
   // scatter-2 (F6b, plan §4.12): the group's cloud by number of criteria, the list of the strip's order and signal with
   // its places, instead of two samples of 200 and a density; a watch hears of it once.
   scatter: "scatter-2",
@@ -252,8 +254,20 @@ function compareCore(data: Record<string, unknown>): Record<string, unknown> {
  * of the index with the profiles at it. The names and counties are descriptions; the pool, the next level and the
  * facts of the places (loaded apart) are references, not the answer: a firm added to a pool of fifty thousand does
  * not change a watch on the six at the top. An answer stored before entity_card-2 is whole.
+ *
+ * entity_card-3 (risk axis): the listed profiles and their displayed scores, and how many share the best one. The
+ * profiles are compared by score, then id: within the same score the screen orders them by value, which moves with
+ * every new acquisition in a profile and is no change of the answer; nor are the values, the names, the patterns
+ * (the score says them) or the group's size.
  */
 function entityCardCore(data: unknown): unknown {
+  if (object(data) && object(data.ranking)) {
+    const rows = Array.isArray(data.ranking.rows) ? data.ranking.rows : [];
+    const places = rows.map((row) => object(row) ? { entityId: row.entityId, score: row.score } : row);
+    const key = (place: unknown) => object(place) ? [Number(place.score), String(place.entityId)] as const : [Number.NEGATIVE_INFINITY, ""] as const;
+    places.sort((a, b) => { const [sa, ia] = key(a), [sb, ib] = key(b); return sb - sa || (ia < ib ? -1 : ia > ib ? 1 : 0); });
+    return { block: "entity_card", ranking: { topCount: data.ranking.topCount, places } };
+  }
   if (!object(data) || (!object(data.podium) && !object(data.ties))) return data;
   const card = object(data.card) ? data.card : {};
   const core: Record<string, unknown> = {

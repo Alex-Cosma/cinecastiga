@@ -5,7 +5,7 @@ import { CRITERION_LABEL } from "../../lib/ask/peer-groups-shared";
 import { OUTSIDE_WHY, type FactOutsideRow, type FactSample } from "../../lib/ask/fact-check-shared";
 import { employeesWords } from "../../lib/ask/filters/words";
 import { isHistoricalProfile } from "../../lib/ask/population";
-import { placeShare, podiumRest } from "../../lib/ask/entity-card-shared";
+import { placeShare, podiumRest, riskBandWord, riskPlaces } from "../../lib/ask/entity-card-shared";
 import type { AskSpec } from "../../lib/ask/spec";
 import { shownTrendList, trendRowView } from "./trend-answer";
 import { breakdownShown } from "./breakdown-answer";
@@ -132,7 +132,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       return networkCsvRows(data, spec, csvAny);
     case "entity_card": {
       const c = data.card, profile = isHistoricalProfile(spec);
-      // entity_card-2 (F6c): the podium's places with their share of the total and the rest, or every profile at the top level.
+      // entity_card-2 (F6c): the podium's places with their share of the total and the rest.
       if (data.podium) {
         const { places, total, selection } = data.podium, rest = podiumRest(data.podium);
         // Under a band of CÂȘTIGĂTORII the share is of the category (the firms in the band), the selection's total a row of its own.
@@ -143,6 +143,17 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
           ...(selection && total ? [["", csvQ(`toată selecția: ${selection.entities}`), "", selection.value, "", selection.count].join(",")] : []),
         ];
       }
+      // entity_card-3: the listed profiles of the ranking by the risk score (the sources' cohort), with their place (the same
+      // for the same score), the score over 100, its band and their patterns' codes.
+      if (data.ranking) {
+        const places = riskPlaces(data.ranking.rows);
+        return [
+          `loc,nume,${spec.dim === "supplier" ? "sediu" : "judet"},valoare_lei,achizitii,risc_pct,banda,tipare`,
+          ...data.ranking.rows.map((row, i) => [places[i], csvQ(row.name), csvQ(countyName(row.county)), row.value, row.count, row.score,
+            csvQ(riskBandWord(row.score)), csvQ(row.flags.join("|"))].join(",")),
+        ];
+      }
+      // An answer stored as entity_card-2: the group at the top of the old index, as it was exported.
       if (data.ties) return [
         "nume,judet,valoare_lei,achizitii,cri,semnale,flags",
         ...data.ties.rows.map((row) => [csvQ(row.name), csvQ(countyName(row.county)), row.value, row.count, data.ties!.level, row.nFlags, csvQ(row.flags.join("|"))].join(",")),

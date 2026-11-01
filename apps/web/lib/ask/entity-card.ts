@@ -1,14 +1,14 @@
 import type { DbSql } from "@seap/db";
 import type { AskSpec } from "./spec";
 import {
-  criteriaCount, ENTITY_CARD_VERSION, PODIUM_PLACES, TIES_LISTED, type PodiumFact, type PodiumPlace, type PodiumTotals, type Podium, type Ties,
+  ENTITY_CARD_VERSION, PODIUM_PLACES, PODIUM_VERSION, RISK_LISTED, type PodiumFact, type PodiumPlace, type PodiumTotals, type Podium, type RiskRanking,
 } from "./entity-card-shared";
 
 /*
- * "Cine conduce?" (entity_card-2, plan §4.13, final entity_card §3.9–§3.10):
- * the SQL of the podium's totals and facts and of the group at the top of the
- * index. The ranking by value is runSpec's (the table, stopped at place 3); the
- * words and the shapes are entity-card-shared.ts.
+ * "Cine conduce?" (entity_card-3; entity_card-2: plan §4.13, final entity_card
+ * §3.9–§3.10): the SQL of the podium's totals and facts and of the ranking by
+ * the risk score. The ranking by value is runSpec's (the table, stopped at
+ * place 3); the words and the shapes are entity-card-shared.ts.
  */
 
 type Fragment = ReturnType<DbSql>;
@@ -64,64 +64,72 @@ export async function nationalTotals(sql: DbSql, role: "authority" | "supplier")
 export function podiumOf(rows: readonly PodiumPlace[], totals: RankingTotalsInput | null | undefined, group: RankingTotalsInput | null | undefined): Podium {
   const total = group ?? totals ?? null;
   return {
-    version: ENTITY_CARD_VERSION,
+    version: PODIUM_VERSION,
     places: rows.slice(0, PODIUM_PLACES).map((row) => ({ entityId: row.entityId, name: row.name, county: row.county, value: row.value, count: row.count })),
     total: total ? { value: total.value, count: total.count, entities: total.entities } : null,
     ...(group && totals ? { selection: { value: totals.value, count: totals.count, entities: totals.entities } } : {}),
   };
 }
 
-interface TiesRow {
-  pool: string; lvl: string | null; cnt: string; nl: string | null; nc: string;
+/**
+ * The order of the ranking by the risk score (entity_card-3), over profile rows `alias`: the displayed score, the
+ * unrounded one, then the value of the direct acquisitions and the id. The answer (riskRankingOf) and its sources
+ * (compile.ts runRows) list the profiles in it. A score the build has not written yet reads 0 (the column's default;
+ * a copy of the table made without its defaults, as the test fixtures', may hold none).
+ */
+export const riskRankingOrder = (sql: DbSql, alias: string): Fragment => {
+  const t = sql(alias);
+  return sql`coalesce(${t}.score, 0) desc, coalesce(${t}.score_raw, 0) desc, ${t}.total_ron desc nulls last, ${t}.entity_id`;
+};
+/** A profile has a score: at least one criterion met (riskRankingOrder's reading of a missing one). */
+export const hasRiskScore = (sql: DbSql, alias: string): Fragment => sql`coalesce(${sql(alias)}.score, 0) > 0`;
+
+interface RankingRow {
+  pool: string; scored: string; top: number | null; top_count: string;
   entity_id: string | null; name_display: string | null; county: string | null; n_das: number | null; total_ron: string | null;
-  n_flags: number | null; flags: string[] | null;
+  score: number | null; n_flags: number | null; flags: string[] | null;
 }
 
 /**
- * The group at the top of the index (final entity_card §3.10): one statement over the profiles in the question's
- * group (`where`: profilePredicates), the level of the best, how many are on it, the next level and how many, and
- * the first TIES_LISTED at the top by value (then id). `county` is the profile row's own, a firm's seat.
- * Null without a profile.
+ * The ranking by the risk score (entity_card-3): one statement over the profiles in the question's group (`where`:
+ * profilePredicates), its size, the profiles with a score, the best displayed score and how many have it, and the
+ * first RISK_LISTED of those with a score in riskRankingOrder; when nobody has one, the first by value (their sources
+ * are what „Nu are semnale în profil” offers). `county` is the profile row's own, a firm's seat. Null without a profile.
  */
-export async function tiesOf(sql: DbSql, o: { role: "authority" | "supplier"; where: Fragment; county: Fragment }): Promise<Ties | null> {
+export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fragment }): Promise<RiskRanking | null> {
   const rows = (await sql`
     with p as materialized (
-      select ef.entity_id, ef.name_display, ${o.county} county, ef.n_das, ef.total_ron, ef.cri, ef.n_flags, ef.flags
+      select ef.entity_id, ef.name_display, ${o.county} county, ef.n_das, ef.total_ron,
+             coalesce(ef.score, 0) score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
       from marts.entity_flags ef
-      where ${o.where} and ef.cri is not null
+      where ${o.where}
     ), tp as (
-      select count(*) pool, max(cri) lvl from p
-    ), nxt as (
-      select max(p.cri) nl from p, tp where p.cri < tp.lvl
+      select count(*) pool, count(*) filter (where score > 0) scored, max(score) top from p
     )
-    select tp.pool::text pool, tp.lvl::text lvl,
-           (select count(*) from p where p.cri = tp.lvl)::text cnt,
-           nxt.nl::text nl, (select count(*) from p where p.cri = nxt.nl)::text nc,
-           t.entity_id::text entity_id, t.name_display, t.county, t.n_das, t.total_ron::text total_ron, t.n_flags, t.flags
-    from tp cross join nxt
+    select tp.pool::text pool, tp.scored::text scored, tp.top::int top,
+           (select count(*) from p where p.score = tp.top)::text top_count,
+           t.entity_id::text entity_id, t.name_display, t.county, t.n_das, t.total_ron::text total_ron, t.score::int score, t.n_flags, t.flags
+    from tp
     left join lateral (
-      select * from p where p.cri = tp.lvl order by p.total_ron desc nulls last, p.entity_id limit ${TIES_LISTED}
+      select * from p where p.score > 0 or tp.top = 0 order by ${riskRankingOrder(sql, "p")} limit ${RISK_LISTED}
     ) t on true
-    order by t.total_ron desc nulls last, t.entity_id
-  `) as unknown as TiesRow[];
+    order by ${riskRankingOrder(sql, "t")}
+  `) as unknown as RankingRow[];
   const head = rows[0];
-  if (!head || head.lvl === null || Number(head.pool) === 0) return null;
-  const listed = rows.filter((row) => row.entity_id !== null);
+  if (!head || head.top === null || Number(head.pool) === 0) return null;
   return {
     version: ENTITY_CARD_VERSION,
-    level: Number(head.lvl),
-    maxFlags: Number(listed[0]?.n_flags ?? 0),
-    criteria: criteriaCount(o.role),
-    count: Number(head.cnt),
     pool: Number(head.pool),
-    nextLevel: head.nl === null ? null : Number(head.nl),
-    nextCount: Number(head.nc),
-    rows: listed.map((row) => ({
+    scored: Number(head.scored),
+    top: Number(head.top),
+    topCount: Number(head.top_count),
+    rows: rows.filter((row) => row.entity_id !== null).map((row) => ({
       entityId: String(row.entity_id),
       name: row.name_display ?? "?",
       county: row.county,
       count: Number(row.n_das ?? 0),
       value: Number(row.total_ron ?? 0),
+      score: Number(row.score ?? 0),
       nFlags: Number(row.n_flags ?? 0),
       flags: row.flags ?? [],
     })),
