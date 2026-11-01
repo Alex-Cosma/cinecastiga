@@ -29,8 +29,9 @@ describe("“Pe scurt” for an authority", () => {
   const s = composeEntitySummary(authority)!;
   it("repeats the KPI total and counts, saying the value is not a payment", () => {
     expect(text(s.sentences[0]!)).toBe(
-      `A atribuit ${formatRon("1572884046.27")} (valoare înregistrată, nu plăți) prin 782 de achiziții directe și 155 de contracte prin proceduri, între 2018 și 2026.`);
-    expect(s.sentences[0]).toContainEqual({ text: "1,6 mld. lei", strong: true });
+      `A atribuit ${formatRon("1572884046.27")} prin 782 de achiziții directe și 155 de contracte prin proceduri, între 2018 și 2026.`);
+    // "Valoare înregistrată, nu plăți" is the amount's hover tip, not words in the sentence.
+    expect(s.sentences[0]).toContainEqual({ text: "1,6 mld. lei", strong: true, tip: "valoare-inregistrata" });
   });
   it("names the largest supplier with its share and the largest subject area", () => {
     expect(text(s.sentences[1]!)).toBe("Cel mai mare furnizor este RER SUD, cu 21% din valoare. Cea mai mare parte din valoare privește lucrări de construcții (55%).");
@@ -65,7 +66,7 @@ describe("“Pe scurt” for a supplier", () => {
       partners: [{ partnerId: "7", partnerName: "123456 COMUNA APAHIDA", totalRon: 3267000, pct: 0.99, nConsortium: 0 }],
     })!;
     expect(s.sentences.map(text)).toEqual([
-      "A câștigat 3,3 mil. lei (valoare înregistrată, nu plăți) din 15 achiziții directe, în 2025.",
+      "A câștigat 3,3 mil. lei din 15 achiziții directe, în 2025.",
       "Cel mai mare client este COMUNA APAHIDA, cu 99% din valoare. Cea mai mare parte din valoare privește lucrări de construcții (67%).",
     ]);
     expect(s.subjectsTitle).toBe("Ce a câștigat");
@@ -73,7 +74,7 @@ describe("“Pe scurt” for a supplier", () => {
   });
   it("counts a consortium winner's contracts and links the equal-split explanation", () => {
     const s = composeEntitySummary({ ...authority, role: "supplier", nDa: 0, nContracts: 1, nConsortium: 1, partners: [] })!;
-    expect(text(s.sentences[0]!)).toContain("(valoare înregistrată, nu plăți) dintr-un contract prin procedură, între");
+    expect(text(s.sentences[0]!)).toContain(" dintr-un contract prin procedură, între");
     expect(s.sentences.at(-1)).toEqual([{ text: "Un contract în consorțiu", tip: "consortiu" }, "."]);
     expect(text(composeEntitySummary({ ...authority, role: "supplier", nConsortium: 349 })!.sentences.at(-1)!))
       .toBe("349 de contracte în consorțiu.");
@@ -107,7 +108,7 @@ describe("summary edge cases", () => {
     const s = composeEntitySummary({ ...authority, dateFrom: null, nConsortium: 0, divisions: [],
       partners: [{ partnerId: "0", partnerName: null, totalRon: 10, pct: 1, nConsortium: 0 }] })!;
     expect(s.sentences.map(text)).toEqual([
-      `A atribuit ${formatRon("1572884046.27")} (valoare înregistrată, nu plăți) prin 782 de achiziții directe și 155 de contracte prin proceduri.`,
+      `A atribuit ${formatRon("1572884046.27")} prin 782 de achiziții directe și 155 de contracte prin proceduri.`,
     ]);
   });
   it("never rounds a partial share up to 100% or a positive one down to 0%", () => {

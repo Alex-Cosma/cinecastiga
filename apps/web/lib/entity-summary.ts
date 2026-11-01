@@ -146,8 +146,9 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   const years = yearsPhrase(input.dateFrom, input.dateTo);
   sentences.push([
     isAuth ? "A atribuit " : "A câștigat ",
-    { text: formatRon(input.totalExact), strong: true },
-    " (valoare înregistrată, nu plăți) ",
+    // "Valoare înregistrată, nu plăți" is the amount's hover tip (owner, 1 November 2026), not words in the sentence.
+    { text: formatRon(input.totalExact), strong: true, tip: "valoare-inregistrata" },
+    " ",
     withPreposition(isAuth ? "prin" : "din", channelsPhrase(input.nDa, input.nContracts)),
     years ? `, ${years}.` : ".",
   ]);
