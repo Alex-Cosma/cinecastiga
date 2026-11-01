@@ -1,4 +1,4 @@
-import { cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
+import { canonicalPersonKey, cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
 import { readLocalAuthorityIdentities, sectorUnit } from "../peer-population";
@@ -434,7 +434,8 @@ async function groundAdmin(
   sql: DbSql,
   q: { key?: string | undefined; name?: string | undefined },
 ): Promise<AdminGrounding> {
-  let personKey: string | null = q.key ?? null;
+  // A link, a saved question or a watch may hold a key from before the name fold (0090).
+  let personKey: string | null = q.key ? canonicalPersonKey(q.key) : null;
   let display: string | null = null;
   let alternatives: string[] = [];
   if (!personKey && q.name) {
