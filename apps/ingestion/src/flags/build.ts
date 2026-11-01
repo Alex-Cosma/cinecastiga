@@ -311,7 +311,8 @@ async function buildFlags(
       and not (d.threshold_date between date '2020-02-26' and date '2020-05-14')
       and not (d.typ = 'da_ceiling_goods_services' and d.closing_value >= 0.9 * d.works_ceil and d.closing_value <= d.works_ceil)
       and not (d.typ = 'da_ceiling_goods_services' and d.closing_value <= d.works_ceil and left(d.cpv, 2) in ('44', '71', '34', '31', '39'))
-      and not (d.est > 0 and d.closing_value > 2 * d.est)
+      -- Without an estimate the entry-error guard cannot judge: the hit stays.
+      and not (coalesce(d.est, 0) > 0 and d.closing_value > 2 * d.est)
   `;
 
   // ══ Procedure flags ═══════════════════════════════════════════════════════

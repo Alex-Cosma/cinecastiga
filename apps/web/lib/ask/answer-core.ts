@@ -31,6 +31,9 @@ export const ANSWER_VERSIONS: Partial<Record<Block, string>> = {
   // distribution-3 (rf-2026.18, 1 November 2026): the risk score (0–100%) against the same group, instead of the
   // number of criteria; position higher · equal · lower on the displayed score, the members with their scores.
   distribution: "distribution-3",
+  // compare-2 (rf-2026.18): each side's risk profile is the score (0–100%) instead of the index; a watch on a
+  // comparison gets one methodology notice instead of a false change of its profile.
+  compare: "compare-2",
   // fact_check-2 (F6a, plan §4.10): three verdicts (Da · Acord-cadru · Nu), the rows outside the sums say "Da"
   // ("Da · nu intră în sume"), framework ceilings never do; the profile, the weight and the whole relation beside it.
   fact_check: "fact_check-2",

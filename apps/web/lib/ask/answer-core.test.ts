@@ -117,7 +117,7 @@ describe("the key versions of this release", () => {
 
 describe("the version of an answer", () => {
   it("is the block's, then each key's the question carries; F2 changed the trend's, F4 the network's and the flow's, F6a the distribution's and the verification's, F6c the leader's (entity_card-2), F6b the risk cloud's (scatter-2); the risk score (rf-2026.18) the three profile answers' (-3)", () => {
-    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-3", fact_check: "fact_check-2", entity_card: "entity_card-3", scatter: "scatter-3" });
+    expect(ANSWER_VERSIONS).toEqual({ trend: "trend-2", network: "network-2", sankey: "sankey-2", distribution: "distribution-3", compare: "compare-2", fact_check: "fact_check-2", entity_card: "entity_card-3", scatter: "scatter-3" });
     expect(KEY_VERSIONS).toEqual({});
     for (const block of BLOCKS)
       expect(answerVersion({ block, measure: "value", filters: {} })).toEqual({ question: ANSWER_VERSIONS[block] ?? `${block}-1`, conditions: {} });
@@ -360,8 +360,8 @@ describe("a comparison's core (F4)", () => {
     expect(sameAnswerCore("compare", before, after)).toBe(true);
     expect(sameAnswerCore("compare", before, { ...after, entities: [{ ...after.entities[0]!, value: 11 }] })).toBe(false);
   });
-  it("needs no answer version: the default comparison's figures are the same", () => {
-    expect(answerVersion({ block: "compare", measure: "value", filters: { authorityId: 1, compareWithId: 2 } })).toEqual({ question: "compare-1", conditions: {} });
+  it("is compare-2 since the risk score (rf-2026.18): each side's profile is a percentage, not the index", () => {
+    expect(answerVersion({ block: "compare", measure: "value", filters: { authorityId: 1, compareWithId: 2 } })).toEqual({ question: "compare-2", conditions: {} });
   });
 });
 
