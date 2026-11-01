@@ -34,7 +34,7 @@ function database() {
 }
 
 describe("entity source pagination", () => {
-  it.each(["value", "date", "gap"] as const)("orders %s ties by channel, numeric record and consortium member", async (sort) => {
+  it.each(["value", "date"] as const)("orders %s ties by channel, numeric record and consortium member", async (sort) => {
     const statements = database();
     await getEntityTransactions("123", "authority", { page: 3, pageSize: 10, sort, years: ["2025"] });
     expect(statements).toHaveLength(2);

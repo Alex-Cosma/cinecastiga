@@ -5,7 +5,7 @@ import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows"
 const row = (over: Partial<DaTx>): DaTx => ({
   src: "contract", sicapDaId: "1", daCode: "16732", partnerId: "10", partnerName: "ALLIANCE", county: null,
   cpvCode: null, cpvName: "Diverse medicamente", estimatedValueRon: null, closingValue: 34022764.8,
-  finalizationDate: "2025-08-01", gapMinutes: null, daFlags: [], procedureType: null, caNoticeId: "215",
+  finalizationDate: "2025-08-01", daFlags: [], procedureType: null, caNoticeId: "215",
   singleBidder: null, natId: "107767548", valueSuspect: false, nWinners: 3, contractValueFull: 102068294.4,
   consortiumOthers: [], financialKind: "framework", ...over,
 });

@@ -96,8 +96,6 @@
   .ent-tx td.c-date{grid-column:1;color:var(--muted);font-size:13px}
   .ent-tx td.c-src{grid-column:2;grid-row:auto;justify-self:end}
   .ent-tx td.c-cpv{grid-column:1/-1;color:var(--ink2);font-size:13px}
-  .ent-tx td.c-gap::before{content:"Interval: ";color:var(--muted)}
-  .ent-tx td.c-gap{font-size:13px}
   .ent-tx td.c-flags{grid-column:1/-1}
   .ent-tx td.c-links{grid-column:1/-1;font-size:13px}
   .ent-tx td[data-empty="1"]{display:none}

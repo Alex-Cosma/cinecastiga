@@ -127,8 +127,8 @@ async function buildFlags(
 
   // da_rapid ("Finalizare rapidă") was RETIRED in rf-2026.18 (owner decision,
   // 1 November 2026): it marked 11.5% of all DAs and 87.5% of institutions,
-  // with no legal basis. The minutes between publication and finalization stay
-  // on every record (marts.da_transactions.gap_minutes).
+  // with no legal basis. Its "Interval" column (gap_minutes) went with it; the
+  // publication and finalization times stay on every record's page.
 
   // da_estimate_match was DROPPED after calibration: closing == estimate holds
   // for ~96% of DAs (the catalog-price process norm), so it carries no signal.

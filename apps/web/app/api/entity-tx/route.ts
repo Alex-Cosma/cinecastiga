@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const page = Number(url.searchParams.get("page"));
   q.page = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
   const sort = url.searchParams.get("sort");
-  if (sort === "value" || sort === "date" || sort === "gap") q.sort = sort;
+  if (sort === "value" || sort === "date") q.sort = sort;
   const dir = url.searchParams.get("dir");
   if (dir === "asc" || dir === "desc") q.dir = dir;
   const an = url.searchParams.get("an");

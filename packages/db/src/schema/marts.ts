@@ -373,9 +373,7 @@ export const daTransactions = martsSchema.table(
     closingValue: numeric("closing_value"),
     publicationDate: text("publication_date"),
     finalizationDate: text("finalization_date"),
-    /** finalization − publication, minutes (null if a date is missing). */
-    gapMinutes: integer("gap_minutes"),
-    /** Per-DA flag codes that fired (da_rapid / da_round). */
+    /** Per-DA flag codes that fired (da_round, da_above_ceiling), plus da_split for a split group's rows. */
     daFlags: text("da_flags").array(),
     /** Recorded value is implausible (>2M cap, or ≥100× the estimate) — almost
      *  always a data-entry typo (unit price with a thousands separator). Row

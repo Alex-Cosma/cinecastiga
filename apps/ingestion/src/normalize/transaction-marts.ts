@@ -14,7 +14,7 @@ export async function buildTransactionMarts(q:TransactionSql){
       insert into marts.da_transactions
         (sicap_da_id, da_code, authority_id, authority_name, supplier_id, supplier_name,
          county, cpv_code, cpv_name, acquisition_type, estimated_value_ron, closing_value,
-         publication_date, finalization_date, gap_minutes, da_flags, value_suspect)
+         publication_date, finalization_date, da_flags, value_suspect)
       -- A recorded supplier equal to the authority (audit F12) is not a supplier:
       -- no supplier id, so no supplier total, partner or pattern; the source name stays.
       select da.sicap_da_id, da.da_code,
@@ -23,9 +23,6 @@ export async function buildTransactionMarts(q:TransactionSql){
         da.estimated_value_ron, da.closing_value,
         to_char(da.publication_date, 'YYYY-MM-DD HH24:MI'),
         to_char(da.finalization_date, 'YYYY-MM-DD HH24:MI'),
-        case when da.publication_date is not null and da.finalization_date is not null
-              and da.finalization_date >= da.publication_date
-          then round(extract(epoch from (da.finalization_date - da.publication_date))/60)::int end,
         fl.codes,
         -- implausible recorded value, both directions: over the 2M cap /
         -- ≥100× the estimate (thousand-separator typos: 400.000 instead of
