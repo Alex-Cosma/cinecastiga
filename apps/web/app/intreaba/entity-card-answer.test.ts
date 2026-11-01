@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
-import type { PodiumFact, PodiumPlace, TiePlace, Ties } from "../../lib/ask/entity-card-shared";
+import { riskPlaces, type LegacyTiePlace, type LegacyTies, type PodiumFact, type PodiumPlace, type RiskPlace, type RiskRanking } from "../../lib/ask/entity-card-shared";
 import { unsupportedPopulationView } from "../../lib/ask/population";
 import type { QuestionSpec } from "../../lib/ask/question-ui";
 import { validateSpec } from "../../lib/ask/spec";
 import {
-  categoryLead, leadWords, placeFacts, placeWords, restWords, riskCloudLink, shareWords, signalWord, subjectNouns, tieFacts, tiePlace, tiesHeadline, tiesNoneSources,
-  tiesRest, tiesShown, totalLead,
+  categoryLead, leadWords, legacyTieFacts, legacyTiesHeadline, legacyTiesRest, noneSources, patternWord, placeFacts, placeWords, profilePlace, rankingHeadline,
+  rankingRest, restWords, riskCloudLink, riskFacts, scorePill, shareWords, showAllWords, shownRows, shownTied, subjectNouns, totalLead,
 } from "./entity-card-answer";
 
 /*
- * „Cine conduce?” (entity_card-2) as the answer draws it (final entity_card §3.9–§3.10, frames C, E, F): the place
- * words, the tags (P8, at most three), the headline of the group at the top and the lines under it. Pure.
+ * „Cine conduce?” (entity_card-3; entity_card-2: final entity_card §3.9–§3.10, frames C, E, F) as the answer draws
+ * it: the place words, the tags (P8, at most three), the headline of the ranking by the risk score and the lines
+ * under it, and those of an answer stored as entity_card-2 (the group at the top of the old index). Pure.
  */
 
 const firm = { dim: "supplier", filters: {} } as const;
@@ -107,55 +108,127 @@ describe("the tags of a place (P8)", () => {
   });
 });
 
-const tie = (n: number, extra: Partial<TiePlace> = {}): TiePlace => ({ entityId: String(n), name: `Spital ${n}`, county: "Cluj", count: 100 * n, value: 1000 - n, nFlags: 1, flags: ["da_split"], ...extra });
-const ties = (count: number, pool: number, extra: Partial<Ties> = {}): Ties => ({
+const ranked = (n: number, score: number, extra: Partial<RiskPlace> = {}): RiskPlace => ({
+  entityId: String(n), name: `Spital ${n}`, county: "Cluj", count: 100 * n, value: 1000 - n, score, nFlags: 1, flags: ["da_split"], ...extra,
+});
+const ranking = (scores: number[], extra: Partial<RiskRanking> = {}): RiskRanking => {
+  const top = Math.max(0, ...scores);
+  return {
+    version: 3, pool: scores.length + 5, scored: scores.filter((s) => s > 0).length, top, topCount: scores.filter((s) => s === top).length,
+    rows: scores.map((score, i) => ranked(i + 1, score)), ...extra,
+  };
+};
+
+describe("the ranking by the risk score (entity_card-3)", () => {
+  it("names the first profile with its score and band, or the profiles tied on the best score", () => {
+    expect(rankingHeadline(ranking([71, 60, 60, 58]), hospitals)).toEqual({ kind: "first", lead: "Primul: Spital 1", score: "71%", band: "puternic" });
+    expect(rankingHeadline(ranking([71, 60], { rows: [ranked(1, 71, { name: "RO123456 SPITALUL ORASENESC AGNITA" })] }), hospitals).lead).toBe("Primul: SPITALUL ORASENESC AGNITA");
+    expect(rankingHeadline(ranking([60, 60, 60, 58]), hospitals)).toEqual({ kind: "tied", lead: "3 la egalitate pe primul loc", score: "60%", band: "moderat" });
+    // The tie counts the whole group, beyond the listed rows.
+    expect(rankingHeadline(ranking([60, 60], { topCount: 312 }), firm).lead).toBe("312 la egalitate pe primul loc");
+    expect(rankingHeadline(ranking([25]), firm)).toMatchObject({ kind: "first", score: "25%", band: "slab" });
+  });
+
+  it("says when nobody in the group has a score, and what the sources hold then", () => {
+    const none = ranking([0, 0, 0], { pool: 17, scored: 0 });
+    expect(rankingHeadline(none, hospitals)).toEqual({ kind: "none", kicker: "Nu are semnale în profil", lead: "Niciuna din 17 spitale nu are semnale în profil" });
+    expect(noneSources(none.rows)).toBe("Sursele: primele 3 profiluri după valoare, fără semnale.");
+    expect(noneSources([ranked(1, 0)])).toBe("Sursele: singurul profil, fără semnale.");
+    expect(rankingRest(none, 0)).toBeNull();
+  });
+
+  it("numbers the places: the same place for the same displayed score", () => {
+    expect(riskPlaces([{ score: 71 }, { score: 60 }, { score: 60 }, { score: 60 }, { score: 58 }, { score: 58 }])).toEqual([1, 2, 2, 2, 5, 5]);
+    expect(riskPlaces([{ score: 60 }, { score: 60 }, { score: 60 }])).toEqual([1, 1, 1]);
+    expect(riskPlaces([])).toEqual([]);
+  });
+
+  it("gives each row its pill: the score, the band's word and its colour", () => {
+    expect(scorePill(71)).toEqual({ text: "71%", band: "puternic", className: "risk-high" });
+    expect(scorePill(60)).toEqual({ text: "60%", band: "moderat", className: "risk-mid" });
+    expect(scorePill(20)).toEqual({ text: "20%", band: "slab", className: "risk-slab" });
+    expect(scorePill(0)).toEqual({ text: "0%", band: "niciun tipar găsit", className: "risk-none" });
+  });
+
+  it("says „În ordinea valorii” only when every shown row has the same score", () => {
+    expect(shownTied([ranked(1, 60), ranked(2, 60), ranked(3, 60)])).toBe(true);
+    expect(shownTied([ranked(1, 71), ranked(2, 60)])).toBe(false);
+    expect(shownTied([ranked(1, 60)])).toBe(false);
+  });
+
+  it("shows five rows, all of them on request, and names the button by what the list holds", () => {
+    const group = ranking([71, 60, 60, 58, 58, 40, 30, 20, 20, 20, 20, 20, 20, 20]);
+    expect(shownRows(group.rows, false)).toMatchObject({ hidden: 9 });
+    expect(shownRows(group.rows, false).rows).toHaveLength(5);
+    expect(shownRows(group.rows, true)).toMatchObject({ hidden: 0 });
+    expect(showAllWords(group)).toBe("Arată toate cele 14");
+    // More profiles with a score than the 50 listed.
+    expect(showAllWords({ ...group, scored: 120 })).toBe("Arată primele 14");
+    // Once the whole list is shown, the profiles without a score are said; never while rows wait.
+    expect(rankingRest(group, 0)).toBe("+ 5 fără semnale");
+    expect(rankingRest(group, 9)).toBeNull();
+    expect(rankingRest({ ...group, scored: 120 }, 0)).toBeNull();
+    expect(rankingRest({ ...group, pool: group.scored }, 0)).toBeNull();
+  });
+
+  it("tags a profile's patterns in the site's words, two and „+N”, and a buyer that looks like a company or an association", () => {
+    const flags = ["da_split", "da_year_end", "da_round", "da_above_ceiling"];
+    const tags = riskFacts(ranked(1, 88, { flags, nFlags: 4 }), hospitals);
+    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["achiziții repetate, peste plafon cumulat", "signal"], ["vârf în decembrie", "signal"], ["+2", "neutral"]]);
+    expect(tags[2]!.tip).toEqual({ title: "Alte tipare", text: "chiar sub plafon, peste plafon. Piste de verificat, nu dovezi." });
+    expect(patternWord("da_concentration")).toBe("concentrare pe un furnizor");
+    // A code the site no longer names (da_rapid, retired) stays the code.
+    expect(patternWord("da_rapid")).toBe("da_rapid");
+    expect(riskFacts(ranked(2, 40, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
+      .toEqual(["achiziții repetate, peste plafon cumulat", "societate"]);
+    expect(riskFacts(ranked(3, 40, { name: "Eco Rural Consulting SRL", flags: [] }), firm)).toEqual([]);
+    expect(profilePlace(ranked(1, 40, { county: "Bucuresti", count: 1 }))).toBe("București · 1 achiziție directă");
+  });
+});
+
+const tie = (n: number, extra: Partial<LegacyTiePlace> = {}): LegacyTiePlace => ({ entityId: String(n), name: `Spital ${n}`, county: "Cluj", count: 100 * n, value: 1000 - n, nFlags: 1, flags: ["da_split"], ...extra });
+const ties = (count: number, pool: number, extra: Partial<LegacyTies> = {}): LegacyTies => ({
   version: 2, level: 0.2, maxFlags: 1, criteria: 5, count, pool, nextLevel: 0, nextCount: 5,
   rows: Array.from({ length: Math.min(count, 50) }, (_, i) => tie(i + 1)), ...extra,
 });
 
-describe("the group at the top of the index", () => {
+describe("an answer stored as entity_card-2: the group at the top of the old index, as it was", () => {
   it("says „Indicele nu le deosebește” when over half of the pool, or a single signal, is at the top", () => {
-    const head = tiesHeadline(ties(14, 19), hospitals);
+    const head = legacyTiesHeadline(ties(14, 19), hospitals);
     expect(head).toMatchObject({ kicker: "Indicele nu le deosebește", lead: "14 din 19 spitale au același indice", level: "0,20", signals: "1 semnal din 5", none: false, notDistinct: true });
-    expect(tiesHeadline(ties(6, 53_556, { level: 1, maxFlags: 4, criteria: 4, nextLevel: 0.75, nextCount: 219 }), firm))
+    expect(legacyTiesHeadline(ties(6, 53_556, { level: 1, maxFlags: 4, criteria: 4, nextLevel: 0.75, nextCount: 219 }), firm))
       .toMatchObject({ kicker: null, lead: "6 firme au indicele maxim", level: "1,00", signals: "4 semnale din 4", notDistinct: false });
   });
 
   it("names a single leader, with the next level; and says when nobody has a signal", () => {
-    const head = tiesHeadline(ties(1, 2_483, { level: 1, maxFlags: 4, criteria: 4, nextLevel: 0.75, nextCount: 14 }), firm);
+    const head = legacyTiesHeadline(ties(1, 2_483, { level: 1, maxFlags: 4, criteria: 4, nextLevel: 0.75, nextCount: 14 }), firm);
     expect(head).toMatchObject({ kicker: "Singur pe primul loc", lead: "", level: "1,00", next: "Următorul nivel, 0,75: 14 din 2.483 de firme." });
-    const none = tiesHeadline(ties(17, 17, { level: 0, maxFlags: 0, nextLevel: null, nextCount: 0 }), hospitals);
+    const none = legacyTiesHeadline(ties(17, 17, { level: 0, maxFlags: 0, nextLevel: null, nextCount: 0 }), hospitals);
     expect(none).toMatchObject({ kicker: "Nu are semnale în profil", none: true });
     expect(none.lead).toBe("Niciuna din 17 spitale nu are semnale în profil");
-    // The sources still hold the first profiles by value: the answer says so.
-    expect(tiesNoneSources(ties(17, 17, { maxFlags: 0 }))).toBe("Sursele: primele 17 profiluri după valoare, fără semnale.");
-    expect(tiesNoneSources(ties(1, 1, { maxFlags: 0 }))).toBe("Sursele: singurul profil, fără semnale.");
+    expect(noneSources(ties(17, 17, { maxFlags: 0 }).rows)).toBe("Sursele: primele 17 profiluri după valoare, fără semnale.");
   });
 
   it("shows five rows, all of them on request, and says what waits and what is not listed", () => {
     const group = ties(14, 19);
-    expect(tiesShown(group, false)).toMatchObject({ hidden: 9 });
-    expect(tiesShown(group, false).rows).toHaveLength(5);
-    expect(tiesShown(group, true)).toMatchObject({ hidden: 0 });
-    expect(tiesRest(group, 9)).toBe("+ încă 9 cu același indice · 5 fără semnale");
-    expect(tiesRest(group, 0)).toBeNull();
-    // 80 at the top: only the first 50 are listed, and the answer says so.
+    expect(shownRows(group.rows, false)).toMatchObject({ hidden: 9 });
+    expect(legacyTiesRest(group, 9)).toBe("+ încă 9 cu același indice · 5 fără semnale");
+    expect(legacyTiesRest(group, 0)).toBeNull();
+    // 80 at the top: only the first 50 were listed, and the answer said so.
     const many = ties(80, 120);
     expect(many.rows).toHaveLength(50);
-    expect(tiesRest(many, 45)).toBe("+ încă 45 cu același indice · 30 nu încap în listă · 5 fără semnale");
+    expect(legacyTiesRest(many, 45)).toBe("+ încă 45 cu același indice · 30 nu încap în listă · 5 fără semnale");
   });
 
-  it("tags a profile's signals in the official words, two and „+N”, and a buyer that looks like a company or an association", () => {
-    const flags = ["da_split", "da_year_end", "da_round", "da_rapid"];
-    const tags = tieFacts(tie(1, { flags, nFlags: 4 }), hospitals);
-    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["posibilă fracționare", "signal"], ["vârf în decembrie", "signal"], ["+2", "neutral"]]);
-    expect(tags[2]!.tip).toMatchObject({ title: "Alte semnale" });
-    expect(signalWord("da_concentration")).toBe("concentrare pe un furnizor");
-    expect(tieFacts(tie(2, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text)).toEqual(["posibilă fracționare", "societate"]);
-    expect(tieFacts(tie(3, { name: "Eco Rural Consulting SRL", flags: [] }), firm)).toEqual([]);
-    expect(tiePlace(tie(1, { county: "Bucuresti", count: 1 }))).toBe("București · 1 achiziție directă");
+  it("tags a profile's signals, two and „+N” with that answer's words; a retired code (da_rapid) shows as stored", () => {
+    const tags = legacyTieFacts(tie(1, { flags: ["da_split", "da_year_end", "da_rapid", "da_round"], nFlags: 4 }), hospitals);
+    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["achiziții repetate, peste plafon cumulat", "signal"], ["vârf în decembrie", "signal"], ["+2", "neutral"]]);
+    expect(tags[2]!.tip).toEqual({ title: "Alte semnale", text: "da_rapid, chiar sub plafon. Semnale statistice, nu dovezi." });
+    expect(legacyTieFacts(tie(2, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
+      .toEqual(["achiziții repetate, peste plafon cumulat", "societate"]);
   });
 });
+
 
 describe("„Pe harta riscului ›” of the index (S6 review)", () => {
   const index = (filters: Record<string, unknown>) => ({ block: "entity_card", dim: "supplier", measure: "value", rankBy: "risk", filters } as unknown as QuestionSpec);

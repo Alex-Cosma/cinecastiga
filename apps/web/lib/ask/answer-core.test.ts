@@ -365,7 +365,7 @@ describe("a comparison's core (F4)", () => {
   });
 });
 
-describe("«Cine conduce?»'s core (entity_card-2, F6c)", () => {
+describe("«Cine conduce?»'s core (entity_card-3; entity_card-2, F6c)", () => {
   const card = { entityId: "1", name: "ALLIANCE", county: "Bucuresti", role: "supplier", value: 100, count: 3, cri: null, nFlags: 0, flags: [], population: null };
   const podium = { version: 2, places: [{ entityId: "1", name: "ALLIANCE", county: "Bucuresti", value: 100, count: 3 }, { entityId: "2", name: "DR.MAX", county: "Ilfov", value: 60, count: 2 }], total: { value: 300, count: 9, entities: 40 } };
   const ties = {
@@ -374,11 +374,32 @@ describe("«Cine conduce?»'s core (entity_card-2, F6c)", () => {
   };
   const value = { block: "entity_card", card, podium };
   const index = { block: "entity_card", card: { ...card, entityId: "5", role: "authority", cri: 0.2, nFlags: 1, flags: ["da_split"] }, ties };
-  it("is the question's second answer, on both axes", () => {
-    expect(answerVersion({ block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }).question).toBe("entity_card-2");
-    expect(answerVersion({ block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} }).question).toBe("entity_card-2");
-    // A watch stored before it (no version: "entity_card-1") hears of it once.
+  it("is the question's third answer, on both axes (rf-2026.18: the risk score)", () => {
+    expect(answerVersion({ block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }).question).toBe("entity_card-3");
+    expect(answerVersion({ block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} }).question).toBe("entity_card-3");
+    // A watch stored before it (no version: "entity_card-1", or "entity_card-2") hears of it once.
     expect(sameAnswerVersion(readAnswerVersion(undefined, "entity_card"), answerVersion({ block: "entity_card", dim: "supplier", rankBy: "value", measure: "value", filters: {} }))).toBe(false);
+    expect(sameAnswerVersion(readAnswerVersion({ question: "entity_card-2", conditions: {} }, "entity_card"),
+      answerVersion({ block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} }))).toBe(false);
+  });
+  it("compares the listed profiles of the risk axis and their scores; never their order within a score, values, names or the group's size", () => {
+    const place = (entityId: string, score: number, value: number) => ({ entityId, name: `Spital ${entityId}`, county: "Cluj", count: 30, value, score, nFlags: 1, flags: ["da_split"] });
+    const ranking = { version: 3, pool: 19, scored: 4, top: 71, topCount: 1, rows: [place("5", 71, 90), place("6", 60, 80), place("7", 60, 70), place("8", 25, 60)] };
+    const risk = { block: "entity_card", card: { ...card, entityId: "5", role: "authority", score: 71, nFlags: 1, flags: ["da_split"] }, ranking };
+    expect(answerCore("entity_card", risk)).toEqual({
+      block: "entity_card",
+      ranking: { topCount: 1, places: [{ entityId: "5", score: 71 }, { entityId: "6", score: 60 }, { entityId: "7", score: 60 }, { entityId: "8", score: 25 }] },
+    });
+    // Within the same score the screen orders by value, which every new acquisition moves: no change.
+    const swapped = { ...risk, ranking: { ...ranking, rows: [ranking.rows[0]!, { ...ranking.rows[2]!, value: 85 }, ranking.rows[1]!, ranking.rows[3]!] } };
+    expect(sameAnswerCore("entity_card", risk, swapped)).toBe(true);
+    // The group's size, the profiles without a score, the names and the patterns are references.
+    expect(sameAnswerCore("entity_card", risk, { ...risk, ranking: { ...ranking, pool: 40, scored: 9, rows: ranking.rows.map((r) => ({ ...r, name: "Alt nume", flags: ["da_round"] })) } })).toBe(true);
+    // A score that moves, a profile that enters or leaves the list, or a new tie at the top: changed.
+    expect(sameAnswerCore("entity_card", risk, { ...risk, ranking: { ...ranking, rows: [place("5", 72, 90), ...ranking.rows.slice(1)] } })).toBe(false);
+    expect(sameAnswerCore("entity_card", risk, { ...risk, ranking: { ...ranking, rows: [...ranking.rows.slice(0, 3), place("9", 25, 60)] } })).toBe(false);
+    expect(sameAnswerCore("entity_card", risk, { ...risk, ranking: { ...ranking, rows: ranking.rows.slice(0, 3) } })).toBe(false);
+    expect(sameAnswerCore("entity_card", risk, { ...risk, ranking: { ...ranking, topCount: 2 } })).toBe(false);
   });
   it("compares the places and their total, or the level and the profiles at it; never the names, the pool or the next level", () => {
     expect(answerCore("entity_card", value)).toEqual({
@@ -393,7 +414,8 @@ describe("«Cine conduce?»'s core (entity_card-2, F6c)", () => {
     expect(sameAnswerCore("entity_card", value, renamed)).toBe(true);
     expect(sameAnswerCore("entity_card", value, { ...value, podium: { ...podium, total: { ...podium.total, value: 301 } } })).toBe(false);
     expect(sameAnswerCore("entity_card", value, { ...value, podium: { ...podium, places: [podium.places[1]!, podium.places[0]!] } })).toBe(false);
-    // The pool and the next level are references: a firm added to the pool does not change a watch on the group at the top.
+    // An answer stored as entity_card-2: the pool and the next level are references, a firm added to the pool does not
+    // change a watch on the group at the top.
     expect(sameAnswerCore("entity_card", index, { ...index, ties: { ...ties, pool: 20, nextCount: 6, nextLevel: 0.1 } })).toBe(true);
     expect(sameAnswerCore("entity_card", index, { ...index, ties: { ...ties, count: 3 } })).toBe(false);
     expect(sameAnswerCore("entity_card", index, { ...index, ties: { ...ties, rows: [ties.rows[1], ties.rows[0]] } })).toBe(false);

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
-  buyerForm, criteriaCount, jointShare, leadOverSecond, LEADER_MIN_DAS, levelWords, oneRecordShare, placeShare, podiumPlaceIds, podiumRest, signalsWords, tiesNotDistinct,
-  type Podium, type PodiumPlace,
+  buyerForm, jointShare, leadOverSecond, LEADER_MIN_DAS, levelWords, oneRecordShare, placeShare, podiumPlaceIds, podiumRest, riskBandWord, riskPlaces, signalsWords,
+  tiesNotDistinct, type Podium, type PodiumPlace,
 } from "./entity-card-shared";
 import { bareNational, podiumFactsOf, podiumOf } from "./entity-card";
 import { ENTITY_CARD_MIN_DAS } from "./predicates";
 
 /*
- * „Cine conduce?” (entity_card-2, final entity_card §3.9–§3.10): the shapes and words the engine, the answer, its CSV
- * and a watch share. Pure.
+ * „Cine conduce?” (entity_card-3; entity_card-2: final entity_card §3.9–§3.10): the shapes and words the engine, the
+ * answer, its CSV and a watch share. Pure.
  */
 
 const place = (n: number, value: number, count = 10): PodiumPlace => ({ entityId: String(n), name: `Firma ${n}`, county: "Cluj", value, count });
@@ -42,8 +42,12 @@ describe("the podium", () => {
     expect(podiumRest({ places: podium.places, total: null })).toBeNull();
   });
 
-  it("ranks the index with the profiles the engine counts", () => {
+  it("ranks the risk axis with the profiles the engine counts", () => {
     expect(LEADER_MIN_DAS).toBe(ENTITY_CARD_MIN_DAS);
+  });
+
+  it("keeps the podium's shape version while the answer is entity_card-3", () => {
+    expect(podiumOf([place(1, 500)], total, undefined).version).toBe(2);
   });
 
   it("reads the national ranking's total from agg_national only where no condition narrows it", () => {
@@ -90,14 +94,24 @@ describe("the facts of the places", () => {
   });
 });
 
-describe("the index", () => {
-  it("writes a level and its signals as the answer says them", () => {
+describe("the risk axis", () => {
+  it("numbers the places by the displayed score, a tie sharing its place", () => {
+    expect(riskPlaces([{ score: 88 }, { score: 71 }, { score: 71 }, { score: 60 }])).toEqual([1, 2, 2, 4]);
+    expect(riskPlaces([{ score: 0 }, { score: 0 }])).toEqual([1, 1]);
+  });
+
+  it("says a score's band in the words beside its pill", () => {
+    expect([riskBandWord(88), riskBandWord(68), riskBandWord(67), riskBandWord(40), riskBandWord(39), riskBandWord(20), riskBandWord(0)])
+      .toEqual(["puternic", "puternic", "moderat", "moderat", "slab", "slab", "niciun tipar găsit"]);
+  });
+});
+
+describe("an answer stored as entity_card-2 (the old index)", () => {
+  it("writes a level and its signals as the answer said them", () => {
     expect(levelWords(0.2)).toBe("0,20");
     expect(levelWords(1)).toBe("1,00");
     expect(signalsWords({ maxFlags: 1, criteria: 5 })).toBe("1 semnal din 5");
     expect(signalsWords({ maxFlags: 4, criteria: 4 })).toBe("4 semnale din 4");
-    expect(criteriaCount("authority")).toBe(5);
-    expect(criteriaCount("supplier")).toBe(4);
   });
 
   it("does not tell the group apart when over half of the pool is at the top, or the top is one signal", () => {
