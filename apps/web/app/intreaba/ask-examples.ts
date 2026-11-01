@@ -51,8 +51,8 @@ export const ASK_EXAMPLE_GROUPS: AskExampleGroup[] = [
     note: "Semnalele sunt piste de verificat, nu dovezi.",
     examples: [
       { text: "Ce instituții din județul Buzău ies din tipar?" },
-      { text: "Care spital are cel mai ridicat indice de risc?" },
-      { text: "Unde se situează primăria Vaslui după indicele de risc?" },
+      { text: "Care spital are cel mai ridicat risc?" },
+      { text: "Unde se situează primăria Vaslui după risc?" },
     ],
   },
 ];

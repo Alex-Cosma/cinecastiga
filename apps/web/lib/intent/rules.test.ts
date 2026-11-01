@@ -343,10 +343,26 @@ describe("beginner phrasings → interpretation", () => {
     expect(wrong.r.spec?.scatter?.flag).toBeUndefined();
   });
 
+  it("34c. the ceiling's patterns are signals questions (rf-2026.18); the retired «finalizare rapidă» is not", async () => {
+    for (const phrase of ["ce primarii din judetul buzau au achizitii chiar sub plafon", "ce institutii au achizitii directe peste plafon",
+      "ce institutii au achizitii imediat sub plafon", "ce institutii au achizitii repetate peste plafonul cumulat"]) {
+      const asked = await ask(phrase);
+      expect(asked.i.intent, phrase).toBe("signals");
+      expect(asked.r.spec, phrase).toMatchObject({ block: "scatter", dim: "authority" });
+    }
+    expect((await ask("ce institutii au finalizare rapida")).i.intent).not.toBe("signals");
+  });
+
   it("35. «care spital are cel mai ridicat indice de risc» → one superlative profile", async () => {
     const { r } = await ask("care spital are cel mai ridicat indice de risc");
     expect(r.spec).toEqual({ block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { authorityKind: "spital" } });
-    expect(r.sentence).toBe("Care spital din toată țara are cel mai ridicat indice de risc?");
+    expect(r.sentence).toBe("Care spital din toată țara are cel mai ridicat risc?");
+    // rf-2026.18: the risk score's own words ask the same question; the old index's still do.
+    for (const phrase of ["care spital are cel mai ridicat risc", "care spital are cel mai mare scor de risc"]) {
+      const asked = await ask(phrase);
+      expect(asked.r.spec, phrase).toEqual(r.spec);
+      expect(asked.r.sentence, phrase).toBe(r.sentence);
+    }
   });
 
   it("36. «e ceva suspect la Spitalul…» → where the hospital sits on the risk index", async () => {
