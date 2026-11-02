@@ -1168,7 +1168,7 @@ export default function AskPanel({
                   <ShareIcon />
                   Trimite
                 </button>
-                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} />
+                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
                 {/* A trend's or a network's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title}
                   {...(watchedGroup ? { label: watchedGroup.label, blocked: watchedGroup.blocked } : {})} />

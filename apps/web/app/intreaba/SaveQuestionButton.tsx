@@ -12,16 +12,18 @@ import type { SavedQuestion } from "./SavedQuestions";
 
 /**
  * `unapplied`: the builder's draft differs from the answer on screen; the button saves the draft and says so
- * ("Salvează · neaplicată", plan §2.3). The answer's own button saves the applied question.
+ * ("Salvează · neaplicată", plan §2.3). The answer's own button saves the applied question. `compact`: the answer's
+ * head, where it shares a row with „Trimite” under the records' button (owner, 2 November 2026), says „Salvează” /
+ * „Salvată” and keeps the whole words as its name.
  */
-type Props = { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void; unapplied?: boolean };
+type Props = { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void; unapplied?: boolean; compact?: boolean };
 export default function SaveQuestionButton(props:Props) {
   const viewer = useViewer();
   const local = !viewer.userId;
   const active = props.active && (local ? props.active.storage === "local" : props.active.ownerId === viewer.userId) ? props.active : null;
   return <SaveQuestionForm key={viewer.userId ?? "device"} {...props} active={active} userId={viewer.userId} disabled={props.disabled || !viewer.ready || !!viewer.error} />;
 }
-function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied = false }: Props & { userId:string | undefined }) {
+function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied = false, compact = false }: Props & { userId:string | undefined }) {
   const local = !userId;
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -121,13 +123,14 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
   }
 
   const next = `/intreaba?spec=${encodeURIComponent(encodeSpec(snapshot))}&mode=builder`;
+  const words = saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează · neaplicată" : "Salvează întrebarea";
   return <>
     <span className="cq-save-wrap">
-    <button ref={trigger} type="button" className="cq-save-question" disabled={disabled} aria-disabled={saved || undefined} aria-haspopup="dialog" onClick={() => { if (!saved) open(); }}>
+    <button ref={trigger} type="button" className="cq-save-question" disabled={disabled} aria-disabled={saved || undefined} aria-haspopup="dialog" {...(compact ? { "aria-label": words } : {})} onClick={() => { if (!saved) open(); }}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {saved ? <path d="m5 12 4 4L19 6" /> : <path d="M6 4h12v16l-6-4-6 4V4Z" />}
       </svg>
-      <span aria-live="polite">{saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează · neaplicată" : "Salvează întrebarea"}</span>
+      <span aria-live="polite">{compact ? (saved ? "Salvată" : "Salvează") : words}</span>
     </button>
     {unapplied && !saved && <Term tip title="Salvează · neaplicată" text="Salvezi întrebarea din propoziție, nu răspunsul afișat." />}
     </span>
