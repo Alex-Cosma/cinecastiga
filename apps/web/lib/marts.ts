@@ -3,6 +3,7 @@ import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthD
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
 import { onrcBirthYear } from "./format";
 import type { ScoreParts } from "./risk-score";
+import { sumDecimalStrings } from "./ask/evidence";
 import { createDb, type DbSql } from "@seap/db";
 
 /**
@@ -656,6 +657,54 @@ export async function getEntityTxCounts(entityId: string, role: Role): Promise<E
   return { nDa: Number(r?.n_da ?? 0), nCt: Number(r?.n_ct ?? 0), nContracts: Number(r?.contracts ?? 0),
     valueExact: String(r?.value ?? "0"), dateFrom: r?.date_from == null ? null : String(r.date_from).slice(0,10),
     dateTo: r?.date_to == null ? null : String(r.date_to).slice(0,10), excludedDa: Number(r?.excluded ?? 0) };
+}
+
+/** One year of an entity's activity per channel: records and exact value. */
+export interface EntityYear { year: number; nDa: number; valueDa: string; nCt: number; valueCt: string }
+/**
+ * The entity's activity per year on getEntityTxCounts' basis (owner, 2 November 2026: the entity page's years chart):
+ * a direct acquisition's year of finalisation, a contract's year of signing. Records without a usable date (contracts
+ * whose source date was improbable) are `undated`, so the years and `undated` add up to the page's total.
+ */
+export async function getEntityYears(entityId: string, role: Role): Promise<{ years: EntityYear[]; undated: Omit<EntityYear, "year"> }> {
+  const sql = db();
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
+  const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const rows = (await sql`
+    select 'da' src, left(finalization_date, 4) y, count(*)::int n, sum(closing_value)::text v
+    from marts.da_transactions
+    where ${partyCol} = ${id} and closing_value > 0 and closing_value <= 2000000
+    group by 2
+    union all
+    select 'contracts' src, left(finalization_date, 4) y, count(*)::int n, sum(closing_value)::text v
+    from marts.contract_transactions
+    where ${partyCol} = ${id} and closing_value > 0
+    group by 2
+  `) as unknown as { src: "da" | "contracts"; y: string | null; n: number; v: string }[];
+  return entityYearsFrom(rows);
+}
+
+/** getEntityYears' rows per channel and year, folded into years (ascending) and the undated rest. */
+export function entityYearsFrom(rows: readonly { src: "da" | "contracts"; y: string | null; n: number; v: string }[]): { years: EntityYear[]; undated: Omit<EntityYear, "year"> } {
+  const undated = { nDa: 0, valueDa: "0", nCt: 0, valueCt: "0" };
+  const byYear = new Map<number, EntityYear>();
+  for (const r of rows) {
+    const year = r.y && /^\d{4}$/.test(r.y) ? Number(r.y) : null;
+    const into = year === null ? undated : byYear.get(year) ?? byYear.set(year, { year, nDa: 0, valueDa: "0", nCt: 0, valueCt: "0" }).get(year)!;
+    if (r.src === "da") { into.nDa += Number(r.n); into.valueDa = sumDecimalStrings([into.valueDa, r.v]); }
+    else { into.nCt += Number(r.n); into.valueCt = sumDecimalStrings([into.valueCt, r.v]); }
+  }
+  return { years: [...byYear.values()].sort((a, b) => a.year - b.year), undated };
+}
+
+/** A firm's net turnover per year from its filed balance sheets (reference.company_financials), positive years only. */
+export async function getCompanyTurnover(cui: string): Promise<{ year: number; value: number }[]> {
+  const sql = db();
+  const rows = (await sql`
+    select year, net_turnover::text v from reference.company_financials
+    where cui = ${cui} and net_turnover > 0 order by year
+  `) as unknown as { year: number; v: string }[];
+  return rows.map((r) => ({ year: Number(r.year), value: Number(r.v) }));
 }
 
 export interface ContractAboveCap {
