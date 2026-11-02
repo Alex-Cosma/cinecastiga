@@ -222,6 +222,19 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec?.block).toBe("timeseries");
   });
 
+  it("20b. an evolution by year never stops at one year: «în 2024» and the «Cum s-a schimbat de la an la an» reading take every year", async () => {
+    const { r } = await ask("cum a evoluat deszăpezirea în suceava în 2024");
+    expect(r.spec?.block).toBe("timeseries");
+    expect(r.spec?.filters).not.toHaveProperty("yearFrom");
+    expect(r.interpretation.notes).toContain("Am arătat toți anii, ca să se vadă schimbarea de la an la an.");
+    const ranking = (await ask("dezăpezire suceava 2024")).r;
+    expect(ranking.spec?.filters).toMatchObject({ yearFrom: 2024, yearTo: 2024 });
+    const trend = ranking.alternatives.find((alt) => alt.label === "Cum s-a schimbat de la an la an");
+    expect(trend?.spec.block).toBe("timeseries");
+    expect(trend?.spec.filters).not.toHaveProperty("yearFrom");
+    expect(trend?.spec.filters).toMatchObject({ cpvTerm: "deszapezire", county: "Suceava" });
+  });
+
   it("21. a word we do not know is reported, not dropped («festiv»)", async () => {
     const { i, r } = await ask("iluminat festiv in buzau");
     expect(i.subjects[0]?.term).toBe("iluminat");
