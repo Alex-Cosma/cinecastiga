@@ -15,17 +15,21 @@ import {
   getEntityFlagRowCounts,
   getEntityPartnersPaged,
   getEntitySubjects,
+  getEntityYears,
+  getCompanyTurnover,
   type FlagEvidenceRow,
   type Role,
   type EntityFlagRow,
 } from "@/lib/marts";
+import EntityYears from "./EntityYears";
+import { bucharestYear, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
-import { RISK_BAND_CLASS, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "@/lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
 import { getRegistryNames } from "@/lib/registry-names";
@@ -117,7 +121,7 @@ export default async function EntityPage({
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames] =
+  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
     await Promise.all([
       getEntityPartners(id, role, 12),
       getEntityMonthly(id, role),
@@ -136,6 +140,9 @@ export default async function EntityPage({
       // An individual practice (PFA, II, cabinet): the one ONRC person with its holder's name, as a lead only.
       individualHolder(row.name) ? getHolderTwin(row.name).catch(() => null) : null,
       registryCuiLookup.then((registry) => (registry ? getRegistryNames(registry, row.name) : [])).catch(() => [] as string[]),
+      // The top's years chart and ledger (owner, 2 November 2026); a firm's turnover per year through its corroborated CUI.
+      getEntityYears(id, role),
+      role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
     ]);
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
@@ -148,6 +155,9 @@ export default async function EntityPage({
   const criteria = RISK_CRITERIA[role];
   const band = riskBand(row.score);
   const points = riskPoints(row.scoreParts, row.score);
+  // The top's ledger per channel and its years chart; the bars and the undated rest add up to txCounts' value.
+  const ledger = ledgerTotals(activityYears.years, activityYears.undated);
+  const years = yearsModel(activityYears.years, turnover, bucharestYear());
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
   // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
@@ -227,55 +237,68 @@ export default async function EntityPage({
         </div>
       </div>
 
-      {/* Risk summary */}
-      <div className="stat-grid ent-stats">
-        <div className="stat risk-stat">
-          <div className="n">
-            <span className={`cri-pill ${hasRiskScore ? RISK_BAND_CLASS[band] : "risk-none"}`}>{hasRiskScore ? riskPercent(row.score) : "—"}</span>
-          </div>
-          {hasRiskScore && <div className="risk-meter" aria-hidden="true"><span className={RISK_BAND_CLASS[band]} style={{ width: `${row.score}%` }} /></div>}
-          <div className="l ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" /></div>
-          {peerLine && <p className="note">{riskPeerWords(peerLine)}</p>}
-          {hasRiskScore && row.score > 0 && <a href="#calcul-scor" className="hint">Cum se formează?</a>}
-        </div>
-        <div className="stat">
-          <div className="n">
-            {txCounts.nDa > 0 ? (
-              <a href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}>
-                {formatInt(txCounts.nDa)} →
-              </a>
-            ) : (
-              formatInt(txCounts.nDa)
-            )}
-          </div>
-          <div className="l">Achiziții directe</div>
-        </div>
-        {txCounts.nCt > 0 && (
-          <div className="stat">
-            <div className="n">
-              <a href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}>
-                {formatInt(txCounts.nContracts)} →
-              </a>
+      {/* The top (owner, 2 November 2026): the risk on its bands, a ledger of the activity per channel (its swatches
+          are the chart's legend) and the value per year. How the score is made stays further down the page. */}
+      <div className={`ent-top${years ? "" : " ent-top--no-years"}`}>
+        <div className="ent-risk">
+          <p className="ent-risk-read">
+            <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskPercent(row.score) : "—"}</b>
+            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" /></span>
+          </p>
+          {hasRiskScore && (
+            <div className="ent-risk-scale" aria-hidden="true">
+              <span className="ent-risk-track" style={{ gridTemplateColumns: `${RISK_SCALE_SLAB}fr ${RISK_BAND_MIN.moderat - RISK_SCALE_SLAB}fr ${RISK_BAND_MIN.puternic - RISK_BAND_MIN.moderat}fr ${100 - RISK_BAND_MIN.puternic}fr` }}><i /><i /><i /><i /></span>
+              <span className="ent-risk-marker" style={{ left: `${Math.min(99, Math.max(1, row.score))}%` }} />
+              <span className="ent-risk-ticks">
+                <span style={{ left: `${RISK_SCALE_SLAB}%` }}>slab</span>
+                <span style={{ left: `${RISK_BAND_MIN.moderat}%` }}>moderat</span>
+                <span style={{ left: `${RISK_BAND_MIN.puternic}%` }}>puternic</span>
+              </span>
             </div>
-            <div className="l">Contracte prin proceduri</div>
-          </div>
-        )}
-        <div className="stat">
-          <div className="n"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>{formatRon(Number(txCounts.valueExact))} →</a></div>
-          <div className="l ent-tip"><Term tip id="valoare-inregistrata">Valoare înregistrată</Term></div>
+          )}
+          {peerLine && <p className="ent-risk-peer">{riskPeerWords(peerLine)}</p>}
         </div>
-        {role === "supplier" && registryCui !== null && profile?.employees != null && (
-          <div className="stat">
-            <div className="n">{formatInt(profile.employees)}</div>
-            <div className="l">Angajați (bilanț {profile.employeesYear})</div>
-          </div>
-        )}
-        {role === "supplier" && registryCui !== null && profile?.netTurnover != null && profile.netTurnover > 0 && (
-          <div className="stat">
-            <div className="n">{formatRon(profile.netTurnover)}</div>
-            <div className="l">Cifră de afaceri ({profile.employeesYear})</div>
-          </div>
-        )}
+        <div className="ent-activity">
+        <table className="ent-ledger">
+          <thead><tr><th scope="col"><span className="sr-only">Felul achiziției</span></th><th scope="col">Înregistrări</th><th scope="col">Valoare</th></tr></thead>
+          <tbody>
+            <tr>
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-da" />{ledger.nDa > 0
+                ? <a href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}>Achiziții directe&nbsp;→</a>
+                : <span>Achiziții directe</span>}</span></th>
+              <td className="ent-ledger-n">{formatInt(ledger.nDa)}</td>
+              <td>{formatRon(Number(ledger.valueDa))}</td>
+            </tr>
+            {ledger.nCt > 0 && (
+              <tr>
+                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" /><a href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}>Contracte prin proceduri&nbsp;→</a></span></th>
+                <td className="ent-ledger-n">{formatInt(ledger.nCt)}</td>
+                <td>{formatRon(Number(ledger.valueCt))}</td>
+              </tr>
+            )}
+            <tr className="ent-ledger-total">
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>Total înregistrat</a> <Term tip id="valoare-inregistrata" /></span></span></th>
+              <td className="ent-ledger-n">{formatInt(ledger.nDa + ledger.nCt)}</td>
+              <td>{formatRon(Number(txCounts.valueExact))}</td>
+            </tr>
+            {role === "supplier" && registryCui !== null && profile?.employees != null && (
+              <tr className="ent-ledger-fin">
+                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span>Angajați (bilanț {profile.employeesYear})</span></span></th>
+                <td className="ent-ledger-n" />
+                <td>{formatInt(profile.employees)}</td>
+              </tr>
+            )}
+            {role === "supplier" && registryCui !== null && profile?.netTurnover != null && profile.netTurnover > 0 && (
+              <tr className="ent-ledger-fin">
+                <th scope="row"><span className="ent-ledger-label"><i className={`ent-sw${years?.turnover ? " ent-sw-turnover" : ""}`} /><span>Cifră de afaceri ({profile.employeesYear})</span></span></th>
+                <td className="ent-ledger-n" />
+                <td>{formatRon(profile.netTurnover)}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        </div>
+        {years && <EntityYears model={years} title={isAuth ? "Cât a atribuit, pe ani" : "Cât a câștigat, pe ani"} />}
       </div>
 
       {summary && <EntityBrief summary={summary} isAuth={isAuth} />}

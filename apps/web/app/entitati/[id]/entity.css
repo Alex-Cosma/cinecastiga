@@ -28,8 +28,97 @@
 .ent-tip{position:relative}
 .ent-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;margin-top:0;width:max-content;max-width:min(46ch,100%)}
 .section>h2 .term-tip{font-size:15px;vertical-align:.1em}
-/* the KPI strip and the signal cards let an explanation overlap what follows */
-.ent-stats,.ent-card{overflow:visible}
+/* the top and the signal cards let an explanation overlap what follows */
+.ent-card{overflow:visible}
+
+/* ---- the top (owner, 2 November 2026): the risk on its bands | a ledger of the activity per channel, whose swatches
+   are the chart's legend | the value per year. One surface, its regions divided by hairlines, each centred in the
+   strip's height; on a tablet the chart takes its own row, on a phone everything stacks. ---- */
+.ent-top{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.7fr) minmax(0,1.85fr);margin:26px 0 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2,15px)}
+.ent-top--no-years{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.ent-top>*{min-width:0;margin:0;padding:18px 22px;display:grid;align-content:center}
+.ent-top>*+*{border-left:1px solid var(--line)}
+/* risk: the score, its band and the bands it falls in */
+.ent-risk{gap:10px}
+.ent-risk-read{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0}
+.ent-risk-read>b{font:700 30px/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.ent-risk-read>b[data-band="puternic"]{color:var(--risk)}
+.ent-risk-read>b[data-band="moderat"]{color:var(--amber-ink,var(--amber))}
+.ent-risk-read>b[data-band="slab"]{color:var(--ink2)}
+.ent-risk-read>span{font-size:14px;font-weight:500;color:var(--ink2)}
+.ent-risk-scale{position:relative;margin:2px 0 20px}
+.ent-risk-track{display:grid;height:8px;border-radius:4px;overflow:hidden;background:var(--sunk)}
+.ent-risk-track>i:nth-child(2){background:color-mix(in srgb,var(--faint) 28%,var(--sunk))}
+.ent-risk-track>i:nth-child(3){background:var(--amber-soft)}
+.ent-risk-track>i:nth-child(4){background:var(--risk-soft)}
+.ent-risk-marker{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-50%);box-shadow:0 0 0 2px var(--surface)}
+.ent-risk-ticks{position:absolute;left:0;right:0;top:14px;font-size:12px;line-height:1.4;color:var(--muted)}
+.ent-risk-ticks>span{position:absolute;white-space:nowrap}
+.ent-risk-peer{margin:0;font-size:13px;line-height:1.5;color:var(--ink2)}
+/* activity: a ledger, each channel's row a link to its records */
+.ent-ledger{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.ent-ledger thead th{padding:0 0 6px 14px;font:600 12px/1.4 var(--body);color:var(--muted);text-align:right;white-space:nowrap}
+.ent-ledger thead th:first-child{padding-left:0;text-align:left}
+.ent-ledger tbody th,.ent-ledger td{padding:8px 0;border-top:1px solid var(--line);font-size:14px;line-height:1.4}
+.ent-ledger tbody th{font-weight:400;text-align:left}
+.ent-ledger td{padding-left:14px;text-align:right;font-weight:600;white-space:nowrap}
+.ent-ledger td.ent-ledger-n{font:400 13px/1.4 var(--mono);color:var(--ink2)}
+/* the swatch on the label's first line; a long label wraps beside it, its arrow kept with its last word */
+.ent-ledger-label{display:flex;align-items:flex-start;gap:8px}
+.ent-ledger-label>.ent-sw{margin-top:.3em}
+.ent-ledger tbody th a{color:inherit;text-decoration:none}
+.ent-ledger tbody th a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.ent-ledger tbody .ent-ledger-total>*{border-top-color:var(--line2)}
+.ent-ledger tbody .ent-ledger-total>th{font-weight:600}
+.ent-ledger tbody .ent-ledger-total>td:last-child{font:700 17px/1.2 var(--display);letter-spacing:-.01em}
+.ent-ledger tbody .ent-ledger-fin>*{font-size:13px;font-weight:500;color:var(--ink2)}
+.ent-ledger tbody .ent-ledger-total+.ent-ledger-fin>*{border-top-style:dashed}
+.ent-sw{flex:none;width:10px;height:10px;border-radius:2px}
+.ent-sw-da{background:var(--accent)}
+.ent-sw-ct{background:var(--slate)}
+.ent-sw-turnover{width:12px;height:0;border-radius:0;border-top:2px dashed var(--orange)}
+/* the value per year: bars per channel in percent of the plot, the turnover's dashed line over them */
+.ent-years{gap:8px;container-type:inline-size}
+.ent-years-title{font:600 14px/1.4 var(--body);color:var(--ink)}
+.ent-years-plot{display:grid;grid-template-columns:52px minmax(0,1fr);grid-template-rows:136px auto}
+.ent-years-y{position:relative}
+.ent-years-y>span{position:absolute;right:8px;transform:translateY(50%);font:11px/1 var(--mono);color:var(--muted);white-space:nowrap}
+.ent-years-area{position:relative}
+.ent-years-grid{position:absolute;left:0;right:0;border-top:1px solid var(--line)}
+.ent-years-cols{position:absolute;inset:0;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.ent-years-col{display:flex;justify-content:center;align-items:stretch;margin:0;padding:0 2px;border:0;border-radius:4px;background:transparent;cursor:pointer}
+.ent-years-col:hover,.ent-years-col.is-active{background:var(--accent-soft)}
+.ent-years-col:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.ent-years-bar{display:flex;flex-direction:column;justify-content:flex-end;width:min(32px,62%);height:100%}
+.ent-years-bar>i{display:block;flex:none;border-radius:2px}
+.ent-years-da{background:var(--accent)}
+.ent-years-ct{background:var(--slate)}
+.ent-years-col.is-partial .ent-years-bar{opacity:.45}
+.ent-years-turnover{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+.ent-years-turnover polyline{fill:none;stroke:var(--orange);stroke-width:2;stroke-dasharray:5 4}
+.ent-years-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--orange);transform:translate(-50%,50%);pointer-events:none}
+.ent-years-tip{position:absolute;top:2px;z-index:2;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums;pointer-events:none}
+.ent-years-tip>b{font:700 13.5px/1.4 var(--display)}
+.ent-years-tip>span{display:flex;align-items:center;gap:6px;color:var(--ink2)}
+.ent-years-x{grid-column:2;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding-top:6px}
+.ent-years-x>span{text-align:center;font:11px/1.3 var(--mono);color:var(--muted)}
+.ent-years-x>span.is-partial{color:var(--faint)}
+.ent-years-short{display:none}
+@container (max-width:400px){
+  .ent-years-plot{grid-template-columns:60px minmax(0,1fr)}
+  .ent-years-long{display:none}
+  .ent-years-short{display:inline}
+  .ent-years-y>span,.ent-years-x>span{font-size:12px}
+}
+@media (max-width:1000px){
+  .ent-top{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr)}
+  .ent-top>.ent-years{grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}
+}
+@media (max-width:640px){
+  .ent-top{grid-template-columns:minmax(0,1fr)}
+  .ent-top>*+*{border-left:0;border-top:1px solid var(--line)}
+  .ent-top>*{padding:16px}
+}
 .mh-limits{font-size:13px;white-space:nowrap}
 .tx-excluded{display:flex;align-items:center;gap:2px;margin:16px 0}
 .tx-excluded>.data-exclusion-toggle{margin:0}
