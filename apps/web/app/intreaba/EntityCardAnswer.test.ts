@@ -119,7 +119,9 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     // One with the best score: the order is the score's, not the value's.
     expect(words).not.toContain("În ordinea valorii");
     expect(markup.match(/class="qb-arow ec-rrow"/g)).toHaveLength(5);
-    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat vârf în decembrie +1 71% puternic 190 mil. lei");
+    // Three patterns fit in their place, no „+1” (owner, 2 November 2026); the name opens the profile's page.
+    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat vârf în decembrie peste plafon 71% puternic 190 mil. lei");
+    expect(markup).toMatch(/class="qb-arow-name">1\. <a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
     expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat 60% moderat 180 mil. lei");
     // Tied rows share their place: 2, 2, 2, then 5.
     expect(words).toContain("2. Spital 4 Cluj");

@@ -157,16 +157,23 @@ export const patternWord = (code: string): string => {
 };
 
 /**
- * The tags of a ranked profile (P8, at most three): its patterns in the site's words (orange is theirs), the first two
- * and „+N” for the rest with the list in the (?), then „societate” / „asociație” for a buyer whose name shows a legal
- * form that is no institution's (final §3.10).
+ * A profile's patterns as tags in the site's words (orange is theirs), at most three (P8): all of them up to three, else
+ * the first two and „+N” with the rest listed in its (?). Owner, 2 November 2026: a „+1” hid a pattern that fits in its
+ * place, and the (?) only lists (the answer's own line under the list already says signals are no proof).
+ */
+function patternTags(flags: readonly string[], title: string): RowFact[] {
+  const folded = flags.length > 3;
+  const tags: RowFact[] = (folded ? flags.slice(0, 2) : flags).map((code) => ({ text: patternWord(code), tone: "signal" as const }));
+  if (folded) tags.push({ text: `+${flags.length - 2}`, tip: { title, text: `${flags.slice(2).map(patternWord).join("; ")}.` } });
+  return tags;
+}
+
+/**
+ * The tags of a ranked profile (P8, at most three): its patterns (patternTags), then „societate” / „asociație” for a
+ * buyer whose name shows a legal form that is no institution's, where a place is left (final §3.10).
  */
 export function riskFacts(row: Pick<RiskPlace, "name" | "flags">, spec: Spec): RowFact[] {
-  const tags: RowFact[] = row.flags.slice(0, 2).map((code) => ({ text: patternWord(code), tone: "signal" as const }));
-  if (row.flags.length > 2) tags.push({
-    text: `+${row.flags.length - 2}`,
-    tip: { title: "Alte tipare", text: row.flags.slice(2).map(patternWord).join(", ") + ". Piste de verificat, nu dovezi." },
-  });
+  const tags = patternTags(row.flags, "Alte tipare");
   const form = spec.dim === "supplier" ? null : buyerForm(row.name);
   if (form && tags.length < 3) tags.push({ text: form, tip: { id: "cumparator-societate" } });
   return tags.slice(0, 3);
@@ -235,11 +242,7 @@ export function legacyTiesHeadline(ties: LegacyTies, spec: Spec): LegacyTiesHead
 
 /** The tags of a profile at the top of the old index: as riskFacts, with that answer's words for the rest („Alte semnale”). */
 export function legacyTieFacts(row: LegacyTiePlace, spec: Spec): RowFact[] {
-  const tags: RowFact[] = row.flags.slice(0, 2).map((code) => ({ text: patternWord(code), tone: "signal" as const }));
-  if (row.flags.length > 2) tags.push({
-    text: `+${row.flags.length - 2}`,
-    tip: { title: "Alte semnale", text: row.flags.slice(2).map(patternWord).join(", ") + ". Semnale statistice, nu dovezi." },
-  });
+  const tags = patternTags(row.flags, "Alte semnale");
   const form = spec.dim === "supplier" ? null : buyerForm(row.name);
   if (form && tags.length < 3) tags.push({ text: form, tip: { id: "cumparator-societate" } });
   return tags.slice(0, 3);
