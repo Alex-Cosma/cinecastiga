@@ -2,17 +2,17 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ProfileNotice, ProfileSourceNote } from "./ProfileNotes";
+import { ProfileSourceNote } from "./ProfileNotes";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
 // R0: entity_flags and the profile sources are accepted direct acquisitions only
 // (apps/ingestion flags/marts.ts, runRows); "inclusiv oferte neacceptate" was false.
 describe("historical profile notes", () => {
-  it("says above the answer what a profile is, recorded values and not payments", () => {
-    const shown = text(renderToStaticMarkup(createElement(ProfileNotice)));
-    expect(shown).toContain("Profil istoric: achiziții directe acceptate; valori înregistrate, nu plăți.");
-    expect(shown).not.toMatch(/neacceptate|toate sursele/);
+  it("draws no banner above the answer: the line under its sentence says the basis (owner, 2 November 2026)", () => {
+    const panel = readFileSync(new URL("./AskPanel.tsx", import.meta.url), "utf8");
+    expect(panel).not.toMatch(/ProfileNotice|cq-profile-notice/);
+    expect(readFileSync(new URL("./question-results.css", import.meta.url), "utf8")).not.toContain("cq-profile-notice");
   });
 
   it("says the sources match the profile and keeps the reconciliation", () => {
@@ -30,9 +30,11 @@ describe("historical profile notes", () => {
     expect(text(renderToStaticMarkup(createElement(ProfileSourceNote, { reconciled: null, profileCount: 3 })))).toBe("Doar achiziții directe acceptate, ca profilul.");
   });
 
-  it.each(["./AskPanel.tsx", "./EvidenceDrawer.tsx"])("%s shows these notes, not the old claim", (file) => {
-    const source = readFileSync(new URL(file, import.meta.url), "utf8");
-    expect(source).not.toContain("neacceptate");
-    expect(source).toMatch(/<Profile(Notice|SourceNote)\b/);
+  it.each(["./AskPanel.tsx", "./EvidenceDrawer.tsx"])("%s never makes the old claim", (file) => {
+    expect(readFileSync(new URL(file, import.meta.url), "utf8")).not.toContain("neacceptate");
+  });
+
+  it("keeps the source note in the drawer", () => {
+    expect(readFileSync(new URL("./EvidenceDrawer.tsx", import.meta.url), "utf8")).toMatch(/<ProfileSourceNote\b/);
   });
 });
