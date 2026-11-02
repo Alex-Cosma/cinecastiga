@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { dateSpan, kindCounts, recordExactValue, records, savedKind, splitScopeLabel, stateClass, summaryParts } from "./drawer-text";
+import { dateSpan, kindCounts, recordExactValue, records, savedKind, splitScopeLabel, stateNote, summaryParts } from "./drawer-text";
 
 // The records drawer (owner, 2 November 2026): on a phone the record comes first; sizes, the state's colour,
 // the exact value and the profile note's border follow the critique of the same day.
@@ -41,11 +41,20 @@ describe("a record's details", () => {
     expect(recordExactValue({ valueExact: "2500.00", nWinners: 2 })).toBe("2.500,00 lei");
   });
 
-  it("colours the state: accepted green, an awarded contract neutral, amber for the rest", () => {
-    expect(stateClass({ state: "Oferta acceptata", src: "da" })).toBe("ev-state ev-state-accepted");
-    expect(stateClass({ state: null, src: "contracts" })).toBe("ev-state ev-state-awarded");
-    expect(stateClass({ state: null, src: "da" })).toBe("ev-state");
-    expect(stateClass({ state: "Oferta respinsa", src: "da" })).toBe("ev-state");
+  it("says a state only where the kind does not: never an accepted acquisition's, never a contract's none", () => {
+    expect(stateNote({ state: "Oferta acceptata", src: "da" })).toBeNull();
+    expect(stateNote({ state: null, src: "contracts" })).toBeNull();
+    expect(stateNote({ state: null, src: "da" })).toBe("Stare neprecizată");
+    expect(stateNote({ state: "Oferta respinsa", src: "da" })).toBe("Oferta respinsa");
+  });
+
+  it("dates a record without „Finalizată”/„Semnat”, its CPV code a hint on the domain and in the details", () => {
+    const source = readFileSync(new URL("./EvidenceDrawer.tsx", import.meta.url), "utf8");
+    expect(source).not.toMatch(/"Finalizată"|"Semnat"/);
+    expect(source).toContain('<span className="ev-hint" data-hint={`CPV ${r.cpvCode}`}>{cpv}</span>');
+    expect(source).toContain("<dt>Cod CPV</dt><dd>{r.cpvCode}</dd>");
+    expect(source).toMatch(/<th>Sursă<\/th>/);
+    expect(source).toMatch(/>SEAP ↗<\/a>/);
   });
 
   it("drops „ID rând” for a direct acquisition and never prints a raw „RON” value", () => {
@@ -59,12 +68,11 @@ const css = readFileSync(new URL("./evidence-drawer.css", import.meta.url), "utf
 const phone = css.slice(css.indexOf("@media(max-width:760px)"));
 
 describe("the records drawer's styles", () => {
-  it("keeps accepted records green after the amber rule, an awarded contract neutral", () => {
-    const amber = css.indexOf(".ev-export-limit,.ev-state{color:var(--amber-ink)}");
-    expect(amber).toBeGreaterThanOrEqual(0);
-    // Two classes outrank the amber rule wherever they stand.
-    expect(css).toContain(".ev-state.ev-state-accepted{color:var(--ok);background:var(--sunk)}");
-    expect(css).toContain(".ev-state.ev-state-awarded{color:var(--ink2);background:var(--sunk)}");
+  it("keeps an unusual state amber and the source as plain links, the hint only where a pointer hovers", () => {
+    expect(css).toContain(".ev-export-limit,.ev-state{color:var(--amber-ink)}");
+    expect(css).toMatch(/\.ev-table \.ev-seap,\.ev-table \.ev-ted\{[^}]*text-decoration:none\}/);
+    expect(css).not.toMatch(/\.ev-seap\{[^}]*border:1px/);
+    expect(css).toMatch(/@media\(hover:none\)\{\.ev-hint\{[^}]*\}\.ev-hint:hover::after\{content:none\}\}/);
   });
 
   it("reads at 13 px on a desktop, 14 px on a phone, small labels 11 px caps, fields 16 px on a phone", () => {
