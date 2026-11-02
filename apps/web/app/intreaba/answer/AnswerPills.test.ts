@@ -52,7 +52,7 @@ describe("the answer's pills", () => {
 
   it("keeps a distribution's entity and group as text: their windows follow up the entity and tick one by one", () => {
     const spec: AskSpec = { block: "distribution", measure: "value", dim: "authority", filters: { authorityId: 1, authorityName: "MUNICIPIUL VASLUI" }, peers: { similar: true } };
-    const markup = render(spec, ["risc față de grup", "MUNICIPIUL VASLUI", "grupul de comparație: populație apropiată", "populație RPL 2021", "profil istoric: achiziții directe acceptate, toată arhiva"]);
+    const markup = render(spec, ["risc față de grup", "MUNICIPIUL VASLUI", "grupul de comparație: populație apropiată", "populație RPL 2021", "achiziții directe"]);
     expect(markup).not.toContain('class="cq-pill"');
   });
 });

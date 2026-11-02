@@ -193,7 +193,7 @@ export type FactId = string;
 export interface BlockFilters {
   /** P1: the phrases of the sentence, in order (F1b: sentence.ts, one slot per editable phrase). */
   sentence(spec: FilterSpec, ctx: FilterCtx): readonly Slot[];
-  /** Component 18: "Profil istoric · achiziții directe, toată arhiva (?)" on the three profiles. */
+  /** Component 18: "Achiziții directe (?)" on the three profiles, the archive and the ceiling in the (?). */
   scopeLine(spec: FilterSpec, ctx: FilterCtx): "historical-da" | null;
   /**
    * P2. Today's builder: the items of "Adaugă o condiție", the same generic

@@ -260,9 +260,9 @@
   padding: 8px 0;
   font-weight: 500;
 }
+/* The notes run the answer's whole width (owner, 2 November 2026). */
 .cq-caveats p {
   padding-left: 18px;
-  max-width: 950px;
   line-height: 1.7;
 }
 .cq-ranking > button,
