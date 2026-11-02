@@ -37,8 +37,14 @@ export interface DepRow {
   name: string;
   county: string | null;
   foreign: boolean;
+  /** the pair's contracts (procedures) */
   here: number;
+  /** the pair's direct acquisitions */
+  daHere: number;
+  /** everything the firm won: contracts and direct acquisitions */
   total: number;
+  /** the direct acquisitions in `total`; null while the mart predates them (built before 2 November 2026) */
+  daTotal: number | null;
   nAuth: number;
   n: number;
   ns: number;
@@ -177,10 +183,13 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
 
   // ── dependency: suppliers worth a bubble (≥1% of the authority or ≥1 mil, top 150)
   const floor = Math.max(500_000, totalContracts * 0.001);
+  // da_here and v_da are read through to_jsonb: a mart built before they existed reads them as null instead of
+  // failing, until the next daily radiografie rebuild.
   const depRows = (await sql`
     select supplier_id::text id, supplier_name, county, is_foreign, v_here, v_total, n_auth, n_here, ns_here, nk_here,
-           y0, y1, c_frame, c_plain, yrs, turn_win, ny_win, turn_last, emp_last, win_from, win_to
-    from marts.supplier_dependency
+           y0, y1, c_frame, c_plain, yrs, turn_win, ny_win, turn_last, emp_last, win_from, win_to,
+           to_jsonb(sd) ->> 'da_here' da_here, to_jsonb(sd) ->> 'v_da' v_da
+    from marts.supplier_dependency sd
     where authority_id = ${id} and v_here >= ${floor}
     order by v_here desc limit 150
   `) as unknown as Record<string, unknown>[];
@@ -195,6 +204,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     const nyWin = num(r["ny_win"]);
     const c = cFrame + cPlain;
     const here = num(r["v_here"]),
+      daHere = num(r["da_here"]),
       total = num(r["v_total"]);
     return {
       id: String(r["id"]),
@@ -202,7 +212,9 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
       county: (r["county"] as string | null) ?? null,
       foreign: Boolean(r["is_foreign"]),
       here,
+      daHere,
       total,
+      daTotal: numOrNull(r["v_da"]),
       nAuth: num(r["n_auth"]),
       n: num(r["n_here"]),
       ns: num(r["ns_here"]),
@@ -218,7 +230,8 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
       empLast: numOrNull(r["emp_last"]),
       ratio: turnWin && nyWin >= 1 && c > 0 ? c / turnWin : null,
       shareHere: totalContracts > 0 ? here / totalContracts : 0,
-      shareLife: total > 0 ? here / total : 0,
+      // The authority in everything the firm won, its direct acquisitions included on both sides (owner, 2 November 2026).
+      shareLife: total > 0 ? Math.min(1, (here + daHere) / total) : 0,
     };
   });
 

@@ -176,7 +176,7 @@ export const GLOSSARY = {
   },
   "grafic-dependenta": {
     title: "Graficul relației",
-    text: "Procentul de pe axa verticală arată ponderea autorității în contractele publice ale firmei; un procent mare nu exclude clienți privați. Mărimea cercului arată valoarea alocată. Ctrl/⌘ + scroll mărește graficul, tragerea îl deplasează, un clic deschide detaliile.",
+    text: "Procentul de pe axa verticală arată cât din tot ce a câștigat firma, contracte și achiziții directe, vine de la această autoritate; un procent mare nu exclude clienți privați. Mărimea cercului arată valoarea alocată. Ctrl/⌘ + scroll mărește graficul, tragerea îl deplasează, un clic deschide detaliile.",
   },
   "interval-detectat": {
     title: "Banda aurie",
