@@ -20,6 +20,7 @@ import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} fro
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
 import { listGroupHeader, type DrawerListGroup } from "./drawer-group";
 import { ProfileSourceNote } from "./ProfileNotes";
+import { drawerDate as date, recordExactValue, records, splitScopeLabel, stateClass, summaryParts } from "./drawer-text";
 
 export interface EvidenceDrawerProps {
   spec: AskSpec;
@@ -52,8 +53,6 @@ export interface EvidenceDrawerProps {
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
-const records = (n: number) => countWords(n, "înregistrare", "înregistrări");
-const date = (value: string | null) => value ? value.split("-").reverse().join(".") : "Dată neprecizată";
 
 export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale, initialSort, listGroup }: EvidenceDrawerProps) {
   // Saved and followed selections keep both the question and the part opened.
@@ -74,6 +73,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const [sort, setSort] = useState<DrillSort>(() => initialSort ?? (!isHistoricalProfile(spec) && !spec.filters.authorityId && !spec.filters.authorityName && !spec.filters.supplierId && !spec.filters.supplierName ? "source" : "value"));
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
+  // On a phone search, filters and order fold behind „Caută / filtrează”; a saved drawer's filters open it.
+  const [toolsOpen, setToolsOpen] = useState(() => !!(initialFilters?.search || initialFilters?.state || initialFilters?.stream));
   const [retry, setRetry] = useState(0);
   const [exporting, setExporting] = useState<"all" | "filtered" | null>(null);
   const [exportMessage, setExportMessage] = useState("");
@@ -89,6 +90,9 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
     : result && listGroup ? listGroupHeader(listGroup, result.sourceValue) : null;
   // Following a group's own records fixes all its members, as „Urmărește grupa” does: the same limit, said before the setup page.
   const watchBlocked = drawerWatchBlocked(spec, result?.group);
+  // A phone's title is the part opened with its records counted (the question one line under it); the desktop's is the question.
+  const [scopeName, scopeTail] = scopeLabel ? splitScopeLabel(scopeLabel) : ["", ""];
+  const titleCount = result && <span className="ev-title-count"> · <span>{records(result.sourceTotal)}</span></span>;
 
   useEffect(() => {
     const node = dialog.current;
@@ -159,15 +163,15 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
     }
   }
 
-  return <dialog ref={dialog} className="evidence-drawer" aria-labelledby="evidence-title"
+  return <dialog ref={dialog} className="evidence-drawer" aria-labelledby={scopeLabel ? "evidence-scope evidence-title" : "evidence-title"}
     onCancel={(event) => { event.preventDefault(); closeRef.current(); }}
     onClick={(event) => {
       if (event.target !== event.currentTarget) return;
       const box = event.currentTarget.getBoundingClientRect();
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeRef.current();
     }}>
-    <header className="ev-header">
-      <div><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}</h2>{scopeLabel && <p className="ev-scope-label">{scopeLabel}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
+    <header className={`ev-header${scopeLabel ? " has-scope" : ""}`}>
+      <div className="ev-heading"><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}{!scopeLabel && titleCount}</h2>{scopeLabel && <p className="ev-scope-label" id="evidence-scope">{scopeName}{scopeTail && <span className="ev-scope-tail">{scopeTail}</span>}{titleCount}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
       <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
     <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">
@@ -190,6 +194,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         <div><span>{result?.group || listGroup ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
         <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
         <p>{result?.dateFrom ? `${date(result.dateFrom)} — ${date(result.dateTo)}` : result ? "Nicio dată de finalizare disponibilă în selecție." : "Acoperirea înregistrărilor se afișează după încărcare."}</p>
+        <p className="ev-summary-line">{summaryParts(result.sourceTotal, result.sourceValue, result.dateFrom, result.dateTo).map((part, i) => <span key={i}>{i ? " · " : ""}<span>{part}</span></span>)}</p>
       </div>
       {result?.profile && <ProfileSourceNote reconciled={result.profileReconciled} profileCount={result.profileCount} />}
       {result && <details className="ev-calculation">
@@ -215,7 +220,9 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
           {result.profileCount > result.profiles.length && <p>Sunt prezentate primele {countWords(result.profiles.length, "profil", "profiluri")} din {count(result.profileCount)}. Pentru formula unei entități, deschide profilul din diagramă. Lista de surse include întreaga selecție.</p>}
         </>}
       </details>}
-      <div className="ev-filters">
+      <div className={`ev-tools${toolsOpen ? " is-open" : ""}`}>
+      <button type="button" className="ev-tools-toggle" aria-expanded={toolsOpen} aria-controls="ev-filters ev-sort" onClick={() => setToolsOpen((open) => !open)}>Caută / filtrează</button>
+      <div className="ev-filters" id="ev-filters">
         <label className="ev-search"><span>Caută în această listă</span><input type="search" value={search} maxLength={200} placeholder="Firmă, instituție, cod sau obiect…" onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label>
         <label><span>Starea ofertei</span><select value={state} onChange={(e) => { setState(e.target.value); setPage(0); }}>
           <option value="">Toate stările</option>
@@ -223,11 +230,12 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         </select></label>
         {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Ce fel de achiziții</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate achizițiile</option><option value="da">Achizițiile directe</option><option value="contracts">Contractele din proceduri</option></select></label>}
       </div>
-      <div className="ev-list-toolbar">
+      <div className={`ev-list-toolbar${filtered ? " is-filtered" : ""}`}>
         <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result && !error ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
-        <label className="ev-sort"><span className="ev-sr-only">Ordonează sursele</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
+        <label className="ev-sort" id="ev-sort"><span className="ev-sr-only">Ordonează sursele</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
           <option value="source:desc">Ordinea sursei</option><option value="value:desc">Valoare ↓</option><option value="value:asc">Valoare ↑</option><option value="date:desc">Cele mai recente</option><option value="date:asc">Cele mai vechi</option><option value="supplier:asc">Furnizor A–Z</option><option value="authority:asc">Instituție A–Z</option>
         </select></label>
+      </div>
       </div>
       </>}
       {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Încearcă din nou</button></div>}
@@ -236,14 +244,14 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         {result && !error && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Stare și sursă</th></tr></thead>
           <tbody>{result.rows.map((r) => {
-            const links = evidenceLinks(r);
+            const links = evidenceLinks(r), exact = recordExactValue(r);
             return <tr key={`${r.src}:${r.refId}:${r.supplierId}`}>
               <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`}>{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`}</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{r.src === "da" ? "Finalizată" : "Semnat"} {r.src === "contracts" && !r.date ? "· dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvName ?? "Categorie CPV neprecizată"}</span><small className="ev-muted">{r.cpvCode ? `CPV ${r.cpvCode}` : ""}</small></td>
               <td data-label="Instituție și furnizor"><div className="ev-party">{r.authorityId ? <Link href={`/entitati/${r.authorityId}`}>{r.authority ?? `Instituție #${r.authorityId}`}</Link> : r.authority ?? "Instituție neprecizată"}</div>{r.county && <small className="ev-muted">Județul instituției: {countyName(r.county)}</small>}<span className="ev-party-arrow" aria-hidden="true">↓</span><div className="ev-party">{r.supplierId ? <Link href={`/entitati/${r.supplierId}`}>{r.supplier ?? `Furnizor #${r.supplierId}`}</Link> : r.supplier ?? "Furnizor neprecizat"}</div></td>
               <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
-                <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd><dt>ID rând</dt><dd>{r.refId}</dd><dt>Valoare exactă</dt><dd>{r.valueExact} RON</dd>{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
+                <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
               </td>
-              <td data-label="Stare și sursă"><span className={`ev-state${r.state === "Oferta acceptata" ? " ev-state-accepted" : ""}`}>{r.state ?? (r.src === "contracts" ? "Contract atribuit" : "Stare neprecizată")}</span>{links.seap ? <a className="ev-seap" href={links.seap} target="_blank" rel="noopener noreferrer" aria-label={`Deschide ${r.daCode ?? r.refId} în SEAP`}>Vezi în SEAP ↗</a> : <span className="ev-source-missing">Identificatorul SEAP lipsește din import.</span>}{links.ted && <a className="ev-ted" href={links.ted} target="_blank" rel="noopener noreferrer">Același anunț în TED ↗</a>}</td>
+              <td data-label="Stare și sursă"><span className={stateClass(r)}>{r.state ?? (r.src === "contracts" ? "Contract atribuit" : "Stare neprecizată")}</span>{links.seap ? <a className="ev-seap" href={links.seap} target="_blank" rel="noopener noreferrer" aria-label={`Deschide ${r.daCode ?? r.refId} în SEAP`}>Vezi în SEAP ↗</a> : <span className="ev-source-missing">Identificatorul SEAP lipsește din import.</span>}{links.ted && <a className="ev-ted" href={links.ted} target="_blank" rel="noopener noreferrer">Același anunț în TED ↗</a>}</td>
             </tr>;
           })}</tbody>
         </table>}

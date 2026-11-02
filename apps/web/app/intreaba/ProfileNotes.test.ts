@@ -21,6 +21,10 @@ describe("historical profile notes", () => {
     // The numeral rule (G10): "de" from 20 on.
     expect(matched).toContain("coincid cu agregatele celor 1.234 de profiluri selectate");
     expect(text(renderToStaticMarkup(createElement(ProfileSourceNote, { reconciled: true, profileCount: 12 })))).toContain("celor 12 profiluri selectate");
+    // One profile is singular, never „celor 1 profil selectate” (owner, 2 November 2026).
+    const one = text(renderToStaticMarkup(createElement(ProfileSourceNote, { reconciled: true, profileCount: 1 })));
+    expect(one).toContain("coincid cu agregatul profilului selectat.");
+    expect(one).not.toContain("celor 1");
     expect(matched).not.toMatch(/neacceptate|Poți selecta starea/);
     expect(text(renderToStaticMarkup(createElement(ProfileSourceNote, { reconciled: false, profileCount: 3 })))).toContain("diferă");
     expect(text(renderToStaticMarkup(createElement(ProfileSourceNote, { reconciled: null, profileCount: 3 })))).toBe("Doar achiziții directe acceptate, ca profilul.");
