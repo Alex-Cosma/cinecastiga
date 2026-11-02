@@ -176,6 +176,8 @@ table.rank th {
 }
 table.rank td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 table.rank td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* a numeric column's header stands over its figures, not at the column's left edge */
+table.rank th.num { text-align: right; }
 table.rank td.pos { color: var(--muted); width: 28px; font-variant-numeric: tabular-nums; }
 table.rank .county { color: var(--muted); font-size: 12px; }
 
