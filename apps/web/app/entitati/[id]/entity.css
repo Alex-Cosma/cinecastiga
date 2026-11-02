@@ -5,6 +5,9 @@
 /* ---- "Pe scurt" ---- */
 .ent-brief{margin:22px 0 8px;padding:20px 22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2,10px);display:grid;gap:10px}
 .ent-brief h2{font-family:var(--display);font-size:20px;letter-spacing:-.015em;margin:0}
+/* the strip's notes right under it: what its figures leave out (contracts above the cap) or split (consortia) */
+.ent-top-notes{margin:10px 2px 0;display:grid;gap:4px}
+.ent-top-notes>p{margin:0;font-size:13.5px;line-height:1.6;color:var(--ink2)}
 .ent-brief>p{margin:0;max-width:none;font-size:15.5px;line-height:1.6;color:var(--ink2)}
 .ent-brief>p strong{color:var(--ink);font-weight:600}
 .ent-brief-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px 28px;margin-top:6px}
@@ -124,6 +127,28 @@
   .ent-top>*{padding:16px}
 }
 .mh-limits{font-size:13px;white-space:nowrap}
+/* ---- the signals (owner, 2 November 2026): the index first, then each card shows what it found; its rule is folded
+   on its own row under the card's head, and the December charts sit side by side, each with its year ---- */
+.ent-signal-index{margin:0 0 18px}
+.ent-signal-index .rank td.num,.ent-signal-index .rank th.num{text-align:right}
+.ent-signal-index .risk-points{font-size:13px}
+/* on a phone each signal is one row: its name and meaning, then „În risc” and „Apariții” labelled under it */
+@media (max-width:600px){
+  .ent-signal-index .rank,.ent-signal-index .rank tbody{display:block;min-width:0}
+  .ent-signal-index .rank thead{display:none}
+  .ent-signal-index .rank tr{display:grid;grid-template-columns:auto auto;justify-content:start;gap:4px 18px;padding:10px 14px;border-top:1px solid var(--line)}
+  .ent-signal-index .rank tr:first-child{border-top:0}
+  .ent-signal-index .rank td{display:block;border:0;padding:0}
+  .ent-signal-index .rank td:first-child{grid-column:1/-1}
+  .ent-signal-index .rank td.num{text-align:left}
+  .ent-signal-index .rank td.num::before{content:attr(data-label) " ";font:12px var(--body);color:var(--muted)}
+}
+.method-head .mh-rule{flex:1 0 100%;margin:0;font-size:13px}
+.method-head .mh-rule>summary{cursor:pointer;width:fit-content;color:var(--accent);font-weight:500}
+.method-head .mh-rule>.mh-desc{margin:6px 0 2px;max-width:85ch;line-height:1.6}
+.yem-row{display:flex;flex-wrap:wrap;gap:4px 28px;margin-bottom:12px}
+.yem-fig{flex:1 1 240px;max-width:420px;min-width:0}
+.yem-cap{margin:10px 0 0;font:600 13px/1.4 var(--body);color:var(--ink2)}
 .tx-excluded{display:flex;align-items:center;gap:2px;margin:16px 0}
 .tx-excluded>.data-exclusion-toggle{margin:0}
 

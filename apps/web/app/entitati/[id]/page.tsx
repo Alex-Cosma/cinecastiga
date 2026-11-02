@@ -22,7 +22,7 @@ import {
   type EntityFlagRow,
 } from "@/lib/marts";
 import EntityYears from "./EntityYears";
-import { bucharestYear, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
+import { bucharestYear, evidenceWithPeriod, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
@@ -45,7 +45,7 @@ import TxTable from "./TxTable";
 import PartnersTable from "./PartnersTable";
 import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
-import EntityBrief from "./EntityBrief";
+import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
 import "./entity.css";
 
@@ -242,7 +242,7 @@ export default async function EntityPage({
         items={[
           { id: "top", label: "Rezumat" },
           ...(row.flags.length > 0 || signalTypes.length > 0
-            ? [{ id: row.flags.length > 0 ? "semnale" : "toate-semnalele", label: "Semnale",
+            ? [{ id: "semnale", label: "Semnale",
                 count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
             : []),
           { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
@@ -316,7 +316,8 @@ export default async function EntityPage({
         {years && <EntityYears model={years} title={isAuth ? "Cât a atribuit, pe ani" : "Cât a câștigat, pe ani"} />}
       </div>
 
-      {summary && <EntityBrief summary={summary} isAuth={isAuth} />}
+      {summary && <SummaryNotes notes={summary.notes} />}
+      {summary && <EntityBrief summary={summary} />}
 
       {/* Legal representatives (ONRC snapshot) */}
       {reps.length > 0 && (
@@ -366,13 +367,49 @@ export default async function EntityPage({
         </section>
       )}
 
-      {/* The criteria behind the risk score */}
-      {row.flags.length > 0 ? (
-        <section className="section" id="semnale">
-          <h2>De ce este semnalată</h2>
+      {/* The signals in one section (owner, 2 November 2026, after the Impeccable critique): every signal type first, as an
+          index (what it adds to the risk, how often it appears), then a card for each criterion behind the score — what it
+          found first, the rule folded under „Regula”. The former „Toate semnalele” was the same table further down. */}
+      {(row.flags.length > 0 || signalTypes.length > 0) && (
+        <section className="section ent-tip-col" id="semnale">
+          <h2 className="ent-tip">{row.flags.length > 0 ? "De ce este semnalată" : "Semnale"} <Term tip id="semnale-numarare" /></h2>
           <p className="hint">
             Piste de verificat, nu dovezi · <Link href="/metodologie">metodologie</Link>
           </p>
+
+          {signalTypes.length > 0 && (
+            <div className="ask-tablewrap ent-signal-index"><table className="rank">
+              <thead>
+                <tr>
+                  <th scope="col">Semnal</th>
+                  <th scope="col" className="num">În risc <Term tip id="scor-risc" /></th>
+                  <th scope="col" className="num">Apariții</th>
+                </tr>
+              </thead>
+              <tbody>
+                {signalTypes.map((code) => {
+                  const m = FLAG_META[code]!;
+                  const n = signalCounts[code] ?? 0;
+                  return (
+                    <tr key={code}>
+                      <td>
+                        <Link href={entitySignalsUrl(code)}>{flagLabel(code)}</Link>
+                        <div className="note">{m.short}</div>
+                      </td>
+                      <td className="num" data-label="În risc">
+                        {!inCri(code) ? <span className="note">nu intră</span> : !hasRiskScore ? <span className="note">necalculat</span> : row.scoreParts[code as RiskCriterion]
+                          ? <span className="risk-points">+{formatInt(points[code as RiskCriterion] ?? 0)}</span>
+                          : <span className="note">sub prag</span>}
+                      </td>
+                      <td className="num" data-label="Apariții">
+                        <Link href={entitySignalsUrl(code)}>{formatInt(n)}</Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table></div>
+          )}
 
           {row.flags.map((code) => {
             const m = FLAG_META[code];
@@ -386,11 +423,14 @@ export default async function EntityPage({
                     {row.scoreParts[code as RiskCriterion] && <span className="risk-points"> +{formatInt(points[code as RiskCriterion] ?? 0)}</span>}
                   </h3>
                   {row.scoreParts[code as RiskCriterion] && <p className="mh-fact">{riskFact(code as RiskCriterion, row.scoreParts[code as RiskCriterion]!)}</p>}
-                  <p className="mh-desc">{m.description}</p>
                   <Link href={`/metodologie#${code}`} className="mh-link">
                     cum se calculează →
                   </Link>
                   <Term tip title="Limite" text={m.caveat} className="mh-limits">limite</Term>
+                  <details className="mh-rule">
+                    <summary>Regula</summary>
+                    <p className="mh-desc">{m.description}</p>
+                  </details>
                 </div>
 
                 {code === "da_split" ? (
@@ -429,7 +469,7 @@ export default async function EntityPage({
                     const lines = evs
                       .map((e) => {
                         const line = riskEvidenceLine(code, e.evidence);
-                        return line ? `${signalPeriodLabel(e.period, e.evidence)} · ${line}` : null;
+                        return line ? evidenceWithPeriod(signalPeriodLabel(e.period, e.evidence), e.period, line) : null;
                       })
                       .filter((l): l is string => l !== null);
                     if (lines.length === 0) return null;
@@ -442,20 +482,23 @@ export default async function EntityPage({
                       </ul>
                     );
                   })()}
-                {code === "da_year_end" &&
-                  flagEvidence
-                    .filter((e: FlagEvidenceRow) => e.flagCode === code && e.evidence?.["year"])
-                    .slice(0, 3)
-                    .map((e) => (
-                      <YearMiniChart
-                        key={String(e.evidence!["year"])}
-                        monthly={monthly}
-                        year={String(e.evidence!["year"])}
-                        entityId={id}
-                        entityName={cleanName(row.name)}
-                        role={role}
-                      />
-                    ))}
+                {code === "da_year_end" && (
+                  <div className="yem-row">
+                    {flagEvidence
+                      .filter((e: FlagEvidenceRow) => e.flagCode === code && e.evidence?.["year"])
+                      .slice(0, 3)
+                      .map((e) => (
+                        <YearMiniChart
+                          key={String(e.evidence!["year"])}
+                          monthly={monthly}
+                          year={String(e.evidence!["year"])}
+                          entityId={id}
+                          entityName={cleanName(row.name)}
+                          role={role}
+                        />
+                      ))}
+                  </div>
+                )}
 
                 {code === "da_round" || code === "da_above_ceiling" ? (
                   <p>
@@ -466,45 +509,6 @@ export default async function EntityPage({
               </div>
             );
           })}
-        </section>
-      ) : null}
-
-      {/* Every signal type for this entity, kept apart from the CRI (audit F24) */}
-      {signalTypes.length > 0 && (
-        <section className="section ent-tip-col" id="toate-semnalele">
-          <h2 className="ent-tip">Toate semnalele <Term tip id="semnale-numarare" /></h2>
-          <p className="hint">Piste de verificat, nu dovezi.</p>
-          <div className="ask-tablewrap"><table className="rank">
-            <thead>
-              <tr>
-                <th scope="col">Semnal</th>
-                <th scope="col">În risc <Term tip id="scor-risc" /></th>
-                <th scope="col" className="num">Apariții</th>
-              </tr>
-            </thead>
-            <tbody>
-              {signalTypes.map((code) => {
-                const m = FLAG_META[code]!;
-                const n = signalCounts[code] ?? 0;
-                return (
-                  <tr key={code}>
-                    <td>
-                      <Link href={entitySignalsUrl(code)}>{flagLabel(code)}</Link>
-                      <div className="note">{m.short}</div>
-                    </td>
-                    <td className="county">
-                      {!inCri(code) ? "nu intră" : !hasRiskScore ? "necalculat" : row.scoreParts[code as RiskCriterion]
-                        ? <span className="risk-part"><span className="risk-meter" aria-hidden="true"><span className={RISK_BAND_CLASS[band]} style={{ width: `${Math.round((row.scoreParts[code as RiskCriterion]!.x / 3) * 100)}%` }} /></span>+{formatInt(points[code as RiskCriterion] ?? 0)}</span>
-                        : "sub prag"}
-                    </td>
-                    <td className="num">
-                      <Link href={entitySignalsUrl(code)}>{formatInt(n)}</Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table></div>
         </section>
       )}
 
@@ -600,7 +604,7 @@ export default async function EntityPage({
           {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!)}</>}
         </li>)}</ul>
         <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
-          <a href="#toate-semnalele">toate semnalele</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
+          <a href="#semnale">lista semnalelor</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
           <Link href="/metodologie#indice">Formula și limitele →</Link></p>
       </details>}
     </>

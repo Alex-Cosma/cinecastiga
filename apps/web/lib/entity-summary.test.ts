@@ -138,7 +138,7 @@ describe("contracts above the 1 mld. lei cap", () => {
     const s = composeEntitySummary({ ...authority, aboveCap })!;
     const sentence = s.sentences[1]!;
     expect(text(sentence)).toBe(
-      `Separat, 2 contracte de peste 1 mld. lei (${formatRon("13790000000.00")}) nu intră în aceste cifre: `
+      `Separat, 2 contracte de peste 1 mld. lei (${formatRon("13790000000.00")}) nu intră în cifrele de mai sus: `
       + `„Proiectare si executie Magistrala I de metrou si tren metropolitan…” (${formatRon("9060000000.00")}) `
       + `și „TR35 Proiectare si executie” (${formatRon("4730000000.00")}). Vezi lista.`,
     );
@@ -148,7 +148,7 @@ describe("contracts above the 1 mld. lei cap", () => {
     const more = aboveCapSentence({ ...aboveCap, count: 5 })!;
     expect(text(more)).toContain(", plus încă 3 contracte. Vezi lista.");
     const one = aboveCapSentence({ count: 1, totalExact: "1200000000", rows: [{ natId: "9", title: null, contractNo: null, valueRonExact: "1200000000" }] })!;
-    expect(text(one)).toBe(`Separat, un contract de peste 1 mld. lei (${formatRon("1200000000")}) nu intră în aceste cifre: vezi lista.`);
+    expect(text(one)).toBe(`Separat, un contract de peste 1 mld. lei (${formatRon("1200000000")}) nu intră în cifrele de mai sus: vezi lista.`);
     expect(aboveCapSentence({ count: 0, totalExact: "0", rows: [] })).toBeNull();
     expect(aboveCapSentence(undefined)).toBeNull();
     // without such contracts the summary is unchanged

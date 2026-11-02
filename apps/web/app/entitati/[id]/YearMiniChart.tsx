@@ -37,8 +37,11 @@ export default function YearMiniChart({
   const total = months.reduce((a, b) => a + b.v, 0);
   const monthUrl = (m: number) =>
     `/?spec=${encodeURIComponent(encodeSpec(entityMonthSpec(entityId, entityName, role, year, m)))}&drill=1`;
+  // The year written over its months, and a group that names it (critique 2 November 2026: two charts, no visible year).
   return (
-    <div className="yem" aria-label={`Valoarea lunară a achizițiilor directe, ${year}`}>
+    <div className="yem-fig">
+      <p className="yem-cap">{year}</p>
+    <div className="yem" role="group" aria-label={`Valoarea lunară a achizițiilor directe, ${year}`}>
       {t.el}
       {months.map((p) => (
         <a
@@ -55,6 +58,7 @@ export default function YearMiniChart({
           <div className="l">{p.m === 12 ? "dec" : p.m}</div>
         </a>
       ))}
+    </div>
     </div>
   );
 }

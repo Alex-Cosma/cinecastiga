@@ -60,7 +60,7 @@ export function aboveCapSentence(aboveCap: SummaryInput["aboveCap"]): Segment[] 
     .slice(0, 2);
   const out: Segment[] = [
     n === 1 ? "Separat, un contract de peste 1 mld. lei " : `Separat, ${roCount(n, "un contract", "contracte")} de peste 1 mld. lei `,
-    `(${formatRon(aboveCap.totalExact)}) nu intră în aceste cifre`,
+    `(${formatRon(aboveCap.totalExact)}) nu intră în cifrele de mai sus`,
   ];
   if (named.length > 0) {
     const listed = n === 1 ? [`: „${named[0]!.title}”`] : named.map((r, i) => `${i === 0 ? ": " : " și "}„${r.title}” (${formatRon(r.value)})`);
@@ -90,6 +90,11 @@ export interface SummaryBar {
 
 export interface EntitySummary {
   sentences: Segment[][];
+  /**
+   * What the top strip's figures leave out or split, said right under it (owner, 2 November 2026: „Pe scurt” keeps
+   * only the domains): the contracts above the 1 bn lei cap, the contracts in a consortium.
+   */
+  notes: Segment[][];
   subjectsTitle: string;
   subjects: SummaryBar[];
   partnersTitle: string;
@@ -155,6 +160,7 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
   // Right after the total: the contracts above the cap that it leaves out (Cluj-Napoca's metro line).
   const capped = aboveCapSentence(input.aboveCap);
   if (capped) sentences.push(capped);
+  const notes: Segment[][] = capped ? [capped] : [];
 
   const top = input.partners[0];
   const topDivision = input.divisions.find((d) => d.code != null);
@@ -173,7 +179,9 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
 
   // The equal split of consortium shares is explained by the glossary tip on these words.
   if (input.nConsortium > 0) {
-    sentences.push([{ text: `${roCount(input.nConsortium, "Un contract", "contracte")} în consorțiu`, tip: "consortiu" }, "."]);
+    const consortium: Segment[] = [{ text: `${roCount(input.nConsortium, "Un contract", "contracte")} în consorțiu`, tip: "consortiu" }, "."];
+    sentences.push(consortium);
+    notes.push(consortium);
   }
 
   const subjects: SummaryBar[] = input.divisions.slice(0, 3).map((d) => {
@@ -192,6 +200,7 @@ export function composeEntitySummary(input: SummaryInput): EntitySummary | null 
 
   return {
     sentences,
+    notes,
     subjectsTitle: isAuth ? "Ce a atribuit" : "Ce a câștigat",
     subjects,
     partnersTitle: isAuth ? "Cui a atribuit" : "Cine i-a atribuit",
