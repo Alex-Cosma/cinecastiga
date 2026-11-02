@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { entityYearsFrom, type EntityYear } from "../../../lib/marts";
-import { axisLabel, bucharestYear, ledgerTotals, niceTop, tipLeft, yearsModel, yearWords } from "./entity-top";
+import { axisLabel, bucharestYear, evidenceWithPeriod, ledgerTotals, niceTop, tipLeft, yearsModel, yearWords } from "./entity-top";
 
 // The entity page's top (owner, 2 November 2026): the risk on its bands, a ledger per channel, the value per year.
 const AGNITA: EntityYear[] = [
@@ -45,6 +45,16 @@ describe("the entity's years", () => {
     const model = yearsModel(AGNITA, [{ year: 2026, value: 2_000_000 }], 2026)!;
     expect(yearWords(model.bars[3]!)).toEqual({ head: "2021 · 3,9 mil. lei", da: "497 de achiziții directe · 1,5 mil. lei", ct: "6 contracte · 2,4 mil. lei", turnover: null });
     expect(yearWords(model.bars.at(-1)!)).toMatchObject({ head: "2026 (parțial) · 878.540 lei", ct: null, turnover: "cifră de afaceri · 2 mil. lei" });
+  });
+
+  it("says a signal's one-year period once, at the head of its line", () => {
+    const label = "Perioada calculului: 2022";
+    expect(evidenceWithPeriod(label, "2022", "2022: 36% din valoarea achizițiilor directe …")).toBe("2022: 36% din valoarea achizițiilor directe …");
+    expect(evidenceWithPeriod("Perioada calculului: 2021", "2021", "Diferența față de prag nu poate fi calculată.")).toBe("2021: diferența față de prag nu poate fi calculată.");
+    expect(evidenceWithPeriod("Perioada calculului: 2021", "2021", "CPV 3312 · licitație")).toBe("2021: CPV 3312 · licitație");
+    // A named source or the whole archive keeps its label.
+    expect(evidenceWithPeriod("Perioada calculului: 2021 (bilanț)", "2021", "2021: x")).toBe("Perioada calculului: 2021 (bilanț) · 2021: x");
+    expect(evidenceWithPeriod("Întreaga perioadă disponibilă la calcul", "all", "Furnizorul principal: 40%")).toBe("Întreaga perioadă disponibilă la calcul · Furnizorul principal: 40%");
   });
 
   it("opens a year's tip under its column, inside the plot's width", () => {

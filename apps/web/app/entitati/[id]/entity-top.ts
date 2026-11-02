@@ -83,6 +83,19 @@ export function yearWords(bar: YearBar): { head: string; da: string; ct: string 
   };
 }
 
+/**
+ * A signal's evidence line with its period, said once (critique 2 November 2026: „Perioada calculului: 2022 · 2022: 36%
+ * din …”): a plain one-year period leads its line as „2021: …”; any other period (a source named, several years, the
+ * whole archive) keeps its label.
+ */
+export function evidenceWithPeriod(label: string, period: string | null, line: string): string {
+  if (!period || !/^\d{4}$/.test(period) || label !== `Perioada calculului: ${period}`) return `${label} · ${line}`;
+  if (line.startsWith(`${period}:`)) return line;
+  // The line's first word in lower case after the year, unless it is an acronym („CPV …”, „HHI …”).
+  const first = /^\p{Lu}\p{Ll}/u.test(line) ? line.charAt(0).toLocaleLowerCase("ro-RO") + line.slice(1) : line;
+  return `${period}: ${first}`;
+}
+
 /** The event a year of the chart sends the records table (TxTable): its year as the table's only filter. */
 export const ENTITY_YEAR_EVENT = "entity:year";
 

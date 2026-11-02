@@ -1,9 +1,14 @@
 import Link from "next/link";
 import Term from "@/components/Term";
-import type { GlossaryId } from "@/lib/glossary";
 import type { EntitySummary, Segment, SummaryBar } from "@/lib/entity-summary";
 
-/** "Pe scurt": plain sentences + two short bar lists, above the detailed sections. */
+/*
+ * Under the top strip (owner, 2 November 2026, after the Impeccable critique): its notes (what its figures leave out or
+ * split), then the domains — „Ce a atribuit” / „Ce a câștigat”, the one list the strip does not already say. The
+ * totals, the largest partner and the partners' list were repeated: the strip, the ledger and „Furnizori” say them.
+ */
+
+/** A sentence's pieces: words, a (?) on a term, a link. */
 function renderSegment(s: Segment, i: number) {
   if (typeof s === "string") return <span key={i}>{s}</span>;
   if (s.tip) return <Term key={i} tip id={s.tip}>{s.strong ? <strong>{s.text}</strong> : s.text}</Term>;
@@ -13,11 +18,10 @@ function renderSegment(s: Segment, i: number) {
   return s.strong ? <strong key={i}>{s.text}</strong> : <span key={i}>{s.text}</span>;
 }
 
-function Bars({ title, tip, bars, more }: { title: string; tip?: GlossaryId; bars: SummaryBar[]; more?: { href: string; label: string } }) {
+function Bars({ bars }: { bars: SummaryBar[] }) {
   if (bars.length === 0) return null;
   return (
     <div className="ent-brief-list">
-      <h3 className="ent-tip">{title}{tip && <> <Term tip id={tip} /></>}</h3>
       <ul className="ent-tip-col">
         {bars.map((b) => (
           <li key={b.key}>
@@ -31,21 +35,22 @@ function Bars({ title, tip, bars, more }: { title: string; tip?: GlossaryId; bar
           </li>
         ))}
       </ul>
-      {more && <a className="ent-brief-more" href={more.href}>{more.label}</a>}
     </div>
   );
 }
 
-export default function EntityBrief({ summary, isAuth }: { summary: EntitySummary; isAuth: boolean }) {
+export default function EntityBrief({ summary }: { summary: EntitySummary }) {
+  if (summary.subjects.length === 0) return null;
   return (
-    <section className="ent-brief" aria-labelledby="pe-scurt">
-      <h2 id="pe-scurt">Pe scurt</h2>
-      {summary.sentences.map((s, i) => <p key={i} className="ent-tip">{s.map(renderSegment)}</p>)}
-      <div className="ent-brief-lists">
-        <Bars title={summary.subjectsTitle} tip="cpv" bars={summary.subjects} />
-        <Bars title={summary.partnersTitle} bars={summary.partners}
-          more={{ href: "#parteneri", label: isAuth ? "Toți furnizorii ↓" : "Toate autoritățile ↓" }} />
-      </div>
+    <section className="ent-brief" aria-labelledby="ce-a-atribuit">
+      <h2 id="ce-a-atribuit" className="ent-tip">{summary.subjectsTitle} <Term tip id="cpv" /></h2>
+      <Bars bars={summary.subjects} />
     </section>
   );
+}
+
+/** The top strip's notes: the contracts above the cap that its figures leave out, the contracts in a consortium. */
+export function SummaryNotes({ notes }: { notes: Segment[][] }) {
+  if (notes.length === 0) return null;
+  return <div className="ent-top-notes ent-tip-col">{notes.map((s, i) => <p key={i} className="ent-tip">{s.map(renderSegment)}</p>)}</div>;
 }
