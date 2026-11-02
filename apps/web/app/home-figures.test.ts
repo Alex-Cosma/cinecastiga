@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { countWords } from "../lib/ask/answer-text";
 
 /*
- * Home page figures (owner, 1 November 2026): one unit for «înregistrări» (the
- * strip's total counts both streams, as the map readout does per county), the
+ * Home page figures (owner, 1 November 2026): the strip's total counts both
+ * streams, the map reads value only (2 November: a county's records next to
+ * "înregistrări contract–furnizor" looked larger than the country), the
  * Romanian «de» on every count, the caveat opened from the strip and shown once,
  * and phone text no smaller than 12px (all-caps eyebrows 11px).
  */
@@ -24,10 +25,10 @@ describe("home counts", () => {
     expect(countWords(14, "înregistrare", "înregistrări")).toBe("14 înregistrări");
   });
 
-  it("go through countWords on the page and the map (readout and county names)", () => {
+  it("go through countWords on the page; the map (readout and county names) says value only", () => {
     const hand = [page, map].flatMap((text) => [...text.matchAll(HAND_COUNT)].filter((m) => !m[1]!.includes("countWords")).map((m) => m[0]));
     expect(hand).toEqual([]);
-    expect(map.match(/countWords\(\w+\.count, "înregistrare", "înregistrări"\)/g)).toHaveLength(2);
+    expect(map).not.toMatch(/countWords|\.count\b|\.records\b/);
   });
 
   it("label the strip with every record in both streams, the unit the map counts", () => {
