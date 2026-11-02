@@ -143,7 +143,7 @@ describe("beginner phrasings → interpretation", () => {
     const { i } = await ask("cât a costat deszăpezirea anul trecut în municipiul buzău");
     expect(i.place?.siruta).toBe(44818);
     expect(i.period).toMatchObject({ yearFrom: 2025, yearTo: 2025 });
-    expect(i.subjects[0]).toMatchObject({ term: "90620000-9", label: "Servicii de deszăpezire", source: "catalog" });
+    expect(i.subjects[0]).toMatchObject({ term: "deszapezire", source: "synonym" }); // the curated synonym (0080), as in production
   });
 
   it("11. no diacritics, all caps, «anul trecut» relative to today", async () => {
@@ -195,6 +195,15 @@ describe("beginner phrasings → interpretation", () => {
     expect(i.subjects[0]?.term).toBe("medicamente");
     expect(i.authorityKind?.kind).toBe("spital");
     expect(i.place?.county).toBe("Iași");
+  });
+
+  it("18b. a slip in the third letter of a long subject («dezăpezire», «dezăpezirea»)", async () => {
+    const { i } = await ask("dezăpezire suceava 2024");
+    expect(i.subjects[0]?.term).toBe("deszapezire");
+    expect(i.place?.county).toBe("Suceava");
+    expect(i.period).toMatchObject({ yearFrom: 2024, yearTo: 2024 });
+    expect(i.leftover).toEqual([]);
+    expect((await ask("cine face dezăpezirea în suceava")).i.subjects[0]?.term).toBe("deszapezire");
   });
 
   it("19. inflected subject with a typo («iluminatu public»)", async () => {
