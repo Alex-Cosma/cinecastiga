@@ -237,6 +237,21 @@ export default async function EntityPage({
         </div>
       </div>
 
+      {/* The page's tabs right under its header, above the summary they start with (owner, 2 November 2026). */}
+      <SectionNav
+        items={[
+          { id: "top", label: "Rezumat" },
+          ...(row.flags.length > 0 || signalTypes.length > 0
+            ? [{ id: row.flags.length > 0 ? "semnale" : "toate-semnalele", label: "Semnale",
+                count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
+            : []),
+          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
+          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
+          ...(reps.length > 0 || holderTwin ? [{ id: "conducere", label: reps.length > 0 ? "Conducere" : "Titular" }] : []),
+          ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
+        ]}
+      />
+
       {/* The top (owner, 2 November 2026): the risk on its bands, a ledger of the activity per channel (its swatches
           are the chart's legend) and the value per year. How the score is made stays further down the page. */}
       <div className={`ent-top${years ? "" : " ent-top--no-years"}`}>
@@ -302,20 +317,6 @@ export default async function EntityPage({
       </div>
 
       {summary && <EntityBrief summary={summary} isAuth={isAuth} />}
-
-      <SectionNav
-        items={[
-          { id: "top", label: "Rezumat" },
-          ...(row.flags.length > 0 || signalTypes.length > 0
-            ? [{ id: row.flags.length > 0 ? "semnale" : "toate-semnalele", label: "Semnale",
-                count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
-            : []),
-          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
-          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
-          ...(reps.length > 0 || holderTwin ? [{ id: "conducere", label: reps.length > 0 ? "Conducere" : "Titular" }] : []),
-          ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
-        ]}
-      />
 
       {/* Legal representatives (ONRC snapshot) */}
       {reps.length > 0 && (
