@@ -8,8 +8,9 @@ import { FactTag, type RowFact } from "./RowFacts";
 /*
  * Component 19, the card: what was picked in the answer (a point of the
  * scatter, a county of the map, a bar of the series, place 1 of "Cine
- * conduce?"), with its facts and links. A surface with the green bar on the
- * left (green = picked, kit §5.37), never a solid green fill. A named region:
+ * conduce?"), with its facts and links. A mint surface with a soft green
+ * border, like its picked row (green = picked, kit §5.37; no side stripe
+ * since 1 November 2026), never a solid green fill. A named region:
  * on opening, focus moves to its title; Escape or × closes it and focus goes
  * back to what opened it (the point or the row), or to `returnTo`.
  */
