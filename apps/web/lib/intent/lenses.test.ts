@@ -39,8 +39,10 @@ describe("trend lenses: the group, the order, the months", () => {
     expect(r.spec).toMatchObject({ block: "trend", filters: { yearFrom: 2024, yearTo: 2025 }, trend: { change: "up" } });
     expect(r.interpretation.notes).toContain("Am comparat 2025 cu anul dinainte.");
   });
-  it("«Cum au evoluat … în 2025?» stays an evolution", async () => {
-    expect((await ask("Cum au evoluat achizițiile din județul Cluj în 2025?")).r.spec).toMatchObject({ block: "timeseries", filters: { county: "Cluj", yearFrom: 2025 } });
+  it("«Cum au evoluat … în 2025?» stays an evolution, over every year (one year shows no change; owner, 2 November 2026)", async () => {
+    const spec = (await ask("Cum au evoluat achizițiile din județul Cluj în 2025?")).r.spec;
+    expect(spec).toMatchObject({ block: "timeseries", filters: { county: "Cluj" } });
+    expect(spec?.filters).not.toHaveProperty("yearFrom");
     expect((await ask("cum au evoluat achizitiile de lemne de foc ale comunelor din vaslui")).r.spec?.block).toBe("timeseries");
   });
   it("«firme noi au apărut»: the new ones, every word understood", async () => {

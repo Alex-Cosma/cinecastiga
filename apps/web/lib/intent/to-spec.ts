@@ -392,6 +392,14 @@ export function specFor(input: Interpretation, asked: IntentKind, choice: Choice
     // "din 2023" is the year itself; a closed period keeps only its first year, said.
     else if (asked !== undefined && f.yearTo !== undefined && f.yearTo !== f.yearFrom) notes.push(`Am păstrat doar anul de început: ${since}.`);
   }
+  // One year shows no change from year to year (owner, 2 November 2026): an evolution by year, "Cum s-a schimbat de la an
+  // la an ›" included, takes every year; by month, or with months named, it keeps its year.
+  const lf = lensed.filters as Record<string, unknown>;
+  if (lensed.block === "timeseries" && lf.yearFrom !== undefined && lf.yearFrom === lf.yearTo && lf.monthFrom === undefined && lf.monthTo === undefined
+    && optionsOf(lensed, "timeseries").grain !== "month") {
+    delete lf.yearFrom; delete lf.yearTo;
+    notes.push("Am arătat toți anii, ca să se vadă schimbarea de la an la an.");
+  }
   const valid = validateSpec(lensed);
   if ("error" in valid) return { spec: null, error: valid.error, notes };
   return { spec: valid, error: null, notes };
