@@ -114,13 +114,31 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
       where y between ${winFrom} and ${winTo}
       group by a, s
     ),
+    -- The firm's whole public portfolio counts its direct acquisitions too (owner, 2 November 2026): a firm
+    -- whose only procedure contracts are with one authority is not "100%" dependent on it when dozens of
+    -- others buy from it directly. Same direct-acquisition population as the entity page: 0 < value ≤ 2 mil.
+    da as (
+      select authority_id a, supplier_id s, closing_value v
+      from marts.da_transactions
+      where closing_value > 0 and closing_value <= 2000000 and supplier_id in (select s from pair)
+    ),
+    da_pair as (
+      select a, s, sum(v) da_here from da where a is not null group by a, s
+    ),
     sup as (
-      select supplier_id s, sum(closing_value) v_total, count(distinct authority_id) n_auth
-      from marts.contract_transactions where closing_value > 0 and supplier_id is not null group by 1
+      select s, sum(v) v_total, coalesce(sum(v) filter (where is_da), 0) v_da, count(distinct a) n_auth
+      from (
+        select supplier_id s, authority_id a, closing_value v, false is_da
+        from marts.contract_transactions where closing_value > 0 and supplier_id is not null
+        union all
+        select s, a, v, true from da
+      ) u
+      group by s
     )
     select p.a authority_id, p.s supplier_id,
            e.name_display supplier_name, e.county, ep.is_foreign,
-           p.v_here, sup.v_total, sup.n_auth, p.n_here, coalesce(p.ns_here, 0) ns_here, p.nk_here,
+           p.v_here, coalesce(dp.da_here, 0) da_here, sup.v_total, sup.v_da, sup.n_auth,
+           p.n_here, coalesce(p.ns_here, 0) ns_here, p.nk_here,
            p.y0, p.y1,
            coalesce(p.c_frame, 0) c_frame, coalesce(p.c_plain, 0) c_plain,
            y.yrs,
@@ -141,6 +159,7 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
     cross join lateral (select ${corroboratedCui(sql, 'e')} cui) rc
     left join marts.entity_profile ep on ep.entity_id = p.s and ep.role = 'supplier'
     left join yrs y on y.a = p.a and y.s = p.s
+    left join da_pair dp on dp.a = p.a and dp.s = p.s
   `;
   await sql`alter table marts.supplier_dependency add primary key (authority_id, supplier_id)`;
   await sql`create index supplier_dependency_auth_v_idx on marts.supplier_dependency (authority_id, v_here desc)`;

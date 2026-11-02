@@ -202,9 +202,14 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         await q`insert into core.risk_thresholds (key,valid_from,valid_to,value_num,note)
           values (${threshold.key},${threshold.validFrom + "T00:00:00Z"},${threshold.validTo ? threshold.validTo + "T00:00:00Z" : null},${threshold.valueNum},'fixture')`;
       }
+      // A firm's direct acquisitions count in its public portfolio (owner, 2 November 2026): supplier 2 also sells
+      // directly to this authority and to another one; a value over 2 mil. lei stays out, as on the entity page.
+      await q`insert into marts.da_transactions (authority_id, supplier_id, closing_value) values (1, 2, 300), (4, 2, 600), (4, 2, 2500000)`;
       await runRadiografieMarts(q);
       expect((await q`select supplier_id::int s, v_here::text v from marts.supplier_dependency where authority_id=1 order by 1`).map(r => [r.s, r.v]))
         .toEqual([[2, "100.00"], [3, "50.00"]]);
+      expect((await q`select da_here::text h, v_total::text t, v_da::text d, n_auth::int n from marts.supplier_dependency
+        where authority_id=1 and supplier_id=2`).map(r => [r.h, r.t, r.d, r.n])).toEqual([["300", "1000.00", "900", 2]]);
       // The population check applies the same supplier rule: nothing missing, nothing extra.
       expect(await validateContractPopulation(q)).toMatchObject({ eligible_missing: "0", excluded_included: "0", allocation_mismatches: "0" });
       expect((await q`select c.id::int id from core.contracts c join core.awards a using(ca_notice_id)
