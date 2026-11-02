@@ -1437,9 +1437,15 @@ export function genitive(place: Pick<PlaceMatch, "name" | "tip">): string {
     .replace(/^Sectorul /, "Sectorului ");
 }
 
-/** One typo on a long word, same first three letters: "medicamnte" → "medicamente", never "constanta" → "consultanta". */
+/**
+ * One typo on a long word, same first three letters: "medicamnte" → "medicamente", never "constanta" → "consultanta".
+ * From 9 letters the first two are enough, so a slip in the third letter is read too ("dezapezire" → "deszapezire",
+ * owner, 2 November 2026); an inflected typo is tried by its base forms ("dezapezirea").
+ */
 function typoSynonym(word: string, synonyms: string[]): CpvHit | null {
   if (word.length < 6 || INSTITUTION_WORD.test(word)) return null;
-  const hit = synonyms.find((s) => !s.includes(" ") && s.length >= 6 && s.slice(0, 3) === word.slice(0, 3) && (lev(word, s, 1) <= 1 || (word.length > s.length && lev(word.slice(0, s.length), s, 1) <= 1 && word.length - s.length <= 3)));
+  const head = (w: string, s: string) => s.slice(0, 3) === w.slice(0, 3) || (Math.min(w.length, s.length) >= 9 && s.slice(0, 2) === w.slice(0, 2));
+  const near = (w: string, s: string) => head(w, s) && (lev(w, s, 1) <= 1 || (w.length > s.length && lev(w.slice(0, s.length), s, 1) <= 1 && w.length - s.length <= 3));
+  const hit = stems(word).filter((w) => w.length >= 6).map((w) => synonyms.find((s) => !s.includes(" ") && s.length >= 6 && near(w, s))).find(Boolean);
   return hit ? { term: hit, cpvName: null } : null;
 }
