@@ -168,7 +168,7 @@ describe("the card (19)", () => {
     expect(markup).toContain('<button type="button" class="qb-close" aria-label="Închide fișa">×</button>');
     expect(text(markup)).toContain("posibilă fracționare 2018–2019 9 înregistrări →");
     expect(markup).toMatch(/<a class="qb-secondary" href="\/entitati\/2">Fișa instituției<span class="qb-glyph" aria-hidden="true">↗<\/span><\/a>/);
-    expect(markup).not.toMatch(/background:|qb-card--fill/); // a surface with the green bar, never a solid fill
+    expect(markup).not.toMatch(/background:|qb-card--fill/); // a mint surface from CSS, never an inline or solid fill
   });
   it("returns focus only when it was inside the card or nowhere", () => {
     const body = {} as Element, inside = {} as Element, elsewhere = {} as Element;
