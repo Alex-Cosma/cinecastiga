@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { dateSpan, recordExactValue, records, splitScopeLabel, stateClass, summaryParts } from "./drawer-text";
+import { dateSpan, kindCounts, recordExactValue, records, savedKind, splitScopeLabel, stateClass, summaryParts } from "./drawer-text";
 
 // The records drawer (owner, 2 November 2026): on a phone the record comes first; sizes, the state's colour,
 // the exact value and the profile note's border follow the critique of the same day.
@@ -87,5 +87,32 @@ describe("the records drawer's styles", () => {
     expect(phone).toMatch(/\.ev-tools:not\(\.is-open\) \.ev-filters,\.ev-tools:not\(\.is-open\) \.ev-sort/);
     expect(css).toMatch(/\.ev-profile-note\{[^}]*border:1px solid color-mix\(in srgb, var\(--amber-line\) 35%, var\(--line2\)\)/);
     expect(css).not.toMatch(/border-left:\s*[2-9]px/);
+  });
+});
+
+// „Starea ofertei” split the list exactly as „Ce fel de achiziții” does; the kind is the one filter left (owner, 2 November 2026).
+describe("the records drawer's kind filter", () => {
+  it("reads a saved state as the kind it meant", () => {
+    expect(savedKind({ state: "Oferta acceptata" })).toEqual({ stream: "da", state: "" });
+    expect(savedKind({ state: "__unknown" })).toEqual({ stream: "contracts", state: "" });
+    expect(savedKind({ state: "Oferta acceptata", stream: "da" })).toEqual({ stream: "da", state: "" });
+    expect(savedKind({ stream: "contracts" })).toEqual({ stream: "contracts", state: "" });
+    expect(savedKind(undefined)).toEqual({ stream: "", state: "" });
+  });
+
+  it("never broadens a saved filter it cannot read", () => {
+    expect(savedKind({ state: "__unknown", stream: "da" })).toEqual({ stream: "da", state: "__unknown" });
+    expect(savedKind({ state: "Oferta respinsa" })).toEqual({ stream: "", state: "Oferta respinsa" });
+  });
+
+  it("counts each kind's records from the records per state", () => {
+    expect(kindCounts([{ state: "Oferta acceptata", count: 28 }, { state: null, count: 3 }])).toEqual({ da: 28, contracts: 3 });
+    expect(kindCounts([{ state: "Oferta acceptata", count: 5 }])).toEqual({ da: 5, contracts: 0 });
+  });
+
+  it("offers no state control", () => {
+    const source = readFileSync(new URL("./EvidenceDrawer.tsx", import.meta.url), "utf8");
+    expect(source).not.toMatch(/Starea ofertei|Toate stările/);
+    expect(source).toContain("Ce fel de achiziții");
   });
 });

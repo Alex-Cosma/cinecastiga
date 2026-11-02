@@ -20,7 +20,7 @@ import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} fro
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
 import { listGroupHeader, type DrawerListGroup } from "./drawer-group";
 import { ProfileSourceNote } from "./ProfileNotes";
-import { drawerDate as date, recordExactValue, records, splitScopeLabel, stateClass, summaryParts } from "./drawer-text";
+import { drawerDate as date, kindCounts, recordExactValue, records, savedKind, splitScopeLabel, stateClass, summaryParts } from "./drawer-text";
 
 export interface EvidenceDrawerProps {
   spec: AskSpec;
@@ -68,8 +68,9 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState(initialFilters?.search ?? "");
-  const [state, setState] = useState(initialFilters?.state ?? "");
-  const [stream, setStream] = useState<string>(initialFilters?.stream ?? "");
+  // No state control: a saved state is read as its kind (savedKind); one it cannot read stays, cleared with the filters.
+  const [state, setState] = useState(() => savedKind(initialFilters).state);
+  const [stream, setStream] = useState<string>(() => savedKind(initialFilters).stream);
   const [sort, setSort] = useState<DrillSort>(() => initialSort ?? (!isHistoricalProfile(spec) && !spec.filters.authorityId && !spec.filters.authorityName && !spec.filters.supplierId && !spec.filters.supplierName ? "source" : "value"));
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(0);
@@ -84,6 +85,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const activeQuery = useRef(queryKey);
   activeQuery.current = queryKey;
   const filtered = !!(search.trim() || state || stream);
+  const kinds = result ? kindCounts(result.statuses) : null;
   // The drawer of a trend's group names it, with its share of the selection (DrillResult.group).
   // So do a ranking's band and a network's group, from the answer's figures (listGroup).
   const group = result?.group ? trendGroupHeader(spec, result.group, result.sourceValue)
@@ -111,7 +113,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   }, []);
 
   useEffect(() => {
-    setResult(null); setSearch(initialFilters?.search ?? ""); setState(initialFilters?.state ?? ""); setStream(initialFilters?.stream ?? ""); setPage(0); setExportMessage("");
+    const saved = savedKind(initialFilters);
+    setResult(null); setSearch(initialFilters?.search ?? ""); setState(saved.state); setStream(saved.stream); setPage(0); setExportMessage("");
     exportController.current?.abort(); setExporting(null);
   }, [queryKey]);
 
@@ -224,11 +227,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       <button type="button" className="ev-tools-toggle" aria-expanded={toolsOpen} aria-controls="ev-filters ev-sort" onClick={() => setToolsOpen((open) => !open)}>Caută / filtrează</button>
       <div className="ev-filters" id="ev-filters">
         <label className="ev-search"><span>Caută în această listă</span><input type="search" value={search} maxLength={200} placeholder="Firmă, instituție, cod sau obiect…" onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label>
-        <label><span>Starea ofertei</span><select value={state} onChange={(e) => { setState(e.target.value); setPage(0); }}>
-          <option value="">Toate stările</option>
-          {result?.statuses.map((s) => <option key={s.state ?? "__unknown"} value={s.state ?? "__unknown"}>{s.state ?? "Stare nepublicată / contract"} · {count(s.count)}</option>)}
-        </select></label>
-        {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Ce fel de achiziții</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate achizițiile</option><option value="da">Achizițiile directe</option><option value="contracts">Contractele din proceduri</option></select></label>}
+        {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Ce fel de achiziții</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate achizițiile</option><option value="da">Achizițiile directe{kinds && ` · ${count(kinds.da)}`}</option><option value="contracts">Contractele din proceduri{kinds && ` · ${count(kinds.contracts)}`}</option></select></label>}
       </div>
       <div className={`ev-list-toolbar${filtered ? " is-filtered" : ""}`}>
         <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result && !error ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
