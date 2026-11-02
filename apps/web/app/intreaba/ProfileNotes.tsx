@@ -21,7 +21,7 @@ export function ProfileSourceNote({ reconciled, profileCount }: { reconciled: bo
   return (
     <div className="ev-profile-note">
       <strong>Doar achiziții directe acceptate, ca profilul.</strong>
-      {reconciled === true && <p className="ev-reconciled">✓ Numărul și suma surselor coincid cu agregatele celor {countWords(profileCount, "profil", "profiluri")} selectate.</p>}
+      {reconciled === true && <p className="ev-reconciled">✓ Numărul și suma surselor coincid cu {profileCount === 1 ? "agregatul profilului selectat" : `agregatele celor ${countWords(profileCount, "profil", "profiluri")} selectate`}.</p>}
       {reconciled === false && <p className="ev-mismatch">Agregatul profilului și sursele actuale diferă. Lista arată datele disponibile acum; verifică explicația de mai jos.</p>}
     </div>
   );
