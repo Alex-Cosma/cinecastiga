@@ -1,5 +1,7 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { reviewedRegistryCollision } from "@seap/db";
 import { notFound } from "next/navigation";
 import {
@@ -22,7 +24,8 @@ import {
   type EntityFlagRow,
 } from "@/lib/marts";
 import EntityYears from "./EntityYears";
-import { bucharestYear, evidenceWithPeriod, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
+import { bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
+import { countyKnown } from "@/lib/counties";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
@@ -42,6 +45,7 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
+import { selectionFromParams } from "./tx-filters";
 import PartnersTable from "./PartnersTable";
 import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
@@ -76,6 +80,29 @@ function q(base: Record<string, string | undefined>, over: Record<string, string
   return `?${p.toString()}`;
 }
 
+// Read once per request, by the browser title and by the page.
+const loadFlags = cache(getEntityFlags);
+const loadProfile = cache(getEntityProfile);
+
+/** Each entity's own browser title (critique 2 November 2026): „BUG FOREST SRL · furnizor, Vaslui — cinecâștigă?”. */
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const sp = await searchParams;
+  const [flags, profile] = await Promise.all([loadFlags(id), loadProfile(id)]);
+  const roles = flags.length > 0 ? flags.map((f) => f.role) : (profile?.roles.map((r) => r.role) ?? []);
+  const name = flags[0]?.name ?? profile?.name;
+  if (!name || roles.length === 0) return {};
+  const wanted: Role | null = sp["rol"] === "furnizor" ? "supplier" : sp["rol"] === "autoritate" ? "authority" : null;
+  const role = wanted && roles.includes(wanted) ? wanted : roles[0]!;
+  return { title: entityTitle(cleanName(name), role, countyKnown(flags.find((f) => f.county)?.county ?? profile?.county)) };
+}
+
 export default async function EntityPage({
   params,
   searchParams,
@@ -86,7 +113,7 @@ export default async function EntityPage({
   const { id } = await params;
   await redirectCanonicalEntity(id,"",await searchParams);
   const sp = await searchParams;
-  const [flagRowsRaw, profile] = await Promise.all([getEntityFlags(id), getEntityProfile(id)]);
+  const [flagRowsRaw, profile] = await Promise.all([loadFlags(id), loadProfile(id)]);
   // The DA-centric flag summary exists only for entities with DA activity. An
   // entity known only via contracts / TED (e.g. a foreign supplier) has an
   // entity_profile but no entity_flags — synthesize a flag-free identity row from
@@ -135,7 +162,7 @@ export default async function EntityPage({
       getEntitySubjects(id, role),
       // Page 1 of the partner list: "Pe scurt" uses its top rows, PartnersTable shows it without refetching.
       getEntityPartnersPaged(id, role, 1, 10),
-      // "Mai multe tipare decât X% dintre …": moderate and strong scores only, Ask's default group.
+      // "Scor peste X% dintre …": moderate and strong scores only, Ask's default group.
       flagRowsRaw.some((r) => r.role === role) ? getRiskPeerLine(id, role, row.score).catch(() => null) : null,
       // An individual practice (PFA, II, cabinet): the one ONRC person with its holder's name, as a lead only.
       individualHolder(row.name) ? getHolderTwin(row.name).catch(() => null) : null,
@@ -241,13 +268,16 @@ export default async function EntityPage({
       <SectionNav
         items={[
           { id: "top", label: "Rezumat" },
+          // In the page's order (critique of 2 November 2026): the representatives come right after the summary,
+          // an individual practice's holder last, before the explanations.
+          ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
           ...(row.flags.length > 0 || signalTypes.length > 0
             ? [{ id: "semnale", label: "Semnale",
                 count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
             : []),
           { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
           { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
-          ...(reps.length > 0 || holderTwin ? [{ id: "conducere", label: reps.length > 0 ? "Conducere" : "Titular" }] : []),
+          ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
           ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
         ]}
       />
@@ -529,12 +559,13 @@ export default async function EntityPage({
       <section className="section" id="achizitii">
         <h2>Toate achizițiile și contractele</h2>
         <TxTable
-          key={`${id}:${rolParam}:${sp["sem"] ?? ""}`}
+          key={`${id}:${rolParam}:${sp["sem"] ?? ""}:${sp["an"] ?? ""}:${sp["canal"] ?? ""}:${sp["excluse"] ?? ""}`}
           entityId={id}
           role={rolParam as "furnizor" | "autoritate"}
           isAuth={isAuth}
           flags={row.flags}
-          initialFlag={sp["sem"]}
+          initial={selectionFromParams((key) => sp[key])}
+          excludedDa={txCounts.excludedDa}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
           <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>

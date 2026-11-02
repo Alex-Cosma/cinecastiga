@@ -1424,12 +1424,12 @@ tr:hover .cri-pill { transform: scale(1.06); }
 .pager a { padding: 4px 8px; border-radius: 6px; transition: background var(--fast); }
 .pager a:hover { background: var(--sunk); text-decoration: none; }
 .ask-streamtoggle { display: inline-flex; background: var(--sunk); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 0; }
-.ask-streamtoggle button { border: 0; background: transparent; color: var(--muted); padding: 5px 13px; font-weight: 500; font-size: 13.5px; border-radius: 999px; transition: color var(--fast), background var(--fast); }
+.ask-streamtoggle button { border: 0; background: transparent; color: var(--ink2); padding: 5px 13px; font-weight: 500; font-size: 13.5px; border-radius: 999px; transition: color var(--fast), background var(--fast); }
 .ask-streamtoggle button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .txf button { border-radius: 999px; border: 1px solid var(--line2); background: var(--surface); color: var(--ink2); transition: transform var(--fast) var(--ease), background var(--fast), border-color var(--fast); }
 .txf button:hover { transform: translateY(-1px); border-color: var(--accent-line); background: var(--accent-soft); }
 .txf button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.txf-active { background: var(--amber-soft); border: 1px solid var(--amber-line); border-radius: var(--r); animation: fade-in var(--med) var(--ease) both; }
+.txf-active { background: var(--sunk); border: 1px solid var(--line2); color: var(--ink2); border-radius: var(--r); animation: fade-in var(--med) var(--ease) both; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .txf-panel { border-radius: 12px; box-shadow: var(--shadow2); animation: drop var(--med) var(--ease) both; }
 .ask-tablewrap { border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; background: var(--surface); }
