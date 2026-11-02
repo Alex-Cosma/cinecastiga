@@ -7,6 +7,7 @@ import { ASK_EXAMPLE_GROUPS, FALLBACK_EXAMPLES, type AskExample } from "./ask-ex
 import type { IntentChoice, UnderstoodLine } from "./intent-line";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AskExampleArt from "./AskExampleArt";
+import RowMenu from "./answer/RowMenu";
 
 export type { IntentChoice } from "./intent-line";
 
@@ -131,13 +132,17 @@ export function IntentAnnouncer({ result, error }: { result: IntentResult | null
  * and the words left out, one muted line; a part with nothing to say is left out.
  */
 export function IntentLine({ line, onAdopt }: { line: UnderstoodLine; onAdopt: (choice: IntentChoice) => void }) {
+  // On phones "am ales" drops out of the place clause so the line stays one line (owner, 2 November 2026).
+  const clause = (note: string) => note.startsWith("am ales ") ? <><span className="cq-understood-verb">am ales </span>{note.slice(8)}</> : note;
   const parts = [
-    ...(line.notes.length ? [<>Am înțeles: {line.notes.join(" · ")}</>] : []),
-    ...(line.options.length ? [<>Sau:{" "}{line.options.map((option, i) => <Fragment key={i}>{i > 0 && " · "}
-      <button type="button" className="cq-understood-alt" title={option.sentence} {...(option.short ? { "aria-label": option.label } : {})}
-        onClick={() => onAdopt(option)}>{option.short ?? option.label ?? option.sentence}<span aria-hidden="true">›</span></button>
-    </Fragment>)}</>] : []),
+    ...(line.notes.length ? [<>Am înțeles: {line.notes.map((note, i) => <Fragment key={i}>{i > 0 && " · "}{clause(note)}</Fragment>)}</>] : []),
     ...(line.ignored.length ? [<>Am ignorat {line.ignored.map((word) => `„${word}”`).join(", ")} · <a href={`/cauta?q=${encodeURIComponent(line.ignored.join(" "))}`}>caută în titluri</a></>] : []),
+    ...(line.options.length ? [<span className="cq-understood-more"><RowMenu
+      name="Alte lecturi ale întrebării"
+      trigger={{ text: <>Altfel ({line.options.length})<span aria-hidden="true">›</span></>, className: "cq-understood-alt", label: `Altfel: ${countWords(line.options.length, "altă lectură", "alte lecturi")} ale întrebării` }}
+      actions={line.options.map((option, i) => ({ id: String(i), label: option.label ?? option.sentence, glyph: "›" as const, onSelect: () => onAdopt(option) }))}
+    /></span>] : []),
   ];
-  return <p className="cq-understood">{parts.map((part, i) => <Fragment key={i}>{i > 0 && " · "}{part}</Fragment>)}</p>;
+  // A div, not a p: the open menu is a div, which a paragraph cannot hold.
+  return <div className="cq-understood">{parts.map((part, i) => <Fragment key={i}>{i > 0 && " · "}{part}</Fragment>)}</div>;
 }

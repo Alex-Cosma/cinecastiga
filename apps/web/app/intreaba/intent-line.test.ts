@@ -23,15 +23,9 @@ describe("the interpretation line", () => {
   it("says the place assumption in a clause and offers the other reading", () => {
     const line = understoodLine(result(), { spec: ranking, sentence: "…" })!;
     expect(line.notes).toEqual(["am ales tot județul Suceava"]);
-    // "Am înțeles: am ales tot județul Suceava · Sau: Doar primăria ›": the line names the place; the button's name keeps it.
-    expect(line.options.map((o) => [o.short, o.label])).toEqual([["Doar primăria", "Doar primăria Municipiului Suceava"]]);
+    // "Am înțeles: am ales tot județul Suceava · Altfel (1) ›": the menu names the town hall whole.
+    expect(line.options.map((o) => o.label)).toEqual(["Doar primăria Municipiului Suceava"]);
     expect(line.ignored).toEqual([]);
-  });
-
-  it("keeps a town hall's whole name when two are offered or the line does not name the county", () => {
-    const two = { ...result(), alternatives: [...result().alternatives, { ...result().alternatives[0]!, label: "Doar primăria Comunei Suceava" }] } as IntentResult;
-    expect(understoodLine(two, { spec: ranking, sentence: "…" })!.options.map((o) => o.short)).toEqual([undefined, undefined]);
-    expect(understoodLine(result({ placeNote: null }), { spec: ranking, sentence: "…" })!.options[0]!.short).toBeUndefined();
   });
 
   it("offers the first reading back once another was chosen, without the main reading's place note", () => {
