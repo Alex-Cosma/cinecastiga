@@ -44,10 +44,13 @@ export function recordExactValue(row: Pick<DrillRow, "valueExact" | "nWinners">)
   return exact !== formatEvidenceAmount(row.valueExact) || (row.nWinners ?? 0) > 1 ? exact : null;
 }
 
-/** A record's state pill: accepted in green, an awarded contract neutral, amber for any other or unknown state. */
-export function stateClass(row: Pick<DrillRow, "state" | "src">): string {
-  if (row.state === "Oferta acceptata") return "ev-state ev-state-accepted";
-  return row.state === null && row.src === "contracts" ? "ev-state ev-state-awarded" : "ev-state";
+/**
+ * A record's state, said only where its kind does not already say it (owner, 2 November 2026): a direct acquisition
+ * listed is an accepted offer and a contract has no state, so neither repeats it. Any other or missing state is shown.
+ */
+export function stateNote(row: Pick<DrillRow, "state" | "src">): string | null {
+  if (row.src === "da") return row.state === "Oferta acceptata" ? null : row.state ?? "Stare neprecizată";
+  return row.state;
 }
 
 /*
