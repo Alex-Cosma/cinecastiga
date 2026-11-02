@@ -83,6 +83,18 @@ export function yearWords(bar: YearBar): { head: string; da: string; ct: string 
   };
 }
 
+/** The event a year of the chart sends the records table (TxTable): its year as the table's only filter. */
+export const ENTITY_YEAR_EVENT = "entity:year";
+
+/**
+ * Where a year's tip starts, under the plot (critique 2 November 2026: over it, it hid the bar under inspection and
+ * took its click; the plot is too narrow for a tip beside a bar): centred on its column, inside the plot's width.
+ */
+export function tipLeft(index: number, count: number, width: number, tipWidth: number): number {
+  const center = ((index + 0.5) / count) * width;
+  return Math.min(Math.max(0, center - tipWidth / 2), Math.max(0, width - tipWidth));
+}
+
 /** The current calendar year in Romania: the chart's year in progress. */
 export const bucharestYear = (now = new Date()): number =>
   Number(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest", year: "numeric" }).format(now));

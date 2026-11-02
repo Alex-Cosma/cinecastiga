@@ -74,7 +74,8 @@ export default function Term({ children, className, tip = false, ...source }: Te
       {children}
       <span className="term-mark" aria-hidden="true">?</span>
     </button>
-    <span id={definitionId} ref={definition} className="term-def" role="tooltip">
+    {/* Out of the tab order: shown on focus, its scrollable box would otherwise take a second stop (critique 2 November 2026). */}
+    <span id={definitionId} ref={definition} className="term-def" role="tooltip" tabIndex={-1}>
       <b>{entry.title}.</b> {entry.text}
     </span>
   </span>;

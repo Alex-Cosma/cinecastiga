@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { entityYearsFrom, type EntityYear } from "../../../lib/marts";
-import { axisLabel, bucharestYear, ledgerTotals, niceTop, yearsModel, yearWords } from "./entity-top";
+import { axisLabel, bucharestYear, ledgerTotals, niceTop, tipLeft, yearsModel, yearWords } from "./entity-top";
 
 // The entity page's top (owner, 2 November 2026): the risk on its bands, a ledger per channel, the value per year.
 const AGNITA: EntityYear[] = [
@@ -45,6 +45,14 @@ describe("the entity's years", () => {
     const model = yearsModel(AGNITA, [{ year: 2026, value: 2_000_000 }], 2026)!;
     expect(yearWords(model.bars[3]!)).toEqual({ head: "2021 · 3,9 mil. lei", da: "497 de achiziții directe · 1,5 mil. lei", ct: "6 contracte · 2,4 mil. lei", turnover: null });
     expect(yearWords(model.bars.at(-1)!)).toMatchObject({ head: "2026 (parțial) · 878.540 lei", ct: null, turnover: "cifră de afaceri · 2 mil. lei" });
+  });
+
+  it("opens a year's tip under its column, inside the plot's width", () => {
+    // 9 years on 450 px, a 200 px tip: centred on the 4th, then held at each edge.
+    expect(tipLeft(3, 9, 450, 200)).toBe(75);
+    expect(tipLeft(0, 9, 450, 200)).toBe(0);
+    expect(tipLeft(8, 9, 450, 200)).toBe(250);
+    expect(tipLeft(4, 9, 150, 200)).toBe(0);
   });
 
   it("keeps a short axis and a round scale", () => {
