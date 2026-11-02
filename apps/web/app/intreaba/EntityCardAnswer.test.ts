@@ -138,8 +138,8 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     // Each row has its own menu: its records and its page; none leaves it out of a calculation.
     expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(5);
     expect(words).not.toContain("Scoate din calcul");
-    // The headline names the list.
-    const head = /<p class="ec-ties-text" id="([^"]+)"/.exec(markup)?.[1];
+    // The headline names the list, and anchors its (?) on its own line (owner, 2 November 2026: it opened far below).
+    const head = /<p class="ec-ties-text qb-tipwrap" id="([^"]+)"/.exec(markup)?.[1];
     expect(head).toBeTruthy();
     expect(markup).toContain(`aria-describedby="${head}"`);
   });

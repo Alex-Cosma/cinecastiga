@@ -250,22 +250,6 @@
   font-size: 13px;
 }
 
-.cq-profile-notice {
-  position: relative;
-  display: block;
-  background: var(--amber-soft);
-  border: 1px solid var(--amber-line);
-  border-radius: 8px;
-  padding: 13px 18px;
-  font-size: 12px;
-  line-height: 1.7;
-  /* --amber itself is 3.7:1 on --amber-soft in the light theme; the darker warm ink reads (kit §8). */
-  color: var(--amber-ink, var(--amber));
-}
-/* The (?) of the banner: a 44 px target on phones, without growing the line (kit §9). */
-@media (max-width: 600px) {
-  .cq-profile-notice .term-tip > .term-trigger { min-width: 44px; min-height: 44px; margin-block: -10px; }
-}
 .cq-caveats {
   margin: 24px 0 0;
   color: var(--muted);

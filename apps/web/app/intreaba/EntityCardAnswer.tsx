@@ -116,7 +116,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
             <PlaceTags tags={tags} loading={loaded.status === "loading"} />
             {largest && <span>Cea mai mare înregistrare: <b className="num">{largest}</b></span>}
           </div>
-          {lead !== null && <p className="ec-lead">Diferența față de locul 2: <b className="num">{leadWords(lead)}</b> <HelpTip tip={{ id: "diferenta-locul-doi" }} /></p>}
+          {lead !== null && <p className="ec-lead qb-tipwrap">Diferența față de locul 2: <b className="num">{leadWords(lead)}</b> <HelpTip tip={{ id: "diferenta-locul-doi" }} /></p>}
         </div>
       </div>
       {stack && (
@@ -202,7 +202,7 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
           {/* The sources and the CSV still hold the first profiles by value (runRows): said, never silent. */}
           {ranking.rows.length > 0 && <p className="ec-rest">{noneSources(ranking.rows)}</p>}
         </> : (
-          <p className="ec-ties-text" id={headId}>
+          <p className="ec-ties-text qb-tipwrap" id={headId}>
             <b>{head.lead}</b>{head.kind === "tied" && <> <HelpTip tip={{ id: "indice-egalitate" }} /></>}, <b className="num">{head.score}</b> · {head.band}.{" "}
             {/* The score is no probability of corruption (rf-2026.18): its (?) beside it. */}
             <HelpTip tip={{ id: "scor-risc" }} />
@@ -211,7 +211,7 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
       </div>
       {head.kind !== "none" && (
         <>
-          {shownTied(rows) && <p className="ec-order">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
+          {shownTied(rows) && <p className="ec-order qb-tipwrap">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
           <AnswerList label="Primii după scorul de risc" listRef={list} describedBy={headId}>
             {rows.map((row, i) => {
               const records = open(row);
@@ -284,7 +284,7 @@ function LegacyTiesAnswer({ ties, spec }: { ties: LegacyTies; spec: QuestionSpec
   return (
     <div className="qb ec">
       <div className="ec-ties-head">
-        {head.kicker && <p className="ec-kicker" id={kickerId}>
+        {head.kicker && <p className="ec-kicker qb-tipwrap" id={kickerId}>
           {head.kicker}{head.notDistinct && <> <HelpTip tip={{ id: "indice-egalitate" }} /></>}
         </p>}
         {head.none ? <>
@@ -301,7 +301,7 @@ function LegacyTiesAnswer({ ties, spec }: { ties: LegacyTies; spec: QuestionSpec
       </div>
       {!head.none && (
         <>
-          {ties.count > 1 && <p className="ec-order">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
+          {ties.count > 1 && <p className="ec-order qb-tipwrap">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
           <AnswerList label="Profilurile cu cel mai ridicat indice" listRef={list} {...(head.kicker ? { describedBy: kickerId } : {})}>
             {rows.map((row) => {
               const records = open(row);
