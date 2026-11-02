@@ -75,8 +75,9 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     if (start < 0 || start + on.offsetWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, on.offsetLeft - 32), behavior: "smooth" });
   }, [active]);
 
+  // A navigation landmark whose current section is announced, not only underlined (critique 2 November 2026).
   return (
-    <div className="subnav">
+    <nav className="subnav" aria-label="Secțiunile paginii">
       <div className="subnav-in" ref={ref} data-fade={fade === "none" ? undefined : fade}>
         {ind && <span className="subnav-ind" style={{ left: ind.left, width: ind.width }} aria-hidden />}
         {items.map((it) =>
@@ -86,6 +87,7 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
               href={`#${it.id}`}
               data-on={active === it.id ? "1" : undefined}
               className={active === it.id ? "on" : undefined}
+              aria-current={active === it.id ? "location" : undefined}
               onClick={(e) => {
                 e.preventDefault();
                 const target = document.getElementById(it.id!);
@@ -103,6 +105,6 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
           ),
         )}
       </div>
-    </div>
+    </nav>
   );
 }

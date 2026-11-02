@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
@@ -49,6 +50,26 @@ export default function TxTable({
   const [src, setSrc] = useState<"all" | "da" | "contracts">("all");
   const [excluded, setExcluded] = useState(false);
   const tip = useTip();
+  const yearsBox = useRef<HTMLDivElement>(null);
+  // A year of the top's chart (EntityYears): that year alone, every channel, no other filter.
+  useEffect(() => {
+    const pick = (e: Event) => {
+      const year = (e as CustomEvent<string>).detail;
+      if (!/^\d{4}$/.test(year)) return;
+      setYears([year]); setFlag(null); setSrc("all"); setExcluded(false); setPage(1);
+    };
+    window.addEventListener(ENTITY_YEAR_EVENT, pick);
+    return () => window.removeEventListener(ENTITY_YEAR_EVENT, pick);
+  }, []);
+  // The years' panel closes on a tap or click outside it and on Escape, not only when the mouse leaves it.
+  useEffect(() => {
+    if (!yearsOpen) return;
+    const outside = (e: Event) => { if (!yearsBox.current?.contains(e.target as Node)) setYearsOpen(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") setYearsOpen(false); };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [yearsOpen]);
   const p = new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir });
   if (excluded) p.set("excluse", "1");
   if (years.length > 0) p.set("an", years.join(","));
@@ -103,8 +124,8 @@ export default function TxTable({
       </div>
       <div className="txf">
         {/* years scale unbounded (a new one every January) → multi-select dropdown */}
-        <div className="txf-dd">
-          <button type="button" className={years.length > 0 ? "on" : ""} onClick={() => setYearsOpen(!yearsOpen)}>
+        <div className="txf-dd" ref={yearsBox}>
+          <button type="button" className={years.length > 0 ? "on" : ""} aria-expanded={yearsOpen} onClick={() => setYearsOpen(!yearsOpen)}>
             an: {years.length > 0 ? [...years].sort().join(", ") : "toți"} ▾
           </button>
           {yearsOpen && (
@@ -163,18 +184,19 @@ export default function TxTable({
         <table className="ask-table ask-drill ent-tx">
           <thead>
             <tr>
-              <th className="col-date sortable" onClick={() => sortBy("date")} title="sortează">
-                Data{sort === "date" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+              {/* Sorting is a button in the header, with its state on the header (keyboard and screen readers). */}
+              <th className="col-date sortable" aria-sort={sort === "date" ? (dir === "desc" ? "descending" : "ascending") : "none"}>
+                <button type="button" className="th-sort" onClick={() => sortBy("date")}>
+                  Data{sort === "date" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                </button>
               </th>
               {showTip && <th className="col-src">Tip</th>}
               <th>{isAuth ? "Furnizor" : "Autoritate"}</th>
               <th className="col-cpv">Obiect (CPV)</th>
-              <th
-                className="col-value num sortable"
-                onClick={() => sortBy("value")}
-                title="sortează"
-              >
-                Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+              <th className="col-value num sortable" aria-sort={sort === "value" ? (dir === "desc" ? "descending" : "ascending") : "none"}>
+                <button type="button" className="th-sort" onClick={() => sortBy("value")}>
+                  Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                </button>
               </th>
               <th className="col-flags">Semnale</th>
               <th className="col-links">Sursă</th>

@@ -95,16 +95,18 @@
 .ent-years-bar>i{display:block;flex:none;border-radius:2px}
 .ent-years-da{background:var(--accent)}
 .ent-years-ct{background:var(--slate)}
-.ent-years-col.is-partial .ent-years-bar{opacity:.45}
+/* the year in progress is hatched, not paled (a pale accent read as the contracts' colour) */
+.ent-years-col.is-partial .ent-years-bar>i{background-image:repeating-linear-gradient(135deg,transparent 0 3px,color-mix(in srgb,var(--surface) 55%,transparent) 3px 6px)}
 .ent-years-turnover{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .ent-years-turnover polyline{fill:none;stroke:var(--orange);stroke-width:2;stroke-dasharray:5 4}
 .ent-years-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--orange);transform:translate(-50%,50%);pointer-events:none}
-.ent-years-tip{position:absolute;top:2px;z-index:2;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums;pointer-events:none}
+.ent-years-tip{position:absolute;top:calc(100% + 28px);z-index:5;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums}
 .ent-years-tip>b{font:700 13.5px/1.4 var(--display)}
 .ent-years-tip>span{display:flex;align-items:center;gap:6px;color:var(--ink2)}
+.ent-years-tip-go{justify-self:start;margin:4px 0 0;padding:4px 0;border:0;background:none;color:var(--accent);font:600 12.5px/1.4 var(--body);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .ent-years-x{grid-column:2;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);padding-top:6px}
 .ent-years-x>span{text-align:center;font:11px/1.3 var(--mono);color:var(--muted)}
-.ent-years-x>span.is-partial{color:var(--faint)}
+.ent-years-x>span.is-partial{font-style:italic}
 .ent-years-short{display:none}
 @container (max-width:400px){
   .ent-years-plot{grid-template-columns:60px minmax(0,1fr)}
@@ -148,10 +150,19 @@
 .ent-tx .c-no{display:block;margin-bottom:2px;font:12px/1.4 var(--body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .ent-tx .c-dup{white-space:normal;color:var(--ink2);font-weight:500}
 .ent-tx .kind-line{color:var(--ink2);font-weight:500}
+/* a sortable header's button looks like the header itself */
+.ent-tx .th-sort{margin:0;padding:0;border:0;background:none;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer}
+.ent-tx .th-sort:hover{color:var(--accent)}
 
 /* ---- a section reached by its anchor (#achizitii, #semnale…) starts below
    the sticky header and the section tabs, not under them ---- */
 .section[id],.ehead[id]{scroll-margin-top:calc(var(--site-header-h,91px) + 64px)}
+
+/* ---- on a phone no text under 12px (owner, 1 November 2026; critique of 2 November): the section counts,
+   the December charts' months, the records' source tags and signal badges ---- */
+@media (max-width:700px){
+  .subnav-in a .c,.yem .b .l,.ent-tx .ask-srctag,.ent-tx .flag-badge.sm{font-size:12px}
+}
 
 /* ---- the section navigation matches the page gutter on phones ---- */
 @media (max-width:720px){
