@@ -210,6 +210,9 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         .toEqual([[2, "100.00"], [3, "50.00"]]);
       expect((await q`select da_here::text h, v_total::text t, v_da::text d, n_auth::int n from marts.supplier_dependency
         where authority_id=1 and supplier_id=2`).map(r => [r.h, r.t, r.d, r.n])).toEqual([["300", "1000.00", "900", 2]]);
+      // Every pair of either channel is in the relation (owner, 2 November 2026), a direct-acquisition-only one too.
+      expect((await q`select v_here::text c, da_here::text d, v_all::text a, n_here::int n, n_da_here::int nd from marts.supplier_dependency
+        where authority_id=4 and supplier_id=2`).map(r => [r.c, r.d, r.a, r.n, r.nd])).toEqual([["0", "600", "600", 0, 1]]);
       // The population check applies the same supplier rule: nothing missing, nothing extra.
       expect(await validateContractPopulation(q)).toMatchObject({ eligible_missing: "0", excluded_included: "0", allocation_mismatches: "0" });
       expect((await q`select c.id::int id from core.contracts c join core.awards a using(ca_notice_id)

@@ -21,6 +21,111 @@ function db(): DbSql {
 const num = (v: unknown): number => (v == null ? 0 : Number(v));
 const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v));
 
+/** The relation chart's bubbles: the authority's largest suppliers (the table holds every one). */
+export const DEP_CHART_MAX = 25;
+
+/**
+ * A pair's value over both channels. A mart built before 2 November 2026 has neither v_all nor n_da_here (nor
+ * the direct-acquisition-only pairs): they are read through to_jsonb, so the page keeps working until the next
+ * daily radiografie rebuild.
+ */
+const depAll = (sql: DbSql) =>
+  sql`coalesce((to_jsonb(sd) ->> 'v_all')::numeric, sd.v_here + coalesce((to_jsonb(sd) ->> 'da_here')::numeric, 0))`;
+const depColumns = (sql: DbSql) => sql`
+  supplier_id::text id, supplier_name, county, is_foreign, v_here, v_total, n_auth, n_here, ns_here, nk_here,
+  y0, y1, c_frame, c_plain, yrs, turn_win, ny_win, turn_last, emp_last, win_from, win_to,
+  to_jsonb(sd) ->> 'da_here' da_here, to_jsonb(sd) ->> 'v_da' v_da, to_jsonb(sd) ->> 'n_da_here' n_da_here,
+  ${depAll(sql)} v_all`;
+
+/** The authority's value over its suppliers, both channels: the denominator of „din autoritate”. */
+async function depAuthorityTotal(sql: DbSql, id: string): Promise<{ value: number; suppliers: number }> {
+  const [r] = (await sql`
+    select count(*)::int n, coalesce(sum(${depAll(sql)}), 0)::text v from marts.supplier_dependency sd where authority_id = ${id}
+  `) as unknown as { n: number; v: string }[];
+  return { value: num(r?.v), suppliers: num(r?.n) };
+}
+
+const depWindow = (r: Record<string, unknown> | undefined) => ({ from: num(r?.["win_from"] ?? 2021), to: num(r?.["win_to"] ?? 2024) });
+
+function depRow(r: Record<string, unknown>, authTotal: number): DepRow {
+  const cFrame = num(r["c_frame"]),
+    cPlain = num(r["c_plain"]);
+  const turnWin = numOrNull(r["turn_win"]);
+  const nyWin = num(r["ny_win"]);
+  const c = cFrame + cPlain;
+  const here = num(r["v_here"]),
+    daHere = num(r["da_here"]),
+    all = num(r["v_all"]),
+    total = num(r["v_total"]);
+  return {
+    id: String(r["id"]),
+    name: cleanName(r["supplier_name"] as string | null),
+    county: (r["county"] as string | null) ?? null,
+    foreign: Boolean(r["is_foreign"]),
+    here,
+    daHere,
+    all,
+    total,
+    daTotal: numOrNull(r["v_da"]),
+    nAuth: num(r["n_auth"]),
+    n: num(r["n_here"]),
+    nDa: num(r["n_da_here"]),
+    ns: num(r["ns_here"]),
+    nk: num(r["nk_here"]),
+    y0: num(r["y0"]),
+    y1: num(r["y1"]),
+    cFrame,
+    cPlain,
+    yrs: ((r["yrs"] as number[] | null) ?? []).map(Number),
+    turnWin,
+    nyWin,
+    turnLast: numOrNull(r["turn_last"]),
+    empLast: numOrNull(r["emp_last"]),
+    ratio: turnWin && nyWin >= 1 && c > 0 ? c / turnWin : null,
+    // The supplier in what the authority awarded to its suppliers, and the authority in everything the firm won:
+    // both over contracts and direct acquisitions (owner, 2 November 2026).
+    shareHere: authTotal > 0 ? all / authTotal : 0,
+    shareLife: total > 0 ? Math.min(1, all / total) : 0,
+  };
+}
+
+export type DepSort = "value" | "here" | "life" | "recs" | "name";
+
+export interface DepPage {
+  rows: DepRow[];
+  /** suppliers matching the search */
+  total: number;
+  /** every supplier of the authority */
+  suppliers: number;
+  win: { from: number; to: number };
+}
+
+/**
+ * The relation table under the chart (owner, 2 November 2026, mockup B „Față în față”): every supplier of the
+ * authority, 10 a page, sorted on any column, searched by name. „Din autoritate” orders as the value does.
+ */
+export async function getRadiografieSuppliers(
+  entityId: string,
+  q: { sort: DepSort; dir: "asc" | "desc"; page: number; search?: string },
+): Promise<DepPage> {
+  const sql = db();
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
+  const authTotal = await depAuthorityTotal(sql, id);
+  const search = q.search?.trim() ? `%${q.search.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
+  const where = sql`authority_id = ${id} ${search ? sql`and supplier_name ilike ${search}` : sql``}`;
+  const key = q.sort === "life" ? sql`${depAll(sql)} / nullif(v_total, 0)`
+    : q.sort === "recs" ? sql`n_here + coalesce((to_jsonb(sd) ->> 'n_da_here')::int, 0)`
+      : q.sort === "name" ? sql`lower(supplier_name)`
+        : depAll(sql);
+  const order = q.dir === "asc" ? sql`${key} asc nulls last` : sql`${key} desc nulls last`;
+  const [count] = (await sql`select count(*)::int c from marts.supplier_dependency sd where ${where}`) as unknown as { c: number }[];
+  const rows = (await sql`
+    select ${depColumns(sql)} from marts.supplier_dependency sd where ${where}
+    order by ${order}, supplier_id limit 10 offset ${(Math.max(1, q.page) - 1) * 10}
+  `) as unknown as Record<string, unknown>[];
+  return { rows: rows.map((r) => depRow(r, authTotal.value)), total: num(count?.c), suppliers: authTotal.suppliers, win: depWindow(rows[0]) };
+}
+
 export interface RxProfile {
   id: string;
   name: string;
@@ -41,6 +146,10 @@ export interface DepRow {
   here: number;
   /** the pair's direct acquisitions */
   daHere: number;
+  /** the pair over both channels: the bubble, the table's value and both shares */
+  all: number;
+  /** the pair's direct acquisitions, counted (`n` counts its contracts) */
+  nDa: number;
   /** everything the firm won: contracts and direct acquisitions */
   total: number;
   /** the direct acquisitions in `total`; null while the mart predates them (built before 2 November 2026) */
@@ -146,6 +255,8 @@ export interface Headline {
 export interface RxData {
   profile: RxProfile;
   dep: DepRow[];
+  /** every supplier of the authority, both channels: the relation table pages through them */
+  depSuppliers: number;
   patterns: PatternRow[];
   families: Record<string, { name: string; rows: MatrixRow[]; nAll: number }>;
   familiesWithLots: number;
@@ -181,59 +292,15 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
     lastYear: (p["y1"] as string | null) ?? null,
   };
 
-  // ── dependency: suppliers worth a bubble (≥1% of the authority or ≥1 mil, top 150)
-  const floor = Math.max(500_000, totalContracts * 0.001);
-  // da_here and v_da are read through to_jsonb: a mart built before they existed reads them as null instead of
-  // failing, until the next daily radiografie rebuild.
+  // ── dependency: every supplier of the authority over both channels, no threshold (owner, 2 November 2026); the
+  // chart draws the 25 largest, the table (/api/radiografie/furnizori) pages through all of them.
+  const authTotal = await depAuthorityTotal(sql, id);
   const depRows = (await sql`
-    select supplier_id::text id, supplier_name, county, is_foreign, v_here, v_total, n_auth, n_here, ns_here, nk_here,
-           y0, y1, c_frame, c_plain, yrs, turn_win, ny_win, turn_last, emp_last, win_from, win_to,
-           to_jsonb(sd) ->> 'da_here' da_here, to_jsonb(sd) ->> 'v_da' v_da
-    from marts.supplier_dependency sd
-    where authority_id = ${id} and v_here >= ${floor}
-    order by v_here desc limit 150
+    select ${depColumns(sql)} from marts.supplier_dependency sd
+    where authority_id = ${id} order by ${depAll(sql)} desc, supplier_id limit ${DEP_CHART_MAX}
   `) as unknown as Record<string, unknown>[];
-  const win = {
-    from: num(depRows[0]?.["win_from"] ?? 2021),
-    to: num(depRows[0]?.["win_to"] ?? 2024),
-  };
-  const dep: DepRow[] = depRows.map((r) => {
-    const cFrame = num(r["c_frame"]),
-      cPlain = num(r["c_plain"]);
-    const turnWin = numOrNull(r["turn_win"]);
-    const nyWin = num(r["ny_win"]);
-    const c = cFrame + cPlain;
-    const here = num(r["v_here"]),
-      daHere = num(r["da_here"]),
-      total = num(r["v_total"]);
-    return {
-      id: String(r["id"]),
-      name: cleanName(r["supplier_name"] as string | null),
-      county: (r["county"] as string | null) ?? null,
-      foreign: Boolean(r["is_foreign"]),
-      here,
-      daHere,
-      total,
-      daTotal: numOrNull(r["v_da"]),
-      nAuth: num(r["n_auth"]),
-      n: num(r["n_here"]),
-      ns: num(r["ns_here"]),
-      nk: num(r["nk_here"]),
-      y0: num(r["y0"]),
-      y1: num(r["y1"]),
-      cFrame,
-      cPlain,
-      yrs: ((r["yrs"] as number[] | null) ?? []).map(Number),
-      turnWin,
-      nyWin,
-      turnLast: numOrNull(r["turn_last"]),
-      empLast: numOrNull(r["emp_last"]),
-      ratio: turnWin && nyWin >= 1 && c > 0 ? c / turnWin : null,
-      shareHere: totalContracts > 0 ? here / totalContracts : 0,
-      // The authority in everything the firm won, its direct acquisitions included on both sides (owner, 2 November 2026).
-      shareLife: total > 0 ? Math.min(1, (here + daHere) / total) : 0,
-    };
-  });
+  const win = depWindow(depRows[0]);
+  const dep: DepRow[] = depRows.map((r) => depRow(r, authTotal.value));
 
   // ── lot patterns + elsewhere
   const pr = (await sql`
@@ -393,6 +460,7 @@ export async function getRadiografie(entityId: string): Promise<RxData | null> {
   return {
     profile,
     dep,
+    depSuppliers: authTotal.suppliers,
     patterns,
     families,
     familiesWithLots: famCounts[0]?.with_lots ?? 0,
@@ -481,7 +549,7 @@ export function buildHeadlines(
       go: "dep",
       supplierId: cap.id,
     });
-  const captive = dep.filter((d) => d.shareLife >= 0.9 && d.here >= 10_000_000).sort((a, b) => b.here - a.here);
+  const captive = dep.filter((d) => d.shareLife >= 0.9 && d.all >= 10_000_000).sort((a, b) => b.all - a.all);
   if (captive.length >= 2)
     out.push({
       score: 22,
