@@ -151,7 +151,7 @@
 }
 .method-head .mh-rule{flex:1 0 100%;margin:0;font-size:13px}
 .method-head .mh-rule>summary{cursor:pointer;width:fit-content;color:var(--accent);font-weight:500}
-.method-head .mh-rule>.mh-desc{margin:6px 0 2px;max-width:85ch;line-height:1.6}
+.method-head .mh-rule>.mh-desc{margin:6px 0 2px;max-width:none;line-height:1.6}
 .yem-row{display:flex;flex-wrap:wrap;gap:4px 28px;margin-bottom:12px}
 .yem-fig{flex:1 1 240px;max-width:420px;min-width:0}
 .yem-cap{margin:10px 0 0;font:600 13px/1.4 var(--body);color:var(--ink2)}
@@ -165,6 +165,11 @@
 .ent-partners .bar-val{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
 .ent-partners .bar-val .v{white-space:nowrap}
 .ent-partners .bar-row .term-tip>.term-def{left:auto;right:0}
+/* ---- no text cut short (owner, 2 November 2026): a partner's name, a record's object and party wrap whole instead of
+   ending in „…”; the names get a third of the row ---- */
+.ent-partners .bar-row{grid-template-columns:minmax(220px,34%) minmax(0,1fr) auto auto}
+.ent-partners .bar-label{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+.ent-tx td.c-cpv,.ent-tx td.c-party{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
 
 /* ---- full amounts on desktop (no "303.349.549 …"), rounded to the leu (owner, 2 November 2026): the widest
    possible, „999.999.999 lei”, is 122 px; the rest of the width goes to the counterparty ---- */
@@ -205,7 +210,7 @@
 /* ---- contract rows: the contract number, a framework ceiling or addendum label,
    and a note when the same contract also appears under another award notice ---- */
 .ent-tx td.c-links{white-space:normal}
-.ent-tx .c-no{display:block;margin-bottom:2px;font:12px/1.4 var(--body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ent-tx .c-no{display:block;margin-bottom:2px;font:12px/1.4 var(--body);color:var(--muted);white-space:normal;overflow-wrap:anywhere}
 .ent-tx .c-dup{white-space:normal;color:var(--ink2);font-weight:500}
 .ent-tx .kind-line{color:var(--ink2);font-weight:500}
 /* a sortable header's button looks like the header itself */
