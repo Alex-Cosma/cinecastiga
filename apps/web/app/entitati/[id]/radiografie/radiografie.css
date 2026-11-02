@@ -36,11 +36,11 @@
 .rv-rank{width:100%;border-collapse:collapse;table-layout:fixed;font-variant-numeric:tabular-nums}
 .rv-rank th{padding:10px 8px 8px;border-bottom:1px solid var(--line2);text-align:left;vertical-align:bottom;font-weight:600}
 .rv-rank th.c-name{width:30%}.rv-rank th.c-duel{width:38%}.rv-rank th.c-val{width:17%;text-align:right}.rv-rank th.c-recs{width:15%;text-align:right}
-.rv-ranking .rv-th{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font:600 12px/1.3 var(--body);color:var(--muted);padding:4px 0;border-radius:4px}
+.rv-ranking .rv-th{all:unset;cursor:pointer;display:inline-flex;align-items:flex-end;gap:6px;font:600 12px/1.3 var(--body);color:var(--muted);padding:4px 0;border-radius:4px}
 .rv-ranking .rv-th:hover,.rv-ranking .rv-th[data-on]{color:var(--ink)}
 .rv-ranking .rv-th:hover,.rv-ranking .rv-pick:hover{background:transparent;border-color:transparent}
 .rv-ranking .rv-th:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.rv-sortmark{opacity:0;transition:opacity .12s,transform .12s}
+.rv-sortmark{flex:none;margin-bottom:3px;opacity:0;transition:opacity .12s,transform .12s}
 .rv-th:hover .rv-sortmark{opacity:.5}
 .rv-th[data-on] .rv-sortmark{opacity:1}
 .rv-th[data-dir=asc] .rv-sortmark{transform:rotate(180deg)}
