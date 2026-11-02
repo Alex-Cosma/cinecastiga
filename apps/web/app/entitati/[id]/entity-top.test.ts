@@ -90,6 +90,13 @@ describe("the entity page's top", () => {
     expect(css).toContain(".ent-top .ent-risk-read,.ent-top .ent-ledger tbody th{position:relative}");
   });
 
+  it("never cuts its text short: a signal's rule spans its card, names, objects and numbers wrap whole", () => {
+    expect(css).toContain(".method-head .mh-rule>.mh-desc{margin:6px 0 2px;max-width:none;");
+    expect(css).toContain(".ent-tx td.c-cpv,.ent-tx td.c-party{white-space:normal;overflow:visible;text-overflow:clip");
+    expect(css).toContain(".ent-partners .bar-label{white-space:normal;overflow:visible;text-overflow:clip");
+    expect(css).not.toMatch(/\.ent-tx \.c-no\{[^}]*text-overflow:ellipsis/);
+  });
+
   it("lists the tabs in the page's order and gives the page its own title", () => {
     const tabs = page.slice(page.indexOf("<SectionNav"), page.indexOf("/>", page.indexOf("<SectionNav")));
     const at = ['"top"', '"conducere", label: "Conducere"', '"semnale"', '"parteneri"', '"achizitii"', '"Titular"'].map((s) => tabs.indexOf(s));
