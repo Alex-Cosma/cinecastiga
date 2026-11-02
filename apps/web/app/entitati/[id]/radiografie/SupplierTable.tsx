@@ -15,8 +15,8 @@ import { recordWords, sharePct } from "./supplier-words";
  */
 interface Resp extends Partial<DepPage> { ok: boolean; error?: string }
 
-const LABEL: Record<DepSort, string> = { value: "valoare", here: "ponderea în autoritate", life: "ponderea în portofoliul firmei", recs: "înregistrări", name: "nume" };
-const PILL: Record<DepSort, string> = { value: "Valoare", here: "Din autoritate", life: "În portofoliul firmei", recs: "Înregistrări", name: "Furnizor" };
+const LABEL: Record<DepSort, string> = { value: "valoare", here: "ponderea în autoritate", life: "câștigurile publice ale firmei venite de aici", recs: "înregistrări", name: "nume" };
+const PILL: Record<DepSort, string> = { value: "Valoare", here: "Din autoritate", life: "Cât din câștigurile publice ale firmei vin de aici", recs: "Înregistrări", name: "Furnizor" };
 
 function Chevron() {
   return <svg className="rv-sortmark" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
@@ -96,7 +96,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
                 <span className="rv-duelhead">
                   <span>{head("here", "← Din autoritate")}</span>
                   <span className="axis" aria-hidden="true" />
-                  <span>{head("life", "În portofoliul firmei →")}</span>
+                  <span>{head("life", "Cât din câștigurile publice ale firmei vin de aici →")}</span>
                 </span>
               </th>
               <th scope="col" className="c-val" aria-sort={ariaSort("value")}>{head("value", "Valoare")}</th>
@@ -113,7 +113,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
               <tr key={r.id} aria-selected={selectedId === r.id} onClick={() => onSelect(r)}>
                 <td className="c-name"><Link href={`/entitati/${r.id}`} onClick={(e) => e.stopPropagation()}>{shortName(r.name)}</Link></td>
                 <td className="c-duel">
-                  <button type="button" className="rv-pick" aria-label={`Arată în grafic: ${shortName(r.name)}, ${sharePct(r.shareHere)} din autoritate, ${sharePct(r.shareLife)} din portofoliul firmei`}
+                  <button type="button" className="rv-pick" aria-label={`Arată în grafic: ${shortName(r.name)}, ${sharePct(r.shareHere)} din autoritate, ${sharePct(r.shareLife)} din câștigurile publice ale firmei`}
                     onClick={(e) => { e.stopPropagation(); onSelect(r); }}><Duel row={r} /></button>
                 </td>
                 <td className="c-val">
