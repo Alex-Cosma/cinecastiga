@@ -37,8 +37,7 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     if (!els.length) return;
     const onScroll = () => {
       const y = window.scrollY + coveredTop() + 24;
-      // The tabs are not in page order (e.g. "Conducere" is listed last but sits
-      // above the signals), so the active one is the lowest section already reached.
+      // The active tab is the lowest section already reached, whatever order the tabs are listed in.
       let cur = ids[0]!;
       let top = -Infinity;
       for (const el of els) if (el.offsetTop <= y && el.offsetTop > top) { cur = el.id; top = el.offsetTop; }

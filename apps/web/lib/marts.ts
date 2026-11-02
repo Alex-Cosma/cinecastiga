@@ -296,6 +296,8 @@ export interface DaTx {
   cpvName: string | null;
   estimatedValueRon: number | null;
   closingValue: number | null;
+  /** The stored value as text, exact to the ban: the table shows it rounded to the leu, this on hover. */
+  closingValueExact?: string | null;
   finalizationDate: string | null;
   daFlags: string[];
   /** Contract rows only. */
@@ -416,22 +418,39 @@ export async function getCompanyReps(cui: string): Promise<CompanyRep[]> {
   }));
 }
 
-/** Distinct activity years across both channels — the year filter chips. */
-export async function getEntityTxYears(entityId: string, role: Role): Promise<string[]> {
+/** The table's records per year, per channel ("" = undated): its year panel's counts and an empty table's ways out. */
+export interface TxYearCounts {
+  da: Record<string, number>;
+  contracts: Record<string, number>;
+}
+
+/**
+ * The records per year of each channel under the table's filters other than the channel and the year: a signal
+ * (direct acquisitions only) or the excluded records (critique 2 November 2026: the year list offered years without
+ * a record, and an empty table said nothing of why). Same populations as getEntityTransactions.
+ */
+export async function getEntityTxYearCounts(
+  entityId: string,
+  role: Role,
+  q: Pick<TxQuery, "flagCode" | "excluded"> = {},
+): Promise<TxYearCounts> {
   const sql = db();
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const partyCol = role === "authority" ? sql`authority_id` : sql`supplier_id`;
+  const da = sql`
+    select 'da' src, coalesce(left(finalization_date, 4), '') y from marts.da_transactions
+    where ${partyCol} = ${id}
+      and ${q.excluded ? sql`(closing_value is null or closing_value <= 0 or closing_value > 2000000)` : sql`closing_value > 0 and closing_value <= 2000000`}
+      ${q.flagCode ? sql`and ${q.flagCode} = any(da_flags)` : sql``}`;
+  const ct = sql`
+    select 'contracts' src, coalesce(left(finalization_date, 4), '') y from marts.contract_transactions
+    where ${partyCol} = ${id} and closing_value > 0`;
   const rows = (await sql`
-    select distinct y from (
-      select left(finalization_date, 4) y from marts.da_transactions
-      where ${partyCol} = ${id} and finalization_date is not null
-      union
-      select left(finalization_date, 4) y from marts.contract_transactions
-      where ${partyCol} = ${id} and finalization_date is not null
-    ) u
-    order by 1 desc
-  `) as unknown as { y: string }[];
-  return rows.map((r) => r.y);
+    select src, y, count(*)::int n from (${q.excluded || q.flagCode ? da : sql`${da} union all ${ct}`}) u group by 1, 2
+  `) as unknown as { src: "da" | "contracts"; y: string; n: number }[];
+  const counts: TxYearCounts = { da: {}, contracts: {} };
+  for (const r of rows) counts[r.src][r.y] = Number(r.n);
+  return counts;
 }
 
 /**
@@ -536,6 +555,7 @@ export async function getEntityTransactions(
       cpvName: (r["cpv_name"] as string | null) ?? null,
       estimatedValueRon: r["estimated_value_ron"] != null ? Number(r["estimated_value_ron"]) : null,
       closingValue: r["closing_value"] != null ? Number(r["closing_value"]) : null,
+      closingValueExact: r["closing_value"] != null ? String(r["closing_value"]) : null,
       finalizationDate: (r["finalization_date"] as string | null) ?? null,
       daFlags: (r["da_flags"] as string[] | null) ?? [],
       procedureType: (r["procedure_type"] as string | null) ?? null,

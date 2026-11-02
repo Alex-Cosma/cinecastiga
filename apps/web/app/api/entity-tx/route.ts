@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { getEntityTransactions, getEntityTxYears, type Role, type TxQuery } from "@/lib/marts";
+import { getEntityTransactions, getEntityTxYearCounts, type Role, type TxQuery } from "@/lib/marts";
 import { devlog } from "@/lib/devlog";
 
 /**
  * GET /api/entity-tx — the entity page's transaction table, client-driven:
  * 10 rows/page, sortable, filterable by year + flag + channel WITHOUT a full
  * page reload. ?id&rol=furnizor|autoritate&page&sort&dir&an&sem&tip=da|contracts
+ * With &doar=ani: the records per year of each channel under the signal and
+ * excluded filters only (the year panel's counts), no rows.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -30,14 +32,16 @@ export async function GET(req: Request) {
   if (sem && /^[a-z_]{1,40}$/.test(sem)) q.flagCode = sem;
   const tip = url.searchParams.get("tip");
   if (tip === "da" || tip === "contracts") q.src = tip;
-  devlog("entity-tx", { id, role, ...q });
+  const yearsOnly = url.searchParams.get("doar") === "ani";
+  devlog("entity-tx", { id, role, yearsOnly, ...q });
 
   try {
-    const [{ rows, total }, years] = await Promise.all([
-      getEntityTransactions(id, role, q),
-      getEntityTxYears(id, role),
-    ]);
-    return NextResponse.json({ ok: true, rows, total, years, pageSize: 10 });
+    if (yearsOnly) {
+      const counts = await getEntityTxYearCounts(id, role, { ...(q.flagCode ? { flagCode: q.flagCode } : {}), ...(q.excluded ? { excluded: true } : {}) });
+      return NextResponse.json({ ok: true, counts });
+    }
+    const { rows, total } = await getEntityTransactions(id, role, q);
+    return NextResponse.json({ ok: true, rows, total, pageSize: 10 });
   } catch (e) {
     // The technical cause goes to the server log, never to the reader.
     console.error("entity-tx", { id, role, ...q }, e);

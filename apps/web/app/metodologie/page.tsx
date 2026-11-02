@@ -136,7 +136,7 @@ export default function MetodologiePage() {
         <p>Sub 20% nu există: cel mai slab tipar dă 20%. 0% înseamnă că tiparele nu apar în datele evaluate, nu că am certificat lipsa
           neregulilor. Datele incomplete pot schimba rezultatul; verifică perioada fiecărui semnal și sursele lui.</p>
 
-        <p id="grup-comparatie"><strong>Față de cine?</strong> „Mai multe tipare decât X% dintre …” (pagina entității) apare doar la riscul
+        <p id="grup-comparatie"><strong>Față de cine?</strong> „Scor peste X% dintre …” (pagina entității) apare doar la riscul
           moderat și puternic: o firmă slabă ar trece înaintea multor firme fără niciun tipar. X% sunt membrii grupului cu un scor mai mic.
           „Unde se situează?” din „Întreabă” arată câți au un scor mai mare, egal sau mai mic. Grupurile: primăriile după populație
           (RPL 2021, între jumătate și dublul populației; comune, orașe și municipii împreună, doar cele identificate sigur), consiliile

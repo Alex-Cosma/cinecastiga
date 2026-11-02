@@ -111,3 +111,11 @@ export function tipLeft(index: number, count: number, width: number, tipWidth: n
 /** The current calendar year in Romania: the chart's year in progress. */
 export const bucharestYear = (now = new Date()): number =>
   Number(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Bucharest", year: "numeric" }).format(now));
+
+/**
+ * The page's own browser title (critique 2 November 2026: every entity tab read „cinecâștigă? — Cine câștigă …”):
+ * „BUG FOREST SRL · furnizor, Vaslui”, the layout adding „ — cinecâștigă?”.
+ */
+export function entityTitle(name: string, role: "supplier" | "authority", county: string | null): string {
+  return `${name} · ${role === "supplier" ? "furnizor" : "autoritate"}${county ? `, ${county}` : ""}`;
+}

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { entityYearsFrom, type EntityYear } from "../../../lib/marts";
-import { axisLabel, bucharestYear, evidenceWithPeriod, ledgerTotals, niceTop, tipLeft, yearsModel, yearWords } from "./entity-top";
+import { axisLabel, bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, niceTop, tipLeft, yearsModel, yearWords } from "./entity-top";
 
 // The entity page's top (owner, 2 November 2026): the risk on its bands, a ledger per channel, the value per year.
 const AGNITA: EntityYear[] = [
@@ -65,6 +65,11 @@ describe("the entity's years", () => {
     expect(tipLeft(4, 9, 150, 200)).toBe(0);
   });
 
+  it("names each entity in its browser title", () => {
+    expect(entityTitle("BUG FOREST SRL", "supplier", "Vaslui")).toBe("BUG FOREST SRL · furnizor, Vaslui");
+    expect(entityTitle("SPITALUL ORASENESC AGNITA", "authority", null)).toBe("SPITALUL ORASENESC AGNITA · autoritate");
+  });
+
   it("keeps a short axis and a round scale", () => {
     expect([niceTop(3_894_446), niceTop(10_537_507), niceTop(870_000), niceTop(0)]).toEqual([4_000_000, 15_000_000, 1_000_000, 1]);
     expect([axisLabel(0), axisLabel(750_000), axisLabel(7_500_000), axisLabel(2_000_000_000)]).toEqual(["0", "750 mii", "7,5 mil.", "2 mld."]);
@@ -80,6 +85,17 @@ describe("the entity page's top", () => {
     expect(page).toContain('<div className={`ent-top${years ? "" : " ent-top--no-years"}`}>');
     expect(page).toMatch(/<Term tip id="scor-risc" \/>/);
     expect(page).toContain("riskPeerWords(peerLine)");
+    // Its explanation opens under its line, as wide as the region (critique 2 November 2026: 116 px, cut).
+    expect(css).toContain(".ent-top .ent-tip{position:static}");
+    expect(css).toContain(".ent-top .ent-risk-read,.ent-top .ent-ledger tbody th{position:relative}");
+  });
+
+  it("lists the tabs in the page's order and gives the page its own title", () => {
+    const tabs = page.slice(page.indexOf("<SectionNav"), page.indexOf("/>", page.indexOf("<SectionNav")));
+    const at = ['"top"', '"conducere", label: "Conducere"', '"semnale"', '"parteneri"', '"achizitii"', '"Titular"'].map((s) => tabs.indexOf(s));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    expect(page).toContain("export async function generateMetadata(");
   });
 
   it("lists each channel with its records, its value and its link, then the recorded total", () => {

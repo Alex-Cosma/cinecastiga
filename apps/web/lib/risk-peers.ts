@@ -7,13 +7,13 @@ const g = globalThis as unknown as { __seapRiskPeersSql?: DbSql };
 const db = (): DbSql => (g.__seapRiskPeersSql ??= createDb().sql);
 
 /**
- * "Mai multe tipare decât 93% dintre primăriile cu …", or "decât toate …" when every other member is lower;
- * a share short of all never rounds up to 100%.
+ * "Scor peste 93% dintre primăriile cu …", or "Scor peste toate …" when every other member is lower; a share
+ * short of all never rounds up to 100%. It compares the score, not the number of patterns (critique of 2 November 2026).
  */
 export function riskPeerWords(line: RiskPeerLine): string {
   const group = line.groupWords.startsWith("toate ") ? line.groupWords : `toate ${line.groupWords}`;
-  if (line.all) return `Mai multe tipare decât ${group}`;
-  return `Mai multe tipare decât ${Math.min(99, Math.round(line.share * 100))}% dintre ${line.groupWords.replace(/^toate /, "")}`;
+  if (line.all) return `Scor peste ${group}`;
+  return `Scor peste ${Math.min(99, Math.round(line.share * 100))}% dintre ${line.groupWords.replace(/^toate /, "")}`;
 }
 
 export interface RiskPeerLine {
@@ -29,7 +29,7 @@ export interface RiskPeerLine {
 
 /**
  * The profile's place among similar ones (owner decision, 1 November 2026):
- * "Mai multe tipare decât 93% dintre …", only for a moderate or strong score,
+ * "Scor peste 93% dintre …", only for a moderate or strong score,
  * where it cannot mislead (a weak firm sits above the many firms with none).
  * The group is Ask's default for "Unde se situează?": a town hall among town
  * halls of close population, a hospital or school among its kind, a county

@@ -207,7 +207,7 @@ export const GLOSSARY = {
   // The risk score (rf-2026.18, owner decision of 1 November 2026): the (?) beside "73% · risc · puternic".
   "scor-risc": {
     title: "Riscul, în procente",
-    text: "Cât de multe și cât de pronunțate sunt tiparele din achizițiile directe: 0% fără niciun tipar, 20–39% slab, 40–67% moderat, 68% și peste puternic. Un singur tipar ajunge cel mult la 60%. Nu este o probabilitate de corupție.",
+    text: "Nu este o probabilitate de corupție. Cât de multe și cât de pronunțate sunt tiparele din achizițiile directe: 0% fără niciun tipar, 20–39% slab, 40–67% moderat, 68% și peste puternic. Un singur tipar ajunge cel mult la 60%.",
   },
   // ONRC's other names for the CUI (owner, 1 November 2026).
   "nume-registru": {
