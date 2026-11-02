@@ -14,7 +14,7 @@ import type { NewScope } from "./spec";
 /** A question as the engine and the builder hold it (AskSpec, QuestionSpec). */
 type Spec = { block: string; dim?: string | undefined; dataset?: string | undefined; filters: { [key: string]: unknown } };
 /** One fact tag (app/intreaba/answer/RowFacts.tsx RowFact): neutral, accent (what the question picked out), caveat (amber). */
-export interface WinnerTag { text: string; tone?: "accent" | "caveat" }
+export interface WinnerTag { text: string; tone?: "accent" | "caveat"; /** A partner the words name: a link in the tag. */ entity?: { id: string; name: string } }
 
 const newOf = (spec: Pick<Spec, "filters">): { scope: NewScope; since: number } | null =>
   spec.filters.newSince !== undefined && typeof spec.filters.newScope === "string" ? { scope: spec.filters.newScope as NewScope, since: Number(spec.filters.newSince) } : null;
@@ -70,7 +70,7 @@ function institutionTags(facts: InstitutionFacts): WinnerTag[] {
   const top = facts.top;
   if (!top) return [];
   const half = top.share >= 0.5 && top.count >= 3;
-  return [{ text: `cel mai mare furnizor: ${top.name} · ${formatShare(top.share)}`, ...(half ? { tone: "accent" as const } : {}) }];
+  return [{ text: `cel mai mare furnizor: ${top.name} · ${formatShare(top.share)}`, entity: { id: top.id, name: top.name }, ...(half ? { tone: "accent" as const } : {}) }];
 }
 
 /**

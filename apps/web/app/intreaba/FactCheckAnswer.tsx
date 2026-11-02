@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import EntityName from "../../components/EntityName";
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { FactCheckData } from "../../lib/ask/compile";
 import {
@@ -100,8 +101,8 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
     {state === "no" && f.reason === "none" && <NoneContext fact={f} />}
 
     {records && f.share && <div className="fc-weight">
-      <span>Pentru {shortName(f.supplier)}: {shareWords(f.share.ofSupplier, "client", "clienți", shareLabel)}</span>
-      <span className="qb-tipwrap">Pentru {shortName(f.authority)}: {shareWords(f.share.ofAuthority, "furnizor", "furnizori", shareLabel)} <HelpTip tip={{ title: "Ponderea relației", text: FACT_TIPS.share }} /></span>
+      <span>Pentru <EntityName id={f.supplier.entityId} role="supplier">{shortName(f.supplier)}</EntityName>: {shareWords(f.share.ofSupplier, "client", "clienți", shareLabel)}</span>
+      <span className="qb-tipwrap">Pentru <EntityName id={f.authority.entityId} role="authority">{shortName(f.authority)}</EntityName>: {shareWords(f.share.ofAuthority, "furnizor", "furnizori", shareLabel)} <HelpTip tip={{ title: "Ponderea relației", text: FACT_TIPS.share }} /></span>
     </div>}
 
     {records && <Profile fact={f} sources={sources} />}
@@ -177,7 +178,8 @@ function NoneContext({ fact: f }: { fact: FactCheckData }) {
     : { authorityId: Number(f.authority.entityId), authorityName: f.authority.name, supplierId: Number(twin.entityId), supplierName: twin.name } });
   return <>
     {(f.twins ?? []).map((t) => <div key={`${t.role}:${t.entityId}`} className="fc-twin">
-      Același nume, alt CUI: <b>{[t.cui ? `CUI ${t.cui}` : cleanName(t.name), county(t.county)].filter(Boolean).join(" · ")}</b> are <b>{recordWords(t.count)}</b> cu {shortName(t.role === "authority" ? f.supplier : f.authority)}
+      Același nume, alt CUI: <b><EntityName id={t.entityId} role={t.role}>{[t.cui ? `CUI ${t.cui}` : cleanName(t.name), county(t.county)].filter(Boolean).join(" · ")}</EntityName></b> are <b>{recordWords(t.count)}</b> cu{" "}
+      <EntityName id={(t.role === "authority" ? f.supplier : f.authority).entityId} role={t.role === "authority" ? "supplier" : "authority"}>{shortName(t.role === "authority" ? f.supplier : f.authority)}</EntityName>
       {t.yearFirst ? `, ${t.yearFirst === t.yearLast ? t.yearFirst : `${t.yearFirst}–${t.yearLast}`}` : ""}.{" "}
       <Link className="fc-textlink" href={askLink(pairWith(t))}>Verifică<span className="qb-glyph" aria-hidden="true">›</span></Link>
     </div>)}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  consortiumExplanation, consortiumFraction, consortiumMembersLabel, consortiumPhrase,
+  consortiumExplanation, consortiumFraction, consortiumMembersLabel, consortiumPhrase, consortiumPhraseParts,
   consortiumRankingNote, consortiumShareLabel, isConsortium,
 } from "./consortium";
 import { roCount } from "./ro-count";
@@ -36,6 +36,15 @@ describe("consortium share labels", () => {
     expect(consortiumMembersLabel(["A"], 1)).toBeNull();
     expect(consortiumPhrase(["A"], 2)).toBe("consorțiu cu A");
     expect(consortiumPhrase([], 2)).toBe("contract în consorțiu");
+  });
+  it("splits the phrase so each named member can link to its page, reading the same", () => {
+    const m = (name: string) => ({ id: name.toLowerCase(), name });
+    const read = (parts: (string | { name: string })[]) => parts.map((p) => typeof p === "string" ? p : p.name).join("");
+    for (const [names, n] of [[["A"], 2], [["A", "B"], 3], [["A", "B", "C", "D"], 5], [["A"], 3], [["A", "B"], 23], [[], 3], [["", "B"], 3]] as const) {
+      expect(read(consortiumPhraseParts(names.map(m), n))).toBe(consortiumPhrase(names, n));
+    }
+    expect(consortiumPhraseParts([m("A"), m("B")], 3).filter((p) => typeof p !== "string")).toEqual([m("A"), m("B")]);
+    expect(consortiumPhraseParts([m("A")], 1)).toEqual([]);
   });
   it("explains that the amount was not awarded several times", () => {
     expect(consortiumExplanation(3)).toContain("nu a fost atribuită de 3 ori");

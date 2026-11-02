@@ -10,7 +10,8 @@ describe("human-readable monitoring result comparisons", () => {
   it("matches entity rows by identity even when a ranking changes order", () => {
     const before = { block: "table", rows: [{ entityId: "1", name: "Firma A", value: 100 }, { entityId: "2", name: "Firma B", value: 90 }], page: 0 };
     const after = { block: "table", rows: [{ entityId: "2", name: "Firma B", value: 110 }, { entityId: "1", name: "Firma A", value: 100 }], page: 1 };
-    expect(resultDifferences(before, after)).toEqual([{ key: "rows/entityId:2/value", context: "Clasament · Firma B", field: "Valoare înregistrată", fieldKey: "value", before: 90, after: 110 }]);
+    expect(resultDifferences(before, after)).toEqual([{ key: "rows/entityId:2/value", context: "Clasament · Firma B", field: "Valoare înregistrată", fieldKey: "value", before: 90, after: 110,
+      parts: [{ text: "Clasament" }, { text: "Firma B", id: "2" }] }]);
   });
   it("handles all thirteen result shapes with named changed values", () => {
     const cases = [

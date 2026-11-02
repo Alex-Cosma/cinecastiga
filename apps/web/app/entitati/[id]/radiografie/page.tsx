@@ -1,5 +1,6 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
+import EntityName from "@/components/EntityName";
 import { notFound } from "next/navigation";
 import { getRadiografie } from "@/lib/radiografie";
 import { formatRon, formatInt } from "@/lib/format";
@@ -19,7 +20,7 @@ export default async function RadiografiePage({ params, searchParams }: {
         notFound();
     const p = data.profile;
     return <div className="radiografie-view"><nav className="rv-breadcrumb" aria-label="Locul în aplicație"><Link href={`/entitati/${p.id}`}>Profilul instituției</Link><span> / Radiografie</span></nav>
- <header className="rv-header"><div><h1>Radiografie</h1><p className="rv-authority">{p.name}</p></div></header>
+ <header className="rv-header"><div><h1>Radiografie</h1><p className="rv-authority"><EntityName id={p.id} role="authority">{p.name}</EntityName></p></div></header>
  <div className="rv-context"><span><strong>{formatRon(p.totalContracts)}</strong> valoare contractată</span><span><strong>{formatInt(p.nContracts)}</strong> contracte distincte</span><span><strong>{formatInt(p.nDas)}</strong> achiziții directe</span><span>Istoric <strong>{p.firstYear ?? "—"}–{p.lastYear ?? "—"}</strong></span></div>
  <RadiografieExplorer data={data}/><footer className="rv-footer"><p>Tipare de verificat, nu dovezi. Valori contractate, nu plăți; cotele asocierilor pot fi estimate. Lipsa unui semnal nu confirmă absența unei probleme.</p><Link href="/metodologie">Metodologie și limite</Link></footer></div>;
 }

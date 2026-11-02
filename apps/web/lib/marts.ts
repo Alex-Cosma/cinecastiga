@@ -314,6 +314,8 @@ export interface DaTx {
   contractValueFull: number | null;
   /** Consortium rows: names of the other winners (at most 4), never invented. */
   consortiumOthers: string[];
+  /** The same winners with their ids, so each name links to its page. */
+  consortiumMembers?: { id: string; name: string }[];
   /** Contract rows: contractKind (contract, calloff, framework, amendment, review); null for DAs. */
   financialKind?: string | null;
 }
@@ -541,6 +543,10 @@ export async function getEntityTransactions(
     }
   }
   const winnerOf = (r: Record<string, unknown>) => (isAuth ? String(r["cp_id"]) : String(id));
+  const othersOf = (r: Record<string, unknown>) => (members.get(String(r["rid"])) ?? [])
+    .filter((m) => m.supplierId !== winnerOf(r))
+    .slice(0, 4)
+    .flatMap((m) => (m.name ?? "").length > 0 ? [{ id: m.supplierId, name: m.name! }] : []);
 
   return {
     total: Number(totalRows[0]?.c ?? 0),
@@ -566,11 +572,8 @@ export async function getEntityTransactions(
       nWinners: r["n_winners"] != null ? Number(r["n_winners"]) : null,
       contractValueFull: r["contract_value_full"] != null ? Number(r["contract_value_full"]) : null,
       financialKind: (r["financial_kind"] as string | null) ?? null,
-      consortiumOthers: (members.get(String(r["rid"])) ?? [])
-        .filter((m) => m.supplierId !== winnerOf(r))
-        .slice(0, 4)
-        .map((m) => m.name ?? "")
-        .filter((n) => n.length > 0),
+      consortiumOthers: othersOf(r).map((m) => m.name),
+      consortiumMembers: othersOf(r),
     })),
   };
 }

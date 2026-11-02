@@ -1,5 +1,6 @@
 "use client";
 
+import EntityName from "../../components/EntityName";
 import { formatRon } from "@/lib/format";
 import type { SankeyData } from "@/lib/ask/sankey-shared";
 import type { AskSpec } from "@/lib/ask/spec";
@@ -17,7 +18,8 @@ import "./relations.css";
  * sankey): the partners the question shows and their rest on the left, the
  * five domains and theirs on the right, a band for each flow, each node with
  * its value, share and records and a "⋯" with „Vezi înregistrările →”,
- * „Scoate din calcul −”, „Detaliază ›” (a domain) and the page; the note on
+ * „Scoate din calcul −” and „Detaliază ›” (a domain); a partner's name is
+ * its page (owner, 2 November 2026); the note on
  * contracts with several winners. Under 560 px, and in „Tabel”, the partners
  * are a list with their domains in words. No category palette: partners in
  * the accent, domains in slate, rests dotted (final §3.10).
@@ -57,7 +59,7 @@ export default function SankeyAnswer({ data, spec, layout = "visual", deeperHref
         const actions = menu(node, "partner", i);
         return <div key={node.id} className={`qb-arow qb-flow-row${node.rest ? " is-rest" : ""}`} role="listitem" tabIndex={-1} data-qb-arow="">
           <div className="qb-flow-row-main">
-            <div className="qb-arow-name">{node.full}</div>
+            <div className="qb-arow-name">{node.rest ? node.full : <EntityName id={node.id}>{node.full}</EntityName>}</div>
             <span className={`qb-flow-bar${node.rest ? " is-rest" : ""}`} style={{ width: `${Math.max(2, node.value / max * 100)}%` }} aria-hidden="true" />
             <small className="qb-flow-row-domains">{partnerDomainsWords(view, node.id)}</small>
             {node.joint && <small className="qb-flow-row-joint qb-tipwrap">{node.joint}<HelpTip tip={JOINT_FLOW_TIP} /></small>}
@@ -65,6 +67,8 @@ export default function SankeyAnswer({ data, spec, layout = "visual", deeperHref
           <div className="qb-arow-val">
             <span className="qb-num">{formatRon(node.value)}</span>
             <small>{node.share} · {node.facts}</small>
+            {evidence && <button type="button" className="qb-rec qb-flow-rec" aria-label={`Înregistrările: ${node.full}`}
+              onClick={() => evidence.open(undefined, node.scope, node.scopeLabel)}>Înregistrări<span className="qb-glyph" aria-hidden="true">→</span></button>}
           </div>
           {actions.length > 0 && <RowMenu name={node.full} actions={actions} />}
         </div>;
@@ -90,7 +94,9 @@ function FlowChart({ view, menu }: { view: SankeyView; menu: (node: FlowNode, si
     const pos = at.get(node.id)!, actions = menu(node, side, i);
     return <div key={node.id} className={`qb-flow-label${node.rest ? " is-rest" : ""}`} role="listitem" style={{ top: pos.y + pos.h / 2 }}>
       <div className="qb-flow-label-text">
-        <span className="qb-flow-name" title={node.full}>{node.name}</span>
+        {side === "partner" && !node.rest
+          ? <EntityName id={node.id} className="qb-flow-name" title={node.full}>{node.name}</EntityName>
+          : <span className="qb-flow-name" title={node.full}>{node.name}</span>}
         <span className="qb-flow-fig">{formatRon(node.value)} · {node.share}</span>
         <span className="qb-flow-facts">{node.single ?? node.facts}</span>
       </div>

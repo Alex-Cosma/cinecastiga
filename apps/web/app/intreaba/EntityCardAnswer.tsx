@@ -248,6 +248,8 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
  */
 function RiskRow({ place, row, facts, actions }: { place: number; row: RiskPlace; facts: readonly RowFact[]; actions: readonly RowAction[] }) {
   const name = `${place}. ${cleanName(row.name)}`, pill = scorePill(row.score);
+  // Its records beside the value (owner, 2 November 2026: never only behind "⋯"); the menu keeps what is left.
+  const records = actions.find((action) => action.id === "records"), more = actions.filter((action) => action.id !== "records");
   return <div className="qb-arow ec-rrow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
       <div className="qb-arow-name">{place}. <Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link><small>{profilePlace(row)}</small></div>
@@ -256,8 +258,10 @@ function RiskRow({ place, row, facts, actions }: { place: number; row: RiskPlace
     <div className="qb-arow-val ec-rval">
       <span className="ec-score"><b className={`cri-pill ${pill.className}`}>{pill.text}</b>{pill.band}</span>
       <span className="qb-num">{formatRon(row.value)}</span>
+      {records?.onSelect && <button type="button" className="qb-rec ec-rrec" aria-label={`Înregistrările: ${cleanName(row.name)}`} onClick={records.onSelect}>
+        Înregistrări<span className="qb-glyph" aria-hidden="true">→</span></button>}
     </div>
-    {actions.length > 0 && <RowMenu name={name} actions={actions} />}
+    {more.length > 0 && <RowMenu name={name} actions={more} />}
   </div>;
 }
 
@@ -304,17 +308,16 @@ function LegacyTiesAnswer({ ties, spec }: { ties: LegacyTies; spec: QuestionSpec
           {ties.count > 1 && <p className="ec-order qb-tipwrap">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
           <AnswerList label="Profilurile cu cel mai ridicat indice" listRef={list} {...(head.kicker ? { describedBy: kickerId } : {})}>
             {rows.map((row) => {
+              // Its records beside the value; its name is its page (owner, 2 November 2026): nothing is left for a "⋯".
               const records = open(row);
-              const entity = { id: row.entityId, name: cleanName(row.name) };
-              const actions = entityRowActions(spec as unknown as AskSpec, entity, { ...(records ? { records } : {}) });
               return <AnswerRow
                 key={row.entityId}
-                name={entity.name}
+                name={cleanName(row.name)}
                 href={`/entitati/${row.entityId}`}
                 place={profilePlace(row)}
                 facts={legacyTieFacts(row, spec)}
                 value={formatRon(row.value)}
-                actions={actions}
+                {...(records ? { records: { label: "Înregistrări", onClick: records } } : {})}
               />;
             })}
           </AnswerList>

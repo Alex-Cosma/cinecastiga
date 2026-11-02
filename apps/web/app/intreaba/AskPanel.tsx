@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
+import EntityName, { linkNames, type NamedEntity } from "../../components/EntityName";
 import FollowButton from "@/components/FollowButton";
 import { formatRon, formatRonFull, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec, decodeSpec } from "@/lib/ask/permalink";
@@ -1139,7 +1140,7 @@ export default function AskPanel({
           >
             <div className="cq-answer-head">
               <div>
-                <h2 id="raspuns-titlu" tabIndex={-1}>{title}</h2>
+                <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied))}</h2>
                 {line && <IntentLine line={line} onAdopt={adopt} />}
                 <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} />
                 {dirty && (
@@ -1524,6 +1525,19 @@ export default function AskPanel({
 const byNameTag = (r: TableRow): WinnerTag[] => r.byName ? [{ text: "după nume", tone: "caveat" }] : [];
 
 /** F5 (kit P8): a ranking row's facts, inline in the row (a span: the row is a button), at most three. */
+/** The entities a question names (its institution, its firm, the one compared with), as its title may spell them. */
+function titleEntities(spec: AskSpec | null | undefined): NamedEntity[] {
+  if (!spec) return [];
+  const f = spec.filters as Record<string, unknown>, out: NamedEntity[] = [];
+  const add = (id: unknown, name: unknown, role: "authority" | "supplier") => {
+    if (id && typeof name === "string" && name) out.push({ id: String(id), name, role }, { id: String(id), name: cleanName(name), role });
+  };
+  add(f["authorityId"], f["authorityName"], "authority");
+  add(f["supplierId"], f["supplierName"], "supplier");
+  add(f["compareWithId"], f["compareWith"], f["authorityId"] ? "authority" : "supplier");
+  return out;
+}
+
 function FactTags({ tags }: { tags: readonly WinnerTag[] }) {
   if (!tags.length) return null;
   return <span className="qb-tags cq-rank-facts">{tags.slice(0, 3).map((tag) => <FactTag key={tag.text} fact={tag} />)}</span>;
@@ -1567,7 +1581,7 @@ function RankingBars({
         : r.value;
   const max = Math.max(...rows.map(metric), 1);
   const hasTotal = shareTotals !== undefined && shareTotals.value > 0;
-  // P7 (F4): a row of an institution or a firm has its "⋯": its records, "Scoate din calcul", its page.
+  // P7 (F4): a row of an institution or a firm has its "⋯": its records, "Scoate din calcul".
   const answer = useAnswerEvidence();
   if (!rows.length)
     return (
@@ -1585,18 +1599,16 @@ function RankingBars({
           const records = () => onSources(spec, entitySourceScope(spec, r), `${shown} · înregistrările din clasament`);
           const entity = r.entityId ? { id: r.entityId, name: cleanName(r.name) } : null;
           const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
+          // The name opens the entity's page; its records are the line under the sum (owner, 2 November 2026).
           const row = (
-          <button
-            type="button"
-            className="cq-rank-main"
-            key={r.entityId ?? r.name}
-            onClick={records}
-          >
+          <div className="cq-rank-main" key={r.entityId ?? r.name}>
             <span className="cq-rank-number">
               {String(i + 1).padStart(2, "0")}
             </span>
             <span className="cq-rank-name">
-              <strong>{shown}</strong>
+              {r.entityId
+                ? <EntityName id={r.entityId} role={spec.dim === "authority" ? "authority" : spec.dim === "supplier" ? "supplier" : null} className="cq-rank-title">{shown}</EntityName>
+                : <strong>{shown}</strong>}
               <FactTags tags={[...byNameTag(r), ...(r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : [])]} />
               <span className="cq-bar-track">
                 <i
@@ -1614,15 +1626,15 @@ function RankingBars({
                   : formatRonFull(metric(r))}
                 {spec.measure === "value_per_capita" ? " / locuitor" : ""}
               </strong>
-              <small>
+              <button type="button" className="cq-rank-records" onClick={records} aria-label={`Înregistrările din clasament: ${shown}`}>
                 {spec.measure === "count"
                   ? formatRonFull(r.value)
                   : countWords(r.count, "înregistrare", "înregistrări")}
                 {rankingShare(r.value, shareTotals) !== null && <> · {formatShare(rankingShare(r.value, shareTotals)!)} din total</>}
                 {" →"}
-              </small>
+              </button>
             </span>
-          </button>
+          </div>
           );
           // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
           return actions.length ? <div className="cq-rank-row" key={r.entityId ?? r.name} data-qb-arow="">
@@ -1770,7 +1782,7 @@ function CountyValues({
               <td data-label="Valoare">{formatRonFull(r.value)}</td>
               <td data-label="Înregistrări">{formatInt(r.count)}</td>
               {lensColumn && <td data-label={lensColumn}>{m?.metric !== null && m?.metric !== undefined ? `${metricWords(lens, m.metric)}${m.muted ? " ·" : ""}` : "—"}</td>}
-              {!firm && <td data-label="Cel mai mare cumpărător">{f?.buyer ? `${f.buyer.name} · ${formatShare(f.buyer.value / f.value)}` : "—"}</td>}
+              {!firm && <td data-label="Cel mai mare cumpărător">{f?.buyer ? <><EntityName id={f.buyer.id} role="authority">{f.buyer.name}</EntityName> · {formatShare(f.buyer.value / f.value)}</> : "—"}</td>}
               <td data-label="Cea mai mare înregistrare">{f?.record ? `${formatRon(f.record.value)} · ${formatShare(f.record.value / f.value)}` : "—"}</td>
               <td className="cq-map-src">
                 <button

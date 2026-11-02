@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EntityName from "@/components/EntityName";
 import type { Metadata } from "next";
 import { getTedStats, getTedAwards, type TedAward } from "@/lib/marts";
 import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, tedCoverageNote, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
@@ -12,6 +13,9 @@ export const metadata: Metadata = {
   title: "Atribuiri publicate în TED",
   description: "Anunțuri de atribuire din Jurnalul Oficial al UE, cu sursele europene și potrivirile identificate în SEAP.",
 };
+
+/** A winner's name as TED's tender and award parts both spell it: no diacritics, case, punctuation or SC/SRL/SA. */
+const winnerKey = (name: string) => cleanName(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^SC(?=[A-Z0-9])/, "").replace(/(SRL|SA)$/, "");
 
 const TED_NOTICE_URL = (pub: string | null) =>
   pub ? `https://ted.europa.eu/en/notice/${pub}/html` : null;
@@ -49,7 +53,10 @@ function amountCell(a: TedAward) {
         const tender = details.tenders.find((t) => t.id === v.tenderId);
         return <div key={`${v.tenderId ?? v.resultId}-${v.kind}-${i}`} className="county" style={{ marginTop: "0.5rem", overflowWrap: "anywhere" }}>
           <strong>{TED_AMOUNT_LABEL[v.kind] ?? v.kind}: {formatTedAmount(v.value, v.currency)}</strong>
-          {v.tenderId ? <div>{v.tenderId}{tender?.winnerNames?.length ? ` · ${tender.winnerNames.map(cleanName).join(", ")}` : ""}</div> : null}
+          {v.tenderId ? <div>{v.tenderId}{tender?.winnerNames?.length ? <> · {tender.winnerNames.map((name, j) => {
+            const at = a.winnerNames.findIndex((winner) => winnerKey(winner) === winnerKey(name));
+            return <span key={`${name}-${j}`}>{j > 0 && ", "}<EntityName id={at >= 0 ? a.winnerEntityIds[at] : null} role="supplier">{cleanName(name)}</EntityName></span>;
+          })}</> : null}</div> : null}
           {v.resultId ? <div>{v.resultId}</div> : null}
           {tender?.sharedAcrossLots ? <div>Aceeași ofertă este referită de mai multe loturi; nu o însumăm.</div> : null}
           <div>Câmp TED: {v.source}</div>

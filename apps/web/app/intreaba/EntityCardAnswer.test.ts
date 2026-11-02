@@ -135,8 +135,9 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     expect(words).not.toContain("fără semnale");
     expect(words).toContain("Pe harta riscului ›");
     expect(words).toContain("Semnal statistic, nu dovadă de neregulă · Cum se calculează");
-    // Each row has its own menu: its records and its page; none leaves it out of a calculation.
-    expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(5);
+    // Each row shows its records beside the value; its name is its page (owner, 2 November 2026): no "⋯" left, none out of a calculation.
+    expect(markup.match(/class="qb-rec ec-rrec"/g)).toHaveLength(5);
+    expect(markup).not.toContain('aria-haspopup="menu"');
     expect(words).not.toContain("Scoate din calcul");
     // The headline names the list, and anchors its (?) on its own line (owner, 2 November 2026: it opened far below).
     const head = /<p class="ec-ties-text qb-tipwrap" id="([^"]+)"/.exec(markup)?.[1];
@@ -199,8 +200,9 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
     expect(words).toContain("Arată toate cele 14");
     expect(words).toContain("Pe harta riscului ›");
     expect(words).toContain("Semnal statistic, nu dovadă de neregulă · Cum se calculează");
-    // Each row has its own menu: its records and its page; none leaves it out of a calculation.
-    expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(5);
+    // Each row shows its records beside the value; its name is its page (owner, 2 November 2026): no "⋯" left, none out of a calculation.
+    expect(markup.match(/class="qb-rec"/g)).toHaveLength(5);
+    expect(markup).not.toContain('aria-haspopup="menu"');
     expect(words).not.toContain("Scoate din calcul");
     // The level as squares, with its words for a screen reader.
     expect(markup).toContain('aria-label="1 semnal din 5"');

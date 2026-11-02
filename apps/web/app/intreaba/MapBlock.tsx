@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import EntityName from "../../components/EntityName";
 import { formatInt, formatRon } from "../../lib/format";
 import { countyMap, foldCounty } from "../../lib/map";
 import { encodeSpec } from "../../lib/ask/permalink";
@@ -147,7 +148,7 @@ export default function MapBlock({
     ] : [];
     const lines: CardLine[] = [];
     if (value > 0 && m.muted && (lens === "seat" || lens === "share" || lens === "value_per_capita")) lines.push({ text: `Gri pe hartă: ${m.muted}` });
-    if (value > 0 && f?.buyer && !firm) lines.push({ text: `Cel mai mare cumpărător: ${f.buyer.name} · ${formatShare(f.buyer.value / f.value)}` });
+    if (value > 0 && f?.buyer && !firm) lines.push({ text: <>Cel mai mare cumpărător: <EntityName id={f.buyer.id} role="authority">{f.buyer.name}</EntityName> · {formatShare(f.buyer.value / f.value)}</> });
     if (value > 0 && f?.record) lines.push({
       text: `Cea mai mare înregistrare: ${formatRon(f.record.value)} · ${formatShare(f.record.value / f.value)}`,
       records: sources("Vezi în surse", asked, "value"),

@@ -175,7 +175,7 @@ export interface CompareData {
    */
   shared?: { total: number; rows: { entityId: string; name: string; a: { value: number; count: number; joint?: number }; b: { value: number; count: number; joint?: number } }[] };
   /** Firms only: public contracts both won (at most 5 rows). */
-  joint?: { total: number; rows: { nid: string; authority: string | null; date: string | null; value: number }[] };
+  joint?: { total: number; rows: { nid: string; authority: string | null; authorityId?: string | null; date: string | null; value: number }[] };
 }
 /** distribution-1 (before F6a): 10 CRI buckets and a percentile. Only in answers stored before distribution-2. */
 export interface DistributionDataV1 {
@@ -2022,7 +2022,7 @@ async function runSpecData(
             partnerPass.then((r) => r.shared),
             // Firms only: contracts both won, with the public page key of each.
             focalRole === "supplier" && contractRows
-              ? s`select k.ca_notice_contract_id::text nid, max(d.authority_name) authority, min(d.finalization_date) date,
+              ? s`select k.ca_notice_contract_id::text nid, max(d.authority_name) authority, max(d.authority_id)::text authority_id, min(d.finalization_date) date,
                          sum(d.closing_value)::text value, count(*) over ()::int total
                   from ${contractRows} d join core.contracts k on k.id = d.contract_id
                   where ${where} and k.ca_notice_contract_id is not null
@@ -2040,7 +2040,7 @@ async function runSpecData(
             { id: string; g: string; value: string; groups: number }[],
             { id: string; other_id: string; name: string | null; value: string; n: number }[],
             { other_id: string; name: string | null; value_a: string; n_a: number; value_b: string; n_b: number; total: number }[],
-            { nid: string; authority: string | null; date: string | null; value: string; total: number }[],
+            { nid: string; authority: string | null; authority_id: string | null; date: string | null; value: string; total: number }[],
             { id: string; first_activity: string | null; last_activity: string | null; employees: number | null; employees_year: number | null; turnover: string | null; county: string | null }[],
             { id: string; cri: string | null; n_flags: number; flags: string[] | null; score: number | null }[],
           ];
@@ -2135,7 +2135,7 @@ async function runSpecData(
                 return { entityId: r.other_id, name: r.name ?? "?", a: { value: Number(r.value_a), count: r.n_a, ...joint(focalId!) }, b: { value: Number(r.value_b), count: r.n_b, ...joint(compareId!) } };
               }),
             },
-            ...(joint.length ? { joint: { total: joint[0]!.total, rows: joint.map((j) => ({ nid: j.nid, authority: j.authority, date: j.date, value: Number(j.value) })) } } : {}),
+            ...(joint.length ? { joint: { total: joint[0]!.total, rows: joint.map((j) => ({ nid: j.nid, authority: j.authority, authorityId: j.authority_id, date: j.date, value: Number(j.value) })) } } : {}),
           };
         }
 

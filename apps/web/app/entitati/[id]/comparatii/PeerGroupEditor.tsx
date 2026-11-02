@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cleanName } from "@/lib/format";
+import EntityName from "../../../../components/EntityName";
 import type { ConnectionRole } from "@/lib/connections-shared";
 import type { PeerCandidate, PeerCandidatesResult, PeerPopulation, PeerSelectionMember, PeersResponse } from "@/lib/peers-shared";
 
@@ -54,7 +55,7 @@ export default function PeerGroupEditor({ data, role, busy, onChange, onReset }:
         <div className="px-candidates" aria-busy={pending}>
           {search.trim().length < 2 ? <p className="px-meta">Scrie cel puțin două caractere pentru a căuta.</p> : pending ? <p role="status" className="px-meta">Se caută entități…</p> : error ? <div role="alert"><p>{error}</p><button onClick={() => setRetry(value => value + 1)}>Reîncearcă</button></div> : result && <>
             {result.items.length === 0 && <p role="status" className="px-meta">Nicio entitate găsită. Încearcă altă denumire sau CUI-ul.</p>}
-            {result.items.map(candidate => { const selected = members.some(member => member.id === candidate.entity.id); return <div key={candidate.entity.id} className="px-candidate"><div><strong>{cleanName(candidate.entity.name)}</strong><span className="px-meta">{candidate.entity.county ?? "Județ neidentificat"}{candidate.entity.cui ? ` · CUI ${candidate.entity.cui}` : ""}</span><Population population={candidate.population} /></div><button disabled={busy || selected || members.length >= 50} aria-label={`${selected ? "Deja în grup" : "Adaugă"}: ${cleanName(candidate.entity.name)}`} onClick={() => add(candidate)}>{selected ? "În grup" : "Adaugă"}</button></div>; })}
+            {result.items.map(candidate => { const selected = members.some(member => member.id === candidate.entity.id); return <div key={candidate.entity.id} className="px-candidate"><div><strong><EntityName id={candidate.entity.id} role={role}>{cleanName(candidate.entity.name)}</EntityName></strong><span className="px-meta">{candidate.entity.county ?? "Județ neidentificat"}{candidate.entity.cui ? ` · CUI ${candidate.entity.cui}` : ""}</span><Population population={candidate.population} /></div><button disabled={busy || selected || members.length >= 50} aria-label={`${selected ? "Deja în grup" : "Adaugă"}: ${cleanName(candidate.entity.name)}`} onClick={() => add(candidate)}>{selected ? "În grup" : "Adaugă"}</button></div>; })}
             {result.hasMore && <p className="px-meta">Primele 20 de rezultate. Precizează denumirea pentru a restrânge căutarea.</p>}
           </>}
         </div>
