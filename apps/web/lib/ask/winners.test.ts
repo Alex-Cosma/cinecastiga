@@ -121,7 +121,8 @@ describe("their words", () => {
     ]);
     expect(winnerFactTags(firms({ newSince: 2024, newScope: "registry" }), facts, 2026)).toEqual([{ text: "înmatriculată în 2024" }, { text: "din străinătate" }]);
     const top = { id: "5", name: "DAROCONSTRUCT", value: 17, count: 1, share: 0.17 };
-    expect(winnerFactTags(institutions(), { top }, 2026)).toEqual([{ text: "cel mai mare furnizor: DAROCONSTRUCT · 17,0%" }]);
+    // The firm the tag names links to its page (owner, 2 November 2026).
+    expect(winnerFactTags(institutions(), { top }, 2026)).toEqual([{ text: "cel mai mare furnizor: DAROCONSTRUCT · 17,0%", entity: { id: "5", name: "DAROCONSTRUCT" } }]);
     expect(winnerFactTags(institutions(), { top: { ...top, share: 0.6, count: 3 } }, 2026)[0]?.tone).toBe("accent");
     // S6: any ranking of firms with contracts reads its rows' joint value („în asociere”); direct acquisitions alone, only with a chip.
     const da = (filters: QuestionSpec["filters"] = {}) => ({ ...firms(filters), dataset: "da" }) as FilterSpec;

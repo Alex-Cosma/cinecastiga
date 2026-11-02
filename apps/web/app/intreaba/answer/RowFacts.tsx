@@ -1,3 +1,4 @@
+import { linkNames } from "../../../components/EntityName";
 import HelpTip from "../builder/HelpTip";
 import type { KitTip } from "../builder/kit-types";
 
@@ -12,13 +13,13 @@ import type { KitTip } from "../builder/kit-types";
 
 export type FactTone = "neutral" | "accent" | "caveat" | "signal";
 
-export interface RowFact { text: string; tone?: FactTone; tip?: KitTip }
+export interface RowFact { text: string; tone?: FactTone; tip?: KitTip; /** A partner the words name, linked to its page. */ entity?: { id: string; name: string } }
 
 export const MAX_FACTS = 3;
 
 export function FactTag({ fact }: { fact: RowFact }) {
   const tone = fact.tone && fact.tone !== "neutral" ? ` qb-tag--${fact.tone}` : "";
-  return <span className={`qb-tag${tone}`}>{fact.text}{fact.tip && <HelpTip tip={fact.tip} />}</span>;
+  return <span className={`qb-tag${tone}`}>{fact.entity ? linkNames(fact.text, [fact.entity]) : fact.text}{fact.tip && <HelpTip tip={fact.tip} />}</span>;
 }
 
 export default function RowFacts({ facts }: { facts: readonly RowFact[] }) {

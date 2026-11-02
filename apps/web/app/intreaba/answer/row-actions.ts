@@ -11,18 +11,18 @@ import type { RowAction } from "./RowMenu";
  * înregistrările →" (the row's sources), "Scoate din calcul −" (F4: the row's
  * entity leaves the selection; disabled with its reason at five, on a link's
  * "SAU" or another page's selection), "Detaliază ›" (a flow's domain, one
- * CPV level down), its page "Fișa firmei ↗" and, on the network around an
- * institution, that institution's "Radiografia ↗". An action without its
- * handler (or the centre's id) is left out.
+ * CPV level down) and, on the network around an institution, that
+ * institution's "Radiografia ↗". The entity's page is its name, a link
+ * (owner, 2 November 2026). An action without its handler (or the centre's
+ * id) is left out.
  */
 
 export interface EntityRow { id: string; name: string }
 
-export function entityRowActions(spec: AskSpec, row: EntityRow, on: { records?: () => void; exclude?: () => void; deeper?: () => void }, centre?: string): RowAction[] {
+export function entityRowActions(spec: AskSpec, _row: EntityRow, on: { records?: () => void; exclude?: () => void; deeper?: () => void }, centre?: string): RowAction[] {
   const draft = spec as unknown as FilterSpec;
   const ctx = filterContext(draft);
   const entry = BLOCK_FILTERS[ctx.block];
-  const role = entry?.exclude(draft, ctx)?.field ?? (spec.dim === "authority" ? "authority" : "supplier");
   const actions: RowAction[] = [];
   for (const id of entry?.rowMenu(draft, ctx) ?? []) {
     if (id === "records" && on.records) actions.push({ id, label: "Vezi înregistrările", glyph: "→", onSelect: on.records });
@@ -31,7 +31,6 @@ export function entityRowActions(spec: AskSpec, row: EntityRow, on: { records?: 
       actions.push({ id, label: "Scoate din calcul", glyph: "−", onSelect: on.exclude, ...(blocked ? { disabled: blocked } : {}) });
     }
     if (id === "deeper" && on.deeper) actions.push({ id, label: "Detaliază", glyph: "›", onSelect: on.deeper });
-    if (id === "entity") actions.push({ id, label: role === "authority" ? "Fișa instituției" : "Fișa firmei", glyph: "↗", href: `/entitati/${row.id}` });
     // The network's institution in the centre (final network §3.6): its radiography, where this firm's place among its suppliers shows.
     if (id === "radiography" && centre) actions.push({ id, label: "Radiografia instituției", glyph: "↗", href: `/entitati/${centre}/radiografie` });
   }

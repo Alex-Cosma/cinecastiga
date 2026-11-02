@@ -577,7 +577,7 @@ export function ScatterBlock({
         tipRef.current.show(
           `${cleanName(h.p.name)}${h.p.county ? ` (${countyName(h.p.county)})` : ""}`,
           `CRI ${formatDecimal(h.p.cri, 2)} · ${formatRon(h.p.value)}`,
-          `${countWords(h.p.nFlags, "semnal", "semnale")} de risc · click → pagina entității`,
+          `${countWords(h.p.nFlags, "semnal", "semnale")} de risc · click → înregistrările profilului`,
           ev.clientX,
           ev.clientY,
         );

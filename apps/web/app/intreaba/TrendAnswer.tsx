@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import Link from "next/link";
+import EntityName from "../../components/EntityName";
 import type { PartialYear } from "@/lib/ask/compile";
 import { BLOCK_FILTERS } from "../../lib/ask/filters/blocks";
 import type { FilterId } from "@/lib/ask/filters/types";
@@ -132,7 +133,9 @@ function TrendRowItem({ view, swatch, onRecords, actions = [] }: { view: TrendRo
         {view.place && <small>{view.place}</small>}
       </div>
       <RowFacts facts={view.facts} />
-      {view.partner && <p className="qb-trow-partner"><span>{view.partner}</span></p>}
+      {view.partner && <p className="qb-trow-partner"><span>{view.partnerLink
+        ? <>{view.partnerLink.before}<EntityName id={view.partnerLink.id}>{view.partnerLink.name}</EntityName></>
+        : view.partner}</span></p>}
     </div>
     <div className="qb-arow-val qb-trow-val">
       {/* Ordered in percent, the percent is the main figure and the change in lei goes under it (trend final §3.9). */}

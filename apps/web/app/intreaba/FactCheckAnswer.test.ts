@@ -20,7 +20,7 @@ import FactCheckAnswer, { wholeRelationSpec } from "./FactCheckAnswer";
 
 /** The visible words: the (?) tips' definitions and marks left out. */
 const text = (markup: string) => markup.replace(/<span[^>]*role="tooltip"[^>]*>.*?<\/span>(<\/span>)?/g, " ").replace(/<span class="term-mark"[^>]*>\?<\/span>/g, " ")
-  .replace(/<span class="d-sr-only">[^<]*<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
+  .replace(/<span class="d-sr-only">[^<]*<\/span>/g, " ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").replace(/ ([:,])/g, "$1").trim();
 const open = vi.fn();
 const render = (fact: FactCheckData, spec?: AskSpec, onWider?: (next: AskSpec) => void): string => {
   const block = createElement(FactCheckAnswer, { fact, spec: spec ?? factSpec(fact), onWider: onWider ?? (() => undefined) });

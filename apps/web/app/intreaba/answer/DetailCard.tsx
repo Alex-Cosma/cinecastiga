@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import EntityName from "../../../components/EntityName";
+import type { EntityRole } from "../../../lib/entity-href";
 import type { KitLink as Link } from "../builder/kit-types";
 import KitLink from "./KitLink";
 import { FactTag, type RowFact } from "./RowFacts";
@@ -12,25 +14,30 @@ import { FactTag, type RowFact } from "./RowFacts";
  * border, like its picked row (green = picked, kit §5.37; no side stripe
  * since 1 November 2026), never a solid green fill. A named region:
  * on opening, focus moves to its title; Escape or × closes it and focus goes
- * back to what opened it (the point or the row), or to `returnTo`.
+ * back to what opened it (the point or the row), or to `returnTo`. The card
+ * of an institution or a firm titles it with its name, a link to its page
+ * (owner, 2 November 2026); its records stay a button of their own.
  */
 
 export interface CardFact { label: string; value: string }
 
 export interface CardLine {
   tag?: RowFact;
-  text?: string;
+  /** Words, or words with a name that links to its page. */
+  text?: ReactNode;
   /** "9 înregistrări →" on the right of its line. */
   records?: Link;
 }
 
 export interface DetailCardProps {
   title: string;
+  /** The institution or firm the card is about: its title links to its page. */
+  entity?: { id: string; role?: EntityRole | null };
   /** "Primărie de comună · locul 20 din 82, după semnale". */
   meta?: string;
   facts?: readonly CardFact[];
   lines?: readonly CardLine[];
-  /** The buttons, by R8: "Vezi cele 9 cu semnalul →", "Unde se situează? ›", "Fișa instituției ↗". */
+  /** The buttons, by R8: "Vezi cele 9 cu semnalul →", "Unde se situează? ›". */
   actions?: readonly Link[];
   onClose?: () => void;
   /** Where focus goes on closing; the element focused before opening otherwise. */
@@ -46,7 +53,7 @@ export function shouldReturnFocus(active: Element | null, card: Element | null, 
   return !active || active === body || !!card?.contains(active);
 }
 
-export default function DetailCard({ title, meta, facts = [], lines = [], actions = [], onClose, returnTo, autoFocus = true, level = 4, children }: DetailCardProps) {
+export default function DetailCard({ title, entity, meta, facts = [], lines = [], actions = [], onClose, returnTo, autoFocus = true, level = 4, children }: DetailCardProps) {
   const card = useRef<HTMLElement>(null), heading = useRef<HTMLHeadingElement>(null);
   const back = useRef<HTMLElement | null>(null), returnRef = useRef(returnTo);
   returnRef.current = returnTo;
@@ -68,7 +75,7 @@ export default function DetailCard({ title, meta, facts = [], lines = [], action
     onKeyDown={event => { if (event.key === "Escape" && onClose) { event.preventDefault(); event.stopPropagation(); onClose(); } }}
   >
     <div className="qb-card-head">
-      <Title ref={heading} tabIndex={-1}>{title}</Title>
+      <Title ref={heading} tabIndex={-1}>{entity ? <EntityName id={entity.id} role={entity.role}>{title}</EntityName> : title}</Title>
       {onClose && <button type="button" className="qb-close" aria-label="Închide fișa" onClick={onClose}>×</button>}
     </div>
     {meta && <p className="qb-card-meta">{meta}</p>}

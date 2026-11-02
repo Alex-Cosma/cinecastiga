@@ -76,7 +76,7 @@ describe("where the answer's «⋯» offers it (BLOCK_FILTERS.rowMenu, exclude)"
     const ctx = filterContext(spec);
     expect(excludedRole(spec)).toBe(role);
     const tied = spec.block === "entity_card" && ctx.form === "entity_card:risk";
-    expect(BLOCK_FILTERS[ctx.block].rowMenu(spec, ctx)).toEqual(role && ctx.block !== "map" ? ["records", "exclude", "entity"] : tied ? ["records", "entity"] : []);
+    expect(BLOCK_FILTERS[ctx.block].rowMenu(spec, ctx)).toEqual(role && ctx.block !== "map" ? ["records", "exclude"] : tied ? ["records"] : []);
     // Where it is offered, the question it writes runs.
     if (role) expect(validateSpec(excludeEntity(spec, { ...SYSTRA, field: role })!)).not.toHaveProperty("error");
   });

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
+import EntityName from "@/components/EntityName";
 import { cleanName, countyLabel } from "@/lib/format";
 import { formatEvidenceAmount, sumDecimalStrings } from "@/lib/ask/evidence";
 import type { Dataset } from "@/lib/ask/spec";
@@ -182,7 +183,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, initia
 
   return <div className="cx-shell">
     <Link className="cx-back" href={profileUrl({ id: entityId, role })}>Înapoi la profilul {isAuthority ? "instituției" : "firmei"}</Link>
-    <header className="cx-header"><h1>Cum sunt legate?</h1><p><strong>{currentName}</strong></p></header>
+    <header className="cx-header"><h1>Cum sunt legate?</h1><p><strong><EntityName id={entityId} role={role}>{currentName}</EntityName></strong></p></header>
     <form className="cx-filters" onSubmit={apply}>
       <label>Tipul achizițiilor<select value={dataset} onChange={event => setDataset(event.target.value as Dataset)}><option value="all">Toate achizițiile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte prin proceduri</option></select></label>
       <label>Din anul<input type="number" min="2000" max="2099" placeholder="Oricare" value={yearFrom} onChange={event => setYearFrom(event.target.value)} /></label>
@@ -226,7 +227,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, initia
             <h3 id="second-title">{isAuthority ? "Unde mai apare acest furnizor?" : "Cu ce alte firme lucrează?"}</h3>
             <label className="cx-search">{isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"}<input type="search" maxLength={150} placeholder="Nume sau CUI" value={peerSearch} onChange={event => { setPeerSearch(event.target.value); setPeerPage(1); }} /></label>
             {second.error ? <div className="cx-error" role="alert"><p>{second.error}</p><button onClick={second.retry}>Reîncearcă</button> {restart}</div> : <div className="cx-peer-list" aria-busy={secondPending} tabIndex={0} role="region" aria-label="Lista celorlalți parteneri">
-              {secondPending ? <LoadingRows /> : second.data?.items.map(item => <div className="cx-peer" key={item.entity.id}><div><strong>{name(item.entity)}</strong><Identity entity={item.entity} /><span className="cx-meta">{formatEvidenceAmount(item.totalExact)} · {recordLabel(records(item))}</span></div><button onClick={() => choosePeer(item)}>Vezi legătura <Chevron /></button></div>)}
+              {secondPending ? <LoadingRows /> : second.data?.items.map(item => <div className="cx-peer" key={item.entity.id}><div><strong><EntityName id={item.entity.id} role={item.entity.role}>{name(item.entity)}</EntityName></strong><Identity entity={item.entity} /><span className="cx-meta">{formatEvidenceAmount(item.totalExact)} · {recordLabel(records(item))}</span></div><button onClick={() => choosePeer(item)}>Vezi legătura <Chevron /></button></div>)}
               {!secondPending && !second.data?.items.length && <p className="cx-empty">{peerSearch ? "Nicio potrivire. Încearcă alt nume sau șterge căutarea." : "Nu apar alți parteneri identificați în selecția aplicată. Poți extinde perioada sau schimba tipul achizițiilor."}</p>}
             </div>}
             {second.data && <><p className="cx-meta">{number(second.data.pagination.totalPartners)} {isAuthority ? "alte instituții" : "alte firme"}{peerSearch ? " găsite" : ""}</p><Pager data={second.data} busy={secondPending} onPage={setPeerPage} /></>}

@@ -14,7 +14,8 @@ import {
   EMPTY_SELECTION, channelForced, channelOf, emptyState, rowFlag, selectionSearch, statusLine, yearOptions,
   type EmptyExit, type TxSelection, type TxSrc,
 } from "./tx-filters";
-import { consortiumExplanation, consortiumPhrase, consortiumShareLabel, isConsortium } from "@/lib/consortium";
+import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
+import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 
 /**
@@ -333,7 +334,10 @@ export default function TxTable({
                   )}
                   {isConsortium(t.nWinners) && (
                     <span className="cons-line">
-                      {consortiumPhrase(t.consortiumOthers.map(cleanName), t.nWinners)}
+                      {t.consortiumMembers
+                        ? consortiumPhraseParts(t.consortiumMembers.map((m) => ({ ...m, name: cleanName(m.name) })), t.nWinners).map((part, k) =>
+                            typeof part === "string" ? part : <EntityName key={k} id={part.id} role="supplier">{part.name}</EntityName>)
+                        : consortiumPhrase(t.consortiumOthers.map(cleanName), t.nWinners)}
                     </span>
                   )}
                 </td>

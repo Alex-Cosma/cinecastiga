@@ -306,6 +306,8 @@ export interface TrendRowView {
   kinds: TrendRowLabel["kind"][];
   /** "în 2024: 46% de la …" / "39% de la …". */
   partner: string | null;
+  /** The same line with the partner apart, so its name can link to its page. */
+  partnerLink: { before: string; id: string; name: string } | null;
   /** The two years (lists with both values) or the one value of a new or gone row in its own list. */
   years: { label: string; value: string }[];
   single: { value: string; when: string } | null;
@@ -364,8 +366,9 @@ export function trendRowView(row: TrendRow, list: TrendList, data: TrendData, sp
   // The partner of the year that makes the change; its year is said where it is not the one the list is about.
   const partnerYear = facts ? (facts.year === data.yearB ? b : a) : null;
   const sayYear = list === "all" || (facts !== undefined && facts.year !== data.yearB);
-  const partner = facts?.partner && facts.value > 0
-    ? `${sayYear ? `în ${partnerYear}: ` : ""}${Math.round((facts.partner.value / facts.value) * 100)}% de la ${cleanName(facts.partner.name)}` : null;
+  const partnerLink = facts?.partner && facts.value > 0
+    ? { before: `${sayYear ? `în ${partnerYear}: ` : ""}${Math.round((facts.partner.value / facts.value) * 100)}% de la `, id: facts.partner.entityId, name: cleanName(facts.partner.name) } : null;
+  const partner = partnerLink ? `${partnerLink.before}${partnerLink.name}` : null;
   const single = (list === "new" || list === "first") && group === "new" ? { value: bareRon(row.valueB), when: `în ${b}${starB}` }
     : list === "gone" && group === "gone" ? { value: bareRon(row.valueA), when: `în ${a}${starA}` } : null;
   const country = facts ? foreignCountry(facts) : null;
@@ -375,7 +378,7 @@ export function trendRowView(row: TrendRow, list: TrendList, data: TrendData, sp
   const name = row.entityId ? cleanName(row.name) : countyName(row.name);
   return {
     key: row.entityId ?? row.name, name, href: row.entityId ? `/entitati/${row.entityId}` : null, place, group, groupWords,
-    facts: labels.map(labelFact), kinds: labels.map((l) => l.kind), partner,
+    facts: labels.map(labelFact), kinds: labels.map((l) => l.kind), partner, partnerLink,
     years: single ? [] : [{ label: `${a}${starA}`, value: bareRon(row.valueA) }, { label: `${b}${starB}`, value: bareRon(row.valueB) }],
     single, delta: single ? single.value : signedRon(delta), pct: single ? null : pct,
     pctFirst: !single && list === "up" && spec.trend?.order === "percent", up: delta >= 0,

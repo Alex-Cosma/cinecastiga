@@ -286,14 +286,15 @@ const excludeRows: BlockFilters["exclude"] = (spec, ctx) => {
   return field ? { field, max: 5 } : null;
 };
 /**
- * P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul" · "Fișa firmei ↗", on every row with an entity of its
- * own; a firm around an institution on the network also "Radiografia instituției ↗" (final network §3.6).
+ * P7 (kit §2): "Vezi înregistrările →" · "Scoate din calcul", on every row with an entity of its own; a firm around
+ * an institution on the network also "Radiografia instituției ↗" (final network §3.6). The entity's page is its name,
+ * a link wherever it appears (owner, 2 November 2026), so the menu does not repeat it.
  */
 const entityRowMenu: BlockFilters["rowMenu"] = (spec, ctx) =>
   // The profiles tied at the top of the index (F6c): their records and their page; there is no calculation to leave them out of.
-  ctx.form === "entity_card:risk" ? ["records", "entity"]
+  ctx.form === "entity_card:risk" ? ["records"]
     : !rowRole(spec, ctx) ? []
-      : ctx.block === "network" && ctx.role === "authority" ? ["records", "exclude", "entity", "radiography"] : ["records", "exclude", "entity"];
+      : ctx.block === "network" && ctx.role === "authority" ? ["records", "exclude", "radiography"] : ["records", "exclude"];
 
 function entry(extra: Partial<Pick<BlockFilters, "rows" | "strip" | "under">> = {}): BlockFilters {
   return {

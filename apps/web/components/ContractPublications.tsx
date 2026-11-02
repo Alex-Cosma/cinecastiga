@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import {Fragment} from 'react';
+import EntityName from './EntityName';
 import {awardUrl} from '@/lib/elicitatie';
 import {formatExactDecimal,formatCalendarDate,cleanName} from '@/lib/format';
 import './contract-publications.css';
@@ -44,7 +46,7 @@ export default function ContractPublications({publications,currentId,countedOnce
         {p.canonical&&<strong className="contract-publication-current">{countedOnce?'Versiunea din statistici':'Ultima versiune verificată'}</strong>}</div>
        {p.valueRon!=null&&<strong className="contract-publication-value">{formatExactDecimal(p.valueRon)} lei</strong>}
        <span className="note">{index===0?'Prima versiune pe care o avem':changes.length?changes.join(' · '):'Aceleași date contractuale'} · {p.noticeNo??'Anunț de atribuire'} · ID {p.noticeId}</span>
-       {Boolean(p.supplierNames?.length)&&<span className="contract-publication-suppliers">{p.supplierNames!.map(cleanName).join(' · ')}</span>}
+       {Boolean(p.supplierNames?.length)&&<span className="contract-publication-suppliers">{p.supplierNames!.map((name,i)=><Fragment key={p.supplierIds?.[i]??i}>{i>0&&' · '}<EntityName id={p.supplierIds?.[i]} role="supplier">{cleanName(name)}</EntityName></Fragment>)}</span>}
        {changes.includes('Titlu modificat')&&<span>{p.title}</span>}
        {p.unflaggedChange&&UNFLAGGED[p.unflaggedChange]&&<span className="note">{UNFLAGGED[p.unflaggedChange]}</span>}
       </div>

@@ -5,6 +5,7 @@ import type { SourceEvidence } from "@/lib/source-evidence";
 import { evidenceLinks, formatEvidenceAmount } from "@/lib/ask/evidence";
 import { formatInt, formatExactDecimal } from "@/lib/format";
 import ClipButton from "@/components/ClipButton";
+import EntityName from "@/components/EntityName";
 import SignalDialog from "./SignalDialog";
 
 type Response = Omit<SourceEvidence, "records"> & { page: number; records: (SourceEvidence["records"][number] & { title?: string | null })[] };
@@ -43,7 +44,7 @@ export default function SignalSources({ id, onClose }: { id: string; onClose: ()
         {records.map((r, i) => { const links = evidenceLinks(r); return <article className="sg-source-record" key={`${r.src}:${r.refId}:${r.supplierId}:${i}`}>
           <p className="sg-meta">{r.daCode ?? r.refId} · {r.date ?? "Dată neprecizată"} · CPV {r.cpvCode ?? "neprecizat"}</p>
           <h3><Link href={`/${r.src === "contracts" ? "contracte" : "achizitii"}/${r.refId}`}>{r.title ?? r.cpvName ?? (r.src === "contracts" ? "Contract" : "Achiziție directă")}</Link></h3>
-          <p>{r.authority} · {r.supplier}</p><div className="sg-source-actions"><strong>{r.originalValueExact === null ? "Valoare necunoscută" : formatEvidenceAmount(r.valueExact, true)}</strong>{links.seap && <a href={links.seap} target="_blank" rel="noreferrer">Verifică în SEAP ↗</a>}{links.ted && <a href={links.ted} target="_blank" rel="noreferrer">TED ↗</a>}</div>
+          <p><EntityName id={r.authorityId} role="authority">{r.authority}</EntityName> · <EntityName id={r.supplierId} role="supplier">{r.supplier}</EntityName></p><div className="sg-source-actions"><strong>{r.originalValueExact === null ? "Valoare necunoscută" : formatEvidenceAmount(r.valueExact, true)}</strong>{links.seap && <a href={links.seap} target="_blank" rel="noreferrer">Verifică în SEAP ↗</a>}{links.ted && <a href={links.ted} target="_blank" rel="noreferrer">TED ↗</a>}</div>
           {(r.nWinners ?? 1) > 1 && <p className="sg-meta">Cotă alocată · {r.nWinners} membri în asociere</p>}
         </article>; })}
         {result.sourceCount === 0 && <p className="sg-empty">Nu există înregistrări verificabile în selecția curentă. Contextul și limitele rămân disponibile; lipsa surselor nu înseamnă că semnalul a fost verificat.</p>}

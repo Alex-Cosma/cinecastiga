@@ -35,6 +35,8 @@
 .qb-net .qb-yc.is-partial.is-on { background: repeating-linear-gradient(135deg, var(--accent) 0 2px, transparent 2px 4px); }
 .qb-net .qb-yc.is-partial { border-style: dashed; }
 .qb-net .qb-nrow-rec { justify-self: end; }
+/* The partner a disc of the chart picked. */
+.qb-net .qb-nrow.is-picked { background: var(--fk-sel, var(--accent-soft)); border-radius: 8px; }
 
 /* — sankey: the flow, its labels, the list — */
 .qb-sankey { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -50,6 +52,8 @@
 .qb-sankey .qb-flow-left .qb-flow-label { flex-direction: row-reverse; text-align: right; }
 .qb-sankey .qb-flow-label-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 .qb-sankey .qb-flow-name { font-size: 12.5px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qb-sankey a.qb-flow-name { display: block; max-width: 100%; }
+.qb-sankey .qb-flow-rec { display: inline-block; margin-top: 4px; border: 0; background: none; padding: 4px 0; font: inherit; font-size: 12.5px; cursor: pointer; }
 .qb-sankey .qb-flow-fig, .qb-sankey .qb-flow-facts { font: 400 11px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qb-sankey .qb-flow-label.is-rest .qb-flow-name { font-style: italic; font-weight: 400; color: var(--muted); }
 .qb-sankey .qb-flow-list { display: none; min-width: 0; }

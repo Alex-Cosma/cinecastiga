@@ -55,13 +55,17 @@
 .sc-list-wrap{display:grid;gap:8px;min-width:0}
 .sc-list-head{margin:0;font-size:14px;font-weight:600;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .sc-list{list-style:none;margin:0;padding:0;display:grid}
-.sc-row{display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0}
+.sc-row{display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0;cursor:pointer}
+.sc-row:hover{background:color-mix(in srgb,var(--fk-sel) 55%,transparent);border-radius:8px}
 .sc-row.is-picked{background:var(--fk-sel);border-radius:8px;border-bottom-color:transparent}
 .sc-rank{color:var(--muted);font-size:12.5px;padding-top:2px}
+/* The row's number shows it in the chart, for the keyboard (the row itself does on a click). */
+.sc-pick{border:0;background:none;margin:0;padding:2px 0 0;font:inherit;font-size:12.5px;color:var(--muted);text-align:left;cursor:pointer;align-self:start;min-height:28px}
+.sc-pick:hover{color:var(--ink)}
+.sc-pick:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .sc-who{display:grid;gap:3px;min-width:0}
 .sc-who small{font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
-.sc-name-btn{border:0;background:none;padding:0;margin:0;font:inherit;font-size:13.5px;font-weight:600;color:var(--accent);text-align:left;cursor:pointer;overflow-wrap:anywhere;min-height:28px}
-.sc-name-btn:hover{text-decoration:underline}
+.sc-name{justify-self:start;font-size:13.5px;font-weight:600;color:var(--accent);overflow-wrap:anywhere;min-height:28px;display:inline-flex;align-items:center}
 .sc-who .qb-tags{margin-top:2px}
 .sc-val,.sc-cri{font-size:12.5px;color:var(--ink2);text-align:right;white-space:nowrap;padding-top:2px}
 /* A row's risk: the score's pill, its band under it. */
@@ -82,7 +86,7 @@
   .sc-cri{grid-area:cri;text-align:left}
   .sc-risk{display:flex;align-items:center;justify-content:flex-start;gap:8px}
   .sc-rec{grid-area:rec;justify-self:start}
-  .sc-name-btn,.sc-rec{min-height:44px;display:inline-flex;align-items:center}
+  .sc-name,.sc-rec,.sc-pick{min-height:44px;display:inline-flex;align-items:center}
   .sc-small .qb-relax-link,.sc-wide{min-height:44px}
   .sc-legend{gap:6px 12px}
 }

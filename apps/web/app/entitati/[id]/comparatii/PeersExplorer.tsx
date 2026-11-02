@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import EntityName from "../../../../components/EntityName";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
@@ -122,7 +123,7 @@ export default function PeersExplorer({ entityId, entityName, role, initial }: {
 
   return <div className="px-shell">
     <Link href={`/entitati/${entityId}?rol=${rol}`} className="px-back">Înapoi la {currentName}</Link>
-    <header className="px-header"><h1>Compară în context.</h1><p>Cum se compară achizițiile <strong>{currentName}</strong> cu ale {method === "population" ? "administrațiilor cu populație apropiată" : method === "manual" ? "entităților alese de tine" : role === "authority" ? "altor instituții" : "altor firme"}?</p></header>
+    <header className="px-header"><h1>Compară în context.</h1><p>Cum se compară achizițiile <strong><EntityName id={entityId} role={role}>{currentName}</EntityName></strong> cu ale {method === "population" ? "administrațiilor cu populație apropiată" : method === "manual" ? "entităților alese de tine" : role === "authority" ? "altor instituții" : "altor firme"}?</p></header>
     <form onSubmit={apply} className={method === "manual" ? "px-filters px-filters-manual" : "px-filters"} aria-label="Criteriile comparației"><fieldset disabled={busy}>
       <label>Anul<select value={draft.year} onChange={event => setDraft({ ...draft, year: event.target.value })}>
         {!draft.year && <option value="">Sugerat din date</option>}<option value="all">Toți anii</option>{draft.year && draft.year !== "all" && !options?.years.includes(Number(draft.year)) && <option value={draft.year}>{draft.year}</option>}{options?.years.map(year => <option key={year} value={year}>{year}</option>)}

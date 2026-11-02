@@ -51,6 +51,24 @@ export function consortiumMembersLabel(others: readonly string[], nWinners: numb
   return `cu ${names.join(", ")} și încă ${roCount(rest, "un membru", "membri")}`;
 }
 
+/**
+ * consortiumPhrase in pieces, so a page can link each named member: the joining words as strings, the members as
+ * they were given, in order. Joined by name, it reads exactly like consortiumPhrase.
+ */
+export function consortiumPhraseParts<T extends { name: string }>(others: readonly T[], nWinners: number): (string | T)[] {
+  if (!isConsortium(nWinners)) return [];
+  const named = others.filter((m) => m.name.trim().length > 0).slice(0, Math.min(2, nWinners - 1));
+  if (named.length === 0) return ["contract în consorțiu"];
+  const rest = nWinners - 1 - named.length;
+  const parts: (string | T)[] = ["consorțiu cu "];
+  named.forEach((m, i) => {
+    if (i > 0) parts.push(rest > 0 || i < named.length - 1 ? ", " : " și ");
+    parts.push(m);
+  });
+  if (rest > 0) parts.push(` și încă ${roCount(rest, "un membru", "membri")}`);
+  return parts;
+}
+
 /** "consorțiu cu A și B", or "contract în consorțiu" when no member names are known. */
 export function consortiumPhrase(others: readonly string[], nWinners: number): string {
   const members = consortiumMembersLabel(others, nWinners);

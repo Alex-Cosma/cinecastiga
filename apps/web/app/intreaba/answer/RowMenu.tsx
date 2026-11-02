@@ -7,7 +7,7 @@ import { menuButtonKey, menuKey } from "../builder/keyboard";
  * P7, the "⋯" menu of an answer row (WAI menu button): the actions on one
  * entity of the answer. "Vezi înregistrările →", "Scoate din calcul −" (the
  * entity leaves the selection: the total changes and the total line says
- * "fără X"), "Detaliază ›", "Fișa firmei ↗". The button opens the menu on
+ * "fără X"), "Detaliază ›", "Radiografia instituției ↗". The button opens the menu on
  * its first item (click, Enter, Space, ↓) or its last (↑); inside, ↑/↓ wrap
  * round, Home/End, a letter jumps; Escape closes and focus returns to the
  * button, Tab closes and moves on, a press outside closes. A disabled action

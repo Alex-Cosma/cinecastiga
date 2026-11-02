@@ -15,6 +15,7 @@ import { namedKind, type AskSpec } from "../../lib/ask/spec";
 import { flagEntityRule, flagLabel } from "../../lib/flags";
 import { RISK_BAND_CLASS, riskBand, riskPercent } from "../../lib/risk-score";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
+import EntityName from "../../components/EntityName";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import AnswerStrip, { StripRow } from "./answer/AnswerStrip";
 import DetailCard, { type CardLine } from "./answer/DetailCard";
@@ -429,6 +430,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
 
     {picked && <DetailCard
       title={cleanName(picked.name)}
+      entity={{ id: picked.id, role }}
       meta={[firm ? employeesWords(picked.employees, picked.employeesYear) : kindWords(picked.kind), picked.county, picked.place].filter(Boolean).join(" · ")}
       facts={(legacy ? cardFactsV2(picked.value, picked.cri ?? 0, picked.nFlags, levels) : cardFacts(picked.value, picked.score ?? 0, picked.nFlags)).map((f) => ({ label: f.label, value: f.value }))}
       lines={cardLines()}
@@ -439,7 +441,6 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           onClick: () => records({ entityIds: [picked.id], flag: live }, `${picked.name} · ${lower(live)}`) }] : []),
         { label: "Vezi înregistrările", glyph: "→" as const, onClick: () => records({ entityIds: [picked.id] }, `${picked.name} · înregistrările profilului`, true) },
         { label: "Unde se situează?", glyph: "›" as const, href: askLink({ block: "distribution", measure: "value", dim: role, filters: { [`${role}Id`]: Number(picked.id), [`${role}Name`]: picked.name } } as unknown as QuestionSpec) },
-        { label: firm ? "Fișa firmei" : "Fișa instituției", glyph: "↗" as const, href: `/entitati/${picked.id}` },
       ]}
     />}
 
@@ -448,11 +449,13 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       <ol className="sc-list" ref={listRef}>
         {visible.map((row, index) => {
           const own = withFacts<string>(row.flags, legacy ? undefined : facts.get(row.entityId));
-          return <li key={row.entityId} className={`sc-row${picked?.id === row.entityId ? " is-picked" : ""}`}>
-            <span className="sc-rank qb-num">{index + 1}</span>
+          // The row shows its profile in the chart; its name opens the entity's page, its records are the button on the right.
+          return <li key={row.entityId} className={`sc-row${picked?.id === row.entityId ? " is-picked" : ""}`}
+            onClick={(event) => { if ((event.target as HTMLElement).closest("a,button")) return; returnTo.current = event.currentTarget.querySelector<HTMLElement>(".sc-pick"); pick(rowPick(row, index, "list")); }}>
+            <button type="button" data-qb-arow="" className="sc-rank sc-pick qb-num" aria-label={`Arată în grafic: ${cleanName(row.name)}`}
+              onClick={(event) => { returnTo.current = event.currentTarget; pick(rowPick(row, index, "list")); }}>{index + 1}</button>
             <span className="sc-who">
-              <button type="button" data-qb-arow="" className="sc-name-btn" aria-haspopup="false"
-                onClick={(event) => { returnTo.current = event.currentTarget; pick(rowPick(row, index, "list")); }}>{cleanName(row.name)}</button>
+              <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
               <small>{rowMeta(row, role)}</small>
               {own.length > 0 && <span className="qb-tags">{own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact)} />)}</span>}
             </span>

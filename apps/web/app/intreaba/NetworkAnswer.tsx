@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import EntityName from "../../components/EntityName";
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
 import { countWords, formatShare } from "@/lib/ask/answer-text";
 import { networkSinceChoices, NETWORK_LIST_LABELS, type NetworkData, type NetworkList, type NetworkOrder, type NetworkRow } from "@/lib/ask/network-shared";
@@ -55,7 +56,9 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
   // „Arată încă 15” adds rows the answer holds; a new list, order or answer starts again.
   const [extra, setExtra] = useState(0);
   const [chart, setChart] = useState(false);
-  useEffect(() => { setExtra(0); }, [data, list, spec.network?.order, spec.network?.show]);
+  // A disc of the chart picks its partner's row: the row holds its name (the page), its records and its "⋯".
+  const [picked, setPicked] = useState<string | null>(null);
+  useEffect(() => { setExtra(0); setPicked(null); }, [data, list, spec.network?.order, spec.network?.show]);
   const listRef = useRef<HTMLDivElement>(null);
   const page = networkPage(data, spec, list, extra);
   const last = bandLast(data);
@@ -101,10 +104,18 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
         <button type="button" className="qb-more-btn qb-net-chart-toggle" aria-expanded={chart} onClick={() => setChart((open) => !open)}>
           {chart ? "Ascunde graficul" : "Arată graficul"}
         </button>
-        <NetworkChart rows={chartRows(page.rows)} data={data} list={list} views={views} />
+        <NetworkChart rows={chartRows(page.rows)} data={data} list={list} views={views} picked={picked}
+          onPick={(id) => {
+            setPicked(id);
+            requestAnimationFrame(() => {
+              const row = listRef.current?.querySelector<HTMLElement>(`[data-entity="${CSS.escape(id)}"]`);
+              row?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+              row?.focus({ preventScroll: true });
+            });
+          }} />
       </div>
       <div ref={listRef} className="qb-alist qb-net-rows" role="list" aria-label={`${NETWORK_LIST_LABELS[list]} · ${noun.many}`}>
-        {views.map((view, i) => <NetworkRowItem key={view.key} view={view} actions={menus[i]!}
+        {views.map((view, i) => <NetworkRowItem key={view.key} view={view} actions={menus[i]!} picked={picked === view.entityId}
           {...(evidence ? { onRecords: () => evidence.open(undefined, view.scope, view.scopeLabel) } : {})} />)}
       </div>
       <div className="qb-listfoot">
@@ -123,11 +134,14 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
   </div>;
 }
 
-/** One partner (final §4 „Telefon”): name and place; facts; value and share; the band of years; records and "⋯". */
-function NetworkRowItem({ view, actions, onRecords }: { view: NetworkRowView; actions: ReturnType<typeof entityRowActions>; onRecords?: () => void }) {
-  return <div className="qb-arow qb-nrow" role="listitem" tabIndex={-1} data-qb-arow="">
+/**
+ * One partner (final §4 „Telefon”): name (its page) and place; facts; value and share; the band of years; records
+ * and "⋯". Picked from the chart, the row is marked and takes focus.
+ */
+function NetworkRowItem({ view, actions, onRecords, picked = false }: { view: NetworkRowView; actions: ReturnType<typeof entityRowActions>; onRecords?: () => void; picked?: boolean }) {
+  return <div className={`qb-arow qb-nrow${picked ? " is-picked" : ""}`} role="listitem" tabIndex={-1} data-qb-arow="" data-entity={view.entityId}>
     <div className="qb-nrow-main">
-      <div className="qb-arow-name">{view.name}{view.place && <small>{view.place}</small>}</div>
+      <div className="qb-arow-name"><EntityName id={view.entityId} role={view.scope.role === "authority" ? "authority" : "supplier"}>{view.name}</EntityName>{view.place && <small>{view.place}</small>}</div>
       <RowFacts facts={view.facts} />
     </div>
     <div className="qb-nrow-val">
@@ -150,10 +164,10 @@ function NetworkRowItem({ view, actions, onRecords }: { view: NetworkRowView; ac
 /**
  * The radial chart of the first 15 partners (final §3.5): the centre, a spoke and a disc per partner, its width
  * and size by value; the tooltip's share is of the list's total, not of the partners drawn. Names whole in the
- * title; a click opens the partner's records.
+ * title; a click picks the partner's row in the list (owner, 2 November 2026: a chart's point selects, the name is
+ * the link); a click with a modifier key follows the disc's link to the partner's page.
  */
-function NetworkChart({ rows, data, list, views }: { rows: readonly NetworkRow[]; data: NetworkData; list: NetworkList; views: readonly NetworkRowView[] }) {
-  const evidence = useAnswerEvidence();
+function NetworkChart({ rows, data, list, views, picked, onPick }: { rows: readonly NetworkRow[]; data: NetworkData; list: NetworkList; views: readonly NetworkRowView[]; picked: string | null; onPick: (id: string) => void }) {
   const [hover, setHover] = useState<string | null>(null);
   if (rows.length === 0) return null;
   const W = 640, H = 380, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 70;
@@ -166,12 +180,12 @@ function NetworkChart({ rows, data, list, views }: { rows: readonly NetworkRow[]
       // Only a disc at the very top or bottom centres its label: with 15 partners the two nearest the bottom (78°, 102°)
       // centred theirs about 50 units apart, and labels of 26 characters met (S4 review); beside their discs they part.
       const anchor = Math.cos(a) > 0.1 ? "start" : Math.cos(a) < -0.1 ? "end" : "middle";
-      const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId;
+      const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId || picked === n.entityId;
       const label = name.length > 26 ? `${name.slice(0, 25)}…` : name;
       return <g key={n.entityId} onMouseEnter={() => setHover(n.entityId)} onMouseLeave={() => setHover(null)}>
         <line x1={cx} y1={cy} x2={x} y2={y} className="qb-net-spoke" strokeWidth={Math.max(1, (n.value / max) * 8)} opacity={on ? 0.9 : 0.55} />
         <a href={`/entitati/${n.entityId}`} aria-label={`${name} · ${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total`}
-          onClick={(event) => { if (evidence && view) { event.preventDefault(); evidence.open(undefined, view.scope, view.scopeLabel); } }}>
+          onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); onPick(n.entityId); }}>
           <title>{`${name}\n${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total · ${view?.records ?? ""}`}</title>
           <circle cx={x} cy={y} r={on ? r + 2 : r} className="qb-net-node" />
         </a>

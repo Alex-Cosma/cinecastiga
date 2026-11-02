@@ -3,6 +3,7 @@
 import { countyName } from "../../lib/counties";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import EntityName from "../../components/EntityName";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { PeerEvidenceSelection } from "@/lib/peers-evidence-shared";
 import type { ConnectionEvidenceSelection } from "@/lib/connection-evidence-shared";
@@ -174,7 +175,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeRef.current();
     }}>
     <header className={`ev-header${scopeLabel ? " has-scope" : ""}`}>
-      <div className="ev-heading"><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}{!scopeLabel && titleCount}</h2>{scopeLabel && <p className="ev-scope-label" id="evidence-scope">{scopeName}{scopeTail && <span className="ev-scope-tail">{scopeTail}</span>}{titleCount}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
+      <div className="ev-heading"><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}{!scopeLabel && titleCount}</h2>{scopeLabel && <p className="ev-scope-label" id="evidence-scope">{scope?.entityIds?.length === 1 ? <EntityName id={scope.entityIds[0]} role={scope.role}>{scopeName}</EntityName> : scopeName}{scopeTail && <span className="ev-scope-tail">{scopeTail}</span>}{titleCount}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
       <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
     <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">

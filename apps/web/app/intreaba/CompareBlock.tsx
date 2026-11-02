@@ -1,6 +1,7 @@
 "use client";
 import { countyName } from "../../lib/counties";
 import Link from "next/link";
+import EntityName from "../../components/EntityName";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import Term from "@/components/Term";
 import { countWords, formatDecimal } from "@/lib/ask/answer-text";
@@ -69,8 +70,8 @@ export function CompareBlock({ data, partial = [], dataset = "all", shared = fal
           <ul className="cmp-joint">
             {data.joint.rows.map((row) => (
               <li key={row.nid}>
-                <Link href={`/contracte/${row.nid}`}>{cleanName(row.authority ?? "Contract")} →</Link>
-                <span>{row.date?.slice(0, 4)} · {formatRon(row.value)}</span>
+                <EntityName id={row.authorityId} role="authority">{cleanName(row.authority ?? "Instituție neprecizată")}</EntityName>
+                <span>{row.date?.slice(0, 4)} · {formatRon(row.value)} · <Link href={`/contracte/${row.nid}`}>contractul →</Link></span>
               </li>
             ))}
           </ul>
@@ -320,7 +321,7 @@ function TopPartners({ entity: e, side, firms }: { entity: CompareEntity; side: 
   const rows: ComparePartner[] = e.topPartners ?? [];
   return (
     <div className={`cmp-panel cmp-${side}`}>
-      <p className="cmp-panel-head">{cleanName(e.name)}{e.partners !== undefined && ` · ${countWords(e.partners, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}`}</p>
+      <p className="cmp-panel-head"><EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName>{e.partners !== undefined && ` · ${countWords(e.partners, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}`}</p>
       {rows.length === 0 ? <p className="cmp-none">Niciunul în selecție.</p> : rows.map((row) => (
         <ShareRow key={row.entityId} label={<Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} />
       ))}
@@ -343,7 +344,7 @@ function Domains({ a, b, firms }: { a: CompareEntity; b: CompareEntity; firms: b
           const shown = (e.domains ?? []).slice(0, all ? undefined : SHOWN_DOMAINS);
           return (
             <div key={e.entityId} className={`cmp-panel cmp-${i === 0 ? "a" : "b"}`}>
-              <p className="cmp-panel-head">{cleanName(e.name)}</p>
+              <p className="cmp-panel-head"><EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName></p>
               {shown.map((d) => (
                 <ShareRow key={d.code} label={d.name ? readableCpvName(d.name) : `CPV ${d.code}`} value={d.value} total={e.value} />
               ))}

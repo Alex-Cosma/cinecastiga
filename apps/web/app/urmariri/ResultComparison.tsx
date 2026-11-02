@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
+import EntityName from "../../components/EntityName";
 import { comparableMethodologies, type MonitoringRunDetail } from "../../lib/monitoring-shared";
 import { answerCore, KEY_VERSION_NOTES, KEY_VERSIONS } from "../../lib/ask/answer-core";
 import { formatExactDecimal } from "../../lib/format";
@@ -70,7 +71,11 @@ const ignored = new Set(["block", "tookMs", "displaySql", "page", "pageSize", "e
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const name = (key: string) => labels[key] ?? KEY_VERSIONS[key]?.label ?? key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ");
 const channels: Record<string, string> = { da: "Achiziții directe", contracts: "Contracte din proceduri", authority: "Autoritate", supplier: "Furnizor" };
-export interface ResultDifference { key: string; context: string; field: string; fieldKey: string; before: unknown; after: unknown }
+export interface ResultDifference {
+  key: string; context: string; field: string; fieldKey: string; before: unknown; after: unknown;
+  /** The context's segments when one of them names an institution or a firm, with its id so the name links to its page. */
+  parts?: { text: string; id?: string }[];
+}
 /** Ids to names, from the whole stored answers: a compared core keeps a row's id alone (scatter-2), the reader needs its name. */
 export type EntityNames = ReadonlyMap<string, string>;
 export function entityNames(...results: unknown[]): Map<string, string> {
@@ -122,34 +127,46 @@ function indexed(values: unknown[], field: string) {
 }
 
 /** Match named rows by identity, so a reordered ranking does not compare different firms. */
+/** The id of a row whose context segment is an entity's name (rowContext's name branches), else null. */
+function rowEntityId(value: unknown, names?: EntityNames): string | null {
+  if (!object(value) || value.partner != null || value.entityId == null) return null;
+  return value.name != null || names?.has(String(value.entityId)) ? String(value.entityId) : null;
+}
+
 export function resultDifferences(before: unknown, after: unknown, names?: EntityNames): ResultDifference[] {
   const differences: ResultDifference[] = [];
-  function visit(a: unknown, b: unknown, path: string[], context: string[]) {
+  const push = (a: unknown, b: unknown, path: string[], context: string[], ids: (string | null)[]) => {
+    const key = path.at(-1) ?? "result";
+    differences.push({ key: path.join("/"), context: context.join(" · ") || "Rezultatul întrebării", field: fieldName(key, path), fieldKey: key, before: a, after: b,
+      ...(ids.some(Boolean) ? { parts: context.map((text, i) => (ids[i] ? { text, id: ids[i]! } : { text })) } : {}) });
+  };
+  function visit(a: unknown, b: unknown, path: string[], context: string[], ids: (string | null)[]) {
     if (Object.is(a, b)) return;
     const key = path.at(-1) ?? "result";
     if (ignored.has(key)) return;
     if (Array.isArray(a) || Array.isArray(b)) {
       const oldValues = Array.isArray(a) ? a : [], newValues = Array.isArray(b) ? b : [];
       if ([...oldValues, ...newValues].every(item => !object(item) && !Array.isArray(item))) {
-        if (JSON.stringify(oldValues) !== JSON.stringify(newValues)) differences.push({ key: path.join("/"), context: context.join(" · ") || "Rezultatul întrebării", field: fieldName(key, path), fieldKey: key, before: a, after: b });
+        if (JSON.stringify(oldValues) !== JSON.stringify(newValues)) push(a, b, path, context, ids);
         return;
       }
       const oldRows = indexed(oldValues, key), newRows = indexed(newValues, key);
       for (const id of new Set([...oldRows.keys(), ...newRows.keys()])) {
         const oldRow = oldRows.get(id), newRow = newRows.get(id), row = newRow ?? oldRow!;
-        visit(oldRow?.value, newRow?.value, [...path, id], [...context, fieldName(key, path), rowContext(row.value, row.index, names)]);
+        visit(oldRow?.value, newRow?.value, [...path, id], [...context, fieldName(key, path), rowContext(row.value, row.index, names)], [...ids, null, rowEntityId(row.value, names)]);
       }
       return;
     }
     if (object(a) || object(b)) {
       const left = object(a) ? a : {}, right = object(b) ? b : {};
-      const nextContext = path.length && !path.at(-1)!.includes(":") ? [...context, fieldName(key, path)] : context;
-      for (const field of new Set([...Object.keys(left), ...Object.keys(right)])) visit(left[field], right[field], [...path, field], nextContext);
+      const step = path.length && !path.at(-1)!.includes(":");
+      const nextContext = step ? [...context, fieldName(key, path)] : context, nextIds = step ? [...ids, null] : ids;
+      for (const field of new Set([...Object.keys(left), ...Object.keys(right)])) visit(left[field], right[field], [...path, field], nextContext, nextIds);
       return;
     }
-    differences.push({ key: path.join("/"), context: context.join(" · ") || "Rezultatul întrebării", field: fieldName(key, path), fieldKey: key, before: a, after: b });
+    push(a, b, path, context, ids);
   }
-  visit(before, after, [], []);
+  visit(before, after, [], [], []);
   return differences;
 }
 
@@ -184,7 +201,7 @@ export function formatResultValue(value: unknown, field: string): string {
 function ChangedValues({ before, after, label, names }: { before: unknown; after: unknown; label: string; names?: EntityNames }) {
   const differences = useMemo(() => resultDifferences(before, after, names), [before, after, names]);
   const [visible, setVisible] = useState(12);
-  return <>{differences.length ? <><div className="mon-table-wrap" role="region" aria-label={label} tabIndex={0}><table className="mon-diff mon-stack mon-stack-pair"><thead><tr><th>Unde în rezultat</th><th>Ce s-a schimbat</th><th>Înainte</th><th>După</th></tr></thead><tbody>{differences.slice(0, visible).map(row => <tr key={row.key}><th scope="row">{row.context}</th><td data-label="Ce s-a schimbat">{row.field}</td><td data-label="Înainte">{formatResultValue(row.before, row.fieldKey)}</td><td data-label="După">{formatResultValue(row.after, row.fieldKey)}</td></tr>)}</tbody></table></div>{visible < differences.length && <><p className="mon-muted" role="status">Sunt afișate {visible} din {countWords(differences.length, "câmp modificat", "câmpuri modificate")}.</p><button type="button" onClick={() => setVisible(count => count + 12)}>Arată încă {countWords(Math.min(12, differences.length - visible), "modificare", "modificări")}</button></>}</> : <p className="mon-muted">Valorile afișate sunt neschimbate. Diferența privește ordinea sau metadatele de prezentare ale rezultatului.</p>}<details className="mon-small-details"><summary>Datele complete ale comparației · detalii tehnice</summary><div className="mon-result-pair"><section><h3>Înainte</h3><pre>{JSON.stringify(before, null, 2)}</pre></section><section><h3>După</h3><pre>{JSON.stringify(after, null, 2)}</pre></section></div></details></>;
+  return <>{differences.length ? <><div className="mon-table-wrap" role="region" aria-label={label} tabIndex={0}><table className="mon-diff mon-stack mon-stack-pair"><thead><tr><th>Unde în rezultat</th><th>Ce s-a schimbat</th><th>Înainte</th><th>După</th></tr></thead><tbody>{differences.slice(0, visible).map(row => <tr key={row.key}><th scope="row">{row.parts ? row.parts.map((part, i) => <Fragment key={i}>{i > 0 && " · "}{part.id ? <EntityName id={part.id}>{part.text}</EntityName> : part.text}</Fragment>) : row.context}</th><td data-label="Ce s-a schimbat">{row.field}</td><td data-label="Înainte">{formatResultValue(row.before, row.fieldKey)}</td><td data-label="După">{formatResultValue(row.after, row.fieldKey)}</td></tr>)}</tbody></table></div>{visible < differences.length && <><p className="mon-muted" role="status">Sunt afișate {visible} din {countWords(differences.length, "câmp modificat", "câmpuri modificate")}.</p><button type="button" onClick={() => setVisible(count => count + 12)}>Arată încă {countWords(Math.min(12, differences.length - visible), "modificare", "modificări")}</button></>}</> : <p className="mon-muted">Valorile afișate sunt neschimbate. Diferența privește ordinea sau metadatele de prezentare ale rezultatului.</p>}<details className="mon-small-details"><summary>Datele complete ale comparației · detalii tehnice</summary><div className="mon-result-pair"><section><h3>Înainte</h3><pre>{JSON.stringify(before, null, 2)}</pre></section><section><h3>După</h3><pre>{JSON.stringify(after, null, 2)}</pre></section></div></details></>;
 }
 
 /** The new shape of an answer in words (the owner's terse copy): never the engine's version slug. */
