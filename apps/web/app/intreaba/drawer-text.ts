@@ -1,6 +1,6 @@
 import { countWords } from "../../lib/ask/answer-text";
 import type { DrillRow } from "../../lib/ask/compile";
-import { formatEvidenceAmount } from "../../lib/ask/evidence";
+import { formatEvidenceAmount, type EvidenceFilters, type EvidenceStatus } from "../../lib/ask/evidence";
 
 /*
  * The records drawer's words that depend on its figures (owner, 2 November 2026): on a phone the record comes
@@ -48,4 +48,27 @@ export function recordExactValue(row: Pick<DrillRow, "valueExact" | "nWinners">)
 export function stateClass(row: Pick<DrillRow, "state" | "src">): string {
   if (row.state === "Oferta acceptata") return "ev-state ev-state-accepted";
   return row.state === null && row.src === "contracts" ? "ev-state ev-state-awarded" : "ev-state";
+}
+
+/*
+ * „Ce fel de achiziții” is the drawer's only list filter besides the search (owner, 2 November 2026): every direct
+ * acquisition it lists is an accepted offer and a contract has no state (compile.ts, daTx and contractTx), so the
+ * former „Starea ofertei” split the list exactly as the kind does, and the two together could only empty it.
+ */
+
+/**
+ * A saved filter's kind (a link, a clip, a watch made with „Starea ofertei”): its state read as the kind it meant.
+ * Any other state, or one the saved kind contradicts, is kept as saved: a saved filter never broadens the list.
+ */
+export function savedKind(filters: EvidenceFilters | undefined): { stream: string; state: string } {
+  const kind = filters?.state === "Oferta acceptata" ? "da" : filters?.state === "__unknown" ? "contracts" : null;
+  return kind && (!filters?.stream || filters.stream === kind)
+    ? { stream: kind, state: "" }
+    : { stream: filters?.stream ?? "", state: filters?.state ?? "" };
+}
+
+/** Records per kind for its options, from the selection's records per state (the same reading). */
+export function kindCounts(statuses: readonly Pick<EvidenceStatus, "state" | "count">[]): { da: number; contracts: number } {
+  const of = (state: string | null) => statuses.filter((s) => s.state === state).reduce((n, s) => n + s.count, 0);
+  return { da: of("Oferta acceptata"), contracts: of(null) };
 }
