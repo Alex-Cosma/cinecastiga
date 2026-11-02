@@ -173,6 +173,22 @@
 .cq-understood-alt > span { margin-left: 3px; text-decoration: none; display: inline-block; }
 .cq-understood a:hover,
 .cq-understood-alt:hover { text-decoration-color: currentColor; }
+/* "Altfel (3) ›" opens the other readings as a menu (RowMenu) under it; it never breaks across lines (owner, 2 November 2026). */
+.cq-understood-more { position: relative; display: inline-block; white-space: nowrap; }
+.cq-understood-more .qb-menu--pop { left: 0; right: auto; top: calc(100% + 4px); width: 280px; max-width: calc(100vw - 32px); white-space: normal; }
+.cq-understood-more .qb-menu--pop.qb-menu--end { left: auto; right: 0; }
+.cq-understood-more .qb-menu--pop.qb-menu--up { top: auto; bottom: calc(100% + 4px); }
+/* Outside the builder (.qb) its button reset does not reach the menu's items. */
+.cq-understood-more .qb-menu-item { margin: 0; border: 0; background: none; color: var(--ink); font: 400 13px/1.45 var(--body); text-align: left; cursor: pointer; }
+.cq-understood-more .qb-menu-item:hover,
+.cq-understood-more .qb-menu-item:focus-visible { background: var(--fk-chip-hover); }
+/* Phones: "am ales" drops out so the line stays one line, and the menu hangs from the whole line, not the button. */
+@media (max-width: 600px) {
+  .cq-understood-verb { display: none; }
+  .cq-understood { position: relative; }
+  .cq-understood .cq-understood-more { position: static; }
+  .cq-understood .cq-understood-more .qb-menu--pop { left: 0; right: auto; width: min(320px, 100%); }
+}
 /* The pills: what the answer counted. A pill with a window of the builder is that phrase (its tint, dashed line and
    chevron, filters-kit.css) and opens it in place (AnswerPills); the others are text. */
 .cq-scope {

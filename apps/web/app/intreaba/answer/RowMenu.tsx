@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { menuButtonKey, menuKey } from "../builder/keyboard";
 
 /*
@@ -29,7 +29,10 @@ export interface RowAction {
 
 const itemsOf = (menu: HTMLElement | null) => Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
 
-export default function RowMenu({ name, actions, className, defaultOpen = false }: { name: string; actions: readonly RowAction[]; className?: string; defaultOpen?: boolean }) {
+/** A button of its own instead of "⋯": its text, class and, when the text is not enough, its name ("Altfel (3) ›"). */
+export interface MenuTrigger { text: ReactNode; className: string; label?: string }
+
+export default function RowMenu({ name, actions, className, defaultOpen = false, trigger }: { name: string; actions: readonly RowAction[]; className?: string; defaultOpen?: boolean; trigger?: MenuTrigger }) {
   const [open, setOpen] = useState<"first" | "last" | null>(defaultOpen ? "first" : null);
   const menuId = useId();
   const button = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null);
@@ -79,14 +82,14 @@ export default function RowMenu({ name, actions, className, defaultOpen = false 
     <button
       ref={button}
       type="button"
-      className={`qb-more${className ? ` ${className}` : ""}`}
+      className={trigger ? trigger.className : `qb-more${className ? ` ${className}` : ""}`}
       aria-haspopup="menu"
       aria-expanded={!!open}
       aria-controls={open ? menuId : undefined}
-      aria-label={`Mai multe pentru ${name}`}
+      aria-label={trigger ? trigger.label : `Mai multe pentru ${name}`}
       onClick={() => open ? close(false) : show("first")}
       onKeyDown={event => { const where = menuButtonKey(event.key); if (where) { event.preventDefault(); show(where); } }}
-    ><span aria-hidden="true">⋯</span></button>
+    >{trigger ? trigger.text : <span aria-hidden="true">⋯</span>}</button>
     {open && <div
       ref={menu}
       id={menuId}
