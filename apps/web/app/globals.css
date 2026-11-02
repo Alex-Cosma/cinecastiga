@@ -263,7 +263,7 @@ table.rank .county { color: var(--muted); font-size: 12px; }
 .risk-points { font-family: var(--mono); font-size: .8em; font-weight: 500; color: var(--amber); }
 .mh-fact { margin: 2px 0 6px; font-size: 14px; color: var(--ink2); }
 .flags-panel {
-  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line2));
   border-radius: var(--radius); background: var(--surface); padding: 18px 20px; margin-bottom: 24px;
 }
 .flags-role { margin-bottom: 14px; }
@@ -356,7 +356,7 @@ table.rank td .src a:hover { color: var(--accent); }
 /* Home callout → TED surface */
 .callout {
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
-  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  background: var(--surface); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line2));
   border-radius: var(--radius); padding: 20px 24px;
 }
 .callout h2 { margin: 0 0 4px; }
@@ -450,7 +450,7 @@ table.rank td .src a:hover { color: var(--accent); }
   margin: 10px 0 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
   padding: 11px 13px; font-size: 12px; overflow-x: auto; color: var(--muted);
 }
-.ask-caveats { background: var(--amber-soft); border-left: 3px solid var(--bar); }
+.ask-caveats { background: var(--amber-soft); border: 1px solid color-mix(in srgb, var(--bar) 35%, var(--line2)); }
 .ask-caveats .ask-lab { color: var(--amber); }
 /* collapsed-by-default caveats: one quiet line, expands on click */
 /* map hover tooltip — fixed-positioned at cursor, never captures the mouse */
@@ -547,7 +547,7 @@ table.rank td .src a:hover { color: var(--accent); }
 .ask-caveats-d summary:hover { color: var(--amber); }
 .ask-caveats-d[open] summary { color: var(--amber); margin-bottom: 6px; }
 .ask-caveats-body {
-  background: var(--amber-soft); border-left: 3px solid var(--bar);
+  background: var(--amber-soft); border: 1px solid color-mix(in srgb, var(--bar) 35%, var(--line2));
   border-radius: 10px; padding: 10px 14px;
 }
 .ask-caveat { font-size: 13px; color: var(--ink); margin-top: 5px; }
@@ -1080,7 +1080,6 @@ td.val-suspect .val-warn { color: var(--accent); text-decoration: none; display:
 .rx-row { display: contents; } .rx-rowfull { grid-column: 1 / -1; }
 .rx-rh { font-size: 13px; padding-right: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rx-rh a { color: inherit; } .rx-rh small { color: var(--muted); margin-left: 8px; font-size: 12px; }
-.rx-rh.ing { border-left: 3px solid var(--rx-slate); padding-left: 9px; } .rx-rh.swp { border-left: 3px solid var(--rx-gold); padding-left: 9px; }
 .rx-rh .tag { margin-left: 8px; font-size: 10.5px; color: var(--rx-gold); font-weight: 600; }
 .rx-rh .cons { margin-left: 6px; font-size: 9.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 5px; vertical-align: middle; }
 .rx-rh.oth { color: var(--rx-faint); font-style: italic; }
@@ -1330,8 +1329,7 @@ main > .wrap:has(> .home-page) { display: block; }
 @keyframes drop { from { opacity: 0; transform: translateY(-6px) scale(.995); } to { opacity: 1; transform: none; } }
 .search-dropdown li { border-radius: 0; padding: 10px 16px; border-bottom: 1px solid var(--line); position: relative; transition: background var(--fast), padding-left var(--fast) var(--ease); }
 .search-dropdown li:last-child { border-bottom: 0; }
-.search-dropdown li.active { background: var(--accent-soft); }
-.search-dropdown li.active::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--accent); }
+.search-dropdown li.active { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, var(--line2)); }
 .search-dropdown li.search-all { background: var(--sunk); margin-top: 0; border-radius: 0; }
 .ask-chip { border-color: var(--line2); background: var(--surface); border-radius: 999px; transition: transform var(--fast) var(--ease), background var(--fast), border-color var(--fast); }
 .ask-chip:hover { transform: translateY(-1px); background: var(--accent-soft); border-color: var(--accent-line); }
@@ -1395,7 +1393,7 @@ main > .wrap:has(> .home-page) { display: block; }
 .subnav-in a.ext { margin-left: auto; color: var(--accent); }
 .subnav-ind { position: absolute; bottom: 0; height: 2px; background: var(--ink); border-radius: 2px; transition: left var(--med) var(--ease), width var(--med) var(--ease); }
 .section .hint { font-size: 14px; }
-.method-card { border-radius: var(--r2); border-left: 3px solid var(--amber); padding: 0; overflow: hidden; margin-bottom: 14px; transition: box-shadow var(--med) var(--ease); }
+.method-card { border-radius: var(--r2); border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line2)); padding: 0; overflow: hidden; margin-bottom: 14px; transition: box-shadow var(--med) var(--ease); }
 .method-card:hover { box-shadow: var(--shadow); }
 .method-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; margin: 0; }
 .method-head h3 { font-size: 16px; }
@@ -1565,11 +1563,12 @@ th.on a { color: var(--ink); }
 .clip-list { display: grid; gap: 10px; }
 .clip-card { border-radius: var(--r2); border: 1px solid var(--line); background: var(--surface); padding: 14px 16px; transition: transform var(--med) var(--ease), box-shadow var(--med), border-color var(--med); }
 .clip-card:hover { border-color: var(--line2); box-shadow: var(--shadow); }
-.clip-card.pinned { border-color: var(--accent-line); box-shadow: inset 3px 0 0 var(--accent); }
+/* Side stripes became simple borders site-wide, like the picked card (owner, 2 November 2026); pinned = picked: mint. */
+.clip-card.pinned { border-color: color-mix(in srgb, var(--accent) 35%, var(--line2)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .clip-head { font-size: 12px; color: var(--muted); }
 .clip-kind { font-weight: 600; color: var(--ink2); text-transform: uppercase; letter-spacing: .05em; font-size: 11px; }
 .clip-title { font-family: var(--display); font-weight: 700; font-size: 15.5px; }
-.clip-why { border-left: 2px solid var(--amber); padding-left: 10px; font-style: italic; color: var(--ink2); }
+.clip-why { border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line2)); border-radius: 6px; padding: 6px 10px; font-style: italic; color: var(--ink2); }
 .clip-drift { color: var(--amber); background: var(--amber-soft); border-radius: 4px; padding: 2px 8px; font-size: 12px; }
 .clip-date { font-family: var(--mono); }
 .clip-actions button, .clip-actions summary { border-radius: 6px; transition: background var(--fast), color var(--fast); }
@@ -1602,9 +1601,9 @@ th.on a { color: var(--ink); }
 /* radiografie: retheme touches */
 .rx-sub { font-family: var(--body); }
 .rx-sub .num, .rx-sub.num { font-family: var(--body); font-variant-numeric: tabular-nums; }
-.rx-head { border-radius: var(--r2); border-top: 3px solid var(--amber); transition: transform var(--med) var(--ease), box-shadow var(--med) var(--ease); }
+.rx-head { border-radius: var(--r2); border-color: color-mix(in srgb, var(--amber) 35%, var(--line2)); transition: transform var(--med) var(--ease), box-shadow var(--med) var(--ease); }
 .rx-head:hover { transform: translateY(-3px); box-shadow: var(--shadow2); }
-.rx-head.red { border-top-color: var(--risk); }
+.rx-head.red { border-color: color-mix(in srgb, var(--risk) 35%, var(--line2)); }
 .rx-head .k { color: var(--muted); font-weight: 600; }
 .rx-head .t { font-family: var(--display); font-size: 15.5px; }
 .rx-head .w { font-family: var(--body); font-variant-numeric: tabular-nums; }
