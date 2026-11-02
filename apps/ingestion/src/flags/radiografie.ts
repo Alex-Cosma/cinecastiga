@@ -114,16 +114,21 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
       where y between ${winFrom} and ${winTo}
       group by a, s
     ),
-    -- The firm's whole public portfolio counts its direct acquisitions too (owner, 2 November 2026): a firm
-    -- whose only procedure contracts are with one authority is not "100%" dependent on it when dozens of
-    -- others buy from it directly. Same direct-acquisition population as the entity page: 0 < value ≤ 2 mil.
+    -- Every pair of either channel (owner, 2 November 2026): the radiography's relation chart and its table hold every
+    -- supplier of the authority, its procedure contracts and its direct acquisitions, with no threshold. The firm's
+    -- whole public portfolio counts both too: a firm whose only procedure contracts are with one authority is not
+    -- "100%" dependent on it when dozens of others buy from it directly. Direct acquisitions as on the entity page:
+    -- 0 < value ≤ 2 mil. lei.
     da as (
-      select authority_id a, supplier_id s, closing_value v
+      select authority_id a, supplier_id s, closing_value v, left(finalization_date, 4)::int y
       from marts.da_transactions
-      where closing_value > 0 and closing_value <= 2000000 and supplier_id in (select s from pair)
+      where closing_value > 0 and closing_value <= 2000000 and authority_id is not null and supplier_id is not null
     ),
     da_pair as (
-      select a, s, sum(v) da_here from da where a is not null group by a, s
+      select a, s, sum(v) da_here, count(*) n_da, min(y) y0, max(y) y1 from da group by a, s
+    ),
+    pairs as (
+      select a, s from pair union select a, s from da_pair
     ),
     sup as (
       select s, sum(v) v_total, coalesce(sum(v) filter (where is_da), 0) v_da, count(distinct a) n_auth
@@ -134,35 +139,43 @@ async function buildSupplierDependency(sql: DbSql): Promise<number> {
         select s, a, v, true from da
       ) u
       group by s
-    )
-    select p.a authority_id, p.s supplier_id,
-           e.name_display supplier_name, e.county, ep.is_foreign,
-           p.v_here, coalesce(dp.da_here, 0) da_here, sup.v_total, sup.v_da, sup.n_auth,
-           p.n_here, coalesce(p.ns_here, 0) ns_here, p.nk_here,
-           p.y0, p.y1,
-           coalesce(p.c_frame, 0) c_frame, coalesce(p.c_plain, 0) c_plain,
-           y.yrs,
-           (select sum(f.net_turnover) from reference.company_financials f
-             where f.cui = rc.cui and f.year = any(y.yrs)) turn_win,
-           (select count(*)::int from reference.company_financials f
-             where f.cui = rc.cui and f.year = any(y.yrs) and f.net_turnover is not null) ny_win,
-           (select max(f.net_turnover) from reference.company_financials f
-             where f.cui = rc.cui and f.year = ${winTo}) turn_last,
-           (select max(f.employees) from reference.company_financials f
-             where f.cui = rc.cui and f.year = ${winTo}) emp_last,
-           ${winFrom}::int win_from, ${winTo}::int win_to
-    from pair p
-    join sup on sup.s = p.s
-    join core.entities e on e.id = p.s
-    -- MF figures only for a corroborated CUI (audit F03): a foreign number that
+    ),
+    -- Once per firm, not per pair. MF figures only for a corroborated CUI (audit F03): a foreign number that
     -- passes the CUI checksum must not take another firm's turnover.
-    cross join lateral (select ${corroboratedCui(sql, 'e')} cui) rc
-    left join marts.entity_profile ep on ep.entity_id = p.s and ep.role = 'supplier'
-    left join yrs y on y.a = p.a and y.s = p.s
-    left join da_pair dp on dp.a = p.a and dp.s = p.s
+    firm as (
+      select e.id s, e.name_display, e.county, ${corroboratedCui(sql, 'e')} cui
+      from core.entities e where e.id in (select s from sup)
+    ),
+    fin_last as (
+      select cui, max(net_turnover) turn_last, max(employees) emp_last
+      from reference.company_financials where year = ${winTo} group by cui
+    )
+    select ap.a authority_id, ap.s supplier_id,
+           f.name_display supplier_name, f.county, ep.is_foreign,
+           coalesce(p.v_here, 0) v_here, coalesce(dp.da_here, 0) da_here,
+           coalesce(p.v_here, 0) + coalesce(dp.da_here, 0) v_all,
+           sup.v_total, sup.v_da, sup.n_auth,
+           coalesce(p.n_here, 0) n_here, coalesce(dp.n_da, 0) n_da_here, coalesce(p.ns_here, 0) ns_here, coalesce(p.nk_here, 0) nk_here,
+           least(p.y0, dp.y0) y0, greatest(p.y1, dp.y1) y1,
+           coalesce(p.c_frame, 0) c_frame, coalesce(p.c_plain, 0) c_plain,
+           y.yrs, w.turn_win, coalesce(w.ny_win, 0) ny_win, fl.turn_last, fl.emp_last,
+           ${winFrom}::int win_from, ${winTo}::int win_to
+    from pairs ap
+    join sup on sup.s = ap.s
+    join firm f on f.s = ap.s
+    left join pair p on p.a = ap.a and p.s = ap.s
+    left join da_pair dp on dp.a = ap.a and dp.s = ap.s
+    left join marts.entity_profile ep on ep.entity_id = ap.s and ep.role = 'supplier'
+    left join yrs y on y.a = ap.a and y.s = ap.s
+    -- the turnover of the years the pair's contracts cover: contract pairs only
+    left join lateral (
+      select sum(fc.net_turnover) turn_win, count(fc.net_turnover)::int ny_win
+      from reference.company_financials fc where y.yrs is not null and fc.cui = f.cui and fc.year = any(y.yrs)
+    ) w on true
+    left join fin_last fl on fl.cui = f.cui
   `;
   await sql`alter table marts.supplier_dependency add primary key (authority_id, supplier_id)`;
-  await sql`create index supplier_dependency_auth_v_idx on marts.supplier_dependency (authority_id, v_here desc)`;
+  await sql`create index supplier_dependency_auth_v_idx on marts.supplier_dependency (authority_id, v_all desc)`;
   const [r] = (await sql`select count(*)::int c from marts.supplier_dependency`) as unknown as { c: number }[];
   return r!.c;
 }
