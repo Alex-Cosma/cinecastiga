@@ -136,7 +136,9 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
             const records = open(place);
             return <AnswerRow
               key={place.entityId}
-              name={`${i + 2}. ${cleanName(place.name)}`}
+              name={cleanName(place.name)}
+              rank={i + 2}
+              href={`/entitati/${place.entityId}`}
               place={placeWords(place, spec).replace(/^(Firmă|Instituție) · /, "")}
               facts={placeFacts(place, facts?.get(place.entityId), spec, balanceYear)}
               value={formatRon(place.value)}
@@ -248,7 +250,7 @@ function RiskRow({ place, row, facts, actions }: { place: number; row: RiskPlace
   const name = `${place}. ${cleanName(row.name)}`, pill = scorePill(row.score);
   return <div className="qb-arow ec-rrow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
-      <div className="qb-arow-name">{name}<small>{profilePlace(row)}</small></div>
+      <div className="qb-arow-name">{place}. <Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link><small>{profilePlace(row)}</small></div>
       <RowFacts facts={facts} />
     </div>
     <div className="qb-arow-val ec-rval">
@@ -308,6 +310,7 @@ function LegacyTiesAnswer({ ties, spec }: { ties: LegacyTies; spec: QuestionSpec
               return <AnswerRow
                 key={row.entityId}
                 name={entity.name}
+                href={`/entitati/${row.entityId}`}
                 place={profilePlace(row)}
                 facts={legacyTieFacts(row, spec)}
                 value={formatRon(row.value)}

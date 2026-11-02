@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from "react";
+import NextLink from "next/link";
 import type { KitLink as Link } from "../builder/kit-types";
 import KitLink from "./KitLink";
 import RowFacts, { type RowFact } from "./RowFacts";
@@ -15,6 +16,10 @@ import RowMenu, { type RowAction } from "./RowMenu";
 
 export interface AnswerRowProps {
   name: string;
+  /** The row's place in the list, said before the name („2. ”) and outside its link. */
+  rank?: number;
+  /** The name's own page (an entity's): the name links to it. */
+  href?: string;
   place?: string;
   facts?: readonly RowFact[];
   /** The value as the answer formats it ("100.011.056 lei"). */
@@ -28,10 +33,11 @@ export interface AnswerRowProps {
   menuOpen?: boolean;
 }
 
-export default function AnswerRow({ name, place, facts = [], value, share, records, actions = [], menuClassName, menuOpen }: AnswerRowProps) {
+export default function AnswerRow({ name: label, rank, href, place, facts = [], value, share, records, actions = [], menuClassName, menuOpen }: AnswerRowProps) {
+  const name = rank === undefined ? label : `${rank}. ${label}`;
   return <div className="qb-arow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
-      <div className="qb-arow-name">{name}{place && <small>{place}</small>}</div>
+      <div className="qb-arow-name">{rank !== undefined && `${rank}. `}{href ? <NextLink href={href}>{label}</NextLink> : label}{place && <small>{place}</small>}</div>
       <RowFacts facts={facts} />
     </div>
     <div className="qb-arow-val">

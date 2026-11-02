@@ -78,6 +78,9 @@
   .cq-answer details > summary, .cq-answer .cmp-more { min-height:44px; }
   .cq-answer details > summary { align-content:center; }
   .cq-answer .cq-record-link { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
+  /* A row's name runs on with its place and line („1. Spitalul … Sibiu · …”): its link keeps the text's flow and grows
+     its target with padding, which leaves the line's height alone. */
+  .cq-answer .qb-arow-name > a { padding-block:12px; }
   .cq-answer td a, .cq-answer .ask-complegend .nm a, .cq-answer .qb-trow-name a, .cq-answer .cmp-card h3 a, .cq-answer .ask-ecard h3 a, .cq-answer .ec-name a,
   .cq-answer .coverage-disclosure-body > a { display:inline-flex; align-items:center; min-width:44px; min-height:44px; }
   .cq-answer .cmp-mirror-name { display:flex; align-items:center; min-height:44px; }
