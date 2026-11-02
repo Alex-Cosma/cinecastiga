@@ -111,8 +111,12 @@ export interface DescribedConditions {
   totalWords: string[];
 }
 
-/** Historical risk profiles: the archive of accepted direct acquisitions (entity_flags, runRows), whatever the link's stream. */
-export const PROFILE_SOURCE_PILL = "profil istoric: achiziții directe acceptate, toată arhiva";
+/**
+ * Historical risk profiles: the archive of accepted direct acquisitions (entity_flags, runRows), whatever the link's
+ * stream. The pill says only the kind (owner, 2 November 2026: „profil istoric”, „acceptate” and „toată arhiva” were too
+ * much under the title); the archive and the ceiling are in „Ce include calculul” and the builder's (?).
+ */
+export const PROFILE_SOURCE_PILL = "achiziții directe";
 /** The builder's data stream chip. */
 const STREAM_CHIP: Record<string, string> = { all: "Toate achizițiile", da: "Achiziții directe", contracts: "Contracte din proceduri" };
 /** The data stream in the pills and a watch's receipt (kit §4: "Toate achizițiile", never "toate sursele"). */

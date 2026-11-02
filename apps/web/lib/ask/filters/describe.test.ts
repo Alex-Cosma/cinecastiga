@@ -51,6 +51,8 @@ const KIT_PILLS: Readonly<Record<string, string>> = {
   "doar contracte prin proceduri": "doar contractele din proceduri", "doar achiziții directe": "doar achizițiile directe",
   "doar comune": "doar primării de comună", "doar orașe/municipii": "doar primării de oraș și municipiu", "doar școli/licee": "doar școli",
   "un singur ofertant": "o singură ofertă",
+  // A profile's pill says only the kind (owner, 2 November 2026).
+  "profil istoric: achiziții directe acceptate, toată arhiva": "achiziții directe",
 };
 const kitPill = (text: string) => KIT_PILLS[text] ?? text.replace(/^conduse de /, "conduse azi de ");
 /** The list pill of a ranking: institutions, never "autorități" (pills.ts). */

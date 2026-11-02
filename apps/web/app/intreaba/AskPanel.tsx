@@ -1194,8 +1194,8 @@ export default function AskPanel({
                 />
               </div>
             </div>
-            {/* A profile's basis is the line under the sentence („profil istoric: achiziții directe acceptate, toată arhiva”);
-                „Ce include calculul” adds the ceiling and „valori înregistrate, nu plăți”. No banner (owner, 2 November 2026). */}
+            {/* A profile's kind is in the line under the sentence („achiziții directe”); „Ce include calculul” adds the
+                archive, the ceiling and „valori înregistrate, nu plăți”. No banner (owner, 2 November 2026). */}
             {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. A ranking's
                 strip would hold only „Vizual | Tabel” (owner, 1 November 2026): it ends the row of „Unde e o firmă?” instead. */}
             {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
