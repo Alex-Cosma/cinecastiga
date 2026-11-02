@@ -35,6 +35,8 @@
    are the chart's legend | the value per year. One surface, its regions divided by hairlines, each centred in the
    strip's height; on a tablet the chart takes its own row, on a phone everything stacks. ---- */
 .ent-top{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.7fr) minmax(0,1.85fr);margin:26px 0 10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2,15px)}
+/* under the tabs, the tabs' own margin keeps the distance */
+.subnav+.ent-top{margin-top:0}
 .ent-top--no-years{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
 .ent-top>*{min-width:0;margin:0;padding:18px 22px;display:grid;align-content:center}
 .ent-top>*+*{border-left:1px solid var(--line)}
