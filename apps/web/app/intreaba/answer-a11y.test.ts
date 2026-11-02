@@ -69,9 +69,11 @@ describe("the answer's targets and contrast", () => {
     // Leftward from the right-hand column; a corner panel on a tablet; the phone keeps its sheet (question-results.css).
     expect(globals).toContain("@media (min-width: 851px) { .cq-answer-actions .clipbtn-pop { left: auto; right: 0; } }");
     expect(globals).toMatch(/@media \(min-width: 601px\) and \(max-width: 850px\) \{ \.cq-answer-actions \.clipbtn-pop \{ position: fixed; top: auto; bottom: 16px; left: auto; right: 16px; width: min\(340px, calc\(100vw - 32px\)\);/);
-    // A signed-in reader's five actions wrap between 601 and 850 px instead of squashing into each other.
-    const tablet = results.slice(results.indexOf("@media (max-width: 850px) {"));
-    expect(tablet.slice(0, tablet.indexOf("}", tablet.indexOf(".cq-answer-actions {")))).toContain("flex-wrap: wrap;");
+    // A signed-in reader's five actions never squash into each other: the records' button on its row, the others two
+    // by two under it, as wide as it (owner, 2 November 2026), at every width.
+    const actions = results.slice(results.indexOf(".cq-answer-actions {"), results.indexOf("}", results.indexOf(".cq-answer-actions {")));
+    expect(actions).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(results).toContain(".cq-answer-actions > .cq-source-main { grid-column: 1 / -1;");
   });
 
   it("opens every (?) of the answer over its own line, never at the page's top (S4 tests)", () => {

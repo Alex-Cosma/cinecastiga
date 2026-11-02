@@ -228,14 +228,24 @@
   background: var(--fk-phrase-hover);
   border-bottom-color: var(--fk-green);
 }
+/* The records' button on its own row, the other actions two by two under it, together as wide as it (owner,
+   2 November 2026): „Trimite” and „Salvează” share one row instead of two. The block is as wide as the wider of
+   the records' button and a pair; a signed-in reader's „Urmărește” and „Salvează în anchetă” are the next pair. */
 .cq-answer-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  width: fit-content;
+  gap: 10px;
   padding-top: 27px;
   flex-shrink: 0;
 }
+.cq-answer-actions > .cq-source-main { grid-column: 1 / -1; justify-content: center; }
+.cq-answer-actions > .cq-share,
+.cq-answer-actions > .cq-save-wrap,
+.cq-answer-actions > .cq-save-wrap > .cq-save-question { width: 100%; min-width: 0; }
+.cq-answer-actions > .cq-share,
+.cq-answer-actions > .cq-save-wrap > .cq-save-question { min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; }
 .cq-source-main {
   display: flex;
   align-items: center;
@@ -703,11 +713,8 @@
   .cq-answer-head {
     display: block;
   }
+  /* Under the head, at the left; a signed-in reader's five actions keep the two columns (F2-tests, 601–850 px). */
   .cq-answer-actions {
-    align-items: flex-start;
-    flex-direction: row;
-    /* A signed-in reader's five actions (Urmărește, Salvează în anchetă) wrap instead of squashing (F2-tests, 601–850 px). */
-    flex-wrap: wrap;
     padding-top: 22px;
   }
 
@@ -861,10 +868,9 @@
   .cq-answer-head h2 {
     font-size: 28px;
   }
+  /* The phone's width: the records' button whole, the pairs half each. */
   .cq-answer-actions {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    width: 100%;
   }
   .cq-source-main {
     justify-content: center;
