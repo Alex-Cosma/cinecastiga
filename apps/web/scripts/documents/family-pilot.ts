@@ -60,7 +60,7 @@ async function steps(n:Notice,request:Request){
    if(!data.items?.length||total===null||items.length>=total)break;
   }
   result.list={total,listed:items.length,codesMatchNotice:items.every(d=>typeof d.noticeDocumentCode==='string'&&d.noticeDocumentCode.startsWith(n.noticeNo+'/')),
-   types:items.map(d=>`${d.sysNoticeDocumentTypeId}:${d.sysNoticeDocumentType}`),names:items.map(d=>d.documentName),sample:mask(items.slice(0,2))};
+   types:items.map(d=>`${d.sysNoticeDocumentTypeId}:${d.sysNoticeDocumentType}`),names:items.map(d=>d.documentName),codes:items.map(d=>d.noticeDocumentCode??null),sample:mask(items.slice(0,2))};
  }
  if(n.steps.includes('df')){
   const r=await request(DF(n.noticeId,n.type),'GET','df-files');
@@ -163,7 +163,7 @@ async function probeCandidate():Promise<Notice[]>{
  const [type,id]=(process.argv.find(s=>s.startsWith('--notice='))?.slice(9)??'').split(':');
  if(!type||!id||!VIEW[Number(type)]||!/^[1-9]\d*$/.test(id))throw Error('Use --notice=<type>:<id>.');
  const [r]=await q`select c_notice_id::text notice_id,notice_no,coalesce(title,notice_no) title from core.notices where c_notice_id=${id} and sys_notice_type_id=${Number(type)}`;
- return r?[{key:`${type}:${r.notice_id}`,type:Number(type),noticeId:r.notice_id,noticeNo:r.notice_no,title:r.title,note:'probe',url:`${origin}${VIEW[Number(type)]}${r.notice_id}`,steps:['df','list']}]:[];
+ return r?[{key:`${type}:${r.notice_id}`,type:Number(type),noticeId:r.notice_id,noticeNo:r.notice_no,title:r.title,note:'probe',url:`${origin}${VIEW[Number(type)]}${r.notice_id}`,steps:process.argv.includes('--list-only')?['list']:['df','list']}]:[];
 }
 // Plan c opens its session on a public notice page (the CN of plan b), then reads only the two modules.
 async function ackCandidates():Promise<Notice[]>{

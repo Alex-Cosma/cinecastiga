@@ -17,11 +17,11 @@ const DOCUMENTATION_PARTS:[string,DocumentationSection][]=[['dfNoticeDocs','docu
 const viewPath=new RegExp(`^https://www\\.e-licitatie\\.ro/pub/notices/(?:${[...new Set(Object.values(NOTICE_VIEWS))].join('|')})/v2/view/[1-9]\\d*$`);
 const documentationUrl=(noticeId:string,type:number)=>`${origin}/api-pub/NoticeCommon/GetDfNoticeSectionFiles/?initNoticeId=${Number(noticeId)}&sysNoticeTypeId=${type}`;
 /** received: the page's items, files or not (paging counts them); items: those that carry a file. A notification
- * without an attachment (no name, code or URL; seen on CN1057084, 3 November 2026) has nothing to keep. */
+ * without an attachment (a text-only message: no name or code, an empty URL; CN1057084, 3 November 2026) has nothing to keep. */
 export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];total:number;received:number}{
  const r=data as {items?:ListedDocument[];total?:number};
  if(!Array.isArray(r?.items)||!Number.isSafeInteger(r.total)||r.total!<0||r.total!>200)throw Error('Lista SEAP nu are un format acceptat sau depășește 200 de fișiere.');
- const items=r.items.filter(d=>d?.documentName!=null||d?.noticeDocumentUrl!=null);
+ const items=r.items.filter(d=>!!d?.documentName||!!d?.noticeDocumentUrl);
  for(const d of items){if(!Number.isSafeInteger(d.noticeDocumentId)||d.noticeDocumentId<=0||typeof d.documentName!=='string'||d.documentName.length>500||typeof d.noticeDocumentCode!=='string'||!d.noticeDocumentCode.startsWith(noticeNo+'/'))throw Error('Identitatea documentului nu corespunde anunțului.');safeFileUrl(d.noticeDocumentUrl);}
  return {items,total:r.total!,received:r.items.length};
 }
