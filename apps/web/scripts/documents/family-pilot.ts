@@ -4,6 +4,8 @@
  * Plan b: the procurement documentation section (NoticeCommon/GetDfNoticeSectionFiles, found offline in
  *   the public app bundle) for CN old and new, SCN and the other participation families (7, 19), with one
  *   download from it.
+ * Plan c: the award's attached (constatator) documents — read the public modules that list them
+ *   (/views/pub/documents/ack/service and list), admitted by the gate policy since 685b714.
  * Inspection is the default; --run admits source traffic through the shared gate, a dated batch (hard
  * request ceiling) and the proxy pool. It writes only the batch, its jobs and requests, the notices it
  * reads and an audit row: no file is archived, no list is stored. */
@@ -25,7 +27,8 @@ const batchId=process.argv.find(s=>s.startsWith('--batch='))?.slice(8);
 if(!batchId||!/^document-family-pilot-20261103-[a-z0-9-]+$/.test(batchId))throw Error('Use a dated explicit batch ID.');
 const plan=process.argv.find(s=>s.startsWith('--plan='))?.slice(7)??'b';
 const worker=collectionWorkerId('document-family-pilot');
-type Notice={key:string;type:number;noticeId:string;noticeNo:string;title:string;note:string;url:string;steps:('list'|'df'|'module'|'download')[]};
+type Notice={key:string;type:number;noticeId:string;noticeNo:string;title:string;note:string;url:string;steps:('list'|'df'|'module'|'download'|'ack-modules')[]};
+const ACK_MODULES=[origin+'/views/pub/documents/ack/service.min.js',origin+'/views/pub/documents/ack/list/list.min.js'];
 type Request=(url:string,method:string,endpoint:string,body?:unknown,navigate?:boolean)=>Promise<{bytes:Buffer;status:number;oversized:boolean}>;
 
 /** Field names and values of a listed item; transient file URLs keep only their route. */
@@ -62,6 +65,18 @@ async function steps(n:Notice,request:Request){
   const found=urls(data);
   result.df={status:r.status,bytes:r.bytes.length,fileUrls:found.length,shape:mask(data)};
   if(n.steps.includes('download')&&found.length)result.download=await download(request,found[0]!);
+ }
+ if(n.steps.includes('ack-modules')){
+  const modules=[];
+  for(const m of ACK_MODULES){
+   const r=await request(m,'GET','module',null,true);const text=r.bytes.toString('utf8');
+   modules.push({module:m.replace(origin,''),status:r.status,bytes:r.bytes.length,sha256:createHash('sha256').update(r.bytes).digest('hex'),
+    apis:[...new Set(text.match(/this\.[A-Za-z]*[aA]pi[A-Za-z]*="[^"]+"/g)??[])],
+    calls:[...new Set([...text.matchAll(/prototype\.[A-Za-z0-9_]+=function\([^)]*\)\{return this\.(?:GET|POST)\([^;]{0,220}/g)].map(x=>x[0]))].slice(0,40),
+    routes:[...new Set(text.match(/api-pub\/[A-Za-z0-9_\/-]+/g)??[])].slice(0,40),
+    files:[...new Set([...text.matchAll(/.{0,120}(?:files\/|Url|url).{0,160}/g)].map(x=>x[0]))].slice(0,15)});
+  }
+  result.ack=modules;
  }
  if(n.steps.includes('module')){
   const m=await request(MODULE,'GET','module',null,true);const text=m.bytes.toString('utf8');
@@ -137,13 +152,19 @@ async function candidates():Promise<Notice[]>{
  return out;
 }
 
+// Plan c opens its session on a public notice page (the CN of plan b), then reads only the two modules.
+async function ackCandidates():Promise<Notice[]>{
+ const [r]=await q`select c_notice_id::text notice_id,notice_no,coalesce(title,notice_no) title from core.notices where c_notice_id=100213791 and sys_notice_type_id=2`;
+ return r?[{key:`2:${r.notice_id}`,type:2,noticeId:r.notice_id,noticeNo:r.notice_no,title:r.title,note:'session page for the constatator modules',url:`${origin}${VIEW[2]}${r.notice_id}`,steps:['ack-modules']}]:[];
+}
+
 try{
- if(plan!=='b')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b); only plan b remains.');
+ if(plan!=='b'&&plan!=='c')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
  const [control]=await q`select revision,paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  const [pool]=await q`select enabled from app.collection_proxy_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||(control.paused_streams as string[]).includes('documents')||!pool?.enabled)throw Error('Inspect source controls before pilot.');
  if((await q`select id from app.document_batches where id=${batchId}`).length)throw Error('Batch already exists; inspect its persisted results. No automatic replay.');
- const notices=await candidates();
+ const notices=plan==='c'?await ackCandidates():await candidates();
  console.log(JSON.stringify({event:'family-pilot-preflight',batchId,plan,maxRequests:MAX_REQUESTS,notices:notices.map(n=>({notice:n.noticeNo,type:n.type,note:n.note,url:n.url,steps:n.steps})),execute:process.argv.includes('--run')}));
  if(process.argv.includes('--run')){
   await q.begin(async tx=>{
