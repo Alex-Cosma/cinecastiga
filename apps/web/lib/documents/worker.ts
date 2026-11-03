@@ -53,7 +53,7 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
    let url:string|undefined;
    if(type===AWARD_NOTICE_TYPE){
     if(!doc!.source_id.startsWith('ack:'))throw Error('Documentul nu mai apare cu aceeași identitate în lista SEAP.');
-    await progress('download');await seap.downloadAward(doc!.source_id.slice(4),versions,source);
+    await progress('download');await seap.downloadAward(doc!.source_id.slice(4),versions,source,notice.notice_no);
    }else if(job.kind==='list'){
     // A notice's files: its documentation section, then its document list. Published together, once both are valid.
     const docs=await seap.documentation(notice.notice_id,notice.notice_no,type);
