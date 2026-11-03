@@ -15,6 +15,8 @@ export const documentNotices = appSchema.table('document_notices', {
   noticeNo: text('notice_no').notNull(), title: text('title').notNull(), url: text('url').notNull(),
   automatic:boolean('automatic').notNull().default(false), sourceDate:timestamp('source_date',{withTimezone:true}),
   checkedAt: timestamp('checked_at',{withTimezone:true}), total: integer('total'),
+  // 2: read from both the documentation section and the document list (0092); 1: list only.
+  inventory: integer('inventory').notNull().default(1),
 });
 export const procurementDocuments = appSchema.table('procurement_documents', {
   id: uuid('id').primaryKey().defaultRandom(), noticeKey: text('notice_key').notNull().references(()=>documentNotices.key),
@@ -25,6 +27,9 @@ export const procurementDocuments = appSchema.table('procurement_documents', {
   signature: text('signature'), processor: text('processor'), preparation:jsonb('preparation'), contents:jsonb('contents'),
   classification:jsonb('classification'), classificationVersion:integer('classification_version').notNull().default(0),
   classificationPdfHash:text('classification_pdf_hash'), priority:integer('priority').notNull().default(100),
+  // Where SEAP lists the file: 'list' (NoticeDocument) or a documentation part (documentation, espd,
+  // strategy, decision, ex_ante); SEAP's own type of a listed file.
+  section:text('section').notNull().default('list'), sourceType:text('source_type'), sourceTypeId:integer('source_type_id'),
 },t=>[uniqueIndex('procurement_document_source_uq').on(t.noticeKey,t.sourceId),index('procurement_document_priority').on(t.priority,t.noticeKey).where(sql`${t.processedAt} is null`)]);
 export const documentPages = appSchema.table('document_pages', {
   documentId: uuid('document_id').notNull().references(()=>procurementDocuments.id),
@@ -60,7 +65,7 @@ export const documentJobs = appSchema.table('document_jobs', {
   startedAt: timestamp('started_at',{withTimezone:true}), finishedAt: timestamp('finished_at',{withTimezone:true}),
 },t=>[uniqueIndex('document_jobs_active_key').on(t.dedupKey).where(sql`${t.status} in ('queued','running')`),
   uniqueIndex('document_jobs_running_slot').on(t.slot).where(sql`${t.status} = 'running'`),index('document_jobs_queue').on(t.status,t.createdAt),
-  check('document_job_slot',sql`${t.slot} between 0 and 13 and (${t.batchId} is not null or ${t.automatic} or ${t.slot}=0)`),
+  check('document_job_slot',sql`${t.slot} between 0 and 13`),
   check('document_job_status',sql`${t.status} in ('queued','running','complete','failed')`),check('document_job_kind',sql`${t.kind} in ('list','file')`)]);
 export const documentRequests = appSchema.table('document_requests', {
   id: bigserial('id',{mode:'number'}).primaryKey(), jobId: uuid('job_id').notNull().references(()=>documentJobs.id),
@@ -72,4 +77,6 @@ export const documentCollectionControl=appSchema.table('document_collection_cont
  id:integer('id').primaryKey().default(1),enabled:boolean('enabled').notNull().default(false),paused:boolean('paused').notNull().default(false),revision:integer('revision').notNull().default(0),
  downloadConcurrency:integer('download_concurrency').notNull().default(10),processingConcurrency:integer('processing_concurrency').notNull().default(4),
  startedAt:timestamp('started_at',{withTimezone:true}),heartbeatAt:timestamp('heartbeat_at',{withTimezone:true}),scannedAt:timestamp('scanned_at',{withTimezone:true}),error:text('error'),
+ // Automatic download of identified specifications (0092). Off: the collector only lists; files come on request.
+ automaticDownloads:boolean('automatic_downloads').notNull().default(false),
 },t=>[check('document_collection_singleton',sql`${t.id}=1`),check('document_collection_concurrency',sql`${t.downloadConcurrency} between 1 and 10 and ${t.processingConcurrency} between 1 and 4`)]);

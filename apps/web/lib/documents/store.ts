@@ -1,7 +1,7 @@
 import {createDb,type DbSql} from '@seap/db';
 import {isWorkspaceId,withInvestigationAccess} from '../investigation-access';
 import {WorkspaceError} from '../investigation-workspace';
-import {validQuote,type ContractFiles,type ContractFile,type DocumentNotice,type FileJob} from './shared';
+import {validQuote,noticeViewUrl,DOCUMENT_NOTICE_TYPES,type AwardAttachments,type ContractFiles,type ContractFile,type DocumentNotice,type FileJob} from './shared';
 import {effectiveClassification} from './classify';
 const iso=(v:unknown)=>v?new Date(v as string).toISOString():null;
 const g=globalThis as unknown as {documentSql?:DbSql};
@@ -12,31 +12,52 @@ export async function contractNotice(nid:string,q:DbSql=documentDb()):Promise<Do
  // Match imported procurement identity AND authority, never title similarity.
  const rows=await q`select distinct n.c_notice_id::text notice_id,n.notice_no,n.sys_notice_type_id,n.title
    from core.contracts c join core.awards a on a.ca_notice_id=c.ca_notice_id
-   join core.notices n on n.authority_entity_id=a.authority_entity_id and n.sys_notice_type_id=17
+   join core.notices n on n.authority_entity_id=a.authority_entity_id and n.sys_notice_type_id=any(${DOCUMENT_NOTICE_TYPES}::int[])
    where c.ca_notice_contract_id=${nid} and (
      (a.procedure_id is not null and a.procedure_id=n.procedure_id)
      or exists(select 1 from core.notice_award_sources l where l.ca_notice_id=a.ca_notice_id and l.c_notice_id=n.c_notice_id and l.notice_namespace=n.notice_namespace)
    ) limit 2`;
  if(rows.length!==1)return null;
- const r=rows[0]!;return {key:`17:${r.notice_id}`,noticeId:r.notice_id,noticeType:17,noticeNo:r.notice_no,title:r.title??r.notice_no,url:`https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/${r.notice_id}`};
+ const r=rows[0]!,type=Number(r.sys_notice_type_id);
+ return {key:`${type}:${r.notice_id}`,noticeId:r.notice_id,noticeType:type,noticeNo:r.notice_no,title:r.title??r.notice_no,url:noticeViewUrl(type,r.notice_id)};
 }
 export async function registerNotice(n:DocumentNotice,q:DbSql=documentDb()){
  await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url)
  values(${n.key},${n.noticeId},${n.noticeType},${n.noticeNo},${n.title},${n.url}) on conflict(key) do nothing`;
 }
+/** Negotiation without prior publication: the law gives it no participation notice. */
+export const NO_PARTICIPATION_NOTICE='Negociere fara publicare prealabila';
+/** The award's own attachments and whether its procedure has a participation notice at all, from what
+ * was already collected: the award's detail (ackDocsCount) and its procedure type. No source traffic. */
+async function awardContext(nid:string,q:DbSql):Promise<{award:AwardAttachments|null;withoutNotice:boolean}>{
+ if(!/^[1-9]\d{0,17}$/.test(nid))return {award:null,withoutNotice:false};
+ const [r]=await q`select a.ca_notice_id::text ca_notice_id,a.procedure_type,d.count,d.fetched_at
+  from core.contracts c join core.awards a on a.ca_notice_id=c.ca_notice_id
+  left join lateral (select (r.payload#>>'{data,ackDocsCount}')::int count,r.fetched_at from raw.raw_documents r
+   where r.source='elicitatie' and r.external_id='award:'||a.ca_notice_id and r.endpoint_version='award-detail-root:v2' order by r.fetched_at desc,r.id desc limit 1) d on true
+  where c.ca_notice_contract_id=${nid} limit 1`;
+ if(!r)return {award:null,withoutNotice:false};
+ return {award:Number.isInteger(r.count)&&r.count>=0?{caNoticeId:r.ca_notice_id,count:r.count,checkedAt:iso(r.fetched_at)!}:null,withoutNotice:r.procedure_type===NO_PARTICIPATION_NOTICE};
+}
 function jobRow(r:Record<string,any>|undefined):FileJob|null{return r?{id:r.id,status:r.status,stage:r.stage,pagesDone:r.pages_done,pagesTotal:r.pages_total,error:r.error,position:Number(r.position??0),automatic:!!r.automatic}:null;}
 export async function getContractFiles(nid:string,q:DbSql=documentDb()):Promise<ContractFiles>{
- const notice=await contractNotice(nid,q);
- const empty:ContractFiles={notice,checkedAt:null,total:null,files:[],job:null,requestCount:0,enabled:documentsEnabled()};
+ const [notice,context]=await Promise.all([contractNotice(nid,q),awardContext(nid,q)]);
+ const participation=notice?'linked':context.withoutNotice?'none':'unlinked';
+ const empty:ContractFiles={notice,participation,award:context.award,checkedAt:null,inventory:0,total:null,files:[],job:null,requestCount:0,enabled:documentsEnabled()};
  if(!notice)return empty;
  const [meta]=await q`select * from app.document_notices where key=${notice.key}`;
  if(!meta)return empty;
  const files=await q`select * from app.procurement_documents where notice_key=${notice.key} order by published_at desc nulls last,code`;
- const jobs=await q`select j.* from app.document_jobs j where j.notice_key=${notice.key} order by created_at desc,id desc`;
+ // A visitor's request waits behind every earlier request made by anyone.
+ const jobs=await q`select j.*,case when j.status='queued' and not j.automatic then (select count(*) from app.document_jobs x where x.status='queued' and not x.automatic and x.batch_id is null and (x.created_at,x.id)<(j.created_at,j.id))+1 end position
+  from app.document_jobs j where j.notice_key=${notice.key} order by created_at desc,id desc`;
  const [requests]=await q`select count(*) n from app.document_requests r join app.document_jobs j on j.id=r.job_id where j.notice_key=${notice.key}`;
- return {...empty,checkedAt:iso(meta.checked_at),total:meta.total,requestCount:Number(requests?.n??0),job:jobRow(jobs.find(j=>j.kind==='list')),
- files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents}),job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
+ return {...empty,checkedAt:iso(meta.checked_at),inventory:Number(meta.inventory??1),total:meta.total,requestCount:Number(requests?.n??0),job:jobRow(jobs.find(j=>j.kind==='list')),
+ files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,section:r.section??'list',sourceType:r.source_type??null,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents,section:r.section,sourceType:r.source_type}),job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
 }
+/** Hourly requests per member and per visitor (a key of the visitor's address, hashed by the hour), and
+ * the length of the shared queue of requests. */
+export const VISITOR_LIMIT=10,MEMBER_LIMIT=20,QUEUE_LIMIT=2000;
 export async function enqueueDocument(nid:string,uid:string,documentId:string|null,q:DbSql=documentDb()){
  if(!documentsEnabled())throw new WorkspaceError('Preluarea documentelor nu este activată pe acest server.',503);
  const notice=await contractNotice(nid,q);if(!notice)throw new WorkspaceError('Nu avem o legătură verificată cu un anunț compatibil.',404);
@@ -51,14 +72,17 @@ export async function enqueueDocument(nid:string,uid:string,documentId:string|nu
    if(!f)throw new WorkspaceError('Fișierul nu aparține acestei proceduri.',404);
    if(f.processed_at)return {ready:true};
   }else{
-   const [n]=await s`select checked_at > now()-interval '24 hours' fresh from app.document_notices where key=${notice.key}`;
+   const [n]=await s`select checked_at > now()-interval '24 hours' and inventory>=2 fresh from app.document_notices where key=${notice.key}`;
    if(n?.fresh)return {cached:true};
   }
   const key=documentId?`file:${documentId}`:`list:${notice.key}`;
   const [existing]=await s`select id,automatic,status from app.document_jobs where dedup_key=${key} and status in ('queued','running') for update`;
   if(existing&&(!existing.automatic||existing.status==='running'))return {id:existing.id};
+  const limit=uid.startsWith('visitor:')?VISITOR_LIMIT:MEMBER_LIMIT;
   const [quota]=await s`select count(*) n from app.document_jobs where requested_by=${uid} and created_at>now()-interval '1 hour'`;
-  if(Number(quota?.n)>=20)throw new WorkspaceError('Ai trimis deja 20 de operațiuni în ultima oră. Revino mai târziu.',429);
+  if(Number(quota?.n)>=limit)throw new WorkspaceError(`Ai trimis deja ${limit} cereri în ultima oră. Revino mai târziu.`,429);
+  const [queued]=await s`select count(*) n from app.document_jobs where status='queued' and not automatic and batch_id is null`;
+  if(Number(queued?.n)>=QUEUE_LIMIT)throw new WorkspaceError('Coada de fișiere e plină. Revino peste câteva minute.',429);
   // Adopt a queued automatic request instead of letting a held job swallow the
   // user's explicit request. Its new manual request time counts toward quota.
   if(existing){

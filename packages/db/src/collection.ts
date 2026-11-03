@@ -105,7 +105,8 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if((documentBatch||automatic?.automatic)&&!admission)throw new CollectionSuspendedError('Lotul de documente necesită poolul proxy activ.');
     const [inFlight]=await q`select count(*)::int n from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted`;
     const concurrency=admission?Number(admission.settings.max_in_flight):1;
-    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch&&!automatic?.automatic?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    // Files people request: a minute apart only in direct mode; through the proxy pool they keep its pace (owner, 3 Nov 2026).
+    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch&&!automatic?.automatic&&!admission?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.

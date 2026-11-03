@@ -3,38 +3,48 @@ import {setTimeout as sleep} from 'node:timers/promises';
 import {DocumentYield,DocumentFormatError} from './errors';
 import {DOCUMENT_LOCK,runDocumentJob} from './worker';
 import {classifyDocumentBatch} from './classify';
+import {DOCUMENT_NOTICE_TYPES,NOTICE_VIEWS} from './shared';
 
-// No source traffic: discover already normalized, namespace-verified source notices.
+// No source traffic: discover the participation notices that awarded contracts, matched like the contract
+// page (same procedure and buyer, or an explicit source link), newest first. Returns how many it added.
 export async function seedDocumentInventory(q:DbSql){
- await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url,automatic,source_date)
-  select '17:'||n.c_notice_id,n.c_notice_id::text,17,n.notice_no,coalesce(n.title,n.notice_no),
-   'https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/'||n.c_notice_id,true,n.state_date
-  from core.notices n left join app.document_notices d on d.key='17:'||n.c_notice_id
-  where n.sys_notice_type_id=17 and n.notice_namespace='rfq' and n.c_notice_id>0 and n.notice_no is not null and (d.key is null or not d.automatic)
+ const types=DOCUMENT_NOTICE_TYPES,views=types.map(t=>NOTICE_VIEWS[t]!);
+ const rows=await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url,automatic,source_date)
+  select n.sys_notice_type_id||':'||n.c_notice_id,n.c_notice_id::text,n.sys_notice_type_id,n.notice_no,coalesce(n.title,n.notice_no),
+   'https://www.e-licitatie.ro/pub/notices/'||v.view||'/v2/view/'||n.c_notice_id,true,n.state_date
+  from core.notices n join unnest(${types}::int[],${views}::text[]) v(type,view) on v.type=n.sys_notice_type_id
+  left join app.document_notices d on d.key=n.sys_notice_type_id||':'||n.c_notice_id
+  where n.c_notice_id>0 and n.notice_no is not null and (n.sys_notice_type_id<>17 or n.notice_namespace='rfq') and (d.key is null or not d.automatic)
+   and (exists(select 1 from core.awards a where a.procedure_id=n.procedure_id and a.authority_entity_id=n.authority_entity_id)
+    or exists(select 1 from core.notice_award_sources l join core.awards a on a.ca_notice_id=l.ca_notice_id
+     where l.c_notice_id=n.c_notice_id and l.notice_namespace=n.notice_namespace and a.authority_entity_id=n.authority_entity_id))
   order by n.state_date desc nulls last,n.c_notice_id desc limit 1000
-  on conflict(key) do update set automatic=true,source_date=excluded.source_date`;
+  on conflict(key) do update set automatic=true,source_date=excluded.source_date returning key`;
  await q`update app.document_collection_control set scanned_at=now(),error=null where id=1`;
+ return rows.length;
 }
-export async function fillDocumentQueue(q:DbSql){
- // Park old automatic downloads without losing their request history. Manual
- // requests and processing of already archived originals remain eligible.
+/** downloads: whether identified specifications are downloaded automatically (an operator setting, off by default). */
+export async function fillDocumentQueue(q:DbSql,downloads=true){
+ // Park automatic downloads (all of them while automatic downloads are off, otherwise those of files that are
+ // not specifications) without losing their request history. Requests and processing of archived originals remain.
  await q`update app.document_jobs j set stage='specifications_only' from app.procurement_documents d
   where j.document_id=d.id and j.automatic and j.kind='file' and j.status='queued'
-   and d.original_hash is null and d.priority<>0 and j.stage<>'specifications_only'`;
+   and d.original_hash is null and (d.priority<>0 or not ${downloads}) and j.stage<>'specifications_only'`;
  await q`update app.document_jobs j set stage=case when d.original_hash is null then 'queued' else 'process_queued' end from app.procurement_documents d
   where j.document_id=d.id and j.automatic and j.status='queued' and j.stage='specifications_only'
-   and (d.priority=0 or d.original_hash is not null)`;
+   and ((d.priority=0 and ${downloads}) or d.original_hash is not null)`;
  // Bounded materialization: discovery continues throughout the history without a giant job INSERT.
  await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,automatic)
   select n.key,'list','list:'||n.key,'system:document-collection',true from app.document_notices n
-  where n.automatic and n.checked_at is null and not exists(select 1 from app.document_jobs j where j.notice_key=n.key and j.kind='list' and j.automatic)
+  where n.automatic and (n.checked_at is null or n.inventory<2) and not exists(select 1 from app.document_jobs j where j.notice_key=n.key and j.kind='list' and j.automatic
+   and (j.status in ('queued','running') or j.created_at>coalesce(n.checked_at,'-infinity'::timestamptz)))
   order by n.source_date desc nulls last,n.key desc limit greatest(0,40-(select count(*)::int from app.document_jobs where automatic and kind='list' and status in ('queued','running'))) on conflict(dedup_key) where status in ('queued','running') do nothing`;
  // Keep a separate bounded frontier for specifications, so forty older queued
  // archived ordinary files cannot prevent a newly discovered specification entering.
  for(const specifications of [true,false])await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage)
   select n.key,d.id,'file','file:'||d.id,'system:document-collection',true,case when d.original_hash is null then 'queued' else 'process_queued' end
   from app.procurement_documents d join app.document_notices n on n.key=d.notice_key
-  where n.automatic and d.processed_at is null and (d.priority=0)=${specifications} and (d.priority=0 or d.original_hash is not null) and d.filename ~* '[.](pdf|p7[sm]|docx?|xlsx?|zip|rar|7z)$'
+  where n.automatic and d.processed_at is null and (d.priority=0)=${specifications} and ((d.priority=0 and ${downloads}) or d.original_hash is not null) and d.filename ~* '[.](pdf|p7[sm]|docx?|xlsx?|zip|rar|7z)$'
    and not exists(select 1 from app.document_jobs j where j.document_id=d.id and j.automatic)
   order by n.source_date desc nulls last,d.published_at desc nulls last,d.id limit greatest(0,40-(select count(*)::int from app.document_jobs j join app.procurement_documents f on f.id=j.document_id where j.automatic and j.kind='file' and j.status in ('queued','running') and (f.priority=0)=${specifications} and (f.priority=0 or f.original_hash is not null)))
   on conflict(dedup_key) where status in ('queued','running') do nothing`;
@@ -73,7 +83,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
  if(!enabled?.enabled)return false;
  const owner=await sql.reserve(),q=owner as unknown as DbSql,stop=new AbortController(),abort=()=>stop.abort();
  shutdown.addEventListener('abort',abort,{once:true});if(shutdown.aborted)abort();
- const lanes=new Map<number,Promise<void>>();let locked=false,nextInventory=0,nextQueue=0,nextClassification=0,manualRunning=false;
+ const lanes=new Map<number,Promise<void>>();let locked=false,nextInventory=0,nextQueue=0,nextClassification=0;
  const worker=collectionWorkerId('document-collection');
  try{
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
@@ -91,31 +101,32 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
    if(state.maintenance){if(lanes.size)stop.abort();else await sleep(1000,undefined,{signal:stop.signal});continue;}
    if(Date.now()>=nextClassification){await classifyDocumentBatch(sql);nextClassification=Date.now()+3000;}
    const automatic=state.enabled&&!state.paused,source=!state.source_paused&&!state.blocked_reason&&!state.paused_streams.includes('documents')&&!(await collectionQuietWindow(q)).active;
-   if(automatic&&Date.now()>=nextInventory){await seedDocumentInventory(q);nextInventory=Date.now()+10000;}
-   if(automatic&&Date.now()>=nextQueue){await fillDocumentQueue(q);nextQueue=Date.now()+3000;}
+   // Once every awarded procedure is seeded, look again every ten minutes (new awards arrive nightly).
+   if(automatic&&Date.now()>=nextInventory){const added=await seedDocumentInventory(q);nextInventory=Date.now()+(added?10000:600000);}
+   if(automatic&&Date.now()>=nextQueue){await fillDocumentQueue(q,!!state.automatic_downloads);nextQueue=Date.now()+3000;}
    const [manual]=await q`select exists(select 1 from app.document_jobs where not automatic and batch_id is null and status='queued' and (retry_at is null or retry_at<=now())) waiting`;
    for(const slot of [...[0,11,12,13].slice(0,Number(state.processing_concurrency)),...Array.from({length:Number(state.download_concurrency)},(_,i)=>i+1)]){
     if(lanes.has(slot))continue;
     const processing=slot===0||slot>10;
     const networkBusy=[...lanes.keys()].filter(s=>s>=1&&s<=10).length;
-    if(!processing&&networkBusy>=Number(state.download_concurrency)-(manualRunning||source&&manual?.waiting?1:0))continue;
-    if(!automatic&&slot!==0||!processing&&(!source||!state.proxy_enabled))continue;
+    // While someone's request waits, one network lane is kept for it: automatic work takes the others.
+    const requestsOnly=!processing&&networkBusy>=Number(state.download_concurrency)-(source&&manual?.waiting?1:0);
+    if(!processing&&(networkBusy>=Number(state.download_concurrency)||!source||!state.proxy_enabled))continue;
     const session=await sql.reserve(),db=session as unknown as DbSql;
     let job:Record<string,any>|undefined;
     try{[job]=await db`update app.document_jobs set status='running',slot=${slot},started_at=coalesce(started_at,now()) where id=(
      select j.id from app.document_jobs j join app.document_notices n on n.key=j.notice_key left join app.procurement_documents d on d.id=j.document_id
      where j.status='queued' and j.batch_id is null and (j.retry_at is null or j.retry_at<=now()) and (
-      (${slot===0&&source&&networkBusy<Number(state.download_concurrency)} and not j.automatic)
-      or (${automatic} and j.automatic and ((${processing} and j.kind='file' and d.original_hash is not null)
-       or (${!processing&&source&&state.proxy_enabled} and (j.kind='list' or (d.original_hash is null and d.priority=0)))))
+      -- Requests made by anyone come first, on every lane: lists and downloads on the network lanes, preparation on the processing lanes.
+      (not j.automatic and ((${!processing} and (j.kind='list' or d.original_hash is null)) or (${processing} and j.kind='file' and d.original_hash is not null)))
+      or (${automatic&&!requestsOnly} and j.automatic and ((${processing} and j.kind='file' and d.original_hash is not null)
+       or (${!processing&&source&&state.proxy_enabled} and (j.kind='list' or (${!!state.automatic_downloads} and d.original_hash is null and d.priority=0)))))
      ) order by j.automatic,case when j.kind='list' then case when ${slot===Number(state.download_concurrency)} then -1 else 1 end else 0 end,coalesce(d.priority,100),n.source_date desc nulls last,j.created_at,j.id limit 1 for update of j skip locked
     ) and status='queued' returning *`;}catch(error){session.release();throw error;}
     if(!job){session.release();continue;}
-    if(!job.automatic)manualRunning=true;
-    const isManual=!job.automatic;
-    const task=runAutomaticJob(db,job,job.automatic?(processing?'process':'download'):'all',stop.signal,work)
+    const task=runAutomaticJob(db,job,processing?'process':'download',stop.signal,work)
      .catch(async()=>{stop.abort();await sql`update app.document_collection_control set error='Workerul s-a întrerupt; reluarea păstrează originalele.' where id=1`;})
-     .finally(()=>{session.release();lanes.delete(slot);if(isManual)manualRunning=false;});lanes.set(slot,task);
+     .finally(()=>{session.release();lanes.delete(slot);});lanes.set(slot,task);
    }
    await sleep(1000,undefined,{signal:stop.signal});
   }
