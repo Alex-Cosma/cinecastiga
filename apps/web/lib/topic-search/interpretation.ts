@@ -77,6 +77,9 @@ export interface TopicInterpretation {
   trusted: boolean;
   /** "Vezi răspunsul complet în Întreabă". */
   askHref: string | null;
+  /** Several firms or institutions fit the name and none was chosen: the page's own section lists them
+   * (owner, 3 November 2026: no separate line asking to choose). */
+  entityChoice: boolean;
 }
 
 function chip(p: PlaceMatch): ChipPlace | null {
@@ -104,7 +107,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const base: TopicInterpretation = {
     q: scope.q, applied: { q: scope.q, place: scope.place, from: scope.from, to: scope.to },
     fromWords: { place: null, period: null }, kind: null, note: null, explicitPlace: null, subject: null, otherSubjects: [], placeChoices: [], placeAmbiguous: false,
-    sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, question: null, askHref: null, trusted: false,
+    sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, question: null, askHref: null, trusted: false, entityChoice: false,
   };
   const named = explicitPlace ? placeMatchFor(explicitPlace) : null;
   if (explicitPlace && named) base.explicitPlace = { id: explicitPlace.id, label: named.kind === 'county' ? named.name : named.label, kind: named.kind };
@@ -122,6 +125,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     otherSubjects: subjectOk ? i.subjects.slice(1).map((s) => ({ label: s.label, cpvName: s.cpvName })) : [],
     placeAmbiguous: i.placeAmbiguous,
     sentence: result.sentence, problem: result.problem, confidence: i.confidenceLabel, hasEntity,
+    entityChoice: i.entityAlternatives.length > 0 && !i.authority && !i.supplier,
   };
   // The words that explain the rest: subjects and the kind of buyer.
   const keep: Span[] = i.subjects.map((s) => s.matched);
