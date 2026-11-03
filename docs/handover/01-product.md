@@ -184,7 +184,8 @@ Tipul instituției (D1, local pe `feat/ask-par-d1`, nepublicat): comparația dup
   - „Procedura nu are anunț de participare.”
   - „Nu găsim anunțul de participare al acestei proceduri.”
   - „Fișierele nu sunt listate încă.”
-  - „Atribuirea are N documente în SEAP, încă nepreluate.” Aceste documente constatatoare se numără, dar nu se listează încă: ruta publică a listei lor nu e cunoscută.
+  - „Atribuirea are N documente în SEAP, încă nelistate.”, cu butonul „Vezi documentele atribuirii”. După listare, documentele constatatoare apar în bibliotecă, în categoria „Documente constatatoare”, cu „Descarcă”. Biblioteca apare și când procedura n-are anunț de participare.
+- **Categorii noi (proprietar, 3 noiembrie):** „Contestații și decizii CNSC”, după numele fișierului sau după tipul SEAP (Contestatie, Decizie CNSC), și „Documente constatatoare”.
 - **Oricine poate cere lista sau un fișier, fără cont.** Cererea intră într-o coadă comună, iar proxy-urile o servesc înaintea muncii automate. Limitele pe oră sunt 10 cereri pentru un vizitator (cheie HMAC pe oră a adresei date de Caddy) și 20 pentru un cont. Coada are cel mult 2.000 de cereri.
 - **Colectorul automat listează toate procedurile atribuite, din toate familiile.** Folosește toate proxy-urile, cu limitele lor de acum. Descărcarea automată a caietelor de sarcini (politica din 11 octombrie) e acum un comutator în `/admin/fisiere`. E oprită implicit, pentru că la toate procedurile ar cere circa 1 TB. [Politica din 11 octombrie](20261011/operations.md).
 - Descărcat și procesat sunt stări distincte; originalul se păstrează și la eroare OCR.

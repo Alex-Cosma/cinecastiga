@@ -4,7 +4,7 @@ import {proxyTransportError} from './proxy';
 import {afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {createDb,runCollectionRequest,CollectionLocalError,type DbSql} from '@seap/db';
 import {setTimeout as sleep} from 'node:timers/promises';
-import {seedDocumentInventory,fillDocumentQueue,runAutomaticCollector,runAutomaticJob,recoverAutomaticJobs} from './collection';
+import {seedDocumentInventory,seedAwardInventory,fillDocumentQueue,runAutomaticCollector,runAutomaticJob,recoverAutomaticJobs} from './collection';
 import {changeDocumentCollection,documentCollectionStatus} from '../admin/document-collection';
 import {documentQueueStatus} from '../admin/document-queue';
 import {classifyDocumentBatch} from './classify';
@@ -21,7 +21,8 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
   [{id:authority}]=await q`insert into core.entities(name_display,name_normalized) values('Collection fixture','collection fixture') returning id`;
   await q`truncate app.collection_requests,app.collection_retries cascade`;
   await q`update app.collection_control set paused=false,maintenance=false,blocked_reason=null,paused_streams='[]'`;
-  await q`update app.document_collection_control set enabled=false,paused=false,revision=0,error=null,download_concurrency=10,processing_concurrency=4,automatic_downloads=true`;
+  await q`update app.document_collection_control set enabled=false,paused=false,revision=0,error=null,download_concurrency=10,processing_concurrency=4,automatic_downloads=true,award_scanned_at=null,award_scanned_id=null`;
+  await q`delete from raw.raw_documents where content_hash like 'award-walk-fixture-%'`;
   await q`update app.collection_proxy_control set enabled=true`;
   await q`insert into app.collection_proxies(id,server,exit_ip,configured,enabled) values('proxy-999','http://192.0.2.99:80','192.0.2.99',true,true) on conflict(id) do update set configured=true,enabled=true`;
   await q`insert into app.document_blobs(hash,bytes,mime) values('auto-original',${Buffer.from('%PDF-fixture')},'application/pdf')`;
@@ -41,6 +42,19 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
   expect((await db!.sql`select key,url from app.document_notices order by key`).map(r=>[r.key,r.url])).toEqual([
    ['17:1','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/1'],['2:1','https://www.e-licitatie.ro/pub/notices/c-notice/v2/view/1']]);
   const s=await documentCollectionStatus(db!.sql);expect(s.coverage).toMatchObject({eligible:2,unsupported:1});expect(s.inventory.checked).toBe(0);
+ });
+ it("finds awards with attached documents by walking their collected details, and lists one again when it gains documents",async()=>{
+  const q=db!.sql;
+  await q`insert into core.awards(raw_id,ca_notice_id,notice_no,authority_entity_id) values(1,970001,'CAN970001',${authority}),(1,970002,'CAN970002',${authority})`;
+  const detail=(ca:number,n:number,at:string)=>q`insert into raw.raw_documents(source,external_id,endpoint_version,content_hash,payload,fetched_at) values('elicitatie',${'award:'+ca},'award-detail-root:v2',${`award-walk-fixture-${ca}-${n}`},${JSON.stringify({data:{ackDocsCount:n}})}::jsonb,${at}::timestamptz)`;
+  await detail(970001,2,'2026-10-01T00:00:00Z');await detail(970002,0,'2026-10-02T00:00:00Z');
+  expect(await seedAwardInventory(q)).toBe(2);expect(await seedAwardInventory(q)).toBe(0);
+  expect((await q`select key,notice_type,notice_no,url from app.document_notices`).map(r=>[r.key,r.notice_type,r.notice_no,r.url])).toEqual([['ack:970001',3,'CAN970001','https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/970001']]);
+  await fillDocumentQueue(q);expect((await q`select notice_key from app.document_jobs`).map(r=>r.notice_key)).toEqual(['ack:970001']);
+  // Listed with two documents; collected again with three: the list is read again.
+  await q`update app.document_jobs set status='complete'`;await q`update app.document_notices set checked_at=now(),total=2,inventory=2`;
+  await detail(970001,3,'2026-10-03T00:00:00Z');expect(await seedAwardInventory(q)).toBe(1);
+  expect((await q`select checked_at from app.document_notices where key='ack:970001'`)[0]!.checked_at).toBeNull();
  });
  it('lists again, once, a notice read before its documentation section',async()=>{
   const q=db!.sql;await notice(1);await notice(2);await seedDocumentInventory(q);

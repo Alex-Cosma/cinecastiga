@@ -148,7 +148,14 @@ Pentru familiile suportate se rezolvă anunțul prin identitate și autoritate, 
 - **Legătura contract → anunț** (`contractNotice`) acceptă toate familiile, cu aceeași regulă: aceeași procedură și același cumpărător, sau o legătură explicită, cu exact un candidat.
   - Pe producție (3 noiembrie) nicio atribuire n-are doi candidați: simplificată → 17 138.486, licitație deschisă → 2 83.345, restrânsă → 19 2.622.
   - Negocierea fără publicare (81.932 de atribuiri) nu are anunț: `participation='none'`.
-- **Documentele atribuirii.** Detaliul colectat (`raw.raw_documents`, `award-detail-root:v2`, `award:<caNoticeId>`) are `data.ackDocsCount` (documente constatatoare); `ackDocs` e gol. Pagina contractului citește numărul la cerere, fără trafic. Lista lor are ruta în modulul `/views/pub/documents/ack/service.min.js`, pe care politica porții îl admite acum pentru descoperire; pilotul C urmează după deploy.
+- **Documentele atribuirii (documente constatatoare).** Detaliul colectat (`raw.raw_documents`, `award-detail-root:v2`, `award:<caNoticeId>`) are `data.ackDocsCount`, iar `ackDocs` e gol. Pilotul (loturile `-d`…`-k`) a găsit ruta în modulul public `/views/pub/documents/ack/service.min.js`:
+  - **Lista:** `POST /api-pub/PUBLICAckDoc/getAll` cu `{pageIndex,pageSize:5,cANoticePublicationNumber:'CAN…'}`. Itemii au `ackDocID`, `documentName`, `noticeNo` (AD…), `publicationDate`, `caNoticeId`, `caNoticePublicationNumber` și `sysAckDocCategoryName`; `documentId` vine 0.
+  - **Descărcarea:** întâi `POST /api-pub/PUBLICAckDoc/get/<ackDocID>`, care dă fișa cu `documentId`-ul real. Apoi `POST /api-pub/PUBLICAckDoc/DownloadDocument/?documentId=<id>`, fără corp (helperul `DOWNLOAD` al aplicației). GET întoarce 405, iar `ackDocID` în locul lui `documentId` dă „Document not found”.
+  - **Ca sursă**, atribuirea are cheia `ack:<caNoticeId>` (`notice_type` 3, `notice_no` = numărul CAN) și se deschide pe pagina publică `/pub/notices/ca-notices/view-c/<id>`.
+    - Rândurile ei au `section='award'`, identitate `ack:<ackDocID>`, codul AD… și tipul SEAP = categoria.
+    - Clasificarea le pune mereu în „Documente constatatoare”.
+    - Pagina contractului unește fișierele anunțului cu cele ale atribuirii (`contractFileKeys`), la fel căutarea și citarea.
+  - **Siguranța răspunsurilor.** Un răspuns POST ținut în memorie trebuie să fie JSON; altfel e considerat challenge și blochează sursa. Un fișier scris pe disc nu trece prin această verificare: îl validează formatul, în worker.
 - **Clasificarea** (versiunea 2) folosește tipul SEAP sau partea DUAE doar când numele fișierului nu spune nimic: metoda `source`, dovada `{source:'seap'}`, eticheta „după tipul SEAP”.
 
 Worker-ul folosește o sesiune Chromium nouă, metadata proaspete, POST de verificare urmat de GET în aceeași sesiune, cu Referer-ul familiei corecte. Un GET izolat cu hash vechi poate eșua deși browserul utilizatorului descarcă fișierul. Nu copia Cookie/Authorization/chei din DevTools în cod sau documente. Doar cererile allowlistate ies din browser; resursele și redirecturile nepermise sunt blocate.

@@ -93,9 +93,13 @@ describe.skipIf(!connection)('document queue, provenance and private evidence',(
    await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,status) select ${key},'list',${key}||'-visitor-'||i,${visitor},'complete' from generate_series(1,10) i`;
    await expect(enqueueDocument(natural,visitor,null,q)).rejects.toMatchObject({status:429});
    expect(await enqueueDocument(natural,member,null,q)).toHaveProperty('id');
+   // The award's own list is asked for separately, on the award's source.
+   await q`update core.awards set notice_no=${'CAN'+natural} where ca_notice_id=${natural}`;
+   const award=await enqueueDocument(natural,member,null,q,'award') as {id:string};
+   expect((await q`select notice_key from app.document_jobs where id=${award.id}`)[0]!.notice_key).toBe('ack:'+natural);
   }finally{
    process.env.DOCUMENTS_ENABLED=old;
-   if(key){await q`delete from app.document_jobs where notice_key=${key}`;await q`delete from app.document_notices where key=${key}`;}
+   for(const k of [key,'ack:'+natural])if(k){await q`delete from app.document_jobs where notice_key=${k}`;await q`delete from app.document_notices where key=${k}`;}
    await q`delete from core.contracts where ca_notice_contract_id=${natural}`;await q`delete from core.notices where c_notice_id=${natural} and procedure_id=${procedure}`;
    await q`delete from core.awards where ca_notice_id=${natural}`;await q`delete from core.entities where id=${entity!.id}`;
   }

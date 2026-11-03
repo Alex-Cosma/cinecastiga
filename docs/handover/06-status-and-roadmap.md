@@ -56,7 +56,7 @@ Verificările navigării admin din 28 septembrie: 252 teste unitare web, 2 integ
    - De la 3 noiembrie 2026, toate familiile de participare (2, 17, 19, 7, 12, 6) se listează din documentație și din listă. Tipurile 12 și 6 nu au fost verificate în pilot.
    - Metadatele de descărcare depind de sesiune și se reobțin.
    - Rămâne deschis:
-     - documentele constatatoare ale atribuirii, pentru care avem doar numărul; ruta listei se caută în pilotul C, după deploy;
+     - documentele constatatoare se listează și se descarcă de la 3 noiembrie (`PUBLICAckDoc`). Rămâne de urmărit primul ciclu complet pe producție;
      - reîmprospătarea fișierelor apărute după listare;
      - decizia proprietarului despre descărcarea automată (circa 1 TB pentru toate procedurile).
 4. **Surse vs arhivă:** CSV live poate avea plafon/scop explicit; captura SQL integrală are mecanism separat. Cititorul trebuie să știe ce exportă.

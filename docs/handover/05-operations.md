@@ -74,6 +74,11 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
   - Seamănă anunțurile de participare din toate familiile (2, 17, 19, 7, 12, 6) care au atribuit contracte: aceeași procedură și același cumpărător, sau legătură explicită. Pornește cu cele mai noi, câte 1.000 la 10 s, iar după ce le-a semănat pe toate verifică o dată la 10 minute.
   - Listează fiecare anunț din cele două surse (documentația și lista); listele vechi se reiau o dată.
   - Pe producție sunt ~226 mii de anunțuri legate, ~3 cereri fiecare: ~700 mii de cereri. Bugetul aprobat de proprietar sunt toate cele 100 de proxy-uri, cu limitele lor de acum.
+- **Documentele atribuirilor:**
+  - Colectorul găsește atribuirile cu `ackDocsCount > 0` parcurgând detaliile colectate în ordinea `fetched_at, id` (indexul `(source, fetched_at)`), câte 2.000 la 10 s, apoi o dată la 10 minute. Poziția e în `document_collection_control.award_scanned_at/id` (0093).
+  - O tură durează ~1,7 s pe producție. Toată istoria (~331 mii de detalii) se parcurge în ~28 de minute.
+  - Un detaliu recitit cu mai multe documente decât lista ținută trimite lista la recitire.
+  - Costul: ~48 mii de atribuiri × (pagina + `1+⌈N/5⌉`) ≈ 100 mii de cereri. Un document descărcat costă pagina, fișa și POST-ul de descărcare.
 - **Descărcarea automată** a caietelor de sarcini e comutatorul „Descarcă automat caietele de sarcini” (`document_collection_control.automatic_downloads`).
   - E oprit implicit (0092). Cât e oprit, descărcările automate deja în coadă stau „disponibile la cerere”.
   - Cu el pornit pentru toate procedurile ar trebui circa 1 TB (medie de 4,4 MB pe fișier arhivat cu PDF-ul derivat). Pe 3 noiembrie discul avea 650 GB liberi.

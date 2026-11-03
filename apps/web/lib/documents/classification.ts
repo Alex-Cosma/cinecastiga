@@ -1,6 +1,6 @@
 /** Local, explainable document classification. It describes a document's role,
  * never the legal validity of a contract or the truth of its contents. */
-export const CLASSIFICATION_VERSION = 2;
+export const CLASSIFICATION_VERSION = 3;
 export const DOCUMENT_CATEGORIES = [
  {id:'specifications',label:'Caiete de sarcini',icon:'document'},
  {id:'clarifications',label:'Clarificări și modificări',icon:'question'},
@@ -8,7 +8,11 @@ export const DOCUMENT_CATEGORIES = [
  {id:'participation',label:'Participare și formulare',icon:'list'},
  {id:'templates',label:'Modele de contract',icon:'document'},
  {id:'award',label:'Evaluare și atribuire',icon:'checkCircle'},
+ // Owner, 3 November 2026: complaints and CNSC decisions have their own category.
+ {id:'complaints',label:'Contestații și decizii CNSC',icon:'shield'},
  {id:'contracts',label:'Contracte și acte adiționale',icon:'document'},
+ // The award's own documents (documente constatatoare), issued by the buyer after the contract.
+ {id:'acknowledgements',label:'Documente constatatoare',icon:'building'},
  {id:'unknown',label:'Neclasificate',icon:'question'},
 ] as const;
 export type DocumentCategory = typeof DOCUMENT_CATEGORIES[number]['id'];
@@ -18,6 +22,7 @@ export type ClassifiedPart = {name:string;firstPage?:number|undefined;pages?:num
 export type ClassifiablePart = {name:string;firstPage?:number;pages?:number;error?:string};
 const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const rules: [DocumentCategory,RegExp][] = [
+ ['complaints',/\b(?:contestati\w*|cnsc|plangere\w*)\b/],
  ['clarifications',/\b(?:clarificar\w*|raspuns\w*|rectificar\w*|erat[ae]|corrigend\w*)\b/],
  ['templates',/\b(?:(?:model\w*|proiect\w*|draft)\s+(?:de\s+)?contract\w*|clauze\s+contractuale|conditii\s+(?:generale\s+|speciale\s+)?contractuale)\b/],
  ['participation',/\b(?:formular\w*|duae|fisa\s*(?:de\s+)?date|instructiuni\s+(?:pentru\s+)?ofertanti|declarati[ae]\s+(?:pe\s+proprie|privind))\b/],
@@ -28,11 +33,11 @@ const rules: [DocumentCategory,RegExp][] = [
 ];
 function match(s:string,abbreviations:boolean):DocumentCategory|null{
  const normalized=fold(s).replace(/[_\-–—.]+/g,' ').replace(/\s+/g,' ').trim();
- for(const [category,re] of rules.slice(0,3))if(re.test(normalized))return category;
+ for(const [category,re] of rules.slice(0,4))if(re.test(normalized))return category;
  // A standalone CS near the start is a candidate; not a company/institution name
  // in the middle of a filename, and never stronger than clarification/template.
  if(abbreviations&&/^(?:\d+\s+){0,3}(?:anex[aă]\s+\d*\s*)?cs(?:\s|$)/.test(normalized))return 'specifications';
- for(const [category,re] of rules.slice(3))if(re.test(normalized))return category;
+ for(const [category,re] of rules.slice(4))if(re.test(normalized))return category;
  return null;
 }
 export function classifyDocumentName(filename:string):Classification{
@@ -43,10 +48,12 @@ export function classifyDocumentName(filename:string):Classification{
 /** Where SEAP lists a file and the type it gives it: a hint used only when the name says nothing. */
 export type DocumentSource = {section?:string|null;sourceType?:string|null};
 const SOURCE_RULES:[DocumentCategory,RegExp][]=[
+ ['complaints',/\b(?:contestati\w*|cnsc)\b/],
  ['clarifications',/\b(?:clarificar\w*|raspuns\w*|rectificar\w*|erat[ae])\b/],
  ['award',/\b(?:raport(?:ul)?\s+(?:procedurii|de\s+atribuire)|comunicar\w*\s+(?:a\s+)?rezultat\w*|decizi\w*\s+(?:(?:de|privind)\s+)?(?:atribuire|anulare))\b/],
 ];
 export function classifyDocumentSource(source:DocumentSource|undefined):Classification|null{
+ if(source?.section==='award')return {version:CLASSIFICATION_VERSION,categories:['acknowledgements'],method:'source',evidence:[{source:'seap',value:source.sourceType?`Document constatator · ${source.sourceType}`:'Document constatator'}]};
  if(source?.section==='espd')return {version:CLASSIFICATION_VERSION,categories:['participation'],method:'source',evidence:[{source:'seap',value:'DUAE'}]};
  const type=source?.sourceType?.trim();if(!type)return null;
  const normalized=fold(type).replace(/\s+/g,' ');
@@ -55,7 +62,8 @@ export function classifyDocumentSource(source:DocumentSource|undefined):Classifi
 }
 export function classifyDocument(filename:string,text?:{page:number;text:string},source?:DocumentSource):Classification{
  const named=classifyDocumentName(filename);
- const initial=named.method==='unknown'?classifyDocumentSource(source)??named:named;if(!text)return initial;
+ // An award's own document is a constatator document whatever its name says.
+ const initial=source?.section==='award'?classifyDocumentSource(source)!:named.method==='unknown'?classifyDocumentSource(source)??named:named;if(!text)return initial;
  // Only headings at the beginning can override a filename. Body references such
  // as a tenderer's declaration mentioning a CS are not a document's role.
  const heading=text.text.slice(0,2500).split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,14);
