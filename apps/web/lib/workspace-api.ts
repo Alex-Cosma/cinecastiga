@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { WorkspaceError } from "./investigation-workspace";
 
-export function workspaceOrigin(req: Request) {
+/** Behind Caddy the server sees its internal URL, so production compares with the configured public
+ * origin (BETTER_AUTH_URL), as the collection and feedback routes do. */
+export function workspaceOrigin(req: Request, publicUrl = process.env.NODE_ENV === "production" ? process.env.BETTER_AUTH_URL : undefined) {
   const origin = req.headers.get("origin");
-  if (origin && origin !== new URL(req.url).origin) throw new WorkspaceError("Cererea nu provine din aplicație.", 403);
+  if (origin && origin !== new URL(publicUrl ?? req.url).origin) throw new WorkspaceError("Cererea nu provine din aplicație.", 403);
 }
 export async function workspaceBody(req: Request): Promise<Record<string, unknown>> {
   workspaceOrigin(req);
