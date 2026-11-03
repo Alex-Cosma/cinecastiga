@@ -297,6 +297,7 @@ export const awards = coreSchema.table(
     index("awards_cpv_idx").on(t.cpvCode),
     // Participation notices that awarded contracts (document collection, 0092).
     index("awards_procedure_authority_idx").on(t.procedureId, t.authorityEntityId).where(sql`${t.procedureId} is not null`),
+    index("awards_notice_no_idx").on(t.noticeNo).where(sql`${t.noticeNo} is not null`),
   ],
 );
 
