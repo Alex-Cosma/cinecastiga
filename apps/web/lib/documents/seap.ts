@@ -56,11 +56,18 @@ export function parseAwardList(data:unknown,caNoticeId:string,canNo:string):{ite
 /** The gate and the proxy reservation need a dedicated connection (session locks, explicit transactions).
  * Given the pool, a lane takes one only for that step, so a hundred lanes waiting on their proxies' spacing
  * do not hold a hundred connections; a caller that already reserved one keeps using it. */
+/** At most GATE_SESSIONS lanes hold a connection at once (the pool has 30, the gate admits 10 requests in
+ * flight); the others wait here without one, so the supervisor and the pool's short queries keep theirs. */
+export const GATE_SESSIONS=12;
+let gateHeld=0;const gateWaiting:(()=>void)[]=[];
 async function withSession<T>(q:DbSql,work:(session:DbSql)=>Promise<T>):Promise<T>{
  const pool=q as unknown as {reserve?:()=>Promise<DbSql&{release():void}>};
  if(typeof pool.reserve!=='function')return work(q);
- const session=await pool.reserve();
- try{return await work(session);}finally{session.release();}
+ if(gateHeld>=GATE_SESSIONS)await new Promise<void>(resolve=>gateWaiting.push(resolve));else gateHeld++;
+ try{
+  const session=await pool.reserve();
+  try{return await work(session);}finally{session.release();}
+ }finally{const next=gateWaiting.shift();if(next)next();else gateHeld--;}
 }
 /** A fresh isolated browser session (its own context); only explicit requests can reach the network. */
 export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes?:number){
@@ -104,10 +111,12 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    const result=await withSession(q,gate=>runCollectionRequest(gate,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload,context:{transport},...(managedProxy?{proxyId:managedProxy.id}:{}),documentJobId:jobId},async gateSignal=>{
    const gateStop=()=>{void session?.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
    try{
-   if(isFileDownload)await q`update app.document_jobs set stage='download' where id=${jobId} and status='running'`;
+   // Inside the gate every write uses the gate's own connection: waiting for a second one from the pool
+   // while holding this one deadlocks once the lanes hold the whole pool (3 November 2026, 60 lanes).
+   if(isFileDownload)await gate`update app.document_jobs set stage='download' where id=${jobId} and status='running'`;
    signal.throwIfAborted();
    const endpoint=url.includes('/noticedoc/')?'noticedoc':navigate?'notice-page':url.includes('/GetDfNoticeSectionFiles/')?'documentation':url.includes('/PUBLICAckDoc/DownloadDocument/')?'award-file':url.includes('/PUBLICAckDoc/get/')?'award-item':url.includes('/PUBLICAckDoc/')?'award-list':'document-list';
-   const [row]=await q`insert into app.document_requests(job_id,method,endpoint) values(${jobId},${method},${endpoint}) returning id`;
+   const [row]=await gate`insert into app.document_requests(job_id,method,endpoint) values(${jobId},${method},${endpoint}) returning id`;
    console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,transport,endpoint}));
    allowed={url,method};
    try{
@@ -120,14 +129,14 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     }else{
      const result=await page.evaluate(browserDocumentRequest,{url,method,body,maxFileBytes:maxFileBytes??50*1024*1024});status=result.status;retryAfter=result.retryAfter;bytes=Buffer.from(result.base64,'base64');oversized=result.oversized;receivedBytes=result.receivedBytes;
     }
-    await q`update app.document_requests set status=${status},bytes=${receivedBytes??bytes.length},finished_at=now() where id=${row!.id}`;
+    await gate`update app.document_requests set status=${status},bytes=${receivedBytes??bytes.length},finished_at=now() where id=${row!.id}`;
     let challenge=false;
     // A file written to disk is checked by its format afterwards; only a response held in memory must be JSON.
     if(!oversized&&!destination&&status===200&&(method==='POST'||endpoint==='documentation')){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
     if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
     return {value:{bytes,status,oversized},status,bytes:receivedBytes??bytes.length,retryAfter,challenge,...(oversized?{diagnostics:{response:{status,receivedBytes,bodyTruncated:true},reason:'document_size_limit'}}:{})};
    }catch(error){if(error instanceof CollectionLocalError)throw error;if(proxy)throw proxyTransportError(error,observed);throw error;}
-   finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
+   finally{allowed=null;await gate`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
    },signal));
    if(result.oversized)throw Error(`SEAP: răspunsul depășește limita de ${method==='GET'?(maxFileBytes??50*1024*1024)/1024/1024:2} MiB a acestei operațiuni. Fișierul nu a fost arhivat.`);
