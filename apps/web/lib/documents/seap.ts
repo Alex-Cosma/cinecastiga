@@ -18,6 +18,9 @@ export type DocumentationSection='documentation'|'espd'|'strategy'|'decision'|'e
 const DOCUMENTATION_PARTS:[string,DocumentationSection][]=[['dfNoticeDocs','documentation'],['duaeDocs','espd'],['contractingStrategyDocs','strategy'],['decisionDocs','decision'],['exAnteDocs','ex_ante']];
 const viewPath=new RegExp(`^https://www\\.e-licitatie\\.ro/pub/notices/(?:(?:${[...new Set(Object.values(NOTICE_VIEWS))].join('|')})/v2/view|ca-notices/view-c)/[1-9]\\d*$`);
 const AWARD_API=origin+'/api-pub/PUBLICAckDoc';
+/** Rows per list page (owner, 3 November 2026: 15 instead of the public page's 5, fewer requests per notice).
+ * A page shorter than this before the end means SEAP caps the size: the list fails instead of skipping rows. */
+export const LIST_PAGE_SIZE=15;
 /** An attached document of an award, as PUBLICAckDoc/getAll lists it. */
 export interface AwardDocument {ackDocID:number;documentName:string;noticeNo?:string|null;publicationDate?:string|null;sysAckDocCategoryName?:string|null;caNoticeId?:number|null;caNoticePublicationNumber?:string|null}
 const documentationUrl=(noticeId:string,type:number)=>`${origin}/api-pub/NoticeCommon/GetDfNoticeSectionFiles/?initNoticeId=${Number(noticeId)}&sysNoticeTypeId=${type}`;
@@ -177,11 +180,11 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    async list(noticeId:string,noticeNo:string,noticeType:number){
     const items:ListedDocument[]=[];let total=0,received=0;
     for(let pageIndex=0;pageIndex<40;pageIndex++){
-     const bytes=await request(origin+'/api-pub/NoticeDocument/GetAll/','POST',{sortProperty:'transmissionDate',pageSize:5,pageIndex,initNoticeId:Number(noticeId),sysNoticeTypeId:noticeType,procedureId:null,sysNoticeDocumentState:null,sysNoticeDocumentType:null,sysValidationDocType:null,noticeDocumentPostDateFrom:null,noticeDocumentPostDateTo:null,sortProperties:null,sadId:null});
+     const bytes=await request(origin+'/api-pub/NoticeDocument/GetAll/','POST',{sortProperty:'transmissionDate',pageSize:LIST_PAGE_SIZE,pageIndex,initNoticeId:Number(noticeId),sysNoticeTypeId:noticeType,procedureId:null,sysNoticeDocumentState:null,sysNoticeDocumentType:null,sysValidationDocType:null,noticeDocumentPostDateFrom:null,noticeDocumentPostDateTo:null,sortProperties:null,sadId:null});
      const parsed=parseList(JSON.parse(bytes.toString('utf8')),noticeNo);if(pageIndex&&total!==parsed.total)throw Error('Lista s-a modificat în timpul preluării. Reîncearcă.');total=parsed.total;items.push(...parsed.items);received+=parsed.received;
      if(new Set(items.map(d=>d.noticeDocumentId)).size!==items.length)throw Error('SEAP a repetat o pagină a listei.');
      if(received===total)return {items,total};
-     if(!parsed.received||received>total)throw Error('Lista SEAP este incompletă.');
+     if(!parsed.received||received>total||parsed.received<LIST_PAGE_SIZE)throw Error('Lista SEAP este incompletă.');
     }throw Error('Lista SEAP este prea mare.');
    },
    /** One request: the documentation section (specifications, data sheet, models, ESPD). */
@@ -189,16 +192,16 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     const bytes=await request(documentationUrl(noticeId,noticeType),'GET');
     return parseDocumentation(JSON.parse(bytes.toString('utf8')),noticeNo);
    },
-   /** The award's attached documents, five per page like the public list. */
+   /** The award's attached documents, LIST_PAGE_SIZE per page. */
    async awardDocuments(caNoticeId:string,canNo:string){
     const items:AwardDocument[]=[];let total=0,received=0;
     for(let pageIndex=0;pageIndex<40;pageIndex++){
-     const bytes=await request(AWARD_API+'/getAll','POST',{pageIndex,pageSize:5,cANoticePublicationNumber:canNo});
+     const bytes=await request(AWARD_API+'/getAll','POST',{pageIndex,pageSize:LIST_PAGE_SIZE,cANoticePublicationNumber:canNo});
      const parsed=parseAwardList(JSON.parse(bytes.toString('utf8')),caNoticeId,canNo);if(pageIndex&&total!==parsed.total)throw Error('Lista s-a modificat în timpul preluării. Reîncearcă.');
      total=parsed.total;received+=parsed.received;items.push(...parsed.items);
      if(new Set(items.map(d=>d.ackDocID)).size!==items.length)throw Error('SEAP a repetat o pagină a listei.');
      if(received===total)return {items,total};
-     if(!parsed.received||received>total)throw Error('Lista SEAP este incompletă.');
+     if(!parsed.received||received>total||parsed.received<LIST_PAGE_SIZE)throw Error('Lista SEAP este incompletă.');
     }throw Error('Lista SEAP este prea mare.');
    },
    /** The list gives no file id: the document's own record names it, then SEAP's DOWNLOAD (a POST) returns the file. */
