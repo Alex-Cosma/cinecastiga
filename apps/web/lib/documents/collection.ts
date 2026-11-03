@@ -46,7 +46,8 @@ export async function seedAwardInventory(q:DbSql,batch=2000){
  return rows.length;
 }
 /** downloads: whether identified specifications are downloaded automatically (an operator setting, off by default). */
-export async function fillDocumentQueue(q:DbSql,downloads=true){
+/** frontier: queued and running automatic lists kept ahead of the lanes (twice the network lanes, at least 40). */
+export async function fillDocumentQueue(q:DbSql,downloads=true,frontier=40){
  // Park automatic downloads (all of them while automatic downloads are off, otherwise those of files that are
  // not specifications) without losing their request history. Requests and processing of archived originals remain.
  await q`update app.document_jobs j set stage='specifications_only' from app.procurement_documents d
@@ -60,7 +61,7 @@ export async function fillDocumentQueue(q:DbSql,downloads=true){
   select n.key,'list','list:'||n.key,'system:document-collection',true from app.document_notices n
   where n.automatic and (n.checked_at is null or n.inventory<2) and not exists(select 1 from app.document_jobs j where j.notice_key=n.key and j.kind='list' and j.automatic
    and (j.status in ('queued','running') or j.created_at>coalesce(n.checked_at,'-infinity'::timestamptz)))
-  order by n.source_date desc nulls last,n.key desc limit greatest(0,40-(select count(*)::int from app.document_jobs where automatic and kind='list' and status in ('queued','running'))) on conflict(dedup_key) where status in ('queued','running') do nothing`;
+  order by n.source_date desc nulls last,n.key desc limit greatest(0,${frontier}-(select count(*)::int from app.document_jobs where automatic and kind='list' and status in ('queued','running'))) on conflict(dedup_key) where status in ('queued','running') do nothing`;
  // Keep a separate bounded frontier for specifications, so forty older queued
  // archived ordinary files cannot prevent a newly discovered specification entering.
  for(const specifications of [true,false])await q`insert into app.document_jobs(notice_key,document_id,kind,dedup_key,requested_by,automatic,stage)
@@ -98,8 +99,15 @@ export async function runAutomaticJob(q:DbSql,job:Record<string,any>,phase:'down
  }finally{clearTimeout(timer);signal.removeEventListener('abort',cancel);}
 }
 
-/** One supervisor, ten network lanes and four extraction lanes. Durable jobs survive restart.
- * Manual requests take processing slot zero first and retain their source admission policy. */
+/** One supervisor, up to a hundred network lanes (slots 1-100) and four extraction lanes (0, 101-103).
+ * Durable jobs survive restart. Manual requests take processing slot zero first and retain their source admission policy.
+ * A network lane holds a proxy for its job but no database connection while it waits on that proxy's spacing:
+ * it runs on the pool, and the gate takes a connection per request. Extraction lanes keep a reserved one. */
+export const NETWORK_LANES=100,PROCESSING_SLOTS=[0,101,102,103];
+/** Proxies left to the data streams: twenty always, half the pool while they are collecting. */
+export function documentLaneCap(lanes:number,proxies:number,dataActive:boolean){
+ return Math.max(0,Math.min(lanes,NETWORK_LANES,dataActive?Math.floor(proxies/2):proxies-20));
+}
 export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=runDocumentJob){
  const [enabled]=await sql`select enabled from app.document_collection_control where id=1`;
  if(!enabled?.enabled)return false;
@@ -126,16 +134,19 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
    // Once every awarded procedure is seeded, look again every ten minutes (new awards arrive nightly).
    if(automatic&&Date.now()>=nextInventory){const added=await seedDocumentInventory(q);nextInventory=Date.now()+(added?10000:600000);}
    if(automatic&&Date.now()>=nextAwards){const examined=await seedAwardInventory(q);nextAwards=Date.now()+(examined?10000:600000);}
-   if(automatic&&Date.now()>=nextQueue){await fillDocumentQueue(q,!!state.automatic_downloads);nextQueue=Date.now()+3000;}
+   if(automatic&&Date.now()>=nextQueue){await fillDocumentQueue(q,!!state.automatic_downloads,Math.max(40,2*Number(state.download_concurrency)));nextQueue=Date.now()+3000;}
    const [manual]=await q`select exists(select 1 from app.document_jobs where not automatic and batch_id is null and status='queued' and (retry_at is null or retry_at<=now())) waiting`;
-   for(const slot of [...[0,11,12,13].slice(0,Number(state.processing_concurrency)),...Array.from({length:Number(state.download_concurrency)},(_,i)=>i+1)]){
+   const [pool]=await q`select (select count(*)::int from app.collection_proxies where configured and enabled) proxies,
+    exists(select 1 from app.collection_requests where stream<>'documents' and started_at>now()-interval '2 minutes') data_active`;
+   const networkLanes=documentLaneCap(Number(state.download_concurrency),Number(pool?.proxies??0),!!pool?.data_active);
+   for(const slot of [...PROCESSING_SLOTS.slice(0,Number(state.processing_concurrency)),...Array.from({length:Math.min(NETWORK_LANES,Number(state.download_concurrency))},(_,i)=>i+1)]){
     if(lanes.has(slot))continue;
-    const processing=slot===0||slot>10;
-    const networkBusy=[...lanes.keys()].filter(s=>s>=1&&s<=10).length;
+    const processing=slot===0||slot>NETWORK_LANES;
+    const networkBusy=[...lanes.keys()].filter(s=>s>=1&&s<=NETWORK_LANES).length;
     // While someone's request waits, one network lane is kept for it: automatic work takes the others.
-    const requestsOnly=!processing&&networkBusy>=Number(state.download_concurrency)-(source&&manual?.waiting?1:0);
-    if(!processing&&(networkBusy>=Number(state.download_concurrency)||!source||!state.proxy_enabled))continue;
-    const session=await sql.reserve(),db=session as unknown as DbSql;
+    const requestsOnly=!processing&&networkBusy>=networkLanes-(source&&manual?.waiting?1:0);
+    if(!processing&&(networkBusy>=Math.max(1,networkLanes)||!source||!state.proxy_enabled))continue;
+    const session=processing?await sql.reserve():null,db=(session??sql) as unknown as DbSql;
     let job:Record<string,any>|undefined;
     try{[job]=await db`update app.document_jobs set status='running',slot=${slot},started_at=coalesce(started_at,now()) where id=(
      select j.id from app.document_jobs j join app.document_notices n on n.key=j.notice_key left join app.procurement_documents d on d.id=j.document_id
@@ -144,12 +155,12 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
       (not j.automatic and ((${!processing} and (j.kind='list' or d.original_hash is null)) or (${processing} and j.kind='file' and d.original_hash is not null)))
       or (${automatic&&!requestsOnly} and j.automatic and ((${processing} and j.kind='file' and d.original_hash is not null)
        or (${!processing&&source&&state.proxy_enabled} and (j.kind='list' or (${!!state.automatic_downloads} and d.original_hash is null and d.priority=0)))))
-     ) order by j.automatic,case when j.kind='list' then case when ${slot===Number(state.download_concurrency)} then -1 else 1 end else 0 end,coalesce(d.priority,100),n.source_date desc nulls last,j.created_at,j.id limit 1 for update of j skip locked
-    ) and status='queued' returning *`;}catch(error){session.release();throw error;}
-    if(!job){session.release();continue;}
+     ) order by j.automatic,case when j.kind='list' then case when ${slot===Math.min(NETWORK_LANES,Number(state.download_concurrency))} then -1 else 1 end else 0 end,coalesce(d.priority,100),n.source_date desc nulls last,j.created_at,j.id limit 1 for update of j skip locked
+    ) and status='queued' returning *`;}catch(error){session?.release();throw error;}
+    if(!job){session?.release();continue;}
     const task=runAutomaticJob(db,job,processing?'process':'download',stop.signal,work)
      .catch(async()=>{stop.abort();await sql`update app.document_collection_control set error='Workerul s-a întrerupt; reluarea păstrează originalele.' where id=1`;})
-     .finally(()=>{session.release();lanes.delete(slot);});lanes.set(slot,task);
+     .finally(()=>{session?.release();lanes.delete(slot);});lanes.set(slot,task);
    }
    await sleep(1000,undefined,{signal:stop.signal});
   }

@@ -11,6 +11,9 @@
  * Plan ack (--can=CAN…): the service module's text (download route) and PUBLICAckDoc/getAll for one award.
  * Plan ack-download (--ack=<ackDocID>): one constatator document through PUBLICAckDoc/DownloadDocument.
  * Plan probe (--notice=<type>:<id>): one notice's documentation and list, to read the codes SEAP returns.
+ * Plan reuse: can one session serve another notice? The session opens on notice A's page, then reads notice
+ *   B's documentation and list (both SCN already inventoried, B with at most five list items), to compare with
+ *   the stored inventory of B (owner, 3 November 2026: test before reusing sessions across notices).
  * Inspection is the default; --run admits source traffic through the shared gate, a dated batch (hard
  * request ceiling) and the proxy pool. It writes only the batch, its jobs and requests, the notices it
  * reads and an audit row: no file is archived, no list is stored. */
@@ -193,6 +196,15 @@ async function probeCandidate():Promise<Notice[]>{
  const [r]=await q`select c_notice_id::text notice_id,notice_no,coalesce(title,notice_no) title from core.notices where c_notice_id=${id} and sys_notice_type_id=${Number(type)}`;
  return r?[{key:`${type}:${r.notice_id}`,type:Number(type),noticeId:r.notice_id,noticeNo:r.notice_no,title:r.title,note:'probe',url:`${origin}${VIEW[Number(type)]}${r.notice_id}`,steps:process.argv.includes('--list-only')?['list']:['df','list']}]:[];
 }
+async function reuseCandidates():Promise<Notice[]>{
+ const rows=await q`select n.notice_id,n.notice_no,n.title,n.total,(select count(*)::int from app.procurement_documents d where d.notice_key=n.key and d.section='list') listed
+  from app.document_notices n where n.notice_type=17 and n.inventory>=2 and n.checked_at is not null and n.total between 1 and 12
+  and (select count(*) from app.procurement_documents d where d.notice_key=n.key and d.section='list') between 1 and 5
+  order by n.notice_id desc limit 2`;
+ const [a,b]=rows;if(!a||!b)return [];
+ console.log(JSON.stringify({event:'reuse-stored',session:a.notice_no,read:b.notice_no,storedTotal:b.total,storedListItems:b.listed}));
+ return [{key:`17:${b.notice_id}`,type:17,noticeId:String(b.notice_id),noticeNo:b.notice_no,title:b.title??b.notice_no,note:`session opened on ${a.notice_no}, reads ${b.notice_no}`,url:`${origin}${VIEW[17]}${a.notice_id}`,steps:['df','list']}];
+}
 // Plan c opens its session on a public notice page (the CN of plan b), then reads only the two modules.
 async function ackCandidates():Promise<Notice[]>{
  const [r]=await q`select c_notice_id::text notice_id,notice_no,coalesce(title,notice_no) title from core.notices where c_notice_id=100213791 and sys_notice_type_id=2`;
@@ -200,12 +212,12 @@ async function ackCandidates():Promise<Notice[]>{
 }
 
 try{
- if(plan!=='b'&&plan!=='c'&&plan!=='c2'&&plan!=='probe'&&plan!=='ack'&&plan!=='ack-download')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
+ if(plan!=='b'&&plan!=='c'&&plan!=='c2'&&plan!=='probe'&&plan!=='reuse'&&plan!=='ack'&&plan!=='ack-download')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
  const [control]=await q`select revision,paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  const [pool]=await q`select enabled from app.collection_proxy_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||(control.paused_streams as string[]).includes('documents')||!pool?.enabled)throw Error('Inspect source controls before pilot.');
  if((await q`select id from app.document_batches where id=${batchId}`).length)throw Error('Batch already exists; inspect its persisted results. No automatic replay.');
- const notices=plan==='ack'||plan==='ack-download'?(await ackCandidates()).map(n=>({...n,steps:[plan==='ack'?'ack-list' as const:'ack-download' as const]})):plan==='probe'?await probeCandidate():plan==='c'?await ackCandidates():plan==='c2'?(await ackCandidates()).map(n=>({...n,steps:['ack-list-text' as const]})):await candidates();
+ const notices=plan==='ack'||plan==='ack-download'?(await ackCandidates()).map(n=>({...n,steps:[plan==='ack'?'ack-list' as const:'ack-download' as const]})):plan==='probe'?await probeCandidate():plan==='reuse'?await reuseCandidates():plan==='c'?await ackCandidates():plan==='c2'?(await ackCandidates()).map(n=>({...n,steps:['ack-list-text' as const]})):await candidates();
  console.log(JSON.stringify({event:'family-pilot-preflight',batchId,plan,maxRequests:MAX_REQUESTS,notices:notices.map(n=>({notice:n.noticeNo,type:n.type,note:n.note,url:n.url,steps:n.steps})),execute:process.argv.includes('--run')}));
  if(process.argv.includes('--run')){
   await q.begin(async tx=>{
@@ -216,7 +228,7 @@ try{
   const results:unknown[]=[];
   for(const n of notices){
    if(stop.signal.aborted)break;
-   const [job]=await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,batch_id,status,stage,slot,started_at) values(${n.key},'list',${`pilot:${batchId}:${n.key}`},'system:document-family-pilot',${batchId},'running','source',1,now()) returning id`;
+   const [job]=await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,batch_id,status,stage,slot,started_at) values(${n.key},'list',${`pilot:${batchId}:${n.key}`},'system:document-family-pilot',${batchId},'running','source',199,now()) returning id`;
    try{
     results.push(await session(n,job!.id));
     await q`update app.document_jobs set status='complete',stage='complete',finished_at=now() where id=${job!.id}`;

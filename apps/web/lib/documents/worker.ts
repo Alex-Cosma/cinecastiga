@@ -16,8 +16,12 @@ import {awardRows,documentationRows,inventoryRows,listRows,storeInventory} from 
 import {AWARD_NOTICE_TYPE} from './shared';
 const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
-// The worker owns a reserved postgres.js connection, which has no begin() helper.
-async function atomic(q:DbSql,work:(q:DbSql)=>Promise<void>){await q`begin`;try{await work(q);await q`commit`;}catch(e){await q`rollback`;throw e;}}
+// A reserved postgres.js connection has no begin() helper; the pool (network lanes) has one.
+async function atomic(q:DbSql,work:(q:DbSql)=>Promise<void>){
+ const pool=q as unknown as {begin?:(fn:(tx:DbSql)=>Promise<void>)=>Promise<unknown>};
+ if(typeof pool.begin==='function'){await pool.begin(tx=>work(tx));return;}
+ await q`begin`;try{await work(q);await q`commit`;}catch(e){await q`rollback`;throw e;}
+}
 export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:AbortSignal,maxRequests?:number,phase:'all'|'download'|'process'='all',maxFileBytes?:number){
  validateDocumentRequestLimit(maxRequests);
  const [notice]=await q`select * from app.document_notices where key=${job.notice_key}`;

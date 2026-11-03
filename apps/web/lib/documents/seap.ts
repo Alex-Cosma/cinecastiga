@@ -2,10 +2,11 @@ import {open} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {requireDisk} from './blob-store';
 import {browserDocumentStream,browserDocumentRequest} from './browser-request';
-import {type Browser} from 'playwright-core';
-import {CollectionLocalError,reserveDocumentProxy,releaseDocumentProxy,proxyConnection,runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
+import {setTimeout as sleep} from 'node:timers/promises';
+import {CollectionLocalError,CollectionSuspendedError,reserveDocumentProxy,releaseDocumentProxy,proxyConnection,runCollectionRequest,collectionWorkerId,type DbSql} from '@seap/db';
 import {safeFileUrl,NOTICE_VIEWS} from './shared';
-import {continueDocumentRequest,launchDocumentBrowser,loadDocumentProxy,proxyTransportError} from './proxy';
+import {continueDocumentRequest,loadDocumentProxy,proxyTransportError} from './proxy';
+import {openDocumentContext,type DocumentSession} from './browser-pool';
 import {assertDocumentRequestBudget,validateDocumentRequestLimit} from './request-budget';
 const origin='https://www.e-licitatie.ro';
 const workerId=collectionWorkerId('documents-http');
@@ -52,20 +53,34 @@ export function parseAwardList(data:unknown,caNoticeId:string,canNo:string):{ite
  for(const d of items)if(!Number.isSafeInteger(d.ackDocID)||d.ackDocID<=0||d.documentName.length>500||String(d.caNoticeId)!==caNoticeId||(d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo))throw Error('Identitatea documentului nu corespunde anunțului.');
  return {items,total:r.total!,received:r.items.length};
 }
-/** A fresh isolated browser session; only explicit requests can reach the network. */
+/** The gate and the proxy reservation need a dedicated connection (session locks, explicit transactions).
+ * Given the pool, a lane takes one only for that step, so a hundred lanes waiting on their proxies' spacing
+ * do not hold a hundred connections; a caller that already reserved one keeps using it. */
+async function withSession<T>(q:DbSql,work:(session:DbSql)=>Promise<T>):Promise<T>{
+ const pool=q as unknown as {reserve?:()=>Promise<DbSql&{release():void}>};
+ if(typeof pool.reserve!=='function')return work(q);
+ const session=await pool.reserve();
+ try{return await work(session);}finally{session.release();}
+}
+/** A fresh isolated browser session (its own context); only explicit requests can reach the network. */
 export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes?:number){
  validateDocumentRequestLimit(maxRequests);
  if(maxFileBytes!==undefined&&(!Number.isSafeInteger(maxFileBytes)||maxFileBytes<1||maxFileBytes>50*1024*1024))throw Error("Invalid file limit");
- let browser:Browser|undefined, allowed:{url:string;method:string}|null=null;
+ let session:DocumentSession|undefined, allowed:{url:string;method:string}|null=null;
  if(!viewPath.test(referer))throw Error('Anunț SEAP neacceptat.');
- const managedProxy=await reserveDocumentProxy(q,jobId);
+ // Every proxy is held by another session: wait for one, without counting a failed attempt.
+ const managedProxy=await withSession(q,c=>reserveDocumentProxy(c,jobId)).catch(error=>{
+  if(error instanceof Error&&error.message.startsWith('Toate proxy-urile sunt rezervate'))throw new CollectionSuspendedError(error.message);
+  throw error;
+ });
  const proxy=managedProxy?proxyConnection(managedProxy):await loadDocumentProxy(); // Choose once; keep it for notice, list, POST and GET.
  const transport=proxy?{mode:'proxy',proxyId:proxy.id}:{mode:'direct'};
- const stop=()=>{void browser?.close();};signal.addEventListener('abort',stop,{once:true});
+ const stop=()=>{void session?.close();};signal.addEventListener('abort',stop,{once:true});
  try{
-  browser=await launchDocumentBrowser(proxy);
+  session=await openDocumentContext(proxy,{javaScriptEnabled:false,serviceWorkers:'block',acceptDownloads:false});
+  if(signal.aborted)await session.close();
   signal.throwIfAborted();
-  const context=await browser.newContext({javaScriptEnabled:false,serviceWorkers:'block',acceptDownloads:false});
+  const context=session.context;
   await context.route('**/*',async route=>{
    const r=route.request();
    if(signal.aborted||!allowed||allowed.url!==r.url()||allowed.method!==r.method()){await route.abort();return;}
@@ -81,8 +96,13 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==AWARD_API+'/getAll'&&!/^https:\/\/www\.e-licitatie\.ro\/api-pub\/PUBLICAckDoc\/(?:get\/[1-9]\d*|DownloadDocument\/\?documentId=[1-9]\d*)$/.test(url)&&!/^https:\/\/www\.e-licitatie\.ro\/api-pub\/NoticeCommon\/GetDfNoticeSectionFiles\/\?initNoticeId=[1-9]\d*&sysNoticeTypeId=\d+$/.test(url)&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
    const isFileDownload=method==='GET'&&url.includes('/noticedoc/')||url.includes('/PUBLICAckDoc/DownloadDocument/');
    await q`update app.document_jobs set stage='rate_limit' where id=${jobId} and status='running'`;
-   const result=await runCollectionRequest(q,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload,context:{transport},...(managedProxy?{proxyId:managedProxy.id}:{}),documentJobId:jobId},async gateSignal=>{
-   const gateStop=()=>{void browser?.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
+   // Wait out this proxy's spacing before taking a connection for the gate (which rechecks it).
+   if(managedProxy){
+    const [wait]=await q`select greatest(0,extract(epoch from next_allowed_at-clock_timestamp())*1000)::int ms from app.collection_proxies where id=${managedProxy.id}`;
+    if(Number(wait?.ms)>0)await sleep(Math.min(Number(wait!.ms),120000),undefined,{signal});
+   }
+   const result=await withSession(q,gate=>runCollectionRequest(gate,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload,context:{transport},...(managedProxy?{proxyId:managedProxy.id}:{}),documentJobId:jobId},async gateSignal=>{
+   const gateStop=()=>{void session?.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
    try{
    if(isFileDownload)await q`update app.document_jobs set stage='download' where id=${jobId} and status='running'`;
    signal.throwIfAborted();
@@ -109,7 +129,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    }catch(error){if(error instanceof CollectionLocalError)throw error;if(proxy)throw proxyTransportError(error,observed);throw error;}
    finally{allowed=null;await q`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
-   },signal);
+   },signal));
    if(result.oversized)throw Error(`SEAP: răspunsul depășește limita de ${method==='GET'?(maxFileBytes??50*1024*1024)/1024/1024:2} MiB a acestei operațiuni. Fișierul nu a fost arhivat.`);
    if(result.status!==200)throw Error(`SEAP a răspuns cu HTTP ${result.status}. Poți reîncerca mai târziu.`);
    return result.bytes;
@@ -152,7 +172,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     return request(`${AWARD_API}/DownloadDocument/?documentId=${record.documentId}`,'POST',null,false,destination);
    },
    async download(url:string,destination?:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET',null,false,destination);},
-   async close(){signal.removeEventListener('abort',stop);try{await browser?.close();}finally{await releaseDocumentProxy(q,jobId);}}
+   async close(){signal.removeEventListener('abort',stop);try{await session?.close();}finally{await releaseDocumentProxy(q,jobId);}}
   };
- }catch(e){signal.removeEventListener('abort',stop);try{await browser?.close();}finally{await releaseDocumentProxy(q,jobId);}throw e;}
+ }catch(e){signal.removeEventListener('abort',stop);try{await session?.close();}finally{await releaseDocumentProxy(q,jobId);}throw e;}
 }
