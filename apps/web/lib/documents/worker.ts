@@ -42,16 +42,18 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
   try{
    const type=Number(notice.notice_type);
    await progress('list');
-   // The award's own documents: one list; a file is downloaded through its record.
+   // The award's own documents: one list; a file is downloaded through its record. Every version of the award
+   // (same CAN number) owns them: the list by number returns the documents attached to any version.
+   const versions=type===AWARD_NOTICE_TYPE?[...new Set([String(notice.notice_id),...(await q`select ca_notice_id::text id from core.awards where notice_no=${notice.notice_no}`).map(r=>String(r.id))])]:[];
    if(type===AWARD_NOTICE_TYPE&&job.kind==='list'){
-    const list=await seap.awardDocuments(notice.notice_id,notice.notice_no),rows=awardRows(list.items);
+    const list=await seap.awardDocuments(notice.notice_id,notice.notice_no,versions),rows=awardRows(list.items);
     await atomic(q,async tx=>{await storeInventory(tx,notice.key,rows);await tx`update app.document_notices set checked_at=now(),total=${rows.length},inventory=2 where key=${notice.key}`;});
     return;
    }
    let url:string|undefined;
    if(type===AWARD_NOTICE_TYPE){
     if(!doc!.source_id.startsWith('ack:'))throw Error('Documentul nu mai apare cu aceeași identitate în lista SEAP.');
-    await progress('download');await seap.downloadAward(doc!.source_id.slice(4),notice.notice_id,source);
+    await progress('download');await seap.downloadAward(doc!.source_id.slice(4),versions,source);
    }else if(job.kind==='list'){
     // A notice's files: its documentation section, then its document list. Published together, once both are valid.
     const docs=await seap.documentation(notice.notice_id,notice.notice_no,type);

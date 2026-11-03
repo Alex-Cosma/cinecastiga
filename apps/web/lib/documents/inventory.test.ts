@@ -43,6 +43,9 @@ describe('documents of every participation family',()=>{
   expect(awardRows(page.items)).toEqual([{sourceId:'ack:100319806',code:'AD1237666',filename:'Doc constatator ctr 147 din 20.11.2026.pdf',publishedAt:'2026-10-23T10:05:53+03:00',section:'award',sourceType:'Derulare Contract',sourceTypeId:null}]);
   expect(()=>parseAwardList({items:[{...item,caNoticeId:1}],total:1},'100663285','CAN1176341')).toThrow('Identitatea');
   expect(()=>parseAwardList({items:[{...item,caNoticePublicationNumber:'CAN1'}],total:1},'100663285','CAN1176341')).toThrow('Identitatea');
+  // A republished award keeps its CAN number: a document of its other version belongs to it, another award's does not.
+  expect(parseAwardList({items:[{...item,caNoticeId:100633730}],total:1},['100663285','100633730'],'CAN1176341').items).toHaveLength(1);
+  expect(()=>parseAwardList({items:[{...item,caNoticeId:100633731}],total:1},['100663285','100633730'],'CAN1176341')).toThrow('Identitatea');
   expect(classifyDocument('Caiet de sarcini.pdf',undefined,{section:'award',sourceType:'Derulare Contract'})).toMatchObject({categories:['acknowledgements'],method:'source'});
  });
  it('gives complaints and CNSC decisions their own category, by name or SEAP type',()=>{

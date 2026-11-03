@@ -50,11 +50,14 @@ export function parseDocumentation(data:unknown,noticeNo:string):DocumentationFi
  return files;
 }
 /** received counts every item for paging; items keep those with a file of this award (by id and number). */
-export function parseAwardList(data:unknown,caNoticeId:string,canNo:string):{items:AwardDocument[];total:number;received:number}{
+/** versions: the award's caNoticeId, or every caNoticeId SEAP published under the same CAN number (a republished
+ * or corrected award keeps its number; the list by number returns the documents attached to any version). */
+export function parseAwardList(data:unknown,versions:string|string[],canNo:string):{items:AwardDocument[];total:number;received:number}{
+ const ids=new Set(typeof versions==='string'?[versions]:versions);
  const r=data as {items?:AwardDocument[];total?:number};
  if(!Array.isArray(r?.items)||!Number.isSafeInteger(r.total)||r.total!<0||r.total!>200)throw Error('Lista SEAP nu are un format acceptat sau depășește 200 de fișiere.');
  const items=r.items.filter(d=>!!d?.documentName);
- for(const d of items)if(!Number.isSafeInteger(d.ackDocID)||d.ackDocID<=0||d.documentName.length>500||String(d.caNoticeId)!==caNoticeId||(d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo))throw Error('Identitatea documentului nu corespunde anunțului.');
+ for(const d of items)if(!Number.isSafeInteger(d.ackDocID)||d.ackDocID<=0||d.documentName.length>500||!ids.has(String(d.caNoticeId))||(d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo))throw Error('Identitatea documentului nu corespunde anunțului.');
  return {items,total:r.total!,received:r.items.length};
 }
 /** The gate and the proxy reservation need a dedicated connection (session locks, explicit transactions).
@@ -193,11 +196,11 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     return parseDocumentation(JSON.parse(bytes.toString('utf8')),noticeNo);
    },
    /** The award's attached documents, LIST_PAGE_SIZE per page. */
-   async awardDocuments(caNoticeId:string,canNo:string){
+   async awardDocuments(caNoticeId:string,canNo:string,versions:string[]=[caNoticeId]){
     const items:AwardDocument[]=[];let total=0,received=0;
     for(let pageIndex=0;pageIndex<40;pageIndex++){
      const bytes=await request(AWARD_API+'/getAll','POST',{pageIndex,pageSize:LIST_PAGE_SIZE,cANoticePublicationNumber:canNo});
-     const parsed=parseAwardList(JSON.parse(bytes.toString('utf8')),caNoticeId,canNo);if(pageIndex&&total!==parsed.total)throw Error('Lista s-a modificat în timpul preluării. Reîncearcă.');
+     const parsed=parseAwardList(JSON.parse(bytes.toString('utf8')),versions,canNo);if(pageIndex&&total!==parsed.total)throw Error('Lista s-a modificat în timpul preluării. Reîncearcă.');
      total=parsed.total;received+=parsed.received;items.push(...parsed.items);
      if(new Set(items.map(d=>d.ackDocID)).size!==items.length)throw Error('SEAP a repetat o pagină a listei.');
      if(received===total)return {items,total};
@@ -205,9 +208,10 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     }throw Error('Lista SEAP este prea mare.');
    },
    /** The list gives no file id: the document's own record names it, then SEAP's DOWNLOAD (a POST) returns the file. */
-   async downloadAward(ackDocId:string,caNoticeId:string,destination?:string){
+   async downloadAward(ackDocId:string,versions:string|string[],destination?:string){
+    const ids=new Set(typeof versions==='string'?[versions]:versions);
     const record=JSON.parse((await request(`${AWARD_API}/get/${Number(ackDocId)}`,'POST')).toString('utf8')) as {ackDocId?:number;caNoticeId?:number;documentId?:number};
-    if(String(record?.ackDocId)!==ackDocId||String(record?.caNoticeId)!==caNoticeId||!Number.isSafeInteger(record.documentId)||record.documentId!<=0)throw Error('Identitatea documentului nu corespunde anunțului.');
+    if(String(record?.ackDocId)!==ackDocId||!ids.has(String(record?.caNoticeId))||!Number.isSafeInteger(record.documentId)||record.documentId!<=0)throw Error('Identitatea documentului nu corespunde anunțului.');
     return request(`${AWARD_API}/DownloadDocument/?documentId=${record.documentId}`,'POST',null,false,destination);
    },
    async download(url:string,destination?:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET',null,false,destination);},
