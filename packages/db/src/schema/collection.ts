@@ -32,6 +32,8 @@ export const collectionRequests = appSchema.table('collection_requests', {
  // Admission checks ownership of active requests while holding the shared control row.
  // Keep this lookup independent of the size of the historical request ledger.
  index('collection_requests_running').on(t.id).where(sql`${t.outcome} = 'running'`),
+ // The stream circuit asks whether a failing proxy has worked recently.
+ index('collection_requests_proxy_success').on(t.proxyId,t.startedAt).where(sql`${t.outcome} = 'success' and ${t.proxyId} is not null`),
  check('collection_request_outcome',sql`${t.outcome} in ('running','success','failed','interrupted')`)]);
 export const collectionAudit = appSchema.table('collection_audit', {
  id: bigserial('id',{mode:'number'}).primaryKey(), actorId:text('actor_id').notNull(), actorName:text('actor_name').notNull(),

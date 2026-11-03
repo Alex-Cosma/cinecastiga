@@ -198,6 +198,9 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
  });
  it('pauses only document collection when several proxies fail without a classifiable cause',async()=>{
   const unclassified=()=>vi.fn(async()=>{throw new CollectionTransportError(Error('fixture unknown'),{retryableProxyTransport:true,unclassifiedTransport:true});});
+  // Every fixture proxy worked yesterday: their failing together points at the source.
+  await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id,outcome,started_at,finished_at)
+   select 'documents','fixture','GET','fixture',id,'success',now()-interval '1 day',now()-interval '1 day' from app.collection_proxies`;
   const used:string[]=[];
   for(let n=0;n<3;n++){
    await q`update app.collection_control set next_allowed_at=null`;
@@ -211,6 +214,18 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   await q`update app.collection_control set next_allowed_at=null`;await q`update app.collection_proxies set next_allowed_at=null`;
   await expect(request(undefined,{stream:'documents'})).rejects.toBeInstanceOf(CollectionSuspendedError);
   expect(await request()).toMatch(/^proxy-/);
+ });
+ it('does not pause documents when the failing proxies never worked recently (dead proxies re-enabled)',async()=>{
+  const unclassified=()=>vi.fn(async()=>{throw new CollectionTransportError(Error('fixture unknown'),{retryableProxyTransport:true,unclassifiedTransport:true});});
+  await q`insert into app.collection_requests(stream,worker,method,endpoint,proxy_id,outcome,started_at,finished_at)
+   select 'documents','fixture','GET','fixture',id,'success',now()-interval '30 days',now()-interval '30 days' from app.collection_proxies`;
+  for(let n=0;n<3;n++){
+   await q`update app.collection_control set next_allowed_at=null`;
+   await expect(request(unclassified(),{stream:'documents'})).rejects.toBeInstanceOf(CollectionProxyFailureError);
+  }
+  expect(new Set((await q`select proxy_id from app.collection_requests where outcome='failed'`).map(r=>r.proxy_id)).size).toBe(3);
+  expect((await q`select paused_streams from app.collection_control`)[0]!.paused_streams).toEqual([]);
+  expect(await q`select 1 from app.collection_audit where action='stream-auto-paused'`).toHaveLength(0);
  });
  it('stops only document collection on an unscoped document transport error, keeping other streams running',async()=>{
   await expect(request(vi.fn(async()=>{throw new CollectionTransportError(Error('fixture invalid'),{retryableProxyTransport:false});}),{stream:'documents'})).rejects.toBeInstanceOf(CollectionTransportError);

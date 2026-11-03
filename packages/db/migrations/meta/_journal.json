@@ -659,6 +659,13 @@
       "when": 1793546183677,
       "tag": "0093_award_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793546243677,
+      "tag": "0094_proxy_success_index",
+      "breakpoints": true
     }
   ]
 }
