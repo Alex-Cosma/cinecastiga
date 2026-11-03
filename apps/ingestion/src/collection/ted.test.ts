@@ -104,15 +104,15 @@ describe('OJ S sequencing',()=>{
   expect(next([a('202600200','complete',true),a('202600201','failed',null,10*60_000)])).toEqual([]);
   expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour)])).toEqual(['202600201']);
  });
- it('waits thirty minutes after any package download before the next one',()=>{
-  expect(next([a('202600200','complete',true,29*60_000)])).toEqual([]);
-  expect(next([a('202600199','complete',true),a('202600200','complete',true,30*60_000)])).toEqual(['202600201']);
+ it('waits an hour after any package download before the next one (owner, 3 November 2026)',()=>{
+  expect(next([a('202600200','complete',true,59*60_000)])).toEqual([]);
+  expect(next([a('202600199','complete',true),a('202600200','complete',true,60*60_000)])).toEqual(['202600201']);
   expect(next([a('202600200','complete',true),a('202600201','failed',null,2*hour),a('202600150','complete',true,5*60_000)])).toEqual([]);
  });
  it('downloads again, oldest first and one per window, issues read with an older pre-filter',()=>{
   const done=[a('202600123','complete',true,3*hour),a('202600124','complete',true,3*hour),a('202600127','complete',true)];
   expect(tedPackageCandidates({attempts:done,nowMs:now,year:2026,redownload:['202600124','202600123']})).toEqual(['202600123']);
-  expect(tedPackageCandidates({attempts:[...done,a('202600123','complete',true,40*60_000)],nowMs:now,year:2026,redownload:['202600124']})).toEqual(['202600124']);
+  expect(tedPackageCandidates({attempts:[...done,a('202600123','complete',true,61*60_000)],nowMs:now,year:2026,redownload:['202600124']})).toEqual(['202600124']);
   expect(tedPackageCandidates({attempts:[...done,a('202600128','complete',true,5*60_000)],nowMs:now,year:2026,redownload:['202600123']})).toEqual([]);
   expect(tedPackageCandidates({attempts:done,nowMs:now,year:2026,redownload:[]})).toEqual(['202600128']);
  });
@@ -125,7 +125,7 @@ describe('OJ S sequencing',()=>{
   expect(next(dec,now,2027)).toEqual(['202600251']);
   expect(next([...dec,a('202600251','complete',false)],now,2026)).toEqual(['202600251']);
   expect(next([...dec,a('202600251','complete',false)],now,2027)).toEqual(['202700001']);
-  expect(next([...dec,a('202600251','complete',false),a('202700001','complete',false,40*60_000)],now,2027)).toEqual(['202600251']);
+  expect(next([...dec,a('202600251','complete',false),a('202700001','complete',false,61*60_000)],now,2027)).toEqual(['202600251']);
   expect(next([...dec,a('202600251','complete',false),a('202700001','complete',true)],now,2027)).toEqual(['202700002']);
   // A late-December issue published after all keeps the old year's sequence going.
   expect(next([...dec,a('202600251','complete',true)],now,2027)).toEqual(['202600252']);
