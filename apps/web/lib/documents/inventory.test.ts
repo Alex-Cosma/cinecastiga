@@ -21,10 +21,10 @@ describe('documents of every participation family',()=>{
   expect(parseDocumentation({dfNoticeDocs:[{noticeDocumentUrl:url(5),noticeDocumentName:'Caiet.docx.p7s',noticeDocumentCode:null}]},'RFD002933')[0]).toMatchObject({code:null});
  });
  it('skips a listed notification without a file, counting it for paging, and still rejects a file of another notice',()=>{
-  // CN1057084, 3 November 2026: a "Notificare" with no name, code or URL among the decisions.
-  const notification={noticeDocumentId:1,noticeDocumentCode:null,documentName:null,noticeDocumentUrl:null,sysNoticeDocumentType:'Notificare'};
-  const page=parseList({items:[notification,{...listed,noticeDocumentCode:'CN1057084/00051'}],total:2},'CN1057084');
-  expect(page).toMatchObject({total:2,received:2});expect(page.items.map(d=>d.noticeDocumentCode)).toEqual(['CN1057084/00051']);
+  // CN1057084, 3 November 2026: a text-only "Notificare" (no name or code, an empty URL) among the decisions.
+  const notification={noticeDocumentId:1,noticeDocumentCode:null,documentName:null,noticeDocumentUrl:'',sysNoticeDocumentType:'Notificare'};
+  const page=parseList({items:[notification,{...notification,noticeDocumentUrl:null},{...listed,noticeDocumentCode:'CN1057084/00051'}],total:3},'CN1057084');
+  expect(page).toMatchObject({total:3,received:3});expect(page.items.map(d=>d.noticeDocumentCode)).toEqual(['CN1057084/00051']);
   expect(()=>parseList({items:[{...listed,noticeDocumentCode:'CN9/00001'}],total:1},'CN1057084')).toThrow('Identitatea');
   expect(()=>parseList({items:[{...listed,noticeDocumentCode:null}],total:1},'CN1057084')).toThrow('Identitatea');
  });
