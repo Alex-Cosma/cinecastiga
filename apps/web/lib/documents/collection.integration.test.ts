@@ -25,6 +25,8 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
   await q`delete from raw.raw_documents where content_hash like 'award-walk-fixture-%'`;
   await q`update app.collection_proxy_control set enabled=true`;
   await q`insert into app.collection_proxies(id,server,exit_ip,configured,enabled) values('proxy-999','http://192.0.2.99:80','192.0.2.99',true,true) on conflict(id) do update set configured=true,enabled=true`;
+  // Twenty proxies stay with the data streams (documentLaneCap): forty in the pool leave room for ten lanes.
+  await q`insert into app.collection_proxies(id,server,exit_ip,configured,enabled) select 'proxy-'||(900+i),'http://198.51.100.'||i||':80','198.51.100.'||i,true,true from generate_series(0,38) i on conflict(id) do update set configured=true,enabled=true`;
   await q`insert into app.document_blobs(hash,bytes,mime) values('auto-original',${Buffer.from('%PDF-fixture')},'application/pdf')`;
  });
  // A simplified notice that awarded a contract: same procedure and buyer as its award.

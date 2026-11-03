@@ -65,7 +65,7 @@ export const documentJobs = appSchema.table('document_jobs', {
   startedAt: timestamp('started_at',{withTimezone:true}), finishedAt: timestamp('finished_at',{withTimezone:true}),
 },t=>[uniqueIndex('document_jobs_active_key').on(t.dedupKey).where(sql`${t.status} in ('queued','running')`),
   uniqueIndex('document_jobs_running_slot').on(t.slot).where(sql`${t.status} = 'running'`),index('document_jobs_queue').on(t.status,t.createdAt),
-  check('document_job_slot',sql`${t.slot} between 0 and 13`),
+  check('document_job_slot',sql`${t.slot} between 0 and 199`),
   check('document_job_status',sql`${t.status} in ('queued','running','complete','failed')`),check('document_job_kind',sql`${t.kind} in ('list','file')`)]);
 export const documentRequests = appSchema.table('document_requests', {
   id: bigserial('id',{mode:'number'}).primaryKey(), jobId: uuid('job_id').notNull().references(()=>documentJobs.id),
@@ -81,4 +81,4 @@ export const documentCollectionControl=appSchema.table('document_collection_cont
  automaticDownloads:boolean('automatic_downloads').notNull().default(false),
  // Walk of the collected award details for the award's own documents (0093): the last detail examined.
  awardScannedAt:timestamp('award_scanned_at',{withTimezone:true}),awardScannedId:bigint('award_scanned_id',{mode:'number'}),
-},t=>[check('document_collection_singleton',sql`${t.id}=1`),check('document_collection_concurrency',sql`${t.downloadConcurrency} between 1 and 10 and ${t.processingConcurrency} between 1 and 4`)]);
+},t=>[check('document_collection_singleton',sql`${t.id}=1`),check('document_collection_concurrency',sql`${t.downloadConcurrency} between 1 and 100 and ${t.processingConcurrency} between 1 and 4`)]);

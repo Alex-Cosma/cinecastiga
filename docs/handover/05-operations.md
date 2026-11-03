@@ -74,6 +74,12 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
   - Seamănă anunțurile de participare din toate familiile (2, 17, 19, 7, 12, 6) care au atribuit contracte: aceeași procedură și același cumpărător, sau legătură explicită. Pornește cu cele mai noi, câte 1.000 la 10 s, iar după ce le-a semănat pe toate verifică o dată la 10 minute.
   - Listează fiecare anunț din cele două surse (documentația și lista); listele vechi se reiau o dată.
   - Pe producție sunt ~226 mii de anunțuri legate, ~3 cereri fiecare: ~700 mii de cereri. Bugetul aprobat de proprietar sunt toate cele 100 de proxy-uri, cu limitele lor de acum.
+- **Benzile de rețea (3 noiembrie 2026, migrația 0095).** Un anunț își ține proxy-ul toată sesiunea și așteaptă intervalul acelui IP (35–45 s) între cereri. Cu 10 benzi colectorul făcea ~20 de cereri/min, iar ~90 de proxy-uri stăteau. Proprietarul a cerut 100 de benzi.
+  - Numărul e `document_collection_control.download_concurrency` (1–100, setare de operator, fără control în pagină). Benzile de rețea sunt sloturile 1–100; procesarea folosește 0 și 101–103; 199 rămâne pentru piloți.
+  - Toate sesiunile au un singur Chromium, cu câte un context (cookie-uri, proxy) pe sesiune (`lib/documents/browser-pool.ts`). Un browser pe sesiune costa ~150 MB, deci 100 nu încăpeau în containerul de 6 GB.
+  - O bandă de rețea nu ține o conexiune la bază cât așteaptă: lucrează pe pool (30 de conexiuni), iar poarta ia una doar pe durata cererii (`withSession` în `lib/documents/seap.ts`). Postgres are `max_connections=100`, iar site-ul ține ~40.
+  - 20 de proxy-uri rămân mereu fluxurilor de date; cât acestea colectează (o cerere în ultimele 2 minute), documentele iau cel mult jumătate din pool (`documentLaneCap`). Altfel rezervările documentelor le-ar lăsa fără proxy.
+  - Plafonul de 200/min și cele 10 cereri simultane rămân. Cu ~94 de proxy-uri bune, 80 de benzi dau ~110–130 de cereri/min.
 - **Documentele atribuirilor:**
   - Colectorul găsește atribuirile cu `ackDocsCount > 0` parcurgând detaliile colectate în ordinea `fetched_at, id` (indexul `(source, fetched_at)`), câte 2.000 la 10 s, apoi o dată la 10 minute. Poziția e în `document_collection_control.award_scanned_at/id` (0093).
   - O tură durează ~1,7 s pe producție. Toată istoria (~331 mii de detalii) se parcurge în ~28 de minute.
@@ -83,7 +89,7 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
   - E oprit implicit (0092). Cât e oprit, descărcările automate deja în coadă stau „disponibile la cerere”.
   - Cu el pornit pentru toate procedurile ar trebui circa 1 TB (medie de 4,4 MB pe fișier arhivat cu PDF-ul derivat). Pe 3 noiembrie discul avea 650 GB liberi.
 - **Cererile oamenilor** (oricine, și fără cont) intră într-o coadă comună.
-  - Supervisorul le dă întâi benzile de rețea, toate zece, și ține una liberă cât o cerere așteaptă. Pregătirea lor rulează pe benzile de procesare.
+  - Supervisorul le dă întâi benzile de rețea, toate, și ține una liberă cât o cerere așteaptă. Pregătirea lor rulează pe benzile de procesare.
   - Prin pool, un fișier cerut păstrează ritmul pool-ului. Minutul dintre fișiere rămâne doar în modul direct.
   - Limite: 10 cereri pe oră pentru un vizitator și 20 pentru un cont; coada are cel mult 2.000 de cereri.
 - Pauză zilnică de admitere a cererilor **02:59 inclusiv–03:30 exclusiv**, Europe/Bucharest. Nu schimbă manual paused și nu șterge erori.
