@@ -21,7 +21,7 @@ export async function collectionHeartbeat(q:DbSql,id:string,kind:string,state:st
 }
 /** Document sessions are a separate subsystem: their transport failures stop only their own stream.
  * Recorded in the audit with the reason; resumed from the stream control in administration. */
-export const UNCLASSIFIED_PROXY_LIMIT=3,UNCLASSIFIED_PROXY_WINDOW_MINUTES=10;
+export const UNCLASSIFIED_PROXY_LIMIT=3,UNCLASSIFIED_PROXY_WINDOW_MINUTES=10,PROVEN_PROXY_DAYS=7;
 /** Caller owns the transaction (also used by the task runner for TED task failures). */
 export async function pauseCollectionStreamInTransaction(q:DbSql,stream:CollectionStream,reason:string){
  const [c]=await q`select paused_streams from app.collection_control where id=1 for update`;
@@ -189,8 +189,11 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if(info.stream!=='ted')await recordProxyFailure(q,selectedProxy!.id);
     if(error instanceof CollectionTransportError&&error.diagnostics.unclassifiedTransport===true){
      // One proxy failing is the proxy; several distinct proxies failing alike points at the source.
-     const [spread]=await q`select count(distinct proxy_id)::int n from app.collection_requests where stream=${info.stream} and outcome='failed' and proxy_id is not null
-      and diagnostics->>'unclassifiedTransport'='true' and started_at>clock_timestamp()-${UNCLASSIFIED_PROXY_WINDOW_MINUTES}*interval '1 minute'`;
+     // Only proxies that worked recently count: a dead proxy (never answering, e.g. re-enabled after weeks
+     // off) is disabled by its own circuit and says nothing about the source.
+     const [spread]=await q`select count(distinct r.proxy_id)::int n from app.collection_requests r where r.stream=${info.stream} and r.outcome='failed' and r.proxy_id is not null
+      and r.diagnostics->>'unclassifiedTransport'='true' and r.started_at>clock_timestamp()-${UNCLASSIFIED_PROXY_WINDOW_MINUTES}*interval '1 minute'
+      and exists(select 1 from app.collection_requests s where s.proxy_id=r.proxy_id and s.outcome='success' and s.started_at>clock_timestamp()-${PROVEN_PROXY_DAYS}*interval '1 day')`;
      if(Number(spread?.n)>=UNCLASSIFIED_PROXY_LIMIT){
       const reason=`Erori de transport neclasificate pe ${spread!.n} proxy-uri diferite în ${UNCLASSIFIED_PROXY_WINDOW_MINUTES} minute. Verifică jurnalul înainte de reluare.`;
       if(ownStream)await pauseCollectionStream(q,info.stream,reason);

@@ -8,7 +8,13 @@ export async function documentCollectionStatus(q:DbSql=collectionDb()){
   await tx`set local statement_timeout='15000ms'`;
   const [control]=await tx`select *,heartbeat_at>now()-interval '30 seconds' alive from app.document_collection_control where id=1`;
   if(!control)throw Error('Configurația documentelor lipsește.');
-  const [source]=await tx`select c.paused,c.maintenance,c.blocked_reason,c.paused_streams,p.enabled proxy_enabled from app.collection_control c cross join app.collection_proxy_control p where c.id=1 and p.id=1`;
+  // The documents stream is resumed here: the collection page shows controls only for the data streams.
+  const [source]=await tx`select c.paused,c.maintenance,c.blocked_reason,c.paused_streams,c.revision,p.enabled proxy_enabled,
+   (select case when a.action='stream-auto-paused' then a.after->>'reason' end from app.collection_audit a
+     where (a.action='stream-auto-paused' and a.after->>'stream'='documents')
+        or (a.action='stream' and coalesce(a.after->'pausedStreams' ? 'documents',false)<>coalesce(a.before->'pausedStreams' ? 'documents',false))
+     order by a.created_at desc limit 1) stream_reason
+   from app.collection_control c cross join app.collection_proxy_control p where c.id=1 and p.id=1`;
   // Eligible: participation notices of a supported family that awarded contracts, as the collector seeds them.
   const [coverage]=await tx`select count(*) filter(where linked)::int eligible,count(*) filter(where not linked)::int unsupported from (
    select coalesce(n.sys_notice_type_id=any(${DOCUMENT_NOTICE_TYPES}::int[]) and (n.sys_notice_type_id<>17 or n.notice_namespace='rfq') and n.c_notice_id>0 and n.notice_no is not null
