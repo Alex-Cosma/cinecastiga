@@ -187,10 +187,12 @@ export function tedPackageCandidates({attempts,nowMs,year,redownload=[]}:{attemp
   // Rollover first: with one download per spacing window, the new year must not wait behind a repeated 404.
   if(year>frontierYear&&(!next||attempts.some(a=>a.ojs===next&&a.status==='complete'&&a.published===false)))candidates.unshift(ojsOf(frontierYear+1,1));
  }else candidates.push([...attempts].sort((a,b)=>a.ojs.localeCompare(b.ojs))[0]!.ojs);
- return candidates.filter(ojs=>{
-  const last=attempts.filter(a=>a.ojs===ojs).map(a=>a.finishedMs??0).sort((a,b)=>b-a)[0];
-  return last===undefined||nowMs-last>=3600_000;
- }).slice(0,1);
+ // Of the issues allowed again (once per hour), the one tried longest ago: with an hour between packages the
+ // old year's next issue and the new year's first both wait an hour after a 404, and they must alternate so a
+ // late December issue is still found. Never tried comes first, the rollover before the old year on a tie.
+ const lastTry=(ojs:string)=>attempts.filter(a=>a.ojs===ojs).map(a=>a.finishedMs??0).sort((a,b)=>b-a)[0];
+ return candidates.filter(ojs=>{const last=lastTry(ojs);return last===undefined||nowMs-last>=3600_000;})
+  .map((ojs,i)=>({ojs,i,last:lastTry(ojs)??-Infinity})).sort((x,y)=>x.last-y.last||x.i-y.i).map(c=>c.ojs).slice(0,1);
 }
 
 export interface TedVerification {ojs:string;day:string;scan:string;status:string;error:string|null}
