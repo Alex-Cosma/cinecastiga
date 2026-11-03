@@ -80,6 +80,12 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
   - O bandă de rețea nu ține o conexiune la bază cât așteaptă: lucrează pe pool (30 de conexiuni), iar poarta ia una doar pe durata cererii (`withSession` în `lib/documents/seap.ts`). Postgres are `max_connections=100`, iar site-ul ține ~40.
   - 20 de proxy-uri rămân mereu fluxurilor de date; cât acestea colectează (o cerere în ultimele 2 minute), documentele iau cel mult jumătate din pool (`documentLaneCap`). Altfel rezervările documentelor le-ar lăsa fără proxy.
   - Plafonul de 200/min și cele 10 cereri simultane rămân. Cu ~94 de proxy-uri bune, 80 de benzi dau ~110–130 de cereri/min.
+  - **60 de benzi, 3 noiembrie, 11:16 UTC:** la ~89 de cereri/min, 6 liste `GetAll` au rămas fără răspuns 45 s pe 6 proxy-uri, iar circuitul a oprit fluxul. Producția rulează cu **30 de benzi** (50–78/min, stabil). Peste 30 se urcă numai cu acordul proprietarului.
+  - Tot la 60 de benzi supervisorul s-a blocat: benzile din poartă scriau jurnalul printr-o a doua conexiune din pool, care era plin. De la `b445227`, în poartă se scrie doar pe conexiunea porții, iar cel mult 12 benzi țin una (`GATE_SESSIONS`).
+- **Sesiunea refolosită (proprietarul, 3 noiembrie 2026).** Testul de pe producție (lotul `document-family-pilot-20261103-reuse2`, 3 cereri): o sesiune deschisă pe pagina SCN1181364 a citit documentația și lista SCN1181249 (200; documentația, 7 fișiere, identică cu cea salvată).
+  - O bandă își păstrează sesiunea între joburile de listă din aceeași familie, pe același proxy, și sare peste pagina anunțului: ~2,5 cereri pe anunț în loc de ~3,5. Rezervarea preferă proxy-ul sesiunii păstrate când e liber (`reserveDocumentProxy(q, job, preferred)`).
+  - Limite: 30 de minute, 40 de joburi, 5 minute fără activitate; orice cerere eșuată, un răspuns diferit de 200 sau o anulare închide sesiunea. Atribuirile (`ca-notices`, netestate) deschid mereu sesiune nouă.
+  - Cererile pe o sesiune refolosită au `context.transport.session='reused'` în `collection_requests.diagnostics`.
 - **Documentele atribuirilor:**
   - Colectorul găsește atribuirile cu `ackDocsCount > 0` parcurgând detaliile colectate în ordinea `fetched_at, id` (indexul `(source, fetched_at)`), câte 2.000 la 10 s, apoi o dată la 10 minute. Poziția e în `document_collection_control.award_scanned_at/id` (0093).
   - O tură durează ~1,7 s pe producție. Toată istoria (~331 mii de detalii) se parcurge în ~28 de minute.

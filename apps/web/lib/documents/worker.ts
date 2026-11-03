@@ -36,7 +36,9 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
  if(!originalHash){
   if(phase==='process')throw Error('Originalul arhivat lipsește; procesarea nu face cereri SEAP.');
   if(process.env.DOCUMENTS_OFFLINE==='true')throw Error('Modul de verificare locală nu permite cereri SEAP.');
-  await progress('source');const seap=await openSeap(q,job.id,notice.url,signal,maxRequests,maxFileBytes);
+  // A list job on a network lane may reuse that lane's session (lib/documents/seap.ts).
+  const lane=job.kind==='list'&&!job.batch_id&&Number(job.slot)>=1&&Number(job.slot)<=100?Number(job.slot):undefined;
+  await progress('source');const seap=await openSeap(q,job.id,notice.url,signal,maxRequests,maxFileBytes,lane);
   try{
    const type=Number(notice.notice_type);
    await progress('list');

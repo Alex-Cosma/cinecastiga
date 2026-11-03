@@ -7,6 +7,7 @@ import {CollectionLocalError,CollectionSuspendedError,reserveDocumentProxy,relea
 import {safeFileUrl,NOTICE_VIEWS} from './shared';
 import {continueDocumentRequest,loadDocumentProxy,proxyTransportError} from './proxy';
 import {openDocumentContext,type DocumentSession} from './browser-pool';
+import type {Page} from 'playwright-core';
 import {assertDocumentRequestBudget,validateDocumentRequestLimit} from './request-budget';
 const origin='https://www.e-licitatie.ro';
 const workerId=collectionWorkerId('documents-http');
@@ -69,36 +70,59 @@ async function withSession<T>(q:DbSql,work:(session:DbSql)=>Promise<T>):Promise<
   try{return await work(session);}finally{session.release();}
  }finally{const next=gateWaiting.shift();if(next)next();else gateHeld--;}
 }
-/** A fresh isolated browser session (its own context); only explicit requests can reach the network. */
-export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes?:number){
+/** One open SEAP session: a browser context, its page and what the route handler currently admits. */
+interface Tab {proxyId:string|null;family:string;session:DocumentSession;page:Page;openedAt:number;uses:number;idleAt:number;
+ state:{signal:AbortSignal;allowed:{url:string;method:string}|null;active?:{url:string;method:string};observed:{status?:number;receivedBytes?:number;networkFailure?:string}}}
+/** Session reuse (owner, 3 November 2026; tested on production with batch document-family-pilot-20261103-reuse2):
+ * a session opened on one notice's page serves another notice's documentation and list. A network lane keeps
+ * its session between list jobs of the same family on the same proxy and skips the notice page, ~1 request of
+ * ~3.5. Sessions are bounded by age and use, closed after any failed request or when idle. */
+const REUSE_MAX_AGE_MS=30*60*1000,REUSE_MAX_USES=40,REUSE_IDLE_MS=5*60*1000;
+const warm=new Map<number,Tab>();
+function sweepWarm(now=Date.now()){for(const [lane,tab] of warm)if(now-tab.idleAt>REUSE_IDLE_MS||now-tab.openedAt>REUSE_MAX_AGE_MS){warm.delete(lane);void tab.session.close().catch(()=>{});}}
+const familyOf=(url:string)=>url.replace(/\/[1-9]\d*$/,'');
+/** A fresh isolated browser session (its own context), or a lane's kept one; only explicit requests can reach the network.
+ * lane: the network lane of an automatic or requested list job; without it every call opens its own session. */
+export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortSignal,maxRequests?:number,maxFileBytes?:number,lane?:number){
  validateDocumentRequestLimit(maxRequests);
  if(maxFileBytes!==undefined&&(!Number.isSafeInteger(maxFileBytes)||maxFileBytes<1||maxFileBytes>50*1024*1024))throw Error("Invalid file limit");
- let session:DocumentSession|undefined, allowed:{url:string;method:string}|null=null;
  if(!viewPath.test(referer))throw Error('Anunț SEAP neacceptat.');
+ sweepWarm();
+ const family=familyOf(referer),kept=lane===undefined?undefined:warm.get(lane);
+ if(kept)warm.delete(lane!);
+ const candidate=kept&&kept.family===family&&kept.uses<REUSE_MAX_USES&&!family.includes('/ca-notices/')?kept:undefined;
+ if(kept&&!candidate)void kept.session.close().catch(()=>{});
  // Every proxy is held by another session: wait for one, without counting a failed attempt.
- const managedProxy=await withSession(q,c=>reserveDocumentProxy(c,jobId)).catch(error=>{
+ const managedProxy=await withSession(q,c=>reserveDocumentProxy(c,jobId,candidate?.proxyId??undefined)).catch(error=>{
+  if(candidate)void candidate.session.close().catch(()=>{});
   if(error instanceof Error&&error.message.startsWith('Toate proxy-urile sunt rezervate'))throw new CollectionSuspendedError(error.message);
   throw error;
  });
  const proxy=managedProxy?proxyConnection(managedProxy):await loadDocumentProxy(); // Choose once; keep it for notice, list, POST and GET.
- const transport=proxy?{mode:'proxy',proxyId:proxy.id}:{mode:'direct'};
- const stop=()=>{void session?.close();};signal.addEventListener('abort',stop,{once:true});
+ const reused=!!candidate&&!!managedProxy&&candidate.proxyId===managedProxy.id;
+ if(candidate&&!reused)void candidate.session.close().catch(()=>{});
+ const transport=proxy?{mode:'proxy',proxyId:proxy.id,...(reused?{session:'reused'}:{})}:{mode:'direct'};
+ let tab:Tab|undefined=reused?candidate:undefined,failed=false;
+ const stop=()=>{failed=true;void tab?.session.close();};signal.addEventListener('abort',stop,{once:true});
  try{
-  session=await openDocumentContext(proxy,{javaScriptEnabled:false,serviceWorkers:'block',acceptDownloads:false});
-  if(signal.aborted)await session.close();
+  if(!tab){
+   const session=await openDocumentContext(proxy,{javaScriptEnabled:false,serviceWorkers:'block',acceptDownloads:false});
+   const state:Tab['state']={signal,allowed:null,observed:{}};
+   await session.context.route('**/*',async route=>{
+    const r=route.request(),allowed=state.allowed;
+    if(state.signal.aborted||!allowed||allowed.url!==r.url()||allowed.method!==r.method()){await route.abort();return;}
+    state.allowed=null;await continueDocumentRequest(route);
+   });
+   const page=await session.context.newPage();page.setDefaultTimeout(45000);
+   page.on('response',r=>{if(r.url()===state.active?.url&&r.request().method()===state.active.method)state.observed.status=r.status();});
+   page.on('requestfailed',r=>{if(r.url()===state.active?.url&&r.method()===state.active.method)state.observed.networkFailure=r.failure()?.errorText??'';});
+   tab={proxyId:proxy?.id??null,family,session,page,openedAt:Date.now(),uses:0,idleAt:Date.now(),state};
+  }
+  const current=tab,page=current.page,state=current.state;state.signal=signal;state.allowed=null;
+  if(signal.aborted)await current.session.close();
   signal.throwIfAborted();
-  const context=session.context;
-  await context.route('**/*',async route=>{
-   const r=route.request();
-   if(signal.aborted||!allowed||allowed.url!==r.url()||allowed.method!==r.method()){await route.abort();return;}
-   allowed=null;await continueDocumentRequest(route);
-  });
-  const page=await context.newPage();page.setDefaultTimeout(45000);
-  let active:{url:string;method:string}|undefined,observed:{status?:number;receivedBytes?:number;networkFailure?:string}={};
-  page.on('response',r=>{if(r.url()===active?.url&&r.request().method()===active.method)observed.status=r.status();});
-  page.on('requestfailed',r=>{if(r.url()===active?.url&&r.method()===active.method)observed.networkFailure=r.failure()?.errorText??'';});
   async function request(url:string,method:string,body:unknown=null,navigate=false,destination?:string){
-   signal.throwIfAborted();active={url,method};observed={};
+   signal.throwIfAborted();state.active={url,method};state.observed={};const observed=state.observed;
    await assertDocumentRequestBudget(q,jobId,maxRequests);
    if(url!==referer&&url!==origin+'/api-pub/NoticeDocument/GetAll/'&&url!==AWARD_API+'/getAll'&&!/^https:\/\/www\.e-licitatie\.ro\/api-pub\/PUBLICAckDoc\/(?:get\/[1-9]\d*|DownloadDocument\/\?documentId=[1-9]\d*)$/.test(url)&&!/^https:\/\/www\.e-licitatie\.ro\/api-pub\/NoticeCommon\/GetDfNoticeSectionFiles\/\?initNoticeId=[1-9]\d*&sysNoticeTypeId=\d+$/.test(url)&&url!==safeFileUrl(url))throw Error('Adresă neacceptată.');
    const isFileDownload=method==='GET'&&url.includes('/noticedoc/')||url.includes('/PUBLICAckDoc/DownloadDocument/');
@@ -109,7 +133,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     if(Number(wait?.ms)>0)await sleep(Math.min(Number(wait!.ms),120000),undefined,{signal});
    }
    const result=await withSession(q,gate=>runCollectionRequest(gate,{stream:'documents',worker:workerId,method,url,parameters:body,fileDownload:isFileDownload,context:{transport},...(managedProxy?{proxyId:managedProxy.id}:{}),documentJobId:jobId},async gateSignal=>{
-   const gateStop=()=>{void session?.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
+   const gateStop=()=>{failed=true;void current.session.close();};gateSignal.addEventListener('abort',gateStop,{once:true});
    try{
    // Inside the gate every write uses the gate's own connection: waiting for a second one from the pool
    // while holding this one deadlocks once the lanes hold the whole pool (3 November 2026, 60 lanes).
@@ -118,7 +142,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    const endpoint=url.includes('/noticedoc/')?'noticedoc':navigate?'notice-page':url.includes('/GetDfNoticeSectionFiles/')?'documentation':url.includes('/PUBLICAckDoc/DownloadDocument/')?'award-file':url.includes('/PUBLICAckDoc/get/')?'award-item':url.includes('/PUBLICAckDoc/')?'award-list':'document-list';
    const [row]=await gate`insert into app.document_requests(job_id,method,endpoint) values(${jobId},${method},${endpoint}) returning id`;
    console.log(JSON.stringify({event:'seap-request',request:row!.id,job:jobId,method,transport,endpoint}));
-   allowed={url,method};
+   state.allowed={url,method};
    try{
     let status:number,bytes:Buffer,retryAfter:string|null=null,oversized=false,receivedBytes:number|undefined;
     if(navigate){const res=await page.goto(url,{waitUntil:'domcontentloaded'});status=res?.status()??0;retryAfter=res?.headers()['retry-after']??null;bytes=res?await res.body():Buffer.alloc(0);receivedBytes=bytes.length;oversized=bytes.length>2*1024*1024;if(oversized)bytes=Buffer.alloc(0);}
@@ -136,16 +160,19 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     if(status===200&&navigate)challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
     return {value:{bytes,status,oversized},status,bytes:receivedBytes??bytes.length,retryAfter,challenge,...(oversized?{diagnostics:{response:{status,receivedBytes,bodyTruncated:true},reason:'document_size_limit'}}:{})};
    }catch(error){if(error instanceof CollectionLocalError)throw error;if(proxy)throw proxyTransportError(error,observed);throw error;}
-   finally{allowed=null;await gate`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
+   finally{state.allowed=null;await gate`update app.document_requests set finished_at=coalesce(finished_at,now()) where id=${row!.id}`;}
    }finally{gateSignal.removeEventListener('abort',gateStop);}
-   },signal));
+   },signal)).catch(error=>{failed=true;throw error;});
+   if(result.status!==200)failed=true;
    if(result.oversized)throw Error(`SEAP: răspunsul depășește limita de ${method==='GET'?(maxFileBytes??50*1024*1024)/1024/1024:2} MiB a acestei operațiuni. Fișierul nu a fost arhivat.`);
    if(result.status!==200)throw Error(`SEAP a răspuns cu HTTP ${result.status}. Poți reîncerca mai târziu.`);
    return result.bytes;
   }
-  await request(referer,'GET',null,true);
-  // Remove the untrusted page, preserving the source URL and own session.
-  await page.setContent('<!doctype html><title>Document collector</title>');
+  if(!reused){
+   await request(referer,'GET',null,true);
+   // Remove the untrusted page, preserving the source URL and own session.
+   await page.setContent('<!doctype html><title>Document collector</title>');
+  }
   return {
    async list(noticeId:string,noticeNo:string,noticeType:number){
     const items:ListedDocument[]=[];let total=0,received=0;
@@ -181,7 +208,14 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     return request(`${AWARD_API}/DownloadDocument/?documentId=${record.documentId}`,'POST',null,false,destination);
    },
    async download(url:string,destination?:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET',null,false,destination);},
-   async close(){signal.removeEventListener('abort',stop);try{await session?.close();}finally{await releaseDocumentProxy(q,jobId);}}
+   async close(){
+    signal.removeEventListener('abort',stop);
+    try{
+     // Kept for the lane's next list job only after a clean job on a managed proxy.
+     if(lane!==undefined&&!failed&&!signal.aborted&&managedProxy&&Date.now()-current.openedAt<REUSE_MAX_AGE_MS){current.uses++;current.idleAt=Date.now();state.allowed=null;warm.set(lane,current);}
+     else await current.session.close();
+    }finally{await releaseDocumentProxy(q,jobId);}
+   }
   };
- }catch(e){signal.removeEventListener('abort',stop);try{await session?.close();}finally{await releaseDocumentProxy(q,jobId);}throw e;}
+ }catch(e){signal.removeEventListener('abort',stop);try{await tab?.session.close();}finally{await releaseDocumentProxy(q,jobId);}throw e;}
 }

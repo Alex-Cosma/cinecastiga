@@ -244,6 +244,16 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
    const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work,{stream:'documents',proxyId:selected!.id,documentJobId:id},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();
   }finally{await releaseDocumentProxy(c,id);await q`delete from app.document_jobs where id=${id}`;c.release();}
  });
+ it('reserves a kept session\'s proxy when it is free, another one when it is not',async()=>{
+  const a='b725a132-b6c0-4282-afbf-ae854427ea64',b='c725a132-b6c0-4282-afbf-ae854427ea64',c=await q.reserve();
+  try{
+   await q`insert into app.document_jobs(id,notice_key,kind,dedup_key,requested_by,status,slot) values(${a},'proxy-fixture','list','pref-a','fixture','running',1),(${b},'proxy-fixture','list','pref-b','fixture','running',2)`;
+   // proxy-2 waits on its spacing; a kept session still takes it (the lane waits that spacing anyway).
+   await q`update app.collection_proxies set next_allowed_at=clock_timestamp()+interval '30 seconds' where id='proxy-2'`;
+   expect((await reserveDocumentProxy(c,a,'proxy-2'))?.id).toBe('proxy-2');
+   expect((await reserveDocumentProxy(c,b,'proxy-2'))?.id).not.toBe('proxy-2');
+  }finally{await releaseDocumentProxy(c,a);await releaseDocumentProxy(c,b);await q`delete from app.document_jobs where id in (${a},${b})`;c.release();}
+ });
  it('enforces a persistent batch cap across racing document sessions without the legacy file gap',async()=>{
   await q`insert into app.document_batches(id,max_requests,max_files,concurrency) values('fixture-pool',1,2,2) on conflict(id) do update set requests_started=0,status='running'`;
   await q`update app.collection_proxy_control set requests_per_minute=200,max_in_flight=2,min_seconds=1,max_seconds=1`;
