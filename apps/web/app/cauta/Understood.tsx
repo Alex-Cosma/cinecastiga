@@ -32,8 +32,9 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
   {!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
  </section>;
  if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note){
-  // Nothing applied: a reading that needs a choice (same-named firms or persons) is chosen in Întreabă.
-  return t.problem&&t.askHref?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
+  // Nothing applied: a reading that needs a choice of person is chosen in Întreabă. Same-named firms and
+  // institutions are listed first in the results, so they need no line of their own.
+  return t.problem&&t.askHref&&!t.entityChoice?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
  }
  return <section className="topic-understood" aria-label="Cum am înțeles căutarea">
   <div className="topic-understood-line"><span className="topic-understood-label">Am înțeles:</span>
