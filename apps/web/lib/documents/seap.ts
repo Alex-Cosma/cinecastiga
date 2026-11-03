@@ -9,6 +9,7 @@ import {continueDocumentRequest,loadDocumentProxy,proxyTransportError} from './p
 import {openDocumentContext,type DocumentSession} from './browser-pool';
 import type {Page} from 'playwright-core';
 import {assertDocumentRequestBudget,validateDocumentRequestLimit} from './request-budget';
+import {DocumentIdentityError} from './errors';
 const origin='https://www.e-licitatie.ro';
 const workerId=collectionWorkerId('documents-http');
 export interface ListedDocument {noticeDocumentId:number;noticeDocumentCode:string;documentName:string;noticeDocumentUrl:string;noticeDocumentPostDate?:string|null;publicationDate?:string|null;sysNoticeDocumentType?:string|null;sysNoticeDocumentTypeId?:number|null}
@@ -30,7 +31,13 @@ export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];
  const r=data as {items?:ListedDocument[];total?:number};
  if(!Array.isArray(r?.items)||!Number.isSafeInteger(r.total)||r.total!<0||r.total!>200)throw Error('Lista SEAP nu are un format acceptat sau depășește 200 de fișiere.');
  const items=r.items.filter(d=>!!d?.documentName||!!d?.noticeDocumentUrl);
- for(const d of items){if(!Number.isSafeInteger(d.noticeDocumentId)||d.noticeDocumentId<=0||typeof d.documentName!=='string'||d.documentName.length>500||typeof d.noticeDocumentCode!=='string'||!d.noticeDocumentCode.startsWith(noticeNo+'/'))throw Error('Identitatea documentului nu corespunde anunțului.');safeFileUrl(d.noticeDocumentUrl);}
+ for(const d of items){
+  const field=!Number.isSafeInteger(d.noticeDocumentId)||d.noticeDocumentId<=0?`noticeDocumentId ${String(d.noticeDocumentId).slice(0,20)}`
+   :typeof d.documentName!=='string'||d.documentName.length>500?'nume lipsă sau peste 500 de caractere'
+   :typeof d.noticeDocumentCode!=='string'||!d.noticeDocumentCode.startsWith(noticeNo+'/')?`cod ${String(d.noticeDocumentCode).slice(0,40)}, așteptat ${noticeNo}/…`:null;
+  if(field)throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (${field}).`);
+  safeFileUrl(d.noticeDocumentUrl);
+ }
  return {items,total:r.total!,received:r.items.length};
 }
 export function parseDocumentation(data:unknown,noticeNo:string):DocumentationFile[]{
@@ -42,7 +49,8 @@ export function parseDocumentation(data:unknown,noticeNo:string):DocumentationFi
   if(!Array.isArray(part))throw Error('Documentația SEAP nu are un format acceptat.');
   for(const d of part as Record<string,unknown>[]){
    const code=d?.noticeDocumentCode??null;
-   if(typeof d?.noticeDocumentName!=='string'||!d.noticeDocumentName.trim()||d.noticeDocumentName.length>500||(code!==null&&(typeof code!=='string'||!code.startsWith(noticeNo+'/'))))throw Error('Identitatea documentului nu corespunde anunțului.');
+   if(typeof d?.noticeDocumentName!=='string'||!d.noticeDocumentName.trim()||d.noticeDocumentName.length>500||(code!==null&&(typeof code!=='string'||!code.startsWith(noticeNo+'/'))))
+    throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (documentație: ${typeof d?.noticeDocumentName!=='string'||!d.noticeDocumentName.trim()?'nume lipsă':d.noticeDocumentName.length>500?'nume peste 500 de caractere':`cod ${String(code).slice(0,40)}, așteptat ${noticeNo}/…`}).`);
    files.push({section,code,documentName:d.noticeDocumentName,noticeDocumentUrl:safeFileUrl(String(d.noticeDocumentUrl))});
   }
  }
@@ -57,7 +65,12 @@ export function parseAwardList(data:unknown,versions:string|string[],canNo:strin
  const r=data as {items?:AwardDocument[];total?:number};
  if(!Array.isArray(r?.items)||!Number.isSafeInteger(r.total)||r.total!<0||r.total!>200)throw Error('Lista SEAP nu are un format acceptat sau depășește 200 de fișiere.');
  const items=r.items.filter(d=>!!d?.documentName);
- for(const d of items)if(!Number.isSafeInteger(d.ackDocID)||d.ackDocID<=0||d.documentName.length>500||!ids.has(String(d.caNoticeId))||(d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo))throw Error('Identitatea documentului nu corespunde anunțului.');
+ for(const d of items){
+  const field=!Number.isSafeInteger(d.ackDocID)||d.ackDocID<=0?`ackDocID ${String(d.ackDocID).slice(0,20)}`:d.documentName.length>500?'nume peste 500 de caractere'
+   :!ids.has(String(d.caNoticeId))?`caNoticeId ${String(d.caNoticeId).slice(0,20)}, așteptat ${[...ids].join('/')}`
+   :d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo?`CAN ${String(d.caNoticePublicationNumber).slice(0,20)}, așteptat ${canNo}`:null;
+  if(field)throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (${field}).`);
+ }
  return {items,total:r.total!,received:r.items.length};
 }
 /** The gate and the proxy reservation need a dedicated connection (session locks, explicit transactions).
@@ -211,7 +224,7 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
    async downloadAward(ackDocId:string,versions:string|string[],destination?:string){
     const ids=new Set(typeof versions==='string'?[versions]:versions);
     const record=JSON.parse((await request(`${AWARD_API}/get/${Number(ackDocId)}`,'POST')).toString('utf8')) as {ackDocId?:number;caNoticeId?:number;documentId?:number};
-    if(String(record?.ackDocId)!==ackDocId||!ids.has(String(record?.caNoticeId))||!Number.isSafeInteger(record.documentId)||record.documentId!<=0)throw Error('Identitatea documentului nu corespunde anunțului.');
+    if(String(record?.ackDocId)!==ackDocId||!ids.has(String(record?.caNoticeId))||!Number.isSafeInteger(record.documentId)||record.documentId!<=0)throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (fișa: ackDocId ${String(record?.ackDocId).slice(0,20)}, caNoticeId ${String(record?.caNoticeId).slice(0,20)}).`);
     return request(`${AWARD_API}/DownloadDocument/?documentId=${record.documentId}`,'POST',null,false,destination);
    },
    async download(url:string,destination?:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET',null,false,destination);},
