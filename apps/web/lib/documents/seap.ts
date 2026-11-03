@@ -59,7 +59,8 @@ export function parseDocumentation(data:unknown,noticeNo:string):DocumentationFi
 }
 /** received counts every item for paging; items keep those with a file of this award (by id and number). */
 /** versions: the award's caNoticeId, or every caNoticeId SEAP published under the same CAN number (a republished
- * or corrected award keeps its number; the list by number returns the documents attached to any version). */
+ * or corrected award keeps its number; the list by number returns the documents attached to any version).
+ * A document naming this CAN number is accepted even for a version missing from core.awards. */
 export function parseAwardList(data:unknown,versions:string|string[],canNo:string):{items:AwardDocument[];total:number;received:number}{
  const ids=new Set(typeof versions==='string'?[versions]:versions);
  const r=data as {items?:AwardDocument[];total?:number};
@@ -67,8 +68,9 @@ export function parseAwardList(data:unknown,versions:string|string[],canNo:strin
  const items=r.items.filter(d=>!!d?.documentName);
  for(const d of items){
   const field=!Number.isSafeInteger(d.ackDocID)||d.ackDocID<=0?`ackDocID ${String(d.ackDocID).slice(0,20)}`:d.documentName.length>500?'nume peste 500 de caractere'
-   :!ids.has(String(d.caNoticeId))?`caNoticeId ${String(d.caNoticeId).slice(0,20)}, așteptat ${[...ids].join('/')}`
-   :d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo?`CAN ${String(d.caNoticePublicationNumber).slice(0,20)}, așteptat ${canNo}`:null;
+   :d.caNoticePublicationNumber!=null&&d.caNoticePublicationNumber!==canNo?`CAN ${String(d.caNoticePublicationNumber).slice(0,20)}, așteptat ${canNo}`
+   // A version we did not collect: SEAP's own CAN number on the document is enough (3 November 2026).
+   :!ids.has(String(d.caNoticeId))&&d.caNoticePublicationNumber!==canNo?`caNoticeId ${String(d.caNoticeId).slice(0,20)} fără număr CAN, așteptat ${[...ids].join('/')}`:null;
   if(field)throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (${field}).`);
  }
  return {items,total:r.total!,received:r.items.length};
@@ -221,10 +223,11 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
     }throw Error('Lista SEAP este prea mare.');
    },
    /** The list gives no file id: the document's own record names it, then SEAP's DOWNLOAD (a POST) returns the file. */
-   async downloadAward(ackDocId:string,versions:string|string[],destination?:string){
+   async downloadAward(ackDocId:string,versions:string|string[],destination?:string,canNo?:string){
     const ids=new Set(typeof versions==='string'?[versions]:versions);
-    const record=JSON.parse((await request(`${AWARD_API}/get/${Number(ackDocId)}`,'POST')).toString('utf8')) as {ackDocId?:number;caNoticeId?:number;documentId?:number};
-    if(String(record?.ackDocId)!==ackDocId||!ids.has(String(record?.caNoticeId))||!Number.isSafeInteger(record.documentId)||record.documentId!<=0)throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (fișa: ackDocId ${String(record?.ackDocId).slice(0,20)}, caNoticeId ${String(record?.caNoticeId).slice(0,20)}).`);
+    const record=JSON.parse((await request(`${AWARD_API}/get/${Number(ackDocId)}`,'POST')).toString('utf8')) as {ackDocId?:number;caNoticeId?:number;documentId?:number;caNoticePublicationNumber?:string|null};
+    const sameAward=ids.has(String(record?.caNoticeId))||(!!canNo&&record?.caNoticePublicationNumber===canNo);
+    if(String(record?.ackDocId)!==ackDocId||!sameAward||!Number.isSafeInteger(record.documentId)||record.documentId!<=0)throw new DocumentIdentityError(`Identitatea documentului nu corespunde anunțului (fișa: ackDocId ${String(record?.ackDocId).slice(0,20)}, caNoticeId ${String(record?.caNoticeId).slice(0,20)}).`);
     return request(`${AWARD_API}/DownloadDocument/?documentId=${record.documentId}`,'POST',null,false,destination);
    },
    async download(url:string,destination?:string){const fresh=safeFileUrl(url);const verify=await request(fresh,'POST');if(JSON.parse(verify.toString('utf8'))!=='')throw Error('SEAP nu a confirmat descărcarea.');return request(fresh,'GET',null,false,destination);},
