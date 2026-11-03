@@ -11,7 +11,7 @@ const classification=(f:ContractFile)=>f.classification??classifyDocumentContent
 const friendlyName=(s:string)=>s.replace(/(?:\.p7[sm])+$/i,'').replace(/\.(pdf|docx?|xlsx?|zip|rar|7z)$/i,'').replace(/_/g,' ');
 type Props={files:ContractFile[];enabled:boolean;busy:string|null;onOpen:(f:ContractFile,page?:number)=>void;onEnqueue:(id:string)=>void};
 /** Where SEAP lists a file: the procedure's documentation section, or the notice's list of clarifications and decisions. */
-const SECTIONS:Record<string,string>={documentation:'Documentația procedurii',espd:'Documentația procedurii · DUAE',strategy:'Documentația procedurii · strategia de contractare',decision:'Documentația procedurii · decizii',ex_ante:'Documentația procedurii · evaluare ex-ante',list:'Clarificări, decizii și notificări'};
+const SECTIONS:Record<string,string>={documentation:'Documentația procedurii',espd:'Documentația procedurii · DUAE',strategy:'Documentația procedurii · strategia de contractare',decision:'Documentația procedurii · decizii',ex_ante:'Documentația procedurii · evaluare ex-ante',list:'Clarificări, decizii și notificări',award:'Atribuirea · documente constatatoare'};
 export default function DocumentLibrary({files,enabled,busy,onOpen,onEnqueue}:Props){
  const [category,setCategory]=useState<DocumentCategory|'all'>('all'),[query,setQuery]=useState(''),[onlyReady,setOnlyReady]=useState(false),[page,setPage]=useState(1);
  const entries=useMemo(()=>files.map(file=>({file,classification:classification(file)})).sort((a,b)=>{

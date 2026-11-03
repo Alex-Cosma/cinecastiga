@@ -12,7 +12,8 @@ import {runTool} from './process';
 import {classifyStoredDocument} from './classify';
 import {classifyDocumentName,CLASSIFICATION_VERSION,classificationPriority,classifyDocumentContents,hasSpecifications} from './classification';
 import {validateDocumentRequestLimit} from './request-budget';
-import {documentationRows,inventoryRows,listRows,storeInventory} from './inventory';
+import {awardRows,documentationRows,inventoryRows,listRows,storeInventory} from './inventory';
+import {AWARD_NOTICE_TYPE} from './shared';
 const collectionId=collectionWorkerId('documents');
 export const DOCUMENT_LOCK=[729114,1] as const;
 // The worker owns a reserved postgres.js connection, which has no begin() helper.
@@ -35,16 +36,25 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
   try{
    const type=Number(notice.notice_type);
    await progress('list');
-   if(job.kind==='list'){
+   // The award's own documents: one list; a file is downloaded through its record.
+   if(type===AWARD_NOTICE_TYPE&&job.kind==='list'){
+    const list=await seap.awardDocuments(notice.notice_id,notice.notice_no),rows=awardRows(list.items);
+    await atomic(q,async tx=>{await storeInventory(tx,notice.key,rows);await tx`update app.document_notices set checked_at=now(),total=${rows.length},inventory=2 where key=${notice.key}`;});
+    return;
+   }
+   let url:string|undefined;
+   if(type===AWARD_NOTICE_TYPE){
+    if(!doc!.source_id.startsWith('ack:'))throw Error('Documentul nu mai apare cu aceeași identitate în lista SEAP.');
+    await progress('download');await seap.downloadAward(doc!.source_id.slice(4),notice.notice_id,source);
+   }else if(job.kind==='list'){
     // A notice's files: its documentation section, then its document list. Published together, once both are valid.
     const docs=await seap.documentation(notice.notice_id,notice.notice_no,type);
     const list=await seap.list(notice.notice_id,notice.notice_no,type);
     const rows=inventoryRows(list.items,docs);
     await atomic(q,async tx=>{await storeInventory(tx,notice.key,rows);await tx`update app.document_notices set checked_at=now(),total=${rows.length},inventory=2 where key=${notice.key}`;});
     return;
-   }
+   }else{
    // A file's URL is transient: read it again from the one source that lists the file.
-   let url:string|undefined;
    if(doc!.section==='list'){
     const list=await seap.list(notice.notice_id,notice.notice_no,type);
     await atomic(q,tx=>storeInventory(tx,notice.key,listRows(list.items)));
@@ -56,6 +66,7 @@ export async function runDocumentJob(q:DbSql,job:Record<string,any>,signal:Abort
    }
    if(!url)throw Error('Documentul nu mai apare cu aceeași identitate în lista SEAP.');
    await progress('download');await seap.download(url,source);
+   }
    const kind=await fileKind(source,doc!.filename);
    if(kind==='p7s')await runTool('openssl',['cms','-cmsout','-inform','DER','-noout','-in',source],signal);
    if(kind==='unsupported')throw new DocumentFormatError('SEAP nu a returnat un format de document recunoscut.');

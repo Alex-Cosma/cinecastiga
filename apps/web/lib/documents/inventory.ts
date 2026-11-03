@@ -1,5 +1,5 @@
 import type {DbSql} from '@seap/db';
-import type {DocumentationFile,ListedDocument} from './seap';
+import type {AwardDocument,DocumentationFile,ListedDocument} from './seap';
 import {CLASSIFICATION_VERSION,classificationPriority,classifyDocument} from './classification';
 
 /** One stored file of a notice. A listed file keeps SEAP's document id; a documentation file has none,
@@ -17,6 +17,10 @@ export function documentationRows(docs:DocumentationFile[]):InventoryRow[]{
   const base=d.code?`df:${d.code}`:`df:${d.section}:${d.documentName}`,n=(seen.get(base)??0)+1;seen.set(base,n);
   return {sourceId:n>1?`${base}#${n}`:base,code:d.code??'',filename:d.documentName,publishedAt:null,section:d.section,sourceType:null,sourceTypeId:null};
  });
+}
+/** The award's documents: SEAP's ack id, its own number (AD…) as code, its category as SEAP's type. */
+export function awardRows(items:AwardDocument[]):InventoryRow[]{
+ return items.map(d=>({sourceId:`ack:${d.ackDocID}`,code:d.noticeNo??'',filename:d.documentName,publishedAt:d.publicationDate??null,section:'award',sourceType:d.sysAckDocCategoryName??null,sourceTypeId:null}));
 }
 /** The notice's files from both sources. A documentation file that the list also carries (same code) is kept once, as listed. */
 export function inventoryRows(list:ListedDocument[],docs:DocumentationFile[]):InventoryRow[]{

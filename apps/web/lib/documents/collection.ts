@@ -23,6 +23,28 @@ export async function seedDocumentInventory(q:DbSql){
  await q`update app.document_collection_control set scanned_at=now(),error=null where id=1`;
  return rows.length;
 }
+/** No source traffic: the awards whose collected detail counts attached documents (ackDocsCount > 0), found by
+ * walking the details in the order they were collected (0093). A detail collected again with more documents than
+ * the award's list holds sends that list back to be read. Returns how many details it examined. */
+export async function seedAwardInventory(q:DbSql,batch=2000){
+ const [c]=await q`select coalesce(award_scanned_at::text,'-infinity') at,coalesce(award_scanned_id,0)::text id from app.document_collection_control where id=1`;
+ const rows=await q`select r.id::text id,r.fetched_at::text at,split_part(r.external_id,':',2) ca,(r.payload#>>'{data,ackDocsCount}')::int n
+  from raw.raw_documents r where r.source='elicitatie' and r.fetched_at>=${c!.at}::timestamptz and (r.fetched_at>${c!.at}::timestamptz or r.id>${c!.id}::bigint)
+   and r.endpoint_version='award-detail-root:v2' and r.external_id ~ '^award:[0-9]+$'
+  order by r.fetched_at,r.id limit ${batch}`;
+ if(!rows.length)return 0;
+ const found=rows.filter(r=>Number(r.n)>0),cas=found.map(r=>r.ca),counts=found.map(r=>Number(r.n));
+ if(found.length){
+  await q`update app.document_notices n set checked_at=null from unnest(${cas}::text[],${counts}::int[]) d(ca,n) where n.key='ack:'||d.ca and n.checked_at is not null and coalesce(n.total,0)<d.n`;
+  await q`insert into app.document_notices(key,notice_id,notice_type,notice_no,title,url,automatic,source_date)
+   select 'ack:'||a.ca_notice_id,a.ca_notice_id::text,3,a.notice_no,coalesce(a.title,a.notice_no),'https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/'||a.ca_notice_id,true,a.state_date
+   from unnest(${cas}::bigint[]) d(ca) join core.awards a on a.ca_notice_id=d.ca where a.notice_no ~ '^CAN[0-9]+$'
+   on conflict(key) do update set automatic=true,source_date=excluded.source_date`;
+ }
+ const last=rows.at(-1)!;
+ await q`update app.document_collection_control set award_scanned_at=${last.at}::timestamptz,award_scanned_id=${last.id}::bigint where id=1`;
+ return rows.length;
+}
 /** downloads: whether identified specifications are downloaded automatically (an operator setting, off by default). */
 export async function fillDocumentQueue(q:DbSql,downloads=true){
  // Park automatic downloads (all of them while automatic downloads are off, otherwise those of files that are
@@ -83,7 +105,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
  if(!enabled?.enabled)return false;
  const owner=await sql.reserve(),q=owner as unknown as DbSql,stop=new AbortController(),abort=()=>stop.abort();
  shutdown.addEventListener('abort',abort,{once:true});if(shutdown.aborted)abort();
- const lanes=new Map<number,Promise<void>>();let locked=false,nextInventory=0,nextQueue=0,nextClassification=0;
+ const lanes=new Map<number,Promise<void>>();let locked=false,nextInventory=0,nextAwards=0,nextQueue=0,nextClassification=0;
  const worker=collectionWorkerId('document-collection');
  try{
   const [lock]=await q`select pg_try_advisory_lock(${DOCUMENT_LOCK[0]},${DOCUMENT_LOCK[1]}) acquired,pg_backend_pid() pid`;
@@ -103,6 +125,7 @@ export async function runAutomaticCollector(sql:DbSql,shutdown:AbortSignal,work=
    const automatic=state.enabled&&!state.paused,source=!state.source_paused&&!state.blocked_reason&&!state.paused_streams.includes('documents')&&!(await collectionQuietWindow(q)).active;
    // Once every awarded procedure is seeded, look again every ten minutes (new awards arrive nightly).
    if(automatic&&Date.now()>=nextInventory){const added=await seedDocumentInventory(q);nextInventory=Date.now()+(added?10000:600000);}
+   if(automatic&&Date.now()>=nextAwards){const examined=await seedAwardInventory(q);nextAwards=Date.now()+(examined?10000:600000);}
    if(automatic&&Date.now()>=nextQueue){await fillDocumentQueue(q,!!state.automatic_downloads);nextQueue=Date.now()+3000;}
    const [manual]=await q`select exists(select 1 from app.document_jobs where not automatic and batch_id is null and status='queued' and (retry_at is null or retry_at<=now())) waiting`;
    for(const slot of [...[0,11,12,13].slice(0,Number(state.processing_concurrency)),...Array.from({length:Number(state.download_concurrency)},(_,i)=>i+1)]){

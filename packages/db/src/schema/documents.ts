@@ -79,4 +79,6 @@ export const documentCollectionControl=appSchema.table('document_collection_cont
  startedAt:timestamp('started_at',{withTimezone:true}),heartbeatAt:timestamp('heartbeat_at',{withTimezone:true}),scannedAt:timestamp('scanned_at',{withTimezone:true}),error:text('error'),
  // Automatic download of identified specifications (0092). Off: the collector only lists; files come on request.
  automaticDownloads:boolean('automatic_downloads').notNull().default(false),
+ // Walk of the collected award details for the award's own documents (0093): the last detail examined.
+ awardScannedAt:timestamp('award_scanned_at',{withTimezone:true}),awardScannedId:bigint('award_scanned_id',{mode:'number'}),
 },t=>[check('document_collection_singleton',sql`${t.id}=1`),check('document_collection_concurrency',sql`${t.downloadConcurrency} between 1 and 10 and ${t.processingConcurrency} between 1 and 4`)]);

@@ -8,8 +8,9 @@ export async function browserDocumentRequest({url,method,body,maxFileBytes}:{url
      }
 
 // Backpressure: only one small chunk crosses the browser/Node boundary at a time.
-export async function browserDocumentStream({url,sink}:{url:string;sink:string}){
- const response=await fetch(url,{method:'GET',credentials:'include',redirect:'manual',signal:AbortSignal.timeout(590000),headers:{Accept:'application/octet-stream, */*',Authorization:'Bearer null',HttpSessionID:'null',RefreshToken:'null',Culture:'ro-RO'}});
+// The award's documents download by POST with no body (SEAP's DOWNLOAD helper); every other file by GET.
+export async function browserDocumentStream({url,sink,method='GET'}:{url:string;sink:string;method?:string}){
+ const response=await fetch(url,{method,credentials:'include',redirect:'manual',signal:AbortSignal.timeout(590000),headers:{Accept:'application/octet-stream, */*',Authorization:'Bearer null',HttpSessionID:'null',RefreshToken:'null',Culture:'ro-RO'}});
  let size=0;const reader=response.body?.getReader();
  try{if(reader)for(;;){const r=await reader.read();if(r.done)break;
   for(let i=0;i<r.value.length;i+=65536){const chunk=r.value.subarray(i,i+65536);size+=chunk.length;

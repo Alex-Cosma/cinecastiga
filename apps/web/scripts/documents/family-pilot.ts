@@ -8,6 +8,8 @@
  *   (/views/pub/documents/ack/service and list), admitted by the gate policy since 685b714.
  *   Result (batch -d): api-pub/PUBLICAckDoc getAll (POST, a filter) and get/{id}. Plan c2 reads the list
  *   module's text, which builds that filter.
+ * Plan ack (--can=CAN…): the service module's text (download route) and PUBLICAckDoc/getAll for one award.
+ * Plan ack-download (--ack=<ackDocID>): one constatator document through PUBLICAckDoc/DownloadDocument.
  * Plan probe (--notice=<type>:<id>): one notice's documentation and list, to read the codes SEAP returns.
  * Inspection is the default; --run admits source traffic through the shared gate, a dated batch (hard
  * request ceiling) and the proxy pool. It writes only the batch, its jobs and requests, the notices it
@@ -30,7 +32,7 @@ const batchId=process.argv.find(s=>s.startsWith('--batch='))?.slice(8);
 if(!batchId||!/^document-family-pilot-20261103-[a-z0-9-]+$/.test(batchId))throw Error('Use a dated explicit batch ID.');
 const plan=process.argv.find(s=>s.startsWith('--plan='))?.slice(7)??'b';
 const worker=collectionWorkerId('document-family-pilot');
-type Notice={key:string;type:number;noticeId:string;noticeNo:string;title:string;note:string;url:string;steps:('list'|'df'|'module'|'download'|'ack-modules'|'ack-list-text')[]};
+type Notice={key:string;type:number;noticeId:string;noticeNo:string;title:string;note:string;url:string;steps:('list'|'df'|'module'|'download'|'ack-modules'|'ack-list-text'|'ack-list'|'ack-download')[]};
 const ACK_MODULES=[origin+'/views/pub/documents/ack/service.min.js',origin+'/views/pub/documents/ack/list/list.min.js'];
 type Request=(url:string,method:string,endpoint:string,body?:unknown,navigate?:boolean)=>Promise<{bytes:Buffer;status:number;oversized:boolean}>;
 
@@ -81,6 +83,30 @@ async function steps(n:Notice,request:Request){
   }
   result.ack=modules;
  }
+ if(n.steps.includes('ack-download')){
+  const id=process.argv.find(s=>s.startsWith('--ack='))?.slice(6)??'';
+  if(!/^[1-9]\d*$/.test(id))throw Error('Use --ack=<ackDocID>.');
+  // The list gives documentId 0 and DownloadDocument does not know the ackDocID (batch -j): read the
+  // document's own record first (get/{ackDocID}), then download its documentId.
+  const item=await request(`${origin}/api-pub/PUBLICAckDoc/get/${id}`,'POST','ack-item');
+  let record:Record<string,unknown>|null=null;try{record=JSON.parse(item.bytes.toString('utf8'));}catch{}
+  result.ackItem={status:item.status,shape:mask(record)};
+  const documentId=Number((record as {documentId?:unknown}|null)?.documentId??0);
+  if(!Number.isSafeInteger(documentId)||documentId<=0)return result;
+  // The app's DOWNLOAD helper: POST with the id as a query parameter and no body (GET answered 405, batch -i).
+  const r=await request(`${origin}/api-pub/PUBLICAckDoc/DownloadDocument/?documentId=${documentId}`,'POST','ack-file');
+  result.ackDownload={status:r.status,bytes:r.bytes.length,oversized:r.oversized,head:r.bytes.subarray(0,8).toString('latin1').replace(/[^\x20-\x7e]/g,'.'),sha256:createHash('sha256').update(r.bytes).digest('hex'),
+   text:r.bytes.length<600?r.bytes.toString('utf8').slice(0,300):undefined};
+ }
+ if(n.steps.includes('ack-list')){
+  const service=await request(ACK_MODULES[0]!,'GET','module',null,true);const text=service.bytes.toString('utf8');
+  result.ackService={status:service.status,download:[...new Set([...text.matchAll(/.{0,200}download.{0,260}/gi)].map(x=>x[0]))].slice(0,10)};
+  const can=process.argv.find(s=>s.startsWith('--can='))?.slice(6)??'';
+  if(!/^CAN\d+$/.test(can))throw Error('Use --can=CAN<number>.');
+  const r=await request(`${origin}/api-pub/PUBLICAckDoc/getAll`,'POST','ack-list',{pageIndex:0,pageSize:5,cANoticePublicationNumber:can});
+  let data:unknown=null;try{data=JSON.parse(r.bytes.toString('utf8'));}catch{}
+  result.ackList={status:r.status,bytes:r.bytes.length,shape:mask(data)};
+ }
  if(n.steps.includes('ack-list-text')){
   const r=await request(ACK_MODULES[1]!,'GET','module',null,true);
   result.ackListText={status:r.status,bytes:r.bytes.length,text:r.bytes.toString('utf8').slice(0,6000)};
@@ -121,7 +147,9 @@ async function session(n:Notice,jobId:string){
      else{const r=await page.evaluate(browserDocumentRequest,{url,method,body,maxFileBytes:MAX_FILE_BYTES});status=r.status;retryAfter=r.retryAfter;bytes=Buffer.from(r.base64,'base64');oversized=r.oversized;}
      await db`update app.document_requests set status=${status},bytes=${bytes.length},finished_at=now() where id=${row!.id}`;
      let challenge=false;
-     if(status===200&&method==='POST'&&!oversized){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
+     // A file answered to a POST is not JSON: only an HTML page is a challenge there.
+     if(status===200&&method==='POST'&&!oversized&&endpoint!=='ack-file'){try{JSON.parse(bytes.toString('utf8'));}catch{challenge=true;}}
+     if(status===200&&endpoint==='ack-file')challenge=/^\s*</.test(bytes.subarray(0,64).toString('latin1'));
      if(status===200&&endpoint==='notice-page')challenge=/cf-chl-|<title>[^<]*(?:access denied|just a moment|attention required)/i.test(bytes.toString('utf8'));
      return {value:{bytes,status,oversized},status,bytes:bytes.length,retryAfter,challenge};
     }catch(error){throw proxyTransportError(error,observed);}
@@ -172,12 +200,12 @@ async function ackCandidates():Promise<Notice[]>{
 }
 
 try{
- if(plan!=='b'&&plan!=='c'&&plan!=='c2'&&plan!=='probe')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
+ if(plan!=='b'&&plan!=='c'&&plan!=='c2'&&plan!=='probe'&&plan!=='ack'&&plan!=='ack-download')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
  const [control]=await q`select revision,paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  const [pool]=await q`select enabled from app.collection_proxy_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||(control.paused_streams as string[]).includes('documents')||!pool?.enabled)throw Error('Inspect source controls before pilot.');
  if((await q`select id from app.document_batches where id=${batchId}`).length)throw Error('Batch already exists; inspect its persisted results. No automatic replay.');
- const notices=plan==='probe'?await probeCandidate():plan==='c'?await ackCandidates():plan==='c2'?(await ackCandidates()).map(n=>({...n,steps:['ack-list-text' as const]})):await candidates();
+ const notices=plan==='ack'||plan==='ack-download'?(await ackCandidates()).map(n=>({...n,steps:[plan==='ack'?'ack-list' as const:'ack-download' as const]})):plan==='probe'?await probeCandidate():plan==='c'?await ackCandidates():plan==='c2'?(await ackCandidates()).map(n=>({...n,steps:['ack-list-text' as const]})):await candidates();
  console.log(JSON.stringify({event:'family-pilot-preflight',batchId,plan,maxRequests:MAX_REQUESTS,notices:notices.map(n=>({notice:n.noticeNo,type:n.type,note:n.note,url:n.url,steps:n.steps})),execute:process.argv.includes('--run')}));
  if(process.argv.includes('--run')){
   await q.begin(async tx=>{

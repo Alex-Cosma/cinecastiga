@@ -1,7 +1,7 @@
 import {createDb,type DbSql} from '@seap/db';
 import {isWorkspaceId,withInvestigationAccess} from '../investigation-access';
 import {WorkspaceError} from '../investigation-workspace';
-import {validQuote,noticeViewUrl,DOCUMENT_NOTICE_TYPES,type AwardAttachments,type ContractFiles,type ContractFile,type DocumentNotice,type FileJob} from './shared';
+import {validQuote,noticeViewUrl,awardViewUrl,awardDocumentsKey,AWARD_NOTICE_TYPE,DOCUMENT_NOTICE_TYPES,type AwardAttachments,type ContractFiles,type ContractFile,type DocumentNotice,type FileJob} from './shared';
 import {effectiveClassification} from './classify';
 const iso=(v:unknown)=>v?new Date(v as string).toISOString():null;
 const g=globalThis as unknown as {documentSql?:DbSql};
@@ -27,40 +27,60 @@ export async function registerNotice(n:DocumentNotice,q:DbSql=documentDb()){
 }
 /** Negotiation without prior publication: the law gives it no participation notice. */
 export const NO_PARTICIPATION_NOTICE='Negociere fara publicare prealabila';
-/** The award's own attachments and whether its procedure has a participation notice at all, from what
- * was already collected: the award's detail (ackDocsCount) and its procedure type. No source traffic. */
-async function awardContext(nid:string,q:DbSql):Promise<{award:AwardAttachments|null;withoutNotice:boolean}>{
- if(!/^[1-9]\d{0,17}$/.test(nid))return {award:null,withoutNotice:false};
- const [r]=await q`select a.ca_notice_id::text ca_notice_id,a.procedure_type,d.count,d.fetched_at
+/** The award as a source of its own documents, their count in the award's collected detail (ackDocsCount) and
+ * whether the procedure has a participation notice at all (its type). No source traffic. */
+async function awardContext(nid:string,q:DbSql):Promise<{source:DocumentNotice|null;count:number|null;detailAt:string|null;withoutNotice:boolean}>{
+ const none={source:null,count:null,detailAt:null,withoutNotice:false};
+ if(!/^[1-9]\d{0,17}$/.test(nid))return none;
+ const [r]=await q`select a.ca_notice_id::text ca_notice_id,a.notice_no,coalesce(a.title,a.notice_no) title,a.procedure_type,d.count,d.fetched_at
   from core.contracts c join core.awards a on a.ca_notice_id=c.ca_notice_id
   left join lateral (select (r.payload#>>'{data,ackDocsCount}')::int count,r.fetched_at from raw.raw_documents r
    where r.source='elicitatie' and r.external_id='award:'||a.ca_notice_id and r.endpoint_version='award-detail-root:v2' order by r.fetched_at desc,r.id desc limit 1) d on true
   where c.ca_notice_contract_id=${nid} limit 1`;
- if(!r)return {award:null,withoutNotice:false};
- return {award:Number.isInteger(r.count)&&r.count>=0?{caNoticeId:r.ca_notice_id,count:r.count,checkedAt:iso(r.fetched_at)!}:null,withoutNotice:r.procedure_type===NO_PARTICIPATION_NOTICE};
+ if(!r)return none;
+ const source=/^CAN\d+$/.test(r.notice_no??'')?{key:awardDocumentsKey(r.ca_notice_id),noticeId:r.ca_notice_id,noticeType:AWARD_NOTICE_TYPE,noticeNo:r.notice_no,title:r.title,url:awardViewUrl(r.ca_notice_id)}:null;
+ return {source,count:Number.isInteger(r.count)&&r.count>=0?r.count:null,detailAt:iso(r.fetched_at),withoutNotice:r.procedure_type===NO_PARTICIPATION_NOTICE};
+}
+/** The document sources of a contract: its participation notice and its award, as far as each is known. */
+export async function contractFileKeys(nid:string,q:DbSql=documentDb()){
+ const [notice,context]=await Promise.all([contractNotice(nid,q),awardContext(nid,q)]);
+ return [notice?.key,context.source?.key].filter((k):k is string=>!!k);
 }
 function jobRow(r:Record<string,any>|undefined):FileJob|null{return r?{id:r.id,status:r.status,stage:r.stage,pagesDone:r.pages_done,pagesTotal:r.pages_total,error:r.error,position:Number(r.position??0),automatic:!!r.automatic}:null;}
+/** One source's files, its list job and its requests. A visitor's request waits behind every earlier request made by anyone. */
+async function sourceState(key:string,q:DbSql){
+ const [meta]=await q`select * from app.document_notices where key=${key}`;
+ if(!meta)return null;
+ const files=await q`select * from app.procurement_documents where notice_key=${key} order by published_at desc nulls last,code`;
+ const jobs=await q`select j.*,case when j.status='queued' and not j.automatic then (select count(*) from app.document_jobs x where x.status='queued' and not x.automatic and x.batch_id is null and (x.created_at,x.id)<(j.created_at,j.id))+1 end position
+  from app.document_jobs j where j.notice_key=${key} order by created_at desc,id desc`;
+ const [requests]=await q`select count(*) n from app.document_requests r join app.document_jobs j on j.id=r.job_id where j.notice_key=${key}`;
+ return {meta,job:jobRow(jobs.find(j=>j.kind==='list')),requests:Number(requests?.n??0),
+  files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,section:r.section??'list',sourceType:r.source_type??null,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents,section:r.section,sourceType:r.source_type}),job:jobRow(jobs.find(j=>j.document_id===r.id))})) as ContractFile[]};
+}
 export async function getContractFiles(nid:string,q:DbSql=documentDb()):Promise<ContractFiles>{
  const [notice,context]=await Promise.all([contractNotice(nid,q),awardContext(nid,q)]);
- const participation=notice?'linked':context.withoutNotice?'none':'unlinked';
- const empty:ContractFiles={notice,participation,award:context.award,checkedAt:null,inventory:0,total:null,files:[],job:null,requestCount:0,enabled:documentsEnabled()};
- if(!notice)return empty;
- const [meta]=await q`select * from app.document_notices where key=${notice.key}`;
- if(!meta)return empty;
- const files=await q`select * from app.procurement_documents where notice_key=${notice.key} order by published_at desc nulls last,code`;
- // A visitor's request waits behind every earlier request made by anyone.
- const jobs=await q`select j.*,case when j.status='queued' and not j.automatic then (select count(*) from app.document_jobs x where x.status='queued' and not x.automatic and x.batch_id is null and (x.created_at,x.id)<(j.created_at,j.id))+1 end position
-  from app.document_jobs j where j.notice_key=${notice.key} order by created_at desc,id desc`;
- const [requests]=await q`select count(*) n from app.document_requests r join app.document_jobs j on j.id=r.job_id where j.notice_key=${notice.key}`;
- return {...empty,checkedAt:iso(meta.checked_at),inventory:Number(meta.inventory??1),total:meta.total,requestCount:Number(requests?.n??0),job:jobRow(jobs.find(j=>j.kind==='list')),
- files:files.map(r=>({id:r.id,code:r.code,filename:r.filename,section:r.section??'list',sourceType:r.source_type??null,publishedAt:r.published_at,originalHash:r.original_hash,pdfHash:r.pdf_hash,downloadedAt:iso(r.downloaded_at),processedAt:iso(r.processed_at),pageCount:r.page_count,signature:r.signature,contents:r.contents,classification:effectiveClassification({filename:r.filename,classification:r.classification,contents:r.contents,section:r.section,sourceType:r.source_type}),job:jobRow(jobs.find(j=>j.document_id===r.id))}))};
+ const [own,attached]=await Promise.all([notice?sourceState(notice.key,q):null,context.source?sourceState(context.source.key,q):null]);
+ const listed=!!attached?.meta.checked_at;
+ // Once listed, the award's documents are counted from the list; before, from its collected detail.
+ const award:AwardAttachments|null=context.source&&(listed||context.count!==null)?{caNoticeId:context.source.noticeId,count:listed?Number(attached!.meta.total??0):context.count!,
+  checkedAt:(listed?iso(attached!.meta.checked_at):context.detailAt)??iso(new Date())!,listed,job:attached?.job??null}:null;
+ return {notice,participation:notice?'linked':context.withoutNotice?'none':'unlinked',award,
+  checkedAt:own?iso(own.meta.checked_at):null,inventory:own?Number(own.meta.inventory??1):0,total:own?.meta.total??null,
+  files:[...own?.files??[],...attached?.files??[]],job:own?.job??null,requestCount:(own?.requests??0)+(attached?.requests??0),enabled:documentsEnabled()};
 }
 /** Hourly requests per member and per visitor (a key of the visitor's address, hashed by the hour), and
  * the length of the shared queue of requests. */
 export const VISITOR_LIMIT=10,MEMBER_LIMIT=20,QUEUE_LIMIT=2000;
-export async function enqueueDocument(nid:string,uid:string,documentId:string|null,q:DbSql=documentDb()){
+/** source: which list a request without a file asks for, the participation notice's or the award's. */
+export async function enqueueDocument(nid:string,uid:string,documentId:string|null,q:DbSql=documentDb(),source:'notice'|'award'='notice'){
  if(!documentsEnabled())throw new WorkspaceError('Preluarea documentelor nu este activată pe acest server.',503);
- const notice=await contractNotice(nid,q);if(!notice)throw new WorkspaceError('Nu avem o legătură verificată cu un anunț compatibil.',404);
+ if(documentId&&!isWorkspaceId(documentId))throw new WorkspaceError('Fișier invalid.');
+ const [own,context]=await Promise.all([contractNotice(nid,q),awardContext(nid,q)]);
+ const [file]=documentId?await q`select notice_key from app.procurement_documents where id=${documentId}`:[];
+ const notice=documentId?[own,context.source].find(n=>!!n&&n.key===file?.notice_key):source==='award'?context.source:own;
+ if(documentId&&!notice)throw new WorkspaceError('Fișierul nu aparține acestei proceduri.',404);
+ if(!notice)throw new WorkspaceError('Nu avem o legătură verificată cu un anunț compatibil.',404);
  await registerNotice(notice,q);
  return q.begin(async tx=>{
   const s=tx as unknown as DbSql;
@@ -103,9 +123,9 @@ export async function saveDocumentQuote(uid:string,id:string,input:Record<string
  const {investigationId,contractId,page,quote,originalHash}=input;
  if(!isWorkspaceId(id)||!isWorkspaceId(investigationId)||typeof contractId!=='string'||!Number.isInteger(page)||Number(page)<1||typeof originalHash!=='string'||(input.note!=null&&typeof input.note!=='string'))throw new WorkspaceError('Pasaj sau destinație invalidă.');
  const saved=await withInvestigationAccess(uid,investigationId,'edit',async s=>{
-  const n=await contractNotice(contractId,s);
+  const keys=await contractFileKeys(contractId,s);
   const [r]=await s`select d.*,p.text,p.method,n.url,n.notice_no from app.procurement_documents d join app.document_pages p on p.document_id=d.id join app.document_notices n on n.key=d.notice_key where d.id=${id} and p.page=${Number(page)} and d.processed_at is not null`;
-  if(!r||n?.key!==r.notice_key||originalHash!==r.original_hash||!validQuote(r.text,quote))throw new WorkspaceError('Pasajul nu corespunde paginii și versiunii păstrate. Redeschide documentul.',409);
+  if(!r||!keys.includes(r.notice_key)||originalHash!==r.original_hash||!validQuote(r.text,quote))throw new WorkspaceError('Pasajul nu corespunde paginii și versiunii păstrate. Redeschide documentul.',409);
   const snapshot={verification:'document-passage',title:`${r.filename} · pagina ${page}`,documentId:id,contractId,page,quote,filename:r.filename,originalHash:r.original_hash,pdfHash:r.pdf_hash,method:r.method,processor:r.processor,contentSource:Array.isArray(r.contents)?r.contents.find((p:{firstPage?:number;pages?:number})=>p.firstPage&&Number(page)>=p.firstPage&&Number(page)<p.firstPage+(p.pages??0))??null:null,sourceUrl:r.url,noticeNo:r.notice_no,downloadedAt:r.downloaded_at,processedAt:r.processed_at};
   const [clip]=await s`insert into app.clips(investigation_id,kind,ref_id,snapshot,note,created_by) values(${investigationId},'document_quote',${id},${JSON.stringify(snapshot)}::jsonb,${typeof input.note==='string'?input.note.trim().slice(0,4000):null},${uid}) returning id`;
   await s`update app.investigations set updated_at=now() where id=${investigationId}`;

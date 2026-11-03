@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
-import {parseDocumentation,parseList} from './seap';
-import {documentationRows,inventoryRows} from './inventory';
+import {parseAwardList,parseDocumentation,parseList} from './seap';
+import {awardRows,documentationRows,inventoryRows} from './inventory';
 import {classifyDocument} from './classification';
 import {documentVisitorKey} from './visitor';
 import {noticeViewUrl,DOCUMENT_NOTICE_TYPES} from './shared';
@@ -34,6 +34,22 @@ describe('documents of every participation family',()=>{
   const rows=inventoryRows(parseList({items:[listed],total:1},'CN1018048').items,docs);
   expect(rows.map(r=>[r.sourceId,r.section])).toEqual([['105584584','list'],['df:CN1018048/00003','documentation'],['df:CN1018048/00007','documentation'],['df:documentation:Anexa.pdf','documentation'],['df:documentation:Anexa.pdf#2','documentation']]);
   expect(rows[0]).toMatchObject({publishedAt:'2022-01-21T13:50:00+02:00',sourceType:'Raspuns consolidat la solicitarile de clarificare',sourceTypeId:31});
+ });
+ it("lists an award's own documents by its id and number, as constatator documents",()=>{
+  // PUBLICAckDoc/getAll for CAN1176341 (batch document-family-pilot-20261103-h).
+  const item={ackDocID:100319806,documentName:'Doc constatator ctr 147 din 20.11.2026.pdf',noticeNo:'AD1237666',publicationDate:'2026-10-23T10:05:53+03:00',caNoticeId:100663285,caNoticePublicationNumber:'CAN1176341',sysAckDocCategoryName:'Derulare Contract'};
+  const page=parseAwardList({items:[item,{...item,ackDocID:2,documentName:null}],total:2},'100663285','CAN1176341');
+  expect(page).toMatchObject({total:2,received:2});
+  expect(awardRows(page.items)).toEqual([{sourceId:'ack:100319806',code:'AD1237666',filename:'Doc constatator ctr 147 din 20.11.2026.pdf',publishedAt:'2026-10-23T10:05:53+03:00',section:'award',sourceType:'Derulare Contract',sourceTypeId:null}]);
+  expect(()=>parseAwardList({items:[{...item,caNoticeId:1}],total:1},'100663285','CAN1176341')).toThrow('Identitatea');
+  expect(()=>parseAwardList({items:[{...item,caNoticePublicationNumber:'CAN1'}],total:1},'100663285','CAN1176341')).toThrow('Identitatea');
+  expect(classifyDocument('Caiet de sarcini.pdf',undefined,{section:'award',sourceType:'Derulare Contract'})).toMatchObject({categories:['acknowledgements'],method:'source'});
+ });
+ it('gives complaints and CNSC decisions their own category, by name or SEAP type',()=>{
+  expect(classifyDocument('Decizie CNSC 2153.pdf').categories).toEqual(['complaints']);
+  expect(classifyDocument('Contestatie raspuns consolidat.pdf').categories).toEqual(['complaints']);
+  expect(classifyDocument('scan 4.pdf',undefined,{sourceType:'Decizie CNSC'}).categories).toEqual(['complaints']);
+  expect(classifyDocument('Raspuns consolidat.pdf').categories).toEqual(['clarifications']);
  });
  it('classifies by SEAP type or part only when the name says nothing',()=>{
   expect(classifyDocument('FisaDate_DF1073758.pdf').categories).toEqual(['participation']);
