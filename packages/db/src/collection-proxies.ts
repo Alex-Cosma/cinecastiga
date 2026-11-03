@@ -46,14 +46,16 @@ export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allo
 }
 
 /** Worker owns global document lock for the full job. Persist reservation until browser closes. */
-export async function reserveDocumentProxy(q:DbSql,jobId:string):Promise<SeapProxy|null>{
+/** preferred: the proxy of a session the caller keeps (a lane's reused SEAP session), taken when it is free. */
+export async function reserveDocumentProxy(q:DbSql,jobId:string,preferred?:string):Promise<SeapProxy|null>{
  await q`begin`;
  try{
   await q`select id from app.collection_control where id=1 for update`;
   // Only terminal jobs can leave reservations behind; never steal from a running job.
   await q`update app.collection_proxies p set reserved_job=null where reserved_job is not null
    and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running')`;
-  const admission=await proxyAdmission(q,undefined,jobId,true);
+  const kept=preferred?await proxyAdmission(q,preferred,jobId,true).catch(()=>null):null;
+  const admission=kept?.proxy?kept:await proxyAdmission(q,undefined,jobId,true);
   if(admission&&!admission.proxy)throw Error('Toate proxy-urile sunt rezervate. Fără conexiune directă.');
   if(admission?.proxy)await q`update app.collection_proxies set reserved_job=${jobId} where id=${admission.proxy.id}`;
   await q`commit`;return admission?.proxy??null;
