@@ -16,11 +16,14 @@ export type DocumentationSection='documentation'|'espd'|'strategy'|'decision'|'e
 const DOCUMENTATION_PARTS:[string,DocumentationSection][]=[['dfNoticeDocs','documentation'],['duaeDocs','espd'],['contractingStrategyDocs','strategy'],['decisionDocs','decision'],['exAnteDocs','ex_ante']];
 const viewPath=new RegExp(`^https://www\\.e-licitatie\\.ro/pub/notices/(?:${[...new Set(Object.values(NOTICE_VIEWS))].join('|')})/v2/view/[1-9]\\d*$`);
 const documentationUrl=(noticeId:string,type:number)=>`${origin}/api-pub/NoticeCommon/GetDfNoticeSectionFiles/?initNoticeId=${Number(noticeId)}&sysNoticeTypeId=${type}`;
-export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];total:number}{
+/** received: the page's items, files or not (paging counts them); items: those that carry a file. A notification
+ * without an attachment (no name, code or URL; seen on CN1057084, 3 November 2026) has nothing to keep. */
+export function parseList(data:unknown,noticeNo:string):{items:ListedDocument[];total:number;received:number}{
  const r=data as {items?:ListedDocument[];total?:number};
  if(!Array.isArray(r?.items)||!Number.isSafeInteger(r.total)||r.total!<0||r.total!>200)throw Error('Lista SEAP nu are un format acceptat sau depășește 200 de fișiere.');
- for(const d of r.items){if(!Number.isSafeInteger(d.noticeDocumentId)||d.noticeDocumentId<=0||typeof d.documentName!=='string'||d.documentName.length>500||typeof d.noticeDocumentCode!=='string'||!d.noticeDocumentCode.startsWith(noticeNo+'/'))throw Error('Identitatea documentului nu corespunde anunțului.');safeFileUrl(d.noticeDocumentUrl);}
- return {items:r.items,total:r.total!};
+ const items=r.items.filter(d=>d?.documentName!=null||d?.noticeDocumentUrl!=null);
+ for(const d of items){if(!Number.isSafeInteger(d.noticeDocumentId)||d.noticeDocumentId<=0||typeof d.documentName!=='string'||d.documentName.length>500||typeof d.noticeDocumentCode!=='string'||!d.noticeDocumentCode.startsWith(noticeNo+'/'))throw Error('Identitatea documentului nu corespunde anunțului.');safeFileUrl(d.noticeDocumentUrl);}
+ return {items,total:r.total!,received:r.items.length};
 }
 export function parseDocumentation(data:unknown,noticeNo:string):DocumentationFile[]{
  const r=data as Record<string,unknown>;
@@ -104,13 +107,13 @@ export async function openSeap(q:DbSql,jobId:string,referer:string,signal:AbortS
   await page.setContent('<!doctype html><title>Document collector</title>');
   return {
    async list(noticeId:string,noticeNo:string,noticeType:number){
-    const items:ListedDocument[]=[];let total=0;
+    const items:ListedDocument[]=[];let total=0,received=0;
     for(let pageIndex=0;pageIndex<40;pageIndex++){
      const bytes=await request(origin+'/api-pub/NoticeDocument/GetAll/','POST',{sortProperty:'transmissionDate',pageSize:5,pageIndex,initNoticeId:Number(noticeId),sysNoticeTypeId:noticeType,procedureId:null,sysNoticeDocumentState:null,sysNoticeDocumentType:null,sysValidationDocType:null,noticeDocumentPostDateFrom:null,noticeDocumentPostDateTo:null,sortProperties:null,sadId:null});
-     const parsed=parseList(JSON.parse(bytes.toString('utf8')),noticeNo);if(pageIndex&&total!==parsed.total)throw Error('Lista s-a modificat în timpul preluării. Reîncearcă.');total=parsed.total;items.push(...parsed.items);
+     const parsed=parseList(JSON.parse(bytes.toString('utf8')),noticeNo);if(pageIndex&&total!==parsed.total)throw Error('Lista s-a modificat în timpul preluării. Reîncearcă.');total=parsed.total;items.push(...parsed.items);received+=parsed.received;
      if(new Set(items.map(d=>d.noticeDocumentId)).size!==items.length)throw Error('SEAP a repetat o pagină a listei.');
-     if(items.length===total)return {items,total};
-     if(!parsed.items.length||items.length>total)throw Error('Lista SEAP este incompletă.');
+     if(received===total)return {items,total};
+     if(!parsed.received||received>total)throw Error('Lista SEAP este incompletă.');
     }throw Error('Lista SEAP este prea mare.');
    },
    /** One request: the documentation section (specifications, data sheet, models, ESPD). */

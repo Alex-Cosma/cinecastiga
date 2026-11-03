@@ -20,6 +20,14 @@ describe('documents of every participation family',()=>{
   // Some families (dynamic purchasing, type 19) give no codes.
   expect(parseDocumentation({dfNoticeDocs:[{noticeDocumentUrl:url(5),noticeDocumentName:'Caiet.docx.p7s',noticeDocumentCode:null}]},'RFD002933')[0]).toMatchObject({code:null});
  });
+ it('skips a listed notification without a file, counting it for paging, and still rejects a file of another notice',()=>{
+  // CN1057084, 3 November 2026: a "Notificare" with no name, code or URL among the decisions.
+  const notification={noticeDocumentId:1,noticeDocumentCode:null,documentName:null,noticeDocumentUrl:null,sysNoticeDocumentType:'Notificare'};
+  const page=parseList({items:[notification,{...listed,noticeDocumentCode:'CN1057084/00051'}],total:2},'CN1057084');
+  expect(page).toMatchObject({total:2,received:2});expect(page.items.map(d=>d.noticeDocumentCode)).toEqual(['CN1057084/00051']);
+  expect(()=>parseList({items:[{...listed,noticeDocumentCode:'CN9/00001'}],total:1},'CN1057084')).toThrow('Identitatea');
+  expect(()=>parseList({items:[{...listed,noticeDocumentCode:null}],total:1},'CN1057084')).toThrow('Identitatea');
+ });
  it('gives documentation files a stable identity and keeps a file both sources carry once',()=>{
   const docs=parseDocumentation({dfNoticeDocs:[...section.dfNoticeDocs,{noticeDocumentUrl:url(6),noticeDocumentName:'Anexa.pdf',noticeDocumentCode:null},{noticeDocumentUrl:url(7),noticeDocumentName:'Anexa.pdf',noticeDocumentCode:null},{noticeDocumentUrl:url(8),noticeDocumentName:'Raspuns consolidat.pdf',noticeDocumentCode:'CN1018048/00014'}]},'CN1018048');
   expect(documentationRows(docs).map(r=>r.sourceId)).toEqual(['df:CN1018048/00003','df:CN1018048/00007','df:documentation:Anexa.pdf','df:documentation:Anexa.pdf#2','df:CN1018048/00014']);

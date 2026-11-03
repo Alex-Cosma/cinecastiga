@@ -6,6 +6,9 @@
  *   download from it.
  * Plan c: the award's attached (constatator) documents — read the public modules that list them
  *   (/views/pub/documents/ack/service and list), admitted by the gate policy since 685b714.
+ *   Result (batch -d): api-pub/PUBLICAckDoc getAll (POST, a filter) and get/{id}. Plan c2 reads the list
+ *   module's text, which builds that filter.
+ * Plan probe (--notice=<type>:<id>): one notice's documentation and list, to read the codes SEAP returns.
  * Inspection is the default; --run admits source traffic through the shared gate, a dated batch (hard
  * request ceiling) and the proxy pool. It writes only the batch, its jobs and requests, the notices it
  * reads and an audit row: no file is archived, no list is stored. */
@@ -27,7 +30,7 @@ const batchId=process.argv.find(s=>s.startsWith('--batch='))?.slice(8);
 if(!batchId||!/^document-family-pilot-20261103-[a-z0-9-]+$/.test(batchId))throw Error('Use a dated explicit batch ID.');
 const plan=process.argv.find(s=>s.startsWith('--plan='))?.slice(7)??'b';
 const worker=collectionWorkerId('document-family-pilot');
-type Notice={key:string;type:number;noticeId:string;noticeNo:string;title:string;note:string;url:string;steps:('list'|'df'|'module'|'download'|'ack-modules')[]};
+type Notice={key:string;type:number;noticeId:string;noticeNo:string;title:string;note:string;url:string;steps:('list'|'df'|'module'|'download'|'ack-modules'|'ack-list-text')[]};
 const ACK_MODULES=[origin+'/views/pub/documents/ack/service.min.js',origin+'/views/pub/documents/ack/list/list.min.js'];
 type Request=(url:string,method:string,endpoint:string,body?:unknown,navigate?:boolean)=>Promise<{bytes:Buffer;status:number;oversized:boolean}>;
 
@@ -77,6 +80,10 @@ async function steps(n:Notice,request:Request){
     files:[...new Set([...text.matchAll(/.{0,120}(?:files\/|Url|url).{0,160}/g)].map(x=>x[0]))].slice(0,15)});
   }
   result.ack=modules;
+ }
+ if(n.steps.includes('ack-list-text')){
+  const r=await request(ACK_MODULES[1]!,'GET','module',null,true);
+  result.ackListText={status:r.status,bytes:r.bytes.length,text:r.bytes.toString('utf8').slice(0,6000)};
  }
  if(n.steps.includes('module')){
   const m=await request(MODULE,'GET','module',null,true);const text=m.bytes.toString('utf8');
@@ -152,6 +159,12 @@ async function candidates():Promise<Notice[]>{
  return out;
 }
 
+async function probeCandidate():Promise<Notice[]>{
+ const [type,id]=(process.argv.find(s=>s.startsWith('--notice='))?.slice(9)??'').split(':');
+ if(!type||!id||!VIEW[Number(type)]||!/^[1-9]\d*$/.test(id))throw Error('Use --notice=<type>:<id>.');
+ const [r]=await q`select c_notice_id::text notice_id,notice_no,coalesce(title,notice_no) title from core.notices where c_notice_id=${id} and sys_notice_type_id=${Number(type)}`;
+ return r?[{key:`${type}:${r.notice_id}`,type:Number(type),noticeId:r.notice_id,noticeNo:r.notice_no,title:r.title,note:'probe',url:`${origin}${VIEW[Number(type)]}${r.notice_id}`,steps:['df','list']}]:[];
+}
 // Plan c opens its session on a public notice page (the CN of plan b), then reads only the two modules.
 async function ackCandidates():Promise<Notice[]>{
  const [r]=await q`select c_notice_id::text notice_id,notice_no,coalesce(title,notice_no) title from core.notices where c_notice_id=100213791 and sys_notice_type_id=2`;
@@ -159,12 +172,12 @@ async function ackCandidates():Promise<Notice[]>{
 }
 
 try{
- if(plan!=='b'&&plan!=='c')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
+ if(plan!=='b'&&plan!=='c'&&plan!=='c2'&&plan!=='probe')throw Error('Plan a ran on 3 November (batch document-family-pilot-20261103-b).');
  const [control]=await q`select revision,paused,maintenance,blocked_reason,paused_streams from app.collection_control where id=1`;
  const [pool]=await q`select enabled from app.collection_proxy_control where id=1`;
  if(!control||control.paused||control.maintenance||control.blocked_reason||(control.paused_streams as string[]).includes('documents')||!pool?.enabled)throw Error('Inspect source controls before pilot.');
  if((await q`select id from app.document_batches where id=${batchId}`).length)throw Error('Batch already exists; inspect its persisted results. No automatic replay.');
- const notices=plan==='c'?await ackCandidates():await candidates();
+ const notices=plan==='probe'?await probeCandidate():plan==='c'?await ackCandidates():plan==='c2'?(await ackCandidates()).map(n=>({...n,steps:['ack-list-text' as const]})):await candidates();
  console.log(JSON.stringify({event:'family-pilot-preflight',batchId,plan,maxRequests:MAX_REQUESTS,notices:notices.map(n=>({notice:n.noticeNo,type:n.type,note:n.note,url:n.url,steps:n.steps})),execute:process.argv.includes('--run')}));
  if(process.argv.includes('--run')){
   await q.begin(async tx=>{
