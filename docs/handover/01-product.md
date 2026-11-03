@@ -173,9 +173,20 @@ Tipul instituției (D1, local pe `feat/ask-par-d1`, nepublicat): comparația dup
 ## Documente și acces
 
 - Vizitatorii pot vedea originalele/PDF-urile/OCR-ul deja arhivate.
-- Doar utilizatorii autentificați pot cere preluarea de pe SEAP; control și în UI și pe backend.
-- Actualizare 11 octombrie: pool automat de până la 10 downloaduri / 4 procesări, cu bugetul comun și ritm per IP; manualul păstrează controlul separat. Automat se descarcă strict caiete de sarcini identificate, recentele întâi, fără fallback la toate fișierele. [Politica actuală](20261011/operations.md).
-- Nu există crawl automat de PDF-uri.
+- **Decizii ale proprietarului, 3 noiembrie 2026:**
+  - Fiecare contract atribuit prin procedură își arată fișierele din SEAP. Asta acoperă licitațiile, procedurile simplificate, SAD, concesiunile, cererile de oferte și concursurile.
+  - Fișierele apar din metadate, pe categorii, înainte de orice descărcare.
+  - Achizițiile directe nu au secțiune de fișiere.
+- **„Nu există documente în SEAP”** apare doar când SEAP însuși spune că nu există nimic. Asta înseamnă două lucruri:
+  - nu există anunț de participare: fie lipsește prin lege (negociere fără publicare prealabilă), fie anunțul a fost listat fără fișiere;
+  - atribuirea nu are documente atașate (`ackDocsCount` = 0 în detaliul colectat).
+- **Celelalte stări:**
+  - „Procedura nu are anunț de participare.”
+  - „Nu găsim anunțul de participare al acestei proceduri.”
+  - „Fișierele nu sunt listate încă.”
+  - „Atribuirea are N documente în SEAP, încă nepreluate.” Aceste documente constatatoare se numără, dar nu se listează încă: ruta publică a listei lor nu e cunoscută.
+- **Oricine poate cere lista sau un fișier, fără cont.** Cererea intră într-o coadă comună, iar proxy-urile o servesc înaintea muncii automate. Limitele pe oră sunt 10 cereri pentru un vizitator (cheie HMAC pe oră a adresei date de Caddy) și 20 pentru un cont. Coada are cel mult 2.000 de cereri.
+- **Colectorul automat listează toate procedurile atribuite, din toate familiile.** Folosește toate proxy-urile, cu limitele lor de acum. Descărcarea automată a caietelor de sarcini (politica din 11 octombrie) e acum un comutator în `/admin/fisiere`. E oprită implicit, pentru că la toate procedurile ar cere circa 1 TB. [Politica din 11 octombrie](20261011/operations.md).
 - Descărcat și procesat sunt stări distincte; originalul se păstrează și la eroare OCR.
 - PDF-ul și textul din dreapta trebuie să urmărească aceeași pagină. Citarea unei pagini păstrează hash-ul, textul și metoda de extragere.
 - P 7 S/CMS cu conținut încapsulat se poate extrage fără cont/certificat privat. Verificarea integrității nu dovedește încrederea/revocarea certificatului semnatarului.

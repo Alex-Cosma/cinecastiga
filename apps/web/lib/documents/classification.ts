@@ -1,6 +1,6 @@
 /** Local, explainable document classification. It describes a document's role,
  * never the legal validity of a contract or the truth of its contents. */
-export const CLASSIFICATION_VERSION = 1;
+export const CLASSIFICATION_VERSION = 2;
 export const DOCUMENT_CATEGORIES = [
  {id:'specifications',label:'Caiete de sarcini',icon:'document'},
  {id:'clarifications',label:'Clarificări și modificări',icon:'question'},
@@ -12,15 +12,15 @@ export const DOCUMENT_CATEGORIES = [
  {id:'unknown',label:'Neclasificate',icon:'question'},
 ] as const;
 export type DocumentCategory = typeof DOCUMENT_CATEGORIES[number]['id'];
-export type ClassificationEvidence = {source:'filename'|'text';value:string;page?:number};
-export type Classification = {version:number;categories:DocumentCategory[];method:'filename'|'text'|'contents'|'unknown'|'manual';evidence:ClassificationEvidence[];parts?:ClassifiedPart[]};
+export type ClassificationEvidence = {source:'filename'|'text'|'seap';value:string;page?:number};
+export type Classification = {version:number;categories:DocumentCategory[];method:'filename'|'text'|'contents'|'source'|'unknown'|'manual';evidence:ClassificationEvidence[];parts?:ClassifiedPart[]};
 export type ClassifiedPart = {name:string;firstPage?:number|undefined;pages?:number|undefined;categories:DocumentCategory[];method:Classification['method'];evidence:ClassificationEvidence[]};
 export type ClassifiablePart = {name:string;firstPage?:number;pages?:number;error?:string};
 const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const rules: [DocumentCategory,RegExp][] = [
  ['clarifications',/\b(?:clarificar\w*|raspuns\w*|rectificar\w*|erat[ae]|corrigend\w*)\b/],
  ['templates',/\b(?:(?:model\w*|proiect\w*|draft)\s+(?:de\s+)?contract\w*|clauze\s+contractuale|conditii\s+(?:generale\s+|speciale\s+)?contractuale)\b/],
- ['participation',/\b(?:formular\w*|duae|fisa\s+(?:de\s+)?date|instructiuni\s+(?:pentru\s+)?ofertanti|declarati[ae]\s+(?:pe\s+proprie|privind))\b/],
+ ['participation',/\b(?:formular\w*|duae|fisa\s*(?:de\s+)?date|instructiuni\s+(?:pentru\s+)?ofertanti|declarati[ae]\s+(?:pe\s+proprie|privind))\b/],
  ['specifications',/\bcaiet(?:ul|e|ele)?\s+(?:de\s+)?sarcin\w*\b/],
  ['award',/\b(?:raport(?:ul)?\s+(?:procedurii|de\s+atribuire)|comunicare\w*\s+(?:a\s+)?rezultat\w*|decizi\w*\s+(?:(?:de|privind)\s+)?(?:atribuire|anulare)|proces\s+verbal\s+(?:de\s+)?(?:deschidere|evaluare))\b/],
  ['technical',/\b(?:proiect\w*\s+tehnic\w*|documentati\w*\s+(?:tehnic\w*|economic\w*)|deviz\w*|planse\w*|fise?\s+tehnice?|memorii?|memoriu|dali|bim|isam|list\w*\s+(?:de\s+)?cantitati|studi[ui]\w*|expertiz\w*|evaluare\s+(?:energetica|tehnica))\b/],
@@ -40,8 +40,22 @@ export function classifyDocumentName(filename:string):Classification{
  const category=match(name,true);
  return {version:CLASSIFICATION_VERSION,categories:[category??'unknown'],method:category?'filename':'unknown',evidence:category?[{source:'filename',value:name.slice(0,500)}]:[]};
 }
-export function classifyDocument(filename:string,text?:{page:number;text:string}):Classification{
- const initial=classifyDocumentName(filename);if(!text)return initial;
+/** Where SEAP lists a file and the type it gives it: a hint used only when the name says nothing. */
+export type DocumentSource = {section?:string|null;sourceType?:string|null};
+const SOURCE_RULES:[DocumentCategory,RegExp][]=[
+ ['clarifications',/\b(?:clarificar\w*|raspuns\w*|rectificar\w*|erat[ae])\b/],
+ ['award',/\b(?:raport(?:ul)?\s+(?:procedurii|de\s+atribuire)|comunicar\w*\s+(?:a\s+)?rezultat\w*|decizi\w*\s+(?:(?:de|privind)\s+)?(?:atribuire|anulare))\b/],
+];
+export function classifyDocumentSource(source:DocumentSource|undefined):Classification|null{
+ if(source?.section==='espd')return {version:CLASSIFICATION_VERSION,categories:['participation'],method:'source',evidence:[{source:'seap',value:'DUAE'}]};
+ const type=source?.sourceType?.trim();if(!type)return null;
+ const normalized=fold(type).replace(/\s+/g,' ');
+ for(const [category,re] of SOURCE_RULES)if(re.test(normalized))return {version:CLASSIFICATION_VERSION,categories:[category],method:'source',evidence:[{source:'seap',value:type.slice(0,200)}]};
+ return null;
+}
+export function classifyDocument(filename:string,text?:{page:number;text:string},source?:DocumentSource):Classification{
+ const named=classifyDocumentName(filename);
+ const initial=named.method==='unknown'?classifyDocumentSource(source)??named:named;if(!text)return initial;
  // Only headings at the beginning can override a filename. Body references such
  // as a tenderer's declaration mentioning a CS are not a document's role.
  const heading=text.text.slice(0,2500).split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,14);
@@ -57,8 +71,8 @@ export function classifyDocument(filename:string,text?:{page:number;text:string}
  }
  return initial;
 }
-export function classifyDocumentContents(filename:string,contents:ClassifiablePart[]|null|undefined,pages:{page:number;text:string}[]=[]):Classification{
- const root=classifyDocument(filename,pages.find(p=>p.page===1));
+export function classifyDocumentContents(filename:string,contents:ClassifiablePart[]|null|undefined,pages:{page:number;text:string}[]=[],source?:DocumentSource):Classification{
+ const root=classifyDocument(filename,pages.find(p=>p.page===1),source);
  if(!contents?.length)return root;
  const isContainer=contents.length>1||contents.some(p=>p.name.includes(' / '));
  if(!isContainer)return root;
@@ -72,5 +86,5 @@ export const hasSpecifications=(c:Pick<Classification,'categories'>|null|undefin
 export const classificationPriority=(c:Classification)=>hasSpecifications(c)?0:100;
 export const categoryLabel=(id:DocumentCategory)=>DOCUMENT_CATEGORIES.find(c=>c.id===id)!.label;
 export function classificationDescription(c:Classification){
- return c.method==='filename'?'Încadrare preliminară din numele fișierului.':c.method==='text'?'Identificat dintr-un titlu din textul extras.':c.method==='contents'?'Categorii identificate în documentele din arhivă.':c.method==='manual'?'Categorie corectată de administrator.':'Categoria nu este încă identificată.';
+ return c.method==='filename'?'Încadrare preliminară din numele fișierului.':c.method==='source'?'Încadrare preliminară după tipul dat de SEAP.':c.method==='text'?'Identificat dintr-un titlu din textul extras.':c.method==='contents'?'Categorii identificate în documentele din arhivă.':c.method==='manual'?'Categorie corectată de administrator.':'Categoria nu este încă identificată.';
 }

@@ -69,7 +69,18 @@ Schema veche trebuie să poată servi versiunea veche în timpul migrării. Nu e
 - Lotul `recovery-2026-09-25` își păstrează identificatorul istoric; după activarea `follow_latest`, ținta se extinde zilnic până ieri, de la 02:00 RO (actualizare publicată pe 10 octombrie). Sarcinile existente nu sunt rescrise. [Extindere și ETA](../implementation/recovery-continuous-eta-20261007.md); verifică starea live și confirmarea activării înainte de intervenții.
 - Buget comun pentru colector și documente: în modul direct rămâne o cerere în curs și intervalul din `collection_control`; prin proxy, intervalul pe IP, plafonul total și concurența sunt în `collection_proxy_control`. Limitele acceptate sunt 1–200 porniri/minut și 1–10 cereri simultane, maximum una pe IP. Decizia proprietarului din6octombrie:100proxy-uri noi,35–45s/IP,50/min,10simultane. [Rollout și stare verificată](../implementation/seap-proxy-pool.md#concurrent-requests-and-replacement100-endpoint-pool--2026-10-06). Citește setările live înainte de orice intervenție; valorile istorice nu sunt instrucțiuni de resetare.
 - Regula manuală/serială de minimum 60 secunde între GET-uri nu se aplică identic pool-ului automat autorizat. Acesta folosește bugetul comun, interval per IP și concurență controlată; vezi ghidul consolidat.
-- Colectarea automată de documente este implementată, cu control separat în admin. Politica strictă actuală: numai caiete de sarcini identificate; utilizatorul autentificat poate cere manual și alte fișiere.
+- Colectarea automată de documente are un control separat în `/admin/fisiere`. Proprietarul a pus-o pe pauză pe 15 octombrie 2026 și o reia după deploy-ul din 3 noiembrie.
+- **Ce face de la 3 noiembrie:**
+  - Seamănă anunțurile de participare din toate familiile (2, 17, 19, 7, 12, 6) care au atribuit contracte: aceeași procedură și același cumpărător, sau legătură explicită. Pornește cu cele mai noi, câte 1.000 la 10 s, iar după ce le-a semănat pe toate verifică o dată la 10 minute.
+  - Listează fiecare anunț din cele două surse (documentația și lista); listele vechi se reiau o dată.
+  - Pe producție sunt ~226 mii de anunțuri legate, ~3 cereri fiecare: ~700 mii de cereri. Bugetul aprobat de proprietar sunt toate cele 100 de proxy-uri, cu limitele lor de acum.
+- **Descărcarea automată** a caietelor de sarcini e comutatorul „Descarcă automat caietele de sarcini” (`document_collection_control.automatic_downloads`).
+  - E oprit implicit (0092). Cât e oprit, descărcările automate deja în coadă stau „disponibile la cerere”.
+  - Cu el pornit pentru toate procedurile ar trebui circa 1 TB (medie de 4,4 MB pe fișier arhivat cu PDF-ul derivat). Pe 3 noiembrie discul avea 650 GB liberi.
+- **Cererile oamenilor** (oricine, și fără cont) intră într-o coadă comună.
+  - Supervisorul le dă întâi benzile de rețea, toate zece, și ține una liberă cât o cerere așteaptă. Pregătirea lor rulează pe benzile de procesare.
+  - Prin pool, un fișier cerut păstrează ritmul pool-ului. Minutul dintre fișiere rămâne doar în modul direct.
+  - Limite: 10 cereri pe oră pentru un vizitator și 20 pentru un cont; coada are cel mult 2.000 de cereri.
 - Pauză zilnică de admitere a cererilor **02:59 inclusiv–03:30 exclusiv**, Europe/Bucharest. Nu schimbă manual paused și nu șterge erori.
 - Cererile deja admise pot termina; OCR poate continua. La 03:30 reluarea este condiționată de celelalte blocaje/bugete.
 - DST: abordare conservatoare pentru ora repetată/lipsă; vezi testele `collection-quiet-window`.

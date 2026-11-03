@@ -167,8 +167,8 @@ export const GLOSSARY = {
     text: "Verificarea criptografică a semnăturii a eșuat. Conținutul a fost extras fără validarea semnăturii; originalul P7S este păstrat.",
   },
   "descarcare-automata": {
-    title: "Descărcare automată",
-    text: "Descărcăm automat doar caietele de sarcini identificate. Din tot istoricul, cele recente întâi.",
+    title: "Fișierele din SEAP",
+    text: "Listăm toate fișierele procedurii, pe categorii. Oricine le poate descărca, la cerere; cererile așteaptă la rând.",
   },
   "titlu-cpv": {
     title: "Titlu din categoria CPV",

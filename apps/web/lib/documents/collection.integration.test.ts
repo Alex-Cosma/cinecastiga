@@ -13,25 +13,67 @@ if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolate
 const db=url?createDb(url,{max:20}):null;
 afterAll(async()=>{await db?.sql.end();});
 describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
+ let authority:number;
  beforeEach(async()=>{
   const q=db!.sql;
   await q`truncate app.document_requests,app.document_pages,app.document_jobs,app.procurement_documents,app.document_notices,app.document_batches,app.document_blobs cascade`;
-  await q`truncate core.notices cascade`;
+  await q`truncate core.notices,core.awards cascade`;
+  [{id:authority}]=await q`insert into core.entities(name_display,name_normalized) values('Collection fixture','collection fixture') returning id`;
   await q`truncate app.collection_requests,app.collection_retries cascade`;
   await q`update app.collection_control set paused=false,maintenance=false,blocked_reason=null,paused_streams='[]'`;
-  await q`update app.document_collection_control set enabled=false,paused=false,revision=0,error=null,download_concurrency=10,processing_concurrency=4`;
+  await q`update app.document_collection_control set enabled=false,paused=false,revision=0,error=null,download_concurrency=10,processing_concurrency=4,automatic_downloads=true`;
   await q`update app.collection_proxy_control set enabled=true`;
   await q`insert into app.collection_proxies(id,server,exit_ip,configured,enabled) values('proxy-999','http://192.0.2.99:80','192.0.2.99',true,true) on conflict(id) do update set configured=true,enabled=true`;
   await q`insert into app.document_blobs(hash,bytes,mime) values('auto-original',${Buffer.from('%PDF-fixture')},'application/pdf')`;
  });
- async function notice(id:number){await db!.sql`insert into core.notices(raw_id,c_notice_id,notice_no,title,sys_notice_type_id,state_date) values(1,${id},${'SCN'+id},'Fixture',17,now()-${id}*interval '1 day')`;}
+ // A simplified notice that awarded a contract: same procedure and buyer as its award.
+ async function notice(id:number,type=17,awarded=true){
+  const no=(type===17?'SCN':type===2?'CN':'N'+type)+id;
+  await db!.sql`insert into core.notices(raw_id,c_notice_id,notice_no,title,sys_notice_type_id,state_date,authority_entity_id,procedure_id) values(1,${id},${no},'Fixture',${type},now()-${id}*interval '1 day',${authority},${'p'+type+'-'+id})`;
+  if(awarded)await db!.sql`insert into core.awards(raw_id,ca_notice_id,authority_entity_id,procedure_id) values(1,${900000+type*1000+id},${authority},${'p'+type+'-'+id})`;
+ }
  it('requires explicit start and scopes inventory to compatible source identities',async()=>{
-  await notice(1);await db!.sql`insert into core.notices(raw_id,c_notice_id,notice_no,sys_notice_type_id) values(1,1,'CN1',2)`;
+  // Awarded notices of every supported family; a notice that awarded nothing stays out.
+  await notice(1);await notice(1,2);await notice(2,2,false);
   expect(await runAutomaticCollector(db!.sql,new AbortController().signal)).toBe(false);
-  await seedDocumentInventory(db!.sql);await seedDocumentInventory(db!.sql);await fillDocumentQueue(db!.sql);await fillDocumentQueue(db!.sql);
-  expect(await db!.sql`select id from app.document_jobs`).toHaveLength(1);
-  expect((await db!.sql`select url from app.document_notices`)[0]!.url).toContain('/simplified-notice/v2/view/1');
-  const s=await documentCollectionStatus(db!.sql);expect(s.coverage).toMatchObject({eligible:1,unsupported:1});expect(s.inventory.checked).toBe(0);
+  expect(await seedDocumentInventory(db!.sql)).toBe(2);expect(await seedDocumentInventory(db!.sql)).toBe(0);await fillDocumentQueue(db!.sql);await fillDocumentQueue(db!.sql);
+  expect(await db!.sql`select id from app.document_jobs`).toHaveLength(2);
+  expect((await db!.sql`select key,url from app.document_notices order by key`).map(r=>[r.key,r.url])).toEqual([
+   ['17:1','https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/1'],['2:1','https://www.e-licitatie.ro/pub/notices/c-notice/v2/view/1']]);
+  const s=await documentCollectionStatus(db!.sql);expect(s.coverage).toMatchObject({eligible:2,unsupported:1});expect(s.inventory.checked).toBe(0);
+ });
+ it('lists again, once, a notice read before its documentation section',async()=>{
+  const q=db!.sql;await notice(1);await notice(2);await seedDocumentInventory(q);
+  // 17:1 was listed by the old adapter (list only); 17:2 already has both sources.
+  await q`update app.document_notices set checked_at=now()-interval '1 day',inventory=case when key='17:1' then 1 else 2 end`;
+  await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,automatic,status,created_at) select key,'list','list:'||key,'system:document-collection',true,'complete',now()-interval '2 days' from app.document_notices`;
+  await fillDocumentQueue(q);await fillDocumentQueue(q);
+  expect((await q`select notice_key from app.document_jobs where status='queued'`).map(r=>r.notice_key)).toEqual(['17:1']);
+  await q`update app.document_jobs set status='complete' where status='queued'`;await q`update app.document_notices set checked_at=now(),inventory=2 where key='17:1'`;
+  await fillDocumentQueue(q);expect(await q`select id from app.document_jobs where status='queued'`).toHaveLength(0);
+ });
+ it('with automatic downloads off, lists only and parks queued downloads',async()=>{
+  const q=db!.sql;await notice(1);await seedDocumentInventory(q);
+  await q`insert into app.procurement_documents(notice_key,source_id,code,filename) values('17:1','cs','cs','Caiet de sarcini.pdf')`;
+  await classifyDocumentBatch(q);await fillDocumentQueue(q);
+  expect(await q`select id from app.document_jobs where kind='file' and stage='queued'`).toHaveLength(1);
+  await fillDocumentQueue(q,false);
+  expect((await q`select kind,stage from app.document_jobs order by kind`).map(r=>[r.kind,r.stage])).toEqual([['file','specifications_only'],['list','queued']]);
+  await q`update app.document_collection_control set enabled=true,automatic_downloads=false`;
+  const stop=new AbortController(),claimed:string[]=[];let release!:()=>void;const held=new Promise<void>(r=>release=r);
+  const runner=runAutomaticCollector(q,stop.signal,async(_db,job)=>{claimed.push(job.kind);await held;});
+  try{for(let i=0;i<60&&!claimed.length;i++)await sleep(40);await sleep(300);expect(claimed).toEqual(['list']);}
+  finally{stop.abort();release();await runner;}
+  await fillDocumentQueue(q,true);expect((await q`select stage from app.document_jobs where kind='file'`)[0]!.stage).toBe('queued');
+ },15000);
+ it('serves requests on every network lane, ahead of automatic work, also while automatic collection is paused',async()=>{
+  const q=db!.sql;for(let i=1;i<=12;i++)await notice(i);await seedDocumentInventory(q);
+  await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by) select key,'list','request:'||key,'visitor:fixture' from app.document_notices`;
+  await q`update app.document_collection_control set enabled=true,paused=true`;
+  let release!:()=>void;const held=new Promise<void>(r=>release=r),stop=new AbortController();let active=0,peak=0;const kinds:string[]=[];
+  const runner=runAutomaticCollector(q,stop.signal,async(_db,job,_signal,_max,phase)=>{active++;peak=Math.max(peak,active);kinds.push(`${job.automatic?'auto':'request'}:${phase}`);await held;active--;});
+  try{for(let i=0;i<100&&active<10;i++)await sleep(40);expect(peak).toBe(10);expect(new Set(kinds)).toEqual(new Set(['request:download']));}
+  finally{stop.abort();release();await runner;}
  });
  it('bounds materialized inventory to forty jobs and prioritizes recent notices',async()=>{
   for(let i=1;i<=45;i++)await notice(i);
@@ -89,7 +131,7 @@ describe.skipIf(!db)('continuous document collection, no source HTTP',()=>{
   const q=db!.sql;for(const id of [1,2,3,4,100])await notice(id);await seedDocumentInventory(q);
   await q`insert into app.procurement_documents(notice_key,source_id,code,filename,original_hash) select key,'1','1',case when key='17:1' then 'Formulare.pdf' else 'CS.pdf' end,'auto-original' from app.document_notices`;
   await classifyDocumentBatch(q,100);await fillDocumentQueue(q);
-  // The manually requested ordinary file takes the dedicated manual lane.
+  // A requested ordinary file is prepared first, then the specifications.
   await q`update app.document_jobs set automatic=false,requested_by='fixture' where kind='file' and notice_key='17:1'`;
   await q`update app.document_collection_control set enabled=true,download_concurrency=1`;
   const stop=new AbortController(),claimed:string[]=[];let release!:()=>void;const held=new Promise<void>(r=>release=r);

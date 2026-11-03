@@ -121,7 +121,35 @@ ZIP64 permite pachete mari cu CSV/NDJSON, metodologie, istoric și manifest SHA-
 
 ## Documente — mecanismul real
 
-Pentru familiile suportate se rezolvă anunțul prin identitate și autoritate, apoi se citește lista. Nu orice familie de anunțuri are încă implementată preluarea. Pilotul verificat folosește SCN/type 17, de exemplu `https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/100231768`. URL-ul de fișier nu este identitate durabilă.
+Pentru familiile suportate se rezolvă anunțul prin identitate și autoritate, apoi se citește lista. Pilotul inițial a folosit SCN/type 17, de exemplu `https://www.e-licitatie.ro/pub/notices/simplified-notice/v2/view/100231768`. URL-ul de fișier nu este identitate durabilă.
+
+**Actualizare 3 noiembrie 2026: toate familiile de participare, două surse.** Rezultatele pilotului sunt în loturile `document-family-pilot-20261103-b` și `-c` (29 de cereri prin poarta comună; lotul `-a` n-a trimis nimic). Scriptul e `apps/web/scripts/documents/family-pilot.ts`.
+
+- **Familiile și paginile lor publice** sunt în `NOTICE_VIEWS`, în `lib/documents/shared.ts`:
+  - 2 CN: `c-notice`;
+  - 17 SCN: `simplified-notice`;
+  - 19 SAD și 12 RFQ: `rfq-invitation`;
+  - 7: `pc-notice`;
+  - 6: `dc-notice`.
+
+  Toate folosesc `/pub/notices/<view>/v2/view/<id>`, care dă sesiunea și Referer-ul. Tipurile 2, 17, 19 și 7 au fost verificate în pilot; 12 și 6 nu.
+- **Sursa 1, documentația procedurii.** Ruta e `GET /api-pub/NoticeCommon/GetDfNoticeSectionFiles/?initNoticeId=<id>&sysNoticeTypeId=<tip>`. Am găsit-o offline, în bundle-ul public `app-pub` (`sectionDfFiles` / `getDfNoticeSectionFiles`).
+  - Răspunsul are părțile `dfNoticeDocs` (caiet de sarcini, fișa de date, modele, formulare), `duaeDocs`, `contractingStrategyDocs`, `decisionDocs` și `exAnteDocs`.
+  - Fiecare fișier are `noticeDocumentUrl` (aceeași rută `noticedoc`), `noticeDocumentName` și `noticeDocumentCode`. Codul lipsește la SAD.
+  - Fișierele nu au id SEAP. Identitatea lor e `df:<cod>`, sau `df:<parte>:<nume>` numerotat la repetiții (`lib/documents/inventory.ts`).
+- **Sursa 2, lista anunțului.** Ruta e `POST /api-pub/NoticeDocument/GetAll/` cu `sysNoticeTypeId` al familiei și conține clarificări, decizii și notificări.
+  - Pentru licitații lista are doar clarificările. Documentația e numai în sursa 1, iar asta e valabil și pentru SCN.
+  - Itemii au `sysNoticeDocumentType`/`Id` (tipul SEAP, păstrat în `source_type`) și `noticeDocumentPostDate`.
+  - Vechiul `transmissionDate` nu există, de aceea `published_at` era gol la toate cele 26.641 de fișiere listate până pe 3 noiembrie.
+- **Inventarul unui anunț** (`inventory=2`) înseamnă ambele surse, publicate împreună. Un fișier prezent în ambele (același cod) se păstrează o dată, ca listat.
+  - Listele vechi (`inventory=1`, doar sursa 2) se reiau o dată.
+  - Costul e pagina, documentația și `1+⌈F/5⌉` cereri pentru listă.
+  - Un job de fișier recitește doar sursa care îl listează: pagina, o cerere de documentație, apoi POST și GET.
+- **Legătura contract → anunț** (`contractNotice`) acceptă toate familiile, cu aceeași regulă: aceeași procedură și același cumpărător, sau o legătură explicită, cu exact un candidat.
+  - Pe producție (3 noiembrie) nicio atribuire n-are doi candidați: simplificată → 17 138.486, licitație deschisă → 2 83.345, restrânsă → 19 2.622.
+  - Negocierea fără publicare (81.932 de atribuiri) nu are anunț: `participation='none'`.
+- **Documentele atribuirii.** Detaliul colectat (`raw.raw_documents`, `award-detail-root:v2`, `award:<caNoticeId>`) are `data.ackDocsCount` (documente constatatoare); `ackDocs` e gol. Pagina contractului citește numărul la cerere, fără trafic. Lista lor are ruta în modulul `/views/pub/documents/ack/service.min.js`, pe care politica porții îl admite acum pentru descoperire; pilotul C urmează după deploy.
+- **Clasificarea** (versiunea 2) folosește tipul SEAP sau partea DUAE doar când numele fișierului nu spune nimic: metoda `source`, dovada `{source:'seap'}`, eticheta „după tipul SEAP”.
 
 Worker-ul folosește o sesiune Chromium nouă, metadata proaspete, POST de verificare urmat de GET în aceeași sesiune, cu Referer-ul familiei corecte. Un GET izolat cu hash vechi poate eșua deși browserul utilizatorului descarcă fișierul. Nu copia Cookie/Authorization/chei din DevTools în cod sau documente. Doar cererile allowlistate ies din browser; resursele și redirecturile nepermise sunt blocate.
 

@@ -80,4 +80,24 @@ describe.skipIf(!connection)('document queue, provenance and private evidence',(
    await q`delete from auth.users where id in (${uid},${viewer},${outsider})`;await q`delete from core.contracts where id=${contract!.id}`;await q`delete from core.notices where id=${notice!.id}`;await q`delete from core.awards where id=${award!.id}`;await q`delete from raw.raw_documents where id=${raw!.id}`;await q`delete from core.entities where id=${entity!.id}`;
   }
  },30000);
+ it('counts a visitor without an account against a lower hourly limit than a member',async()=>{
+  const q=connection!.sql,seed=randomUUID(),procedure='visitor-'+seed,natural=String(810000000+Math.floor(Math.random()*1000000));
+  const [entity]=await q`insert into core.entities(name_display,name_normalized) values('Visitor fixture','visitor fixture') returning id`;
+  await q`insert into core.awards(raw_id,ca_notice_id,authority_entity_id,procedure_id) values(-70,${natural},${entity!.id},${procedure})`;
+  await q`insert into core.notices(raw_id,c_notice_id,notice_no,sys_notice_type_id,authority_entity_id,procedure_id) values(-70,${natural},'SCN_VISITOR',17,${entity!.id},${procedure})`;
+  await q`insert into core.contracts(raw_id,ca_notice_contract_id,ca_notice_id) values(-70,${natural},${natural})`;
+  const old=process.env.DOCUMENTS_ENABLED;process.env.DOCUMENTS_ENABLED='true';
+  const visitor='visitor:'+seed.replaceAll('-',''),member='member-'+seed;let key:string|undefined;
+  try{
+   const n=(await contractNotice(natural,q))!;key=n.key;await registerNotice(n,q);
+   await q`insert into app.document_jobs(notice_key,kind,dedup_key,requested_by,status) select ${key},'list',${key}||'-visitor-'||i,${visitor},'complete' from generate_series(1,10) i`;
+   await expect(enqueueDocument(natural,visitor,null,q)).rejects.toMatchObject({status:429});
+   expect(await enqueueDocument(natural,member,null,q)).toHaveProperty('id');
+  }finally{
+   process.env.DOCUMENTS_ENABLED=old;
+   if(key){await q`delete from app.document_jobs where notice_key=${key}`;await q`delete from app.document_notices where key=${key}`;}
+   await q`delete from core.contracts where ca_notice_contract_id=${natural}`;await q`delete from core.notices where c_notice_id=${natural} and procedure_id=${procedure}`;
+   await q`delete from core.awards where ca_notice_id=${natural}`;await q`delete from core.entities where id=${entity!.id}`;
+  }
+ });
 });

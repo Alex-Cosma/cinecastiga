@@ -10,6 +10,8 @@ describe('shared SEAP collection policy',()=>{
 it('logs safe eForms/section IDs and only public notice discovery modules',()=>{
  expect(safeCollectionParameters({noticeId:123,dfNoticeId:456,noticeLotId:789,isNoticeChange:false,token:'secret'})).toEqual({noticeId:123,dfNoticeId:456,noticeLotId:789,isNoticeChange:false});
  expect(safeCollectionEndpoint('/views/pub/notices/ca-notice/service.min.js')).toBe('/views/pub/notices/ca-notice/service.min.js');
+ expect(safeCollectionEndpoint('/views/pub/documents/ack/service.min.js')).toBe('/views/pub/documents/ack/service.min.js');
+ expect(safeCollectionEndpoint('https://www.e-licitatie.ro/api-pub/files/c-dfdoc-clar/e306d671b2bb480c9f9ca0ee2c273184')).toBe('/api-pub/files/c-dfdoc-clar/{fișier}');
  expect(()=>safeCollectionEndpoint('/views/private/notices/service.min.js')).toThrow();
 });
 

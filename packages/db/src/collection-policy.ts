@@ -52,9 +52,10 @@ export function safeCollectionEndpoint(url:string){
   return `${u.hostname}${path}`;
  }
  if(!['www.e-licitatie.ro','e-licitatie.ro'].includes(u.hostname))throw Error('Endpoint SEAP neacceptat.');
- if(path.startsWith('/api-pub/files/noticedoc/'))return '/api-pub/files/noticedoc/{fișier}';
+ // A file route ends in a temporary ID: never logged.
+ const file=/^\/api-pub\/files\/([a-z-]+)\//.exec(path);if(file)return `/api-pub/files/${file[1]}/{fișier}`;
  // Public notice UI modules are used for bounded API discovery through the same request budget.
- if(/^\/views\/pub\/(?:notices|sad)\/[\w/-]+(?:\.min)?\.js$/.test(path))return path.slice(0,300);
+ if(/^\/views\/pub\/(?:notices|sad|documents)\/[\w/-]+(?:\.min)?\.js$/.test(path))return path.slice(0,300);
  if(!/^\/(api-pub|pub)\/[\w/.-]+$/.test(path))throw Error('Endpoint SEAP neacceptat.');
  return path.slice(0,300);
 }

@@ -52,7 +52,13 @@ Verificările navigării admin din 28 septembrie: 252 teste unitare web, 2 integ
 
 1. **Acoperire:** recuperarea are goluri și un capăt fix. EForms nepreluate nu trebuie convertite arbitrar în completed pentru a obține 100%.
 2. **Arhive divergente:** producția nu conține întregul raw istoric de pe Mac. Pachetul ales pentru coleg este LOCAL și păstrează acea arhivă mai mare; nu afirmă paritate cu publicarea live.
-3. **PDF-uri:** preluarea verificată suportă anumite familii, în specialSCN/type 17. Nu toate contractele au asociere sigură/anunț suportat. Metadatele de descărcare depind de sesiune și se reobțin.
+3. **PDF-uri:**
+   - De la 3 noiembrie 2026, toate familiile de participare (2, 17, 19, 7, 12, 6) se listează din documentație și din listă. Tipurile 12 și 6 nu au fost verificate în pilot.
+   - Metadatele de descărcare depind de sesiune și se reobțin.
+   - Rămâne deschis:
+     - documentele constatatoare ale atribuirii, pentru care avem doar numărul; ruta listei se caută în pilotul C, după deploy;
+     - reîmprospătarea fișierelor apărute după listare;
+     - decizia proprietarului despre descărcarea automată (circa 1 TB pentru toate procedurile).
 4. **Surse vs arhivă:** CSV live poate avea plafon/scop explicit; captura SQL integrală are mecanism separat. Cititorul trebuie să știe ce exportă.
 5. **TED:** tipuri de sume/monede/proveniență incomplete sunt păstrate ca necunoscute, nu normalizate prin presupuneri. Asocierile nu sunt echivalențe perfecte.
 6. **Populație:** comparațiile și „lei pe locuitor” din Întreabă folosesc populația rezidentă INS RPL 2021 (1 decembrie 2021, catalog `ins-rpl-2021-table-1.22-v1`), nu populație curentă. Doar primăriile și consiliile județene identificate strict primesc populație; instituțiile subordonate și asocierile incerte sunt excluse, nu forțate. Din 21 octombrie (decizia proprietarului, F05) cele șase primării de sector intră în „lei pe locuitor” și în selectorul de localitate, fiecare cu populația RPL 2021 a propriului sector; Primăria Municipiului București păstrează populația întregului oraș. Comparația automată după populație lasă în continuare sectoarele în afara grupului. Vechea populație din `reference.uat`/`marts.entity_profile` (valori din 2011, fără sursă) nu se afișează. Comparația manuală rămâne posibilă.

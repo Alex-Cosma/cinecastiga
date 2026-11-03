@@ -242,10 +242,12 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   await expect(request(work,{stream:'documents',documentJobId:jobs[0]!.id})).rejects.toThrow('limita lotului');expect(called).toBe(1);
   await q`delete from app.document_jobs where batch_id='fixture-pool'`;await q`delete from app.document_batches where id='fixture-pool'`;
  });
- it('keeps the global sixty-second file gap even with a different available IP',async()=>{
+ // Owner, 3 November 2026: files people request are served by the pool at its pace. The minute between
+ // files remains only in direct mode (collection.integration.test.ts).
+ it('through the pool, a requested file keeps the pool pace, not a minute after the last file',async()=>{
   await q`update app.collection_control set last_file_at=clock_timestamp()`;
-  const work=vi.fn(async()=>({value:'bad',status:200}));await expect(request(work,{stream:'documents',fileDownload:true},AbortSignal.timeout(150))).rejects.toThrow();expect(work).not.toHaveBeenCalled();
-  expect(await q`select * from app.collection_requests`).toHaveLength(0);
+  const work=vi.fn(async()=>({value:'file',status:200}));await expect(request(work,{stream:'documents',fileDownload:true},AbortSignal.timeout(5000))).resolves.toBe('file');expect(work).toHaveBeenCalledTimes(1);
+  expect(await q`select * from app.collection_requests`).toHaveLength(1);
  });
  it.each([403,429,200])('stops globally on refusal/challenge %s; never rotates to replay',async status=>{
   await expect(request(vi.fn(async()=>({value:'refused',status,challenge:status===200})))).rejects.toThrow();
