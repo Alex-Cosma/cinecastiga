@@ -1,5 +1,5 @@
 import {
-  PROFILE_FLAG_CODES, scoreGate, scoreOfCriteria, scorePoints, splitGroupWeight, strengthAbove, strengthCapacity,
+  PROFILE_FLAG_CODES, scoreCap, scoreOfCriteria, scorePoints, splitGroupWeight, strengthAbove, strengthCapacity,
   strengthConcentration, strengthDependence, strengthRound, strengthSplit, strengthYearEnd,
   type DbSql, type ProfileFlagCode, type ProfileFlagRole,
 } from "@seap/db";
@@ -123,7 +123,7 @@ const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
 
 /** Strengths, score, points and the facts behind each criterion, for one profile's measures. */
 export function scoreProfile(m: ProfileMeasures): ProfileScore {
-  const gate = scoreGate(m.n, m.v);
+  const gate = scoreCap(m.n, m.v);
   const share = (x: number) => (m.v > 0 ? x / m.v : 0);
   const note = m.role === "supplier" ? (m.inhouse ? "inhouse" : null)
     : m.regime === "association" || m.regime === "private_buyer" ? m.regime : null;
@@ -202,7 +202,10 @@ const key = (role: unknown, eid: unknown) => `${String(role)}:${String(eid)}`;
  * profile's: accepted DAs, 0 < value ≤ `maxPlausible`, a supplier equal to the
  * institution is not a supplier.
  */
-export async function applyProfileScores(q: DbSql, opts: { maxPlausible: number; yearEndMinTotal: number; yearEndShare: number }): Promise<{ profiles: number; scored: number }> {
+type ScoreOptions = { maxPlausible: number; yearEndMinTotal: number; yearEndShare: number };
+
+/** The measures of every profile of marts.entity_flags (reads only; a temp table of buyer regimes). */
+export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<ProfileMeasures[]> {
   const b = opts.maxPlausible;
   const accepted = q`d.state = 'Oferta acceptata' and d.closing_value > 0 and d.closing_value <= ${b}
     and d.authority_entity_id is not null and d.supplier_entity_id is not null and d.supplier_entity_id <> d.authority_entity_id`;
@@ -348,7 +351,11 @@ export async function applyProfileScores(q: DbSql, opts: { maxPlausible: number;
     }
   }
 
-  const scores = [...prof.values()].map(scoreProfile);
+  return [...prof.values()];
+}
+
+export async function applyProfileScores(q: DbSql, opts: ScoreOptions): Promise<{ profiles: number; scored: number }> {
+  const scores = (await measureProfiles(q, opts)).map(scoreProfile);
   // One statement per 20k profiles keeps the parameter arrays small.
   for (let i = 0; i < scores.length; i += 20_000) {
     const chunk = scores.slice(i, i + 20_000);

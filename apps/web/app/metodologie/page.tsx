@@ -24,18 +24,19 @@ function scoreRoles(code: string): string | null {
 }
 
 /**
- * The strength levels of each pattern of the risk score (rf-2026.20,
+ * The strength levels of each pattern of the risk score (rf-2026.21,
  * packages/db/src/profile-flags.ts): level 1 is the pattern itself (its rule on
- * the card below); between levels the strength climbs in proportion.
+ * the card below); between levels the strength climbs in proportion, and from
+ * a lower start (the "de la" of each row) up to level 1, never in one step.
  */
 const LEVELS: { code: RiskCriterion; l1: string; l2: string; l3: string }[] = [
-  { code: "da_above_ceiling", l1: "2 cazuri și 0,5% din valoare", l2: "3 cazuri și 3%", l3: "5 cazuri și 10%" },
-  { code: "da_split", l1: "grupurile cântăresc 2% din valoare (firme: 5%)", l2: "8% (firme: 20%)", l3: "20% (firme: 50%)" },
-  { code: "da_round", l1: "de 2 ori mai multe decât media națională (minimum 3)", l2: "de 4 ori", l3: "de 8 ori" },
+  { code: "da_above_ceiling", l1: "2 cazuri și 0,5% din valoare, de la 0,25% (firme: 2%, de la 0)", l2: "3 cazuri și 3% (firme: 12%)", l3: "5 cazuri și 10% (firme: 40%)" },
+  { code: "da_split", l1: "grupurile cântăresc 2% din valoare, de la 1% (firme: 5%, de la 2,5%)", l2: "8% (firme: 20%)", l3: "20% (firme: 50%)" },
+  { code: "da_round", l1: "de 2 ori mai multe decât media națională, de la 1,5 ori (minimum 3)", l2: "de 4 ori", l3: "de 8 ori" },
   { code: "da_year_end", l1: "decembrie departe de instituțiile de același tip", l2: "cel mult 1,25", l3: "—" },
-  { code: "da_concentration", l1: "60% din valoare la un furnizor, fără cea mai mare achiziție a lui", l2: "75%", l3: "90%" },
-  { code: "da_dependence", l1: "85% din vânzări la o instituție (70–85%: sub nivelul 1)", l2: "și 20% din achizițiile ei directe, sau captivă și peste capacitate", l3: "50%, sau captivă și de 3× peste capacitate" },
-  { code: "da_capacity", l1: "achiziții directe de 1,5× cifra de afaceri", l2: "3×", l3: "10×" },
+  { code: "da_concentration", l1: "60% din valoare la un furnizor, fără cea mai mare achiziție a lui, de la 50%", l2: "75%", l3: "90%" },
+  { code: "da_dependence", l1: "85% din vânzări la o instituție și 5% din achizițiile ei directe (sub 5%: 0,5; 70–85% din vânzări: treptat)", l2: "20% din achizițiile ei, sau captivă și peste capacitate", l3: "50%, sau captivă și de 3× peste capacitate" },
+  { code: "da_capacity", l1: "achiziții directe de 1,5× cifra de afaceri, de la 1×", l2: "3×", l3: "10×" },
 ];
 
 const BANDS: { band: keyof typeof RISK_BAND_CLASS; range: string; word: string }[] = [
@@ -121,7 +122,7 @@ export default function MetodologiePage() {
         </table>
         <ul className="prose note">
           <li><strong>Directe, deși trec de plafon:</strong> cazuri = cumpărător × lună; contează scara mai mică dintre număr și valoare. La o instituție,
-            2 cazuri dau cel puțin nivelul 1.</li>
+            2 cazuri dau cel puțin nivelul 0,5.</li>
           <li><strong>Adunate, trec de plafon:</strong> un grup cântărește după cât trece suma lui de plafon (nimic la 1,2×, întreg de la 2×) și
             după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează.</li>
           <li><strong>Prea des chiar sub plafon:</strong> achizițiile la 96–100% din plafon, față de câte ar fi după media națională de același tip
@@ -130,8 +131,8 @@ export default function MetodologiePage() {
             cel mult 1,25, deci singur rămâne „slab”.</li>
           <li><strong>Capacitate:</strong> o cifră de afaceri sub 10.000 lei sau 0 angajați la 500.000 lei dau nivelul 1; +0,5 pentru o firmă
             în primii doi ani de bilanț.</li>
-          <li><strong>Pe o firmă</strong>, „Directe, deși trec de plafon” și „Adunate, trec de plafon” țin de obligația cumpărătorului: cântăresc cel mult 1,5,
-            afară de cazul în care 80% din ele sunt cu 1–2 instituții. La utilități și furnizorii de masă contează doar partea cu primele
+          <li><strong>Pe o firmă</strong>, „Directe, deși trec de plafon” și „Adunate, trec de plafon” țin de obligația cumpărătorului: cântăresc cel mult 1,5
+            când sunt împrăștiate; limita urcă treptat de la 60% la primele 1–2 instituții și dispare la 80%. La utilități și furnizorii de masă contează doar partea cu primele
             două instituții.</li>
           <li><strong>Cumpărătorii:</strong> plafonul se verifică la instituțiile publice și la operatorii sectoriali publici. La companiile
             private contează doar „Prea des chiar sub plafon” și decembrie; la asociații, „Directe, deși trec de plafon” nu se verifică. Firma unei instituții
@@ -169,6 +170,17 @@ export default function MetodologiePage() {
           achizițiilor directe), cu tiparele fiecăruia. Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei
           societăți sau a unei asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
 
+        <details className="method-fold" id="schimbari-risc-20261104">
+          <summary>Ce s-a schimbat în scor la 4 noiembrie 2026 (rf‑2026.21)</summary>
+          <ul className="method-list">
+            <li>Niciun tipar nu mai sare de la 0 la nivelul 1: fiecare urcă lin, de la un prag de început (coloana „Nivelul 1” spune de unde).</li>
+            <li>„Directe, deși trec de plafon” la firme se măsoară pe o scară de 4 ori mai largă (2% / 12% / 40% din vânzări): aceeași sumă cântărește puțin la o firmă mare.
+              La instituții, două cazuri dau cel puțin nivelul 0,5, iar nivelul 1 vine de la 0,5% din valoare.</li>
+            <li>„Un singur client public mare”: o firmă care înseamnă sub 5% din achizițiile instituției pornește de la nivelul 0,5; captiva care vinde peste capacitate urcă treptat.</li>
+            <li>Plafonul dovezilor urcă treptat: nivelul 1 la 10 achiziții directe, 3 de la 30 (era un salt la 20). Plafonul obligației cumpărătorului la firme (1,5) se ridică
+              treptat între 60% și 80% la primele două instituții, iar plafonul capacității singure (1,5) se ridică odată cu celelalte tipare.</li>
+          </ul>
+        </details>
         <details className="method-fold" id="schimbari-nume-20261104">
           <summary>Ce s-a schimbat la 4 noiembrie 2026</summary>
           <ul className="method-list">
