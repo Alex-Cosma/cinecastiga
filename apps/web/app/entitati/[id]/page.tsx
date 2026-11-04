@@ -49,6 +49,7 @@ import { selectionFromParams } from "./tx-filters";
 import PartnersTable from "./PartnersTable";
 import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
+import DropRolParam from "./DropRolParam";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
 import "./entity.css";
@@ -143,7 +144,9 @@ export default async function EntityPage({
     sp["rol"] === "furnizor" ? "supplier" : sp["rol"] === "autoritate" ? "authority" : flagRows[0]!.role;
   const row: EntityFlagRow = flagRows.find((r) => r.role === role) ?? flagRows[0]!;
   const rolParam = role === "supplier" ? "furnizor" : "autoritate";
-  const base = { rol: rolParam, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
+  // `?rol=` only for an entity that both buys and sells (owner, 4 November 2026); a single-role page drops it.
+  const bothRoles = flagRows.length > 1;
+  const base = { rol: bothRoles ? rolParam : undefined, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
@@ -246,8 +249,8 @@ export default async function EntityPage({
           </div>
         </div>
         <div className="ehead-acts">
-          <Link href={`/entitati/${id}/legaturi?rol=${rolParam}`} className="btn">Cum sunt legate?</Link>
-          <Link href={`/entitati/${id}/comparatii?rol=${rolParam}`} className="btn">Compară în context</Link>
+          <Link href={`/entitati/${id}/legaturi${bothRoles ? `?rol=${rolParam}` : ""}`} className="btn">Cum sunt legate?</Link>
+          <Link href={`/entitati/${id}/comparatii${bothRoles ? `?rol=${rolParam}` : ""}`} className="btn">Compară în context</Link>
           {isAuth && (
             <Link href={`/entitati/${id}/radiografie`} className="btn pri rx-link">
               🩻 Radiografie
@@ -267,6 +270,7 @@ export default async function EntityPage({
         </div>
       </div>
 
+      {!bothRoles && sp["rol"] !== undefined && <DropRolParam />}
       {/* The page's tabs right under its header, above the summary they start with (owner, 2 November 2026). */}
       <SectionNav
         items={[
@@ -274,12 +278,13 @@ export default async function EntityPage({
           // In the page's order (critique of 2 November 2026): the representatives come right after the summary,
           // an individual practice's holder last, before the explanations.
           ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
+          // Then the partners, the acquisitions and the signals (owner, 4 November 2026).
+          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
+          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
           ...(row.flags.length > 0 || signalTypes.length > 0
             ? [{ id: "semnale", label: "Semnale",
                 count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
             : []),
-          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
-          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
           ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
           ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
         ]}
@@ -400,7 +405,47 @@ export default async function EntityPage({
         </section>
       )}
 
-      {/* The signals in one section (owner, 2 November 2026, after the Impeccable critique): every signal type first, as an
+      {/* Counterparties */}
+      <section className="section" id="parteneri">
+        <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
+        <PartnersTable
+          key={`${id}-${role}`}
+          entityId={id}
+          entityName={cleanName(row.name)}
+          role={rolParam as "furnizor" | "autoritate"}
+          isAuth={isAuth}
+          initial={topPartners}
+        />
+      </section>
+
+      {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload */}
+      <section className="section" id="achizitii">
+        <h2>Toate achizițiile și contractele</h2>
+        <TxTable
+          key={`${id}:${rolParam}:${sp["sem"] ?? ""}:${sp["an"] ?? ""}:${sp["canal"] ?? ""}:${sp["excluse"] ?? ""}`}
+          entityId={id}
+          role={rolParam as "furnizor" | "autoritate"}
+          isAuth={isAuth}
+          flags={row.flags}
+          initial={selectionFromParams((key) => sp[key])}
+          excludedDa={txCounts.excludedDa}
+        />
+        {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
+          <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>
+          <p>Peste plafonul de 1 mld. lei folosit pentru totaluri: nu intră în niciun total. Valori integrale din SEAP, nu plăți.
+            {role === "supplier" ? " Includ și cotele celorlalți membri ai consorțiului." : ""}</p>
+          <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th></tr></thead><tbody>
+            {aboveCap.rows.map((c) => <tr key={c.natId}>
+              <td><Link href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
+              <td>{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
+              <td className="num">{formatExactDecimal(c.valueRonExact)}</td>
+            </tr>)}
+          </tbody></table></div>
+          {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
+        </details>}
+      </section>
+
+      {/* The signals in one section, after the acquisitions (owner, 4 November 2026; the section itself is from 2 November, after the Impeccable critique): every signal type first, as an
           index (what it adds to the risk, how often it appears), then a card for each criterion behind the score — what it
           found first, the rule folded under „Regula”. The former „Toate semnalele” was the same table further down. */}
       {(row.flags.length > 0 || signalTypes.length > 0) && (
@@ -544,46 +589,6 @@ export default async function EntityPage({
           })}
         </section>
       )}
-
-      {/* Counterparties */}
-      <section className="section" id="parteneri">
-        <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
-        <PartnersTable
-          key={`${id}-${role}`}
-          entityId={id}
-          entityName={cleanName(row.name)}
-          role={rolParam as "furnizor" | "autoritate"}
-          isAuth={isAuth}
-          initial={topPartners}
-        />
-      </section>
-
-      {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload */}
-      <section className="section" id="achizitii">
-        <h2>Toate achizițiile și contractele</h2>
-        <TxTable
-          key={`${id}:${rolParam}:${sp["sem"] ?? ""}:${sp["an"] ?? ""}:${sp["canal"] ?? ""}:${sp["excluse"] ?? ""}`}
-          entityId={id}
-          role={rolParam as "furnizor" | "autoritate"}
-          isAuth={isAuth}
-          flags={row.flags}
-          initial={selectionFromParams((key) => sp[key])}
-          excludedDa={txCounts.excludedDa}
-        />
-        {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
-          <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>
-          <p>Peste plafonul de 1 mld. lei folosit pentru totaluri: nu intră în niciun total. Valori integrale din SEAP, nu plăți.
-            {role === "supplier" ? " Includ și cotele celorlalți membri ai consorțiului." : ""}</p>
-          <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th></tr></thead><tbody>
-            {aboveCap.rows.map((c) => <tr key={c.natId}>
-              <td><Link href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
-              <td>{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
-              <td className="num">{formatExactDecimal(c.valueRonExact)}</td>
-            </tr>)}
-          </tbody></table></div>
-          {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
-        </details>}
-      </section>
 
       {/* An individual practice has no ONRC representative: the one register person with its holder's name, a lead
           (owner decision of 1 November 2026, variant B); never a signal, a risk or a count of the person's firms. Last before

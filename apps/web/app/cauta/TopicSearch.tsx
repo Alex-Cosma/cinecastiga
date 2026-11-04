@@ -16,7 +16,7 @@ const defaults:TopicScope={q:'',place:'',from:'',to:'',type:'all',match:'words',
 const TABS:{id:SearchTab;label:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme'},{id:'acquisitions',label:'Achiziții'},{id:'documents',label:'Documente'}];
 /** The closest name match, first among the institutions and firms: its profile and all its acquisitions. */
 function BestMatch({entity:e,unfiltered}:{entity:EntityHit;unfiltered:boolean}){
- const role=e.roles.includes('authority')?'autoritate':'furnizor',profile=`/entitati/${e.id}?rol=${role}`;
+ const role=e.roles.includes('authority')?'autoritate':'furnizor',profile=`/entitati/${e.id}${e.roles.length>1?`?rol=${role}`:''}`; // the role only for an entity that both buys and sells
  return <div className="topic-best">
  <div><h3><Link prefetch={false} href={profile}>{cleanName(e.name)}</Link></h3><p>{[e.roles.includes('authority')?'Instituție':'Furnizor',e.county,e.cui?`CUI ${e.cui}`:'CUI neprecizat'].filter(Boolean).join(' · ')}{unfiltered&&' · profil complet, fără filtre'}</p></div>
  <div className="topic-best-actions"><Link prefetch={false} className="topic-control" href={profile}>{e.roles.includes('authority')?'Vezi instituția':'Vezi firma'}</Link><Link prefetch={false} className="topic-primary" href={`${profile}#achizitii`}>Toate achizițiile <DiscoveryIcon name="arrow"/></Link></div>

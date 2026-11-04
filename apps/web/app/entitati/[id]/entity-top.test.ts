@@ -99,10 +99,22 @@ describe("the entity page's top", () => {
 
   it("lists the tabs in the page's order and gives the page its own title", () => {
     const tabs = page.slice(page.indexOf("<SectionNav"), page.indexOf("/>", page.indexOf("<SectionNav")));
-    const at = ['"top"', '"conducere", label: "Conducere"', '"semnale"', '"parteneri"', '"achizitii"', '"Titular"'].map((s) => tabs.indexOf(s));
+    const at = ['"top"', '"conducere", label: "Conducere"', '"parteneri"', '"achizitii"', '"semnale"', '"Titular"'].map((s) => tabs.indexOf(s));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
     expect(page).toContain("export async function generateMetadata(");
+  });
+
+  it("orders the sections as the tabs: summary, partners, acquisitions, signals (owner, 4 November 2026)", () => {
+    const at = ['id="top"', 'id="parteneri"', 'id="achizitii"', 'id="semnale"'].map((s) => page.indexOf(s));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+  });
+
+  it("keeps ?rol= only for an entity that both buys and sells", () => {
+    expect(page).toContain('rol: bothRoles ? rolParam : undefined');
+    expect(page).toContain('{!bothRoles && sp["rol"] !== undefined && <DropRolParam />}');
+    expect(page).toContain('/legaturi${bothRoles ? `?rol=${rolParam}` : ""}');
   });
 
   it("lists each channel with its records, its value and its link, then the recorded total", () => {
