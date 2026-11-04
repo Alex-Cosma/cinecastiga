@@ -37,7 +37,7 @@ export function DatesBody({ facet, value, onChange }: Props<"dates">) {
     onChange({ kind: "dates", years: next, from: null, to: null });
   };
   const summary = choice.years.length === 0 ? "toți anii" : choice.years.join(", ");
-  if (yearList.length === 0) return <p className="tf-empty">Niciun rând cu dată în selecția de acum.</p>;
+  if (yearList.length === 0) return <p className="tf-empty">{facet.partial ? "Prea multe rânduri ca să numărăm anii acum. Încearcă după alt filtru." : "Niciun rând cu dată în selecția de acum."}</p>;
   const months = single ? MONTH_NAMES.map((name, i) => ({ month: `${single}-${String(i + 1).padStart(2, "0")}`, name })) : [];
   const from = single ? choice.from ?? `${single}-01` : null;
   const to = single ? choice.to ?? `${single}-12` : null;
@@ -90,7 +90,9 @@ export function ListBody({ column, facet, value, onChange, stale }: Props<"optio
     const next = chosen.includes(v) ? chosen.filter((x) => x !== v) : [...chosen, v].sort();
     onChange({ kind: column.kind as "options" | "pick", values: next });
   };
-  if (facet.options.length === 0) return <p className="tf-empty">{column.kind === "pick" ? "Nimic nu se potrivește." : "Nicio opțiune în selecția de acum."}</p>;
+  if (facet.options.length === 0) {
+    return <p className="tf-empty">{facet.partial ? "Prea multe rânduri ca să le arătăm pe toate: caută un nume." : column.kind === "pick" ? "Nimic nu se potrivește." : "Nicio opțiune în selecția de acum."}</p>;
+  }
   return (
     <>
       <div className={`tf-list${stale ? " tf-stale" : ""}`} role="group" aria-label={column.label}>
@@ -100,12 +102,14 @@ export function ListBody({ column, facet, value, onChange, stale }: Props<"optio
             <label key={o.value} className={o.n === 0 && !on ? "off" : undefined}>
               <input type="checkbox" checked={on} disabled={o.n === 0 && !on} onChange={() => toggle(o.value)} />
               <span className="tf-name">{o.label}</span>
-              {column.counts !== false && <span className="n">{formatInt(o.n)}</span>}
+              {column.counts !== false && o.n !== null && <span className="n">{formatInt(o.n)}</span>}
             </label>
           );
         })}
       </div>
-      {facet.more && <p className="tf-hint">Caută ca să ajungi la celelalte.</p>}
+      {facet.partial
+        ? <p className="tf-hint">Prea multe rânduri ca să le numărăm acum{column.kind === "pick" ? "; caută un nume" : ""}.</p>
+        : facet.more && <p className="tf-hint">Caută ca să ajungi la celelalte.</p>}
     </>
   );
 }
@@ -146,7 +150,7 @@ export function RangeBody({ column, facet, value, onChange }: Props<"range"> & {
       <p className="tf-hint">
         {facet.min !== null && facet.max !== null
           ? `Între ${formatInt(Math.floor(facet.min))} și ${formatInt(Math.ceil(facet.max))}${unit} în rândurile de acum. Un capăt gol înseamnă fără limită.`
-          : "Niciun rând cu valoare în selecția de acum."}
+          : facet.partial ? "Un capăt gol înseamnă fără limită." : "Niciun rând cu valoare în selecția de acum."}
       </p>
     </>
   );

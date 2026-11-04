@@ -455,6 +455,10 @@ export const tedAwards = martsSchema.table(
     index("ted_awards_value_desc_idx").on(t.awardedValue.desc().nullsLast()),
     index("ted_awards_date_desc_idx").on(t.awardDate.desc().nullsLast()),
     index("ted_awards_single_bidder_idx").on(t.isSingleBidder),
+    // /supra-prag's column funnels (owner, 4 November 2026): the procedure counted and filtered on its index, a
+    // winner's awards found by their id array (migration 0098)
+    index("ted_awards_procedure_idx").on(t.procedureType),
+    index("ted_awards_winner_ids_gin").using("gin", t.winnerEntityIds),
   ],
 );
 

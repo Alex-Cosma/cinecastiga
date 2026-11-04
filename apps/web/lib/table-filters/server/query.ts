@@ -15,16 +15,17 @@ export type Fragment = ReturnType<DbSql>;
 export type Binding =
   /** A date as 'YYYY-MM-DD' text (null when the record has none). */
   | { kind: "dates"; date: Fragment }
-  /** A number. */
-  | { kind: "range"; value: Fragment }
+  /** A number; `guard` keeps only the rows where it is comparable (a value in lei, not another currency). */
+  | { kind: "range"; value: Fragment; guard?: Fragment }
   /**
    * The option(s) of a row as text. `value` may return several rows (unnest of an array) when `match` says how a
    * chosen set keeps a row. A value is named by `names` (a lookup run only for the options shown: a partner's id is
    * counted from an index, its name read for 50 ids, not for half a million rows), else by `label` on the row, else
    * by the source's `labelOf` or the column's fixed labels. Options come by their rows, or by the sum of `weight`
-   * when set (a supplier's value, where each supplier is one row).
+   * when set (a supplier's value, where each supplier is one row). `only` names the rows that can hold a value at
+   * all (the foreign winners for a country), so the funnel counts those on their index, not every row.
    */
-  | { kind: "list"; value: Fragment; label?: Fragment; names?: Names; weight?: Fragment; match?: (values: string[]) => Fragment }
+  | { kind: "list"; value: Fragment; label?: Fragment; names?: Names; weight?: Fragment; only?: Fragment; match?: (values: string[]) => Fragment }
   /** The channel itself is the option (the record's type): it is kept or dropped whole. */
   | { kind: "constant"; value: string };
 
@@ -34,6 +35,11 @@ export interface Names {
   lookup: (values: string[]) => Fragment;
   /** A condition on a channel's row: its value's name or code matches the search. */
   search: (term: string) => Fragment;
+  /**
+   * For a row holding several values (an award's winners): a condition on one value `v` (text) matching the search,
+   * so a co-winner of a matching award is not offered with it.
+   */
+  matches?: (term: string) => Fragment;
 }
 
 export interface Channel {
@@ -79,7 +85,7 @@ function condition(sql: DbSql, binding: Binding | undefined, value: FilterValue)
   if (binding.kind === "range" && value.kind === "range") {
     const lo = value.min !== null ? sql` and ${binding.value} >= ${value.min}::numeric` : sql``;
     const hi = value.max !== null ? sql` and ${binding.value} <= ${value.max}::numeric` : sql``;
-    return sql`${binding.value} is not null${lo}${hi}`;
+    return sql`${binding.guard ? sql`${binding.guard} and ` : sql``}${binding.value} is not null${lo}${hi}`;
   }
   if (binding.kind === "list" && (value.kind === "options" || value.kind === "pick")) {
     return binding.match ? binding.match(value.values) : sql`${binding.value} = any(${sql.array(value.values)}::text[])`;
@@ -131,12 +137,75 @@ export interface FacetRequest {
   term?: string;
   /** At most this many options, the chosen ones first (default 50). */
   limit?: number;
+  /**
+   * A large table's funnel counts within this time (ms); past it the funnel gets its known options without numbers
+   * (`partial`) and the count finishes in the background, kept for the next opening under `cache`.
+   */
+  budgetMs?: number;
+  /** The table's name in the facet cache (with `budgetMs`): an answer is kept for FACET_CACHE_MS. */
+  cache?: string;
 }
 
 const RANGE_BINS = 8;
+/** How long a counted funnel stays served from memory: the marts change once a night. */
+export const FACET_CACHE_MS = 30 * 60_000;
+const FACET_CACHE_SIZE = 500;
+const BACKGROUND_TIMEOUT_MS = 60_000;
+const cached = new Map<string, { at: number; facet: Facet }>();
+const counting = new Set<string>();
 
-/** A column's options under every other filter: what its funnel shows. */
+/** Tests only: forget every kept answer. */
+export function clearFacetCache(): void { cached.clear(); counting.clear(); }
+
+const isTimeout = (e: unknown) => e instanceof Error && /statement timeout|canceling statement/i.test(e.message);
+
+/** The funnel a count past its time offers: the column's known options and the chosen values, without numbers. */
+function partialFacet(source: FilterSource, key: string, state: FilterState): Facet {
+  const column = source.columns.find((c) => c.key === key)!;
+  if (column.kind === "dates") return { kind: "dates", months: [], undated: 0, partial: true };
+  if (column.kind === "range") return { kind: "range", min: null, max: null, bins: [], partial: true };
+  const chosen = state[key];
+  const selected = chosen && (chosen.kind === "options" || chosen.kind === "pick") ? chosen.values : [];
+  const known = column.kind === "options" ? Object.keys(column.labels ?? {}) : [];
+  const values = [...new Set([...selected, ...known])];
+  const label = (v: string) => column.labels?.[v] ?? source.labelOf?.(key, v) ?? v;
+  return { kind: column.kind, options: values.map((v) => ({ value: v, label: label(v), n: null })), more: column.kind === "pick", partial: true };
+}
+
+/**
+ * A column's options under every other filter: what its funnel shows. With a budget, a count past it answers with the
+ * partial funnel while it finishes in the background for the next opening.
+ */
 export async function facetOf(sql: DbSql, source: FilterSource, key: string, state: FilterState, request: FacetRequest = {}): Promise<Facet> {
+  if (!request.budgetMs) return countFacet(sql, source, key, state, request);
+  const cacheKey = request.cache ? `${request.cache}|${key}|${JSON.stringify(state)}|${request.term ?? ""}|${request.limit ?? ""}` : null;
+  const hit = cacheKey ? cached.get(cacheKey) : undefined;
+  if (hit && Date.now() - hit.at < FACET_CACHE_MS) return hit.facet;
+  const keep = (facet: Facet) => {
+    if (!cacheKey) return;
+    if (cached.size >= FACET_CACHE_SIZE) cached.delete(cached.keys().next().value!);
+    cached.set(cacheKey, { at: Date.now(), facet });
+  };
+  const timed = (ms: number) => sql.begin("read only", async (tx) => {
+    await tx.unsafe(`set local statement_timeout = ${Math.max(1, Math.floor(ms))}`);
+    return countFacet(tx as unknown as DbSql, source, key, state, request);
+  });
+  try {
+    const facet = await timed(request.budgetMs);
+    keep(facet);
+    return facet;
+  } catch (e) {
+    if (!isTimeout(e)) throw e;
+    if (cacheKey && !counting.has(cacheKey)) {
+      counting.add(cacheKey);
+      void timed(BACKGROUND_TIMEOUT_MS).then(keep, (err) => console.error("table facet (background)", key, err)).finally(() => counting.delete(cacheKey));
+    }
+    return partialFacet(source, key, state);
+  }
+}
+
+/** The count itself, without a budget. */
+async function countFacet(sql: DbSql, source: FilterSource, key: string, state: FilterState, request: FacetRequest): Promise<Facet> {
   const column = source.columns.find((c) => c.key === key);
   if (!column) throw new Error(`unknown filter column: ${key}`);
   const bound = source.channels.filter((c) => c.bindings[key]);
@@ -153,7 +222,8 @@ export async function facetOf(sql: DbSql, source: FilterSource, key: string, sta
   }
 
   if (column.kind === "range") {
-    const body = unionOf(sql, bound, state, (c) => sql`(${(c.bindings[key] as Extract<Binding, { kind: "range" }>).value})::float8 v`, key);
+    const rangeOf = (c: Channel) => c.bindings[key] as Extract<Binding, { kind: "range" }>;
+    const body = unionOf(sql, bound, state, (c) => sql`(${rangeOf(c).value})::float8 v`, key, (c) => rangeOf(c).guard ?? null);
     if (!body) return { kind: "range", min: null, max: null, bins: [] };
     // Bins of equal width on a logarithmic scale: values run from a few lei to millions.
     const rows = (await sql`
@@ -202,12 +272,14 @@ async function listFacet(
     return sql`(${b.value})::text v, ${names ? sql`null::text` : sql`(${b.label ?? sql`null`})::text`} l, (${b.weight ?? sql`1`})::float8 w`;
   }, key, (c) => {
     const b = listOf(c);
-    return term && names && b.kind === "list" ? names.search(term) : null;
+    if (b.kind !== "list") return null;
+    const search = term && names ? names.search(term) : null;
+    return b.only && search ? sql`${b.only} and ${search}` : b.only ?? search;
   });
   if (!body) return { kind, options: [], more: false };
-  const search = term && !names
-    ? sql`and (lower(unaccent(coalesce(l, ''))) like ${likeAny(term)} or v like ${`${escapeLike(term)}%`})`
-    : sql``;
+  const search = !term ? sql``
+    : !names ? sql`and (lower(unaccent(coalesce(l, ''))) like ${likeAny(term)} or v like ${`${escapeLike(term)}%`})`
+      : names.matches ? sql`and ${names.matches(term)}` : sql``;
   const rows = (await sql`
     select v, max(l) l, count(*)::int n from (${body}) x
     where v is not null ${search}

@@ -1,3 +1,6 @@
+import { noticeLotsSource } from "./notice-lots";
+import { channelWhere } from "./table-filters/server/query";
+import type { FilterState } from "./table-filters/types";
 import { contractRonValue, contractOriginalValue, contractOriginalCurrency, contractAmountStatus, contractKind, contractReportable, contractTemporarilyExcluded, contractAboveValueCap, contractWinnerIsAuthority, contractDatePlausible, CONTRACT_VALUE_CAP_RON } from "@seap/db";
 import { canonicalEntityId, corroboratedCui, cuiCorroborated, onrcIdentityBirthDate } from "@seap/db";
 import { tedPagination, tedCountryFilter, TED_COUNTRY_UNRESOLVED } from "./ted";
@@ -938,80 +941,6 @@ export interface TedAward {
   matchedContractId: string | null;
 }
 
-export interface TedQuery {
-  label?: "also-in-seap" | "ted-only" | "possible-match";
-  foreign?: boolean;
-  singleBidder?: boolean;
-  country?: string;
-  sort?: "value" | "date";
-  page?: number;
-  pageSize?: number;
-}
-
-/** Browsable TED award publications, filtered + paginated; no legal-threshold classification. */
-export async function getTedAwards(
-  q: TedQuery = {},
-): Promise<{ rows: TedAward[]; total: number; page: number }> {
-  const sql = db();
-  const labelCond = q.label ? sql`and label = ${q.label}` : sql``;
-  const foreignCond = q.foreign ? sql`and is_foreign` : sql``;
-  const sbCond = q.singleBidder ? sql`and is_single_bidder` : sql``;
-  const countryCond = q.country ? sql`and ${tedCountryFilter(sql, q.country)}` : sql``;
-  // Comparing currencies or framework ceilings to offers would be misleading.
-  const valueCond = q.sort === "value" ? sql`and currency = 'RON' and amount_kind in ('payable', 'contract_value')` : sql``;
-  const order = q.sort === "value" ? sql`awarded_value desc nulls last, ted_lot_result_id`
-    : sql`award_date desc nulls last, ted_lot_result_id`;
-
-  const where = sql`where true ${labelCond} ${foreignCond} ${sbCond} ${countryCond} ${valueCond}`;
-  const totalRows = (await sql`
-    select count(*)::int c from marts.ted_awards ${where}
-  `) as unknown as { c: number }[];
-  const total = Number(totalRows[0]?.c ?? 0);
-  const { page, pageSize, offset } = tedPagination(q.page, q.pageSize, total);
-  const rows = (await sql`
-    select ted_lot_result_id, publication_number, buyer_entity_id, buyer_name,
-           buyer_county, winner_names, winner_entity_ids, to_jsonb(winner_countries) as winner_countries,
-           is_foreign, cpv_code, cpv_name, title, awarded_value, currency,
-           award_date, procedure_type, is_single_bidder, eu_funded, label,
-           matched_contract_id, amount_kind, amount_details, lot_id, winner_selection_status, tenders_received
-    from marts.ted_awards
-    ${where}
-    order by ${order}
-    limit ${pageSize} offset ${offset}
-  `) as unknown as Record<string, unknown>[];
-
-  return {
-    total, page,
-    rows: rows.map((r) => ({
-      tedLotResultId: String(r["ted_lot_result_id"]),
-      publicationNumber: (r["publication_number"] as string | null) ?? null,
-      buyerEntityId: r["buyer_entity_id"] != null ? String(r["buyer_entity_id"]) : null,
-      buyerName: (r["buyer_name"] as string | null) ?? null,
-      buyerCounty: (r["buyer_county"] as string | null) ?? null,
-      winnerNames: (r["winner_names"] as string[] | null) ?? [],
-      winnerEntityIds: ((r["winner_entity_ids"] as (string | number)[] | null) ?? []).map(String),
-      winnerCountries: (r["winner_countries"] as (string | null)[] | null) ?? [],
-      isForeign: Boolean(r["is_foreign"]),
-      cpvCode: (r["cpv_code"] as string | null) ?? null,
-      cpvName: (r["cpv_name"] as string | null) ?? null,
-      title: (r["title"] as string | null) ?? null,
-      awardedValue: r["awarded_value"] != null ? String(r["awarded_value"]) : null,
-      amountKind: (r["amount_kind"] as string | null) ?? null,
-      amountDetails: (r["amount_details"] as import("@seap/db").TedAmountDetails | null) ?? null,
-      lotId: (r["lot_id"] as string | null) ?? null,
-      winnerSelectionStatus: (r["winner_selection_status"] as string | null) ?? null,
-      tendersReceived: r["tenders_received"] == null ? null : Number(r["tenders_received"]),
-      currency: (r["currency"] as string | null) ?? null,
-      awardDate: (r["award_date"] as string | null) ?? null,
-      procedureType: (r["procedure_type"] as string | null) ?? null,
-      isSingleBidder: r["is_single_bidder"] == null ? null : Boolean(r["is_single_bidder"]),
-      euFunded: r["eu_funded"] == null ? null : Boolean(r["eu_funded"]),
-      label: String(r["label"]),
-      matchedContractId: r["matched_contract_id"] != null ? String(r["matched_contract_id"]) : null,
-    })),
-  };
-}
-
 export async function getEntityProfile(entityId: string): Promise<EntityProfile | null> {
   const sql = db();
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
@@ -1353,6 +1282,8 @@ export interface AwardNoticeDetail {
   authority: { entityId: string; name: string | null; county: string | null } | null;
   tedNoticeNo: string | null;
   nLots: number;
+  /** The records under the table's filters (its column funnels); nLots when none. */
+  nShown: number;
   totalContractValue: number | null;
   frameworkValue: number | null;
   lots: NoticeLot[];
@@ -1364,6 +1295,7 @@ export async function getAwardNoticeDetail(
   caNoticeId: string,
   page = 1,
   pageSize = 50,
+  filters: FilterState = {},
 ): Promise<AwardNoticeDetail | null> {
   const sql = db();
   const cid = /^\d+$/.test(caNoticeId) ? caNoticeId : "0";
@@ -1407,6 +1339,14 @@ export async function getAwardNoticeDetail(
   `) as unknown as { n: number; total: string | null; frameworks: string | null }[];
   const nLots = Number(agg[0]?.n ?? 0);
   const offset = (Math.max(1, page) - 1) * pageSize;
+  // The records under the table's column funnels (owner, 4 November 2026); the notice's totals above stay whole.
+  const [lotChannel] = noticeLotsSource(sql, cid).channels;
+  const none: ReturnType<DbSql> = sql`false`;
+  const lotWhere = channelWhere(sql, lotChannel!, filters) ?? none;
+  const filtered = Object.keys(filters).length > 0;
+  const nShown = filtered
+    ? Number(((await sql`select count(*)::int n from core.contracts c where ${lotWhere}`) as unknown as { n: number }[])[0]?.n ?? 0)
+    : nLots;
 
   const lots = (await sql`
     select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title,
@@ -1414,7 +1354,7 @@ export async function getAwardNoticeDetail(
            ${contractRonValue(sql)} contract_value, ${contractKind(sql)} financial_kind,
            ${contractTemporarilyExcluded(sql)} temporarily_excluded
     from core.contracts c
-    where c.ca_notice_id = ${cid}
+    where ${lotWhere}
     order by ${contractRonValue(sql)} desc nulls last, c.id
     limit ${pageSize} offset ${offset}
   `) as unknown as Record<string, unknown>[];
@@ -1462,6 +1402,7 @@ export async function getAwardNoticeDetail(
         : null,
     tedNoticeNo: (h["ted_no"] as string | null) ?? null,
     nLots,
+    nShown,
     totalContractValue: agg[0]?.total != null ? Number(agg[0].total) : null,
     frameworkValue: agg[0]?.frameworks != null ? Number(agg[0].frameworks) : null,
     lots: lots.map((l) => ({

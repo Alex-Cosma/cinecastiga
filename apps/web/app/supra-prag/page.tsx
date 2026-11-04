@@ -1,7 +1,11 @@
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
 import type { Metadata } from "next";
-import { getTedStats, getTedAwards, type TedAward } from "@/lib/marts";
+import { getTedStats, type TedAward } from "@/lib/marts";
+import { getTedAwards } from "@/lib/ted-awards";
+import { TED_COLUMNS } from "@/lib/ted-columns";
+import { readFilters } from "@/lib/table-filters/codec";
+import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
 import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, tedCoverageNote, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
@@ -71,13 +75,12 @@ function amountCell(a: TedAward) {
 export default async function SupraPragPage({
   searchParams,
 }: {
-  searchParams: Promise<{ etichetă?: string; extern?: string; unic?: string; tara?: string; sort?: string; p?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const sp = await searchParams;
-  const label = sp["etichetă"] === "also-in-seap" || sp["etichetă"] === "ted-only" || sp["etichetă"] === "possible-match" ? sp["etichetă"] : undefined;
-  const foreign = sp["extern"] === "1";
-  const singleBidder = sp["unic"] === "1";
-  const country = sp["tara"] || undefined;
+  // The table's filters are its column funnels (owner, 4 November 2026; lib/ted-columns.ts), the old links' parameters read too.
+  const filters = readFilters(TED_COLUMNS, (key) => sp[key]);
+  const countries = filters["tara"]?.kind === "options" ? filters["tara"].values : [];
   const sort = sp["sort"] === "value" ? "value" : "date";
   const requestedPage = Number(sp["p"] ?? "1");
   const PAGE_SIZE = 60;
@@ -85,33 +88,16 @@ export default async function SupraPragPage({
   const [stats, coverage, awards] = await Promise.all([
     getTedStats(),
     getCoverage(),
-    getTedAwards({
-      ...(label ? { label } : {}),
-      foreign,
-      singleBidder,
-      ...(country ? { country } : {}),
-      sort,
-      page: requestedPage,
-      pageSize: PAGE_SIZE,
-    }),
+    getTedAwards({ filters, sort, page: requestedPage, pageSize: PAGE_SIZE }),
   ]);
   const page = awards.page;
   const coverageNote = tedCoverageNote(coverage);
   const totalPages = Math.max(1, Math.ceil(awards.total / PAGE_SIZE));
 
-  // Filter links omit `p` (any filter change resets to page 1); pagination links
-  // pass `p` explicitly to keep the current filters.
+  // A sort or a country link keeps the address's filters and drops the page; pagination links keep both.
   const qstr = (patch: Record<string, string | undefined>) => {
-    const base: Record<string, string | undefined> = {
-      "etichetă": label,
-      extern: foreign ? "1" : undefined,
-      unic: singleBidder ? "1" : undefined,
-      tara: country,
-      sort: sort === "value" ? "value" : undefined,
-      ...patch,
-    };
     const qp = new URLSearchParams();
-    for (const [k, v] of Object.entries(base)) if (v) qp.set(k, v);
+    for (const [k, v] of Object.entries({ ...sp, p: undefined, ...patch })) if (v) qp.set(k, v);
     const s = qp.toString();
     return s ? `/supra-prag?${s}` : "/supra-prag";
   };
@@ -155,7 +141,7 @@ export default async function SupraPragPage({
         {stats.foreignCountryUnresolved > 0 ? <p className="note">
           În {formatInt(stats.foreignCountryUnresolved)} rezultate, marcajul „străin” nu este confirmat de țara
           câștigătorilor din datele preluate. {" "}
-          <Link href={`/supra-prag?extern=1&tara=${TED_COUNTRY_UNRESOLVED}`}>Vezi înregistrările de verificat</Link>.
+          <Link href={`/supra-prag?tara=${TED_COUNTRY_UNRESOLVED}`}>Vezi înregistrările de verificat</Link>.
         </p> : null}
         {stats.legacyAmounts == null || stats.legacyAmounts > 0 ? <p className="note">
           {stats.legacyAmounts != null ? `${formatInt(stats.legacyAmounts)} rezultate așteaptă verificarea tipului valorii. ` : "Clasificarea valorilor este în curs de actualizare. "}
@@ -168,8 +154,8 @@ export default async function SupraPragPage({
           <h2 className="ted-tip-line">Firme străine câștigătoare, după țară <Term id="ted-tari" tip /></h2>
           <div className="filters" style={{ flexWrap: "wrap" }}>
             {stats.byCountry.slice(0, 12).map((c) => (
-              <Link key={c.country} scroll={false} href={qstr({ tara: country === c.country ? undefined : c.country, extern: "1" })}
-                className={country === c.country ? "on" : ""}>
+              <Link key={c.country} scroll={false} href={qstr({ tara: countries.includes(c.country) ? undefined : c.country, extern: undefined })}
+                className={countries.includes(c.country) ? "on" : ""}>
                 {countryName(c.country)} · {formatInt(c.n)} rezultate
               </Link>
             ))}
@@ -179,47 +165,27 @@ export default async function SupraPragPage({
 
       <section className="section">
         <h2>Explorează atribuirile</h2>
-        <div className="filters ted-tip-line" style={{ flexWrap: "wrap" }}>
-          <Link scroll={false} href={qstr({ "etichetă": undefined })} className={!label ? "on" : ""}>Toate</Link>
-          <Link scroll={false} href={qstr({ "etichetă": "ted-only" })} className={label === "ted-only" ? "on" : ""}>
-            {TED_LABEL["ted-only"]!.title}
-          </Link>
-          <Term id="ted-fara-potrivire" tip className="ted-tip-above" />
-          <Link scroll={false} href={qstr({ "etichetă": "also-in-seap" })} className={label === "also-in-seap" ? "on" : ""}>
-            {TED_LABEL["also-in-seap"]!.title}
-          </Link>
-          <Link scroll={false} href={qstr({ "etichetă": "possible-match" })} className={label === "possible-match" ? "on" : ""}>
-            {TED_LABEL["possible-match"]!.title}
-          </Link>
-          <Link scroll={false} href={qstr({ extern: foreign ? undefined : "1" })} className={foreign ? "on" : ""}>
-            Marcate „străin”
-          </Link>
-          {stats.foreignCountryUnresolved > 0 || country === TED_COUNTRY_UNRESOLVED ? (
-            <Link scroll={false} href={qstr({ tara: country === TED_COUNTRY_UNRESOLVED ? undefined : TED_COUNTRY_UNRESOLVED })}
-              className={country === TED_COUNTRY_UNRESOLVED ? "on" : ""}>
-              {TED_COUNTRY_REVIEW_LABEL}
-            </Link>
-          ) : null}
-          <Link scroll={false} href={qstr({ unic: singleBidder ? undefined : "1" })} className={singleBidder ? "on" : ""}>
-            Ofertant unic
-          </Link>
-          <span className="filler" />
-          <Link scroll={false} href={qstr({ sort: undefined })} className={sort === "date" ? "on" : ""}>După dată</Link>
-          <Link scroll={false} href={qstr({ sort: "value" })} className={sort === "value" ? "on" : ""}>Valori RON, descrescător</Link>
-          <Term id="ted-valori" tip />
-        </div>
-
-        {country === TED_COUNTRY_UNRESOLVED ? <p className="hint">
+        <UrlFilterBand table="ted" />
+        <p className="hint">{formatInt(awards.total)} rezultate · {sort === "value" ? "după valoare, doar sumele în lei" : "cele mai noi întâi"}</p>
+        {countries.includes(TED_COUNTRY_UNRESOLVED) ? <p className="hint">
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
         </p> : null}
         <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
-              <th>Autoritate → Câștigător</th>
-              <th>Obiect</th>
-              <th>Procedură</th>
-              <th style={{ textAlign: "right" }}>Valoare și sursă</th>
+              {/* Each part of a header has its funnel (owner, 4 November 2026). */}
+              <th><span className="th-filter"><UrlFunnel table="ted" column="autoritate" label="Autoritate" /><span className="th-sep" aria-hidden="true">→</span><UrlFunnel table="ted" column="castigator" label="Câștigător" /><span className="th-sep" aria-hidden="true">·</span><UrlFunnel table="ted" column="tara" label="Țara" /></span></th>
+              <th><span className="th-filter"><UrlFunnel table="ted" column="cpv" label="Obiect" /><span className="th-sep" aria-hidden="true">·</span><UrlFunnel table="ted" column="potrivire" label="SEAP" /><Term id="ted-fara-potrivire" tip className="ted-tip-above" /><span className="th-sep" aria-hidden="true">·</span><UrlFunnel table="ted" column="oferte" label="Oferte" /></span></th>
+              <th><UrlFunnel table="ted" column="procedura" label="Procedură" /></th>
+              <th style={{ textAlign: "right" }}>
+                <span className="th-filter">
+                  <Link scroll={false} href={qstr({ sort: sort === "value" ? undefined : "value" })} title={sort === "value" ? "Înapoi la cele mai noi" : "Ordonează după valoarea în lei"}>
+                    Valoare{sort === "value" ? " ▾" : ""}
+                  </Link>
+                  <UrlFunnel table="ted" column="valoare" align="end" /><Term id="ted-valori" tip />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -263,7 +229,7 @@ export default async function SupraPragPage({
           </tbody>
         </table>
 
-        {awards.rows.length === 0 ? <p className="note">Nu sunt rezultate pentru aceste filtre. <Link href="/supra-prag">Vezi toate rezultatele TED</Link>.</p> : null}
+        {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <Link href="/supra-prag">Vezi toate rezultatele TED</Link>.</p> : null}
 
         {totalPages > 1 ? (
           <div className="pager">
