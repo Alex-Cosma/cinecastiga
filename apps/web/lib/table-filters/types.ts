@@ -76,11 +76,16 @@ export type TableColumns = readonly ColumnDef[];
 export interface OptionCount {
   value: string;
   label: string;
-  n: number;
+  /** Null when the rows were too many to count in time (the option is still offered). */
+  n: number | null;
 }
 
-/** What a funnel shows: the column's values in the rows left by every other filter. */
-export type Facet =
+/**
+ * What a funnel shows: the column's values in the rows left by every other filter. `partial` when the rows were too
+ * many to count within the funnel's time: the known options without numbers, or only a search for names.
+ */
+export type Facet = (
   | { kind: "options" | "pick"; options: OptionCount[]; more: boolean }
   | { kind: "dates"; months: { month: string; n: number }[]; undated: number }
-  | { kind: "range"; min: number | null; max: number | null; bins: { from: number; to: number; n: number }[] };
+  | { kind: "range"; min: number | null; max: number | null; bins: { from: number; to: number; n: number }[] }
+) & { partial?: true };

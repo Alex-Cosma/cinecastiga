@@ -6,6 +6,9 @@ import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, cou
 import { awardUrl } from "@/lib/elicitatie";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
+import { LOT_COLUMNS } from "@/lib/notice-lots-columns";
+import { readFilters } from "@/lib/table-filters/codec";
+import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
 import "./notice.css";
 
 /**
@@ -36,11 +39,20 @@ export default async function NoticePage({
   const { caid } = await params;
   const sp = await searchParams;
   const pageNo = Math.max(1, Number(sp["p"]) || 1);
-  const n = await getAwardNoticeDetail(caid, pageNo);
+  // The records' column funnels (owner, 4 November 2026; lib/notice-lots-columns.ts).
+  const filters = readFilters(LOT_COLUMNS, (key) => sp[key]);
+  const n = await getAwardNoticeDetail(caid, pageNo, 50, filters);
   if (!n) notFound();
 
   const ted = n.tedNoticeNo ? tedPubnum(n.tedNoticeNo) : null;
-  const pages = Math.max(1, Math.ceil(n.nLots / n.pageSize));
+  const pages = Math.max(1, Math.ceil(n.nShown / n.pageSize));
+  const scope = { caid: String(caid) };
+  // A page link keeps the funnels' filters.
+  const pageHref = (p: number) => {
+    const q = new URLSearchParams(Object.entries(sp).filter((e): e is [string, string] => e[1] !== undefined));
+    q.set("p", String(p));
+    return `?${q.toString()}#inregistrari`;
+  };
 
   return (
     <>
@@ -124,20 +136,21 @@ export default async function NoticePage({
 
       <section className="section">
         <h2 id="inregistrari" className="list-anchor">Înregistrările din acest anunț</h2>
-        {pages > 1 && (
+        <UrlFilterBand table="loturi" scope={scope} />
+        {(pages > 1 || n.nShown !== n.nLots) && (
           <p className="hint">
-            {formatInt(n.nLots)} înregistrări · pagina {n.page} din {formatInt(pages)} · ordonate
-            după valoare
+            {n.nShown !== n.nLots ? `${formatInt(n.nShown)} din ${formatInt(n.nLots)}` : formatInt(n.nLots)} înregistrări
+            {pages > 1 ? ` · pagina ${n.page} din ${formatInt(pages)}` : ""} · ordonate după valoare
           </p>
         )}
         <table className="rank">
           <thead>
             <tr>
               <th>Nr.</th>
-              <th>Obiect</th>
-              <th>Câștigător</th>
-              <th>Data</th>
-              <th style={{ textAlign: "right" }}>Valoare</th>
+              <th><UrlFunnel table="loturi" column="tip" label="Obiect · tip" scope={scope} /></th>
+              <th><UrlFunnel table="loturi" column="castigator" label="Câștigător" scope={scope} /></th>
+              <th><UrlFunnel table="loturi" column="data" label="Data" scope={scope} /></th>
+              <th style={{ textAlign: "right" }}><UrlFunnel table="loturi" column="valoare" label="Valoare" align="end" scope={scope} /></th>
               <th />
             </tr>
           </thead>
@@ -175,13 +188,14 @@ export default async function NoticePage({
             ))}
           </tbody>
         </table>
+        {n.lots.length === 0 && n.nShown !== n.nLots && <p className="note">Nicio înregistrare cu filtrele alese.</p>}
         {pages > 1 && (
           <div className="pager">
-            {n.page > 1 && <Link href={`?p=${n.page - 1}#inregistrari`}>← Anterior</Link>}
+            {n.page > 1 && <Link href={pageHref(n.page - 1)}>← Anterior</Link>}
             <span className="note">
               Pagina {n.page} din {formatInt(pages)}
             </span>
-            {n.page < pages && <Link href={`?p=${n.page + 1}#inregistrari`}>Următor →</Link>}
+            {n.page < pages && <Link href={pageHref(n.page + 1)}>Următor →</Link>}
           </div>
         )}
       </section>

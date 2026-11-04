@@ -1,17 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { activeOnly, withValue, writeFilters } from "@/lib/table-filters/codec";
-import type { Labels } from "@/lib/table-filters/describe";
-import type { Facet, FilterState, FilterValue, TableColumns } from "@/lib/table-filters/types";
-import { createLatestRequest } from "@/lib/latest-request";
+import type { FilterState, FilterValue, TableColumns } from "@/lib/table-filters/types";
+import { useFacetNames } from "./useFacetNames";
 
 /**
- * A table's column filters in the browser: the state, kept in the address (it can be reloaded or sent; the page's
- * other parameters stay), and the names learned from the funnels' answers, so a chip says „ROTACO”, not its id. A
- * value that arrives with the address, before its funnel has been opened, is named by asking that funnel once. A table
- * that shares its page with another one using the same parameters keeps its filters out of the address (`address:
- * false`).
+ * A client table's column filters: the state in the browser, mirrored in the address (it can be reloaded or sent; the
+ * page's other parameters stay), and the names of the chosen values. A table that shares its page with another one
+ * using the same parameters keeps its filters out of the address (`address: false`). A server-rendered table uses
+ * useUrlFilters instead.
  */
 export function useTableFilters(
   columns: TableColumns,
@@ -20,39 +18,13 @@ export function useTableFilters(
   { address = true }: { address?: boolean } = {},
 ) {
   const [state, setState] = useState<FilterState>(() => activeOnly(initial));
-  const [labels, setLabels] = useState<Labels>({});
+  const { labels, learn } = useFacetNames(columns, state, facetUrl);
 
   useEffect(() => {
     if (!address) return;
     const search = writeFilters(columns, window.location.search, state);
     if (search !== window.location.search) history.replaceState(history.state, "", `${window.location.pathname}${search}${window.location.hash}`);
   }, [address, columns, state]);
-
-  const learn = useCallback((key: string, facet: Facet) => {
-    if (facet.kind !== "options" && facet.kind !== "pick") return;
-    setLabels((known) => ({ ...known, [key]: { ...known[key], ...Object.fromEntries(facet.options.map((o) => [o.value, o.label])) } }));
-  }, []);
-
-  // A pick value from the address is named by its funnel (the server puts the chosen values first).
-  const [requests] = useState(createLatestRequest);
-  const unnamed = columns.filter((c) => {
-    const value = state[c.key];
-    return c.kind === "pick" && value?.kind === "pick" && value.values.some((v) => !labels[c.key]?.[v]);
-  }).map((c) => c.key);
-  const unnamedKey = unnamed.join(",");
-  useEffect(() => {
-    const key = unnamedKey.split(",")[0];
-    if (!key) return;
-    return requests.run(async (signal) => {
-      const response = await fetch(facetUrl(key, state), { signal });
-      const data = await response.json() as { ok: boolean; facet?: Facet };
-      if (!data.ok || !data.facet) throw new Error("facet");
-      return data.facet;
-    }, (facet) => learn(key, facet), () => {
-      // A name it cannot get stays the stored value; the filter itself still applies.
-      setLabels((known) => ({ ...known, [key]: { ...known[key], ...Object.fromEntries((state[key] as { values: string[] }).values.map((v) => [v, known[key]?.[v] ?? v])) } }));
-    });
-  }, [unnamedKey]); // eslint-disable-line react-hooks/exhaustive-deps -- `state` and `facetUrl` are read when the unnamed set changes
 
   return {
     state,
