@@ -12,7 +12,7 @@ import { connectionEvidenceSpec } from "../../connection-evidence-shared";
 import { peerSourceSpec } from "../../peers-shared";
 import { peerEvidenceSpec } from "../../peers-evidence-shared";
 import {
-  CONTRACT_WINNERS_SPEC, HOSPITALS_BREAKDOWN_SPEC, NATIONAL_CONTRACT_COUNT_SPEC, NATIONAL_DA_COUNT_SPEC, NATIONAL_MAP_SPEC,
+  AUTHORITY_CLOUD_SPEC, COMMUNES_BREAKDOWN_SPEC, CONTRACT_WINNERS_SPEC, SINGLE_BIDDER_WINNERS_SPEC, HOSPITALS_BREAKDOWN_SPEC, NATIONAL_CONTRACT_COUNT_SPEC, NATIONAL_DA_COUNT_SPEC, NATIONAL_MAP_SPEC,
   NATIONAL_VALUE_SPEC, ROADS_RANKING_SPEC, domainContextSpec, entityCaptureSpec, entityChannelSpec, entityMonthSpec,
   pairContractsSpec, pairSpec, personCaptureSpec, personClipSpec, personFirmsSpec,
 } from "../site-links";
@@ -145,6 +145,9 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
   site("home-roads", "site-links.ts ROADS_RANKING_SPEC (app/page.tsx, app/ghid/page.tsx)", ROADS_RANKING_SPEC);
   site("home-hospitals", "site-links.ts HOSPITALS_BREAKDOWN_SPEC (app/page.tsx)", HOSPITALS_BREAKDOWN_SPEC);
   site("home-contract-winners", "site-links.ts CONTRACT_WINNERS_SPEC (app/page.tsx)", CONTRACT_WINNERS_SPEC);
+  site("home-communes", "site-links.ts COMMUNES_BREAKDOWN_SPEC (app/page.tsx)", COMMUNES_BREAKDOWN_SPEC);
+  site("home-authority-cloud", "site-links.ts AUTHORITY_CLOUD_SPEC (app/page.tsx)", AUTHORITY_CLOUD_SPEC);
+  site("home-single-bidder", "site-links.ts SINGLE_BIDDER_WINNERS_SPEC (app/page.tsx)", SINGLE_BIDDER_WINNERS_SPEC);
   site("home-da-count", "site-links.ts NATIONAL_DA_COUNT_SPEC (app/page.tsx)", NATIONAL_DA_COUNT_SPEC);
   site("home-contract-count", "site-links.ts NATIONAL_CONTRACT_COUNT_SPEC (app/page.tsx)", NATIONAL_CONTRACT_COUNT_SPEC);
   site("home-value", "site-links.ts NATIONAL_VALUE_SPEC (app/page.tsx)", NATIONAL_VALUE_SPEC);

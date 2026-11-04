@@ -15,6 +15,9 @@ type Party = { id: string; name: string };
 export const ROADS_RANKING_SPEC: AskSpec = { block: "table", dataset: "all", dim: "supplier", measure: "value", topN: 10, filters: { cpvTerm: "drumuri" } };
 export const HOSPITALS_BREAKDOWN_SPEC: AskSpec = { block: "breakdown", dataset: "all", measure: "value", filters: { authorityKind: "spital" } };
 export const CONTRACT_WINNERS_SPEC: AskSpec = { block: "table", dataset: "contracts", dim: "supplier", measure: "value", topN: 10, filters: {} };
+export const COMMUNES_BREAKDOWN_SPEC: AskSpec = { block: "breakdown", dataset: "all", measure: "value", filters: { authorityKind: "comuna" } };
+export const AUTHORITY_CLOUD_SPEC: AskSpec = { block: "scatter", dim: "authority", measure: "value", filters: {} };
+export const SINGLE_BIDDER_WINNERS_SPEC: AskSpec = { block: "table", dataset: "contracts", dim: "supplier", measure: "value", topN: 10, filters: { singleBidder: true } };
 /** Home national figures. The DA count states the plausibility bound the engine serves from agg_national. */
 export const NATIONAL_DA_COUNT_SPEC: AskSpec = { block: "stat", dataset: "da", measure: "count", filters: {}, population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "value", op: "lte", value: "2000000" }] }] } };
 export const NATIONAL_CONTRACT_COUNT_SPEC: AskSpec = { block: "stat", dataset: "contracts", measure: "count", filters: {} };
