@@ -11,8 +11,8 @@ import { countWords } from "../../lib/ask/answer-text";
 import { formatBucharestDay, formatInt } from "../../lib/format";
 /** An old link's tenth of the index (0–1) as the band of the score it selects: 0.2–0.3 → 20–29, 0.9–1 → 90–100 (evidence.ts riskBucketScore). */
 const bucketBand = (bucket: { from: number; to: number }) => ({ from: Math.round(bucket.from * 10) * 10, to: bucket.to >= 1 ? 100 : Math.round(bucket.to * 10) * 10 - 1 });
-/** "20–29%", or "0%" for the band without patterns. */
-const bandWords = (band: { from: number; to: number }) => band.from === band.to ? `${formatInt(band.from)}%` : `${formatInt(band.from)}–${formatInt(band.to)}%`;
+/** "20–29", or "0" for the band without patterns: a score out of 100, not a percentage. */
+const bandWords = (band: { from: number; to: number }) => band.from === band.to ? formatInt(band.from) : `${formatInt(band.from)}–${formatInt(band.to)}`;
 export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   const { spec, options } = scope, subgroup = options.scope, members = options.members;
   // The question's conditions in the words of describeConditions; the receipt keeps a precise selection group by group.

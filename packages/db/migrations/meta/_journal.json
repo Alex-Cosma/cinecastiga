@@ -680,6 +680,13 @@
       "when": 1793546363677,
       "tag": "0096_awards_notice_no",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1793546423677,
+      "tag": "0097_entity_flags_score_note",
+      "breakpoints": true
     }
   ]
 }

@@ -4,6 +4,7 @@ import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
 import { confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
 import { annex2Sql, authorityDecemberSql } from "./score.js";
+import { buyerRegimeSql, entityNameSql, INHOUSE_SUPPLIER_NAME, UTILITY_SUPPLIER_NAME } from "./regime.js";
 
 /**
  * DA red-flag build (red-flags DEC-005). Truncate + recompute `core.flags` from
@@ -17,10 +18,15 @@ import { annex2Sql, authorityDecemberSql } from "./score.js";
  */
 const V = METHODOLOGY_VERSION;
 
-/** Buyers whose legal status the archive cannot confirm (companies, associations, private clinics): no above-ceiling hit. */
-const BUYER_NONCLASSIC = String.raw`(\m(srl|sa|s a|ra|regia|regie|compania|societatea|cn|sn|ag|sca)\M)|^(asociatia|ouai|organizatia|fundatia|federatia|clubul|cooperativa|uniunea)|clinic|policlinic|centrul medical|medical center`;
-/** Buyers that look sectoral (utilities, transport, energy): Legea 99 ceilings and exemptions apply, not checked here. */
-const BUYER_SECTORAL = String.raw`(apa|canal|termic|termo|transgaz|transelectrica|electrica|hidroelectrica|nuclearelectrica|romgaz|cfr|metrorex|\mstb\M|transport|aeroport|\mport\M|posta|distributie|energie|gaz|salubr|ecolog|aquaserv|apavital|apaserv|raja)`;
+/*
+ * rf-2026.20: the buyer's regime (regime.ts) replaces the name filters of
+ * rf-2026.18, which matched "apa" inside "Zăpada" or "Apateu", "posta" in
+ * the village of Poșta and every "Spitalul Clinic", and skipped the public
+ * sectoral operators although Legea 99 art. 12(4) gives them the same DA
+ * ceilings. A company the ceilings do not bind (private_buyer) has no
+ * above-ceiling, repeated-purchase or concentration flag; an association has
+ * no above-ceiling flag (its regime is not verified).
+ */
 
 const DEFAULTS: Record<string, number> = {
   // Analytical plausibility cutoff, distinct from the date-aware legal limits.
@@ -29,6 +35,24 @@ const DEFAULTS: Record<string, number> = {
   da_conc_min_suppliers: 3,
   da_conc_min_total: 100_000,
   da_dep_top_pct: 0.85,
+  // rf-2026.20: dependence is recorded from 70% of the firm's sales (it climbs
+  // to level 1 at da_dep_top_pct) with the main institution in 2+ years.
+  da_dep_floor_pct: 0.7,
+  da_dep_min_years: 2,
+  // rf-2026.20: the main supplier counts with 3+ DAs in 2+ years, without its
+  // largest single DA; a utility or the institution's own firm is no main supplier.
+  da_conc_partner_min_count: 3,
+  da_conc_partner_min_years: 2,
+  // rf-2026.20: above the ceiling only a strict hit, an estimate above the
+  // ceiling or a closing above it with VAT (21%).
+  da_above_vat_ratio: 1.21,
+  // rf-2026.20: da_capacity, DA sales in a year against the turnover of that
+  // year or up to two before; firms over 100M lei of turnover are exempt.
+  da_cap_min_value: 100_000,
+  da_cap_min_ratio: 1.5,
+  da_cap_min_turnover: 10_000,
+  da_cap_zero_staff_value: 500_000,
+  da_cap_big_turnover: 100_000_000,
   da_dep_min_total: 250_000,
   da_dep_min_count: 5,
   da_split_min_count: 3,
@@ -118,12 +142,31 @@ async function buildFlags(
   const roundFloor = await t("da_round_floor_pct");
   const yeShare = await t("da_year_end_share");
   const yeMinTot = await t("da_year_end_min_total");
+  const depFloorPct = await t("da_dep_floor_pct");
+  const depMinYears = await t("da_dep_min_years");
+  const concPartnerMinN = await t("da_conc_partner_min_count");
+  const concPartnerMinYears = await t("da_conc_partner_min_years");
+  const aboveVat = await t("da_above_vat_ratio");
+  const capMinValue = await t("da_cap_min_value");
+  const capMinRatio = await t("da_cap_min_ratio");
+  const capMinTurnover = await t("da_cap_min_turnover");
+  const capZeroStaffValue = await t("da_cap_zero_staff_value");
+  const capBigTurnover = await t("da_cap_big_turnover");
   log(
     `thresholds: ceilings=date-aware (${ceilingEras} era rows) concTop=${concTopPct} ` +
       `depTop=${depTopPct} depMin=${depMinTot}/${depMinCount} splitN=${splitMinN} roundFloor=${roundFloor} yeShare=${yeShare}`,
   );
 
   await sql`truncate core.flags`;
+  // The regime of every buying institution, for the rules below (regime.ts).
+  // A caller may run the rules twice in one transaction (fixtures do); the table is rebuilt each time.
+  await sql`drop table if exists pg_temp.buyer_regime`;
+  await sql`create temp table buyer_regime on commit drop as ${buyerRegimeSql(sql)}`;
+  await sql`create index on buyer_regime (eid)`;
+  const regime = await sql`select regime, count(*)::int c from buyer_regime group by 1 order by 1`;
+  log(`buyer regimes: ${regime.map((r) => `${r["regime"]}=${r["c"]}`).join(" ")}`);
+  const privateBuyer = (col: ReturnType<DbSql>) =>
+    sql`exists (select 1 from buyer_regime br where br.eid = ${col} and br.regime = 'private_buyer')`;
 
   // da_rapid ("Finalizare rapidă") was RETIRED in rf-2026.18 (owner decision,
   // 1 November 2026): it marked 11.5% of all DAs and 87.5% of institutions,
@@ -180,6 +223,7 @@ async function buildFlags(
         and da.closing_value > 0 and da.closing_value <= ${maxPlausible}
         and da.finalization_date is not null
         and btrim(da.cpv_code) ~ ${DA_CPV_TYPE_PATTERN}
+        and not ${privateBuyer(sql`da.authority_entity_id`)}
     ),
     g as (
       select a, s, y, cpv_class, typ, count(*) n, sum(cv) total, max(ceil) ceil,
@@ -199,10 +243,15 @@ async function buildFlags(
   `;
 
   // ── da_concentration: one supplier captures an authority (per authority) ─
+  // rf-2026.20: the main supplier's share without its largest single DA (one
+  // big purchase is not a relationship), with 3+ DAs in 2+ years; a utility
+  // or the institution's own firm (in-house) is nobody's main supplier, and a
+  // company the ceilings do not bind has no concentration flag.
   await sql`
-    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with per as (
-      select authority_entity_id a, supplier_entity_id s, sum(closing_value) st
+      select authority_entity_id a, supplier_entity_id s, sum(closing_value) st, count(*) n, max(closing_value) mx,
+        count(distinct extract(year from finalization_date)) yrs
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
@@ -211,24 +260,40 @@ async function buildFlags(
       group by a, s
     ),
     agg as (
-      select a, sum(st) total, count(*) suppliers, max(st) top, sum(power(st,2)) sumsq
+      select a, sum(st) total, count(*) suppliers, sum(power(st,2)) sumsq
       from per group by a
+    ),
+    top as (select distinct on (a) a, s, st, n, mx, yrs from per order by a, st desc, s),
+    c as (
+      select t.*, agg.total, agg.suppliers, agg.sumsq, (t.st - t.mx) / greatest(agg.total - t.mx, 1) adj
+      from top t join agg using (a)
+      join core.entities es on es.id = t.s
+      where agg.total >= ${concMinTot} and agg.suppliers >= ${concMinSup}
+        and t.n >= ${concPartnerMinN} and t.yrs >= ${concPartnerMinYears}
+        and ${entityNameSql(sql, "es")} !~ ${UTILITY_SUPPLIER_NAME}
+        and ${entityNameSql(sql, "es")} !~ ${INHOUSE_SUPPLIER_NAME}
+        and not ${privateBuyer(sql`t.a`)}
     )
-    select 'authority', a, 'da_concentration', 'all', true,
-      least(1, top / nullif(total,0)),
+    select 'authority', a, s, 'da_concentration', 'all', true,
+      least(1, adj),
       jsonb_build_object('total', total, 'suppliers', suppliers,
-        'top_supplier_pct', round(top/nullif(total,0),4),
+        'top_supplier', s, 'top_supplier_pct', round(st/nullif(total,0),4),
+        'adjusted_pct', round(adj::numeric,4), 'largest_da', mx, 'top_supplier_count', n, 'top_supplier_years', yrs,
         'hhi', round(sumsq/nullif(power(total,2),0),4)), ${V}
-    from agg
-    where total >= ${concMinTot} and suppliers >= ${concMinSup}
-      and top/nullif(total,0) >= ${concTopPct}
+    from c
+    where adj >= ${concTopPct}
   `;
 
   // ── da_dependence: supplier lives off one authority (per supplier) ───────
+  // rf-2026.18: the main institution (ties: the smaller id) must have at least
+  // da_dep_min_count of the firm's DAs, so one-off sellers do not read as
+  // dependent. rf-2026.20: recorded from 70% of the firm's sales, in 2+ years;
+  // not the institution's own firm (in-house, Legea 98 art. 31).
   await sql`
-    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
     with per as (
-      select supplier_entity_id s, authority_entity_id a, sum(closing_value) st, count(*) n
+      select supplier_entity_id s, authority_entity_id a, sum(closing_value) st, count(*) n,
+        count(distinct extract(year from finalization_date)) yrs
       from core.direct_acquisitions
       where state = 'Oferta acceptata'
         and authority_entity_id is not null and supplier_entity_id is not null
@@ -236,18 +301,19 @@ async function buildFlags(
         and closing_value > 0 and closing_value <= ${maxPlausible}
       group by s, a
     ),
-    agg as (
-      select s, sum(st) total, count(*) authorities, max(st) top from per group by s
-    ),
-    -- rf-2026.18: the main institution (ties: the smaller id) must have at least
-    -- da_dep_min_count of the firm's DAs, so one-off sellers do not read as dependent.
-    main as (select distinct on (s) s, a, n from per order by s, st desc, a)
-    select 'supplier', agg.s, 'da_dependence', 'all', true,
-      least(1, top / nullif(total,0)),
-      jsonb_build_object('total', total, 'authorities', authorities,
-        'top_authority_pct', round(top/nullif(total,0),4), 'top_authority', main.a, 'top_authority_count', main.n), ${V}
-    from agg join main using (s)
-    where total >= ${depMinTot} and top/nullif(total,0) >= ${depTopPct} and main.n >= ${depMinCount}
+    agg as (select s, sum(st) total, count(*) authorities from per group by s),
+    auth as (select a, sum(st) total from per group by a),
+    main as (select distinct on (s) s, a, st, n, yrs from per order by s, st desc, a)
+    select 'supplier', m.s, m.a, 'da_dependence', 'all', true,
+      least(1, m.st / nullif(agg.total,0)),
+      jsonb_build_object('total', agg.total, 'authorities', agg.authorities,
+        'top_authority_pct', round(m.st/nullif(agg.total,0),4), 'top_authority', m.a, 'top_authority_count', m.n,
+        'top_authority_years', m.yrs, 'authority_share', round(m.st/nullif(au.total,0),4)), ${V}
+    from main m join agg using (s) join auth au on au.a = m.a
+    join core.entities es on es.id = m.s
+    where agg.total >= ${depMinTot} and m.st/nullif(agg.total,0) >= ${depFloorPct}
+      and m.n >= ${depMinCount} and m.yrs >= ${depMinYears}
+      and ${entityNameSql(sql, "es")} !~ ${INHOUSE_SUPPLIER_NAME}
   `;
 
   // ── da_year_end: December spend spike (per authority-year) ────────────────
@@ -272,21 +338,25 @@ async function buildFlags(
   // ── da_above_ceiling: a DA recorded above the legal ceiling (per DA) ──────
   // rf-2026.18, the review's safe scope only, so a named institution is never
   // wrongly accused: not an exact Annex 2 CPV (own procedure, art. 111), not
-  // CPV 33 (central purchasing cannot be seen), not a company, association or
-  // sectoral-looking buyer, not 26.02–14.05.2020 (COVID onset), not the state
-  // supplier Unifarm, more than 1.1× the ceiling, not goods/services that a
-  // works ceiling would cover (≥ 90% of it, or building-like CPVs 44, 71, 34,
-  // 31, 39 under it), and the closing at most twice the estimate.
+  // CPV 33 (central purchasing cannot be seen), not 26.02–14.05.2020 (COVID
+  // onset), not the state supplier Unifarm, more than 1.1× the ceiling, not
+  // goods/services that a works ceiling would cover (≥ 90% of it, or
+  // building-like CPVs 44, 71, 34, 31, 39 under it), and the closing at most
+  // twice the estimate. rf-2026.20: only a buyer the ceilings bind (classic
+  // regime, public sectoral operators included), and only a strict hit: the
+  // estimate (what art. 7(5) tests) above the ceiling, or a closing above the
+  // ceiling even with VAT (da_above_vat_ratio).
   await sql`
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
     select 'da', id, 'da_above_ceiling', to_char(finalization_date, 'YYYY'), true,
       least(1, (closing_value / ceil - 1) / 2),
       jsonb_build_object('closing', closing_value, 'ceiling', ceil, 'ratio', round(closing_value / ceil, 4), 'type', typ,
-        'works_ceiling', works_ceil, 'threshold_date', threshold_date, 'threshold_law', threshold_law), ${V}
+        'works_ceiling', works_ceil, 'threshold_date', threshold_date, 'threshold_law', threshold_law,
+        'estimate', est, 'basis', case when coalesce(est, 0) > ceil then 'estimate' else 'vat' end), ${V}
     from (
       select da.id, da.finalization_date, da.closing_value, btrim(da.cpv_code) cpv, da.estimated_value_ron est,
         th.value_num::numeric ceil, th.key typ, tw.value_num::numeric works_ceil, ${daDate} threshold_date, th.note threshold_law,
-        ea.name_normalized buyer, es.name_normalized supplier
+        es.name_normalized supplier
       from core.direct_acquisitions da
       join core.risk_thresholds th
         on th.key = ${daKey}
@@ -296,7 +366,7 @@ async function buildFlags(
         on tw.key = 'da_ceiling_works'
        and (tw.valid_from at time zone 'UTC')::date <= ${daDate}
        and (tw.valid_to is null or (tw.valid_to at time zone 'UTC')::date > ${daDate})
-      join core.entities ea on ea.id = da.authority_entity_id
+      join buyer_regime br on br.eid = da.authority_entity_id and br.regime = 'classic'
       join core.entities es on es.id = da.supplier_entity_id
       where da.state = 'Oferta acceptata'
         and da.closing_value > 0 and da.closing_value <= ${maxPlausible}
@@ -306,13 +376,67 @@ async function buildFlags(
     ) d
     -- A buyer or supplier without a normalized name is left out (unknown status).
     where not ${annex2Sql(sql, sql`d.cpv`)} and left(d.cpv, 2) <> '33'
-      and d.buyer !~ ${BUYER_NONCLASSIC} and d.buyer !~ ${BUYER_SECTORAL}
       and d.supplier !~ 'unifarm'
       and not (d.threshold_date between date '2020-02-26' and date '2020-05-14')
       and not (d.typ = 'da_ceiling_goods_services' and d.closing_value >= 0.9 * d.works_ceil and d.closing_value <= d.works_ceil)
       and not (d.typ = 'da_ceiling_goods_services' and d.closing_value <= d.works_ceil and left(d.cpv, 2) in ('44', '71', '34', '31', '39'))
       -- Without an estimate the entry-error guard cannot judge: the hit stays.
       and not (coalesce(d.est, 0) > 0 and d.closing_value > 2 * d.est)
+      and (coalesce(d.est, 0) > d.ceil or d.closing_value > ${aboveVat}::float8 * d.ceil)
+  `;
+
+  // ── da_capacity: DA sales beyond the firm's size (per supplier-year) ─────
+  // rf-2026.20 (owner decisions of 3 November 2026): DA sales in a year against
+  // the firm's net turnover (the balance sheet of that year, or up to two
+  // years before), through a corroborated CUI only (audit F03). Recorded from
+  // 1.5× the turnover, when the turnover is implausibly small (< 10,000 lei)
+  // next to the sales, or for a year with no employees and 500,000 lei of DAs.
+  // A firm that ever reported 100M lei of turnover is exempt.
+  await sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    with dy as (
+      select supplier_entity_id s, extract(year from finalization_date)::int y, sum(closing_value) v, count(*) n
+      from core.direct_acquisitions
+      where state = 'Oferta acceptata'
+        and supplier_entity_id is not null and finalization_date is not null
+        and supplier_entity_id is distinct from authority_entity_id -- not a supplier (audit F12)
+        and closing_value > 0 and closing_value <= ${maxPlausible}
+      group by 1, 2
+      having sum(closing_value) >= ${capMinValue}
+    ),
+    firms as (
+      select e.id s, e.cui_canonical cui
+      from core.entities e
+      where e.id in (select s from dy) and ${cuiCorroborated(sql, 'e')}
+    ),
+    fin as (
+      select f.s, cf.year y, cf.net_turnover ca, cf.employees
+      from firms f join reference.company_financials cf on cf.cui = f.cui
+    ),
+    firm as (select s, min(y) first_year, max(ca) max_ca from fin group by s),
+    -- The latest balance sheet with a turnover in the DA year or the two before (a hash join, then one row per year).
+    m as (
+      select distinct on (dy.s, dy.y) dy.s, dy.y, dy.v, dy.n, f.y turnover_year, f.ca, f.employees, firm.first_year
+      from dy
+      join firm using (s)
+      join fin f on f.s = dy.s and f.y between dy.y - 2 and dy.y and f.ca is not null
+      where coalesce(firm.max_ca, 0) <= ${capBigTurnover}
+      order by dy.s, dy.y, f.y desc
+    ),
+    r as (
+      select m.*, case when ca > 0 then v / greatest(ca, ${capMinTurnover}) end ratio,
+        ca > 0 and ca < ${capMinTurnover} implausible,
+        first_year >= y - 1 young,
+        coalesce(employees, -1) = 0 and v >= ${capZeroStaffValue} zero_staff
+      from m
+    )
+    select 'supplier', s, 'da_capacity', y::text, true,
+      least(1, coalesce(ratio, 0) / 10),
+      jsonb_build_object('year', y, 'da_value', v, 'da_count', n, 'turnover', ca, 'turnover_year', turnover_year,
+        'employees', employees, 'ratio', round(ratio::numeric, 2), 'implausible', implausible, 'young', young,
+        'zero_staff', zero_staff), ${V}
+    from r
+    where (ca > 0 and (implausible or ratio >= ${capMinRatio})) or zero_staff
   `;
 
   // ══ Procedure flags ═══════════════════════════════════════════════════════

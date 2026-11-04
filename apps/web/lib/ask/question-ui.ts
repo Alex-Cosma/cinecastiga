@@ -143,7 +143,7 @@ export const QUESTION_TYPES: {
     id: "scatter",
     group: "signals",
     label: "Cine iese din tipar?",
-    description: "Valoarea achizițiilor în raport cu riscul (0–100%).",
+    description: "Valoarea achizițiilor în raport cu riscul (0–100).",
     keywords: "risc scor tipare volum scatter outlier anomalii",
   },
   {

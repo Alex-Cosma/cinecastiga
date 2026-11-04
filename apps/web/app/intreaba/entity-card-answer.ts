@@ -10,7 +10,7 @@ import { employeesWords } from "../../lib/ask/filters/words";
 import { KIND_ONE, KIND_WORDS, type QuestionSpec } from "../../lib/ask/question-ui";
 import { SEAT_ABROAD } from "../../lib/ask/seat";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
-import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskPercent } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { newFirmTag, rankedGroupLead } from "../../lib/ask/winner-words";
 import type { RowFact } from "./answer/RowFacts";
 
@@ -147,7 +147,7 @@ export function rankingHeadline(ranking: Pick<RiskRanking, "pool" | "top" | "top
 /** A score as its pill says it, the band's word beside it and the pill's colour class: „71%”, „puternic”, risk-high. */
 export function scorePill(score: number): { text: string; band: string; className: string } {
   const band = riskBand(score);
-  return { text: riskPercent(score), band: RISK_BAND_WORD[band], className: RISK_BAND_CLASS[band] };
+  return { text: riskScoreText(score), band: RISK_BAND_WORD[band], className: RISK_BAND_CLASS[band] };
 }
 
 /** A pattern in lower case, in the site's words („achiziții repetate, peste plafon cumulat”); a code the site no longer names stays the code. */

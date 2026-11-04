@@ -13,7 +13,7 @@ import {
 } from "../../lib/ask/scatter-shared";
 import { namedKind, type AskSpec } from "../../lib/ask/spec";
 import { flagEntityRule, flagLabel } from "../../lib/flags";
-import { RISK_BAND_CLASS, riskBand, riskPercent } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, riskBand, riskScoreText } from "../../lib/risk-score";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import EntityName from "../../components/EntityName";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -141,7 +141,7 @@ const chartName = (name: string): string => { const short = cleanName(name).repl
 function RowRisk({ row, levels }: { row: AnyListRow; levels: number }) {
   if ("cri" in row) return <span className="sc-cri qb-num">{formatDecimal(row.cri, levels === 4 ? 2 : 1)} · {row.nFlags} din {levels}</span>;
   return <span className="sc-cri sc-risk">
-    <span className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskPercent(row.score)}</span>
+    <span className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</span>
     <small>{scoreBandWord(row.score)}</small>
   </span>;
 }
@@ -380,7 +380,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           {RISK_ZONES.map((z) => <rect key={z.band} x={g.pad.l} y={g.yAt(z.to)} width={g.plotW} height={g.yAt(z.from) - g.yAt(z.to)}
             className={`sc-zone ${RISK_BAND_CLASS[z.band]}`} />)}
           {RISK_GRID.map((s) => <line key={s} x1={g.pad.l} x2={g.pad.l + g.plotW} y1={g.yAt(s)} y2={g.yAt(s)} className="sc-grid sc-grid-y" />)}
-          {RISK_AXIS.map((s) => <text key={s} x={g.pad.l - 6} y={g.yAt(s) + 4} textAnchor="end" className="sc-idx">{s}%</text>)}
+          {RISK_AXIS.map((s) => <text key={s} x={g.pad.l - 6} y={g.yAt(s) + 4} textAnchor="end" className="sc-idx">{s}</text>)}
           <text x={4} y={g.pad.t - 8} className="sc-axis">risc</text>
         </g>}
         {g.ticks.map((t) => <g key={t.lg}>
@@ -415,7 +415,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         <span><i className="sc-key is-list" aria-hidden="true" /> în listă</span>
         <span><i className="sc-key is-ring" aria-hidden="true" /> ales sau căutat</span>
         <span><i className="sc-key is-line" aria-hidden="true" /> {p90Words}</span>
-        {!legacy && <span>riscul, în % <HelpTip tip={{ id: "scor-risc" }} /></span>}
+        {!legacy && <span>riscul, din 100 <HelpTip tip={{ id: "scor-risc" }} /></span>}
       </figcaption>
     </figure>}
 

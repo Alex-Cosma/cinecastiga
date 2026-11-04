@@ -24,24 +24,25 @@ function scoreRoles(code: string): string | null {
 }
 
 /**
- * The strength levels of each pattern of the risk score (rf-2026.18,
+ * The strength levels of each pattern of the risk score (rf-2026.20,
  * packages/db/src/profile-flags.ts): level 1 is the pattern itself (its rule on
- * the card below); levels 2 and 3 need a profile of 20 DAs and 500.000 lei.
+ * the card below); between levels the strength climbs in proportion.
  */
 const LEVELS: { code: RiskCriterion; l1: string; l2: string; l3: string }[] = [
-  { code: "da_split", l1: "cel puțin un grup", l2: "grupurile au 10% din valoare (firme: 25%)", l3: "25% (firme: 50%)" },
-  { code: "da_round", l1: "peste 10% din achiziții la 96–100% din plafon (minimum 5); la instituții și 5 astfel de achiziții, dacă sunt 1%", l2: "peste 25%", l3: "peste 50%" },
-  { code: "da_year_end", l1: "un an", l2: "doi ani", l3: "trei ani sau mai mulți" },
-  { code: "da_concentration", l1: "60% din valoare la un furnizor", l2: "75%", l3: "90%" },
-  { code: "da_dependence", l1: "85% din vânzări la o instituție (minimum 250.000 lei și 5 achiziții cu ea)", l2: "firma are 20% din achizițiile directe ale instituției", l3: "50%" },
-  { code: "da_above_ceiling", l1: "2 cazuri", l2: "4 cazuri, sau 3 cu 5% din valoare", l3: "10 cazuri, sau 4 cu 20% din valoare" },
+  { code: "da_above_ceiling", l1: "2 cazuri și 0,5% din valoare", l2: "3 cazuri și 3%", l3: "5 cazuri și 10%" },
+  { code: "da_split", l1: "grupurile cântăresc 2% din valoare (firme: 5%)", l2: "8% (firme: 20%)", l3: "20% (firme: 50%)" },
+  { code: "da_round", l1: "de 2 ori mai multe decât media națională (minimum 3)", l2: "de 4 ori", l3: "de 8 ori" },
+  { code: "da_year_end", l1: "decembrie departe de instituțiile de același tip", l2: "cel mult 1,25", l3: "—" },
+  { code: "da_concentration", l1: "60% din valoare la un furnizor, fără cea mai mare achiziție a lui", l2: "75%", l3: "90%" },
+  { code: "da_dependence", l1: "85% din vânzări la o instituție (70–85%: sub nivelul 1)", l2: "și 20% din achizițiile ei directe, sau captivă și peste capacitate", l3: "50%, sau captivă și de 3× peste capacitate" },
+  { code: "da_capacity", l1: "achiziții directe de 1,5× cifra de afaceri", l2: "3×", l3: "10×" },
 ];
 
 const BANDS: { band: keyof typeof RISK_BAND_CLASS; range: string; word: string }[] = [
-  { band: "none", range: "0%", word: "niciun tipar găsit" },
-  { band: "slab", range: "20–39%", word: "slab" },
-  { band: "moderat", range: "40–67%", word: "moderat" },
-  { band: "puternic", range: "68–100%", word: "puternic" },
+  { band: "none", range: "0", word: "niciun tipar găsit" },
+  { band: "slab", range: "1–39", word: "slab" },
+  { band: "moderat", range: "40–67", word: "moderat" },
+  { band: "puternic", range: "68–100", word: "puternic" },
 ];
 
 export default function MetodologiePage() {
@@ -95,7 +96,7 @@ export default function MetodologiePage() {
 
       <section className="section" id="indice">
         <h2>Cum se calculează riscul?</h2>
-        <p className="hint">Scorul de risc, de la 0 la 100%, arată câte tipare au achizițiile directe ale unei instituții sau firme
+        <p className="hint">Scorul de risc, de la 0 la 100 (nu un procent), arată câte tipare au achizițiile directe ale unei instituții sau firme
           și cât de pronunțate sunt. <strong>Nu este o probabilitate de corupție.</strong> Un tipar este o pistă de verificat, nu o dovadă.</p>
         <ul className="prose">
           <li><strong>Datele.</strong> Achizițiile directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, din toată arhiva.
@@ -108,9 +109,9 @@ export default function MetodologiePage() {
         </ul>
 
         <h3 id="niveluri">Cât de pronunțat e un tipar</h3>
-        <p>Fiecare tipar găsit are o tărie de la 1 la 3, după nivelul atins; între praguri crește proporțional (de exemplu 2,5 la
-          jumătatea drumului spre nivelul 3). <strong>Nivelurile 2 și 3 cer cel puțin 20 de achiziții directe și 500.000 lei</strong>;
-          sub acestea, un tipar găsit are tăria 1.</p>
+        <p>Fiecare tipar găsit are o tărie de la 1 la 3, măsurată față de mărimea profilului; între praguri crește proporțional.{" "}
+          <strong>Peste nivelul 1 trebuie cel puțin 20 de achiziții directe, sau 5 achiziții cu cel puțin 1 milion lei</strong>{" "}
+          (nu se aplică la decembrie și la capacitate).</p>
         <table className="rank method-levels">
           <thead><tr><th scope="col">Tipar</th><th scope="col">Nivelul 1</th><th scope="col">Nivelul 2</th><th scope="col">Nivelul 3</th></tr></thead>
           <tbody>{LEVELS.map((l) => <tr key={l.code}>
@@ -118,22 +119,41 @@ export default function MetodologiePage() {
             <td data-l="Nivelul 1">{l.l1}</td><td data-l="Nivelul 2">{l.l2}</td><td data-l="Nivelul 3">{l.l3}</td>
           </tr>)}</tbody>
         </table>
-        <p className="note">La achizițiile repetate, valoarea din CPV-urile Anexei 2 (servicii cu procedură proprie) nu ridică nivelul.
-          În decembrie, un an contează când ponderea lunii e printre cele mai mari 5% la instituțiile de același tip și de cel puțin 35%;
-          între niveluri contează cât de aproape de prag a fost cel mai înalt decembrie nesemnalat.</p>
+        <ul className="prose note">
+          <li><strong>Peste plafon:</strong> cazuri = cumpărător × lună; contează scara mai mică dintre număr și valoare. La o instituție,
+            2 cazuri dau cel puțin nivelul 1.</li>
+          <li><strong>Achiziții repetate:</strong> un grup cântărește după cât trece de plafonul cumulat (nimic la 1,2×, întreg de la 2×) și
+            după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează.</li>
+          <li><strong>Chiar sub plafon:</strong> achizițiile la 96–100% din plafon, față de câte ar fi după media națională de același tip
+            și aceleași plafoane (tăria = log₂ al raportului).</li>
+          <li><strong>Decembrie:</strong> cât de departe sunt cele mai mari două decembrii de mediana instituțiilor de același tip;
+            cel mult 1,25, deci singur rămâne „slab”.</li>
+          <li><strong>Capacitate:</strong> o cifră de afaceri sub 10.000 lei sau 0 angajați la 500.000 lei dau nivelul 1; +0,5 pentru o firmă
+            în primii doi ani de bilanț.</li>
+          <li><strong>Pe o firmă</strong>, „Peste plafon” și „Achiziții repetate” țin de obligația cumpărătorului: cântăresc cel mult 1,5,
+            afară de cazul în care 80% din ele sunt cu 1–2 instituții. La utilități și furnizorii de masă contează doar partea cu primele
+            două instituții.</li>
+          <li><strong>Cumpărătorii:</strong> plafonul se verifică la instituțiile publice și la operatorii sectoriali publici. La companiile
+            private contează doar „Chiar sub plafon” și decembrie; la asociații, „Peste plafon” nu se verifică. Firma unei instituții
+            (in-house) nu primește scor.</li>
+        </ul>
 
         <h3 id="formula">Formula</h3>
-        <p>Un tipar la tăria x ia 20% × x din ce a rămas până la 100%: la tăria maximă, 60%. Tiparele se combină, nu se adună peste 100%:</p>
-        <p className="method-formula"><code>risc = 100 × (1 − (1 − 0,2·x₁) × (1 − 0,2·x₂) × …)</code></p>
+        <p>Tiparele se grupează în patru familii: evitarea plafonului („Peste plafon”, „Achiziții repetate”, „Chiar sub plafon”),
+          relația cu un partener (concentrare sau dependență), decembrie și capacitatea firmei. O familie ia tiparul cel mai puternic
+          plus 0,4 din celelalte, până la plafonul ei: evitare 4, relație 2 (firme: 3), decembrie 1,25, capacitate 3. Familiile se combină:</p>
+        <p className="method-formula"><code>risc = 100 × (1 − (1 − 0,2·F₁) × (1 − 0,2·F₂) × …)</code></p>
         <ul className="prose">
-          <li>Un singur tipar ajunge cel mult la 60%; nivelul 1 singur dă 20%; două tipare la nivelul 1 dau 36%.</li>
-          <li><strong>Exemplu:</strong> achiziții repetate la tăria 2,51 și chiar sub plafon la 2,24: 100 × (1 − 0,498 × 0,552) ≈ 73%.
-            Pagina entității îl împarte în puncte: 73% = 39 + 34, partea fiecărui tipar, rotunjită ca suma să fie scorul.</li>
+          <li>Un singur tipar ajunge cel mult la 60, o familie la 80, decembrie singur la 25, capacitatea singură (fără evitare sau relație)
+            la 30. „Puternic” cere cel puțin două tipare.</li>
+          <li><strong>Exemplu:</strong> achiziții repetate la tăria 2,51 și concentrare la 2,24 (relația, plafonată la 2):
+            100 × (1 − 0,498 × 0,6) ≈ 70 din 100. Pagina entității îl împarte în puncte: 70 = 40 + 30, partea fiecărui tipar,
+            rotunjită ca suma să fie scorul.</li>
         </ul>
 
         <h3 id="benzi">Benzile</h3>
         <p className="method-bands">{BANDS.map((b) => <span key={b.band}><span className={`cri-pill ${RISK_BAND_CLASS[b.band]}`}>{b.range}</span> {b.word}</span>)}</p>
-        <p>Sub 20% nu există: cel mai slab tipar dă 20%. 0% înseamnă că tiparele nu apar în datele evaluate, nu că am certificat lipsa
+        <p>0 înseamnă că tiparele nu apar în datele evaluate, nu că am certificat lipsa
           neregulilor. Datele incomplete pot schimba rezultatul; verifică perioada fiecărui semnal și sursele lui.</p>
 
         <p id="grup-comparatie"><strong>Față de cine?</strong> „Scor peste X% dintre …” (pagina entității) apare doar la riscul
@@ -145,10 +165,24 @@ export default function MetodologiePage() {
           10 achiziții directe; comparația cere cel puțin 5 alți membri.</p>
         <p id="cine-conduce"><strong>Cine conduce?</strong> După valoare, „Cine conduce?” arată primele trei locuri ale clasamentului
           „Cine câștigă?”, cu partea din total a fiecăruia (valoare înregistrată, nu plăți; în contractele în asociere, cotele sunt egale).
-          După risc arată profilurile cu tipare în ordinea scorului (la același procent, după valoarea
+          După risc arată profilurile cu tipare în ordinea scorului (la același scor, după valoarea
           achizițiilor directe), cu tiparele fiecăruia. Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei
           societăți sau a unei asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
 
+        <details className="method-fold" id="schimbari-risc-20261103">
+          <summary>Ce s-a schimbat la 3 noiembrie 2026</summary>
+          <ul className="method-list">
+            <li>Scorul se citește „70 din 100”, nu „70%”: nu e un procent și nici o probabilitate. Metodologia: versiunea rf‑2026.20.</li>
+            <li>Tiparele se combină pe familii, ca dovezile de același fel să nu se adune ca independente; „puternic” cere cel puțin două tipare.</li>
+            <li>Tăria se măsoară față de mărimea profilului: câteva cazuri la mii de achiziții rămân slabe.</li>
+            <li>„Peste plafon” numără doar cazurile clare (estimarea peste plafon sau închiderea peste plafon și cu TVA) și doar la
+              cumpărătorii obligați de plafon; operatorii sectoriali publici sunt verificați ca orice instituție.</li>
+            <li>„Concentrare pe un furnizor” se calculează fără cea mai mare achiziție a furnizorului; „Dependență” apare de la 70%.</li>
+            <li>Tipar nou pentru firme: <a href="#da_capacity">„Vânzări peste capacitatea firmei”</a>.</li>
+            <li>Firma unei instituții (in-house) nu primește scor; pe o firmă, „Peste plafon” și „Achiziții repetate” cântăresc puțin
+              dacă nu sunt la 1–2 instituții.</li>
+          </ul>
+        </details>
         <details className="method-fold" id="schimbari-risc">
           <summary>Ce s-a schimbat la 1 noiembrie 2026</summary>
           <ul className="method-list">

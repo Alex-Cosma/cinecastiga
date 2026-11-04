@@ -32,38 +32,38 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_split",
     title: "Achiziții repetate, peste plafon cumulat",
     label: "Achiziții repetate, peste plafon cumulat",
-    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Apare mai des la cine cumpără mult și de mulți ani.",
+    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Un grup cântărește după cât trece de plafon (de la 1,2× la 2×) și după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează. Pe o firmă cântărește puțin dacă grupurile nu sunt la 1–2 instituții.",
     subject: "pair",
     short: "Achiziții din aceeași clasă CPV și același tip, însumând peste plafonul de referință.",
     description:
-      "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului.",
+      "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului. În risc, grupul cântărește după cât trece de plafon și după mărimea achizițiilor.",
     rationale:
       "Legea 98/2016 art. 7(5) privește valoarea estimată fără TVA, iar art. 11 interzice divizarea pentru evitarea procedurii. Plafoanele, pe date și tipuri: vezi Principii. Se folosește tipul declarat, iar în lipsa lui o clasificare CPV; un tip necunoscut nu primește automat plafonul mai mic.",
     caveat:
-      "Valoarea de închidere și data publicării sunt repere analitice, nu o verificare juridică a necesarului estimat. În lipsa publicării se folosește finalizarea, fapt declarat în dovezi. La schimbarea plafonului folosim maximul din grup. O clasă CPV comună nu dovedește o nevoie unică; achizițiile recurente pot fi legitime. Datele anterioare datei de 26.05.2016 și clasificările necunoscute sunt excluse din acest calcul.",
+      "Valoarea de închidere și data publicării sunt repere analitice, nu o verificare juridică a necesarului estimat. În lipsa publicării se folosește finalizarea, fapt declarat în dovezi. La schimbarea plafonului folosim maximul din grup. O clasă CPV comună nu dovedește o nevoie unică; achizițiile recurente pot fi legitime. Obligația estimării e a instituției, nu a firmei. Datele anterioare datei de 26.05.2016 și clasificările necunoscute sunt excluse din acest calcul.",
   },
   da_concentration: {
     code: "da_concentration",
     title: "Concentrare pe un furnizor",
     label: "Concentrare pe un furnizor",
-    entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției (minimum 3 furnizori și 100.000 lei).",
+    entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui, cu 3+ achiziții în 2+ ani (minimum 3 furnizori și 100.000 lei). Utilitățile și firma instituției nu intră.",
     subject: "authority",
     short: "O mare parte din valoarea achizițiilor directe revine unui singur furnizor.",
     description:
-      "Un furnizor are o pondere mare în valoarea achizițiilor directe ale autorității din datele disponibile. Ponderea furnizorului principal și indicele de concentrare HHI descriu distribuția valorii.",
+      "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați; o companie privată cumpărătoare nu e evaluată.",
     rationale:
       "Merită verificate alternativele disponibile pe piață și modul în care a fost ales furnizorul.",
-    caveat: "Specializarea, un monopol local sau un contract mare pot explica această concentrare. Datele nu stabilesc singure dacă a existat favorizare.",
+    caveat: "Specializarea sau un monopol local pot explica această concentrare. Datele nu stabilesc singure dacă a existat favorizare.",
   },
   da_dependence: {
     code: "da_dependence",
     title: "Dependență de o autoritate",
     label: "Dependență de o autoritate",
-    entityRule: "O instituție aduce cel puțin 85% din valoarea achizițiilor directe ale firmei, la minimum 250.000 lei și cel puțin 5 achiziții cu ea.",
+    entityRule: "O instituție aduce cel puțin 70% din valoarea achizițiilor directe ale firmei (minimum 250.000 lei, 5+ achiziții în 2+ ani cu ea); nivelul 1 începe de la 85%. Firma instituției (in-house) nu intră.",
     subject: "supplier",
     short: "Majoritatea valorii achizițiilor directe ale furnizorului provine de la o autoritate.",
     description:
-      "O singură autoritate reprezintă cel puțin 85% din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile, pentru un total de cel puțin 250.000 lei și cel puțin 5 achiziții directe cu acea autoritate.",
+      "O singură autoritate reprezintă cel puțin 70% din valoarea achizițiilor directe ale furnizorului, la un total de cel puțin 250.000 lei, cu cel puțin 5 achiziții în cel puțin 2 ani cu acea autoritate. Nivelul 1 începe de la 85%; tăria crește cu ponderea firmei în achizițiile instituției și când firma vinde și peste capacitatea ei. Firma instituției (in-house, Legea 98/2016 art. 31) nu primește semnalul.",
     rationale: "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
     caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat, dacă valoarea totală atinge pragul folosit la calcul. Dependența de un singur client este chiar pista pe care o arată semnalul, nu o dovadă de neregulă. Un client public principal poate fi explicat de specializare sau de piața locală.",
   },
@@ -71,11 +71,11 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_round",
     title: "Chiar sub plafonul achiziției directe",
     label: "Chiar sub plafon",
-    entityRule: "Peste 10% din achizițiile directe au între 96% și 100% din plafon (cel puțin 5 achiziții); la instituții și de la 5 astfel de achiziții, dacă sunt cel puțin 1%.",
+    entityRule: "Cel puțin 3 achiziții directe la 96–100% din plafon, de cel puțin 2 ori mai multe decât ar fi de așteptat după media națională (același tip, aceleași plafoane).",
     subject: "da",
     short: "O achiziție între 96% și 100% din plafonul achiziției directe.",
     description:
-      "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
+      "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte. În risc contează aglomerarea: câte sunt față de câte ar fi după media națională.",
     rationale:
       "Merită verificată estimarea necesarului și existența altor achiziții pentru aceeași nevoie. Apropierea de prag nu stabilește intenția de a evita o procedură.",
     caveat: "O achiziție sub plafon este normală. Legea privește valoarea estimată, iar semnalul compară valoarea de închidere. Publicarea aproximează inițierea; finalizarea o înlocuiește numai dacă lipsește. Tipul poate fi dedus din CPV când nu este declarat; necunoscut înseamnă neclasificat, nu suspect.",
@@ -84,28 +84,40 @@ export const FLAG_META: Record<string, FlagMeta> = {
     code: "da_above_ceiling",
     title: "Peste plafonul achiziției directe",
     label: "Peste plafon",
-    entityRule: "Cel puțin 2 achiziții directe înregistrate cu peste 10% peste plafon, acolo unde excepțiile cunoscute nu se pot aplica.",
+    entityRule: "Cel puțin 2 cazuri (cumpărător × lună) peste plafon: estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Doar la cumpărătorii obligați de plafon; companiile și asociațiile nu sunt verificate. Pe o firmă cântărește puțin dacă nu sunt la 1–2 instituții.",
     subject: "da",
     short: "Achiziție directă înregistrată cu peste 10% peste plafon.",
     description:
-      "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe pentru tipul și data de referință ale achiziției. Numărăm doar cazurile în care excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2 (procedură proprie), nu medicamente și echipamente medicale (CPV 33, cumpărate și prin centrale de achiziții), nu la companii, asociații sau operatori de utilități (alte reguli), nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când valoarea de închidere depășește de peste două ori estimarea (posibilă greșeală de introducere). În profil contează de la două cazuri.",
+      "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe, iar estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Numărăm doar la cumpărătorii pe care plafonul îi obligă (instituții publice și operatori sectoriali publici, Legea 99/2016 art. 12(4)), nu la companii private sau asociații, și doar unde excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2, nu CPV 33, nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când închiderea depășește de peste două ori estimarea. În profil contează de la două cazuri (cumpărător × lună), după număr și pondere în valoare.",
     rationale:
       "Legea 98/2016 art. 7(5) permite achiziția directă doar sub plafon; peste el se aplică o procedură. Merită verificată estimarea, tipul achiziției și dacă a existat o procedură.",
     caveat:
-      "Valoarea de închidere poate include ajustări, iar tipul achiziției poate fi greșit declarat în SEAP. Legea privește valoarea estimată, nu cea de închidere. Un caz nu dovedește o încălcare; e o pistă de verificat în documente.",
+      "Valoarea de închidere poate include ajustări, iar tipul achiziției poate fi greșit declarat în SEAP. Plafonul obligă cumpărătorul, nu firma. Un caz nu dovedește o încălcare; e o pistă de verificat în documente.",
   },
   da_year_end: {
     code: "da_year_end",
     title: "Achiziții concentrate în decembrie",
     label: "Vârf în decembrie",
-    entityRule: "Cel puțin un an în care ponderea lui decembrie e printre cele mai mari 5% la instituțiile de același tip și de cel puțin 35%, la un total anual de cel puțin 100.000 lei. Doar anii întregi ai arhivei.",
+    entityRule: "Cel puțin un an în care ponderea lui decembrie e printre cele mai mari 5% la instituțiile de același tip și de cel puțin 35%, la un total anual de cel puțin 100.000 lei. Tăria crește cu distanța față de instituțiile similare; singur, decembrie ajunge cel mult la 25 din 100.",
     subject: "authority",
     short: "O pondere mare din valoarea anuală a achizițiilor directe este finalizată în decembrie.",
     description:
-      "Ponderea lunii decembrie în valoarea achizițiilor directe finalizate într-un an este printre cele mai mari 5% la instituțiile de același tip în același an (primării de comună, de oraș și municipiu, consilii județene, spitale, școli, alte instituții) și de cel puțin 35%, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",
+      "Ponderea lunii decembrie în valoarea achizițiilor directe finalizate într-un an este printre cele mai mari 5% la instituțiile de același tip în același an (primării de comună, de oraș și municipiu, consilii județene, spitale, școli, alte instituții) și de cel puțin 35%, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui. În risc contează cât de departe sunt cele mai mari două decembrii de mediana instituțiilor similare.",
     rationale:
       "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
     caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",
+  },
+  da_capacity: {
+    code: "da_capacity",
+    title: "Vânzări peste capacitatea firmei",
+    label: "Peste capacitate",
+    entityRule: "Într-un an, achizițiile directe sunt de cel puțin 1,5 ori cifra de afaceri (bilanțul acelui an sau de până la doi ani înainte), cifra de afaceri e sub 10.000 lei sau firma are 0 angajați la 500.000 lei. Firmele cu peste 100 mil. lei cifră de afaceri nu intră.",
+    subject: "supplier",
+    short: "Într-un an, achizițiile directe depășesc mult cifra de afaceri a firmei.",
+    description:
+      "Într-un an, achizițiile directe ale firmei (cel puțin 100.000 lei) sunt de cel puțin 1,5 ori cifra ei de afaceri din bilanțul MF al acelui an sau de până la doi ani înainte, cifra de afaceri e sub 10.000 lei, sau firma are 0 angajați la cel puțin 500.000 lei. Firmele care au raportat vreodată peste 100 mil. lei cifră de afaceri nu intră.",
+    rationale: "O firmă care vinde mult peste mărimea ei poate fi un intermediar; merită verificat cine a executat de fapt.",
+    caveat: "Bilanțul e anual și poate lipsi; contractele multianuale și subcontractarea pot explica diferența. Singur, semnalul rămâne slab.",
   },
   award_no_competition: {
     code: "award_no_competition",
@@ -202,6 +214,7 @@ export const FLAG_ORDER = [
   "da_split",
   "da_concentration",
   "da_dependence",
+  "da_capacity",
   "da_year_end",
   "da_round",
   "da_above_ceiling",

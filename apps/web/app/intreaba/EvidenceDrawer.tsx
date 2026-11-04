@@ -12,7 +12,7 @@ import { EVIDENCE_CSV_LIMIT, evidenceLinks, formatEvidenceAmount, type EvidenceS
 import { isHistoricalProfile } from "@/lib/ask/population";
 import { countWords } from "@/lib/ask/answer-text";
 import { flagLabel } from "@/lib/flags";
-import { RISK_CRITERIA, riskFact, riskPercent, riskPoints } from "@/lib/risk-score";
+import { RISK_CRITERIA, riskFact, riskScoreText, riskPoints } from "@/lib/risk-score";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -208,16 +208,16 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
         {filtered && <p className="ev-exact-total">Suma exactă a listei filtrate: <strong>{formatEvidenceAmount(result.value, true)}</strong>.</p>}
         {result.scopeNotes.map((note, i) => <p key={i}>{note}</p>)}
         {result.profile && <>
-          <p>Riscul adună punctele tiparelor din achizițiile directe, pe tot istoricul, de la 0 la 100%. Nu este o probabilitate de corupție. <Link href="/metodologie">Vezi metodologia →</Link></p>
+          <p>Riscul adună punctele tiparelor din achizițiile directe, pe tot istoricul, de la 0 la 100. Nu este o probabilitate de corupție. <Link href="/metodologie">Vezi metodologia →</Link></p>
           {result.profiles.map((p) => {
             // A saved drawer never holds these: they are read live, so every profile has its score (rf-2026.18).
             const points = riskPoints(p.parts, p.score);
             const codes = RISK_CRITERIA[p.role].filter((code) => p.parts[code]);
             return <div className="ev-formula-profile" key={`${p.role}:${p.entityId}`}>
               <Link href={`/entitati/${p.entityId}`}>{p.name}</Link>
-              <span>{riskPercent(p.score)}{codes.length > 1 ? ` = ${codes.map((code) => points[code] ?? 0).join(" + ")}` : ""}</span>
+              <span>{riskScoreText(p.score)}{codes.length > 1 ? ` = ${codes.map((code) => points[code] ?? 0).join(" + ")}` : ""}</span>
               {codes.length
-                ? codes.map((code) => <small key={code}>{flagLabel(code)} +{points[code] ?? 0}: {riskFact(code, p.parts[code]!)}</small>)
+                ? codes.map((code) => <small key={code}>{flagLabel(code)} +{points[code] ?? 0}: {riskFact(code, p.parts[code]!, p.role)}</small>)
                 : <small>Niciun tipar găsit</small>}
             </div>;
           })}

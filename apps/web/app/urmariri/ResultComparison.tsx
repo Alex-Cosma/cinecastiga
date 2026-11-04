@@ -56,7 +56,7 @@ const scatterLabels: Record<string, string> = {
   small: "Prea puține pentru un nor", criteria: "Profiluri cu fiecare semnal", chosen: "Cu semnalul ales", list: "Lista",
   rankBy: "Primele după", flag: "Semnalul ales", flags: "Semnale", nFlags: "Număr de tipare", value: "Valoare înregistrată (achiziții directe)",
   // scatter-3 (rf-2026.18): each listed profile's place and score.
-  place: "Locul", score: "Risc (%)",
+  place: "Locul", score: "Risc (din 100)",
 };
 const POSITION_LABELS: Readonly<Record<string, string>> = { higher: "Cu risc mai mare", equal: "La egalitate", lower: "Cu risc mai mic" };
 /** A group's count is of its entities or counties, not of records (TrendPartTotals.count); a distribution's members are its group. */
@@ -104,8 +104,8 @@ function rowContext(value: unknown, index: number, names?: EntityNames): string 
   if (value.partner != null) return `${value.partner}${value.category || value.categoryCode ? ` · ${value.category ?? `CPV ${value.categoryCode}`}` : ""}`;
   if (value.name != null) return String(value.name);
   if (value.entityId != null && names?.has(String(value.entityId))) return names.get(String(value.entityId))!;
-  // distribution-1's buckets of the old index (0–1), read as the percentages an old link's criMin/criMax select.
-  if (value.from != null && value.to != null) return `Risc ${riskShare(value.from)}–${riskShare(value.to)}%`;
+  // distribution-1's buckets of the old index (0–1), read on the score's 0–100 scale an old link's criMin/criMax select.
+  if (value.from != null && value.to != null) return `Risc ${riskShare(value.from)}–${riskShare(value.to)}`;
   if (value.valueBand != null && value.riskBand != null) return `Grupa valorii ${value.valueBand} · grupa de risc ${value.riskBand}`;
   if (value.county != null) return countyName(String(value.county));
   if (value.year != null) return `Anul ${value.year}`;
@@ -115,7 +115,7 @@ function rowContext(value: unknown, index: number, names?: EntityNames): string 
   if (value.date != null || value.cpvName != null) return [value.date, value.cpvName].filter(Boolean).join(" · ");
   return `Elementul ${index + 1}`;
 }
-/** A bound of the old index (0–1) as a whole percentage: 0.3 → "30". */
+/** A bound of the old index (0–1) on the 0–100 scale: 0.3 → "30". */
 const riskShare = (value: unknown): string => formatExactDecimal(String(Math.round(Number(value) * 1000) / 10), { money: false });
 function indexed(values: unknown[], field: string) {
   const map = new Map<string, { value: unknown; index: number }>();
@@ -193,7 +193,7 @@ export function formatResultValue(value: unknown, field: string): string {
     if (["year", "yearA", "yearB", "yearFirst", "yearLast", "code", "categoryCode", "daCode"].includes(field)) return text;
     const money = ["value", "valueA", "valueB", "valueExact", "contractValueFull"].includes(field);
     const numeric = formatExactDecimal(text, { money });
-    return money ? `${numeric} lei` : field === "percentile" || field === "score" ? `${numeric}%` : numeric;
+    return money ? `${numeric} lei` : field === "percentile" ? `${numeric}%` : field === "score" ? `${numeric} din 100` : numeric;
   }
   return channels[String(value)] ?? String(value);
 }
@@ -214,8 +214,8 @@ export const RESHAPED_WORDS: Readonly<Record<string, string>> = {
   // rf-2026.18: the risk score over 100 replaces the index (the answers' -3 versions).
   "distribution-3": "riscul față de un grup ales",
   "entity_card-3": "primii după risc",
-  "scatter-3": "riscul în procente și lista cu locuri",
-  "compare-2": "profilul de risc al fiecăruia, în procente",
+  "scatter-3": "scorul de risc și lista cu locuri",
+  "compare-2": "scorul de risc al fiecăruia",
 };
 
 /**

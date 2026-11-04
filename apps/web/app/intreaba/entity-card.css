@@ -56,7 +56,7 @@
 /* The ranking by the risk score (entity_card-3): the score pill and its band between the name and the value, the same
    width on every row so the scores read down the list; never colour alone (the band's word is beside the pill). */
 .ec-rval{display:flex;align-items:center;justify-content:flex-end;gap:18px}
-.ec-score{display:inline-flex;align-items:center;gap:7px;min-width:9.5em;font-size:12px;color:var(--muted);white-space:nowrap}
+.ec-score{display:inline-flex;align-items:center;gap:7px;min-width:13em;font-size:12px;color:var(--muted);white-space:nowrap}
 .ec-score .cri-pill{font-size:12.5px;padding:2px 9px}
 .ec-rval .qb-num{min-width:9em;text-align:right}
 .ec-meth{margin:0;font-size:12px;color:var(--muted)}
@@ -71,7 +71,7 @@
   .ec-actions>*{flex:1 1 100%;justify-content:center;min-height:44px}
   .ec-cloud>.qb-secondary{flex:1 1 auto;justify-content:center;min-height:44px}
   .ec-meth a{min-height:44px}
-  .ec-rval{justify-content:flex-start;gap:10px}
+  .ec-rval{justify-content:flex-start;flex-wrap:wrap;gap:6px 10px}
   .ec-score{min-width:0}
   .ec-rval .qb-num{min-width:0;text-align:left}
 }

@@ -16,7 +16,7 @@ import type { ScatterData } from "../../lib/ask/scatter-shared";
 
 /*
  * scatter-3 as markup and as pure words (rf-2026.18; final scatter §3.3–§3.6, §4.4, §4.6): the strip's two rows
- * with the numbers (the risk score's criteria), the chart on the risk score (0–100%, the bands' lines at 20, 40 and
+ * with the numbers (the risk score's criteria), the chart on the risk score (0–100, the bands' lines at 20, 40 and
  * 68), the list with each row's score and its patterns' years, the small group without a chart, the cells of a
  * national cloud by tenths of the score, the CSV equal to the list; and a stored scatter-2 drawn as it was. The card,
  * the search, the strip's new query and the records are checked in the browser (par-f6b).
@@ -61,10 +61,10 @@ describe("the risk cloud's answer", () => {
     expect(words).not.toContain("Finalizare rapidă");
   });
 
-  it("draws the risk score upwards, 0–100%, with the bands tinted and their lines at 20, 40 and 68, and the top 10% line", () => {
+  it("draws the risk score upwards, 0–100, with the bands tinted and their lines at 20, 40 and 68, and the top 10% line", () => {
     const markup = render();
     expect(markup.match(/class="sc-idx"/g)).toHaveLength(5);
-    for (const label of ["0%", "20%", "40%", "68%", "100%"]) expect(markup).toContain(`>${label}</text>`);
+    for (const label of ["0", "20", "40", "68", "100"]) expect(markup).toContain(`>${label}</text>`);
     expect(markup.match(/class="sc-zone [^"]+"/g)).toEqual(['class="sc-zone risk-slab"', 'class="sc-zone risk-mid"', 'class="sc-zone risk-high"']);
     expect(markup.match(/class="sc-grid sc-grid-y"/g)).toHaveLength(3);
     expect(markup).toContain("cele mai mari 10%");
@@ -76,8 +76,8 @@ describe("the risk cloud's answer", () => {
     expect(markup).toContain(">Comuna Sageata</text>");
     expect(markup).not.toMatch(/class="sc-name"[^>]*>[^<]*\(/);
     // The score is not a probability of corruption: the legend's (?) is the glossary's.
-    expect(text(markup)).toContain("riscul, în %");
-    expect(markup).toContain("Riscul, în procente");
+    expect(text(markup)).toContain("riscul, din 100");
+    expect(markup).toContain("Riscul, din 100");
   });
 
   it("lists the first rows with their score, their patterns' years, the records link and the list's head", () => {
@@ -90,8 +90,8 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("Vârf în decembrie · 2022");
     expect(words).toContain("Peste plafon");
     // Each row's risk: the score's pill in its band's colour, the band under it.
-    expect(markup).toContain('<span class="cri-pill risk-high">73%</span><small>puternic</small>');
-    expect(markup).toContain('<span class="cri-pill risk-mid">64%</span><small>moderat</small>');
+    expect(markup).toContain('<span class="cri-pill risk-high">73 din 100</span><small>puternic</small>');
+    expect(markup).toContain('<span class="cri-pill risk-mid">64 din 100</span><small>moderat</small>');
     expect(words).toContain("2.567 de înregistrări");
     expect(words).toContain("Vezi înregistrările celor din listă");
     expect(words).toContain("Toată lista pe /semnale");
@@ -124,7 +124,7 @@ describe("the risk cloud's answer", () => {
     expect(markup).not.toContain("sc-chart");
     expect(text(markup)).toContain("5 profiluri în grup: prea puține pentru un nor. Le arătăm ca listă.");
     expect(text(markup)).toContain("SPITALUL JUDETEAN DE URGENTA BUZAU");
-    expect(markup).toContain('<span class="cri-pill risk-slab">20%</span><small>slab</small>');
+    expect(markup).toContain('<span class="cri-pill risk-slab">20 din 100</span><small>slab</small>');
     // Only the place leaves: the hospitals stay hospitals (review: the kind was dropped without a word).
     const link = markup.match(/href="\/intreaba\?spec=([^"]+)"[^>]*>Toate spitalele din țară · 329/);
     expect(link).not.toBeNull();
@@ -160,14 +160,14 @@ describe("the risk cloud's answer", () => {
     const { text: csv, filename } = answerCsv({ block: "scatter", scatter: BUZAU_SPLIT }, spec({ scatter: { rankBy: "value", flag: "da_split" } }), "Ce primării ies din tipar",
       { rank: "valoare", signal: SPLIT, signalFile: "achizitii-repetate" });
     const lines = csv.replace(/^﻿/, "").trim().split("\r\n");
-    expect(lines[0]).toBe("loc,nume,tip,judet,valoare_lei,achizitii_directe,risc_pct,banda,nr_tipare,tipare,detalii_tipare,primele_dupa,semnal");
+    expect(lines[0]).toBe("loc,nume,tip,judet,valoare_lei,achizitii_directe,risc_din_100,banda,nr_tipare,tipare,detalii_tipare,primele_dupa,semnal");
     expect(lines).toHaveLength(4);
     // Every line has a header for each value (review: the count of signals had none, so every column after it slid).
     const head = fields(lines[0]!);
     for (const line of lines.slice(1)) expect(fields(line)).toHaveLength(head.length);
     const first = Object.fromEntries(head.map((name, i) => [name, fields(lines[1]!)[i]]));
     expect(first).toMatchObject({ nume: "Comuna Sageata (Primaria Comunei Sageata)", tip: "Primărie de comună", judet: "Buzău", valoare_lei: "21000000", achizitii_directe: "2567",
-      risc_pct: "73", banda: "puternic", nr_tipare: "3", tipare: "da_split|da_round|da_year_end", detalii_tipare: `${SPLIT} · 2018–2019; Chiar sub plafon; Vârf în decembrie · 2022`,
+      risc_din_100: "73", banda: "puternic", nr_tipare: "3", tipare: "da_split|da_round|da_year_end", detalii_tipare: `${SPLIT} · 2018–2019; Chiar sub plafon; Vârf în decembrie · 2022`,
       primele_dupa: "valoare", semnal: SPLIT });
     expect(filename).toBe("ce-primarii-ies-din-tipar-dupa-valoare-achizitii-repetate.csv");
     expect(csv).not.toMatch(/indice|nr_semnale|rapid/i);
@@ -176,7 +176,7 @@ describe("the risk cloud's answer", () => {
   it("exports a firm's list with as many headers as values, and the per-acquisition shares the screen asked after the answer", () => {
     const firms: ScatterData = { ...BUZAU_CLOUD, role: "supplier", list: BUZAU_CLOUD.list.map(({ kind: _kind, ...r }) => ({ ...r, employees: 3, employeesYear: 2025 })) };
     const rows = scatterCsv(firms, (v) => JSON.stringify(v ?? ""), new Map([["2144803", [{ code: "da_round", share: 0.252, rows: 647 }]]]));
-    expect(rows[0]).toBe("loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,risc_pct,banda,nr_tipare,tipare,detalii_tipare");
+    expect(rows[0]).toBe("loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,risc_din_100,banda,nr_tipare,tipare,detalii_tipare");
     for (const line of rows.slice(1)) expect(fields(line)).toHaveLength(fields(rows[0]!).length);
     expect(fields(rows[1]!).at(-1)).toBe(`${SPLIT} · 2018–2019; Chiar sub plafon · 25,2%; Vârf în decembrie · 2022`);
   });
@@ -382,9 +382,9 @@ describe("the chart's geometry and words", () => {
     expect(flagTag({ code: "da_rapid", share: 0.252 }).text).toBe("Finalizare rapidă · 25,2%");
     expect(withFacts([{ code: "da_round" }, { code: "da_split", years: [2019] }], [{ code: "da_round", share: 0.25, rows: 647 }]))
       .toEqual([{ code: "da_round", share: 0.25, rows: 647 }, { code: "da_split", years: [2019] }]);
-    expect(cardFacts(21_000_000, 73, 3)).toEqual([{ label: "Achiziții directe:", value: "21 mil. lei" }, { label: "Risc", value: "73% · puternic" }, { label: "", value: "3 tipare" }]);
-    expect(cardFacts(900_000, 0, 0)).toEqual([{ label: "Achiziții directe:", value: "900.000 lei" }, { label: "Risc", value: "0% · niciun tipar găsit" }]);
-    expect([scoreWords(73), scoreWords(47), scoreWords(20), scoreWords(0)]).toEqual(["73% · risc puternic", "47% · risc moderat", "20% · risc slab", "0% · niciun tipar găsit"]);
+    expect(cardFacts(21_000_000, 73, 3)).toEqual([{ label: "Achiziții directe:", value: "21 mil. lei" }, { label: "Risc", value: "73 din 100 · puternic" }, { label: "", value: "3 tipare" }]);
+    expect(cardFacts(900_000, 0, 0)).toEqual([{ label: "Achiziții directe:", value: "900.000 lei" }, { label: "Risc", value: "0 din 100 · niciun tipar găsit" }]);
+    expect([scoreWords(73), scoreWords(47), scoreWords(20), scoreWords(0)]).toEqual(["73 din 100 · risc puternic", "47 din 100 · risc moderat", "20 din 100 · risc slab", "0 din 100 · niciun tipar găsit"]);
   });
 
   it("words the list's head and its (?): the order, the floor of 20 and how many are in the cloud alone", () => {

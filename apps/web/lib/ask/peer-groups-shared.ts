@@ -377,19 +377,19 @@ export function withPeerGroup<S extends { peers?: PeersOptions | undefined; filt
 
 /**
  * The bars of distribution-3 above 50 members (owner decision, 1 November
- * 2026): the score by tenths, 0 alone (a score is 0 or at least 20: one
- * pattern at its lowest strength is 20%), then 20–29 … 90–100. Both bounds
- * are on the displayed score and inclusive.
+ * 2026): the score by tenths, 0 alone, then 1–9, 10–19 … 90–100 (rf-2026.20:
+ * a weak pattern alone can score under 20). Both bounds are on the displayed
+ * score and inclusive.
  */
 export interface ScoreBand { from: number; to: number }
 export const SCORE_BANDS: readonly ScoreBand[] = [
-  { from: 0, to: 0 }, ...[20, 30, 40, 50, 60, 70, 80, 90].map((from) => ({ from, to: from === 90 ? 100 : from + 9 })),
+  { from: 0, to: 0 }, { from: 1, to: 9 }, ...[10, 20, 30, 40, 50, 60, 70, 80, 90].map((from) => ({ from, to: from === 90 ? 100 : from + 9 })),
 ];
-/** The bar a displayed score falls in; null for 1–19, which the formula never gives. */
+/** The bar a displayed score falls in (rf-2026.20 gives 1–19 too: December or capacity alone, a weak firm duty). */
 export const scoreBandOf = (score: number): ScoreBand | null =>
   SCORE_BANDS.find((band) => score >= band.from && score <= band.to) ?? null;
-/** "0%", "20–29%", "90–100%". */
-export const scoreBandWords = (band: ScoreBand): string => band.from === band.to ? `${band.from}%` : `${band.from}–${band.to}%`;
+/** "0", "20–29", "90–100": a score out of 100, not a percentage (rf-2026.20). */
+export const scoreBandWords = (band: ScoreBand): string => band.from === band.to ? `${band.from}` : `${band.from}–${band.to}`;
 
 /**
  * The request of a bar's members (GET /api/ask/peers/members): the group as the

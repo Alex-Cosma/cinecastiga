@@ -7,7 +7,7 @@ import {
   type ScatterBands, type ScatterCloudPoint, type ScatterCloudPointV2, type ScatterData, type ScatterDataV2, type ScatterDataV3, type ScatterFlag, type ScatterFlagFact,
   type ScatterListRow, type ScatterListRowV2, type ScatterRole,
 } from "../../lib/ask/scatter-shared";
-import { RISK_BAND_MIN, RISK_BAND_WORD, riskBand, riskPercent } from "../../lib/risk-score";
+import { RISK_BAND_MIN, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { formatInt, formatRon } from "../../lib/format";
 import type { RowFact } from "./answer/RowFacts";
 
@@ -78,15 +78,15 @@ export function axisTicks(x0: number, x1: number, compact: boolean): { lg: numbe
 }
 
 /**
- * The risk axis (scatter-3): a line at the lowest score of a pattern (20%: one criterion at level 1) and at the first
- * score of each stronger band (moderat 40%, puternic 68%), the bands of lib/risk-score.ts.
+ * The risk axis (scatter-3): a line at 20 (one criterion at level 1) and at the first score of each stronger band
+ * (moderat 40, puternic 68), the bands of lib/risk-score.ts. The score is out of 100, not a percentage (rf-2026.20).
  */
 export const RISK_GRID: readonly number[] = [20, RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic];
-/** The labels beside the risk axis, in %. */
+/** The labels beside the risk axis, out of 100. */
 export const RISK_AXIS: readonly number[] = [0, ...RISK_GRID, 100];
-/** The tinted zones of the bands: slab 20–39, moderat 40–67, puternic 68–100 (0 has none). */
+/** The tinted zones of the bands: slab 1–39, moderat 40–67, puternic 68–100 (0 has none; rf-2026.20 scores under 20 too). */
 export const RISK_ZONES: readonly { from: number; to: number; band: "slab" | "moderat" | "puternic" }[] = [
-  { from: 20, to: RISK_BAND_MIN.moderat, band: "slab" },
+  { from: RISK_BAND_MIN.slab, to: RISK_BAND_MIN.moderat, band: "slab" },
   { from: RISK_BAND_MIN.moderat, to: RISK_BAND_MIN.puternic, band: "moderat" },
   { from: RISK_BAND_MIN.puternic, to: 100, band: "puternic" },
 ];
@@ -359,17 +359,17 @@ export function listHeadTip(data: ScatterData): string {
 
 /** The band's word beside a score: "puternic", "moderat", "slab", or "niciun tipar găsit" at 0. */
 export const scoreBandWord = (score: number): string => RISK_BAND_WORD[riskBand(score)];
-/** A score in words, for the chart's tip and the card: "73% · risc puternic", "0% · niciun tipar găsit". */
+/** A score in words, for the chart's tip and the card: "73 din 100 · risc puternic", "0 din 100 · niciun tipar găsit". */
 export function scoreWords(score: number): string {
   const band = riskBand(score);
-  return `${riskPercent(score)} · ${band === "none" ? RISK_BAND_WORD.none : `risc ${RISK_BAND_WORD[band]}`}`;
+  return `${riskScoreText(score)} · ${band === "none" ? RISK_BAND_WORD.none : `risc ${RISK_BAND_WORD[band]}`}`;
 }
 
-/** The sheet's facts line (scatter-3): "Achiziții directe: 21 mil. lei · Risc 73% · puternic · 2 tipare". */
+/** The sheet's facts line (scatter-3): "Achiziții directe: 21 mil. lei · Risc 73 din 100 · puternic · 2 tipare". */
 export function cardFacts(value: number, score: number, nFlags: number): { label: string; value: string }[] {
   return [
     { label: "Achiziții directe:", value: formatRon(value) },
-    { label: "Risc", value: `${riskPercent(score)} · ${scoreBandWord(score)}` },
+    { label: "Risc", value: `${riskScoreText(score)} · ${scoreBandWord(score)}` },
     ...(nFlags > 0 ? [{ label: "", value: countWords(nFlags, "tipar", "tipare") }] : []),
   ];
 }
@@ -397,7 +397,7 @@ export function scatterCsv(data: ScatterData, csv: (value: unknown) => string, f
       return [i + 1, csv(r.name), ...own(r), r.value, r.nDas, r.cri, r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
     })];
   }
-  return [`${who},valoare_lei,achizitii_directe,risc_pct,banda,nr_tipare,tipare,detalii_tipare`, ...data.list.map((r, i) => {
+  return [`${who},valoare_lei,achizitii_directe,risc_din_100,banda,nr_tipare,tipare,detalii_tipare`, ...data.list.map((r, i) => {
     const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f).text);
     return [i + 1, csv(r.name), ...own(r), r.value, r.nDas, r.score, csv(scoreBandWord(r.score)), r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
   })];

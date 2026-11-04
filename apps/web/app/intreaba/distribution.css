@@ -95,7 +95,7 @@ button.dist-col:hover .dist-bar{background:var(--accent)}
 /* A member's score: its band's bar and the percent. */
 .dist-member-s{display:inline-flex;align-items:center;gap:10px;flex:none}
 .dist-member-s .risk-meter{width:120px}
-.dist-member-s b{min-width:44px;text-align:right;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink)}
+.dist-member-s b{min-width:11ch;text-align:right;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--ink)}
 /* Above 50: the others by tenth of the score (0, 20–29 … 90–100), a bar opens its members. */
 .dist-hist{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:8px;height:190px;align-items:end}
 .dist-hcol{display:grid;grid-template-rows:auto 1fr auto;grid-template-areas:"n" "bar" "axis";align-items:end;height:100%;min-width:0;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:center}

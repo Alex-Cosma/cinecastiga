@@ -7,7 +7,6 @@ import { forgetPeerPopulations, peerDialog, peerMembers } from "./peer-groups";
 import { peerKey, peerTicks } from "./peer-groups-shared";
 import { validateSpec, type AskSpec } from "./spec";
 import { testDatabaseUrl, withAskFixture } from "./test-fixture";
-import { RISK_WEIGHT } from "../risk-score";
 
 /*
  * distribution-3 (rf-2026.18; the group of F6a, plan §4.11, §6.2) on a
@@ -46,8 +45,12 @@ const AUTHORITIES: [number, string, string, number, Record<string, number>][] = 
   [40, "Directia Fixture de Asistenta", "Arad", 400, {}], // no sure type
 ];
 const id = (offset: number) => String(BASE + offset);
-/** The score of the strengths (packages/db profile-flags), unrounded. */
-const scoreRaw = (parts: Record<string, number>) => 100 * (1 - Object.values(parts).reduce((p, x) => p * (1 - (RISK_WEIGHT * x) / 3), 1));
+/**
+ * The fixture's scores, unrounded, by the rf-2026.18 formula (100 · (1 − Π(1 − 0.6 · x / 3))): seeded numbers the
+ * test compares positions on, not the nightly build's current formula (rf-2026.20, @seap/db scoreOfCriteria).
+ */
+const LEGACY_WEIGHT = 0.6;
+const scoreRaw = (parts: Record<string, number>) => 100 * (1 - Object.values(parts).reduce((p, x) => p * (1 - (LEGACY_WEIGHT * x) / 3), 1));
 
 async function seed(q: DbSql): Promise<void> {
   const rows = AUTHORITIES.map(([o, name, county, nDas, parts]) => {

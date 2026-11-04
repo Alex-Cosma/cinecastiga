@@ -112,22 +112,22 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
   it("names the first with its score and band, lists five with their place, score pill and patterns, and the value at the right", () => {
     const markup = render({ card: card({ role: "authority", score: 71, nFlags: 3 }), ranking: RANKING }, riskSpec, true);
     const words = text(markup);
-    expect(words).toContain("Primul: SPITALUL ORASENESC AGNITA, 71% · puternic.");
+    expect(words).toContain("Primul: SPITALUL ORASENESC AGNITA, 71 din 100 · puternic.");
     // The score is no probability: its (?) beside the headline.
-    expect(markup).toContain("Riscul, în procente");
+    expect(markup).toContain("Riscul, din 100");
     expect(words).not.toContain("la egalitate");
     // One with the best score: the order is the score's, not the value's.
     expect(words).not.toContain("În ordinea valorii");
     expect(markup.match(/class="qb-arow ec-rrow"/g)).toHaveLength(5);
     // Three patterns fit in their place, no „+1” (owner, 2 November 2026); the name opens the profile's page.
-    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat vârf în decembrie peste plafon 71% puternic 190 mil. lei");
+    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat vârf în decembrie peste plafon 71 din 100 puternic 190 mil. lei");
     expect(markup).toMatch(/class="qb-arow-name">1\. <a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
-    expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat 60% moderat 180 mil. lei");
+    expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat 60 din 100 moderat 180 mil. lei");
     // Tied rows share their place: 2, 2, 2, then 5.
     expect(words).toContain("2. Spital 4 Cluj");
     expect(words).toContain("5. Spital 5 Cluj");
-    expect(markup).toContain('class="cri-pill risk-high">71%');
-    expect(markup).toContain('class="cri-pill risk-mid">60%');
+    expect(markup).toContain('class="cri-pill risk-high">71 din 100');
+    expect(markup).toContain('class="cri-pill risk-mid">60 din 100');
     expect(markup).toContain('class="qb-tag qb-tag--signal"');
     // No dots of the old index.
     expect(markup).not.toContain("ec-level");
@@ -149,7 +149,7 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     const tied: RiskRanking = { version: 3, pool: 40, scored: 12, top: 60, topCount: 12, rows: Array.from({ length: 12 }, (_, i) => scored(i + 1, 60)) };
     const markup = render({ card: card({ role: "authority", score: 60 }), ranking: tied }, riskSpec, true);
     const words = text(markup);
-    expect(words).toContain("12 la egalitate pe primul loc, 60% · moderat.");
+    expect(words).toContain("12 la egalitate pe primul loc, 60 din 100 · moderat.");
     expect(markup).toContain("La egalitate");
     expect(words).toContain("În ordinea valorii, nu a riscului");
     expect(words).toContain("1. Spital 5 Cluj");
@@ -284,7 +284,7 @@ describe("the shown CSV", () => {
     const rows = [scored(1, 71, { flags: ["da_split", "da_year_end"], nFlags: 2 }), scored(2, 60), scored(3, 60), scored(4, 25, { county: "Bucuresti" })];
     const ranking: RiskRanking = { version: 3, pool: 9, scored: 4, top: 71, topCount: 1, rows };
     const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ranking }, { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n").filter(Boolean);
-    expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,achizitii,risc_pct,banda,tipare");
+    expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,achizitii,risc_din_100,banda,tipare");
     expect(lines.slice(1)).toEqual([
       '1,"Spital 1","Cluj",190000000,1000,71,"puternic","da_split|da_year_end"',
       '2,"Spital 2","Cluj",180000000,2000,60,"moderat","da_split"',
@@ -295,7 +295,7 @@ describe("the shown CSV", () => {
     const firms = answerCsv({ block: "entity_card", card: card(), ranking: { ...ranking, rows: [scored(1, 40, { name: "ALFA SRL" })] } },
       { block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: {} } as never, "Cine").text.split("\r\n");
     expect(lines[0]).toContain("judet");
-    expect(firms[0]).toBe("﻿loc,nume,sediu,valoare_lei,achizitii,risc_pct,banda,tipare");
+    expect(firms[0]).toBe("﻿loc,nume,sediu,valoare_lei,achizitii,risc_din_100,banda,tipare");
     expect(firms[1]).toBe('1,"ALFA SRL","Cluj",190000000,1000,40,"moderat","da_split"');
   });
 

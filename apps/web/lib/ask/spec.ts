@@ -87,7 +87,8 @@ export type TrendChange = (typeof TREND_CHANGES)[number];
 export const NETWORK_PARTNERS = ["new", "continuing", "gone"] as const;
 /**
  * The risk cloud's signals (scatter-3, rf-2026.18): the criteria of the risk score (lib/risk-score.ts RISK_CRITERIA,
- * equal by scatter-shared.test.ts), in the order a profile lists them.
+ * equal by scatter-shared.test.ts), in the order a profile lists them, without a firm's „Peste capacitate”
+ * (da_capacity, rf-2026.20), which the cloud's records do not define.
  */
 export const SCATTER_FLAGS = ["da_split", "da_round", "da_year_end", "da_concentration", "da_dependence", "da_above_ceiling"] as const;
 /**
@@ -242,7 +243,7 @@ export const SPEC_JSON_SCHEMA = {
       type: "string",
       enum: [...BLOCKS],
       description:
-        "table = clasament/top pe o dimensiune; stat = un singur număr total; timeseries = evoluție pe ani; map = valori pe județe (hartă); compare = două entități față în față; distribution = unde se situează o entitate după risc (scor 0–100%), față de grupul ei; breakdown = compoziția cheltuielii pe categorii CPV; scatter = risc vs volum, cu outlieri; sankey = ce cumpără o entitate și de la cine (parteneri → domenii); network = partenerii unei entități (cu cine lucrează); entity_card = O SINGURĂ entitate-superlativ (cea mai riscantă / cea mai mare); fact_check = a cumpărat X de la Y? (Da/Nu cu dovezi); trend = schimbarea între doi ani, pe entități",
+        "table = clasament/top pe o dimensiune; stat = un singur număr total; timeseries = evoluție pe ani; map = valori pe județe (hartă); compare = două entități față în față; distribution = unde se situează o entitate după risc (scor 0–100), față de grupul ei; breakdown = compoziția cheltuielii pe categorii CPV; scatter = risc vs volum, cu outlieri; sankey = ce cumpără o entitate și de la cine (parteneri → domenii); network = partenerii unei entități (cu cine lucrează); entity_card = O SINGURĂ entitate-superlativ (cea mai riscantă / cea mai mare); fact_check = a cumpărat X de la Y? (Da/Nu cu dovezi); trend = schimbarea între doi ani, pe entități",
     },
     dataset: {
       type: "string",
@@ -267,7 +268,7 @@ export const SPEC_JSON_SCHEMA = {
       type: "string",
       enum: [...RANK_BYS],
       description:
-        "Doar pentru entity_card: risk = cel mai ridicat risc (scor 0–100%), value = cea mai mare cheltuială.",
+        "Doar pentru entity_card: risk = cel mai ridicat risc (scor 0–100), value = cea mai mare cheltuială.",
     },
     filters: {
       type: "object",

@@ -71,7 +71,7 @@ describe("human-readable monitoring result comparisons", () => {
     ]);
     const ranking = (score: number, topCount: number) => ({ block: "entity_card", ranking: { topCount, places: [{ entityId: "1", score }] } });
     expect(resultDifferences(ranking(71, 1), ranking(73, 2)).map((row) => [row.context, row.field, formatResultValue(row.after, row.fieldKey)])).toEqual([
-      ["Primii după risc", "La egalitate pe primul loc", "2"], ["Primii după risc · Locurile · Elementul 1", "Riscul", "73%"],
+      ["Primii după risc", "La egalitate pe primul loc", "2"], ["Primii după risc · Locurile · Elementul 1", "Riscul", "73 din 100"],
     ]);
   });
   it("names a watched risk cloud's rows and fields (scatter-2): the core keeps ids, the stored answers give the names", () => {
@@ -107,9 +107,9 @@ describe("human-readable monitoring result comparisons", () => {
     const changes = resultDifferences({ density: { cells: [[1, 2, 5], [2, 3, 8]] } }, { density: { cells: [[2, 3, 8], [1, 2, 6]] } });
     expect(changes).toHaveLength(1); expect(changes[0]?.context).toContain("Grupa valorii 1 · grupa de risc 2");
     expect(formatResultValue(["da_split"], "flags")).toBe("Achiziții repetate, peste plafon cumulat");
-    // rf-2026.18: an older watch's retired signal keeps its name; the score is a percentage.
+    // rf-2026.18: an older watch's retired signal keeps its name; rf-2026.20: the score is out of 100, not a percentage.
     expect(formatResultValue("da_rapid", "flag")).toBe("Finalizare rapidă");
-    expect(formatResultValue(73, "score")).toBe("73%");
+    expect(formatResultValue(73, "score")).toBe("73 din 100");
     expect(formatResultValue("risk", "rankBy")).toBe("Risc");
   });
   it("makes methodology changes readable without requiring raw JSON", () => {
@@ -141,10 +141,10 @@ describe("a watch's selection from an answer's sources", () => {
   it("names a bar of the risk score (distribution-3) and an old link's tenth of the index as the band it selects", () => {
     const spec = { block: "distribution", measure: "value", filters: { authorityId: 2145000, authorityName: "Comuna Rusetu" } };
     const words = (scope: Record<string, unknown>) => renderToStaticMarkup(createElement(ScopeConditions, { scope: { spec, options: { scope } } as unknown as MonitoringScope }));
-    expect(words({ score: { from: 20, to: 39 } })).toContain("<dt>Risc</dt><dd>Doar profilurile cu 20–39%</dd>");
-    expect(words({ score: { from: 0, to: 0 } })).toContain("Doar profilurile cu 0%");
-    expect(words({ riskBucket: { from: 0.2, to: 0.3 } })).toContain("Doar profilurile cu 20–29%");
-    expect(words({ riskBucket: { from: 0.9, to: 1 } })).toContain("Doar profilurile cu 90–100%");
+    expect(words({ score: { from: 20, to: 39 } })).toContain("<dt>Risc</dt><dd>Doar profilurile cu 20–39</dd>");
+    expect(words({ score: { from: 0, to: 0 } })).toContain("Doar profilurile cu 0</dd>");
+    expect(words({ riskBucket: { from: 0.2, to: 0.3 } })).toContain("Doar profilurile cu 20–29</dd>");
+    expect(words({ riskBucket: { from: 0.9, to: 1 } })).toContain("Doar profilurile cu 90–100</dd>");
   });
 
   it("names a network watch's fixed group once, with its year and the partners fixed (F4n-members-watch)", () => {

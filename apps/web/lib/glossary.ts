@@ -204,10 +204,10 @@ export const GLOSSARY = {
     text: "Un domeniu CPV ales include toate subdomeniile sale.",
   },
   // Ask comparison of two entities.
-  // The risk score (rf-2026.18, owner decision of 1 November 2026): the (?) beside "73% · risc · puternic".
+  // The risk score (rf-2026.20, owner decisions of 3 November 2026): the (?) beside "70 din 100 · risc · puternic".
   "scor-risc": {
-    title: "Riscul, în procente",
-    text: "Nu este o probabilitate de corupție. Cât de multe și cât de pronunțate sunt tiparele din achizițiile directe: 0% fără niciun tipar, 20–39% slab, 40–67% moderat, 68% și peste puternic. Un singur tipar ajunge cel mult la 60%.",
+    title: "Riscul, din 100",
+    text: "Nu este o probabilitate de corupție. Un scor din 100, nu un procent: cât de pronunțate sunt tiparele din achizițiile directe. 0 fără niciun tipar, 1–39 slab, 40–67 moderat, 68 și peste puternic. O familie de tipare singură ajunge cel mult la 80, decembrie singur la 25.",
   },
   // ONRC's other names for the CUI (owner, 1 November 2026).
   "nume-registru": {
@@ -259,7 +259,7 @@ export const GLOSSARY = {
   },
   "criterii-risc": {
     title: "Tiparele riscului",
-    text: "Cinci tipare la instituții și patru la firme, din achizițiile directe acceptate ale întregii arhive. Fiecare adaugă puncte după cât de pronunțat e; un singur tipar ajunge cel mult la 60%. Un semnal de verificat, nu o dovadă.",
+    text: "Cinci tipare la instituții și cinci la firme, din achizițiile directe acceptate ale întregii arhive, în patru familii. Fiecare adaugă puncte după cât de pronunțat e; o familie singură ajunge cel mult la 80. Un semnal de verificat, nu o dovadă.",
   },
   // Ask's verification (fact_check-2, final fact_check §4.1, §4.4): its third verdict and its line "Concurență".
   "acord-cadru": {
@@ -332,7 +332,7 @@ export const GLOSSARY = {
   // "Cine conduce?" (entity_card-2, F6c, final entity_card §3.9–§3.10).
   "indice-egalitate": {
     title: "La egalitate",
-    text: "Riscul ia valori de la 0 la 100%, deci egalitățile sunt rare. Când mai multe profiluri au același procent, le ordonăm după valoarea achizițiilor directe. Semnal statistic, nu dovadă.",
+    text: "Riscul ia valori de la 0 la 100, deci egalitățile sunt rare. Când mai multe profiluri au același scor, le ordonăm după valoarea achizițiilor directe. Semnal statistic, nu dovadă.",
   },
   "ordinea-valorii": {
     title: "În ordinea valorii",

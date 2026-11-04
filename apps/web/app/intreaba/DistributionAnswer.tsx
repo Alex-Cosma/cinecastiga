@@ -10,7 +10,7 @@ import {
   CRITERION_LABEL, CRITERION_RULE, PEER_MEMBERS_PAGE, PEER_MINIMUM, PROFILE_MIN_DAS, barMembersQuery, coverageWords, peerCountWords, peerGroupValue, peerWindowTip,
   scoreBandOf, scoreBandWords, similarRuleName, writePeerTicks, type PeerRowId, type ScoreBand,
 } from "../../lib/ask/peer-groups-shared";
-import { RISK_BAND_CLASS, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { cleanName, formatInt } from "../../lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import EmptyState from "./answer/EmptyState";
@@ -195,14 +195,14 @@ function SourcesFoot({ d, name }: { d: AnyDistribution; name: string }) {
 
 /* ── distribution-3: the risk score against the group ───────────────────── */
 
-/** A member's score: a small bar in its band's colour and the percent. */
+/** A member's score: a small bar in its band's colour and the score ("54 din 100"). */
 function ScoreRow({ m }: { m: Pick<ScoredMember, "entityId" | "name" | "county" | "population" | "nDas" | "score"> }) {
   const band = riskBand(m.score);
   return <>
     <MemberName m={m} />
     <span className="dist-member-s">
       <span className="risk-meter" aria-hidden="true"><span className={RISK_BAND_CLASS[band]} style={{ width: `${m.score}%` }} /></span>
-      <b>{riskPercent(m.score)}</b>
+      <b>{riskScoreText(m.score)}</b>
     </span>
   </>;
 }
@@ -245,16 +245,16 @@ const stripEdge = (x: number, margin = 6) => x < margin ? " is-start" : x > 100 
 function ScoreStrip({ d, members, noun, name }: { d: DistributionDataV3; members: readonly ScoredMember[]; noun: (n: number) => string; name: string }) {
   const f = d.focal;
   const { dots, over, rows } = stripLayout({ id: f.entityId, name: f.name, score: f.score }, members);
-  const label = `Scorurile celor ${noun(members.length)} pe axa 0–100%; ${name}: ${riskPercent(f.score)}.`;
+  const label = `Scorurile celor ${noun(members.length)} pe axa 0–100; ${name}: ${riskScoreText(f.score)}.`;
   return <section className="dist-strip" aria-label="Grupul, pe axa scorului">
     <div className="dist-strip-plot" role="img" aria-label={label} style={{ "--rows": rows } as CSSProperties}>
       <span className={`dist-strip-name${stripEdge(f.score, 25)}`} style={{ "--x": f.score } as CSSProperties} aria-hidden="true">{f.inGroup ? name : `${name} · în afara grupului`}</span>
       {dots.map((dot) => <i key={dot.id} className={`dist-dot ${dot.focal ? "is-focal" : RISK_BAND_CLASS[riskBand(dot.score)]}`}
-        style={{ "--x": dot.score, "--l": dot.level } as CSSProperties} title={`${cleanName(dot.name)} · ${riskPercent(dot.score)}`} />)}
+        style={{ "--x": dot.score, "--l": dot.level } as CSSProperties} title={`${cleanName(dot.name)} · ${riskScoreText(dot.score)}`} />)}
       {over.map((o) => <span key={o.score} className={`dist-strip-over${stripEdge(o.score)}`} style={{ "--x": o.score, "--l": STRIP_LEVELS } as CSSProperties} aria-hidden="true">+{formatInt(o.n)}</span>)}
     </div>
     <div className="dist-strip-axis" aria-hidden="true">
-      {STRIP_TICKS.map((tick) => <span key={tick} className={`dist-strip-tick${tick === 0 ? " is-start" : tick === 100 ? " is-end" : ""}`} style={{ "--x": tick } as CSSProperties}>{tick === 100 ? "100%" : tick}</span>)}
+      {STRIP_TICKS.map((tick) => <span key={tick} className={`dist-strip-tick${tick === 0 ? " is-start" : tick === 100 ? " is-end" : ""}`} style={{ "--x": tick } as CSSProperties}>{tick}</span>)}
     </div>
     <p className="dist-legend dist-strip-legend" aria-hidden="true">
       <span><i className="dist-dot is-focal" />{name}</span>
@@ -290,7 +290,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
   const order = [...per].sort((a, b) => (partOf(b.code) ? points[b.code as RiskCriterion] ?? 0 : -1) - (partOf(a.code) ? points[a.code as RiskCriterion] ?? 0 : -1));
   const own = scoreBandOf(f.score);
   const peak = Math.max(...hist.map((h) => h.n), 1);
-  const bandTitle = (b: ScoreBand, n: number) => b.from === 0 && b.to === 0 ? `${noun(n)} fără niciun tipar (0%)` : `${noun(n)} cu scor ${scoreBandWords(b)}`;
+  const bandTitle = (b: ScoreBand, n: number) => b.from === 0 && b.to === 0 ? `${noun(n)} fără niciun tipar (0)` : `${noun(n)} cu scor ${scoreBandWords(b)}`;
   const showAll = () => {
     setAll(true);
     // The first row unfolded takes the focus (the entity's row and the first seven stay above it).
@@ -303,7 +303,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
     {!f.inGroup && <p className="dist-note">{name} nu face parte din grup: numărăm toți membrii lui.</p>}
     <div className="dist-top">
       <div className="dist-score">
-        <p className="dist-pill-line"><span className={`cri-pill dist-pill ${RISK_BAND_CLASS[band]}`}>{riskPercent(f.score)}</span></p>
+        <p className="dist-pill-line"><span className={`cri-pill dist-pill ${RISK_BAND_CLASS[band]}`}>{riskScoreText(f.score)}</span></p>
         <p className="dist-band qb-tipwrap">{riskLabel(f.score)} <HelpTip tip={{ id: "scor-risc" }} /></p>
       </div>
       <div className="dist-pos">
@@ -336,7 +336,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
           const body = <>
             <span className="dist-n">{here && <em>aici</em>}{would && <em>ar fi aici</em>}{formatInt(h.n)}</span>
             <span className="dist-hbar" style={{ "--h": h.n / peak } as CSSProperties} />
-            <span className="dist-axis"><b>{h.from}</b><small>{h.to !== h.from ? `–${h.to}` : "%"}</small></span>
+            <span className="dist-axis"><b>{h.from}</b><small>{h.to !== h.from ? `–${h.to}` : ""}</small></span>
           </>;
           return h.n > 0
             ? <button key={h.from} type="button" className={cls} onClick={() => bars.toggle({ from: h.from, to: h.to }, h.n)} aria-expanded={opened} aria-controls="dist-bar-members"
@@ -344,7 +344,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
             : <div key={h.from} className={cls}>{body}</div>;
         })}
       </div>
-      <p className="dist-legend">scor, % · clic pe o bară: cine are acel scor</p>
+      <p className="dist-legend">scor din 100 · clic pe o bară: cine are acel scor</p>
       {bar && openBand && <BarMembers bar={bar} title={bandTitle(openBand, bar.total)} row={(m) => <ScoreRow m={m} />} listRef={bars.listRef}
         onMore={() => bars.load(openBand, bar.total, bar.rows.length)} onClose={bars.close}
         {...(evidence ? { onRecords: () => evidence.open(undefined, { score: openBand }, `${scoreBandWords(openBand)} · înregistrările profilurilor din grup`) } : {})} />}
@@ -358,7 +358,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
           const share = group.others ? c.others / group.others : 0, country = d.countryTotal ? c.country / d.countryTotal : 0;
           return <li key={c.code} className="dist-crit dist-part">
             <span className="dist-crit-name qb-tipwrap">{label} <HelpTip tip={{ title: label, text: CRITERION_RULE[c.code] ?? "" }} />
-              {part && <small className="dist-fact">{riskFact(c.code as RiskCriterion, part)}</small>}</span>
+              {part && <small className="dist-fact">{riskFact(c.code as RiskCriterion, part, role)}</small>}</span>
             <span className={`dist-part-pts${part ? " is-met" : ""}`}>{part ? `+${formatInt(points[c.code as RiskCriterion] ?? 0)}` : "fără tipar"}</span>
             <span className="dist-crit-bar" aria-hidden="true"><span style={{ width: `${share * 100}%` }} />{!national && <i style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>

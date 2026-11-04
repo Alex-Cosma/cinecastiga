@@ -38,6 +38,12 @@ describe("risk explanation limits", () => {
     expect(riskEvidenceLine("fin_public_reliance", {})).toContain("pondere necunoscută");
     expect(riskEvidenceLine("fin_public_reliance", {})).not.toContain("NaN");
   });
+  it("says a firm's capacity year from its evidence (rf-2026.20), the balance sheet's year when older", () => {
+    const line = riskEvidenceLine("da_capacity", { year: 2023, da_value: 520000, da_count: 14, turnover: 120000, turnover_year: 2022, ratio: 4.33, young: true })!;
+    expect(line).toMatch(/^2023: .+ în 14 achiziții directe · cifră de afaceri .+ \(bilanț 2022\) · 4,3× cifra de afaceri · firmă nouă\.$/);
+    expect(riskEvidenceLine("da_capacity", { year: 2021, da_value: 600000, da_count: 3, turnover: null, zero_staff: true })).toContain("cifră de afaceri necunoscută · 0 angajați");
+    expect(riskEvidenceLine("da_capacity", { year: 2021 })).not.toContain("NaN");
+  });
   it("preserves ratios over 100% without describing them as collected revenue", () => {
     const line = riskEvidenceLine("fin_public_reliance", { ratio: 1.7, public_total: 1700000, revenue_total: 1000000, years: 2 });
     expect(line).toContain("170%");

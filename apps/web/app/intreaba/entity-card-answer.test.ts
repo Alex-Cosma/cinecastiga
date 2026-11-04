@@ -121,12 +121,12 @@ const ranking = (scores: number[], extra: Partial<RiskRanking> = {}): RiskRankin
 
 describe("the ranking by the risk score (entity_card-3)", () => {
   it("names the first profile with its score and band, or the profiles tied on the best score", () => {
-    expect(rankingHeadline(ranking([71, 60, 60, 58]), hospitals)).toEqual({ kind: "first", lead: "Primul: Spital 1", score: "71%", band: "puternic" });
+    expect(rankingHeadline(ranking([71, 60, 60, 58]), hospitals)).toEqual({ kind: "first", lead: "Primul: Spital 1", score: "71 din 100", band: "puternic" });
     expect(rankingHeadline(ranking([71, 60], { rows: [ranked(1, 71, { name: "RO123456 SPITALUL ORASENESC AGNITA" })] }), hospitals).lead).toBe("Primul: SPITALUL ORASENESC AGNITA");
-    expect(rankingHeadline(ranking([60, 60, 60, 58]), hospitals)).toEqual({ kind: "tied", lead: "3 la egalitate pe primul loc", score: "60%", band: "moderat" });
+    expect(rankingHeadline(ranking([60, 60, 60, 58]), hospitals)).toEqual({ kind: "tied", lead: "3 la egalitate pe primul loc", score: "60 din 100", band: "moderat" });
     // The tie counts the whole group, beyond the listed rows.
     expect(rankingHeadline(ranking([60, 60], { topCount: 312 }), firm).lead).toBe("312 la egalitate pe primul loc");
-    expect(rankingHeadline(ranking([25]), firm)).toMatchObject({ kind: "first", score: "25%", band: "slab" });
+    expect(rankingHeadline(ranking([25]), firm)).toMatchObject({ kind: "first", score: "25 din 100", band: "slab" });
   });
 
   it("says when nobody in the group has a score, and what the sources hold then", () => {
@@ -144,10 +144,10 @@ describe("the ranking by the risk score (entity_card-3)", () => {
   });
 
   it("gives each row its pill: the score, the band's word and its colour", () => {
-    expect(scorePill(71)).toEqual({ text: "71%", band: "puternic", className: "risk-high" });
-    expect(scorePill(60)).toEqual({ text: "60%", band: "moderat", className: "risk-mid" });
-    expect(scorePill(20)).toEqual({ text: "20%", band: "slab", className: "risk-slab" });
-    expect(scorePill(0)).toEqual({ text: "0%", band: "niciun tipar găsit", className: "risk-none" });
+    expect(scorePill(71)).toEqual({ text: "71 din 100", band: "puternic", className: "risk-high" });
+    expect(scorePill(60)).toEqual({ text: "60 din 100", band: "moderat", className: "risk-mid" });
+    expect(scorePill(20)).toEqual({ text: "20 din 100", band: "slab", className: "risk-slab" });
+    expect(scorePill(0)).toEqual({ text: "0 din 100", band: "niciun tipar găsit", className: "risk-none" });
   });
 
   it("says „În ordinea valorii” only when every shown row has the same score", () => {

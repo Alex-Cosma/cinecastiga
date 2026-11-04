@@ -26,13 +26,17 @@ import {
 
 describe("the signals of a profile", () => {
   it("are the risk score's criteria and the build's codes, in one order for the build, the score and the cloud", () => {
+    // rf-2026.20: „Peste capacitate” (da_capacity) counts in a firm's score but is no signal of the cloud: the
+    // cloud's records (scatter-records.ts) have no definition for it. The cloud keeps the other criteria, in order.
+    const cloudOf = (role: "authority" | "supplier") => RISK_CRITERIA[role].filter((code) => code !== "da_capacity");
     for (const role of ["authority", "supplier"] as const) {
-      expect([...SCATTER_FLAGS_BY_ROLE[role]]).toEqual([...RISK_CRITERIA[role]]);
-      expect(scatterFlagsOf(role)).toEqual([...RISK_CRITERIA[role]]);
+      expect([...SCATTER_FLAGS_BY_ROLE[role]]).toEqual(cloudOf(role));
+      expect(scatterFlagsOf(role)).toEqual(cloudOf(role));
       expect([...PROFILE_FLAG_CODES[role]]).toEqual([...RISK_CRITERIA[role]]);
       expect(PROFILE_FLAGS_APPLICABLE[role]).toBe(RISK_CRITERIA[role].length);
     }
-    expect([...SCATTER_FLAGS].sort()).toEqual([...new Set([...RISK_CRITERIA.authority, ...RISK_CRITERIA.supplier])].sort());
+    expect(RISK_CRITERIA.supplier).toContain("da_capacity");
+    expect([...SCATTER_FLAGS].sort()).toEqual([...new Set([...cloudOf("authority"), ...cloudOf("supplier")])].sort());
     expect([...SCATTER_FLAGS].sort()).toEqual([...SCATTER_FLAG_ORDER].sort());
     // „Finalizare rapidă” no longer counts (owner decision, 1 November 2026).
     expect(SCATTER_FLAGS).not.toContain("da_rapid");

@@ -69,6 +69,15 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
       ...await readContractEvidence(sql, sql`ct.supplier_id = ${flag.subject} and left(ct.finalization_date,4)::int = any(${years}::int[])`),
     ];
     warnings.push("Valorile contractate nu sunt plăți sau venituri încasate. Datele bilanțului sunt păstrate separat de înregistrările de achiziție.");
+  } else if (code === "da_capacity" && /^\d{4}$/.test(String(flag.period))) {
+    // rf-2026.20: the firm's direct acquisitions in the flagged year, and the balance sheets the rule could read
+    // (that year or up to two before, through a corroborated CUI).
+    const year = Number(flag.period);
+    context.financials = await sql`select f.year, f.employees, f.net_turnover::text turnover
+      from reference.company_financials f join core.entities ent on ent.cui_canonical = f.cui where ent.id = ${flag.subject} and ${cuiCorroborated(sql, "ent")}
+        and f.year between ${year - 2} and ${year} order by f.year`;
+    records = await readDaEvidence(sql, sql`${eligibleDa} and da.supplier_entity_id = ${flag.subject} and da.supplier_entity_id is distinct from da.authority_entity_id and extract(year from da.finalization_date)::int = ${year}`);
+    warnings.push("Achizițiile directe sunt valori înregistrate, nu încasări; cifra de afaceri vine din bilanțul anual. Contractele multianuale și subcontractarea pot explica diferența.");
   } else if (code === "net_shared_admin") {
     // The old flag stores name/year, not a stable person key. Resolve only an
     // unambiguous identity associated with this subject; never merge namesakes.

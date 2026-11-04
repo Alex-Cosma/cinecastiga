@@ -118,13 +118,21 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     case "da_above_ceiling":
       return nearThresholdEvidence(evidence);
     case "da_concentration":
-      return `Furnizorul principal: ${pct("top_supplier_pct")} din valoarea achizițiilor directe (${money("total")} în total, ${s("suppliers")} furnizori, HHI ${s("hhi")}).`;
+      // rf-2026.20: the rule reads the share without the supplier's largest DA (adjusted_pct).
+      return `Furnizorul principal: ${pct("top_supplier_pct")} din valoarea achizițiilor directe${n("adjusted_pct") === null ? "" : `, ${pct("adjusted_pct")} fără cea mai mare achiziție a lui`} (${money("total")} în total, ${s("suppliers")} furnizori, HHI ${s("hhi")}).`;
     case "da_dependence":
       // Audit F30: a supplier with one public client meets the share criterion
       // by construction; the owner kept the rule and asked for it to be said.
       return n("authorities") === 1
         ? `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (o singură autoritate în date). Cu un singur client public, semnalul apare automat: dependența de acest client este pista de verificat, nu o dovadă de neregulă.`
         : `Autoritatea principală: ${pct("top_authority_pct")} din valoarea achizițiilor directe ale furnizorului (${s("authorities")} autorități în date).`;
+    case "da_capacity": {
+      // rf-2026.20: a year's DA sales against the firm's turnover (balance sheet of that year or up to two before).
+      const sheet = n("turnover_year") !== null && n("turnover_year") !== n("year") ? ` (bilanț ${s("turnover_year")})` : "";
+      const staff = evidence.zero_staff === true ? " · 0 angajați" : "";
+      const ratio = n("ratio") === null ? "" : ` · ${(Math.round(n("ratio")! * 10) / 10).toFixed(1).replace(".", ",")}× cifra de afaceri`;
+      return `${s("year")}: ${money("da_value")} în ${s("da_count")} achiziții directe · ${n("turnover") === null ? "cifră de afaceri necunoscută" : `cifră de afaceri ${money("turnover")}`}${sheet}${ratio}${staff}${evidence.young === true ? " · firmă nouă" : ""}.`;
+    }
     case "award_no_competition":
       return `${s("procedure")} · ${awardValueLabel(evidence)}: ${money("value")} · CPV ${s("cpv")}.${noticeContractsNote(evidence)}`;
     case "award_single_bid":

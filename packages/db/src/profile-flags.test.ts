@@ -1,89 +1,128 @@
 import { describe, expect, it } from "vitest";
 import {
-  PROFILE_FLAG_CODES, scoreBand, scoreOf, scorePoints, strengthAbove, strengthConcentration, strengthDependence,
-  strengthRound, strengthSplit, strengthYearEnd,
+  FIRM_DUTY, PROFILE_FLAG_CODES, SCORE_FAMILY, familyStrength, familyStrengths, ramp, scoreBand, scoreGate, scoreOf,
+  scoreOfCriteria, scorePoints, splitGroupWeight, strengthAbove, strengthCapacity, strengthConcentration,
+  strengthDependence, strengthRound, strengthSplit, strengthYearEnd,
 } from "./profile-flags.js";
 
-// Values from the signals investigation on the local copy (E, 1 November 2026).
-describe("risk score (rf-2026.18)", () => {
-  it("has no rapid criterion and the above-ceiling one for both roles", () => {
-    expect(PROFILE_FLAG_CODES.authority).not.toContain("da_rapid");
-    expect(PROFILE_FLAG_CODES.supplier).not.toContain("da_rapid");
-    expect(PROFILE_FLAG_CODES.authority).toContain("da_above_ceiling");
-    expect(PROFILE_FLAG_CODES.supplier).toContain("da_above_ceiling");
+// Values from the audit's simulation on the local copy (3 November 2026).
+describe("risk score (rf-2026.20)", () => {
+  it("has a capacity criterion for firms and every criterion in a family", () => {
+    expect(PROFILE_FLAG_CODES.supplier).toContain("da_capacity");
+    expect(PROFILE_FLAG_CODES.authority).not.toContain("da_capacity");
+    for (const c of [...PROFILE_FLAG_CODES.authority, ...PROFILE_FLAG_CODES.supplier]) expect(SCORE_FAMILY[c]).toBeTruthy();
   });
 
-  it("combines strengths so one criterion caps at 60 and level 1 alone is 20", () => {
+  it("combines families, not criteria", () => {
     expect(scoreOf([])).toBe(0);
     expect(scoreOf([1])).toBeCloseTo(20);
     expect(scoreOf([3])).toBeCloseTo(60);
+    expect(scoreOf([4])).toBeCloseTo(80);
     expect(scoreOf([3, 3])).toBeCloseTo(84);
-    expect(scoreOf([9])).toBeCloseTo(60);
+    expect(familyStrength([3, 1.5], 4)).toBeCloseTo(3.6);
+    expect(familyStrength([3, 3, 3], 4)).toBe(4);
+    expect(familyStrength([1.25], 1.25)).toBe(1.25);
   });
 
-  it("reproduces the investigation's profiles", () => {
-    expect(Math.round(scoreOf([1.51, 1.17]))).toBe(47); // firm 2110241
-    expect(Math.round(scoreOf([2.51, 2.24]))).toBe(73); // Municipiul Constanța
-    expect(Math.round(scoreOf([3]))).toBe(60); // Institutul Clinic Fundeni
-    expect(Math.round(scoreOf([3, 1, 1.81, 2.15]))).toBe(88); // Ocolul Silvic Rășinari
+  it("keeps December and capacity alone weak", () => {
+    expect(Math.round(scoreOfCriteria("authority", { da_year_end: strengthYearEnd(9) }))).toBe(25);
+    expect(Math.round(scoreOfCriteria("supplier", { da_capacity: 3 }))).toBe(30);
+    expect(familyStrengths("supplier", { da_capacity: 3, da_round: 1 }).capacity).toBe(3);
   });
 
-  it("splits the displayed score into whole points that add up to it", () => {
-    expect(scorePoints({ da_split: 1.51, da_round: 1.17 })).toEqual({ da_split: 27, da_round: 20 });
-    expect(scorePoints({ da_split: 2.51, da_round: 2.24 })).toEqual({ da_split: 39, da_round: 34 });
-    const parts = scorePoints({ a: 3, b: 1, c: 1.81, d: 2.15 });
-    expect(Object.values(parts).reduce((x, y) => x + y, 0)).toBe(88);
-    expect(scorePoints({ a: 0 })).toEqual({ a: 0 });
+  it("reproduces the audit's profiles", () => {
+    // Geo Draft: split 1.5 (firm duty), round 3, capacity 3
+    expect(Math.round(scoreOfCriteria("supplier", { da_split: 1.5, da_round: 3, da_capacity: 3 }))).toBe(89);
+    // Brownstone: concentrated split 3, dependence 1.22
+    expect(Math.round(scoreOfCriteria("supplier", { da_split: 3, da_dependence: 1.22 }))).toBe(70);
+    // Vodafone: above 0.45 only
+    expect(Math.round(scoreOfCriteria("supplier", { da_above_ceiling: 0.45 }))).toBe(9);
   });
 
-  it("bands the displayed score at 0 · 20–39 · 40–67 · 68–100", () => {
+  it("splits the displayed score into whole points that add up to it, by family", () => {
+    expect(scorePoints("authority", { da_split: 3, da_round: 1.5 })).toEqual({ da_split: 60, da_round: 12 });
+    const parts = scorePoints("supplier", { da_split: 1.5, da_round: 3, da_capacity: 3 });
+    expect(Object.values(parts).reduce((x, y) => x! + y!, 0)).toBe(89);
+    expect(scorePoints("authority", { da_split: 0 })).toEqual({});
+  });
+
+  it("bands the displayed score at 0 · 1–39 · 40–67 · 68–100", () => {
     expect(scoreBand(0)).toBe("none");
     expect(scoreBand(20)).toBe("slab");
     expect(scoreBand(39)).toBe("slab");
     expect(scoreBand(40)).toBe("moderat");
     expect(scoreBand(67)).toBe("moderat");
     expect(scoreBand(68)).toBe("puternic");
-    expect(scoreBand(100)).toBe("puternic");
   });
 
-  it("gives each criterion its level at the thresholds and 1 without the gate", () => {
-    expect(strengthSplit("authority", 0, true, 0.5)).toBe(0);
-    expect(strengthSplit("authority", 3, false, 0.5)).toBe(1);
-    expect(strengthSplit("authority", 3, true, 0)).toBe(1);
-    expect(strengthSplit("authority", 3, true, 0.10)).toBe(2);
-    expect(strengthSplit("authority", 3, true, 0.25)).toBe(3);
-    expect(strengthSplit("supplier", 3, true, 0.25)).toBe(2);
-    expect(strengthSplit("supplier", 3, true, 0.375)).toBeCloseTo(2.5);
+  it("opens the gate at 20 DAs or 5 DAs worth 1M", () => {
+    expect(scoreGate(20, 0)).toBe(true);
+    expect(scoreGate(12, 5_590_000)).toBe(true); // Verostar
+    expect(scoreGate(4, 2_000_000)).toBe(false);
+    expect(scoreGate(19, 999_999)).toBe(false);
+  });
 
-    expect(strengthYearEnd(0, true, 0.5)).toBe(0);
-    expect(strengthYearEnd(1, false, 0.5)).toBe(1);
-    expect(strengthYearEnd(1, true, 0.5)).toBe(1.5);
-    expect(strengthYearEnd(2, true, 2)).toBeCloseTo(2.999);
-    expect(strengthYearEnd(3, true, 0)).toBe(3);
+  it("measures above the ceiling by count and value together", () => {
+    expect(strengthAbove("authority", 1, 0.5, true)).toBe(0); // one event never counts
+    expect(strengthAbove("authority", 2, 0, true)).toBe(1);
+    expect(strengthAbove("authority", 10, 0.002, true)).toBe(1); // many hits, tiny share
+    expect(strengthAbove("authority", 5, 0.10, true)).toBe(3);
+    expect(strengthAbove("authority", 5, 0.10, false)).toBe(1);
+    expect(strengthAbove("supplier", 10, 0.002, true)).toBe(0); // a firm needs the value too
+  });
 
-    expect(strengthRound("supplier", 100, true, 10)).toBe(0); // exactly 10% is not more than 10%
-    expect(strengthRound("supplier", 100, true, 11)).toBeGreaterThanOrEqual(1);
-    expect(strengthRound("authority", 1000, true, 10)).toBe(1); // 5+ such DAs and 1%
-    expect(strengthRound("supplier", 100, true, 25)).toBeCloseTo(1.99); // exactly 25% stays at level 1
-    expect(strengthRound("supplier", 100, true, 26)).toBeGreaterThanOrEqual(2);
-    expect(strengthRound("supplier", 100, true, 51)).toBe(3);
-    expect(strengthRound("supplier", 4, true, 4)).toBe(0); // under 5 DAs
+  it("weighs a firm's part in the buyer's duty (decision B)", () => {
+    const spread = { top2: 0.3, utility: false };
+    const close = { top2: 0.9, utility: false };
+    expect(strengthAbove("supplier", 16, 0.8, true, spread)).toBe(FIRM_DUTY.cap);
+    expect(strengthAbove("supplier", 16, 0.8, true, close)).toBe(3);
+    expect(strengthAbove("supplier", 16, 0.8, true, { top2: 0.3, utility: true })).toBeCloseTo(0.9);
+    expect(strengthSplit("supplier", 0.5, true, spread)).toBe(FIRM_DUTY.cap);
+    expect(strengthSplit("supplier", 0.5, true, close)).toBe(3);
+    expect(strengthSplit("authority", 0.20, true)).toBe(3);
+    expect(strengthSplit("authority", 0.08, true)).toBe(2);
+    expect(strengthSplit("authority", 0.01, true)).toBe(0);
+  });
 
-    expect(strengthConcentration(false, true, 0.95)).toBe(0);
-    expect(strengthConcentration(true, true, 0.60)).toBe(1);
-    expect(strengthConcentration(true, true, 0.75)).toBe(2);
-    expect(strengthConcentration(true, true, 0.90)).toBe(3);
+  it("weighs repeated-purchase groups by overrun and purchase size", () => {
+    const base = { role: "authority" as const, ceiling: 100, annex2Share: 0, association: false, massSupplier: false };
+    expect(splitGroupWeight({ ...base, total: 200, n: 2 })).toBe(1);
+    expect(splitGroupWeight({ ...base, total: 120, n: 3 })).toBe(0); // at 1.2× the ceiling
+    expect(splitGroupWeight({ ...base, total: 130, n: 172 })).toBeCloseTo(0.025); // food receipts
+    expect(splitGroupWeight({ ...base, total: 200, n: 2, annex2Share: 0.6 })).toBe(0);
+    expect(splitGroupWeight({ ...base, total: 200, n: 2, association: true })).toBe(0.5);
+    expect(splitGroupWeight({ ...base, total: 200, n: 2, massSupplier: true })).toBe(0.5);
+    expect(splitGroupWeight({ ...base, role: "supplier", total: 200, n: 2, massSupplier: true })).toBe(1);
+  });
 
-    expect(strengthDependence(true, true, 0)).toBe(1);
-    expect(strengthDependence(true, true, 0.20)).toBe(2);
-    expect(strengthDependence(true, true, 0.50)).toBe(3);
+  it("reads prices just under the ceiling as bunching", () => {
+    expect(strengthRound(2, 0, true)).toBe(0); // fewer than 3
+    expect(strengthRound(73, 108.3, true)).toBe(0); // Orange: fewer than expected
+    expect(strengthRound(81, 0, true)).toBe(3); // Geo Draft
+    expect(strengthRound(10, 0.6, true)).toBeCloseTo(Math.log2(11 / 1.6));
+    expect(strengthRound(10, 0.6, false)).toBe(1);
+  });
 
-    expect(strengthAbove(1, true, 0.5)).toBe(0); // one record never sets a level
-    expect(strengthAbove(2, true, 0)).toBe(1);
-    expect(strengthAbove(3, true, 0.05)).toBe(2);
-    expect(strengthAbove(4, true, 0)).toBe(2);
-    expect(strengthAbove(4, true, 0.20)).toBe(3);
-    expect(strengthAbove(10, true, 0)).toBe(3);
-    expect(strengthAbove(5, false, 0.5)).toBe(1);
+  it("measures December, concentration, dependence and capacity", () => {
+    expect(strengthYearEnd(1)).toBe(0);
+    expect(strengthYearEnd(1.75)).toBeCloseTo(0.625);
+    expect(strengthYearEnd(2.5)).toBe(1.25);
+
+    expect(strengthConcentration(0.59, true)).toBe(0);
+    expect(strengthConcentration(0.75, true)).toBe(2);
+    expect(strengthConcentration(0.95, false)).toBe(1);
+
+    expect(strengthDependence(0.69, 1, 0, true)).toBe(0);
+    expect(strengthDependence(0.80, 0, 0, true)).toBeCloseTo(0.67, 2);
+    expect(strengthDependence(0.90, 0.10, 0, true)).toBeCloseTo(1.5);
+    expect(strengthDependence(0.90, 0.10, 2.77, true)).toBe(3); // capture
+    expect(strengthDependence(0.90, 0.10, 1, true)).toBe(2);
+
+    expect(strengthCapacity({ ratio: 1, implausible: false, young: false, zeroStaff: false })).toBe(0);
+    expect(strengthCapacity({ ratio: 34, implausible: false, young: false, zeroStaff: false })).toBe(3);
+    expect(strengthCapacity({ ratio: 3, implausible: false, young: true, zeroStaff: false })).toBe(2.5);
+    expect(strengthCapacity({ ratio: null, implausible: true, young: false, zeroStaff: false })).toBe(1);
+    expect(strengthCapacity({ ratio: null, implausible: false, young: false, zeroStaff: true })).toBe(1);
+    expect(ramp(5, [[1.5, 1], [3, 2], [10, 3]])).toBeCloseTo(2 + 2 / 7);
   });
 });

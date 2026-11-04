@@ -1,31 +1,37 @@
 import type { DistributionDataV2, DistributionDataV3, ScoredMember } from "../compile";
 import type { PeerDialogData, PeerFacts } from "../peer-groups-shared";
-import { RISK_WEIGHT, type ScoreParts } from "../../risk-score";
+import { scoreOfCriteria, scorePoints, type ProfileFlagCode } from "@seap/db";
+import type { ScoreParts } from "../../risk-score";
 
 /*
  * Answers and windows of the distribution for the screen's tests (final
  * distribution §3.2, §3.6). distribution-3 (rf-2026.18, the owner's mockup of
- * 1 November 2026): a town hall at 54% against the 38 others of its
- * population band (a strip and a list), a commune at 44% against 2,034 (the
+ * 1 November 2026; scored as rf-2026.20): a town hall at 54 din 100 against the 38 others of its
+ * population band (a strip and a list), a commune at 44 against 2,034 (the
  * chart by tenths of the score). distribution-2, as a watch or capture stored
  * it before: a town hall against 29 (a list), a commune against 2,034 (a chart
  * by number of criteria), with the criteria of the time (da_rapid retired
  * since). Names and numbers are examples on the local copy, not live data.
  */
 
-/** The score of strengths x (packages/db profile-flags: 100 · (1 − Π(1 − 0.6 · x / 3))), rounded as displayed. */
-export const scoreOf = (parts: ScoreParts): number =>
-  Math.round(100 * (1 - Object.values(parts).reduce((product, part) => product * (1 - (RISK_WEIGHT * (part?.x ?? 0)) / 3), 1)));
+/** The score of an institution's strengths x (@seap/db scoreOfCriteria, rf-2026.20), rounded as displayed. */
+const strengths = (parts: ScoreParts) => Object.fromEntries(Object.entries(parts).map(([code, part]) => [code, part?.x ?? 0])) as Partial<Record<ProfileFlagCode, number>>;
+export const scoreOf = (parts: ScoreParts): number => Math.round(scoreOfCriteria("authority", strengths(parts)));
+/** The parts as the build stores them: each with its whole points (`pts`, @seap/db scorePoints). */
+const withPoints = (parts: ScoreParts): ScoreParts => {
+  const pts = scorePoints("authority", strengths(parts));
+  return Object.fromEntries(Object.entries(parts).map(([code, part]) => [code, { ...part!, pts: pts[code as ProfileFlagCode] ?? 0 }])) as ScoreParts;
+};
 
 const VASLUI_FACTS: PeerFacts = {
   role: "authority", entityId: "2146445", name: "MUNICIPIUL VASLUI", county: "Vaslui", nDas: 1_953,
   similar: { rule: "population", value: 63_035, min: 31_518, max: 126_070 }, activity: { min: 977, max: 3_906 },
 };
-/** 54% = +38 (repeated acquisitions over the cumulated ceiling) + 16 (just under the ceiling), as in the mockup. */
-const VASLUI_PARTS: ScoreParts = {
-  da_split: { x: 2.105, groups: 18, share: 0.11, annex2Share: 0 },
-  da_round: { x: 1.028, n: 37, share: 0.02 },
-};
+/** 54 din 100 = +44 (repeated acquisitions over the cumulated ceiling) + 10 (just under the ceiling, the same family). */
+const VASLUI_PARTS: ScoreParts = withPoints({
+  da_split: { x: 2.2, groups: 18, partners: 9, share: 0.08, rawShare: 0.11, top2: 0.4 },
+  da_round: { x: 1.25, n: 37, expected: 13.6 },
+});
 /** The 38 others' scores in the mockup: 18 higher, 1 equal, 19 lower. */
 const VASLUI_SCORES = [71, 69, 68, 65, 64, 63, 62, 62, 62, 61, 61, 59, 58, 57, 57, 56, 56, 55, 54, 53, 52, 47, 47, 43, 42, 41, 40, 39, 37, 36, 35, 33, 30, 29, 22, 21, 0, 0];
 const NAMED = ["MUNICIPIUL BUZAU", "MUNICIPIUL TULCEA", "MUNICIPIUL BOTOSANI", "Municipiul Bistrita"];
@@ -55,11 +61,11 @@ export const VASLUI_LIST: DistributionDataV3 = {
   members: scored,
 };
 
-/** 44% = the year's end (x 1,5) and repeated acquisitions (x 1), against the 2,034 others of its band: the chart. */
-const RUSETU_PARTS: ScoreParts = {
-  da_year_end: { x: 1.5, years: [{ y: 2023, pct: 0.41 }] },
-  da_split: { x: 1, groups: 1, share: 0.04, annex2Share: 0 },
-};
+/** 44 din 100 = December (x 1,25, its most) and repeated acquisitions (x 1,25), against the 2,034 others of its band: the chart. */
+const RUSETU_PARTS: ScoreParts = withPoints({
+  da_year_end: { x: 1.25, years: [{ y: 2023, pct: 0.41 }], zs: 2.5 },
+  da_split: { x: 1.25, groups: 1, partners: 1, share: 0.03, rawShare: 0.04, top2: 1 },
+});
 export const RUSETU_SCORE_CHART: DistributionDataV3 = {
   version: 3, role: "authority", status: "ok",
   criteria: ["da_split", "da_round", "da_year_end", "da_concentration", "da_above_ceiling"],
