@@ -96,3 +96,7 @@
 .rv-rank .rv-stack{display:none}
 .rv-rank tbody tr.rv-ghost{display:block}
 }
+/* The chart's supplier choice sits in its corner, left of the zoom (owner, 4 November 2026). */
+.rv-zoom{gap:14px}
+.rv-limit{display:inline-flex;align-items:center;gap:6px}
+.radiografie-view .rv-limit select{width:auto;margin:0;font-size:13px;min-height:44px;padding-right:30px}
