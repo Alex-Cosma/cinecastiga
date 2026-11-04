@@ -3,7 +3,7 @@
    full amounts in the transactions table, stacked cards under 720px. */
 
 /* ---- "Pe scurt" ---- */
-.ent-brief{margin:22px 0 8px;padding:20px 22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2,10px);display:grid;gap:10px}
+.ent-brief{margin:22px 0 48px;padding:20px 22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r2,10px);display:grid;gap:10px}
 .ent-brief h2{font-family:var(--display);font-size:20px;letter-spacing:-.015em;margin:0}
 /* the strip's notes right under it: what its figures leave out (contracts above the cap) or split (consortia) */
 .ent-top-notes{margin:10px 2px 0;display:grid;gap:4px}
@@ -234,7 +234,7 @@
 
 /* ---- phones: rows become stacked cards; the page never scrolls sideways ---- */
 @media (max-width:720px){
-  .ent-brief{padding:16px}
+  .ent-brief{padding:16px;margin-bottom:36px}
   .ent-brief>p{font-size:15px}
   .ent-brief-list li{grid-template-columns:minmax(0,1fr)}
   .ent-brief-label{flex-wrap:wrap}
