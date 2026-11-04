@@ -21,14 +21,17 @@ export default function ColumnFilter({
   value,
   onChange,
   facetUrl,
+  localFacet,
   onFacet,
   align = "start",
 }: {
   column: ColumnDef;
   value: FilterValue | undefined;
   onChange: (value: FilterValue | null) => void;
-  /** This column's options under the other filters; the term searches them (pick columns). */
-  facetUrl: (term: string) => string;
+  /** This column's options under the other filters, from the server; the term searches them (pick columns). */
+  facetUrl?: (term: string) => string;
+  /** The same, counted in the browser over rows it already holds (lib/table-filters/memory.ts). */
+  localFacet?: (term: string) => Facet;
   /** Each answer, so the band can name the chosen values. */
   onFacet?: (facet: Facet) => void;
   /** Which edge of the funnel the window lines up with: the last columns open leftwards. */
@@ -42,9 +45,12 @@ export default function ColumnFilter({
   const panel = useRef<HTMLDivElement>(null);
   const id = useId();
   const active = isActive(value);
-  const { facet, loading, error } = useFacet(open ? facetUrl(searched) : null);
+  const remote = useFacet(open && !localFacet && facetUrl ? facetUrl(searched) : null);
+  const facet = open && localFacet ? localFacet(searched) : remote.facet;
+  const { loading, error } = localFacet ? { loading: false, error: false } : remote;
 
-  useEffect(() => { if (facet) onFacet?.(facet); }, [facet]); // eslint-disable-line react-hooks/exhaustive-deps -- reported once per answer
+  // A server's answer is reported once, so the band can name its values; a local facet's names are the caller's own.
+  useEffect(() => { if (remote.facet) onFacet?.(remote.facet); }, [remote.facet]); // eslint-disable-line react-hooks/exhaustive-deps -- reported once per answer
   // A search is asked 200 ms after the last key.
   useEffect(() => {
     const timer = setTimeout(() => setSearched(term.trim()), 200);

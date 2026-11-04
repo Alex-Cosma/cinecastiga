@@ -1,3 +1,4 @@
+import { ACCOUNT_COLUMNS } from "../admin/table-columns";
 import { LOT_COLUMNS } from "../notice-lots-columns";
 import { TED_COLUMNS } from "../ted-columns";
 import type { TableColumns } from "./types";
@@ -17,6 +18,7 @@ export interface UrlTable {
 export const URL_TABLES = {
   ted: { columns: TED_COLUMNS, endpoint: "/api/ted-awards", reset: ["p"] },
   loturi: { columns: LOT_COLUMNS, endpoint: "/api/anunturi/loturi", reset: ["p"] },
+  conturi: { columns: ACCOUNT_COLUMNS, endpoint: "/api/admin/conturi", reset: ["page", "err"] },
 } as const satisfies Record<string, UrlTable>;
 
 export type UrlTableName = keyof typeof URL_TABLES;
