@@ -30,7 +30,7 @@ export const SITE_LINK_PATTERN = /encodeSpec\(|askHref\(|questionHref\(|countyBr
 
 export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/page.tsx", occurrences: 7, kind: "producer", what: "Home: six starting questions, three national figures; `/?spec=` and `?q=` are forwarded to /intreaba",
-    corpus: ["site:home-roads", "site:home-hospitals", "site:home-contract-winners", "site:home-communes", "site:home-authority-cloud", "site:home-single-bidder", "site:home-da-count", "site:home-contract-count", "site:home-value"] },
+    corpus: ["site:home-roads", "site:home-hospitals", "site:home-contract-winners", "site:home-communes", "site:home-authority-cloud", "site:home-firm-dependence", "site:home-da-count", "site:home-contract-count", "site:home-value"] },
   { file: "app/DiscoveryMap.tsx", occurrences: 3, kind: "producer", what: "Home map: the national map and a county's domains",
     corpus: ["site:home-map", "site:county-breakdown"] },
   { file: "app/ghid/page.tsx", occurrences: 4, kind: "producer", what: "Guide: a county's domains and the roads ranking",
