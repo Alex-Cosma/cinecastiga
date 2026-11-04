@@ -4209,18 +4209,18 @@
    }
   },
   {
-   "id": "site:home-single-bidder",
+   "id": "site:home-firm-dependence",
    "origin": "site",
-   "source": "site-links.ts SINGLE_BIDDER_WINNERS_SPEC (app/page.tsx)",
+   "source": "site-links.ts FIRM_DEPENDENCE_CLOUD_SPEC (app/page.tsx)",
    "request": {
     "spec": {
-     "block": "table",
-     "dataset": "contracts",
+     "block": "scatter",
      "dim": "supplier",
      "measure": "value",
-     "topN": 10,
-     "filters": {
-      "singleBidder": true
+     "filters": {},
+     "scatter": {
+      "rankBy": "risk",
+      "flag": "da_dependence"
      }
     }
    },
@@ -4230,97 +4230,266 @@
     "question": null,
     "model": null,
     "spec": {
-     "block": "table",
+     "block": "scatter",
      "measure": "value",
-     "filters": {
-      "singleBidder": true
-     },
-     "dataset": "contracts",
+     "filters": {},
      "dim": "supplier",
-     "topN": 10
-    },
-    "pills": ["clasament","top 10 furnizori","valoarea înregistrată","toți anii","o singură ofertă","doar contractele din proceduri"],
-    "caveats": [
-     "Sursă: DOAR contractele din proceduri. Valoarea unui contract câștigat în asociere e împărțită egal între firme. Plafoanele acordurilor-cadru și publicațiile cu identitate incertă sunt excluse din totaluri. Lipsa comenzilor identificate înseamnă acoperire incompletă.",
-     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "„O singură ofertă”: numărul de oferte e cunoscut doar pentru contractele regăsite și în TED (confirmate). Contractele fără date de competiție NU apar aici — necunoscut nu înseamnă competitiv.",
-     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării."
-    ],
-    "data": {
-     "block": "table",
-     "rows": [
-      {
-       "entityId": "9100000101",
-       "name": "Fixture Construct SRL",
-       "county": "Cluj",
-       "value": 340000,
-       "count": 1,
-       "population": null
-      },
-      {
-       "entityId": "9100000103",
-       "name": "Fixture Servicii SA",
-       "county": "Alba",
-       "value": 87000,
-       "count": 1,
-       "population": null
-      }
-     ],
-     "totals": {
-      "value": 427000,
-      "count": 2,
-      "entities": 2
+     "scatter": {
+      "rankBy": "risk",
+      "flag": "da_dependence"
      }
     },
-    "displaySql": "select supplier_name, sum(closing_value)\nfrom marts.contract_transactions\nwhere closing_value > 0\n  and is_single_bidder = true  -- o singură ofertă (din TED)\ngroup by supplier_name\norder by 2 desc\nlimit 10;"
+    "pills": ["6 firme","achiziții directe","semnal: dependență de o autoritate"],
+    "caveats": [
+     "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
+     "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
+     "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+    ],
+    "data": {
+     "block": "scatter",
+     "scatter": {
+      "version": 3,
+      "role": "supplier",
+      "rankBy": "risk",
+      "flag": "da_dependence",
+      "group": {
+       "n": 6,
+       "nList": 6,
+       "small": true
+      },
+      "criteria": {
+       "da_split": 3,
+       "da_round": 2,
+       "da_dependence": 4,
+       "da_above_ceiling": 2
+      },
+      "p90": 114000,
+      "cloud": {
+       "points": []
+      },
+      "list": [
+       {
+        "entityId": "9100000111",
+        "name": "Profil Firma Unu SRL",
+        "county": "Buzău",
+        "value": 45000,
+        "nDas": 26,
+        "score": 89,
+        "scoreRaw": 89,
+        "nFlags": 4,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         },
+         {
+          "code": "da_above_ceiling"
+         }
+        ],
+        "employees": 7,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000103",
+        "name": "Fixture Servicii SA",
+        "county": "Alba",
+        "value": 60000,
+        "nDas": 15,
+        "score": 71,
+        "scoreRaw": 71,
+        "nFlags": 3,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_round"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 300,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000101",
+        "name": "Fixture Construct SRL",
+        "county": "Cluj",
+        "value": 88000,
+        "nDas": 24,
+        "score": 58,
+        "scoreRaw": 58,
+        "nFlags": 2,
+        "flags": [
+         {
+          "code": "da_split"
+         },
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 3,
+        "employeesYear": 2024
+       },
+       {
+        "entityId": "9100000102",
+        "name": "Fixture Medical SRL",
+        "county": "Buzău",
+        "value": 140000,
+        "nDas": 40,
+        "score": 36,
+        "scoreRaw": 36,
+        "nFlags": 1,
+        "flags": [
+         {
+          "code": "da_dependence"
+         }
+        ],
+        "employees": 40,
+        "employeesYear": 2024
+       }
+      ],
+      "chosen": {
+       "n": 4,
+       "nList": 4
+      }
+     }
+    },
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Dependență de o autoritate\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
     "ok": true,
-    "total": 2,
-    "value": "427000.00",
-    "sourceTotal": 2,
-    "sourceValue": "427000.00",
+    "total": 7,
+    "value": "2613403.10",
+    "sourceTotal": 7,
+    "sourceValue": "2613403.10",
     "page": 0,
     "pageSize": 10,
     "accepted": {
-     "count": 0,
-     "value": "0.00"
+     "count": 7,
+     "value": "2613403.10"
     },
-    "dateFrom": "2025-02-25",
-    "dateTo": "2025-06-10",
-    "profile": false,
-    "profiles": [],
-    "profileCount": 0,
+    "dateFrom": "2024-09-12",
+    "dateTo": "2026-02-03",
+    "profile": true,
+    "profiles": [
+     {
+      "entityId": "9100000101",
+      "name": "Fixture Construct SRL",
+      "role": "supplier",
+      "count": 24,
+      "value": "88000.00",
+      "score": 58,
+      "parts": {
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_dependence"]
+     },
+     {
+      "entityId": "9100000102",
+      "name": "Fixture Medical SRL",
+      "role": "supplier",
+      "count": 40,
+      "value": "140000.00",
+      "score": 36,
+      "parts": {
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_dependence"]
+     },
+     {
+      "entityId": "9100000103",
+      "name": "Fixture Servicii SA",
+      "role": "supplier",
+      "count": 15,
+      "value": "60000.00",
+      "score": 71,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence"]
+     },
+     {
+      "entityId": "9100000111",
+      "name": "Profil Firma Unu SRL",
+      "role": "supplier",
+      "count": 26,
+      "value": "45000.00",
+      "score": 89,
+      "parts": {
+       "da_round": {
+        "x": 1
+       },
+       "da_split": {
+        "x": 1
+       },
+       "da_dependence": {
+        "x": 1
+       },
+       "da_above_ceiling": {
+        "x": 1
+       }
+      },
+      "flags": ["da_split","da_round","da_dependence","da_above_ceiling"]
+     }
+    ],
+    "profileCount": 4,
     "profileReconciled": null,
     "scopeNotes": [
-     "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
-     "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
-     "Un contract cu mai mulți câștigători apare pe câte un rând pentru fiecare furnizor, cu valoarea împărțită egal. Suma folosește aceste cote; numărul de rânduri nu este numărul de contracte distincte. Detaliile și exportul păstrează valoarea integrală și numărul câștigătorilor.",
-     "Lista surselor acoperă întregul rezultat filtrat; limita de poziții din clasament sau diagramă nu limitează sursele."
+     "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
+     "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
+     "Sursele semnalului „Dependență de o autoritate”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
     ],
     "statuses": [
      {
-      "state": null,
-      "count": 2,
-      "value": "427000.00"
+      "state": "Oferta acceptata",
+      "count": 7,
+      "value": "2613403.10"
      }
     ],
     "rows": [
-     ["contracts","9100200005","CT-FX-5","2025-02-25","9100000004","9100000103","Alba","79000000-4","87000.00",null,1,"87000.00",false,"Contract fixture 5"],
-     ["contracts","9100200001","CT-FX-1","2025-06-10","9100000002","9100000101","Cluj","45233140-2","340000.00",null,1,"340000.00",false,"Contract fixture 1"]
+     ["da","9100100013","DA-FX-13","2025-08-08","9100000003","9100000103","Buzau","79000000-4","2500000.00","Oferta acceptata",null,null,false,null],
+     ["da","9100100005","DA-FX-5","2025-05-09","9100000001","9100000101","Cluj","45233140-2","41000.55","Oferta acceptata",null,null,false,null],
+     ["da","9100100010","DA-FX-10","2026-02-03","9100000003","9100000102","Buzau","33690000-3","22400.15","Oferta acceptata",null,null,false,null],
+     ["da","9100100009","DA-FX-9","2025-06-30","9100000003","9100000102","Buzau","33690000-3","18700.80","Oferta acceptata",null,null,false,null],
+     ["da","9100100021","DA-FX-21","2025-12-17","9100000003","9100000102","Buzau","33690000-3","14100.00","Oferta acceptata",null,null,true,null],
+     ["da","9100100011","DA-FX-11","2024-09-12","9100000003","9100000102","Buzau","33600000-6","9900.90","Oferta acceptata",null,null,false,null],
+     ["da","9100100020","DA-FX-20","2025-08-19","9100000001","9100000101","Cluj","45233200-1","7300.70","Oferta acceptata",null,null,false,null]
     ]
    },
    "csv": {
     "status": 200,
-    "file": "randuri-2.csv",
-    "x-total-rows": "2",
-    "x-exported-rows": "2",
-    "x-source-rows": "2",
-    "x-source-value": "427000.00",
-    "x-filtered-value": "427000.00",
-    "lines": 3,
-    "sha256": "37d3831cb6207c5c00e7d58dbed0743d55b87b5da58e8c560dbc222c9f9ee1e2"
+    "file": "randuri-7.csv",
+    "x-total-rows": "7",
+    "x-exported-rows": "7",
+    "x-source-rows": "7",
+    "x-source-value": "2613403.10",
+    "x-filtered-value": "2613403.10",
+    "lines": 8,
+    "sha256": "82a29600c60ba8f52499b30c4fff154dc30d266cc5b02797ba87a6c583e67ce7"
    }
   },
   {
