@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { getEntityPartnersPaged, getEntityTransactions } from "./marts";
+import { getEntityPartnersPaged } from "./marts";
+import { getEntityTransactions, getEntityTxFacet } from "./entity-tx";
 
 const globalDb = globalThis as unknown as { __seapSql?: DbSql };
 const previous = globalDb.__seapSql;
@@ -36,25 +37,41 @@ function database() {
 describe("entity source pagination", () => {
   it.each(["value", "date"] as const)("orders %s ties by channel, numeric record and consortium member", async (sort) => {
     const statements = database();
-    await getEntityTransactions("123", "authority", { page: 3, pageSize: 10, sort, years: ["2025"] });
+    await getEntityTransactions("123", "authority", { page: 3, pageSize: 10, sort, filters: { data: { kind: "dates", years: ["2025"], from: null, to: null } } });
     expect(statements).toHaveLength(2);
     const page = statements[0]!;
     expect(page.query).toContain("src asc, rid::bigint asc, cp_id asc nulls last");
     expect(page.values.slice(-2)).toEqual([10, 20]);
     for (const { query, values } of statements) {
       expect(query).toContain("where t.authority_id = ? and t.closing_value > 0");
-      expect(query).toContain("closing_value > 0 and closing_value <= 2000000");
+      expect(query).toContain("from marts.contract_transactions t");
+      expect(query).not.toContain("t.closing_value is null or");
       expect(values).toContainEqual(["2025"]);
     }
   });
-  it("keeps excluded DA records accessible without adding contracts to that scope", async () => {
+  it("reads the excluded direct acquisitions only when the type funnel chooses them, and nothing else", async () => {
     const statements = database();
-    await getEntityTransactions("123", "supplier", { src: "contracts", excluded: true });
+    await getEntityTransactions("123", "supplier", { filters: { tip: { kind: "options", values: ["excluse"] } } });
     for (const { query } of statements) {
-      expect(query).toContain("supplier_id = ?");
-      expect(query).toContain("closing_value is null or closing_value <= 0 or closing_value > 2000000");
+      expect(query).toContain("t.supplier_id = ?");
+      expect(query).toContain("t.closing_value is null or t.closing_value <= 0 or t.closing_value > ?");
       expect(query).not.toContain("from marts.contract_transactions");
     }
+  });
+  it("filters signals on each channel by what its Semnale column shows", async () => {
+    const statements = database();
+    await getEntityTransactions("123", "authority", { filters: { semnale: { kind: "options", values: ["da_round", "un_ofertant"] } } });
+    const query = statements[0]!.query;
+    expect(query).toContain("t.da_flags && ?::text[]");
+    expect(query).toContain("t.is_single_bidder is true");
+  });
+  it("counts a funnel's options without the rows' names and names only the ones shown", async () => {
+    const statements = database();
+    await getEntityTxFacet("123", "authority", "partener", { data: { kind: "dates", years: ["2021"], from: null, to: null } });
+    // the counting query never reads a name; an empty answer needs no names
+    expect(statements[0]!.query).toContain("group by v");
+    expect(statements[0]!.query).not.toContain("supplier_name");
+    expect(statements[0]!.values).toContainEqual(["2021"]);
   });
   it("counts the unidentified partner group even on a page past the end", async () => {
     const statements = database();
@@ -99,7 +116,7 @@ describe("consortium rows in the entity table", () => {
 
   it("looks up the other members only for consortium rows and keeps the split amounts", async () => {
     const statements = consortiumDatabase();
-    const { rows } = await getEntityTransactions("2144364", "authority", { pageSize: 10 });
+    const { rows } = await getEntityTransactions("2144364", "authority", { filters: {}, pageSize: 10 });
     expect(statements).toHaveLength(3);
     expect(statements[2]).toContain("where contract_id = any(");
     expect(rows[0]).toMatchObject({

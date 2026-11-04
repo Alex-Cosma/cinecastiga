@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb, type DbSql } from "@seap/db";
-import { getEntityPartnersPaged, getEntitySubjects, getEntityTransactions, getEntityTxCounts } from "./marts";
+import { getEntityPartnersPaged, getEntitySubjects, getEntityTxCounts } from "./marts";
+import { getEntityTransactions } from "./entity-tx";
 
 // Entity page, beginner pass (22 Oct 2026): consortium shares are labelled and
 // "Pe scurt" groups exactly the KPI selection by CPV division. Shaped on the
@@ -46,7 +47,7 @@ describe.skipIf(!url)("entity page consortium labels and summary (isolated Postg
   });
 
   it("returns each consortium row with its whole contract and the other members", async () => {
-    const { rows } = await getEntityTransactions(authority, "authority", { src: "contracts", pageSize: 10 });
+    const { rows } = await getEntityTransactions(authority, "authority", { filters: { tip: { kind: "options", values: ["contracte"] } }, pageSize: 10 });
     const share = rows.filter((r) => r.sicapDaId === consortium);
     expect(share).toHaveLength(3);
     expect(share.find((r) => r.partnerId === winnerC)).toMatchObject({
@@ -54,7 +55,7 @@ describe.skipIf(!url)("entity page consortium labels and summary (isolated Postg
       consortiumOthers: ["CONCELEX", "Concelex Engineering S.R.L"],
     });
     expect(rows.find((r) => r.sicapDaId === single)).toMatchObject({ nWinners: 1, consortiumOthers: [] });
-    const supplierView = await getEntityTransactions(winnerA, "supplier", { pageSize: 10 });
+    const supplierView = await getEntityTransactions(winnerA, "supplier", { filters: {}, pageSize: 10 });
     expect(supplierView.rows.find((r) => r.src === "contract")).toMatchObject({
       nWinners: 3, consortiumOthers: ["Concelex Engineering S.R.L", "CONSTRUCTII ERBASU S.A."],
     });

@@ -448,6 +448,24 @@ Decizia proprietarului din 1 noiembrie 2026 (produsul: [scorul de risc](01-produ
 
 **Cititorii.** Pagina entității (`getEntityFlags` ordonează rolurile după `score`; `lib/risk-peers.ts` dă „Mai multe tipare decât X% dintre …” doar la moderat și puternic, cu grupul implicit din `lib/ask/peer-groups.ts`), `/semnale` (`readSignalRiskGroup`: banda ca interval de scor, ultima cu 100 inclus, ordinea `score`, apoi valoarea (ca „Cine conduce?”: același procent se citește ca egalitate); `readRiskScoreDistribution`: zecimile 0, 20 … 90), comparația (`score`), „Cine conduce?” (`entity_card-3`, `riskRankingOf`), „Unde se situează?” (`distribution-3`) și norul (`scatter-3`). Teste: `apps/ingestion/src/flags/score.test.ts` (unitar, `scoreProfile`), `normalize/marts.integration.test.ts` (regulile noi și ce scrie `applyProfileScores`), `monitoring/refresh.integration.test.ts` (un `daily` refuză riscul `rf-2026.17`), `packages/db/src/profile-flags.test.ts`, `apps/web/lib/risk-score.test.ts`, `lib/signals.test.ts` și `lib/signals.integration.test.ts`.
 
+### Filtrele în coloane (4 noiembrie 2026)
+
+Produsul e în [produs](01-product.md#filtrele-în-coloane-4-noiembrie-2026). Un singur mecanism pentru toate tabelele, în `apps/web/lib/table-filters/`:
+
+- `types.ts`: vocabularul comun. Un tabel își declară coloanele (`ColumnDef`: cheia, felul `dates | options | pick | range`, eticheta, parametrul din adresă, modelul valorilor permise, parametrii vechi). Starea e `FilterState`, valoarea pe cheie; un răspuns de pâlnie e un `Facet`.
+- `codec.ts`: adresa și înapoi, pur. `an=2020,2021` sau `an=2020-01..2021-12`, `tip=directe,contracte`, `furnizor=1,2`, `valoare=1000..50000`; ce e greșit se aruncă, nu se ghicește; parametrii paginii rămân.
+- `describe.ts`: cuvintele benzii, pur. Câte un chip pe valoare aleasă, fiecare cu starea fără ea.
+- `server/query.ts`: SQL-ul, generic. Un tabel se citește prin canale (`Channel`: `from`, `where` și cum se citește fiecare coloană în rândurile lui, un `Binding`). `channelWhere` pune filtrele (lasă afară canalul care nu poate avea rânduri: o constantă care nu se potrivește, un canal `optIn` neales); `unionOf` le unește; `facetOf` numără opțiunile unei coloane sub toate celelalte filtre (regula Excel). O coloană pick cu `names` se numără pe id-uri (din indexul acoperitor) și își citește numele doar pentru cele 50 arătate, iar căutarea trece prin nume (`core.entities.name_normalized`, cu indexul trigram, și `core.cpv_codes`).
+- În browser, `components/table-filters/`: `useTableFilters` (starea în adresă, numele învățate din pâlnii; o valoare venită cu adresa e numită cerând pâlnia ei o dată), `ColumnFilter` (pâlnia și fereastra, desenată peste pagină printr-un portal, pentru că tabelul își taie marginile), `FilterBodies` (cele patru feluri), `FilterBand`.
+
+Un tabel nou declară doar coloanele (ca `lib/entity-tx-columns.ts`) și canalele (ca `entityTxSource` din `lib/entity-tx.ts`); nucleul nu se schimbă.
+
+*Pagina entității (`/api/entity-tx`).* Trei canale: `directe` (achiziții directe în total), `excluse` (`optIn` pe „Tip”: valoare nulă, nepozitivă sau peste 2 mil.) și `contracte`. „Semnale” citește pe fiecare canal ce arată coloana: codurile marcate pe achiziție, „1 ofertant” la contract, „fără semnal”. Cu `&optiuni=<coloană>[&cauta=…]` ruta dă pâlnia în loc de rânduri. `getEntityTxYearCounts` a dispărut (anii vin din pâlnia „Data”).
+
+*Viteză (copia locală, cel mai mare furnizor: 465.479 de achiziții directe).* Pâlnia „Instituție” ~70 ms la cald (250 ms la rece), după ce numele au ieșit din numărătoare (cu ele: 2,2 s); CPV-ul din 2024 ~50 ms; valoarea ~0,8 s; căutarea în nume ~70 ms. Fără indecși noi: `da_tx_*_cover_idx` acoperă numărătoarea. Pâlniile se cer doar la deschidere.
+
+*Teste.* Unitare: `lib/table-filters/codec.test.ts`, `server/query.test.ts`, `lib/entity-transactions.test.ts`, `app/entitati/[id]/tx-filters.test.ts`. Integrare (bază `seap_test_*`, `TEST_DATABASE_URL`): `lib/entity-tx.integration.test.ts`, fiecare fel de filtru și fiecare pâlnie pe PostgreSQL real.
+
 ### Scorul de risc v2 (rf-2026.20)
 
 Sunt deciziile proprietarului din 3 noiembrie 2026 ([produsul](01-product.md#scorul-de-risc-v2-3-noiembrie-2026); formula publică e pe `/metodologie#indice`). Publicat pe 4 noiembrie 2026 (`a3d4a0e`). Secțiunea de mai sus rămâne valabilă pentru populație, cititori și ordinea etapelor; aici sunt doar diferențele.

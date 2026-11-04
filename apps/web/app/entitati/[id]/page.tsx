@@ -45,7 +45,8 @@ import { encodeSpec } from "@/lib/ask/permalink";
 import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
 import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
-import { selectionFromParams } from "./tx-filters";
+import { txColumns } from "@/lib/entity-tx-columns";
+import { readFilters, writeFilters } from "@/lib/table-filters/codec";
 import PartnersTable from "./PartnersTable";
 import SplitPairsTable from "./SplitPairsTable";
 import SectionNav from "./SectionNav";
@@ -147,6 +148,8 @@ export default async function EntityPage({
   // `?rol=` only for an entity that both buys and sells (owner, 4 November 2026); a single-role page drops it.
   const bothRoles = flagRows.length > 1;
   const base = { rol: bothRoles ? rolParam : undefined, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
+  // The records table's filters from the address (its funnels; lib/entity-tx-columns.ts).
+  const txFilters = readFilters(txColumns(role === "authority"), (key) => sp[key]);
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
@@ -422,13 +425,11 @@ export default async function EntityPage({
       <section className="section" id="achizitii">
         <h2>Toate achizițiile și contractele</h2>
         <TxTable
-          key={`${id}:${rolParam}:${sp["sem"] ?? ""}:${sp["an"] ?? ""}:${sp["canal"] ?? ""}:${sp["excluse"] ?? ""}`}
+          key={`${id}:${rolParam}:${writeFilters(txColumns(isAuth), "", txFilters)}`}
           entityId={id}
           role={rolParam as "furnizor" | "autoritate"}
           isAuth={isAuth}
-          flags={row.flags}
-          initial={selectionFromParams((key) => sp[key])}
-          excludedDa={txCounts.excludedDa}
+          initial={txFilters}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
           <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>
