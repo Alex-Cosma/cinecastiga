@@ -6,6 +6,7 @@ import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js'
 import { diagnosticError, createDb, createSnapshotHashCache, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, claimMethodologyProcessing, failProcessing, finishProcessing, processingStage, collectionHeartbeat } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import {runAuthorityUatRepair} from '../reference/authority-uat-repair.js';
+import {runAuthorityFragmentRepair} from '../reference/authority-fragment-repair.js';
 import { runMonitoringRefresh } from '../monitoring/refresh.js';
 import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
@@ -58,6 +59,8 @@ async function main() {
   await runScheduledMoneyRepair(sql,id!,console.log);
   await runScheduledReferenceRepair(sql,id!,console.log);
   await runAuthorityUatRepair(sql,id!,console.log);
+  // Full runs only: the merged authorities' signals are recalculated in the same run.
+  await runAuthorityFragmentRepair(sql,id!,console.log);
   // Current snapshot hashes of approved identities, computed once and reused by
   // the identity gates of this run while nothing they read changes (source
   // version, migration 0083). In memory only: a new command starts empty.
