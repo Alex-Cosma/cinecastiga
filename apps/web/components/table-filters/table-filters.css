@@ -1,0 +1,67 @@
+/* Column filters (owner, 4 November 2026): a funnel in each filterable header, its window, and the band of applied filters. */
+
+/* The funnel: grey at rest, the accent with a dot while its column filters, filled while its window is open. */
+.tf-fun{position:relative;display:inline-grid;place-items:center;width:28px;height:28px;margin-left:2px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--faint);cursor:pointer;vertical-align:middle;flex:none}
+.tf-fun:hover{background:var(--sunk);color:var(--ink2)}
+.tf-fun:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.tf-fun.on{color:var(--accent);background:var(--accent-soft)}
+.tf-fun.on::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--orange,var(--risk))}
+.tf-fun.open{background:var(--accent);color:var(--on-accent)}
+.tf-fun.open::after{display:none}
+.th-filter{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
+.num .th-filter{justify-content:flex-end}
+
+/* The window, over the page under its funnel. */
+.tf-backdrop{display:none}
+.tf-pop{position:fixed;z-index:60;box-sizing:border-box;max-height:min(70vh,520px);overflow:auto;display:flex;flex-direction:column;gap:10px;padding:14px;background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow2);font-size:14px;text-align:left;white-space:normal}
+.tf-title{margin:0;font-size:13px;font-weight:600;color:var(--ink2)}
+.tf-sub{margin:2px 0 -4px;font-size:12px;font-weight:600;color:var(--muted)}
+.tf-hint,.tf-wait,.tf-empty{margin:0;font-size:12px;line-height:1.45;color:var(--muted)}
+.tf-empty{padding:10px;border-radius:8px;background:var(--sunk)}
+.tf-search{display:flex;align-items:center;gap:8px;height:38px;padding:0 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--muted)}
+.tf-search:focus-within{border-color:var(--accent)}
+.tf-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;color:var(--ink)}
+.tf-list{display:flex;flex-direction:column}
+.tf-list.tf-stale{opacity:.6}
+.tf-list label{display:flex;align-items:center;gap:10px;min-height:36px;cursor:pointer}
+.tf-list label.off{color:var(--faint);cursor:default}
+.tf-list input,.tf-years input{width:16px;height:16px;margin:0;accent-color:var(--accent);flex:none}
+.tf-name{flex:1;min-width:0;overflow-wrap:anywhere}
+.tf-pop .n{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);flex:none}
+.tf-years{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tf-years button{display:flex;justify-content:space-between;align-items:center;gap:4px;min-height:32px;padding:4px 8px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+.tf-years button .n{margin-left:0;font-size:11px}
+.tf-years button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.tf-years button.on .n{color:inherit;opacity:.85}
+.tf-years button:disabled{color:var(--faint);cursor:default}
+.tf-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.tf-pair label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.tf-pair select,.tf-pair input{height:36px;min-width:0;padding:0 8px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);font:inherit;font-size:14px;color:var(--ink)}
+.tf-bars{display:flex;align-items:flex-end;gap:3px;height:44px}
+.tf-bars i{flex:1;border-radius:2px 2px 0 0;background:var(--accent-line)}
+.tf-bars i.in{background:var(--accent)}
+/* The footer stays in reach while a long list scrolls. */
+.tf-foot{position:sticky;bottom:-14px;margin:0 -14px -14px;padding:10px 14px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--line);background:var(--surface)}
+.tf-clear{padding:6px 0;border:0;background:transparent;font:inherit;font-size:13px;color:var(--accent);cursor:pointer}
+.tf-clear:disabled{color:var(--faint);cursor:default}
+.tf-done{height:34px;padding:0 14px;border:0;border-radius:8px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+
+/* A phone: a sheet at the bottom over a dimmed page, with room for a thumb. */
+@media (max-width:560px){
+  .tf-fun{width:32px;height:32px}
+  .tf-backdrop{display:block;position:fixed;inset:0;z-index:59;background:rgba(17,29,24,.38)}
+  .tf-pop.tf-sheet{left:0;right:0;bottom:0;top:auto;width:auto;max-height:78vh;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
+  .tf-list label{min-height:44px;font-size:15px}
+  .tf-search{height:44px}
+  .tf-done{height:44px;padding:0 18px}
+  .tf-sheet .tf-foot{bottom:calc(-16px - env(safe-area-inset-bottom));margin:0 -16px calc(-16px - env(safe-area-inset-bottom));padding:10px 16px calc(16px + env(safe-area-inset-bottom))}
+}
+
+/* The applied filters above the table. */
+.tf-band{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:4px 0 10px;font-size:14px}
+.tf-band-lab{color:var(--muted)}
+.tf-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 4px 3px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);overflow-wrap:anywhere}
+.tf-chip b{font-weight:600}
+.tf-chip button{display:inline-grid;place-items:center;width:26px;height:26px;flex:none;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;font-size:13px;cursor:pointer}
+.tf-chip button:hover{background:var(--accent-line)}
+.tf-band-all{padding:4px;border:0;background:transparent;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}

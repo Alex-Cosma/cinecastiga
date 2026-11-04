@@ -484,34 +484,7 @@ table.rank td .src a:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .ask-toast { animation: none; } }
 .ask-caveats-d { margin: 10px 0 0 17px; }
 
-/* entity tx table: in-place filters + sortable headers + button pager */
-.txf { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
-.txf-lab { font-size: 12px; color: var(--muted); margin-left: 6px; }
-.txf-lab:first-child { margin-left: 0; }
-.txf button {
-  font-size: 12.5px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px;
-  background: var(--surface); color: var(--muted); cursor: pointer; font-family: inherit;
-}
-.txf button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.txf-dd { position: relative; }
-.txf-panel {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 130px;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12); padding: 8px 10px;
-  display: flex; flex-direction: column; gap: 5px;
-}
-.txf-panel label {
-  display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer;
-  white-space: nowrap;
-}
-.txf-active {
-  font-size: 13px; background: var(--accent-soft); color: var(--accent-ink);
-  border-radius: 8px; padding: 7px 12px; margin-bottom: 10px;
-}
-.txf-active button {
-  border: none; background: none; color: var(--accent); cursor: pointer;
-  font: inherit; font-weight: 700; padding: 0;
-}
+/* entity tx table: sortable headers + button pager (the filters are its column funnels) */
 /* refetch: dim in place, never collapse (content below must not jump) */
 .tx-loading tbody { opacity: 0.45; pointer-events: none; transition: opacity 0.15s ease; }
 .tx-upd { color: var(--accent); font-weight: 600; }
@@ -1431,12 +1404,7 @@ tr:hover .cri-pill { transform: scale(1.06); }
 .ask-streamtoggle { display: inline-flex; background: var(--sunk); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 0; }
 .ask-streamtoggle button { border: 0; background: transparent; color: var(--ink2); padding: 5px 13px; font-weight: 500; font-size: 13.5px; border-radius: 999px; transition: color var(--fast), background var(--fast); }
 .ask-streamtoggle button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.txf button { border-radius: 999px; border: 1px solid var(--line2); background: var(--surface); color: var(--ink2); transition: transform var(--fast) var(--ease), background var(--fast), border-color var(--fast); }
-.txf button:hover { transform: translateY(-1px); border-color: var(--accent-line); background: var(--accent-soft); }
-.txf button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-.txf-active { background: var(--sunk); border: 1px solid var(--line2); color: var(--ink2); border-radius: var(--r); animation: fade-in var(--med) var(--ease) both; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-.txf-panel { border-radius: 12px; box-shadow: var(--shadow2); animation: drop var(--med) var(--ease) both; }
 .ask-tablewrap { border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; background: var(--surface); }
 .ask-tablewrap table.rank th { background: var(--surface); }
 /* On phones a wide source table becomes one card per row: the first cell on

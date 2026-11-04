@@ -116,8 +116,6 @@
 .split-pairs .pager{padding:4px 18px 16px;flex-wrap:wrap;gap:12px}
 .split-pairs-placeholder td{height:68px}
 .split-pairs-placeholder span{display:block;height:12px;width:65%;border-radius:4px;background:var(--sunk)}
-.data-exclusion-toggle{display:flex;align-items:center;gap:9px;margin:16px 0;color:var(--ink2);font-size:13px;cursor:pointer;min-height:32px}
-.data-exclusion-toggle input{accent-color:var(--accent);width:16px;height:16px}
 .coverage-summary{display:grid;gap:8px;font-size:12px;line-height:1.6}
 .coverage-summary span{color:var(--muted)}
 .coverage-data>p{max-width:85ch;line-height:1.7}

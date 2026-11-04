@@ -1,32 +1,35 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/blocks";
-import type { DaTx, TxYearCounts } from "@/lib/marts";
+import type { DaTx } from "@/lib/marts";
+import { txColumns } from "@/lib/entity-tx-columns";
+import { filterParams } from "@/lib/table-filters/codec";
+import { chipsOf } from "@/lib/table-filters/describe";
+import type { ColumnDef, FilterState, FilterValue } from "@/lib/table-filters/types";
+import ColumnFilter from "@/components/table-filters/ColumnFilter";
+import FilterBand from "@/components/table-filters/FilterBand";
+import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import { useEntityTable } from "./useEntityTable";
 import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
-import {
-  EMPTY_SELECTION, channelForced, channelOf, emptyState, rowFlag, selectionSearch, statusLine, yearOptions,
-  type EmptyExit, type TxSelection, type TxSrc,
-} from "./tx-filters";
+import { emptyState, statusLine } from "./tx-filters";
 import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
-import Term from "@/components/Term";
 
 /**
- * The entity page's transaction table, redesigned to the drill-table standard:
- * 10 rows/page, sortable columns (▾/▴), year + flag filters that fetch in
- * place (no page reload), an explicit active-filter banner, and a SEAP source
- * link per row. Lands at #achizitii from the flag cards' "vezi achizițiile".
+ * The entity page's records table, to the drill-table standard: 10 rows a page, sortable dates and values, a SEAP
+ * source link per row. Lands at #achizitii from the signal cards' „Vezi în tabel”.
  *
- * Critique of 2 November 2026 (the owner kept every mockup's "after"): the selection the rows come from is the one
- * the controls, the „Filtrat:” band, the status line and the address show; the year list counts each year's records;
- * an empty table says why; a new page keeps the old rows dimmed in place and starts under the sticky header.
+ * Filters (owner decision of 4 November 2026): a funnel in each filterable header whose options are the values of the
+ * rows the other filters leave; above the table only the applied filters, each with its ✕. They replace the source
+ * switch, the year list, the signal chips and the „Arată excluse” box (now a type, in the Tip funnel). The selection
+ * the rows come from is the one the funnels, the band, the status line and the address show; an empty table says why
+ * and offers to take each filter out.
  */
 
 interface Resp {
@@ -36,81 +39,47 @@ interface Resp {
   error?: string;
 }
 
-interface CountsResp {
-  ok: boolean;
-  counts?: TxYearCounts;
-  error?: string;
-}
-
-const FORCED_TITLE = "Semnalele și înregistrările excluse sunt doar achiziții directe.";
-
 export default function TxTable({
   entityId,
   role,
   isAuth,
-  flags,
-  initial = EMPTY_SELECTION,
-  excludedDa,
+  initial = {},
 }: {
   entityId: string;
   role: "furnizor" | "autoritate";
   isAuth: boolean;
-  flags: string[];
-  /** The selection the page's address carries (?canal, ?an, ?sem, ?excluse). */
-  initial?: TxSelection;
-  /** Direct acquisitions outside the total: no „Arată excluse” when there are none. */
-  excludedDa: number;
+  /** The filters the page's address carries (lib/entity-tx-columns.ts). */
+  initial?: FilterState;
 }) {
+  const columns = txColumns(isAuth);
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<"value" | "date">("value");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
-  const [sel, setSel] = useState<TxSelection>(initial);
-  const [yearsOpen, setYearsOpen] = useState(false);
   const tip = useTip();
-  const yearsBox = useRef<HTMLDivElement>(null);
-  const yearsButton = useRef<HTMLButtonElement>(null);
   const status = useRef<HTMLDivElement>(null);
-  const panelId = useId();
-  const update = (next: Partial<TxSelection>) => { setSel((s) => ({ ...s, ...next })); setPage(1); };
-  const forced = channelForced(sel);
-  const channel = channelOf(sel);
+  const facetUrl = (key: string, state: FilterState, term = "") => {
+    const p = filterParams(columns, state, new URLSearchParams({ id: entityId, rol: role, optiuni: key }));
+    if (term) p.set("cauta", term);
+    return `/api/entity-tx?${p.toString()}`;
+  };
+  const filters = useTableFilters(columns, initial, facetUrl);
+  const update = (next: FilterState) => { filters.replace(next); setPage(1); };
+  const setColumn = (key: string) => (value: FilterValue | null) => { filters.set(key, value); setPage(1); };
 
-  // A year of the top's chart (EntityYears): that year alone, every channel, no other filter.
+  // A year of the top's chart (EntityYears): that year alone, no other filter.
   useEffect(() => {
     const pick = (e: Event) => {
       const year = (e as CustomEvent<string>).detail;
       if (!/^\d{4}$/.test(year)) return;
-      setSel({ ...EMPTY_SELECTION, years: [year] }); setPage(1);
+      filters.replace({ data: { kind: "dates", years: [year], from: null, to: null } });
+      setPage(1);
     };
     window.addEventListener(ENTITY_YEAR_EVENT, pick);
     return () => window.removeEventListener(ENTITY_YEAR_EVENT, pick);
-  }, []);
-  // The address keeps the selection, so it can be reloaded or sent (the page's other parameters stay).
-  useEffect(() => {
-    const search = selectionSearch(window.location.search, sel);
-    if (search !== window.location.search) history.replaceState(history.state, "", `${window.location.pathname}${search}${window.location.hash}`);
-  }, [sel]);
-  // The years' panel closes on a tap or click outside it and on Escape, which gives the focus back to its button.
-  useEffect(() => {
-    if (!yearsOpen) return;
-    const outside = (e: Event) => { if (!yearsBox.current?.contains(e.target as Node)) setYearsOpen(false); };
-    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") { setYearsOpen(false); yearsButton.current?.focus(); } };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", escape);
-    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
-  }, [yearsOpen]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- `filters.replace` only sets state
 
-  const p = new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir });
-  if (sel.excluded) p.set("excluse", "1");
-  if (sel.years.length > 0) p.set("an", sel.years.join(","));
-  if (sel.flag) p.set("sem", sel.flag);
-  if (channel !== "all") p.set("tip", channel);
+  const p = filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir }));
   const { data, loading, error, retry } = useEntityTable<Resp>(`/api/entity-tx?${p.toString()}`);
-  // The records per year of each channel change only with a signal or the excluded records.
-  const cp = new URLSearchParams({ id: entityId, rol: role, doar: "ani" });
-  if (sel.flag) cp.set("sem", sel.flag);
-  if (sel.excluded) cp.set("excluse", "1");
-  const counts = useEntityTable<CountsResp>(`/api/entity-tx?${cp.toString()}`).data?.counts ?? null;
 
   const sortBy = (key: "value" | "date") => {
     if (sort === key) setDir(dir === "desc" ? "asc" : "desc");
@@ -125,7 +94,6 @@ export default function TxTable({
   const rows = data?.rows ?? [];
   // While a new page loads, the old rows stay where they are, dimmed and out of reach; ghost rows only before the first.
   const stale = loading && rows.length > 0;
-  const toggleYear = (y: string) => update({ years: sel.years.includes(y) ? sel.years.filter((x) => x !== y) : [...sel.years, y].sort() });
   // A new page starts under the sticky header and tabs, where the reader left the old one's first row, not at its
   // end (a phone's cards are much taller than the rows that stood in for them).
   const goPage = (n: number) => {
@@ -140,141 +108,54 @@ export default function TxTable({
     window.scrollTo({ top: top + window.scrollY - covered - 12, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     line.focus({ preventScroll: true });
   };
-  const exitTo = (kind: EmptyExit["kind"]) => {
-    if (kind === "years") update({ years: [] });
-    else if (kind === "src") update({ src: "all" });
-    else if (kind === "flag") update({ flag: null });
-    else if (kind === "excluded") update({ excluded: false });
-    else update(EMPTY_SELECTION);
-  };
 
-  const chipFlags = [...new Set([...flags.filter(rowFlag), ...(sel.flag ? [sel.flag] : [])])];
-  const options = counts ? yearOptions(counts, channel, sel.years) : null;
-  const sortedYears = [...sel.years].sort();
-  const pieces: { key: string; text: ReactNode; clear?: () => void; clearLabel?: string; title?: string }[] = [];
-  if (sel.years.length > 0 || sel.flag || sel.excluded) {
-    if (channel !== "all") pieces.push(forced
-      ? { key: "src", text: <b>achiziții directe</b>, title: FORCED_TITLE }
-      : { key: "src", text: <b>{channel === "da" ? "achiziții directe" : "contracte"}</b>, clear: () => update({ src: "all" }), clearLabel: "Înapoi la toate sursele" });
-    if (sel.years.length > 0) pieces.push({ key: "years", text: <>{sel.years.length === 1 ? "anul" : "anii"} <b>{sortedYears.join(", ")}</b></>, clear: () => update({ years: [] }), clearLabel: "Scoate anii" });
-    if (sel.excluded) pieces.push({ key: "excluded", text: <b>excluse din total</b>, clear: () => update({ excluded: false }), clearLabel: "Înapoi la total" });
-    if (sel.flag) pieces.push({ key: "flag", text: <>semnalul <b>„{flagLabel(sel.flag)}”</b></>, clear: () => update({ flag: null }), clearLabel: "Scoate semnalul" });
-  }
-
-  const showTip = channel === "all";
+  const column = (key: string): ColumnDef => columns.find((c) => c.key === key)!;
+  const funnel = (key: string, align: "start" | "end" = "start") => (
+    <ColumnFilter
+      column={column(key)}
+      value={filters.state[key]}
+      onChange={setColumn(key)}
+      facetUrl={(term) => facetUrl(key, filters.state, term)}
+      onFacet={(facet) => filters.learn(key, facet)}
+      align={align}
+    />
+  );
+  const sortState = (key: "value" | "date") => (sort === key ? (dir === "desc" ? "descending" : "ascending") : "none");
   const republished = republishedContractKeys(rows);
-  const nCols = showTip ? 7 : 6;
-  const empty = !loading && !error && rows.length === 0 ? emptyState(sel, counts) : null;
+  const nCols = 7;
+  const empty = !loading && !error && rows.length === 0 ? emptyState(chipsOf(columns, filters.state, filters.labels)) : null;
   return (
     <div>
       {tip.el}
-      {/* channel toggle — same control as the search drill's stream toggle */}
-      <div className="ask-streamtoggle" role="group" aria-label="Sursa înregistrărilor">
-        {(
-          [
-            ["all", "toate sursele"],
-            ["da", "achiziții directe"],
-            ["contracts", "contracte"],
-          ] as const
-        ).map(([k, l]) => {
-          const blocked = forced && k !== "da";
-          return (
-            <button
-              key={k}
-              type="button"
-              className={channel === k ? "on" : ""}
-              aria-pressed={channel === k}
-              aria-disabled={blocked || undefined}
-              title={blocked ? FORCED_TITLE : undefined}
-              onClick={() => { if (!blocked) update({ src: k as TxSrc }); }}
-            >
-              {l}
-            </button>
-          );
-        })}
-      </div>
-      {(excludedDa > 0 || sel.excluded) && (
-        <div className="tx-excluded ent-tip">
-          <label className="data-exclusion-toggle"><input type="checkbox" checked={sel.excluded} onChange={(e) => update({ excluded: e.target.checked, flag: e.target.checked ? null : sel.flag })} /> Arată excluse din total</label>
-          <Term tip id="excluse-total" />
-        </div>
-      )}
-      <div className="txf">
-        {/* years scale unbounded (a new one every January) → multi-select dropdown */}
-        <div className="txf-dd" ref={yearsBox}>
-          <button ref={yearsButton} type="button" className={sel.years.length > 0 ? "on" : ""} aria-expanded={yearsOpen} aria-controls={panelId} onClick={() => setYearsOpen(!yearsOpen)}>
-            an: {sel.years.length > 0 ? sortedYears.join(", ") : "toți"} ▾
-          </button>
-          {yearsOpen && (
-            <div className="txf-panel" id={panelId} role="group" aria-label="Anii înregistrărilor">
-              <label>
-                <input type="checkbox" checked={sel.years.length === 0} onChange={() => update({ years: [] })} />
-                toți anii
-              </label>
-              {options === null ? <span className="txf-wait">Se încarcă anii…</span> : options.map((o) => (
-                <label key={o.year} className={o.disabled ? "off" : undefined}>
-                  <input type="checkbox" checked={sel.years.includes(o.year)} disabled={o.disabled} onChange={() => toggleYear(o.year)} />
-                  {o.year}
-                  <span className="n">{formatInt(o.n)}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
-        {chipFlags.length > 0 && <span className="txf-lab">semnal:</span>}
-        {chipFlags.map((f) => (
-          <button
-            key={f}
-            type="button"
-            className={sel.flag === f ? "on" : ""}
-            aria-pressed={sel.flag === f}
-            title={FLAG_META[f]?.short}
-            onClick={() => {
-              const next = sel.flag === f ? null : f;
-              // flags mark DA rows only — selecting one narrows to that channel, and the band says so
-              update({ flag: next, excluded: next ? false : sel.excluded });
-            }}
-          >
-            {flagLabel(f)}
-          </button>
-        ))}
-      </div>
-      {pieces.length > 0 && (
-        <div className="txf-active">
-          <span className="txf-lab-act">Filtrat:</span>
-          {pieces.map((piece, i) => (
-            <span key={piece.key} className="txf-piece" title={piece.title}>
-              {i > 0 && <span className="txf-sep" aria-hidden="true">·</span>}
-              {piece.text}
-              {piece.clear && <button type="button" className="txf-x" aria-label={piece.clearLabel} onClick={piece.clear}>✕</button>}
-            </span>
-          ))}
-          <span className="txf-sep" aria-hidden="true">·</span>
-          <button type="button" className="txf-all" onClick={() => update(EMPTY_SELECTION)}>Scoate toate</button>
-        </div>
-      )}
+      <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={update} />
       <div className="ask-detmeta" role="status" ref={status} tabIndex={-1}>
-        {loading ? "Se încarcă înregistrările…" : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, page, pages, channel)}
+        {loading ? "Se încarcă înregistrările…" : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, page, pages, filters.state)}
       </div>
       <div className="ask-tablewrap" aria-busy={loading}>
         <table className={`ask-table ask-drill ent-tx${stale ? " tx-loading" : ""}`} aria-label="Toate achizițiile și contractele">
           <thead>
             <tr>
-              {/* Sorting is a button in the header, with its state on the header (keyboard and screen readers). */}
-              <th scope="col" className="col-date sortable" aria-sort={sort === "date" ? (dir === "desc" ? "descending" : "ascending") : "none"}>
-                <button type="button" className="th-sort" onClick={() => sortBy("date")}>
-                  Data{sort === "date" ? (dir === "desc" ? " ▾" : " ▴") : ""}
-                </button>
+              {/* Sorting and filtering are buttons in the header, their state on it (keyboard and screen readers). */}
+              <th scope="col" className="col-date sortable" aria-sort={sortState("date")}>
+                <span className="th-filter">
+                  <button type="button" className="th-sort" onClick={() => sortBy("date")}>
+                    Data{sort === "date" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                  </button>
+                  {funnel("data")}
+                </span>
               </th>
-              {showTip && <th scope="col" className="col-src">Tip</th>}
-              <th scope="col">{isAuth ? "Furnizor" : "Autoritate"}</th>
-              <th scope="col" className="col-cpv">Obiect (CPV)</th>
-              <th scope="col" className="col-value num sortable" aria-sort={sort === "value" ? (dir === "desc" ? "descending" : "ascending") : "none"}>
-                <button type="button" className="th-sort" onClick={() => sortBy("value")}>
-                  Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
-                </button>
+              <th scope="col" className="col-src"><span className="th-filter">Tip{funnel("tip")}</span></th>
+              <th scope="col"><span className="th-filter">{isAuth ? "Furnizor" : "Autoritate"}{funnel("partener")}</span></th>
+              <th scope="col" className="col-cpv"><span className="th-filter">Obiect (CPV){funnel("cpv")}</span></th>
+              <th scope="col" className="col-value num sortable" aria-sort={sortState("value")}>
+                <span className="th-filter">
+                  <button type="button" className="th-sort" onClick={() => sortBy("value")}>
+                    Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                  </button>
+                  {funnel("valoare", "end")}
+                </span>
               </th>
-              <th scope="col" className="col-flags">Semnale</th>
+              <th scope="col" className="col-flags"><span className="th-filter">Semnale{funnel("semnale", "end")}</span></th>
               <th scope="col" className="col-links">Sursă</th>
             </tr>
           </thead>
@@ -300,7 +181,10 @@ export default function TxTable({
               <tr>
                 <td colSpan={nCols} className="tx-empty">
                   <span>{empty.text}</span>
-                  {empty.exits.map((x) => <button key={x.kind} type="button" onClick={() => exitTo(x.kind)}>{x.label}</button>)}
+                  {empty.exits.map((x) => (
+                    <button key={x.id} type="button" onClick={() => update(x.without)}>Fără {x.lead ? `${x.lead} ` : ""}{x.value}</button>
+                  ))}
+                  {empty.exits.length > 1 && <button type="button" onClick={() => update({})}>Scoate toate</button>}
                 </td>
               </tr>
             )}
@@ -312,20 +196,14 @@ export default function TxTable({
               // consortium contracts come as one row per member with the same contract id
               <tr key={txRowKey(t, i)}>
                 <td className="c-date" title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
-                {showTip && (
-                  <td className="c-src">
-                    <span
-                      className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}
-                      title={
-                        t.src === "contract"
-                          ? "contract atribuit prin procedură"
-                          : "achiziție directă"
-                      }
-                    >
-                      {t.src === "contract" ? "contract" : "directă"}
-                    </span>
-                  </td>
-                )}
+                <td className="c-src">
+                  <span
+                    className={`ask-srctag ${t.src === "contract" ? "contracts" : "da"}`}
+                    title={t.src === "contract" ? "contract atribuit prin procedură" : "achiziție directă"}
+                  >
+                    {t.src === "contract" ? "contract" : "directă"}
+                  </span>
+                </td>
                 <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>
                   {t.partnerId ? (
                     <Link href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>

@@ -155,8 +155,6 @@
 .yem-row{display:flex;flex-wrap:wrap;gap:4px 28px;margin-bottom:12px}
 .yem-fig{flex:1 1 240px;max-width:420px;min-width:0}
 .yem-cap{margin:10px 0 0;font:600 13px/1.4 var(--body);color:var(--ink2)}
-.tx-excluded{display:flex;align-items:center;gap:2px;margin:16px 0}
-.tx-excluded>.data-exclusion-toggle{margin:0}
 
 /* ---- consortium labels ---- */
 .cons-tag{display:inline-flex;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
@@ -185,17 +183,6 @@
 
 /* ---- the records' selection (critique of 2 November 2026): the band lists every filter, each removable, and the
    channel a signal imposes; the source options a signal rules out are dimmed ---- */
-.txf-active{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
-.txf-active b{color:var(--ink);font-weight:600}
-.txf-piece{display:inline-flex;align-items:center;gap:6px}
-.txf-sep{color:var(--muted)}
-.txf-active .txf-x{display:inline-grid;place-items:center;width:22px;height:22px;border:1px solid var(--line2);border-radius:50%;background:var(--surface);color:var(--muted);font-size:11px;font-weight:400;line-height:1}
-.txf-active .txf-x:hover{color:var(--ink);border-color:var(--accent-line)}
-.ask-streamtoggle button[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
-.txf-panel input{accent-color:var(--accent)}
-.txf-panel label .n{margin-left:auto;padding-left:16px;font:12px/1.4 var(--mono);font-variant-numeric:tabular-nums;color:var(--muted)}
-.txf-panel label.off{color:var(--muted);cursor:default}
-.txf-wait{font-size:12.5px;color:var(--muted)}
 /* an empty table names its cause and its ways out */
 .ent-tx td.tx-empty{white-space:normal;padding:14px 12px}
 .ent-tx td.tx-empty>span{margin-right:12px;font-weight:600;color:var(--ink)}
@@ -250,8 +237,9 @@
   .ent-tx{table-layout:auto}
   .ent-tx thead tr{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px}
   .ent-tx thead th{display:none}
-  .ent-tx thead th.sortable{display:inline-block;width:auto;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface);text-transform:none;letter-spacing:0;font:500 12.5px/1.6 var(--body)}
-  .ent-tx thead th.sortable::before{content:"sortează după ";color:var(--muted);font-weight:400}
+  /* As cards, every filterable or sortable header stays, as a pill: its funnel and its sort are still reachable. */
+  .ent-tx thead th.sortable,.ent-tx thead th:has(.tf-fun){display:inline-flex;align-items:center;width:auto;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;background:var(--surface);text-transform:none;letter-spacing:0;font:500 12.5px/1.6 var(--body)}
+  .ent-tx thead th.sortable .th-sort::before{content:"sortează după ";color:var(--muted);font-weight:400}
   .ent-tx tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 12px;border-bottom:1px solid var(--line)}
   .ent-tx tbody tr td{padding:0;border:0;white-space:normal;overflow:visible;text-overflow:clip;min-width:0}
   .ent-tx tbody tr td[colspan]{grid-column:1/-1}
