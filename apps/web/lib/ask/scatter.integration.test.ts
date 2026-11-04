@@ -209,7 +209,7 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-3, isolated Postgre
     expect(out.epsilon).toBe(0);
     expect(out.whole).toBe(8);
     expect(out.groups).toBe(2);
-    expect(out.notes).toEqual(["Sursele semnalului „Peste plafon”: achizițiile înregistrate cu peste 10% peste plafon, unde excepțiile cunoscute nu se aplică, nu tot istoricul profilurilor."]);
+    expect(out.notes).toEqual(["Sursele semnalului „Directe, deși trec de plafon”: achizițiile înregistrate cu peste 10% peste plafon, unde excepțiile cunoscute nu se aplică, nu tot istoricul profilurilor."]);
   });
 
   it("runs an older link's retired signal („Finalizare rapidă”) as the whole group: the answer, the search and the sources apply none", async () => {

@@ -174,17 +174,17 @@ describe("the ranking by the risk score (entity_card-3)", () => {
   it("tags a profile's patterns in the site's words, all three or two and „+N”, and a buyer that looks like a company or an association", () => {
     const flags = ["da_split", "da_year_end", "da_round", "da_above_ceiling"];
     const tags = riskFacts(ranked(1, 88, { flags, nFlags: 4 }), hospitals);
-    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["achiziții repetate, peste plafon cumulat", "signal"], ["vârf în decembrie", "signal"], ["+2", "neutral"]]);
+    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["+2", "neutral"]]);
     // The (?) lists the rest; the answer's line under the list says signals are no proof (owner, 2 November 2026).
-    expect(tags[2]!.tip).toEqual({ title: "Alte tipare", text: "chiar sub plafon; peste plafon." });
+    expect(tags[2]!.tip).toEqual({ title: "Alte tipare", text: "prea des chiar sub plafon; directe, deși trec de plafon." });
     // Three patterns fit: no „+1” in the third one's place.
     expect(riskFacts(ranked(1, 88, { flags: flags.slice(0, 3), nFlags: 3 }), hospitals).map((t) => [t.text, t.tone ?? "neutral"]))
-      .toEqual([["achiziții repetate, peste plafon cumulat", "signal"], ["vârf în decembrie", "signal"], ["chiar sub plafon", "signal"]]);
-    expect(patternWord("da_concentration")).toBe("concentrare pe un furnizor");
+      .toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["prea des chiar sub plafon", "signal"]]);
+    expect(patternWord("da_concentration")).toBe("o firmă ia mare parte din bani");
     // A code the site no longer names (da_rapid, retired) stays the code.
     expect(patternWord("da_rapid")).toBe("da_rapid");
     expect(riskFacts(ranked(2, 40, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
-      .toEqual(["achiziții repetate, peste plafon cumulat", "societate"]);
+      .toEqual(["adunate, trec de plafon", "societate"]);
     expect(riskFacts(ranked(3, 40, { name: "Eco Rural Consulting SRL", flags: [] }), firm)).toEqual([]);
     expect(profilePlace(ranked(1, 40, { county: "Bucuresti", count: 1 }))).toBe("București · 1 achiziție directă");
   });
@@ -226,10 +226,10 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
 
   it("tags a profile's signals, two and „+N” with that answer's words; a retired code (da_rapid) shows as stored", () => {
     const tags = legacyTieFacts(tie(1, { flags: ["da_split", "da_year_end", "da_rapid", "da_round"], nFlags: 4 }), hospitals);
-    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["achiziții repetate, peste plafon cumulat", "signal"], ["vârf în decembrie", "signal"], ["+2", "neutral"]]);
-    expect(tags[2]!.tip).toEqual({ title: "Alte semnale", text: "da_rapid; chiar sub plafon." });
+    expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["+2", "neutral"]]);
+    expect(tags[2]!.tip).toEqual({ title: "Alte semnale", text: "da_rapid; prea des chiar sub plafon." });
     expect(legacyTieFacts(tie(2, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
-      .toEqual(["achiziții repetate, peste plafon cumulat", "societate"]);
+      .toEqual(["adunate, trec de plafon", "societate"]);
   });
 });
 

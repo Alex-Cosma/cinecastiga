@@ -1,4 +1,4 @@
-import { FLAG_META, flagLabel } from "./flags";
+import { FLAG_META, flagRecordLabel } from "./flags";
 import type { ColumnDef, FilterValue, TableColumns } from "./table-filters/types";
 
 /*
@@ -22,7 +22,7 @@ export const NO_SIGNAL = "fara";
 export const rowFlag = (code: string): boolean => FLAG_META[code]?.subject === "da" || code === "da_split";
 
 const SIGNAL_LABELS: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(Object.keys(FLAG_META).filter(rowFlag).map((code) => [code, flagLabel(code)])),
+  ...Object.fromEntries(Object.keys(FLAG_META).filter(rowFlag).map((code) => [code, flagRecordLabel(code)])),
   [SINGLE_BIDDER]: "1 ofertant",
   [NO_SIGNAL]: "fără semnal",
 };

@@ -169,7 +169,7 @@ export const unknownSeatWords = (n: number): string => `${countWords(n, "firmă"
 export const RELATION_SIGNALS = ["da_split", "net_shared_admin", "da_dependence", "award_dependence"] as const;
 /** Their short words on a row (P8, orange; kit §5.35 until F6b's FLAG_META.label). */
 export const RELATION_SIGNAL_LABELS: Readonly<Record<string, string>> = {
-  da_split: "posibilă fracționare", net_shared_admin: "reprezentant comun", da_dependence: "dependență de instituție", award_dependence: "contracte concentrate",
+  da_split: "adunate, trec de plafon", net_shared_admin: "reprezentant comun", da_dependence: "un singur client public mare", award_dependence: "contracte concentrate",
 };
 /** A dependence counts on this relation when the pair holds at least this share of the signal's total (final §3.4). */
 export const DEPENDENCE_PAIR_SHARE = 0.85;
@@ -189,7 +189,7 @@ export function networkGroupRule(group: NetworkGroup, since: number | string): s
 }
 
 /** „Cu semnale” in a list: which signals, and that they are leads (final §3.4). */
-export const NETWORK_SIGNALS_RULE = "Doar partenerii cu un semnal oficial pe această relație: posibilă fracționare, reprezentant comun, dependență de instituție, contracte concentrate. Semnalele sunt piste, nu dovezi.";
+export const NETWORK_SIGNALS_RULE = "Doar partenerii cu un semnal oficial pe această relație: adunate, trec de plafon; reprezentant comun; un singur client public mare; contracte concentrate. Semnalele sunt piste, nu dovezi.";
 
 /** The sources' note of a group or of „Cu semnale” (runRows): who the partners are, and that their records are the whole relation's selection. */
 export function networkSourcesNote(group: NetworkList, since: number, signals: boolean): string {

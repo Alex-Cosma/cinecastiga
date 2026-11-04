@@ -81,12 +81,12 @@ describe("human-readable monitoring result comparisons", () => {
     const core = (v: unknown) => answerCore("scatter", v);
     const rows = resultDifferences(core(before), core(after), entityNames(before, after)).map((row) => [row.context, row.field, formatResultValue(row.before, row.fieldKey), formatResultValue(row.after, row.fieldKey)]);
     expect(rows).toEqual([
-      ["Norul de risc", "Semnalul ales", "Tot grupul", "Achiziții repetate, peste plafon cumulat"],
+      ["Norul de risc", "Semnalul ales", "Tot grupul", "Adunate, trec de plafon"],
       ["Norul de risc · Lista · Comuna Sageata", "Valoare înregistrată (achiziții directe)", "100 lei", "120 lei"],
     ]);
     const counts = resultDifferences(core(before), core({ ...after, scatter: { ...after.scatter, rankBy: "value", group: { n: 83, nList: 60 }, criteria: { da_split: 47 } } }));
     expect(counts.map((row) => [row.context, row.field])).toEqual(expect.arrayContaining([
-      ["Norul de risc", "Primele după"], ["Norul de risc · Grupul", "Profiluri în nor"], ["Norul de risc · Profiluri cu fiecare semnal", "Achiziții repetate, peste plafon cumulat"],
+      ["Norul de risc", "Primele după"], ["Norul de risc · Grupul", "Profiluri în nor"], ["Norul de risc · Profiluri cu fiecare semnal", "Adunate, trec de plafon"],
     ]));
   });
   it("names the map records whose authority has no county in Romanian", () => {
@@ -106,7 +106,7 @@ describe("human-readable monitoring result comparisons", () => {
   it("compares histogram cells by coordinates and explains flag codes", () => {
     const changes = resultDifferences({ density: { cells: [[1, 2, 5], [2, 3, 8]] } }, { density: { cells: [[2, 3, 8], [1, 2, 6]] } });
     expect(changes).toHaveLength(1); expect(changes[0]?.context).toContain("Grupa valorii 1 · grupa de risc 2");
-    expect(formatResultValue(["da_split"], "flags")).toBe("Achiziții repetate, peste plafon cumulat");
+    expect(formatResultValue(["da_split"], "flags")).toBe("Adunate, trec de plafon");
     // rf-2026.18: an older watch's retired signal keeps its name; rf-2026.20: the score is out of 100, not a percentage.
     expect(formatResultValue("da_rapid", "flag")).toBe("Finalizare rapidă");
     expect(formatResultValue(73, "score")).toBe("73 din 100");

@@ -40,7 +40,7 @@ const fields = (line: string): string[] => {
   }
   return [...out, cur];
 };
-const SPLIT = "Achiziții repetate, peste plafon cumulat";
+const SPLIT = "Adunate, trec de plafon";
 
 describe("the risk cloud's answer", () => {
   it("has the strip's two rows: the order, and the risk score's criteria with the number of profiles that have each (none with zero)", () => {
@@ -51,10 +51,10 @@ describe("the risk cloud's answer", () => {
     expect(markup).toMatch(/aria-checked="true"[^>]*>(?:<[^>]+>)*Risc/);
     expect(words).toContain("Tot grupul 82");
     expect(words).toContain(`${SPLIT} 46`);
-    expect(words).toContain("Chiar sub plafon 12");
-    expect(words).toContain("Vârf în decembrie 19");
-    expect(words).toContain("Peste plafon 4");
-    // "Concentrare pe un furnizor" has none in this group: no chip; „Finalizare rapidă” is no signal any more.
+    expect(words).toContain("Prea des chiar sub plafon 12");
+    expect(words).toContain("Mulți bani contractați în decembrie 19");
+    expect(words).toContain("Directe, deși trec de plafon 4");
+    // "O firmă ia mare parte din bani" has none in this group: no chip; „Finalizare rapidă” is no signal any more.
     // The strip holds two options of the order and the group's own (Tot grupul, the four signals).
     expect(markup.match(/role="radio"/g)).toHaveLength(7);
     expect(markup).not.toMatch(/role="radio"[^>]*>(?:<[^>]+>)*[^<]*Concentrare/);
@@ -87,8 +87,8 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("Comuna Sageata (Primaria Comunei Sageata)");
     expect(words).toContain("Primărie de comună · Buzău · 2.567 de achiziții directe");
     expect(words).toContain(`${SPLIT} · 2018–2019`);
-    expect(words).toContain("Vârf în decembrie · 2022");
-    expect(words).toContain("Peste plafon");
+    expect(words).toContain("Mulți bani contractați în decembrie · 2022");
+    expect(words).toContain("Directe, deși trec de plafon");
     // Each row's risk: the score's pill in its band's colour, the band under it.
     expect(markup).toContain('<span class="cri-pill risk-high">73 din 100</span><small>puternic</small>');
     expect(markup).toContain('<span class="cri-pill risk-mid">64 din 100</span><small>moderat</small>');
@@ -103,7 +103,7 @@ describe("the risk cloud's answer", () => {
     const words = text(markup);
     expect(words).toContain("Primele 3 din 46");
     expect(words).toContain(`cu „${SPLIT.toLocaleLowerCase("ro-RO")}”`);
-    expect(markup).toMatch(/aria-checked="true"[^>]*>(?:<[^>]+>)*Achiziții repetate/);
+    expect(markup).toMatch(/aria-checked="true"[^>]*>(?:<[^>]+>)*Adunate, trec de plafon/);
     expect(words).toContain("Înregistrările semnalului");
     expect(words).toContain("Vezi înregistrările cu semnalul");
     // Every point of the group is still drawn (final §3.4: the signal does not cut the cloud).
@@ -167,7 +167,7 @@ describe("the risk cloud's answer", () => {
     for (const line of lines.slice(1)) expect(fields(line)).toHaveLength(head.length);
     const first = Object.fromEntries(head.map((name, i) => [name, fields(lines[1]!)[i]]));
     expect(first).toMatchObject({ nume: "Comuna Sageata (Primaria Comunei Sageata)", tip: "Primărie de comună", judet: "Buzău", valoare_lei: "21000000", achizitii_directe: "2567",
-      risc_din_100: "73", banda: "puternic", nr_tipare: "3", tipare: "da_split|da_round|da_year_end", detalii_tipare: `${SPLIT} · 2018–2019; Chiar sub plafon; Vârf în decembrie · 2022`,
+      risc_din_100: "73", banda: "puternic", nr_tipare: "3", tipare: "da_split|da_round|da_year_end", detalii_tipare: `${SPLIT} · 2018–2019; Prea des chiar sub plafon; Mulți bani contractați în decembrie · 2022`,
       primele_dupa: "valoare", semnal: SPLIT });
     expect(filename).toBe("ce-primarii-ies-din-tipar-dupa-valoare-achizitii-repetate.csv");
     expect(csv).not.toMatch(/indice|nr_semnale|rapid/i);
@@ -178,7 +178,7 @@ describe("the risk cloud's answer", () => {
     const rows = scatterCsv(firms, (v) => JSON.stringify(v ?? ""), new Map([["2144803", [{ code: "da_round", share: 0.252, rows: 647 }]]]));
     expect(rows[0]).toBe("loc,nume,angajati,an_bilant,sediu,valoare_lei,achizitii_directe,risc_din_100,banda,nr_tipare,tipare,detalii_tipare");
     for (const line of rows.slice(1)) expect(fields(line)).toHaveLength(fields(rows[0]!).length);
-    expect(fields(rows[1]!).at(-1)).toBe(`${SPLIT} · 2018–2019; Chiar sub plafon · 25,2%; Vârf în decembrie · 2022`);
+    expect(fields(rows[1]!).at(-1)).toBe(`${SPLIT} · 2018–2019; Prea des chiar sub plafon · 25,2%; Mulți bani contractați în decembrie · 2022`);
   });
 
   it("links the whole list on /semnale as the cloud orders it: the risk list without a signal, the signal's own with one, the county kept", () => {
@@ -214,7 +214,7 @@ describe("a stored scatter-2, drawn as it was", () => {
     expect(rows[0]).toBe("loc,nume,tip,judet,valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale");
     const first = Object.fromEntries(fields(rows[0]!).map((name, i) => [name, fields(rows[1]!)[i]]));
     expect(first).toMatchObject({ indice_de_risc: "0.6", nr_semnale: "3", semnale: "da_split|da_year_end|da_rapid" });
-    expect(first.detalii_semnale).toBe(`${SPLIT} · 2018–2019; Vârf în decembrie · 2022; Finalizare rapidă · 25,2%`);
+    expect(first.detalii_semnale).toBe(`${SPLIT} · 2018–2019; Mulți bani contractați în decembrie · 2022; Finalizare rapidă · 25,2%`);
   });
 
   it("places its points by criteria, then value", () => {
@@ -374,10 +374,10 @@ describe("the chart's geometry and words", () => {
     expect(employeesWords(null, null)).toBe("fără bilanț");
     expect(rowMeta({ ...BUZAU_CLOUD.list[0]!, employees: 3, employeesYear: 2025 }, "supplier")).toBe("3 angajați · bilanț 2025 · Buzău · 2.567 de achiziții directe");
     expect(flagTag({ code: "da_split", years: [2018, 2019] })).toEqual({ text: `${SPLIT} · 2018–2019`, tone: "signal" });
-    expect(flagTag({ code: "da_round", share: 0.252 }).text).toBe("Chiar sub plafon · 25,2%");
-    expect(flagTag({ code: "da_above_ceiling", share: 0.004 }).text).toBe("Peste plafon · 0,4%");
-    expect(flagTag({ code: "da_dependence", share: 1, single: true }).text).toBe("Dependență de o autoritate · un singur client");
-    expect(flagTag({ code: "da_concentration", share: 0.91 }).text).toBe("Concentrare pe un furnizor · 91%");
+    expect(flagTag({ code: "da_round", share: 0.252 }).text).toBe("Prea des chiar sub plafon · 25,2%");
+    expect(flagTag({ code: "da_above_ceiling", share: 0.004 }).text).toBe("Directe, deși trec de plafon · 0,4%");
+    expect(flagTag({ code: "da_dependence", share: 1, single: true }).text).toBe("Un singur client public mare · un singur client");
+    expect(flagTag({ code: "da_concentration", share: 0.91 }).text).toBe("O firmă ia mare parte din bani · 91%");
     // A stored answer's retired signal keeps its label.
     expect(flagTag({ code: "da_rapid", share: 0.252 }).text).toBe("Finalizare rapidă · 25,2%");
     expect(withFacts([{ code: "da_round" }, { code: "da_split", years: [2019] }], [{ code: "da_round", share: 0.25, rows: 647 }]))

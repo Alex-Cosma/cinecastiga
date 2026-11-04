@@ -26,11 +26,11 @@ function sources(dir: string, out: string[] = []): string[] {
 describe("a signal's name outside the methodology (S6 review)", () => {
   it("is its short label", () => {
     // The names of 1 November 2026 (rf-2026.18).
-    expect(flagLabel("da_round")).toBe("Chiar sub plafon");
-    expect(FLAG_META.da_round!.title).toBe("Chiar sub plafonul achiziției directe");
-    expect(flagLabel("da_split")).toBe("Achiziții repetate, peste plafon cumulat");
-    expect(flagLabel("da_above_ceiling")).toBe("Peste plafon");
-    expect(FLAG_META.da_above_ceiling!.title).toBe("Peste plafonul achiziției directe");
+    expect(flagLabel("da_round")).toBe("Prea des chiar sub plafon");
+    expect(FLAG_META.da_round!.title).toBe("Prea des chiar sub plafon");
+    expect(flagLabel("da_split")).toBe("Adunate, trec de plafon");
+    expect(flagLabel("da_above_ceiling")).toBe("Directe, deși trec de plafon");
+    expect(FLAG_META.da_above_ceiling!.title).toBe("Directe, deși trec de plafon");
     // rf-2026.20 (3 November 2026): the firm's capacity, after the dependence.
     expect(flagLabel("da_capacity")).toBe("Peste capacitate");
     expect(FLAG_META.da_capacity!.subject).toBe("supplier");
