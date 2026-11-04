@@ -114,6 +114,10 @@ a:hover { text-decoration: underline; }
 .search-dropdown li.active { background: var(--accent-soft); }
 .sd-name { font-weight: 600; font-size: 14px; color: var(--ink); }
 .sd-meta { font-size: 12px; color: var(--muted); }
+/* A reviewed older or secondary identity, under its main one (lib/entity-successors.ts): indented, muted. */
+.search-dropdown li.linked { padding-left: 26px; }
+.search-dropdown li.linked .sd-name { font-weight: 500; color: var(--ink2); }
+.sd-linked { font-weight: 600; }
 .search-dropdown li.search-all {
   color: var(--accent); font-weight: 600; font-size: 13px;
   border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; margin-top: 2px;

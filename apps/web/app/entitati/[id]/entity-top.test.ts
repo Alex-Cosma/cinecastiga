@@ -114,7 +114,17 @@ describe("the entity page's top", () => {
   it("keeps ?rol= only for an entity that both buys and sells", () => {
     expect(page).toContain('rol: bothRoles ? rolParam : undefined');
     expect(page).toContain('{!bothRoles && sp["rol"] !== undefined && <DropRolParam />}');
-    expect(page).toContain('/legaturi${bothRoles ? `?rol=${rolParam}` : ""}');
+    expect(page).toContain('const rolQuery = bothRoles ? `?rol=${rolParam}` : "";');
+    expect(page).toContain('/legaturi${rolQuery}');
+    expect(page).toContain('/comparatii${rolQuery}');
+  });
+
+  it("keeps two actions in the header and links each analysis once, beside the tabs (owner, 4 November 2026)", () => {
+    expect(page).toContain('label="Urmărește" hint="Urmărește modificările" arrow={false}');
+    expect(page).toContain("<ClipButton kind=\"entity\" refId={id} label={cleanName(row.name)} primary />");
+    expect(page).toContain("...views,");
+    expect(page).not.toContain("🩻");
+    expect(page).toContain('className="ehead-reg"');
   });
 
   it("lists each channel with its records, its value and its link, then the recorded total", () => {

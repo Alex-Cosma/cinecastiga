@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EntityHit } from "@/lib/search";
+import { LINKED_LABEL } from "@/lib/entity-successors";
 
 /**
  * Header typeahead. Debounced fetch to /api/search, dropdown of entity hits with
@@ -99,7 +100,7 @@ export default function SearchBox() {
               key={h.id}
               role="option"
               aria-selected={i === active}
-              className={i === active ? "active" : ""}
+              className={[i === active ? "active" : "", h.linked ? "linked" : ""].filter(Boolean).join(" ")}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -108,6 +109,7 @@ export default function SearchBox() {
             >
               <span className="sd-name">{h.name}</span>
               <span className="sd-meta">
+                {h.linked ? <span className="sd-linked">{LINKED_LABEL[h.linked]} · </span> : null}
                 {h.cui ? `CUI ${h.cui}` : ""}
                 {h.county ? ` · ${h.county}` : ""}
                 {h.registryName ? ` · în registru: ${h.registryName}` : ""}

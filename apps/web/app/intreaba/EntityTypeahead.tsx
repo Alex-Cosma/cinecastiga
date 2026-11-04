@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { EntityHit } from "@/lib/search";
+import { LINKED_LABEL } from "@/lib/entity-successors";
 import { formatRon } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
 
@@ -137,7 +138,7 @@ export default function EntityTypeahead({
               key={h.id}
               role="option"
               aria-selected={i === active}
-              className={i === active ? "active" : ""}
+              className={[i === active ? "active" : "", h.linked ? "linked" : ""].filter(Boolean).join(" ")}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -146,6 +147,7 @@ export default function EntityTypeahead({
             >
               <span className="sd-name">{h.name}</span>
               <span className="sd-meta">
+                {h.linked ? <span className="sd-linked">{LINKED_LABEL[h.linked]} · </span> : null}
                 {h.roles.map((r) => ROLE_RO[r] ?? r).join(" · ")}
                 {h.county ? ` · ${h.county}` : ""}
                 {h.registryName ? ` · în registru: ${h.registryName}` : ""}
