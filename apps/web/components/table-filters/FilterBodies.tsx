@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatInt } from "@/lib/format";
 import { monthLabel } from "@/lib/table-filters/describe";
+import { datesChoice, monthsValue, parseAmount } from "@/lib/table-filters/values";
 import type { ColumnDef, Facet, FilterValue } from "@/lib/table-filters/types";
 
 /*
@@ -17,52 +18,66 @@ type Props<K extends Facet["kind"]> = {
   onChange: (value: FilterValue | null) => void;
 };
 
-/** The years (any set) or an interval of months. */
+const MONTH_NAMES = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
+
+/**
+ * The years, from a list that opens under its button (owner, 4 November 2026); with a single year chosen, an interval
+ * of its months, „Până la” offering only the months from „De la” on.
+ */
 export function DatesBody({ facet, value, onChange }: Props<"dates">) {
-  const current = value?.kind === "dates" ? value : { kind: "dates" as const, years: [], from: null, to: null };
+  const [listOpen, setListOpen] = useState(false);
+  const choice = datesChoice(value);
   const years = new Map<string, number>();
+  const perMonth = new Map(facet.months.map((m) => [m.month, m.n]));
   for (const m of facet.months) years.set(m.month.slice(0, 4), (years.get(m.month.slice(0, 4)) ?? 0) + m.n);
-  const yearList = [...new Set([...years.keys(), ...current.years])].sort().reverse();
-  const months = facet.months.map((m) => m.month);
+  const yearList = [...new Set([...years.keys(), ...choice.years])].sort().reverse();
+  const single = choice.years.length === 1 ? choice.years[0]! : null;
   const toggle = (year: string) => {
-    const next = current.years.includes(year) ? current.years.filter((y) => y !== year) : [...current.years, year].sort();
+    const next = choice.years.includes(year) ? choice.years.filter((y) => y !== year) : [...choice.years, year].sort();
     onChange({ kind: "dates", years: next, from: null, to: null });
   };
-  const setEnd = (end: "from" | "to", month: string) => {
-    const next = { kind: "dates" as const, years: [], from: current.from, to: current.to, [end]: month || null };
-    if (next.from && next.to && next.from > next.to) next[end === "from" ? "to" : "from"] = month;
-    onChange(next);
-  };
+  const summary = choice.years.length === 0 ? "toți anii" : choice.years.join(", ");
   if (yearList.length === 0) return <p className="tf-empty">Niciun rând cu dată în selecția de acum.</p>;
+  const months = single ? MONTH_NAMES.map((name, i) => ({ month: `${single}-${String(i + 1).padStart(2, "0")}`, name })) : [];
+  const from = single ? choice.from ?? `${single}-01` : null;
+  const to = single ? choice.to ?? `${single}-12` : null;
   return (
     <>
-      <p className="tf-sub">Anii</p>
-      <div className="tf-years">
-        {yearList.map((year) => {
-          const n = years.get(year) ?? 0;
-          const on = current.years.includes(year);
-          return (
-            <button key={year} type="button" className={on ? "on" : undefined} aria-pressed={on} disabled={n === 0 && !on} onClick={() => toggle(year)}>
-              {year} <span className="n">{formatInt(n)}</span>
-            </button>
-          );
-        })}
+      <div className="tf-dd">
+        <button type="button" className="tf-dd-btn" aria-expanded={listOpen} onClick={() => setListOpen(!listOpen)}>
+          <span className="tf-dd-lab">Anii</span> <b>{summary}</b> <span aria-hidden="true">▾</span>
+        </button>
+        {listOpen && (
+          <div className="tf-list tf-dd-list" role="group" aria-label="Anii">
+            {yearList.map((year) => {
+              const n = years.get(year) ?? 0;
+              const on = choice.years.includes(year);
+              return (
+                <label key={year} className={n === 0 && !on ? "off" : undefined}>
+                  <input type="checkbox" checked={on} disabled={n === 0 && !on} onChange={() => toggle(year)} />
+                  <span className="tf-name">{year}</span>
+                  <span className="n">{formatInt(n)}</span>
+                </label>
+              );
+            })}
+          </div>
+        )}
       </div>
-      <p className="tf-sub">Sau un interval de luni</p>
-      <div className="tf-pair">
-        <label>De la
-          <select value={current.from ?? ""} onChange={(e) => setEnd("from", e.target.value)}>
-            <option value="">început</option>
-            {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-          </select>
-        </label>
-        <label>Până la
-          <select value={current.to ?? ""} onChange={(e) => setEnd("to", e.target.value)}>
-            <option value="">azi</option>
-            {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-          </select>
-        </label>
-      </div>
+      {single && (
+        <div className="tf-pair">
+          <label>De la
+            <select value={from!} onChange={(e) => onChange(monthsValue(single, e.target.value, to! < e.target.value ? `${single}-12` : to))}>
+              {months.map((m) => <option key={m.month} value={m.month}>{m.name} · {formatInt(perMonth.get(m.month) ?? 0)}</option>)}
+            </select>
+          </label>
+          <label>Până la
+            <select value={to!} onChange={(e) => onChange(monthsValue(single, from, e.target.value))}>
+              {months.filter((m) => m.month >= from!).map((m) => <option key={m.month} value={m.month}>{m.name} · {formatInt(perMonth.get(m.month) ?? 0)}</option>)}
+            </select>
+          </label>
+        </div>
+      )}
+      {!single && choice.from && <p className="tf-hint">Din {monthLabel(choice.from)} {choice.to ? `până în ${monthLabel(choice.to)}` : "până azi"}. Alege anii ca să schimbi intervalul.</p>}
       {facet.undated > 0 && <p className="tf-hint">{formatInt(facet.undated)} fără dată nu intră într-un filtru de dată.</p>}
     </>
   );
@@ -93,14 +108,6 @@ export function ListBody({ column, facet, value, onChange, stale }: Props<"optio
       {facet.more && <p className="tf-hint">Caută ca să ajungi la celelalte.</p>}
     </>
   );
-}
-
-/** Text typed as „10.000” or „10 000,50” to a number; null when empty or not a number. */
-export function parseAmount(text: string): number | null {
-  const clean = text.replace(/[\s.]/g, "").replace(",", ".");
-  if (clean === "") return null;
-  const n = Number(clean);
-  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 /** A numeric interval: two ends, applied when the field is left or Enter is pressed; the bars show the rows' spread. */
