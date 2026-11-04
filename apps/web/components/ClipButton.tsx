@@ -25,12 +25,15 @@ function AuthenticatedClipButton({
   spec,
   snapshot,
   label,
+  primary = false,
 }: {
   kind: "entity" | "contract" | "notice" | "person" | "query" | "flag" | "signal" | "da" | "radiografie";
   refId?: string | null;
   spec?: unknown;
   snapshot?: Record<string, unknown> | null;
   label?: string;
+  /** The page's main saving action: filled, with its bookmark icon, no arrow (entity header, 4 November 2026). */
+  primary?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<Inv[] | null>(null);
@@ -149,11 +152,18 @@ function AuthenticatedClipButton({
     <div className="clipbtn" ref={boxRef}>
       <button
         type="button"
-        className="clipbtn-t"
+        className={primary ? "clipbtn-t pri" : "clipbtn-t"}
         aria-expanded={open}
         onClick={() => (open ? setOpen(false) : void openPanel())}
       >
-        Salvează în anchetă →
+        {primary ? (
+          <>
+            <svg className="clipbtn-ico" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 2.5h8v11l-4-2.6-4 2.6Z" />
+            </svg>
+            Salvează în anchetă
+          </>
+        ) : "Salvează în anchetă →"}
       </button>
       {open && (
         <div className="clipbtn-pop">

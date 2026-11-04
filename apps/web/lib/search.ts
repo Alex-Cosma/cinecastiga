@@ -1,4 +1,5 @@
 import { Meilisearch } from "meilisearch";
+import { orderLinkedHits, type SuccessorKind } from "./entity-successors";
 
 /**
  * Server-only Meilisearch access. The web queries the `entities` index for
@@ -28,6 +29,8 @@ export interface EntityHit {
   registryName?: string;
   /** D2, only with `uat=1`: the locality this town hall is an identity of (lib/ask/town-hall-pick.ts). */
   uat?: { siruta: number; name: string; tip: string; county: string };
+  /** A reviewed older or secondary identity, listed right under its main one (lib/entity-successors.ts). */
+  linked?: SuccessorKind;
 }
 
 const words = (text: string) =>
@@ -78,7 +81,7 @@ export async function searchEntities(
     return registryName ? { ...hit, registryName } : hit;
   });
   return {
-    hits,
+    hits: orderLinkedHits(hits),
     total: res.estimatedTotalHits ?? res.hits.length,
   };
 }

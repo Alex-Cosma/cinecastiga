@@ -37,6 +37,8 @@ import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
 import { getRegistryNames } from "@/lib/registry-names";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
+import { successorOf } from "@/lib/entity-successors";
+import { getSuccessorTarget } from "@/lib/entity-successor-target";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import Term from "@/components/Term";
@@ -155,6 +157,9 @@ export default async function EntityPage({
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
   // that passes the CUI checksum keeps its label but not another firm's records.
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
+  // A reviewed older or secondary identity of an institution (owner, 4 November 2026): where its activity is now.
+  const successor = successorOf(id);
+  const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
   const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
     await Promise.all([
       getEntityPartners(id, role, 12),
@@ -178,6 +183,7 @@ export default async function EntityPage({
       getEntityYears(id, role),
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
     ]);
+  const continuedAt = await successorTarget;
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
   // number ONRC registers to another firm, not a foreign number.
@@ -196,6 +202,13 @@ export default async function EntityPage({
   const years = yearsModel(activityYears.years, turnover, bucharestYear());
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
+  // The entity's analysis pages, short names; their own titles keep the questions (owner, 4 November 2026).
+  const rolQuery = bothRoles ? `?rol=${rolParam}` : "";
+  const views = [
+    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
+    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături" },
+    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații" },
+  ];
   // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
   // the CRI section alone hid procedure, MF and ONRC signals from the profile.
   // The criteria of the risk score first, in the role's order, then every other signal.
@@ -237,6 +250,17 @@ export default async function EntityPage({
             ) : null}
             {county && !(profile?.isForeign && isAbroadCounty(county)) ? <span>{countyLabel(county)}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}
+            {/* The registries check this CUI, so they sit beside it as quiet links (owner, 4 November 2026). No
+                e-licitatie entity link: SICAP has no per-entity page, and every record deep-links to its source. */}
+            {registryCui ? (
+              <span className="ehead-reg">
+                {registryLinks(registryCui, cleanName(row.name)).map((l) => (
+                  <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer">
+                    {l.label} <span aria-hidden="true">↗</span>
+                  </a>
+                ))}
+              </span>
+            ) : null}
             {registryNames.length > 0 ? (
               <span className="ent-tip">
                 în registru: {registryNames.slice(0, 2).join(" · ")} <Term tip id="nume-registru" />
@@ -251,28 +275,31 @@ export default async function EntityPage({
             ) : null}
           </div>
         </div>
+        {/* Only the two things a reader does with the entity; the analyses are pages, linked once beside the tabs
+            (owner, 4 November 2026). */}
         <div className="ehead-acts">
-          <Link href={`/entitati/${id}/legaturi${bothRoles ? `?rol=${rolParam}` : ""}`} className="btn">Cum sunt legate?</Link>
-          <Link href={`/entitati/${id}/comparatii${bothRoles ? `?rol=${rolParam}` : ""}`} className="btn">Compară în context</Link>
-          {isAuth && (
-            <Link href={`/entitati/${id}/radiografie`} className="btn pri rx-link">
-              🩻 Radiografie
-            </Link>
-          )}
-          <FollowButton spec={{ block: "stat", measure: "value", filters: isAuth ? { authorityId: Number(id), authorityName: cleanName(row.name) } : { supplierId: Number(id), supplierName: cleanName(row.name) } }} title={cleanName(row.name)} />
-          <ClipButton kind="entity" refId={id} label={cleanName(row.name)} />
-          {/* No e-licitatie entity link: SICAP has no per-entity page, and every
-              transaction row already deep-links to its exact record */}
-          {registryCui
-            ? registryLinks(registryCui, cleanName(row.name)).map((l) => (
-                <a key={l.label} href={l.url} target="_blank" rel="noopener noreferrer" className="btn">
-                  {l.label} ↗
-                </a>
-              ))
-            : null}
+          <FollowButton
+            spec={{ block: "stat", measure: "value", filters: isAuth ? { authorityId: Number(id), authorityName: cleanName(row.name) } : { supplierId: Number(id), supplierName: cleanName(row.name) } }}
+            title={cleanName(row.name)} label="Urmărește" hint="Urmărește modificările" arrow={false}
+          />
+          <ClipButton kind="entity" refId={id} label={cleanName(row.name)} primary />
         </div>
       </div>
+      {/* The same analyses on a phone, where the tab row scrolls sideways and would hide them. */}
+      <nav className="ehead-views" aria-label="Analize">
+        {views.map((v) => <Link key={v.href} href={v.href}>{v.label}</Link>)}
+      </nav>
 
+      {successor && continuedAt ? (
+        <p className="ent-successor" role="note">
+          {successor.kind === "succesor"
+            ? <>Activitatea continuă{successor.since ? ` din ${successor.since}` : ""} sub alt CUI: </>
+            : <>Cont secundar al instituției </>}
+          <Link href={`/entitati/${continuedAt.id}`}>{continuedAt.name}</Link>
+          {continuedAt.cui ? <span className="mono"> (CUI {continuedAt.cui})</span> : null}
+          <span aria-hidden="true"> →</span>
+        </p>
+      ) : null}
       {!bothRoles && sp["rol"] !== undefined && <DropRolParam />}
       {/* The page's tabs right under its header, above the summary they start with (owner, 2 November 2026). */}
       <SectionNav
@@ -289,7 +316,7 @@ export default async function EntityPage({
                 count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
             : []),
           ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
-          ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
+          ...views,
         ]}
       />
 
