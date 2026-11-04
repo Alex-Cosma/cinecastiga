@@ -34,6 +34,15 @@ describe("the risk cloud's signal in words (rf-2026.18)", () => {
     expect(await cloud("ce instituții ies din tipar, cu achiziții peste plafonul cumulat")).toMatchObject({ block: "scatter", scatter: { flag: "da_split" } });
   });
 
+  it("understands the names of 4 November 2026, as the site writes them", async () => {
+    expect(await cloud("ce instituții ies din tipar cu achiziții adunate, trec de plafon")).toMatchObject({ block: "scatter", scatter: { flag: "da_split" } });
+    expect(await cloud("ce instituții ies din tipar cu achiziții prea des chiar sub plafon")).toMatchObject({ block: "scatter", scatter: { flag: "da_round" } });
+    expect(await cloud("ce firme ies din tipar cu achiziții directe, deși trec de plafon")).toMatchObject({ block: "scatter", dim: "supplier", scatter: { flag: "da_above_ceiling" } });
+    expect(await cloud("ce instituții ies din tipar cu mulți bani contractați în decembrie")).toMatchObject({ block: "scatter", scatter: { flag: "da_year_end" } });
+    expect(await cloud("ce instituții ies din tipar unde o firmă ia mare parte din bani")).toMatchObject({ block: "scatter", scatter: { flag: "da_concentration" } });
+    expect(await cloud("ce firme ies din tipar cu un singur client public mare")).toMatchObject({ block: "scatter", dim: "supplier", scatter: { flag: "da_dependence" } });
+  });
+
   it("sets no signal for „finalizare rapidă”, which no longer counts", async () => {
     const spec = await cloud("ce firme ies din tipar cu finalizare rapidă");
     expect(spec?.block).toBe("scatter");

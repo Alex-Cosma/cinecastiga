@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
-import { FLAG_META, flagLabel } from "@/lib/flags";
+import { FLAG_META, flagRecordLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/blocks";
 import type { DaTx } from "@/lib/marts";
@@ -255,7 +255,7 @@ export default function TxTable({
                 <td className="c-flags" data-empty={flagged ? undefined : "1"}>
                   {t.daFlags.map((f) => (
                     <span className="flag-badge sm" key={f} title={FLAG_META[f]?.short}>
-                      {flagLabel(f)}
+                      {flagRecordLabel(f)}
                     </span>
                   ))}
                   {t.singleBidder === true && <span className="flag-badge sm neutral" title="O singură ofertă raportată în sursă">1 ofertant</span>}

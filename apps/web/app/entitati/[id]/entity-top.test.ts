@@ -106,9 +106,11 @@ describe("the entity page's top", () => {
   });
 
   it("orders the sections as the tabs: summary, partners, acquisitions, signals (owner, 4 November 2026)", () => {
-    const at = ['id="top"', 'id="parteneri"', 'id="achizitii"', 'id="semnale"'].map((s) => page.indexOf(s));
+    // The signals section is its own component (variant A, 4 November 2026): its place is where the page mounts it.
+    const at = ['id="top"', 'id="parteneri"', 'id="achizitii"', "<SignalsBreakdown"].map((s) => page.indexOf(s));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
+    expect(readFileSync(new URL("./SignalsBreakdown.tsx", import.meta.url), "utf8")).toContain('id="semnale"');
   });
 
   it("keeps ?rol= only for an entity that both buys and sells", () => {

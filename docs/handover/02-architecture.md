@@ -414,12 +414,12 @@ Cele 13 tipuri de întrebări nu sunt același lucru cu cele 13 familii de semna
 
 | Cod | Denumire în interfață |
 |---|---|
-| `da_split` | Achiziții repetate, peste plafon cumulat |
-| `da_concentration` | Concentrare pe un furnizor |
-| `da_dependence` | Dependență de o autoritate |
-| `da_round` | Chiar sub plafonul achiziției directe („Chiar sub plafon”) |
-| `da_above_ceiling` | Peste plafonul achiziției directe („Peste plafon”; nou în rf-2026.18) |
-| `da_year_end` | Achiziții concentrate în decembrie („Vârf în decembrie”) |
+| `da_split` | Adunate, trec de plafon (pe o achiziție: „Adunată cu altele, trece de plafon”) |
+| `da_concentration` | O firmă ia mare parte din bani |
+| `da_dependence` | Un singur client public mare |
+| `da_round` | Prea des chiar sub plafon (pe o achiziție: „Chiar sub plafon”) |
+| `da_above_ceiling` | Directe, deși trec de plafon (pe o achiziție: „Directă, deși trece de plafon”; nou în rf-2026.18) |
+| `da_year_end` | Mulți bani contractați în decembrie |
 | `award_no_competition` | Negociere fără anunț prealabil |
 | `award_single_bid` | O singură ofertă raportată în TED |
 | `award_concentration` | Concentrare pe un câștigător |

@@ -21,7 +21,7 @@ const QUESTIONS = [
   { title: "Cine repară drumurile?", description: "Urmărește firmele din spatele lucrărilor și achizițiile care le aduc împreună.", kind: "road", label: "DRUMURI ȘI CONSTRUCȚII", action: "Vezi firmele și achizițiile", spec: ROADS_RANKING_SPEC },
   { title: "Ce cumpără spitalele?", description: "De la medicamente la echipamente. Vezi pe ce se duc banii și cine furnizează.", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: HOSPITALS_BREAKDOWN_SPEC },
   { title: "Cine primește contractele?", description: "Pornește de la un clasament. Ajungi la firme, instituții și fiecare sursă.", kind: "network", label: "FIRME ȘI CONTRACTE", action: "Urmărește contractele", spec: CONTRACT_WINNERS_SPEC },
-  { title: "Ce cumpără comunele?", description: "Pe ce cheltuie primăriile mici, domeniu cu domeniu.", kind: "village", label: "COMUNE", action: "Vezi domeniile", spec: COMMUNES_BREAKDOWN_SPEC },
+  { title: "Ce cumpără comunele?", description: "Pe ce cumpără primăriile mici, domeniu cu domeniu.", kind: "village", label: "COMUNE", action: "Vezi domeniile", spec: COMMUNES_BREAKDOWN_SPEC },
   { title: "Cine iese din tipar?", description: "Instituțiile după risc și valoarea achizițiilor directe. Un semnal e o pistă, nu o dovadă.", kind: "outlier", label: "SEMNALE", action: "Vezi instituțiile", spec: AUTHORITY_CLOUD_SPEC },
   { title: "Ce firme depind de un singur client?", description: "Firmele la care o instituție aduce cel puțin 70% din valoarea achizițiilor directe.", kind: "dependence", label: "DEPENDENȚĂ", action: "Vezi firmele", spec: FIRM_DEPENDENCE_CLOUD_SPEC },
 ] satisfies { title: string; description: string; kind: string; label: string; action: string; spec: AskSpec }[];

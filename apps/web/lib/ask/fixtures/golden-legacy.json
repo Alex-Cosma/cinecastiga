@@ -1153,6 +1153,7 @@
        {
         "nid": "9100400002",
         "authority": "Comuna Fixture Vest",
+        "authorityId": "9100000001",
         "date": "2025-09-01 10:00",
         "value": 90000.02
        }
@@ -2372,11 +2373,11 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -2432,6 +2433,16 @@
         "from": 0,
         "to": 0,
         "n": 3
+       },
+       {
+        "from": 1,
+        "to": 9,
+        "n": 0
+       },
+       {
+        "from": 10,
+        "to": 19,
+        "n": 0
        },
        {
         "from": 20,
@@ -2782,12 +2793,12 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["6 firme","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["6 firme","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -2931,7 +2942,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -4239,7 +4250,7 @@
       "flag": "da_dependence"
      }
     },
-    "pills": ["6 firme","achiziții directe","semnal: dependență de o autoritate"],
+    "pills": ["6 firme","achiziții directe","semnal: un singur client public mare"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
@@ -4362,7 +4373,7 @@
       }
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Dependență de o autoritate\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Un singur client public mare\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -4461,7 +4472,7 @@
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Dependență de o autoritate”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
+     "Sursele semnalului „Un singur client public mare”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
     ],
     "statuses": [
      {
@@ -9884,11 +9895,11 @@
      },
      "dim": "authority"
     },
-    "pills": ["risc față de grup","doar consilii județene","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","doar consilii județene","Consiliul Judetean Alba","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -12312,6 +12323,7 @@
        {
         "nid": "9100400002",
         "authority": "Comuna Fixture Vest",
+        "authorityId": "9100000001",
         "date": "2025-09-01 10:00",
         "value": 90000.02
        }
@@ -12880,11 +12892,11 @@
      "dataset": "da",
      "dim": "authority"
     },
-    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -13059,7 +13071,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -13275,13 +13287,13 @@
      },
      "dim": "supplier"
     },
-    "pills": ["3 firme","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 firme","județul Cluj","achiziții directe"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -13360,7 +13372,7 @@
       "wider": 6
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -13477,11 +13489,11 @@
      "filters": {},
      "dim": "authority"
     },
-    "pills": ["primii după risc","cel mai ridicat risc","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -17712,11 +17724,11 @@
      "dim": "authority",
      "rankBy": "value"
     },
-    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -17891,7 +17903,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -18475,6 +18487,9 @@
       "uatName": "mun. Aiud (Alba)"
      }
     },
+    "townHall": {
+     "id": "9100000006"
+    },
     "pills": ["total","valoarea înregistrată","mun. Aiud (Alba)","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
@@ -18596,6 +18611,9 @@
      },
      "dim": "supplier",
      "topN": 10
+    },
+    "townHall": {
+     "id": "9100000006"
     },
     "pills": ["clasament","top 10 furnizori","valoarea înregistrată","mun. Aiud (Alba)","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
@@ -20440,11 +20458,11 @@
      },
      "dim": "authority"
     },
-    "pills": ["risc față de grup","Agentia Fixture Nationala","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Agentia Fixture Nationala","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -20680,13 +20698,13 @@
      "dim": "supplier",
      "rankBy": "risk"
     },
-    "pills": ["primii după risc","cel mai ridicat risc","furnizori","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","furnizori","județul Alba","achiziții directe"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -23442,6 +23460,9 @@
      "dim": "supplier",
      "topN": 10
     },
+    "townHall": {
+     "id": "9100000006"
+    },
     "pills": ["clasament","top 10 furnizori","valoarea înregistrată","mun. Aiud (Alba)","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
      "Sursă: achiziții directe + contracte din proceduri, fără dubluri. TED nu se adună.",
@@ -26176,6 +26197,9 @@
      },
      "dim": "supplier",
      "topN": 10
+    },
+    "townHall": {
+     "id": "9100000006"
     },
     "pills": ["total","valoarea înregistrată","mun. Aiud (Alba)","toți anii","toate achizițiile: directe și din proceduri"],
     "caveats": [
@@ -30236,6 +30260,7 @@
        {
         "nid": "9100400002",
         "authority": "Comuna Fixture Vest",
+        "authorityId": "9100000001",
         "date": "2025-09-01 10:00",
         "value": 90000.02
        }
@@ -31319,6 +31344,7 @@
        {
         "nid": "9100400002",
         "authority": "Comuna Fixture Vest",
+        "authorityId": "9100000001",
         "date": "2025-09-01 10:00",
         "value": 90000.02
        }
@@ -31874,6 +31900,7 @@
        {
         "nid": "9100400002",
         "authority": "Comuna Fixture Vest",
+        "authorityId": "9100000001",
         "date": "2025-09-01 10:00",
         "value": 90000.02
        }
@@ -39522,12 +39549,12 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["3 firme","cu sediul în județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 firme","cu sediul în județul Cluj","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -39606,7 +39633,7 @@
       "wider": 6
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -43478,7 +43505,7 @@
     "profileCount": 0,
     "profileReconciled": null,
     "scopeNotes": [
-     "Doar partenerii cu un semnal oficial pe această relație: posibilă fracționare, reprezentant comun, dependență de instituție, contracte concentrate. Semnalele sunt piste, nu dovezi.",
+     "Doar partenerii cu un semnal oficial pe această relație: adunate, trec de plafon; reprezentant comun; un singur client public mare; contracte concentrate. Semnalele sunt piste, nu dovezi.",
      "Valoare înregistrată în achiziții, nu dovada plății. Achizițiile directe din acest rezultat au starea «Oferta acceptata». Valorile nule sau nepozitive nu intră în agregatul de achiziții.",
      "Achizițiile directe peste 2 milioane lei sunt excluse prin același plafon de plauzibilitate ca în răspuns.",
      "Contractele prin proceduri peste 1 miliard lei sunt scoase din totaluri și clasamente (filtru al aplicației, nu dovada unei erori); apar pe pagina instituției.",
@@ -46232,11 +46259,11 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -46292,6 +46319,16 @@
         "from": 0,
         "to": 0,
         "n": 3
+       },
+       {
+        "from": 1,
+        "to": 9,
+        "n": 0
+       },
+       {
+        "from": 10,
+        "to": 19,
+        "n": 0
        },
        {
         "from": 20,
@@ -46644,12 +46681,12 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","județul Alba","achiziții directe"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -46818,12 +46855,12 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["risc față de grup","Consiliul Judetean Alba","județul Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","județul Alba","achiziții directe"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -46981,11 +47018,11 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["risc față de grup","Consiliul Judetean Alba","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Consiliul Judetean Alba","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -47041,6 +47078,16 @@
         "from": 0,
         "to": 0,
         "n": 3
+       },
+       {
+        "from": 1,
+        "to": 9,
+        "n": 0
+       },
+       {
+        "from": 10,
+        "to": 19,
+        "n": 0
        },
        {
         "from": 20,
@@ -47290,11 +47337,11 @@
      "dim": "authority",
      "topN": 10
     },
-    "pills": ["risc față de grup","doar primării de oraș și municipiu","Municipiul Fixture Nord","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","doar primării de oraș și municipiu","Municipiul Fixture Nord","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -47459,11 +47506,11 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["risc față de grup","Fixture Medical SRL","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Fixture Medical SRL","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -47471,7 +47518,7 @@
       "version": 3,
       "role": "supplier",
       "status": "ok",
-      "criteria": ["da_split","da_round","da_dependence","da_above_ceiling"],
+      "criteria": ["da_split","da_round","da_dependence","da_above_ceiling","da_capacity"],
       "focal": {
        "entityId": "9100000102",
        "name": "Fixture Medical SRL",
@@ -47517,6 +47564,16 @@
         "from": 0,
         "to": 0,
         "n": 1
+       },
+       {
+        "from": 1,
+        "to": 9,
+        "n": 0
+       },
+       {
+        "from": 10,
+        "to": 19,
+        "n": 0
        },
        {
         "from": 20,
@@ -47579,6 +47636,11 @@
         "code": "da_above_ceiling",
         "others": 2,
         "country": 2
+       },
+       {
+        "code": "da_capacity",
+        "others": 0,
+        "country": 0
        }
       ],
       "countryTotal": 6,
@@ -47812,13 +47874,13 @@
      "dim": "supplier",
      "topN": 10
     },
-    "pills": ["risc față de grup","Fixture Medical SRL","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["risc față de grup","Fixture Medical SRL","județul Buzău","achiziții directe"],
     "caveats": [
      "Județul = sediul firmei, nu al instituțiilor care cumpără. Firmele fără sediu cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "distribution",
@@ -47826,7 +47888,7 @@
       "version": 3,
       "role": "supplier",
       "status": "small",
-      "criteria": ["da_split","da_round","da_dependence","da_above_ceiling"],
+      "criteria": ["da_split","da_round","da_dependence","da_above_ceiling","da_capacity"],
       "focal": {
        "entityId": "9100000102",
        "name": "Fixture Medical SRL",
@@ -47959,11 +48021,11 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -48138,7 +48200,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -48358,12 +48420,12 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["6 firme","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["6 firme","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -48507,7 +48569,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -48699,12 +48761,12 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["4 instituții publice","județul Cluj","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["4 instituții publice","județul Cluj","achiziții directe"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -48815,7 +48877,7 @@
       "wider": 8
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and unaccent(county) ilike 'cluj';\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -48979,11 +49041,11 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["3 primării de comună","doar primării de comună","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["3 primării de comună","doar primării de comună","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -49071,7 +49133,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and entity_id in (…)  -- doar primării de comună\n;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null\n  and entity_id in (…)  -- doar primării de comună\n;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -49145,11 +49207,11 @@
       "flag": "da_split"
      }
     },
-    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","semnal: achiziții repetate, peste plafon cumulat"],
+    "pills": ["8 instituții publice","achiziții directe","semnal: adunate, trec de plafon"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -49276,7 +49338,7 @@
       }
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_split'  -- Achiziții repetate, peste plafon cumulat\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_split'  -- Adunate, trec de plafon\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -49387,7 +49449,7 @@
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Achiziții repetate, peste plafon cumulat”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
+     "Sursele semnalului „Adunate, trec de plafon”: achizițiile din grupurile de cel puțin 3 (aceeași instituție, același furnizor, același an, aceeași clasă CPV, același tip), fiecare sub plafon, cu suma peste plafon, nu tot istoricul profilurilor."
     ],
     "statuses": [],
     "rows": []
@@ -49435,11 +49497,11 @@
       "rankBy": "value"
      }
     },
-    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva","primele după valoare"],
+    "pills": ["8 instituții publice","achiziții directe","primele după valoare"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -49842,12 +49904,12 @@
       "flag": "da_dependence"
      }
     },
-    "pills": ["6 firme","profil istoric: achiziții directe acceptate, toată arhiva","semnal: dependență de o autoritate"],
+    "pills": ["6 firme","achiziții directe","semnal: un singur client public mare"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -49965,7 +50027,7 @@
       }
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Dependență de o autoritate\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'supplier' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\n  and flags ? 'da_dependence'  -- Un singur client public mare\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -50004,7 +50066,7 @@
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Dependență de o autoritate”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
+     "Sursele semnalului „Un singur client public mare”: achizițiile de la instituția principală a firmei (cea mai mare valoare), nu tot istoricul profilurilor."
     ],
     "statuses": [
      {
@@ -50070,11 +50132,11 @@
       "rankBy": "risk"
      }
     },
-    "pills": ["8 instituții publice","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["8 instituții publice","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "scatter",
@@ -50249,7 +50311,7 @@
       ]
      }
     },
-    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score_raw desc, total_ron desc, entity_id  -- scorul nerotunjit\nlimit 50;"
+    "displaySql": "-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere role = 'authority' and n_das >= 10 and cri is not null;\n-- lista: primele 50\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= 20  -- un grup sub 10 profiluri: toate, de la 10\norder by score desc, total_ron desc, entity_id  -- la același procent, după valoare\nlimit 50;"
    },
    "sources": {
     "status": 200,
@@ -50291,7 +50353,7 @@
     "scopeNotes": [
      "Profil istoric: achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei. Totalul reprezintă valori înregistrate, nu plăți.",
      "Subiectul și perioada întrebării nu restrâng profilurile istorice; județul și tipul instituției selectează populația comparată. Riscul este un semnal statistic, nu o dovadă de neregulă.",
-     "Sursele semnalului „Vârf în decembrie”: achizițiile finalizate în decembrie, în anii semnalați, nu tot istoricul profilurilor."
+     "Sursele semnalului „Mulți bani contractați în decembrie”: achizițiile finalizate în decembrie, în anii semnalați, nu tot istoricul profilurilor."
     ],
     "statuses": [],
     "rows": []
@@ -50335,11 +50397,11 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii după risc","cel mai ridicat risc","instituții","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -50539,12 +50601,12 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii după risc","cel mai ridicat risc","furnizori","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","furnizori","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Județul firmei = județul din SEAP; sediul din Registrul Comerțului nu e încă calculat. Nu e locul lucrării.",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -50745,12 +50807,12 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii după risc","cel mai ridicat risc","instituții","județul Buzău","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","județul Buzău","achiziții directe"],
     "caveats": [
      "Județul = sediul instituției care cumpără, nu al firmei (din adresă, cod NUTS, ONRC sau UAT verificat). Instituțiile fără județ cunoscut nu intră.",
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",
@@ -50883,11 +50945,11 @@
      "topN": 10,
      "rankBy": "risk"
     },
-    "pills": ["primii după risc","cel mai ridicat risc","instituții","doar spitale","profil istoric: achiziții directe acceptate, toată arhiva"],
+    "pills": ["primii după risc","cel mai ridicat risc","instituții","doar spitale","achiziții directe"],
     "caveats": [
      "Achizițiile directe peste 2 milioane lei sunt excluse (filtru analitic de plauzibilitate, nu pragul legal și nici dovada unei erori).",
      "Sursă: profiluri istorice de achiziții directe acceptate, cu valori pozitive de cel mult 2 milioane lei. Totalurile sunt valori înregistrate, nu plăți. Lista surselor folosește aceeași selecție.",
-     "Riscul (0–100%) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
+     "Riscul (0–100) este un semnal statistic, nu o dovadă de neregulă și nu o probabilitate de corupție. Tiparele au explicații legitime posibile — verifică întotdeauna detaliile."
     ],
     "data": {
      "block": "entity_card",

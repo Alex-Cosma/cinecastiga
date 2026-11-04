@@ -14,6 +14,11 @@ export interface FlagMeta {
    */
   label?: string;
   /**
+   * The name on ONE acquisition (a records-table badge, a record's page): the singular of `label` where the
+   * signal's name speaks of many („Prea des chiar sub plafon” → „Chiar sub plafon”; owner, 4 November 2026).
+   */
+  recordLabel?: string;
+  /**
    * The rule at the level of an entity ("Cel puțin o dată în arhivă: …"), not the one-acquisition `short` text:
    * what the profile's criterion means for an institution or a firm. Set with `label`.
    */
@@ -30,11 +35,12 @@ export const AWARD_COUNTING_CAVEAT = "Semnalul se numără o dată pentru fiecar
 export const FLAG_META: Record<string, FlagMeta> = {
   da_split: {
     code: "da_split",
-    title: "Achiziții repetate, peste plafon cumulat",
-    label: "Achiziții repetate, peste plafon cumulat",
+    title: "Adunate, trec de plafon",
+    label: "Adunate, trec de plafon",
+    recordLabel: "Adunată cu altele, trece de plafon",
     entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Un grup cântărește după cât trece de plafon (de la 1,2× la 2×) și după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează. Pe o firmă cântărește puțin dacă grupurile nu sunt la 1–2 instituții.",
     subject: "pair",
-    short: "Achiziții din aceeași clasă CPV și același tip, însumând peste plafonul de referință.",
+    short: "Mai multe achiziții mici de la aceeași firmă, pentru același fel de lucru, în același an: fiecare sub plafon, împreună peste.",
     description:
       "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului. În risc, grupul cântărește după cât trece de plafon și după mărimea achizițiilor.",
     rationale:
@@ -44,11 +50,11 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_concentration: {
     code: "da_concentration",
-    title: "Concentrare pe un furnizor",
-    label: "Concentrare pe un furnizor",
+    title: "O firmă ia mare parte din bani",
+    label: "O firmă ia mare parte din bani",
     entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui, cu 3+ achiziții în 2+ ani (minimum 3 furnizori și 100.000 lei). Utilitățile și firma instituției nu intră.",
     subject: "authority",
-    short: "O mare parte din valoarea achizițiilor directe revine unui singur furnizor.",
+    short: "Un singur furnizor primește o parte mare din valoarea achizițiilor directe.",
     description:
       "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați; o companie privată cumpărătoare nu e evaluată.",
     rationale:
@@ -57,11 +63,11 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_dependence: {
     code: "da_dependence",
-    title: "Dependență de o autoritate",
-    label: "Dependență de o autoritate",
+    title: "Un singur client public mare",
+    label: "Un singur client public mare",
     entityRule: "O instituție aduce cel puțin 70% din valoarea achizițiilor directe ale firmei (minimum 250.000 lei, 5+ achiziții în 2+ ani cu ea); nivelul 1 începe de la 85%. Firma instituției (in-house) nu intră.",
     subject: "supplier",
-    short: "Majoritatea valorii achizițiilor directe ale furnizorului provine de la o autoritate.",
+    short: "O instituție aduce cel puțin 70% din ce vinde firma prin achiziții directe.",
     description:
       "O singură autoritate reprezintă cel puțin 70% din valoarea achizițiilor directe ale furnizorului, la un total de cel puțin 250.000 lei, cu cel puțin 5 achiziții în cel puțin 2 ani cu acea autoritate. Nivelul 1 începe de la 85%; tăria crește cu ponderea firmei în achizițiile instituției și când firma vinde și peste capacitatea ei. Firma instituției (in-house, Legea 98/2016 art. 31) nu primește semnalul.",
     rationale: "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
@@ -69,11 +75,12 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_round: {
     code: "da_round",
-    title: "Chiar sub plafonul achiziției directe",
-    label: "Chiar sub plafon",
+    title: "Prea des chiar sub plafon",
+    label: "Prea des chiar sub plafon",
+    recordLabel: "Chiar sub plafon",
     entityRule: "Cel puțin 3 achiziții directe la 96–100% din plafon, de cel puțin 2 ori mai multe decât ar fi de așteptat după media națională (același tip, aceleași plafoane).",
     subject: "da",
-    short: "O achiziție între 96% și 100% din plafonul achiziției directe.",
+    short: "O achiziție directă cu valoarea la 96–100% din plafon.",
     description:
       "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției. Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte. În risc contează aglomerarea: câte sunt față de câte ar fi după media națională.",
     rationale:
@@ -82,11 +89,12 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_above_ceiling: {
     code: "da_above_ceiling",
-    title: "Peste plafonul achiziției directe",
-    label: "Peste plafon",
+    title: "Directe, deși trec de plafon",
+    label: "Directe, deși trec de plafon",
+    recordLabel: "Directă, deși trece de plafon",
     entityRule: "Cel puțin 2 cazuri (cumpărător × lună) peste plafon: estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Doar la cumpărătorii obligați de plafon; companiile și asociațiile nu sunt verificate. Pe o firmă cântărește puțin dacă nu sunt la 1–2 instituții.",
     subject: "da",
-    short: "Achiziție directă înregistrată cu peste 10% peste plafon.",
+    short: "O achiziție directă înregistrată cu peste 10% peste plafon.",
     description:
       "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe, iar estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Numărăm doar la cumpărătorii pe care plafonul îi obligă (instituții publice și operatori sectoriali publici, Legea 99/2016 art. 12(4)), nu la companii private sau asociații, și doar unde excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2, nu CPV 33, nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când închiderea depășește de peste două ori estimarea. În profil contează de la două cazuri (cumpărător × lună), după număr și pondere în valoare.",
     rationale:
@@ -96,11 +104,11 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_year_end: {
     code: "da_year_end",
-    title: "Achiziții concentrate în decembrie",
-    label: "Vârf în decembrie",
+    title: "Mulți bani contractați în decembrie",
+    label: "Mulți bani contractați în decembrie",
     entityRule: "Cel puțin un an în care ponderea lui decembrie e printre cele mai mari 5% la instituțiile de același tip și de cel puțin 35%, la un total anual de cel puțin 100.000 lei. Tăria crește cu distanța față de instituțiile similare; singur, decembrie ajunge cel mult la 25 din 100.",
     subject: "authority",
-    short: "O pondere mare din valoarea anuală a achizițiilor directe este finalizată în decembrie.",
+    short: "O parte mare din achizițiile directe ale anului, făcute în decembrie.",
     description:
       "Ponderea lunii decembrie în valoarea achizițiilor directe finalizate într-un an este printre cele mai mari 5% la instituțiile de același tip în același an (primării de comună, de oraș și municipiu, consilii județene, spitale, școli, alte instituții) și de cel puțin 35%, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui. În risc contează cât de departe sunt cele mai mari două decembrii de mediana instituțiilor similare.",
     rationale:
@@ -207,6 +215,10 @@ export const FLAG_META: Record<string, FlagMeta> = {
 
 /** A signal's short name where Ask speaks of it (FlagMeta.label), else its title. */
 export const flagLabel = (code: string): string => FLAG_META[code]?.label ?? FLAG_META[code]?.title ?? code;
+/** A signal's name on a single acquisition (FlagMeta.recordLabel), else its name. */
+export const flagRecordLabel = (code: string): string => FLAG_META[code]?.recordLabel ?? flagLabel(code);
+/** The name of one finding: a single acquisition's singular where the signal is on one record (subject "da"), else its name (a group, a profile). */
+export const flagFindingLabel = (code: string): string => FLAG_META[code]?.subject === "da" ? flagRecordLabel(code) : flagLabel(code);
 /** A signal's rule at the level of an entity (FlagMeta.entityRule); empty where the signal has none. */
 export const flagEntityRule = (code: string): string => FLAG_META[code]?.entityRule ?? "";
 

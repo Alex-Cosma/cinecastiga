@@ -120,9 +120,9 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     expect(words).not.toContain("În ordinea valorii");
     expect(markup.match(/class="qb-arow ec-rrow"/g)).toHaveLength(5);
     // Three patterns fit in their place, no „+1” (owner, 2 November 2026); the name opens the profile's page.
-    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat vârf în decembrie peste plafon 71 din 100 puternic 190 mil. lei");
+    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie directe, deși trec de plafon 71 din 100 puternic 190 mil. lei");
     expect(markup).toMatch(/class="qb-arow-name">1\. <a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
-    expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat 60 din 100 moderat 180 mil. lei");
+    expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe adunate, trec de plafon 60 din 100 moderat 180 mil. lei");
     // Tied rows share their place: 2, 2, 2, then 5.
     expect(words).toContain("2. Spital 4 Cluj");
     expect(words).toContain("5. Spital 5 Cluj");
@@ -194,7 +194,7 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
     expect(words).toContain("14 din 19 spitale au același indice, 0,20 1 semnal din 5.");
     expect(words).toContain("În ordinea valorii, nu a riscului");
     expect(markup.match(/class="qb-arow"/g)).toHaveLength(5);
-    expect(words).toContain("Spital 1 Cluj · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat 190 mil. lei");
+    expect(words).toContain("Spital 1 Cluj · 1.000 de achiziții directe adunate, trec de plafon 190 mil. lei");
     expect(markup).toContain('class="qb-tag qb-tag--signal"');
     expect(words).toContain("+ încă 9 cu același indice · 5 fără semnale");
     expect(words).toContain("Arată toate cele 14");
@@ -221,7 +221,7 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
     const words = text(render({ card: card(), ties: single }, firms, true));
     expect(words).toContain("Singur pe primul loc");
     expect(words).toContain("1,00 4 semnale din 4. Următorul nivel, 0,75: 13 din 2.483 de firme.");
-    expect(words).toContain("achiziții repetate, peste plafon cumulat dependență de o autoritate +2");
+    expect(words).toContain("adunate, trec de plafon un singur client public mare +2");
     expect(words).not.toContain("Arată toate");
     const none: LegacyTies = { ...TIES, level: 0, maxFlags: 0, count: 17, pool: 17, nextLevel: null, nextCount: 0, rows: [] };
     const zero = text(render({ card: card({ role: "authority" }), ties: none }, riskSpec, true));
@@ -234,9 +234,9 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
     const rows = [tie(1, { name: "Eco Rural Consulting SRL-D" }), tie(2, { name: "ASOCIATIA CLUB SPORTIV PROGRESUL PECICA" }), tie(3, { name: "EURO APAVOL" })];
     const ties: LegacyTies = { ...TIES, count: 3, pool: 14_972, level: 0.8, maxFlags: 4, rows };
     const words = text(render({ card: card({ role: "authority" }), ties }, { ...riskSpec, filters: {} }, true));
-    expect(words).toContain("Eco Rural Consulting SRL-D Cluj · 1.000 de achiziții directe achiziții repetate, peste plafon cumulat societate");
-    expect(words).toContain("ASOCIATIA CLUB SPORTIV PROGRESUL PECICA Cluj · 2.000 de achiziții directe achiziții repetate, peste plafon cumulat asociație");
-    expect(words).toMatch(/EURO APAVOL Cluj · 3\.000 de achiziții directe achiziții repetate, peste plafon cumulat 1\d\d mil\. lei/);
+    expect(words).toContain("Eco Rural Consulting SRL-D Cluj · 1.000 de achiziții directe adunate, trec de plafon societate");
+    expect(words).toContain("ASOCIATIA CLUB SPORTIV PROGRESUL PECICA Cluj · 2.000 de achiziții directe adunate, trec de plafon asociație");
+    expect(words).toMatch(/EURO APAVOL Cluj · 3\.000 de achiziții directe adunate, trec de plafon 1\d\d mil\. lei/);
   });
 });
 
@@ -255,7 +255,7 @@ describe("the other forms", () => {
     expect(old).toContain("indice risc");
     expect(old).toContain("0,50");
     // The signal's short name today (lib/flags.ts, rf-2026.18); a retired code shows as stored.
-    expect(old).toContain("Achiziții repetate, peste plafon cumulat");
+    expect(old).toContain("Adunate, trec de plafon");
     expect(text(render({ card: card({ cri: 0.4, nFlags: 2, flags: ["da_split", "da_rapid"] }) }, { ...valueSpec, rankBy: "risk" }, true))).toContain("da_rapid");
   });
 });

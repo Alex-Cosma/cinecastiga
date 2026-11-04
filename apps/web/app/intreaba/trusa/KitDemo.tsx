@@ -64,9 +64,9 @@ const TREND: CountGroup[] = [
 ];
 const SIGNALS: PillOption[] = [
   { value: "all", label: "Tot grupul", count: "82" },
-  { value: "split", label: "Achiziții repetate, peste plafon cumulat", count: "46", signal: true },
-  { value: "december", label: "Vârf în decembrie", count: "15", signal: true },
-  { value: "round", label: "Chiar sub plafon", count: "15", signal: true },
+  { value: "split", label: "Adunate, trec de plafon", count: "46", signal: true },
+  { value: "december", label: "Mulți bani contractați în decembrie", count: "15", signal: true },
+  { value: "round", label: "Prea des chiar sub plafon", count: "15", signal: true },
 ];
 const UNDER: UnderChipItem[] = [
   { kind: "legacy", id: "min", words: "doar firmele cu cel puțin 5 înregistrări", tip: { title: "Din link", text: "Condiție dintr-un link mai vechi; se aplică la fel. Scoate rândurile firmelor mici și schimbă totalurile. Nu se mai oferă aici." } },

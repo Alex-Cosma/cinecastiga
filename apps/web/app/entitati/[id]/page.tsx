@@ -24,14 +24,13 @@ import {
   type EntityFlagRow,
 } from "@/lib/marts";
 import EntityYears from "./EntityYears";
-import { bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
+import { bucharestYear, entityTitle, ledgerTotals, RISK_SCALE_SLAB, yearsModel } from "./entity-top";
 import { countyKnown } from "@/lib/counties";
 import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
-import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_SCORE_NOTE, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
@@ -42,15 +41,14 @@ import { getSuccessorTarget } from "@/lib/entity-successor-target";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import Term from "@/components/Term";
-import { roCount } from "@/lib/ro-count";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
-import YearMiniChart from "./YearMiniChart";
 import TxTable from "./TxTable";
 import { txColumns } from "@/lib/entity-tx-columns";
 import { readFilters, writeFilters } from "@/lib/table-filters/codec";
 import PartnersTable from "./PartnersTable";
-import SplitPairsTable from "./SplitPairsTable";
+import SignalsBreakdown from "./SignalsBreakdown";
+import { getSplitPairsPaged } from "@/lib/entity-splits";
 import SectionNav from "./SectionNav";
 import DropRolParam from "./DropRolParam";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
@@ -159,6 +157,8 @@ export default async function EntityPage({
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
   // A reviewed older or secondary identity of an institution (owner, 4 November 2026): where its activity is now.
   const successor = successorOf(id);
+  // The repeated-purchases groups drawn in the signals section (its first page, largest total first).
+  const splitGroupsP = row.scoreParts.da_split ? getSplitPairsPaged(id, role, {}, 1).catch(() => null) : Promise.resolve(null);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
   const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
     await Promise.all([
@@ -184,6 +184,7 @@ export default async function EntityPage({
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
     ]);
   const continuedAt = await successorTarget;
+  const splitGroups = await splitGroupsP;
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
   // number ONRC registers to another firm, not a foreign number.
@@ -473,149 +474,27 @@ export default async function EntityPage({
         </details>}
       </section>
 
-      {/* The signals in one section, after the acquisitions (owner, 4 November 2026; the section itself is from 2 November, after the Impeccable critique): every signal type first, as an
-          index (what it adds to the risk, how often it appears), then a card for each criterion behind the score — what it
-          found first, the rule folded under „Regula”. The former „Toate semnalele” was the same table further down. */}
+      {/* The signals (variant A, owner, 4 November 2026): the score split into its criteria, one row each with what was
+          found, what to check and how it may be explained; the rule and its limits on /metodologie. */}
       {(row.flags.length > 0 || signalTypes.length > 0) && (
-        <section className="section ent-tip-col" id="semnale">
-          <h2 className="ent-tip">{row.flags.length > 0 ? "De ce este semnalată" : "Semnale"} <Term tip id="semnale-numarare" /></h2>
-          <p className="hint">
-            Piste de verificat, nu dovezi · <Link href="/metodologie">metodologie</Link>
-          </p>
-
-          {signalTypes.length > 0 && (
-            <div className="ask-tablewrap ent-signal-index"><table className="rank">
-              <thead>
-                <tr>
-                  <th scope="col">Semnal</th>
-                  <th scope="col" className="num">În risc <Term tip id="scor-risc" /></th>
-                  <th scope="col" className="num">Apariții</th>
-                </tr>
-              </thead>
-              <tbody>
-                {signalTypes.map((code) => {
-                  const m = FLAG_META[code]!;
-                  const n = signalCounts[code] ?? 0;
-                  return (
-                    <tr key={code}>
-                      <td>
-                        <Link href={entitySignalsUrl(code)}>{flagLabel(code)}</Link>
-                        <div className="note">{m.short}</div>
-                      </td>
-                      <td className="num" data-label="În risc">
-                        {!inCri(code) ? <span className="note">nu intră</span> : !hasRiskScore ? <span className="note">necalculat</span> : row.scoreParts[code as RiskCriterion]
-                          ? <span className="risk-points">+{formatInt(points[code as RiskCriterion] ?? 0)}</span>
-                          : <span className="note">sub prag</span>}
-                      </td>
-                      <td className="num" data-label="Apariții">
-                        <Link href={entitySignalsUrl(code)}>{formatInt(n)}</Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table></div>
-          )}
-
-          {row.flags.map((code) => {
-            const m = FLAG_META[code];
-            if (!m) return null;
-            return (
-              <div className="method-card ent-card" key={code}>
-                <div className="method-head ent-tip-col">
-                  <h3>
-                    {flagLabel(code)}
-                    {code === "da_round" && row.flags.includes("da_split") && <> <Term tip id="prag-vs-fractionare" /></>}
-                    {row.scoreParts[code as RiskCriterion] && <span className="risk-points"> +{formatInt(points[code as RiskCriterion] ?? 0)}</span>}
-                  </h3>
-                  {row.scoreParts[code as RiskCriterion] && <p className="mh-fact">{riskFact(code as RiskCriterion, row.scoreParts[code as RiskCriterion]!, role)}</p>}
-                  <Link href={`/metodologie#${code}`} className="mh-link">
-                    cum se calculează →
-                  </Link>
-                  <Term tip title="Limite" text={m.caveat} className="mh-limits">limite</Term>
-                  <details className="mh-rule">
-                    <summary>Regula</summary>
-                    <p className="mh-desc">{m.description}</p>
-                  </details>
-                </div>
-
-                {code === "da_split" ? (
-                  <SplitPairsTable key={`${id}-${role}`} entityId={id} isAuth={isAuth} />
-                ) : null}
-
-                {code === "da_concentration" || code === "da_dependence" ? (
-                  <table className="rank">
-                    <thead>
-                      <tr>
-                        <th>{isAuth ? "Furnizor" : "Autoritate"}</th>
-                        <th>Achiziții</th>
-                        <th>Pondere</th>
-                        <th style={{ textAlign: "right" }}>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {partners.slice(0, 8).map((p) => (
-                        <tr key={p.partnerId}>
-                          <td>
-                            <Link href={`/entitati/${p.partnerId}`}>{cleanName(p.partnerName)}</Link>
-                          </td>
-                          <td>{p.n}</td>
-                          <td>{Math.round(p.pct * 100)}%</td>
-                          <td className="num">{formatRon(p.totalRon)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : null}
-
-                {/* the flag's own evidence — scoped to ITS year(s), never the recent months */}
-                {code !== "da_split" &&
-                  (() => {
-                    const evs = flagEvidence.filter((e: FlagEvidenceRow) => e.flagCode === code);
-                    const lines = evs
-                      .map((e) => {
-                        const line = riskEvidenceLine(code, e.evidence);
-                        return line ? evidenceWithPeriod(signalPeriodLabel(e.period, e.evidence), e.period, line) : null;
-                      })
-                      .filter((l): l is string => l !== null);
-                    if (lines.length === 0) return null;
-                    return (
-                      <ul className="ev-lines">
-                        {lines.slice(0, 4).map((l, i) => (
-                          <li key={i}>{l}</li>
-                        ))}
-                        {lines.length > 4 && <li>… încă {lines.length - 4} instanțe.</li>}
-                      </ul>
-                    );
-                  })()}
-                {code === "da_year_end" && (
-                  <div className="yem-row">
-                    {flagEvidence
-                      .filter((e: FlagEvidenceRow) => e.flagCode === code && e.evidence?.["year"])
-                      .slice(0, 3)
-                      .map((e) => (
-                        <YearMiniChart
-                          key={String(e.evidence!["year"])}
-                          monthly={monthly}
-                          year={String(e.evidence!["year"])}
-                          entityId={id}
-                          entityName={cleanName(row.name)}
-                          role={role}
-                        />
-                      ))}
-                  </div>
-                )}
-
-                {code === "da_round" || code === "da_above_ceiling" ? (
-                  <p>
-                    <b>{roCount(flagRowCounts[code] ?? 0, "o achiziție", "achiziții")}</b> cu acest semnal ·{" "}
-                    <a href={`${q(base, { sem: code, p: undefined })}#achizitii`}>Vezi în tabel →</a>
-                  </p>
-                ) : null}
-              </div>
-            );
-          })}
-        </section>
+        <SignalsBreakdown
+          id={id}
+          role={role}
+          entityName={cleanName(row.name)}
+          hasRiskScore={hasRiskScore}
+          score={row.score}
+          parts={row.scoreParts}
+          points={points}
+          signalTypes={signalTypes}
+          signalCounts={signalCounts}
+          flagRowCounts={flagRowCounts}
+          recordsHref={(code) => `${q(base, { sem: code, p: undefined })}#achizitii`}
+          signalsHref={entitySignalsUrl}
+          splitGroups={splitGroups}
+          yearEndYears={flagEvidence.filter((e: FlagEvidenceRow) => e.flagCode === "da_year_end" && e.evidence?.["year"]).map((e) => String(e.evidence!["year"]))}
+          monthly={monthly}
+          topPartner={partners[0]?.partnerName ? { id: String(partners[0].partnerId), name: partners[0].partnerName } : null}
+        />
       )}
 
       {/* An individual practice has no ONRC representative: the one register person with its holder's name, a lead

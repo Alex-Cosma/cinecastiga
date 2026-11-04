@@ -51,7 +51,7 @@ export interface FlagDef {
 export const FLAG_DEFS: FlagDef[] = [
   {
     code: "da_split",
-    title: "Achiziții repetate, peste plafon cumulat",
+    title: "Adunate, trec de plafon",
     subject: "pair",
     description:
       "Cel puțin 3 achiziții directe între aceeași autoritate și același furnizor, în același an, aceeași clasă CPV și același tip de achiziție. Fiecare este sub plafonul de referință propriu, iar suma depășește cel mai mare plafon aplicabil grupului.",
@@ -62,7 +62,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_concentration",
-    title: "Concentrare pe un furnizor",
+    title: "O firmă ia mare parte din bani",
     subject: "authority",
     description:
       "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați ca furnizor principal; o companie privată cumpărătoare nu e evaluată.",
@@ -73,7 +73,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_dependence",
-    title: "Dependență de o autoritate",
+    title: "Un singur client public mare",
     subject: "supplier",
     description:
       "O singură autoritate reprezintă cel puțin 70% din valoarea achizițiilor directe ale furnizorului, la un total de cel puțin 250.000 lei, cu cel puțin 5 achiziții în cel puțin 2 ani cu acea autoritate. Nivelul 1 începe de la 85%; tăria crește cu ponderea firmei în achizițiile instituției și când firma vinde și peste capacitatea ei. Firma instituției (in-house, Legea 98/2016 art. 31) nu primește semnalul.",
@@ -83,7 +83,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_round",
-    title: "Chiar sub plafonul achiziției directe",
+    title: "Prea des chiar sub plafon",
     subject: "da",
     description:
       "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției (de exemplu 130.000 lei la un plafon de 135.060 lei). Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
@@ -93,7 +93,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_above_ceiling",
-    title: "Peste plafonul achiziției directe",
+    title: "Directe, deși trec de plafon",
     subject: "da",
     description:
       "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe, iar estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Numărăm doar la cumpărătorii pe care plafonul îi obligă (instituții publice și operatori sectoriali publici, Legea 99/2016 art. 12(4)), nu la companii private sau asociații, și doar unde excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2, nu CPV 33, nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când închiderea depășește de peste două ori estimarea. În profil contează de la două cazuri (cumpărător × lună), după număr și pondere în valoare.",
@@ -104,7 +104,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_year_end",
-    title: "Achiziții concentrate în decembrie",
+    title: "Mulți bani contractați în decembrie",
     subject: "authority",
     description:
       "Ponderea lunii decembrie în valoarea achizițiilor directe finalizate într-un an este printre cele mai mari 5% la instituțiile de același tip în același an (primării de comună, de oraș și municipiu, consilii județene, spitale, școli, alte instituții), și de cel puțin 35%, pentru un total anual de cel puțin 100.000 lei. Se evaluează doar anii acoperiți integral, din ianuarie până în decembrie: arhiva achizițiilor directe începe la 02.04.2018, deci 2018 nu este evaluat, iar anul în curs intră după încheierea lui.",

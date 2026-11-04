@@ -156,14 +156,16 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
   ],
   // F6b (plan §4.2, final scatter §4.2): the risk cloud's signal and the order of its list. The signal's words are also
   // cues of the signals question (rules.ts), so they name it; "cele mai mari valori" orders the list by value.
-  // rf-2026.18: the risk score's criteria — "Achiziții repetate, peste plafon cumulat", "Chiar sub plafon", "Peste plafon".
+  // rf-2026.18: the risk score's criteria. The names of 4 November 2026 ("Adunate, trec de plafon", "Prea des chiar sub
+  // plafon", "Directe, deși trec de plafon", "Mulți bani contractați în decembrie", "O firmă ia mare parte din bani", "Un
+  // singur client public mare") are understood, and so are the older ones a reader may still type.
   scatter: [
-    { re: /\bfractionar\w*|\bimpartir\w* (?:in|a) (?:mai multe )?achizitii\b|\bpeste plafon(?:ul)? cumulat\b/, path: "scatter.flag", value: "da_split", quiet: true },
-    { re: /\b(?:varf(?:ul)?|concentrar\w*|cheltuiel\w*|achizitii\w*) (?:de |in |la )?(?:final de an|decembrie)\b/, path: "scatter.flag", value: "da_year_end", quiet: true },
-    { re: /\b(?:valoar\w* )?aproape de prag\b|\b(?:chiar|imediat) sub plafon\w*/, path: "scatter.flag", value: "da_round", quiet: true },
-    { re: /\bpeste plafon(?:ul)?(?! cumulat)\b/, path: "scatter.flag", value: "da_above_ceiling", quiet: true },
-    { re: /\bconcentrar\w* pe un (?:singur )?furnizor\b/, path: "scatter.flag", value: "da_concentration", quiet: true },
-    { re: /\bdependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)\b/, path: "scatter.flag", value: "da_dependence", quiet: true },
+    { re: /\bfractionar\w*|\bimpartir\w* (?:in|a) (?:mai multe )?achizitii\b|\bpeste plafon(?:ul)? cumulat\b|\badunat\w*,? (?:cu altele,? )?trec\w* de plafon\b/, path: "scatter.flag", value: "da_split", quiet: true },
+    { re: /\b(?:varf(?:ul)?|concentrar\w*|cheltuiel\w*|achizitii\w*) (?:de |in |la )?(?:final de an|decembrie)\b|\bmulti bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)\b/, path: "scatter.flag", value: "da_year_end", quiet: true },
+    { re: /\b(?:valoar\w* )?aproape de prag\b|\b(?:prea des )?(?:chiar|imediat) sub plafon\w*/, path: "scatter.flag", value: "da_round", quiet: true },
+    { re: /\bpeste plafon(?:ul)?(?! cumulat)\b|\bdesi trec\w* de plafon\b/, path: "scatter.flag", value: "da_above_ceiling", quiet: true },
+    { re: /\bconcentrar\w* pe un (?:singur )?furnizor\b|\b(?:o firma )?ia (?:o )?mare parte din bani\b/, path: "scatter.flag", value: "da_concentration", quiet: true },
+    { re: /\bdependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)\b|\b(?:un )?singur client public(?: mare)?\b/, path: "scatter.flag", value: "da_dependence", quiet: true },
     { re: /\b(?:cele mai mari valori|dupa valoare|dupa suma)\b/, path: "scatter.rankBy", value: "value", quiet: true },
   ],
   // F6a: the distribution's group (final distribution §7.12). "față de" stays the comparison cue's word, so the

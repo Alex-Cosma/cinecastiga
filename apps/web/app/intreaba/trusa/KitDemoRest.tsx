@@ -248,7 +248,7 @@ function StripsBlock() {
     <Cap>profil (scatter): rânduri etichetate · ordinea · semnalul</Cap>
     <AnswerStrip rows>
       <StripRow label="Primele după" tip={RANK_TIP}><Segmented label="Primele după" value={rank} onChange={setRank} options={[{ value: "signals", label: "Semnale" }, { value: "value", label: "Valoare" }]} /></StripRow>
-      <StripRow label="Semnal"><Pills label="Semnal" value={signal} onChange={setSignal} options={[{ value: "all", label: "Tot grupul", count: "82" }, { value: "split", label: "Achiziții repetate, peste plafon cumulat", count: "46", signal: true }, { value: "december", label: "Vârf în decembrie", count: "15", signal: true }]} /></StripRow>
+      <StripRow label="Semnal"><Pills label="Semnal" value={signal} onChange={setSignal} options={[{ value: "all", label: "Tot grupul", count: "82" }, { value: "split", label: "Adunate, trec de plafon", count: "46", signal: true }, { value: "december", label: "Mulți bani contractați în decembrie", count: "15", signal: true }]} /></StripRow>
     </AnswerStrip>
     <div className="kd-gap" />
     <Cap>evoluție: împarte (eticheta doar pentru cititorul de ecran pe telefon) · aceleași luni</Cap>
@@ -288,7 +288,7 @@ export function AnswerSections() {
     <Section n={12} title="Rândul din răspuns, meniul „⋯”, linia de total, lista mai lungă" classes=".qb-arow · .qb-tag · .qb-more / .qb-menu (menu button) · .qb-total · .qb-listfoot" note="Faptele nu sunt filtre: cel mult trei pe rând. Neutru = fapt; chihlimbar = citește cu grijă; portocaliu = doar semnal oficial. „Scoate din calcul” scoate entitatea din selecție: totalul se schimbă, iar linia de total spune „fără X”.">
       <Cap>rând cu semnal și chihlimbar · „⋯” în focus · rând cu meniul deschis</Cap>
       <AnswerList label="Firmele (cadru static)">
-        <AnswerRow name="URBAN SCOPE" place="București" value="51.111.529 lei" share="14%" records={{ label: recordsWords(58) }} facts={[{ text: "achiziții repetate", tone: "signal" }, { text: "1 contract: 58%", tone: "caveat" }, { text: "bilanț 2021", tone: "caveat" }]} actions={SYSTRA_ACTIONS} menuClassName="is-focus" />
+        <AnswerRow name="URBAN SCOPE" place="București" value="51.111.529 lei" share="14%" records={{ label: recordsWords(58) }} facts={[{ text: "adunate, trec de plafon", tone: "signal" }, { text: "1 contract: 58%", tone: "caveat" }, { text: "bilanț 2021", tone: "caveat" }]} actions={SYSTRA_ACTIONS} menuClassName="is-focus" />
         <AnswerRow name="SYSTRA" place="din străinătate" value="100.011.056 lei" share="6,5%" records={{ label: recordsWords(1) }} facts={[{ text: "prima dată aici: 02.10.2024" }, { text: "în asociere" }, { text: "client principal", tone: "accent" }]} actions={SYSTRA_ACTIONS} menuOpen />
       </AnswerList>
       <div className="kd-menu-room" />
@@ -316,8 +316,8 @@ export function AnswerSections() {
       <div className="kd-gap" />
       <Cap>fișa punctului</Cap>
       <DetailCard autoFocus={false} title="Comuna Sageata" meta={`Primărie de comună · ${placeWords(20, 82, "semnale")}`} facts={[{ label: "Achiziții directe", value: "21,0 mil. lei" }, { label: "Risc", value: "73 din 100 · puternic" }]} lines={[
-        { tag: { text: "achiziții repetate", tone: "signal" }, text: "2018–2019", records: { label: recordsWords(9) } },
-        { tag: { text: "vârf în decembrie", tone: "signal" }, text: "2022", records: { label: recordsWords(48) } },
+        { tag: { text: "adunate, trec de plafon", tone: "signal" }, text: "2018–2019", records: { label: recordsWords(9) } },
+        { tag: { text: "mulți bani contractați în decembrie", tone: "signal" }, text: "2022", records: { label: recordsWords(48) } },
       ]} actions={[{ label: "Vezi cele 9 cu semnalul", glyph: "→" }, { label: "Unde se situează?", glyph: "›" }, { label: "Fișa instituției", glyph: "↗", href: "#kd-sec-13" }]} onClose={() => undefined} />
       <Live>
         <p className="kd-text">Caută o firmă din lista de la §12 („probă 07”): locul ei nu filtrează lista. „Arată fișa” mută focusul pe titlul fișei; Escape sau × o închide și întoarce focusul.</p>

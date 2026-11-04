@@ -4,7 +4,7 @@ import type { CaptureSummary } from "@/lib/evidence-captures-shared";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { personClipSpec } from "@/lib/ask/site-links";
 import { cleanName, formatRon, formatExactDecimal } from "@/lib/format";
-import { FLAG_META, flagLabel } from "@/lib/flags";
+import { FLAG_META, flagFindingLabel } from "@/lib/flags";
 import { removeClip, saveClipNote, toggleClipPin } from "./actions";
 import CaptureStatus from "./CaptureStatus";
 import PeerEvidenceSummary from "./PeerEvidenceSummary";
@@ -16,7 +16,7 @@ export function clipTitle(c: ClipRow): string {
   if (typeof s.title === "string" && s.title.trim()) return s.title;
   if (typeof s.name === "string") return cleanName(s.name);
   if (Array.isArray(s.pills)) return s.pills.join(" · ");
-  if (s.code && FLAG_META[String(s.code)]) return `${flagLabel(String(s.code))}${s.entityName ? ` · ${cleanName(String(s.entityName))}` : ""}`;
+  if (s.code && FLAG_META[String(s.code)]) return `${flagFindingLabel(String(s.code))}${s.entityName ? ` · ${cleanName(String(s.entityName))}` : ""}`;
   if (s.noticeNo) return `Anunț ${s.noticeNo}`;
   if (c.kind === "note") return c.note?.split("\n")[0]?.slice(0, 100) || "Notă salvată";
   return `${clipKindLabel[c.kind] ?? "Dovadă"}${c.refId ? ` · ${c.refId}` : ""}`;
