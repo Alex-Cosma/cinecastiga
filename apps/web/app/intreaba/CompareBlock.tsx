@@ -9,7 +9,7 @@ import type { CompareData, CompareEntity, ComparePartner, PartialYear } from "@/
 import { readableCpvName } from "@/lib/entity-summary";
 import { glossaryEntry } from "@/lib/glossary";
 import { FLAG_META, flagLabel } from "@/lib/flags";
-import { riskLabel, riskPercent } from "@/lib/risk-score";
+import { riskLabel, riskScoreText } from "@/lib/risk-score";
 import { cleanName, formatInt, formatRon } from "@/lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import { useTip } from "./blocks";
@@ -211,7 +211,7 @@ function RiskProfile({ entity: e }: { entity: CompareEntity }) {
     <div className={`cmp-risk${scored ? "" : " cmp-risk-none"}`}>
       <p>
         {!e.hasProfile ? "Fără profil de risc: prea puține achiziții directe"
-          : score !== null ? <>Risc <b>{riskPercent(score)}</b> · {riskLabel(score).replace(/^risc · /, "")}{score > 0 && <> · {countWords(e.nFlags, "tipar", "tipare")}</>}</>
+          : score !== null ? <>Risc <b>{riskScoreText(score)}</b> · {riskLabel(score).replace(/^risc · /, "")}{score > 0 && <> · {countWords(e.nFlags, "tipar", "tipare")}</>}</>
           : <>Indice de risc <b>{formatDecimal(e.cri ?? 0, 2)}</b> · {countWords(e.nFlags, "semnal", "semnale")}</>}
         {" "}<Term id="profil-risc" tip />
       </p>

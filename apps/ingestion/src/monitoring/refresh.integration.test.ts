@@ -55,9 +55,10 @@ describe.skipIf(!url)('daily risk provenance with real publication gate and stub
   expect(runNormalize).not.toHaveBeenCalled();
  });
  // rf-2026.5: the old UTC-period risk; rf-2026.17: the index before the risk score (rf-2026.18,
- // 1 November 2026), whose profiles have no score until a full run rebuilds the flag marts.
- it.each(['rf-2026.5','rf-2026.17'])('rejects a %s risk baseline before any daily data mutation',async version=>{
-  expect(MONITORING_METHODOLOGY.flags).toBe('rf-2026.18');
+ // 1 November 2026), whose profiles have no score until a full run rebuilds the flag marts;
+ // rf-2026.18: the first score, without families, the buyer's regime or capacity (rf-2026.20, 3 November).
+ it.each(['rf-2026.5','rf-2026.17','rf-2026.18'])('rejects a %s risk baseline before any daily data mutation',async version=>{
+  expect(MONITORING_METHODOLOGY.flags).toBe('rf-2026.20');
   await baseline();
   await sql`update app.monitoring_refreshes set methodology=jsonb_set(methodology,'{flags}',${JSON.stringify(version)}::jsonb)`;
   await expect(runMonitoringRefresh(db,sql,{mode:'coordinated',scope:'daily'})).rejects.toThrow('baseline');

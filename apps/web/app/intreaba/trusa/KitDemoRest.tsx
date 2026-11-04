@@ -315,7 +315,7 @@ export function AnswerSections() {
       <Locate label="Unde e o instituție?" className="is-focus" defaultQuery="sageata" results={[{ id: "sg", name: "Comuna Sageata" }]} found={{ name: "Comuna Sageata", place: placeWords(20, 82, "semnale") }} />
       <div className="kd-gap" />
       <Cap>fișa punctului</Cap>
-      <DetailCard autoFocus={false} title="Comuna Sageata" meta={`Primărie de comună · ${placeWords(20, 82, "semnale")}`} facts={[{ label: "Achiziții directe", value: "21,0 mil. lei" }, { label: "Risc", value: "73% · puternic" }]} lines={[
+      <DetailCard autoFocus={false} title="Comuna Sageata" meta={`Primărie de comună · ${placeWords(20, 82, "semnale")}`} facts={[{ label: "Achiziții directe", value: "21,0 mil. lei" }, { label: "Risc", value: "73 din 100 · puternic" }]} lines={[
         { tag: { text: "achiziții repetate", tone: "signal" }, text: "2018–2019", records: { label: recordsWords(9) } },
         { tag: { text: "vârf în decembrie", tone: "signal" }, text: "2022", records: { label: recordsWords(48) } },
       ]} actions={[{ label: "Vezi cele 9 cu semnalul", glyph: "→" }, { label: "Unde se situează?", glyph: "›" }, { label: "Fișa instituției", glyph: "↗", href: "#kd-sec-13" }]} onClose={() => undefined} />

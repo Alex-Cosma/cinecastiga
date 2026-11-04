@@ -145,7 +145,7 @@ export async function readRiskScoreDistribution(sql: DbSql, state: SignalState):
   return sql.begin("isolation level repeatable read read only", async tx => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
-    const rows = await q`select least(score / 10, 9) * 10 bin, count(*)::text n from marts.entity_flags
+    const rows = await q`select case when score = 0 then 0 when score < 10 then 1 else least(score / 10, 9) * 10 end bin, count(*)::text n from marts.entity_flags
       where role = ${state.role} and n_das >= 10 ${profileCounty(q, state.county)} group by 1 order by 1`;
     return rows.map(r => ({ bin: Number(r.bin), n: Number(r.n) }));
   });

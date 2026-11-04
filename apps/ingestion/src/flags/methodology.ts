@@ -23,6 +23,14 @@ import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 //   institution; da_year_end against the kind-year 95th percentile; new da_above_ceiling (safe scope); da_rapid retired.
 // rf-2026.19: net_shared_admin and Radiografie's shared administrators read the ONRC person key with the name's
 //   punctuation and spacing folded ("MARIA-MONICA" = "MARIA MONICA", migration 0090): one person, one key.
+// rf-2026.20: the risk score after the six-reader audit of 200 profiles (owner decisions, 3 November 2026): shown as
+//   "70 din 100"; criteria grouped in four families (threshold avoidance, relationship, December, capacity); strengths
+//   against the size of the profile (above the ceiling: events and value share; repeated purchases: weighted groups;
+//   just under the ceiling: bunching against the national ratio; December: distance from peers); da_above_ceiling only
+//   strict hits; buyer regimes from legal form and whole-word names (regime.ts) instead of substrings, public sectoral
+//   operators judged like any institution (Legea 99 art. 12(4)); da_concentration without the largest DA;
+//   da_dependence from 70%; new da_capacity (DA sales against turnover); a firm's part in a buyer's duty counts at
+//   most 1.5 unless 80% is with one or two institutions; the institution's own firm has no score.
 // The version itself lives in @seap/db, where the nightly scheduler reads it.
 export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 
@@ -57,7 +65,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Concentrare pe un furnizor",
     subject: "authority",
     description:
-      "Un furnizor are o pondere mare în valoarea achizițiilor directe ale autorității din datele disponibile. Ponderea furnizorului principal și indicele de concentrare HHI descriu distribuția valorii.",
+      "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați ca furnizor principal; o companie privată cumpărătoare nu e evaluată.",
     rationale:
       "Merită verificate alternativele disponibile pe piață și modul în care a fost ales furnizorul.",
     caveat:
@@ -68,7 +76,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Dependență de o autoritate",
     subject: "supplier",
     description:
-      "O singură autoritate reprezintă cel puțin 85% din valoarea achizițiilor directe înregistrate pentru furnizor în datele disponibile, pentru un total de cel puțin 250.000 lei și cel puțin 5 achiziții directe cu acea autoritate.",
+      "O singură autoritate reprezintă cel puțin 70% din valoarea achizițiilor directe ale furnizorului, la un total de cel puțin 250.000 lei, cu cel puțin 5 achiziții în cel puțin 2 ani cu acea autoritate. Nivelul 1 începe de la 85%; tăria crește cu ponderea firmei în achizițiile instituției și când firma vinde și peste capacitatea ei. Firma instituției (in-house, Legea 98/2016 art. 31) nu primește semnalul.",
     rationale:
       "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
     caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat, dacă valoarea totală atinge pragul folosit la calcul. Dependența de un singur client este chiar pista pe care o arată semnalul, nu o dovadă de neregulă. Un client public principal poate fi explicat de specializare sau de piața locală.",
@@ -88,7 +96,7 @@ export const FLAG_DEFS: FlagDef[] = [
     title: "Peste plafonul achiziției directe",
     subject: "da",
     description:
-      "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe pentru tipul și data de referință ale achiziției. Numărăm doar cazurile în care excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2 (procedură proprie), nu medicamente și echipamente medicale (CPV 33, cumpărate și prin centrale de achiziții), nu la companii, asociații sau operatori de utilități (alte reguli), nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când valoarea de închidere depășește de peste două ori estimarea (posibilă greșeală de introducere). În profil contează de la două cazuri.",
+      "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe, iar estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Numărăm doar la cumpărătorii pe care plafonul îi obligă (instituții publice și operatori sectoriali publici, Legea 99/2016 art. 12(4)), nu la companii private sau asociații, și doar unde excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2, nu CPV 33, nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când închiderea depășește de peste două ori estimarea. În profil contează de la două cazuri (cumpărător × lună), după număr și pondere în valoare.",
     rationale:
       "Legea 98/2016 art. 7(5) permite achiziția directă doar sub plafon; peste el se aplică o procedură. Merită verificată estimarea, tipul achiziției și dacă a existat o procedură.",
     caveat:
@@ -103,6 +111,17 @@ export const FLAG_DEFS: FlagDef[] = [
     rationale:
       "Merită verificate calendarul necesarului, justificările achizițiilor și momentul finalizării lor.",
     caveat: "Sezonalitatea și calendarul proiectelor pot explica vârful. Data finalizării în SEAP nu este data plății; semnalul nu dovedește epuizarea intenționată a bugetului.",
+  },
+  {
+    code: "da_capacity",
+    title: "Vânzări peste capacitatea firmei",
+    subject: "supplier",
+    description:
+      "Într-un an, achizițiile directe ale firmei sunt de cel puțin 1,5 ori cifra ei de afaceri din bilanțul MF (al acelui an sau de până la doi ani înainte, printr-un CUI coroborat), cifra de afaceri e sub 10.000 lei la cel puțin 100.000 lei în achiziții, sau firma are 0 angajați la cel puțin 500.000 lei. Firmele care au raportat vreodată peste 100 mil. lei cifră de afaceri nu intră.",
+    rationale:
+      "O firmă care vinde mult peste mărimea ei poate fi un intermediar; merită verificat cine a executat de fapt.",
+    caveat:
+      "Bilanțul e anual și poate lipsi; contractele multianuale, avansurile și subcontractarea pot explica diferența. Singur, semnalul rămâne slab în risc.",
   },
   // ── Award (contract-award notice) flags ─────────────────────────────────────
   {

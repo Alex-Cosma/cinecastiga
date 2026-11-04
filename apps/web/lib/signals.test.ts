@@ -95,7 +95,7 @@ describe("complete signal population", () => {
     expect(await readRiskScoreDistribution(db.sql, parseSignalState({ view: "cri", rol: "supplier", jud: "Cluj" })))
       .toEqual([{ bin: 0, n: 9205 }, { bin: 20, n: 2686 }, { bin: 90, n: 3 }]);
     const [query] = db.statements.filter((q) => q.includes("marts.entity_flags"));
-    expect(query).toContain("least(score / 10, 9) * 10 bin");
+    expect(query).toContain("case when score = 0 then 0 when score < 10 then 1 else least(score / 10, 9) * 10 end bin");
     expect(query).toContain("where role = ?");
     expect(query).toContain("n_das >= 10");
     expect(query).toContain("lower(unaccent(county)) = lower(unaccent(?");

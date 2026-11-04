@@ -33,6 +33,36 @@ Decizia proprietarului din 1 noiembrie 2026, metodologia `rf-2026.18` (local pe 
 - **`/semnale`.** Lista riscului e ordonată după scorul cu zecimale; histograma are zecimi (0, 20–29 … 90–100; între 1 și 19 nu există scoruri), iar o bară deschide banda ei. Un link vechi `criMin`/`criMax` (0–1) alege aceleași procente (0,4–0,5 = 40–49%); `criteria=k` rămâne numărul de tipare.
 - **Întreabă.** Comparația arată scorul (o comparație salvată înainte își păstrează indicele). „Cine conduce?” după risc (`entity_card-3`), „Unde se situează?” (`distribution-3`) și norul (`scatter-3`) sunt descrise în paragrafele lor de mai jos. Urmăririle acestor răspunsuri primesc o singură notificare „Metodologie modificată”. Cuvintele întrebărilor și ale urmăririlor, anchetelor și capturilor sunt ale părții lor din livrare (de completat aici la unire).
 
+## Scorul de risc v2 (3 noiembrie 2026)
+
+Sunt deciziile proprietarului din 3 noiembrie 2026, după auditul scorului cu șase persoane și o simulare pe copia locală. Metodologia e `rf-2026.20`, local pe `feat/risk-score-v2-20261103`, nepublicată. Formula de la 1 noiembrie (secțiunea de mai sus) e înlocuită; restul paginii entității, al `/semnale` și al Întreabă rămâne ca acolo. Calculul e în [arhitectură](02-architecture.md#scorul-de-risc-v2-rf-202620) și pe `/metodologie#indice`.
+
+- **Afișare (decizia 1).** Scorul se scrie „70 din 100”, niciodată cu „%”. Regula ține pentru pagina entității, `/semnale`, Întreabă și CSV, unde coloana e `risc_din_100`. Benzile rămân: 0 niciun tipar găsit, 1–39 slab, 40–67 moderat, 68–100 puternic. Histograma din `/semnale` are 1–9, 10–19 … 90–100, iar 0 e „fără niciun tipar”. Pe telefon, sub barele histogramei se vede doar capătul de jos al intervalului.
+- **Familii.** Tiparele care spun același lucru nu se mai adună ca dovezi separate. Sunt patru familii:
+  - evitarea plafonului: Peste plafon, Achiziții repetate și Chiar sub plafon; plafonul familiei e 4;
+  - relația cu un partener: Concentrare pe un furnizor la instituții (plafon 2) și Dependență de o autoritate la firme (plafon 3);
+  - Vârf în decembrie: plafon 1,25;
+  - Peste capacitate, doar la firme: plafon 3, dar singur cel mult 1,5.
+
+  În familie se ia cel mai puternic tipar plus 0,4 × restul. Scorul e 100 × (1 − Π(1 − 0,2·F)). Un singur tipar dă cel mult 60, o familie 80, decembrie singur 25 și capacitatea singură 30. Nivelurile peste 1 cer cel puțin 20 de achiziții directe, sau 5 care adună cel puțin 1 mil. lei. Punctele fiecărui tipar adună scorul, iar în familie se împart după tăria fiecărui tipar.
+- **Firmele și obligația cumpărătorului (decizia 2, varianta B).** Plafonul e obligația instituției. La o firmă, Peste plafon și Achiziții repetate rămân semnalate și arătate, dar tăria lor e cel mult 1,5. Excepția e o firmă cu cel puțin 80% din aceste cazuri la 1–2 instituții, adică un tipar repetat cu aceiași cumpărători. La utilități (energie, carburanți, telecom, poștă, apă), tăria se înmulțește cu partea primelor două instituții.
+- **Regimul cumpărătorului (deciziile 4 și 5).** Legea 99/2016 art. 12(4) dă entităților sectoriale aceleași plafoane ca Legea 98, iar art. 12(3) scutește doar operatorii privați cu drepturi exclusive. De aceea:
+  - operatorii publici (apă, termie, transport, salubrizarea UAT-ului, regii, companii naționale) primesc toate tiparele;
+  - un cumpărător privat (o firmă după formă și nume, fără nume de operator public) are doar Chiar sub plafon și decembrie;
+  - o asociație privată (OUAI, fundație, federație, club, cooperativă) nu are Peste plafon, iar Achizițiile ei repetate cântăresc pe jumătate. Ea își păstrează scorul, dar „regimul ei de achiziție nu e verificat” stă pe hover-ul „notă” de lângă risc, nu ca text în pagină;
+  - ADI-urile și cluburile publice sunt instituții;
+  - persoanele fizice își păstrează scorul (decizia 3).
+- **Firma instituției.** Firma comunei sau a orașului (SADP, gospodărie comunală, servicii publice) nu are scor, pentru că relația cu proprietarul ei e excepția in-house (Legea 98 art. 31). Nu e nici „furnizorul principal” al cuiva. Nota apare tot pe hover.
+- **Tipar nou: Peste capacitate (`da_capacity`, firme, pe an).** Compară achizițiile directe ale firmei dintr-un an cu cifra ei de afaceri din bilanț, din același an sau din cel mult 2 ani înainte. Tiparul începe de la 1,5× și de la 100.000 lei. Mai e semnalată o cifră sub 10.000 lei și o firmă fără angajați cu cel puțin 500.000 lei. O firmă în primii doi ani de bilanț primește un plus. Firmele cu peste 100 mil. lei cifră de afaceri nu sunt evaluate. Singur, tiparul rămâne slab (30). Lângă o dependență, aceeași firmă poate urca la 3 („captură”).
+- **Reguli schimbate.**
+  - Concentrare: fără cea mai mare achiziție a furnizorului principal. Acesta trebuie să aibă cel puțin 3 achiziții în cel puțin 2 ani și nu poate fi o utilitate sau firma instituției.
+  - Dependență: de la 70% din vânzări, cu cel puțin 5 achiziții în cel puțin 2 ani. Tăria crește cu partea firmei din cumpărăturile instituției.
+  - Peste plafon: doar o estimare peste plafon sau o valoare peste plafon cu TVA (×1,21). Rămân excepțiile din 1 noiembrie. Contează evenimentele (instituție × lună), nu rândurile.
+  - Chiar sub plafon: față de câte ar fi de așteptat după media națională. Cere cel puțin 3 cazuri și de 2 ori mai multe decât media.
+  - Decembrie: media celor mai pronunțați 2 ani, micșorată când sunt puțini ani.
+- **Rezultatul pe copia locală (4 noiembrie).** La instituții, banda puternic scade de la 222 la 50, iar moderat de la 2.156 la 581. La firme, puternic crește de la 323 la 640. Exemple: Orange 70 → 23, Vodafone 68 → 9, Geo Draft 84 → 89, Verostar Voyager 49 → 92, Grădinița nr. 20 Timișoara 70 → 0 și CSS Mureș 70 → 16. Corelația scorului cu mărimea scade (instituții 0,46 → 0,38, firme 0,35 → 0,20).
+- **Limite.** Regimul se citește din formă și nume, pentru că arhiva nu are registrul acționarilor. Cei ~700 de cumpărători privați includ și câteva societăți municipale fără un cuvânt public în nume (Salina Turda, Tega). Clinicile private sunt corect private.
+
 ## Identitatea din Registrul Comerțului (1 noiembrie 2026)
 
 Decizia proprietarului („da, e ok ce ai propus”), pe ramura `feat/onrc-identity-20261101`; nepublicată până la acordul lui.

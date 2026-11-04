@@ -12,7 +12,7 @@ import DistributionAnswer, { stripLayout } from "./DistributionAnswer";
 /*
  * distribution-3 as markup (rf-2026.18, the owner's mockup of 1 November 2026):
  * the score as the headline with its band and (?), higher · equal · lower
- * adding up to the group, the strip of the group on 0–100% and the list with
+ * adding up to the group, the strip of the group on 0–100 and the list with
  * scores up to 50, the chart by tenths of the score above (a bar opens its
  * members, then their records), what the score is made of, the shown CSV and
  * what a watch compares. An answer stored before it (distribution-2, final
@@ -29,10 +29,10 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
   it("leads with the score, its band and its (?), then higher · equal · lower, which add up to the group", () => {
     const markup = render(VASLUI_LIST), shown = text(markup);
     expect(VASLUI_LIST.focal.score).toBe(54);
-    expect(markup).toMatch(/<span class="cri-pill dist-pill risk-mid">54%<\/span>/);
+    expect(markup).toMatch(/<span class="cri-pill dist-pill risk-mid">54 din 100<\/span>/);
     expect(markup).toMatch(/<p class="dist-band qb-tipwrap">risc · moderat /);
     // The (?) scor-risc: what the bands are, and that it is not a probability of corruption.
-    expect(markup).toContain('aria-label="Riscul, în procente: ce înseamnă"');
+    expect(markup).toContain('aria-label="Riscul, din 100: ce înseamnă"');
     expect(markup).toContain("Nu este o probabilitate de corupție.");
     expect(shown).toContain("Din celelalte 38 de primării 18 cu scor mai mare 1 la egalitate 19 cu scor mai mic");
     const { higher, equal, lower } = VASLUI_LIST.position!;
@@ -42,8 +42,8 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
 
   it("draws the group on 0–100 up to 50 members, the entity named and every member placed or counted", () => {
     const markup = render(VASLUI_LIST);
-    expect(markup).toContain('role="img" aria-label="Scorurile celor 38 de primării pe axa 0–100%; MUNICIPIUL VASLUI: 54%."');
-    expect([...markup.matchAll(/class="dist-strip-tick[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual(["0", "20", "40", "68", "100%"]);
+    expect(markup).toContain('role="img" aria-label="Scorurile celor 38 de primării pe axa 0–100; MUNICIPIUL VASLUI: 54 din 100."');
+    expect([...markup.matchAll(/class="dist-strip-tick[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual(["0", "20", "40", "68", "100"]);
     expect(markup).toContain('<i class="dist-dot is-focal" style="--x:54;--l:0"');
     const { dots, over } = stripLayout({ id: "f", name: "F", score: 54 }, VASLUI_LIST.members!);
     expect(dots.length - 1 + over.reduce((sum, o) => sum + o.n, 0)).toBe(38);
@@ -61,7 +61,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
   it("lists the members with their scores, the entity first, by score", () => {
     const markup = render(VASLUI_LIST), shown = text(markup);
     expect(shown).toContain("Cine intră în comparație? 38 + MUNICIPIUL VASLUI");
-    expect(shown).toMatch(/MUNICIPIUL VASLUI Vaslui · 63\.035 loc\. 1\.953 de achiziții directe 54% MUNICIPIUL BUZAU Iași · 60\.000 loc\. 2\.000 de achiziții directe 71%/);
+    expect(shown).toMatch(/MUNICIPIUL VASLUI Vaslui · 63\.035 loc\. 1\.953 de achiziții directe 54 din 100 MUNICIPIUL BUZAU Iași · 60\.000 loc\. 2\.000 de achiziții directe 71 din 100/);
     expect(markup).toContain('<span class="risk-high" style="width:71%"></span>');
     expect(markup).toMatch(/<button type="button" class="qb-link dist-all">Arată toate cele 38<\/button>/);
     expect(markup).not.toContain("dist-dots");
@@ -69,8 +69,8 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
 
   it("says what the score is made of: each pattern's points and fact, how many of the group have it", () => {
     const shown = text(render(VASLUI_LIST));
-    expect(shown).toContain(`Din ce se formează riscul ${CRITERION_LABEL.da_split} 18 grupuri · 11% din valoare +38 30 din 38 Vezi cazurile ↗`);
-    expect(shown).toContain(`${CRITERION_LABEL.da_round} 37 de achiziții la 96–100% din plafon (2%) +16 12 din 38`);
+    expect(shown).toContain(`Din ce se formează riscul ${CRITERION_LABEL.da_split} 18 grupuri · 11% din valoare +44 30 din 38 Vezi cazurile ↗`);
+    expect(shown).toContain(`${CRITERION_LABEL.da_round} 37 de achiziții la 96–100% din plafon · așteptat ~14 +10 12 din 38`);
     expect(shown).toContain(`${CRITERION_LABEL.da_above_ceiling} fără tipar 3 din 38`);
     // The patterns it has first, by their points; the national mark beside a chosen group.
     expect(shown.indexOf(CRITERION_LABEL.da_round!)).toBeLessThan(shown.indexOf(CRITERION_LABEL.da_year_end!));
@@ -81,8 +81,8 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     const markup = render(RUSETU_SCORE_CHART);
     expect(RUSETU_SCORE_CHART.focal.score).toBe(44);
     expect(markup.match(/<button[^>]*class="dist-hcol[^"]*"[^>]*aria-expanded="false"[^>]*aria-controls="dist-bar-members"/g)).toHaveLength(9);
-    expect(markup).toMatch(/aria-label="Scor 40–49%: 280 de primării, aici e COMUNA RUSETU\. Lista lor"/);
-    expect(markup).toMatch(/aria-label="Scor 0%: 433 de primării\. Lista lor"/);
+    expect(markup).toMatch(/aria-label="Scor 40–49: 280 de primării, aici e COMUNA RUSETU\. Lista lor"/);
+    expect(markup).toMatch(/aria-label="Scor 0: 433 de primării\. Lista lor"/);
     expect(markup).toContain("<em>aici</em>280");
     expect(text(markup)).toContain("clic pe o bară: cine are acel scor");
     expect(markup).not.toContain("dist-strip");
@@ -96,9 +96,9 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     expect(barMembersQuery(RUSETU_SCORE_CHART, { from: 40, to: 49 }, 0)).toBe("role=authority&id=2145000&from=40&to=49&similar=1");
     expect(barMembersQuery(RUSETU_SCORE_CHART, { from: 90, to: 100 }, 10)).toBe("role=authority&id=2145000&from=90&to=100&offset=10&similar=1");
     expect(barMembersQuery(RUSETU_CHART, 2, 0)).toBe("role=authority&id=2145000&k=2&similar=1");
-    // The bands: 0 alone (a score is 0 or at least 20), then tenths to 90–100.
-    expect(SCORE_BANDS.map((b) => `${b.from}-${b.to}`)).toEqual(["0-0", "20-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90-100"]);
-    expect([scoreBandOf(0), scoreBandOf(68), scoreBandOf(100), scoreBandOf(12)]).toEqual([{ from: 0, to: 0 }, { from: 60, to: 69 }, { from: 90, to: 100 }, null]);
+    // The bands: 0 alone, then tenths from 1–9 to 90–100 (rf-2026.20 scores under 20 too).
+    expect(SCORE_BANDS.map((b) => `${b.from}-${b.to}`)).toEqual(["0-0", "1-9", "10-19", "20-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90-100"]);
+    expect([scoreBandOf(0), scoreBandOf(5), scoreBandOf(68), scoreBandOf(100), scoreBandOf(12)]).toEqual([{ from: 0, to: 0 }, { from: 1, to: 9 }, { from: 60, to: 69 }, { from: 90, to: 100 }, { from: 10, to: 19 }]);
   });
 
   it("keeps the empty states: under 10 direct acquisitions, a group under 5 with its removals", () => {
@@ -114,8 +114,8 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     const lines = answerCsv({ block: "distribution", distribution: VASLUI_LIST }, { block: "distribution", measure: "value", filters: {} }, "Unde").text.split("\r\n");
     expect(lines[0]).toBe("﻿sectiune,nume,judet,populatie,scor,risc,tipare,achizitii_directe,criteriu,puncte,fapt,scor_de,scor_pana,din_grup,din_tara,entitatea");
     expect(lines[1]).toBe('"entitatea","MUNICIPIUL VASLUI","Vaslui",63035,54,"moderat","da_split|da_round",1953,,,,,,,,da');
-    expect(lines[2]).toBe(`"criteriu",,,,,,,,"${CRITERION_LABEL.da_split} (da_split)",38,"18 grupuri · 11% din valoare",,,30,3610,da`);
-    expect(lines[3]).toBe(`"criteriu",,,,,,,,"${CRITERION_LABEL.da_round} (da_round)",16,"37 de achiziții la 96–100% din plafon (2%)",,,12,1210,da`);
+    expect(lines[2]).toBe(`"criteriu",,,,,,,,"${CRITERION_LABEL.da_split} (da_split)",44,"18 grupuri · 11% din valoare",,,30,3610,da`);
+    expect(lines[3]).toBe(`"criteriu",,,,,,,,"${CRITERION_LABEL.da_round} (da_round)",10,"37 de achiziții la 96–100% din plafon · așteptat ~14",,,12,1210,da`);
     expect(lines[6]).toBe(`"criteriu",,,,,,,,"${CRITERION_LABEL.da_above_ceiling} (da_above_ceiling)",0,"",,,3,640,nu`);
     expect(lines[7]).toBe('"scor",,,,,,,,,,,0,0,2,,');
     expect(lines.find((line) => line.startsWith('"scor",,,,,,,,,,,50,'))).toBe('"scor",,,,,,,,,,,50,59,10,,da');

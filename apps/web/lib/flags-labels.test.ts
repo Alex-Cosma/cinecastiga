@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { FLAG_META, flagLabel } from "./flags";
+import { FLAG_META, FLAG_ORDER, flagLabel } from "./flags";
 
 /*
  * A signal has one name on the site (plan §9, F6b; final scatter §5): its short label (FLAG_META.label, else its
@@ -31,6 +31,10 @@ describe("a signal's name outside the methodology (S6 review)", () => {
     expect(flagLabel("da_split")).toBe("Achiziții repetate, peste plafon cumulat");
     expect(flagLabel("da_above_ceiling")).toBe("Peste plafon");
     expect(FLAG_META.da_above_ceiling!.title).toBe("Peste plafonul achiziției directe");
+    // rf-2026.20 (3 November 2026): the firm's capacity, after the dependence.
+    expect(flagLabel("da_capacity")).toBe("Peste capacitate");
+    expect(FLAG_META.da_capacity!.subject).toBe("supplier");
+    expect(FLAG_ORDER.indexOf("da_capacity")).toBe(FLAG_ORDER.indexOf("da_dependence") + 1);
     // A signal without a short label keeps its title.
     expect(flagLabel("award_single_bid")).toBe(FLAG_META.award_single_bid!.title);
     expect(flagLabel("award_no_competition")).toBe("Negociere fără anunț prealabil");

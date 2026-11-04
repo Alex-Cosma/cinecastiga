@@ -299,20 +299,24 @@ export const entityFlags = martsSchema.table(
     /** The risk score over 100 (rf-2026.18, 0087), kept as 0–1 so a link's
      *  criMin/criMax still selects the same percentages: cri = score / 100. */
     cri: numeric("cri"),
-    /** Criteria met (strength ≥ 1). */
+    /** Criteria in score_parts. */
     nFlags: integer("n_flags").notNull().default(0),
-    /** The risk score shown as a percentage (rf-2026.18, owner decision of
-     *  1 November 2026): 100 × (1 − Π (1 − 0.6 · x / 3)) over the strengths x
-     *  (0–3) of the role's criteria, rounded. 0 when no criterion is met. */
+    /** The risk score shown as "70 din 100" (rf-2026.20, owner decisions of
+     *  3 November 2026): 100 × (1 − Π (1 − 0.2 · F)) over the role's criterion
+     *  families (packages/db/src/profile-flags.ts), rounded. 0 when nothing counts. */
     score: smallint("score").notNull().default(0),
     /** The unrounded score, for ties and the peer comparison. */
     scoreRaw: real("score_raw").notNull().default(0),
-    /** { code: { x, ...facts } } for each criterion met (x ≥ 1): the strength
-     *  and the plain facts behind it ("3 grupuri, 13% din valoare"). */
+    /** { code: { x, pts, ...facts } } for each criterion that adds at least a
+     *  point: the strength, its whole points of the score and the plain facts
+     *  behind it ("3 grupuri, 13% din valoare"). */
     scoreParts: jsonb("score_parts").notNull().default({}),
-    /** The codes of the criteria met (strength ≥ 1), a JSON array of strings in
+    /** The codes of the criteria in score_parts, a JSON array of strings in
      *  the role's order (PROFILE_FLAG_CODES), e.g. ["da_split","da_round"]. */
     flags: jsonb("flags"),
+    /** The regime behind the score (0097): 'association', 'private_buyer',
+     *  'inhouse' or null; the page shows it only as a hover note. */
+    scoreNote: text("score_note"),
     /** Suppliers only (F6a phase 2, 0086): the CPV division (two digits) with
      *  at least half of `total_ron`, the same DA population. Null when no
      *  division has half, at an exact 50/50 tie, and for authorities. */

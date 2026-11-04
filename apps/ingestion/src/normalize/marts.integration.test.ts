@@ -584,8 +584,10 @@ describe("runMarts canonical totals (isolated rollback fixture)", () => {
         expect(report["da_rapid"]).toBeUndefined();
         const flags = await q`select flag_code,subject_id::text subject,evidence from core.flags`;
         const evidence = (code: string, subject: string) => flags.find((r) => r["flag_code"]===code && r["subject"]===subject)?.["evidence"] as Record<string,number>;
-        expect(evidence("da_concentration","1")["total"]).toBe(20);
-        expect(evidence("da_dependence","10")["total"]).toBe(30);
+        // rf-2026.20: a single accepted DA is no relationship (concentration needs the top supplier
+        // with at least 3 DAs over 2 years, dependence at least 5 DAs over 2 years).
+        expect(evidence("da_concentration","1")).toBeUndefined();
+        expect(evidence("da_dependence","10")).toBeUndefined();
         expect(evidence("da_year_end","1")["total"]).toBe(50);
         expect(evidence("award_concentration","1")["total"]).toBe(235);
         expect(evidence("award_concentration","1")["top_winner_pct"]).toBe(0.7163);
@@ -971,11 +973,12 @@ describe('approved publication identity in actual statistical builders',()=>{
  });
 });
 
-// The risk score (rf-2026.18, owner decision of 1 November 2026): the sharper
-// DA rules and the score marts.entity_flags gets from applyProfileScores
-// (flags/score.ts). Ceilings in 2024: 270.120 lei goods/services, 900.400 lei
-// works; in 2020: 135.060 lei goods/services. Every name is fictitious.
-describe("risk score rules and profile score (rf-2026.18)", () => {
+// The risk score (rf-2026.20, owner decisions of 3 November 2026): the DA
+// rules, the buyer's regime and the score marts.entity_flags gets from
+// applyProfileScores (flags/score.ts). Ceilings in 2024: 270.120 lei
+// goods/services, 900.400 lei works; in 2020: 135.060 lei goods/services.
+// Every name is fictitious.
+describe("risk score rules and profile score (rf-2026.20)", () => {
   it("flags the sharper DA signals, the safe above-ceiling scope and writes each profile's score", async () => {
     const prefix = `risk_score_fixture_${process.pid}_${Date.now()}`;
     const rollback = Error("rollback risk score fixture");
@@ -995,7 +998,8 @@ describe("risk score rules and profile score (rf-2026.18)", () => {
         [1, "Primaria Comunei Alfa"], [20, "Primaria Orasului Delta"], [21, "Compania Municipala Epsilon SA"],
         [22, "Serviciul Public de Apa Zeta"], [60, "Scoala Gimnaziala Eta"], [61, "Directia Lambda"],
         [70, "Scoala Gimnaziala Nr 1 Teta"], [71, "Scoala Gimnaziala Nr 2 Teta"], [80, "Directia Iota"], [90, "Spitalul Kappa"],
-        [37, "Unifarm SA"],
+        [37, "Unifarm SA"], [23, "Clinica Omega SRL"], [24, "Asociatia Theta"],
+        [25, "Asociatia de Dezvoltare Intercomunitara Iota"], [46, "SADP Omicron SRL"],
         ...[10, 11, 12, 13, 14, 31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 50, 51, 52, 53, 99].map((id): [number, string] => [id, `Furnizor ${id} SRL`]),
       ];
       for (const [id, name] of entities)
@@ -1017,15 +1021,20 @@ describe("risk score rules and profile score (rf-2026.18)", () => {
         [209, 20, 39, 850_000, goods, march], // 90–100% of the works ceiling
         [210, 20, 40, 400_000, goods, march, 150_000], // more than twice the estimate
         [211, 20, 41, 400_000, goods, "2020-03-15T09:00:00Z"], // 26.02–14.05.2020
-        [212, 21, 44, 400_000, goods, march], // a company buyer
-        [213, 22, 45, 400_000, goods, march], // a sectoral-looking buyer
+        // The buyer's regime: a municipal company and a public water service are bound by the
+        // ceilings (Legea 99 art. 12(4)); a private company and a private association are not
+        // verified; an association of UATs (ADI) is a contracting authority.
+        [212, 21, 44, 400_000, goods, march], [213, 22, 45, 400_000, goods, march],
+        [214, 23, 44, 400_000, goods, march], [215, 24, 45, 400_000, goods, march], [216, 25, 44, 400_000, goods, march],
+        // The commune's own firm (in-house): no score as a supplier.
+        [217, 61, 46, 1_000, null, march],
         // da_year_end: 2024's December share against the same kind in the same year (no CPV: no ceiling rules).
         [301, 70, 99, 80_000, null, "2024-03-10T09:00:00Z"], [302, 70, 99, 120_000, null, "2024-12-10T09:00:00Z"],
         [303, 71, 99, 100_000, null, "2024-03-10T09:00:00Z"], [304, 71, 99, 100_000, null, "2024-12-10T09:00:00Z"],
         [305, 80, 99, 100_000, null, "2024-03-10T09:00:00Z"], [306, 80, 99, 100_000, null, "2024-12-10T09:00:00Z"],
         [307, 90, 99, 140_000, null, "2024-03-10T09:00:00Z"], [308, 90, 99, 60_000, null, "2024-12-10T09:00:00Z"],
-        // da_dependence: ≥ 85% of the firm's sales, ≥ 250.000 lei and ≥ 5 DAs with the main institution.
-        ...Array.from({ length: 20 }, (_, i): [number, number, number, number, null, string] => [401 + i, 60, 50, 30_000, null, "2024-04-10T09:00:00Z"]),
+        // da_dependence: ≥ 70% of the firm's sales, ≥ 5 DAs over at least two years with the main institution.
+        ...Array.from({ length: 20 }, (_, i): [number, number, number, number, null, string] => [401 + i, 60, 50, 30_000, null, i < 10 ? "2023-04-10T09:00:00Z" : "2024-04-10T09:00:00Z"]),
         ...Array.from({ length: 4 }, (_, i): [number, number, number, number, null, string] => [421 + i, 60, 51, 70_000, null, "2024-04-10T09:00:00Z"]),
         ...Array.from({ length: 5 }, (_, i): [number, number, number, number, null, string] => [425 + i, 60, 52, 49_000, null, "2024-04-10T09:00:00Z"]),
         ...Array.from({ length: 5 }, (_, i): [number, number, number, number, null, string] => [430 + i, 60, 53, 60_000, null, "2024-04-10T09:00:00Z"]),
@@ -1043,41 +1052,50 @@ describe("risk score rules and profile score (rf-2026.18)", () => {
       const subjects = async (code: string) => (await q`select subject_id::int s from core.flags where flag_code=${code} order by subject_id`).map(r => r["s"]);
       // 96% and 99,99% of 270.120 lei; 95,9% and exactly the ceiling are not.
       expect(await subjects("da_round")).toEqual([101, 102]);
-      // Above the ceiling: the two at authority 1 and three of authority 20's eleven (the 2020 one after the COVID window).
-      expect(await subjects("da_above_ceiling")).toEqual([106, 107, 201, 202, 203]);
+      // Above the ceiling: the two at authority 1, three of authority 20's eleven (the 2020 one after the COVID window),
+      // the municipal company, the water service and the ADI; not the private clinic or the association.
+      expect(await subjects("da_above_ceiling")).toEqual([106, 107, 201, 202, 203, 212, 213, 216]);
       const [above] = await q`select evidence from core.flags where flag_code='da_above_ceiling' and subject_id=201`;
       expect(above?.["evidence"]).toMatchObject({ closing: 400000, ceiling: 270120, ratio: 1.4808, works_ceiling: 900400 });
-      // Firm 51 has 4 DAs with its institution, 52 only 245.000 lei, 53 sells 75% to it.
+      // Firms 51, 52 and 53 sold to institution 60 in 2024 only.
       expect(await subjects("da_dependence")).toEqual([50]);
       const [dependence] = await q`select evidence from core.flags where flag_code='da_dependence'`;
       expect(dependence?.["evidence"]).toMatchObject({ total: 600000, top_authority_pct: 1, top_authority: 60, top_authority_count: 20 });
-      // 50% in December: flagged at a 'alta' institution (its kind's 95th percentile is 42,5%), not at a school
+      // 50% in December: flagged at a 'alta' institution (its peers buy nothing in December: the 35% floor), not at a school
       // (59%: the other school has 60%); a lone hospital at 30% stays under the 35% floor.
       const yearEnd = await q`select subject_id::int s, period, evidence from core.flags where flag_code='da_year_end' order by subject_id`;
       expect(yearEnd.map(r => [r["s"], r["period"]])).toEqual([[70, "2024"], [80, "2024"]]);
       expect(yearEnd[0]!["evidence"]).toMatchObject({ kind: "scoala", december_pct: 0.6, peer_p95: 0.59, threshold: 0.59 });
-      expect(yearEnd[1]!["evidence"]).toMatchObject({ kind: "alta", december_pct: 0.5, peer_p95: 0.425, threshold: 0.425 });
+      expect(yearEnd[1]!["evidence"]).toMatchObject({ kind: "alta", december_pct: 0.5, peer_p95: 0.35, threshold: 0.35 });
       expect(await subjects("da_split")).toEqual([]);
       expect(await subjects("da_concentration")).toEqual([]);
 
       await runFlagMarts(q, { transactions: false });
-      const profiles = Object.fromEntries((await q`select entity_id::int e, role, score, score_raw, score_parts, cri::float8 cri, n_flags, flags
+      const profiles = Object.fromEntries((await q`select entity_id::int e, role, score, score_raw, score_parts, score_note, n_flags, flags
         from marts.entity_flags order by entity_id, role`).map(r => [`${r["e"]}:${r["role"]}`, r]));
-      // Without the gate (20 DAs and 500.000 lei) each met criterion has strength 1: one gives 20, two 36.
-      expect(profiles["1:authority"]).toMatchObject({ score: 36, cri: 0.36, n_flags: 2, flags: ["da_round", "da_above_ceiling"],
-        score_parts: { da_round: { x: 1, n: 2, share: 0.2857 }, da_above_ceiling: { x: 1, n: 2, value: 1400000, share: 0.5692 } } });
-      expect(profiles["1:authority"]!["score_raw"]).toBeCloseTo(36, 4);
-      expect(profiles["20:authority"]).toMatchObject({ score: 20, cri: 0.2, n_flags: 1, flags: ["da_above_ceiling"],
-        score_parts: { da_above_ceiling: { x: 1, n: 3, value: 1800000, share: 0.3371 } } });
-      expect(profiles["70:authority"]).toMatchObject({ score: 20, flags: ["da_year_end"], score_parts: { da_year_end: { x: 1, years: [{ y: 2024, pct: 0.6 }] } } });
-      expect(profiles["80:authority"]).toMatchObject({ score: 20, flags: ["da_year_end"] });
-      // Gated (20 DAs, 600.000 lei): the firm holds 42,1% of its institution's DA value, strength 2 + (0,421 − 0,2) / 0,3.
-      expect(profiles["50:supplier"]).toMatchObject({ score: 55, cri: 0.55, n_flags: 1, flags: ["da_dependence"],
-        score_parts: { da_dependence: { x: 2.7368, share: 1, partnerShare: 0.4211, partnerId: "60" } } });
-      expect(profiles["50:supplier"]!["score_raw"]).toBeCloseTo(54.7368, 3);
-      const scored = ["1:authority", "20:authority", "50:supplier", "70:authority", "80:authority"];
+      // Authority 1 (7 DAs, 2,46 mil. lei: gated): two prices just under the ceiling are fewer than 3, so no bunching;
+      // two above-ceiling events count 1 however large their value.
+      expect(profiles["1:authority"]).toMatchObject({ score: 20, n_flags: 1, flags: ["da_above_ceiling"], score_note: null,
+        score_parts: { da_above_ceiling: { x: 1, pts: 20, n: 2, events: 2, partners: 2, value: 1400000, share: 0.5692 } } });
+      // Authority 20: three events (strength 2), a third of its value (3).
+      expect(profiles["20:authority"]).toMatchObject({ score: 40, n_flags: 1, flags: ["da_above_ceiling"],
+        score_parts: { da_above_ceiling: { x: 2, pts: 40, n: 3, events: 3, value: 1800000, share: 0.3371 } } });
+      expect(profiles["20:authority"]!["score_raw"]).toBeCloseTo(40, 4);
+      // The firm holds 42,1% of its institution's DA value: strength 2 + (0,421 − 0,2) / 0,3, in the relation family.
+      expect(profiles["50:supplier"]).toMatchObject({ score: 55, n_flags: 1, flags: ["da_dependence"],
+        score_parts: { da_dependence: { x: 2.737, pts: 55, share: 1, partnerShare: 0.4211, partnerId: "60", capture: false } } });
+      expect(profiles["50:supplier"]!["score_raw"]).toBeCloseTo(54.74, 2);
+      // Firm 44 sold above the ceiling to the municipal company and the ADI (the private clinic does not count):
+      // two events with two institutions, under the gate (3 DAs), so strength 1 with no buyer-duty damping.
+      expect(profiles["44:supplier"]).toMatchObject({ score: 20, flags: ["da_above_ceiling"],
+        score_parts: { da_above_ceiling: { x: 1, pts: 20, events: 2, partners: 2, top2: 1 } } });
+      // One December year is no pattern yet (the December strength needs two years); one above-ceiling event neither.
+      // The regime notes: the private clinic and the association are not verified, the commune's firm has no score.
+      const notes = Object.fromEntries(Object.entries(profiles).filter(([, r]) => r["score_note"] !== null).map(([k, r]) => [k, r["score_note"]]));
+      expect(notes).toEqual({ "23:authority": "private_buyer", "24:authority": "association", "46:supplier": "inhouse" });
+      const scored = ["1:authority", "20:authority", "44:supplier", "50:supplier"];
       for (const [key, row] of Object.entries(profiles)) if (!scored.includes(key))
-        expect([key, row["score"], row["score_raw"], row["cri"], row["n_flags"], row["flags"], row["score_parts"]]).toEqual([key, 0, 0, 0, 0, [], {}]);
+        expect([key, row["score"], row["score_raw"], row["n_flags"], row["flags"], row["score_parts"]]).toEqual([key, 0, 0, 0, [], {}]);
       throw rollback;
     })).rejects.toBe(rollback);
     expect(await sql`select nspname from pg_namespace where nspname like ${`${prefix}_%`}`).toHaveLength(0);

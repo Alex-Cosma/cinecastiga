@@ -124,7 +124,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
         ...(shown.rest.count > 0 || !data.base ? [`"alte domenii",,${shown.rest.value},${shown.rest.count}`] : [])];
     }
     case "scatter":
-      // scatter-3: the list on screen — the 50 profiles of the strip's order and signal, with their risk (`risc_pct`, `banda`),
+      // scatter-3: the list on screen — the 50 profiles of the strip's order and signal, with their risk (`risc_din_100`, `banda`),
       // their patterns and the years or shares (the shares come after the answer: AskPanel completes them before the
       // export, ensureScatterFacts); a stored scatter-2 keeps its index columns, an answer before it its sample of points.
       if ("scatter" in data) return scatterCsv(data.scatter, csvAny, keptScatterFacts(spec));
@@ -152,7 +152,7 @@ function rowsOf(data: BlockData, spec: AskSpec, extra: CsvExtra = {}): string[] 
       if (data.ranking) {
         const places = riskPlaces(data.ranking.rows);
         return [
-          `loc,nume,${spec.dim === "supplier" ? "sediu" : "judet"},valoare_lei,achizitii,risc_pct,banda,tipare`,
+          `loc,nume,${spec.dim === "supplier" ? "sediu" : "judet"},valoare_lei,achizitii,risc_din_100,banda,tipare`,
           ...data.ranking.rows.map((row, i) => [places[i], csvQ(row.name), csvQ(countyName(row.county)), row.value, row.count, row.score,
             csvQ(riskBandWord(row.score)), csvQ(row.flags.join("|"))].join(",")),
         ];
@@ -218,7 +218,7 @@ function distributionScoreCsv(d: DistributionDataV3): string[] {
     ...per.map((c) => {
       const part = f.parts[c.code as RiskCriterion];
       return row([csvQ("criteriu"), "", "", "", "", "", "", "", csvQ(`${CRITERION_LABEL[c.code] ?? c.code} (${c.code})`), part ? points[c.code as RiskCriterion] ?? 0 : 0,
-        csvQ(part ? riskFact(c.code as RiskCriterion, part) : ""), "", "", c.others ?? "", c.country ?? "", part ? "da" : "nu"]);
+        csvQ(part ? riskFact(c.code as RiskCriterion, part, d.role) : ""), "", "", c.others ?? "", c.country ?? "", part ? "da" : "nu"]);
     }),
     ...(d.hist ?? []).map((h) => row([csvQ("scor"), "", "", "", "", "", "", "", "", "", "", h.from, h.to, h.n, "",
       own && own.from === h.from ? "da" : ""])),

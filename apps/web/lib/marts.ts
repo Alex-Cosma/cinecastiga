@@ -212,6 +212,8 @@ export interface EntityFlagRow {
   /** The risk score over 100 (rf-2026.18) and the strengths and facts behind it. */
   score: number;
   scoreParts: ScoreParts;
+  /** Why the score reads differently (rf-2026.20): association, private_buyer, inhouse, or null. */
+  scoreNote: string | null;
 }
 
 /** Per-role red-flag summary + DA activity for an entity (all roles it has). */
@@ -219,7 +221,7 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
   const sql = db();
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const rows = (await sql`
-    select role, name_display, cui_canonical, county, cri, n_flags, n_das, total_ron, flags, score, score_parts
+    select role, name_display, cui_canonical, county, cri, n_flags, n_das, total_ron, flags, score, score_parts, score_note
     from marts.entity_flags where entity_id = ${id}
     order by score desc, n_das desc
   `) as unknown as {
@@ -234,6 +236,7 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
     flags: string[] | null;
     score: number;
     score_parts: ScoreParts | null;
+    score_note: string | null;
   }[];
   return rows.map((r) => ({
     role: r.role,
@@ -247,6 +250,7 @@ export async function getEntityFlags(entityId: string): Promise<EntityFlagRow[]>
     flags: r.flags ?? [],
     score: Number(r.score ?? 0),
     scoreParts: r.score_parts ?? {},
+    scoreNote: r.score_note ?? null,
   }));
 }
 

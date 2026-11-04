@@ -32,7 +32,7 @@ import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
-import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPercent, riskPoints, type RiskCriterion } from "@/lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_SCORE_NOTE, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
 import { getRegistryNames } from "@/lib/registry-names";
@@ -134,6 +134,7 @@ export default async function EntityPage({
             flags: [],
             score: 0,
             scoreParts: {},
+            scoreNote: null,
           }))
         : [];
   if (flagRows.length === 0) notFound();
@@ -182,6 +183,8 @@ export default async function EntityPage({
   const criteria = RISK_CRITERIA[role];
   const band = riskBand(row.score);
   const points = riskPoints(row.scoreParts, row.score);
+  // The buyer's regime or an in-house firm (rf-2026.20): a hover next to the score.
+  const scoreNote = row.scoreNote ? RISK_SCORE_NOTE[row.scoreNote] ?? null : null;
   // The top's ledger per channel and its years chart; the bars and the undated rest add up to txCounts' value.
   const ledger = ledgerTotals(activityYears.years, activityYears.undated);
   const years = yearsModel(activityYears.years, turnover, bucharestYear());
@@ -287,8 +290,8 @@ export default async function EntityPage({
       <div className={`ent-top${years ? "" : " ent-top--no-years"}`}>
         <div className="ent-risk">
           <p className="ent-risk-read">
-            <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskPercent(row.score) : "—"}</b>
-            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" /></span>
+            <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
+            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" />{scoreNote && <> <Term tip title={scoreNote.title} text={scoreNote.text}>notă</Term></>}</span>
           </p>
           {hasRiskScore && (
             <div className="ent-risk-scale" aria-hidden="true">
@@ -452,7 +455,7 @@ export default async function EntityPage({
                     {code === "da_round" && row.flags.includes("da_split") && <> <Term tip id="prag-vs-fractionare" /></>}
                     {row.scoreParts[code as RiskCriterion] && <span className="risk-points"> +{formatInt(points[code as RiskCriterion] ?? 0)}</span>}
                   </h3>
-                  {row.scoreParts[code as RiskCriterion] && <p className="mh-fact">{riskFact(code as RiskCriterion, row.scoreParts[code as RiskCriterion]!)}</p>}
+                  {row.scoreParts[code as RiskCriterion] && <p className="mh-fact">{riskFact(code as RiskCriterion, row.scoreParts[code as RiskCriterion]!, role)}</p>}
                   <Link href={`/metodologie#${code}`} className="mh-link">
                     cum se calculează →
                   </Link>
@@ -628,11 +631,13 @@ export default async function EntityPage({
       {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
         <summary>Cum se formează riscul?</summary>
         <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
-          pronunțat e. Un singur tipar ajunge cel mult la 60%. Filtrul de an din tabel nu schimbă scorul.</p>
+          pronunțat e. Tiparele se grupează în patru familii (evitarea plafonului, relația cu un partener, decembrie, capacitatea
+          firmei): o familie singură ajunge cel mult la 80, decembrie singur la 25, capacitatea singură la 30.
+          Filtrul de an din tabel nu schimbă scorul.</p>
         <ul>{criteria.map(code => <li key={code}>
           <strong>{row.scoreParts[code] ? `+${formatInt(points[code] ?? 0)}` : "fără tipar"}</strong>{" · "}
           <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
-          {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!)}</>}
+          {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!, role)}</>}
         </li>)}</ul>
         <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
           <a href="#semnale">lista semnalelor</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}

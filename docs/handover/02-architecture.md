@@ -447,3 +447,54 @@ Decizia proprietarului din 1 noiembrie 2026 (produsul: [scorul de risc](01-produ
 **Calculul.** Etapa `flags` (`apps/ingestion/src/flags/build.ts`) scrie regulile în `core.flags`: `da_rapid` e retras; `da_round` de la 96% din plafon, strict sub el; `da_dependence` cu 250.000 lei și cel puțin 5 achiziții cu instituția principală; `da_year_end` pe anii întregi, la max(percentila 95 a instituțiilor de același tip în același an, 35%), cu tipul din `authorityKindSql` (registrul localităților, apoi regulile de nume ale lui `lib/ask/authority-kind.ts`) și instrucțiunea comună `authorityDecemberSql` (`flags/score.ts`); `da_above_ceiling`, nou, pe achiziție, doar în zona sigură: nu CPV exact din Anexa 2, nu CPV 33, nu cumpărători care după nume par companii, asociații sau operatori sectoriali, nu Unifarm, nu 26.02–14.05.2020, raport peste 1,1, nu bunurile pe care le-ar acoperi plafonul de lucrări, valoarea de închidere cel mult dublul estimării. O achiziție fără estimare iese și ea din zona sigură (`not (est > 0 and …)` dă null); pe copia locală nicio achiziție acceptată de peste 300.000 lei nu are estimarea lipsă. Etapa `flag-marts` (`runFlagMarts`) inserează profilurile, apoi `applyProfileScores` (`flags/score.ts`) le măsoară într-o singură interogare și scrie, în aceeași tranzacție, `score`, `score_raw`, `score_parts`, `cri`, `n_flags` și `flags` pe fiecare profil. Tăriile și formula sunt funcțiile comune din `packages/db/src/profile-flags.ts` (`strength*`, `scoreOf`, `scorePoints`, `SCORE_GATE`): x egal cu nivelul la fiecare prag și liniar între praguri, nivelurile 2–3 doar cu cel puțin 20 de DA și 500.000 lei, scor = 100 × (1 − Π(1 − 0,6·x/3)). Webul are o copie fără server (`apps/web/lib/risk-score.ts`: benzile, „73%”, punctele, faptele), ținută egală de `risk-score.test.ts`. Designul a fost validat în investigația semnalelor din 1 noiembrie 2026 (E, „scor continuu”); codul nocturn reproduce pe copia locală scorurile ei.
 
 **Cititorii.** Pagina entității (`getEntityFlags` ordonează rolurile după `score`; `lib/risk-peers.ts` dă „Mai multe tipare decât X% dintre …” doar la moderat și puternic, cu grupul implicit din `lib/ask/peer-groups.ts`), `/semnale` (`readSignalRiskGroup`: banda ca interval de scor, ultima cu 100 inclus, ordinea `score`, apoi valoarea (ca „Cine conduce?”: același procent se citește ca egalitate); `readRiskScoreDistribution`: zecimile 0, 20 … 90), comparația (`score`), „Cine conduce?” (`entity_card-3`, `riskRankingOf`), „Unde se situează?” (`distribution-3`) și norul (`scatter-3`). Teste: `apps/ingestion/src/flags/score.test.ts` (unitar, `scoreProfile`), `normalize/marts.integration.test.ts` (regulile noi și ce scrie `applyProfileScores`), `monitoring/refresh.integration.test.ts` (un `daily` refuză riscul `rf-2026.17`), `packages/db/src/profile-flags.test.ts`, `apps/web/lib/risk-score.test.ts`, `lib/signals.test.ts` și `lib/signals.integration.test.ts`.
+
+### Scorul de risc v2 (rf-2026.20)
+
+Sunt deciziile proprietarului din 3 noiembrie 2026 ([produsul](01-product.md#scorul-de-risc-v2-3-noiembrie-2026); formula publică e pe `/metodologie#indice`). Lucrul e local pe `feat/risk-score-v2-20261103`, nepublicat. Secțiunea de mai sus rămâne valabilă pentru populație, cititori și ordinea etapelor; aici sunt doar diferențele.
+
+**Regimul cumpărătorului (`apps/ingestion/src/flags/regime.ts`).** `buyerRegimeSql` dă fiecărei instituții cu achiziții directe un regim, după formă și nume (minuscule, fără diacritice, cuvinte întregi). Ordinea regulilor contează:
+1. o asociație de membri privați (`ASSOCIATION_NAME`) care nu e asociație publică (`PUBLIC_ASSOCIATION_NAME`: ADI, intercomunitar, clubul sportiv școlar/municipal, palatul copiilor) e `association`;
+2. o asociație publică e `classic`;
+3. un nume de regie, companie sau societate națională (`STATE_OWNED_NAME`) e `classic`;
+4. o firmă e `classic` dacă numele ei e de operator public (`PUBLIC_OPERATOR_NAME`: activitățile sectoriale din Legea 99 art. 5–11, plus serviciile publice locale) și nu e un operator privat cunoscut (`PRIVATE_OPERATOR_NAME`), altfel `private_buyer`. Firmă înseamnă `legal_form` SRL/SA/SNC/SCA/SCS, `COMPANY_NAME`, sau bilanț MF pe CUI coroborat fără un nume de instituție publică (`PUBLIC_NAME`);
+5. restul e `classic`.
+
+Etapa `flags` o pune în tabela temporară `buyer_regime`, iar scorul în `score_regime`. Ambele sunt șterse și refăcute la fiecare apel, ca două rulări în aceeași tranzacție (fixture-urile) să nu se ciocnească. Furnizorii au două liste de nume: `UTILITY_SUPPLIER_NAME` (energie, carburanți, telecom, poștă, apă, salubrizare) și `INHOUSE_SUPPLIER_NAME` (SADP, gospodărie comunală, servicii publice).
+
+**Regulile (`flags/build.ts`, versiunea `rf-2026.20` în `FLAGS_METHODOLOGY_VERSION`).**
+- `da_split` sare cumpărătorii `private_buyer`.
+- `da_concentration` scoate cea mai mare achiziție a furnizorului principal. Acesta cere cel puțin 3 DA în cel puțin 2 ani (`da_conc_partner_min_count`, `da_conc_partner_min_years`) și nu poate fi o utilitate, o firmă in-house sau un cumpărător privat. Dovada are `adjusted_pct`, `top_supplier_pct`, `largest_da` și `partner_id`.
+- `da_dependence` începe de la 70% (`da_dep_floor_pct`), cu cel puțin 5 DA în cel puțin 2 ani (`da_dep_min_years`), fără firmele in-house.
+- `da_above_ceiling` intră doar la regimul `classic`. Cere o estimare peste plafon sau o valoare de închidere peste plafon × 1,21 (`da_above_vat_ratio`) și păstrează excepțiile din rf-2026.18. Dovada are `estimate` și `basis`.
+- `da_capacity` e nou, pe furnizor și an. Compară achizițiile directe ale anului cu cel mai recent bilanț MF din anul y−2…y, pe CUI coroborat. Pragurile sunt `da_cap_min_value` 100.000, `da_cap_min_ratio` 1,5, `da_cap_min_turnover` 10.000, `da_cap_zero_staff_value` 500.000 și `da_cap_big_turnover` 100 mil. Dovada are `ratio`, `implausible` (cifră sub 10.000 lei), `young` (primii doi ani de bilanț) și `zero_staff`.
+
+Pragurile noi n-au rânduri în `core.risk_thresholds`, deci se aplică valorile implicite din `DEFAULTS`. Interogarea de capacitate face un hash join cu `distinct on (s, y)`. Varianta cu `lateral` pe bilanțuri depășea 20 de minute local; acum durează 14 s.
+
+**Scorul (`packages/db/src/profile-flags.ts`, `flags/score.ts`).** `scoreProfile` primește măsurile profilului (`ProfileMeasures`) și face trei pași:
+1. Calculează tăriile: `strengthAbove`, cu evenimentele distincte (instituție × lună) și valoarea; `strengthSplit`, cu `splitGroupWeight` (depășirea și mărimea achizițiilor, Anexa 2, asociația, furnizorul de masă); `strengthRound`, cu log2 θ și numărul așteptat din raportul național pe tip și eră; `strengthYearEnd`, cu media z a primilor doi ani, micșorată la puțini ani; `strengthConcentration`; `strengthDependence`, cu captura când și capacitatea e depășită; `strengthCapacity`.
+2. Grupează tăriile pe familii: `SCORE_FAMILY`, cu plafonul `SCORE_FAMILY_CAP` și `SCORE_FAMILY_REST` 0,4. La o firmă, `firmDuty` (`FIRM_DUTY`) limitează Peste plafon și Achiziții repetate la 1,5, afară de cazul în care primele două instituții au cel puțin 80%. La utilități, tăria se înmulțește cu partea primelor două instituții. Capacitatea singură e plafonată la 1,5 (`SCORE_CAPACITY_ALONE`).
+3. Calculează scorul, `scoreOf`: 100 × (1 − Π(1 − 0,2·F)), cu poarta `scoreGate` (cel puțin 20 de DA, sau 5 cu cel puțin 1 mil. lei). `scorePoints` împarte termenii −ln pe familii, apoi în familie după tărie, și rotunjește cu cel mai mare rest.
+
+Regimul schimbă tiparele:
+- un `association` nu are `da_above_ceiling`, iar grupurile lui repetate cântăresc 0,5;
+- un `private_buyer` are doar `da_round` și `da_year_end`;
+- o firmă in-house are scorul 0.
+
+**Datele.** `score_parts` are pe fiecare tipar `x` (tăria, 3 zecimale) și `pts` (punctele afișate), plus faptele:
+- `da_above_ceiling {n, events, value, share, partners, top2}`;
+- `da_split {groups, partners, share, rawShare, top2}`;
+- `da_round {n, expected}`;
+- `da_year_end {years, zs}`;
+- `da_concentration {share, rawShare, partnerId}`;
+- `da_dependence {share, partnerShare, partnerId, capture}`;
+- `da_capacity {year, ratio, turnover, turnoverYear, value, employees, implausible, young, zeroStaff}`.
+
+Codurile (`flags`, `n_flags`) sunt tiparele cu x > 0 și cel puțin un punct. Migrația 0097 adaugă `entity_flags.score_note` (text: `association`, `private_buyer`, `inhouse` sau null). Webul îl citește în `lib/marts.ts` și îl arată ca hover „notă” (`RISK_SCORE_NOTE`). Un rând fără `pts`, scris înainte de prima rulare `full`, se împarte cu ponderea veche (`LEGACY_RISK_WEIGHT` în `apps/web/lib/risk-score.ts`). `readRiskScoreDistribution` dă intervalele 0 (fără tipar), 1 (1–9), 10 … 90.
+
+**Teste.**
+- `packages/db/src/profile-flags.test.ts`: tăriile, familiile și profilurile auditului (Geo Draft 89, Brownstone 70, Vodafone 9).
+- `apps/ingestion/src/flags/score.test.ts`: `scoreProfile`.
+- `normalize/marts.integration.test.ts`: regimurile (societatea municipală, serviciul de apă și ADI-ul semnalate peste plafon; clinica și asociația nu), notele, dependența pe doi ani și scorurile.
+- `monitoring/refresh.integration.test.ts`: un `daily` refuză și riscul `rf-2026.18`.
+- `apps/web/lib/risk-score.test.ts` și `lib/signals.test.ts`.
+
