@@ -19,7 +19,7 @@ import { answerLabels, questionTitle } from "@/lib/ask/filters/title";
 import { askLink, entitySourceLink, entitySourceScope, yearSourceLink } from "@/lib/ask/source-spec";
 import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
-import { employeesWords } from "@/lib/ask/filters/words";
+import { employeesWords, localityName } from "@/lib/ask/filters/words";
 import type { IntentResult } from "@/lib/intent/types";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
@@ -115,6 +115,8 @@ interface AskResponse {
   spec?: AskSpec;
   /** The catalogue name of the spec's CPV code, readable (the title names it from the first paint). */
   cpvName?: string;
+  /** A locality question's town hall: the identity "primăria X" in the title links to. */
+  townHall?: { id: string };
   pills?: string[];
   caveats?: string[];
   data?: BlockData;
@@ -1140,7 +1142,7 @@ export default function AskPanel({
           >
             <div className="cq-answer-head">
               <div>
-                <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied))}</h2>
+                <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied, resp.townHall))}</h2>
                 {line && <IntentLine line={line} onAdopt={adopt} />}
                 <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} />
                 {dirty && (
@@ -1526,9 +1528,14 @@ const byNameTag = (r: TableRow): WinnerTag[] => r.byName ? [{ text: "după nume"
 
 /** F5 (kit P8): a ranking row's facts, inline in the row (a span: the row is a button), at most three. */
 /** The entities a question names (its institution, its firm, the one compared with), as its title may spell them. */
-function titleEntities(spec: AskSpec | null | undefined): NamedEntity[] {
+function titleEntities(spec: AskSpec | null | undefined, townHall?: { id: string }): NamedEntity[] {
   if (!spec) return [];
   const f = spec.filters as Record<string, unknown>, out: NamedEntity[] = [];
+  // "primăria Râmnicu Sărat (Buzău)" / "ale primăriei …": the whole phrase is the town hall's name here.
+  if (townHall && typeof f["uatName"] === "string" && f["uatName"]) {
+    const place = localityName(f["uatName"]);
+    for (const lead of ["primăria ", "primăriei "]) out.push({ id: townHall.id, name: lead + place, role: "authority" });
+  }
   const add = (id: unknown, name: unknown, role: "authority" | "supplier") => {
     if (id && typeof name === "string" && name) out.push({ id: String(id), name, role }, { id: String(id), name: cleanName(name), role });
   };

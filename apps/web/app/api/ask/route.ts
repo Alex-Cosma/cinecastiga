@@ -15,6 +15,7 @@ import { trendListSpec, type TrendList } from "@/lib/ask/trend-shared";
 import { interpret } from "@/lib/ask/llm";
 import { resolvedSpec } from "@/lib/ask/resolved-spec";
 import { devlog } from "@/lib/devlog";
+import { townHallOf } from "../../../lib/ask/town-hall";
 import { cpvCodeName, isCpvCodeTerm } from "../../../lib/ask/cpv-label";
 import { readableCpvName } from "../../../lib/entity-summary";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
@@ -123,6 +124,8 @@ export async function POST(req: Request) {
     }
     devlog("ask", { question, spec, ok: true, tookMs: result.tookMs });
     const codeName = await cpvName;
+    // "primăria X" in the title links to the town hall's page: its identity with the largest value (owner, 4 Nov 2026).
+    const townHall = spec.filters.uatSiruta ? await townHallOf(sql, grounding.uat?.authorityIds ?? []).catch(() => null) : null;
     // The words of each display state of the strip, with the same functions (plan §2.3): the map's lens,
     // and each list of a trend (its group buttons switch on the lists already fetched).
     const executedMonths = result.executed?.months;
@@ -141,6 +144,7 @@ export async function POST(req: Request) {
       model,
       spec: resolvedSpec(spec, grounding),
       ...(codeName ? { cpvName: readableCpvName(codeName) } : {}),
+      ...(townHall ? { townHall } : {}),
       executedAt: new Date().toISOString(),
       pills: buildPills(spec, grounding, { executedMonths: result.executed?.months, ...answerLabels(result) }),
       caveats: result.caveats,

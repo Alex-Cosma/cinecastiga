@@ -1132,3 +1132,9 @@
 .cq-locate-end { margin-left: auto; }
 .cq-layout-row { display: flex; justify-content: flex-end; margin: 0 0 14px; }
 
+
+/* A name in the answer's title leads to its page, and shows it (owner, 4 November 2026): a thin dotted underline,
+   solid on hover, and a small arrow after the name. */
+.cq-answer-head h2 .entity-name { color: inherit; text-decoration: underline dotted; text-decoration-thickness: 1.5px; text-decoration-color: var(--accent-line); text-underline-offset: .14em; }
+.cq-answer-head h2 .entity-name:hover { text-decoration-style: solid; text-decoration-color: currentColor; }
+.cq-answer-head h2 .entity-name::after { content: "→"; display: inline-block; margin-left: .18em; font-size: .62em; vertical-align: .22em; color: var(--accent); text-decoration: none; }
