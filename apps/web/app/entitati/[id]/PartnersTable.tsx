@@ -82,13 +82,14 @@ export default function PartnersTable({
           <div className="bar-row ent-tip" key={p.partnerId}>
             <div className="bar-label" {...tip.bindClip(cleanName(p.partnerName))}>
               {p.partnerId !== "0" ? <Link href={`/entitati/${p.partnerId}`}>{p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
+              {/* Beside the name, not in the value column, so every row's bar and value stay aligned (owner, 4 November 2026). */}
+              {p.nConsortium > 0 && <Term tip title="În consorțiu" text={consortiumRankingNote(p.nConsortium)} className="cons-tag">în consorțiu</Term>}
             </div>
             <div className="bar-track">
               <div className="bar-fill" style={{ width: `${Math.min(100, p.pct * 100)}%` }} />
             </div>
             <div className="bar-val">
               <span className="v">{formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%</span>
-              {p.nConsortium > 0 && <Term tip title="În consorțiu" text={consortiumRankingNote(p.nConsortium)} className="cons-tag">în consorțiu</Term>}
             </div>
             <div className="bar-go">
               {p.partnerId !== "0" && p.partnerName ? (

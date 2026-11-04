@@ -162,7 +162,8 @@
 .ent-tx td.num .cons-line{text-align:right}
 .ent-partners .bar-val{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
 .ent-partners .bar-val .v{white-space:nowrap}
-.ent-partners .bar-row .term-tip>.term-def{left:auto;right:0}
+.ent-partners .bar-label .cons-tag{margin-left:8px;vertical-align:1px}
+.ent-partners .bar-label .term-tip>.term-def{left:0;right:auto}
 /* ---- no text cut short (owner, 2 November 2026): a partner's name, a record's object and party wrap whole instead of
    ending in „…”; the names get a third of the row ---- */
 .ent-partners .bar-row{grid-template-columns:minmax(220px,34%) minmax(0,1fr) auto auto}
