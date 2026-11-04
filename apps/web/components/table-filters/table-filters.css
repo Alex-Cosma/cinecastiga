@@ -1,13 +1,14 @@
-/* Column filters (owner, 4 November 2026): a funnel in each filterable header, its window, and the band of applied filters. */
+/* Column filters (owner, 4 November 2026): a funnel in each filterable header, its window, and the band of applied filters.
+   The funnel and chip selectors carry extra weight: a page's own button styles (Radiografie's 44 px boxes) must not reach them. */
 
 /* The funnel: grey at rest, the accent with a dot while its column filters, filled while its window is open. */
-.tf-fun{position:relative;display:inline-grid;place-items:center;width:28px;height:28px;margin-left:2px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--faint);cursor:pointer;vertical-align:middle;flex:none}
-.tf-fun:hover{background:var(--sunk);color:var(--ink2)}
-.tf-fun:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.tf-fun.on{color:var(--accent);background:var(--accent-soft)}
-.tf-fun.on::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--orange,var(--risk))}
-.tf-fun.open{background:var(--accent);color:var(--on-accent)}
-.tf-fun.open::after{display:none}
+button.tf-fun.tf-fun{position:relative;display:inline-grid;min-height:0;min-width:0;font:inherit;line-height:1;place-items:center;width:28px;height:28px;margin-left:2px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--faint);cursor:pointer;vertical-align:middle;flex:none}
+button.tf-fun.tf-fun:hover{background:var(--sunk);color:var(--ink2)}
+button.tf-fun.tf-fun:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button.tf-fun.tf-fun.on{color:var(--accent);background:var(--accent-soft)}
+button.tf-fun.tf-fun.on::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--orange,var(--risk))}
+button.tf-fun.tf-fun.open{background:var(--accent);color:var(--on-accent)}
+button.tf-fun.tf-fun.open::after{display:none}
 .th-filter{display:inline-flex;align-items:center;gap:0;white-space:nowrap}
 .num .th-filter{justify-content:flex-end}
 
@@ -47,7 +48,7 @@
 
 /* A phone: a sheet at the bottom over a dimmed page, with room for a thumb. */
 @media (max-width:560px){
-  .tf-fun{width:32px;height:32px}
+  button.tf-fun.tf-fun{width:32px;height:32px}
   .tf-backdrop{display:block;position:fixed;inset:0;z-index:59;background:rgba(17,29,24,.38)}
   .tf-pop.tf-sheet{left:0;right:0;bottom:0;top:auto;width:auto;max-height:78vh;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom))}
   .tf-list label{min-height:44px;font-size:15px}
@@ -61,6 +62,7 @@
 .tf-band-lab{color:var(--muted)}
 .tf-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:3px 4px 3px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);overflow-wrap:anywhere}
 .tf-chip b{font-weight:600}
-.tf-chip button{display:inline-grid;place-items:center;width:26px;height:26px;flex:none;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;font-size:13px;cursor:pointer}
-.tf-chip button:hover{background:var(--accent-line)}
-.tf-band-all{padding:4px;border:0;background:transparent;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+.tf-band .tf-chip button{display:inline-grid;min-height:0;font:inherit;font-size:13px;place-items:center;width:26px;height:26px;flex:none;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;font-size:13px;cursor:pointer}
+.tf-band .tf-chip button:hover{background:var(--accent-line)}
+.tf-band button.tf-band-all{min-height:0;border-radius:4px;padding:4px;border:0;background:transparent;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+.th-sep{margin:0 4px;color:var(--faint)}

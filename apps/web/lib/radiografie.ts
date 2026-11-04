@@ -1,9 +1,12 @@
+import { RADIOGRAFIE_COLUMNS } from "./radiografie-columns";
+import { channelWhere, facetOf, type Channel, type FacetRequest, type FilterSource, type Fragment } from "./table-filters/server/query";
+import type { Facet, FilterState } from "./table-filters/types";
 import { canonicalEntityId } from "@seap/db";
 import { patternBinding } from "./radiografie-evidence";
 import { createDb, type DbSql } from "@seap/db";
-import { cleanName, formatRon } from "@/lib/format";
-import { shortName, daysBetween } from "@/lib/radiografie-fmt";
-import { yearRange } from "@/lib/radiografie-view";
+import { cleanName, formatRon } from "./format";
+import { shortName, daysBetween } from "./radiografie-fmt";
+import { yearRange } from "./radiografie-view";
 import { daCeiling, daPurchaseType, type DaPurchaseType } from "@seap/domain";
 export { shortName, daysBetween };
 
@@ -29,7 +32,7 @@ export const DEP_CHART_MAX = 25;
  * the direct-acquisition-only pairs): they are read through to_jsonb, so the page keeps working until the next
  * daily radiografie rebuild.
  */
-const depAll = (sql: DbSql) =>
+const depAll = (sql: DbSql): Fragment =>
   sql`coalesce((to_jsonb(sd) ->> 'v_all')::numeric, sd.v_here + coalesce((to_jsonb(sd) ->> 'da_here')::numeric, 0))`;
 const depColumns = (sql: DbSql) => sql`
   supplier_id::text id, supplier_name, county, is_foreign, v_here, v_total, n_auth, n_here, ns_here, nk_here,
@@ -93,28 +96,52 @@ export type DepSort = "value" | "here" | "life" | "recs" | "name";
 
 export interface DepPage {
   rows: DepRow[];
-  /** suppliers matching the search */
+  /** suppliers under the table's filters */
   total: number;
   /** every supplier of the authority */
   suppliers: number;
   win: { from: number; to: number };
 }
 
+/** A pair's records over both channels. */
+const depRecords = (sql: DbSql): Fragment => sql`sd.n_here + coalesce((to_jsonb(sd) ->> 'n_da_here')::int, 0)`;
+
+/** The supplier table as one channel of the column filters (lib/table-filters): one row per supplier. */
+export function radiografieSource(sql: DbSql, id: string): FilterSource {
+  const channel: Channel = {
+    name: "furnizori",
+    from: sql`marts.supplier_dependency sd`,
+    where: sql`sd.authority_id = ${id}`,
+    bindings: {
+      furnizor: {
+        kind: "list", value: sql`sd.supplier_id`, label: sql`sd.supplier_name`, weight: depAll(sql),
+        match: (ids) => sql`sd.supplier_id = any(${sql.array(ids)}::bigint[])`,
+      },
+      valoare: { kind: "range", value: depAll(sql) },
+      inregistrari: { kind: "range", value: depRecords(sql) },
+    },
+  };
+  return { columns: RADIOGRAFIE_COLUMNS, channels: [channel] };
+}
+
 /**
  * The relation table under the chart (owner, 2 November 2026, mockup B „Față în față”): every supplier of the
- * authority, 10 a page, sorted on any column, searched by name. „Din autoritate” orders as the value does.
+ * authority, 10 a page, sorted on any column, filtered by its column funnels (4 November 2026). „Din autoritate”
+ * orders as the value does.
  */
 export async function getRadiografieSuppliers(
   entityId: string,
-  q: { sort: DepSort; dir: "asc" | "desc"; page: number; search?: string },
+  q: { sort: DepSort; dir: "asc" | "desc"; page: number; filters: FilterState },
 ): Promise<DepPage> {
   const sql = db();
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
   const authTotal = await depAuthorityTotal(sql, id);
-  const search = q.search?.trim() ? `%${q.search.trim().replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
-  const where = sql`authority_id = ${id} ${search ? sql`and supplier_name ilike ${search}` : sql``}`;
+  const [channel] = radiografieSource(sql, id).channels;
+  // A filter no supplier can meet leaves the table empty, not unfiltered.
+  const none: Fragment = sql`false`;
+  const where = channelWhere(sql, channel!, q.filters) ?? none;
   const key = q.sort === "life" ? sql`${depAll(sql)} / nullif(v_total, 0)`
-    : q.sort === "recs" ? sql`n_here + coalesce((to_jsonb(sd) ->> 'n_da_here')::int, 0)`
+    : q.sort === "recs" ? depRecords(sql)
       : q.sort === "name" ? sql`lower(supplier_name)`
         : depAll(sql);
   const order = q.dir === "asc" ? sql`${key} asc nulls last` : sql`${key} desc nulls last`;
@@ -124,6 +151,13 @@ export async function getRadiografieSuppliers(
     order by ${order}, supplier_id limit 10 offset ${(Math.max(1, q.page) - 1) * 10}
   `) as unknown as Record<string, unknown>[];
   return { rows: rows.map((r) => depRow(r, authTotal.value)), total: num(count?.c), suppliers: authTotal.suppliers, win: depWindow(rows[0]) };
+}
+
+/** One funnel of the supplier table: the column's values among the suppliers the other filters keep. */
+export async function getRadiografieFacet(entityId: string, key: string, filters: FilterState, request: FacetRequest = {}): Promise<Facet> {
+  const sql = db();
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
+  return facetOf(sql, radiografieSource(sql, id), key, filters, request);
 }
 
 export interface RxProfile {

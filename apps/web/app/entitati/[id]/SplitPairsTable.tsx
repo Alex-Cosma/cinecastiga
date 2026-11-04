@@ -2,30 +2,68 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { SplitPair } from "@/lib/marts";
+import type { SplitPair } from "@/lib/entity-splits";
+import { splitColumns } from "@/lib/entity-splits-columns";
 import { cleanName, formatInt, formatRon } from "@/lib/format";
+import { filterParams, isActive } from "@/lib/table-filters/codec";
+import type { FilterState, FilterValue } from "@/lib/table-filters/types";
+import ColumnFilter from "@/components/table-filters/ColumnFilter";
+import FilterBand from "@/components/table-filters/FilterBand";
+import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import { useEntityTable } from "./useEntityTable";
 
 type Response = { ok: boolean; rows: SplitPair[]; total: number; page: number; error?: string };
 
+/**
+ * The repeated-purchases groups of an entity, in its signal card: 10 a page, largest total first, filtered by the
+ * column funnels (owner, 4 November 2026). The records table below uses the same address parameters, so these
+ * filters stay out of the address.
+ */
 export default function SplitPairsTable({ entityId, isAuth }: { entityId: string; isAuth: boolean }) {
+  const columns = splitColumns(isAuth);
+  const rol = isAuth ? "autoritate" : "furnizor";
   const [requestedPage, setPage] = useState(1);
-  const { data, loading, error, retry } = useEntityTable<Response>(
-    `/api/entity-splits?id=${entityId}&rol=${isAuth ? "autoritate" : "furnizor"}&page=${requestedPage}`,
-  );
+  const facetUrl = (key: string, state: FilterState, term = "") => {
+    const p = filterParams(columns, state, new URLSearchParams({ id: entityId, rol, optiuni: key }));
+    if (term) p.set("cauta", term);
+    return `/api/entity-splits?${p.toString()}`;
+  };
+  const filters = useTableFilters(columns, {}, facetUrl, { address: false });
+  const filtered = Object.values(filters.state).some(isActive);
+  const update = (next: FilterState) => { filters.replace(next); setPage(1); };
+  const params = filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol, page: String(requestedPage) }));
+  const { data, loading, error, retry } = useEntityTable<Response>(`/api/entity-splits?${params.toString()}`);
   const total = data?.total ?? 0;
   const page = data?.page ?? 1;
   const pages = Math.max(1, Math.ceil(total / 10));
+  const funnel = (key: string, align: "start" | "end" = "start") => (
+    <ColumnFilter
+      column={columns.find((c) => c.key === key)!}
+      value={filters.state[key]}
+      onChange={(value: FilterValue | null) => { filters.set(key, value); setPage(1); }}
+      facetUrl={(term) => facetUrl(key, filters.state, term)}
+      onFacet={(facet) => filters.learn(key, facet)}
+      align={align}
+    />
+  );
   return (
     <div className="split-pairs">
+      <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={update} />
       <p className="split-pairs-status" role="status">
         {loading ? "Se încarcă grupurile…" : error ? "Lista nu a putut fi încărcată." :
-          total ? `${formatInt((page - 1) * 10 + 1)}–${formatInt(Math.min(page * 10, total))} din ${formatInt(total)} grupuri · ordonate după valoarea totală` : "Niciun grup disponibil."}
+          total ? `${formatInt((page - 1) * 10 + 1)}–${formatInt(Math.min(page * 10, total))} din ${formatInt(total)} grupuri · ordonate după valoarea totală`
+            : filtered ? "Niciun grup cu filtrele alese." : "Niciun grup disponibil."}
+        {!loading && !error && !total && filtered && <> <button type="button" className="btn" onClick={() => update({})}>Scoate filtrele</button></>}
       </p>
       {error && <p className="split-pairs-status" role="alert">{error} <button type="button" className="btn" onClick={retry}>Reîncearcă</button></p>}
       <div className="split-pairs-scroll" role="region" aria-label="Grupuri de achiziții sub prag" tabIndex={0} aria-busy={loading}>
         <table className="rank split-pairs-table">
-          <thead><tr><th scope="col">{isAuth ? "Furnizor" : "Autoritate"}</th><th scope="col">An</th><th scope="col">Achiziții</th><th scope="col" className="num">Total vs prag</th></tr></thead>
+          <thead><tr>
+            <th scope="col"><span className="th-filter">{isAuth ? "Furnizor" : "Autoritate"}{funnel("partener")}</span></th>
+            <th scope="col"><span className="th-filter">An{funnel("an")}<span className="th-sep" aria-hidden="true">·</span>Tip{funnel("tip")}</span></th>
+            <th scope="col"><span className="th-filter">Achiziții{funnel("achizitii")}</span></th>
+            <th scope="col" className="num"><span className="th-filter">Total vs prag{funnel("total", "end")}</span></th>
+          </tr></thead>
           <tbody>
             {loading ? Array.from({ length: 10 }, (_, i) => <tr className="split-pairs-placeholder" key={i} aria-hidden="true"><td colSpan={4}><span /></td></tr>) : !error && data?.rows.map(s => (
               <tr key={s.flagId}>

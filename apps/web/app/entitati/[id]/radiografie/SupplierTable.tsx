@@ -1,6 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { RADIOGRAFIE_COLUMNS } from "@/lib/radiografie-columns";
+import { filterParams, isActive, readFilters } from "@/lib/table-filters/codec";
+import type { FilterState, FilterValue } from "@/lib/table-filters/types";
+import ColumnFilter from "@/components/table-filters/ColumnFilter";
+import FilterBand from "@/components/table-filters/FilterBand";
+import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import type { DepPage, DepRow, DepSort } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
 import { formatInt, formatRon } from "@/lib/format";
@@ -12,6 +19,8 @@ import { recordWords, sharePct } from "./supplier-words";
  * authority, contracts and direct acquisitions, paged from the server and sorted on any column. The two shares
  * face each other around one line: on the left how much the supplier weighs for the authority, on the right how
  * much the authority weighs for the firm. A row selects its supplier in the chart; its name opens the firm's page.
+ * Filtered by its column funnels (owner, 4 November 2026): the supplier (which replaced the search box), the value and
+ * the records; on a phone, whose cards have no header, the funnels sit in a row of their own.
  */
 interface Resp extends Partial<DepPage> { ok: boolean; error?: string }
 
@@ -42,16 +51,28 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
   const [sort, setSort] = useState<DepSort>("value");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
-  const [typed, setTyped] = useState("");
-  const [search, setSearch] = useState("");
-  // The search asks the server once the typing pauses.
-  useEffect(() => {
-    const t = setTimeout(() => { setSearch(typed.trim()); setPage(1); }, 250);
-    return () => clearTimeout(t);
-  }, [typed]);
-  const params = new URLSearchParams({ id: authorityId, sort, dir, page: String(page) });
-  if (search) params.set("q", search);
+  const address = useSearchParams();
+  const facetUrl = (key: string, state: FilterState, term = "") => {
+    const p = filterParams(RADIOGRAFIE_COLUMNS, state, new URLSearchParams({ id: authorityId, optiuni: key }));
+    if (term) p.set("cauta", term);
+    return `/api/radiografie/furnizori?${p.toString()}`;
+  };
+  const [initial] = useState(() => readFilters(RADIOGRAFIE_COLUMNS, (k) => address.get(k)));
+  const filters = useTableFilters(RADIOGRAFIE_COLUMNS, initial, facetUrl);
+  const filtered = Object.values(filters.state).some(isActive);
+  const update = (next: FilterState) => { filters.replace(next); setPage(1); };
+  const params = filterParams(RADIOGRAFIE_COLUMNS, filters.state, new URLSearchParams({ id: authorityId, sort, dir, page: String(page) }));
   const { data, loading, error, retry } = useEntityTable<Resp>(`/api/radiografie/furnizori?${params.toString()}`);
+  const funnel = (key: string, align: "start" | "end" = "start") => (
+    <ColumnFilter
+      column={RADIOGRAFIE_COLUMNS.find((c) => c.key === key)!}
+      value={filters.state[key]}
+      onChange={(value: FilterValue | null) => { filters.set(key, value); setPage(1); }}
+      facetUrl={(term) => facetUrl(key, filters.state, term)}
+      onFacet={(facet) => filters.learn(key, facet)}
+      align={align}
+    />
+  );
   const rows = data?.rows ?? [];
   const total = data?.total ?? suppliers;
   const pages = Math.max(1, Math.ceil(total / 10));
@@ -70,13 +91,10 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
   return (
     <div className="rv-ranking">
       <h2>Toți furnizorii</h2>
+      <FilterBand columns={RADIOGRAFIE_COLUMNS} state={filters.state} labels={filters.labels} onChange={update} />
       <div className="rv-rank-top">
-        <label className="rv-search">
-          <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="m10.5 10.5 3.3 3.3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
-          <input type="search" value={typed} placeholder="Caută furnizorul…" aria-label="Caută furnizorul" onChange={(e) => setTyped(e.target.value)} />
-        </label>
         <p className="rv-rank-count" role="status">
-          {loading && !rows.length ? "Se încarcă furnizorii…" : <><b>{search ? `${formatInt(total)} din ${formatInt(suppliers)}` : formatInt(suppliers)} {suppliers === 1 ? "furnizor" : "furnizori"}</b> · după {LABEL[sort]} {dir === "desc" ? "↓" : "↑"}</>}
+          {loading && !rows.length ? "Se încarcă furnizorii…" : <><b>{filtered ? `${formatInt(total)} din ${formatInt(suppliers)}` : formatInt(suppliers)} {suppliers === 1 ? "furnizor" : "furnizori"}</b> · după {LABEL[sort]} {dir === "desc" ? "↓" : "↑"}</>}
         </p>
         <p className="rv-legend" aria-hidden="true"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>
@@ -86,11 +104,14 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
           <button key={k} type="button" aria-pressed={sort === k} onClick={() => sortBy(k)}>{PILL[k]}{sort === k ? (dir === "desc" ? " ↓" : " ↑") : ""}</button>
         ))}
       </div>
+      <div className="rv-filterpills" role="group" aria-label="Filtrează furnizorii">
+        {RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}{funnel(c.key)}</span>)}
+      </div>
       <div className="rv-rank-wrap" aria-busy={loading}>
         <table className={`rv-rank${stale ? " is-stale" : ""}`} aria-label="Furnizorii autorității">
           <thead>
             <tr>
-              <th scope="col" className="c-name" aria-sort={ariaSort("name")}>{head("name", "Furnizor")}</th>
+              <th scope="col" className="c-name" aria-sort={ariaSort("name")}><span className="th-filter">{head("name", "Furnizor")}{funnel("furnizor")}</span></th>
               {/* one column, two sorts: the header reports whichever of the two orders the rows */}
               <th scope="col" className="c-duel" aria-sort={sort === "here" || sort === "life" ? ariaSort(sort) : "none"}>
                 <span className="rv-duelhead">
@@ -99,15 +120,15 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
                   <span>{head("life", "Cât din câștigurile publice ale firmei vin de aici →")}</span>
                 </span>
               </th>
-              <th scope="col" className="c-val" aria-sort={ariaSort("value")}>{head("value", "Valoare")}</th>
-              <th scope="col" className="c-recs" aria-sort={ariaSort("recs")}>{head("recs", "Înregistrări")}</th>
+              <th scope="col" className="c-val" aria-sort={ariaSort("value")}><span className="th-filter">{head("value", "Valoare")}{funnel("valoare", "end")}</span></th>
+              <th scope="col" className="c-recs" aria-sort={ariaSort("recs")}><span className="th-filter">{head("recs", "Înregistrări")}{funnel("inregistrari", "end")}</span></th>
             </tr>
           </thead>
           <tbody inert={stale || undefined}>
             {loading && !rows.length && Array.from({ length: 10 }, (_, i) => <tr key={i} className="rv-ghost" aria-hidden="true"><td colSpan={4}><span /></td></tr>)}
             {error && <tr><td colSpan={4} className="rv-rank-empty"><span>{error}</span> <button type="button" onClick={retry}>Reîncearcă</button></td></tr>}
             {!loading && !error && rows.length === 0 && (
-              <tr><td colSpan={4} className="rv-rank-empty"><span>{search ? `Niciun furnizor cu „${search}”.` : "Niciun furnizor."}</span>{search && <button type="button" onClick={() => setTyped("")}>Șterge căutarea</button>}</td></tr>
+              <tr><td colSpan={4} className="rv-rank-empty"><span>{filtered ? "Niciun furnizor cu filtrele alese." : "Niciun furnizor."}</span>{filtered && <button type="button" onClick={() => update({})}>Scoate filtrele</button>}</td></tr>
             )}
             {!error && rows.map((r) => (
               <tr key={r.id} aria-selected={selectedId === r.id} onClick={() => onSelect(r)}>

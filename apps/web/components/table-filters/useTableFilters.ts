@@ -9,16 +9,24 @@ import { createLatestRequest } from "@/lib/latest-request";
 /**
  * A table's column filters in the browser: the state, kept in the address (it can be reloaded or sent; the page's
  * other parameters stay), and the names learned from the funnels' answers, so a chip says „ROTACO”, not its id. A
- * value that arrives with the address, before its funnel has been opened, is named by asking that funnel once.
+ * value that arrives with the address, before its funnel has been opened, is named by asking that funnel once. A table
+ * that shares its page with another one using the same parameters keeps its filters out of the address (`address:
+ * false`).
  */
-export function useTableFilters(columns: TableColumns, initial: FilterState, facetUrl: (key: string, state: FilterState) => string) {
+export function useTableFilters(
+  columns: TableColumns,
+  initial: FilterState,
+  facetUrl: (key: string, state: FilterState) => string,
+  { address = true }: { address?: boolean } = {},
+) {
   const [state, setState] = useState<FilterState>(() => activeOnly(initial));
   const [labels, setLabels] = useState<Labels>({});
 
   useEffect(() => {
+    if (!address) return;
     const search = writeFilters(columns, window.location.search, state);
     if (search !== window.location.search) history.replaceState(history.state, "", `${window.location.pathname}${search}${window.location.hash}`);
-  }, [columns, state]);
+  }, [address, columns, state]);
 
   const learn = useCallback((key: string, facet: Facet) => {
     if (facet.kind !== "options" && facet.kind !== "pick") return;
