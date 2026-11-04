@@ -2,7 +2,7 @@ import type { DbSql } from "@seap/db";
 import { isActive } from "../codec";
 import type { Facet, FilterState, FilterValue, OptionCount, TableColumns } from "../types";
 
-type Fragment = ReturnType<DbSql>;
+export type Fragment = ReturnType<DbSql>;
 
 /*
  * The SQL side of the column filters. A table is read through one or more channels (a table of direct acquisitions
@@ -21,9 +21,10 @@ export type Binding =
    * The option(s) of a row as text. `value` may return several rows (unnest of an array) when `match` says how a
    * chosen set keeps a row. A value is named by `names` (a lookup run only for the options shown: a partner's id is
    * counted from an index, its name read for 50 ids, not for half a million rows), else by `label` on the row, else
-   * by the source's `labelOf` or the column's fixed labels.
+   * by the source's `labelOf` or the column's fixed labels. Options come by their rows, or by the sum of `weight`
+   * when set (a supplier's value, where each supplier is one row).
    */
-  | { kind: "list"; value: Fragment; label?: Fragment; names?: Names; match?: (values: string[]) => Fragment }
+  | { kind: "list"; value: Fragment; label?: Fragment; names?: Names; weight?: Fragment; match?: (values: string[]) => Fragment }
   /** The channel itself is the option (the record's type): it is kept or dropped whole. */
   | { kind: "constant"; value: string };
 
@@ -119,8 +120,8 @@ export function unionOf(
     const where = channelWhere(sql, channel, state, except);
     if (where === null) continue;
     const more = extra?.(channel);
-    const part = sql`select ${project(channel)} from ${channel.from} where ${where}${more ? sql` and ${more}` : sql``}` as Fragment;
-    body = body === null ? part : (sql`${body} union all ${part}` as Fragment);
+    const part: Fragment = sql`select ${project(channel)} from ${channel.from} where ${where}${more ? sql` and ${more}` : sql``}`;
+    body = body === null ? part : sql`${body} union all ${part}`;
   }
   return body;
 }
@@ -197,8 +198,8 @@ async function listFacet(
 
   const body = unionOf(sql, bound, state, (c) => {
     const b = listOf(c);
-    if (b.kind === "constant") return sql`${b.value}::text v, null::text l`;
-    return sql`(${b.value})::text v, ${names ? sql`null::text` : sql`(${b.label ?? sql`null`})::text`} l`;
+    if (b.kind === "constant") return sql`${b.value}::text v, null::text l, 1::float8 w`;
+    return sql`(${b.value})::text v, ${names ? sql`null::text` : sql`(${b.label ?? sql`null`})::text`} l, (${b.weight ?? sql`1`})::float8 w`;
   }, key, (c) => {
     const b = listOf(c);
     return term && names && b.kind === "list" ? names.search(term) : null;
@@ -211,7 +212,7 @@ async function listFacet(
     select v, max(l) l, count(*)::int n from (${body}) x
     where v is not null ${search}
     group by v
-    order by (v = any(${sql.array(selected)}::text[])) desc, count(*) desc, max(l) asc nulls last, v asc
+    order by (v = any(${sql.array(selected)}::text[])) desc, sum(w) desc nulls last, count(*) desc, max(l) asc nulls last, v asc
     limit ${limit + 1}
   `) as unknown as { v: string; l: string | null; n: number }[];
   const shown = rows.slice(0, limit);

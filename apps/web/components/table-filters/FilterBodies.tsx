@@ -94,13 +94,13 @@ export function ListBody({ column, facet, value, onChange, stale }: Props<"optio
   return (
     <>
       <div className={`tf-list${stale ? " tf-stale" : ""}`} role="group" aria-label={column.label}>
-        {facet.options.map((o) => {
+        {(column.order === "newest" ? [...facet.options].sort((a, b) => b.value.localeCompare(a.value)) : facet.options).map((o) => {
           const on = chosen.includes(o.value);
           return (
             <label key={o.value} className={o.n === 0 && !on ? "off" : undefined}>
               <input type="checkbox" checked={on} disabled={o.n === 0 && !on} onChange={() => toggle(o.value)} />
               <span className="tf-name">{o.label}</span>
-              <span className="n">{formatInt(o.n)}</span>
+              {column.counts !== false && <span className="n">{formatInt(o.n)}</span>}
             </label>
           );
         })}

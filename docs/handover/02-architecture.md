@@ -462,6 +462,10 @@ Un tabel nou declară doar coloanele (ca `lib/entity-tx-columns.ts`) și canalel
 
 *Pagina entității (`/api/entity-tx`).* Trei canale: `directe` (achiziții directe în total), `excluse` (`optIn` pe „Tip”: valoare nulă, nepozitivă sau peste 2 mil.) și `contracte`. „Semnale” citește pe fiecare canal ce arată coloana: codurile marcate pe achiziție, „1 ofertant” la contract, „fără semnal”. Cu `&optiuni=<coloană>[&cauta=…]` ruta dă pâlnia în loc de rânduri. `getEntityTxYearCounts` a dispărut (anii vin din pâlnia „Data”).
 
+*Radiografie (`/api/radiografie/furnizori`, `lib/radiografie-columns.ts`).* Un canal, `marts.supplier_dependency`: un rând pe furnizor, deci pâlnia „Furnizor” nu arată numere (`counts: false`) și își ordonează numele după valoare (`weight`). Parametrul vechi `q` (căutarea) a dispărut. *Achizițiile repetate (`/api/entity-splits`, `lib/entity-splits.ts`).* Un canal, `marts.flag_instances` cu `da_split`; anii în ordine descrescătoare (`order: "newest"`); filtrele stau în afara adresei (`useTableFilters(..., { address: false })`). Pe telefon, headerele ambelor tabele rămân ca pastile. Integrare: `lib/table-sources.integration.test.ts`.
+
+O capcană de tip: postgres.js deduce tipul unui fragment din context. Un fragment ținut într-o variabilă sau întors de o funcție se adnotează (`const own: Fragment = …`, `(sql): Fragment => …`), altfel nu se potrivește cu `Binding`.
+
 *Viteză (copia locală, cel mai mare furnizor: 465.479 de achiziții directe).* Pâlnia „Instituție” ~70 ms la cald (250 ms la rece), după ce numele au ieșit din numărătoare (cu ele: 2,2 s); CPV-ul din 2024 ~50 ms; valoarea ~0,8 s; căutarea în nume ~70 ms. Fără indecși noi: `da_tx_*_cover_idx` acoperă numărătoarea. Pâlniile se cer doar la deschidere.
 
 *Teste.* Unitare: `lib/table-filters/codec.test.ts`, `server/query.test.ts`, `lib/entity-transactions.test.ts`, `app/entitati/[id]/tx-filters.test.ts`. Integrare (bază `seap_test_*`, `TEST_DATABASE_URL`): `lib/entity-tx.integration.test.ts`, fiecare fel de filtru și fiecare pâlnie pe PostgreSQL real.

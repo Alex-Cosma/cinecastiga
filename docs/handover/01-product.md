@@ -41,7 +41,7 @@ Decizia proprietarului, după o machetă. Tabelele de înregistrări se filtreaz
 - Deasupra tabelului rămâne doar banda „Filtrat:”: un chip pentru fiecare valoare aleasă și pentru fiecare interval, fiecare cu ✕, plus „Scoate toate”. Fără filtre, banda nu apare.
 - Pâlnia e gri fără filtru, verde cu un punct portocaliu cât coloana filtrează, plină cât fereastra e deschisă. Pe telefon fereastra e un panou jos, iar headerele unui tabel făcut carduri rămân ca pastile.
 - Doar tabelele de înregistrări primesc pâlnii; tabelele de rezumat (principalii furnizori, conducerea, contractele peste 1 mld.) nu au niciun filtru.
-- Ordinea (proprietarul): pagina entității (gata, 4 noiembrie), Radiografie și achizițiile repetate, înregistrările din Întreabă, `/supra-prag`, loturile anunțurilor, `/metodologie/excluderi`, apoi tabelele din `/admin`. Nu `/semnale` și nu `/semnale/[id]`: vor fi refăcute. Căutarea (`/cauta`, carduri) are nevoie întâi de o machetă proprie.
+- Ordinea (proprietarul): pagina entității (gata, 4 noiembrie), Radiografie și achizițiile repetate (gata, 4 noiembrie: furnizorii după furnizor, valoare și înregistrări, căutarea de deasupra mutată în pâlnia „Furnizor”, fără numere, cei mai mari întâi; grupurile după partener, an, tip, achiziții și total, filtrele lor ținute în afara adresei, pentru că pagina are deja tabelul de achiziții), înregistrările din Întreabă, `/supra-prag`, loturile anunțurilor, `/metodologie/excluderi`, apoi tabelele din `/admin`. Nu `/semnale` și nu `/semnale/[id]`: vor fi refăcute. Căutarea (`/cauta`, carduri) are nevoie întâi de o machetă proprie.
 
 ## Scorul de risc v2 (3 noiembrie 2026)
 

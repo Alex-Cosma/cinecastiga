@@ -57,6 +57,10 @@ export interface ColumnDef {
   valuePattern?: RegExp;
   /** An options column's fixed labels (others come from the server with the counts). */
   labels?: Readonly<Record<string, string>>;
+  /** Whether a funnel shows each option's rows; off where every option is one row (a table of suppliers). */
+  counts?: boolean;
+  /** How a funnel orders its options: by their rows (the default), or newest first (years). */
+  order?: "rows" | "newest";
   /** A range column's unit, after the numbers in a chip: „lei”. */
   unit?: string;
   /** Older parameters that meant this column: read when `param` is absent, always removed when writing. */

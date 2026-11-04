@@ -78,7 +78,7 @@ describe("filters as SQL", () => {
   it("counts a pick column without names, then names only the shown values, the chosen first", async () => {
     const { sql, queries } = fakeSql((q) => q.startsWith("select names") ? [{ v: "7", l: "ROTACO" }] : q.includes("group by v") ? [{ v: "7", l: null, n: 3 }] : []);
     const facet = await facetOf(sql, source(sql), "cine", { cine: { kind: "pick", values: ["9"] } }, { limit: 50 });
-    expect(queries[0]!.query).toContain("order by (v = any(?::text[])) desc, count(*) desc");
+    expect(queries[0]!.query).toContain("order by (v = any(?::text[])) desc, sum(w) desc nulls last, count(*) desc");
     expect(queries[0]!.query).not.toContain("own = ? and who = any"); // its own filter is left out
     expect(queries[1]!.values).toEqual([["7", "9"]]);
     expect(facet).toEqual({ kind: "pick", options: [{ value: "7", label: "ROTACO", n: 3 }, { value: "9", label: "9", n: 0 }], more: false });
