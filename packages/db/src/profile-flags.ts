@@ -18,6 +18,13 @@
  *   capacity  (capacitatea)          da_capacity (firm)                     cap 3
  * score = 100 × (1 − Π (1 − 0.2 · F)) over the families. A profile reaches
  * "puternic" only with evidence from more than one direction.
+ *
+ * rf-2026.21 (owner decisions of 4 November 2026): no step from 0 to level 1
+ * — each scale climbs from a lower anchor to its first level; the evidence
+ * cap and a firm's buyer-duty cap rise gradually; above the ceiling a firm's
+ * value scale is 2% / 12% / 40% and two cases on an institution are at least
+ * 0.5; a firm that is a small part of its institution's purchases starts its
+ * dependence at 0.5; a capture climbs with the capacity.
  */
 /**
  * The methodology of the signals and the risk score, stamped on every flag
@@ -25,7 +32,7 @@
  * publication records it; when it differs, the next scheduled run is full
  * (processing.ts), since a daily run keeps the previous risk.
  */
-export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.20';
+export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.21';
 
 export const PROFILE_FLAG_CODES = {
   authority: ['da_split', 'da_round', 'da_year_end', 'da_concentration', 'da_above_ceiling'],
@@ -61,12 +68,18 @@ export const SCORE_WEIGHT = 0.2;
 /** Capacity alone (no avoidance, no relationship) counts at most this much: "slab". */
 export const SCORE_CAPACITY_ALONE = 1.5;
 /**
- * Strengths above 1 need enough evidence: 20 DAs, or 5 DAs worth 1M lei
- * (a firm with a few large DAs is no longer held at level 1).
+ * The most a criterion can count with the evidence at hand (rf-2026.21): 1 at
+ * 10 DAs rising to 3 at 30 (it was a step at 20), or no cap from 5 DAs worth
+ * 1M lei (a firm with a few large DAs is not held at level 1).
  */
-export const SCORE_GATE = { minDas: 20, minDasLarge: 5, minValueLarge: 1_000_000 } as const;
-export const scoreGate = (n: number, v: number): boolean =>
-  n >= SCORE_GATE.minDas || (n >= SCORE_GATE.minDasLarge && v >= SCORE_GATE.minValueLarge);
+export const SCORE_GATE = { minDas: 10, fullDas: 30, minDasLarge: 5, minValueLarge: 1_000_000 } as const;
+export function scoreCap(n: number, v: number): number {
+  if (n >= SCORE_GATE.minDasLarge && v >= SCORE_GATE.minValueLarge) return 3;
+  return clampCap(1 + (2 * (n - SCORE_GATE.minDas)) / (SCORE_GATE.fullDas - SCORE_GATE.minDas));
+}
+const clampCap = (x: number) => Math.min(3, Math.max(1, x));
+/** Whether the evidence lets a criterion count fully (kept for callers that ask yes or no). */
+export const scoreGate = (n: number, v: number): boolean => scoreCap(n, v) >= 3;
 
 export type ScoreBand = 'none' | 'slab' | 'moderat' | 'puternic';
 /** Band cut points on the displayed (rounded) score: 0 · 1–39 · 40–67 · 68–100. */
@@ -90,6 +103,8 @@ export function ramp(v: number, pts: readonly (readonly [number, number])[]): nu
   return pts[pts.length - 1]![1];
 }
 const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
+/** A strength under the evidence cap: `cap` is scoreCap's number (a boolean reads as 3 or 1). */
+const capped = (x: number, cap: number | boolean): number => Math.min(x, typeof cap === 'boolean' ? (cap ? 3 : 1) : cap);
 
 /*
  * Strength x of each criterion (0–3), from the measures score.ts computes.
@@ -111,10 +126,13 @@ export interface FirmDutyContext {
  * relationship; owner decision B of 3 November 2026). A utility or mass
  * supplier counts only the part with its top two institutions.
  */
-export const FIRM_DUTY = { cap: 1.5, concentrated: 0.8 } as const;
+export const FIRM_DUTY = { cap: 1.5, from: 0.6, concentrated: 0.8 } as const;
 function firmDuty(x: number, firm: FirmDutyContext): number {
   const y = firm.utility ? x * clamp(firm.top2, 0, 1) : x;
-  return firm.top2 >= FIRM_DUTY.concentrated ? y : Math.min(y, FIRM_DUTY.cap);
+  if (firm.top2 >= FIRM_DUTY.concentrated) return y;
+  // rf-2026.21: the cap rises from 1.5 (60% with the top two) to none (80%), not in one step.
+  const cap = FIRM_DUTY.cap + (3 - FIRM_DUTY.cap) * clamp((firm.top2 - FIRM_DUTY.from) / (FIRM_DUTY.concentrated - FIRM_DUTY.from), 0, 1);
+  return Math.min(y, cap);
 }
 const NO_FIRM: FirmDutyContext = { top2: 1, utility: false };
 
@@ -125,13 +143,16 @@ const NO_FIRM: FirmDutyContext = { top2: 1, utility: false };
  * Counts 2 → 1, 3 → 2, 5 → 3; value 0.5% → 1, 3% → 2, 10% → 3. On an
  * institution two events are at least level 1.
  */
-export function strengthAbove(role: ProfileFlagRole, events: number, w: number, gate: boolean, firm: FirmDutyContext = NO_FIRM): number {
+export function strengthAbove(role: ProfileFlagRole, events: number, w: number, gate: number | boolean, firm: FirmDutyContext = NO_FIRM): number {
   if (events < 2) return 0;
   const byCount = ramp(events, [[2, 1], [3, 2], [5, 3]]);
-  const byValue = ramp(w, [[0.005, 1], [0.03, 2], [0.10, 3]]);
-  let x = role === 'authority' ? Math.min(byCount, Math.max(1, byValue)) : Math.min(byCount, byValue);
+  // rf-2026.21: institutions climb from 0.25% to level 1 at 0.5%, two cases are at least 0.5; firms 2% / 12% / 40% from 0.
+  const byValue = role === 'authority'
+    ? ramp(w, [[0.0025, 0], [0.005, 1], [0.03, 2], [0.10, 3]])
+    : ramp(w, [[0, 0], [0.02, 1], [0.12, 2], [0.40, 3]]);
+  let x = role === 'authority' ? Math.min(byCount, Math.max(0.5, byValue)) : Math.min(byCount, byValue);
   if (role === 'supplier') x = firmDuty(x, firm);
-  return gate ? x : Math.min(x, 1);
+  return capped(x, gate);
 }
 
 /**
@@ -139,12 +160,13 @@ export function strengthAbove(role: ProfileFlagRole, events: number, w: number, 
  * its value (splitGroupWeight). Institutions 2% → 1, 8% → 2, 20% → 3;
  * firms 5%, 20%, 50%.
  */
-export function strengthSplit(role: ProfileFlagRole, s: number, gate: boolean, firm: FirmDutyContext = NO_FIRM): number {
+export function strengthSplit(role: ProfileFlagRole, s: number, gate: number | boolean, firm: FirmDutyContext = NO_FIRM): number {
+  // rf-2026.21: from half the first level (1% / 2.5%), not a step at it.
   let x = role === 'authority'
-    ? ramp(s, [[0.02, 1], [0.08, 2], [0.20, 3]])
-    : ramp(s, [[0.05, 1], [0.20, 2], [0.50, 3]]);
+    ? ramp(s, [[0.01, 0], [0.02, 1], [0.08, 2], [0.20, 3]])
+    : ramp(s, [[0.025, 0], [0.05, 1], [0.20, 2], [0.50, 3]]);
   if (role === 'supplier' && x > 0) x = firmDuty(x, firm);
-  return gate ? x : Math.min(x, 1);
+  return capped(x, gate);
 }
 
 /**
@@ -171,11 +193,12 @@ export function splitGroupWeight(g: {
  * national ratio of the same type and ceiling era. θ = (o + 1) / (e + 1);
  * x = log2 θ from θ = 2 (twice the expected count), with at least 3 such DAs.
  */
-export function strengthRound(o: number, e: number, gate: boolean): number {
+export function strengthRound(o: number, e: number, gate: number | boolean): number {
   const theta = (o + 1) / (Math.max(0, e) + 1);
-  if (o < 3 || theta < 2) return 0;
-  const x = Math.min(3, Math.log2(theta));
-  return gate ? x : Math.min(x, 1);
+  if (o < 3 || theta < 1.5) return 0;
+  // rf-2026.21: from 1.5 times the expected count to level 1 at twice, then log2 as before.
+  const x = theta < 2 ? 2 * (theta - 1.5) : Math.min(3, Math.log2(theta));
+  return capped(x, gate);
 }
 
 /**
@@ -193,9 +216,10 @@ export function strengthYearEnd(zs: number): number {
  * without that supplier's largest single DA (one big purchase is not a
  * relationship). 60% → 1, 75% → 2, 90% → 3.
  */
-export function strengthConcentration(t: number, gate: boolean): number {
-  const x = ramp(t, [[0.60, 1], [0.75, 2], [0.90, 3]]);
-  return gate ? x : Math.min(x, 1);
+export function strengthConcentration(t: number, gate: number | boolean): number {
+  // rf-2026.21: from 50%, level 1 at 60%.
+  const x = ramp(t, [[0.50, 0], [0.60, 1], [0.75, 2], [0.90, 3]]);
+  return capped(x, gate);
 }
 
 /**
@@ -205,12 +229,16 @@ export function strengthConcentration(t: number, gate: boolean): number {
  * to 1. A captive firm that also sells beyond its capacity (capacity ≥ 1 →
  * 2, ≥ 2 → 3) is a capture.
  */
-export function strengthDependence(f: number, rev: number, capacity: number, gate: boolean): number {
+export function strengthDependence(f: number, rev: number, capacity: number, gate: number | boolean): number {
   if (!(f >= 0.70)) return 0;
-  const base = f >= 0.85 ? ramp(Math.max(0, rev), [[0, 1], [0.20, 2], [0.50, 3]]) : ramp(f, [[0.70, 0.01], [0.85, 1]]);
-  const capture = f >= 0.85 ? (capacity >= 2 ? 3 : capacity >= 1 ? 2 : 0) : 0;
+  // rf-2026.21: by the firm's weight for the institution, 0.5 under 5% of its purchases, 1 at 5%, 2 at 20%, 3 at 50%;
+  // between 70% and 85% of the firm's sales that strength is reached gradually.
+  const weight = ramp(Math.max(0, rev), [[0, 0.5], [0.05, 1], [0.20, 2], [0.50, 3]]);
+  const base = f >= 0.85 ? weight : weight * ramp(f, [[0.70, 0.01], [0.85, 1]]);
+  // A capture (a captive firm selling beyond its capacity) climbs with the capacity: 0.5 → 0, 1 → 2, 2 → 3.
+  const capture = f >= 0.85 ? ramp(capacity, [[0.5, 0], [1, 2], [2, 3]]) : 0;
   const x = Math.max(base, capture);
-  return gate ? x : Math.min(x, 1);
+  return capped(x, gate);
 }
 
 /**
@@ -221,7 +249,8 @@ export function strengthDependence(f: number, rev: number, capacity: number, gat
  * employees and 500,000 lei of DAs is at least 1.
  */
 export function strengthCapacity(m: { ratio: number | null; implausible: boolean; young: boolean; zeroStaff: boolean }): number {
-  let x = m.implausible ? 1 : m.ratio == null ? 0 : ramp(m.ratio, [[1.5, 1], [3, 2], [10, 3]]);
+  // rf-2026.21: from sales equal to the turnover, level 1 at 1.5×.
+  let x = m.implausible ? 1 : m.ratio == null ? 0 : ramp(m.ratio, [[1, 0], [1.5, 1], [3, 2], [10, 3]]);
   if (x > 0 && m.young) x = Math.min(3, x + 0.5);
   if (m.zeroStaff) x = Math.max(x, 1);
   return x;
@@ -243,7 +272,10 @@ export function familyStrengths(role: ProfileFlagRole, x: Strengths): Record<Sco
     const xs = (PROFILE_FLAG_CODES[role] as readonly ProfileFlagCode[]).filter((c) => SCORE_FAMILY[c] === f).map((c) => x[c] ?? 0);
     out[f] = familyStrength(xs, SCORE_FAMILY_CAP[role][f]);
   }
-  if (out.avoid === 0 && out.relation === 0) out.capacity = Math.min(out.capacity, SCORE_CAPACITY_ALONE);
+  // Capacity alone counts at most 1.5; rf-2026.21: the cap rises with the other evidence and is gone once avoidance
+  // or a relationship reaches level 1, so a trace of another criterion does not lift it in one step.
+  const other = Math.max(out.avoid, out.relation);
+  if (other < 1) out.capacity = Math.min(out.capacity, SCORE_CAPACITY_ALONE + (3 - SCORE_CAPACITY_ALONE) * other);
   return out;
 }
 
