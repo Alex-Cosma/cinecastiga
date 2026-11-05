@@ -16,7 +16,7 @@ import {
 } from "@seap/db";
 import { sendAuthCode } from "./mail";
 import { localLoginTwoFactor } from "./local-auth";
-import { AUTH_IP_ADDRESS } from "./auth-hardening";
+import { AUTH_IP_ADDRESS, adminHttpDisabledPaths } from "./auth-hardening";
 
 /**
  * better-auth server instance. Accounts are admin-created only (signup
@@ -50,6 +50,8 @@ async function emailProofKey(userId: string, code: string, ctx: {
   return `seap-email-proof:${userId}:${createHmac("sha256", ctx.context.secret)
     .update(JSON.stringify([challenge, code])).digest("hex")}`;
 }
+
+const ADMIN_OPTIONS = { defaultRole: "watchdog", adminRoles: ["admin"] };
 
 const createAuth = () => betterAuth({
   appName: "cinecâștigă?",
@@ -116,11 +118,13 @@ const createAuth = () => betterAuth({
         },
       },
     })),
-    admin({ defaultRole: "watchdog", adminRoles: ["admin"] }),
+    admin(ADMIN_OPTIONS),
     nextCookies(),
   ],
   rateLimit: { enabled: true },
   advanced: { ipAddress: AUTH_IP_ADDRESS },
+  // HTTP only: the /admin server actions call auth.api.* directly (lib/auth-hardening.ts).
+  disabledPaths: adminHttpDisabledPaths(admin(ADMIN_OPTIONS)),
 });
 
 // Route discovery during a clean build must not initialize authentication with
