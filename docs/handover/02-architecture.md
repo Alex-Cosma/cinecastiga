@@ -113,6 +113,12 @@ Toate căile sunt relative la rădăcină.
 
 Pentru o cale redenumită folosește `rg --files`, nu presupune că această hartă înlocuiește codul.
 
+## Întăriri din auditul de cod (5 noiembrie 2026)
+
+Ramura `fix/audit-20261105`; fiecare punct are testul lui.
+
+- **Adresa vizitatorului în better-auth** (`lib/auth-hardening.ts`): limitele de cereri (autentificare, 2FA) și `ipAddress`-ul sesiunii citesc `X-Feedback-Client-IP`, pe care Caddy îl rescrie din `CF-Connecting-IP` (doar pentru intervalele Cloudflare). Înainte, `X-Forwarded-For` cu două hopuri nu dădea nicio adresă și toți vizitatorii împărțeau aceeași limită (3 încercări la 10 s pentru toată lumea). Fără antet (`next dev`, teste) better-auth folosește 127.0.0.1.
+
 ## Capturi și exporturi
 
 Captura se reconstruiește pe server din identitatea selecției; un browser nu poate inventa totalul, lista de membri sau sursele. Copiere SQL-to-SQL într-un snapshot repeatable-read, valori zecimale exacte, versiuni imuabile și acces verificat din nou la publicare. Selecțiile nominale foarte mari au limite explicite; nu se trunchiază în tăcere. Exportul live CSV și captura integrală au mecanisme/limite distincte.
