@@ -224,7 +224,7 @@ Aplicarea manuală locală a unei migrații aprobate poate folosi `DATABASE_URL=
 |---|---|
 | Relație/tabel inexistent | Ai restaurat structura completă? DSN-ul indică baza corectă? Nu aplica automat toate migrațiile peste schema deja importată fără istoric. |
 | Căutare fără rezultate | Meili rulează, cheia corespunde și indexarea s-a încheiat? |
-| OTP nu vine pe email | Local, cu SMTP_HOST gol, este în consola web. |
+| OTP nu vine pe email | Local, cu SMTP_HOST gol, este în consola web (`next dev` sau un preview cu `BETTER_AUTH_URL` loopback; altfel serverul de producție refuză trimiterea). |
 | Job document rămâne în coadă | Local descărcarea este dezactivată intenționat; lipsa worker-ului/colectarea paused sunt distincte. |
 | Admin nu estimează zile | Fără lot activ în copia publică sau fără eșantion reprezentativ; nu fabrica valori. |
 | Build eșuează la fonturi | Verifică accesul temporar la Google Fonts; nu modifica identitatea vizuală pentru un eșec de rețea. |
