@@ -27,11 +27,11 @@ export interface NavContext {
  * question builder itself is "Întreabă".
  */
 const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/harta", "/domenii", "/supra-prag", "/entitati", "/contracte", "/achizitii", "/anunturi"];
-/** The guide and the full methodology are one place: how to read the data. */
-const GUIDE_PREFIXES = ["/ghid", "/metodologie"];
+/** The guide is the methodology page (its "Pe scurt" lane) since 5 November 2026; /ghid redirects there. */
+const GUIDE_PREFIXES = ["/metodologie"];
 const under = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
 
-export const GUIDE_HREF = "/ghid";
+export const GUIDE_HREF = "/metodologie";
 /** The guide has one name everywhere it is linked (navigation, footer). */
 export const GUIDE_LABEL = "Ghid";
 

@@ -36,7 +36,6 @@ describe("main navigation", () => {
     expect(active("/intreabare")).toEqual([]);
     expect(active("/anchete/abc")).toEqual(["Anchete"]);
     expect(active("/urmariri")).toEqual(["Anchete"]);
-    expect(active("/ghid")).toEqual(["Ghid"]);
     expect(active("/metodologie")).toEqual(["Ghid"]);
     expect(active("/metodologie/excluderi")).toEqual(["Ghid"]);
     expect(active("/ghidaj")).toEqual([]);
@@ -48,7 +47,7 @@ describe("main navigation", () => {
   });
 
   it("names the guide the same way at every width", () => {
-    const guide = navItems(base).find(item => item.href === "/ghid");
+    const guide = navItems(base).find(item => item.href === "/metodologie");
     expect(guide?.label).toBe("Ghid");
     expect(guide).not.toHaveProperty("className");
   });

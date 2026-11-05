@@ -12,7 +12,7 @@ import { FLAG_META, FLAG_ORDER, flagLabel } from "./flags";
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const DIRS = ["app", "components", "lib"];
 /** The methodology keeps the long titles; flags.ts defines them; a search may still match them. */
-const ALLOWED = new Set(["app/metodologie/page.tsx", "lib/flags.ts", "app/semnale/SignalsExplorer.tsx"]);
+const ALLOWED = new Set(["app/metodologie/MethodologyStory.tsx", "lib/flags.ts", "app/semnale/SignalsExplorer.tsx"]);
 
 function sources(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

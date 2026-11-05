@@ -266,6 +266,8 @@ Peste plafon, ca și la conflicte între două grupuri aprobate (`Overlapping ap
 
 *Durata pe copia locală (5 noiembrie, date până la 25 septembrie).* `pnpm --filter ingestion flags` complet, fără erori; doar scorul (`applyProfileScores`) ~4 min.
 
+*Pe producție, 5 noiembrie 2026.* Primul deploy (`562820f`) s-a oprit la build-ul imaginii web: Next 16.4.2 verifică tipurile și într-un test care importă `apps/ingestion`, absent din `Dockerfile.web`; site-ul a rămas pe `f35209d`. Corectura `41ce63a` (`apps/web/tsconfig.build.json` fără teste, `typescript.tsconfigPath`) a trecut. Un `pnpm --filter web build` local nu dovedește imaginea; `docker build -f infra/prod/Dockerfile.web .` o dovedește, iar pe server `docker buildx history ls` / `logs <id>` arată eroarea unui build căzut. Rularea `--methodology-now` (acordul proprietarului): 14:52–17:45 UTC, `ready`. Verificările de mai jos, pe producție: doar `rf-2026.22` (172.420), 0 profiluri cu 1–9 puncte sau sub 10 achiziții directe, capacitatea 0 / 0, instituții 44 / 568 / 1.681 (maximum 82), firme 315 / 1.974 / 10.142 (maximum 85), `association` 2.081, `private_buyer` 712, `inhouse` 94; ELYTIS `private_buyer` cu 0, FGDB 40 și ACET 12 fără notă.
+
 *Verificare doar prin citire după rularea `full`* (cifrele copiei locale; producția are ~6 săptămâni de date în plus):
 - `select methodology_version, count(*) from core.flags group by 1` dă doar `rf-2026.22` (local 142.097);
 - `select count(*) from marts.entity_flags where (score between 1 and 9) or (n_das < 10 and score > 0)` dă 0;

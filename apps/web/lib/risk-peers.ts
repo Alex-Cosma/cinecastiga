@@ -27,7 +27,7 @@ export interface RiskPeerLine {
 }
 
 /** An OUAI by its name (organizația utilizatorilor de apă pentru irigații): its own group (owner decision S1). */
-const OUAI_NAME = String.raw`(irigat|utilizatorilor de apa|^o\.?u\.?a\.?i\M|^ouai)`;
+export const OUAI_NAME = String.raw`(irigat|utilizatorilor de apa|^o\.?u\.?a\.?i\M|^ouai)`;
 /** The fewest firms a main division needs to be a firm's group (M27); below it, no comparison. */
 export const FIRM_DOMAIN_MINIMUM = 100;
 
