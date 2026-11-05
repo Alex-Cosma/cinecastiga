@@ -118,6 +118,7 @@ Pentru o cale redenumită folosește `rg --files`, nu presupune că această har
 Ramura `fix/audit-20261105`; fiecare punct are testul lui.
 
 - **Adresa vizitatorului în better-auth** (`lib/auth-hardening.ts`): limitele de cereri (autentificare, 2FA) și `ipAddress`-ul sesiunii citesc `X-Feedback-Client-IP`, pe care Caddy îl rescrie din `CF-Connecting-IP` (doar pentru intervalele Cloudflare). Înainte, `X-Forwarded-For` cu două hopuri nu dădea nicio adresă și toți vizitatorii împărțeau aceeași limită (3 încercări la 10 s pentru toată lumea). Fără antet (`next dev`, teste) better-auth folosește 127.0.0.1.
+- **Rutele HTTP ale pluginului admin sunt închise** (`disabledPaths`, aceeași filă): toate cele 15 `/api/auth/admin/*` răspund 404 (impersonare, creare de cont, rol, ștergere, parolă, ban, sesiuni, listă). Conturile se gestionează doar din acțiunile de server din `/admin`, care cheamă `auth.api.*` direct; better-auth verifică `disabledPaths` doar în router. Lista vine din plugin, cu un minim fix testat; o versiune nouă a pluginului care adaugă rute le închide automat, iar testul cere actualizarea listei.
 
 ## Capturi și exporturi
 
