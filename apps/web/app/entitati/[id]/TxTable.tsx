@@ -6,7 +6,7 @@ import { ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagRecordLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
-import { useTip } from "../../intreaba/blocks";
+import { useTip } from "../../intreaba/use-tip";
 import type { DaTx } from "@/lib/marts";
 import { txColumns } from "@/lib/entity-tx-columns";
 import { filterParams } from "@/lib/table-filters/codec";
