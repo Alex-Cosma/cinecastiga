@@ -9,11 +9,11 @@ import { riskBand, type RiskBand } from "./risk-score";
 /**
  * The national figures of /metodologie, read from the current scores (marts.entity_flags) with the site's own
  * groups, so the page says what the entity pages and Întreabă say after every run: the bands of all profiles with
- * at least 10 direct acquisitions, the comparison group of the made-up Comuna Exemplu (9.000 inhabitants, score 55,
+ * at least 10 direct acquisitions, the comparison group of the made-up Comuna Exemplara (9.000 inhabitants, score 55,
  * among the town halls of half to double its population, as lib/risk-peers.ts) and the scores by kind of institution.
  */
 
-/** Comuna Exemplu, the page's made-up commune. */
+/** Comuna Exemplara, the page's made-up commune. */
 export const EXAMPLE_TOWN = { population: 9000, score: 55 } as const;
 
 export interface BandCounts {
