@@ -1,6 +1,7 @@
 import { onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import { aliasQueries, queryTokens } from "../ask/entity-alias";
 import { personPatterns } from "./text";
+import { alnumCount, likeContains } from "../sql-like";
 
 /**
  * The vocabulary lookups behind /api/suggest (the builder's typeahead), shared
@@ -107,7 +108,7 @@ export function suggestUat(sql: DbSql, q: string, county: string): Promise<UatRo
   return sql`
     select u.siruta, u.name, u.tip, u.county, position(${q} in lower(unaccent(u.name))) pos
     from reference.uat u
-    where lower(unaccent(u.name)) like ${`%${q}%`}
+    where lower(unaccent(u.name)) like ${likeContains(q)} escape '\\'
       and (${county} = '' or u.county = ${county})
     order by pos, u.siruta
     limit 60
@@ -116,8 +117,8 @@ export function suggestUat(sql: DbSql, q: string, county: string): Promise<UatRo
 
 /** Buying authorities: institutional aliases ("primaria X") + all-tokens fallback. */
 export function suggestAuthorities(sql: DbSql, q: string): Promise<EntityRow[]> {
-  const authPats = aliasQueries(q).map((a) => `%${a}%`);
-  const toks = queryTokens(q).map((t) => `%${t}%`);
+  const authPats = aliasQueries(q).map(likeContains);
+  const toks = queryTokens(q).map(likeContains);
   const tokFrag =
     toks.length > 1
       ? sql`or lower(unaccent(ep.name_display)) like all(${textArray(sql, toks)}::text[])`
@@ -138,7 +139,7 @@ export function suggestAuthorities(sql: DbSql, q: string): Promise<EntityRow[]> 
 
 /** Suppliers whose name contains the query, or every word of it. */
 export function suggestSuppliers(sql: DbSql, q: string): Promise<EntityRow[]> {
-  const toks = queryTokens(q).map((t) => `%${t}%`);
+  const toks = queryTokens(q).map(likeContains);
   const tokFrag =
     toks.length > 1
       ? sql`or lower(unaccent(ep.name_display)) like all(${textArray(sql, toks)}::text[])`
@@ -149,7 +150,7 @@ export function suggestSuppliers(sql: DbSql, q: string): Promise<EntityRow[]> {
              ep.entity_id, ep.name_display, ep.county, ep.total_ron_full
       from marts.entity_profile ep
       where ep.role = 'supplier'
-        and (lower(unaccent(ep.name_display)) like ${`%${q}%`} ${tokFrag})
+        and (lower(unaccent(ep.name_display)) like ${likeContains(q)} escape '\\' ${tokFrag})
       order by lower(unaccent(ep.name_display)), ep.total_ron_full desc nulls last
     ) d
     order by d.total_ron_full desc nulls last
@@ -160,17 +161,18 @@ export function suggestSuppliers(sql: DbSql, q: string): Promise<EntityRow[]> {
 /**
  * ONRC administrators (solid identities only: name + a birth date that may
  * identify a person, so no placeholder or implausible one, audit F37). ilike
- * rides the trigram GIN index; needs 4+ chars to stay cheap on 3.7M rows.
+ * rides the trigram GIN index; needs 4+ chars, three of them letters or digits, to stay cheap on 3.7M rows (`%` and
+ * `_` are escaped, audit S2F1).
  */
 export function suggestPersons(sql: DbSql, q: string): Promise<PersonRow[]> {
-  if (q.length < 4) return Promise.resolve([]);
+  if (q.length < 4 || alnumCount(q) < 3) return Promise.resolve([]);
   return sql`
     select r.person_key, max(r.person_name) nm,
            max(extract(year from r.birth_date))::int by,
            max(extract(year from r.snapshot_date))::int sy,
            max(r.birth_locality) bl, count(distinct r.cui) nf
     from reference.company_reps r
-    where ${onrcIdentityBirthDate(sql, "r")} and r.person_name ilike ${`%${q}%`}
+    where ${onrcIdentityBirthDate(sql, "r")} and r.person_name ilike ${likeContains(q)} escape '\\'
     group by r.person_key
     order by nf desc
     limit 4
@@ -188,8 +190,8 @@ export interface CandidateRow { entity_id: string; name_display: string | null; 
  * single identity from the first of many.
  */
 export function entityCandidates(sql: DbSql, role: "authority" | "supplier", q: string, limit = 25): Promise<CandidateRow[]> {
-  const pats = (role === "authority" ? aliasQueries(q) : [q]).map((a) => `%${a}%`);
-  const toks = queryTokens(q).map((t) => `%${t}%`);
+  const pats = (role === "authority" ? aliasQueries(q) : [q]).map(likeContains);
+  const toks = queryTokens(q).map(likeContains);
   const tokFrag =
     toks.length > 1
       ? sql`or lower(unaccent(ep.name_display)) like all(${textArray(sql, toks)}::text[])`
