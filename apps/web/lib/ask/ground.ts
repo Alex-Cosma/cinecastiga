@@ -1,6 +1,7 @@
 import { canonicalPersonKey, cuiCorroborated, onrcIdentityBirthDate, type DbSql } from "@seap/db";
 import type { AskFilters } from "./spec";
 import { aliasQueries, queryTokens } from "./entity-alias";
+import { likeContains } from "../sql-like";
 import { readLocalAuthorityIdentities, sectorUnit } from "../peer-population";
 import { onrcBirthYear } from "../format";
 import { readHolderPractices } from "../individual-holder";
@@ -300,7 +301,7 @@ async function groundCpv(sql: DbSql, term: string): Promise<CpvGrounding> {
   const syn = exact.some((r) => !r.exclude) ? exact : pickContainedSynonyms(folded, (await sql`
     select term, cpv_prefix, note, coalesce((to_jsonb(s) ->> 'exclude')::boolean, false) as exclude
     from reference.cpv_synonym s
-    where ${folded} like '%' || term || '%' or term like '%' || ${folded} || '%'
+    where ${folded} like '%' || term || '%' or term like ${likeContains(folded)} escape '\\'
   `) as unknown as SynonymRow[]);
   const { prefixes, excludePrefixes, notes } = splitSynonymRows(syn);
   if (prefixes.length > 0) {
@@ -361,11 +362,11 @@ async function groundEntity(
   const folded = fold(query);
   // "primăria Buzău" must find "MUNICIPIUL BUZAU": try every institutional
   // alias shape, plus all-tokens-anywhere (word order / parenthetical names).
-  const pats = aliasQueries(folded).map((a) => `%${a}%`);
+  const pats = aliasQueries(folded).map(likeContains);
   const toks = queryTokens(folded);
   const tokFrag =
     toks.length > 1
-      ? sql`or lower(unaccent(name_display)) like all(${sql.array(toks.map((t) => `%${t}%`))}::text[])`
+      ? sql`or lower(unaccent(name_display)) like all(${sql.array(toks.map(likeContains))}::text[])`
       : sql``;
   const rows = (await sql`
     select entity_id, name_display, county, total_ron_full
@@ -374,7 +375,7 @@ async function groundEntity(
       and (lower(unaccent(name_display)) like any(${sql.array(pats)}::text[]) ${tokFrag})
     order by
       (lower(unaccent(name_display)) = ${folded}) desc,
-      (lower(unaccent(name_display)) like ${"%" + folded + "%"}) desc,
+      (lower(unaccent(name_display)) like ${likeContains(folded)} escape '\\') desc,
       total_ron_full desc nulls last
     limit 4
   `) as unknown as {
@@ -453,11 +454,11 @@ async function groundAdmin(
              max(extract(year from r.snapshot_date))::int sy,
              max(r.birth_locality) bl,
              count(distinct r.cui) nf,
-             max((lower(unaccent(r.person_name)) like ${"%" + folded + "%"})::int) has_sub,
+             max((lower(unaccent(r.person_name)) like ${likeContains(folded)} escape '\\')::int) has_sub,
              max(similarity(lower(unaccent(r.person_name)), ${folded})) sim
       from reference.company_reps r
       where ${onrcIdentityBirthDate(sql, "r")}
-        and (lower(unaccent(r.person_name)) like ${"%" + folded + "%"}
+        and (lower(unaccent(r.person_name)) like ${likeContains(folded)} escape '\\'
              or lower(unaccent(r.person_name)) % ${folded})
       group by r.person_key
       order by has_sub desc, sim desc, nf desc
