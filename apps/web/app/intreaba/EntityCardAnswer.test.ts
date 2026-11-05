@@ -112,7 +112,7 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
   it("names the first with its score and band, lists five with their place, score pill and patterns, and the value at the right", () => {
     const markup = render({ card: card({ role: "authority", score: 71, nFlags: 3 }), ranking: RANKING }, riskSpec, true);
     const words = text(markup);
-    expect(words).toContain("Primul: SPITALUL ORASENESC AGNITA, 71 din 100 · puternic.");
+    expect(words).toContain("Primul: SPITALUL ORASENESC AGNITA, 71 din 100 · pronunțat.");
     // The score is no probability: its (?) beside the headline.
     expect(markup).toContain("Riscul, din 100");
     expect(words).not.toContain("la egalitate");
@@ -120,7 +120,7 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     expect(words).not.toContain("În ordinea valorii");
     expect(markup.match(/class="qb-arow ec-rrow"/g)).toHaveLength(5);
     // Three patterns fit in their place, no „+1” (owner, 2 November 2026); the name opens the profile's page.
-    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie directe, deși trec de plafon 71 din 100 puternic 190 mil. lei");
+    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie declarate directe, peste plafon 71 din 100 pronunțat 190 mil. lei");
     expect(markup).toMatch(/class="qb-arow-name">1\. <a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
     expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe adunate, trec de plafon 60 din 100 moderat 180 mil. lei");
     // Tied rows share their place: 2, 2, 2, then 5.
@@ -286,7 +286,7 @@ describe("the shown CSV", () => {
     const lines = answerCsv({ block: "entity_card", card: card({ role: "authority" }), ranking }, { ...riskSpec, filters: {} } as never, "Cine").text.split("\r\n").filter(Boolean);
     expect(lines[0]).toBe("﻿loc,nume,judet,valoare_lei,achizitii,risc_din_100,banda,tipare");
     expect(lines.slice(1)).toEqual([
-      '1,"Spital 1","Cluj",190000000,1000,71,"puternic","da_split|da_year_end"',
+      '1,"Spital 1","Cluj",190000000,1000,71,"pronunțat","da_split|da_year_end"',
       '2,"Spital 2","Cluj",180000000,2000,60,"moderat","da_split"',
       '2,"Spital 3","Cluj",170000000,3000,60,"moderat","da_split"',
       '4,"Spital 4","București",160000000,4000,25,"slab","da_split"',

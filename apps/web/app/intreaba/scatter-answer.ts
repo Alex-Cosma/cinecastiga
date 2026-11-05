@@ -84,7 +84,7 @@ export function axisTicks(x0: number, x1: number, compact: boolean): { lg: numbe
 export const RISK_GRID: readonly number[] = [20, RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic];
 /** The labels beside the risk axis, out of 100. */
 export const RISK_AXIS: readonly number[] = [0, ...RISK_GRID, 100];
-/** The tinted zones of the bands: slab 1–39, moderat 40–67, puternic 68–100 (0 has none; rf-2026.20 scores under 20 too). */
+/** The tinted zones of the bands: slab 10–39, moderat 40–67, puternic 68–100 (under 10 none; rf-2026.22, S9b). */
 export const RISK_ZONES: readonly { from: number; to: number; band: "slab" | "moderat" | "puternic" }[] = [
   { from: RISK_BAND_MIN.slab, to: RISK_BAND_MIN.moderat, band: "slab" },
   { from: RISK_BAND_MIN.moderat, to: RISK_BAND_MIN.puternic, band: "moderat" },
@@ -357,9 +357,9 @@ export function listHeadTip(data: ScatterData): string {
   return `${order} În listă intră cine are cel puțin ${countWords(SCATTER_LIST_MIN_DAS, "achiziție directă", "achiziții directe")}.${only > 0 ? ` ${countWords(only, "profil e", "profiluri sunt")} doar în nor (${SCATTER_CLOUD_MIN_DAS}–${SCATTER_LIST_MIN_DAS - 1} achiziții).` : ""}`;
 }
 
-/** The band's word beside a score: "puternic", "moderat", "slab", or "niciun tipar găsit" at 0. */
+/** The band's word beside a score: "puternic", "moderat", "slab", or "fără semnal în scor" at 0. */
 export const scoreBandWord = (score: number): string => RISK_BAND_WORD[riskBand(score)];
-/** A score in words, for the chart's tip and the card: "73 din 100 · risc puternic", "0 din 100 · niciun tipar găsit". */
+/** A score in words, for the chart's tip and the card: "73 din 100 · risc puternic", "0 din 100 · fără semnal în scor". */
 export function scoreWords(score: number): string {
   const band = riskBand(score);
   return `${riskScoreText(score)} · ${band === "none" ? RISK_BAND_WORD.none : `risc ${RISK_BAND_WORD[band]}`}`;
@@ -451,7 +451,7 @@ export function signalsPageLink(data: ScatterData, spec: AskSpec): { href: strin
   return { href: `/semnale?${q.toString()}`, label: profiles ? "Toată lista pe /semnale" : "Aparițiile semnalului pe /semnale" };
 }
 
-/** What a screen reader hears when the strip's answer arrives: "46 cu Chiar sub plafon, după risc". */
+/** What a screen reader hears when the strip's answer arrives: "46 cu Imediat sub plafon, după risc". */
 export function stripStatusWords(data: ScatterData): string {
   const total = data.chosen ? data.chosen.nList : data.group.nList;
   return `${formatInt(total)} ${data.flag ? `cu ${scatterFlagLabel(data.flag)}` : "în listă"}, după ${rankWords(data)[data.rankBy]}`;

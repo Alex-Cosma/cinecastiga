@@ -65,7 +65,9 @@ export function signalSentence(code: RiskCriterion, part: ScorePart, role: RiskR
       const who = role === "authority"
         ? "aceeași firmă a primit în același an mai multe achiziții directe pentru același fel de lucru"
         : "aceeași instituție a cumpărat de la firmă, în același an, mai multe achiziții directe pentru același fel de lucru";
-      return `${groups === 1 ? "O dată" : `De ${formatInt(groups)} ori`}, ${who}. Luate pe rând sunt sub plafon; adunate, îl depășesc. Împreună: ${pct(share)} din bani.`;
+      // rf-2026.22 (S7): the lei of the counted groups, where the build stores them.
+      const lei = part.value != null ? `${formatRon(n(part.value))}, ` : "";
+      return `${groups === 1 ? "O dată" : `De ${formatInt(groups)} ori`}, ${who}. Luate pe rând sunt sub plafon; adunate, îl depășesc. Împreună: ${lei}${pct(share)} din bani.`;
     }
     case "da_round": {
       const found = n(part.n);
@@ -77,7 +79,8 @@ export function signalSentence(code: RiskCriterion, part: ScorePart, role: RiskR
     case "da_above_ceiling": {
       const found = n(part.n);
       if (!found) return null;
-      return `${countWords(found, "achiziție directă are", "achiziții directe au")} valoare cu peste 10% mai mare decât plafonul. Împreună: ${formatRon(n(part.value))}, ${pct(n(part.share))} din bani.`;
+      // The rule (rf-2026.20): the estimate above the ceiling, or the final sum above it even with VAT.
+      return `${countWords(found, "achiziție directă a trecut", "achiziții directe au trecut")} de plafon: cu valoarea estimată sau cu suma finală, chiar și cu TVA. Împreună: ${formatRon(n(part.value))}, ${pct(n(part.share))} din bani.`;
     }
     case "da_year_end": {
       const years = Array.isArray(part.years) ? (part.years as { y: number; pct: number }[]) : [];
@@ -88,7 +91,7 @@ export function signalSentence(code: RiskCriterion, part: ScorePart, role: RiskR
       return part.share == null ? null : `Un singur furnizor a primit ${pct(n(part.share))} din valoarea achizițiilor directe, chiar fără achiziția lui cea mai mare.`;
     case "da_dependence":
       return part.share == null ? null
-        : `${pct(n(part.share))} din ce vinde firma prin achiziții directe vine de la o singură instituție; pentru ea, firma înseamnă ${pct(n(part.partnerShare))} din achizițiile directe.`
+        : `${pct(n(part.share))} din ce vinde firma prin achiziții directe${part.value != null ? `, ${formatRon(n(part.value))},` : ""} vine de la o singură instituție; pentru ea, firma înseamnă ${pct(n(part.partnerShare))} din achizițiile directe.`
           + (part.capture === true ? " Firma vinde și peste capacitatea ei." : "");
     default:
       return null;

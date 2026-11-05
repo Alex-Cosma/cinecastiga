@@ -184,7 +184,7 @@ describe("the criteria of a group (rf-2026.18)", () => {
     expect(CRITERIA).toEqual(RISK_CRITERIA);
     expect(CRITERIA.authority).toEqual(["da_split", "da_round", "da_year_end", "da_concentration", "da_above_ceiling"]);
     expect(CRITERIA.supplier).toEqual(["da_split", "da_round", "da_dependence", "da_above_ceiling", "da_capacity"]);
-    expect(CRITERION_LABEL.da_capacity).toBe("Peste capacitate");
+    expect(CRITERION_LABEL.da_capacity).toBe("Peste cifra de afaceri");
     expect(CRITERION_LABEL.da_above_ceiling).toBe(flagLabel("da_above_ceiling"));
     expect(CRITERION_RULE.da_above_ceiling).toBeTruthy();
     // A code retired since (an answer stored before) has no label here: its renderer shows the code.

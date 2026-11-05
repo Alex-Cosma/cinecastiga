@@ -260,7 +260,7 @@ function ScoreStrip({ d, members, noun, name }: { d: DistributionDataV3; members
       <span><i className="dist-dot is-focal" />{name}</span>
       <span><i className="dist-dot risk-slab" />slab</span>
       <span><i className="dist-dot risk-mid" />moderat</span>
-      <span><i className="dist-dot risk-high" />puternic</span>
+      <span><i className="dist-dot risk-high" />pronunțat</span>
       <span><i className="dist-dot risk-none" />fără tipar</span>
     </p>
   </section>;

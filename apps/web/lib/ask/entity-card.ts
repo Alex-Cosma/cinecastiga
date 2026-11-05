@@ -97,13 +97,27 @@ interface RankingRow {
  * first RISK_LISTED of those with a score in riskRankingOrder; when nobody has one, the first by value (their sources
  * are what „Nu are semnale în profil” offers). `county` is the profile row's own, a firm's seat. Null without a profile.
  */
-export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fragment }): Promise<RiskRanking | null> {
+/**
+ * A profile with a record in the last 24 months (rf-2026.22, owner decision S8): the risk ranking lists only these by
+ * default; marts.entity_profile.last_activity is the latest dated record of the role, direct or by procedure.
+ */
+export const RISK_ACTIVE_MONTHS = 24;
+export const riskActive = (sql: DbSql, alias: string): Fragment => sql`exists (
+  select 1 from marts.entity_profile ep where ep.entity_id = ${sql(alias)}.entity_id and ep.role = ${sql(alias)}.role
+    and ep.last_activity >= to_char(current_date - make_interval(months => ${RISK_ACTIVE_MONTHS}), 'YYYY-MM-DD'))`;
+
+export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fragment; includeHistoric?: boolean }): Promise<RiskRanking | null> {
+  // rf-2026.22 (S8): the historic profiles with a score, left out unless asked for.
+  const historic = o.includeHistoric ? null : Number(((await sql`
+    select count(*)::int n from marts.entity_flags ef where ${o.where} and coalesce(ef.score, 0) > 0 and not ${riskActive(sql, "ef")}
+  `) as unknown as { n: number }[])[0]?.n ?? 0);
+  const where = o.includeHistoric ? o.where : sql`${o.where} and ${riskActive(sql, "ef")}`;
   const rows = (await sql`
     with p as materialized (
       select ef.entity_id, ef.name_display, ${o.county} county, ef.n_das, ef.total_ron,
              coalesce(ef.score, 0) score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
       from marts.entity_flags ef
-      where ${o.where}
+      where ${where}
     ), tp as (
       select count(*) pool, count(*) filter (where score > 0) scored, max(score) top from p
     )
@@ -124,6 +138,7 @@ export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fr
     scored: Number(head.scored),
     top: Number(head.top),
     topCount: Number(head.top_count),
+    ...(historic !== null ? { historic } : {}),
     rows: rows.filter((row) => row.entity_id !== null).map((row) => ({
       entityId: String(row.entity_id),
       name: row.name_display ?? "?",

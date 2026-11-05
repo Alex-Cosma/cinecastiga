@@ -1,3 +1,4 @@
+import { BUYER_REGIME_OVERRIDES } from "@seap/db";
 import { DA_CEILING_ERAS } from "@seap/domain";
 import DataCoverage from "@/components/DataCoverage";
 import { AWARD_COUNTING_CAVEAT, FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
@@ -24,7 +25,7 @@ function scoreRoles(code: string): string | null {
 }
 
 /**
- * The strength levels of each pattern of the risk score (rf-2026.21,
+ * The strength levels of each pattern of the risk score (rf-2026.22,
  * packages/db/src/profile-flags.ts): level 1 is the pattern itself (its rule on
  * the card below); between levels the strength climbs in proportion, and from
  * a lower start (the "de la" of each row) up to level 1, never in one step.
@@ -32,18 +33,18 @@ function scoreRoles(code: string): string | null {
 const LEVELS: { code: RiskCriterion; l1: string; l2: string; l3: string }[] = [
   { code: "da_above_ceiling", l1: "2 cazuri și 0,5% din valoare, de la 0,25% (firme: 2%, de la 0)", l2: "3 cazuri și 3% (firme: 12%)", l3: "5 cazuri și 10% (firme: 40%)" },
   { code: "da_split", l1: "grupurile cântăresc 2% din valoare, de la 1% (firme: 5%, de la 2,5%)", l2: "8% (firme: 20%)", l3: "20% (firme: 50%)" },
-  { code: "da_round", l1: "de 2 ori mai multe decât media națională, de la 1,5 ori (minimum 3)", l2: "de 4 ori", l3: "de 8 ori" },
+  { code: "da_round", l1: "de 2 ori mai multe decât media națională, de la 1,5 ori (minimum 3; cel puțin 0,5 așteptate)", l2: "de 4 ori, cu cel puțin 5", l3: "de 8 ori, cu cel puțin 8" },
   { code: "da_year_end", l1: "decembrie departe de instituțiile de același tip", l2: "cel mult 1,25", l3: "—" },
   { code: "da_concentration", l1: "60% din valoare la un furnizor, fără cea mai mare achiziție a lui, de la 50%", l2: "75%", l3: "90%" },
-  { code: "da_dependence", l1: "85% din vânzări la o instituție și 5% din achizițiile ei directe (sub 5%: 0,5; 70–85% din vânzări: treptat)", l2: "20% din achizițiile ei, sau captivă și peste capacitate", l3: "50%, sau captivă și de 3× peste capacitate" },
-  { code: "da_capacity", l1: "achiziții directe de 1,5× cifra de afaceri, de la 1×", l2: "3×", l3: "10×" },
+  { code: "da_dependence", l1: "85% din vânzări la o instituție și 5% din achizițiile ei directe (sub 5%: de la 0,5; 70–85% din vânzări: treptat)", l2: "20% din achizițiile ei", l3: "50%" },
+  { code: "da_capacity", l1: "achiziții directe de 1,5× cifra de afaceri din bilanțul aceluiași an, de la 1×", l2: "3×", l3: "10×" },
 ];
 
 const BANDS: { band: keyof typeof RISK_BAND_CLASS; range: string; word: string }[] = [
-  { band: "none", range: "0", word: "niciun tipar găsit" },
-  { band: "slab", range: "1–39", word: "slab" },
+  { band: "none", range: "0–9", word: "fără semnal în scor" },
+  { band: "slab", range: "10–39", word: "slab" },
   { band: "moderat", range: "40–67", word: "moderat" },
-  { band: "puternic", range: "68–100", word: "puternic" },
+  { band: "puternic", range: "68–100", word: "pronunțat" },
 ];
 
 export default function MetodologiePage() {
@@ -72,7 +73,7 @@ export default function MetodologiePage() {
               <tbody>{DA_CEILING_ERAS.map((era) => <tr key={era.validFrom}><td>{coverageDate(era.validFrom)}</td><td className="num">{formatInt(era.goodsServices)} lei</td><td className="num">{formatInt(era.works)} lei</td></tr>)}</tbody>
             </table>
             <ul>
-              <li>Tipul declarat are prioritate; dacă lipsește, folosim clasificarea CPV. Clasificările necunoscute și datele
+              <li>Tipul declarat are prioritate, dar lipsește aproape mereu; atunci folosim clasificarea CPV. Clasificările necunoscute și datele
                 anterioare datei de 26.05.2016 sunt excluse din comparația cu pragul.</li>
               <li>Publicarea aproximează inițierea; în lipsa ei folosim finalizarea. Aceste aproximări sunt declarate în dovezi.</li>
               <li>Legea privește necesarul estimat; valorile de închidere sunt un reper analitic.</li>
@@ -82,7 +83,7 @@ export default function MetodologiePage() {
             <strong>Valori înregistrate, nu plăți confirmate.</strong> Totalurile obișnuite folosesc achiziții directe acceptate,
             cu valoare pozitivă de cel mult 2 milioane lei, plus contracte prin proceduri din selecția descrisă mai jos.
             O ofertă acceptată sau un contract semnat nu dovedește că banii au fost plătiți. Ofertele refuzate sau expirate
-            nu intră în aceste totaluri.
+            nu intră în aceste totaluri. Sumele sunt lei nominali, adunați din ani cu plafoane și prețuri diferite.
           </li>
           <li>
             <strong>Excluderi explicite.</strong> Limita de 2 milioane lei pentru o achiziție directă este un filtru analitic de plauzibilitate,
@@ -107,12 +108,16 @@ export default function MetodologiePage() {
           <li><strong>Firme, {RISK_CRITERIA.supplier.length} tipare:</strong>{" "}
             {RISK_CRITERIA.supplier.map((c, i) => <span key={c}>{i ? ", " : ""}<a href={`#${c}`}>{flagLabel(c)}</a></span>)}.</li>
           <li>Semnalele din proceduri, bilanțuri și ONRC nu intră în scor; pagina entității le arată separat.</li>
+          <li><strong>De la 10 achiziții directe.</strong> Sub 10, tiparele găsite se văd pe pagină, dar nu fac un scor. Scorul privește doar
+            achizițiile directe; pagina entității spune ce parte din bani sunt ele.</li>
         </ul>
 
         <h3 id="niveluri">Cât de pronunțat e un tipar</h3>
         <p>Fiecare tipar găsit are o tărie de la 1 la 3, măsurată față de mărimea profilului; între praguri crește proporțional.{" "}
-          <strong>Peste nivelul 1 trebuie cel puțin 20 de achiziții directe, sau 5 achiziții cu cel puțin 1 milion lei</strong>{" "}
-          (nu se aplică la decembrie și la capacitate).</p>
+          <strong>Peste nivelul 1 contează și câte dovezi sunt.</strong> La tiparele despre sume („Declarate directe, peste plafon”, „Adunate, trec
+          de plafon”, capacitatea), limita urcă cu numărul de achiziții directe (1 la 10, 3 la 30) sau, de la 5 achiziții, cu valoarea lor
+          (1 la 0,5 milioane lei, 2 la 1 milion, 3 la 2 milioane), cea mai mare dintre ele. La celelalte („Multe sume imediat sub plafon”, „Un singur
+          client public mare”, „O firmă primește mare parte din bani”) contează doar numărul. Decembrie are limita lui.</p>
         <table className="rank method-levels">
           <thead><tr><th scope="col">Tipar</th><th scope="col">Nivelul 1</th><th scope="col">Nivelul 2</th><th scope="col">Nivelul 3</th></tr></thead>
           <tbody>{LEVELS.map((l) => <tr key={l.code}>
@@ -121,47 +126,68 @@ export default function MetodologiePage() {
           </tr>)}</tbody>
         </table>
         <ul className="prose note">
-          <li><strong>Directe, deși trec de plafon:</strong> cazuri = cumpărător × lună; contează scara mai mică dintre număr și valoare. La o instituție,
-            2 cazuri dau cel puțin nivelul 0,5.</li>
+          <li><strong>Declarate directe, peste plafon:</strong> contează doar ce trece de plafon cu valoarea estimată sau, cu suma finală, chiar și
+            cu TVA (21%). Cazuri = cumpărător × lună; contează scara mai mică dintre număr și valoare. La o instituție, 2 cazuri dau cel puțin
+            nivelul 0,5.</li>
           <li><strong>Adunate, trec de plafon:</strong> un grup cântărește după cât trece suma lui de plafon (nimic la 1,2×, întreg de la 2×) și
-            după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează.</li>
-          <li><strong>Prea des chiar sub plafon:</strong> achizițiile la 96–100% din plafon, față de câte ar fi după media națională de același tip
-            și aceleași plafoane (tăria = log₂ al raportului).</li>
-          <li><strong>Decembrie:</strong> cât de departe sunt cele mai mari două decembrii de mediana instituțiilor de același tip;
-            cel mult 1,25, deci singur rămâne „slab”.</li>
-          <li><strong>Capacitate:</strong> o cifră de afaceri sub 10.000 lei sau 0 angajați la 500.000 lei dau nivelul 1; +0,5 pentru o firmă
-            în primii doi ani de bilanț.</li>
-          <li><strong>Pe o firmă</strong>, „Directe, deși trec de plafon” și „Adunate, trec de plafon” țin de obligația cumpărătorului: cântăresc cel mult 1,5
-            când sunt împrăștiate; limita urcă treptat de la 60% la primele 1–2 instituții și dispare la 80%. La utilități și furnizorii de masă contează doar partea cu primele
-            două instituții.</li>
-          <li><strong>Cumpărătorii:</strong> plafonul se verifică la instituțiile publice și la operatorii sectoriali publici. La companiile
-            private contează doar „Prea des chiar sub plafon” și decembrie; la asociații, „Directe, deși trec de plafon” nu se verifică. Firma unei instituții
-            (in-house) nu primește scor.</li>
+            după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează. Nu contează nici materialele medicale (CPV 33), nici grupurile
+            cu cel puțin 12 comenzi sub 10% din plafon în medie: apar ca „comenzi repetate, fără acord-cadru”, fără puncte. Legea cere ca
+            nevoia unui an să fie cumulată, dar asta e o problemă de planificare, nu o pistă de fragmentare.</li>
+          <li><strong>Multe sume imediat sub plafon:</strong> achizițiile la 96–100% din plafon, față de câte ar fi după media națională de același tip
+            și aceleași plafoane (tăria = log₂ al raportului; cel puțin 0,5 așteptate). Nivelul 2 cere cel puțin 5 astfel de achiziții, nivelul 3 cel puțin 8.</li>
+          <li><strong>Decembrie:</strong> un an contează când partea lui decembrie trece de cea a 95% din instituțiile de același tip și de 35%.
+            Tăria: cât de departe sunt cele mai mari două decembrii de mediana lor; cel mult 1,25, deci singur rămâne „slab”.</li>
+          <li><strong>O firmă primește mare parte din bani:</strong> tiparul ajunge la nivelul 3, dar familia relației rămâne cel mult 2 la o instituție.</li>
+          <li><strong>Capacitate:</strong> doar cu bilanțul aceluiași an; un an fără bilanț, cum e anul în curs, nu se evaluează. O cifră de
+            afaceri sub 10.000 lei sau 0 angajați la 500.000 lei dau nivelul 1; +0,5 pentru o firmă în primii doi ani de la înregistrarea la ONRC.</li>
+          <li><strong>Pe o firmă</strong>, „Declarate directe, peste plafon”, „Adunate, trec de plafon” și „Multe sume imediat sub plafon” țin de obligația
+            cumpărătorului: împreună cântăresc cel mult 1,5 când sunt împrăștiate; limita urcă treptat de la 60% din aceste achiziții la primele două
+            instituții și dispare la 80%. La utilități și furnizorii de masă contează doar partea cu primele două instituții.</li>
+          <li><strong>Cumpărătorii:</strong> plafonul se verifică la instituțiile publice, la asociațiile de dezvoltare intercomunitară (ADI)
+            și la operatorii sectoriali publici. Cumpărătorii privați nu primesc scor: tiparele lor apar doar ca observații. La asociații,
+            inclusiv organizațiile utilizatorilor de apă pentru irigații, „Declarate directe, peste plafon” nu se verifică, iar „Adunate, trec de
+            plafon” cântărește pe jumătate. Firma unei instituții (in-house) nu primește scor. Regimul se citește din forma juridică și din nume,
+            cu excepțiile verificate de mână de mai jos.</li>
         </ul>
+        <details className="method-fold" id="cumparatori-verificati">
+          <summary>Cumpărători verificați de mână ({formatInt(BUYER_REGIME_OVERRIDES.length)})</summary>
+          <ul className="method-list">
+            {BUYER_REGIME_OVERRIDES.map((o) => <li key={o.cui}>{o.name} (CUI {o.cui}): {o.regime === "classic" ? "verificat ca instituție" : "cumpărător privat"}, {o.why}.</li>)}
+          </ul>
+        </details>
 
         <h3 id="formula">Formula</h3>
-        <p>Tiparele se grupează în patru familii: evitarea plafonului („Directe, deși trec de plafon”, „Adunate, trec de plafon”, „Prea des chiar sub plafon”),
+        <p>Tiparele se grupează în patru familii: evitarea plafonului („Declarate directe, peste plafon”, „Adunate, trec de plafon”, „Multe sume imediat sub plafon”),
           relația cu un partener (concentrare sau dependență), decembrie și capacitatea firmei. O familie ia tiparul cel mai puternic
           plus 0,4 din celelalte, până la plafonul ei: evitare 4, relație 2 (firme: 3), decembrie 1,25, capacitate 3. Familiile se combină:</p>
         <p className="method-formula"><code>risc = 100 × (1 − (1 − 0,2·F₁) × (1 − 0,2·F₂) × …)</code></p>
         <ul className="prose">
-          <li>Un singur tipar ajunge cel mult la 60, o familie la 80, decembrie singur la 25, capacitatea singură (fără evitare sau relație)
-            la 30. „Puternic” cere cel puțin două tipare.</li>
+          <li>Un singur tipar ajunge cel mult la 60, o familie la 80, decembrie singur la 25. Capacitatea singură (fără evitare sau relație)
+            contează pe jumătate, deci cel mult 30; cu alte tipare crește spre întreg. „Pronunțat” cere cel puțin două tipare.</li>
           <li><strong>Exemplu:</strong> „Adunate, trec de plafon” la tăria 2,51 și concentrare la 2,24 (relația, plafonată la 2):
             100 × (1 − 0,498 × 0,6) ≈ 70 din 100. Pagina entității îl împarte în puncte: 70 = 40 + 30, partea fiecărui tipar,
             rotunjită ca suma să fie scorul.</li>
         </ul>
 
+        <p id="cod-scor">Codul scorului e public: <a href="https://github.com/Alex-Cosma/seap-new/blob/main/packages/db/src/profile-flags.ts" target="_blank" rel="noreferrer">formula și pragurile</a>,
+          {" "}<a href="https://github.com/Alex-Cosma/seap-new/blob/main/apps/ingestion/src/flags/score.ts" target="_blank" rel="noreferrer">calculul pe profiluri</a>.
+          Scorurile și tiparele derivate sunt sub licența <a href="https://creativecommons.org/licenses/by/4.0/deed.ro" target="_blank" rel="noreferrer">CC BY 4.0</a>.
+          Lecturi despre indicatorii de risc în achiziții: Fazekas, Tóth și King despre indicele de risc de corupție; OCDE, „Preventing
+          Corruption in Public Procurement”; proiectul DIGIWHIST / Opentender.</p>
+
         <h3 id="benzi">Benzile</h3>
         <p className="method-bands">{BANDS.map((b) => <span key={b.band}><span className={`cri-pill ${RISK_BAND_CLASS[b.band]}`}>{b.range}</span> {b.word}</span>)}</p>
-        <p>0 înseamnă că tiparele nu apar în datele evaluate, nu că am certificat lipsa
-          neregulilor. Datele incomplete pot schimba rezultatul; verifică perioada fiecărui semnal și sursele lui.</p>
+        <p>Sub 10 puncte, profilul e „fără semnal în scor”: tiparele mici se văd pe pagină, dar nu fac un scor. Asta nu certifică lipsa
+          neregulilor. Datele incomplete pot schimba rezultatul; verifică perioada fiecărui semnal și sursele lui. Un profil fără nicio
+          achiziție sau contract în ultimele 24 de luni e „istoric”: scorul și dovezile rămân, clasamentele nu îl arată implicit.</p>
 
-        <p id="grup-comparatie"><strong>Față de cine?</strong> „Scor peste X% dintre …” (pagina entității) apare doar la riscul
-          moderat și puternic: o firmă slabă ar trece înaintea multor firme fără niciun tipar. X% sunt membrii grupului cu un scor mai mic.
+        <p id="grup-comparatie"><strong>Față de cine?</strong> „Locul 12 din 719 · …” (pagina entității) apare doar la riscul
+          moderat și puternic. Locul numără câți din grup au un scor mai mare, deci profilurile fără scor nu îl umflă, cum umflau un procent.
           „Unde se situează?” din „Întreabă” arată câți au un scor mai mare, egal sau mai mic. Grupurile: primăriile după populație
           (RPL 2021, între jumătate și dublul populației; comune, orașe și municipii împreună, doar cele identificate sigur), consiliile
-          județene, primăriile de sector, spitalele și școlile după tip; firmele și instituțiile fără un tip sigur, toată țara. În „Întreabă”
+          județene, primăriile de sector, școlile, organizațiile utilizatorilor de apă pentru irigații între ele; instituțiile fără un tip
+          sigur, toată țara. Spitalele nu au comparație: un spital județean și unul orășenesc nu se aseamănă. Firmele se compară în domeniul
+          lor principal (diviziunea CPV cu cei mai mulți bani), doar unde domeniul are cel puțin 100 de firme. În „Întreabă”
           se mai pot alege județul și activitatea apropiată (între jumătate și dublul achizițiilor directe). Intră profilurile cu cel puțin
           10 achiziții directe; comparația cere cel puțin 5 alți membri.</p>
         <p id="cine-conduce"><strong>Cine conduce?</strong> După valoare, „Cine conduce?” arată primele trei locuri ale clasamentului
@@ -170,11 +196,29 @@ export default function MetodologiePage() {
           achizițiilor directe), cu tiparele fiecăruia. Intră doar profilurile cu cel puțin 20 de achiziții directe acceptate. Un nume de cumpărător cu forma unei
           societăți sau a unei asociații e marcat ca atare; poate fi o companie a unei instituții sau un cumpărător privat. Semnalele sunt piste, nu dovezi.</p>
 
+        <details className="method-fold" id="schimbari-risc-20261105">
+          <summary>Ce s-a schimbat în scor la 5 noiembrie 2026 (rf‑2026.22)</summary>
+          <ul className="method-list">
+            <li>După un audit al tuturor instituțiilor și firmelor: scor doar de la 10 achiziții directe; sub 10 puncte, „fără semnal în scor”.</li>
+            <li>Capacitatea folosește doar bilanțul aceluiași an, iar „firmă nouă” se numără de la înregistrarea la ONRC, nu de la primul bilanț din date.</li>
+            <li>„Un singur client public mare” nu mai crește din capacitate: aceeași dovadă contează o singură dată, în familia ei.</li>
+            <li>Limita dovezilor e pe tipar: sumele urcă și cu valoarea (0,5 / 1 / 2 milioane lei), frecvențele și cotele doar cu numărul.
+              Pragul „5 achiziții și 1 milion → fără limită” a dispărut.</li>
+            <li>Materialele medicale și comenzile mărunte repetate nu mai sunt „Adunate, trec de plafon”; apar ca „comenzi repetate, fără acord-cadru”.</li>
+            <li>„Multe sume imediat sub plafon” cere cel puțin 0,5 așteptate și 5 / 8 achiziții pentru nivelurile 2 / 3.</li>
+            <li>Pe o firmă, limita obligației cumpărătorului ține toată familia; capacitatea singură contează pe jumătate.</li>
+            <li>Cumpărătorii privați nu mai au scor; asociațiile scrise greșit sunt recunoscute; câțiva cumpărători sunt verificați de mână.</li>
+            <li>Comparația spune locul în grup, nu un procent; spitalele nu mai au comparație, firmele se compară în domeniul lor.</li>
+            <li>Nume noi, regulile de mai sus neschimbate: „Prea des chiar sub plafon” → „Multe sume imediat sub plafon”; „Directe, deși trec de
+              plafon” → „Declarate directe, peste plafon”; „O firmă ia mare parte din bani” → „O firmă primește mare parte din bani”; „Vânzări peste
+              capacitatea firmei” → „Contracte directe peste cifra de afaceri”. Banda de sus se numește „pronunțat” (era „puternic”).</li>
+          </ul>
+        </details>
         <details className="method-fold" id="schimbari-risc-20261104">
           <summary>Ce s-a schimbat în scor la 4 noiembrie 2026 (rf‑2026.21)</summary>
           <ul className="method-list">
             <li>Niciun tipar nu mai sare de la 0 la nivelul 1: fiecare urcă lin, de la un prag de început (coloana „Nivelul 1” spune de unde).</li>
-            <li>„Directe, deși trec de plafon” la firme se măsoară pe o scară de 4 ori mai largă (2% / 12% / 40% din vânzări): aceeași sumă cântărește puțin la o firmă mare.
+            <li>„Declarate directe, peste plafon” la firme se măsoară pe o scară de 4 ori mai largă (2% / 12% / 40% din vânzări): aceeași sumă cântărește puțin la o firmă mare.
               La instituții, două cazuri dau cel puțin nivelul 0,5, iar nivelul 1 vine de la 0,5% din valoare.</li>
             <li>„Un singur client public mare”: o firmă care înseamnă sub 5% din achizițiile instituției pornește de la nivelul 0,5; captiva care vinde peste capacitate urcă treptat.</li>
             <li>Plafonul dovezilor urcă treptat: nivelul 1 la 10 achiziții directe, 3 de la 30 (era un salt la 20). Plafonul obligației cumpărătorului la firme (1,5) se ridică
@@ -197,11 +241,11 @@ export default function MetodologiePage() {
             <li>Scorul se citește „70 din 100”, nu „70%”: nu e un procent și nici o probabilitate. Metodologia: versiunea rf‑2026.20.</li>
             <li>Tiparele se combină pe familii, ca dovezile de același fel să nu se adune ca independente; „puternic” cere cel puțin două tipare.</li>
             <li>Tăria se măsoară față de mărimea profilului: câteva cazuri la mii de achiziții rămân slabe.</li>
-            <li>„Directe, deși trec de plafon” numără doar cazurile clare (estimarea peste plafon sau închiderea peste plafon și cu TVA) și doar la
+            <li>„Declarate directe, peste plafon” numără doar cazurile clare (estimarea peste plafon sau închiderea peste plafon și cu TVA) și doar la
               cumpărătorii obligați de plafon; operatorii sectoriali publici sunt verificați ca orice instituție.</li>
-            <li>„O firmă ia mare parte din bani” se calculează fără cea mai mare achiziție a furnizorului; „Un singur client public mare” apare de la 70%.</li>
-            <li>Tipar nou pentru firme: <a href="#da_capacity">„Vânzări peste capacitatea firmei”</a>.</li>
-            <li>Firma unei instituții (in-house) nu primește scor; pe o firmă, „Directe, deși trec de plafon” și „Adunate, trec de plafon” cântăresc puțin
+            <li>„O firmă primește mare parte din bani” se calculează fără cea mai mare achiziție a furnizorului; „Un singur client public mare” apare de la 70%.</li>
+            <li>Tipar nou pentru firme: <a href="#da_capacity">„Contracte directe peste cifra de afaceri”</a>.</li>
+            <li>Firma unei instituții (in-house) nu primește scor; pe o firmă, „Declarate directe, peste plafon” și „Adunate, trec de plafon” cântăresc puțin
               dacă nu sunt la 1–2 instituții.</li>
           </ul>
         </details>
@@ -211,9 +255,9 @@ export default function MetodologiePage() {
             <li>Indicele de risc (criteriile îndeplinite împărțite la 5 sau 4: 0; 0,20; 0,25 …) devine scorul de risc, de la 0 la 100%,
               care ține seama și de cât de pronunțat e fiecare tipar. Metodologia: versiunea rf‑2026.18.</li>
             <li>„Finalizare rapidă” a fost retrasă: nu are temei în lege și apărea la majoritatea instituțiilor.</li>
-            <li>Tipar nou: <a href="#da_above_ceiling">„Directe, deși trec de plafon”</a>, doar unde excepțiile cunoscute nu se pot aplica
+            <li>Tipar nou: <a href="#da_above_ceiling">„Declarate directe, peste plafon”</a>, doar unde excepțiile cunoscute nu se pot aplica
               (Anexa 2, CPV 33, companii și operatori de utilități, 26.02–14.05.2020, Unifarm, plafonul de lucrări, valori de peste două ori estimarea).</li>
-            <li>„Prea des chiar sub plafon” (pe atunci „Chiar sub plafon”, înainte „Aproape de prag”) începe de la 96% din plafon, nu de la 90%.</li>
+            <li>„Multe sume imediat sub plafon” (pe atunci „Imediat sub plafon”, înainte „Aproape de prag”) începe de la 96% din plafon, nu de la 90%.</li>
             <li>„Un singur client public mare” (pe atunci „Dependență de o autoritate”) cere 250.000 lei (nu 50.000) și cel puțin 5 achiziții cu instituția principală.</li>
             <li>„Mulți bani contractați în decembrie” (pe atunci „Vârf în decembrie”) compară fiecare an cu instituțiile de același tip din același an, nu doar cu pragul de 35%.</li>
             <li>„Posibilă fracționare” se numește „Achiziții repetate, peste plafon cumulat” (azi „Adunate, trec de plafon”); regula nu s-a schimbat.</li>

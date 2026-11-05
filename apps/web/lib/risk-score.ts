@@ -26,25 +26,32 @@ export type RiskCriterion = (typeof RISK_CRITERIA)[RiskRole][number];
 const LEGACY_RISK_WEIGHT = 0.6;
 
 export type RiskBand = "none" | "slab" | "moderat" | "puternic";
-/** Lowest displayed score of each band: 0 · 20–39 · 40–67 · 68–100. */
-export const RISK_BAND_MIN = { slab: 1, moderat: 40, puternic: 68 } as const;
+/**
+ * Lowest displayed score of each band: 0–9 · 10–39 · 40–67 · 68–100
+ * (rf-2026.22, owner decision S9b: under 10 points is "fără semnal în scor";
+ * the build stores such a profile with 0).
+ */
+export const RISK_BAND_MIN = { slab: 10, moderat: 40, puternic: 68 } as const;
+/** The fewest DAs a profile needs for a score (rf-2026.22, owner decision S4b; @seap/db SCORE_MIN_DAS). */
+export const RISK_MIN_DAS = 10;
 
 export function riskBand(score: number): RiskBand {
-  if (!(score > 0)) return "none";
+  if (!(score >= RISK_BAND_MIN.slab)) return "none";
   if (score >= RISK_BAND_MIN.puternic) return "puternic";
   if (score >= RISK_BAND_MIN.moderat) return "moderat";
   return "slab";
 }
 
 /** The band's word after "risc · ". */
-export const RISK_BAND_WORD: Record<RiskBand, string> = { none: "niciun tipar găsit", slab: "slab", moderat: "moderat", puternic: "puternic" };
+/** rf-2026.22 (owner decision M6): the top band reads "pronunțat"; its key stays `puternic`. */
+export const RISK_BAND_WORD: Record<RiskBand, string> = { none: "fără semnal în scor", slab: "slab", moderat: "moderat", puternic: "pronunțat" };
 /** The pill's colour class (globals.css). */
 export const RISK_BAND_CLASS: Record<RiskBand, string> = { none: "risk-none", slab: "risk-slab", moderat: "risk-mid", puternic: "risk-high" };
 
 /** "70 din 100"; the score is a whole number from 0 to 100, not a percentage. */
 export const riskScoreText = (score: number): string => `${formatInt(Math.round(score))} din 100`;
 
-/** "risc · puternic", or "niciun tipar găsit" at 0. */
+/** "risc · pronunțat", or "fără semnal în scor" under 10. */
 export const riskLabel = (score: number): string => {
   const band = riskBand(score);
   return band === "none" ? RISK_BAND_WORD.none : `risc · ${RISK_BAND_WORD[band]}`;
@@ -57,7 +64,7 @@ export const riskLabel = (score: number): string => {
  */
 export const RISK_SCORE_NOTE: Record<string, { title: string; text: string }> = {
   association: { title: "Asociație", text: "Asociație privată care cumpără cu bani publici. Regimul ei de achiziție nu e verificat." },
-  private_buyer: { title: "Cumpărător privat", text: "Cumpărător privat: plafoanele achiziției directe nu i se aplică. Contează doar prețurile lipite de plafon și decembrie." },
+  private_buyer: { title: "Cumpărător privat", text: "Cumpărător privat: plafoanele achiziției directe nu i se aplică, deci nu are scor. Tiparele găsite apar doar ca observații." },
   inhouse: { title: "Firmă in-house", text: "Firma instituției care o deține (in-house). Nu primește scor." },
 };
 
@@ -67,6 +74,47 @@ export const RISK_SCORE_NOTE: Record<string, { title: string; text: string }> = 
  */
 export type ScorePart = { x: number; pts?: number } & Record<string, unknown>;
 export type ScoreParts = Partial<Record<RiskCriterion, ScorePart>>;
+
+/**
+ * Why a profile with signals has no score (rf-2026.22): fewer than 10 DAs
+ * (S4b), a private buyer (S10), or patterns worth under 10 points (S9b).
+ * The signals themselves stay listed.
+ */
+export function riskNoScoreReason(p: { nDas: number; scoreNote: string | null; score: number }): string | null {
+  if (p.score >= RISK_BAND_MIN.slab) return null;
+  if (p.scoreNote === "private_buyer") return "Cumpărător privat: plafoanele nu i se aplică, deci tiparele de mai jos nu fac un scor.";
+  if (p.scoreNote === "inhouse") return null;
+  if (p.nDas < RISK_MIN_DAS) return `Sub ${RISK_MIN_DAS} achiziții directe: semnalele se văd, dar nu fac un scor.`;
+  return "Tiparele găsite aduc sub 10 puncte: fără semnal în scor.";
+}
+
+/**
+ * A repeated-purchase group that is recurring supply, not splitting
+ * (rf-2026.22, owner decision S5; equal to @seap/db splitGroupRecurring,
+ * kept so by risk-score.test.ts): medical supplies (CPV 33), or at least 12
+ * orders averaging under 10% of the ceiling.
+ */
+export function riskSplitRecurring(g: { total: number; n: number; ceiling: number; cpvClass?: string | null }): "medical" | "small_orders" | null {
+  if (String(g.cpvClass ?? "").trim().startsWith("33")) return "medical";
+  if (g.n >= 12 && g.ceiling > 0 && g.total / g.n < 0.1 * g.ceiling) return "small_orders";
+  return null;
+}
+
+/**
+ * A profile without any record in the last 24 months is "istoric" (rf-2026.22,
+ * owner decision S8): its score and evidence stay, the rankings leave it out
+ * by default. `last` is its latest dated record (YYYY-MM-DD…), `today` the
+ * day of the reading.
+ */
+export const RISK_HISTORIC_MONTHS = 24;
+export function riskHistoric(last: string | null | undefined, today: Date = new Date()): boolean {
+  if (!last || !/^\d{4}-\d{2}-\d{2}/.test(last)) return false;
+  const cut = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - RISK_HISTORIC_MONTHS, today.getUTCDate()));
+  return last.slice(0, 10) < cut.toISOString().slice(0, 10);
+}
+
+/** "comenzi repetate, fără acord-cadru": the observation a recurring group shows instead of points (S5). */
+export const RISK_RECURRING_WORDS = "comenzi repetate, fără acord-cadru";
 
 /**
  * Whole points per criterion that add up to the displayed score ("70 din 100
@@ -115,7 +163,9 @@ export function riskFact(code: RiskCriterion, part: ScorePart, role?: RiskRole):
     case "da_split": {
       // rf-2026.20 stores rawShare (plain share of value) next to the weighted share; older builds only share.
       const share = part.rawShare != null ? n(part.rawShare) : n(part.share);
-      return `${countWords(n(part.groups), "grup", "grupuri")} · ${pct(share)} din valoare` + partnersTail(role, n(part.partners));
+      // rf-2026.22 (S7): the lei next to the share, where the build stores them.
+      const lei = part.value != null ? ` · ${formatRon(n(part.value))}` : "";
+      return `${countWords(n(part.groups), "grup", "grupuri")}${lei} · ${pct(share)} din valoare` + partnersTail(role, n(part.partners));
     }
     case "da_round":
       return part.expected != null
@@ -128,9 +178,9 @@ export function riskFact(code: RiskCriterion, part: ScorePart, role?: RiskRole):
         : "decembrie peste instituțiile de același tip";
     }
     case "da_concentration":
-      return `${pct(n(part.share))} din valoare la un singur furnizor, fără achiziția lui cea mai mare`;
+      return `${pct(n(part.share))} din valoare la un singur furnizor, fără achiziția lui cea mai mare${part.value != null ? ` · ${formatRon(n(part.value))} cu ea` : ""}`;
     case "da_dependence":
-      return `${pct(n(part.share))} din vânzări la o singură instituție, ${pct(n(part.partnerShare))} din achizițiile ei directe`
+      return `${pct(n(part.share))} din vânzări la o singură instituție${part.value != null ? ` (${formatRon(n(part.value))})` : ""}, ${pct(n(part.partnerShare))} din achizițiile ei directe`
         + (part.capture === true ? " · peste capacitatea firmei" : "");
     case "da_above_ceiling":
       return `${countWords(n(part.n), "achiziție", "achiziții")} peste plafon · ${formatRon(n(part.value))} (${pct(n(part.share))} din valoare)`

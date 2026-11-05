@@ -61,7 +61,7 @@ import {
   storedKeyCond, storedSearchable, storedSearchCond, storedSearchKeys, type SearchYears,
 } from "./source-search";
 import { COMPETITION_PROCEDURES, type FactCheckData } from "./fact-check-shared";
-import { bareNational, hasRiskScore, nationalTotals, podiumOf, riskRankingOf, riskRankingOrder } from "./entity-card";
+import { bareNational, hasRiskScore, nationalTotals, podiumOf, riskActive, riskRankingOf, riskRankingOrder } from "./entity-card";
 import { blankCard, PODIUM_PLACES, podiumPlaceIds, RISK_LISTED, type LegacyTies, type Podium, type RiskRanking } from "./entity-card-shared";
 
 /**
@@ -2258,7 +2258,7 @@ async function runSpecData(
           // the best displayed score are said to be tied. `card` is the first of them.
           const role = spec.dim === "supplier" ? ("supplier" as const) : ("authority" as const);
           const minDas = profileMinDas(spec.block);
-          const ranking = await riskRankingOf(s, { where: efWhere(role, minDas), county: profileCounty(s, role) });
+          const ranking = await riskRankingOf(s, { where: efWhere(role, minDas), county: profileCounty(s, role), includeHistoric: spec.filters.includeHistoric === true });
           const e = ranking?.rows[0];
           if (!ranking || !e) return { block: "entity_card", card: blankCard(role), empty: true };
           const cardPopulation = role === "authority"
@@ -2813,9 +2813,12 @@ export async function runRows(
   // entity_card-3 (rf-2026.18): on the risk axis the answer lists the first RISK_LISTED profiles of the group by the
   // risk score, those with a score (when nobody has one, the first by value), as riskRankingOf does; a row's
   // "⋯ › Vezi înregistrările" narrows it to that profile.
+  // rf-2026.22 (S8): the ranking's group without the historic profiles, unless asked for (riskRankingOf).
+  const rankingWhere = spec.block === "entity_card" && spec.filters.includeHistoric !== true
+    ? sql`${baseProfileWhere} and ${riskActive(sql, "ef")}` : baseProfileWhere;
   const profileBase = spec.block === "entity_card"
-    ? sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere}
-        and (${hasRiskScore(sql, "ef")} or not exists (select 1 from marts.entity_flags ef where ${baseProfileWhere} and ${hasRiskScore(sql, "ef")}))
+    ? sql`(select ef.* from marts.entity_flags ef where ${rankingWhere}
+        and (${hasRiskScore(sql, "ef")} or not exists (select 1 from marts.entity_flags ef where ${rankingWhere} and ${hasRiskScore(sql, "ef")}))
         order by ${riskRankingOrder(sql, "ef")} limit ${RISK_LISTED})`
     : sql`(select ef.* from marts.entity_flags ef where ${baseProfileWhere})`;
   const selectionParts: ReturnType<DbSql>[] = [sql`true`];
@@ -3665,7 +3668,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "entity_card":
       // entity_card-3: the risk axis lists the first profiles by the risk score; the podium is the ranking's first three.
       return (spec.rankBy ?? "risk") === "risk"
-        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and score > 0  -- fără niciun profil cu scor: primii după valoare\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit ${RISK_LISTED};\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare`
+        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and score > 0  -- fără niciun profil cu scor: primii după valoare${spec.filters.includeHistoric === true ? "" : "\n  and <activ în ultimele 24 de luni>  -- fără profilurile istorice"}\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit ${RISK_LISTED};\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare`
         : `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by total_ron desc\nlimit ${PODIUM_PLACES};`;
     case "fact_check":
       // fact_check-2: the verdict counts these records, then what the sums leave out of the pair (lib/ask/fact-check.ts).

@@ -31,7 +31,7 @@ import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendar
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
-import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_SCORE_NOTE, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_HISTORIC_MONTHS, RISK_MIN_DAS, RISK_SCORE_NOTE, riskBand, riskFact, riskHistoric, riskLabel, riskNoScoreReason, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
 import { getRegistryNames } from "@/lib/registry-names";
@@ -104,6 +104,12 @@ export async function generateMetadata({
   const wanted: Role | null = parseRoleParam(sp["rol"]);
   const role = wanted && roles.includes(wanted) ? wanted : roles[0]!;
   return { title: entityTitle(cleanName(name), role, countyKnown(flags.find((f) => f.county)?.county ?? profile?.county)) };
+}
+
+/** The direct acquisitions' share of the money, one decimal under 10% ("0,4%"), whole above ("35%"). */
+function coverageWords(da: number, ct: number): string {
+  const share = da + ct > 0 ? (100 * da) / (da + ct) : 0;
+  return `${share < 10 ? share.toFixed(1).replace(".", ",").replace(/,0$/, "") : formatInt(Math.round(share))}%`;
 }
 
 export default async function EntityPage({
@@ -200,6 +206,10 @@ export default async function EntityPage({
   const points = riskPoints(row.scoreParts, row.score);
   // The buyer's regime or an in-house firm (rf-2026.20): a hover next to the score.
   const scoreNote = row.scoreNote ? RISK_SCORE_NOTE[row.scoreNote] ?? null : null;
+  // rf-2026.22 (S8): no record in this role for 24 months reads "istoric"; the score and its evidence stay.
+  const historic = riskHistoric(profile?.roles.find((r) => r.role === role)?.lastActivity);
+  // rf-2026.22 (S4b, S9b, S10): why a profile with signals has no score.
+  const noScoreReason = hasRiskScore ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score: row.score }) : null;
   // The top's ledger per channel and its years chart; the bars and the undated rest add up to txCounts' value.
   const ledger = ledgerTotals(activityYears.years, activityYears.undated);
   const years = yearsModel(activityYears.years, turnover, bucharestYear());
@@ -329,7 +339,8 @@ export default async function EntityPage({
         <div className="ent-risk">
           <p className="ent-risk-read">
             <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
-            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" />{scoreNote && <> <Term tip title={scoreNote.title} text={scoreNote.text}>notă</Term></>}</span>
+            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" />{scoreNote && <> <Term tip title={scoreNote.title} text={scoreNote.text}>notă</Term></>}
+              {historic && <> · <Term tip title="Istoric" text={`Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.`}>istoric</Term></>}</span>
           </p>
           {hasRiskScore && (
             <div className="ent-risk-scale" aria-hidden="true">
@@ -338,11 +349,13 @@ export default async function EntityPage({
               <span className="ent-risk-ticks">
                 <span style={{ left: `${RISK_SCALE_SLAB}%` }}>slab</span>
                 <span style={{ left: `${RISK_BAND_MIN.moderat}%` }}>moderat</span>
-                <span style={{ left: `${RISK_BAND_MIN.puternic}%` }}>puternic</span>
+                <span style={{ left: `${RISK_BAND_MIN.puternic}%` }}>pronunțat</span>
               </span>
             </div>
           )}
           {peerLine && <p className="ent-risk-peer">{riskPeerWords(peerLine)}</p>}
+          {/* rf-2026.22 (S7): the score reads only the direct acquisitions; their share of the money says how much it covers. */}
+          {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer">Privește achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din bani</p>}
         </div>
         <div className="ent-activity">
         <table className="ent-ledger">
@@ -484,6 +497,7 @@ export default async function EntityPage({
           role={role}
           entityName={cleanName(row.name)}
           hasRiskScore={hasRiskScore}
+          noScoreReason={noScoreReason}
           score={row.score}
           parts={row.scoreParts}
           points={points}
@@ -547,6 +561,7 @@ export default async function EntityPage({
         <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
           pronunțat e. Tiparele se grupează în patru familii (evitarea plafonului, relația cu un partener, decembrie, capacitatea
           firmei): o familie singură ajunge cel mult la 80, decembrie singur la 25, capacitatea singură la 30.
+          Scorul pornește de la {formatInt(RISK_MIN_DAS)} achiziții directe; sub 10 puncte, fără semnal în scor.
           Filtrul de an din tabel nu schimbă scorul.</p>
         <ul>{criteria.map(code => <li key={code}>
           <strong>{row.scoreParts[code] ? `+${formatInt(points[code] ?? 0)}` : "fără tipar"}</strong>{" · "}

@@ -101,8 +101,8 @@ describe("the risk axis", () => {
   });
 
   it("says a score's band in the words beside its pill", () => {
-    expect([riskBandWord(88), riskBandWord(68), riskBandWord(67), riskBandWord(40), riskBandWord(39), riskBandWord(20), riskBandWord(0)])
-      .toEqual(["puternic", "puternic", "moderat", "moderat", "slab", "slab", "niciun tipar găsit"]);
+    expect([riskBandWord(88), riskBandWord(68), riskBandWord(67), riskBandWord(40), riskBandWord(39), riskBandWord(10), riskBandWord(9), riskBandWord(0)])
+      .toEqual(["pronunțat", "pronunțat", "moderat", "moderat", "slab", "slab", "fără semnal în scor", "fără semnal în scor"]);
   });
 });
 

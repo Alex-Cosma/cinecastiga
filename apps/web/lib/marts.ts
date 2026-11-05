@@ -845,6 +845,8 @@ export interface EntityRole {
   nContracts: number;
   nDas: number;
   rank: number | null;
+  /** The latest dated record in this role, direct or by procedure (YYYY-MM-DD…); "istoric" after 24 months (S8). */
+  lastActivity: string | null;
 }
 
 export interface EntityProfile {
@@ -947,7 +949,7 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
   const rows = (await sql`
     select ep.role, ep.name_display, ep.county, ep.country_code, ep.is_foreign,
            ep.n_contracts, ep.n_das, ep.total_ron_full, ep.total_ron_split, te.rank,
-           ep.employees, ep.employees_year, ep.net_turnover, ce.legal_form
+           ep.employees, ep.employees_year, ep.net_turnover, ce.legal_form, ep.last_activity
     from marts.entity_profile ep
     left join core.entities ce on ce.id = ep.entity_id
     left join marts.top_entities te
@@ -969,6 +971,7 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
     employees_year: number | null;
     net_turnover: string | null;
     legal_form: string | null;
+    last_activity: string | null;
   }[];
   if (rows.length === 0) return null;
   const fin = rows.find((r) => r.employees !== null);
@@ -991,6 +994,7 @@ export async function getEntityProfile(entityId: string): Promise<EntityProfile 
       nContracts: Number(r.n_contracts),
       nDas: Number(r.n_das),
       rank: r.rank == null ? null : Number(r.rank),
+      lastActivity: r.last_activity ?? null,
     })),
   };
 }

@@ -39,6 +39,8 @@ export type FilterId =
   // read ahead (F0a), offered by the stage that implements them
   | "purchaseKind" | "procedure" | "purchaseValue" | "firmSeat" | "seatCounty" | "sharedPartners" | "newSince"
   | "mainClient" | "dominantSupplier" | "exclude"
+  // rf-2026.22 (S8): the risk ranking with the historic profiles too
+  | "includeHistoric"
   | "trendChange" | "trendMonths" | "trendOrder" | "trendMinBase" | "trendFirstOnly"
   | "timeseriesGrain" | "timeseriesSplit" | "timeseriesMonths"
   | "networkPartners" | "networkSince" | "networkOrder" | "networkShow" | "networkSignals"

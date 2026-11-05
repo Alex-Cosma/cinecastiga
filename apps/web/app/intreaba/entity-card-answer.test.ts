@@ -121,7 +121,7 @@ const ranking = (scores: number[], extra: Partial<RiskRanking> = {}): RiskRankin
 
 describe("the ranking by the risk score (entity_card-3)", () => {
   it("names the first profile with its score and band, or the profiles tied on the best score", () => {
-    expect(rankingHeadline(ranking([71, 60, 60, 58]), hospitals)).toEqual({ kind: "first", lead: "Primul: Spital 1", score: "71 din 100", band: "puternic" });
+    expect(rankingHeadline(ranking([71, 60, 60, 58]), hospitals)).toEqual({ kind: "first", lead: "Primul: Spital 1", score: "71 din 100", band: "pronunțat" });
     expect(rankingHeadline(ranking([71, 60], { rows: [ranked(1, 71, { name: "RO123456 SPITALUL ORASENESC AGNITA" })] }), hospitals).lead).toBe("Primul: SPITALUL ORASENESC AGNITA");
     expect(rankingHeadline(ranking([60, 60, 60, 58]), hospitals)).toEqual({ kind: "tied", lead: "3 la egalitate pe primul loc", score: "60 din 100", band: "moderat" });
     // The tie counts the whole group, beyond the listed rows.
@@ -144,10 +144,10 @@ describe("the ranking by the risk score (entity_card-3)", () => {
   });
 
   it("gives each row its pill: the score, the band's word and its colour", () => {
-    expect(scorePill(71)).toEqual({ text: "71 din 100", band: "puternic", className: "risk-high" });
+    expect(scorePill(71)).toEqual({ text: "71 din 100", band: "pronunțat", className: "risk-high" });
     expect(scorePill(60)).toEqual({ text: "60 din 100", band: "moderat", className: "risk-mid" });
     expect(scorePill(20)).toEqual({ text: "20 din 100", band: "slab", className: "risk-slab" });
-    expect(scorePill(0)).toEqual({ text: "0 din 100", band: "niciun tipar găsit", className: "risk-none" });
+    expect(scorePill(0)).toEqual({ text: "0 din 100", band: "fără semnal în scor", className: "risk-none" });
   });
 
   it("says „În ordinea valorii” only when every shown row has the same score", () => {
@@ -176,11 +176,11 @@ describe("the ranking by the risk score (entity_card-3)", () => {
     const tags = riskFacts(ranked(1, 88, { flags, nFlags: 4 }), hospitals);
     expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["+2", "neutral"]]);
     // The (?) lists the rest; the answer's line under the list says signals are no proof (owner, 2 November 2026).
-    expect(tags[2]!.tip).toEqual({ title: "Alte tipare", text: "prea des chiar sub plafon; directe, deși trec de plafon." });
+    expect(tags[2]!.tip).toEqual({ title: "Alte tipare", text: "multe sume imediat sub plafon; declarate directe, peste plafon." });
     // Three patterns fit: no „+1” in the third one's place.
     expect(riskFacts(ranked(1, 88, { flags: flags.slice(0, 3), nFlags: 3 }), hospitals).map((t) => [t.text, t.tone ?? "neutral"]))
-      .toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["prea des chiar sub plafon", "signal"]]);
-    expect(patternWord("da_concentration")).toBe("o firmă ia mare parte din bani");
+      .toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["multe sume imediat sub plafon", "signal"]]);
+    expect(patternWord("da_concentration")).toBe("o firmă primește mare parte din bani");
     // A code the site no longer names (da_rapid, retired) stays the code.
     expect(patternWord("da_rapid")).toBe("da_rapid");
     expect(riskFacts(ranked(2, 40, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
@@ -227,7 +227,7 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
   it("tags a profile's signals, two and „+N” with that answer's words; a retired code (da_rapid) shows as stored", () => {
     const tags = legacyTieFacts(tie(1, { flags: ["da_split", "da_year_end", "da_rapid", "da_round"], nFlags: 4 }), hospitals);
     expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["+2", "neutral"]]);
-    expect(tags[2]!.tip).toEqual({ title: "Alte semnale", text: "da_rapid; prea des chiar sub plafon." });
+    expect(tags[2]!.tip).toEqual({ title: "Alte semnale", text: "da_rapid; multe sume imediat sub plafon." });
     expect(legacyTieFacts(tie(2, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
       .toEqual(["adunate, trec de plafon", "societate"]);
   });

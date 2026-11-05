@@ -26,7 +26,7 @@ import {
 
 describe("the signals of a profile", () => {
   it("are the risk score's criteria and the build's codes, in one order for the build, the score and the cloud", () => {
-    // rf-2026.20: „Peste capacitate” (da_capacity) counts in a firm's score but is no signal of the cloud: the
+    // rf-2026.20: „Peste cifra de afaceri” (da_capacity) counts in a firm's score but is no signal of the cloud: the
     // cloud's records (scatter-records.ts) have no definition for it. The cloud keeps the other criteria, in order.
     const cloudOf = (role: "authority" | "supplier") => RISK_CRITERIA[role].filter((code) => code !== "da_capacity");
     for (const role of ["authority", "supplier"] as const) {
@@ -43,7 +43,7 @@ describe("the signals of a profile", () => {
   });
 
   it("have a short label and a rule at the level of an entity, the same ones the entity page shows", () => {
-    expect(SCATTER_FLAGS.map(flagLabel)).toEqual(["Adunate, trec de plafon", "Prea des chiar sub plafon", "Mulți bani contractați în decembrie", "O firmă ia mare parte din bani", "Un singur client public mare", "Directe, deși trec de plafon"]);
+    expect(SCATTER_FLAGS.map(flagLabel)).toEqual(["Adunate, trec de plafon", "Multe sume imediat sub plafon", "Mulți bani contractați în decembrie", "O firmă primește mare parte din bani", "Un singur client public mare", "Declarate directe, peste plafon"]);
     for (const code of SCATTER_FLAGS) {
       expect(FLAG_META[code]!.title.length).toBeGreaterThan(flagLabel(code).length - 1);
       expect(flagEntityRule(code), code).not.toBe("");
@@ -51,7 +51,7 @@ describe("the signals of a profile", () => {
     // A retired signal keeps its old label only for the note that drops it and for a stored answer.
     expect(flagLabel("da_rapid")).toBe("da_rapid");
     expect(scatterFlagLabel("da_rapid")).toBe("Finalizare rapidă");
-    expect(scatterFlagLabel("da_round")).toBe("Prea des chiar sub plafon");
+    expect(scatterFlagLabel("da_round")).toBe("Multe sume imediat sub plafon");
     // A signal without a short label speaks by its title; one without a rule has none.
     expect(flagLabel("net_shared_admin")).toBe(FLAG_META.net_shared_admin!.title);
     expect(flagEntityRule("net_shared_admin")).toBe("");
@@ -99,7 +99,7 @@ describe("the cloud's keys in a spec", () => {
     expect(validateSpec(cloud({ scatter: { flag: "da_split", rankBy: "value" } }))).toHaveProperty("scatter", { flag: "da_split", rankBy: "value" });
     expect(validateSpec(cloud({ scatter: { flag: "da_dependence" } }))).toEqual({ error: SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))! });
     expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))).toBe("Un singur client public mare se aplică doar firmelor. Alege alt semnal sau scoate-l.");
-    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).toBe("O firmă ia mare parte din bani se aplică doar instituțiilor. Alege alt semnal sau scoate-l.");
+    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).toBe("O firmă primește mare parte din bani se aplică doar instituțiilor. Alege alt semnal sau scoate-l.");
     // The refusal names the signal chosen: December's peak on firms is refused as itself (review: it read as concentration).
     expect(validateSpec(cloud({ scatter: { flag: "da_year_end" } }, "supplier"))).toEqual({ error: "Mulți bani contractați în decembrie se aplică doar instituțiilor. Alege alt semnal sau scoate-l." });
     expect(runnableError(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).not.toBeNull();
@@ -108,7 +108,7 @@ describe("the cloud's keys in a spec", () => {
     // The cloud's keys on another question cannot change its answer: parseSpec drops them with the block.
     expect(validateSpec({ block: "table", dim: "supplier", measure: "value", filters: {}, scatter: { flag: "da_split" } })).not.toHaveProperty("scatter");
     expect(validateSpec(cloud({ scatter: { flag: "da_nu" as never } }))).toEqual({ error: "Valoare invalidă pentru scatter.flag." });
-    // "Directe, deși trec de plafon" is both roles'.
+    // "Declarate directe, peste plafon" is both roles'.
     expect(runnableError(cloud({ scatter: { flag: "da_above_ceiling" } }, "supplier"))).toBeNull();
     expect(runnableError(cloud({ scatter: { flag: "da_above_ceiling" } }))).toBeNull();
   });
@@ -151,7 +151,7 @@ describe("the cloud's keys in a spec", () => {
     const slot = { id: "dim" as const, picker: "subject" as const };
     const turned = chooseValue(draft, slot, { filter: "dim", value: { dim: "supplier" } } as never);
     expect(turned.spec.scatter).toEqual({ rankBy: "risk" });
-    expect(turned.notes.join(" ")).toMatch(/Am scos „semnal: o firmă ia mare parte din bani”/);
+    expect(turned.notes.join(" ")).toMatch(/Am scos „semnal: o firmă primește mare parte din bani”/);
     // The signals both roles have stay.
     const kept = chooseValue({ ...draft, scatter: { rankBy: "risk", flag: "da_split" } }, slot, { filter: "dim", value: { dim: "supplier" } } as never);
     expect(kept.spec.scatter).toEqual({ rankBy: "risk", flag: "da_split" });
