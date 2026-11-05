@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { channelWhere, facetOf, normalizedPattern, unionOf, type Channel, type FilterSource } from "./query";
+import { BACKGROUND_TIMEOUT_MS, MAX_BACKGROUND_COUNTS, channelWhere, clearFacetCache, facetOf, normalizedPattern, unionOf, type Channel, type FilterSource } from "./query";
 import type { TableColumns } from "../types";
 
 /** A stand-in for postgres.js: fragments keep their text (values as ?) and each awaited query answers `answer(text)`. */
@@ -105,5 +105,50 @@ describe("filters as SQL", () => {
     expect(facet.bins[0]).toMatchObject({ n: 4 });
     expect(facet.bins[0]!.from).toBeCloseTo(10);
     expect(facet.bins[7]!.to).toBeCloseTo(100000);
+  });
+});
+
+describe("a count past its budget (audit S2F2)", () => {
+  /** Every budgeted count times out; a background count stays running (never settles) so the cap can be seen. */
+  function slowSql() {
+    const { sql } = fakeSql();
+    const timeouts: number[] = [];
+    Object.assign(sql, {
+      begin: (_mode: string, fn: (tx: unknown) => Promise<unknown>) => fn(Object.assign(sql, {
+        unsafe: (text: string) => {
+          const ms = Number(/statement_timeout = (\d+)/.exec(text)?.[1]);
+          timeouts.push(ms);
+          return ms === BACKGROUND_TIMEOUT_MS ? new Promise(() => {}) : Promise.reject(new Error("canceling statement due to statement timeout"));
+        },
+      })),
+    });
+    return { sql, background: () => timeouts.filter((ms) => ms === BACKGROUND_TIMEOUT_MS).length };
+  }
+  beforeEach(() => clearFacetCache());
+
+  it("finishes in the background within 25 s, below the nightly 30 s wait", async () => {
+    expect(BACKGROUND_TIMEOUT_MS).toBeLessThan(30_000);
+    const { sql, background } = slowSql();
+    const facet = await facetOf(sql, source(sql), "tip", {}, { budgetMs: 1500, cache: "t" });
+    expect(facet).toMatchObject({ partial: true });
+    expect(background()).toBe(1);
+    // The same funnel again while it counts: no second count.
+    await facetOf(sql, source(sql), "tip", {}, { budgetMs: 1500, cache: "t" });
+    expect(background()).toBe(1);
+  });
+
+  it("never counts a funnel search in the background", async () => {
+    const { sql, background } = slowSql();
+    const facet = await facetOf(sql, source(sql), "cine", {}, { budgetMs: 1500, cache: "t", term: "rota" });
+    expect(facet).toMatchObject({ partial: true });
+    expect(background()).toBe(0);
+  });
+
+  it("runs at most two background counts at a time", async () => {
+    const { sql, background } = slowSql();
+    for (const year of ["2019", "2020", "2021", "2022"])
+      await facetOf(sql, source(sql), "tip", { data: { kind: "dates", years: [year], from: null, to: null } }, { budgetMs: 1500, cache: "t" });
+    expect(MAX_BACKGROUND_COUNTS).toBe(2);
+    expect(background()).toBe(2);
   });
 });
