@@ -10,7 +10,7 @@ import { useEffect } from "react";
 // rf-2026.22 (packages/db/src/profile-flags.ts): a family is its strongest pattern plus 0.4 × the others (caps:
 // threshold avoidance 4, relation 2, December 1.25); score = 100 × (1 − Π(1 − 0.2·F)). The points of each pattern are
 // split as on the entity page (scorePoints): each family's share of −ln(1 − 0.2·F), split inside the family by what each
-// pattern adds, rounded by the largest remainders. The levels are Comuna Exemplu's.
+// pattern adds, rounded by the largest remainders. The levels are Comuna Exemplara's.
 type Code = "split" | "round" | "above" | "dec" | "rel";
 type On = Partial<Record<Code, boolean>>;
 const X: Record<Code, number> = { split: 1.5232, round: 1.0, above: 1.0, dec: 0.8333, rel: 2.0 };
@@ -108,7 +108,7 @@ function mount(root: HTMLElement): () => void {
     );
   });
 
-  // Chapter 4: the ledger follows the four patterns of Comuna Exemplu as they scroll past.
+  // Chapter 4: the ledger follows the four patterns of Comuna Exemplara as they scroll past.
   const P4 = points({ split: true, round: true, above: true, dec: true });
   const SPLIT4 = (["split", "round", "above", "dec"] as Code[]).map((k) => P4[k]).join(" + ");
   const LAST = STEPS.map((s) => NAMES[s[s.length - 1]!]);
@@ -198,7 +198,7 @@ function mount(root: HTMLElement): () => void {
   mix();
   mixReady = true;
 
-  // The reading progress bar and the larger text (remembered in this browser).
+  // The reading progress bar.
   const pr = q("#prog-i");
   function prog() {
     if (!pr) return;
@@ -207,24 +207,6 @@ function mount(root: HTMLElement): () => void {
   }
   on(window, "scroll", prog, { passive: true });
   prog();
-  const aa = q<HTMLButtonElement>(".mt-aa:not(.mt-allx)");
-  if (aa) {
-    let big = false;
-    try {
-      big = localStorage.getItem("cc-text") === "big";
-    } catch {}
-    root.classList.toggle("mt-big", big);
-    aa.setAttribute("aria-pressed", String(big));
-    on(aa, "click", () => {
-      big = !big;
-      root.classList.toggle("mt-big", big);
-      aa.setAttribute("aria-pressed", String(big));
-      try {
-        localStorage.setItem("cc-text", big ? "big" : "normal");
-      } catch {}
-    });
-  }
-
   // Three lanes in one page; a link into a hidden lane opens that lane.
   const laneNav = q(".mt-lanes");
   const tabs = laneNav ? qa<HTMLButtonElement>("[role=tab]", laneNav) : [];
@@ -367,18 +349,6 @@ function mount(root: HTMLElement): () => void {
         if (!d.classList.contains("mt-aux") && !d.classList.contains("mt-role")) d.open = open;
       });
     });
-  const ax = q<HTMLButtonElement>(".mt-allx");
-  if (ax)
-    on(ax, "click", () => {
-      const open = ax.getAttribute("aria-pressed") !== "true";
-      ax.setAttribute("aria-pressed", String(open));
-      ax.textContent = open ? "Ascunde explicațiile" : "Arată explicațiile";
-      qa(".mt-term").forEach((tb) => {
-        tb.setAttribute("aria-expanded", String(open));
-        const d = tb.nextElementSibling as HTMLElement | null;
-        if (d) d.hidden = !open;
-      });
-    });
   if (window.innerWidth >= 980) qa<HTMLDetailsElement>("details.mt-tpl, .mt-brief details.mt-more").forEach((d) => (d.open = true));
 
   // The 100 squares fill in order, family by family.
@@ -420,16 +390,14 @@ function mount(root: HTMLElement): () => void {
     }
   }
 
-  // The four-step stage (owner spec M11): 1–4, one Play/Pause icon (6 s a step, never on its own), swipe, share.
+  // The four-step stage: the steps 1–4, a swipe and the share icon (owner, 5 Nov 2026: no Play button).
   const stage = q(".mt-stage");
   if (stage) {
     const frs = qa(".mt-fr", stage);
     const dots = qa<HTMLButtonElement>(".mt-steps-n button", stage);
-    const play = q<HTMLButtonElement>(".mt-st-play", stage);
     const live = q(".mt-st-live", stage);
     const hnum = q("#hnum");
     let cur = 1;
-    let timer: number | null = null;
     let raf = 0;
     const countUp = () => {
       if (!hnum) return;
@@ -465,43 +433,9 @@ function mount(root: HTMLElement): () => void {
         if (fc) live.textContent = "Pasul " + n + " din 4. " + (q("b", fc)?.textContent ?? "") + " " + (q("span", fc)?.textContent ?? "");
       }
     };
-    const setPlay = (p: boolean) => {
-      if (!play) return;
-      const w = p ? "Oprește" : "Pornește";
-      play.setAttribute("aria-pressed", String(p));
-      play.setAttribute("aria-label", w);
-      play.title = w;
-    };
-    const stop = () => {
-      if (timer !== null) window.clearInterval(timer);
-      timer = null;
-      setPlay(false);
-    };
-    const start = () => {
-      if (reduce) return;
-      if (timer !== null) window.clearInterval(timer);
-      setPlay(true);
-      timer = window.setInterval(() => {
-        if (cur < 4) {
-          show(cur + 1, true);
-          if (cur === 4) stop();
-        } else stop();
-      }, 6000);
-    };
     dots.forEach((d, i) =>
-      on(d, "click", () => {
-        stop();
-        show(i + 1, true);
-      }),
+      on(d, "click", () => show(i + 1, true)),
     );
-    if (play)
-      on(play, "click", () => {
-        if (timer !== null) stop();
-        else {
-          if (cur === 4) show(1, true);
-          start();
-        }
-      });
     let tx: number | null = null;
     on(stage, "touchstart", (e) => (tx = (e as TouchEvent).touches[0]?.clientX ?? null), { passive: true });
     on(
@@ -512,7 +446,6 @@ function mount(root: HTMLElement): () => void {
         const dx = ((e as TouchEvent).changedTouches[0]?.clientX ?? tx) - tx;
         tx = null;
         if (Math.abs(dx) < 40) return;
-        stop();
         show(dx < 0 ? (cur < 4 ? cur + 1 : 1) : cur > 1 ? cur - 1 : 4, true);
       },
       { passive: true },
@@ -546,13 +479,8 @@ function mount(root: HTMLElement): () => void {
     if (reduce) {
       frs.forEach((f) => f.classList.add("mt-on"));
       fillGrid(q("#hg"), 0);
-      stop();
-    } else {
-      show(1, false);
-      stop();
-    }
+    } else show(1, false);
     cleanups.push(() => {
-      if (timer !== null) window.clearInterval(timer);
       window.clearTimeout(tt);
       cancelAnimationFrame(raf);
     });
