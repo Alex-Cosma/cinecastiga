@@ -150,7 +150,13 @@ const RANGE_BINS = 8;
 /** How long a counted funnel stays served from memory: the marts change once a night. */
 export const FACET_CACHE_MS = 30 * 60_000;
 const FACET_CACHE_SIZE = 500;
-const BACKGROUND_TIMEOUT_MS = 60_000;
+/**
+ * A count past its budget may finish in the background (audit S2F2, 5 Nov 2026): within 25 s, below the 30 s the nightly
+ * publication waits for admitted requests to end (05-operations), and at most two at a time in a process. A funnel
+ * search (`term`) is free text, a new key per keystroke: it never counts in the background.
+ */
+export const BACKGROUND_TIMEOUT_MS = 25_000;
+export const MAX_BACKGROUND_COUNTS = 2;
 const cached = new Map<string, { at: number; facet: Facet }>();
 const counting = new Set<string>();
 
@@ -196,7 +202,7 @@ export async function facetOf(sql: DbSql, source: FilterSource, key: string, sta
     return facet;
   } catch (e) {
     if (!isTimeout(e)) throw e;
-    if (cacheKey && !counting.has(cacheKey)) {
+    if (cacheKey && !request.term && !counting.has(cacheKey) && counting.size < MAX_BACKGROUND_COUNTS) {
       counting.add(cacheKey);
       void timed(BACKGROUND_TIMEOUT_MS).then(keep, (err) => console.error("table facet (background)", key, err)).finally(() => counting.delete(cacheKey));
     }
