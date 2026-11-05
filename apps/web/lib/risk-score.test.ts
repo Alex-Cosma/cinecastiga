@@ -1,12 +1,16 @@
-import { PROFILE_FLAG_CODES, SCORE_BAND_MIN, scoreBand, scoreOfCriteria, scorePoints, type ProfileFlagRole } from "@seap/db";
+import { PROFILE_FLAG_CODES, SCORE_BAND_MIN, SCORE_MIN_DAS, scoreBand, scoreOfCriteria, scorePoints, splitGroupRecurring, type ProfileFlagRole } from "@seap/db";
 import { describe, expect, it } from "vitest";
-import { RISK_BAND_MIN, RISK_CRITERIA, riskBand, riskFact, riskLabel, riskPoints, riskScoreText } from "./risk-score";
+import { RISK_BAND_MIN, RISK_CRITERIA, RISK_MIN_DAS, riskBand, riskFact, riskHistoric, riskLabel, riskNoScoreReason, riskPoints, riskScoreText, riskSplitRecurring } from "./risk-score";
 
 describe("risk score on the pages", () => {
   it("is the nightly build's criteria, bands and points", () => {
     expect(RISK_CRITERIA).toEqual(PROFILE_FLAG_CODES);
     expect(RISK_BAND_MIN).toEqual(SCORE_BAND_MIN);
-    for (const s of [0, 1, 20, 39, 40, 67, 68, 100]) expect(riskBand(s)).toBe(scoreBand(s));
+    expect(RISK_MIN_DAS).toBe(SCORE_MIN_DAS);
+    for (const s of [0, 1, 9, 10, 20, 39, 40, 67, 68, 100]) expect(riskBand(s)).toBe(scoreBand(s));
+    for (const g of [{ total: 200, n: 2, ceiling: 100, cpvClass: "3314" }, { total: 110, n: 12, ceiling: 100 }, { total: 130, n: 12, ceiling: 100 },
+      { total: 50, n: 30, ceiling: 100, cpvClass: " 4521" }, { total: 500, n: 3, ceiling: 100, cpvClass: null }])
+      expect(riskSplitRecurring(g)).toBe(splitGroupRecurring(g));
     const cases: [ProfileFlagRole, Record<string, number>][] = [
       ["authority", { da_split: 1.51, da_round: 1.17 }], ["authority", { da_split: 2.51, da_concentration: 2.24 }],
       ["authority", { da_split: 3, da_year_end: 1, da_round: 1.81, da_concentration: 2.15 }], ["supplier", { da_dependence: 2, da_capacity: 1.5 }],
@@ -30,10 +34,26 @@ describe("risk score on the pages", () => {
 
   it("reads as a score out of 100 with the band", () => {
     expect(riskScoreText(73)).toBe("73 din 100");
-    expect(riskLabel(73)).toBe("risc · puternic");
+    expect(riskLabel(73)).toBe("risc · pronunțat");
     expect(riskLabel(47)).toBe("risc · moderat");
     expect(riskLabel(20)).toBe("risc · slab");
-    expect(riskLabel(0)).toBe("niciun tipar găsit");
+    expect(riskLabel(0)).toBe("fără semnal în scor");
+    expect(riskLabel(9)).toBe("fără semnal în scor");
+  });
+
+  it("reads a profile without records for 24 months as historic (rf-2026.22, S8)", () => {
+    const today = new Date("2026-11-05T12:00:00Z");
+    expect(riskHistoric("2024-11-04 10:00:00+02", today)).toBe(true);
+    expect(riskHistoric("2024-11-05", today)).toBe(false);
+    expect(riskHistoric("2026-10-01", today)).toBe(false);
+    expect(riskHistoric(null, today)).toBe(false);
+  });
+
+  it("says why a profile with signals has no score (rf-2026.22)", () => {
+    expect(riskNoScoreReason({ nDas: 7, scoreNote: null, score: 0 })).toBe("Sub 10 achiziții directe: semnalele se văd, dar nu fac un scor.");
+    expect(riskNoScoreReason({ nDas: 300, scoreNote: "private_buyer", score: 0 })).toMatch(/^Cumpărător privat/);
+    expect(riskNoScoreReason({ nDas: 300, scoreNote: null, score: 0 })).toBe("Tiparele găsite aduc sub 10 puncte: fără semnal în scor.");
+    expect(riskNoScoreReason({ nDas: 300, scoreNote: null, score: 24 })).toBeNull();
   });
 
   it("says the facts behind each criterion tersely", () => {

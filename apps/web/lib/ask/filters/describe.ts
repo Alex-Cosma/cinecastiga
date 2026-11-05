@@ -595,6 +595,13 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     scope: [{ label: DOMINANT_LABEL, value: "Cea mai mare firmă are cel puțin jumătate din valoarea instituției în selecție, din cel puțin 3 înregistrări" }],
     summary: DOMINANT_LABEL,
   } : null,
+  // rf-2026.22 (S8): the risk ranking with the historic profiles too.
+  includeHistoric: (spec) => spec.filters.includeHistoric ? {
+    words: "inclusiv profilurile istorice", tail: "inclusiv profilurile fără înregistrări în ultimele 24 de luni",
+    chip: "Și istoricele", pills: ["și istoricele"],
+    scope: [{ label: "Istorice", value: "Inclusiv profilurile fără nicio achiziție sau contract în ultimele 24 de luni" }],
+    summary: "Și istoricele",
+  } : null,
   networkSignals: (spec) => spec.network?.signals ? {
     words: "doar partenerii cu semnale", chip: "Cu semnale", pills: ["cu semnale"],
     scope: [{ label: "Semnale", value: "Doar partenerii cu un semnal oficial pe relație" }], summary: "Cu semnale",
@@ -634,8 +641,8 @@ const TREND_ORDER: readonly FilterId[] = ["trendChange", "trendFirstOnly", "tren
 const SERIES_ORDER: readonly FilterId[] = ["timeseriesGrain", "timeseriesSplit", "timeseriesMonths"];
 const NETWORK_ORDER: readonly FilterId[] = ["networkPartners", "networkSince", "networkSignals", "networkOrder"];
 /** The pills' order (pills.ts after the answer's own; pill-filters.ts reads it back to find each pill's window). */
-export const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "newSince", "employees", "mainClient", "dominantSupplier", "dataset", "procedure", "purchaseValue", "population", "minimumRecords", "scatterFlag", "scatterRankBy"];
-const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "newSince", "employees", "mainClient", "dominantSupplier", "minimumRecords", "population", "scatterFlag", "scatterRankBy"];
+export const PILL_ORDER: readonly FilterId[] = ["purchaseKind", "cpvTerm", "authorityKind", "authority", "supplier", "compareWith", "sharedPartners", "locality", "county", "firmSeat", "seatCounty", "peers", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "singleBidder", "newSince", "employees", "mainClient", "dominantSupplier", "includeHistoric", "dataset", "procedure", "purchaseValue", "population", "minimumRecords", "scatterFlag", "scatterRankBy"];
+const SCOPE_ORDER: readonly FilterId[] = ["authority", "supplier", "compareWith", "sharedPartners", "purchaseKind", "cpvTerm", "county", "firmSeat", "seatCounty", "peers", "locality", "authorityKind", "admin", "period", ...TREND_ORDER, ...SERIES_ORDER, ...NETWORK_ORDER, "dataset", "procedure", "purchaseValue", "singleBidder", "newSince", "employees", "mainClient", "dominantSupplier", "includeHistoric", "minimumRecords", "population", "scatterFlag", "scatterRankBy"];
 // A trend's group is its title's own word (sentence.ts); its months, when the title does not say them.
 const SUMMARY_ORDER: readonly FilterId[] = ["dataset", "procedure", "authority", "supplier", "purchaseKind", "cpvTerm", "purchaseValue", "trendMonths", "timeseriesSplit", "timeseriesMonths", "networkSignals", "sharedPartners", "population", "minimumRecords"];
 const CAVEAT_ORDER: readonly FilterId[] = ["purchaseValue", "population", "minimumRecords"];

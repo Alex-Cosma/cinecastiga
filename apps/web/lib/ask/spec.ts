@@ -87,7 +87,7 @@ export type TrendChange = (typeof TREND_CHANGES)[number];
 export const NETWORK_PARTNERS = ["new", "continuing", "gone"] as const;
 /**
  * The risk cloud's signals (scatter-3, rf-2026.18): the criteria of the risk score (lib/risk-score.ts RISK_CRITERIA,
- * equal by scatter-shared.test.ts), in the order a profile lists them, without a firm's „Peste capacitate”
+ * equal by scatter-shared.test.ts), in the order a profile lists them, without a firm's „Peste cifra de afaceri”
  * (da_capacity, rf-2026.20), which the cloud's records do not define.
  */
 export const SCATTER_FLAGS = ["da_split", "da_round", "da_year_end", "da_concentration", "da_dependence", "da_above_ceiling"] as const;
@@ -201,6 +201,11 @@ export type AskFilters = {
   newScope?: (typeof NEW_SCOPES)[number];
   mainClient?: true;
   dominantSupplier?: true;
+  /**
+   * rf-2026.22 (owner decision S8): the ranking by the risk score leaves out the profiles without any record in the
+   * last 24 months ("istoric"); true lists them too.
+   */
+  includeHistoric?: true;
 };
 
 export interface AskSpec {
@@ -351,6 +356,10 @@ export const SPEC_JSON_SCHEMA = {
           type: "boolean",
           description: "Doar pentru block=compare cu două firme: true = numai instituțiile care au cumpărat de la amândouă („clienții comuni”, „aceiași clienți”).",
         },
+        includeHistoric: {
+          type: "boolean",
+          description: "Doar pentru clasamentul după scorul de risc (block=entity_card): true = include și profilurile fără nicio înregistrare în ultimele 24 de luni („istorice”, „inactive”). Implicit sunt lăsate deoparte.",
+        },
       },
     },
   },
@@ -388,6 +397,8 @@ export const IMPLEMENTED_KEYS: ReadonlySet<string> = new Set([
   ...["partners", "since", "order", "show", "signals"].map(key => `network.${key}`), "sankey.shown",
   // F4: a comparison of two firms at their shared clients only (COMPARE_RULES below; compare-engine.ts sharedPartnersPrestep).
   "filters.sharedPartners",
+  // rf-2026.22 (S8): the risk ranking with the historic profiles too (compile.ts case "entity_card", entity-card.ts riskRankingOf).
+  "filters.includeHistoric",
   // F6a: the distribution's comparison group (PEERS_RULE below; lib/ask/distribution.ts). The main domain is phase 2.
   "peers.similar", "peers.activity",
   // F5: the ranked winners' new firms, main public client and the institutions one firm takes half of (WINNERS_RULES
@@ -545,7 +556,7 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
   const numberBounds:Record<string, [number, number]> = { authorityId:[1,Number.MAX_SAFE_INTEGER], supplierId:[1,Number.MAX_SAFE_INTEGER], compareWithId:[1,Number.MAX_SAFE_INTEGER], uatSiruta:[1,Number.MAX_SAFE_INTEGER], monthFrom:[1,12], monthTo:[1,12], yearFrom:[2000,2100], yearTo:[2000,2100], minEmployees:[0,1000000], maxEmployees:[0,1000000],
     purchaseValueMin:[0,Number.MAX_SAFE_INTEGER], purchaseValueMax:[0,Number.MAX_SAFE_INTEGER], newSince:[1990,2100] };
   const enumFields:Record<string, readonly string[]> = { purchaseKind:PURCHASE_KINDS, procedure:PROCEDURES, firmSeat:FIRM_SEATS, newScope:NEW_SCOPES };
-  const trueFields = ["sharedPartners", "mainClient", "dominantSupplier"];
+  const trueFields = ["sharedPartners", "mainClient", "dominantSupplier", "includeHistoric"];
   for (const [key, value] of Object.entries(fRaw)) {
     if (![...stringFields, ...Object.keys(numberBounds), ...Object.keys(enumFields), ...trueFields, "singleBidder", "authorityKind"].includes(key)) return { error:`Filtru necunoscut: ${key}. Condiția nu a fost ignorată.` };
     if (value === undefined || value === null || value === "") continue;
@@ -620,7 +631,7 @@ export function parseSpec(raw: unknown): AskSpec | SpecError {
   if (typeof fRaw["newScope"] === "string" && fRaw["newScope"]) filters.newScope = fRaw["newScope"] as (typeof NEW_SCOPES)[number];
   for (const k of ["purchaseValueMin", "purchaseValueMax", "newSince"] as const)
     if (fRaw[k] !== undefined && fRaw[k] !== null && fRaw[k] !== "") filters[k] = Number(fRaw[k]);
-  for (const k of ["sharedPartners", "mainClient", "dominantSupplier"] as const) if (fRaw[k] === true) filters[k] = true;
+  for (const k of ["sharedPartners", "mainClient", "dominantSupplier", "includeHistoric"] as const) if (fRaw[k] === true) filters[k] = true;
   // [min, max): the upper bound is not in the range (lib/ask/purchase.ts VALUE_RANGES), so it must be above the lower one.
   if (filters.purchaseValueMin !== undefined && filters.purchaseValueMax !== undefined && filters.purchaseValueMin >= filters.purchaseValueMax)
     return { error:"Limita de sus a mărimii trebuie să fie peste cea de jos; corectează limitele." };

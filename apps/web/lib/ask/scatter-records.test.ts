@@ -28,8 +28,8 @@ describe("a signal's sources without da_tx_flagged_idx (flagSourcesWait)", () =>
   });
 
   it("says which acquisitions a signal's sources are, with Ask's short label (just under the ceiling: 96–100%)", () => {
-    expect(flagRecordsNote("da_round")).toBe("Sursele semnalului „Prea des chiar sub plafon”: achizițiile cu valoarea între 96% și 100% din plafon, nu tot istoricul profilurilor.");
-    expect(flagRecordsNote("da_above_ceiling")).toBe("Sursele semnalului „Directe, deși trec de plafon”: achizițiile înregistrate cu peste 10% peste plafon, unde excepțiile cunoscute nu se aplică, nu tot istoricul profilurilor.");
+    expect(flagRecordsNote("da_round")).toBe("Sursele semnalului „Multe sume imediat sub plafon”: achizițiile cu valoarea între 96% și 100% din plafon, nu tot istoricul profilurilor.");
+    expect(flagRecordsNote("da_above_ceiling")).toBe("Sursele semnalului „Declarate directe, peste plafon”: achizițiile înregistrate cu peste 10% peste plafon, unde excepțiile cunoscute nu se aplică, nu tot istoricul profilurilor.");
     for (const flag of SCATTER_FLAGS) expect(flagRecordsNote(flag)).toMatch(/^Sursele semnalului „[^”]+”: \S/);
   });
 });

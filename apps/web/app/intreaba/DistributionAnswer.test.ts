@@ -120,7 +120,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     expect(lines[7]).toBe('"scor",,,,,,,,,,,0,0,2,,');
     expect(lines.find((line) => line.startsWith('"scor",,,,,,,,,,,50,'))).toBe('"scor",,,,,,,,,,,50,59,10,,da');
     expect(lines.filter((line) => line.startsWith('"grup"'))).toHaveLength(38);
-    expect(lines.find((line) => line.startsWith('"grup"'))).toBe('"grup","MUNICIPIUL BUZAU","Iași",60000,71,"puternic","da_split|da_round",2000,,,,,,,,');
+    expect(lines.find((line) => line.startsWith('"grup"'))).toBe('"grup","MUNICIPIUL BUZAU","Iași",60000,71,"pronunțat","da_split|da_round",2000,,,,,,,,');
     expect(lines.join("\n")).not.toMatch(/da_rapid|Finalizare/);
   });
 

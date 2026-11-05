@@ -157,7 +157,7 @@ export const LENS_PHRASES: Partial<Record<Block, readonly LensPhrase[]>> = {
   // F6b (plan §4.2, final scatter §4.2): the risk cloud's signal and the order of its list. The signal's words are also
   // cues of the signals question (rules.ts), so they name it; "cele mai mari valori" orders the list by value.
   // rf-2026.18: the risk score's criteria. The names of 4 November 2026 ("Adunate, trec de plafon", "Prea des chiar sub
-  // plafon", "Directe, deși trec de plafon", "Mulți bani contractați în decembrie", "O firmă ia mare parte din bani", "Un
+  // plafon", "Declarate directe, peste plafon", "Mulți bani contractați în decembrie", "O firmă primește mare parte din bani", "Un
   // singur client public mare") are understood, and so are the older ones a reader may still type.
   scatter: [
     { re: /\bfractionar\w*|\bimpartir\w* (?:in|a) (?:mai multe )?achizitii\b|\bpeste plafon(?:ul)? cumulat\b|\badunat\w*,? (?:cu altele,? )?trec\w* de plafon\b/, path: "scatter.flag", value: "da_split", quiet: true },

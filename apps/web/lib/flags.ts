@@ -15,7 +15,7 @@ export interface FlagMeta {
   label?: string;
   /**
    * The name on ONE acquisition (a records-table badge, a record's page): the singular of `label` where the
-   * signal's name speaks of many („Prea des chiar sub plafon” → „Chiar sub plafon”; owner, 4 November 2026).
+   * signal's name speaks of many („Multe sume imediat sub plafon” → „Imediat sub plafon”; owner, 4 November 2026).
    */
   recordLabel?: string;
   /**
@@ -38,7 +38,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     title: "Adunate, trec de plafon",
     label: "Adunate, trec de plafon",
     recordLabel: "Adunată cu altele, trece de plafon",
-    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Un grup cântărește după cât trece de plafon (de la 1,2× la 2×) și după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează. Pe o firmă cântărește puțin dacă grupurile nu sunt la 1–2 instituții.",
+    entityRule: "Cel puțin o dată în arhivă: 3+ achiziții directe la același furnizor, în același an, aceeași clasă CPV și același tip, fiecare sub plafon, cu suma peste plafon. Un grup cântărește după cât trece de plafon (de la 1,2× la 2×) și după mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează, nici materialele medicale (CPV 33) și nici 12+ comenzi mici (sub 10% din plafon în medie): acestea apar ca „comenzi repetate, fără acord-cadru”, fără puncte. Pe o firmă cântărește puțin dacă grupurile nu sunt la 1–2 instituții.",
     subject: "pair",
     short: "Mai multe achiziții mici de la aceeași firmă, pentru același fel de lucru, în același an: fiecare sub plafon, împreună peste.",
     description:
@@ -50,8 +50,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_concentration: {
     code: "da_concentration",
-    title: "O firmă ia mare parte din bani",
-    label: "O firmă ia mare parte din bani",
+    title: "O firmă primește mare parte din bani",
+    label: "O firmă primește mare parte din bani",
     entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui, cu 3+ achiziții în 2+ ani (minimum 3 furnizori și 100.000 lei). Utilitățile și firma instituției nu intră.",
     subject: "authority",
     short: "Un singur furnizor primește o parte mare din valoarea achizițiilor directe.",
@@ -69,16 +69,16 @@ export const FLAG_META: Record<string, FlagMeta> = {
     subject: "supplier",
     short: "O instituție aduce cel puțin 70% din ce vinde firma prin achiziții directe.",
     description:
-      "O singură autoritate reprezintă cel puțin 70% din valoarea achizițiilor directe ale furnizorului, la un total de cel puțin 250.000 lei, cu cel puțin 5 achiziții în cel puțin 2 ani cu acea autoritate. Nivelul 1 începe de la 85%; tăria crește cu ponderea firmei în achizițiile instituției și când firma vinde și peste capacitatea ei. Firma instituției (in-house, Legea 98/2016 art. 31) nu primește semnalul.",
+      "O singură autoritate reprezintă cel puțin 70% din valoarea achizițiilor directe ale furnizorului, la un total de cel puțin 250.000 lei, cu cel puțin 5 achiziții în cel puțin 2 ani cu acea autoritate. Nivelul 1 începe de la 85%; tăria crește cu ponderea firmei în achizițiile instituției. Firma instituției (in-house, Legea 98/2016 art. 31) nu primește semnalul.",
     rationale: "Merită verificat istoricul relației cu autoritatea și modul de selectare a furnizorului.",
     caveat: "Această pondere nu descrie toate veniturile firmei: nu include vânzările private sau contractele prin proceduri. Un furnizor cu un singur client public în achizițiile directe din date primește semnalul automat, dacă valoarea totală atinge pragul folosit la calcul. Dependența de un singur client este chiar pista pe care o arată semnalul, nu o dovadă de neregulă. Un client public principal poate fi explicat de specializare sau de piața locală.",
   },
   da_round: {
     code: "da_round",
-    title: "Prea des chiar sub plafon",
-    label: "Prea des chiar sub plafon",
-    recordLabel: "Chiar sub plafon",
-    entityRule: "Cel puțin 3 achiziții directe la 96–100% din plafon, de cel puțin 2 ori mai multe decât ar fi de așteptat după media națională (același tip, aceleași plafoane).",
+    title: "Multe sume imediat sub plafon",
+    label: "Multe sume imediat sub plafon",
+    recordLabel: "Imediat sub plafon",
+    entityRule: "Cel puțin 3 achiziții directe la 96–100% din plafon, de cel puțin 2 ori mai multe decât ar fi de așteptat după media națională (același tip, aceleași plafoane; cel puțin 0,5 așteptate). Nivelul 2 cere cel puțin 5 astfel de achiziții, nivelul 3 cel puțin 8.",
     subject: "da",
     short: "O achiziție directă cu valoarea la 96–100% din plafon.",
     description:
@@ -89,12 +89,12 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_above_ceiling: {
     code: "da_above_ceiling",
-    title: "Directe, deși trec de plafon",
-    label: "Directe, deși trec de plafon",
-    recordLabel: "Directă, deși trece de plafon",
+    title: "Declarate directe, peste plafon",
+    label: "Declarate directe, peste plafon",
+    recordLabel: "Declarată directă, peste plafon",
     entityRule: "Cel puțin 2 cazuri (cumpărător × lună) peste plafon: estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Doar la cumpărătorii obligați de plafon; companiile și asociațiile nu sunt verificate. Pe o firmă cântărește puțin dacă nu sunt la 1–2 instituții.",
     subject: "da",
-    short: "O achiziție directă înregistrată cu peste 10% peste plafon.",
+    short: "O achiziție directă peste plafon: estimată peste el, sau peste el chiar și cu TVA.",
     description:
       "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe, iar estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Numărăm doar la cumpărătorii pe care plafonul îi obligă (instituții publice și operatori sectoriali publici, Legea 99/2016 art. 12(4)), nu la companii private sau asociații, și doar unde excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2, nu CPV 33, nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când închiderea depășește de peste două ori estimarea. În profil contează de la două cazuri (cumpărător × lună), după număr și pondere în valoare.",
     rationale:
@@ -117,13 +117,13 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_capacity: {
     code: "da_capacity",
-    title: "Vânzări peste capacitatea firmei",
-    label: "Peste capacitate",
-    entityRule: "Într-un an, achizițiile directe sunt de cel puțin 1,5 ori cifra de afaceri (bilanțul acelui an sau de până la doi ani înainte), cifra de afaceri e sub 10.000 lei sau firma are 0 angajați la 500.000 lei. Firmele cu peste 100 mil. lei cifră de afaceri nu intră.",
+    title: "Contracte directe peste cifra de afaceri",
+    label: "Peste cifra de afaceri",
+    entityRule: "Într-un an, achizițiile directe sunt de cel puțin 1,5 ori cifra de afaceri din bilanțul aceluiași an, cifra de afaceri e sub 10.000 lei sau firma are 0 angajați la 500.000 lei. Un an fără bilanț, cum e anul în curs, nu se evaluează. Firmele cu peste 100 mil. lei cifră de afaceri nu intră.",
     subject: "supplier",
     short: "Într-un an, achizițiile directe depășesc mult cifra de afaceri a firmei.",
     description:
-      "Într-un an, achizițiile directe ale firmei (cel puțin 100.000 lei) sunt de cel puțin 1,5 ori cifra ei de afaceri din bilanțul MF al acelui an sau de până la doi ani înainte, cifra de afaceri e sub 10.000 lei, sau firma are 0 angajați la cel puțin 500.000 lei. Firmele care au raportat vreodată peste 100 mil. lei cifră de afaceri nu intră.",
+      "Într-un an, achizițiile directe ale firmei (cel puțin 100.000 lei) sunt de cel puțin 1,5 ori cifra ei de afaceri din bilanțul MF al aceluiași an (un an fără bilanț nu se evaluează: față de bilanțul anului anterior, doar 23% din cazurile din 2019–2025 s-au confirmat), cifra de afaceri e sub 10.000 lei, sau firma are 0 angajați la cel puțin 500.000 lei. Firmele care au raportat vreodată peste 100 mil. lei cifră de afaceri nu intră.",
     rationale: "O firmă care vinde mult peste mărimea ei poate fi un intermediar; merită verificat cine a executat de fapt.",
     caveat: "Bilanțul e anual și poate lipsi; contractele multianuale și subcontractarea pot explica diferența. Singur, semnalul rămâne slab.",
   },

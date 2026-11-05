@@ -35,6 +35,7 @@ export const SPEC_PATH_OWNERS: { readonly [P in SpecPath]: FilterId | "question"
   "filters.firmSeat": "firmSeat", "filters.seatCounty": "seatCounty", "filters.sharedPartners": "sharedPartners",
   "filters.newSince": "newSince", "filters.newScope": "newSince",
   "filters.mainClient": "mainClient", "filters.dominantSupplier": "dominantSupplier",
+  "filters.includeHistoric": "includeHistoric",
   "trend.change": "trendChange", "trend.months": "trendMonths", "trend.order": "trendOrder",
   "trend.minBase": "trendMinBase", "trend.firstOnly": "trendFirstOnly",
   "timeseries.grain": "timeseriesGrain", "timeseries.split": "timeseriesSplit", "timeseries.months": "timeseriesMonths",

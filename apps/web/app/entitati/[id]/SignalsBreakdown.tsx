@@ -5,7 +5,7 @@ import { countWords } from "@/lib/ask/answer-text";
 import type { SplitPair } from "@/lib/entity-splits";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { cleanName, formatInt } from "@/lib/format";
-import { RISK_BAND_MIN, riskFact, type RiskCriterion, type RiskRole, type ScoreParts } from "@/lib/risk-score";
+import { RISK_BAND_MIN, RISK_RECURRING_WORDS, riskFact, riskSplitRecurring, type RiskCriterion, type RiskRole, type ScoreParts } from "@/lib/risk-score";
 import { SIGNAL_GUIDANCE, signalSentence, signalShare } from "@/lib/signal-guidance";
 import SplitPairsTable from "./SplitPairsTable";
 import YearMiniChart from "./YearMiniChart";
@@ -24,6 +24,8 @@ export interface SignalsBreakdownProps {
   role: RiskRole;
   entityName: string;
   hasRiskScore: boolean;
+  /** Why the signals make no score (rf-2026.22: under 10 DAs, a private buyer, under 10 points). */
+  noScoreReason?: string | null;
   score: number;
   parts: ScoreParts;
   points: Partial<Record<RiskCriterion, number>>;
@@ -86,7 +88,7 @@ export default function SignalsBreakdown(p: SignalsBreakdownProps) {
             <span style={{ left: 0 }}>0</span>
             <span style={{ left: `${RISK_BAND_MIN.moderat / 2}%` }} className="mid">slab</span>
             <span style={{ left: `${(RISK_BAND_MIN.moderat + RISK_BAND_MIN.puternic) / 2}%` }} className="mid">moderat</span>
-            <span style={{ left: `${(RISK_BAND_MIN.puternic + 100) / 2}%` }} className="mid">puternic</span>
+            <span style={{ left: `${(RISK_BAND_MIN.puternic + 100) / 2}%` }} className="mid">pronunțat</span>
             <span style={{ right: 0 }}>100</span>
           </div>
           <ul className="sig-legend">
@@ -94,7 +96,7 @@ export default function SignalsBreakdown(p: SignalsBreakdownProps) {
               <li key={code}><i className={`sig-swatch ${segment(code)}`} /><b>{formatInt(p.points[code] ?? 0)}</b> {flagLabel(code)}</li>
             ))}
             {quiet.map((code) => (
-              <li key={code} className="quiet"><i className="sig-swatch none" /><b>0</b> {flagLabel(code)}: găsit, prea puțin ca să conteze</li>
+              <li key={code} className="quiet"><i className="sig-swatch none" /><b>0</b> {flagLabel(code)}: {quietWords(code, p.signalCounts[code] ?? 0)}</li>
             ))}
           </ul>
         </div>
@@ -156,6 +158,9 @@ export default function SignalsBreakdown(p: SignalsBreakdownProps) {
           {!scored && !p.hasRiskScore && p.signalTypes.some((c) => riskCodes.has(c)) && (
             <p className="sig-note">Scorul de risc se calculează la următoarea actualizare completă.</p>
           )}
+          {!scored && p.hasRiskScore && p.noScoreReason && p.signalTypes.some((c) => riskCodes.has(c)) && (
+            <p className="sig-note">{p.noScoreReason}</p>
+          )}
           {scored && <h3>În afara scorului</h3>}
           <ul>
             {(scored ? others : p.signalTypes).map((code) => (
@@ -170,6 +175,15 @@ export default function SignalsBreakdown(p: SignalsBreakdownProps) {
       )}
     </section>
   );
+}
+
+/**
+ * Why a signal found adds no points (rf-2026.22, owner decision M24): one direct acquisition above the ceiling is
+ * shown but never makes the pattern, which needs two cases; the rest are under their threshold.
+ */
+function quietWords(code: string, count: number): string {
+  if (code === "da_above_ceiling" && count === 1) return "o singură achiziție directă peste plafon; se vede aici, dar nu intră în scor, tiparul cere cel puțin două cazuri";
+  return "găsit, prea puțin ca să conteze";
 }
 
 /** The groups' totals against their ceiling: one bar each, the ceiling as one line across them. */
@@ -193,6 +207,8 @@ function SplitBars({ groups, role, counted }: { groups: { rows: SplitPair[]; tot
               <span className="lab">
                 <EntityName id={g.partnerId} role={role === "authority" ? "supplier" : "authority"}>{cleanName(g.partnerName ?? "—")}</EntityName>
                 {g.year ? ` · ${g.year}` : ""} · {countWords(g.count, "achiziție", "achiziții")} · <b>{ratioWords(r)}×</b>
+                {/* rf-2026.22 (S5): recurring supply weighs nothing; it shows as what it is. */}
+                {riskSplitRecurring({ total: g.totalRon, n: g.count, ceiling: g.ceiling, cpvClass: g.cpvClass }) && <> · {RISK_RECURRING_WORDS}</>}
               </span>
             </li>
           );

@@ -82,6 +82,11 @@ export interface RiskRanking {
    * nobody has one, the first by value (the sources of „Nu are semnale în profil”).
    */
   rows: RiskPlace[];
+  /**
+   * rf-2026.22 (S8): the profiles of the group with a score left out as historic (no record in the last 24 months);
+   * absent when they are listed (filters.includeHistoric) and in answers stored before.
+   */
+  historic?: number;
 }
 
 /** A profile at the top of the old index, in an answer stored as entity_card-2. */
@@ -148,7 +153,7 @@ export function riskPlaces(rows: readonly Pick<RiskPlace, "score">[]): number[] 
   return places;
 }
 
-/** The band's word of a score, as beside its pill: „puternic”, „slab”, „niciun tipar găsit”. */
+/** The band's word of a score, as beside its pill: „puternic”, „slab”, „fără semnal în scor”. */
 export const riskBandWord = (score: number): string => RISK_BAND_WORD[riskBand(score)];
 
 /** The ids of the podium's places (place 1 alone for an answer stored before entity_card-2): what a records drawer may narrow to. */

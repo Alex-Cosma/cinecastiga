@@ -355,7 +355,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
 
   return <div className="qb sc" ref={wrap}>
     {strip}
-    {/* The strip's new answer said aloud (final §4.3): "46 cu Chiar sub plafon, după risc". */}
+    {/* The strip's new answer said aloud (final §4.3): "46 cu Imediat sub plafon, după risc". */}
     <span className="d-sr-only" role="status">{stripStatusWords(data)}</span>
     {dropped && <p className="sc-small" role="note">Am scos semnalul «{scatterFlagLabel(dropped.flag)}»: {dropped.why}.</p>}
 

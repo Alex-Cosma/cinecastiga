@@ -19,7 +19,7 @@ describe("the entity page's signal rows (variant A, 4 November 2026)", () => {
       .toBe("16 achiziții s-au oprit la 96–100% din plafon. După media instituțiilor de același tip, ne-am aștepta la vreo 6.");
     expect(signalSentence("da_round", { x: 1, n: 1 }, "authority")).toBe("1 achiziție s-a oprit la 96–100% din plafon.");
     expect(signalSentence("da_above_ceiling", { x: 2, n: 3, value: 1_300_000, share: 0.08 }, "authority"))
-      .toMatch(/^3 achiziții directe au valoare cu peste 10% mai mare decât plafonul\. Împreună: .+, 8% din bani\.$/);
+      .toMatch(/^3 achiziții directe au trecut de plafon: cu valoarea estimată sau cu suma finală, chiar și cu TVA\. Împreună: .+, 8% din bani\.$/);
     expect(signalSentence("da_year_end", { x: 1, years: [{ y: 2022, pct: 0.41 }, { y: 2024, pct: 0.38 }] }, "authority"))
       .toBe("În 2022, decembrie a adus 41%; în 2024, decembrie a adus 38% din achizițiile directe ale anului.");
   });
