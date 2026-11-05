@@ -5,7 +5,7 @@ import Link from "next/link";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { pairSpec } from "@/lib/ask/site-links";
-import { useTip } from "../../intreaba/blocks";
+import { useTip } from "../../intreaba/use-tip";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
 import { consortiumRankingNote } from "@/lib/consortium";

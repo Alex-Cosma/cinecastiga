@@ -1,6 +1,6 @@
 "use client";
 
-import { useTip } from "../../intreaba/blocks";
+import { useTip } from "../../intreaba/use-tip";
 import { formatRon, formatInt } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { entityMonthSpec } from "@/lib/ask/site-links";
