@@ -19,7 +19,7 @@ const files = [
   "./compile.ts",
   "./pills.ts",
   "../../app/entitati/[id]/YearMiniChart.tsx",
-  "../../app/metodologie/page.tsx",
+  "../../app/metodologie/MethodologyStory.tsx",
 ];
 const spendingWords = /cheltui|încasea/i;
 // Saying what a value is not ("nu o cheltuială", "nu cheltuială zero") is the intended caveat.
@@ -41,12 +41,12 @@ describe("value wording (audit F36)", () => {
   it("names the monthly DA chart and the mutual-dependence share by contracted value", () => {
     const chart = readFileSync(new URL("../../app/entitati/[id]/YearMiniChart.tsx", import.meta.url), "utf8");
     expect(chart).toContain("aria-label={`Valoarea lunară a achizițiilor directe, ${year}`}");
-    const method = readFileSync(new URL("../../app/metodologie/page.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+    const method = readFileSync(new URL("../../app/metodologie/MethodologyStory.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
     expect(method).toContain("ponderea lui în valoarea contractată de autoritate");
   });
 
   it("has the network's groups in the methodology, with their rule and that signals are leads (S4 leftover)", () => {
-    const method = readFileSync(new URL("../../app/metodologie/page.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+    const method = readFileSync(new URL("../../app/metodologie/MethodologyStory.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
     expect(method).toContain('id="grupele-retelei"');
     for (const words of ["Noi, cu prima înregistrare a relației din acel an încoace", "Nu mai apar, fără nicio înregistrare din acel an",
       "perioada se aplică doar la Toți", "Semnalele sunt piste, nu dovezi; valorile sunt înregistrate, nu plăți."]) expect(method).toContain(words);

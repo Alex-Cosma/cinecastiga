@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { GLOSSARY, GUIDE_IDEAS, glossaryEntry, guideIdeasHeading, type GlossaryId } from "./glossary";
+import { BRIEF_TERMS, GLOSSARY, glossaryEntry, type GlossaryId } from "./glossary";
 import Term from "../components/Term";
 
 describe("beginner glossary", () => {
@@ -16,16 +16,9 @@ describe("beginner glossary", () => {
     }
   });
 
-  it("lists the guide ideas in order, ending with the consortium rule", () => {
-    expect(GUIDE_IDEAS).toEqual(["achizitie-directa", "contract-procedura", "valoare-inregistrata", "semnal", "cpv", "consortiu"]);
-    for (const id of GUIDE_IDEAS) expect(glossaryEntry(id)).toBe(GLOSSARY[id]);
-  });
-
-  it("counts the guide cards it shows in the heading", () => {
-    expect(guideIdeasHeading()).toBe("Șase idei care te ajută să citești cifrele");
-    expect(guideIdeasHeading(5)).toBe("Cinci idei care te ajută să citești cifrele");
-    expect(guideIdeasHeading(1)).toBe("O idee care te ajută să citești cifrele");
-    expect(guideIdeasHeading(12)).toBe("12 idei care te ajută să citești cifrele");
+  it("adds to the methodology's Pe scurt the guide's three terms it does not explain", () => {
+    expect(BRIEF_TERMS).toEqual(["contract-procedura", "valoare-inregistrata", "consortiu"]);
+    for (const id of BRIEF_TERMS) expect(glossaryEntry(id)).toBe(GLOSSARY[id]);
   });
 
   it("keeps the binding product wording: values are not payments, signals are not accusations", () => {

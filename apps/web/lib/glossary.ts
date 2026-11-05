@@ -1,13 +1,13 @@
 /**
- * The single source of beginner definitions. The guide (/ghid) and every
- * <Term> explanation read these texts, so a wording change happens here once.
+ * The single source of beginner definitions. Every <Term> explanation and the
+ * methodology's "Pe scurt" lane read these texts, so a wording change happens here once.
  * Keep each definition to plain Romanian a first-time visitor can follow;
  * the methodology keeps the exact rules and their limits.
  */
 export interface GlossaryEntry {
-  /** Short name shown as the card title in the guide. */
+  /** Short name, the term's title in "Pe scurt" and in <Term>. */
   title: string;
-  /** One or two sentences, shown in the guide and in the <Term> explanation. */
+  /** One or two sentences, shown in "Pe scurt" and in the <Term> explanation. */
   text: string;
 }
 
@@ -351,21 +351,8 @@ export const GLOSSARY = {
 export type GlossaryId = keyof typeof GLOSSARY;
 
 /** The ideas of the beginner guide, in reading order. */
-export const GUIDE_IDEAS: readonly GlossaryId[] = [
-  "achizitie-directa",
-  "contract-procedura",
-  "valoare-inregistrata",
-  "semnal",
-  "cpv",
-  "consortiu",
-];
-
-const IDEA_COUNT = ["", "O idee care te ajută", "Două idei care te ajută", "Trei idei care te ajută", "Patru idei care te ajută", "Cinci idei care te ajută", "Șase idei care te ajută", "Șapte idei care te ajută", "Opt idei care te ajută"];
-
-/** The guide heading counts the cards it actually shows. */
-export function guideIdeasHeading(count: number = GUIDE_IDEAS.length): string {
-  return `${IDEA_COUNT[count] ?? `${count} idei care te ajută`} să citești cifrele`;
-}
+/** The terms the methodology's "Pe scurt" lane adds to its eight points (the guide's, until 5 Nov 2026). */
+export const BRIEF_TERMS: readonly GlossaryId[] = ["contract-procedura", "valoare-inregistrata", "consortiu"];
 
 export function glossaryEntry(id: GlossaryId): GlossaryEntry {
   return GLOSSARY[id];

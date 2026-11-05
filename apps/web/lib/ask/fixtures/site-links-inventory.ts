@@ -33,7 +33,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
     corpus: ["site:home-roads", "site:home-hospitals", "site:home-contract-winners", "site:home-communes", "site:home-authority-cloud", "site:home-firm-dependence", "site:home-da-count", "site:home-contract-count", "site:home-value"] },
   { file: "app/DiscoveryMap.tsx", occurrences: 3, kind: "producer", what: "Home map: the national map and a county's domains",
     corpus: ["site:home-map", "site:county-breakdown"] },
-  { file: "app/ghid/page.tsx", occurrences: 4, kind: "producer", what: "Guide: a county's domains and the roads ranking",
+  { file: "app/metodologie/MethodologyStory.tsx", occurrences: 4, kind: "producer", what: "Methodology, Pe scurt: a county's domains and the roads ranking (the guide's, until 5 Nov 2026)",
     corpus: ["site:county-breakdown", "site:home-roads"] },
   { file: "app/entitati/[id]/page.tsx", occurrences: 5, kind: "producer", what: "Entity page: its records per channel (sources open), the firms of a representative",
     corpus: ["site:entity-channel-authority-da", "site:entity-channel-authority-contracts", "site:entity-channel-authority-all", "site:entity-channel-supplier-da", "site:person-firms"] },
