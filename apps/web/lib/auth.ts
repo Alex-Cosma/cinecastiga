@@ -16,6 +16,7 @@ import {
 } from "@seap/db";
 import { sendAuthCode } from "./mail";
 import { localLoginTwoFactor } from "./local-auth";
+import { AUTH_IP_ADDRESS } from "./auth-hardening";
 
 /**
  * better-auth server instance. Accounts are admin-created only (signup
@@ -119,6 +120,7 @@ const createAuth = () => betterAuth({
     nextCookies(),
   ],
   rateLimit: { enabled: true },
+  advanced: { ipAddress: AUTH_IP_ADDRESS },
 });
 
 // Route discovery during a clean build must not initialize authentication with
