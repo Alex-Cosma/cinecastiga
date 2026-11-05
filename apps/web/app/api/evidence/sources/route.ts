@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createDb } from "@seap/db";
+import { sharedSql } from "@/lib/shared-db";
 import { readSignalEvidence } from "@/lib/signal-evidence";
 import { readRadiografieEvidence, validateRadiografieSelection } from "@/lib/radiografie-evidence";
 import { evidenceCsv } from "@/lib/ask/evidence";
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const json = query.get("format") === "json";
   const page = Number(query.get("page") ?? 0);
   if (json && (!Number.isSafeInteger(page) || page < 0 || page > 4000)) return NextResponse.json({error:"Pagină invalidă."},{status:400});
-  const { sql } = createDb();
+  const sql = sharedSql();
   try {
     const evidence = await sql.begin("isolation level repeatable read read only", async tx => {
       await tx`set local statement_timeout = '30s'`;
@@ -38,5 +38,5 @@ export async function GET(request: Request) {
   } catch (error) {
     const bounded = error instanceof Error && error.message.startsWith("Această selecție depășește");
     return NextResponse.json({ error: bounded ? error.message : "Exportul nu a putut fi generat. Încearcă din nou sau restrânge selecția." }, { status: bounded ? 413 : 503 });
-  } finally { await sql.end(); }
+  }
 }
