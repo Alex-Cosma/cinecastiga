@@ -7,16 +7,24 @@ import {
   ingestionWatermarks,
   rawDocuments,
   scrapeRuns,
+  type Db,
+  type DbSql,
 } from "@seap/db";
 import { createElicitatieClient } from "@seap/scraper-clients";
 import { scrapeNoticesWindow } from "../src/scrape/elicitatie/notices.js";
 import { readWatermark } from "../src/scrape/watermark.js";
+import { requireDedicatedTestDatabase } from "./support/test-database.js";
 
 // Integration test — docker Postgres + mock SICAP server.
-// NOTE: resets the elicitatie:tenders/awards watermarks and deletes test
-// notice ids (99xxxxx range) — a later live re-scan is idempotent/harmless.
+// NOTE: resets the elicitatie:tenders/awards watermarks and scrape runs and
+// deletes test notice ids (99xxxxx range). On the application database that
+// deleted the real watermarks (audit Q3F2, 5 Nov 2026), so, like the DA suite,
+// it runs only on a disposable, migrated seap_test_* database:
+// TEST_DATABASE_URL=postgres://…/seap_test_<name> pnpm --filter ingestion exec vitest run test/notices-scrape.integration.test.ts
 
-const { db, sql } = createDb();
+const testDatabaseUrl = requireDedicatedTestDatabase(process.env["TEST_DATABASE_URL"]);
+let db: Db;
+let sql: DbSql | undefined;
 const WINDOW = { start: "2026-07-01", end: "2026-07-02" };
 const SOURCES = ["elicitatie:tenders", "elicitatie:awards"];
 
@@ -35,10 +43,18 @@ async function cleanup() {
   await db.delete(scrapeRuns).where(inArray(scrapeRuns.source, SOURCES));
 }
 
-beforeAll(cleanup);
-afterAll(async () => {
+beforeAll(async () => {
+  const connection = createDb(testDatabaseUrl);
+  db = connection.db; sql = connection.sql;
+  const [state] = await sql`select current_database() name`;
+  if (!state || !String(state.name).startsWith("seap_test_")) {
+    throw new Error("Refusing notices integration suite: connected outside a seap_test_* database");
+  }
   await cleanup();
-  await sql.end();
+});
+afterAll(async () => {
+  if (db) await cleanup();
+  await sql?.end();
 });
 
 let server: Server | undefined;
