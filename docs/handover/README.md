@@ -1,5 +1,7 @@
 # Handover cinecâștigă? — punctul de intrare
 
+**5 noiembrie 2026 — scorul `rf-2026.22` și deciziile proprietarului.** Auditul tuturor instituțiilor și firmelor (opt profiluri) a dus la deciziile S1–S11 și lotul 1 (scorul), iar panelul de 38 de cititori la M1–M28 (pagina de metodologie); toate sunt luate, cu dovezile, în [docs/handover/20261105/](20261105/README.md). Scorul nou e pe ramura `feat/risk-rf2026-22`; ce face deploy-ul și cum se verifică: [operarea](05-operations.md). Prototipul paginii de metodologie (v24) nu e încă portat în `apps/web`.
+
 **Consolidare: 11 octombrie 2026.** Acesta este ghidul pentru un coleg și modelul său LLM, fără acces la conversația inițială. Începe cu [predarea integrală](20261011/README.md). Indexul anterior, cu toate notele deja existente și stările datate, este păstrat integral în [HISTORY-INDEX.md](HISTORY-INDEX.md).
 
 **3 noiembrie: scorul de risc v2 (`rf-2026.20`), publicat pe 4 noiembrie (`a3d4a0e`).** Scorul se scrie „70 din 100”, tiparele se combină pe familii, cumpărătorul are un regim (instituție, asociație, firmă privată), iar firmele au tiparul nou „Peste capacitate”: [produs](01-product.md#scorul-de-risc-v2-3-noiembrie-2026), [arhitectură](02-architecture.md#scorul-de-risc-v2-rf-202620). Migrația 0097 adaugă `entity_flags.score_note`. Rularea `full` manuală din 4 noiembrie (07:13–10:14 ora României) a refăcut toate semnalele și scorurile. Vezi [operarea](05-operations.md).
