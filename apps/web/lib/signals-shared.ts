@@ -2,6 +2,7 @@ import { FLAG_META } from "./flags";
 import { COUNTIES } from "./counties";
 import type { RiskGroupSort, Role } from "./marts";
 import { formatInt } from "./format";
+import { parseRoleParam } from "./role-param";
 
 /** Badge text for the number of distinct signal types on an entity page ("1 tip", "2 tipuri"). */
 export function signalTypeCountLabel(n: number): string {
@@ -28,7 +29,7 @@ const ENTITY_ID = /^[1-9]\d{0,17}$/;
 const fold = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export function parseSignalState(params: Record<string, string | undefined>): SignalState {
   const code = params.tip && Object.hasOwn(FLAG_META, params.tip) ? params.tip : "da_split";
-  let role: Role = params.rol === "supplier" ? "supplier" : "authority";
+  let role: Role = parseRoleParam(params.rol) ?? "authority";
   const county = params.jud?.trim() ? COUNTIES.find((name) => fold(name) === fold(params.jud!.trim())) ?? params.jud.trim().slice(0, 100) : null;
   const from = Number(params.criMin), to = Number(params.criMax);
   const validBand = params.criMin !== undefined && params.criMax !== undefined && Number.isFinite(from) && Number.isFinite(to) && from >= 0 && to <= 1 && from < to;

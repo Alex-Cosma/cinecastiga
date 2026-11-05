@@ -5,6 +5,7 @@ import { getEntityProfile } from "@/lib/marts";
 import { cleanName } from "@/lib/format";
 import ConnectionsExplorer from "./ConnectionsExplorer";
 import "./connections.css";
+import { parseRoleParam } from "@/lib/role-param";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Cum sunt legate?" };
@@ -20,6 +21,6 @@ export default async function ConnectionsPage({ params, searchParams }: {
   if (!profile) notFound();
   const raw = await searchParams;
   const initial = Object.fromEntries(Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
-  const role = initial.rol === "furnizor" ? "supplier" : initial.rol === "autoritate" ? "authority" : profile.roles[0]?.role ?? "authority";
+  const role = parseRoleParam(initial.rol) ?? profile.roles[0]?.role ?? "authority";
   return <ConnectionsExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} role={role} initial={initial} />;
 }

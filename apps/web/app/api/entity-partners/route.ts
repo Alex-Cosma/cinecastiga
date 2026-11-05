@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getEntityPartnersPaged, type Role } from "@/lib/marts";
 import { devlog } from "@/lib/devlog";
+import { parseRoleParam } from "@/lib/role-param";
 
 /**
  * GET /api/entity-partners — the entity page's counterparty list, paginated
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   if (!/^\d+$/.test(id)) {
     return NextResponse.json({ ok: false, error: "id invalid" }, { status: 400 });
   }
-  const role: Role = url.searchParams.get("rol") === "autoritate" ? "authority" : "supplier";
+  const role: Role = parseRoleParam(url.searchParams.get("rol")) ?? "supplier";
   const pageRaw = Number(url.searchParams.get("page"));
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   devlog("entity-partners", { id, role, page });
