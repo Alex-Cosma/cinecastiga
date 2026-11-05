@@ -1,6 +1,6 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
-import { createDb } from "@seap/db";
+import { sharedSql } from "@/lib/shared-db";
 import { readRadiografieEvidence } from "@/lib/radiografie-evidence";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 
@@ -12,11 +12,11 @@ export default async function RadiografieSources({ params, searchParams }: {
   const [{ id }, search] = await Promise.all([params, searchParams]);
   await redirectCanonicalEntity(id,"/radiografie/surse",search);
   const selection = search.tip === "slicing" ? { type: "slicing", supplierId: search.furnizor } : { type: "pattern", patternId: search.tipar, ...(search.fingerprint?{expectedFingerprint:search.fingerprint}:{}) };
-  const { sql } = createDb();
+  const sql = sharedSql();
   const evidence = await sql.begin("isolation level repeatable read read only", async tx => {
     await tx`set local statement_timeout = '30s'`;
     return readRadiografieEvidence(tx as unknown as typeof sql, id, selection);
-  }).finally(() => sql.end());
+  });
   if(!evidence)return <><Link href={`/entitati/${id}/radiografie`} className="back">← Înapoi la Radiografie</Link><h1 className="page-title">Tiparul nu mai corespunde selecției</h1><p>Datele au fost recalculate sau sursele nu mai sunt disponibile. Deschide Radiografia actuală pentru a alege și verifica un tipar nou.</p></>;
   const binding=evidence.context.sourceBinding as {fingerprint?:string}|undefined;
   const boundSelection=selection.type==="pattern"?{...selection,expectedFingerprint:binding?.fingerprint}:selection;

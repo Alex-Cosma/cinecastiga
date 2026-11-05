@@ -6,7 +6,7 @@ import { noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValu
 import { daUrl } from "@/lib/elicitatie";
 import { coverageDate } from "@/lib/coverage";
 import { formatInt, formatExactDecimal } from "@/lib/format";
-import { createDb } from "@seap/db";
+import { sharedSql } from "@/lib/shared-db";
 import { readSignalEvidence } from "@/lib/signal-evidence";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import ClipButton from "@/components/ClipButton";
@@ -32,11 +32,11 @@ export default async function SignalSourcesPage({ params, searchParams }: {
   const dateFallback = Number(evidence.date_fallback_count ?? 0), typeInferred = Number(evidence.type_inferred_count ?? 0);
   const pages = Math.max(1, Math.ceil(finding.sourceIds.length / 50));
   if (!["da_split", "award_single_bid"].includes(finding.code)) {
-    const { sql } = createDb();
+    const sql = sharedSql();
     const source = await sql.begin("isolation level repeatable read read only", async tx => {
       await tx`set local statement_timeout = '30s'`;
       return readSignalEvidence(tx as unknown as typeof sql, id);
-    }).finally(() => sql.end());
+    });
     if (!source) notFound();
     const explanation = riskEvidenceLine(finding.code, finding.code === "da_round"
       ? { ...evidence, closing: source.context.recordedTotalExact, ceiling: finding.ceilingExact }
