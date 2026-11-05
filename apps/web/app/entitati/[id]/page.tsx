@@ -54,6 +54,7 @@ import DropRolParam from "./DropRolParam";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
 import "./entity.css";
+import { parseRoleParam } from "@/lib/role-param";
 
 /** Stat card → search drill with exactly this entity's rows from one channel. */
 function entityTxSearchUrl(
@@ -100,7 +101,7 @@ export async function generateMetadata({
   const roles = flags.length > 0 ? flags.map((f) => f.role) : (profile?.roles.map((r) => r.role) ?? []);
   const name = flags[0]?.name ?? profile?.name;
   if (!name || roles.length === 0) return {};
-  const wanted: Role | null = sp["rol"] === "furnizor" ? "supplier" : sp["rol"] === "autoritate" ? "authority" : null;
+  const wanted: Role | null = parseRoleParam(sp["rol"]);
   const role = wanted && roles.includes(wanted) ? wanted : roles[0]!;
   return { title: entityTitle(cleanName(name), role, countyKnown(flags.find((f) => f.county)?.county ?? profile?.county)) };
 }
@@ -141,8 +142,7 @@ export default async function EntityPage({
         : [];
   if (flagRows.length === 0) notFound();
 
-  const role: Role =
-    sp["rol"] === "furnizor" ? "supplier" : sp["rol"] === "autoritate" ? "authority" : flagRows[0]!.role;
+  const role: Role = parseRoleParam(sp["rol"]) ?? flagRows[0]!.role;
   const row: EntityFlagRow = flagRows.find((r) => r.role === role) ?? flagRows[0]!;
   const rolParam = role === "supplier" ? "furnizor" : "autoritate";
   // `?rol=` only for an entity that both buys and sells (owner, 4 November 2026); a single-role page drops it.

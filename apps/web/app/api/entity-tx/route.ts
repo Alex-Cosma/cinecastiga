@@ -4,6 +4,7 @@ import { txColumns } from "@/lib/entity-tx-columns";
 import type { Role } from "@/lib/marts";
 import { readFilters } from "@/lib/table-filters/codec";
 import { devlog } from "@/lib/devlog";
+import { parseRoleParam } from "@/lib/role-param";
 
 /**
  * GET /api/entity-tx — the entity page's records table, client-driven (10 rows a page, sortable, filtered by its
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
   const get = (key: string) => url.searchParams.get(key);
   const id = get("id") ?? "";
   if (!/^\d+$/.test(id)) return NextResponse.json({ ok: false, error: "id invalid" }, { status: 400 });
-  const role: Role = get("rol") === "autoritate" ? "authority" : "supplier";
+  const role: Role = parseRoleParam(get("rol")) ?? "supplier";
   const columns = txColumns(role === "authority");
   const filters = readFilters(columns, get);
   const facetKey = get("optiuni");

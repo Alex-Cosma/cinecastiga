@@ -1,3 +1,4 @@
+import { parseRoleParam } from '../role-param';
 export type SearchTab='all'|'acquisitions'|'documents'|'entities';
 export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier'};
 /** How a suggestion matched the typed place name (/api/topic-search/places); absent on stored places. */
@@ -24,7 +25,7 @@ export function parseTopicScope(p:URLSearchParams):TopicScope {
  if(!['all','da','contracts'].includes(type)||!['words','phrase'].includes(match)||!['all','acquisitions','documents','entities'].includes(tab))throw Error('Filtre de căutare invalide.');
  const rawPage=p.get('page')??'1';
  if(!/^\d{1,4}$/.test(rawPage)||Number(rawPage)<1||Number(rawPage)>1000)throw Error('Pagina nu este validă. Restrânge căutarea pentru rezultate mai precise.');
- const role=p.get('rol')==='furnizor'?'supplier':p.get('rol')==='autoritate'?'authority':'';
+ const role=parseRoleParam(p.get('rol'))??'';
  return {q,place,from,to,type:type as TopicScope['type'],match:match as TopicScope['match'],tab:role?'entities':tab as SearchTab,page:Number(rawPage),role};
 }
 export function topicParams(s:TopicScope):URLSearchParams {

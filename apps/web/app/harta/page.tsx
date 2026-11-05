@@ -6,6 +6,7 @@ import Term from "@/components/Term";
 import { GLOSSARY } from "@/lib/glossary";
 import { SEAT_ABROAD } from "@/lib/ask/seat";
 import "./harta.css";
+import { parseRoleParam } from "@/lib/role-param";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function HartaPage({
   searchParams: Promise<{ rol?: string }>;
 }) {
   const { rol } = await searchParams;
-  const role: Role = rol === "furnizor" ? "supplier" : "authority";
+  const role: Role = parseRoleParam(rol) ?? "authority";
   const data = await getSpendByCounty(role);
 
   const byKey = new Map<string, number>();
