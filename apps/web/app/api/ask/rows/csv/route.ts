@@ -10,6 +10,7 @@ import {
 import { evidenceOptions } from "../../../../../lib/ask/evidence-request";
 import { evidenceCsv } from "../../../../../lib/ask/evidence";
 import { devlog } from "../../../../../lib/devlog";
+import { queryFailureResponse } from "../../../../../lib/api-error";
 import { connectionEvidenceError, withConnectionEvidence } from "../../../../../lib/connection-evidence";
 import { peerEvidenceError, peerEvidenceOptions, withPeerEvidence } from "../../../../../lib/peers-evidence";
 
@@ -78,16 +79,10 @@ export async function POST(req: Request) {
   } catch (e) {
     const connectionError = (body.peer !== undefined ? peerEvidenceError(e) : null) ?? connectionEvidenceError(e);
     if (connectionError) return NextResponse.json({ ok: false, error: connectionError.error }, { status: connectionError.status });
-    const msg = e instanceof Error ? e.message : String(e);
-    const timeout = msg.includes("statement timeout");
-    return NextResponse.json(
-      {
-        ok: false,
-        error: timeout
-          ? "Exportul a depășit limita de timp (20s). Restrânge întrebarea (un județ, o perioadă) și încearcă din nou."
-          : "Exportul nu a putut fi generat. Încearcă din nou.",
-      },
-      { status: timeout ? 200 : 500 },
-    );
+    return queryFailureResponse("api/ask/rows/csv", e, {
+      timeout: "Exportul a depășit limita de timp (20s). Restrânge întrebarea (un județ, o perioadă) și încearcă din nou.",
+      failure: "Exportul nu a putut fi generat. Încearcă din nou.",
+      timeoutStatus: 200,
+    });
   }
 }

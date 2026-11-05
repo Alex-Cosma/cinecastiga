@@ -6,6 +6,7 @@ import { ground } from "../../../../lib/ask/ground";
 import { runRows } from "../../../../lib/ask/compile";
 import { evidenceOptions } from "../../../../lib/ask/evidence-request";
 import { devlog } from "../../../../lib/devlog";
+import { queryFailureResponse } from "../../../../lib/api-error";
 import { connectionEvidenceError, withConnectionEvidence } from "../../../../lib/connection-evidence";
 import { peerEvidenceError, peerEvidenceOptions, withPeerEvidence } from "../../../../lib/peers-evidence";
 
@@ -57,9 +58,9 @@ export async function POST(req: Request) {
   } catch (e) {
     const connectionError = (body.peer !== undefined ? peerEvidenceError(e) : null) ?? connectionEvidenceError(e);
     if (connectionError) return NextResponse.json({ ok: false, error: connectionError.error }, { status: connectionError.status });
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: msg.includes("statement timeout")
-      ? "Lista completă a depășit 20 de secunde. Restrânge întrebarea la o instituție, un județ sau o perioadă și încearcă din nou."
-      : "Sursele nu au putut fi încărcate. Încearcă din nou." }, { status: 500 });
+    return queryFailureResponse("api/ask/rows", e, {
+      timeout: "Lista completă a depășit 20 de secunde. Restrânge întrebarea la o instituție, un județ sau o perioadă și încearcă din nou.",
+      failure: "Sursele nu au putut fi încărcate. Încearcă din nou.",
+    });
   }
 }
