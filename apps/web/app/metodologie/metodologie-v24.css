@@ -317,7 +317,6 @@
 .mt .mt-ruler .mt-lim{bottom:46px}
 .mt .mt-ruler .mt-tick span{font-size:15px;color:var(--ink2)}
 .mt .mt-ruler .mt-pin span{font-size:15px}
-.mt .mt-paths{font-size:16px;color:var(--ink2);margin-top:10px}
 .mt .mt-doc{font-size:16px;color:var(--ink2);margin:0}
 .mt .mt-doc b{color:var(--ink)}
 .mt .mt-chip{display:inline-block;white-space:nowrap;padding:1px 10px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);font-weight:600;font-size:.92em}
@@ -389,12 +388,7 @@
 .mt .mt-pbar-l{font-size:16px;color:var(--ink2);margin:6px 0 0}
 .mt .mt-pair div{color:var(--ink)}
 .mt .mt-gloss dd{color:var(--ink)}
-.mt .mt-paths{display:flex;flex-wrap:wrap;gap:8px;font-size:16px;margin-top:14px}
-.mt .mt-paths a{display:inline-block;padding:9px 14px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--ink);text-decoration:none}
-.mt .mt-paths a:hover{border-color:var(--accent)}
 @media(max-width:560px){
-.mt .mt-paths{flex-direction:column}
-.mt .mt-paths a{text-align:left}
 }
 .mt .mt-brief .mt-more{margin-top:10px}
 .mt .mt-brief .mt-more>summary{cursor:pointer;font-weight:600;color:var(--accent);padding:6px 0;font-size:16px}
@@ -519,9 +513,6 @@
 @media(min-width:561px){
 }
 .mt .mt-gl{font-size:17px;color:var(--ink);margin-top:-8px}
-.mt .mt-paths{display:block;font-size:16px;color:var(--ink2);margin-top:16px;line-height:1.8}
-.mt .mt-paths a{display:inline;padding:0;border:0;background:none;color:var(--accent);text-decoration:underline;text-underline-offset:3px}
-.mt .mt-paths .mt-sep{margin:0 7px;color:var(--line2)}
 .mt .mt-pbar .mt-m,.mt .mt-pbar .mt-p{min-width:0}
 .mt .mt-leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:15px;color:var(--ink);margin:0}
 .mt .mt-leg span{display:inline-flex;align-items:center;gap:6px}
@@ -543,7 +534,6 @@
 .mt .mt-eq .mt-t small{font-size:12px}
 .mt .mt-eq .mt-op{font-size:17px}
 .mt .mt-ledger .mt-last{font-size:16px}
-.mt .mt-paths{line-height:2}
 }
 .mt .mt-def::before{content:"Explicație: ";font-weight:600}
 .mt .mt-key.mt-firm-box b{font-weight:650}
@@ -558,13 +548,7 @@
 .mt .mt-st-next{flex:1 1 100%;order:0}
 .mt .mt-st-share{margin-left:auto}
 }
-.mt .mt-paths{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px;font-size:15px;color:var(--ink2);line-height:1.4}
-.mt .mt-paths a{display:inline-flex;align-items:center;min-height:38px;padding:0 13px;border-radius:99px;border:1px solid var(--line2);background:var(--surface);color:var(--ink);text-decoration:none;font-size:15px}
-.mt .mt-paths a:hover{border-color:var(--accent)}
-.mt .mt-paths .mt-sep{display:none}
 @media(max-width:560px){
-.mt .mt-paths{flex-direction:row;line-height:1.4}
-.mt .mt-paths a{min-height:40px;text-align:center}
 }
 .mt .mt-term::after{width:24px;height:24px;font-size:14px;margin-left:4px}
 .mt .mt-ledger li small{font-size:15px}
@@ -648,7 +632,6 @@
 .mt .mt-sock>summary>.mt-sumw{display:inline}
 .mt .mt-sock>summary>.mt-sumw .mt-sumn{margin-left:0}
 .mt .mt-go-row.mt-top{margin:0 0 6px}
-.mt .mt-lane.mt-col>.mt-paths{margin-top:10px}
 .mt .mt-mini-l li small{display:block;color:var(--muted);font-size:14px;line-height:1.35}
 .mt .mt-mini .mt-leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--ink2);margin:0 0 8px}
 .mt .mt-mini .mt-leg i{display:inline-block;width:12px;height:12px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:5px}
@@ -774,8 +757,8 @@
 .mt .mt-ref .mt-body li>ul{margin-top:6px}
 /* Pe scurt: the guide's starting points and terms (the guide became this lane on 5 Nov 2026). */
 .mt .mt-also{font-size:16px;line-height:1.6;color:var(--ink2);margin:12px 0 0}
-.mt .mt-brief .mt-terms-h{margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line)}
-.mt .mt-terms{margin:8px 0 0;display:flex;flex-direction:column;gap:12px}
+
+.mt .mt-terms{margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:12px}
 .mt .mt-terms dt{font-weight:600;color:var(--ink);font-size:17px;line-height:1.4}
 .mt .mt-terms dd{margin:2px 0 0;font-size:16px;line-height:1.55;color:var(--ink2)}
 /* Regulile: the histogram of the institutions' non-zero scores (lib/methodology-figures.ts). */
