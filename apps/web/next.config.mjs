@@ -18,15 +18,10 @@ const nextConfig = {
   // The site uses no next/image or next/og. Left on, /_next/image?url=/api/documents/… made the server buffer up to
   // 50 MB of a SEAP file and parse it with sharp for any anonymous request (audit S3F2); unoptimized answers 404 there.
   images: { unoptimized: true },
-  experimental: {
-    // Next's default scroll-to-top on navigation starts from the first node a
-    // route segment renders. In production that node is a segment <script> or
-    // stylesheet that React hoists into <head>; the handler walks the head,
-    // finds nothing visible and gives up, so pages with client components
-    // (e.g. /semnale) opened at the previous page's scroll position. The
-    // fragment-ref handler measures the segment's own content instead.
-    appNewScrollHandler: true,
-  },
+  // Next 16.2's scroll-to-top on navigation started from the first node a route segment renders; in production that
+  // node is a <script> or stylesheet React hoists into <head>, so pages with client components (e.g. /semnale) opened at
+  // the previous page's scroll position, and experimental.appNewScrollHandler was set here. From 16.4 the fragment-ref
+  // handler is Next's only one and the key no longer exists (docs/handover/20261011/product-and-code.md).
 };
 
 export default nextConfig;
