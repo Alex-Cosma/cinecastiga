@@ -15,6 +15,8 @@ import { trendListSpec, type TrendList } from "@/lib/ask/trend-shared";
 import { interpret } from "@/lib/ask/llm";
 import { resolvedSpec } from "@/lib/ask/resolved-spec";
 import { devlog } from "@/lib/devlog";
+import { errorMessage, queryFailureResponse } from "../../../lib/api-error";
+import { ANSWER_ERROR } from "../../../lib/ask/answer-text";
 import { townHallOf } from "../../../lib/ask/town-hall";
 import { cpvCodeName, isCpvCodeTerm } from "../../../lib/ask/cpv-label";
 import { readableCpvName } from "../../../lib/entity-summary";
@@ -157,19 +159,12 @@ export async function POST(req: Request) {
       tookMs: result.tookMs,
     });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    const timeout = msg.includes("statement timeout");
-    devlog("ask", { question, spec, ok: false, error: msg });
-    return NextResponse.json(
-      {
-        ok: false,
-        error: timeout
-          ? "Interogarea a depășit limita de timp (20s). Încearcă o întrebare mai restrânsă (un județ, o perioadă)."
-          : `Eroare la execuție: ${msg}`,
-        spec,
-        question,
-      },
-      { status: timeout ? 200 : 500 },
-    );
+    devlog("ask", { question, spec, ok: false, error: errorMessage(e) });
+    return queryFailureResponse("api/ask", e, {
+      timeout: "Interogarea a depășit limita de timp (20s). Încearcă o întrebare mai restrânsă (un județ, o perioadă).",
+      failure: ANSWER_ERROR,
+      timeoutStatus: 200,
+      extra: { spec, question },
+    });
   }
 }
