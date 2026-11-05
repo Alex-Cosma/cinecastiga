@@ -319,7 +319,6 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <a className="mt-go2" href="/semnale">Vezi semnalele</a>
           </div>
           <p className="mt-also">Sau vezi <a href={countyBreakdownHref("Buzău")}>pe ce se duc banii într-un județ</a> ori pornește de la o întrebare: <a href={askHref(ROADS_RANKING_SPEC)}>cine repară drumurile?</a></p>
-          <nav className="mt-paths" aria-label="Scurtături">Pentru: <a href="#steps-t">oricine</a><a href="#citeaza">presă</a><a href="#alesi">aleși locali</a><a href="#firma">firme</a><a href="#raspuns">instituții</a><a href="#achizitor">achizitori</a><a href="#spitale">spitale</a><a href="#formula">formulă și praguri</a><a href="#cuvinte">cuvinte</a></nav>
           <section className="mt-brief" aria-labelledby="pe-scurt">
             <h2 id="pe-scurt">Pe scurt</h2>
             <p className="mt-sub">Opt lucruri de știut.</p>
@@ -333,7 +332,6 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>La o <b>firmă</b>, suma se compară cu tot ce a câștigat ea direct: 1,5 milioane înseamnă un sfert pentru o firmă cu 6 milioane atribuite direct, dar doar 0,6% pentru una cu 240 de milioane. Un contract luat de trei firme împreună se împarte egal între ele. Respectarea plafonului e obligația cumpărătorului, nu a firmei.</span></li>
               <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg><span>Comparația înseamnă un loc în clasament, de pildă „{exampleRank(f)} · primăriile cu 4.500–18.000 de locuitori”. O primărie e pusă doar lângă <b>primăriile de mărime apropiată</b> (între jumătate și dublul populației ei), iar o firmă, lângă firmele din domeniul ei principal, dacă sunt cel puțin 100. <b>Spitalele nu au comparație.</b> Locul apare doar la scor moderat sau pronunțat.</span></li>
             </ul>
-            <p className="mt-sub mt-terms-h">Și trei cuvinte din tabele.</p>
             <dl className="mt-terms">
               {BRIEF_TERMS.map((id) => (
                 <div key={id} id={id}>
@@ -493,7 +491,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <circle cx="12" cy="12" r="9" />
                 <path d="M12 11v6M12 7.5v.5" />
               </svg>
-              <p><b>Cei 38.000 de lei sunt o sumă contractată, nu una plătită.</b> Suma poate fi plătită mai târziu, parțial sau deloc. Cât s-a plătit pe un contract afli de la instituție, iar bugetul unei primării îl găsești pe <a href="https://transparenta-bugetara.gov.ro">transparenta-bugetara.gov.ro</a>. Aici sumele sunt fără TVA, cum au fost declarate, iar în buget apar cu TVA.</p>
+              <p><b>Cei 38.000 de lei sunt o sumă contractată, nu una plătită.</b> Suma poate fi plătită mai târziu, parțial sau deloc. Cât s-a plătit pe un contract afli de la instituție, iar bugetul unei primării îl găsești pe site-ul ei sau îl ceri de la primărie. Aici sumele sunt fără TVA, cum au fost declarate, iar în buget apar cu TVA.</p>
             </div>
             <ul className="mt-plain mt-small">
               <li><b>Ce date avem:</b> din 2018 până azi, achizițiile directe și contractele din <a href="https://e-licitatie.ro">SEAP</a>, anunțurile europene din <a href="https://ted.europa.eu">TED</a> (jurnalul Uniunii Europene pentru licitațiile mari), bilanțurile firmelor (<a href="https://mfinante.gov.ro">Ministerul Finanțelor</a>), administratorii firmelor (<a href="https://www.onrc.ro">Registrul Comerțului</a>) și populația, după <a href="https://www.recensamantromania.ro">recensământul din 2021</a>.</li>
