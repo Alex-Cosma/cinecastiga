@@ -113,6 +113,13 @@ describe("the entity page's top", () => {
     expect(readFileSync(new URL("./SignalsBreakdown.tsx", import.meta.url), "utf8")).toContain('id="semnale"');
   });
 
+  it("reads the partner list for the signals only when a concentration or dependence signal names its first (audit P1F4)", () => {
+    expect(page).toContain("row.scoreParts.da_concentration || row.scoreParts.da_dependence ? getEntityPartners(id, role, 12) : Promise.resolve([])");
+    expect(page.match(/getEntityPartners\(/g)).toHaveLength(1);
+    const breakdown = readFileSync(new URL("./SignalsBreakdown.tsx", import.meta.url), "utf8");
+    expect(breakdown).toContain('(code === "da_concentration" || code === "da_dependence") && p.topPartner');
+  });
+
   it("keeps ?rol= only for an entity that both buys and sells", () => {
     expect(page).toContain('rol: bothRoles ? rolParam : undefined');
     expect(page).toContain('{!bothRoles && sp["rol"] !== undefined && <DropRolParam />}');

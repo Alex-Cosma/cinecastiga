@@ -159,10 +159,12 @@ export default async function EntityPage({
   const successor = successorOf(id);
   // The repeated-purchases groups drawn in the signals section (its first page, largest total first).
   const splitGroupsP = row.scoreParts.da_split ? getSplitPairsPaged(id, role, {}, 1).catch(() => null) : Promise.resolve(null);
+  // The main partner named under the concentration and dependence signals, the only place it is shown (audit P1F4).
+  const signalPartnersP = row.scoreParts.da_concentration || row.scoreParts.da_dependence ? getEntityPartners(id, role, 12) : Promise.resolve([]);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
   const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
     await Promise.all([
-      getEntityPartners(id, role, 12),
+      signalPartnersP,
       getEntityMonthly(id, role),
       getEntityFlagEvidence(id),
       registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
