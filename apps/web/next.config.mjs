@@ -15,6 +15,9 @@ const nextConfig = {
   // tracing root is the monorepo root so workspace packages are included.
   output: "standalone",
   outputFileTracingRoot: path.join(here, "../../"),
+  // The site uses no next/image or next/og. Left on, /_next/image?url=/api/documents/… made the server buffer up to
+  // 50 MB of a SEAP file and parse it with sharp for any anonymous request (audit S3F2); unoptimized answers 404 there.
+  images: { unoptimized: true },
   experimental: {
     // Next's default scroll-to-top on navigation starts from the first node a
     // route segment renders. In production that node is a segment <script> or
