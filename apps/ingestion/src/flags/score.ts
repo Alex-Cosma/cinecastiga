@@ -1,7 +1,7 @@
 import {
-  PROFILE_FLAG_CODES, scoreCap, scoreOfCriteria, scorePoints, splitGroupWeight, strengthAbove, strengthCapacity,
-  strengthConcentration, strengthDependence, strengthRound, strengthSplit, strengthYearEnd,
-  type DbSql, type ProfileFlagCode, type ProfileFlagRole,
+  PROFILE_FLAG_CODES, SCORE_BAND_MIN, SCORE_MIN_DAS, firmDutyCap, scoreCountCap, scoreOfCriteria, scorePoints, scoreValueCap,
+  splitGroupWeight, strengthAbove, strengthCapacity, strengthConcentration, strengthDependence, strengthRound, strengthSplit,
+  strengthYearEnd, type DbSql, type FamilyContext, type ProfileFlagCode, type ProfileFlagRole,
 } from "@seap/db";
 import { buyerRegimeSql, entityNameSql, INHOUSE_SUPPLIER_NAME, UTILITY_SUPPLIER_NAME } from "./regime.js";
 import { daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
@@ -13,7 +13,12 @@ import { daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
  * pronounced each signal is against the size of the profile (strength x,
  * 0–3, the shared functions in @seap/db) and combines the families into the
  * score shown as "70 din 100". The design and its simulation on the local
- * copy: the risk-score audit of 3 November 2026.
+ * copy: the risk-score audit of 3 November 2026. rf-2026.22 (owner decisions
+ * of 5 November 2026, docs/handover/20261105/scor-audit-decizii.md): the
+ * evidence cap per criterion (sums by value or count, frequencies by count),
+ * no score under 10 DAs or under 10 points, no score for a private buyer, no
+ * capture, a firm's buyer-duty cap over the family, recurring supply out of
+ * the repeated purchases.
  */
 
 type Fragment = ReturnType<DbSql>;
@@ -101,7 +106,7 @@ export interface ProfileMeasures {
   utility: boolean; inhouse: boolean;
   above: { n: number; events: number; value: number; top2: number; partners: number } | null;
   /** Repeated-purchase groups of the profile. */
-  groups: { partner: string; total: number; n: number; ceiling: number; annex2Share: number; association: boolean; massSupplier: boolean }[];
+  groups: { partner: string; total: number; n: number; ceiling: number; annex2Share: number; association: boolean; massSupplier: boolean; cpvClass: string | null }[];
   round: { o: number; e: number } | null;
   december: { years: number; top2: number; flagged: { y: number; pct: number }[] } | null;
   concentration: { share: number; rawShare: number; partner: string } | null;
@@ -123,16 +128,21 @@ const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
 
 /** Strengths, score, points and the facts behind each criterion, for one profile's measures. */
 export function scoreProfile(m: ProfileMeasures): ProfileScore {
-  const gate = scoreCap(m.n, m.v);
+  // rf-2026.22 (S4a): the criteria about sums by the value or the count, the frequencies and shares by the count.
+  const countCap = scoreCountCap(m.n);
+  const valueCap = scoreValueCap(m.n, m.v);
   const share = (x: number) => (m.v > 0 ? x / m.v : 0);
   const note = m.role === "supplier" ? (m.inhouse ? "inhouse" : null)
     : m.regime === "association" || m.regime === "private_buyer" ? m.regime : null;
   const x: Partial<Record<ProfileFlagCode, number>> = {};
   const facts: Partial<Record<ProfileFlagCode, Record<string, unknown>>> = {};
+  // A firm's buyer-duty caps of the criteria with a share of their own value with the top two institutions (decision B).
+  const dutyCaps: number[] = [];
 
   if (m.above) {
     const w = share(m.above.value);
-    x.da_above_ceiling = strengthAbove(m.role, m.above.events, w, gate, { top2: m.above.top2, utility: m.utility });
+    x.da_above_ceiling = strengthAbove(m.role, m.above.events, w, valueCap, { top2: m.above.top2, utility: m.utility });
+    dutyCaps.push(firmDutyCap(m.above.top2));
     facts.da_above_ceiling = { n: m.above.n, events: m.above.events, value: m.above.value, share: r4(w), partners: m.above.partners, top2: r4(m.above.top2) };
   }
 
@@ -144,12 +154,15 @@ export function scoreProfile(m: ProfileMeasures): ProfileScore {
     const sum = vals.reduce((a, b) => a + b, 0);
     const top2 = sum > 0 ? (vals[0]! + (vals[1] ?? 0)) / sum : 1;
     const s = share(sum);
-    x.da_split = strengthSplit(m.role, s, gate, { top2, utility: m.utility });
-    facts.da_split = { groups: weighted.length, partners: byPartner.size, share: r4(s), rawShare: r4(share(weighted.reduce((a, g) => a + g.total, 0))), top2: r4(top2) };
+    x.da_split = strengthSplit(m.role, s, valueCap, { top2, utility: m.utility });
+    dutyCaps.push(firmDutyCap(top2));
+    const raw = weighted.reduce((a, g) => a + g.total, 0);
+    // rf-2026.22 (S7): the lei of the counted groups next to their share.
+    facts.da_split = { groups: weighted.length, partners: byPartner.size, share: r4(s), rawShare: r4(share(raw)), value: Math.round(raw), top2: r4(top2) };
   }
 
   if (m.round) {
-    x.da_round = strengthRound(m.round.o, m.round.e, gate);
+    x.da_round = strengthRound(m.round.o, m.round.e, countCap);
     facts.da_round = { n: m.round.o, expected: Math.round(m.round.e * 10) / 10 };
   }
 
@@ -159,15 +172,15 @@ export function scoreProfile(m: ProfileMeasures): ProfileScore {
     facts.da_year_end = { years: m.december.flagged, zs: r4(zs) };
   }
   if (m.role === "authority" && m.concentration) {
-    x.da_concentration = strengthConcentration(m.concentration.share, gate);
-    facts.da_concentration = { share: r4(m.concentration.share), rawShare: r4(m.concentration.rawShare), partnerId: m.concentration.partner };
+    x.da_concentration = strengthConcentration(m.concentration.share, countCap);
+    facts.da_concentration = { share: r4(m.concentration.share), rawShare: r4(m.concentration.rawShare), value: Math.round(m.concentration.rawShare * m.v), partnerId: m.concentration.partner };
   }
 
   if (m.role === "supplier") {
     let best: (typeof m.capacity)[number] | null = null;
     let xCap = 0;
     for (const c of m.capacity) {
-      const xc = strengthCapacity(c);
+      const xc = strengthCapacity(c, valueCap);
       if (xc > xCap) { xCap = xc; best = c; }
     }
     if (best) {
@@ -176,16 +189,25 @@ export function scoreProfile(m: ProfileMeasures): ProfileScore {
         turnoverYear: best.turnoverYear, value: best.value, employees: best.employees, implausible: best.implausible, young: best.young, zeroStaff: best.zeroStaff };
     }
     if (m.dependence) {
-      x.da_dependence = strengthDependence(m.dependence.share, m.dependence.partnerShare, xCap, gate);
-      facts.da_dependence = { share: r4(m.dependence.share), partnerShare: r4(m.dependence.partnerShare), partnerId: m.dependence.partner,
-        capture: m.dependence.share >= 0.85 && xCap >= 1 };
+      x.da_dependence = strengthDependence(m.dependence.share, m.dependence.partnerShare, countCap);
+      facts.da_dependence = { share: r4(m.dependence.share), partnerShare: r4(m.dependence.partnerShare), value: Math.round(m.dependence.share * m.v), partnerId: m.dependence.partner };
     }
   }
 
   const empty: ProfileScore = { eid: m.eid, role: m.role, score: 0, scoreRaw: 0, codes: [], parts: {}, note };
   if (m.role === "supplier" && m.inhouse) return empty;
-  const scoreRaw = scoreOfCriteria(m.role, x);
-  const pts = scorePoints(m.role, x);
+  // rf-2026.22 (S10): the ceilings do not bind a private buyer; its patterns show as notes, without a score.
+  if (m.role === "authority" && m.regime === "private_buyer") return empty;
+  // rf-2026.22 (S4b): no score under 10 DAs; the signals stay on the page as evidence.
+  if (m.n < SCORE_MIN_DAS) return empty;
+  // rf-2026.22 (B7): a firm's buyer-duty cap holds the whole threshold-avoidance family, "just under the ceiling"
+  // included: the loosest cap of the criteria that measure how much of them is with the top two institutions
+  // (decision B: "unless at least 80% of them are with one or two institutions").
+  const ctx: FamilyContext = m.role === "supplier" && dutyCaps.length ? { dutyCap: Math.max(...dutyCaps) } : {};
+  const scoreRaw = scoreOfCriteria(m.role, x, ctx);
+  // rf-2026.22 (S9b): under 10 points is "fără semnal în scor", stored as 0 (the raw value stays).
+  if (Math.round(scoreRaw) < SCORE_BAND_MIN.slab) return { ...empty, scoreRaw };
+  const pts = scorePoints(m.role, x, ctx);
   const codes = (PROFILE_FLAG_CODES[m.role] as readonly ProfileFlagCode[]).filter((c) => (x[c] ?? 0) > 0 && (pts[c] ?? 0) >= 1);
   if (!codes.length) return empty;
   const parts = Object.fromEntries(codes.map((c) => [c, { x: r4(x[c]!), pts: pts[c]!, ...facts[c] }]));
@@ -242,7 +264,7 @@ export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<Pro
   const groups = (await q`
     with g as (
       select f.id, f.subject_id a, f.partner_id s, (f.evidence->>'count')::int n, (f.evidence->>'total')::float8 total,
-        (f.evidence->>'ceiling')::float8 ceil, f.evidence->'source_ids' ids
+        (f.evidence->>'ceiling')::float8 ceil, f.evidence->>'cpv_class' cpv, f.evidence->'source_ids' ids
       from core.flags f where f.flag_code = 'da_split' and f.subject_type = 'pair'
     ),
     a2 as (
@@ -256,7 +278,7 @@ export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<Pro
       from core.direct_acquisitions d where ${accepted} group by 1, 2
     ),
     sup as (select s, count(*) nb, sum(st) tot from pairs group by 1)
-    select g.a::text a, g.s::text s, g.n, g.total, g.ceil, coalesce(a2.a2, 0) a2,
+    select g.a::text a, g.s::text s, g.n, g.total, g.ceil, g.cpv, coalesce(a2.a2, 0) a2,
       coalesce(r.regime = 'association', false) assoc,
       coalesce(sup.nb >= 200 and p.st / nullif(sup.tot, 0) < 0.01, false) mass
     from g left join a2 using (id)
@@ -320,7 +342,7 @@ export async function measureProfiles(q: DbSql, opts: ScoreOptions): Promise<Pro
   }
   for (const g of groups) {
     const base = { total: num(g["total"]), n: num(g["n"]), ceiling: num(g["ceil"]), annex2Share: num(g["a2"]),
-      association: Boolean(g["assoc"]), massSupplier: Boolean(g["mass"]) };
+      association: Boolean(g["assoc"]), massSupplier: Boolean(g["mass"]), cpvClass: g["cpv"] == null ? null : String(g["cpv"]) };
     prof.get(key("authority", g["a"]))?.groups.push({ ...base, partner: String(g["s"]) });
     prof.get(key("supplier", g["s"]))?.groups.push({ ...base, partner: String(g["a"]) });
   }

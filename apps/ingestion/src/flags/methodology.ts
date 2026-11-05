@@ -31,6 +31,15 @@ import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 //   operators judged like any institution (Legea 99 art. 12(4)); da_concentration without the largest DA;
 //   da_dependence from 70%; new da_capacity (DA sales against turnover); a firm's part in a buyer's duty counts at
 //   most 1.5 unless 80% is with one or two institutions; the institution's own firm has no score.
+// rf-2026.21: no steps in the score (owner decisions, 4 November 2026): every scale climbs from a lower anchor; the
+//   evidence cap and a firm's buyer-duty cap rise gradually.
+// rf-2026.22: after the eight-profile audit of every institution and firm (owner decisions, 5 November 2026,
+//   docs/handover/20261105/scor-audit-decizii.md): da_capacity only against the same year's balance sheet and "young"
+//   from the ONRC registration; no capture in da_dependence; the evidence cap per criterion (sums by the DA value
+//   0.5M/1M/2M or the count, frequencies and shares by the count); no score under 10 DAs or under 10 points; repeated
+//   medical supplies (CPV 33) and small recurring orders out of da_split; da_round expects at least 0.5 and needs 5 / 8
+//   records for levels 2 / 3; a firm's buyer-duty cap over the whole family; capacity alone counts half; a private
+//   buyer has no score; misspelt OUAIs are associations, "ADI …" is classic, a reviewed list of buyers by CUI.
 // The version itself lives in @seap/db, where the nightly scheduler reads it.
 export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 
@@ -62,7 +71,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_concentration",
-    title: "O firmă ia mare parte din bani",
+    title: "O firmă primește mare parte din bani",
     subject: "authority",
     description:
       "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați ca furnizor principal; o companie privată cumpărătoare nu e evaluată.",
@@ -83,7 +92,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_round",
-    title: "Prea des chiar sub plafon",
+    title: "Multe sume imediat sub plafon",
     subject: "da",
     description:
       "Valoarea de închidere este de cel puțin 96%, dar strict sub plafonul fără TVA pentru tipul și data de referință ale achiziției (de exemplu 130.000 lei la un plafon de 135.060 lei). Plafoanele se modifică la 26.05.2016, 04.06.2018 și 10.09.2022; lucrările au plafoane distincte.",
@@ -93,7 +102,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_above_ceiling",
-    title: "Directe, deși trec de plafon",
+    title: "Declarate directe, peste plafon",
     subject: "da",
     description:
       "Valoarea de închidere depășește cu peste 10% plafonul fără TVA al achiziției directe, iar estimarea depășește plafonul sau închiderea îl depășește și cu TVA (21%). Numărăm doar la cumpărătorii pe care plafonul îi obligă (instituții publice și operatori sectoriali publici, Legea 99/2016 art. 12(4)), nu la companii private sau asociații, și doar unde excepțiile cunoscute nu se pot aplica: nu în codurile CPV din Anexa 2, nu CPV 33, nu între 26.02 și 14.05.2020, nu când un plafon de lucrări ar acoperi valoarea și nu când închiderea depășește de peste două ori estimarea. În profil contează de la două cazuri (cumpărător × lună), după număr și pondere în valoare.",
@@ -114,7 +123,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_capacity",
-    title: "Vânzări peste capacitatea firmei",
+    title: "Contracte directe peste cifra de afaceri",
     subject: "supplier",
     description:
       "Într-un an, achizițiile directe ale firmei sunt de cel puțin 1,5 ori cifra ei de afaceri din bilanțul MF (al acelui an sau de până la doi ani înainte, printr-un CUI coroborat), cifra de afaceri e sub 10.000 lei la cel puțin 100.000 lei în achiziții, sau firma are 0 angajați la cel puțin 500.000 lei. Firmele care au raportat vreodată peste 100 mil. lei cifră de afaceri nu intră.",

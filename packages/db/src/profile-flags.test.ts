@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  FIRM_DUTY, PROFILE_FLAG_CODES, SCORE_FAMILY, familyStrength, familyStrengths, ramp, scoreBand, scoreCap, scoreGate, scoreOf,
-  scoreOfCriteria, scorePoints, splitGroupWeight, strengthAbove, strengthCapacity, strengthConcentration,
-  strengthDependence, strengthRound, strengthSplit, strengthYearEnd,
+  FIRM_DUTY, PROFILE_FLAG_CODES, SCORE_FAMILY, familyStrength, familyStrengths, firmDutyCap, ramp, scoreBand, scoreCountCap,
+  scoreOf, scoreOfCriteria, scorePoints, scoreValueCap, splitGroupRecurring, splitGroupWeight, strengthAbove, strengthCapacity,
+  strengthConcentration, strengthDependence, strengthRound, strengthSplit, strengthYearEnd,
 } from "./profile-flags.js";
 
 // Values from the audit's simulation on the local copy (3 November 2026).
-describe("risk score (rf-2026.21)", () => {
+describe("risk score (rf-2026.22)", () => {
   it("has a capacity criterion for firms and every criterion in a family", () => {
     expect(PROFILE_FLAG_CODES.supplier).toContain("da_capacity");
     expect(PROFILE_FLAG_CODES.authority).not.toContain("da_capacity");
@@ -28,12 +28,20 @@ describe("risk score (rf-2026.21)", () => {
     expect(Math.round(scoreOfCriteria("authority", { da_year_end: strengthYearEnd(9) }))).toBe(25);
     expect(Math.round(scoreOfCriteria("supplier", { da_capacity: 3 }))).toBe(30);
     expect(familyStrengths("supplier", { da_capacity: 3, da_round: 1 }).capacity).toBe(3);
-    expect(familyStrengths("supplier", { da_capacity: 3, da_round: 0.5 }).capacity).toBe(2.25); // rf-2026.21: a trace lifts the cap gradually
+    expect(familyStrengths("supplier", { da_capacity: 3, da_round: 0.5 }).capacity).toBe(2.25); // a trace lifts it gradually
+    // rf-2026.22 (S9c): capacity alone counts half, so 1.6× and 535× no longer sit at the same 30.
+    expect(Math.round(scoreOfCriteria("supplier", { da_capacity: 2 }))).toBe(20);
+    expect(Math.round(scoreOfCriteria("supplier", { da_capacity: 1 }))).toBe(10);
+    expect(familyStrengths("supplier", { da_capacity: 2, da_round: 0.5 }).capacity).toBe(1.5);
   });
 
   it("reproduces the audit's profiles", () => {
     // Geo Draft: split 1.5 (firm duty), round 3, capacity 3
     expect(Math.round(scoreOfCriteria("supplier", { da_split: 1.5, da_round: 3, da_capacity: 3 }))).toBe(89);
+    // rf-2026.22 (B7): the buyer-duty cap holds the whole family when its sales are spread over many institutions.
+    expect(familyStrengths("supplier", { da_split: 1.5, da_round: 3 }, { dutyCap: firmDutyCap(0.3) }).avoid).toBe(1.5);
+    expect(Math.round(scoreOfCriteria("supplier", { da_split: 1.5, da_round: 3, da_capacity: 3 }, { dutyCap: firmDutyCap(0.3) }))).toBe(72);
+    expect(familyStrengths("authority", { da_split: 3, da_round: 3 }, { dutyCap: 1.5 }).avoid).toBe(4); // institutions: no duty cap
     // Brownstone: concentrated split 3, dependence 1.22
     expect(Math.round(scoreOfCriteria("supplier", { da_split: 3, da_dependence: 1.22 }))).toBe(70);
     // Vodafone: above 0.45 only
@@ -47,8 +55,10 @@ describe("risk score (rf-2026.21)", () => {
     expect(scorePoints("authority", { da_split: 0 })).toEqual({});
   });
 
-  it("bands the displayed score at 0 · 1–39 · 40–67 · 68–100", () => {
+  it("bands the displayed score at 0–9 · 10–39 · 40–67 · 68–100 (rf-2026.22, S9b)", () => {
     expect(scoreBand(0)).toBe("none");
+    expect(scoreBand(9)).toBe("none");
+    expect(scoreBand(10)).toBe("slab");
     expect(scoreBand(20)).toBe("slab");
     expect(scoreBand(39)).toBe("slab");
     expect(scoreBand(40)).toBe("moderat");
@@ -56,14 +66,17 @@ describe("risk score (rf-2026.21)", () => {
     expect(scoreBand(68)).toBe("puternic");
   });
 
-  it("raises the evidence cap from 1 at 10 DAs to 3 at 30, or opens it at 5 DAs worth 1M (rf-2026.21)", () => {
-    expect(scoreCap(10, 0)).toBe(1);
-    expect(scoreCap(20, 0)).toBe(2);
-    expect(scoreCap(30, 0)).toBe(3);
-    expect(scoreCap(12, 5_590_000)).toBe(3); // Verostar
-    expect(scoreCap(4, 2_000_000)).toBe(1);
-    expect(scoreGate(29, 999_999)).toBe(false);
-    expect(scoreGate(30, 0)).toBe(true);
+  it("caps the evidence by the count, and the sums also by the value (rf-2026.22, S4a)", () => {
+    expect(scoreCountCap(10)).toBe(1);
+    expect(scoreCountCap(20)).toBe(2);
+    expect(scoreCountCap(30)).toBe(3);
+    expect(scoreCountCap(12)).toBeCloseTo(1.2); // Verostar's frequencies stay near 1
+    expect(scoreValueCap(12, 5_590_000)).toBe(3); // Verostar's sums
+    expect(scoreValueCap(10, 1_000_000)).toBe(2); // no step from 1 to 3 at 1M
+    expect(scoreValueCap(10, 940_000)).toBeCloseTo(1.88);
+    expect(scoreValueCap(10, 750_000)).toBeCloseTo(1.5);
+    expect(scoreValueCap(25, 100_000)).toBeCloseTo(2.5); // the count, when higher
+    expect(scoreValueCap(4, 2_000_000)).toBe(1); // under 5 DAs only the count
   });
 
   it("measures above the ceiling by count and value together", () => {
@@ -80,6 +93,9 @@ describe("risk score (rf-2026.21)", () => {
   });
 
   it("weighs a firm's part in the buyer's duty (decision B)", () => {
+    expect(firmDutyCap(0.3)).toBe(FIRM_DUTY.cap);
+    expect(firmDutyCap(0.7)).toBeCloseTo(2.25);
+    expect(firmDutyCap(0.8)).toBe(3);
     const spread = { top2: 0.3, utility: false };
     const close = { top2: 0.9, utility: false };
     expect(strengthAbove("supplier", 16, 0.8, true, spread)).toBe(FIRM_DUTY.cap);
@@ -98,7 +114,12 @@ describe("risk score (rf-2026.21)", () => {
     const base = { role: "authority" as const, ceiling: 100, annex2Share: 0, association: false, massSupplier: false };
     expect(splitGroupWeight({ ...base, total: 200, n: 2 })).toBe(1);
     expect(splitGroupWeight({ ...base, total: 120, n: 3 })).toBe(0); // at 1.2× the ceiling
-    expect(splitGroupWeight({ ...base, total: 130, n: 172 })).toBeCloseTo(0.025); // food receipts
+    expect(splitGroupWeight({ ...base, total: 130, n: 172 })).toBe(0); // food receipts: recurring supply (rf-2026.22, S5)
+    expect(splitGroupWeight({ ...base, total: 200, n: 2, cpvClass: "3369" })).toBe(0); // medical supplies (S5)
+    expect(splitGroupWeight({ ...base, total: 200, n: 11, cpvClass: "3912" })).toBeCloseTo(200 / 11 / 25); // 11 orders: still a group
+    expect(splitGroupRecurring({ total: 200, n: 2, ceiling: 100, cpvClass: "3314" })).toBe("medical");
+    expect(splitGroupRecurring({ total: 110, n: 12, ceiling: 100 })).toBe("small_orders");
+    expect(splitGroupRecurring({ total: 130, n: 12, ceiling: 100 })).toBe(null); // the mean is 10.8% of the ceiling
     expect(splitGroupWeight({ ...base, total: 200, n: 2, annex2Share: 0.6 })).toBe(0);
     expect(splitGroupWeight({ ...base, total: 200, n: 2, association: true })).toBe(0.5);
     expect(splitGroupWeight({ ...base, total: 200, n: 2, massSupplier: true })).toBe(0.5);
@@ -113,6 +134,10 @@ describe("risk score (rf-2026.21)", () => {
     expect(strengthRound(10, 0.6, false)).toBe(1);
     expect(strengthRound(4, 2.33, true)).toBeCloseTo(0, 1); // 1.5× expected: the start
     expect(strengthRound(6, 3.0, true)).toBeCloseTo(0.5); // 1.75× expected: half way to level 1
+    // rf-2026.22 (B5): at least 0.5 expected; level 2 from 5 records, level 3 from 8.
+    expect(strengthRound(3, 0, true)).toBe(1); // three at the ceiling, none expected: level 1, not 2
+    expect(strengthRound(9, 0, true)).toBeCloseTo(Math.log2(10 / 1.5)); // Grădinița Voinicel: 2.74, not 3
+    expect(strengthRound(7, 0, true)).toBe(2);
   });
 
   it("measures December, concentration, dependence and capacity", () => {
@@ -125,14 +150,12 @@ describe("risk score (rf-2026.21)", () => {
     expect(strengthConcentration(0.75, true)).toBe(2);
     expect(strengthConcentration(0.95, false)).toBe(1);
 
-    expect(strengthDependence(0.69, 1, 0, true)).toBe(0);
-    expect(strengthDependence(0.80, 0, 0, true)).toBeCloseTo(0.335, 2); // a small part of the institution: 0.5, reached gradually
-    expect(strengthDependence(0.90, 0, 0, true)).toBe(0.5);
-    expect(strengthDependence(0.90, 0.05, 0, true)).toBe(1);
-    expect(strengthDependence(0.90, 0.10, 0, true)).toBeCloseTo(4 / 3);
-    expect(strengthDependence(0.90, 0.10, 0.75, true)).toBeCloseTo(4 / 3); // capture climbing: 0.75 → 1
-    expect(strengthDependence(0.90, 0.10, 2.77, true)).toBe(3); // capture
-    expect(strengthDependence(0.90, 0.10, 1, true)).toBe(2);
+    expect(strengthDependence(0.69, 1, true)).toBe(0);
+    expect(strengthDependence(0.80, 0, true)).toBeCloseTo(0.335, 2); // a small part of the institution: 0.5, reached gradually
+    expect(strengthDependence(0.90, 0, true)).toBe(0.5);
+    expect(strengthDependence(0.90, 0.05, true)).toBe(1);
+    expect(strengthDependence(0.90, 0.10, true)).toBeCloseTo(4 / 3); // rf-2026.22 (S2): no capture, the shares only
+    expect(strengthDependence(0.90, 0.60, 1.2)).toBeCloseTo(1.2); // a count cap
 
     expect(strengthCapacity({ ratio: 1, implausible: false, young: false, zeroStaff: false })).toBe(0);
     expect(strengthCapacity({ ratio: 1.25, implausible: false, young: false, zeroStaff: false })).toBeCloseTo(0.5);
@@ -140,6 +163,7 @@ describe("risk score (rf-2026.21)", () => {
     expect(strengthCapacity({ ratio: 3, implausible: false, young: true, zeroStaff: false })).toBe(2.5);
     expect(strengthCapacity({ ratio: null, implausible: true, young: false, zeroStaff: false })).toBe(1);
     expect(strengthCapacity({ ratio: null, implausible: false, young: false, zeroStaff: true })).toBe(1);
+    expect(strengthCapacity({ ratio: 34, implausible: false, young: false, zeroStaff: false }, 1.4)).toBe(1.4); // B3: the evidence cap
     expect(ramp(5, [[1.5, 1], [3, 2], [10, 3]])).toBeCloseTo(2 + 2 / 7);
   });
 });

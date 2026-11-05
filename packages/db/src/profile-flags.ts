@@ -25,6 +25,18 @@
  * value scale is 2% / 12% / 40% and two cases on an institution are at least
  * 0.5; a firm that is a small part of its institution's purchases starts its
  * dependence at 0.5; a capture climbs with the capacity.
+ *
+ * rf-2026.22 (owner decisions of 5 November 2026, after the eight-profile
+ * audit of every institution and firm): no score under 10 DAs and none under
+ * 10 points ("fără semnal în scor"; the evidence stays on the page); the
+ * evidence cap per criterion — the sums (repeated purchases, above the
+ * ceiling, capacity) climb with the lei (0.5M → 1, 1M → 2, 2M → 3) or the
+ * count, whichever is higher, the frequencies and shares (just under the
+ * ceiling, dependence, concentration) with the count only; no capture (the
+ * same evidence counts once, in its family); capacity alone counts half;
+ * just under the ceiling expects at least 0.5 and needs 5 / 8 records for
+ * levels 2 / 3; a firm's buyer-duty cap holds the whole family; repeated
+ * medical supplies (CPV 33) and small recurring orders are not splitting.
  */
 /**
  * The methodology of the signals and the risk score, stamped on every flag
@@ -32,7 +44,24 @@
  * publication records it; when it differs, the next scheduled run is full
  * (processing.ts), since a daily run keeps the previous risk.
  */
-export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.21';
+export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.22';
+
+/**
+ * Buyers reviewed by hand (owner decision S6 of 5 November 2026), by CUI:
+ * the regime and why, shown on the methodology page. Each was checked
+ * against a public source; an entry stays out until it is.
+ */
+export const BUYER_REGIME_OVERRIDES: readonly { cui: string; regime: 'classic' | 'private_buyer'; name: string; why: string }[] = [
+  { cui: "713519", regime: "classic", name: "ACET S.A.", why: "operatorul regional de apă din Suceava, deținut de UAT-uri" },
+  { cui: "24499588", regime: "classic", name: "HARVIZ S.A.", why: "operatorul regional de apă din Harghita, deținut de UAT-uri" },
+  { cui: "27778056", regime: "classic", name: "EURO APAVOL S.A.", why: "întreprindere publică, autoritatea tutelară Primăria Voluntari" },
+  { cui: "28355992", regime: "classic", name: "LACURILE NATURALE OCNA SIBIULUI S.A.", why: "acționar unic Orașul Ocna Sibiului" },
+  { cui: "8942496", regime: "classic", name: "Fondul de Garantare a Depozitelor Bancare", why: "persoană juridică de drept public (Legea 311/2015)" },
+  { cui: "13554423", regime: "classic", name: "ROMARM", why: "Compania Națională Romarm, deținută de stat" },
+  { cui: "14423850", regime: "classic", name: "Romarm – Filiala Uzina Mecanică București", why: "filială a C.N. Romarm, deținută de stat" },
+  { cui: "13165477", regime: "private_buyer", name: "ELYTIS HOSPITAL HOP", why: "spital privat" },
+  { cui: "30662085", regime: "private_buyer", name: "OVIDIUS CLINICAL HOSPITAL S.R.L.", why: "spital privat" },
+];
 
 export const PROFILE_FLAG_CODES = {
   authority: ['da_split', 'da_round', 'da_year_end', 'da_concentration', 'da_above_ceiling'],
@@ -65,28 +94,44 @@ export const SCORE_FAMILY_CAP: Record<ProfileFlagRole, Record<ScoreFamily, numbe
 export const SCORE_FAMILY_REST = 0.4;
 /** Each unit of a family's strength removes this share of what is left of 100. */
 export const SCORE_WEIGHT = 0.2;
-/** Capacity alone (no avoidance, no relationship) counts at most this much: "slab". */
-export const SCORE_CAPACITY_ALONE = 1.5;
 /**
- * The most a criterion can count with the evidence at hand (rf-2026.21): 1 at
- * 10 DAs rising to 3 at 30 (it was a step at 20), or no cap from 5 DAs worth
- * 1M lei (a firm with a few large DAs is not held at level 1).
+ * Capacity alone (no avoidance, no relationship) counts half its strength
+ * (rf-2026.22, owner decision S9c; it was a flat 1.5, which put 2,011 firms
+ * from 1.6× to 535× their turnover at the same 30); with other evidence the
+ * share climbs to the whole once avoidance or a relationship reaches level 1.
  */
-export const SCORE_GATE = { minDas: 10, fullDas: 30, minDasLarge: 5, minValueLarge: 1_000_000 } as const;
-export function scoreCap(n: number, v: number): number {
-  if (n >= SCORE_GATE.minDasLarge && v >= SCORE_GATE.minValueLarge) return 3;
+export const SCORE_CAPACITY_ALONE = 0.5;
+/**
+ * The evidence a score needs (rf-2026.22, owner decisions S4a/S4b of 5
+ * November 2026): no score under 10 DAs; a criterion counts at most 1 at 10
+ * DAs, rising to 3 at 30 (the count); the criteria about sums also climb with
+ * the profile's DA value from 5 DAs: 0.5M → 1, 1M → 2, 2M → 3 (the value),
+ * whichever is higher. It replaces the step "5 DAs worth 1M → 3".
+ */
+export const SCORE_GATE = { minDas: 10, fullDas: 30, valueFromDas: 5, value: [[500_000, 1], [1_000_000, 2], [2_000_000, 3]] } as const;
+/** The cap by the number of DAs, for frequencies and shares (just under the ceiling, dependence, concentration). */
+export function scoreCountCap(n: number): number {
   return clampCap(1 + (2 * (n - SCORE_GATE.minDas)) / (SCORE_GATE.fullDas - SCORE_GATE.minDas));
 }
+/** The cap for the criteria about sums (repeated purchases, above the ceiling, capacity): the count's or the value's. */
+export function scoreValueCap(n: number, v: number): number {
+  const count = scoreCountCap(n);
+  return n >= SCORE_GATE.valueFromDas ? Math.max(count, ramp(v, SCORE_GATE.value)) : count;
+}
 const clampCap = (x: number) => Math.min(3, Math.max(1, x));
-/** Whether the evidence lets a criterion count fully (kept for callers that ask yes or no). */
-export const scoreGate = (n: number, v: number): boolean => scoreCap(n, v) >= 3;
+/** The fewest DAs a profile needs for a score (owner decision S4b): below it, the evidence shows without a number. */
+export const SCORE_MIN_DAS = SCORE_GATE.minDas;
 
 export type ScoreBand = 'none' | 'slab' | 'moderat' | 'puternic';
-/** Band cut points on the displayed (rounded) score: 0 · 1–39 · 40–67 · 68–100. */
-export const SCORE_BAND_MIN = { slab: 1, moderat: 40, puternic: 68 } as const;
+/**
+ * Band cut points on the displayed (rounded) score: 0–9 · 10–39 · 40–67 ·
+ * 68–100 (rf-2026.22, owner decision S9b: under 10 points is "fără semnal în
+ * scor", and the build stores such a profile with 0).
+ */
+export const SCORE_BAND_MIN = { slab: 10, moderat: 40, puternic: 68 } as const;
 
 export function scoreBand(score: number): ScoreBand {
-  if (!(score > 0)) return 'none';
+  if (!(score >= SCORE_BAND_MIN.slab)) return 'none';
   if (score >= SCORE_BAND_MIN.puternic) return 'puternic';
   if (score >= SCORE_BAND_MIN.moderat) return 'moderat';
   return 'slab';
@@ -127,12 +172,17 @@ export interface FirmDutyContext {
  * supplier counts only the part with its top two institutions.
  */
 export const FIRM_DUTY = { cap: 1.5, from: 0.6, concentrated: 0.8 } as const;
+/**
+ * The buyer-duty cap for a share `top2` with the two main institutions:
+ * 1.5 up to 60%, rising to none (3) at 80% (rf-2026.21, not in one step).
+ */
+export function firmDutyCap(top2: number): number {
+  if (top2 >= FIRM_DUTY.concentrated) return 3;
+  return FIRM_DUTY.cap + (3 - FIRM_DUTY.cap) * clamp((top2 - FIRM_DUTY.from) / (FIRM_DUTY.concentrated - FIRM_DUTY.from), 0, 1);
+}
 function firmDuty(x: number, firm: FirmDutyContext): number {
   const y = firm.utility ? x * clamp(firm.top2, 0, 1) : x;
-  if (firm.top2 >= FIRM_DUTY.concentrated) return y;
-  // rf-2026.21: the cap rises from 1.5 (60% with the top two) to none (80%), not in one step.
-  const cap = FIRM_DUTY.cap + (3 - FIRM_DUTY.cap) * clamp((firm.top2 - FIRM_DUTY.from) / (FIRM_DUTY.concentrated - FIRM_DUTY.from), 0, 1);
-  return Math.min(y, cap);
+  return Math.min(y, firmDutyCap(firm.top2));
 }
 const NO_FIRM: FirmDutyContext = { top2: 1, utility: false };
 
@@ -179,12 +229,28 @@ export function strengthSplit(role: ProfileFlagRole, s: number, gate: number | b
  */
 export function splitGroupWeight(g: {
   role: ProfileFlagRole; total: number; n: number; ceiling: number; annex2Share: number;
-  association: boolean; massSupplier: boolean;
+  association: boolean; massSupplier: boolean; cpvClass?: string | null;
 }): number {
   if (!(g.ceiling > 0) || g.n <= 0 || g.annex2Share >= 0.5) return 0;
+  if (splitGroupRecurring(g)) return 0;
   const over = clamp((g.total / g.ceiling - 1.2) / 0.8, 0, 1);
   const size = clamp(g.total / g.n / g.ceiling / 0.25, 0.2, 1);
   return over * size * (g.association ? 0.5 : 1) * (g.role === 'authority' && g.massSupplier ? 0.5 : 1);
+}
+
+/**
+ * A repeated-purchase group that is recurring supply, not splitting
+ * (rf-2026.22, owner decision S5 of 5 November 2026): medical supplies
+ * (CPV 33, as above the ceiling), or at least 12 orders averaging under 10%
+ * of the ceiling. It weighs nothing in the score and shows as "comenzi
+ * repetate de la același furnizor, fără acord-cadru" (the law sums a yearly
+ * need; a planning problem, not a lead on splitting).
+ */
+export const SPLIT_RECURRING = { cpvPrefix: '33', minOrders: 12, maxMeanShare: 0.1 } as const;
+export function splitGroupRecurring(g: { total: number; n: number; ceiling: number; cpvClass?: string | null }): 'medical' | 'small_orders' | null {
+  if (String(g.cpvClass ?? '').trim().startsWith(SPLIT_RECURRING.cpvPrefix)) return 'medical';
+  if (g.n >= SPLIT_RECURRING.minOrders && g.ceiling > 0 && g.total / g.n < SPLIT_RECURRING.maxMeanShare * g.ceiling) return 'small_orders';
+  return null;
 }
 
 /**
@@ -192,13 +258,18 @@ export function splitGroupWeight(g: {
  * against e, the number expected from the profile's own DAs at 50–96% and the
  * national ratio of the same type and ceiling era. θ = (o + 1) / (e + 1);
  * x = log2 θ from θ = 2 (twice the expected count), with at least 3 such DAs.
+ * rf-2026.22 (audit B5): at least 0.5 expected (a profile with no DAs at
+ * 50–96% made three at the ceiling level 2), level 2 only from 5 such DAs
+ * and level 3 from 8.
  */
+export const ROUND_EVIDENCE = { minExpected: 0.5, level2: 5, level3: 8 } as const;
 export function strengthRound(o: number, e: number, gate: number | boolean): number {
-  const theta = (o + 1) / (Math.max(0, e) + 1);
+  const theta = (o + 1) / (Math.max(ROUND_EVIDENCE.minExpected, e) + 1);
   if (o < 3 || theta < 1.5) return 0;
   // rf-2026.21: from 1.5 times the expected count to level 1 at twice, then log2 as before.
   const x = theta < 2 ? 2 * (theta - 1.5) : Math.min(3, Math.log2(theta));
-  return capped(x, gate);
+  const byRecords = o < ROUND_EVIDENCE.level2 ? 1 : o < ROUND_EVIDENCE.level3 ? 2 : 3;
+  return capped(Math.min(x, byRecords), gate);
 }
 
 /**
@@ -225,35 +296,34 @@ export function strengthConcentration(t: number, gate: number | boolean): number
 /**
  * Dependence: f is the share of the firm's DA sales with its main
  * institution, rev the share of that institution's DA value the firm holds.
- * From 85% of the firm's sales: rev 0 → 1, 20% → 2, 50% → 3; 70–85% climbs
- * to 1. A captive firm that also sells beyond its capacity (capacity ≥ 1 →
- * 2, ≥ 2 → 3) is a capture.
+ * From 85% of the firm's sales: rev 0 → 0.5, 5% → 1, 20% → 2, 50% → 3;
+ * 70–85% climbs to that. rf-2026.22 (owner decision S2): no capture — the
+ * capacity that lifted it counts once, in its own family.
  */
-export function strengthDependence(f: number, rev: number, capacity: number, gate: number | boolean): number {
+export function strengthDependence(f: number, rev: number, gate: number | boolean): number {
   if (!(f >= 0.70)) return 0;
   // rf-2026.21: by the firm's weight for the institution, 0.5 under 5% of its purchases, 1 at 5%, 2 at 20%, 3 at 50%;
   // between 70% and 85% of the firm's sales that strength is reached gradually.
   const weight = ramp(Math.max(0, rev), [[0, 0.5], [0.05, 1], [0.20, 2], [0.50, 3]]);
-  const base = f >= 0.85 ? weight : weight * ramp(f, [[0.70, 0.01], [0.85, 1]]);
-  // A capture (a captive firm selling beyond its capacity) climbs with the capacity: 0.5 → 0, 1 → 2, 2 → 3.
-  const capture = f >= 0.85 ? ramp(capacity, [[0.5, 0], [1, 2], [2, 3]]) : 0;
-  const x = Math.max(base, capture);
+  const x = f >= 0.85 ? weight : weight * ramp(f, [[0.70, 0.01], [0.85, 1]]);
   return capped(x, gate);
 }
 
 /**
- * Capacity: DA sales in a year against the firm's turnover (the balance
- * sheet of that year or up to two years before). 1.5× → 1, 3× → 2, 10× → 3;
- * a turnover under 10,000 lei is implausible next to the sales and counts 1;
- * +0.5 for a firm in its first two years of balance sheets; a year with no
- * employees and 500,000 lei of DAs is at least 1.
+ * Capacity: DA sales in a year against the firm's turnover in the balance
+ * sheet of the same year (rf-2026.22, owner decision S3: a year without it is
+ * not judged). 1.5× → 1, 3× → 2, 10× → 3; a turnover under 10,000 lei is
+ * implausible next to the sales and counts 1; +0.5 for a firm in its first
+ * two years since its ONRC registration (audit B1); a year with no employees
+ * and 500,000 lei of DAs is at least 1; at most the evidence cap for sums
+ * (audit B3).
  */
-export function strengthCapacity(m: { ratio: number | null; implausible: boolean; young: boolean; zeroStaff: boolean }): number {
+export function strengthCapacity(m: { ratio: number | null; implausible: boolean; young: boolean; zeroStaff: boolean }, gate: number | boolean = 3): number {
   // rf-2026.21: from sales equal to the turnover, level 1 at 1.5×.
   let x = m.implausible ? 1 : m.ratio == null ? 0 : ramp(m.ratio, [[1, 0], [1.5, 1], [3, 2], [10, 3]]);
   if (x > 0 && m.young) x = Math.min(3, x + 0.5);
   if (m.zeroStaff) x = Math.max(x, 1);
-  return x;
+  return capped(x, gate);
 }
 
 /** A family's strength: its strongest criterion plus 0.4 of the others, at most the cap. */
@@ -265,17 +335,28 @@ export function familyStrength(xs: readonly number[], cap: number): number {
 
 type Strengths = Partial<Record<ProfileFlagCode, number>>;
 
-/** The families' strengths of one profile's criteria (capacity alone capped). */
-export function familyStrengths(role: ProfileFlagRole, x: Strengths): Record<ScoreFamily, number> {
+/**
+ * What a family needs besides the strengths: a firm's buyer-duty cap over
+ * the whole threshold-avoidance family (rf-2026.22, audit B7: it held each
+ * criterion, and not at all just under the ceiling, so 1.5 + 3 made 3.6).
+ */
+export interface FamilyContext {
+  /** firmDutyCap of the firm's share of DA sales with its two main institutions; 3 = no cap. */
+  dutyCap?: number;
+}
+
+/** The families' strengths of one profile's criteria (capacity alone at half, a firm's buyer duty capped). */
+export function familyStrengths(role: ProfileFlagRole, x: Strengths, ctx: FamilyContext = {}): Record<ScoreFamily, number> {
   const out = { avoid: 0, relation: 0, calendar: 0, capacity: 0 } as Record<ScoreFamily, number>;
   for (const f of SCORE_FAMILIES) {
     const xs = (PROFILE_FLAG_CODES[role] as readonly ProfileFlagCode[]).filter((c) => SCORE_FAMILY[c] === f).map((c) => x[c] ?? 0);
     out[f] = familyStrength(xs, SCORE_FAMILY_CAP[role][f]);
   }
-  // Capacity alone counts at most 1.5; rf-2026.21: the cap rises with the other evidence and is gone once avoidance
-  // or a relationship reaches level 1, so a trace of another criterion does not lift it in one step.
+  if (role === 'supplier' && ctx.dutyCap != null) out.avoid = Math.min(out.avoid, ctx.dutyCap);
+  // rf-2026.22: capacity alone counts half (S9c); the share climbs with the other evidence to the whole once
+  // avoidance or a relationship reaches level 1, so a trace of another criterion does not lift it in one step.
   const other = Math.max(out.avoid, out.relation);
-  if (other < 1) out.capacity = Math.min(out.capacity, SCORE_CAPACITY_ALONE + (3 - SCORE_CAPACITY_ALONE) * other);
+  if (other < 1) out.capacity *= SCORE_CAPACITY_ALONE + (1 - SCORE_CAPACITY_ALONE) * other;
   return out;
 }
 
@@ -287,8 +368,9 @@ export function scoreOf(families: readonly number[]): number {
 }
 
 /** The unrounded score of one profile's criteria. */
-export function scoreOfCriteria(role: ProfileFlagRole, x: Strengths): number {
-  return scoreOf(SCORE_FAMILIES.map((f) => familyStrengths(role, x)[f]));
+export function scoreOfCriteria(role: ProfileFlagRole, x: Strengths, ctx: FamilyContext = {}): number {
+  const fam = familyStrengths(role, x, ctx);
+  return scoreOf(SCORE_FAMILIES.map((f) => fam[f]));
 }
 
 /**
@@ -297,9 +379,9 @@ export function scoreOfCriteria(role: ProfileFlagRole, x: Strengths): number {
  * inside the family by what each criterion adds (the strongest its strength,
  * the others 0.4 of theirs); the rounding uses the largest remainders.
  */
-export function scorePoints(role: ProfileFlagRole, x: Strengths): Partial<Record<ProfileFlagCode, number>> {
+export function scorePoints(role: ProfileFlagRole, x: Strengths, ctx: FamilyContext = {}): Partial<Record<ProfileFlagCode, number>> {
   const codes = (PROFILE_FLAG_CODES[role] as readonly ProfileFlagCode[]).filter((c) => (x[c] ?? 0) > 0);
-  const fam = familyStrengths(role, x);
+  const fam = familyStrengths(role, x, ctx);
   const score = Math.round(scoreOf(SCORE_FAMILIES.map((f) => fam[f])));
   const out: Partial<Record<ProfileFlagCode, number>> = Object.fromEntries(codes.map((c) => [c, 0]));
   if (!codes.length || score === 0) return out;

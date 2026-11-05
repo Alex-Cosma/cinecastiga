@@ -387,8 +387,13 @@ async function buildFlags(
 
   // ── da_capacity: DA sales beyond the firm's size (per supplier-year) ─────
   // rf-2026.20 (owner decisions of 3 November 2026): DA sales in a year against
-  // the firm's net turnover (the balance sheet of that year, or up to two
-  // years before), through a corroborated CUI only (audit F03). Recorded from
+  // the firm's net turnover, through a corroborated CUI only (audit F03).
+  // rf-2026.22 (owner decision S3 of 5 November 2026): only the balance sheet
+  // of the same year — against an older one only 23% of the 2019–2025 hits
+  // held (DA sales are part of the same year's turnover), so a year without
+  // its balance sheet (the current one) is not judged; "young" is the first
+  // two years since the ONRC registration, not since the first balance sheet
+  // in the archive (audit B1: every firm was "young" in 2018). Recorded from
   // 1.5× the turnover, when the turnover is implausibly small (< 10,000 lei)
   // next to the sales, or for a year with no employees and 500,000 lei of DAs.
   // A firm that ever reported 100M lei of turnover is exempt.
@@ -413,20 +418,25 @@ async function buildFlags(
       select f.s, cf.year y, cf.net_turnover ca, cf.employees
       from firms f join reference.company_financials cf on cf.cui = f.cui
     ),
-    firm as (select s, min(y) first_year, max(ca) max_ca from fin group by s),
-    -- The latest balance sheet with a turnover in the DA year or the two before (a hash join, then one row per year).
+    firm as (select s, max(ca) max_ca from fin group by s),
+    reg as (
+      select entity_id s, registered_year from marts.entity_profile
+      where role = 'supplier' and registered_year is not null and entity_id in (select s from dy)
+    ),
+    -- The balance sheet of the DA year, with a turnover (one row per supplier-year).
     m as (
-      select distinct on (dy.s, dy.y) dy.s, dy.y, dy.v, dy.n, f.y turnover_year, f.ca, f.employees, firm.first_year
+      select distinct on (dy.s, dy.y) dy.s, dy.y, dy.v, dy.n, f.y turnover_year, f.ca, f.employees, reg.registered_year
       from dy
       join firm using (s)
-      join fin f on f.s = dy.s and f.y between dy.y - 2 and dy.y and f.ca is not null
+      join fin f on f.s = dy.s and f.y = dy.y and f.ca is not null
+      left join reg on reg.s = dy.s
       where coalesce(firm.max_ca, 0) <= ${capBigTurnover}
-      order by dy.s, dy.y, f.y desc
+      order by dy.s, dy.y, f.ca desc nulls last
     ),
     r as (
       select m.*, case when ca > 0 then v / greatest(ca, ${capMinTurnover}) end ratio,
         ca > 0 and ca < ${capMinTurnover} implausible,
-        first_year >= y - 1 young,
+        coalesce(registered_year >= y - 1, false) young,
         coalesce(employees, -1) = 0 and v >= ${capZeroStaffValue} zero_staff
       from m
     )
