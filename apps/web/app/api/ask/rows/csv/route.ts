@@ -13,6 +13,7 @@ import { devlog } from "../../../../../lib/devlog";
 import { queryFailureResponse } from "../../../../../lib/api-error";
 import { connectionEvidenceError, withConnectionEvidence } from "../../../../../lib/connection-evidence";
 import { peerEvidenceError, peerEvidenceOptions, withPeerEvidence } from "../../../../../lib/peers-evidence";
+import { acquireExportSlot, EXPORT_BUSY_MESSAGE, EXPORT_RETRY_AFTER_SECONDS } from "../../../../../lib/export-slots";
 
 /**
  * POST /api/ask/rows/csv — full-result CSV export of the drill rows behind an
@@ -47,6 +48,14 @@ export async function POST(req: Request) {
   devlog("csv", { spec: v, ...opts });
   opts.signal = req.signal;
 
+  // At most EXPORT_SLOTS exports at once per process (code audit, 5 Nov 2026): refuse rather than queue.
+  const release = acquireExportSlot();
+  if (!release) {
+    return NextResponse.json(
+      { ok: false, error: EXPORT_BUSY_MESSAGE },
+      { status: 429, headers: { "retry-after": String(EXPORT_RETRY_AFTER_SECONDS), "cache-control": "no-store" } },
+    );
+  }
   const sql = db();
   try {
     const result = body.peer !== undefined
@@ -84,5 +93,7 @@ export async function POST(req: Request) {
       failure: "Exportul nu a putut fi generat. Încearcă din nou.",
       timeoutStatus: 200,
     });
+  } finally {
+    release();
   }
 }
