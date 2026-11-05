@@ -1073,27 +1073,25 @@ describe("risk score rules and profile score (rf-2026.20)", () => {
       await runFlagMarts(q, { transactions: false });
       const profiles = Object.fromEntries((await q`select entity_id::int e, role, score, score_raw, score_parts, score_note, n_flags, flags
         from marts.entity_flags order by entity_id, role`).map(r => [`${r["e"]}:${r["role"]}`, r]));
-      // Authority 1 (7 DAs, 2,46 mil. lei: gated): two prices just under the ceiling are fewer than 3, so no bunching;
-      // two above-ceiling events count 1 however large their value.
-      expect(profiles["1:authority"]).toMatchObject({ score: 20, n_flags: 1, flags: ["da_above_ceiling"], score_note: null,
-        score_parts: { da_above_ceiling: { x: 1, pts: 20, n: 2, events: 2, partners: 2, value: 1400000, share: 0.5692 } } });
-      // Authority 20: three events (strength 2), a third of its value (3).
+      // rf-2026.22 (S4b): no score under 10 DAs — authority 1 (7 DAs) and firm 44 (3 DAs) keep their signals in
+      // core.flags but have no score.
+      // Authority 20 (11 DAs, 5,34 mil. lei): three events (strength 2), a third of its value (3); the evidence cap
+      // for sums is the value's (3), so 2.
       expect(profiles["20:authority"]).toMatchObject({ score: 40, n_flags: 1, flags: ["da_above_ceiling"],
         score_parts: { da_above_ceiling: { x: 2, pts: 40, n: 3, events: 3, value: 1800000, share: 0.3371 } } });
       expect(profiles["20:authority"]!["score_raw"]).toBeCloseTo(40, 4);
-      // The firm holds 42,1% of its institution's DA value: strength 2 + (0,421 − 0,2) / 0,3, in the relation family.
-      expect(profiles["50:supplier"]).toMatchObject({ score: 55, n_flags: 1, flags: ["da_dependence"],
-        score_parts: { da_dependence: { x: 2.737, pts: 55, share: 1, partnerShare: 0.4211, partnerId: "60", capture: false } } });
-      expect(profiles["50:supplier"]!["score_raw"]).toBeCloseTo(54.74, 2);
-      // Firm 44 sold above the ceiling to the municipal company and the ADI (the private clinic does not count):
-      // two events with two institutions, under the gate (3 DAs), so strength 1 with no buyer-duty damping.
-      expect(profiles["44:supplier"]).toMatchObject({ score: 20, flags: ["da_above_ceiling"],
-        score_parts: { da_above_ceiling: { x: 1, pts: 20, events: 2, partners: 2, top2: 1 } } });
+      // The firm holds 42,1% of its institution's DA value: strength 2 + (0,421 − 0,2) / 0,3 = 2,737, held at the
+      // count cap of its 20 DAs (2; a share, not a sum), in the relation family; no capture (S2).
+      expect(profiles["50:supplier"]).toMatchObject({ score: 40, n_flags: 1, flags: ["da_dependence"],
+        score_parts: { da_dependence: { x: 2, pts: 40, share: 1, partnerShare: 0.4211, partnerId: "60" } } });
+      expect(profiles["50:supplier"]!["score_parts"]["da_dependence"]).not.toHaveProperty("capture");
+      expect(profiles["50:supplier"]!["score_raw"]).toBeCloseTo(40, 4);
       // One December year is no pattern yet (the December strength needs two years); one above-ceiling event neither.
-      // The regime notes: the private clinic and the association are not verified, the commune's firm has no score.
+      // The regime notes: the private clinic and the association are not verified, the commune's firm has no score;
+      // the ADI is a contracting authority (classic, no note).
       const notes = Object.fromEntries(Object.entries(profiles).filter(([, r]) => r["score_note"] !== null).map(([k, r]) => [k, r["score_note"]]));
       expect(notes).toEqual({ "23:authority": "private_buyer", "24:authority": "association", "46:supplier": "inhouse" });
-      const scored = ["1:authority", "20:authority", "44:supplier", "50:supplier"];
+      const scored = ["20:authority", "50:supplier"];
       for (const [key, row] of Object.entries(profiles)) if (!scored.includes(key))
         expect([key, row["score"], row["score_raw"], row["n_flags"], row["flags"], row["score_parts"]]).toEqual([key, 0, 0, 0, [], {}]);
       throw rollback;
