@@ -124,7 +124,7 @@ describe("the answer's targets and contrast", () => {
     const markup = renderToStaticMarkup(createElement(DistributionBlock, { distribution: RUSETU_CHART, spec: { block: "distribution", measure: "value", filters: { authorityId: 2145000 } } }));
     // distribution-2: one column per number of criteria (0…5), the entity's marked "aici"; G10 with its «de».
     expect([...markup.matchAll(/class="dist-col/g)]).toHaveLength(6);
-    expect(markup).toContain("<em>aici</em>442");
+    expect(markup).toContain('<em class="cm-fade cm-late">aici</em>442');
     expect(markup).toContain("Din celelalte 2.034 de primării");
     const rules = phoneRules(css("./distribution.css").replace(/\s+/g, ""), ".dist-bars");
     for (const target of [".dist-change", ".dist-all", ".dist-crit-cases", "button.dist-col"]) expect(rules, target).toContain(target);

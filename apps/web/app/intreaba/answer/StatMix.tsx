@@ -11,6 +11,7 @@ import Segmented from "../builder/Segmented";
 import type { KitTip } from "../builder/kit-types";
 import { useAnswerFact } from "./use-answer-fact";
 import { G, Ghost } from "../../../components/ghost/Ghost";
+import { useChartMotion } from "./chart-motion";
 
 /*
  * „Din care” under a total (plan §4.1, final stat §3.7): the same total by the
@@ -121,6 +122,9 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
   const fact = useAnswerFact(spec, "mix");
   const base = useId();
   const [chosen, setChosen] = useState<MixTab | null>(null);
+  // The bar is revealed as one piece when the composition arrives. Another tab divides the same total again: a segment
+  // is its place in the bar, so the same elements stay and their widths tween; one the tab adds grows from nothing.
+  const motion = useChartMotion();
   if (fact.status === "loading") return <MixGhost />;
   if (fact.status === "none") return <section className="qb qb-mix" aria-label="Din care">
     <p className="qb-mix-head qb-tipwrap">Din care: {fact.precompute ? "nu e calculat pe această selecție" : "nu a putut fi calculat acum"}
@@ -141,8 +145,8 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
         options={tabs.map((t) => ({ value: t, label: TABS[t], controls: `${base}-p` }))} />}
     </div>
     <div id={`${base}-p`} role="tabpanel" aria-label={TABS[tab]}>
-      <div className="qb-mix-bar" aria-hidden="true">
-        {rows.map((row) => <i key={row.value} className={`qb-mix-seg qb-mix-seg--${mixTone(tab, row.value)}`} style={{ width: `${row.share * 100}%` }} />)}
+      <div className={`qb-mix-bar ${motion.entering ? "cm-x" : "is-shown"}`} aria-hidden="true" {...motion.root}>
+        {rows.map((row, i) => <i key={i} className={`qb-mix-seg qb-mix-seg--${mixTone(tab, row.value)} cm-tw`} style={{ width: `${row.share * 100}%` }} />)}
       </div>
       <ul className="qb-mix-rows">
         {rows.map((row) => {

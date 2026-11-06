@@ -49,7 +49,7 @@ describe("by value: the podium", () => {
     expect(words).toContain("Diferența față de locul 2: 1,2 mld. lei");
     // The bar says each place and what the rest holds, for a screen reader; the legend is its decoration.
     expect(markup).toMatch(/aria-label="Locurile 1–3: 1, 21,1%; 2, 16,5%; 3, 13,2%; celelalte 1.464 de firme · 49,2%"/);
-    expect(markup).toContain('class="ec-seg ec-seg-1" style="width:21.0');
+    expect(markup).toContain('class="ec-seg ec-seg-1 cm-tw" style="width:21.0');
     expect(words).toContain("celelalte 1.464 de firme · 49,2%");
     // The facts come after the answer: until then, „…”.
     expect(markup).toContain('class="ec-wait"');

@@ -27,6 +27,7 @@ import {
   categoryLead, largestWords, leadWords, legacyTieFacts, legacyTiesHeadline, legacyTiesRest, noneSources, placeFacts, placeWords, profilePlace, rankingHeadline,
   rankingRest, restWords, riskCloudLink, riskFacts, scorePill, shareWords, showAllWords, shownRows, shownTied, totalLead,
 } from "./entity-card-answer";
+import { useChartMotion } from "./answer/chart-motion";
 import "./entity-card.css";
 
 /*
@@ -71,6 +72,8 @@ export default function EntityCardAnswer({ data, spec, historical = true, condit
 
 function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: QuestionSpec; conditions: readonly string[] }) {
   const evidence = useAnswerEvidence();
+  // The places' bar is revealed as one piece when it first shows; a new answer tweens its segments in place.
+  const motion = useChartMotion();
   const ids = podium.places.map((place) => place.entityId);
   const loaded = useAnswerFact(spec as unknown as AskSpec, "podium", ids);
   const facts = loaded.status === "ready" ? new Map<string, PodiumFact>(loaded.value.places.map((fact) => [fact.entityId, fact])) : null;
@@ -121,8 +124,8 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
       </div>
       {stack && (
         <>
-          <div className="ec-stack" role="img" aria-label={`Locurile 1–3: ${podium.places.map((place, i) => `${i + 1}, ${formatShare(stack[i]!)}`).join("; ")}${rest ? `; ${restWords(rest, spec)}` : ""}`}>
-            {stack.map((share, i) => <i key={podium.places[i]!.entityId} className={`ec-seg ec-seg-${i + 1}`} style={{ width: `${share * 100}%` }} />)}
+          <div className={`ec-stack ${motion.enter("cm-x")}`} {...motion.root} role="img" aria-label={`Locurile 1–3: ${podium.places.map((place, i) => `${i + 1}, ${formatShare(stack[i]!)}`).join("; ")}${rest ? `; ${restWords(rest, spec)}` : ""}`}>
+            {stack.map((share, i) => <i key={podium.places[i]!.entityId} ref={motion.join} className={`ec-seg ec-seg-${i + 1} cm-tw`} style={{ width: `${share * 100}%` }} />)}
           </div>
           <p className="ec-legend" aria-hidden="true">
             {podium.places.map((place, i) => <span key={place.entityId}><b className={`ec-sw ec-seg-${i + 1}`} />locul {i + 1}</span>)}

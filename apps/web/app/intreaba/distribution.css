@@ -169,3 +169,8 @@ button.dist-hcol:hover .dist-hbar{background:var(--accent)}
 
 /* A (?) opens on its row's width (.qb-tipwrap), at most a readable measure on a wide screen. */
 .dist .term-tip>.term-def{right:auto;width:min(560px,100%)}
+
+/* In motion (answer/chart-motion.ts): on a phone a band's bar lies across, so it grows to the right, not up. */
+@media (max-width:600px){
+  .dist-hcol .dist-hbar.cm-y{--cm-k:cm-x}
+}

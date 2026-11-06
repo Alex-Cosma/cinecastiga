@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import EntityName from "../../components/EntityName";
 import { formatInt, formatRon } from "../../lib/format";
 import { countyMap, foldCounty } from "../../lib/map";
@@ -109,6 +109,33 @@ export function MapGhost() {
   </div>;
 }
 
+/**
+ * The counties' first fill (owner, 6 November 2026: a map fills uniformly, never in the order of its values). Drawn
+ * filled (the server's markup, reduced motion, back/forward, print), then, before the first paint, emptied to the empty
+ * tint until the map is in view; then the counties take their classes and their fill transition (question-results.css)
+ * fills them all together, over --slow. A later lens tweens them over --med.
+ */
+function useFillIn(ref: RefObject<Element | null>): "empty" | "filling" | "filled" {
+  const [phase, setPhase] = useState<"empty" | "filling" | "filled">("filled");
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.dataset.motion === "settled") return;
+    setPhase("empty");
+    let frame = 0, timer = 0;
+    const done = () => setPhase("filled");
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting)) return;
+      io.disconnect();
+      // A frame at the empty tint is painted first, so the fill has somewhere to start from.
+      frame = requestAnimationFrame(() => { setPhase("filling"); timer = window.setTimeout(done, 480); });
+    }, { rootMargin: "0px 0px -6% 0px", threshold: 0.03 });
+    io.observe(el);
+    addEventListener("beforeprint", done);
+    return () => { io.disconnect(); cancelAnimationFrame(frame); clearTimeout(timer); removeEventListener("beforeprint", done); };
+  }, [ref]);
+  return phase;
+}
+
 export default function MapBlock({
   counties,
   unknown,
@@ -153,6 +180,8 @@ export default function MapBlock({
     counties.reduce((s, c) => s + (asCount ? c.count : c.value), 0) +
     unknownMeasure;
   const [tip, setTip] = useState<{ key: string; label: string; x: number; y: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const fill = useFillIn(svgRef);
   // Component 19, the county's card (plan §4.4, final map §3.11): a tap, a click or Enter opens it; the records are
   // its links, not the tap itself (a phone has no hover).
   const evidence = useAnswerEvidence();
@@ -237,8 +266,9 @@ export default function MapBlock({
     <div className="ask-maplayout">
       <div className="ask-mapwrap">
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${countyMap.width} ${countyMap.height}`}
-          className="ask-choropleth"
+          className={`ask-choropleth${fill === "filling" ? " is-filling" : ""}`}
           role="img"
           aria-label="Hartă pe județe"
         >
@@ -271,7 +301,7 @@ export default function MapBlock({
               >
                 <path
                   d={s.d}
-                  className={`ask-county ${shapeClass(s.key)}${tip?.key === s.key || card?.key === s.key ? " hovered" : ""}`}
+                  className={`ask-county ${fill === "empty" ? "ask-county-none" : shapeClass(s.key)}${tip?.key === s.key || card?.key === s.key ? " hovered" : ""}`}
                   onMouseEnter={move}
                   onMouseMove={move}
                   onMouseLeave={() => setTip(null)}

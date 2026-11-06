@@ -44,7 +44,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     const markup = render(VASLUI_LIST);
     expect(markup).toContain('role="img" aria-label="Scorurile celor 38 de primării pe axa 0–100; MUNICIPIUL VASLUI: 54 din 100."');
     expect([...markup.matchAll(/class="dist-strip-tick[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual(["0", "20", "40", "68", "100"]);
-    expect(markup).toContain('<i class="dist-dot is-focal" style="--x:54;--l:0"');
+    expect(markup).toContain('<i class="dist-dot is-focal cm-tw cm-fade cm-late" style="--x:54;--l:0"');
     const { dots, over } = stripLayout({ id: "f", name: "F", score: 54 }, VASLUI_LIST.members!);
     expect(dots.length - 1 + over.reduce((sum, o) => sum + o.n, 0)).toBe(38);
     expect([...markup.matchAll(/class="dist-dot (?:risk|is-focal)[^"]*" style/g)]).toHaveLength(dots.length);
@@ -83,12 +83,12 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
     expect(markup.match(/<button[^>]*class="dist-hcol[^"]*"[^>]*aria-expanded="false"[^>]*aria-controls="dist-bar-members"/g)).toHaveLength(9);
     expect(markup).toMatch(/aria-label="Scor 40–49: 280 de primării, aici e COMUNA RUSETU\. Lista lor"/);
     expect(markup).toMatch(/aria-label="Scor 0: 433 de primării\. Lista lor"/);
-    expect(markup).toContain("<em>aici</em>280");
+    expect(markup).toContain('<em class="cm-fade cm-late">aici</em>280');
     expect(text(markup)).toContain("clic pe o bară: cine are acel scor");
     expect(markup).not.toContain("dist-strip");
     const out: DistributionDataV3 = { ...RUSETU_SCORE_CHART, focal: { ...RUSETU_SCORE_CHART.focal, inGroup: false } };
     const outside = render(out);
-    expect(outside).toContain("<em>ar fi aici</em>280");
+    expect(outside).toContain('<em class="cm-fade cm-late">ar fi aici</em>280');
     expect(outside).toContain("dist-hcol is-would");
   });
 
@@ -153,8 +153,8 @@ describe("an answer stored before (distribution-2, the criteria)", () => {
   it("says „ar fi aici”, unfilled, when an old link's county leaves the entity out of its group", () => {
     const out: DistributionData = { ...RUSETU_CHART, focal: { ...RUSETU_CHART.focal, inGroup: false } };
     const markup = render(out);
-    expect(markup).toContain("<em>ar fi aici</em>442");
-    expect(markup).not.toContain("<em>aici</em>");
+    expect(markup).toContain('<em class="cm-fade cm-late">ar fi aici</em>442');
+    expect(markup).not.toMatch(/<em[^>]*>aici<\/em>/);
     expect(markup).toContain("dist-col is-would");
     expect(markup).not.toContain("dist-col is-here");
     expect(markup).toContain("aici ar fi COMUNA RUSETU");

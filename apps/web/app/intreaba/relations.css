@@ -89,3 +89,9 @@
   .qb-net .qb-net-since { flex-wrap: wrap; }
   .qb-sankey .qb-flow-row .qb-arow-val { grid-column: 1 / 2; }
 }
+
+/* In motion (NetworkAnswer): the spokes reach out from the centre together (the view box's middle is the centre), the
+   discs and names follow; a hover's emphasis stays quick while a new place turns over --med. */
+.qb-net .qb-net-spokes.cm-fade { --cm-k: qb-net-reach; transform-box: view-box; transform-origin: 50% 50%; }
+@keyframes qb-net-reach { from { transform: scale(0); } to { transform: scale(1); } }
+.qb-net .qb-net-spoke.cm-tw { transition: transform var(--chart-tw) var(--ease), opacity var(--fast) var(--ease); }

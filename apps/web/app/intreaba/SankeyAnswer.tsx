@@ -11,6 +11,7 @@ import { entityRowActions } from "./answer/row-actions";
 import { exclusionBlocked } from "@/lib/ask/filters/exclusions";
 import type { FilterSpec } from "@/lib/ask/filters/types";
 import { JOINT_FLOW_TIP, flowGeometry, partnerDomainsWords, sankeyView, type FlowNode, type SankeyView } from "./sankey-answer";
+import { useChartMotion } from "./answer/chart-motion";
 import "./relations.css";
 
 /*
@@ -84,7 +85,12 @@ export default function SankeyAnswer({ data, spec, layout = "visual", deeperHref
  * "⋯". Bands are neutral; a band's title says its two ends and its value.
  */
 function FlowChart({ view, menu }: { view: SankeyView; menu: (node: FlowNode, side: "partner" | "domain", index: number) => RowAction[] }) {
+  // The bands are revealed left to right when the flow first shows, from the partners to the domains; the node bars
+  // and the labels are in place. A new answer's bands fade in as a whole (keyed by what they draw): ribbons morphing
+  // into other ribbons would draw flows that never were (owner, 6 November 2026).
+  const motion = useChartMotion();
   const geo = flowGeometry(view);
+  const drawn = geo.bands.map((band) => `${band.link.partner}>${band.link.domain}:${band.link.value}`).join("|");
   const W = 100, BAR = 1.6;
   const path = (y0: number, h0: number, y1: number, h1: number) => {
     const x0 = BAR, x1 = W - BAR, mx = W / 2;
@@ -103,12 +109,15 @@ function FlowChart({ view, menu }: { view: SankeyView; menu: (node: FlowNode, si
       {actions.length > 0 && <RowMenu name={node.full} actions={actions} />}
     </div>;
   });
-  return <div className="qb-flow" style={{ height: geo.height }}>
+  return <div className="qb-flow" style={{ height: geo.height }} {...motion.root}>
     <div className="qb-flow-side qb-flow-left" role="list" aria-label="Partenerii">{labels(view.partners, "partner", geo.left)}</div>
     <svg className="qb-flow-svg" style={{ height: geo.height }} viewBox={`0 0 ${W} ${geo.height}`} preserveAspectRatio="none" role="img" aria-label="Partenerii și domeniile, după valoare">
-      {geo.bands.map((band, i) => <path key={i} className="qb-flow-band" d={path(band.y0, band.h0, band.y1, band.h1)}>
-        <title>{`${band.link.label}\n${formatRon(band.link.value)}`}</title>
-      </path>)}
+      <g key={drawn} ref={motion.join} className={motion.enter("cm-x")}>
+        {/* A band is its partner → domain flow, not its place in the list. */}
+        {geo.bands.map((band) => <path key={`${band.link.partner}→${band.link.domain}`} className="qb-flow-band" d={path(band.y0, band.h0, band.y1, band.h1)}>
+          <title>{`${band.link.label}\n${formatRon(band.link.value)}`}</title>
+        </path>)}
+      </g>
       {view.partners.map((node) => { const p = geo.left.get(node.id)!; return <rect key={node.id} x={0} y={p.y} width={BAR} height={p.h} className={`qb-flow-node qb-flow-node--p${node.rest ? " is-rest" : ""}`} />; })}
       {view.domains.map((node) => { const p = geo.right.get(node.id)!; return <rect key={node.id} x={W - BAR} y={p.y} width={BAR} height={p.h} className={`qb-flow-node qb-flow-node--d${node.rest ? " is-rest" : ""}`} />; })}
     </svg>

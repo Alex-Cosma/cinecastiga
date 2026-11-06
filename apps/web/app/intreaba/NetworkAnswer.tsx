@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import EntityName from "../../components/EntityName";
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
 import { countWords, formatShare } from "@/lib/ask/answer-text";
@@ -21,6 +21,7 @@ import {
   JOINT_TIP, ONE_OFF_TIP, ORDER_OPTIONS, bandLast, chartRows, networkButtons, networkEmpty, networkPage, networkRowView, networkSummary, partnerNoun, relationWaits, shownList, sinceTip,
   type NetworkRelation, type NetworkRowView,
 } from "./network-answer";
+import { useChartMotion } from "./answer/chart-motion";
 import "./relations.css";
 
 /*
@@ -169,32 +170,63 @@ function NetworkRowItem({ view, actions, onRecords, picked = false }: { view: Ne
  */
 function NetworkChart({ rows, data, list, views, picked, onPick }: { rows: readonly NetworkRow[]; data: NetworkData; list: NetworkList; views: readonly NetworkRowView[]; picked: string | null; onPick: (id: string) => void }) {
   const [hover, setHover] = useState<string | null>(null);
+  /*
+   * In motion (owner, 6 November 2026): the centre is in place, the spokes reach out from it together (the angle is
+   * the rank's place, not a value), the discs fade in at their ends, the names last. Another group or order turns the
+   * partners that stay to their new places, the shortest way round, each spoke, disc and name by its own transform (a
+   * partner is the same element, drawn in a fixed order); one that joins fades in, one that leaves goes at once.
+   */
+  const motion = useChartMotion();
+  const turns = useRef(new Map<string, number>());
   if (rows.length === 0) return null;
   const W = 640, H = 380, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 70;
   const max = Math.max(...rows.map((n) => n.value), 1), total = data.lists[list].value;
   const byId = new Map(views.map((view) => [view.entityId, view]));
-  return <svg viewBox={`0 0 ${W} ${H}`} className="qb-net-svg" role="img" aria-label={`${countWords(rows.length, "partener", "parteneri")}, primii, ai lui ${data.focal.name}`}>
-    {rows.map((n, i) => {
-      const a = (i / rows.length) * Math.PI * 2 - Math.PI / 2;
-      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R, r = 6 + Math.sqrt(n.value / max) * 16;
+  const nodes = rows.map((n, i) => {
+    const a = (i / rows.length) * Math.PI * 2 - Math.PI / 2, deg = (a * 180) / Math.PI;
+    // From the angle it had, the shortest way round (a tween of 300° would sweep the whole chart).
+    const was = turns.current.get(n.entityId);
+    const turn = was === undefined ? deg : was + ((((deg - was) % 360) + 540) % 360) - 180;
+    turns.current.set(n.entityId, turn);
+    return { n, a, turn };
+  }).sort((p, q) => (p.n.entityId < q.n.entityId ? -1 : p.n.entityId > q.n.entityId ? 1 : 0));
+  const at = (turn: number) => `translate(${cx}px, ${cy}px) rotate(${turn}deg)`;
+  const hovering = (id: string) => ({ onMouseEnter: () => setHover(id), onMouseLeave: () => setHover(null) });
+  return <svg viewBox={`0 0 ${W} ${H}`} className="qb-net-svg" role="img" aria-label={`${countWords(rows.length, "partener", "parteneri")}, primii, ai lui ${data.focal.name}`} {...motion.root}>
+    <g className={`qb-net-spokes ${motion.enter("cm-fade")}`}>
+      {nodes.map(({ n, turn }) => {
+        const on = hover === n.entityId || picked === n.entityId;
+        return <line key={n.entityId} ref={motion.join} x1={0} y1={0} x2={R} y2={0} className="qb-net-spoke cm-tw" style={{ transform: at(turn) }}
+          strokeWidth={Math.max(1, (n.value / max) * 8)} opacity={on ? 0.9 : 0.55} {...hovering(n.entityId)} />;
+      })}
+    </g>
+    {nodes.map(({ n, turn }) => {
+      const r = 6 + Math.sqrt(n.value / max) * 16;
+      const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId || picked === n.entityId;
+      return <a key={n.entityId} ref={motion.join} href={`/entitati/${n.entityId}`} className={motion.enter("cm-pt")} style={DISC_IN}
+        aria-label={`${name} · ${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total`} {...hovering(n.entityId)}
+        onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); onPick(n.entityId); }}>
+        <title>{`${name}\n${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total · ${view?.records ?? ""}`}</title>
+        <circle cx={0} cy={0} r={on ? r + 2 : r} className="qb-net-node cm-tw" style={{ transform: `${at(turn)} translate(${R}px, 0px)` }} />
+      </a>;
+    })}
+    {nodes.map(({ n, a, turn }) => {
+      const r = 6 + Math.sqrt(n.value / max) * 16;
       // Only a disc at the very top or bottom centres its label: with 15 partners the two nearest the bottom (78°, 102°)
       // centred theirs about 50 units apart, and labels of 26 characters met (S4 review); beside their discs they part.
       const anchor = Math.cos(a) > 0.1 ? "start" : Math.cos(a) < -0.1 ? "end" : "middle";
       const view = byId.get(n.entityId), name = view?.name ?? "?", on = hover === n.entityId || picked === n.entityId;
       const label = name.length > 26 ? `${name.slice(0, 25)}…` : name;
-      return <g key={n.entityId} onMouseEnter={() => setHover(n.entityId)} onMouseLeave={() => setHover(null)}>
-        <line x1={cx} y1={cy} x2={x} y2={y} className="qb-net-spoke" strokeWidth={Math.max(1, (n.value / max) * 8)} opacity={on ? 0.9 : 0.55} />
-        <a href={`/entitati/${n.entityId}`} aria-label={`${name} · ${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total`}
-          onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); onPick(n.entityId); }}>
-          <title>{`${name}\n${formatRon(n.value)} · ${total > 0 ? formatShare(n.value / total) : "—"} din total · ${view?.records ?? ""}`}</title>
-          <circle cx={x} cy={y} r={on ? r + 2 : r} className="qb-net-node" />
-        </a>
-        {/* The disc is the target; its label is words beside it, away from its neighbours'. */}
-        <text x={x + (anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0)} y={y + (anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4)}
-          fontSize={10} textAnchor={anchor} className="qb-net-label" fontWeight={on ? 700 : 400} aria-hidden="true" pointerEvents="none">{label}</text>
-      </g>;
+      // The disc is the target; its label is words beside it, away from its neighbours', upright while it turns.
+      return <text key={n.entityId} ref={motion.join} x={anchor === "start" ? r + 4 : anchor === "end" ? -r - 4 : 0} y={anchor === "middle" ? (Math.sin(a) > 0 ? r + 12 : -r - 6) : 4}
+        fontSize={10} textAnchor={anchor} className={`qb-net-label cm-tw ${motion.enter("cm-fade cm-late")}`} style={{ transform: `${at(turn)} translate(${R}px, 0px) rotate(${-turn}deg)`, ...NAME_IN }}
+        fontWeight={on ? 700 : 400} aria-hidden="true" pointerEvents="none">{label}</text>;
     })}
     <circle cx={cx} cy={cy} r={34} className="qb-net-centre" />
     <text x={cx} y={cy + 3} fontSize={9} textAnchor="middle" className="qb-net-centre-label">{data.focal.name.length > 13 ? `${data.focal.name.slice(0, 12)}…` : data.focal.name}<title>{data.focal.name}</title></text>
   </svg>;
 }
+
+/** The discs fade in once the spokes are on their way, the names after them, briefly. */
+const DISC_IN = { "--cm-d": "160ms" } as CSSProperties;
+const NAME_IN = { "--cm-dur": "var(--fast)" } as CSSProperties;

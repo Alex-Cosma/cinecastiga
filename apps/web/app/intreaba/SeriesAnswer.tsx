@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import type { PartialYear } from "@/lib/ask/compile";
 import type { EvidenceFilters, EvidenceScope } from "@/lib/ask/evidence";
@@ -16,6 +16,7 @@ import DetailCard from "./answer/DetailCard";
 import KitLink, { recordsWords } from "./answer/KitLink";
 import { RECORDED_VALUE } from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
+import { useChartMotion } from "./answer/chart-motion";
 import HelpTip from "./builder/HelpTip";
 import { CHART_FIRST_YEAR, seriesLabels } from "./series-labels";
 import {
@@ -44,6 +45,9 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
   const t = useTip();
   const facts = useAnswerFact(spec, "bars");
   const [picked, setPicked] = useState<string | null>(null);
+  // The columns grow as whole stacks, year by year, when the chart first shows; the same years asked again tween their
+  // heights; a year or a part the new answer adds fades in. Month by month is another chart (AskPanel keys it by grain).
+  const motion = useChartMotion();
   const asCount = spec.measure === "count";
   const metric = (p: { value: number; count: number }) => (asCount ? p.count : p.value);
   const display = (p: { value: number; count: number }) => (asCount ? formatInt(p.count) : formatRon(p.value));
@@ -90,13 +94,13 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
         </li>)}
       </ul>}
       <div className="ts-row">
-        <div className={`ask-ts${monthly ? " ask-ts--months" : ""}`}>
+        <div className={`ask-ts${monthly ? " ask-ts--months" : ""}`} {...motion.root}>
           {bars.map((p, i) => {
             const key = barKey(p);
             const part = !monthly ? partial.find((x) => x.year === p.year) : undefined;
             if ("empty" in p)
               return (
-                <div key={key} className="col empty" role="img" aria-label={`${barName(p)}: nicio înregistrare`}>
+                <div key={key} ref={motion.join} className="col empty" role="img" aria-label={`${barName(p)}: nicio înregistrare`}>
                   <div className="cv ts-off" aria-hidden="true">0</div>
                   <div className="bar" style={{ height: "0%" }} />
                   <div className={`cl${off(labels.yearPhone.has(i), "ts-off-sm")}`}>{yearLabel(p, "")}</div>
@@ -108,6 +112,7 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
               <button
                 type="button"
                 key={key}
+                ref={motion.join}
                 className={`col${part ? " partial" : ""}${on ? " is-picked" : ""}`}
                 aria-pressed={on}
                 aria-label={`${barName(p)}: ${asCount ? countWords(p.count, "înregistrare", "înregistrări") : formatRonFull(p.value)}${part ? ", incomplet" : ""}`}
@@ -119,12 +124,14 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
                 )}
               >
                 <div className={`cv${off(labels.value.has(i), "ts-off")}${off(labels.valuePhone.has(i), "ts-off-sm")}`}>{display(p)}</div>
-                <div className={!split && p === peak ? "bar peak" : "bar"} style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%` }}>
+                {/* In chronological order over at most 240 ms: a month of a long series waits a fraction of a year's step. */}
+                <div className={`${!split && p === peak ? "bar peak" : "bar"} cm-tw ${motion.enter("cm-y")}`}
+                  style={{ height: `${Math.max(2, (metric(p) / max) * 100)}%`, "--i": i * Math.min(1, 10 / bars.length) } as CSSProperties}>
                   {split && barParts(data, p).map(({ part: piece, value, count }) => {
                     const amount = asCount ? count : value;
-                    return amount > 0 ? <i key={piece.key} className={`ts-seg ts-sw--${partTone(data, piece)}`} style={{ height: `${(amount / Math.max(metric(p), 1)) * 100}%` }} /> : null;
+                    return amount > 0 ? <i key={piece.key} ref={motion.join} className={`ts-seg ts-sw--${partTone(data, piece)} cm-tw`} style={{ height: `${(amount / Math.max(metric(p), 1)) * 100}%` }} /> : null;
                   })}
-                  {isRef && <i className="ts-ref" style={{ bottom: `${Math.min(100, (metric(ref) / Math.max(metric(p), 1)) * 100)}%` }} aria-hidden="true" />}
+                  {isRef && <i className="ts-ref cm-tw" style={{ bottom: `${Math.min(100, (metric(ref) / Math.max(metric(p), 1)) * 100)}%` }} aria-hidden="true" />}
                 </div>
                 <div className={`cl${off(monthly ? bars.length <= 6 || p.month === 1 : labels.yearPhone.has(i), "ts-off-sm")}${off(!monthly || bars.length <= 12 || p.month === 1 || p.month === 7, "ts-off")}`}>{yearLabel(p, part ? "*" : "")}{daMark && p.year === DA_CAP_YEAR && <span className="ts-cap" aria-hidden="true">▴</span>}</div>
               </button>
@@ -132,7 +139,7 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
           })}
         </div>
         {/* In the kit's scope (.qb): its buttons and type, as the trend's card. */}
-        {card && <div className="qb ts-card"><BarCard data={data} spec={spec} point={card} partial={partial} facts={facts} onSources={onSources} onClose={() => setPicked(null)} /></div>}
+        {card && <div className="qb ts-card cm-in"><BarCard data={data} spec={spec} point={card} partial={partial} facts={facts} onSources={onSources} onClose={() => setPicked(null)} /></div>}
       </div>
       {/* One-line notes, the details in their (?) (final timeseries §4; owner: terse copy). */}
       <div className="qb ask-ts-notes">
