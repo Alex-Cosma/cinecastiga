@@ -13,7 +13,10 @@ describe("official population comparison identity",()=>{
     expect(populationForMapping({...row,county:"Cluj"})).toBeUndefined();
     expect(populationForMapping({...row,cui:null})).toBeUndefined();
     expect(populationForMapping({...row,name:"Școala Municipiului Buzău"})).toBeUndefined();
-    expect(populationForMapping({...row,siruta:lookup("MUNICIPIUL CLUJ-NAPOCA").siruta})).toBeUndefined();
+    // Owner, 6 November 2026: a legacy code from another county is wrong and ignored, the name in the county decides;
+    // a code naming another unit of the same county still refuses.
+    expect(populationForMapping({...row,siruta:lookup("MUNICIPIUL CLUJ-NAPOCA").siruta})).toMatchObject({siruta:unit.siruta,mappingMethod:"exact_name_county"});
+    expect(populationForMapping({...row,siruta:lookup("MUNICIPIUL RÂMNICU SĂRAT").siruta})).toBeUndefined();
   });
   it("recovers only unique exact locality/county identities, with bounded legacy spelling and legal suffixes",()=>{
     for(const [name,county]of [["Primaria Municipiului Targu Jiu","Gorj"],["Primaria Municipiului Tirgu-Mures","Mures"],["MUNICIPIUL PITESTI - CONSILIUL LOCAL AL MUNICIPIULUI PITESTI","Arges"],["COMUNA SANTANDREI (PRIMARIA)","Bihor"],["COMUNA SCRIOASTEA (PRIMARIA COMUNEI SCRIOASTEA)","Teleorman"],["ORASUL LUDUS (Primaria Orasului Ludus)","Mures"]])
@@ -44,6 +47,42 @@ describe("official population comparison identity",()=>{
     expect(populationForMapping(entity("COMUNA COVASINT","Arad"))).toMatchObject({unitName:"COVĂSINȚ"});
     expect(populationForMapping(entity("COMUNA COVASANT","Arad"))).toBeUndefined();
     expect(populationForMapping(entity("COMUNA GIRCOV (PRIMARIA COMUNEI GURCOV)","Olt",gircov.siruta))).toBeUndefined();
+  });
+  it("reads the town halls' other legal forms, the county written in the name and repeated suffixes (owner, 6 November 2026)",()=>{
+    // SICAP names of town halls the map could not place on 6 November 2026, each with the UAT it is.
+    for(const [name,county,unit]of [
+      ["Comuna Posaga Alba","Alba","POȘAGA"],["COMUNA DEZNA (CONSILIUL LOCAL DEZNA ARAD)","Arad","DEZNA"],["Comuna Godeni Arges (Primaria Godeni Arges)","Arges","GODENI"],
+      ["UNITATEA ADMINISTRATIV TERITORIALA TRAIAN","Braila","TRAIAN"],["UAT VIZIRU","Braila","VIZIRU"],["CONSILIUL LOCAL CHIAJNA","Ilfov","CHIAJNA"],
+      ["Comuna Radesti (Consiliu Local Radesti)","Alba","RĂDEȘTI"],["COMUNA TARNOVA (PRIMARIA LOCALITATII TARNOVA)","Arad","TÂRNOVA"],["Comuna Canesti (Primaria comunei)","Buzau","CĂNEȘTI"],
+      ["Comuna Cosoba Judetul Giurgiu (Primaria)","Giurgiu","COSOBA"],["COMUNA DEDA JUD.MURES (PRIMARIA DEDA)","Mures","DEDA"],
+      ["COMUNA BALESTI (PRIMARIA COMUNEI BALESTI)(CONSILIUL LOCAL BALESTI)","Gorj","BĂLEȘTI"],["COMUNA (PRIMARIA JILAVELE)","Ialomita","JILAVELE"],
+      ["Comuna Valisoara (Consiliul local al com.Valisoara)","Hunedoara","VĂLIȘOARA"],["Administratia Publica Locala Orasul Popesti - Leordeni","Ilfov","LEORDENI"],
+    ]) expect(populationForMapping(entity(name!,county!)),name).toMatchObject({unitName:expect.stringContaining(unit!),level:"local"});
+    // "Tg." is Târgu; a unit named with its county may be written without it.
+    expect(populationForMapping(entity("Orasul Tg.Ocna (Consiliul local Tg.Ocna)","Bacau"))).toMatchObject({unitName:expect.stringContaining("OCNA")});
+    expect(populationForMapping(entity("COMUNA DARASTI","Ilfov"))).toMatchObject({unitName:"DĂRĂȘTI-ILFOV"});
+    // A name that ends with its county keeps it when the whole name is the unit.
+    expect(populationForMapping(entity("COMUNA DARASTI-ILFOV","Ilfov"))).toMatchObject({unitName:"DĂRĂȘTI-ILFOV"});
+    // Still refused: another county, an institution that is not the administration, two different units.
+    expect(populationForMapping(entity("Comuna Godeni Arges","Cluj"))).toBeUndefined();
+    expect(populationForMapping(entity("COMUNA MUNTENI JUDETUL BUZAU (CONSILIUL LOCAL)","Galati"))).toBeUndefined();
+    expect(populationForMapping(entity("SCOALA GIMNAZIALA COMUNA DRAGANESTI","Prahova"))).toBeUndefined();
+    expect(populationForMapping(entity("CLUB SPORTIV COMUNAL BELINT","Timis"))).toBeUndefined();
+    expect(populationForMapping(entity("CONSILIUL LOCAL AL COMUNEI BILED - SERVICIUL DE APA","Timis"))).toBeUndefined();
+    expect(populationForMapping(entity("COMUNA BALESTI (PRIMARIA COMUNEI BALESTI)(CONSILIUL LOCAL ARCANI)","Gorj"))).toBeUndefined();
+  });
+  it("places the owner-approved town halls whose names carry a typo, only in their own county (owner, 6 November 2026)",()=>{
+    const racovita={id:"9",name:"Comuna Racovita (Primaria Rracovita)",county:"Sibiu",cui:"4241150",siruta:null};
+    expect(populationForMapping(racovita)).toMatchObject({siruta:145355,level:"local",mappingMethod:"owner_approved"});
+    expect(populationForMapping({...racovita,county:"Valcea"})).toBeUndefined();
+    expect(populationForMapping({...racovita,cui:"12345"})).toBeUndefined();
+    // An approved town hall wins its unit over another claimant (Cluj-Napoca's parking CUI); two approved CUIs both stay.
+    const cluj={id:"1",name:"Municipiul Cluj-Napoca",county:"Cluj",cui:"4305857",siruta:null},parking={...cluj,id:"2",name:"MUNICIPIUL CLUJ-NAPOCA",cui:"14920794"};
+    expect([...uniquePopulationMappings([cluj,parking]).keys()]).toEqual(["1"]);
+    const lunca={id:"3",name:"Comunei Lunca Ilvei (Primaria Lunca Ilvei)",county:"Bistrita-Nasaud",cui:"4730598",siruta:null},lunca2={...lunca,id:"4",name:"Comuna Lunca Ilvei",cui:"13564982"};
+    expect([...uniquePopulationMappings([lunca,lunca2]).keys()].sort()).toEqual(["3","4"]);
+    // Without an approval, two claimants still leave the unit without a town hall.
+    expect(uniquePopulationMappings([{...cluj,cui:"111"},{...parking,cui:"222"}]).size).toBe(0);
   });
   it("uses county resident totals and served county, not the council office county",()=>{
     expect(populationForMapping(entity("JUDETUL ILFOV - CONSILIUL JUDETEAN","Bucuresti",-100))).toMatchObject({value:542704,county:"ILFOV",level:"county"});

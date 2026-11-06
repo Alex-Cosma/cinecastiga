@@ -13,7 +13,7 @@ import {
   type NormalizeCtx,
 } from "./context.js";
 import { PARSERS } from "./parsers.js";
-import { applyReviewedEntityNames } from "./reviewed-entity-names.js";
+import { applyReviewedEntityNames, applyReviewedTownHallNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
 import { applyRegistryCounties } from "./registry-county.js";
 import { applyDaSupplierVatIdentities } from "./da-supplier-vat.js";
@@ -232,6 +232,9 @@ export async function runNormalize(
   // registrations gets its reviewed name before the marts copy it.
   const reviewedNames = opts.only ? [] : await sql.begin((q) => applyReviewedEntityNames(q));
   if (reviewedNames.length) log(`reviewed entity names applied: ${reviewedNames.join(", ")}`);
+  // Same placement: the town halls registered under another institution's or a garbled name (owner, 6 November 2026).
+  const townHallNames = opts.only ? [] : await sql.begin((q) => applyReviewedTownHallNames(q));
+  if (townHallNames.length) log(`reviewed town hall names applied: ${townHallNames.join(", ")}`);
   // Same placement: the marts and search copy core.entities.county (audit F13).
   const nutsCounties = opts.only ? [] : await sql.begin((q) => applyNutsCounties(q));
   if (nutsCounties.length) log(`county filled from NUTS-3 code: ${nutsCounties.length} entities`);

@@ -67,3 +67,43 @@ export async function applyReviewedEntityNames(
   }
   return renamed;
 }
+
+/**
+ * Town halls whose SICAP registration carries another institution's name or a garbled one (owner, 6 November 2026,
+ * the UATs the map could not place: "Repar identitățile"). Each rule is pinned by the valid CUI, the county and the
+ * current wrong name, and the identity must be registered as an authority, so it is idempotent and touches nothing
+ * else. The web's population mapping also lists these CUIs (APPROVED_TOWN_HALLS), so the map holds them before a run.
+ */
+export interface ReviewedTownHallName { cui: string; county: string; wrongName: string; name: string }
+
+export const REVIEWED_TOWN_HALL_NAMES: readonly ReviewedTownHallName[] = [
+  // 331 contracts (981 mil. lei) and 2,889 direct acquisitions since 2018: the municipality, registered under its local
+  // police's name; the only valid-CUI identity named Municipiul Alba Iulia.
+  { cui: "4562923", county: "Alba", wrongName: "Municipiul Alba Iulia - Directia Politia Locala", name: "MUNICIPIUL ALBA IULIA" },
+  // Dâmbovița holds no Corabia (it is in Olt); the registration names Primăria Cobia and the 21 October UAT repair
+  // already links it to Cobia.
+  { cui: "4449429", county: "Dambovita", wrongName: "Comuna Corabia (Primaria Cobia)", name: "COMUNA COBIA (PRIMARIA COBIA)" },
+  // The registration name carries the town hall's address.
+  { cui: "5303080", county: "Cluj", wrongName: "Comuna Suatu (primariasuatu,suatu nr685,jud.cluj)", name: "COMUNA SUATU (PRIMARIA SUATU)" },
+];
+
+/** Apply the reviewed town hall names in the caller's transaction; returns the ids renamed now. */
+export async function applyReviewedTownHallNames(
+  q: TransactionSql,
+  rules: readonly ReviewedTownHallName[] = REVIEWED_TOWN_HALL_NAMES,
+): Promise<bigint[]> {
+  const renamed: bigint[] = [];
+  for (const r of rules) {
+    const { normalized, legalForm } = normalizeName(r.name);
+    const rows = await q`
+      update core.entities e
+      set name_display = ${r.name}, name_normalized = ${normalized}, legal_form = ${legalForm}
+      where e.cui_valid and e.cui_canonical = ${r.cui} and e.county = ${r.county}
+        and e.name_display = ${r.wrongName}
+        and exists (select 1 from core.entity_sicap_ids s where s.entity_id = e.id and s.namespace = 'authority')
+      returning e.id
+    `;
+    for (const row of rows) renamed.push(BigInt(row.id as string | number | bigint));
+  }
+  return renamed;
+}

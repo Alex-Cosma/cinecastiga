@@ -7,9 +7,18 @@ export const POPULATION_VERSION = catalog.version;
 export const POPULATION_SOURCE = catalog.source;
 export const populationFold = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/^u a t /,"uat ");
 const units = new Map(catalog.units.map(unit => [unit.siruta, unit]));
-const localPrefix = /^(?:(?:unitatea administrativ teritoriala|uat) )?(?:(?:primaria|consiliul local)(?: al| a)? )?(?:(?:municipiul|municipiului|municipiu|orasul|orasului|oras|comuna|comunei) )/;
-// Two bounded spelling variants used in legacy SICAP names, not fuzzy matching.
-const spelling = (name: string) => name.replace(/\btirgu\b/g,"targu").replace(/\brimnicu\b/g,"ramnicu");
+const localPrefix = /^(?:(?:unitatea administrativa? teritoriala|uat|administratia publica locala)(?: a)? )?(?:(?:primaria|primarie|consiliul local|consiliu local)(?: al| a)? )?(?:(?:municipiul|municipiului|municipiu|orasul|orasului|oras|comuna|comunei) )/;
+/**
+ * Owner, 6 November 2026 (the UATs the map could not place): the legal forms F15 already counts as a UAT's own
+ * administration ("UAT X", "Unitatea administrativ-teritorială X", "Consiliul local X", "Administrația publică locală X")
+ * name the town hall also without the unit's type word; the name must still reduce to a unit of the same county.
+ */
+const bareLocalForm = /^(?:uat|unitatea administrativa? teritoriala|consiliu(?:l)? local|administratia publica locala) /;
+/** Words a legal suffix may put before the locality: "(Primăria localității Târnova)", "(Consiliul Local al Primăriei Comunei X)". */
+const qualifierWords = /^(?:(?:uat|unitatea administrativa? teritoriala|administratia publica locala|primaria|primariei|primarie|consiliul local|consiliu local|localitatii|comunei|comuna|orasului|orasul|oras|municipiului|municipiul)(?: al| a)? )+/;
+// Bounded spelling variants used in legacy SICAP names, not fuzzy matching: tîrgu, rîmnicu and the abbreviation
+// "Tg." (owner, 6 November 2026: "Orașul Tg. Ocna", "Primăria Tg. Cărbunești").
+const spelling = (name: string) => name.replace(/\btirgu\b/g,"targu").replace(/\brimnicu\b/g,"ramnicu").replace(/\btg\b/g,"targu");
 export function populationSearchVariants(value:string):string[]{
   const modern=spelling(populationFold(value));
   return [...new Set([modern,modern.replace(/\btargu\b/g,"tirgu"),modern.replace(/\bramnicu\b/g,"rimnicu"),modern.replace(/\btargu\b/g,"tirgu").replace(/\bramnicu\b/g,"rimnicu")])];
@@ -112,34 +121,68 @@ const countyForm = /^(?:(?:unitatea administrativ teritoriala|uat) )?(?:consiliu
  */
 const councilDepartment = / directia servicii si achizitii publice$/;
 export function governmentLevel(name: string): "local" | "county" | "sector" | null {
-  const normalized = populationFold(name);
+  const normalized = expandLegalWords(populationFold(name));
   if (/^(?:(?:primaria|consiliul local)(?: al)? )?sector(?:ul|ului)? [1-6](?: |$)/.test(normalized)) return "sector";
   if (countyForm.test(normalized)) return "county";
-  if (localPrefix.test(normalized) || /^primaria /.test(normalized)) return "local";
+  if (localPrefix.test(normalized) || /^primaria /.test(normalized) || bareLocalForm.test(normalized)) return "local";
   return null;
 }
 /** The locality name of a local administration, plus the name its legal suffix repeats (both must name the same UAT). */
+/** Abbreviations of the legal words in SICAP names ("com.", "cons. local", "comunal", "Unitate administrativ…"). */
+const expandLegalWords = (name: string) => name.replace(/\bcons local\b/g, "consiliul local").replace(/\bcom\b/g, "comuna")
+  .replace(/\bcomunal\b/g, "comuna").replace(/\bunitate administrativ/g, "unitatea administrativ");
+/** Where a name repeats its administration: "… (Primăria X)", "… (Consiliul local X)", "… (Comuna X)". */
+const repeatMarker = / (?:primaria|primarie|consiliul local|consiliu local|unitatea administrativa? teritoriala|comuna|orasul|municipiul)(?: al| a)?(?= |$)/g;
+const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 function localName(name: string,county:string): string[] | null {
-  if (governmentLevel(name) !== "local") return null;
-  let normalized=populationFold(name);
-  const countySuffix=normalized.match(/ (?:judetul|judet|jud) (.+)$/);
-  if(countySuffix){
-    if(countyFold(countySuffix[1]!)!==countyFold(county))return null;
-    normalized=normalized.slice(0,countySuffix.index);
-  }
-  const clean=(part:string)=>spelling(part.replace(localPrefix,"").replace(/^primaria /,"").trim());
-  const repeated=normalized.match(/ (primaria|consiliul local)(?: al| a)?(?: |$)/);
-  if(repeated){
-    const primary=clean(normalized.slice(0,repeated.index));
-    const qualifier=normalized.slice(repeated.index!+repeated[0].length);
-    // Legal suffixes may repeat the SAME administration or be a bare label.
-    // "Comuna Corabia (Primăria Cobia)" is conflicting and must never match;
-    // "Comuna Gircov (Primăria comunei Gârcov)" spells one UAT two ways, so
-    // both spellings must be names of the matched unit (unitNameKeys).
-    return qualifier ? [primary,clean(qualifier)] : [primary];
-  }
-  return [clean(normalized)];
+  let normalized=expandLegalWords(populationFold(name));
+  // The county may be named anywhere ("Comuna Cosoba Judetul Giurgiu (Primaria)", "COMUNA DEDA JUD.MURES (…)"):
+  // the unit's own county is dropped; any other county left in the name refuses it (owner, 6 November 2026).
+  normalized=normalized.replace(new RegExp(` (?:judetul|judet|jud) ${escapeRegex(countyFold(county))}(?= |$)`,"g"),"").trim();
+  if (/ (?:judetul|judet|jud) /.test(normalized)) return null;
+  // A local administration's form, or a name that repeats its administration ("Orașu Nou (Consiliul local Orașu Nou)").
+  if (governmentLevel(normalized) !== "local" && !new RegExp(repeatMarker.source).test(normalized)) return null;
+  const clean=(part:string)=>spelling(`${part.trim()} `.replace(localPrefix,"").replace(/^primaria /,"").replace(bareLocalForm,"").replace(qualifierWords,"").trim());
+  // Legal suffixes may repeat the SAME administration or be a bare label.
+  // "Comuna Corabia (Primăria Cobia)" is conflicting and must never match;
+  // "Comuna Gircov (Primăria comunei Gârcov)" spells one UAT two ways, so
+  // every spelling must be a name of the matched unit (unitNameKeys).
+  // "(Primăria comunei)", "(Primăria)", "Comuna (Primăria Jilavele)": an empty part is a bare label.
+  const parts=normalized.split(repeatMarker).map(clean).filter(Boolean);
+  return parts.length ? parts : null;
 }
+/**
+ * Owner-approved town halls (6 November 2026), one CUI each, its county still the unit's: names with an evident small
+ * typo ("Cele 17 sunt greșeli mici și evidente"), identities whose SICAP name is not the town hall's (Alba Iulia,
+ * Cobia, Suatu; also renamed in the pipeline, reviewed-entity-names.ts), and units another identity also claims: an
+ * approved town hall wins over them (Cluj-Napoca: CUI 14920794 only pays parking, kept separate since 1 October), and
+ * two approved CUIs of one unit are summed (Lunca Ilvei).
+ */
+export const APPROVED_TOWN_HALLS: ReadonlyMap<string, { siruta: number; sicapName: string }> = new Map([
+  ["4352832", { siruta: 20313, sicapName: "Comuna Hemeiusi (Consiliul Local Hemeius)" }],
+  ["4593474", { siruta: 30915, sicapName: "Orasul Sacuieni (Primaria Orasului Sacueni Bihor)" }],
+  ["4512356", { siruta: 35152, sicapName: "ComunaTarlisua (Consiliul local Tarlisua)" }],
+  ["4777280", { siruta: 40991, sicapName: "COMUNEA FUNDATA (PRIMARIA COMUNEI FUNDATA)" }],
+  ["4801400", { siruta: 42076, sicapName: "PRIMARIA TICUS" }],
+  ["5001902", { siruta: 70673, sicapName: "COMUNA AMARASTII DE SUS (CONSILIUL LOCAL AMARASTI DE SUS)" }],
+  ["17352737", { siruta: 179926, sicapName: "COMUNA RASCAIETI (PRIMARIA RASCAETI DAMBOVITA)" }],
+  ["3963714", { siruta: 137844, sicapName: "COMUNA HODOD (RIMARIA COMUNEI HODOD)" }],
+  ["4241150", { siruta: 145355, sicapName: "Comuna Racovita (Primaria Rracovita)" }],
+  ["4637635", { siruta: 142676, sicapName: "COMUNA SINMIHAIUL-ALMASULUI" }],
+  ["4469027", { siruta: 151834, sicapName: "Comunai Poroschia (primaria)" }],
+  ["4652694", { siruta: 151870, sicapName: "Primaria Rosiorii de Vede" }],
+  ["5517173", { siruta: 155797, sicapName: "COMUNA BELINT (PRIMARIEA BELINT)" }],
+  ["4793910", { siruta: 159883, sicapName: "Comuna CA Rosetti" }],
+  ["4793880", { siruta: 161231, sicapName: "Comuna Sf. Gheorghe (Primaria Comunei Sfantul Gheorghe)" }],
+  ["3394236", { siruta: 163137, sicapName: "Comuna Costeti (Consiliul Local Costesti)" }],
+  ["4297789", { siruta: 177879, sicapName: "Comuna Tanasoaia (Consiliul Local Tanasoia)" }],
+  ["4562923", { siruta: 1017, sicapName: "Municipiul Alba Iulia - Directia Politia Locala" }],
+  ["4449429", { siruta: 66580, sicapName: "Comuna Corabia (Primaria Cobia)" }],
+  ["5303080", { siruta: 59657, sicapName: "Comuna Suatu (primariasuatu,suatu nr685,jud.cluj)" }],
+  ["4305857", { siruta: 54975, sicapName: "Municipiul Cluj-Napoca" }],
+  ["4730598", { siruta: 33603, sicapName: "Comunei Lunca Ilvei (Primaria Lunca Ilvei)" }],
+  ["13564982", { siruta: 33603, sicapName: "Comuna Lunca Ilvei" }],
+]);
 export interface PopulationMappingRow {
   id: string; name: string; county: string | null; cui: string | null; siruta: number | null;
   /** D2: false when the identity has no records in the marts (no authority profile); absent when unknown. */
@@ -158,16 +201,30 @@ export function populationForMapping(row: PopulationMappingRow): PeerPopulation 
     return { value:county.population, unitName:county.name, county:county.name, level:"county", referenceDate:catalog.referenceDate,
       sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:county.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null, mappingMethod:"exact_name_county" };
   }
-  if (level !== "local" || !row.county) return undefined;
+  // localName also reads a name that only repeats its administration ("Orașu Nou (Consiliul local Orașu Nou)").
+  if (level === "sector" || !row.county) return undefined;
+  const approved=APPROVED_TOWN_HALLS.get(row.cui), approvedUnit=approved ? units.get(approved.siruta) : undefined;
+  if (approvedUnit && countyFold(approvedUnit.county)===countyFold(row.county))
+    return { value:approvedUnit.population, siruta:approvedUnit.siruta, unitName:approvedUnit.name, county:approvedUnit.county, level:"local", referenceDate:catalog.referenceDate,
+      sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:approvedUnit.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null, mappingMethod:"owner_approved" };
   const names=localName(row.name,row.county);
   if (!names) return undefined;
-  const exact = (byNameCounty.get(`${countyFold(row.county)}:${names[0]}`)??[]).filter(unit=>unit.kind!=="sector");
-  // A conflicting existing positive SIRUTA never falls back to a name guess.
-  const unit = row.siruta!==null && row.siruta>0 ? units.get(row.siruta) : exact.length===1 ? exact[0] : undefined;
-  if (!unit || unit.kind === "sector" || countyFold(row.county) !== countyFold(unit.county) || !names.every(name=>keysBySiruta.get(unit.siruta)!.has(name))) return undefined;
+  // Owner, 6 November 2026: the county's name written after the locality ("Comuna Poșaga Alba", "(Primăria Godeni
+  // Argeș)") is dropped only when the name without it is a unit of that county, so "Dărăști-Ilfov" stays whole.
+  const county=countyFold(row.county);
+  // The reverse too: a unit whose own name ends with its county ("Dărăști-Ilfov") written without it ("Comuna Dărăști").
+  const variants=(name:string)=>name.endsWith(` ${county}`)&&name.length>county.length+1?[name,name.slice(0,-county.length-1)]:[name,`${name} ${county}`];
+  const exact=[...new Set(variants(names[0]!).flatMap(name=>(byNameCounty.get(`${county}:${name}`)??[]).filter(unit=>unit.kind!=="sector")))];
+  // A conflicting existing positive SIRUTA never falls back to a name guess, unless the legacy table placed the
+  // authority in another county: such a code is wrong (owner, 6 November 2026: four communes Vânători sharing one
+  // code), so the name in the authority's own county decides.
+  const legacy=row.siruta!==null && row.siruta>0 ? units.get(row.siruta) : undefined;
+  const trusted=legacy && countyFold(legacy.county)===countyFold(row.county) ? legacy : undefined;
+  const unit = trusted ?? (legacy || row.siruta===null || row.siruta<=0 ? (exact.length===1 ? exact[0] : undefined) : undefined);
+  if (!unit || unit.kind === "sector" || countyFold(row.county) !== countyFold(unit.county) || !names.every(name=>variants(name).some(v=>keysBySiruta.get(unit.siruta)!.has(v)))) return undefined;
   return { value:unit.population, siruta:unit.siruta, unitName:unit.name, county:unit.county, level:"local", referenceDate:catalog.referenceDate,
     sourceUrl:catalog.source.url, sourceSha256:catalog.source.sha256, sourceRow:unit.sourceRow, catalogVersion:POPULATION_VERSION, differencePercent:null,
-    mappingMethod:row.siruta!==null&&row.siruta>0?"siruta_name_county":"exact_name_county" };
+    mappingMethod:trusted?"siruta_name_county":"exact_name_county" };
 }
 /**
  * One identity per unit, the denominator's: a unit that two identities claim has none. D2: an identity without
@@ -189,11 +246,17 @@ export function uniquePopulationMappings(rows: PopulationMappingRow[]): Map<stri
     if (!perUnit.has(key)) perUnit.set(key,new Set());
     perUnit.get(key)!.add(row.id);
   }
+  // An owner-approved town hall wins its unit; two approved ones of the same unit both stay (their values are summed).
+  const approvedIds = new Set(mapped.filter((m) => {
+    const approved = m.row.cui ? APPROVED_TOWN_HALLS.get(m.row.cui) : undefined;
+    return approved !== undefined && m.population.siruta !== undefined && approved.siruta === m.population.siruta;
+  }).map((m) => m.row.id));
   const result = new Map<string,PeerPopulation>();
   for (const [entityId, matches] of perEntity) {
     if (matches.size !== 1) continue;
     const [key,population] = [...matches][0]!;
-    if (perUnit.get(key)!.size === 1) result.set(entityId,population);
+    const claimers = [...perUnit.get(key)!], approved = claimers.filter((id) => approvedIds.has(id));
+    if (approved.length ? approved.includes(entityId) : claimers.length === 1) result.set(entityId,population);
   }
   return result;
 }
@@ -295,12 +358,16 @@ export async function readPopulationMappingRows(q: DbSql): Promise<PopulationMap
   const records=q`exists(select 1 from marts.entity_profile p where p.entity_id=e.id and p.role='authority') records`;
   const localRows = tables?.present ? await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,au.uat_siruta siruta,${records}
     from reference.authority_uat au join core.entities e on e.id=au.entity_id where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991 and ${peerRolePredicate(q,"authority")}` : [];
+  // Owner, 6 November 2026: also the other legal forms and their abbreviations the map's missing town halls carry.
   const prefixes=['consiliul judetean %','consiliu judetean %','consiliul judetul %','judetul %','judet %','uat %','unitatea administrativ teritoriala %',
-    'municipiul %','municipiu %','orasul %','oras %','comuna %','primaria %','consiliul local %','u a t %','sector %','sectorul %'];
+    'unitatea administrativa teritoriala %','unitate administrativ%','administratia publica locala %','comunei %','consiliu local %','cons local %','primarie %',
+    'municipiul %','municipiu %','orasul %','oras %','comuna %','primaria %','consiliul local %','u a t %','sector %','sectorul %',
+    // A name that only repeats its administration: "orasu nou consiliul local orasu nou".
+    '% consiliul local %','% primaria %'];
   const missingMappings=tables?.present?q`not exists(select 1 from reference.authority_uat au where au.entity_id=e.id)`:q`true`;
   const countyRows = await q`select e.id::text id,e.name_display name,e.county,e.cui_canonical cui,null::integer siruta,${records} from core.entities e
     where e.cui_valid and e.cui_canonical is not null and e.id<=9007199254740991
-      and e.name_normalized like any(${prefixes}::text[]) and ${missingMappings} and ${peerRolePredicate(q,"authority")}`;
+      and (e.name_normalized like any(${prefixes}::text[]) or e.cui_canonical = any(${[...APPROVED_TOWN_HALLS.keys()]}::text[])) and ${missingMappings} and ${peerRolePredicate(q,"authority")}`;
   return [...localRows,...countyRows] as unknown as PopulationMappingRow[];
 }
 export function nearestPopulationMembers(index: Map<string,PeerPopulation>, focalId: string, county?: string): [string,PeerPopulation][] {
