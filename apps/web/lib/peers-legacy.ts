@@ -2,7 +2,7 @@ import { createDb, withMonitoringSnapshot, MonitoringRefreshUnavailableError, ty
 import { DA_PLAFOND_RON } from "./ask/compile";
 import { authorityKindExpression, authorityPeerKind, readAuthorityKinds } from "./ask/authority-kind";
 import { ConnectionError, readConnectionEntity, readConnectionEntities, assertConnectionIdentity } from "./connections";
-import { peerSourceSpec, peerScopeDescriptions, type PeerInput, type PeerFilters, type PeersResult, type PeerMember, type PeerYear } from "./peers-shared";
+import { PEER_POINTS_LIMIT, peerSourceSpec, peerScopeDescriptions, type PeerInput, type PeerFilters, type PeersResult, type PeerMember, type PeerYear } from "./peers-shared";
 import type { ConnectionEntity, ConnectionsResult } from "./connections-shared";
 
 import { PeerError } from "./peer-errors";
@@ -96,7 +96,7 @@ export async function getLegacyPeersInSnapshot(q: DbSql, input: PeerInput, check
   const population = q`with sources as (${selected}), stats as (
     select entity_id,${aggregate},sum(closing_value) total_numeric,avg(closing_value) mean_numeric from sources group by entity_id
   ), classified as (
-    select s.*,e.county,${kinds ? authorityKindExpression(q, kinds, q`s.entity_id`) : q`null::text`} authority_kind
+    select s.*,e.county,e.name_display,${kinds ? authorityKindExpression(q, kinds, q`s.entity_id`) : q`null::text`} authority_kind
     from stats s join core.entities e on e.id=s.entity_id and e.id<=9007199254740991 where e.id<>${input.entityId}
       and s.record_count between ${minimum} and ${maximum}
   ), type_eligible as (select * from classified where ${kind ? q`authority_kind=${kind}` : q`true`}),
@@ -110,6 +110,10 @@ export async function getLegacyPeersInSnapshot(q: DbSql, input: PeerInput, check
     (select count(*)::int from type_eligible where county is null or county='') unknown_county,
     (select coalesce(jsonb_agg(distinct county order by county) filter(where county is not null and county<>''),'[]'::jsonb) from type_eligible) counties,
     (select coalesce(sum(record_count),0)::int from stats s left join core.entities e on e.id=s.entity_id and e.id<=9007199254740991 where e.id is null) unresolved_rows
+    ,(select count(*)::int from cohort where total_numeric>${String(focal.total_exact)}::numeric) above_total
+    ,(select count(*)::int from cohort where mean_numeric>${String(focal.mean_rounded)}::numeric) above_mean
+    ,(select coalesce(jsonb_agg(jsonb_build_array(entity_id::text,name_display,total_numeric,mean_numeric,record_count,total_exact,mean_rounded) order by total_numeric desc),'[]'::jsonb)
+      from ranked where n<=${PEER_POINTS_LIMIT} or total_rank>n-50 or total_rank % ceil(n::numeric/${PEER_POINTS_LIMIT})::int=0) points
     ,(select coalesce(jsonb_agg(p),'[]'::jsonb) from (
       select * from cohort where ${options.memberId ? q`entity_id=${options.memberId}` : q`true`}
       order by total_numeric desc,entity_id asc limit ${options.allMembers ? PEER_CAPTURE_LIMIT : PEER_PAGE_SIZE}
@@ -121,6 +125,9 @@ export async function getLegacyPeersInSnapshot(q: DbSql, input: PeerInput, check
   const entities = await readConnectionEntities(q,rows.map(row => String(row.entity_id)),input.role);
   base.members = rows.map(row => member(row,entities.find(candidate => candidate.id===String(row.entity_id))!,filters));
   base.options.counties = (summary?.counties ?? []) as string[];
+  base.points = ((summary?.points ?? []) as [string, string | null, number, number, number, string, string][]).map(([id, name, total, mean, records, totalExact, meanExact]) => ({ id, name: name ?? "", total: Number(total), mean: Number(mean), records: Number(records), totalExact: String(totalExact), meanExact: String(meanExact) }));
+  base.pointsSampled = count > PEER_POINTS_LIMIT;
+  base.rank = { total: Number(summary?.above_total ?? 0) + 1, mean: Number(summary?.above_mean ?? 0) + 1 };
   base.cohort = { ...base.cohort,count,medianTotalExact:summary?.median_total == null ? null : String(summary.median_total),
     medianMeanRounded:summary?.median_mean == null ? null : String(summary.median_mean),enoughPeers:count>=PEER_MINIMUM_COUNT,status:count>=PEER_MINIMUM_COUNT ? "ready" : "small_sample",
     excludedUnknownType:input.role === "authority" ? Number(summary?.unknown_type ?? 0) : 0,excludedUnknownCounty:input.county ? Number(summary?.unknown_county ?? 0) : 0 };

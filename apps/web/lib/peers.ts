@@ -127,6 +127,10 @@ export async function getPeersInSnapshot(q:DbSql,raw:PeerInput,checkpoint:Connec
   result.cohort.medianTotalExact=summary?.median_total==null?null:String(summary.median_total);result.cohort.medianMeanRounded=summary?.median_mean==null?null:String(summary.median_mean);
   result.cohort.enoughPeers=observed>=PEER_MINIMUM_COUNT;
   if(result.cohort.status!=="unknown_population"&&result.cohort.status!=="no_selection")result.cohort.status=observed>=PEER_MINIMUM_COUNT?"ready":"small_sample";
+  // Every member with records as a dot (population and manual groups are at most 50).
+  result.points=rows.filter(row=>String(row.entity_id)!==input.entityId&&Number(row.record_count)>0).map(row=>({id:String(row.entity_id),name:selectedEntities.find(item=>item.id===String(row.entity_id))?.name??"",
+    total:Number(row.total_numeric),mean:Number(row.mean_numeric),records:Number(row.record_count),totalExact:String(row.total_exact),meanExact:String(row.mean_rounded)})).sort((a,b)=>b.total-a.total);
+  result.pointsSampled=false;
   const visibleIds=options.memberId?selectedIds.filter(id=>id===options.memberId):options.allMembers||method==="manual"?selectedIds:selectedIds.slice((input.page-1)*PEER_PAGE_SIZE,input.page*PEER_PAGE_SIZE);
   result.members=visibleIds.map(id=>{
     const population=populationIndex.get(id),relative=population?{...population,differencePercent:focalPopulation&&population.level===focalPopulation.level?Math.round((population.value-focalPopulation.value)/focalPopulation.value*10000)/100:null}:undefined;
@@ -138,8 +142,8 @@ function refreshError(error:unknown):never {
   if(error instanceof MonitoringRefreshUnavailableError)throw new PeerError(error.reason==="superseded"?"Datele s-au schimbat. Reia comparația pe versiunea actuală.":"Datele sunt în curs de verificare. Reîncearcă după finalizarea actualizării.",error.reason==="superseded"?409:503);
   throw error;
 }
-export async function getPeers(input:PeerInput,sql=peerDatabase()):Promise<PeersResult>{
-  try{return await withMonitoringSnapshot(sql,(q,checkpoint)=>getPeersInSnapshot(q,input,{id:checkpoint.id,version:checkpoint.version,validatedAt:checkpoint.completedAt,sourceCoverage:checkpoint.sourceCoverage}),input.checkpointId);}catch(error){refreshError(error);}
+export async function getPeers(input:PeerInput,sql=peerDatabase(),options:{memberId?:string}={}):Promise<PeersResult>{
+  try{return await withMonitoringSnapshot(sql,(q,checkpoint)=>getPeersInSnapshot(q,input,{id:checkpoint.id,version:checkpoint.version,validatedAt:checkpoint.completedAt,sourceCoverage:checkpoint.sourceCoverage},options),input.checkpointId);}catch(error){refreshError(error);}
 }
 export interface PeerCandidatesInput {entityId:string;role:PeerInput["role"];search:string;identity?:string;checkpointId?:string;populationVersion?:string}
 export function parsePeerCandidatesInput(params:URLSearchParams):PeerCandidatesInput {
