@@ -7,6 +7,7 @@ import "./globals.css";
 import "./approved.css";
 import "./guide.css";
 import "@/components/ghost/ghost.css";
+import "@/components/motion/chart-motion.css";
 import { Suspense } from "react";
 import { G } from "@/components/ghost/Ghost";
 import { NavPending } from "@/components/ghost/client";
