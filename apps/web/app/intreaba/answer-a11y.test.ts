@@ -104,12 +104,14 @@ describe("the answer's targets and contrast", () => {
       expect(readFileSync(new URL(file, import.meta.url), "utf8"), file).not.toMatch(/className="qb-nowrap">\s/);
   });
 
-  it("keeps /harta whole: one text per county's title (it did not hydrate), 44 px targets under 600 px (S4 tests)", () => {
-    const page = readFileSync(new URL("../harta/page.tsx", import.meta.url), "utf8");
-    expect(page).toContain("<title>{`${s.label} — ${formatRon(v)}`}</title>");
+  it("keeps /harta's targets 44 px under 640 px and its ranking as the keyboard path (S4 tests; owner, 6 November 2026)", () => {
     const harta = css("../harta/harta.css");
-    expect(harta).toContain(".toggle a{display:inline-flex;align-items:center;min-height:44px}");
-    expect(harta).toContain(".map-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}");
+    expect(harta).toContain(".mx-seg button,.mx-pick{min-height:44px}");
+    expect(harta).toContain(".mx-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}");
+    const explorer = readFileSync(new URL("../harta/MapExplorer.tsx", import.meta.url), "utf8");
+    // Every area on the map is a button in the ranking, with its figure in words.
+    expect(explorer).toContain('className={`mx-row');
+    expect(explorer).toContain("lei pe locuitor`}");
   });
 
   it("draws the kit's separators in --muted, never --faint (2.7:1 on the paper)", () => {

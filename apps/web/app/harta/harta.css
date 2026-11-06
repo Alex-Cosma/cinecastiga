@@ -1,8 +1,117 @@
-/* The map note's (?) tips anchor to the note and open above it, over the map. */
-.map-note{position:relative}
-.map-note .term-tip>.term-def{right:auto;width:min(420px,calc(100vw - 32px))}
-/* Phones: the role switch and the note's (?) are 44 px targets (S4 tests). */
-@media (max-width:600px){
-  .toggle a{display:inline-flex;align-items:center;min-height:44px}
-  .map-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
+/* Hartă (owner, 6 November 2026, "Harta și clasamentul"). */
+.mx{max-width:1280px;margin:22px auto 72px;color:var(--ink);font-size:15px;line-height:1.55}
+.mx :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+:where(.mx) button{font:inherit;cursor:pointer}
+.mx-crumb{display:flex;align-items:center;gap:5px;margin:0 0 6px;font-size:13px;line-height:1.4;color:var(--muted)}
+.mx-crumb button{display:inline-flex;align-items:center;gap:5px;padding:0;border:0;background:none;color:var(--accent);font-weight:600;line-height:1.4}
+.mx-arrow{flex:none;vertical-align:-1px}
+.mx-crumb button:hover{text-decoration:underline;text-underline-offset:3px}
+.mx-head h1{margin:8px 0 0;font:700 36px/1.1 var(--display);letter-spacing:-.025em}
+.mx-lede{margin:6px 0 0;max-width:none;font-size:15.5px;color:var(--ink2)}
+.mx-lede b{color:var(--ink);font-weight:600}
+
+.mx-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.mx-pick{display:inline-flex;align-items:center;gap:7px;min-height:36px;max-width:100%;padding:6px 11px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--muted);font-size:13px}
+.mx-pick b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:28ch;font-weight:600;color:var(--ink);font-size:13.5px}
+.mx-pick svg{flex:none}
+.mx-pick:hover,.mx-pick[aria-expanded="true"]{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-pop-list{max-height:min(340px,44vh);overflow-y:auto;scrollbar-color:var(--line2) transparent}
+.mx-search{display:block;width:100%;min-height:40px;margin:0 0 8px;padding:8px 11px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink);font:14px var(--body);caret-color:var(--accent)}
+.mx-search::placeholder{color:var(--muted);opacity:1}
+.mx-seg{display:inline-flex;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--surface)}
+.mx-seg button{min-height:34px;padding:5px 13px;border:0;background:none;color:var(--ink2);font-size:13.5px;font-weight:500}
+.mx-seg button+button{border-left:1px solid var(--line)}
+.mx-seg button:hover{background:var(--accent-soft);color:var(--ink)}
+.mx-seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+
+.mx-body{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,1fr);gap:28px;margin-top:16px;align-items:start}
+.mx-body>*{min-width:0}
+.mx-more{display:none}
+.mx-stage{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:12px 14px 10px}
+.mx-map{position:relative;aspect-ratio:1000/707;touch-action:manipulation}
+/* The zoomed view must stay inside its stage: the neighbouring counties are context, never page background. */
+.mx-map>svg{display:block;width:100%;height:100%;overflow:hidden;border-radius:8px}
+.mx-stage.is-busy .mx-map>svg{opacity:.55;transition:opacity var(--fast) var(--ease)}
+.mx-busy{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+
+/* One continuous intensity: --choro-4 over the surface, its opacity proportional to lei per inhabitant. */
+.mx-area{fill:var(--choro-4);stroke:var(--paper);stroke-width:.8;cursor:pointer;transition:fill .45s var(--ease),fill-opacity .45s var(--ease)}
+/* Drawn above every area, so the ink closes on all edges. */
+.mx-outline{fill:none;stroke:var(--ink);stroke-width:2}
+.mx-open-edge{fill:none;stroke:var(--ink2);stroke-width:1.5}
+.mx-area.is-gap{fill:url(#mx-hatch);fill-opacity:1}
+.mx-hatch-bg{fill:var(--sunk)}
+.mx-hatch-line{stroke:var(--line2);stroke-width:2}
+.mx-counties.is-back .mx-area{fill:var(--paper);fill-opacity:1;stroke:var(--line);cursor:pointer}
+.mx-counties.is-back .mx-area:hover{fill:var(--accent-soft)}
+.mx-counties.is-back .mx-area.is-open{fill:none;stroke:none;pointer-events:none}
+.mx-uats{animation:mx-in .5s var(--ease) both}
+.mx-uats .mx-area{stroke-width:.6}
+@keyframes mx-in{from{opacity:0}}
+
+.mx-card{position:absolute;z-index:3;transform:translate(14px,-50%);display:grid;gap:2px;width:max-content;max-width:280px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);pointer-events:none;font-size:13px;line-height:1.4}
+.mx-card.r{transform:translate(calc(-100% - 14px),-50%)}
+.mx-card b{font-size:14px;font-weight:600}
+.mx-card em{font:600 13.5px var(--mono);font-style:normal;color:var(--ink)}
+.mx-card-sub{color:var(--muted)}
+.mx-card-gap{color:var(--ink2);max-width:240px}
+.mx-card-go{display:inline-flex;align-items:center;gap:5px;color:var(--accent);font-weight:600}
+
+.mx-foot{display:flex;justify-content:space-between;align-items:flex-end;gap:10px 20px;flex-wrap:wrap;margin-top:6px}
+.mx-legend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;font:12.5px var(--mono);color:var(--muted)}
+.mx-legend-g{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.mx-legend i{display:block;width:160px;height:10px;border-radius:3px;background:linear-gradient(90deg,color-mix(in srgb,var(--choro-4) 7%,var(--surface)),var(--choro-4))}
+.mx-legend-gap{display:block;width:14px;height:10px;border-radius:2px;background:repeating-linear-gradient(45deg,var(--sunk) 0 3px,var(--line2) 3px 5px)}
+.mx-attr{margin:0 0 0 auto;max-width:52ch;font-size:12px;line-height:1.45;color:var(--muted)}
+.mx-attr a{color:var(--muted)}
+
+.mx-rank h2{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 6px;font:600 15px/1.3 var(--body)}
+.mx-rank h2 span{font-weight:400;font-size:12.5px;color:var(--muted)}
+.mx-rows{margin:0;padding:0 4px 0 0;list-style:none;max-height:560px;overflow-y:auto;scrollbar-color:var(--line2) transparent;
+  /* A fade says the ranking goes on; it lifts at the end. */
+  mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent)}
+.mx-rows.at-end{mask-image:none;-webkit-mask-image:none}
+.mx-row{display:grid;grid-template-columns:26px minmax(0,1fr) minmax(50px,96px) 64px;align-items:center;gap:8px;width:100%;min-height:34px;padding:4px 6px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);text-align:left;border-radius:0}
+.mx-row:hover,.mx-row.is-hover{background:var(--accent-soft);border-radius:6px;border-bottom-color:transparent}
+.mx-n{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.mx-name{min-width:0;font-weight:600;font-size:14px;line-height:1.3}
+.mx-name small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.mx-bar{display:block;height:7px;border-radius:2px;background:var(--sunk);overflow:hidden}
+.mx-bar i{display:block;height:100%;background:var(--choro-4)}
+.mx-v{font:500 13px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.mx-row.is-gap .mx-name,.mx-row.is-gap .mx-v{color:var(--muted)}
+.mx-city{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 10px;margin:0 0 8px;padding:9px 12px;border:1px dashed var(--line2);border-radius:10px;background:var(--sunk)}
+.mx-city b{font-weight:600;font-size:14px}
+.mx-city span{grid-column:1;font-size:12.5px;color:var(--muted)}
+.mx-city em{grid-column:2;grid-row:1/3;align-self:center;font:600 14px var(--mono);font-style:normal}
+.mx-city.is-hover{border-color:var(--accent-line)}
+.mx-note{position:relative;margin:10px 0 0;font-size:12.5px;color:var(--muted)}
+.mx-note .term-tip>.term-def{right:auto;width:min(360px,calc(100vw - 32px))}
+.mx-error{padding:30px 0}
+.mx-btn{min-height:36px;padding:6px 13px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-weight:600}
+
+@media (max-width:980px){.mx-body{grid-template-columns:1fr}.mx-rows{max-height:none;mask-image:none;-webkit-mask-image:none}}
+@media (max-width:640px){
+  .mx{margin-top:14px}
+  .mx-head h1{font-size:28px}
+  .mx-lede{font-size:15px}
+  .mx-filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .mx-filters>*{min-width:0}
+  .mx-filters .mx-seg{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}
+  .mx-pick{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:6px;justify-items:start;text-align:left;padding:5px 10px}
+  .mx-pick span{grid-row:1;font-size:12px}
+  .mx-pick b{grid-row:2;max-width:100%}
+  .mx-pick svg{grid-column:2;grid-row:1/3;align-self:center}
+  .mx-stage{padding:8px}
+  .mx-legend i{width:110px}
+  .mx-rows.is-folded li:nth-child(n+16){display:none}
+  .mx-more{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:8px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-weight:600}
+  .mx-attr{text-align:left}
+  .mx-row{grid-template-columns:24px minmax(0,1fr) 64px;min-height:44px}
+  /* 44 px targets on phones (S4 tests). */
+  .mx-seg button,.mx-pick{min-height:44px}
+  .mx-crumb button{min-height:44px;margin-block:-12px}
+  .mx-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
+  .mx-row .mx-bar{display:none}
 }
+@media (prefers-reduced-motion:reduce){.mx-uats{animation:none}.mx-area{transition:none}}

@@ -16,7 +16,6 @@ import Reveal from "./Reveal";
 import { CoverageSummary } from "@/components/DataCoverage";
 import Term from "@/components/Term";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
-import { publishedStories } from "@/lib/stories/published";
 import { GUIDE_HREF, GUIDE_LABEL } from "@/lib/site-nav";
 
 // Coverage and account state are runtime data; builds have no database.
@@ -46,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/" className="brand" aria-label={SITE_NAME}>
               cine<em>câștigă</em><b>?</b>
             </Link>
-            <SiteNav storiesPublished={publishedStories.length > 0} sessionHint={sessionHint} />
+            <SiteNav sessionHint={sessionHint} />
             <div className="hdr-right">
               <GlobalSearch />
               <ThemeToggle />
@@ -69,7 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
             <div>
               <h4>Date</h4>
-              <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC · hartă&nbsp;GADM</p>
+              <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC · hărți GADM și ANCPI / INS&nbsp;SIRUTA</p>
               <CoverageSummary />
             </div>
             <div>
@@ -80,7 +79,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/metodologie">Metodologie</Link>
                 </li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
-                <li><Link href="/harta">Harta achizițiilor</Link></li>
+                <li><Link href="/harta">Hartă</Link></li>
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>

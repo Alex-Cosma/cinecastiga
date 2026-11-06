@@ -71,6 +71,8 @@ describe("per-capita denominators (finding F05)", () => {
     expect(result.ids).toEqual(["2139832", "2144029", "2144903", "2146321"]);
     expect(result.populations).toEqual([4355, sector(4).population, bucuresti.population, sector(1).population]);
     expect(result).toMatchObject({ local: 2, sector: 2, county: 0 });
+    // /harta places each administration on its UAT: a town hall's, a sector's own code, the whole city's for București.
+    expect(result.sirutas).toEqual([bechet.siruta, sector(4).siruta, bucuresti.siruta, sector(1).siruta]);
   });
 
   it("ranks by the official population and states the real source, date and count", async () => {

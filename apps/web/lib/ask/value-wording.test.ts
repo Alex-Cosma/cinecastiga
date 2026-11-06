@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
  */
 const files = [
   "../../app/harta/page.tsx",
+  "../../app/harta/MapExplorer.tsx",
   "../../app/intreaba/AskPanel.tsx",
   "../../app/intreaba/QuestionBuilder.tsx",
   "../../app/intreaba/blocks.tsx",
@@ -18,7 +19,6 @@ const files = [
   "../../app/intreaba/ask-examples.ts",
   "./compile.ts",
   "./pills.ts",
-  "../../app/entitati/[id]/YearMiniChart.tsx",
   "../../app/metodologie/MethodologyStory.tsx",
 ];
 const spendingWords = /cheltui|încasea/i;
@@ -32,15 +32,13 @@ describe("value wording (audit F36)", () => {
     expect(offending).toEqual([]);
   });
 
-  it("titles the county map with contracted values for both roles", () => {
-    const source = readFileSync(new URL("../../app/harta/page.tsx", import.meta.url), "utf8");
-    expect(source).toContain("Valori contractate pe județe");
-    expect(source).toContain('aria-label="Hartă a valorilor contractate pe județe"');
+  it("says the map's values are contracted, not paid (owner, 6 November 2026: lei per inhabitant)", () => {
+    const source = readFileSync(new URL("../../app/harta/MapExplorer.tsx", import.meta.url), "utf8");
+    expect(source).toContain("Ce au contractat primăriile și consiliile județene");
+    expect(source).toContain("Valori contractate, nu plăți");
   });
 
-  it("names the monthly DA chart and the mutual-dependence share by contracted value", () => {
-    const chart = readFileSync(new URL("../../app/entitati/[id]/YearMiniChart.tsx", import.meta.url), "utf8");
-    expect(chart).toContain("aria-label={`Valoarea lunară a achizițiilor directe, ${year}`}");
+  it("names the mutual-dependence share by contracted value", () => {
     const method = readFileSync(new URL("../../app/metodologie/MethodologyStory.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
     expect(method).toContain("ponderea lui în valoarea contractată de autoritate");
   });
@@ -55,8 +53,8 @@ describe("value wording (audit F36)", () => {
 
 // Audit F09: every page that shows totals states the 1 mld. lei contract cap.
 describe("value cap disclosure on /harta (audit F09)", () => {
-  it("states the contract cap next to the county totals", () => {
-    const source = readFileSync(new URL("../../app/harta/page.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
+  it("states the contract cap next to the ranking", () => {
+    const source = readFileSync(new URL("../../app/harta/MapExplorer.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
     expect(source).toContain('<Term id="plafoane-totaluri" tip />');
     expect(GLOSSARY["plafoane-totaluri"].text).toContain("contractele din proceduri de cel mult 1 miliard lei. Contractele peste acest plafon sunt separate de totaluri");
   });

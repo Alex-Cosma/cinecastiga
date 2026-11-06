@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-10-04T05:20:10.170Z",
+  "simplifyMeters": 100,
+  "projection": {
+    "from": "Stereo70",
+    "to": "WGS84",
+    "proj4": "+proj=sterea +lat_0=46 +lon_0=25 +k=0.99975 +x_0=500000 +y_0=500000 +ellps=krass +towgs84=2.329,-147.042,-92.08,-0.309,0.325,0.497,5.69 +units=m +no_defs",
+    "validation": "sub 1 m față de exporturile WGS84 ANCPI (KML 2016 și 2023), UAT-urile 153400, 55838, 54975, 61069"
+  },
+  "counts": {
+    "uat": 3186,
+    "judete": 42,
+    "byKind": {
+      "comună": 2862,
+      "oraș": 216,
+      "municipiu": 102,
+      "sector": 6
+    }
+  },
+  "sources": [
+    {
+      "role": "limite",
+      "label": "ANCPI · Unități Administrativ-Teritoriale, 07.03.2024",
+      "url": "https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024",
+      "download": "https://data.gov.ro/dataset/37639a5a-64d0-4682-b8ab-f7188a28ae8e/resource/7169c5ce-6a88-4fdf-8b78-03069bc09510/download/unitate_administrativa_uat.zip",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "changes": "reproiectare Stereo70 -> WGS84, simplificare topologică (toleranță 100 m), cuantizare; județele obținute prin unirea UAT-urilor; suprafața fiecărui UAT (areaKm2) din câmpul Shape_Area, în km²"
+    },
+    {
+      "role": "denumiri",
+      "label": "INS · SIRUTA, semestrul 1 2026",
+      "url": "https://data.gov.ro/dataset/siruta_s1-2026",
+      "download": "https://data.gov.ro/dataset/721c9059-5f87-4c79-9854-a1d5c18f58d5/resource/dac903f0-32b5-489a-89e7-2c80d96cf68d/download/siruta_s1_2026.csv",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "changes": "denumiri convertite din majuscule, ş/ţ cu sedilă înlocuite cu ș/ț, prefixele de tip scoase din nume"
+    }
+  ],
+  "report": {
+    "nameDiffs": [
+      {
+        "siruta": 179533,
+        "ancpi": "POPEŞTI LEORDENI",
+        "ins": "Popești-Leordeni"
+      }
+    ],
+    "kindDiffs": [],
+    "missingInSiruta": [],
+    "withoutGeometry": [
+      {
+        "siruta": 179132,
+        "name": "București",
+        "note": "reprezentat pe hartă prin cele 6 sectoare"
+      }
+    ]
+  }
+}

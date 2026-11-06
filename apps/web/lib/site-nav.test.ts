@@ -6,7 +6,7 @@ import { countyBreakdownHref, countyBreakdownSpec } from "./discovery-links";
 import { decodeSpec } from "./ask/permalink";
 import { validateSpec } from "./ask/spec";
 
-const base: NavContext = { pathname: "/", storiesPublished: false, admin: false, signedIn: false };
+const base: NavContext = { pathname: "/", signedIn: false };
 const labels = (ctx: Partial<NavContext>) => navItems({ ...base, ...ctx }).map(item => item.label);
 const active = (pathname: string) => navItems({ ...base, signedIn: true, pathname }).filter(item => item.active).map(item => item.label);
 
@@ -18,20 +18,22 @@ describe("main navigation", () => {
   });
 
   it("hides the private investigations item and its dot from anonymous visitors", () => {
-    expect(labels({})).toEqual(["Descoperă", "Întreabă", "Ghid"]);
+    expect(labels({})).toEqual(["Descoperă", "Întreabă", "Hartă", "Ghid"]);
     const signedIn = navItems({ ...base, signedIn: true });
-    expect(signedIn.map(item => item.label)).toEqual(["Descoperă", "Întreabă", "Anchete", "Ghid"]);
+    expect(signedIn.map(item => item.label)).toEqual(["Descoperă", "Întreabă", "Hartă", "Anchete", "Ghid"]);
     expect(signedIn.find(item => item.href === "/anchete")?.dot).toBe(true);
   });
 
-  it("lists unpublished stories only for admins", () => {
-    expect(labels({ admin: true, signedIn: true })).toEqual(["Descoperă", "Întreabă", "Ce bate la ochi", "Anchete", "Ghid"]);
-    expect(labels({ storiesPublished: true })).toContain("Ce bate la ochi");
+  it("lists the map for everyone, in the place of the removed stories (owner, 6 November 2026)", () => {
+    const map = navItems(base).find(item => item.href === "/harta");
+    expect(map?.label).toBe("Hartă");
+    expect(labels({})).not.toContain("Ce bate la ochi");
   });
 
   it("marks the section a page belongs to, in agreement with the „Descoperă / Caută” breadcrumb", () => {
     expect(active("/")).toEqual(["Descoperă"]);
-    for (const path of ["/cauta", "/entitati/12", "/entitati/12/radiografie", "/semnale", "/semnale/abc", "/harta", "/domenii", "/supra-prag", "/contracte/1", "/anunturi/2", "/achizitii/3"]) expect(active(path)).toEqual(["Descoperă"]);
+    expect(active("/harta")).toEqual(["Hartă"]);
+    for (const path of ["/cauta", "/entitati/12", "/entitati/12/radiografie", "/semnale", "/semnale/abc", "/domenii", "/supra-prag", "/contracte/1", "/anunturi/2", "/achizitii/3"]) expect(active(path)).toEqual(["Descoperă"]);
     expect(active("/intreaba")).toEqual(["Întreabă"]);
     expect(active("/intreabare")).toEqual([]);
     expect(active("/anchete/abc")).toEqual(["Anchete"]);
@@ -75,12 +77,12 @@ import SiteNav from "../app/SiteNav";
 describe("<SiteNav> server snapshot", () => {
   it("uses only the cookie hint before hydration and never renders the session", () => {
     session.data = { user: { email: "fixture@example.invalid", role: "admin" } }; session.isPending = false;
-    const anonymous = renderToStaticMarkup(createElement(SiteNav, { storiesPublished: false }));
+    const anonymous = renderToStaticMarkup(createElement(SiteNav, {}));
     expect(anonymous).not.toContain("/anchete");
     expect(anonymous).not.toContain("d-nav-dot");
     expect(anonymous).not.toContain("Ce bate la ochi");
     expect(anonymous).toContain(">Întreabă<");
-    const hinted = renderToStaticMarkup(createElement(SiteNav, { storiesPublished: false, sessionHint: true }));
+    const hinted = renderToStaticMarkup(createElement(SiteNav, { sessionHint: true }));
     expect(hinted).toContain("href=\"/anchete\"");
     expect(hinted).not.toContain("fixture@example.invalid");
   });
