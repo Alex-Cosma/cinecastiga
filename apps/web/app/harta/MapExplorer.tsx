@@ -355,7 +355,8 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
         {!busy && !ranked.length && <p className="mx-note">Nicio valoare în această selecție.</p>}
         <p className="mx-note">{county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
-      {county && uat && <UatPanel siruta={uat} query={selection} onClose={() => setUat(null)} onPick={openUat} />}
+      {county && uat && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
+        onClose={() => setUat(null)} onPick={openUat} />}
     </div>}
   </div>;
 }

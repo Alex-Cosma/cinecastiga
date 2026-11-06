@@ -77,7 +77,37 @@ function Neighbours({ data, onPick }: { data: MapUatResponse; onPick: (key: stri
   </svg>;
 }
 
-export default function UatPanel({ siruta, query, onClose, onPick }: { siruta: string; query: string; onClose: () => void; onPick: (key: string) => void }) {
+/*
+ * While a UAT loads (owner, 6 November 2026: "ghost data loading"), the panel keeps the shape of its content: the UAT's
+ * name (known from the map), the three questions, and quiet blocks where the sentence, bars, rows and neighbours will be,
+ * so switching UATs does not collapse the panel and grow it back. A UAT the map shows hatched gets the short shape.
+ */
+const YEAR_GHOST = [20, 34, 40, 48, 36, 26, 66, 44, 24];
+function Ghost({ name, county, gap }: { name: string | undefined; county: string | undefined; gap: boolean }) {
+  // "phone": a line only phones wrap to; "wide": a line only the three-column layout wraps to.
+  const line = (width: string, only?: "phone" | "wide") => <span className={`mx-g${only ? ` mx-g-${only}` : ""}`} style={{ width }} />;
+  return <>
+    <p className="mx-p-kick" aria-hidden="true">{line("44%")}{line("30%", "phone")}</p>
+    <h2 id="mx-p-h">{name ?? <span className="mx-g" style={{ width: "36%" }} />}</h2>
+    <p className="mx-p-lead" aria-hidden="true">{line("94%")}{gap ? line("58%") : <>{line("97%")}{line("42%")}{line("30%", "phone")}</>}</p>
+    {!gap && <div className="mx-p-cols" aria-hidden="true">
+      {(["Cât?", "Pe ce?", "Cui?"] as const).map((title, i) => <div className="mx-p-sec" key={title}><h3>{title}</h3>
+        <p>{line("94%")}{line("82%", "wide")}{line("48%")}</p>
+        {i === 0
+          ? <svg className="mx-p-years" viewBox="0 0 260 112">{YEAR_GHOST.map((h, j) => <rect key={j} className="mx-g-svg" x={j * (260 / 9) + 4.6} y={96 - h} width={19.6} height={h} rx="1.5" />)}</svg>
+          : <ul className="mx-p-rows">{[100, 74, 52, 38, 26].map((w, j) => <li key={j}><span>{line(`${78 - j * 7}%`)}</span><i style={{ width: `${w}%` }} /><b>{line("100%")}</b></li>)}</ul>}
+      </div>)}
+    </div>}
+    <div className="mx-p-sec mx-p-wide" aria-hidden="true"><h3>Printre vecini {county && <small>lei pe locuitor în {county}; apasă un punct ca să deschizi UAT-ul</small>}</h3>
+      <svg className="mx-p-near" viewBox="0 0 560 96"><rect className="mx-g-svg" x="10" y="42" width="540" height="14" rx="7" /></svg></div>
+    {!gap && <p className="mx-p-note" aria-hidden="true">{line("40%")}{line("24%", "phone")}</p>}
+    <p className="mx-p-wait" role="status">Se încarcă UAT-ul…</p>
+  </>;
+}
+
+export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
+  siruta: string; query: string; hint: { name: string; county: string | undefined; gap: boolean } | undefined; onClose: () => void; onPick: (key: string) => void;
+}) {
   const [state, setState] = useState<{ key: string; data: MapUatResponse | null; error: string }>({ key: "", data: null, error: "" });
   const key = `siruta=${siruta}&${query}`;
   useEffect(() => {
@@ -99,11 +129,12 @@ export default function UatPanel({ siruta, query, onClose, onPick }: { siruta: s
   </>;
 
   // The panel slides in once; another UAT only replays its content's cascade (the body's key).
-  return <section className={`mx-panel${loading ? " is-loading" : ""}`} aria-labelledby="mx-p-h"><div className="mx-p-body" key={d?.uat.key ?? "wait"}>
+  const failed = !d && Boolean(state.error) && !loading;
+  return <section className={`mx-panel${loading ? " is-loading" : ""}`} aria-labelledby="mx-p-h"><div className={`mx-p-body${!d && !failed ? " is-ghost" : ""}`} key={d?.uat.key ?? (failed ? "error" : "wait")}>
     <button type="button" className="mx-p-close" onClick={onClose} aria-label="Închide panoul">
       <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
     </button>
-    {!d ? (state.error && !loading ? <p className="mx-p-error" role="alert">{state.error}</p> : <p className="mx-p-wait" role="status">Se încarcă UAT-ul…</p>)
+    {!d ? (failed ? <p className="mx-p-error" role="alert">{state.error}</p> : <Ghost name={hint?.name} county={hint?.county} gap={hint?.gap ?? false} />)
       : d.uat.gap === "no_admin" ? <>
         {head}
         <p className="mx-p-lead">Primăria lui {d.uat.name} nu e identificată sigur în date, deci nu avem cifra lui: valoarea e necunoscută, nu zero.</p>
