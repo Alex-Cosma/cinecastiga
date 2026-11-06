@@ -1,0 +1,52 @@
+/* Charts in motion (owner, 6 November 2026). A chart's first appearance shows where its values come from: magnitudes
+   grow from their baseline (a stacked bar as one piece), positions (dots, markers, map fills) appear where they are and
+   never travel through values they do not have. Text never moves and nothing counts up. Entrances run once per page
+   view, when the chart first enters the viewport (app/Reveal.tsx arms the gate), never on back/forward. Data changing
+   for the same subject tweens (.cm-tw). Bars are revealed with clip-path, not scaled: rounded ends keep their shape and
+   numbers inside segments are never squashed. Stagger in reading order only: style="--i: n". */
+:root { --chart-in: var(--slow); --chart-tw: var(--med); --chart-step: 24ms; --chart-cap: 240ms; }
+@media (max-width: 640px) { :root { --chart-step: 12ms; --chart-cap: 160ms; } }
+
+.cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw, .cm-in {
+  animation: var(--cm-k) var(--cm-dur, var(--chart-in)) var(--ease) both;
+  animation-delay: calc(var(--cm-d, 0ms) + min(calc(var(--i, 0) * var(--chart-step)), var(--chart-cap)));
+}
+.cm-x { --cm-k: cm-x; }       /* a bar grows to the right; a stacked bar as one */
+.cm-xr { --cm-k: cm-xr; }     /* a bar grows to the left (the left half of a diverging pair) */
+.cm-y { --cm-k: cm-y; }       /* a column grows up from its baseline */
+.cm-yd { --cm-k: cm-yd; }     /* a column grows down from a top baseline */
+.cm-draw { --cm-k: cm-x; --cm-d: 160ms; } /* a line drawn left to right after its bars */
+.cm-fade { --cm-k: cm-fade; } /* a group, a map fill, a reference mark */
+.cm-pt { --cm-k: cm-pt; transform-box: fill-box; transform-origin: center; } /* a dot or marker, in place (an element with a
+   transform of its own, e.g. translateX(-50%), uses .cm-fade instead: the keyframe would replace its transform) */
+.cm-in { --cm-k: cm-fade; --cm-dur: var(--fast); } /* a mark added by an update */
+.cm-late { --cm-d: 300ms; }   /* the subject's own mark comes last */
+@keyframes cm-x { from { clip-path: inset(0 100% 0 0); } }
+@keyframes cm-xr { from { clip-path: inset(0 0 0 100%); } }
+@keyframes cm-y { from { clip-path: inset(100% 0 0 0); } }
+@keyframes cm-yd { from { clip-path: inset(0 0 100% 0); } }
+@keyframes cm-fade { from { opacity: 0; } }
+@keyframes cm-pt { from { opacity: 0; transform: scale(.5); } }
+
+/* Data changing in place for the same subject: React keeps the element and changes its inline geometry. */
+.cm-tw { transition: width var(--chart-tw) var(--ease), height var(--chart-tw) var(--ease), left var(--chart-tw) var(--ease),
+  bottom var(--chart-tw) var(--ease), flex-grow var(--chart-tw) var(--ease), transform var(--chart-tw) var(--ease),
+  fill var(--chart-tw) var(--ease), fill-opacity var(--chart-tw) var(--ease), opacity var(--chart-tw) var(--ease); }
+
+/* The gate: a chart that starts below the fold waits, hidden, until it is scrolled into view. Only JS arms it, so
+   without JS, before hydration and in print every chart is complete. */
+[data-chart].cm-wait :is(.cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw),
+[data-chart].cm-wait:is(.cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw) { animation: none; visibility: hidden; }
+
+/* Back/forward: the reader is re-finding a place; charts are drawn finished. */
+[data-motion="settled"] :is(.cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw, .cm-in) { animation-duration: 0s; animation-delay: 0s; }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw, .cm-in) { animation: none !important; }
+  .cm-tw { transition: none !important; }
+  [data-chart].cm-wait, [data-chart].cm-wait * { visibility: visible !important; }
+}
+@media print {
+  :is(.cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw, .cm-in) { animation: none !important; }
+  [data-chart].cm-wait, [data-chart].cm-wait * { visibility: visible !important; }
+}
