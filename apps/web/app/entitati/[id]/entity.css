@@ -212,7 +212,7 @@
 /* the pager says where the reader is; a button stays focusable while the next page loads */
 .ask-pager{align-items:center}
 .ask-pager-pos{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
-.ask-pager button[aria-disabled="true"]{opacity:.45;cursor:default}
+.ask-pager button[aria-disabled="true"],#parteneri .pager button[aria-disabled="true"]{opacity:.45;cursor:default}
 .ask-detmeta:focus:not(:focus-visible){outline:none}
 
 /* ---- contract rows: the contract number, a framework ceiling or addendum label,
@@ -273,8 +273,6 @@
   .ent-tx td.c-flags{grid-column:1/-1}
   .ent-tx td.c-links{grid-column:1/-1;font-size:13px}
   .ent-tx td[data-empty="1"]{display:none}
-  .ent-tx tr.tx-ghost{display:block;padding:10px 0}
-  .ent-tx tr.tx-ghost td{display:inline-block;width:30%;margin-right:3%}
 }
 
 @media (max-width:720px){

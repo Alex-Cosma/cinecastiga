@@ -301,6 +301,15 @@ export interface RxData {
   win: { from: number; to: number };
 }
 
+/** Whether the Radiografie exists for this (canonical) id: an authority. Cheap, for the route's layout, which answers a
+ *  404 before the page's ghost streams. */
+export async function isRadiografieAuthority(entityId: string): Promise<boolean> {
+  if (!/^\d+$/.test(entityId)) return false;
+  const sql = db();
+  const rows = (await sql`select 1 from marts.entity_profile where entity_id = ${entityId} and role = 'authority' limit 1`) as unknown as unknown[];
+  return rows.length > 0;
+}
+
 export async function getRadiografie(entityId: string): Promise<RxData | null> {
   const sql = db();
   const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");

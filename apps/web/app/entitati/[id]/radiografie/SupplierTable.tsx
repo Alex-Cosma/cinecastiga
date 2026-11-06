@@ -7,6 +7,8 @@ import { filterParams, isActive, readFilters } from "@/lib/table-filters/codec";
 import type { FilterState, FilterValue } from "@/lib/table-filters/types";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
+import FunnelGhost from "@/components/table-filters/FunnelGhost";
+import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import type { DepPage, DepRow, DepSort } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
@@ -37,6 +39,54 @@ function Duel({ row }: { row: DepRow }) {
     <span className="axis" aria-hidden="true" />
     <span className="rr"><i style={{ width: `${Math.max(row.shareLife * 100, 0.8)}%` }} /><b>{sharePct(row.shareLife)}</b></span>
   </span>;
+}
+
+/* ---- ghosts (owner, 6 November 2026: "ghost data loading"): the table's own cells, decorative widths ---- */
+
+/** The first page's ten rows (on a phone, its cards) while it loads: name, the two shares, the value, the records. */
+export function SupplierRowsGhost() {
+  return <Ghost as="tbody" name="rv-rows" wait="client">
+    <G.Rows n={10} as="tr" className="rv-g-row" cells={(i) => <>
+      <td className="c-name"><G.Line w={rankWidth(i, 74, 5, 40)} />{i % 4 === 3 && <G.Line w="34%" only="phone" />}</td>
+      <td className="c-duel"><span className="rv-duel">
+        <span className="l"><b><G.Line inline w="4ch" /></b><G.Block w={`${Math.max(4, 22 - i * 2)}%`} h="10px" r="3px" /></span>
+        <span className="axis" />
+        <span className="rr"><G.Block w={`${[70, 64, 18, 66, 26, 30, 62, 58, 40, 46][i] ?? 40}%`} h="10px" r="3px" /><b><G.Line inline w="4ch" /></b></span>
+      </span></td>
+      <td className="c-val"><span className="v"><G.Line inline w="11ch" /></span><span className="rv-stack" style={{ width: `${Math.max(16, 96 - i * 8)}%` }}><G.Block w="100%" h="6px" r="0" /></span></td>
+      <td className="c-recs"><span className="v"><G.Line inline w="3ch" /></span><span className="sub"><G.Line inline w="12ch" /></span></td>
+    </>} />
+  </Ghost>;
+}
+
+/** The whole table for the route's ghost: its heading, controls and header as quiet replicas, the rows, the pager. */
+export function SupplierTableGhost() {
+  const th = (label: string, on = false) => <span className="rv-th" data-on={on || undefined} data-dir={on ? "desc" : undefined}>{label}<Chevron /></span>;
+  return (
+    <div className="rv-ranking" aria-hidden="true">
+      <h2>Toți furnizorii</h2>
+      <div className="rv-rank-top">
+        <p className="rv-rank-count"><G.Line inline w="22ch" /></p>
+        <p className="rv-legend"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
+      </div>
+      <div className="rv-sortpills">{(["value", "here", "life", "recs", "name"] as const).map((k) => <span key={k} className="rv-pill-g" data-on={k === "value" || undefined}>{PILL[k]}{k === "value" ? " ↓" : ""}</span>)}</div>
+      <div className="rv-filterpills">{RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}<FunnelGhost /></span>)}</div>
+      <div className="rv-rank-wrap">
+        <table className="rv-rank">
+          <thead>
+            <tr inert>
+              <th scope="col" className="c-name"><span className="th-filter">{th("Furnizor")}<FunnelGhost /></span></th>
+              <th scope="col" className="c-duel"><span className="rv-duelhead"><span>{th("← Din autoritate")}</span><span className="axis" /><span>{th("Cât din câștigurile publice ale firmei vin de aici →")}</span></span></th>
+              <th scope="col" className="c-val"><span className="th-filter">{th("Valoare", true)}<FunnelGhost /></span></th>
+              <th scope="col" className="c-recs"><span className="th-filter">{th("Înregistrări")}<FunnelGhost /></span></th>
+            </tr>
+          </thead>
+          <SupplierRowsGhost />
+        </table>
+      </div>
+      <div className="rv-pager"><G.Block w="7.4em" h="44px" /><span><G.Line inline w="14ch" /></span><G.Block w="7.4em" h="44px" /></div>
+    </div>
+  );
 }
 
 export default function SupplierTable({ authorityId, suppliers, maxValue, selectedId, onSelect }: {
@@ -94,7 +144,8 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
       <FilterBand columns={RADIOGRAFIE_COLUMNS} state={filters.state} labels={filters.labels} onChange={update} />
       <div className="rv-rank-top">
         <p className="rv-rank-count" role="status">
-          {loading && !rows.length ? "Se încarcă furnizorii…" : <><b>{filtered ? `${formatInt(total)} din ${formatInt(suppliers)}` : formatInt(suppliers)} {suppliers === 1 ? "furnizor" : "furnizori"}</b> · după {LABEL[sort]} {dir === "desc" ? "↓" : "↑"}</>}
+          {/* Unfiltered, the count is the server's own: only a filtered count waits for the first page. */}
+          {loading && !rows.length && filtered ? <><span className="g-sr">Se încarcă furnizorii…</span><Ghost as="span" name="rv-count" wait="client"><G.Line inline w="22ch" /></Ghost></> : <><b>{filtered ? `${formatInt(total)} din ${formatInt(suppliers)}` : formatInt(suppliers)} {suppliers === 1 ? "furnizor" : "furnizori"}</b> · după {LABEL[sort]} {dir === "desc" ? "↓" : "↑"}</>}
         </p>
         <p className="rv-legend" aria-hidden="true"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>
@@ -124,8 +175,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
               <th scope="col" className="c-recs" aria-sort={ariaSort("recs")}><span className="th-filter">{head("recs", "Înregistrări")}{funnel("inregistrari", "end")}</span></th>
             </tr>
           </thead>
-          <tbody inert={stale || undefined}>
-            {loading && !rows.length && Array.from({ length: 10 }, (_, i) => <tr key={i} className="rv-ghost" aria-hidden="true"><td colSpan={4}><span /></td></tr>)}
+          {loading && !rows.length && !error ? <SupplierRowsGhost /> : <tbody inert={stale || undefined}>
             {error && <tr><td colSpan={4} className="rv-rank-empty"><span>{error}</span> <button type="button" onClick={retry}>Reîncearcă</button></td></tr>}
             {!loading && !error && rows.length === 0 && (
               <tr><td colSpan={4} className="rv-rank-empty"><span>{filtered ? "Niciun furnizor cu filtrele alese." : "Niciun furnizor."}</span>{filtered && <button type="button" onClick={() => update({})}>Scoate filtrele</button>}</td></tr>
@@ -146,7 +196,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
                 <td className="c-recs"><span className="v">{formatInt(r.n + r.nDa)}</span><span className="sub">{recordWords(r)}</span></td>
               </tr>
             ))}
-          </tbody>
+          </tbody>}
         </table>
       </div>
       {pages > 1 && (

@@ -39,6 +39,7 @@ import Term from "@/components/Term";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
 import TxTable from "./TxTable";
+import { getEntityTransactions } from "@/lib/entity-tx";
 import { txColumns } from "@/lib/entity-tx-columns";
 import { readFilters, writeFilters } from "@/lib/table-filters/codec";
 import PartnersTable from "./PartnersTable";
@@ -159,7 +160,7 @@ export default async function EntityPage({
   // A reviewed older or secondary identity of an institution (owner, 4 November 2026): where its activity is now.
   const successor = successorOf(id);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
-  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
+  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst] =
     await Promise.all([
       registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
       getEntityTxCounts(id, role),
@@ -177,6 +178,10 @@ export default async function EntityPage({
       // The top's years chart and ledger (owner, 2 November 2026); a firm's turnover per year through its corroborated CUI.
       getEntityYears(id, role),
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
+      // Page 1 of the records table, as TxTable first asks for it (by value, the address's filters): the table is in
+      // the first paint instead of growing the page after it (owner, 6 November 2026). On a failure the table asks itself.
+      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: 1, pageSize: 10 })
+        .catch((e: unknown) => { console.error("entity-tx first page", { id, role }, e); return null; }),
     ]);
   const continuedAt = await successorTarget;
   const cuiUncorroborated = cui !== null && registryCui === null;
@@ -474,7 +479,7 @@ export default async function EntityPage({
         />
       </section>
 
-      {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload */}
+      {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload; page 1 from the server */}
       <section className="section" id="achizitii">
         <h2>Toate achizițiile și contractele</h2>
         <TxTable
@@ -483,6 +488,8 @@ export default async function EntityPage({
           role={rolParam as "furnizor" | "autoritate"}
           isAuth={isAuth}
           initial={txFilters}
+          first={txFirst}
+          count={txCounts.nDa + txCounts.nCt}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
           <summary>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract peste 1 miliard lei, separat" : "contracte peste 1 miliard lei, separate"} de total · {formatRon(Number(aboveCap.totalExact))}</summary>

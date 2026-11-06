@@ -1,9 +1,7 @@
-/* Comparații (owner, 6 November 2026, "Șirul celor 465"). The .px-* rules are the loading, error and empty states; .pxs-* is the page. */
+/* Comparații (owner, 6 November 2026, "Șirul celor 465"). The .px-* rules are the error and empty states; .pxs-* is the page
+   (its first answer loads as a ghost in the page's own classes, PeersGhost). */
 .px-error,.px-empty{padding:30px 0;min-height:320px}
 .px-notice{color:var(--ink2);font-size:14px;background:var(--sunk);padding:14px 18px;border-radius:7px}
-.px-loading{min-height:620px;padding:20px 0;color:var(--muted);font-size:13px}
-.px-loading>div{height:90px;border-bottom:1px solid var(--line);position:relative}
-.px-loading>div:after{content:"";position:absolute;top:32px;left:0;width:60%;height:14px;background:var(--line);border-radius:3px}
 /* ---- the page (.pxs) ---- */
 .pxs{max-width:1200px;margin:22px auto 72px;color:var(--ink);font-size:15px;line-height:1.55;overflow-wrap:anywhere}
 .pxs :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
@@ -32,7 +30,7 @@
 .pxs-seg button:hover:not(:disabled){background:var(--accent-soft);color:var(--ink)}
 .pxs-seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
 /* The stage: the swarm on the value axis */
-.pxs-stage{margin-top:16px;padding:14px 20px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.pxs-stage{margin-top:16px;padding:14px 20px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface);container-type:inline-size}
 .pxs-key{margin:0;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
 .pxs-legend{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 12px;color:var(--ink2)}
 .pxs-legend>span{white-space:nowrap}
@@ -41,7 +39,10 @@
 .pxs-legend .sw.med{width:0;height:12px;border-left:1.5px dashed var(--ink)}
 .pxs-legend .sw.me{width:11px;height:11px;border-radius:50%;border:2px solid var(--orange);background:color-mix(in srgb,var(--orange) 16%,transparent)}
 .pxs-stage-top{display:flex;justify-content:space-between;align-items:center;gap:12px 20px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
-.pxs-swarm{position:relative;margin-top:6px}
+/* The swarm's height (Swarm draws 290, or 220 when the stage is narrower than 640 px): set here, so the box is right
+   before the first measure and in the ghost. */
+.pxs-swarm{position:relative;margin-top:6px;height:290px}
+@container (width < 640px){.pxs-swarm{height:220px}.pxs-g-odd{display:none}}
 .pxs-swarm svg{display:block;overflow:visible;touch-action:pan-y}
 .pxs-swarm svg.is-pointing{cursor:pointer}
 .pxs-band{fill:var(--sunk)}
@@ -106,11 +107,20 @@
 .pxs-pager span .pxs-link{font-size:13px}
 .pxs-pager span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .pxs-method{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink2)}
-.pxs-method summary{display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
+.pxs-method :is(summary,.pxs-method-s){display:inline-flex;align-items:center;gap:7px;cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
 .pxs-method summary::-webkit-details-marker{display:none}
 .pxs-method summary svg{transition:transform var(--fast) var(--ease)}
 .pxs-method[open] summary svg{transform:rotate(90deg)}
 .pxs-method p{max-width:none;margin:10px 0 0}
+/* the ghost of the first answer: a decorative bell of dots on the axis, quiet replicas of the controls */
+.pxs-g-band{position:absolute;top:34px;bottom:30px;left:31%;width:26%;background:var(--sunk)}
+.pxs-g-dot{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%}
+.pxs-g-axis{position:absolute;left:0;right:0;bottom:28px;border-top:1px solid var(--line2)}
+.pxs-g-tick{position:absolute;bottom:3px;font-size:12px;line-height:1.55;transform:translateX(-50%)}
+.pxs-seg-g>span{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:5px 13px;color:var(--ink2);font-size:13.5px;font-weight:500}
+.pxs-seg-g>span+span{border-left:1px solid var(--line)}
+.pxs-seg-g>span:first-child{background:var(--sunk)}
+span.pxs-src{display:inline-flex;align-items:center}
 @media (max-width:860px){.pxs-cols{grid-template-columns:1fr;gap:28px}}
 @media (max-width:640px){
   .pxs{margin-top:14px}

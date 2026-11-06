@@ -3,28 +3,31 @@ import { notFound } from "next/navigation";
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { cleanName } from "@/lib/format";
-import { getEntityFlags, getEntityProfile } from "@/lib/marts";
+import { ghostHold } from "@/lib/ghost-hold";
 import { RISK_CRITERIA, riskPoints } from "@/lib/risk-score";
 import { parseRoleParam } from "@/lib/role-param";
 import { readSignalCase } from "@/lib/signal-case";
 import { getEntitySignalCounts, parseSignalState } from "@/lib/signals";
 import CasePage from "@/app/semnale/case/CasePage";
 import DropRolParam from "../DropRolParam";
+import CaseRegion from "./CaseRegion";
+import { loadFlags, loadProfile, validId } from "./load";
 
 /*
  * An entity's signals, one pattern a page (owner, 6 November 2026: under /entitati/{id}/ like its other analyses,
  * `?tip=` the pattern, `?rol=` only for an entity that both buys and sells). Without `tip`, the pattern with the most
  * points, else the first signal found, in the entity page's order. The page itself is the case page (Oglinda).
+ * Loading (owner, 6 November 2026): a slow route, so a ghost (loading.tsx) while the server reads the case; the layout
+ * answers a missing entity with a 404 before it. Its tabs and pager keep the shown case in place, dimmed (CaseRegion).
  */
 
 export const dynamic = "force-dynamic";
 
 type Search = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
-const validId = (id: string) => /^[1-9]\d{0,15}$/.test(id) && Number.isSafeInteger(Number(id));
 
 async function resolve(id: string, sp: Search) {
-  const [flags, profile] = await Promise.all([getEntityFlags(id), getEntityProfile(id)]);
+  const [flags, profile] = await Promise.all([loadFlags(id), loadProfile(id)]);
   if (!profile) return null;
   const roles = [...new Set([...flags.map((r) => r.role), ...profile.roles.map((r) => r.role)])];
   const role = parseRoleParam(one(sp["rol"])) ?? roles[0] ?? "authority";
@@ -51,6 +54,7 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
 }
 
 export default async function EntitySignalsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
+  await ghostHold();
   const { id } = await params;
   const sp = await searchParams;
   await redirectCanonicalEntity(id, "/semnale", sp);
@@ -61,6 +65,6 @@ export default async function EntitySignalsPage({ params, searchParams }: { para
   if (!data) notFound();
   return <>
     {!r.bothRoles && sp["rol"] !== undefined && <DropRolParam />}
-    <CasePage data={data} state={r.state} />
+    <CaseRegion><CasePage data={data} state={r.state} /></CaseRegion>
   </>;
 }

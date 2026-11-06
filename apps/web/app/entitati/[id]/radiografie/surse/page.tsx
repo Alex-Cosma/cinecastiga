@@ -3,12 +3,14 @@ import Link from "next/link";
 import { sharedSql } from "@/lib/shared-db";
 import { readRadiografieEvidence } from "@/lib/radiografie-evidence";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
+import { ghostHold } from "@/lib/ghost-hold";
 
 export const dynamic = "force-dynamic";
 export default async function RadiografieSources({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ tip?: string; furnizor?: string; tipar?: string; fingerprint?:string; p?: string }>;
 }) {
+  await ghostHold(); // development only: lets a check photograph surse/loading.tsx
   const [{ id }, search] = await Promise.all([params, searchParams]);
   await redirectCanonicalEntity(id,"/radiografie/surse",search);
   const selection = search.tip === "slicing" ? { type: "slicing", supplierId: search.furnizor } : { type: "pattern", patternId: search.tipar, ...(search.fingerprint?{expectedFingerprint:search.fingerprint}:{}) };

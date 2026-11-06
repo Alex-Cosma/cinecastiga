@@ -4,6 +4,14 @@ const g=globalThis as unknown as {maintenanceSql?:DbSql};
 // Admin pages/API retain their own authentication and role checks. Keeping the
 // login path open does not grant permission to control or bypass maintenance.
 export function maintenanceExempt(path:string){return path==='/admin'||path.startsWith('/admin/')||path==='/api/admin/collection'||path==='/api/admin/feedback'||path==='/login'||path==='/api/health'||path.startsWith('/api/auth/');}
+// Server layouts receive neither the path below them nor the query: an entity page's layout above its route ghost reads
+// them here to redirect a merged identity to its canonical id before anything streams (lib/entity-navigation.ts).
+function pass(request:NextRequest){
+ if(!request.nextUrl.pathname.startsWith('/entitati/'))return NextResponse.next();
+ const headers=new Headers(request.headers);
+ headers.set('x-seap-path',request.nextUrl.pathname);headers.set('x-seap-search',request.nextUrl.search);
+ return NextResponse.next({request:{headers}});
+}
 export async function proxy(request:NextRequest){
  const path=request.nextUrl.pathname;
  if(maintenanceExempt(path))return NextResponse.next();
@@ -11,7 +19,7 @@ export async function proxy(request:NextRequest){
  // publicSiteGate); closed from the verified backup until the verified reopen.
  let open=false;
  try{const q=g.maintenanceSql??=createDb().sql;open=await publicSiteGate(q);}catch{/* Fail closed rather than expose a partially published snapshot. */}
- if(open)return NextResponse.next();
+ if(open)return pass(request);
  const headers={'Cache-Control':'no-store, max-age=0','Retry-After':'300','X-Robots-Tag':'noindex'};
  if(path.startsWith('/api/'))return NextResponse.json({error:'Datele sunt în curs de actualizare. Revino după încheierea verificărilor.'},{status:503,headers});
  return new NextResponse(`<!doctype html><html lang="ro"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Actualizăm datele · cinecâștigă?</title><style>body{margin:0;background:#f7f8f2;color:#243a30;font:17px/1.7 system-ui,sans-serif}main{max-width:620px;margin:16vh auto;padding:28px}h1{font-size:36px;line-height:1.2;letter-spacing:-.025em}a{color:#204c3c;text-underline-offset:4px}small{color:#3f5043}</style><main><b>cinecâștigă?</b><h1>Actualizăm datele.</h1><p>Revino puțin mai târziu. Anchetele și dovezile tale sunt păstrate.</p><small><a href="/admin">Acces administrator</a></small></main></html>`,{status:503,headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
