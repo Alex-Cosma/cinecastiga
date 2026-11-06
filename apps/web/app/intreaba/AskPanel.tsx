@@ -34,6 +34,7 @@ import {
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
 import ScatterAnswer from "./ScatterAnswer";
+import { readListReturn } from "./answer/list-return";
 import { ensureScatterFacts } from "./scatter-answer";
 import { RANK_WORDS, scatterRank } from "@/lib/ask/scatter-shared";
 import { flagLabel } from "@/lib/flags";
@@ -418,7 +419,9 @@ export default function AskPanel({
             // A trend's sources list the months this answer counted (plan §2.8).
             ...(answer.executed ? { months: answer.executed.months } : {}),
           });
-        if (!drill && scroll)
+        // "Înapoi" from a page a row of the risk cloud's list opened (answer/list-return.ts): the list puts itself back,
+        // with the focus on that row, so the answer is not brought under the header.
+        if (!drill && scroll && !readListReturn(executed))
           // Two frames: the answer is rendered before it is brought under the sticky header (its scroll-margin-top
           // is the header's real height). One scroll (owner, 1 November 2026): a folded builder's "Schimbă întrebarea",
           // right above the answer, comes into view with it; the focus goes to the answer's title.
