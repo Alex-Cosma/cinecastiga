@@ -16,6 +16,7 @@ import { recordsWords } from "./answer/KitLink";
 import type { AnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
 import type { KitLink } from "./builder/kit-types";
+import { G } from "../../components/ghost/Ghost";
 import { countyMetrics, localNotes, mapFirm, metricWords, nationalMetric, type CountyMetric, type MapLensValue } from "./map-answer";
 
 type MapData = Extract<BlockData, { block: "map" }>;
@@ -80,6 +81,33 @@ const SEAT_ROWS: readonly { key: keyof NonNullable<MapCountyFacts["seat"]>; labe
   { key: "foreign", label: "Din străinătate", seat: "abroad" },
   { key: "unknown", label: "Sediu necunoscut" },
 ];
+
+/**
+ * The map on its way (owner, 6 November 2026: ghost loading; AskPanel AnswerGhost): the counties' outline in the
+ * ghost's fill (the static map, never data), the legend, the line on the records without a county, and the side table's
+ * ten rows, in the real classes.
+ */
+export function MapGhost() {
+  return <div className="ask-maplayout" aria-hidden="true">
+    <div className="ask-mapwrap">
+      <svg viewBox={`0 0 ${countyMap.width} ${countyMap.height}`} className="ask-choropleth">
+        {countyMap.shapes.map((s) => <path key={s.key} d={s.d} className="ask-county g-svg" />)}
+      </svg>
+      <div className="ask-legend g-quiet">
+        <span>mai puțin</span>
+        {Array.from({ length: MAP_STEPS }, (_, i) => <span key={i} className={`sw ask-county-${i}`} />)}
+        <span>mai mult</span>
+        <span className="qb" inert><HelpTip tip={LEGEND_TIP} /></span>
+      </div>
+      <p className="ask-fine"><G.Line w="92%" /><G.Line w="40%" /><G.Line w="50%" only="phone" /></p>
+    </div>
+    <div className="ask-mapside-wrap" inert>
+      <table className="ask-table ask-mapside"><tbody>
+        <G.Rows n={10} as="tr" cells={(i) => <><td className="pos">{i + 1}</td><td><a><G.Line inline w={`${[9, 7, 11, 8, 10, 6, 9, 12, 7, 8][i]}ch`} /></a></td><td className="num"><G.Line inline w="9ch" /></td></>} />
+      </tbody></table>
+    </div>
+  </div>;
+}
 
 export default function MapBlock({
   counties,

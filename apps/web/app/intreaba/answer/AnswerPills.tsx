@@ -12,6 +12,8 @@ import BuilderWindow from "../builder/BuilderWindow";
 import { useCoverage } from "../builder/coverage";
 import { builderView, type BuilderWindowSpec } from "../builder/view";
 import { pillWindow } from "./pill-windows";
+import { G } from "../../../components/ghost/Ghost";
+import { ghostPillWidth } from "../link-hint";
 
 /*
  * The pills under the answer's title (owner, 1 November 2026): what the
@@ -66,14 +68,17 @@ export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: A
 
   return <>
     <div className="cq-scope">
-      {pills.map((pill, i) => {
+      {pills.map((words, i) => {
         const target = windows[i];
+        // An answer's ghost (AskPanel AnswerGhost): a pill the engine names, unknown before it answers, is a line.
+        const ghost = ghostPillWidth(words);
+        const pill = ghost ? <G.Line inline w={ghost} /> : words;
         // A pill's tint is its own edge: the dot separates two words that are text.
         return <Fragment key={i}>
           {i > 0 && !target && !windows[i - 1] && <span className="cq-scope-sep" aria-hidden="true">·</span>}
           {target
             ? <button type="button" className="cq-pill" aria-haspopup="dialog" aria-expanded={open?.index === i && win !== null}
-              aria-label={`${target.name}: ${pill}`}
+              aria-label={`${target.name}: ${words}`}
               onClick={(event) => { const anchor = event.currentTarget; setOpen((current) => current?.index === i ? null : { key: target.key, anchor, index: i }); }}>
               <span>{pill}<i className="qb-chev" aria-hidden="true" /></span>
             </button>

@@ -10,6 +10,7 @@ import HelpTip from "../builder/HelpTip";
 import Segmented from "../builder/Segmented";
 import type { KitTip } from "../builder/kit-types";
 import { useAnswerFact } from "./use-answer-fact";
+import { G, Ghost } from "../../../components/ghost/Ghost";
 
 /*
  * „Din care” under a total (plan §4.1, final stat §3.7): the same total by the
@@ -94,14 +95,33 @@ export function mixTabs(spec: AskSpec, mix: Pick<MixResult, "kind" | "procedure"
   return tabs;
 }
 
+/**
+ * „Din care” while its composition is asked (owner, 6 November 2026: ghost loading): the head, the tabs' place, the bar
+ * and the four rows of the first tab (the kinds and "Fără cod CPV"), in the real classes, so the box keeps its height when the rows arrive. The tabs and
+ * the (?) are quiet replicas (inert). Also the stat answer's ghost (AskPanel StatGhost).
+ */
+export function MixGhost() {
+  return <Ghost as="section" className="qb qb-mix" name="ask-mix" wait="client">
+    <div className="qb-mix-top qb-tipwrap g-quiet" inert>
+      <span className="qb-mix-head">Din care</span>
+      <HelpTip tip={TIPS.kind} />
+      <Segmented label="Din care" mode="tabs" size="sm" value="kind" options={(["kind", "procedure", "size"] as const).map((t) => ({ value: t, label: TABS[t] }))} />
+    </div>
+    <div className="qb-mix-bar g-block" aria-hidden="true" />
+    <ul className="qb-mix-rows" aria-hidden="true">
+      {["34%", "26%", "20%", "28%"].map((w, i) => <li key={i}><div className="qb-mix-row is-read">
+        <span className="qb-mix-l"><i className="qb-mix-sw g-block" /><G.Line inline w={`calc(${w} - 18px)`} /></span>
+        <span className="qb-mix-n"><G.Line inline w="24ch" /></span>
+      </div></li>)}
+    </ul>
+  </Ghost>;
+}
+
 export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next: AskSpec, words: string) => void }) {
   const fact = useAnswerFact(spec, "mix");
   const base = useId();
   const [chosen, setChosen] = useState<MixTab | null>(null);
-  if (fact.status === "loading") return <section className="qb qb-mix is-loading" aria-label="Din care" aria-busy="true">
-    <p className="qb-mix-head">Din care</p>
-    {[0, 1, 2].map((i) => <div key={i} className="qb-mix-skel" aria-hidden="true" />)}
-  </section>;
+  if (fact.status === "loading") return <MixGhost />;
   if (fact.status === "none") return <section className="qb qb-mix" aria-label="Din care">
     <p className="qb-mix-head qb-tipwrap">Din care: {fact.precompute ? "nu e calculat pe această selecție" : "nu a putut fi calculat acum"}
       {fact.precompute && <> <HelpTip tip={{ title: "Din care", text: "Pe toată țara, cu un domeniu foarte mare, cu luni, cu sediul firmelor sau cu o plajă scrisă de mână, compoziția cere un calcul pregătit noaptea. Cifra de mai sus e completă." }} /></>}</p>

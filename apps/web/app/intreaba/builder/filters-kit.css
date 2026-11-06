@@ -468,7 +468,6 @@ button.qb-mix-row:hover,button.qb-mix-row:focus-visible{background:var(--fk-chip
 .qb-mix-only-w{opacity:0}
 button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-only-w{opacity:1}
 .qb-mix-foot{margin:8px 0 0;color:var(--muted);font-size:12px}
-.qb-mix-skel{height:28px;margin:6px 0;border-radius:6px;background:var(--line)}
 .qb-kinds{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 10px}
 .qb-kind{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:5px 11px;border:1px solid var(--fk-chip-line);border-radius:999px;background:var(--fk-chip-bg);color:var(--ink2);font-size:13px}
 .qb-kind:hover{background:var(--fk-chip-hover)}

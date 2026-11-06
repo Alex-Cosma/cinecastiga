@@ -93,3 +93,6 @@
   .sc-legend{gap:6px 12px}
 }
 .cq-oldnote{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
+/* The cloud's ghost (ScatterGhost): the chart's real height, 400 px, 300 px on a phone (chartBox, the max-height above). */
+.sc-chart.sc-chart-ghost{height:400px;cursor:default}
+@media (max-width:640px){.sc-chart.sc-chart-ghost{height:300px}}
