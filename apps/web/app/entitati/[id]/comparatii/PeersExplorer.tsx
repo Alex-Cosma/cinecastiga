@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import Popover from "@/app/intreaba/builder/pickers/Popover";
 import OptionList from "@/app/intreaba/builder/pickers/OptionList";
@@ -109,15 +109,21 @@ function Choice({ label, text, title, options, value, onPick, disabled }: {
   </>;
 }
 
-/** One ranked row: place, name (its page) with one line of facts, its position on the axis, the short amount (exact on hover), its sources. */
-function RankRow({ row, axis, median, role, busy, opening, onSources }: {
-  row: Row; axis: Axis | null; median: number | null; role: ConnectionRole; busy: boolean; opening: string | null; onSources: (row: Row) => void;
+/** One ranked row: place, name (its page) with one line of facts, its position on the axis, the short amount (exact on hover), its sources.
+ *  Its dot (charts in motion, owner 6 November 2026) fades in at its place, top to bottom, with the rows of the first
+ *  answer (`enter` = the row's index); a row an update or a page adds fades in at once (`enter` = -1); a row that
+ *  stays slides its dot and the median's tick to their new places (`.cm-tw`). Rows take a new order at once, which
+ *  moves them in the document; the entrance class goes once it has played, so a moved row does not replay it. */
+function RankRow({ row, axis, median, role, busy, opening, onSources, enter }: {
+  row: Row; axis: Axis | null; median: number | null; role: ConnectionRole; busy: boolean; opening: string | null; onSources: (row: Row) => void; enter: number;
 }) {
+  const [born, setBorn] = useState(enter);
+  const played = born === -2;
   return <li className={row.focal ? "pxs-row is-focal" : "pxs-row"}>
     <span className="pxs-n">{row.rank === null ? "" : count(row.rank)}</span>
     <span className="pxs-name">{row.focal ? <b>{row.name}</b> : <EntityName id={row.id} role={role}>{cleanName(row.name) || "—"}</EntityName>}
       <small>{row.records > 0 ? recordsWords(row.records) : "fără înregistrări în selecție"}{row.extra ? ` · ${row.extra}` : ""}</small></span>
-    <span className="pxs-track" aria-hidden="true">{median !== null && median > 0 && <b style={{ left: `${along(axis, median) * 100}%` }} />}{row.records > 0 && <i style={{ left: `${along(axis, row.value) * 100}%` }} />}</span>
+    <span className="pxs-track" aria-hidden="true">{median !== null && median > 0 && <b className="cm-tw" style={{ left: `${along(axis, median) * 100}%` }} />}{row.records > 0 && <i className={played ? "cm-tw" : born >= 0 ? "cm-tw cm-pt" : "cm-tw cm-in"} onAnimationEnd={() => setBorn(-2)} style={{ left: `${along(axis, row.value) * 100}%`, ...(born >= 0 ? { "--i": born } as CSSProperties : {}) }} />}</span>
     <span className="pxs-v" title={row.records > 0 ? formatEvidenceAmount(row.exact, true) : undefined}>{row.records > 0 ? `${short(row.value)} lei` : "—"}</span>
     <button type="button" className="pxs-src" disabled={busy || opening !== null || row.records === 0} aria-label={`Vezi sursele: ${row.focal ? row.name : cleanName(row.name)}`}
       onClick={() => onSources(row)}>{opening === row.id ? "…" : "Surse"}</button>
@@ -175,6 +181,21 @@ function PeersGhost({ name }: { name: string }) {
   </Ghost>;
 }
 
+/** Above this many dots the swarm's entrance fades the dots as one group; above SWARM_TWEEN its updates crossfade the
+ *  group instead of sliding every dot (performance, charts in motion §5.4). */
+const SWARM_EACH = 300, SWARM_TWEEN = 400;
+/** A swarm dot whose entrance is fixed when it mounts: the first drawing ("cm-pt", no stagger: order on a beeswarm means
+ *  nothing), a member an update adds ("cm-in"), or none (the first drawing of a large group, which fades as a whole). */
+function SwarmDot({ born, x, y, r, on }: { born: string; x: number; y: number; r: number; on: boolean }) {
+  const [enter] = useState(born);
+  return <circle className={`pxs-dot${on ? " on" : ""}${enter ? ` ${enter}` : ""}`} cx={x} cy={y} r={r} />;
+}
+/** The dots' group, its entrance class fixed when it mounts. */
+function SwarmDots({ born, many, children }: { born: string; many: boolean; children: ReactNode }) {
+  const [enter] = useState(born);
+  return <g className={`pxs-dots${many ? " pxs-many" : ""}${enter ? ` ${enter}` : ""}`}>{children}</g>;
+}
+
 /**
  * The swarm: every member with records as a dot on a logarithmic value axis, stacked where they meet; the middle
  * half as a band, the median as a dashed rule, the entity as an orange ring that lets a neighbour show through. The
@@ -189,6 +210,11 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null);
+  // Charts in motion (owner, 6 November 2026): the band and the median first, the dots next, the entity's ring last; a
+  // new measure or filter slides the dots that stay (up to SWARM_TWEEN), and a larger group is redrawn as one fade.
+  const [drawn, setDrawn] = useState(false);
+  const [version, setVersion] = useState({ points, metric, n: 0 });
+  if (version.points !== points || version.metric !== metric) setVersion({ points, metric, n: version.n + 1 });
   useEffect(() => {
     const el = box.current;
     if (!el) return;
@@ -241,25 +267,33 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
   const clash = mx >= 0 && focalSpan[0]! < mx + medianWords.length * glyph + 8 && focalSpan[1]! > mx - 8;
   const unit = metric === "total" ? "lei" : "lei pe înregistrare";
   const ring = layout ? layout.r + (phone ? 4 : 5) : 8;
+  useEffect(() => { if (layout && !drawn) setDrawn(true); }, [layout, drawn]);
+  const n = layout?.dots.length ?? 0, crowd = n > SWARM_EACH, many = n > SWARM_TWEEN;
+  // The dots in a fixed order (by member), not by value: a new measure or filter then never moves a circle in the
+  // document, which would restart its entrance and drop its slide.
+  const drawOrder = useMemo(() => (layout?.dots ?? []).map((d, i) => [d, i] as const).sort(([a], [b]) => (a.p.id < b.p.id ? -1 : a.p.id > b.p.id ? 1 : 0)), [layout]);
   // Its height comes from peers.css (290, or 220 when the stage is under 640 px wide: the same test as `phone`), so it is
   // right before the first measure and in the ghost.
-  return <div className="pxs-swarm" ref={box}>
+  return <div className="pxs-swarm" ref={box} data-chart="">
     {layout && <svg width={width} height={H} role="img" aria-label={`${focal.name}: locul ${count(rank)} din ${count(total)}, ${short(focal.value)} ${unit}${median ? `; mediana grupului ${short(median)}` : ""}.`}
       onPointerMove={nearest} onPointerLeave={() => setHover(null)} onClick={() => { if (shown) router.push(entityHref(shown.p.id, role)); }} className={shown ? "is-pointing" : undefined}>
-      {layout.dots.length >= 4 && <rect className="pxs-band" x={layout.x(layout.q1)} y={TOP - 6} width={Math.max(2, layout.x(layout.q3) - layout.x(layout.q1))} height={H - TOP - AXIS + 6} />}
+      {layout.dots.length >= 4 && <rect className="pxs-band cm-fade" x={layout.x(layout.q1)} y={TOP - 6} width={Math.max(2, layout.x(layout.q3) - layout.x(layout.q1))} height={H - TOP - AXIS + 6} />}
       <line className="pxs-axis" x1={0} x2={width} y1={H - AXIS + 2} y2={H - AXIS + 2} />
       {layout.ticks.map((t, i) => {
         const tx = layout.x(t), skip = phone && i % 2 === 1 && i !== layout.ticks.length - 1;
         return <g key={t}><line className="pxs-axis" x1={tx} x2={tx} y1={H - AXIS + 2} y2={H - AXIS + 7} />
           {!skip && <text className="pxs-tick" x={tx} y={H - 8} textAnchor={i === 0 ? "start" : i === layout.ticks.length - 1 ? "end" : "middle"}>{tick(t)}{i === 0 ? " lei" : ""}</text>}</g>;
       })}
-      {median !== null && median > 0 && <g className="pxs-median"><line x1={layout.x(median)} x2={layout.x(median)} y1={TOP - 22} y2={H - AXIS} />
+      {median !== null && median > 0 && <g className="pxs-median cm-fade"><line x1={layout.x(median)} x2={layout.x(median)} y1={TOP - 22} y2={H - AXIS} />
         <text x={layout.x(median) + 6} y={TOP - 12}>{medianWords}</text></g>}
-      {layout.dots.map((d, i) => <circle key={d.p.id} className={i === hover ? "pxs-dot on" : "pxs-dot"} cx={d.x} cy={d.y} r={i === hover ? layout.r + 2 : layout.r} />)}
+      <SwarmDots key={many ? `v${version.n}` : "dots"} many={many} born={!drawn ? (crowd ? "cm-fade" : "") : many ? "cm-in" : ""}>
+        {drawOrder.map(([d, i]) => many ? <circle key={d.p.id} className={i === hover ? "pxs-dot on" : "pxs-dot"} cx={d.x} cy={d.y} r={i === hover ? layout.r + 2 : layout.r} />
+          : <SwarmDot key={d.p.id} born={!drawn ? (crowd ? "" : "cm-pt") : "cm-in"} x={d.x} y={d.y} r={i === hover ? layout.r + 2 : layout.r} on={i === hover} />)}
+      </SwarmDots>
       {/* The entity's words sit above the dots, on the median's line, tied to its ring by a short rule; a phone drops the name (the title says it). */}
-      <line className="pxs-focal-rule" x1={fx} x2={fx} y1={clash ? TOP - 22 : TOP - 6} y2={mid - ring - 1} />
-      <circle className="pxs-focal" cx={fx} cy={mid} r={ring} />
-      <text className="pxs-focal-t" x={right ? fx + 4 : fx - 4} y={clash ? TOP - 28 : TOP - 12} textAnchor={right ? "end" : "start"}>{focalWords}</text>
+      <line className="pxs-focal-rule cm-yd cm-late" x1={fx} x2={fx} y1={clash ? TOP - 22 : TOP - 6} y2={mid - ring - 1} />
+      <circle className="pxs-focal cm-pt cm-late" cx={fx} cy={mid} r={ring} />
+      <text className="pxs-focal-t cm-fade cm-late" x={right ? fx + 4 : fx - 4} y={clash ? TOP - 28 : TOP - 12} textAnchor={right ? "end" : "start"}>{focalWords}</text>
     </svg>}
     {shown && <div className={`pxs-tip${shown.x > width * 0.7 ? " r" : shown.x < width * 0.3 ? " l" : ""}`} style={{ left: shown.x, top: shown.y }} aria-hidden="true">
       <b>{cleanName(shown.p.name) || "—"}</b>
@@ -282,6 +316,8 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   const [copied, setCopied] = useState("");
   const [listOpen, setListOpen] = useState(Number(initial.page ?? 1) > 1);
   const [listPage, setListPage] = useState(0);
+  /** The first answer's rows have been drawn: rows mounted after that (an update, the whole list, a page) fade in at once. */
+  const [rowsDrawn, setRowsDrawn] = useState(false);
   const pinned = useRef({ identity: initial.identity, checkpointId: initial.checkpointId });
   const listHeading = useRef<HTMLHeadingElement>(null);
   const key = query({ entityId, role, ...request });
@@ -409,6 +445,8 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   const pages = Math.max(1, Math.ceil(ranked.length / LIST_PAGE));
   const focalPage = at < 0 ? 0 : Math.floor(at / LIST_PAGE);
   useEffect(() => { setListPage(focalPage); }, [focalPage, key]);
+  useEffect(() => { if (data && !rowsDrawn) setRowsDrawn(true); }, [data, rowsDrawn]);
+  const rowEnter = (i: number) => (rowsDrawn ? -1 : i);
 
   const division = data?.options.divisions.find((item) => item.code === data.filters.cpv);
   const versus = focal ? versusMedian(focalValue, median) : null;
@@ -466,7 +504,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
 
           <div className="pxs-cols">
             {comparisonAvailable && observedCount > 0 && <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">În jurul ei</h2>
-              <ol className="pxs-rows">{neighbours.map((r) => <RankRow key={r.id} row={r} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} />)}</ol>
+              <ol className="pxs-rows" data-chart="">{neighbours.map((r, i) => <RankRow key={r.id} row={r} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
               {data.cohort.count > 5 && <button type="button" className="pxs-more" aria-expanded={listOpen} aria-controls="peer-members" onClick={openList}>Tot clasamentul · {countWords(total, noun[0], noun[1])}
                 <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
             </section>}
@@ -502,10 +540,10 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
             <div className="pxs-list-h"><h2 ref={listHeading} tabIndex={-1}>Tot clasamentul{metric === "mean" ? ", după valoarea pe înregistrare" : ""}</h2><span>{countWords(ranked.length, noun[0], noun[1])}, inclusiv ea</span></div>
             {data.pointsSampled ? <>
               {/* Over 3.000 members the swarm is a sample, so the list stays the server's: pages of 20 by value. */}
-              <ol className="pxs-rows">{data.members.map((m) => <RankRow key={m.entity.id} row={{ id: m.entity.id, name: m.entity.name, value: Number(m.totalExact), exact: m.totalExact, records: m.recordCount, focal: false, rank: null }} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={() => showSources(m)} />)}</ol>
+              <ol className="pxs-rows" data-chart="">{data.members.map((m, i) => <RankRow key={m.entity.id} row={{ id: m.entity.id, name: m.entity.name, value: Number(m.totalExact), exact: m.totalExact, records: m.recordCount, focal: false, rank: null }} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={() => showSources(m)} enter={rowEnter(i)} />)}</ol>
               {data.pagination.totalPages > 1 && <nav className="pxs-pager" aria-label="Paginile grupului"><button type="button" className="pxs-btn" disabled={busy || data.pagination.page <= 1} onClick={() => turnPage(data.pagination.page - 1)}>← Înapoi</button><span>{count(data.pagination.page)} / {count(data.pagination.totalPages)}</span><button type="button" className="pxs-btn" disabled={busy || !data.pagination.hasNext} onClick={() => turnPage(data.pagination.page + 1)}>Înainte →</button></nav>}
             </> : <>
-              <ol className="pxs-rows">{ranked.slice(listPage * LIST_PAGE, listPage * LIST_PAGE + LIST_PAGE).map((r) => <RankRow key={r.id} row={r} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} />)}</ol>
+              <ol className="pxs-rows" data-chart="">{ranked.slice(listPage * LIST_PAGE, listPage * LIST_PAGE + LIST_PAGE).map((r, i) => <RankRow key={r.id} row={r} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
               {pages > 1 && <nav className="pxs-pager" aria-label="Paginile grupului"><button type="button" className="pxs-btn" disabled={listPage <= 0} onClick={() => { setListPage((p) => p - 1); requestAnimationFrame(() => listHeading.current?.focus()); }}>← Înapoi</button>
                 <span>{count(listPage + 1)} / {count(pages)}{listPage !== focalPage && <> · <button type="button" className="pxs-link" onClick={() => setListPage(focalPage)}>la locul ei</button></>}</span>
                 <button type="button" className="pxs-btn" disabled={listPage >= pages - 1} onClick={() => { setListPage((p) => p + 1); requestAnimationFrame(() => listHeading.current?.focus()); }}>Înainte →</button></nav>}

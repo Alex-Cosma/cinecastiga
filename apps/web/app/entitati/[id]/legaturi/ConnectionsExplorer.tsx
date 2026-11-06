@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
@@ -132,15 +132,24 @@ function drawnOf(items: ConnectionPartner[], n: number, chosen: ConnectionPartne
   return chosen && !top.some((i) => i.entity.id === chosen.entity.id) ? [...top, chosen] : top;
 }
 
-function Flow({ root, rootRole, items, total, count, picked, second, secondTotal, peer, waiting, onPick, onPeer, onRest, onSecondRest }: {
+/*
+ * Charts in motion (owner, 6 November 2026). The first drawing: the root's bar is there, the bands are revealed from left
+ * to right as one group (the money flows from the entity to its partners), the partners' nodes and names come after.
+ * Choosing a partner fans its own partners out of its node (.cx-band2). Another period or kind of purchases redraws the
+ * flow with a short fade: ribbons interpolated between two answers would read as chaos.
+ */
+function Flow({ root, rootRole, items, total, count, picked, second, secondTotal, peer, waiting, onPick, onPeer, onRest, onSecondRest, enter }: {
   root: ConnectionEntity; rootRole: ConnectionRole; items: ConnectionPartner[]; total: number; count: number;
   picked: ConnectionPartner | null; second: ConnectionsResponse | null; secondTotal: number; peer: ConnectionPartner | null;
   /** the chosen partner's own partners are loading (or the partner is being chosen): the right column is a ghost */
   waiting: boolean;
   onPick: (item: ConnectionPartner) => void; onPeer: (item: ConnectionPartner) => void; onRest: () => void; onSecondRest: () => void;
+  /** the page's first flow, or one redrawn for another scope; fixed when the flow mounts */
+  enter: "first" | "update";
 }) {
   const isAuthority = rootRole === "authority";
   const [hover, setHover] = useState<string | null>(null);
+  const [first] = useState(enter === "first");
   const drawn = drawnOf(items, DRAWN, picked);
   const restValue = Math.max(0, total - drawn.reduce((a, i) => a + amount(i), 0));
   const mid = stack<ConnectionPartner>([
@@ -170,20 +179,20 @@ function Flow({ root, rootRole, items, total, count, picked, second, secondTotal
     right: picked ? (isAuthority ? `Cui mai vinde ${name(picked.entity)}` : `Cine mai vinde la ${name(picked.entity)}`) : "" };
 
   return (
-    <div className="cx-flow" role="group" aria-label="Fluxul banilor">
+    <div className="cx-flow" role="group" aria-label="Fluxul banilor" data-chart="">
       <div className="cx-flow-heads" aria-hidden="true" style={{ gridTemplateColumns: `${X_MID / 10}% ${(X_RIGHT - X_MID) / 10}% 1fr` }}>
         <span>{heads.root}</span><span>{heads.mid}</span><span className="r">{heads.right || (waiting && <><G.Line w="92%" /><G.Line w="56%" /></>)}</span>
       </div>
-      <div className="cx-flow-stage">
+      <div className={first ? "cx-flow-stage" : "cx-flow-stage cm-in"}>
         <svg viewBox={`0 0 1000 ${H}`} preserveAspectRatio="none" aria-hidden="true">
           <rect className="cx-root-bar" x="0" y="0" width={X_ROOT} height={H} rx="2" />
-          {mid.map((n, i) => (
+          <g className={first ? "cm-x" : undefined}>{mid.map((n, i) => (
             <path key={n.key} className={`cx-band ${n.item ? SHADES[i] : "rest"}${sel && n === sel ? " on" : ""}${sel && n !== sel ? " dim" : ""}${hover === n.key ? " hov" : ""}`}
               d={band(X_ROOT, rootAt0[i]!, rootAt0[i]! + n.share * H, X_MID, n.y, n.y + n.h)}
               onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
               onClick={() => (n.item ? onPick(n.item) : onRest())} />
-          ))}
-          {mid.map((n, i) => <rect key={n.key} className={`cx-node ${n.item ? SHADES[i] : "rest"}${sel && n === sel ? " on" : ""}`} x={X_MID} y={n.y} width={X_MID_W} height={n.h} />)}
+          ))}</g>
+          <g className={first ? "cm-fade cx-after" : undefined}>{mid.map((n, i) => <rect key={n.key} className={`cx-node ${n.item ? SHADES[i] : "rest"}${sel && n === sel ? " on" : ""}`} x={X_MID} y={n.y} width={X_MID_W} height={n.h} />)}</g>
           {sel && right.map((n) => {
             const slice = sel.h * n.share, a0 = fan; fan += slice;
             return <path key={`${picked!.entity.id}:${n.key}`} className={`cx-band2${n.key === "root" ? " root" : n.item ? "" : " rest"}${peer && n.item?.entity.id === peer.entity.id ? " on" : ""}${peer && n.item?.entity.id !== peer.entity.id ? " dim" : ""}${hover === `r:${n.key}` ? " hov" : ""}`}
@@ -192,13 +201,13 @@ function Flow({ root, rootRole, items, total, count, picked, second, secondTotal
           })}
           {sel && right.map((n) => <rect key={n.key} className={`cx-node2${n.key === "root" ? " root" : n.item ? "" : " rest"}`} x={X_RIGHT} y={n.y} width={X_RIGHT_W} height={n.h} />)}
         </svg>
-        {mid.map((n, i) => (
+        <div className={first ? "cx-flow-labels cm-fade cx-after" : "cx-flow-labels"}>{mid.map((n, i) => (
           <button key={n.key} type="button" className={`cx-label${n.item ? "" : " rest"}${sel && n === sel ? " on" : ""}${hover === n.key ? " hov" : ""}`} style={{ left: `calc(${(X_MID + X_MID_W) / 10}% + 10px)`, top: `${(midLabels[i]! / H) * 100}%` }}
             onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
             aria-pressed={n.item ? !!sel && n === sel : undefined} onClick={() => (n.item ? onPick(n.item) : onRest())}>
             <b>{n.label}</b><span>{short(n.value)} · {pct(n.share)}</span>
           </button>
-        ))}
+        ))}</div>
         {sel && second && right.map((n, i) => n.key === "root"
           ? <p key={n.key} className="cx-label right root" style={{ left: `calc(${(X_RIGHT + X_RIGHT_W) / 10}% + 10px)`, top: `${(rightLabels[i]! / H) * 100}%` }}>
               <b>{n.label}</b><span>{short(n.value)} · {pct(n.share)}</span></p>
@@ -230,15 +239,17 @@ function Strips({ root, rootRole, items, total, count, picked, second, secondTot
   const rootValue = picked ? amount(picked) : 0;
   const rest2 = Math.max(0, secondTotal - rootValue - others.reduce((a, i) => a + amount(i), 0));
   const seg = (key: string, value: number, of: number, cls: string, label: string, on: boolean, act?: () => void) =>
-    act ? <button key={key} type="button" className={`cx-strip-seg ${cls}${on ? " on" : ""}`} style={{ flexGrow: Math.max(value / Math.max(1, of), 0.012) }} aria-pressed={on} aria-label={`${label}: ${short(value)} lei, ${pct(value / Math.max(1, of))}`} onClick={act} />
-      : <span key={key} className={`cx-strip-seg ${cls}`} style={{ flexGrow: Math.max(value / Math.max(1, of), 0.012) }} aria-label={`${label}: ${pct(value / Math.max(1, of))}`} role="img" />;
-  return <div className="cx-strips">
+    act ? <button key={key} type="button" className={`cx-strip-seg cm-tw ${cls}${on ? " on" : ""}`} style={{ flexGrow: Math.max(value / Math.max(1, of), 0.012) }} aria-pressed={on} aria-label={`${label}: ${short(value)} lei, ${pct(value / Math.max(1, of))}`} onClick={act} />
+      : <span key={key} className={`cx-strip-seg cm-tw ${cls}`} style={{ flexGrow: Math.max(value / Math.max(1, of), 0.012) }} aria-label={`${label}: ${pct(value / Math.max(1, of))}`} role="img" />;
+  // Each strip grows as one, left to right, when it first appears (the chosen partner's when its answer arrives); a pick
+  // then tweens the parts that stay (.cm-tw on flex-grow).
+  return <div className="cx-strips" data-chart="">
     <p className="cx-strip-h">{isAuthority ? "De la cine cumpără" : "Cine cumpără de la ea"}</p>
-    <div className="cx-strip">{drawn.map((i, k) => seg(i.entity.id, amount(i), total, SHADES[k]!, name(i.entity), picked?.entity.id === i.entity.id, () => onPick(i)))}
+    <div className="cx-strip cm-x">{drawn.map((i, k) => seg(i.entity.id, amount(i), total, SHADES[k]!, name(i.entity), picked?.entity.id === i.entity.id, () => onPick(i)))}
       {count > drawn.length && seg("rest", rest, total, "rest", `alte ${count - drawn.length}`, false)}</div>
     {picked && second && <>
       <p className="cx-strip-h">{isAuthority ? `Cui mai vinde ${name(picked.entity)}` : `Cine mai vinde la ${name(picked.entity)}`}</p>
-      <div className="cx-strip">{[...others.map((i) => ({ key: i.entity.id, i, v: amount(i) })), { key: "root", i: null, v: rootValue }].sort((a, b) => b.v - a.v)
+      <div className="cx-strip cm-x">{[...others.map((i) => ({ key: i.entity.id, i, v: amount(i) })), { key: "root", i: null, v: rootValue }].sort((a, b) => b.v - a.v)
         .map(({ key, i, v }) => i ? seg(key, v, secondTotal, "c2", name(i.entity), peer?.entity.id === i.entity.id, () => onPeer(i)) : seg(key, v, secondTotal, "root", name(root), false))}
         {(second.pagination.totalPartners ?? 0) > others.length && seg("rest", rest2, secondTotal, "rest", "ceilalți", false)}</div>
     </>}
@@ -347,17 +358,21 @@ function ListGhost() {
  */
 function ListRows({ data, total, largest, pickedId, onPick, label }: { data: ConnectionsResponse; total: number; largest: number; pickedId?: string | undefined; onPick: (item: ConnectionPartner) => void; label: string }) {
   const max = Math.max(1, largest, ...data.items.map(amount));
-  return <ul className="cx-rows" aria-label={label}>
-    {data.items.map((item) => {
-      const on = pickedId === item.entity.id;
-      return <li key={item.entity.id} className={`cx-row${on ? " on" : ""}`}>
-        <button type="button" className="cx-row-hit" aria-pressed={on} aria-label={`Alege ${name(item.entity)}`} onClick={() => onPick(item)} />
-        <span className="t"><b><EntityName id={item.entity.id} role={item.entity.role}>{name(item.entity)}</EntityName></b><small>{item.entity.cui ? `CUI ${item.entity.cui}` : "CUI nepublicat"}{countyLabel(item.entity.county) ? ` · ${countyLabel(item.entity.county)}` : ""} · {recordLabel(records(item))}</small></span>
-        <span className="v">{short(amount(item))} <em>{pct(amount(item) / Math.max(1, total))}</em></span>
-        <span className="bar" aria-hidden="true"><i style={{ width: `${(amount(item) / max) * 100}%` }} /></span>
-      </li>;
-    })}
+  // The answer the list was first drawn with: its bars grow top to bottom; a later page or search grows its new rows at
+  // once, over --fast (charts in motion, owner 6 November 2026).
+  const [firstData] = useState(data);
+  return <ul className="cx-rows" aria-label={label} data-chart="">
+    {data.items.map((item, i) => <ListRow key={item.entity.id} item={item} total={total} max={max} on={pickedId === item.entity.id} onPick={onPick} enter={data === firstData ? i : -1} />)}
   </ul>;
+}
+function ListRow({ item, total, max, on, onPick, enter }: { item: ConnectionPartner; total: number; max: number; on: boolean; onPick: (item: ConnectionPartner) => void; enter: number }) {
+  const [born] = useState(enter);
+  return <li className={`cx-row${on ? " on" : ""}`}>
+    <button type="button" className="cx-row-hit" aria-pressed={on} aria-label={`Alege ${name(item.entity)}`} onClick={() => onPick(item)} />
+    <span className="t"><b><EntityName id={item.entity.id} role={item.entity.role}>{name(item.entity)}</EntityName></b><small>{item.entity.cui ? `CUI ${item.entity.cui}` : "CUI nepublicat"}{countyLabel(item.entity.county) ? ` · ${countyLabel(item.entity.county)}` : ""} · {recordLabel(records(item))}</small></span>
+    <span className="v">{short(amount(item))} <em>{pct(amount(item) / Math.max(1, total))}</em></span>
+    <span className="bar" aria-hidden="true"><i className="cm-tw cm-x" style={{ width: `${(amount(item) / max) * 100}%`, ...(born >= 0 ? { "--i": born } : { "--cm-dur": "var(--fast)" }) } as CSSProperties} /></span>
+  </li>;
 }
 function Pager({ data, busy, onPage }: { data: ConnectionsResponse; busy: boolean; onPage: (page: number) => void }) {
   if (data.pagination.totalPages < 2 && data.pagination.page === 1) return null;
@@ -441,6 +456,13 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   const [restoring, setRestoring] = useState(Boolean(initial.partner));
   /** A new period or kind loads: the previous answer stays on screen, dimmed (owner, 6 November 2026). */
   const [held, setHeld] = useState<View | null>(null);
+  /** The scope was changed on this page: a flow drawn after that is a redrawing (a fade), not the first entrance. */
+  const [rescoped, setRescoped] = useState(false);
+  /** On a phone, a list shown again draws its bars finished (its entrance played on its first showing). */
+  const [listAgain, setListAgain] = useState(false);
+  const listsShown = useRef(new Set(["root"]));
+  useEffect(() => { if (!listAgain) return; const timer = setTimeout(() => setListAgain(false), 900); return () => clearTimeout(timer); }, [listAgain]);
+  function showList(which: "root" | "second") { if (which !== phoneList && listsShown.current.has(which)) setListAgain(true); listsShown.current.add(which); setPhoneList(which); }
   const restored = useRef(false);
   const auto = useRef(false);
   /** The address carried a path: it opens that one, until the scope changes. */
@@ -492,7 +514,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
     if (!data) return;
     restoreController.current?.abort();
     const next = { root: data.entity, partner: item, checkpointId: data.checkpoint.id };
-    setPicked(next); setPeer(null); setPeerSearch(""); setPeerPage(1); setLinkError(""); setRestoring(false); if (!quiet) setPhoneList("second");
+    setPicked(next); setPeer(null); setPeerSearch(""); setPeerPage(1); setLinkError(""); setRestoring(false); if (!quiet) { listsShown.current.add("second"); setPhoneList("second"); }
     if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); }
   }
   function choosePeer(item: ConnectionPartner) {
@@ -503,6 +525,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   function applyScope(next: Scope) {
     restoreController.current?.abort();
     if (!held && live.top) setHeld(live);
+    setRescoped(true);
     setScope(next); setPicked(null); setPeer(null); setPage(1); setSearch(""); setSources(null); setRestoring(false); auto.current = false; fromLink.current = false; remember(null, null, next);
   }
   const restart = <a className="cx-button" href={`/entitati/${entityId}/legaturi?rol=${isAuthority ? "autoritate" : "furnizor"}`}>Reia explorarea pe datele disponibile</a>;
@@ -596,7 +619,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
     {base.error && !held ? <div className="cx-error" role="alert"><p>{base.error}</p><button type="button" onClick={base.retry}>Reîncearcă</button> {restart}</div> : <>
       {!v.top ? <StageGhost isAuthority={isAuthority} /> : <section className={`cx-stage${stale}`} aria-label="Fluxul banilor" aria-busy={held ? true : undefined} inert={held ? true : undefined}>
         {entity && v.top.items.length > 0
-          ? <Flow root={entity} rootRole={role} items={v.top.items} total={total} count={count} picked={v.picked?.partner ?? null}
+          ? <Flow key={query({ ...v.scope })} enter={rescoped ? "update" : "first"} root={entity} rootRole={role} items={v.top.items} total={total} count={count} picked={v.picked?.partner ?? null}
               second={v.secondTop} secondTotal={secondTotal} peer={v.peer} waiting={waiting}
               onPick={(i) => choose(i)} onPeer={choosePeer}
               onRest={() => rootList.current?.focus()} onSecondRest={() => secondList.current?.focus()} />
@@ -631,12 +654,12 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
 
       {/* The complete lists: any partner, by name or CUI, page by page (on a phone, the page itself). */}
       {vp || pickPending ? <div className={`cx-list-switch${stale}`} role="tablist" aria-label="Listele" inert={held ? true : undefined}>
-        <button type="button" role="tab" aria-selected={phoneList === "root"} onClick={() => setPhoneList("root")}>{isAuthority ? "Furnizorii" : "Instituțiile"} · {number(count)}</button>
-        <button type="button" role="tab" aria-selected={phoneList === "second"} onClick={() => setPhoneList("second")}>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"}{v.second ? ` · ${number(v.second.pagination.totalPartners)}` : <> · <Ghost as="span" name="cx-switch-count" wait="client"><G.Line inline w="4ch" /></Ghost></>}</button>
+        <button type="button" role="tab" aria-selected={phoneList === "root"} onClick={() => showList("root")}>{isAuthority ? "Furnizorii" : "Instituțiile"} · {number(count)}</button>
+        <button type="button" role="tab" aria-selected={phoneList === "second"} onClick={() => showList("second")}>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"}{v.second ? ` · ${number(v.second.pagination.totalPartners)}` : <> · <Ghost as="span" name="cx-switch-count" wait="client"><G.Line inline w="4ch" /></Ghost></>}</button>
       </div> : !v.top && <div className="cx-list-switch" aria-hidden="true" data-ghost="client" data-g="cx-list-switch">
         <span>{isAuthority ? "Furnizorii" : "Instituțiile"} · <G.Line inline w="3ch" /></span><span>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"} · <G.Line inline w="4ch" /></span>
       </div>}
-      <div className={`cx-lists show-${vp ? phoneList : "root"}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined}>
+      <div className={`cx-lists show-${vp ? phoneList : "root"}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined} data-motion={listAgain ? "settled" : undefined}>
         <section className="cx-list root" aria-labelledby="cx-list-1">
           <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span>{v.base ? `${number(v.base.pagination.totalPartners)}${rootSearch ? " găsite" : ""} · după valoare` : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={rootList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută un furnizor" : "Caută o instituție"} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />

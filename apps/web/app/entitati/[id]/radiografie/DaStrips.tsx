@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import Term from "@/components/Term";
 import type { SliceRow } from "@/lib/radiografie";
@@ -8,6 +8,33 @@ import { shortName, daysBetween } from "@/lib/radiografie-fmt";
 import { formatRonFull, formatInt } from "@/lib/format";
 import { sliceIncludes, rxDate } from "@/lib/radiografie-view";
 import RadiografieSources from "./RadiografieSources";
+
+/*
+ * Charts in motion (owner, 6 November 2026). The group's band and its ceiling are there first; the purchases fade in
+ * where they are, in date order. "Vezi întregul istoric" keeps the same purchases (by id) and tweens them to the new
+ * scale with a transform, while the axis labels change at once and the single ceiling gives way to the ceilings' eras
+ * with a short fade. Another group is another subject: its chart enters anew.
+ */
+/** Above this many purchases the dots fade as one group; above TWEEN_MAX they jump rather than tween. */
+const EACH_MAX = 300, TWEEN_MAX = 400;
+
+/** An SVG group whose entrance class is fixed when it mounts (a later render never restarts it). */
+function BornG({ born, className, children }: { born: string; className?: string; children: ReactNode }) {
+    const [enter] = useState(born);
+    return <g className={[className, enter].filter(Boolean).join(" ") || undefined}>{children}</g>;
+}
+/** One purchase: placed by a transform (so the history toggle can tween it), drawn at its own centre. */
+function DaDot({ born, i, x, y, tw, className, label, title, onPick }: {
+    born: "cm-pt" | "cm-in" | ""; i: number; x: number; y: number; tw: boolean; className: string; label: string; title: string; onPick: () => void;
+}) {
+    const [enter] = useState(born);
+    return <g className={tw ? "rv-da-at cm-tw" : "rv-da-at"} style={{ transform: `translate(${x}px, ${y}px)` }}>
+        <circle className={enter ? `${className} ${enter}` : className} style={enter === "cm-pt" ? { "--i": i } as CSSProperties : undefined} r={5} role="button" tabIndex={0} aria-label={label} onClick={onPick} onKeyDown={(e: KeyboardEvent) => { if (["Enter", " "].includes(e.key)) {
+            e.preventDefault();
+            onPick();
+        } }}><title>{title}</title></circle></g>;
+}
+
 export default function DaStrips({ rows, nSuppliers, authorityId }: {
     rows: SliceRow[];
     nSuppliers: number;
@@ -18,6 +45,12 @@ export default function DaStrips({ rows, nSuppliers, authorityId }: {
         return; const observer = new ResizeObserver(([entry]) => { if (entry && entry.contentRect.width > 0)
         setWidth(Math.max(260, Math.round(entry.contentRect.width))); }); observer.observe(el); return () => observer.disconnect(); }, [rows.length]);
     const s = rows.find(r => r.supplierId === id) ?? rows[0];
+    // The group whose chart has been drawn once (marks mounted after that do not replay the entrance), and the history
+    // toggle's tween (> 0 while it runs).
+    const [entered, setEntered] = useState<string | null>(null), [glide, setGlide] = useState(0);
+    useEffect(() => { setEntered(s?.supplierId ?? null); }, [s?.supplierId]);
+    useEffect(() => { if (!glide)
+        return; const timer = setTimeout(() => setGlide(0), 400); return () => clearTimeout(timer); }, [glide]);
     if (!s)
         return <div className="rv-empty"><h2>Niciun grup detectat după aceste criterii</h2><p>{formatInt(nSuppliers)} furnizori cu cel puțin trei achiziții directe. Datele necunoscute nu permit o concluzie.</p></div>;
     const members = s.points.filter(p => sliceIncludes(s, p)), pts = (history ? s.points : members).filter(p => Number.isFinite(Date.parse(p.d)) && Number.isFinite(p.v));
@@ -27,16 +60,17 @@ export default function DaStrips({ rows, nSuppliers, authorityId }: {
     const X = (d: number) => l + (d - t0) / (t1 - t0) * (width - l - r), Y = (v: number) => t + (1 - v / max) * (h - t - b);
     const eras = DA_CEILING_ERAS.flatMap(era => { const a = Math.max(t0, Date.parse(era.validFrom)), z = Math.min(t1, era.validTo ? Date.parse(era.validTo) : t1); return z > a ? [{ a, z, v: s.purchaseType === "works" ? era.works : era.goodsServices }] : []; });
     const repeated = new Map<string, number>();
-    return <><div className="rv-direct-toolbar"><div><h2>Achiziții apropiate în timp</h2><p>{rows.length === 1 ? "Un grup de verificat" : `${rows.length} grupuri de verificat`}</p></div><label>Grup de achiziții<select value={s.supplierId} onChange={e => { setId(e.target.value); setHistory(false); setPoint(null); }}>{rows.map(r => <option key={r.supplierId} value={r.supplierId}>{shortName(r.supplierName)} · {r.n} achiziții</option>)}</select></label></div>
- <section className="rv-workspace rv-direct"><div className="rv-workspace-heading"><div><h2>{s.n} achiziții, {s.d0 === s.d1 ? "în aceeași zi" : `în ${daysBetween(s.d0, s.d1)} zile`}</h2><p><Link href={`/entitati/${s.supplierId}`}>{shortName(s.supplierName)}</Link> · {s.cpvName} · {rxDate(s.d0)}{s.d0 !== s.d1 && `–${rxDate(s.d1)}`}</p></div><button className="rv-quiet" onClick={() => { setHistory(!history); setPoint(null); }}>{history ? "Revino la intervalul de verificat" : "Vezi întregul istoric"}</button></div>
+    const first = entered !== s.supplierId, crowd = pts.length > EACH_MAX, tw = glide > 0 && pts.length <= TWEEN_MAX;
+    const order = pts.map((_, i) => i).sort((a, b) => Date.parse(pts[a]!.d) - Date.parse(pts[b]!.d)), rank: number[] = [];
+    order.forEach((at, k) => { rank[at] = k; });
+    return <><div className="rv-direct-toolbar"><div><h2>Achiziții apropiate în timp</h2><p>{rows.length === 1 ? "Un grup de verificat" : `${rows.length} grupuri de verificat`}</p></div><label>Grup de achiziții<select value={s.supplierId} onChange={e => { setId(e.target.value); setHistory(false); setPoint(null); setGlide(0); }}>{rows.map(r => <option key={r.supplierId} value={r.supplierId}>{shortName(r.supplierName)} · {r.n} achiziții</option>)}</select></label></div>
+ <section className="rv-workspace rv-direct"><div className="rv-workspace-heading"><div><h2>{s.n} achiziții, {s.d0 === s.d1 ? "în aceeași zi" : `în ${daysBetween(s.d0, s.d1)} zile`}</h2><p><Link href={`/entitati/${s.supplierId}`}>{shortName(s.supplierName)}</Link> · {s.cpvName} · {rxDate(s.d0)}{s.d0 !== s.d1 && `–${rxDate(s.d1)}`}</p></div><button className="rv-quiet" onClick={() => { setHistory(!history); setPoint(null); setGlide(g => g + 1); }}>{history ? "Revino la intervalul de verificat" : "Vezi întregul istoric"}</button></div>
  <dl className="rv-direct-facts"><div><dt>Valoarea grupului în calcul</dt><dd>{s.sum.toLocaleString("ro-RO", {minimumFractionDigits:2,maximumFractionDigits:2})} lei</dd></div><div><dt>Plafon de referință</dt><dd>{formatRonFull(s.ceiling)}</dd></div><div><dt>Tip</dt><dd>{s.purchaseType === "works" ? "Lucrări" : s.purchaseType === "goods_services" ? "Produse / servicii" : "Necunoscut"}</dd></div></dl>
- <div ref={ref} className="rv-direct-chart"><svg viewBox={`0 0 ${width} ${h}`} role="group" aria-label={`Achizițiile ${s.supplierName} în timp`}><rect className="rv-band" x={X(start) - 5} y={t} width={Math.max(10, X(end) - X(start) + 10)} height={h - t - b}/>{[.25, .5, .75, 1].map(v => <g key={v}><line className="rv-grid" x1={l} x2={width - r} y1={Y(max * v)} y2={Y(max * v)}/><text className="rv-axis" x={l - 10} y={Y(max * v) + 4} textAnchor="end">{formatInt(max * v / 1000)} mii</text></g>)}
- {history ? eras.map((e, i) => <line key={i} className="rv-ceiling" x1={X(e.a)} x2={X(e.z)} y1={Y(e.v)} y2={Y(e.v)}/>) : <><line className="rv-ceiling" x1={l} x2={width - r} y1={Y(s.ceiling)} y2={Y(s.ceiling)}/><text className="rv-axis" textAnchor="end" x={width - r} y={Y(s.ceiling) - 8}>Plafon: {formatRonFull(s.ceiling)}</text></>}
+ <div ref={ref} className="rv-direct-chart" data-chart=""><svg key={s.supplierId} viewBox={`0 0 ${width} ${h}`} role="group" aria-label={`Achizițiile ${s.supplierName} în timp`}><rect className={tw ? "rv-band cm-tw" : "rv-band"} x={0} y={0} width={1} height={h - t - b} style={{ transform: `translate(${X(start) - 5}px, ${t}px) scaleX(${Math.max(10, X(end) - X(start) + 10)})` }}/>{[.25, .5, .75, 1].map(v => <g key={v}><line className="rv-grid" x1={l} x2={width - r} y1={Y(max * v)} y2={Y(max * v)}/><text className="rv-axis" x={l - 10} y={Y(max * v) + 4} textAnchor="end">{formatInt(max * v / 1000)} mii</text></g>)}
+ {history ? <BornG key="eras" born={first ? "" : "cm-in"}>{eras.map((e, i) => <line key={i} className="rv-ceiling" x1={X(e.a)} x2={X(e.z)} y1={Y(e.v)} y2={Y(e.v)}/>)}</BornG> : <BornG key="ceiling" born={first ? "" : "cm-in"}><line className="rv-ceiling" x1={l} x2={width - r} y1={Y(s.ceiling)} y2={Y(s.ceiling)}/><text className="rv-axis" textAnchor="end" x={width - r} y={Y(s.ceiling) - 8}>Plafon: {formatRonFull(s.ceiling)}</text></BornG>}
  {[0, .25, .5, .75, 1].map(v => <text className="rv-axis" key={v} x={l + v * (width - l - r)} y={h - b + 25} textAnchor="middle">{history ? new Date(t0 + v * (t1 - t0)).toISOString().slice(0, 7) : rxDate(new Date(t0 + v * (t1 - t0)).toISOString()).slice(0, 5)}</text>)}
- {pts.map((p, i) => { const key = `${p.d}:${p.v}`, offset = repeated.get(key) ?? 0; repeated.set(key, offset + 1); return <circle key={p.id ?? i} className={`rv-da-point ${sliceIncludes(s, p) ? "included" : "context"}`} cx={X(Date.parse(p.d)) + offset * 7} cy={Y(p.v)} r={5} role="button" tabIndex={0} aria-label={`${rxDate(p.d)} · ${formatRonFull(p.v)} · ${sliceIncludes(s, p) ? "în grup" : "context"}`} onClick={() => setPoint(p)} onKeyDown={e => { if (["Enter", " "].includes(e.key)) {
-        e.preventDefault();
-        setPoint(p);
-    } }}><title>{`${rxDate(p.d)} · ${formatRonFull(p.v)} · ${p.cpvName}`}</title></circle>; })}<text className="rv-axis" x={width / 2} y={h - 4} textAnchor="middle">Data finalizării</text></svg></div>
+ <BornG born={first && crowd ? "cm-fade" : ""}>{pts.map((p, i) => { const key = `${p.d}:${p.v}`, offset = repeated.get(key) ?? 0; repeated.set(key, offset + 1); return <DaDot key={p.id ?? `${key}:${offset}`} born={first ? (crowd ? "" : "cm-pt") : glide && !crowd ? "cm-in" : ""} i={rank[i] ?? 0} tw={tw} x={X(Date.parse(p.d)) + offset * 7} y={Y(p.v)}
+        className={`rv-da-point ${sliceIncludes(s, p) ? "included" : "context"}`} label={`${rxDate(p.d)} · ${formatRonFull(p.v)} · ${sliceIncludes(s, p) ? "în grup" : "context"}`} title={`${rxDate(p.d)} · ${formatRonFull(p.v)} · ${p.cpvName}`} onPick={() => setPoint(p)}/>; })}</BornG><text className="rv-axis" x={width / 2} y={h - 4} textAnchor="middle">Data finalizării</text></svg></div>
  {point && <div className="rv-point-detail" aria-live="polite"><p><strong>{formatRonFull(point.v)}</strong> · {rxDate(point.d)} · {point.cpvName}<br />{sliceIncludes(s, point) ? "Inclusă în grupul evidențiat." : "Context: nu este inclusă în suma grupului."} {point.ceiling == null ? "Plafon necunoscut." : `Plafon aplicabil: ${formatRonFull(point.ceiling)} (${point.referenceDate}).`}</p>{point.id && <Link className="rv-button" href={`/achizitii/${point.id}`}>Deschide achiziția</Link>}</div>}
  <div className="rv-source-bar rv-tip"><p>Pistă de verificat, nu concluzie juridică. <Term tip id="interval-detectat" /></p><button className="rv-primary" onClick={() => setSources(true)}>Verifică cele {s.n} surse</button></div></section>
  <details className="rv-details"><summary>Cum este construit grupul și ce limite are?</summary><p>Cel puțin trei achiziții din aceeași clasă CPV și de același tip, în cel mult 60 de zile. Fiecare este strict sub plafonul aplicabil, iar suma depășește cel mai mare plafon al grupului. Publicarea aproximează inițierea; în lipsa ei se folosește finalizarea. Graficul poziționează achizițiile după finalizare.</p><p>{s.typeInferredCount ?? 0} tipuri deduse din CPV; {s.dateFallbackCount ?? 0} date înlocuite cu finalizarea. Istoricul include și achiziții din alte clase CPV: punctele estompate sunt context. Linia punctată urmărește schimbările plafoanelor în timp. Valorile sunt fără TVA.</p><p>Legea privește necesarul estimat; aici comparăm valori de închidere. Punctele identice sunt decalate pentru selecție. Sursele reconstituie exact înregistrările actuale și semnalează diferențele față de calculul inițial.</p></details>

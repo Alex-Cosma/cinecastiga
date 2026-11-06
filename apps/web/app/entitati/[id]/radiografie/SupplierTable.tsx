@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { RADIOGRAFIE_COLUMNS } from "@/lib/radiografie-columns";
@@ -33,11 +33,20 @@ function Chevron() {
   return <svg className="rv-sortmark" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function Duel({ row }: { row: DepRow }) {
+/**
+ * How a row's bars appear (charts in motion, owner 6 November 2026): the first page's rows grow from the baseline, top to
+ * bottom (`--i`); rows a later page, sort or filter brings grow together over --med; a row that stays keeps its bars,
+ * which tween to their new widths (`.cm-tw`). Rows never slide to their new places.
+ */
+type Enter = { i: number } | "update" | null;
+const enterStyle = (enter: Enter): CSSProperties => (enter === null ? {} : enter === "update" ? { "--cm-dur": "var(--med)" } : { "--i": enter.i }) as CSSProperties;
+
+/** The two shares grow out of the centre line, both halves together: the left one leftwards, the right one rightwards. */
+function Duel({ row, enter }: { row: DepRow; enter: Enter }) {
   return <span className="rv-duel">
-    <span className="l"><b>{sharePct(row.shareHere)}</b><i style={{ width: `${Math.max(row.shareHere * 100, 0.8)}%` }} /></span>
+    <span className="l"><b>{sharePct(row.shareHere)}</b><i className={enter ? "cm-tw cm-xr" : "cm-tw"} style={{ width: `${Math.max(row.shareHere * 100, 0.8)}%`, ...enterStyle(enter) }} /></span>
     <span className="axis" aria-hidden="true" />
-    <span className="rr"><i style={{ width: `${Math.max(row.shareLife * 100, 0.8)}%` }} /><b>{sharePct(row.shareLife)}</b></span>
+    <span className="rr"><i className={enter ? "cm-tw cm-x" : "cm-tw"} style={{ width: `${Math.max(row.shareLife * 100, 0.8)}%`, ...enterStyle(enter) }} /><b>{sharePct(row.shareLife)}</b></span>
   </span>;
 }
 
@@ -124,6 +133,14 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
     />
   );
   const rows = data?.rows ?? [];
+  // Which rows a response brings: those not in the previous one enter (the first response's from the baseline, in
+  // order); those in both stay and tween. Kept as state, adjusted while rendering when a new response arrives.
+  const [batch, setBatch] = useState<{ rows: DepRow[] | null; fresh: ReadonlySet<string>; first: boolean }>({ rows: null, fresh: new Set(), first: true });
+  if (data?.rows && data.rows !== batch.rows) {
+    const before = new Set((batch.rows ?? []).map((r) => r.id));
+    setBatch({ rows: data.rows, fresh: new Set(data.rows.filter((r) => !before.has(r.id)).map((r) => r.id)), first: batch.rows === null });
+  }
+  const enterOf = (id: string, i: number): Enter => (!batch.fresh.has(id) ? null : batch.first ? { i } : "update");
   const total = data?.total ?? suppliers;
   const pages = Math.max(1, Math.ceil(total / 10));
   const stale = loading && rows.length > 0;
@@ -158,7 +175,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
       <div className="rv-filterpills" role="group" aria-label="Filtrează furnizorii">
         {RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}{funnel(c.key)}</span>)}
       </div>
-      <div className="rv-rank-wrap" aria-busy={loading}>
+      <div className="rv-rank-wrap" aria-busy={loading} data-chart="">
         <table className={`rv-rank${stale ? " is-stale" : ""}`} aria-label="Furnizorii autorității">
           <thead>
             <tr>
@@ -180,22 +197,24 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
             {!loading && !error && rows.length === 0 && (
               <tr><td colSpan={4} className="rv-rank-empty"><span>{filtered ? "Niciun furnizor cu filtrele alese." : "Niciun furnizor."}</span>{filtered && <button type="button" onClick={() => update({})}>Scoate filtrele</button>}</td></tr>
             )}
-            {!error && rows.map((r) => (
-              <tr key={r.id} aria-selected={selectedId === r.id} onClick={() => onSelect(r)}>
+            {!error && rows.map((r, i) => {
+              const enter = enterOf(r.id, i);
+              return <tr key={r.id} aria-selected={selectedId === r.id} onClick={() => onSelect(r)}>
                 <td className="c-name"><Link href={`/entitati/${r.id}`} onClick={(e) => e.stopPropagation()}>{shortName(r.name)}</Link></td>
                 <td className="c-duel">
                   <button type="button" className="rv-pick" aria-label={`Arată în grafic: ${shortName(r.name)}, ${sharePct(r.shareHere)} din autoritate, ${sharePct(r.shareLife)} din câștigurile publice ale firmei`}
-                    onClick={(e) => { e.stopPropagation(); onSelect(r); }}><Duel row={r} /></button>
+                    onClick={(e) => { e.stopPropagation(); onSelect(r); }}><Duel row={r} enter={enter} /></button>
                 </td>
                 <td className="c-val">
                   <span className="v">{formatRon(r.all)}</span>
-                  <span className="rv-stack" style={{ width: `${Math.max(4, maxValue > 0 ? (r.all / maxValue) * 100 : 0)}%` }} title={`${formatRon(r.here)} din contracte · ${formatRon(r.daHere)} din achiziții directe`}>
-                    <i style={{ flexGrow: r.here }} /><i style={{ flexGrow: r.daHere }} />
+                  {/* The stacked bar grows as one; its two parts never one after the other. */}
+                  <span className={enter ? "rv-stack cm-tw cm-x" : "rv-stack cm-tw"} style={{ width: `${Math.max(4, maxValue > 0 ? (r.all / maxValue) * 100 : 0)}%`, ...enterStyle(enter) }} title={`${formatRon(r.here)} din contracte · ${formatRon(r.daHere)} din achiziții directe`}>
+                    <i className="cm-tw" style={{ flexGrow: r.here }} /><i className="cm-tw" style={{ flexGrow: r.daHere }} />
                   </span>
                 </td>
                 <td className="c-recs"><span className="v">{formatInt(r.n + r.nDa)}</span><span className="sub">{recordWords(r)}</span></td>
-              </tr>
-            ))}
+              </tr>;
+            })}
           </tbody>}
         </table>
       </div>
