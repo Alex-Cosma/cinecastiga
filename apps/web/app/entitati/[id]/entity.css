@@ -63,6 +63,8 @@
 .ent-risk-track>i:nth-child(3){background:var(--amber-soft)}
 .ent-risk-track>i:nth-child(4){background:var(--risk-soft)}
 .ent-risk-marker{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-50%);box-shadow:0 0 0 2px var(--surface)}
+/* the only moving mark on a static scale: it fades in where it is, shortly after the scale */
+.ent-risk-marker.cm-fade{--cm-d:120ms;--cm-dur:var(--med)}
 .ent-risk-ticks{position:absolute;left:0;right:0;top:14px;font-size:12px;line-height:1.4;color:var(--muted)}
 .ent-risk-ticks>span{position:absolute;white-space:nowrap}
 .ent-risk-peer{margin:0;font-size:13px;line-height:1.5;color:var(--ink2)}
@@ -72,6 +74,8 @@
 .ent-sig .c0{--seg:var(--choro-4)}.ent-sig .c1{--seg:var(--choro-3)}.ent-sig .c2{--seg:var(--choro-2)}.ent-sig .c3{--seg:var(--choro-1)}.ent-sig .c4{--seg:var(--choro-0)}
 .ent-sig-bar{position:relative;height:24px}
 .ent-sig-bar .ent-track{position:absolute;inset:6px 0;border-radius:5px;background:var(--sunk)}
+/* the criteria in one group as long as the score, so the stacked bar grows as one piece (components/motion/chart-motion.css) */
+.ent-sig-bar .ent-segs{position:absolute;top:0;bottom:0;left:0}
 .ent-sig-bar .ent-seg,.ent-sig-bar .ent-rest{position:absolute;top:0;bottom:0;outline-offset:2px}
 .ent-sig-bar .ent-seg::before{content:"";position:absolute;inset:6px 0 6px 2px;background:var(--seg);transition:inset var(--fast) var(--ease)}
 .ent-sig-bar .ent-seg:first-of-type::before{left:0;border-radius:5px 0 0 5px}
@@ -132,6 +136,10 @@
 .ent-years-turnover{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
 .ent-years-turnover polyline{fill:none;stroke:var(--orange);stroke-width:2;stroke-dasharray:5 4}
 .ent-years-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--orange);transform:translate(-50%,50%);pointer-events:none}
+/* in motion: the line is drawn once the columns have started; each dot fades in, briefly, as the line reaches it */
+.ent-years{--years-draw:200ms}
+.ent-years-turnover.cm-draw{--cm-d:var(--years-draw)}
+.ent-years-dot.cm-fade{--cm-dur:var(--fast)}
 .ent-years-tip{position:absolute;top:calc(100% + 28px);z-index:5;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums}
 .ent-years-tip>b{font:700 13.5px/1.4 var(--display)}
 .ent-years-tip>span{display:flex;align-items:center;gap:6px;color:var(--ink2)}
@@ -180,6 +188,8 @@
 .cons-tag{display:inline-flex;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
 .ent-tx .cons-line{display:block;white-space:normal;overflow:visible;font:12px/1.4 var(--body);color:var(--muted);margin-top:2px}
 .ent-tx td.num .cons-line{text-align:right}
+/* another page's bars enter shorter and together (the first page's grow top to bottom, components/motion/chart-motion.css) */
+.ent-partners.is-paged{--cm-dur:var(--med);--chart-step:0ms}
 .ent-partners .bar-val{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:4px 8px}
 .ent-partners .bar-val .v{white-space:nowrap}
 .ent-partners .bar-label .cons-tag{margin-left:8px;vertical-align:1px}

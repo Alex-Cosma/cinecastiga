@@ -357,9 +357,10 @@ export default async function EntityPage({
           <ScoreSignals hasRiskScore={hasRiskScore} score={row.score} parts={row.scoreParts} points={points} signalTypes={signalTypes}
             signalCounts={signalCounts} noScoreReason={noScoreReason} signalsHref={entitySignalsUrl} />
           {hasRiskScore && !scoreSplit && (
-            <div className="ent-risk-scale" aria-hidden="true">
+            // The bands stay; the score's marker appears where it is, never sliding in from 0 (owner, 6 November 2026).
+            <div className="ent-risk-scale" aria-hidden="true" data-chart>
               <span className="ent-risk-track" style={{ gridTemplateColumns: `${RISK_SCALE_SLAB}fr ${RISK_BAND_MIN.moderat - RISK_SCALE_SLAB}fr ${RISK_BAND_MIN.puternic - RISK_BAND_MIN.moderat}fr ${100 - RISK_BAND_MIN.puternic}fr` }}><i /><i /><i /><i /></span>
-              <span className="ent-risk-marker" style={{ left: `${Math.min(99, Math.max(1, row.score))}%` }} />
+              <span className="ent-risk-marker cm-fade" style={{ left: `${Math.min(99, Math.max(1, row.score))}%` }} />
               <span className="ent-risk-ticks">
                 <span style={{ left: `${RISK_SCALE_SLAB}%` }}>slab</span>
                 <span style={{ left: `${RISK_BAND_MIN.moderat}%` }}>moderat</span>

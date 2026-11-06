@@ -407,18 +407,15 @@ table.rank td .src a:hover { color: var(--accent); }
 .ask-dropdown { left: 0; right: 0; width: auto; max-width: none; top: calc(100% + 4px); text-align: left; }
 .search-dropdown li.search-empty { color: var(--muted); font-size: 13px; cursor: default; }
 .ask-hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; max-width: 720px; }
-.ask-loading { margin-top: 22px; color: var(--muted); font-size: 14px; }
 /* Loading never moves the page: the status floats under the sticky header and the
    answer it replaces stays in place, dimmed (owner, 1 Nov 2026). */
-.ask-loader, .px-updating {
+.ask-loader {
   position: fixed; top: calc(var(--site-header-h) + 12px); left: 50%; transform: translateX(-50%); z-index: 35;
   display: flex; align-items: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box;
   margin: 0; padding: 9px 16px; border: 1px solid var(--line2); border-radius: 18px;
   background: var(--surface); color: var(--ink2); font-size: 13px; line-height: 1.4; box-shadow: var(--shadow2);
   pointer-events: none;
 }
-.cq-answer[aria-busy="true"] { opacity: .55; transition: opacity .15s ease .25s; }
-@media (prefers-reduced-motion: reduce) { .cq-answer[aria-busy="true"] { transition: none; } }
 .ask-loader .bars { display: inline-flex; flex-direction: row; align-items: flex-end; gap: 3px; height: 16px; }
 .ask-loader .bars i {
   width: 4px; height: 100%; border-radius: 2px; background: var(--accent);
@@ -488,20 +485,8 @@ table.rank td .src a:hover { color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .ask-toast { animation: none; } }
 .ask-caveats-d { margin: 10px 0 0 17px; }
 
-/* entity tx table: sortable headers + button pager (the filters are its column funnels) */
-/* refetch: dim in place, never collapse (content below must not jump) */
-.tx-loading tbody { opacity: 0.45; pointer-events: none; transition: opacity 0.15s ease; }
-.tx-upd { color: var(--accent); font-weight: 600; }
-.tx-ghost .gh {
-  display: inline-block; height: 12px; width: 70%; border-radius: 4px;
-  background: linear-gradient(90deg, var(--bar-track) 25%, var(--line) 50%, var(--bar-track) 75%);
-  background-size: 200% 100%; animation: tx-shimmer 1.1s linear infinite;
-}
-@keyframes tx-shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
-}
-@media (prefers-reduced-motion: reduce) { .tx-ghost .gh { animation: none; } }
+/* entity tx table: sortable headers + button pager (the filters are its column funnels); loading uses the ghost kit
+   (components/ghost): old rows dimmed in place, ghost rows only before a first answer */
 .tx-table th.sortable { cursor: pointer; user-select: none; }
 .tx-table th.sortable:hover { color: var(--accent); }
 .pager button {
@@ -1392,8 +1377,9 @@ table.rank .county { font-size: 12.5px; }
 tr:hover .cri-pill { transform: scale(1.06); }
 .bars { gap: 8px; }
 .bar-track { height: 10px; border-radius: 3px; }
-.bar-fill { border-radius: 3px; transform-origin: left; animation: grow var(--slow) var(--ease) both; }
-@keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Its entrance is the shared chart motion (.cm-x in components/motion/chart-motion.css: gated to the viewport, final under
+   reduced motion), not a scaleX of its own. */
+.bar-fill { border-radius: 3px; }
 .bar-val { font-family: var(--mono); font-size: 13px; }
 .pager { font-size: 14px; }
 .pager a { padding: 4px 8px; border-radius: 6px; transition: background var(--fast); }
@@ -1440,12 +1426,6 @@ tr:hover .cri-pill { transform: scale(1.06); }
 .sem-side .eyebrow:first-child { margin-top: 0; }
 .sem-seg { width: 100%; }
 .sem-seg > a { flex: 1; text-align: center; }
-.distr { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; align-items: end; height: 90px; margin-top: 8px; }
-.distr a { background: var(--slate-soft); border-radius: 3px 3px 0 0; display: block; transform-origin: bottom; animation: rise var(--slow) var(--ease) both; animation-delay: calc(var(--i, 0) * 30ms); transition: background var(--fast); }
-.distr a:hover { background: var(--accent-line); }
-.distr a.on { background: var(--accent); }
-@keyframes rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-.distr-l { display: grid; grid-template-columns: repeat(10, 1fr); font-family: var(--mono); font-size: 10.5px; color: var(--faint); text-align: center; margin-top: 4px; }
 .sem-side .note { margin: 8px 0 0; font-size: 12.5px; }
 .sem-county { display: flex; gap: 6px; }
 .sem-county select { flex: 1; border: 1px solid var(--line2); border-radius: var(--r); padding: 6px 8px; background: var(--surface); color: var(--ink); font-size: 13.5px; }

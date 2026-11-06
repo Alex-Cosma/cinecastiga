@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
 import { encodeSpec } from "@/lib/ask/permalink";
@@ -53,6 +53,10 @@ export default function PartnersTable({
   initial?: { rows: Partner[]; total: number };
 }) {
   const [page, setPage] = useState(1);
+  // Another page's rows are new: they enter shorter and together (owner, 6 November 2026); the first page's bars grow
+  // top to bottom when the list first comes into view.
+  const [paged, setPaged] = useState(false);
+  const turn = (to: number) => { setPaged(true); setPage(to); };
   const tip = useTip();
   const urlFor = (n: number) => `/api/entity-partners?${new URLSearchParams({ id: entityId, rol: role, page: String(n) }).toString()}`;
   const [first] = useState(() => (initial ? { url: urlFor(1), data: { ok: true, rows: initial.rows, total: initial.total } as Resp } : undefined));
@@ -73,10 +77,10 @@ export default function PartnersTable({
         {stale ? <>{formatInt(shownTotal)} parteneri · ambele canale</> : loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale</>}
       </p>
       {loading && rows.length === 0 ? <PartnersGhost /> :
-      <div className={`bars ent-partners${stale ? " g-stale" : ""}`} aria-busy={loading} inert={stale || undefined}>
+      <div className={`bars ent-partners${paged ? " is-paged" : ""}${stale ? " g-stale" : ""}`} aria-busy={loading} inert={stale || undefined} data-chart>
         {error && <p className="county">{error} <button type="button" onClick={retry}>Reîncearcă</button></p>}
         {!loading && !error && rows.length === 0 && <p className="county">Niciun partener înregistrat.</p>}
-        {!error && rows.map((p) => (
+        {!error && rows.map((p, i) => (
           <div className="bar-row ent-tip" key={p.partnerId}>
             <div className="bar-label" {...tip.bindClip(cleanName(p.partnerName))}>
               {p.partnerId !== "0" ? <Link href={`/entitati/${p.partnerId}`}>{p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
@@ -84,7 +88,7 @@ export default function PartnersTable({
               {p.nConsortium > 0 && <Term tip title="În consorțiu" text={consortiumRankingNote(p.nConsortium)} className="cons-tag">în consorțiu</Term>}
             </div>
             <div className="bar-track">
-              <div className="bar-fill" style={{ width: `${Math.min(100, p.pct * 100)}%` }} />
+              <div className="bar-fill cm-x" style={{ width: `${Math.min(100, p.pct * 100)}%`, "--i": i } as CSSProperties} />
             </div>
             <div className="bar-val">
               <span className="v">{formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%</span>
@@ -111,13 +115,13 @@ export default function PartnersTable({
       {pages > 1 && (
         <div className="pager">
           {/* aria-disabled, not disabled: the focused button keeps the focus while the next page loads */}
-          <button type="button" aria-disabled={loading || page <= 1} onClick={() => { if (!loading && page > 1) setPage(page - 1); }}>
+          <button type="button" aria-disabled={loading || page <= 1} onClick={() => { if (!loading && page > 1) turn(page - 1); }}>
             ← Anterior
           </button>
           <span className="note">
             Pagina {page} din {formatInt(pages)}
           </span>
-          <button type="button" aria-disabled={loading || page >= pages} onClick={() => { if (!loading && page < pages) setPage(page + 1); }}>
+          <button type="button" aria-disabled={loading || page >= pages} onClick={() => { if (!loading && page < pages) turn(page + 1); }}>
             Următor →
           </button>
         </div>

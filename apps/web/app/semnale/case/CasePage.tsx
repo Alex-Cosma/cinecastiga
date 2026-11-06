@@ -71,7 +71,8 @@ function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState
     <nav className="sgc-score" aria-label={`Tiparele: ${cleanName(e.name)}`}>
       {scored && (
         // Each segment opens its pattern's tab (the tabs under it are the same links, for the keyboard and screen readers).
-        <div className="sgc-bar" title={`Scorul ${formatInt(Math.round(e.score))} din 100`}>
+        // In motion: the bar grows from 0 as one piece (components/motion/chart-motion.css).
+        <div className="sgc-bar cm-x" data-chart title={`Scorul ${formatInt(Math.round(e.score))} din 100`}>
           {tabs.inScore.map((c, i) => (
             <Link key={c} href={href(c)} tabIndex={-1} aria-hidden="true" className={`sgc-seg ${seg(c)}${c === code ? " on" : ""}${i === 0 ? " first" : ""}`} style={{ width: `${e.points[c] ?? 0}%` }}>
               <span className={`sgc-tip${i === 0 ? " l" : ""}`}><b>{flagLabel(c)}</b><span>+{formatInt(e.points[c] ?? 0)} din scorul de {formatInt(Math.round(e.score))} · {caseUnitWords(c, counts[c] ?? 0)}</span></span>
@@ -100,7 +101,7 @@ function Side({ title, big, unit, children }: { title: string; big: string; unit
 /** The share bar of a partner signal, with the rule's thresholds. */
 function ShareBar({ share, ticks = [] }: { share: number; ticks?: { at: number; label: string; left?: boolean }[] }) {
   return <>
-    <div className="sgc-share" aria-hidden="true"><i style={{ width: `${Math.max(0.6, Math.min(100, share * 100))}%` }} /></div>
+    <div className="sgc-share" aria-hidden="true" data-chart><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, share * 100))}%` }} /></div>
     {ticks.length > 0 && <div className="sgc-ticks" aria-hidden="true">{ticks.map((t) => <span key={t.at} className={t.left ? "l" : ""} style={{ left: `${t.at * 100}%` }}><em>{t.label}</em></span>)}</div>}
   </>;
 }
@@ -158,15 +159,17 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
   return <>
     <div className="sgc-mirror">
       <Side title="Luate pe rând" big={formatInt(s.acquisitions)} unit={s.allUnder ? (s.acquisitions === 1 ? "achiziție, sub plafon" : "achiziții, toate sub plafon") : "achiziții"}>
-        <div className="sgc-ychart">
+        {/* In motion: the axis, the ceiling and the 50% line stay; each purchase rises from 0, in their order, so the reader
+            sees each one stop under the ceiling. The stagger is spread over the shown bars and capped. */}
+        <div className="sgc-ychart" data-chart>
           <div className="sgc-yaxis" aria-hidden="true"><span style={{ bottom: "100%" }}>plafonul</span><span style={{ bottom: "50%" }}>50%</span><span style={{ bottom: "0%" }}>0</span></div>
-          <div className="sgc-cols"><span className="sgc-ceil" style={{ bottom: "100%" }} /><span className="sgc-grid50" />
+          <div className="sgc-cols" style={shown > 10 ? { "--chart-step": `calc(var(--chart-cap) / ${shown})` } as CSSProperties : undefined}><span className="sgc-ceil" style={{ bottom: "100%" }} /><span className="sgc-grid50" />
             {clusters.map(({ g, items: its }) => (
               <div key={g.id} className={`grp${g.counted ? "" : " out"}`} style={{ flexGrow: its.length }}>
                 {its.map((it, k) => {
                   const at = seen++;
                   const words = `${cleanName(g.partnerName)}, ${it.date ? formatCalendarDate(it.date) : "fără dată"}: ${lei(it.value)}, ${pctWords(it.ofCeiling)} din plafonul de ${lei(g.ceiling)}`;
-                  return <span key={k} className="bar" tabIndex={0} role="img" aria-label={words} style={{ height: `${Math.max(0.8, Math.min(100, it.ofCeiling * 100))}%` }}>
+                  return <span key={k} className="bar cm-y" tabIndex={0} role="img" aria-label={words} style={{ height: `${Math.max(0.8, Math.min(100, it.ofCeiling * 100))}%`, "--i": at } as CSSProperties}>
                     <span className={`sgc-tip${edge(at, shown)}`} aria-hidden="true"><b>{cleanName(g.partnerName)}</b><span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{it.title ? ` · ${it.title}` : ""}</span><span><b>{lei(it.value)}</b> · {pctWords(it.ofCeiling)} din plafonul de {lei(g.ceiling)}</span></span>
                   </span>;
                 })}
@@ -177,11 +180,12 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
           {s.largest && <> Cea mai mare: {lei(s.largest.value)}, cu {formatInt(Math.round(s.largest.ceiling - s.largest.value))} lei sub {lei(s.largest.ceiling)}.</>}</p>
       </Side>
       <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={ratioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
-        <div className="sgc-groups"><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
+        {/* In motion: the ceiling stays; the groups rise together (groups, not a sequence). */}
+        <div className="sgc-groups" data-chart><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
             const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${ratioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
             return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{ratioWords(g.ratio)}</em>
-              <i tabIndex={0} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
+              <i className="cm-y" tabIndex={0} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
                 <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {ratioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : " · nu intră în scor"}</span></span>
               </i></div>;
           })}</div>
@@ -190,17 +194,18 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
       </Side>
     </div>
     <CasesHead title={countWords(groups.length, "grup", "grupuri")} total={data.total} shown={groups.length} />
-    <div className="sgc-cases">
-      {groups.map((g) => {
+    {/* In motion: the rows on screen when the list comes into view grow their spark and their track, top to bottom. */}
+    <div className="sgc-cases" data-chart>
+      {groups.map((g, row) => {
         const inst = data.instances.find((x) => x.id === g.id)!;
         return (
-          <details key={g.id} id={`caz-${g.id}`} className={`sgc-case${g.counted ? "" : " out"}`}>
+          <details key={g.id} id={`caz-${g.id}`} className={`sgc-case${g.counted ? "" : " out"}`} style={{ "--i": row } as CSSProperties}>
             <summary>
               <span className="sgc-who"><b><EntityName id={g.partnerId} role={partnerRole(role)}>{cleanName(g.partnerName) || "—"}</EntityName></b> · {g.year} · {g.works ? "lucrări" : "produse și servicii"}{g.cpvClass ? ` (CPV ${g.cpvClass})` : ""}
                 <small>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}{g.recurring ? " · aprovizionare recurentă, nu intră în scor" : g.counted ? "" : " · sub 1,2×, nu intră în scor"}</small></span>
               <span className="sgc-mini" aria-hidden="true">
-                <span className="p">{g.items.slice(0, 24).map((it, k) => <i key={k} style={{ height: `${Math.min(100, it.ofCeiling * 100)}%` }} />)}</span>
-                <span className="t"><i style={{ width: `${(g.ratio / max) * 100}%` }} /><b style={{ left: `${(1 / max) * 100}%` }} /></span>
+                <span className="p"><span className="pc cm-y">{g.items.slice(0, 24).map((it, k) => <i key={k} style={{ height: `${Math.min(100, it.ofCeiling * 100)}%` }} />)}</span></span>
+                <span className="t"><i className="cm-x" style={{ width: `${(g.ratio / max) * 100}%` }} /><b style={{ left: `${(1 / max) * 100}%` }} /></span>
               </span>
               <span className="sgc-sum">{lei(g.total)}</span>
               <span className="sgc-x">{ratioWords(g.ratio)}</span>
@@ -254,18 +259,21 @@ function RoundCase({ data, items }: { data: SignalCase; items: NearCeiling[] }) 
     {expected != null && <div className="sgc-mirror">
       <Side title="Ne-am aștepta" big={`~${formatInt(expected)}`}
         unit={<Term tip className="sgc-unit-tip" title="Așteptate" text="Din achizițiile ei directe la 50–96% din plafon și raportul național pentru același tip și aceleași plafoane.">așteptate</Term>}>
-        <p className="sgc-dots exp" aria-hidden="true">{Array.from({ length: Math.min(expected, 80) }, (_, i) => <i key={i} />)}</p>
+        <p className="sgc-dots exp cm-fade" aria-hidden="true" data-chart>{Array.from({ length: Math.min(expected, 80) }, (_, i) => <i key={i} />)}</p>
       </Side>
       <Side title="Am găsit" big={formatInt(found)} unit={expected ? `de ${(found / Math.max(1, expected)).toFixed(1).replace(".", ",")} ori mai multe` : "achiziții la 96–100% din plafon"}>
-        <p className="sgc-dots" aria-hidden="true">{items.slice(0, 80).map((it, i) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)} edge={rowEdge(i)} />)}</p>
+        <p className="sgc-dots cm-fade" aria-hidden="true" data-chart>{items.slice(0, 80).map((it, i) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)} edge={rowEdge(i)} />)}</p>
       </Side>
     </div>}
     <section className="sgc-near" aria-label="Cât de aproape de plafon">
       <h3>Cât de aproape de plafon</h3>
-      <div className="sgc-swarm" style={{ height: `${Math.max(48, tall * 15 + (capped.length ? 40 : 24))}px` }} aria-hidden="true">
+      {/* In motion: the ceiling line and the counts stay; the dots appear where they are, together (one group). */}
+      <div className="sgc-swarm" style={{ height: `${Math.max(48, tall * 15 + (capped.length ? 40 : 24))}px` }} aria-hidden="true" data-chart>
         <span className="sgc-line" />
-        {placed.filter((p) => p.level < STACK).map(({ it, left, level }) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)}
-          edge={left < 20 ? " l" : left > 80 ? " r" : ""} style={{ left: `${left}%`, bottom: `${8 + level * 15}px` }} />)}
+        <span className="sgc-swarm-dots cm-fade">
+          {placed.filter((p) => p.level < STACK).map(({ it, left, level }) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)}
+            edge={left < 20 ? " l" : left > 80 ? " r" : ""} style={{ left: `${left}%`, bottom: `${8 + level * 15}px` }} />)}
+        </span>
         {capped.map((c) => <em key={c.left} className={c.left > 92 ? "r" : ""} style={{ left: `${c.left}%`, bottom: `${8 + STACK * 15 + 2}px` }}>{formatInt(c.n)}</em>)}
       </div>
       <div className="sgc-axis" aria-hidden="true"><span>{pctWords(low)} din plafon</span><span>plafonul</span></div>
@@ -318,14 +326,14 @@ function YearEndCase({ data }: { data: SignalCase }) {
       <Side title="Restul anului" big={pctWords(1 - top.y.share)} unit={formatRon(top.y.total - top.y.december)} />
     </div>
     <CasesHead title={countWords(years.length, "an", "ani")} total={data.total} shown={years.length} />
-    <div className="sgc-cases">
+    <div className="sgc-cases" data-chart>
       {years.map(({ inst, y }, i) => {
         const dec = decemberRecords(inst.records, y.year);
         return (
-          <details key={inst.id} id={`caz-${inst.id}`} className="sgc-case" open={i === 0}>
+          <details key={inst.id} id={`caz-${inst.id}`} className="sgc-case" open={i === 0} style={{ "--i": i } as CSSProperties}>
             <summary>
               <span className="sgc-who"><b>{y.year}</b><small>decembrie: {formatRon(y.december)} din {formatRon(y.total)}</small></span>
-              <span className="sgc-mini" aria-hidden="true"><span className="t"><i style={{ width: `${y.share * 100}%` }} />{y.reference != null && <b style={{ left: `${y.reference * 100}%` }} />}</span></span>
+              <span className="sgc-mini" aria-hidden="true"><span className="t"><i className="cm-x" style={{ width: `${y.share * 100}%` }} />{y.reference != null && <b style={{ left: `${y.reference * 100}%` }} />}</span></span>
               <span className="sgc-sumw">{countWords(dec.length, "achiziție", "achiziții")} în decembrie</span>
               <span className="sgc-x">{pctWords(y.share)}</span>
             </summary>
