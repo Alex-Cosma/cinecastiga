@@ -486,6 +486,35 @@ function mount(root: HTMLElement): () => void {
     });
   }
 
+  // The real-data figures (ScoreHistogram, BandBar: [data-chart]) sit in lanes and folds hidden at first. Reveal gates
+  // only a chart that is laid out, so one shown later by its lane or fold would play its entrance at once, out of sight
+  // when it is further down. When one first appears below the fold it waits (the kit's cm-wait) until it is scrolled
+  // into view; once played its entrance is dropped, so its lane shown again draws it finished.
+  if (!reduce) {
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.remove("cm-wait");
+      io.unobserve(e.target);
+    }), { rootMargin: "0px 0px -6% 0px", threshold: 0.03 });
+    // Called after layout and before paint: a chart just shown is held before its first frame.
+    const ro = new ResizeObserver((entries) => entries.forEach((e) => {
+      const r = e.target.getBoundingClientRect();
+      if (!r.width && !r.height) return;
+      ro.unobserve(e.target);
+      if (document.documentElement.dataset.motion === "settled" || (r.top < window.innerHeight && r.bottom > 0)) return;
+      e.target.classList.add("cm-wait");
+      io.observe(e.target);
+    }));
+    qa("[data-chart]").forEach((chart) => {
+      const r = chart.getBoundingClientRect();
+      if (!r.width && !r.height) ro.observe(chart);
+      on(chart, "animationend", (e) => {
+        if ((e as AnimationEvent).animationName.startsWith("cm-")) (e.target as Element).classList.remove("cm-x", "cm-y");
+      });
+    });
+    cleanups.push(() => { io.disconnect(); ro.disconnect(); });
+  }
+
   qa(".mt-term").forEach((b) =>
     on(b, "click", () => {
       const d = b.nextElementSibling as HTMLElement | null;

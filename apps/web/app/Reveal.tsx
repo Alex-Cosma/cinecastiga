@@ -47,13 +47,25 @@ export default function Reveal() {
         return;
       }
       seen.add(el);
+      place(el);
+    };
+    // Where a chart is when it is first laid out: on screen, its entrance is playing now; below the fold, it waits.
+    const place = (el: Element) => {
       if (html.dataset.motion === "settled") return;
       const r = el.getBoundingClientRect();
-      // On screen: its entrance is playing now. Not laid out (a closed tab): it plays when it is shown.
-      if ((r.top < innerHeight && r.bottom > 0) || (r.width === 0 && r.height === 0)) return;
+      // Not laid out yet (a closed tab or fold): decided when it is shown, before that frame is painted.
+      if (r.width === 0 && r.height === 0) { ro.observe(el); return; }
+      if (r.top < innerHeight && r.bottom > 0) return;
       el.classList.add("cm-wait");
       io.observe(el);
     };
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        if (e.contentRect.width === 0 && e.contentRect.height === 0) continue;
+        ro.unobserve(e.target);
+        place(e.target);
+      }
+    });
     const scan = (root: Element | Document) => {
       if (root instanceof Element && root.matches("[data-chart]")) gate(root);
       root.querySelectorAll("[data-chart]").forEach((el) => gate(el));
@@ -64,7 +76,7 @@ export default function Reveal() {
     });
     mo.observe(document.body, { childList: true, subtree: true });
     return () => {
-      io.disconnect(); mo.disconnect(); timers.forEach(clearTimeout);
+      io.disconnect(); mo.disconnect(); ro.disconnect(); timers.forEach(clearTimeout);
       removeEventListener("popstate", settle);
       document.removeEventListener("pointerdown", unsettle, true);
       document.removeEventListener("keydown", unsettle, true);
