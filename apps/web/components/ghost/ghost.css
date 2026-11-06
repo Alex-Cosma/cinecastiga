@@ -27,7 +27,7 @@
 .g-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* What replaces a ghost enters with a short fade and a 4 px rise; nothing else moves. */
-.g-content { animation: g-enter var(--med) var(--ease) both; }
+.g-content { animation: g-enter var(--med) var(--ease) backwards; } /* not held after it ends: a later .g-stale dims on its own delay */
 
 /* An answer being replaced by one of the same shape stays in place, dimmed (DESIGN.md, owner 1 November 2026). */
 .g-stale { opacity: .55; transition: opacity .15s ease .25s; }

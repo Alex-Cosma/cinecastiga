@@ -17,6 +17,7 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
+import { G, Ghost } from "@/components/ghost/Ghost";
 import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} from "@/lib/ask/source-csv";
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
 import { listGroupHeader, type DrawerListGroup } from "./drawer-group";
@@ -54,6 +55,51 @@ export interface EvidenceDrawerProps {
 
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
+
+/** The rows of a page of sources (compile.ts DRILL_PAGE_SIZE). */
+const SOURCES_PAGE = 10;
+const GHOST_TITLES = ["86%", "64%", "92%", "58%", "78%", "70%", "88%", "54%", "74%", "66%"];
+
+/**
+ * The records' list on its way (owner, 6 November 2026: ghost loading): the selection's card, "Cum ajungem…", the
+ * search and order, the table's head and a page of rows, in the real classes, so the list takes the place it will have.
+ * The controls are quiet replicas (inert); the labels are the real ones.
+ */
+function SourcesGhost({ listGroup, streams, toolsOpen }: { listGroup: boolean; streams: boolean; toolsOpen: boolean }) {
+  return <Ghost name="ask-sources" wait="client">
+    <div className="ev-source-summary" aria-hidden="true">
+      <div><span>{listGroup ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong><G.Line inline w="6ch" /></strong></div>
+      <div><span>Valoare înregistrată</span><strong className="ev-money"><G.Line inline w="11ch" /></strong></div>
+      <p><G.Line inline w="22ch" /></p>
+      {/* The phone's card line ("N înregistrări · X lei · from — to"), two lines there. */}
+      <p className="ev-summary-line"><G.Line w="92%" /><G.Line w="50%" /></p>
+    </div>
+    <div className="g-quiet" inert>
+      <details className="ev-calculation"><summary>Cum ajungem la acest rezultat <span aria-hidden="true">+</span></summary></details>
+      <div className={`ev-tools${toolsOpen ? " is-open" : ""}`}>
+        <button type="button" className="ev-tools-toggle" aria-expanded={toolsOpen}>Caută / filtrează</button>
+        <div className="ev-filters">
+          <label className="ev-search"><span>Caută în această listă</span><input type="search" placeholder="Firmă, instituție, cod sau obiect…" /></label>
+          {streams && <label><span>Ce fel de achiziții</span><select><option>Toate achizițiile</option></select></label>}
+        </div>
+        <div className="ev-list-toolbar">
+          <div className="ev-filtered-summary"><G.Line inline w="26ch" /></div>
+          <label className="ev-sort"><select><option>Ordinea sursei</option></select></label>
+        </div>
+      </div>
+    </div>
+    <div className="ev-records" inert>
+      <table className="ev-table"><thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Sursă</th></tr></thead>
+        <tbody><G.Rows n={SOURCES_PAGE} as="tr" cells={(i) => <>
+          <td><span className="ev-contract-title"><G.Line w={GHOST_TITLES[i]!} /><G.Line w="40%" /></span><strong><G.Line inline w="12ch" /></strong><span className="ev-muted"><G.Line inline w="20ch" /></span><span><G.Line w="70%" /></span></td>
+          <td><div className="ev-party"><a><G.Line inline w="24ch" /></a></div><small className="ev-muted"><G.Line inline w="18ch" /></small><span className="ev-party-arrow">↓</span><div className="ev-party"><a><G.Line inline w="20ch" /></a></div></td>
+          <td><strong className="ev-row-value"><G.Line inline w="11ch" /></strong><details className="ev-record-details g-quiet"><summary>Detalii importate</summary></details></td>
+          <td><span className="ev-seap g-quiet">SEAP ↗</span></td>
+        </>} /></tbody>
+      </table>
+    </div>
+  </Ghost>;
+}
 
 export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel, scope, onClose, onSave, initialFilters, connection, peer, months, onStale, initialSort, listGroup }: EvidenceDrawerProps) {
   // Saved and followed selections keep both the question and the part opened.
@@ -95,7 +141,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const watchBlocked = drawerWatchBlocked(spec, result?.group);
   // A phone's title is the part opened with its records counted (the question one line under it); the desktop's is the question.
   const [scopeName, scopeTail] = scopeLabel ? splitScopeLabel(scopeLabel) : ["", ""];
-  const titleCount = result && <span className="ev-title-count"> · <span>{records(result.sourceTotal)}</span></span>;
+  // While the list loads, the phone's count keeps its place in the title (a line), so the header does not grow after.
+  const titleCount = (result || busy) && <span className="ev-title-count"> · <span>{result ? records(result.sourceTotal) : <G.Line inline w="19ch" />}</span></span>;
 
   useEffect(() => {
     const node = dialog.current;
@@ -178,21 +225,18 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       <div className="ev-heading"><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}{!scopeLabel && titleCount}</h2>{scopeLabel && <p className="ev-scope-label" id="evidence-scope">{scope?.entityIds?.length === 1 ? <EntityName id={scope.entityIds[0]} role={scope.role}>{scopeName}</EntityName> : scopeName}{scopeTail && <span className="ev-scope-tail">{scopeTail}</span>}{titleCount}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
       <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
-    <div className={`ev-load-status${busy ? " is-active" : ""}`} role="status" aria-live="polite" aria-atomic="true">
-      {busy && <><span className="ev-load-spinner" aria-hidden="true" /><div>
-        <strong>{result ? "Se actualizează lista…" : "Se încarcă înregistrările sursă…"}</strong>
-        {slow && <p>Încă se lucrează. Pentru selecții mari, încărcarea poate dura mai mult.</p>}
-      </div></>}
+    {/* The wait floats over the list's top (owner, 6 November 2026): nothing under it moves, and a quick answer never
+        shows it (g-float, 150 ms). The region stays in place, so its words are read when they change. */}
+    <div className="ev-load-status" role="status" aria-live="polite" aria-atomic="true">
+      {busy && <p className="ask-loader g-float"><span className="bars" aria-hidden="true"><i /><i /><i /></span><span>
+        {result ? "Se actualizează lista…" : "Se încarcă înregistrările sursă…"}
+        {slow && <small className="ev-load-slow">Încă se lucrează. Pentru selecții mari, încărcarea poate dura mai mult.</small>}
+      </span></p>}
     </div>
     <div className="ev-content">
 
       {peer?.selection.kind === "comparison" && <p className="ev-exact-total">La salvare se păstrează grupul complet; filtrele listei nu schimbă comparația salvată.</p>}
-      {busy && !result && <div className="ev-skeleton" aria-hidden="true">
-        <div className="ev-skeleton-summary"><span /><span /></div>
-        {[0, 1, 2].map((row) => <div className="ev-skeleton-row" key={row}>
-          <div><span /><span /><span /></div><div><span /><span /></div><div><span /><span /></div>
-        </div>)}
-      </div>}
+      {busy && !result && !error && <SourcesGhost listGroup={Boolean(listGroup)} streams={(spec.dataset ?? "all") === "all"} toolsOpen={toolsOpen} />}
       {result && <>
       <div className="ev-source-summary" aria-live="polite">
         <div><span>{result?.group || listGroup ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
@@ -239,7 +283,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       </div>
       </>}
       {error && <div className="ev-error" role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((v) => v + 1)}>Încearcă din nou</button></div>}
-      <div className={`ev-records${busy ? " ev-loading" : ""}`} aria-busy={busy} inert={busy}>
+      {/* A new page, order or filter of the same list: the old rows stay, dimmed, until the new ones arrive. */}
+      <div className={`ev-records${busy && result ? " g-stale" : ""}`} aria-busy={busy} inert={busy}>
         {!busy && !error && result && result.rows.length === 0 && <div className="ev-empty"><strong>Nicio înregistrare{filtered ? " pentru aceste filtre" : " în selecție"}.</strong><p>{filtered ? "Totalul selecției rămâne vizibil mai sus. Șterge filtrele pentru a reveni la toate înregistrările." : "Absența unui rezultat se referă la datele și condițiile acestei întrebări."}</p></div>}
         {result && !error && result.rows.length > 0 && <table className="ev-table"><caption className="ev-sr-only">Înregistrările sursă pentru {title}</caption>
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Sursă</th></tr></thead>

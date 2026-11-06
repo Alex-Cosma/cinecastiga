@@ -11,8 +11,9 @@ import {
   SCATTER_LIST_MAX, SCATTER_LIST_PAGE, belowListWords, codeBit, groupPlural, isRetiredScatterFlag, isScatterFlag, listPlace, scatterCodes, scatterFlagLabel, scatterFlagsOf,
   withScatterChoice, type ScatterData, type ScatterFlag, type ScatterFlagFact,
 } from "../../lib/ask/scatter-shared";
-import { namedKind, type AskSpec } from "../../lib/ask/spec";
+import { namedKind, SCATTER_FLAGS_BY_ROLE, type AskSpec } from "../../lib/ask/spec";
 import { flagEntityRule, flagLabel } from "../../lib/flags";
+import { G } from "../../components/ghost/Ghost";
 import { RISK_BAND_CLASS, riskBand, riskScoreText } from "../../lib/risk-score";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import EntityName from "../../components/EntityName";
@@ -21,6 +22,7 @@ import AnswerStrip, { StripRow } from "./answer/AnswerStrip";
 import DetailCard, { type CardLine } from "./answer/DetailCard";
 import Locate, { placeWords } from "./answer/Locate";
 import ListFoot from "./answer/ListFoot";
+import KitLink from "./answer/KitLink";
 import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn } from "./answer/list-return";
 import { FactTag } from "./answer/RowFacts";
 import HelpTip from "./builder/HelpTip";
@@ -145,6 +147,76 @@ function RowRisk({ row, levels }: { row: AnyListRow; levels: number }) {
     <span className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</span>
     <small>{scoreBandWord(row.score)}</small>
   </span>;
+}
+
+/*
+ * The cloud on its way (owner, 6 November 2026: ghost loading; AskPanel AnswerGhost): the strip's two rows, the chart's
+ * box (its height is the real one, scatter.css), the legend, "Unde e …?", the list's head, its first page of rows, its
+ * foot and the note, in the real classes. The controls are quiet replicas (inert); the dots are a fixed decorative
+ * cloud, never data.
+ */
+const GHOST_DOTS = [[70, 330], [96, 312], [118, 340], [140, 296], [162, 322], [180, 270], [204, 306], [226, 284], [246, 318], [262, 252], [284, 290], [300, 236],
+  [322, 274], [344, 300], [362, 228], [382, 262], [404, 210], [424, 246], [446, 282], [468, 198], [490, 236], [512, 176], [536, 222], [560, 160], [584, 204],
+  [606, 142], [628, 188], [652, 120], [674, 168], [692, 96]] as const;
+const GHOST_NAMES = [30, 22, 36, 18, 26, 40, 24, 32, 20, 28];
+export function ScatterGhost({ spec }: { spec: AskSpec }) {
+  const role = spec.dim === "supplier" ? "supplier" : "authority";
+  const flag = spec.scatter?.flag ?? null;
+  const lower = (code: string) => scatterFlagLabel(code).toLocaleLowerCase("ro-RO");
+  // The counts beside the signals arrive with the answer: their place is kept (figure spaces), never a number.
+  const room = "\u2007".repeat(7);
+  return <div className="qb sc">
+    <div className="g-quiet" inert><AnswerStrip rows label="Ajustează lista și semnalul">
+      <StripRow label="Primele după" tip={{ title: "Primele după", text: "" }}>
+        <Segmented label="Primele după" value={spec.scatter?.rankBy === "value" ? "value" : "risk"} options={[{ value: "risk", label: "Risc" }, { value: "value", label: "Valoare" }]} />
+      </StripRow>
+      <StripRow label="Semnal" tip={{ title: "Semnal", text: "" }}>
+        <Pills label="Semnal" value={flag ?? ""} options={[{ value: "", label: "Tot grupul", count: room },
+          ...SCATTER_FLAGS_BY_ROLE[role].map((code): PillOption => ({ value: code, label: scatterFlagLabel(code), count: room, signal: true }))]} onChange={() => undefined} />
+      </StripRow>
+    </AnswerStrip></div>
+    <figure className="sc-figure" aria-hidden="true">
+      <svg className="sc-chart sc-chart-ghost" viewBox="0 0 720 400" preserveAspectRatio="xMidYMid meet">
+        <rect className="g-svg" x="58" y="370" width="648" height="1.5" />
+        <rect className="g-svg" x="58" y="24" width="1.5" height="346" />
+        {GHOST_DOTS.map(([x, y], i) => <circle key={i} className="g-svg" cx={x} cy={y} r={i % 5 === 0 ? 5 : 3.5} />)}
+      </svg>
+      <figcaption className="sc-legend">
+        <span><i className="sc-key" /> grupul</span>
+        {flag && <span><i className="sc-key is-flag" /> cu „{lower(flag)}”</span>}
+        <span><i className="sc-key is-list" /> în listă</span>
+        <span><i className="sc-key is-ring" /> ales sau căutat</span>
+        <span><i className="sc-key is-line" /> {p90Words}</span>
+        <span inert>riscul, din 100 <HelpTip tip={{ id: "scor-risc" }} /></span>
+      </figcaption>
+    </figure>
+    <div className="sc-find g-quiet" inert>
+      <Locate label={role === "supplier" ? "Unde e o firmă?" : "Unde e o instituție?"} results={[]} loading={false} onSearch={() => undefined} onPick={() => undefined} />
+    </div>
+    <section className="sc-list-wrap" aria-hidden="true">
+      <h3 className="qb-tipwrap sc-list-head">Primele {SCATTER_LIST_PAGE} din <G.Line inline w="4ch" /> <span inert><HelpTip tip={{ title: "Primele", text: "" }} /></span></h3>
+      <ol className="sc-list">
+        <G.Rows n={SCATTER_LIST_PAGE} className="sc-row" cells={(i) => <>
+          <span className="sc-rank qb-num">{i + 1}</span>
+          <span className="sc-who">
+            <span className="sc-name"><G.Line inline w={`${GHOST_NAMES[i % GHOST_NAMES.length]}ch`} /></span>
+            <small><G.Line w="46%" /></small>
+            {/* Its signals' tags: one line, two on a phone. */}
+            <span className="qb-tags"><span className="qb-tag g-quiet"><G.Line inline w="14ch" /></span><span className="g-phone"><span className="qb-tag g-quiet"><G.Line inline w="30ch" /></span></span></span>
+          </span>
+          <span className="sc-val qb-num"><G.Line inline w="9ch" /></span>
+          <span className="sc-cri sc-risk"><span className="cri-pill g-quiet"><G.Line inline w="6ch" /></span><small><G.Line inline w="7ch" /></small></span>
+          <span className="qb-rec sc-rec g-quiet"><G.Line inline w="16ch" /></span>
+        </>} />
+      </ol>
+      <div className="qb-listfoot g-quiet" inert>
+        <span className="qb-row"><button type="button" className="qb-more-btn">Arată încă {SCATTER_LIST_PAGE}</button><span className="qb-rest"><G.Line inline w="18ch" /></span></span>
+        <KitLink className="qb-secondary" link={{ label: flag ? "Vezi înregistrările cu semnalul" : "Vezi înregistrările celor din listă", glyph: "→", onClick: () => undefined }} />
+      </div>
+      <p className="sc-more"><span className="qb-link"><G.Line inline w="22ch" /></span></p>
+    </section>
+    <p className="sc-foot qb-tipwrap">Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți. <span inert><HelpTip tip={{ title: "Valori înregistrate", text: "" }} /></span></p>
+  </div>;
 }
 
 export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProps) {

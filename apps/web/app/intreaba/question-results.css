@@ -1138,3 +1138,5 @@
 .cq-answer-head h2 .entity-name { color: inherit; text-decoration: underline dotted; text-decoration-thickness: 1.5px; text-decoration-color: var(--accent-line); text-underline-offset: .14em; }
 .cq-answer-head h2 .entity-name:hover { text-decoration-style: solid; text-decoration-color: currentColor; }
 .cq-answer-head h2 .entity-name::after { content: "→"; display: inline-block; margin-left: .18em; font-size: .62em; vertical-align: .22em; color: var(--accent); text-decoration: none; }
+/* The first answer's ghost (AskPanel AnswerGhost): a signed-in reader's second pair of actions, as tall as a pair. */
+.cq-ghost-pair { grid-column: 1 / -1; min-height: 44px; }

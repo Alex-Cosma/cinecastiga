@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import AskPanel from "./AskPanel";
+import { readAskLink } from "./link-hint";
 export const metadata: Metadata = {
   title: "Întreabă",
   description:
@@ -7,6 +8,8 @@ export const metadata: Metadata = {
 };
 import "./explore-compact.css";
 
-export default function IntreabaPage() {
-  return <div className="explore-compact"><AskPanel initialMode="build" /></div>;
+/** The address's question is read here too, so the first paint already holds its answer's place (link-hint.ts). */
+export default async function IntreabaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const link = readAskLink(await searchParams);
+  return <div className="explore-compact"><AskPanel initialMode="build" link={link} /></div>;
 }

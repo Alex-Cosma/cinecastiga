@@ -30,10 +30,11 @@ import {
   ScatterBlock,
   EntityCardBlock,
   FactCheckBlock,
+  BreakdownGhost,
   useTip,
 } from "./blocks";
 import TrendBlock from "./TrendAnswer";
-import ScatterAnswer from "./ScatterAnswer";
+import ScatterAnswer, { ScatterGhost } from "./ScatterAnswer";
 import { readListReturn } from "./answer/list-return";
 import { ensureScatterFacts } from "./scatter-answer";
 import { RANK_WORDS, scatterRank } from "@/lib/ask/scatter-shared";
@@ -62,6 +63,7 @@ import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import RankingLocate from "./answer/RankingLocate";
+import Locate from "./answer/Locate";
 import { FactTag } from "./answer/RowFacts";
 import { useRowFacts } from "./answer/use-row-facts";
 import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
@@ -88,7 +90,7 @@ import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence, type EvidenceOpenOpts } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
-import MapBlock from "./MapBlock";
+import MapBlock, { MapGhost } from "./MapBlock";
 import { countyMetrics, mapFirm, mapLensOptions, mapLocalAdmin, metricWords, shownLens, type MapLensValue } from "./map-answer";
 import type { MapFacts } from "@/lib/ask/map-facts";
 import "./question-results.css";
@@ -101,6 +103,11 @@ import { understoodLine } from "./intent-line";
 import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
+import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
+import { useViewer } from "@/lib/use-viewer";
+import { isCpvCode } from "./cpv-name";
+import { ghostPills, type AskLinkHint } from "./link-hint";
+import { MixGhost } from "./answer/StatMix";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
 type SeriesPoint = Extract<
@@ -189,28 +196,36 @@ export default function AskPanel({
   initialMode = "build",
   withSearch = false,
   centered = false,
+  link = null,
 }: {
   initialMode?: PanelMode;
   withSearch?: boolean;
   centered?: boolean;
+  /** What the server read in the address (link-hint.ts): the first paint is already the link's question. */
+  link?: AskLinkHint | null;
 }) {
+  // A link that runs opens folded on its answer's ghost from the first paint; restore() on mount runs it (owner,
+  // 6 November 2026): no start page, then an empty page, then the answer.
+  const linked = link?.kind === "spec" ? link : null;
   const [mode, setMode] = useState<PanelMode>(
-    initialMode === "ask" && !NATURAL_LANGUAGE_ENABLED ? "build" : initialMode,
+    linked ? "build" : initialMode === "ask" && !NATURAL_LANGUAGE_ENABLED ? "build" : initialMode,
   );
   const [aiLinkNotice, setAiLinkNotice] = useState(false);
-  const [builderInit, setBuilderInit] = useState<QuestionSpec | null>(null);
+  const [builderInit, setBuilderInit] = useState<QuestionSpec | null>(linked?.spec ?? null);
   const [builderResolution, setBuilderResolution] = useState<{ submitted: QuestionSpec; resolved: QuestionSpec } | null>(null);
   const [builderFromAi, setBuilderFromAi] = useState(false);
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(linked?.run));
+  /** The question on its way: while no answer is on screen, its ghost is shaped by it (null: words, not yet a spec). */
+  const [asked, setAsked] = useState<AskSpec | null>(linked?.run ? linked.link : null);
   const [dirty, setDirty] = useState(false);
   const [resp, setResp] = useState<AskResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(link?.kind === "error" ? link.error : null);
   /** Technical text behind a failed answer, shown only under "Detalii tehnice". */
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const lastBody = useRef<Record<string, unknown> | null>(null);
   /** A link that already holds the question opens on its answer; the builder waits under "Schimbă întrebarea". */
-  const [builderCollapsed, setBuilderCollapsed] = useState(false);
+  const [builderCollapsed, setBuilderCollapsed] = useState(Boolean(linked?.run && !linked.drill));
   /** The same, for execute (a stable callback): a strip's new query reaches a folded builder through its initial question. */
   const builderCollapsedRef = useRef(false);
   builderCollapsedRef.current = builderCollapsed;
@@ -227,9 +242,9 @@ export default function AskPanel({
   /** The breakdown's thread ("fir" in the URL): the levels above the one on screen. Gone at any new run. */
   const [thread, setThread] = useState<Thread | null>(null);
   /** A link the builder opens without running it (a refused condition): "Vezi răspunsul" stays. */
-  const [linkRuns, setLinkRuns] = useState(true);
+  const [linkRuns, setLinkRuns] = useState(linked?.run ?? true);
   /** What opening that link changed (restoreLink's notes): the builder says it while the link waits. */
-  const [linkNotes, setLinkNotes] = useState<string[]>([]);
+  const [linkNotes, setLinkNotes] = useState<string[]>(linked?.notes ?? []);
   const [answerSaved, setAnswerSaved] = useState<SavedQuestion | null>(null);
   /** The stream chosen in the strip while its answer is on its way (the radio moves at once). */
   const [streamShown, setStreamShown] = useState<string | null>(null);
@@ -259,7 +274,7 @@ export default function AskPanel({
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   // Free-text question → /api/intent (deterministic rules) → editable builder.
-  const [askText, setAskText] = useState("");
+  const [askText, setAskText] = useState(link?.kind === "text" ? link.question : "");
   const [intent, setIntent] = useState<IntentResult | null>(null);
   const [intentLoading, setIntentLoading] = useState(false);
   const [intentError, setIntentError] = useState<string | null>(null);
@@ -269,7 +284,7 @@ export default function AskPanel({
    * with the answer its reading gave, also back and forth between two readings («Înapoi»).
    */
   const [understood, setUnderstood] = useState<Record<string, IntentChoice>>({});
-  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(Boolean(linked));
   const askRef = useRef<HTMLInputElement>(null);
   const intentRequest = useRef<AbortController | null>(null);
   const showToast = useCallback((text: string) => {
@@ -321,6 +336,7 @@ export default function AskPanel({
       request.current.controller = controller;
       lastBody.current = body;
       setLoading(true);
+      setAsked((body.spec as AskSpec | undefined) ?? null);
       setError(null);
       setErrorDetail(null);
       setEvidence(null);
@@ -471,7 +487,7 @@ export default function AskPanel({
    * (owner, 1 November 2026): the builder folded under "Schimbă întrebarea",
    * the interpretation one line under the answer's title, one scroll.
    */
-  const adopt = useCallback((choice: IntentChoice) => {
+  const adopt = useCallback((choice: IntentChoice, scroll = true) => {
     setChosen(choice);
     setBuilderInit(choice.spec);
     setLinkRuns(true);
@@ -482,12 +498,13 @@ export default function AskPanel({
     // The folded builder is not mounted: an earlier draft's "modificat" does not stay on this answer.
     setDirty(false);
     setMode("build");
-    void execute({ spec: choice.spec }).then((ran) => {
+    void execute({ spec: choice.spec }, false, undefined, undefined, scroll).then((ran) => {
       const link = ran ? new URLSearchParams(window.location.search).get("spec") : null;
       if (link) setUnderstood((readings) => ({ ...readings, [link]: choice }));
     });
   }, [execute]);
-  const interpret = useCallback(async (raw: string, fromHistory = false) => {
+  /** `scroll`: false for the question the page opened with (`?q=`), whose answer is already in view under it. */
+  const interpret = useCallback(async (raw: string, fromHistory = false, scroll = true) => {
     const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
     if (text.length < 2) return;
     intentRequest.current?.abort();
@@ -509,7 +526,7 @@ export default function AskPanel({
       setResp(null);
       setError(null);
       setEvidence(null);
-      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! });
+      if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll);
       else {
         setChosen(null);
         setBuilderInit(null);
@@ -544,7 +561,12 @@ export default function AskPanel({
     void interpret(example.text);
   }, [interpret]);
   useEffect(() => {
-    const restore = () => {
+    /**
+     * `opened`: the page's first restore (a link, a reload). Its answer takes its ghost's place where the page stands,
+     * already in view under the folded builder: no scroll (owner, 6 November 2026). «Înapoi» and «Înainte» bring the
+     * answer under the header as before.
+     */
+    const restore = (opened = false) => {
       const params = new URLSearchParams(window.location.search),
         question = params.get("q"),
         encoded = params.get("spec");
@@ -552,7 +574,7 @@ export default function AskPanel({
       if (question && !NATURAL_LANGUAGE_ENABLED && !encoded) {
         // A question in the address (also from the home search) is read by the rules.
         setAskText(question);
-        void interpret(question, true);
+        void interpret(question, true, !opened);
       }
       if (question && NATURAL_LANGUAGE_ENABLED) {
         setQ(question);
@@ -565,6 +587,7 @@ export default function AskPanel({
         const restored = restoreLink(decodeSpec(encoded));
         if (restored.kind === "error") {
           setError(restored.error);
+          setLoading(false);
           // Below the examples on a phone: bring the reason into view.
           revealError();
           return;
@@ -592,11 +615,12 @@ export default function AskPanel({
           }
         } catch {
           setError("Selecția de surse din această legătură este invalidă.");
+          setLoading(false);
           return;
         }
         // A refused condition (or a locality its view cannot honour) waits in the builder, which says
         // why on its chip; the answer of another question does not stay under it.
-        if (!restored.run) { setResp(null); setAppliedSpec(null); return; }
+        if (!restored.run) { setResp(null); setAppliedSpec(null); setLoading(false); return; }
         const link = restored.link as unknown as AskSpec;
         // A trend on `auto` months (every one the builder makes) whose year the data do not confirm: the engine
         // refuses it, where the builder would have held it (RC-keyed-link-refused). Refused, the link waits in the
@@ -609,13 +633,14 @@ export default function AskPanel({
           },
           run: () => { setResp(null); setAppliedSpec(null); setLinkRuns(false); setBuilderCollapsed(false); },
         } : null;
-        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, true, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}), history: "replace", memo: encoded });
+        void execute({ spec: link }, params.get("drill") === "1", scope, sourceFilters, !opened, { thread: readThread(params.get("fir"), link), ...(held ? { held } : {}), history: "replace", memo: encoded });
       }
     };
-    restore();
-    window.addEventListener("popstate", restore);
+    restore(true);
+    const back = () => restore();
+    window.addEventListener("popstate", back);
     return () => {
-      window.removeEventListener("popstate", restore);
+      window.removeEventListener("popstate", back);
       request.current.controller?.abort();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
@@ -1118,6 +1143,9 @@ export default function AskPanel({
         </button>
       )}
       {loading && <Loader label="Căutăm răspunsul în date" />}
+      {/* No answer on screen yet (a link, a first question, a retry): its ghost where it will stand, shaped by the
+          question asked, after 120 ms so a quick answer never shows it. A new answer over one on screen dims it instead. */}
+      {loading && !error && !(resp?.ok && answered && appliedSpec) && <AnswerGhost spec={asked} />}
       {error && (
         <div className="cq-error" role="alert" id="raspuns-eroare">
           <strong>{error}</strong>
@@ -1138,7 +1166,9 @@ export default function AskPanel({
       {resp?.ok && data && applied && (
         <AnswerEvidence.Provider value={{ open: openEvidence, exclude: excludeRow }}>
           <section
-            className="cq-answer"
+            // A new answer over this one: it stays in place, dimmed (g-stale). No g-content entrance here: its filled
+            // animation would hold the opacity and skip g-stale's 250 ms delay.
+            className={`cq-answer${loading ? " g-stale" : ""}`}
             id="raspuns"
             aria-busy={loading}
             onClick={interceptSource}
@@ -1524,6 +1554,164 @@ export default function AskPanel({
       )}
     </div>
   );
+}
+
+/*
+ * The first answer's ghost (owner, 6 November 2026: "ghost data loading"). While no answer is on screen (a link opened,
+ * a first question, a retry) the place of the answer holds its shape: the title and the pills the spec already says,
+ * the actions, the strip, the block's own ghost (blocks.tsx, ScatterAnswer.tsx, MapBlock.tsx, StatMix.tsx and the
+ * ranking below) and the foot. Every part is the real element with its real classes, so the answer replaces it where
+ * it stands; controls are quiet replicas (inert). It fades in after 120 ms (a quick answer never shows it); the
+ * floating loader is its status.
+ */
+function AnswerGhost({ spec }: { spec: AskSpec | null }) {
+  const viewer = useViewer();
+  const cpv = spec?.filters.cpvTerm === undefined ? "" : String(spec.filters.cpvTerm);
+  // A CPV code is named by the catalogue the answer brings: until then the title is lines, never „CPV 45”.
+  const title = spec && !isCpvCode(cpv) ? questionTitle(spec) : null;
+  const block = spec?.block;
+  const profile = Boolean(spec && isHistoricalProfile(spec));
+  const n = <G.Line inline w="9ch" />;
+  // The records' button says its count where the answer has one (sourceCount): its width sets the title's.
+  const counted = block !== undefined && ["network", "sankey", "stat", "fact_check", "timeseries", "map", "breakdown", "entity_card"].includes(block);
+  const source = block === "scatter" && spec?.scatter?.flag ? "Vezi înregistrările semnalului"
+    : !counted ? "Vezi înregistrările sursă"
+      : <span>Vezi cele {n} {profile || spec?.dataset === "da" ? "de achiziții" : "de înregistrări"}</span>;
+  const totalWords = spec && block !== "table" && block !== "network" && block !== "entity_card" && !profile ? totalConditionWords(spec) : [];
+  return <Ghost as="section" className="cq-answer" name="ask-answer" wait="client">
+    <div className="cq-answer-head">
+      <div>
+        <h2>{title ?? <><G.Line w="94%" /><G.Line w="48%" /></>}</h2>
+        <div inert>{spec
+          // The cloud's first pill is its group's window (labels.scatterGroup): a pill, its words a line.
+          ? <AnswerPills spec={spec} pills={ghostPills(spec)} labels={spec.block === "scatter" ? { scatterGroup: 0 } : {}} onApply={() => undefined} />
+          : <div className="cq-scope"><G.Line inline w="44%" /></div>}</div>
+      </div>
+      <div className="cq-answer-actions g-quiet" inert>
+        <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>
+        <button type="button" className="cq-share"><ShareIcon />Trimite</button>
+        <span className="cq-save-wrap"><button type="button" className="cq-save-question">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
+          <span>Salvează</span>
+        </button></span>
+        {/* A signed-in reader's „Urmărește” and „Salvează în anchetă”: one more pair. */}
+        {viewer.userId && <span className="cq-ghost-pair g-block" />}
+      </div>
+    </div>
+    {spec && <StripGhost spec={spec} />}
+    {block === "breakdown" && <p className="cq-lead" aria-hidden="true"><G.Line w="64%" /><G.Line w="38%" only="phone" /></p>}
+    <div className={`cq-result${block ? ` cq-result-${block}` : ""}`}>
+      {!spec ? <GenericGhost />
+        : block === "table" ? <RankingGhost spec={spec} />
+          : block === "stat" ? <StatGhost spec={spec} />
+            : block === "breakdown" ? <BreakdownGhost spec={spec} />
+              : block === "scatter" ? <ScatterGhost spec={spec} />
+                : block === "map" ? <MapGhost />
+                  : <GenericGhost />}
+    </div>
+    {totalWords.length > 0 && <div className="qb cq-total" inert><TotalLine conditions={totalWords}><G.Line inline w="40%" /></TotalLine></div>}
+    <div inert className="g-quiet">
+      <details className="cq-caveats"><summary>Ce include calculul · <G.Line inline w="1ch" /></summary></details>
+      {spec && <CoverageDisclosure spec={spec} />}
+      <div className="cq-answer-tools">
+        <button type="button" className="cq-copy"><CopyIcon />Copiază linkul</button>
+        {spec && <AnswerExports spec={spec} disabled onResult={() => undefined} />}
+      </div>
+    </div>
+  </Ghost>;
+}
+
+/** The strip beside the answer (as the answer draws it above), from its spec: the channels, the map's lens, an evolution's split. */
+function StripGhost({ spec }: { spec: AskSpec }) {
+  const keys = BLOCK_FILTERS[spec.block]?.strip ?? [];
+  if (!(keys.some((key) => key === "dataset" || key === "measure") || spec.block === "timeseries" || spec.block === "map")) return null;
+  const share = <G.Line inline w="5ch" />;
+  const toggle = <Segmented label="Cum arată răspunsul" size="sm" value="visual" options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel" }]} />;
+  const channels = keys.includes("dataset") && (spec.block === "breakdown" || spec.block === "network" || spec.block === "sankey")
+    // A breakdown's channels say their share (channelShares): the place of the number beside each.
+    ? streamOptions(spec).map((option) => option.value === "da" || option.value === "contracts" ? { ...option, label: <>{option.label} {share}</> } : option)
+    : streamOptions(spec);
+  return <div className="qb cq-strip g-quiet" inert><AnswerStrip>
+    {keys.includes("dataset") && (spec.block === "breakdown"
+      ? <StripLabelled after={spec.measure === "count" ? "% din înregistrări" : "% din valoare"} wide><Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} /><HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled>
+      : <Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} />)}
+    {spec.block === "map" && keys.includes("measure") && <span className="qb-row qb-row--wide qb-tipwrap-sm ask-maplens">
+      <StripLabelled before="Harta arată"><Segmented label="Harta arată" value={spec.measure === "count" ? "count" : "value"} options={mapLensOptions(spec, { status: "loading" })} /></StripLabelled>
+      <HelpTip tip={MAP_LENS_TIP} />
+      {!mapFirm(spec) && !mapLocalAdmin(spec) && <span className="qb-row ask-percap-link"><button type="button" className="qb-link">Pe locuitor<span className="qb-glyph" aria-hidden="true">→</span></button><HelpTip tip={PER_INHABITANT_TIP} /></span>}
+    </span>}
+    {spec.block === "timeseries" && keys.includes("timeseriesSplit") && <StripLabelled before="Împarte" smHide><Segmented label="Împarte" value={`split:${spec.timeseries?.split ?? ""}`} options={seriesSplitOptions(spec)} /></StripLabelled>}
+    {(spec.block === "timeseries" || spec.block === "map") && <StripEnd>{toggle}</StripEnd>}
+  </AnswerStrip></div>;
+}
+
+/** The ranking (RankingBars) on its way: "Unde e o firmă?" with „Vizual | Tabel”, its N rows and its total line. */
+function RankingGhost({ spec }: { spec: AskSpec }) {
+  const rows = spec.topN ?? RANKING_PAGE_SIZE;
+  const toggle = <Segmented label="Cum arată răspunsul" size="sm" value="visual" options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel" }]} />;
+  const locate = (spec.dim === "supplier" || spec.dim === "authority") && spec.measure !== "value_per_capita";
+  const conditions = totalConditionWords(spec);
+  return <>
+    {locate
+      ? <div className="qb cq-locate g-quiet" inert>
+        <Locate label={spec.dim === "supplier" ? "Unde e o firmă?" : "Unde e o instituție?"} results={[]} loading={false} onSearch={() => undefined} onPick={() => undefined} />
+        <span className="cq-locate-end">{toggle}</span>
+      </div>
+      : <div className="qb cq-layout-row g-quiet" inert>{toggle}</div>}
+    <div className="cq-ranking" inert>
+      <G.Rows n={rows} as="div" className="cq-rank-row" cells={(i) => <>
+        <div className="cq-rank-main">
+          <span className="cq-rank-number">{String(i + 1).padStart(2, "0")}</span>
+          <span className="cq-rank-name">
+            <span className="cq-rank-title"><G.Line w={`${[26, 18, 12, 22, 34, 16, 20, 28, 14, 24][i % 10]}ch`} /></span>
+            <span className="cq-bar-track"><i className="g-block" style={{ width: rankWidth(i, 100, 9, 22), background: "var(--line)" }} /></span>
+          </span>
+          <span className="cq-rank-value">
+            <strong><G.Line inline w="15ch" /></strong>
+            {/* On a phone the records' words wrap beside the sum: two lines. */}
+            <button type="button" className="cq-rank-records"><G.Line inline w="24ch" /><G.Line w="12ch" only="phone" /></button>
+          </span>
+        </div>
+        {spec.dim !== "county" && <span className="qb cq-rank-menu g-quiet"><button type="button" className="qb-more">⋯</button></span>}
+      </>} />
+      {/* The rest of the selection after the rows shown (rankingRest). */}
+      <div className="cq-rank-rest">
+        <span className="cq-rank-number">…</span>
+        <span className="cq-rank-name"><strong>Alte <G.Line inline w="12ch" /></strong></span>
+        <span className="cq-rank-value"><strong><G.Line inline w="15ch" /></strong><small><G.Line inline w="26ch" /></small></span>
+      </div>
+    </div>
+    {conditions.length > 0
+      ? <div className="qb cq-total" inert><TotalLine conditions={conditions}><G.Line inline w="44%" /></TotalLine></div>
+      : <p className="ask-fine cq-total-line" inert>
+        {spec.measure !== "value_per_capita" && <>Total: <G.Line inline w="13ch" /> la <G.Line inline w="12ch" /> · valoare înregistrată, nu plăți</>}
+        {spec.measure !== "value_per_capita" && spec.dim === "supplier" && " · "}
+        {spec.dim === "supplier" && <>în asociere: cote egale <Term id="in-asociere" tip /></>}
+      </p>}
+  </>;
+}
+
+/** The total (StatBlock) on its way: the number, its line, the channels' split, then „Din care” (StatMix). */
+function StatGhost({ spec }: { spec: AskSpec }) {
+  return <>
+    <div className="ask-bigstat" aria-hidden="true">
+      <div className="v"><G.Line inline w="6ch" /></div>
+      <div className="d"><G.Line inline w="34ch" /></div>
+      {(spec.dataset ?? "all") === "all" && <div className="ask-streamsplit"><G.Line inline w="62ch" /><G.Line w="40ch" only="phone" /></div>}
+    </div>
+    <MixGhost />
+  </>;
+}
+
+/** Any other answer on its way (the block is not known yet, or has no ghost of its own): a sentence, a chart, rows. */
+function GenericGhost() {
+  return <div aria-hidden="true">
+    <p className="ask-fine"><G.Line w="56%" /></p>
+    <G.Block h="240px" />
+    <table className="ask-table cq-exact-table"><tbody>
+      <G.Rows n={3} as="tr" cells={(i) => <><th><G.Line w={rankWidth(i, 70, 6)} /></th><td><G.Line inline w="12ch" /></td><td><G.Line inline w="8ch" /></td></>} />
+    </tbody></table>
+  </div>;
 }
 
 /** «conduse azi de»: an individual practice in by its holder's name only (owner, 1 November 2026), first among the facts. */
@@ -2017,7 +2205,8 @@ function TableBlock({
 /**
  * Animated loading indicator: three pulsing bars + elapsed seconds once the
  * query stops being instant, so long queries (up to the 20s cap) read as
- * "working", not "stuck".
+ * "working", not "stuck". It floats under the header (the kit's FloatStatus place) and shows only once the wait
+ * passes 150 ms (`g-float`), so a quick answer never flashes it.
  */
 function Loader({ label }: { label: string }) {
   const [secs, setSecs] = useState(0);
@@ -2026,7 +2215,7 @@ function Loader({ label }: { label: string }) {
     return () => clearInterval(t);
   }, []);
   return (
-    <div className="ask-loader" role="status" aria-live="polite">
+    <div className="ask-loader g-float" role="status" aria-live="polite">
       <span className="bars" aria-hidden>
         <i />
         <i />

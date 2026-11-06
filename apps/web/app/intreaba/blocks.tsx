@@ -16,6 +16,7 @@ import { FactTag, type RowFact } from "./answer/RowFacts";
 import { breakdownKinds, breakdownShown, generalTag, largestTag } from "./breakdown-answer";
 import HelpTip from "./builder/HelpTip";
 import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
+import { G } from "@/components/ghost/Ghost";
 
 import { useTip } from "./use-tip";
 export { useTip, type TipBind } from "./use-tip";
@@ -204,6 +205,40 @@ export function BreakdownBlock({
       {shown.more > 0 && <div className="qb qb-listfoot"><button type="button" className="qb-more-btn" onClick={() => setAll(true)}>Arată toate</button></div>}
     </div>
   );
+}
+
+/**
+ * The breakdown on its way (owner, 6 November 2026: ghost loading; AskPanel AnswerGhost): the kinds row, the stacked
+ * bar, the legend's head, its rows (the groups shown, then "alte domenii") and "Arată toate", in the real classes. The
+ * kinds and the buttons are quiet replicas (inert).
+ */
+const BREAKDOWN_GHOST_SEGS = ["58%", "12%", "8%", "6%", "4%", "3%", "2%", "7%"];
+const BREAKDOWN_GHOST_NAMES = [46, 22, 38, 30, 18, 52, 26, 34, 16];
+export function BreakdownGhost({ spec }: { spec: AskSpec }) {
+  return <div aria-hidden="true">
+    {!spec.filters.purchaseKind && <div className="qb qb-kinds g-quiet" inert>
+      {(["produse", "servicii", "lucrari"] as const).map((kind) => <button type="button" key={kind} className="qb-kind">{PURCHASE_KIND_WORDS[kind].label} <G.Line inline w="4ch" /></button>)}
+      <HelpTip tip={{ id: "tip-achizitie" }} />
+    </div>}
+    <div className="ask-comp">{BREAKDOWN_GHOST_SEGS.map((w, i) => <span key={i} className="seg g-block" style={{ width: w, borderRadius: 0, marginRight: 2 }} />)}</div>
+    <div className="qb qb-legend-head g-quiet" inert>
+      <span><G.Line inline w="10ch" /></span>
+      <button type="button" className="qb-sort" aria-pressed={spec.measure !== "count"}>Valoare</button>
+      <button type="button" className="qb-sort" aria-pressed={spec.measure === "count"}>Înreg.</button>
+      <HelpTip tip={{ title: "Înregistrări", text: "" }} />
+    </div>
+    <div className="ask-complegend" inert>
+      <G.Rows n={BREAKDOWN_GHOST_NAMES.length} as="div" className="li" cells={(i) => <>
+        <span className="sw g-block" />
+        {/* The catalogue's names wrap on a phone (the rest's "alte domenii" does not). */}
+        <span className="nm">{i < BREAKDOWN_GHOST_NAMES.length - 1
+          ? <a><span><G.Line inline w={`${BREAKDOWN_GHOST_NAMES[i]}ch`} /><G.Line w="30%" only="phone" /></span></a>
+          : <G.Line inline w={`${BREAKDOWN_GHOST_NAMES[i]}ch`} />}</span>
+        <span className="vv num"><span><G.Line inline w="24ch" /></span><button type="button" className="cq-record-link g-quiet"><G.Line inline w="18ch" /></button></span>
+      </>} />
+    </div>
+    <div className="qb qb-listfoot g-quiet" inert><button type="button" className="qb-more-btn">Arată toate</button></div>
+  </div>;
 }
 
 
