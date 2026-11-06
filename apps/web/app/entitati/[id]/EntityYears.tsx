@@ -1,7 +1,19 @@
 "use client";
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { ENTITY_YEAR_EVENT, tipLeft, yearWords, type YearsModel } from "./entity-top";
+
+/**
+ * When the turnover line's left-to-right reveal reaches `x` (0–1 of the plot's width), as a share of the reveal's
+ * duration. The reveal follows the site's --ease, cubic-bezier(.2,.7,.2,1), so a dot fades in as the line passes it.
+ */
+function lineReach(x: number): number {
+  const bx = (s: number) => 0.6 * s * (1 - s) ** 2 + 0.6 * s * s * (1 - s) + s ** 3;
+  const by = (s: number) => 2.1 * s * (1 - s) ** 2 + 3 * s * s * (1 - s) + s ** 3;
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 24; k++) { const m = (lo + hi) / 2; if (by(m) < x) lo = m; else hi = m; }
+  return bx((lo + hi) / 2);
+}
 
 /**
  * The entity's value per year (owner, 2 November 2026): bars per channel, a firm's turnover as a dashed line, the axis
@@ -11,6 +23,10 @@ import { ENTITY_YEAR_EVENT, tipLeft, yearWords, type YearsModel } from "./entity
  * A year leads to its records (critique of the same day: the chart was a dead end): a click or Enter filters the
  * records table to that year and scrolls to it; a tap first shows the year's tip, whose link does the same. The tip opens
  * under the plot, centred on its year, never over a bar. The years are one tab stop; the arrows, Home and End move between them.
+ *
+ * In motion (owner, 6 November 2026), when the chart first comes into view: each year's column grows from 0 as one
+ * piece, in chronological order; then the turnover line is drawn left to right and its dots appear as it passes them.
+ * The axis, the grid and the years are there from the start.
  */
 export default function EntityYears({ model, title }: { model: YearsModel; title: string }) {
   const n = model.bars.length;
@@ -60,7 +76,7 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
   const words = active === null ? null : yearWords(model.bars[active]!);
   const line = model.bars.flatMap((b, i) => (b.turnoverPct === null ? [] : [`${center(i)},${100 - b.turnoverPct}`])).join(" ");
   return (
-    <figure className="ent-years" aria-labelledby={titleId}>
+    <figure className="ent-years" aria-labelledby={titleId} data-chart>
       <figcaption id={titleId} className="ent-years-title">{title}</figcaption>
       {/* Leaving the whole plot (bars, years, the tip under them) closes the tip, so the mouse can reach its link. */}
       <div className="ent-years-plot" onMouseLeave={() => setActive(null)}>
@@ -92,7 +108,7 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
                     pointer.current = "";
                   }}
                 >
-                  <span className="ent-years-bar" aria-hidden="true">
+                  <span className="ent-years-bar cm-y" style={{ "--i": i } as CSSProperties} aria-hidden="true">
                     <i className="ent-years-ct" style={{ height: `${b.ctPct}%` }} />
                     <i className="ent-years-da" style={{ height: `${b.daPct}%` }} />
                   </span>
@@ -101,11 +117,13 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
             })}
           </div>
           {model.turnover && <>
-            <svg className="ent-years-turnover" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            {/* Revealed with a clip (the line is dashed and keeps its stroke width, so a dash-offset draw would not work). */}
+            <svg className="ent-years-turnover cm-draw" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
               <polyline points={line} vectorEffect="non-scaling-stroke" />
             </svg>
             {model.bars.map((b, i) => b.turnoverPct === null ? null
-              : <i key={b.year} className="ent-years-dot" style={{ left: `${center(i)}%`, bottom: `${b.turnoverPct}%` }} aria-hidden="true" />)}
+              : <i key={b.year} className="ent-years-dot cm-fade" aria-hidden="true" style={{ left: `${center(i)}%`, bottom: `${b.turnoverPct}%`,
+                  "--cm-d": `calc(var(--years-draw) + var(--chart-in) * ${lineReach(center(i) / 100).toFixed(3)})` } as CSSProperties} />)}
           </>}
           {words && active !== null && (
             <div ref={tip} className="ent-years-tip" style={{ left }} aria-hidden="true">

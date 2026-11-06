@@ -142,6 +142,8 @@
 .sgc-x{font:700 20px/1 var(--display);color:var(--risk);text-align:right}
 .sgc-mini{display:grid;grid-template-columns:.8fr 1.2fr;gap:12px;align-items:end;height:32px}
 .sgc-mini .p{display:flex;gap:2px;align-items:flex-end;height:100%;border-top:1px dashed var(--risk)}
+/* the spark's columns in one group under the ceiling's line, so they rise as one while the line stays */
+.sgc-mini .p .pc{display:flex;gap:2px;align-items:flex-end;width:100%;height:100%}
 .sgc-mini .p i{flex:1;min-width:2px;background:var(--accent);border-radius:1px}
 .sgc-mini .t{position:relative;align-self:center;height:12px;border-radius:3px;background:var(--sunk);grid-column:2}
 .sgc-mini .t i{position:absolute;left:0;top:0;bottom:0;background:var(--risk);border-radius:3px}
@@ -176,6 +178,8 @@
 
 /* the one-acquisition cases (above the ceiling, just under it): one table, filtered and paged in the browser */
 .sgc-table-status{margin:10px 0 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+/* after a page or a filter, the new rows' bars enter shorter and together (components/motion/chart-motion.css) */
+.sgc-table-wrap.is-upd{--cm-dur:var(--fast);--chart-step:0ms}
 .sgc-link{border:0;background:none;padding:0;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .sgc-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px;margin-top:4px}
 .sgc-table th{padding:8px 14px 8px 0;text-align:left;font:600 12.5px/1.4 var(--body);letter-spacing:0;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap}
@@ -216,6 +220,8 @@ a.c-title:hover{color:var(--accent);text-decoration:underline}
 .sgc-near{margin-top:26px}
 .sgc-near h3{font-size:17px;margin:0}
 .sgc-swarm{position:relative;margin-top:12px;border-bottom:1px solid var(--line2)}
+/* the dots in one group, which appears as a whole (hundreds of dots: the group moves, not each dot) */
+.sgc-swarm-dots{position:absolute;inset:0}
 .sgc-swarm .dot{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--risk);border:2px solid var(--paper);transform:translateX(-50%)}
 /* a dot is an acquisition: its card on hover, its page on click */
 a.dot{cursor:pointer}

@@ -42,17 +42,22 @@ export default function ScoreSignals({ hasRiskScore, score, parts, points, signa
   return (
     <div className="ent-sig">
       {scored ? <>
-        <div className="ent-sig-bar">
+        {/* In motion (owner, 6 November 2026): the criteria grow from 0 as one bar, never one after the other; the band
+            ticks stay; the score's marker appears last, where it is. The criteria sit in a group as long as the score, so
+            the bar grows over the whole entrance whatever the score. */}
+        <div className="ent-sig-bar" data-chart>
           <span className="ent-track" aria-hidden="true" />
-          {criteria.map((code, i) => {
-            const left = criteria.slice(0, i).reduce((a, c) => a + (points[c] ?? 0), 0), width = points[code] ?? 0;
-            const words = `${flagLabel(code)}: ${countWords(width, "punct", "puncte")} din ${formatInt(Math.round(score))}`;
-            return (
-              <Link key={code} href={signalsHref(code)} className={`ent-seg ${segment(code)}`} aria-label={words} style={{ left: `${left}%`, width: `${width}%` }}>
-                <span className={`ent-sig-tip${edge(left + width / 2)}`} aria-hidden="true"><b>{flagLabel(code)}</b><span>{countWords(width, "punct", "puncte")} din {formatInt(Math.round(score))}</span></span>
-              </Link>
-            );
-          })}
+          <span className="ent-segs cm-x" style={{ width: `${total}%` }}>
+            {criteria.map((code, i) => {
+              const left = criteria.slice(0, i).reduce((a, c) => a + (points[c] ?? 0), 0), width = points[code] ?? 0;
+              const words = `${flagLabel(code)}: ${countWords(width, "punct", "puncte")} din ${formatInt(Math.round(score))}`;
+              return (
+                <Link key={code} href={signalsHref(code)} className={`ent-seg ${segment(code)}`} aria-label={words} style={{ left: `${(left / total) * 100}%`, width: `${(width / total) * 100}%` }}>
+                  <span className={`ent-sig-tip${edge(left + width / 2)}`} aria-hidden="true"><b>{flagLabel(code)}</b><span>{countWords(width, "punct", "puncte")} din {formatInt(Math.round(score))}</span></span>
+                </Link>
+              );
+            })}
+          </span>
           {/* Found, but under the threshold from which it adds points: named on the empty rest of the bar. */}
           {quiet.length > 0 && (
             <span className="ent-rest" style={{ left: `${total}%`, width: `${Math.max(0, 100 - total)}%` }} tabIndex={0} aria-label={`Găsite, prea puțin ca să conteze: ${quiet.map((c) => flagLabel(c)).join(", ")}`}>
@@ -61,7 +66,7 @@ export default function ScoreSignals({ hasRiskScore, score, parts, points, signa
           )}
           <span className="ent-tick" style={{ left: `${RISK_BAND_MIN.moderat}%` }} aria-hidden="true" />
           <span className="ent-tick" style={{ left: `${RISK_BAND_MIN.puternic}%` }} aria-hidden="true" />
-          <span className="ent-marker" style={{ left: `${Math.min(100, score)}%` }} aria-hidden="true" />
+          <span className="ent-marker cm-fade cm-late" style={{ left: `${Math.min(100, score)}%` }} aria-hidden="true" />
         </div>
         <div className="ent-sig-scale" aria-hidden="true">
           <span style={{ left: `${RISK_BAND_MIN.moderat / 2}%` }}>slab</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
@@ -65,6 +65,9 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
   const names = useMemo(() => new Map(rows.map((r) => [r.partnerId ?? `n:${r.partnerName}`, cleanName(r.partnerName) || "—"])), [rows]);
   const filters = useMemoryFilters(columns, rows, readers, (key, value) => (key === "partener" ? names.get(value) : undefined));
   const [page, setPage] = useState(1);
+  // In motion (owner, 6 November 2026): at first view the bars on screen grow from 0, top to bottom; after a page or a
+  // filter the new rows enter shorter and together, and a row that stays keeps its bar.
+  const [update, setUpdate] = useState(false);
   const [focus, setFocus] = useState<string | null>(null);
   const table = useRef<HTMLTableElement>(null);
   const kept = filters.rows;
@@ -92,24 +95,24 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
     document.getElementById(`caz-${focus}`)?.scrollIntoView({ block: "center" });
   }, [focus, at]);
 
-  const turn = (next: number) => { setPage(next); table.current?.scrollIntoView({ block: "nearest" }); };
+  const turn = (next: number) => { setUpdate(true); setPage(next); table.current?.scrollIntoView({ block: "nearest" }); };
   const funnel = (key: string, align: "start" | "end" = "start") => (
     <ColumnFilter column={columns.find((c) => c.key === key)!} value={filters.state[key]}
-      onChange={(value) => { filters.set(key, value); setPage(1); }}
+      onChange={(value) => { setUpdate(true); filters.set(key, value); setPage(1); }}
       localFacet={(term) => filters.facet(key, term)} align={align} />
   );
   const max = Math.max(1, ...rows.map((r) => r.value / Math.max(1, r.ceiling)));
 
   return (
-    <div className="sgc-table-wrap">
-      <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={(s) => { filters.replace(s); setPage(1); }} />
+    <div className={`sgc-table-wrap${update ? " is-upd" : ""}`}>
+      <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={(s) => { setUpdate(true); filters.replace(s); setPage(1); }} />
       <p className="sgc-table-status" role="status">
         {kept.length
           ? `${formatInt((at - 1) * CASE_TABLE_PAGE + 1)}–${formatInt(Math.min(at * CASE_TABLE_PAGE, kept.length))} din ${formatInt(kept.length)}${filtered ? ` (din ${formatInt(rows.length)})` : ""} · ${order}`
           : "Niciun caz cu filtrele alese."}
-        {!kept.length && filtered && <> <button type="button" className="sgc-link" onClick={() => { filters.replace({}); setPage(1); }}>Scoate filtrele</button></>}
+        {!kept.length && filtered && <> <button type="button" className="sgc-link" onClick={() => { setUpdate(true); filters.replace({}); setPage(1); }}>Scoate filtrele</button></>}
       </p>
-      <table className="sgc-table" ref={table}>
+      <table className="sgc-table" ref={table} data-chart>
         <thead><tr>
           <th scope="col"><span className="th-filter">{partner}{funnel("partener")}</span></th>
           <th scope="col"><span className="th-filter">Data{funnel("data")}</span></th>
@@ -118,7 +121,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
           <th scope="col" className="c-act"><span className="sgc-sr">Surse și salvare</span></th>
         </tr></thead>
         <tbody>
-          {shown.map((r) => {
+          {shown.map((r, i) => {
             // Every bar on one scale, so the ceilings line up: the part up to the ceiling, then the excess.
             const whole = r.value / Math.max(1, r.ceiling) / max;
             return (
@@ -134,7 +137,8 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
                 {kind === "above" ? <td className="c-bar">
                   <span className="c-lab" aria-hidden="true"><span>plafon {formatInt(Math.round(r.ceiling))}</span><b>+{lei(r.diff)}</b></span>
                   <span className="c-meter" tabIndex={0} role="img" aria-label={`${lei(r.value)}${r.estimate ? " (valoarea estimată)" : ""}, cu ${lei(r.diff)} peste plafonul de ${lei(r.ceiling)}`}>
-                    <span className="c-track" style={{ width: `${whole * 100}%` }}><i style={{ width: `${(r.ceiling / Math.max(1, r.value)) * 100}%` }} /><b /></span>
+                    {/* The part up to the ceiling and the excess grow as one bar. */}
+                    <span className="c-track cm-x cm-tw" style={{ width: `${whole * 100}%`, "--i": i } as CSSProperties}><i style={{ width: `${(r.ceiling / Math.max(1, r.value)) * 100}%` }} /><b /></span>
                     <span className="sgc-tip r" aria-hidden="true"><b>{lei(r.value)}{r.estimate ? ", valoarea estimată" : ""}</b><span>plafonul: {lei(r.ceiling)}, fără TVA</span><span>cu {lei(r.diff)} peste</span></span>
                   </span>
                 </td>

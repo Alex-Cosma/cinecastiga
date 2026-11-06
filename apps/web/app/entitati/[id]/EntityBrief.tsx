@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import Term from "@/components/Term";
 import type { EntitySummary, Segment, SummaryBar } from "@/lib/entity-summary";
 
@@ -18,19 +19,20 @@ function renderSegment(s: Segment, i: number) {
   return s.strong ? <strong key={i}>{s.text}</strong> : <span key={i}>{s.text}</span>;
 }
 
+/** In motion (owner, 6 November 2026): when the list first comes into view, each share grows from 0, top to bottom. */
 function Bars({ bars }: { bars: SummaryBar[] }) {
   if (bars.length === 0) return null;
   return (
-    <div className="ent-brief-list">
+    <div className="ent-brief-list" data-chart>
       <ul className="ent-tip-col">
-        {bars.map((b) => (
+        {bars.map((b, i) => (
           <li key={b.key}>
             <div className="ent-brief-label">
               {/* The full name stays in the text (screen readers, wrapping on phones); the title shows it where it is clipped. */}
               {b.href ? <Link href={b.href} title={b.label}>{b.label}</Link> : <span title={b.label}>{b.label}</span>}
               {b.consortium && <Term tip title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term>}
             </div>
-            <div className="ent-brief-track" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, b.share * 100))}%` }} /></div>
+            <div className="ent-brief-track" aria-hidden="true"><i className="cm-x" style={{ width: `${Math.min(100, Math.max(0, b.share * 100))}%`, "--i": i } as CSSProperties} /></div>
             <div className="ent-brief-val"><span>{b.valueLabel}</span> · {b.shareLabel}</div>
           </li>
         ))}
