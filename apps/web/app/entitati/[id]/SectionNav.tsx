@@ -2,12 +2,20 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 
 export interface SectionItem {
   id?: string; // in-page anchor
   href?: string; // or a real link
   label: string;
   count?: string;
+  /** An analysis page's icon. */
+  icon?: AnalysisKey;
+  /** A small number after an analysis page's name (the signal types found), in its risk band's color. */
+  note?: string;
+  /** The note in words, on hover and for screen readers: „4 tipuri de semnale”. */
+  noteWords?: string;
+  band?: string;
 }
 
 /** Which edges of the tab row hide more tabs (drives the edge fade). */
@@ -79,7 +87,7 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     <nav className="subnav" aria-label="Secțiunile paginii">
       <div className="subnav-in" ref={ref} data-fade={fade === "none" ? undefined : fade}>
         {ind && <span className="subnav-ind" style={{ left: ind.left, width: ind.width }} aria-hidden />}
-        {items.map((it) =>
+        {items.filter((it) => it.id).map((it) =>
           it.id ? (
             <a
               key={it.id}
@@ -97,11 +105,19 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
               {it.label}
               {it.count ? <span className="c">{it.count}</span> : null}
             </a>
-          ) : (
-            <Link key={it.href} href={it.href!} className="ext">
-              {it.label} →
-            </Link>
-          ),
+          ) : null,
+        )}
+        {/* The analysis pages: one group of buttons at the row's end (owner, 6 November 2026), not tabs. */}
+        {items.some((it) => !it.id) && (
+          <span className="subnav-tools" role="group" aria-label="Analize">
+            {items.filter((it) => !it.id && it.href).map((it) => (
+              <Link key={it.href} href={it.href!} data-band={it.band} aria-label={it.noteWords ? `${it.label}, ${it.noteWords}` : undefined}>
+                {it.icon && <AnalysisIcon name={it.icon} />}
+                {it.label}
+                {it.note && <span className="n" title={it.noteWords}>{it.note}</span>}
+              </Link>
+            ))}
+          </span>
         )}
       </div>
     </nav>

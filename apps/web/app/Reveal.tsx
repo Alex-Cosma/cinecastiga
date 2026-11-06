@@ -27,10 +27,14 @@ export default function Reveal() {
       { rootMargin: "0px 0px -6% 0px", threshold: 0.03 },
     );
     for (const el of els) {
-      if (el.classList.contains("rv")) continue;
-      el.classList.add("rv");
-      const d = el.dataset.reveal;
-      if (d && /^\d$/.test(d)) el.classList.add("d" + d);
+      // Shown already: nothing to watch. Marked but not shown (a previous run's observer was disconnected, as React's
+      // development double effect does, or the route changed under it): watched again, or it would stay invisible.
+      if (el.classList.contains("in")) continue;
+      if (!el.classList.contains("rv")) {
+        el.classList.add("rv");
+        const d = el.dataset.reveal;
+        if (d && /^\d$/.test(d)) el.classList.add("d" + d);
+      }
       const r = el.getBoundingClientRect();
       // already on screen at mount: reveal on next frame (staggers via CSS delay)
       if (r.top < innerHeight && r.bottom > 0) requestAnimationFrame(() => el.classList.add("in"));

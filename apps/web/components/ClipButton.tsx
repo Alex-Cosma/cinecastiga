@@ -26,6 +26,7 @@ function AuthenticatedClipButton({
   snapshot,
   label,
   primary = false,
+  compact = false,
 }: {
   kind: "entity" | "contract" | "notice" | "person" | "query" | "flag" | "signal" | "da" | "radiografie";
   refId?: string | null;
@@ -34,6 +35,8 @@ function AuthenticatedClipButton({
   label?: string;
   /** The page's main saving action: filled, with its bookmark icon, no arrow (entity header, 4 November 2026). */
   primary?: boolean;
+  /** One row's saving action in a table: the bookmark alone, its name on hover (owner, 6 November 2026). */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<Inv[] | null>(null);
@@ -152,11 +155,17 @@ function AuthenticatedClipButton({
     <div className="clipbtn" ref={boxRef}>
       <button
         type="button"
-        className={primary ? "clipbtn-t pri" : "clipbtn-t"}
+        className={primary ? "clipbtn-t pri" : compact ? "clipbtn-t ico" : "clipbtn-t"}
         aria-expanded={open}
+        aria-label={compact ? "Salvează în anchetă" : undefined}
+        title={compact ? "Salvează în anchetă" : undefined}
         onClick={() => (open ? setOpen(false) : void openPanel())}
       >
-        {primary ? (
+        {compact ? (
+          <svg className="clipbtn-ico" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 2.5h8v11l-4-2.6-4 2.6Z" />
+          </svg>
+        ) : primary ? (
           <>
             <svg className="clipbtn-ico" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
               <path d="M4 2.5h8v11l-4-2.6-4 2.6Z" />

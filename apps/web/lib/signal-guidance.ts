@@ -16,7 +16,7 @@ const pct = (share: number): string => (share > 0 && share < 0.005 ? "sub 1%" : 
 export interface SignalGuidance {
   /** Ce verifici: the record a reader opens first, in a few words. */
   check: string;
-  /** Se poate explica: the ordinary explanations, always beside the signal. */
+  /** Explicații posibile: the ordinary explanations, always beside the signal. */
   explain: string;
 }
 
@@ -74,7 +74,7 @@ export function signalSentence(code: RiskCriterion, part: ScorePart, role: RiskR
       if (!found) return null;
       const expected = part.expected != null ? Math.round(n(part.expected)) : null;
       return `${countWords(found, "achiziție s-a oprit", "achiziții s-au oprit")} la 96–100% din plafon.`
-        + (expected != null ? ` După media instituțiilor de același tip, ne-am aștepta la ${expected === 0 ? "niciuna" : `vreo ${formatInt(expected)}`}.` : "");
+        + (expected != null ? ` După restul achizițiilor directe și media națională, ne-am aștepta la ${expected === 0 ? "niciuna" : `vreo ${formatInt(expected)}`}.` : "");
     }
     case "da_above_ceiling": {
       const found = n(part.n);

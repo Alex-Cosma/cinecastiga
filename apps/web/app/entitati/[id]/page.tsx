@@ -7,19 +7,14 @@ import { notFound } from "next/navigation";
 import {
   getEntityFlags,
   getEntityProfile,
-  getEntityPartners,
-  getEntityMonthly,
-  getEntityFlagEvidence,
   getCompanyReps,
   getRegistryCui,
   getEntityTxCounts,
   getEntityContractsAboveCap,
-  getEntityFlagRowCounts,
   getEntityPartnersPaged,
   getEntitySubjects,
   getEntityYears,
   getCompanyTurnover,
-  type FlagEvidenceRow,
   type Role,
   type EntityFlagRow,
 } from "@/lib/marts";
@@ -30,7 +25,7 @@ import { entityCountryLabel } from "@/lib/ted";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, birthNote, countyLabel, isAbroadCounty } from "@/lib/format";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
-import { parseSignalState, signalTypeCountLabel, signalUrl } from "@/lib/signals-shared";
+import { parseSignalState, signalTypeCountLabel, signalUrl, withoutRole } from "@/lib/signals-shared";
 import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_HISTORIC_MONTHS, RISK_MIN_DAS, RISK_SCORE_NOTE, riskBand, riskFact, riskHistoric, riskLabel, riskNoScoreReason, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
@@ -47,9 +42,9 @@ import TxTable from "./TxTable";
 import { txColumns } from "@/lib/entity-tx-columns";
 import { readFilters, writeFilters } from "@/lib/table-filters/codec";
 import PartnersTable from "./PartnersTable";
-import SignalsBreakdown from "./SignalsBreakdown";
-import { getSplitPairsPaged } from "@/lib/entity-splits";
+import ScoreSignals from "./ScoreSignals";
 import SectionNav from "./SectionNav";
+import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 import DropRolParam from "./DropRolParam";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
@@ -163,19 +158,11 @@ export default async function EntityPage({
   const registryCuiLookup = cui ? getRegistryCui(id) : Promise.resolve(null);
   // A reviewed older or secondary identity of an institution (owner, 4 November 2026): where its activity is now.
   const successor = successorOf(id);
-  // The repeated-purchases groups drawn in the signals section (its first page, largest total first).
-  const splitGroupsP = row.scoreParts.da_split ? getSplitPairsPaged(id, role, {}, 1).catch(() => null) : Promise.resolve(null);
-  // The main partner named under the concentration and dependence signals, the only place it is shown (audit P1F4).
-  const signalPartnersP = row.scoreParts.da_concentration || row.scoreParts.da_dependence ? getEntityPartners(id, role, 12) : Promise.resolve([]);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
-  const [partners, monthly, flagEvidence, reps, txCounts, flagRowCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
+  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover] =
     await Promise.all([
-      signalPartnersP,
-      getEntityMonthly(id, role),
-      getEntityFlagEvidence(id),
       registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
       getEntityTxCounts(id, role),
-      getEntityFlagRowCounts(id, role),
       getEntityContractsAboveCap(id, role),
       getEntitySignalCounts(id, role),
       registryCuiLookup,
@@ -192,7 +179,6 @@ export default async function EntityPage({
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
     ]);
   const continuedAt = await successorTarget;
-  const splitGroups = await splitGroupsP;
   const cuiUncorroborated = cui !== null && registryCui === null;
   // Audit F03 (b): a reviewed collision is a Romanian-looking record whose
   // number ONRC registers to another firm, not a foreign number.
@@ -206,8 +192,13 @@ export default async function EntityPage({
   const points = riskPoints(row.scoreParts, row.score);
   // The buyer's regime or an in-house firm (rf-2026.20): a hover next to the score.
   const scoreNote = row.scoreNote ? RISK_SCORE_NOTE[row.scoreNote] ?? null : null;
-  // rf-2026.22 (S8): no record in this role for 24 months reads "istoric"; the score and its evidence stay.
+  // rf-2026.22 (S8): no record in this role for 24 months reads "Inactiv"; the score and its evidence stay.
   const historic = riskHistoric(profile?.roles.find((r) => r.role === role)?.lastActivity);
+  // The header's tags (owner, 6 November 2026): the score's note, then inactivity.
+  const headFlags = [
+    ...(scoreNote ? [scoreNote] : []),
+    ...(historic ? [{ title: "Inactiv", text: `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.` }] : []),
+  ];
   // rf-2026.22 (S4b, S9b, S10): why a profile with signals has no score.
   const noScoreReason = hasRiskScore ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score: row.score }) : null;
   // The top's ledger per channel and its years chart; the bars and the undated rest add up to txCounts' value.
@@ -215,20 +206,32 @@ export default async function EntityPage({
   const years = yearsModel(activityYears.years, turnover, bucharestYear());
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
-  // The entity's analysis pages, short names; their own titles keep the questions (owner, 4 November 2026).
-  const rolQuery = bothRoles ? `?rol=${rolParam}` : "";
-  const views = [
-    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie" }] : []),
-    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături" },
-    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații" },
-  ];
   // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
   // the CRI section alone hid procedure, MF and ONRC signals from the profile.
   // The criteria of the risk score first, in the role's order, then every other signal.
   const signalTypes = [...criteria, ...FLAG_ORDER.filter((c) => !(criteria as readonly string[]).includes(c)), ...Object.keys(signalCounts).filter((c) => !FLAG_ORDER.includes(c))]
     .filter((code) => (signalCounts[code] ?? 0) > 0 && FLAG_META[code]);
   const inCri = (code: string) => (criteria as readonly string[]).includes(code);
-  const entitySignalsUrl = (code: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: id }));
+  // Its signals page, `?rol=` only for an entity that both buys and sells (owner, 6 November 2026).
+  const entitySignalsUrl = (code: string) => {
+    const href = signalUrl(parseSignalState({ tip: code, rol: role, ent: id }));
+    return bothRoles ? href : withoutRole(href);
+  };
+  // The score split into its criteria on the top's bar (ScoreSignals); a score without any stays on the bands.
+  const scoreSplit = hasRiskScore && row.score > 0 && Object.values(points).some((n) => (n ?? 0) > 0);
+  // The entity's signals page opens on the pattern with the most points (else its first signal); its tabs lead to the rest.
+  const firstSignal = (Object.entries(points) as [string, number][]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])[0]?.[0] ?? signalTypes[0];
+  // The entity's analysis pages, short names; their own titles keep the questions (owner, 4 November 2026). "Semnale"
+  // first, the signals page being hard to find from here (owner, 6 November 2026).
+  const rolQuery = bothRoles ? `?rol=${rolParam}` : "";
+  const views: { href: string; label: string; icon: AnalysisKey; note?: string; noteWords?: string; band?: string }[] = [
+    ...(firstSignal ? [{ href: entitySignalsUrl(firstSignal), label: "Semnale", icon: "semnale" as const,
+      note: formatInt(signalTypes.length), noteWords: signalTypes.length === 1 ? "un tip de semnal" : `${signalTypeCountLabel(signalTypes.length)} de semnale`,
+      ...(hasRiskScore ? { band } : {}) }] : []),
+    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie", icon: "radiografie" as const }] : []),
+    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături", icon: "legaturi" },
+    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații", icon: "comparatii" },
+  ];
   // "Pe scurt": the KPI numbers above, the same selection by CPV division, the partner list's top rows.
   const summary = composeEntitySummary({
     role, totalExact: txCounts.valueExact, nDa: txCounts.nDa, nContracts: txCounts.nContracts,
@@ -240,7 +243,12 @@ export default async function EntityPage({
   return (
     <>
       {/* Identity */}
-      <div className="ehead" id="top">
+      <div className={`ehead${headFlags.length ? ` has-flags n${headFlags.length}` : ""}`} id="top">
+        {/* Tags on the role's line, each with its reason on hover or tap (owner, 6 November 2026): the buyer's regime or an
+            in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
+        {headFlags.length > 0 && <div className="ehead-flags">
+          {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.title}</Term>)}
+        </div>}
         <div className="ehead-main">
           <p className="eyebrow">
             {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
@@ -300,7 +308,7 @@ export default async function EntityPage({
       </div>
       {/* The same analyses on a phone, where the tab row scrolls sideways and would hide them. */}
       <nav className="ehead-views" aria-label="Analize">
-        {views.map((v) => <Link key={v.href} href={v.href}>{v.label}</Link>)}
+        {views.map((v) => <Link key={v.href} href={v.href} data-band={v.band} aria-label={v.noteWords ? `${v.label}, ${v.noteWords}` : undefined}><AnalysisIcon name={v.icon} />{v.label}{v.note && <span className="n" title={v.noteWords}>{v.note}</span>}</Link>)}
       </nav>
 
       {successor && continuedAt ? (
@@ -321,28 +329,29 @@ export default async function EntityPage({
           // In the page's order (critique of 2 November 2026): the representatives come right after the summary,
           // an individual practice's holder last, before the explanations.
           ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
-          // Then the partners, the acquisitions and the signals (owner, 4 November 2026).
+          // Then the partners and the acquisitions (owner, 4 November 2026); the signals are their own page, "Semnale →"
+          // among the analyses, and the score's parts are in the top (owner, 6 November 2026).
           { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
           { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
-          ...(row.flags.length > 0 || signalTypes.length > 0
-            ? [{ id: "semnale", label: "Semnale",
-                count: signalTypeCountLabel(new Set([...row.flags, ...signalTypes]).size) }]
-            : []),
           ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
           ...views,
         ]}
       />
 
       {/* The top (owner, 2 November 2026): the risk on its bands, a ledger of the activity per channel (its swatches
-          are the chart's legend) and the value per year. How the score is made stays further down the page. */}
+          are the chart's legend) and the value per year. The score's criteria are on its bar, each a link to its page on
+          /semnale (owner, 6 November 2026). */}
       <div className={`ent-top${years ? "" : " ent-top--no-years"}`}>
         <div className="ent-risk">
           <p className="ent-risk-read">
             <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
-            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" />{scoreNote && <> <Term tip title={scoreNote.title} text={scoreNote.text}>notă</Term></>}
-              {historic && <> · <Term tip title="Istoric" text={`Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.`}>istoric</Term></>}</span>
+            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" />
+</span>
           </p>
-          {hasRiskScore && (
+          {/* Where the score comes from (owner, 6 November 2026): its criteria on the bar, each a link to its pattern's page. */}
+          <ScoreSignals hasRiskScore={hasRiskScore} score={row.score} parts={row.scoreParts} points={points} signalTypes={signalTypes}
+            signalCounts={signalCounts} noScoreReason={noScoreReason} signalsHref={entitySignalsUrl} />
+          {hasRiskScore && !scoreSplit && (
             <div className="ent-risk-scale" aria-hidden="true">
               <span className="ent-risk-track" style={{ gridTemplateColumns: `${RISK_SCALE_SLAB}fr ${RISK_BAND_MIN.moderat - RISK_SCALE_SLAB}fr ${RISK_BAND_MIN.puternic - RISK_BAND_MIN.moderat}fr ${100 - RISK_BAND_MIN.puternic}fr` }}><i /><i /><i /><i /></span>
               <span className="ent-risk-marker" style={{ left: `${Math.min(99, Math.max(1, row.score))}%` }} />
@@ -356,6 +365,7 @@ export default async function EntityPage({
           {peerLine && <p className="ent-risk-peer">{riskPeerWords(peerLine)}</p>}
           {/* rf-2026.22 (S7): the score reads only the direct acquisitions; their share of the money says how much it covers. */}
           {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer">Privește achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din bani</p>}
+          {(hasRiskScore || signalTypes.length > 0) && <Link href="/metodologie#indice" className="ent-risk-method">Cum se calculează →</Link>}
         </div>
         <div className="ent-activity">
         <table className="ent-ledger">
@@ -488,30 +498,6 @@ export default async function EntityPage({
           {aboveCap.count > aboveCap.rows.length && <p className="note">Sunt afișate cele mai mari {formatInt(aboveCap.rows.length)} din {formatInt(aboveCap.count)}.</p>}
         </details>}
       </section>
-
-      {/* The signals (variant A, owner, 4 November 2026): the score split into its criteria, one row each with what was
-          found, what to check and how it may be explained; the rule and its limits on /metodologie. */}
-      {(row.flags.length > 0 || signalTypes.length > 0) && (
-        <SignalsBreakdown
-          id={id}
-          role={role}
-          entityName={cleanName(row.name)}
-          hasRiskScore={hasRiskScore}
-          noScoreReason={noScoreReason}
-          score={row.score}
-          parts={row.scoreParts}
-          points={points}
-          signalTypes={signalTypes}
-          signalCounts={signalCounts}
-          flagRowCounts={flagRowCounts}
-          recordsHref={(code) => `${q(base, { sem: code, p: undefined })}#achizitii`}
-          signalsHref={entitySignalsUrl}
-          splitGroups={splitGroups}
-          yearEndYears={flagEvidence.filter((e: FlagEvidenceRow) => e.flagCode === "da_year_end" && e.evidence?.["year"]).map((e) => String(e.evidence!["year"]))}
-          monthly={monthly}
-          topPartner={partners[0]?.partnerName ? { id: String(partners[0].partnerId), name: partners[0].partnerName } : null}
-        />
-      )}
 
       {/* An individual practice has no ONRC representative: the one register person with its holder's name, a lead
           (owner decision of 1 November 2026, variant B); never a signal, a risk or a count of the person's firms. Last before

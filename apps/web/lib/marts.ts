@@ -773,6 +773,8 @@ export interface RiskEntity {
   flags: string[];
   /** The risk score over 100 (rf-2026.18). */
   score: number;
+  /** The score's parts per criterion (marts.entity_flags.score_parts), where the list reads them. */
+  parts?: ScoreParts;
 }
 
 /** The orders of /semnale's risk list (signals-shared.ts RISK_SORTS): "cri" is the risk score. */

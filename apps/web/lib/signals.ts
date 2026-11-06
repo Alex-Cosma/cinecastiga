@@ -1,5 +1,6 @@
 import { createDb, type DbSql } from "@seap/db";
 import type { FlagInstance, RiskEntity } from "./marts";
+import type { ScoreParts } from "./risk-score";
 
 import { SIGNAL_PAGE_SIZE, RISK_PAGE_SIZE, type SignalState } from "./signals-shared";
 export * from "./signals-shared";
@@ -33,7 +34,7 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
         where c.ca_notice_id = f.source_id and cw.entity_id is distinct from f.entity_id ${countyFor(sql`cw.entity_id`)})`;
   const type = code ? sql`and f.flag_code = ${code}` : sql``;
   // One entity's occurrences in the same population, so its profile counts equal
-  // /semnale?ent=. The endpoint test is exact; the OR only lets the planner use
+  // /entitati/{id}/semnale. The endpoint test is exact; the OR only lets the planner use
   // the entity/partner indexes. A supplier's award signals are the notices it won;
   // an authority recorded as winner of its own notice is not a supplier (audit F12).
   const entity = state.entity ?? null;
@@ -59,18 +60,19 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
   )`;
 }
 
-interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null; score: number }
-const riskRow = (r: RiskRow): RiskEntity => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [], score: Number(r.score ?? 0) });
+interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null; score: number; score_parts?: ScoreParts | null }
+const riskRow = (r: RiskRow): RiskEntity => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [], score: Number(r.score ?? 0), parts: r.score_parts ?? {} });
 const profileCounty = (sql: DbSql, county: string | null) => county ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))` : sql``;
 
-export async function readSignalPage(sql: DbSql, state: SignalState): Promise<SignalPage> {
+/** One page of a signal type's occurrences, largest first; an entity's case page reads longer pages (CASE_PAGE_SIZE). */
+export async function readSignalPage(sql: DbSql, state: SignalState, pageSize = SIGNAL_PAGE_SIZE): Promise<SignalPage> {
   return sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
     const population = signalPopulation(q, state, state.code);
     const totals = await q`select count(*)::text n from ${population} population`;
     const total = Number(totals[0]?.n ?? 0);
-    const page = Math.min(state.page, Math.max(0, Math.ceil(total / SIGNAL_PAGE_SIZE) - 1));
+    const page = Math.min(state.page, Math.max(0, Math.ceil(total / pageSize) - 1));
     const rows = await q`
       select selected.*, selected.total_ron::text total_exact, f.period, f.evidence, f.methodology_version,
         case when selected.flag_code = 'da_round' then f.evidence || jsonb_build_object(
@@ -85,12 +87,12 @@ export async function readSignalPage(sql: DbSql, state: SignalState): Promise<Si
           ) winner
         ) else '[]'::jsonb end winners
       from (select * from ${population} population
-        order by total_ron desc nulls last, severity desc nulls last, id limit ${SIGNAL_PAGE_SIZE} offset ${page * SIGNAL_PAGE_SIZE}) selected
+        order by total_ron desc nulls last, severity desc nulls last, id limit ${pageSize} offset ${page * pageSize}) selected
       join core.flags f on f.id = selected.id
       left join core.entities e on e.id = selected.entity_id
       left join core.entities p on p.id = selected.partner_id
       order by selected.total_ron desc nulls last, selected.severity desc nulls last, selected.id`;
-    return { total, page, pageSize: SIGNAL_PAGE_SIZE, rows: rows.map((r) => ({
+    return { total, page, pageSize, rows: rows.map((r) => ({
       id: String(r.id), totalExact: r.total_exact ?? null, flagCode: String(r.flag_code), subjectType: String(r.subject_type),
       entityId: r.entity_id == null ? null : String(r.entity_id), entityName: r.entity_name ?? null, entityCounty: r.entity_county ?? null,
       partnerId: r.partner_id == null ? null : String(r.partner_id), partnerName: r.partner_name ?? null,
@@ -120,7 +122,7 @@ export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / RISK_PAGE_SIZE) - 1));
     const col = { cri: q`score`, flags: q`n_flags`, das: q`n_das`, total: q`coalesce(total_ron, 0)`, name: q`lower(unaccent(coalesce(name_display, '')))` }[state.sort];
     const order = state.dir === "asc" ? q`${col} asc` : q`${col} desc`;
-    const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags, score
+    const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags, score, score_parts
       from marts.entity_flags where ${where} order by ${order}, total_ron desc nulls last, entity_id
       limit ${RISK_PAGE_SIZE} offset ${page * RISK_PAGE_SIZE}`;
     return { total, page, pageSize: RISK_PAGE_SIZE, rows: (rows as unknown as RiskRow[]).map(riskRow) };
@@ -153,7 +155,7 @@ export async function readRiskScoreDistribution(sql: DbSql, state: SignalState):
 export const getSignalTypeCounts = (state: SignalState) => readSignalTypeCounts(database(), state);
 
 /** Every signal type of one entity in one role: the same population and counts
- * as /semnale?ent=, including types outside the CRI (procedures, MF, ONRC). */
+ * as /entitati/{id}/semnale, including types outside the CRI (procedures, MF, ONRC). */
 export async function readEntitySignalCounts(sql: DbSql, entityId: string, role: SignalState["role"]): Promise<Record<string, number>> {
   if (!/^[1-9]\d{0,17}$/.test(entityId)) return {};
   return sql.begin("isolation level repeatable read read only", async tx => {
@@ -166,10 +168,4 @@ export async function readEntitySignalCounts(sql: DbSql, entityId: string, role:
 }
 export const getEntitySignalCounts = (entityId: string, role: SignalState["role"]) => readEntitySignalCounts(database(), entityId, role);
 
-/** Display name for the /semnale entity filter; null when the id is unknown, empty when unnamed. */
-export async function readSignalEntityName(sql: DbSql, entityId: string): Promise<string | null> {
-  const rows = await sql`select name_display from core.entities where id = ${entityId}`;
-  return rows[0] ? String(rows[0].name_display ?? "") : null;
-}
-export const getSignalEntityName = (entityId: string) => readSignalEntityName(database(), entityId);
 export const getRiskScoreDistribution = (state: SignalState) => readRiskScoreDistribution(database(), state);

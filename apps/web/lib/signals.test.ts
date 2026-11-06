@@ -166,14 +166,21 @@ describe("redesigned signal navigation", () => {
 });
 
 describe("signals of one entity (audit F24)", () => {
-  it("round-trips the entity filter through type changes and paging, and resets the page when it is removed", () => {
+  it("links one entity's signals to its own page, /entitati/{id}/semnale (owner, 6 November 2026), through type changes and paging", () => {
     const state = parseSignalState({ tip: "fin_tiny_staff", rol: "supplier", ent: "1967166", p: "2" });
     expect(state).toMatchObject({ entity: "1967166", role: "supplier", page: 2 });
-    const typed = parseSignalState(Object.fromEntries(new URL(signalUrl(state, { code: "fin_public_reliance" }), "http://local").searchParams));
-    expect(typed).toMatchObject({ entity: "1967166", code: "fin_public_reliance", page: 0 });
-    const paged = parseSignalState(Object.fromEntries(new URL(signalUrl(state, { page: 5 }), "http://local").searchParams));
-    expect(paged).toEqual({ ...state, page: 5 });
+    // The entity page's reading of an address: its id from the path, the rest from the query.
+    const read = (href: string) => {
+      const url = new URL(href, "http://local");
+      expect(url.pathname).toBe("/entitati/1967166/semnale");
+      expect(url.searchParams.has("ent")).toBe(false);
+      return parseSignalState({ ...Object.fromEntries(url.searchParams), ent: "1967166" });
+    };
+    expect(new URL(signalUrl(state), "http://local").searchParams.get("rol")).toBe("furnizor");
+    expect(read(signalUrl(state, { code: "fin_public_reliance" }))).toMatchObject({ entity: "1967166", code: "fin_public_reliance", page: 0 });
+    expect(read(signalUrl(state, { page: 5 }))).toEqual({ ...state, page: 5 });
     const cleared = new URL(signalUrl(state, { entity: null }), "http://local");
+    expect(cleared.pathname).toBe("/semnale");
     expect(cleared.searchParams.has("ent")).toBe(false);
     expect(cleared.searchParams.has("p")).toBe(false);
   });

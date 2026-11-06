@@ -37,8 +37,6 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
     corpus: ["site:county-breakdown", "site:home-roads"] },
   { file: "app/entitati/[id]/page.tsx", occurrences: 5, kind: "producer", what: "Entity page: its records per channel (sources open), the firms of a representative",
     corpus: ["site:entity-channel-authority-da", "site:entity-channel-authority-contracts", "site:entity-channel-authority-all", "site:entity-channel-supplier-da", "site:person-firms"] },
-  { file: "app/entitati/[id]/YearMiniChart.tsx", occurrences: 3, kind: "producer", what: "Entity page: one month of direct acquisitions (sources open)",
-    corpus: ["site:entity-month-authority", "site:entity-month-supplier"] },
   { file: "app/entitati/[id]/PartnersTable.tsx", occurrences: 3, kind: "producer", what: "Entity page partners: one buyer–firm pair (sources open)", corpus: ["site:pair"] },
   { file: "app/contracte/[nid]/page.tsx", occurrences: 3, kind: "producer", what: "Contract page: the pair's records (sources open)", corpus: ["site:pair"] },
   { file: "app/entitati/[id]/radiografie/DependencyScatter.tsx", occurrences: 2, kind: "producer", what: "Radiografie: the pair's procedure contracts, in the sources drawer", corpus: ["site:pair-contracts"] },

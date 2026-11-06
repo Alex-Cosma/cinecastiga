@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { readCaseTarget } from "@/lib/signal-case";
 import { getSignalSources } from "@/lib/signal-sources";
 import { FLAG_META, flagFindingLabel } from "@/lib/flags";
 import { noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote, thresholdTypeLabel } from "@/lib/risk-presentation";
@@ -22,6 +23,9 @@ export default async function SignalSourcesPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ p?: string }>;
 }) {
   const [{ id }, { p }] = await Promise.all([params, searchParams]);
+  // The direct-acquisition patterns' cases live on their entity's pattern page now (owner, 6 November 2026).
+  const target = await readCaseTarget(id).catch(() => null);
+  if (target) redirect(target);
   const finding = await getSignalSources(id, Number(p ?? 0));
   if (!finding) notFound();
   const meta = FLAG_META[finding.code];

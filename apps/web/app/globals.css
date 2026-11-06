@@ -513,14 +513,6 @@ table.rank td .src a:hover { color: var(--accent); }
 /* flag-card evidence: per-instance facts + one-year monthly mini-chart */
 .ev-lines { margin: 8px 0 4px; padding-left: 18px; font-size: 13px; }
 .ev-lines li { margin: 3px 0; }
-.yem { display: flex; align-items: flex-end; gap: 4px; height: 84px; margin: 10px 0 4px; max-width: 420px; }
-.yem a.b { text-decoration: none; }
-.yem .b:hover .f { filter: brightness(0.85); }
-.yem .b { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; text-align: center; }
-.yem .b .f { background: var(--bar); border-radius: 2px 2px 0 0; }
-.yem .b.dec .f { background: var(--accent); }
-.yem .b .l { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
-.yem .b.dec .l { color: var(--accent); font-weight: 700; }
 .ask-caveats-d summary {
   cursor: pointer; font-size: 12.5px; color: var(--muted);
   list-style: none; user-select: none; width: fit-content;
@@ -1374,7 +1366,6 @@ main > .wrap:has(> .home-page) { display: block; }
 .subnav-in a:hover { color: var(--ink); text-decoration: none; }
 .subnav-in a.on { color: var(--ink); }
 .subnav-in a .c { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-left: 5px; }
-.subnav-in a.ext { margin-left: auto; color: var(--accent); }
 .subnav-ind { position: absolute; bottom: 0; height: 2px; background: var(--ink); border-radius: 2px; transition: left var(--med) var(--ease), width var(--med) var(--ease); }
 .section .hint { font-size: 14px; }
 .method-card { border-radius: var(--r2); border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line2)); padding: 0; overflow: hidden; margin-bottom: 14px; transition: box-shadow var(--med) var(--ease); }
