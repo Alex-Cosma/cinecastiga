@@ -1,0 +1,14 @@
+/* The page cross-fade (components/motion/PageTransition.tsx): the old page fades out in 150 ms, the new one in over
+   210 ms; no slide. The header is anchored and does not take part; clicks pass through while it runs. Browser
+   Back/Forward starts no view transition, so it is never animated. */
+::view-transition { pointer-events: none; }
+::view-transition-old(.page-out) { animation: page-out 150ms var(--ease) both; }
+::view-transition-new(.page-in) { animation: page-in 210ms var(--ease) 60ms both; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; } }
+::view-transition-group(site-header) { animation: none; z-index: 100; }
+::view-transition-old(site-header) { display: none; }
+::view-transition-new(site-header) { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0s !important; animation-delay: 0s !important; }
+}
