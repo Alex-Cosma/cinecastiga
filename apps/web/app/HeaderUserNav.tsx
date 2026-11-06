@@ -8,17 +8,19 @@ import { authClient } from "@/lib/auth-client";
 /**
  * Right side of the site header. Anonymous visitors get a quiet
  * "Autentificare" link; logged-in watchdogs get their anchete and an avatar
- * that opens the account (admins also the admin panel).
+ * that opens the account (admins also the admin panel). Until the session is
+ * confirmed, the server's cookie hint decides what stands there, so the header
+ * does not shift: no cookie draws the link at once, a cookie keeps the avatar's room.
  */
-export default function HeaderUserNav() {
+export default function HeaderUserNav({ sessionHint }: { sessionHint: boolean }) {
   const { data, isPending } = authClient.useSession();
   const path = usePathname() ?? "";
   // Another auth subscriber can resolve the session before this streamed
   // boundary hydrates. Keep its first client render identical to the server.
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => setHydrated(true), []);
-  if (!hydrated || isPending) return <span className="user-nav" aria-hidden />;
-  if (!data) {
+  if ((!hydrated || isPending) && sessionHint) return <span className="user-nav user-nav-wait" aria-hidden />;
+  if (!hydrated || isPending || !data) {
     return (
       <nav className="user-nav">
         <Link href="/login" className={path.startsWith("/login") ? "on" : undefined}>
