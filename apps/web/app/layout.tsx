@@ -8,6 +8,7 @@ import "./approved.css";
 import "./guide.css";
 import "@/components/ghost/ghost.css";
 import "@/components/motion/chart-motion.css";
+import "@/components/motion/page-transition.css";
 import { Suspense } from "react";
 import { G } from "@/components/ghost/Ghost";
 import { NavPending } from "@/components/ghost/client";
@@ -45,7 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <a className="d-skip-link" href="#main-content">Mergi la conținut</a>
-        <header className="site-header">
+        <header className="site-header" style={{ viewTransitionName: "site-header" }}>
           <div className="wrap">
             <Link href="/" className="brand" aria-label={SITE_NAME}>
               cine<em>câștigă</em><b>?</b>
