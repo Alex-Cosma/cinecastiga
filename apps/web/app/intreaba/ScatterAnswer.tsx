@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { countWords, formatDecimal } from "../../lib/ask/answer-text";
 import type { LocateMatch, LocateResult } from "../../lib/ask/facet-parts";
 import { LOCATE_DEBOUNCE_MS, LOCATE_MIN_CHARS } from "../../lib/ask/facet-parts";
@@ -14,6 +14,7 @@ import {
 import { namedKind, SCATTER_FLAGS_BY_ROLE, type AskSpec } from "../../lib/ask/spec";
 import { flagEntityRule, flagLabel } from "../../lib/flags";
 import { G } from "../../components/ghost/Ghost";
+import { useChartMotion } from "./answer/chart-motion";
 import { RISK_BAND_CLASS, riskBand, riskScoreText } from "../../lib/risk-score";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import EntityName from "../../components/EntityName";
@@ -219,6 +220,9 @@ export function ScatterGhost({ spec }: { spec: AskSpec }) {
   </div>;
 }
 
+/** A mark that answers a click (a ring) or a name: in over --fast. */
+const FAST = { "--cm-dur": "var(--fast)" } as CSSProperties;
+
 export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProps) {
   const evidence = useAnswerEvidence();
   const [wrap, width] = useWidth();
@@ -233,6 +237,10 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const [chosen, setChosen] = useState<{ rank?: string; flag?: string }>({});
   const searchSeq = useRef(0);
   const listRef = useRef<HTMLOListElement>(null);
+  // The cloud first shows with its zones and grid in place: the group (cells or points) fades in as one, the listed
+  // points fade in where they are, together, and the names come last. Another order or signal re-colours the listed
+  // points (a short fill transition, scatter.css) and fades in the points and cells that join (owner, 6 November 2026).
+  const motion = useChartMotion();
   if (answered !== data) { setAnswered(data); setChosen({}); setMore(SCATTER_LIST_PAGE); setPicked(null); setFound(null); }
 
   const { role } = data;
@@ -468,7 +476,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     {data.group.small ? <p className="sc-small" role="note">
       {countWords(data.group.n, "profil", "profiluri")} în grup: prea puține pentru un nor. Le arătăm ca listă.
       {hasPlace && <>{" "}<Link className="qb-relax-link" href={widenHref}>{widenLabel}<span className="qb-glyph" aria-hidden="true">›</span></Link></>}
-    </p> : <figure className="sc-figure">
+    </p> : <figure className="sc-figure" {...motion.root}>
       <svg className="sc-chart" role="img" width={g.box.width} height={g.box.height} viewBox={`0 0 ${g.box.width} ${g.box.height}`}
         aria-label={legacy
           ? `Norul de risc: ${countWords(data.group.n, "profil", "profiluri")}, pe ${levels + 1} benzi după numărul de semnale și pe scara valorii achizițiilor directe. Lista de mai jos are aceleași profiluri, cu cele numite.`
@@ -498,18 +506,21 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           <line x1={g.x(data.p90)} x2={g.x(data.p90)} y1={g.pad.t - 4} y2={g.box.height - g.pad.b} />
           <text x={p90At.x} y={p90At.y} textAnchor={p90At.anchor}>{p90Words}</text>
         </g>}
-        {"bands" in data.cloud && <g className="sc-cells">{cellRects(data.cloud.bands, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o} className="sc-cell" />)}</g>}
-        {"bands" in data.cloud && data.cloud.flagged && <g className="sc-cells is-flag">{cellRects(data.cloud.flagged, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={Math.min(1, c.o + 0.15)} className="sc-cell" />)}</g>}
-        {all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}
-        {all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}
-        {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""}`} />)}
-        {extra.map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className={`sc-dot${d.flagged ? " is-flag" : ""}`} />)}
-        {labels.map((l) => <text key={l.id} x={l.x} y={l.y} textAnchor={l.anchor} className="sc-name">{l.text}</text>)}
+        {/* Up to 2000 points or about 300 cells: each layer fades as a group, never point by point. A signal's layer is
+            its own (keyed by it): another signal fades its points in. */}
+        {"bands" in data.cloud && <g className={`sc-cells ${motion.enter("cm-fade")}`}>{cellRects(data.cloud.bands, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o} className="sc-cell" />)}</g>}
+        {"bands" in data.cloud && data.cloud.flagged && <g key={`cells:${flag ?? ""}`} ref={motion.join} className={`sc-cells is-flag ${motion.enter("cm-fade")}`}>{cellRects(data.cloud.flagged, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={Math.min(1, c.o + 0.15)} className="sc-cell" />)}</g>}
+        <g className={motion.enter("cm-fade")}>{all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}</g>
+        <g key={`points:${flag ?? ""}`} ref={motion.join} className={motion.enter("cm-fade")}>{all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}</g>
+        {/* The list's points (at most 50): each fades in at its place, together; one the list gains fades in. */}
+        {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""} cm-tw ${motion.enter("cm-pt")}`} />)}
+        {extra.map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4} className={`sc-dot${d.flagged ? " is-flag" : ""}`} />)}
+        {labels.map((l) => <text key={l.id} ref={motion.join} x={l.x} y={l.y} textAnchor={l.anchor} className={`sc-name ${motion.enter("cm-fade cm-late")}`} style={FAST}>{l.text}</text>)}
         {picked && (() => {
           const d = drawn.find((x) => x.point.id === picked.id);
-          return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring" /> : null;
+          return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring cm-pt" style={FAST} /> : null;
         })()}
-        {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find" /> : null; })}
+        {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find cm-pt" style={FAST} /> : null; })}
       </svg>
       {hover && <div className="sc-hover" style={{ left: Math.min(hover.x + 12, g.box.width - 190), top: Math.max(hover.y - 8, 0) }} role="presentation">
         <b>{cleanName(hover.dot.point.name)}</b>

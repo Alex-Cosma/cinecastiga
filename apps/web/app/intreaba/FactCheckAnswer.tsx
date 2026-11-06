@@ -18,6 +18,7 @@ import { shareLabel } from "../../lib/entity-summary";
 import { cleanName, formatRonFull } from "../../lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import HelpTip from "./builder/HelpTip";
+import { useChartMotion } from "./answer/chart-motion";
 import "./fact-check.css";
 
 /*
@@ -200,6 +201,8 @@ function SourceLink({ onClick, children, n }: { onClick: (() => void) | undefine
 
 /** The profile (final §4.4): each line only when it has something to split. */
 function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }) {
+  // The years' columns grow together when the profile first shows; a new answer for the pair tweens them in place.
+  const motion = useChartMotion();
   const years = f.years ?? [];
   const domains = f.domains ?? [];
   const shown = domains.length > DOMAINS_SHOWN + 1 ? domains.slice(0, DOMAINS_SHOWN) : domains;
@@ -208,19 +211,19 @@ function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }
   const c = f.channels;
   const lines: ReactNode[] = [];
   if (years.length >= 2) lines.push(<Line key="y" label="Pe ani">
-    <div className="fc-yrs" style={{ "--n": years.length, "--phone": Math.min(years.length, YEARS_PER_PHONE_ROW) } as CSSProperties}>
+    <div className="fc-yrs" style={{ "--n": years.length, "--phone": Math.min(years.length, YEARS_PER_PHONE_ROW) } as CSSProperties} {...motion.root}>
       {years.map((y) => {
         const partial = y.year === f.partialYear;
         const label = `${y.year}${partial ? "*" : ""}`;
         const open = sources(`${recordWords(y.count)} din ${y.year}`, { years: [y.year] });
         const body = <>
           <em>{y.count.toLocaleString("ro-RO")}</em>
-          <i style={{ height: `${Math.max(3, (y.count / peak) * 100)}%` }} />
+          <i className={`cm-tw ${motion.enter("cm-y")}`} style={{ height: `${Math.max(3, (y.count / peak) * 100)}%` }} />
           <span>{label}</span>
         </>;
         const title = `${recordWords(y.count)} din ${y.year} · ${lei(y.value)}${partial ? " · an incomplet" : ""}`;
-        return open ? <button key={y.year} type="button" className={`fc-yb${partial ? " is-partial" : ""}`} title={title} aria-label={`Vezi ${title}`} onClick={open}>{body}</button>
-          : <span key={y.year} className={`fc-yb${partial ? " is-partial" : ""}`} title={title}>{body}</span>;
+        return open ? <button key={y.year} ref={motion.join} type="button" className={`fc-yb${partial ? " is-partial" : ""}`} title={title} aria-label={`Vezi ${title}`} onClick={open}>{body}</button>
+          : <span key={y.year} ref={motion.join} className={`fc-yb${partial ? " is-partial" : ""}`} title={title}>{body}</span>;
       })}
     </div>
     {(f.undated?.count ?? 0) > 0 && <p className="fc-note qb-tipwrap">+{f.undated!.count.toLocaleString("ro-RO")} fără dată <HelpTip tip={{ title: "Fără dată plauzibilă", text: FACT_TIPS.undated }} /></p>}

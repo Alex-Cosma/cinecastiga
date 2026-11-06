@@ -88,6 +88,8 @@
   .cmp-mirror-a, .cmp-mirror-b { flex-direction: column; align-items: flex-start; gap: 3px; white-space: normal; }
   .cmp-mirror-b { flex-direction: column-reverse; justify-content: flex-end; }
   .cmp-mirror-a i, .cmp-mirror-b i { max-width: 100%; height: 10px; }
+  /* Both bars start at the left here: the first one grows to the right too (desktop: from the names outwards). */
+  .cmp-mirror-a i.cm-xr { --cm-k: cm-x; }
   .cmp-panel { padding: 16px; }
 }
 

@@ -16,6 +16,7 @@ import { useTip } from "./blocks";
 import {
   cardSpan, consortiumWords, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatRow, sharedSubtitle, yearColumns, yearReadout, type YearColumn,
 } from "./compare-answer";
+import { useChartMotion, type ChartMotion } from "./answer/chart-motion";
 import "./compare.css";
 
 /**
@@ -42,6 +43,8 @@ export function CompareBlock({ data, partial = [], dataset = "all", shared = fal
   /** The shared clients are none: the same question on every client. */
   onAllClients?: () => void;
 }) {
+  // The two cards' bars enter together, never A then B (owner, 6 November 2026); each section below is its own chart.
+  const motion = useChartMotion();
   const [a, b] = data.entities;
   if (!a || !b) return <p className="ask-empty">Niciun rezultat.</p>;
   const firms = a.role === "supplier";
@@ -57,9 +60,9 @@ export function CompareBlock({ data, partial = [], dataset = "all", shared = fal
   const perCapita = perCapitaShown(a, b);
   return (
     <div className="cmp">
-      <div className="cmp-cards">
-        <CompareCard entity={a} side="a" dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} />
-        <CompareCard entity={b} side="b" dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} />
+      <div className="cmp-cards" {...motion.root}>
+        <CompareCard entity={a} side="a" dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} motion={motion} />
+        <CompareCard entity={b} side="b" dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} motion={motion} />
       </div>
       <Years a={a} b={b} partial={partial} />
       {data.shared && <Partners data={data} firms={firms} shared={shared} />}
@@ -99,7 +102,7 @@ function RoleWord({ entity: e }: { entity: CompareEntity }) {
   return <>autoritate</>;
 }
 
-function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: CompareEntity; side: "a" | "b"; dataset: string; perCapita: boolean; period: string | null }) {
+function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { entity: CompareEntity; side: "a" | "b"; dataset: string; perCapita: boolean; period: string | null; motion: ChartMotion }) {
   const evidence = useAnswerEvidence();
   const firms = e.role === "supplier";
   const contracts = e.streams?.contracts;
@@ -122,9 +125,9 @@ function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: 
         : <p className="cmp-big">{formatRon(e.value)} <small>{countWords(e.count, "înregistrare", "înregistrări")}{consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}</small></p>}
       {e.streams && dataset === "all" && total > 0 && (
         <>
-          <div className="cmp-split" aria-hidden="true">
-            <i style={{ width: `${(contracts!.value / total) * 100}%` }} />
-            <i style={{ width: `${(e.streams.da.value / total) * 100}%` }} />
+          <div className={`cmp-split ${motion.enter("cm-x")}`} ref={motion.join} aria-hidden="true">
+            <i className="cm-tw" style={{ width: `${(contracts!.value / total) * 100}%` }} />
+            <i className="cm-tw" style={{ width: `${(e.streams.da.value / total) * 100}%` }} />
           </div>
           <p className="cmp-legend">
             <span>Proceduri · {formatRon(contracts!.value)} · {formatInt(contracts!.count)}</span>
@@ -159,11 +162,11 @@ function CompareCard({ entity: e, side, dataset, perCapita, period }: { entity: 
             <dt>Sediul furnizorilor <Term id="sediu-furnizori" tip /></dt>
             {/* Against the institution's county: without it, no class can be said (S4 review: „0%” read as none local). */}
             {"none" in seats ? <dd className="cmp-seat-none">{seats.none}</dd> : <dd>
-              <span className="cmp-seat" aria-hidden="true">
-                <i style={{ "--w": `${seats.parts.same * 100}%` } as CSSProperties} />
-                <i style={{ "--w": `${seats.parts.other * 100}%` } as CSSProperties} />
-                <i style={{ "--w": `${seats.parts.abroad * 100}%` } as CSSProperties} />
-                <i className="cmp-seat-unknown" style={{ "--w": `${seats.parts.unknown * 100}%` } as CSSProperties} />
+              <span className={`cmp-seat ${motion.enter("cm-x")}`} ref={motion.join} aria-hidden="true">
+                <i className="cm-tw" style={{ "--w": `${seats.parts.same * 100}%` } as CSSProperties} />
+                <i className="cm-tw" style={{ "--w": `${seats.parts.other * 100}%` } as CSSProperties} />
+                <i className="cm-tw" style={{ "--w": `${seats.parts.abroad * 100}%` } as CSSProperties} />
+                <i className="cmp-seat-unknown cm-tw" style={{ "--w": `${seats.parts.unknown * 100}%` } as CSSProperties} />
               </span>
               <span className="cmp-seat-legend">{seats.words.map((words) => <span key={words}>{words}</span>)}</span>
             </dd>}
@@ -233,6 +236,8 @@ const shortName = (name: string) => cleanName(name).split(/\s+/).slice(0, 2).joi
 function Years({ a, b, partial }: { a: CompareEntity; b: CompareEntity; partial: PartialYear[] }) {
   const t = useTip();
   const [chosen, setChosen] = useState<string | null>(null);
+  // A year's two columns grow together, the years left to right; the same years asked again tween their heights.
+  const motion = useChartMotion();
   const columns = yearColumns(a, b);
   if (columns.length === 0) return null;
   const max = Math.max(...columns.flatMap((c) => [c.a.value, c.b.value]), 1);
@@ -244,17 +249,17 @@ function Years({ a, b, partial }: { a: CompareEntity; b: CompareEntity; partial:
       <h3>Pe ani</h3>
       <p className="cmp-key"><span className="cmp-key-a">{nameA}</span><span className="cmp-key-b">{nameB}</span>{partial.length > 0 && <span>hașurat = an acoperit parțial</span>}</p>
       {t.el}
-      <div className="cmp-years" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, maxWidth: columns.length * 120 }}>
-        {columns.map((column) => {
+      <div className="cmp-years" style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(0, 1fr))`, maxWidth: columns.length * 120 }} {...motion.root}>
+        {columns.map((column, i) => {
           const part = !column.older && partial.some((p) => String(p.year) === column.key) ? " cmp-part" : "";
           const [one, two] = read(column);
           return (
-            <button key={column.key} type="button" className={`cmp-year${column.older ? " cmp-year-old" : ""}`} aria-pressed={chosen === column.key}
+            <button key={column.key} ref={motion.join} type="button" className={`cmp-year${column.older ? " cmp-year-old" : ""}`} aria-pressed={chosen === column.key}
               aria-label={`${column.label}: ${one}; ${two}`} onClick={() => setChosen((current) => current === column.key ? null : column.key)}
               {...t.bind(column.label, one, two)}>
               <span className="cmp-bars" aria-hidden="true">
-                <i className={`cmp-bar-a${part}`} style={{ height: `${(column.a.value / max) * 100}%` }} />
-                <i className={`cmp-bar-b${part}`} style={{ height: `${(column.b.value / max) * 100}%` }} />
+                <i className={`cmp-bar-a${part} cm-tw ${motion.enter("cm-y")}`} style={{ height: `${(column.a.value / max) * 100}%`, "--i": i } as CSSProperties} />
+                <i className={`cmp-bar-b${part} cm-tw ${motion.enter("cm-y")}`} style={{ height: `${(column.b.value / max) * 100}%`, "--i": i } as CSSProperties} />
               </span>
               <span className="cmp-year-label" aria-hidden="true"><span className="cmp-long">{column.label}</span><span className="cmp-short">{column.short}</span>{part ? "*" : ""}</span>
             </button>
@@ -270,6 +275,8 @@ const SHOWN_SHARED = 6;
 
 function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; shared: boolean }) {
   const [all, setAll] = useState(false);
+  // Both sides of a row grow together, from the names outwards; rows top down; a row added later fades in.
+  const motion = useChartMotion();
   const [a, b] = data.entities as [CompareEntity, CompareEntity];
   const both = data.shared!;
   if (both.total === 0) {
@@ -277,9 +284,9 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
       <section className="cmp-section">
         <h3>{firms ? "Clienți" : "Furnizori"}</h3>
         <p className="cmp-none">{firms ? "Niciun client comun." : "Niciun furnizor comun."}</p>
-        <div className="cmp-two">
-          <TopPartners entity={a} side="a" firms={firms} />
-          <TopPartners entity={b} side="b" firms={firms} />
+        <div className="cmp-two" {...motion.root}>
+          <TopPartners entity={a} side="a" firms={firms} motion={motion} />
+          <TopPartners entity={b} side="b" firms={firms} motion={motion} />
         </div>
       </section>
     );
@@ -290,21 +297,22 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
   // With P, each bar hatches the part won together (final §3.4): its share of the bar.
   const jointPart = (side: { value: number; joint?: number }) => side.joint && side.value > 0 ? `${Math.min(side.joint / side.value, 1) * 100}%` : null;
   const anyJoint = both.rows.some((r) => (r.a.joint ?? 0) > 0 || (r.b.joint ?? 0) > 0);
-  const Bar = ({ side }: { side: { value: number; joint?: number } }) => {
+  // A function, not a component made in the render: the same bar element stays, so its width tweens.
+  const bar = (side: { value: number; joint?: number }, grow: "cm-x" | "cm-xr", i: number) => {
     const part = jointPart(side);
-    return <i style={{ width: width(side.value) }}>{part && <b style={{ width: part }} />}</i>;
+    return <i className={`cm-tw ${motion.enter(grow)}`} style={{ width: width(side.value), "--i": i } as CSSProperties}>{part && <b className="cm-tw" style={{ width: part }} />}</i>;
   };
   return (
     <section className="cmp-section">
       <h3>{shared ? "Pe fiecare client comun" : firms ? "Clienți comuni" : "Furnizori comuni"} · {countWords(both.total, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}{shared && <> <Term id="clienti-comuni" tip /></>}</h3>
       {shared && anyJoint && <p className="cmp-key"><span className="cmp-key-a">{shortName(a.name)}</span><span className="cmp-key-b">{shortName(b.name)}</span><span className="cmp-key-joint">câștigat împreună</span></p>}
-      <div className="cmp-mirror">
+      <div className="cmp-mirror" {...motion.root}>
         <p className="cmp-mirror-head"><span>{shortName(a.name)}</span><span>{firms ? "Instituția" : "Firma"}</span><span>{shortName(b.name)}</span></p>
-        {rows.map((row) => (
-          <div className="cmp-mirror-row" key={row.entityId}>
+        {rows.map((row, i) => (
+          <div className="cmp-mirror-row" key={row.entityId} ref={motion.join}>
             <Link className="cmp-mirror-name" href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>
-            <div className="cmp-mirror-a"><span>{formatRon(row.a.value)} · {formatInt(row.a.count)}</span><Bar side={row.a} /></div>
-            <div className="cmp-mirror-b"><Bar side={row.b} /><span>{formatRon(row.b.value)} · {formatInt(row.b.count)}</span></div>
+            <div className="cmp-mirror-a"><span>{formatRon(row.a.value)} · {formatInt(row.a.count)}</span>{bar(row.a, "cm-xr", i)}</div>
+            <div className="cmp-mirror-b">{bar(row.b, "cm-x", i)}<span>{formatRon(row.b.value)} · {formatInt(row.b.count)}</span></div>
           </div>
         ))}
       </div>
@@ -317,13 +325,13 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
   );
 }
 
-function TopPartners({ entity: e, side, firms }: { entity: CompareEntity; side: "a" | "b"; firms: boolean }) {
+function TopPartners({ entity: e, side, firms, motion }: { entity: CompareEntity; side: "a" | "b"; firms: boolean; motion: ChartMotion }) {
   const rows: ComparePartner[] = e.topPartners ?? [];
   return (
     <div className={`cmp-panel cmp-${side}`}>
       <p className="cmp-panel-head"><EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName>{e.partners !== undefined && ` · ${countWords(e.partners, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}`}</p>
-      {rows.length === 0 ? <p className="cmp-none">Niciunul în selecție.</p> : rows.map((row) => (
-        <ShareRow key={row.entityId} label={<Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} />
+      {rows.length === 0 ? <p className="cmp-none">Niciunul în selecție.</p> : rows.map((row, i) => (
+        <ShareRow key={row.entityId} label={<Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} motion={motion} i={i} />
       ))}
       <Link className="cmp-all" href={`/entitati/${e.entityId}#parteneri`}>Toți {firms ? "clienții" : "furnizorii"} →</Link>
     </div>
@@ -334,21 +342,23 @@ const SHOWN_DOMAINS = 4;
 
 function Domains({ a, b, firms }: { a: CompareEntity; b: CompareEntity; firms: boolean }) {
   const [all, setAll] = useState(false);
+  // The two panels' rows grow together, row by row; „Vezi toate domeniile” fades the rows it adds in.
+  const motion = useChartMotion();
   if (!a.domains?.length && !b.domains?.length) return null;
   const more = [a, b].some((e) => (e.domains?.length ?? 0) > SHOWN_DOMAINS);
   return (
     <section className="cmp-section">
       <h3>{firms ? "Ce vinde fiecare" : "Ce cumpără fiecare"}</h3>
-      <div className="cmp-two">
+      <div className="cmp-two" {...motion.root}>
         {[a, b].map((e, i) => {
           const shown = (e.domains ?? []).slice(0, all ? undefined : SHOWN_DOMAINS);
           return (
             <div key={e.entityId} className={`cmp-panel cmp-${i === 0 ? "a" : "b"}`}>
               <p className="cmp-panel-head"><EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName></p>
-              {shown.map((d) => (
-                <ShareRow key={d.code} label={d.name ? readableCpvName(d.name) : `CPV ${d.code}`} value={d.value} total={e.value} />
+              {shown.map((d, at) => (
+                <ShareRow key={d.code} label={d.name ? readableCpvName(d.name) : `CPV ${d.code}`} value={d.value} total={e.value} motion={motion} i={at} />
               ))}
-              <RestRow entity={e} shown={shown} />
+              <RestRow entity={e} shown={shown} motion={motion} />
             </div>
           );
         })}
@@ -363,7 +373,7 @@ function Domains({ a, b, firms }: { a: CompareEntity; b: CompareEntity; firms: b
 }
 
 /** The value outside the listed groups, so each panel adds up to 100%. */
-function RestRow({ entity: e, shown }: { entity: CompareEntity; shown: NonNullable<CompareEntity["domains"]> }) {
+function RestRow({ entity: e, shown, motion }: { entity: CompareEntity; shown: NonNullable<CompareEntity["domains"]>; motion: ChartMotion }) {
   const listed = shown.reduce((sum, d) => sum + d.value, 0);
   const rest = Math.max(e.value - listed, 0);
   if (e.domainCount === undefined) return null;
@@ -374,15 +384,15 @@ function RestRow({ entity: e, shown }: { entity: CompareEntity; shown: NonNullab
   const label = groups > 0
     ? `Restul · ${countWords(groups, "domeniu", "domenii")}${noCpv ? " și fără cod CPV" : ""}`
     : "Fără cod CPV";
-  return <div className="cmp-rest"><ShareRow label={label} value={rest} total={e.value} /></div>;
+  return <div className="cmp-rest"><ShareRow label={label} value={rest} total={e.value} motion={motion} i={shown.length} /></div>;
 }
 
-function ShareRow({ label, value, total, detail }: { label: ReactNode; value: number; total: number; detail?: string }) {
+function ShareRow({ label, value, total, detail, motion, i }: { label: ReactNode; value: number; total: number; detail?: string; motion: ChartMotion; i: number }) {
   const share = total > 0 ? (value / total) * 100 : 0;
   return (
-    <div className="cmp-share">
+    <div className="cmp-share" ref={motion.join}>
       <p><span className="cmp-share-label">{label}</span><span className="num">{formatRon(value)} · {share < 0.5 ? "<1" : Math.round(share)}%</span></p>
-      <div className="cmp-track"><i style={{ width: `${Math.min(share, 100)}%` }} /></div>
+      <div className="cmp-track"><i className={`cm-tw ${motion.enter("cm-x")}`} style={{ width: `${Math.min(share, 100)}%`, "--i": i } as CSSProperties} /></div>
       {detail && <small>{detail}</small>}
     </div>
   );

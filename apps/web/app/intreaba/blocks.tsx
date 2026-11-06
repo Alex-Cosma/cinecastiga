@@ -16,7 +16,8 @@ import { FactTag, type RowFact } from "./answer/RowFacts";
 import { breakdownKinds, breakdownShown, generalTag, largestTag } from "./breakdown-answer";
 import HelpTip from "./builder/HelpTip";
 import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
-import { G } from "@/components/ghost/Ghost";
+import { G } from "../../components/ghost/Ghost";
+import { useChartMotion } from "./answer/chart-motion";
 
 import { useTip } from "./use-tip";
 export { useTip, type TipBind } from "./use-tip";
@@ -77,6 +78,10 @@ export function BreakdownBlock({
   const t = useTip();
   const evidence = useAnswerEvidence();
   const [all, setAll] = useState(false);
+  // The bar is revealed left to right as one piece when it first shows. Value ↔ records, another channel or „Arată
+  // toate” tween its segments' widths: a segment is its place in the order (its colour), so the same elements stay;
+  // one the order adds grows from nothing while „alte domenii” shrinks (question-results.css).
+  const motion = useChartMotion();
   const byCount = spec.measure === "count" && Boolean(base);
   // slice click: while the stem can go deeper, open the same breakdown one
   // CPV level down; at a full 8-digit code, open the transactions instead.
@@ -125,8 +130,8 @@ export function BreakdownBlock({
         </button>)}
         <HelpTip tip={{ id: "tip-achizitie" }} />
       </div>}
-      <div className="ask-comp">
-        {items.map((s) => {
+      <div className={`ask-comp ${motion.entering ? "cm-x" : "is-shown"}`} {...motion.root}>
+        {items.map((s, i) => {
           const bind = t.bind(
             s.name,
             byCount ? countWords(s.count, "înregistrare", "înregistrări") : formatRon(s.value),
@@ -134,8 +139,8 @@ export function BreakdownBlock({
           );
           return s.code ? (
             <a
-              key={s.name}
-              className="seg"
+              key={i}
+              className="seg cm-tw"
               href={sliceUrl(s.code, s.name)}
               style={{
                 width: `${(amount(s) / measureTotal) * 100}%`,
@@ -145,8 +150,8 @@ export function BreakdownBlock({
             />
           ) : (
             <div
-              key={s.name}
-              className="seg"
+              key="rest"
+              className="seg cm-tw"
               style={{
                 width: `${(amount(s) / measureTotal) * 100}%`,
                 background: s.color,

@@ -19,6 +19,7 @@ import HelpTip from "./builder/HelpTip";
 import PeersWindow, { peerDataFor } from "./builder/PeersWindow";
 import Popover from "./builder/pickers/Popover";
 import { usePeerDialog } from "./builder/use-peer-dialog";
+import { useChartMotion } from "./answer/chart-motion";
 import "./distribution.css";
 
 /*
@@ -244,15 +245,18 @@ export function stripLayout(focal: { id: string; name: string; score: number }, 
 const stripEdge = (x: number, margin = 6) => x < margin ? " is-start" : x > 100 - margin ? " is-end" : "";
 
 function ScoreStrip({ d, members, noun, name }: { d: DistributionDataV3; members: readonly ScoredMember[]; noun: (n: number) => string; name: string }) {
+  // The members' dots fade in where they are, together (an order on the axis would mean nothing); the entity's dot
+  // and its name come last, without a pulse. Another group re-stacks the same dots in place (owner, 6 November 2026).
+  const motion = useChartMotion();
   const f = d.focal;
   const { dots, over, rows } = stripLayout({ id: f.entityId, name: f.name, score: f.score }, members);
   const label = `Scorurile celor ${noun(members.length)} pe axa 0–100; ${name}: ${riskScoreText(f.score)}.`;
   return <section className="dist-strip" aria-label="Grupul, pe axa scorului">
-    <div className="dist-strip-plot" role="img" aria-label={label} style={{ "--rows": rows } as CSSProperties}>
-      <span className={`dist-strip-name${stripEdge(f.score, 25)}`} style={{ "--x": f.score } as CSSProperties} aria-hidden="true">{f.inGroup ? name : `${name} · în afara grupului`}</span>
-      {dots.map((dot) => <i key={dot.id} className={`dist-dot ${dot.focal ? "is-focal" : RISK_BAND_CLASS[riskBand(dot.score)]}`}
+    <div className="dist-strip-plot" role="img" aria-label={label} style={{ "--rows": rows } as CSSProperties} {...motion.root}>
+      <span className={`dist-strip-name${stripEdge(f.score, 25)} ${motion.enter("cm-fade cm-late")}`} style={{ "--x": f.score } as CSSProperties} aria-hidden="true">{f.inGroup ? name : `${name} · în afara grupului`}</span>
+      {dots.map((dot) => <i key={dot.id} ref={motion.join} className={`dist-dot ${dot.focal ? "is-focal" : RISK_BAND_CLASS[riskBand(dot.score)]} cm-tw ${motion.enter(dot.focal ? "cm-fade cm-late" : "cm-fade")}`}
         style={{ "--x": dot.score, "--l": dot.level } as CSSProperties} title={`${cleanName(dot.name)} · ${riskScoreText(dot.score)}`} />)}
-      {over.map((o) => <span key={o.score} className={`dist-strip-over${stripEdge(o.score)}`} style={{ "--x": o.score, "--l": STRIP_LEVELS } as CSSProperties} aria-hidden="true">+{formatInt(o.n)}</span>)}
+      {over.map((o) => <span key={o.score} ref={motion.join} className={`dist-strip-over${stripEdge(o.score)}`} style={{ "--x": o.score, "--l": STRIP_LEVELS } as CSSProperties} aria-hidden="true">+{formatInt(o.n)}</span>)}
     </div>
     <div className="dist-strip-axis" aria-hidden="true">
       {STRIP_TICKS.map((tick) => <span key={tick} className={`dist-strip-tick${tick === 0 ? " is-start" : tick === 100 ? " is-end" : ""}`} style={{ "--x": tick } as CSSProperties}>{tick}</span>)}
@@ -273,6 +277,8 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
   const [answered, setAnswered] = useState(d);
   const list = useRef<HTMLOListElement>(null);
   const bars = useBarMembers<ScoredMember>(d);
+  // The bins grow together, „aici” last; the patterns' bars grow top down; another group tweens both in place.
+  const histMotion = useChartMotion(), partsMotion = useChartMotion();
   // A new answer (another group): the open bar and the unfolded list start again.
   if (answered !== d) { setAnswered(d); bars.reset(); setAll(false); }
   const empty = groupEmpty({ distribution: d, spec, ...(onChangeGroup ? { onChangeGroup } : {}) });
@@ -328,15 +334,15 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
         {hidden > 0 && <button type="button" className="qb-link dist-all" onClick={showAll}>Arată toate cele {formatInt(members.length)}</button>}
       </section>
     </> : <section className="dist-chart" aria-label="Ceilalți membri, după scor">
-      <div className="dist-hist" style={{ "--cols": hist.length } as CSSProperties}>
+      <div className="dist-hist" style={{ "--cols": hist.length } as CSSProperties} {...histMotion.root}>
         {hist.map((h) => {
           // The entity's band: "aici" when it is a member; an old link's other county leaves it out, so "ar fi aici", unmarked.
           const mark = own?.from === h.from, here = mark && f.inGroup, would = mark && !f.inGroup;
           const opened = openBand?.from === h.from;
           const cls = `dist-hcol${here ? " is-here" : would ? " is-would" : ""}${opened ? " is-open" : ""}`;
           const body = <>
-            <span className="dist-n">{here && <em>aici</em>}{would && <em>ar fi aici</em>}{formatInt(h.n)}</span>
-            <span className="dist-hbar" style={{ "--h": h.n / peak } as CSSProperties} />
+            <span className="dist-n">{here && <em className={histMotion.enter("cm-fade cm-late")}>aici</em>}{would && <em className={histMotion.enter("cm-fade cm-late")}>ar fi aici</em>}{formatInt(h.n)}</span>
+            <span className={`dist-hbar cm-tw ${histMotion.enter("cm-y")}`} style={{ "--h": h.n / peak } as CSSProperties} />
             <span className="dist-axis"><b>{h.from}</b><small>{h.to !== h.from ? `–${h.to}` : ""}</small></span>
           </>;
           return h.n > 0
@@ -353,15 +359,15 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
 
     <section className="dist-criteria dist-parts" aria-label="Din ce se formează riscul">
       <h3 className="qb-tipwrap">Din ce se formează riscul <HelpTip tip={{ id: "criterii-risc" }} /></h3>
-      <ul>
-        {order.map((c) => {
+      <ul {...partsMotion.root}>
+        {order.map((c, i) => {
           const part = partOf(c.code), label = CRITERION_LABEL[c.code] ?? c.code;
           const share = group.others ? c.others / group.others : 0, country = d.countryTotal ? c.country / d.countryTotal : 0;
           return <li key={c.code} className="dist-crit dist-part">
             <span className="dist-crit-name qb-tipwrap">{label} <HelpTip tip={{ title: label, text: CRITERION_RULE[c.code] ?? "" }} />
               {part && <small className="dist-fact">{riskFact(c.code as RiskCriterion, part, role)}</small>}</span>
             <span className={`dist-part-pts${part ? " is-met" : ""}`}>{part ? `+${formatInt(points[c.code as RiskCriterion] ?? 0)}` : "fără tipar"}</span>
-            <span className="dist-crit-bar" aria-hidden="true"><span style={{ width: `${share * 100}%` }} />{!national && <i style={{ left: `${country * 100}%` }} />}</span>
+            <span className="dist-crit-bar" aria-hidden="true"><span className={`cm-tw ${partsMotion.enter("cm-x")}`} style={{ width: `${share * 100}%`, "--i": i } as CSSProperties} />{!national && <i className="cm-tw" style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>
             {part && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(f.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
           </li>;
@@ -401,6 +407,8 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
   const [answered, setAnswered] = useState(d);
   const list = useRef<HTMLOListElement>(null);
   const bars = useBarMembers<DistributionMember>(d);
+  // As distribution-3's: the columns grow together, „aici” last; the criteria's bars top down; another group tweens.
+  const histMotion = useChartMotion(), critMotion = useChartMotion();
   // A new answer (another group): the open bar and the unfolded list start again.
   if (answered !== d) { setAnswered(d); bars.reset(); setAll(false); }
   const empty = groupEmpty({ distribution: d, spec, ...(onChangeGroup ? { onChangeGroup } : {}) });
@@ -451,14 +459,14 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
       </ol>
       {hidden > 0 && <button type="button" className="qb-link dist-all" onClick={showAll}>Arată toate cele {formatInt(members.length)}</button>}
     </section> : <section className="dist-chart" aria-label="Ceilalți membri, după numărul de criterii">
-      <div className="dist-bars" style={{ "--cols": hist.length } as CSSProperties}>
+      <div className="dist-bars" style={{ "--cols": hist.length } as CSSProperties} {...histMotion.root}>
         {hist.map((h) => {
           // The entity's column: "aici" when it is a member; an old link's other county leaves it out, so "ar fi aici", unmarked.
           const mark = h.k === Math.min(focal.nFlags, max), here = mark && focal.inGroup, would = mark && !focal.inGroup;
           const cls = `dist-col${here ? " is-here" : would ? " is-would" : ""}${openK === h.k ? " is-open" : ""}`;
           const body = <>
-            <span className="dist-n">{here && <em>aici</em>}{would && <em>ar fi aici</em>}{formatInt(h.n)}</span>
-            <span className="dist-bar" style={{ height: `${Math.max(2, (h.n / peak) * 100)}%` }} />
+            <span className="dist-n">{here && <em className={histMotion.enter("cm-fade cm-late")}>aici</em>}{would && <em className={histMotion.enter("cm-fade cm-late")}>ar fi aici</em>}{formatInt(h.n)}</span>
+            <span className={`dist-bar cm-tw ${histMotion.enter("cm-y")}`} style={{ height: `${Math.max(2, (h.n / peak) * 100)}%` }} />
             <span className="dist-axis"><b>{h.k}</b><small>{formatDecimal(h.k / max, max === 4 ? 2 : 1)}</small></span>
           </>;
           return h.n > 0
@@ -475,14 +483,14 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
 
     <section className="dist-criteria" aria-label="Criteriu cu criteriu">
       <h3 className="qb-tipwrap">Criteriu cu criteriu <HelpTip tip={{ id: "criterii-risc" }} /></h3>
-      <ul>
-        {order.map((c) => {
+      <ul {...critMotion.root}>
+        {order.map((c, i) => {
           const met = focal.flags.includes(c.code);
           const share = group.others ? c.others / group.others : 0, country = d.countryTotal ? c.country / d.countryTotal : 0;
           return <li key={c.code} className="dist-crit">
             <span className="dist-crit-name qb-tipwrap">{CRITERION_LABEL[c.code] ?? c.code} <HelpTip tip={{ title: CRITERION_LABEL[c.code] ?? c.code, text: CRITERION_RULE[c.code] ?? "" }} /></span>
             <span className={`dist-crit-own${met ? " is-met" : ""}`}><i aria-hidden="true" />{met ? "da" : "nu"}</span>
-            <span className="dist-crit-bar" aria-hidden="true"><span style={{ width: `${share * 100}%` }} />{!national && <i style={{ left: `${country * 100}%` }} />}</span>
+            <span className="dist-crit-bar" aria-hidden="true"><span className={`cm-tw ${critMotion.enter("cm-x")}`} style={{ width: `${share * 100}%`, "--i": i } as CSSProperties} />{!national && <i className="cm-tw" style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>
             {met && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(focal.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
           </li>;

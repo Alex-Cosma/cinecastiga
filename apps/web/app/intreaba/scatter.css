@@ -96,3 +96,6 @@
 /* The cloud's ghost (ScatterGhost): the chart's real height, 400 px, 300 px on a phone (chartBox, the max-height above). */
 .sc-chart.sc-chart-ghost{height:400px;cursor:default}
 @media (max-width:640px){.sc-chart.sc-chart-ghost{height:300px}}
+
+/* In motion (ScatterAnswer): another order or signal re-colours the listed points briefly. */
+.sc-chart{--chart-tw:var(--fast)}

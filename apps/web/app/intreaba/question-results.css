@@ -1140,3 +1140,11 @@
 .cq-answer-head h2 .entity-name::after { content: "→"; display: inline-block; margin-left: .18em; font-size: .62em; vertical-align: .22em; color: var(--accent); text-decoration: none; }
 /* The first answer's ghost (AskPanel AnswerGhost): a signed-in reader's second pair of actions, as tall as a pair. */
 .cq-ghost-pair { grid-column: 1 / -1; min-height: 44px; }
+
+/* Charts in motion (owner, 6 November 2026; the kit is components/motion/chart-motion.css, the subject key and the
+   entrance classes answer/chart-motion.ts). The map's counties fill in together (MapBlock useFillIn) over --slow, then a
+   new lens tweens their fill over --med; the hover keeps its quick filter. */
+.cq-result .ask-choropleth path.ask-county { transition: fill var(--chart-tw) var(--ease), filter var(--fast) var(--ease); }
+.cq-result .ask-choropleth.is-filling path.ask-county { transition-duration: var(--chart-in), var(--fast); }
+/* The breakdown's bar: a segment another order or „Arată toate” adds grows from nothing while the others tween. */
+@starting-style { .cq-result .ask-comp.is-shown > .seg { width: 0 !important; } }

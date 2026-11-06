@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName, { linkNames, type NamedEntity } from "../../components/EntityName";
@@ -108,6 +108,7 @@ import { useViewer } from "@/lib/use-viewer";
 import { isCpvCode } from "./cpv-name";
 import { ghostPills, type AskLinkHint } from "./link-hint";
 import { MixGhost } from "./answer/StatMix";
+import { answerSubject, useChartMotion } from "./answer/chart-motion";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
 type SeriesPoint = Extract<
@@ -1339,7 +1340,10 @@ export default function AskPanel({
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               />
-            </div> : <div className={`cq-result cq-result-${data.block}`}>
+            </div>
+              // Keyed by its subject (chart-motion.ts): another block, unit or entity enters anew; a filter, a measure or
+              // a group changes the same charts in place, so their marks tween.
+              : <div key={answerSubject(applied)} className={`cq-result cq-result-${data.block}`}>
               {data.block === "stat" && <>
                 <StatBlock stat={data.stat} measure={applied.measure} />
                 {/* „Din care” (F3): asked once the number is drawn; „Doar acestea ›” asks the total again with that row, a
@@ -1396,7 +1400,7 @@ export default function AskPanel({
                 ))}
               {data.block === "timeseries" &&
                 (layout === "visual" ? (
-                  <SeriesAnswer data={data} spec={applied} partial={resp.partialYears ?? []} onSources={openEvidence} />
+                  <SeriesAnswer key={data.grain ?? "year"} data={data} spec={applied} partial={resp.partialYears ?? []} onSources={openEvidence} />
                 ) : (
                   <ExactSeries
                     data={data}
@@ -1781,6 +1785,9 @@ function RankingBars({
   const hasTotal = shareTotals !== undefined && shareTotals.value > 0;
   // P7 (F4): a row of an institution or a firm has its "⋯": its records, "Scoate din calcul".
   const answer = useAnswerEvidence();
+  // The bars grow top down when the ranking first shows; a re-query or a measure tweens their widths where a row stays,
+  // the rows take their new order at once (no sliding), a row the answer adds fades in (owner, 6 November 2026).
+  const motion = useChartMotion();
   if (!rows.length)
     return (
       <p className="ask-empty">
@@ -1790,7 +1797,7 @@ function RankingBars({
     );
   return (
     <>
-      <div className="cq-ranking">
+      <div className="cq-ranking" {...motion.root}>
         {rows.map((r, i) => {
           // A county's row is named as the pages spell it (lib/counties.ts); its scope keeps the data's.
           const shown = r.entityId ? cleanName(r.name) : countyName(cleanName(r.name));
@@ -1799,7 +1806,7 @@ function RankingBars({
           const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
           // The name opens the entity's page; its records are the line under the sum (owner, 2 November 2026).
           const row = (
-          <div className="cq-rank-main" key={r.entityId ?? r.name}>
+          <div className="cq-rank-main" key={r.entityId ?? r.name} ref={actions.length ? undefined : motion.join}>
             <span className="cq-rank-number">
               {String(i + 1).padStart(2, "0")}
             </span>
@@ -1810,10 +1817,12 @@ function RankingBars({
               <FactTags tags={[...byNameTag(r), ...(r.entityId ? winnerFactTags(spec, facts?.[r.entityId], undefined, r.value) : [])]} />
               <span className="cq-bar-track">
                 <i
+                  className={`cm-tw ${motion.enter("cm-x")}`}
                   style={{
                     width: `${Math.max(0.5, (metric(r) / max) * 100)}%`,
                     opacity: Math.max(0.35, 1 - i * 0.08),
-                  }}
+                    "--i": i,
+                  } as CSSProperties}
                 />
               </span>
             </span>
@@ -1835,7 +1844,7 @@ function RankingBars({
           </div>
           );
           // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
-          return actions.length ? <div className="cq-rank-row" key={r.entityId ?? r.name} data-qb-arow="">
+          return actions.length ? <div className="cq-rank-row" key={r.entityId ?? r.name} data-qb-arow="" ref={motion.join}>
             {row}
             <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
           </div> : row;
