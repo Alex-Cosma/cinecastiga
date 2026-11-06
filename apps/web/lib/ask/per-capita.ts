@@ -39,6 +39,11 @@ export interface PerCapitaPopulations {
    * groups by it.
    */
   counties: string[];
+  /**
+   * The official SIRUTA code of the unit each administration administers, aligned with `ids`: a town hall's UAT, a
+   * București sector's own code, null for a county council. The UATs of /harta are grouped by it.
+   */
+  sirutas: (number | null)[];
   /** The counties (marts spelling) whose county council is in the list: a county without one is no per-capita figure. */
   councils: ReadonlySet<string>;
 }
@@ -61,7 +66,7 @@ export async function readPerCapitaPopulations(q: DbSql): Promise<PerCapitaPopul
   const rows = await readPopulationMappingRows(q);
   // The two indexes are disjoint: the strict join never maps a sector name.
   const index = new Map([...uniquePopulationMappings(rows), ...sectorTownHallPopulations(rows)]);
-  const ids: string[] = [], populations: number[] = [], counties: string[] = [], byEntity = new Map<string, number>(), levels = new Map<string, "local" | "county">();
+  const ids: string[] = [], populations: number[] = [], counties: string[] = [], sirutas: (number | null)[] = [], byEntity = new Map<string, number>(), levels = new Map<string, "local" | "county">();
   const councils = new Set<string>();
   let local = 0, sector = 0, county = 0;
   for (const [id, population] of [...index].sort((a, b) => Number(a[0]) - Number(b[0]))) {
@@ -69,10 +74,11 @@ export async function readPerCapitaPopulations(q: DbSql): Promise<PerCapitaPopul
     const at = martsCounty(population.county);
     if (!(population.value > 0) || !at) continue;
     ids.push(id); populations.push(population.value); counties.push(at); byEntity.set(id, population.value);
+    sirutas.push(population.level === "county" ? null : population.siruta ?? null);
     levels.set(id, population.level === "county" ? "county" : "local");
     if (population.level === "county") { county++; councils.add(at); } else if (population.level === "sector") sector++; else local++;
   }
-  return { ids, populations, byEntity, levels, local, sector, county, counties, councils };
+  return { ids, populations, byEntity, levels, local, sector, county, counties, sirutas, councils };
 }
 
 export const PER_CAPITA_SOURCE =

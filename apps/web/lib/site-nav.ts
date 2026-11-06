@@ -12,10 +12,6 @@ export interface NavItem {
 
 export interface NavContext {
   pathname: string;
-  /** At least one editorial story is public. */
-  storiesPublished: boolean;
-  /** Viewer is a confirmed admin (client session). */
-  admin: boolean;
   /** Viewer is signed in, or the request carried a session cookie before the client confirmed it. */
   signedIn: boolean;
 }
@@ -26,7 +22,7 @@ export interface NavContext {
  * linked from the home page and the record pages they lead to. Only the
  * question builder itself is "Întreabă".
  */
-const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/harta", "/domenii", "/supra-prag", "/entitati", "/contracte", "/achizitii", "/anunturi"];
+const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/domenii", "/supra-prag", "/entitati", "/contracte", "/achizitii", "/anunturi"];
 /** The guide is the methodology page (its "Pe scurt" lane) since 5 November 2026; /ghid redirects there. */
 const GUIDE_PREFIXES = ["/metodologie"];
 const under = (path: string, prefix: string) => path === prefix || path.startsWith(`${prefix}/`);
@@ -35,14 +31,13 @@ export const GUIDE_HREF = "/metodologie";
 /** The guide has one name everywhere it is linked (navigation, footer). */
 export const GUIDE_LABEL = "Ghid";
 
-export function navItems({ pathname, storiesPublished, admin, signedIn }: NavContext): NavItem[] {
+export function navItems({ pathname, signedIn }: NavContext): NavItem[] {
   const path = pathname || "/";
   const items: (NavItem | null)[] = [
     { href: "/", label: "Descoperă", active: path === "/" || DISCOVER_PREFIXES.some(prefix => under(path, prefix)) },
     { href: "/intreaba", label: "Întreabă", active: under(path, "/intreaba") },
-    // Until a story is published, "Ce bate la ochi" is listed only for admins.
-    // The pages enforce the same rule on the server; this only hides the link.
-    storiesPublished || admin ? { href: "/ce-bate-la-ochi", label: "Ce bate la ochi", active: under(path, "/ce-bate-la-ochi") } : null,
+    // The map of the value contracted per inhabitant (owner, 6 November 2026): it took the place of the stories.
+    { href: "/harta", label: "Hartă", active: under(path, "/harta") },
     // Investigations are private and invitation-only: an anonymous visitor
     // would only reach a login wall, so the item (and its dot) is hidden.
     signedIn ? { href: "/anchete", label: "Anchete", dot: true, active: under(path, "/anchete") || under(path, "/urmariri") } : null,

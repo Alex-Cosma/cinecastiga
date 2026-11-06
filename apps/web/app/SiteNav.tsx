@@ -11,7 +11,7 @@ import { navItems } from "@/lib/site-nav";
  * so signed-in readers see "Anchete" without a flash. Once the client knows
  * the session, it decides: an expired cookie hides the item again.
  */
-export default function SiteNav({ storiesPublished, sessionHint = false }: { storiesPublished: boolean; sessionHint?: boolean }) {
+export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean }) {
   const pathname = usePathname() ?? "/";
   const { data, isPending } = authClient.useSession();
   const [hydrated, setHydrated] = useState(false);
@@ -31,9 +31,8 @@ export default function SiteNav({ storiesPublished, sessionHint = false }: { sto
     return () => observer.disconnect();
   }, []);
   const known = hydrated && !isPending;
-  const admin = known && (data?.user as { role?: string } | undefined)?.role === "admin";
   const signedIn = known ? Boolean(data) : sessionHint;
-  const items = navItems({ pathname, storiesPublished, admin, signedIn });
+  const items = navItems({ pathname, signedIn });
   // The page already open with a question in its address (Întreabă with ?spec=…): a Link to the same route keeps the
   // answer on screen, so the item loads the bare page instead (owner, 1 November 2026). A new tab keeps the browser's way.
   const toBarePage = (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
