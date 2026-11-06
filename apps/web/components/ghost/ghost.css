@@ -36,8 +36,11 @@
 .g-float { animation: g-in var(--fast) var(--ease) .15s both; }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-ghost], .g-line, .g-block, .g-svg, .g-content, .g-float { animation: none; }
-  .g-stale { transition: none; }
+  /* No fade, no pulse, no rise; the waits stay, as a cut, so a quick answer still never shows a ghost or a status. */
+  .g-line, .g-block, .g-svg, .g-content, [data-ghost="suspense"] { animation: none; }
+  [data-ghost="client"] { animation: g-in .12s steps(1, end) both; }
+  .g-float { animation: g-in .15s steps(1, end) both; }
+  .g-stale { transition: opacity 0s linear .25s; }
 }
 @media (forced-colors: active) { .g-line::before, .g-block { background: GrayText; } .g-svg { fill: GrayText; } }
 @media print { [data-ghost], .g-float { display: none; } }

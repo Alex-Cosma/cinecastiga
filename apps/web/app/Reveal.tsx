@@ -16,6 +16,10 @@ import { useEffect } from "react";
  */
 const AUTO = ".page-title, .page-sub, .stat-grid, .section, .home-hero > *, .home-stats, .profile-head, .ehead, .rx-heads > *, .rx-panel, .clip-card, .method-card, .auth-card";
 
+/** Whether React has hydrated this element. Streamed content (a route ghost's page, a Suspense section) can be in the
+ *  document before React adopts it; changing its classes then would not match the server's HTML. */
+const hydrated = (el: Element) => Object.keys(el).some((k) => k.startsWith("__reactFiber$"));
+
 export default function Reveal() {
   const path = usePathname();
   useEffect(() => {
@@ -34,8 +38,14 @@ export default function Reveal() {
       }
     }, { rootMargin: "0px 0px -6% 0px", threshold: 0.03 });
     const seen = new WeakSet<Element>();
-    const gate = (el: Element) => {
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const gate = (el: Element, tries = 0) => {
       if (seen.has(el)) return;
+      if (!hydrated(el) && tries < 60) {
+        const t = setTimeout(() => { timers.delete(t); if (el.isConnected) gate(el, tries + 1); }, 50);
+        timers.add(t);
+        return;
+      }
       seen.add(el);
       if (html.dataset.motion === "settled") return;
       const r = el.getBoundingClientRect();
@@ -46,7 +56,7 @@ export default function Reveal() {
     };
     const scan = (root: Element | Document) => {
       if (root instanceof Element && root.matches("[data-chart]")) gate(root);
-      root.querySelectorAll("[data-chart]").forEach(gate);
+      root.querySelectorAll("[data-chart]").forEach((el) => gate(el));
     };
     scan(document);
     const mo = new MutationObserver((records) => {
@@ -54,7 +64,7 @@ export default function Reveal() {
     });
     mo.observe(document.body, { childList: true, subtree: true });
     return () => {
-      io.disconnect(); mo.disconnect();
+      io.disconnect(); mo.disconnect(); timers.forEach(clearTimeout);
       removeEventListener("popstate", settle);
       document.removeEventListener("pointerdown", unsettle, true);
       document.removeEventListener("keydown", unsettle, true);
@@ -80,6 +90,8 @@ export default function Reveal() {
       if (el.classList.contains("in")) continue;
       // A ghost has its own appearance, and content that replaced a ghost (.g-content) its own entrance.
       if (el.closest("[data-ghost], .g-content")) continue;
+      // Streamed content not yet hydrated keeps the server's classes; it simply appears.
+      if (!hydrated(el)) continue;
       // Back/forward: shown at once (both classes in one frame: no transition).
       if (settled) { el.classList.add("rv", "in"); continue; }
       if (!el.classList.contains("rv")) {
