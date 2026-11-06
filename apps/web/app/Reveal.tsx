@@ -30,6 +30,8 @@ export default function Reveal() {
       // Shown already: nothing to watch. Marked but not shown (a previous run's observer was disconnected, as React's
       // development double effect does, or the route changed under it): watched again, or it would stay invisible.
       if (el.classList.contains("in")) continue;
+      // A ghost has its own appearance, and content that replaced a ghost (.g-content) its own entrance.
+      if (el.closest("[data-ghost], .g-content")) continue;
       if (!el.classList.contains("rv")) {
         el.classList.add("rv");
         const d = el.dataset.reveal;

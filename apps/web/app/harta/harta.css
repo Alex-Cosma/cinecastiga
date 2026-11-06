@@ -173,17 +173,11 @@
 .mx-p-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
 .mx-p-wait,.mx-p-error{margin:8px 0;font-size:14px;color:var(--muted)}
 /* The ghost while a UAT loads: its content's shape in quiet pulsing blocks, shown after 120 ms so a quick answer never flashes it. */
-@keyframes mx-ghost{50%{opacity:.45}}
-@keyframes mx-ghost-in{from{opacity:0}}
+/* The ghost (components/ghost): it appears after 120 ms, except the close button, which is there at once. */
 .mx-panel.is-loading .mx-p-body.is-ghost{opacity:1}
-.mx-p-body.is-ghost>:not(.mx-p-close){animation:mx-ghost-in .25s var(--ease) .12s both}
-.mx-g{position:relative;display:block;height:1lh;animation:mx-ghost 1.6s ease-in-out infinite}
-.mx-g::before{content:"";position:absolute;inset:calc((1lh - .72em) / 2) 0;border-radius:4px;background:var(--line)}
-.mx-g-phone{display:none}
-.mx-p-body.is-ghost .mx-p-rows i{background:var(--line);animation:mx-ghost 1.6s ease-in-out infinite}
-.mx-g-svg{fill:var(--line);animation:mx-ghost 1.6s ease-in-out infinite}
-.mx-p-body.is-ghost .mx-p-wait{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-@media (max-width:1180px){.mx-p-cols{grid-template-columns:1fr}.mx-p-sec>p{min-height:0}.mx-g-wide{display:none}}
+.mx-p-body.is-ghost>:not(.mx-p-close){animation:g-in .25s var(--ease) .12s both}
+.mx-p-body.is-ghost .mx-p-rows i{background:var(--line);animation:g-pulse 1.6s ease-in-out infinite}
+@media (max-width:1180px){.mx-p-cols{grid-template-columns:1fr}.mx-p-sec>p{min-height:0}}
 @media (max-width:980px){
   .mx-body.has-panel{grid-template-columns:1fr;grid-template-areas:"stage" "panel" "rank"}
   .mx-body.has-panel .mx-rows{max-height:none}
@@ -193,6 +187,5 @@
   .mx-panel h2{font-size:26px}
   .mx-p-lead{font-size:18px}
   .mx-p-close{min-width:44px;min-height:44px}
-  .mx-g-phone{display:block}
 }
-@media (prefers-reduced-motion:reduce){.mx-body{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-g,.mx-g-svg,.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
+@media (prefers-reduced-motion:reduce){.mx-body{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}

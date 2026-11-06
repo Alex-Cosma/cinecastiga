@@ -6,6 +6,10 @@ import "./fonts.css";
 import "./globals.css";
 import "./approved.css";
 import "./guide.css";
+import "@/components/ghost/ghost.css";
+import { Suspense } from "react";
+import { G } from "@/components/ghost/Ghost";
+import { NavPending } from "@/components/ghost/client";
 import ReportProblem from "@/components/feedback/ReportProblem";
 import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
@@ -49,7 +53,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div className="hdr-right">
               <GlobalSearch />
               <ThemeToggle />
-              <HeaderUserNav />
+              <HeaderUserNav sessionHint={sessionHint} />
             </div>
           </div>
         </header>
@@ -69,7 +73,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div>
               <h4>Date</h4>
               <p>SEAP / SICAP · TED · bilanțuri MF · registrul ONRC · hărți GADM și ANCPI / INS&nbsp;SIRUTA</p>
-              <CoverageSummary />
+              <Suspense fallback={<div className="coverage-summary"><Link href="/metodologie#acoperire">Surse, acoperire și actualizare →</Link><span><G.Line inline w="16em" /></span></div>}>
+                <CoverageSummary />
+              </Suspense>
             </div>
             <div>
               <h4>Proiect</h4>
@@ -92,6 +98,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </footer>
         <ReportProblem />
         <Reveal />
+        <Suspense><NavPending /></Suspense>
       </body>
     </html>
   );

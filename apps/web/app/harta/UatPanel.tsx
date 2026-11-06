@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { G } from "@/components/ghost/Ghost";
 import { useEffect, useState } from "react";
 import EntityName from "@/components/EntityName";
 import { entityHref } from "@/lib/entity-href";
@@ -85,23 +86,23 @@ function Neighbours({ data, onPick }: { data: MapUatResponse; onPick: (key: stri
 const YEAR_GHOST = [20, 34, 40, 48, 36, 26, 66, 44, 24];
 function Ghost({ name, county, gap }: { name: string | undefined; county: string | undefined; gap: boolean }) {
   // "phone": a line only phones wrap to; "wide": a line only the three-column layout wraps to.
-  const line = (width: string, only?: "phone" | "wide") => <span className={`mx-g${only ? ` mx-g-${only}` : ""}`} style={{ width }} />;
+  const line = (width: string, only?: "phone" | "wide") => <G.Line w={width} only={only} />;
   return <>
     <p className="mx-p-kick" aria-hidden="true">{line("44%")}{line("30%", "phone")}</p>
-    <h2 id="mx-p-h">{name ?? <span className="mx-g" style={{ width: "36%" }} />}</h2>
+    <h2 id="mx-p-h">{name ?? <G.Line w="36%" />}</h2>
     <p className="mx-p-lead" aria-hidden="true">{line("94%")}{gap ? line("58%") : <>{line("97%")}{line("42%")}{line("30%", "phone")}</>}</p>
     {!gap && <div className="mx-p-cols" aria-hidden="true">
       {(["Cât?", "Pe ce?", "Cui?"] as const).map((title, i) => <div className="mx-p-sec" key={title}><h3>{title}</h3>
         <p>{line("94%")}{line("82%", "wide")}{line("48%")}</p>
         {i === 0
-          ? <svg className="mx-p-years" viewBox="0 0 260 112">{YEAR_GHOST.map((h, j) => <rect key={j} className="mx-g-svg" x={j * (260 / 9) + 4.6} y={96 - h} width={19.6} height={h} rx="1.5" />)}</svg>
+          ? <svg className="mx-p-years" viewBox="0 0 260 112">{YEAR_GHOST.map((h, j) => <rect key={j} className="g-svg" x={j * (260 / 9) + 4.6} y={96 - h} width={19.6} height={h} rx="1.5" />)}</svg>
           : <ul className="mx-p-rows">{[100, 74, 52, 38, 26].map((w, j) => <li key={j}><span>{line(`${78 - j * 7}%`)}</span><i style={{ width: `${w}%` }} /><b>{line("100%")}</b></li>)}</ul>}
       </div>)}
     </div>}
     <div className="mx-p-sec mx-p-wide" aria-hidden="true"><h3>Printre vecini {county && <small>lei pe locuitor în {county}; apasă un punct ca să deschizi UAT-ul</small>}</h3>
-      <svg className="mx-p-near" viewBox="0 0 560 96"><rect className="mx-g-svg" x="10" y="42" width="540" height="14" rx="7" /></svg></div>
+      <svg className="mx-p-near" viewBox="0 0 560 96"><rect className="g-svg" x="10" y="42" width="540" height="14" rx="7" /></svg></div>
     {!gap && <p className="mx-p-note" aria-hidden="true">{line("40%")}{line("24%", "phone")}</p>}
-    <p className="mx-p-wait" role="status">Se încarcă UAT-ul…</p>
+    <p className="mx-p-wait g-sr" role="status">Se încarcă UAT-ul…</p>
   </>;
 }
 
@@ -130,7 +131,7 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
 
   // The panel slides in once; another UAT only replays its content's cascade (the body's key).
   const failed = !d && Boolean(state.error) && !loading;
-  return <section className={`mx-panel${loading ? " is-loading" : ""}`} aria-labelledby="mx-p-h"><div className={`mx-p-body${!d && !failed ? " is-ghost" : ""}`} key={d?.uat.key ?? (failed ? "error" : "wait")}>
+  return <section className={`mx-panel${loading ? " is-loading" : ""}`} aria-labelledby="mx-p-h"><div className={`mx-p-body${!d && !failed ? " is-ghost" : ""}`} aria-busy={!d && !failed ? true : undefined} key={d?.uat.key ?? (failed ? "error" : "wait")}>
     <button type="button" className="mx-p-close" onClick={onClose} aria-label="Închide panoul">
       <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
     </button>

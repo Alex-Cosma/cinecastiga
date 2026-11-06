@@ -1168,6 +1168,8 @@ a { transition: color var(--fast) var(--ease); }
 .user-nav a:hover { background: var(--sunk); text-decoration: none; }
 .user-nav a.on { color: var(--accent); background: var(--accent-soft); }
 .user-nav .avatar-link { padding: 2px; }
+/* A session cookie was sent: the avatar's room is kept until the session is confirmed, so the header does not shift. */
+.user-nav-wait { min-width: 32px; min-height: 32px; }
 .avatar {
   width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--on-accent);
   display: inline-grid; place-items: center; font-size: 11px; font-weight: 700; font-family: var(--display);

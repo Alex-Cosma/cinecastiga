@@ -1,0 +1,43 @@
+/* Ghost kit: placeholders shaped like the content they stand for (owner, 6 November 2026: "ghost data loading", first
+   on the /harta UAT panel). A ghost reuses the real component's element and classes, and draws text as lines exactly
+   one line-height tall inside the real headings and paragraphs, so the page keeps its height when the data arrives.
+   Bars use --line: it reads on both themes, where --sunk disappears on the dark surface. */
+@keyframes g-pulse { 50% { opacity: .45 } }
+@keyframes g-in { from { opacity: 0 } }
+@keyframes g-enter { from { opacity: .001; transform: translateY(4px) } }
+
+/* A ghost for a client fetch waits 120 ms, so a quick answer never shows it. A route or Suspense ghost shows at once:
+   React keeps a fallback at least 300 ms, and a delayed one would flash half-faded. */
+[data-ghost="client"] { animation: g-in .25s var(--ease) .12s both; }
+[data-ghost="suspense"] { animation: g-in .12s var(--ease) both; }
+
+.g-line { position: relative; display: block; block-size: 1lh; max-inline-size: 100%; animation: g-pulse 1.6s ease-in-out infinite; }
+.g-line::before { content: ""; position: absolute; inset: calc((1lh - .72em) / 2) 0; border-radius: 4px; background: var(--line); }
+.g-inline { display: inline-block; vertical-align: top; }
+.g-block { display: block; max-inline-size: 100%; border-radius: 8px; background: var(--line); animation: g-pulse 1.6s ease-in-out infinite; }
+.g-svg { fill: var(--line); animation: g-pulse 1.6s ease-in-out infinite; }
+/* A ghost's static replica of a control or bar track: drawn quiet, never pulsing. */
+.g-quiet { opacity: .6; }
+
+/* Lines that exist only where the real text wraps more (phones) or less (the wide three-column layouts). */
+.g-phone { display: none; }
+@media (max-width: 1180px) { .g-wide { display: none; } }
+@media (max-width: 640px) { .g-phone { display: block; } .g-inline.g-phone { display: inline-block; } .g-not-phone { display: none; } }
+
+.g-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* What replaces a ghost enters with a short fade and a 4 px rise; nothing else moves. */
+.g-content { animation: g-enter var(--med) var(--ease) both; }
+
+/* An answer being replaced by one of the same shape stays in place, dimmed (DESIGN.md, owner 1 November 2026). */
+.g-stale { opacity: .55; transition: opacity .15s ease .25s; }
+
+/* The floating status: under the sticky header, never moving the page; shown only when the wait passes 150 ms. */
+.g-float { animation: g-in var(--fast) var(--ease) .15s both; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-ghost], .g-line, .g-block, .g-svg, .g-content, .g-float { animation: none; }
+  .g-stale { transition: none; }
+}
+@media (forced-colors: active) { .g-line::before, .g-block { background: GrayText; } .g-svg { fill: GrayText; } }
+@media print { [data-ghost], .g-float { display: none; } }
