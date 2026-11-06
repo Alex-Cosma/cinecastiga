@@ -21,6 +21,7 @@ import AnswerStrip, { StripRow } from "./answer/AnswerStrip";
 import DetailCard, { type CardLine } from "./answer/DetailCard";
 import Locate, { placeWords } from "./answer/Locate";
 import ListFoot from "./answer/ListFoot";
+import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn } from "./answer/list-return";
 import { FactTag } from "./answer/RowFacts";
 import HelpTip from "./builder/HelpTip";
 import Pills, { type PillOption } from "./builder/Pills";
@@ -74,8 +75,8 @@ interface Picked {
   employeesYear?: number | null;
   /** Its place in the list of the strip's order, or why it has none. */
   place?: string;
-  /** Where it was picked, so the focus goes back there on closing. */
-  from: "chart" | "list" | "find";
+  /** Where it was picked: a point of the chart or a hit of the search (a row of the list opens its page). */
+  from: "chart" | "find";
 }
 
 /** The facts of the profiles on screen, asked once the answer is drawn and as more are shown (part=profile). */
@@ -159,7 +160,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   // The strip's choice while its answer is on the way (a short new query): the buttons move at once.
   const [chosen, setChosen] = useState<{ rank?: string; flag?: string }>({});
   const searchSeq = useRef(0);
-  const listRef = useRef<HTMLOListElement>(null), returnTo = useRef<HTMLElement | null>(null);
+  const listRef = useRef<HTMLOListElement>(null);
   if (answered !== data) { setAnswered(data); setChosen({}); setMore(SCATTER_LIST_PAGE); setPicked(null); setFound(null); }
 
   const { role } = data;
@@ -193,6 +194,30 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const wanted = useMemo(() => [...visible.map((r) => r.entityId), ...(picked ? [picked.id] : [])], [visible, picked]);
   // A stored scatter-2 keeps the facts it was stored with: today's facts are of today's signals.
   const { facts } = useProfileFacts(spec, wanted, !legacy);
+
+  // "Înapoi" from a row's page (list-return.ts): as many rows as were shown, that row where it was, its link focused.
+  const [back, setBack] = useState<ListReturn | null>(null);
+  useEffect(() => {
+    const r = readListReturn(spec);
+    if (!r) return;
+    if (!rows.some((row) => row.entityId === r.id)) { forgetListReturn(); return; }
+    setMore(Math.max(SCATTER_LIST_PAGE, r.shown));
+    setBack(r);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, when the answer is first drawn
+  useEffect(() => {
+    if (!back) return;
+    // A frame after the longer list is drawn (the chart has its width by then).
+    const frame = requestAnimationFrame(() => {
+      const row = listRef.current?.children[rows.findIndex((r) => r.entityId === back.id)] as HTMLElement | undefined;
+      if (row) {
+        window.scrollBy({ top: row.getBoundingClientRect().top - back.top, behavior: "instant" });
+        row.querySelector<HTMLElement>("a.sc-name")?.focus({ preventScroll: true });
+      }
+      forgetListReturn();
+      setBack(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [back]); // eslint-disable-line react-hooks/exhaustive-deps -- `rows` is the same answer's
   const rank = data.rankBy;
   // The first names of the list on the chart, each where it fits; the chosen and the found points' always (chartLabels).
   const focus = useMemo(() => [...(picked ? [{ id: picked.id, text: chartName(picked.name) }] : []),
@@ -249,6 +274,15 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const lower = (code: string) => scatterFlagLabel(code).toLocaleLowerCase("ro-RO");
 
   const pick = (next: Picked) => setPicked(next);
+  /**
+   * A row opens its entity's page (owner, 6 November 2026): the whole row is its name's link, the records button stays
+   * its own. A plain click remembers the list for "Înapoi"; Ctrl/Cmd/Shift-click opens another tab.
+   */
+  const leaveFor = (event: React.MouseEvent<HTMLLIElement>, id: string) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!(event.target as HTMLElement).closest("a.sc-name")) return;
+    rememberListReturn(spec, { shown, id, top: event.currentTarget.getBoundingClientRect().top });
+  };
   const riskOf = (row: AnyListRow): Pick<Picked, "score" | "cri"> => ("cri" in row ? { cri: row.cri } : { score: row.score });
   const rowPick = (row: AnyListRow, index: number, from: Picked["from"]): Picked => ({
     id: row.entityId, name: row.name, value: row.value, nDas: row.nDas, nFlags: row.nFlags, ...riskOf(row), county: row.county, flags: row.flags.map((f) => f.code),
@@ -280,7 +314,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const onClick = (event: PointerEvent<SVGSVGElement> | React.MouseEvent<SVGSVGElement>) => {
     const box = event.currentTarget.getBoundingClientRect();
     const dot = nearest(all, event.clientX - box.left, event.clientY - box.top, event.nativeEvent instanceof MouseEvent && (event.nativeEvent as unknown as { pointerType?: string }).pointerType === "touch" ? 24 : 18);
-    if (dot) { returnTo.current = null; pickPoint(dot, "chart"); }
+    if (dot) pickPoint(dot, "chart");
   };
 
   // "Unde e o instituție?" (part=locate): the profiles of the group whose name holds the text, with their place in the list.
@@ -434,7 +468,6 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       meta={[firm ? employeesWords(picked.employees, picked.employeesYear) : kindWords(picked.kind), picked.county, picked.place].filter(Boolean).join(" · ")}
       facts={(legacy ? cardFactsV2(picked.value, picked.cri ?? 0, picked.nFlags, levels) : cardFacts(picked.value, picked.score ?? 0, picked.nFlags)).map((f) => ({ label: f.label, value: f.value }))}
       lines={cardLines()}
-      returnTo={returnTo.current}
       onClose={() => setPicked(null)}
       actions={[
         ...(live && picked.flags.includes(live) ? [{ label: signalRecords(picked.id), glyph: "→" as const,
@@ -449,11 +482,11 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       <ol className="sc-list" ref={listRef}>
         {visible.map((row, index) => {
           const own = withFacts<string>(row.flags, legacy ? undefined : facts.get(row.entityId));
-          // The row shows its profile in the chart; its name opens the entity's page, its records are the button on the right.
-          return <li key={row.entityId} className={`sc-row${picked?.id === row.entityId ? " is-picked" : ""}`}
-            onClick={(event) => { if ((event.target as HTMLElement).closest("a,button")) return; returnTo.current = event.currentTarget.querySelector<HTMLElement>(".sc-pick"); pick(rowPick(row, index, "list")); }}>
-            <button type="button" data-qb-arow="" className="sc-rank sc-pick qb-num" aria-label={`Arată în grafic: ${cleanName(row.name)}`}
-              onClick={(event) => { returnTo.current = event.currentTarget; pick(rowPick(row, index, "list")); }}>{index + 1}</button>
+          // The row is its name's link to the entity's page (the link covers it, scatter.css); its records are the button on
+          // the right. Picked in the chart, the row is marked. "Arată încă 10" focuses the first new row (data-qb-arow).
+          return <li key={row.entityId} tabIndex={-1} data-qb-arow="" className={`sc-row${picked?.id === row.entityId ? " is-picked" : ""}`}
+            onClickCapture={(event) => leaveFor(event, row.entityId)}>
+            <span className="sc-rank qb-num">{index + 1}</span>
             <span className="sc-who">
               <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
               <small>{rowMeta(row, role)}</small>
