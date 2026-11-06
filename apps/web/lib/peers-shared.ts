@@ -25,6 +25,13 @@ export interface PeerMember {
   spec: AskSpec;
   population?: PeerPopulation; selectionReason?: "population" | "manual";
 }
+/**
+ * One member of the group as a dot (owner, 6 November 2026, "Șirul"): its name, total, mean per record and record
+ * count; the floats draw, the exact strings show on hover (sum of closing values; mean rounded to two decimals).
+ */
+export interface PeerPoint { id: string; name: string; total: number; mean: number; records: number; totalExact: string; meanExact: string }
+/** At most this many dots; a larger group sends an even sample by rank plus its top, and says so. */
+export const PEER_POINTS_LIMIT = 3000;
 export interface PeersResult {
   entity: ConnectionEntity; focal: PeerMember | null; filters: PeerFilters;
   suggested: { year: boolean; cpv: boolean };
@@ -38,6 +45,12 @@ export interface PeersResult {
   };
   coverage: { focalUndatedRows: number; focalYearMissingCpvRows: number; unresolvedEntityRows: number };
   members: PeerMember[];
+  /** Every member with records, for the swarm (floats, for drawing; exact values stay on the members). */
+  points?: PeerPoint[];
+  /** The group is larger than PEER_POINTS_LIMIT: the dots are a sample by rank. */
+  pointsSampled?: boolean;
+  /** The entity's place among all members with records, by total and by mean (1 = the largest). */
+  rank?: { total: number; mean: number };
   pagination: { page: number; pageSize: number; totalPages: number; hasNext: boolean };
   checkpoint: ConnectionsResult["checkpoint"];
   methodology: { version: "peers-1" | "peers-2"; method?: PeerMethod; defaultMethod?: "population" | "activity"; populationVersion?: string; descriptions: string[] };
