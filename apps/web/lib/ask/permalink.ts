@@ -12,7 +12,11 @@ export function encodeSpec(spec: unknown): string {
 export function decodeSpec(s: string): unknown | null {
   try {
     if (typeof window === "undefined") {
-      return JSON.parse(Buffer.from(s, "base64").toString("utf8"));
+      // As strict as the browser's atob + decodeURIComponent below: the server's reading of a link (link-hint.ts,
+      // /urmariri/noua) must agree with the panel's, so no base64url or stray characters, and no invalid UTF-8.
+      const b64 = s.replace(/[\t\n\f\r ]/g, "");
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b64) || b64.length % 4 === 1) return null;
+      return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(b64, "base64")));
     }
     return JSON.parse(decodeURIComponent(escape(atob(s))));
   } catch {

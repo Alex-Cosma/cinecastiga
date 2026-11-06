@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 /**
  * Entrance motion, applied globally and cheaply: elements marked
@@ -22,10 +22,14 @@ const hydrated = (el: Element) => Object.keys(el).some((k) => k.startsWith("__re
 
 export default function Reveal() {
   const path = usePathname();
+  const search = useSearchParams()?.toString() ?? "";
+  // The address React shows now: a popstate that leaves it unchanged (an anchor on this page, a skip link) is no return.
+  const shown = useRef("");
+  useEffect(() => { shown.current = `${path}?${search}`; }, [path, search]);
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const html = document.documentElement;
-    const settle = () => { html.dataset.motion = "settled"; };
+    const settle = () => { if (`${location.pathname}?${location.search.slice(1)}` !== shown.current) html.dataset.motion = "settled"; };
     const unsettle = () => { delete html.dataset.motion; };
     addEventListener("popstate", settle);
     document.addEventListener("pointerdown", unsettle, true);
