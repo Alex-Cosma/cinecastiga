@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { cancelNavPending } from "../../components/ghost/client";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName, { linkNames, type NamedEntity } from "../../components/EntityName";
@@ -589,6 +590,10 @@ export default function AskPanel({
         if (restored.kind === "error") {
           setError(restored.error);
           setLoading(false);
+          // The server may have opened the link's builder (link-hint.ts): a rejected link leaves none behind.
+          setBuilderInit(null);
+          setBuilderOpen(false);
+          setBuilderCollapsed(false);
           // Below the examples on a phone: bring the reason into view.
           revealError();
           return;
@@ -921,6 +926,7 @@ export default function AskPanel({
       } catch { return; }
     }
     event.preventDefault();
+    cancelNavPending();
     openEvidence(spec, scope, "selecția aleasă");
   };
   const data = answered,

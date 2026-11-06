@@ -39,7 +39,7 @@ export function usePendingRegion(): Region | null { return use(RegionCtx); }
 export function RegionLink(props: ComponentProps<typeof Link>) {
   const region = use(RegionCtx);
   const { href, replace, scroll, onNavigate } = props;
-  return <Link {...props} onNavigate={(e) => {
+  return <Link {...props} data-region-link="" onNavigate={(e) => {
     onNavigate?.(e);
     if (!region) return;
     e.preventDefault();
@@ -47,10 +47,15 @@ export function RegionLink(props: ComponentProps<typeof Link>) {
   }} />;
 }
 
+/** A click handler that keeps the reader on the page instead of following its link (a drawer opened in place, a
+ *  cancelled leave) calls this, so "Se deschide…" does not stay up. */
+export function cancelNavPending() { window.dispatchEvent(new Event("nav-pending:cancel")); }
+
 /**
  * "Se deschide…" for a click to another page without a route ghost (fast pages): shown only after 150 ms, gone when
- * the address changes. Routes with a ghost commit it at once, so the status never shows there. Clicks inside a
- * PendingRegion are the region's own status.
+ * the address changes, on Escape, on the next press anywhere, or when a handler keeps the reader on the page
+ * (cancelNavPending). Routes with a ghost commit it at once, so the status never shows there. A RegionLink is its
+ * region's own status; SVG links (maps, charts) open panels in place and are not counted.
  */
 export function NavPending() {
   const path = usePathname();
@@ -64,14 +69,21 @@ export function NavPending() {
     const back = () => setPending(false);
     addEventListener("keydown", stop);
     addEventListener("popstate", back);
-    return () => { clearTimeout(t); removeEventListener("keydown", stop); removeEventListener("popstate", back); };
+    addEventListener("nav-pending:cancel", back);
+    // A later press is a new interaction: a click that set this status and then kept the reader here is over.
+    const press = () => setPending(false);
+    const arm = setTimeout(() => addEventListener("pointerdown", press, true), 0);
+    return () => {
+      clearTimeout(t); clearTimeout(arm); removeEventListener("keydown", stop); removeEventListener("popstate", back);
+      removeEventListener("nav-pending:cancel", back); removeEventListener("pointerdown", press, true);
+    };
   }, [pending]);
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as Element | null)?.closest?.("a[href]");
       if (!(a instanceof HTMLAnchorElement)) return;
-      if ((a.target && a.target !== "_self") || a.hasAttribute("download") || a.closest("[data-pending-region], [data-no-pending]")) return;
+      if ((a.target && a.target !== "_self") || a.hasAttribute("download") || a.hasAttribute("data-region-link") || a.closest("[data-no-pending]")) return;
       const to = new URL(a.href, location.href);
       if (to.origin !== location.origin || to.pathname.startsWith("/api/")) return;
       if (to.pathname === location.pathname && to.search === location.search) return; // an anchor on this page

@@ -99,7 +99,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </footer>
         <ReportProblem />
-        <Reveal />
+        <Suspense><Reveal /></Suspense>
         <Suspense><NavPending /></Suspense>
       </body>
     </html>
