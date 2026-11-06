@@ -52,25 +52,29 @@ describe("Ask county map", () => {
     const css = readFileSync(new URL("../globals.css", import.meta.url), "utf8");
     const theme = readFileSync(new URL("../approved.css", import.meta.url), "utf8");
     for (let i = 0; i < 5; i++) {
-      expect(css).toContain(`.ask-county-${i} { fill: var(--choro-${i}); background: var(--choro-${i}); }`);
-      expect(theme.match(new RegExp(`--choro-${i}:#`, "g"))).toHaveLength(3); // light, dark by preference, dark by choice
+      expect(css).toContain(`.ask-county-${i} { fill: var(--map-${i}); background: var(--map-${i}); }`);
+      expect(theme.match(new RegExp(`--map-${i}:#`, "g"))).toHaveLength(3); // light, dark by preference, dark by choice
     }
     expect(css).toMatch(/\.ask-county \{ stroke: var\(--surface\);/);
     expect(css).toMatch(/\.ask-county-none \{ fill: var\(--sunk\); \}/);
   });
 
-  it("is darker where there is more, in every theme, and its top step stands off the page and the empty counties", () => {
+  it("is darker where there is more on the light theme, lighter on the dark one (owner, 6 Nov 2026), its top step off the page and the empty counties", () => {
     const theme = readFileSync(new URL("../approved.css", import.meta.url), "utf8");
     const luminance = (hex: string) => {
       const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
       return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
     };
     const contrast = (a: string, b: string) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x! + 0.05) / (y! + 0.05); };
-    const blocks = [...theme.matchAll(/--paper:(#[0-9a-f]{6}); --surface:#[0-9a-f]{6}; --sunk:(#[0-9a-f]{6});[\s\S]*?--choro-0:(#[0-9a-f]{6}); --choro-1:(#[0-9a-f]{6}); --choro-2:(#[0-9a-f]{6}); --choro-3:(#[0-9a-f]{6}); --choro-4:(#[0-9a-f]{6});/g)];
+    const blocks = [...theme.matchAll(/--paper:(#[0-9a-f]{6}); --surface:#[0-9a-f]{6}; --sunk:(#[0-9a-f]{6});[\s\S]*?--map-0:(#[0-9a-f]{6}); --map-1:(#[0-9a-f]{6}); --map-2:(#[0-9a-f]{6}); --map-3:(#[0-9a-f]{6}); --map-4:(#[0-9a-f]{6});/g)];
     expect(blocks).toHaveLength(3);
     for (const [, paper, sunk, ...ramp] of blocks) {
       const steps = ramp.map((hex) => luminance(hex!));
-      for (let i = 1; i < steps.length; i++) expect(steps[i]).toBeLessThan(steps[i - 1]!);
+      const dark = luminance(paper!) < 0.2;
+      for (let i = 1; i < steps.length; i++) {
+        if (dark) expect(steps[i]).toBeGreaterThan(steps[i - 1]!);
+        else expect(steps[i]).toBeLessThan(steps[i - 1]!);
+      }
       expect(contrast(ramp[4]!, paper!)).toBeGreaterThanOrEqual(3);
       expect(contrast(ramp[4]!, sunk!)).toBeGreaterThanOrEqual(2.5);
     }
