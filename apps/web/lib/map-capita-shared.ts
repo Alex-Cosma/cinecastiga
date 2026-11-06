@@ -179,3 +179,24 @@ export function areaOf(key: string, name: string, population: number | null, mem
   const g = gap ?? (!denominator || denominator <= 0 ? "no_population" : null);
   return { key, name, population, denominator, value: known, perCapita: g ? null : perCapita(known, denominator), records, buyers, institutions: members.length, gap: g };
 }
+
+/**
+ * One UAT's panel (/harta, a click on a UAT; owner, 6 November 2026, "Povestea în trei întrebări"): its area in the
+ * selection, its place among the county's UATs, the county's figure, its years (every year, for the selection's CPV and
+ * channel), its CPV divisions and channels (for the selection's years), its largest suppliers and its neighbours.
+ */
+export interface MapUatResponse {
+  selection: MapSelection;
+  county: { key: string; name: string; perCapita: number | null };
+  uat: MapArea & { kind: string };
+  /** The UAT's own administration(s), the largest first: the name links to its page. */
+  townHalls: { id: string; name: string; value: number }[];
+  /** 1-based place by lei per inhabitant among the county's UATs with a figure; null with a gap. */
+  place: number | null;
+  ranked: number;
+  years: { year: string; value: number; perCapita: number | null; countyPerCapita: number | null; selected: boolean }[];
+  cpv: { code: string | null; name: string; value: number }[];
+  channels: { da: number; contracts: number };
+  suppliers: { id: string; name: string; value: number; records: number }[];
+  neighbours: { key: string; name: string; perCapita: number | null }[];
+}

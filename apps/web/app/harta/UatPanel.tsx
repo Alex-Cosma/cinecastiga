@@ -1,0 +1,147 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import EntityName from "@/components/EntityName";
+import { entityHref } from "@/lib/entity-href";
+import type { MapUatResponse } from "@/lib/map-capita-shared";
+
+/*
+ * The UAT's panel on /harta (owner, 6 November 2026, "Povestea în trei întrebări"): a sentence with the verdict, then
+ * "Cât?" (its years against the county's), "Pe ce?" (its CPV divisions) and "Cui?" (its largest suppliers), each with
+ * its conclusion written out, and its neighbours in the county underneath. Every firm's name and the UAT's own name
+ * link to their pages (owner: the commune's name opens its town hall). Values are contracted, not payments.
+ */
+
+const int = (n: number) => Math.round(n).toLocaleString("ro-RO");
+function short(value: number): string {
+  const f = (n: number, d: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: d, maximumFractionDigits: d });
+  if (value >= 1e9) return `${f(value / 1e9, 1)} mld.`;
+  if (value >= 1e6) return `${f(value / 1e6, value >= 1e8 ? 0 : 1)} mil.`;
+  if (value >= 1e3) return `${f(value / 1e3, 0)} mii`;
+  return f(value, 0);
+}
+const pct = (part: number, whole: number) => (whole > 0 ? Math.round((part / whole) * 100) : 0);
+const ordinal = (n: number) => (n === 1 ? "primul" : `al ${n}-lea`);
+const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
+/** "de 2,8 ori media județului", "cu 20% peste media județului", "la 60% din media județului", "aproape de media județului". */
+function versus(value: number, county: number | null): string | null {
+  if (county === null || county <= 0) return null;
+  const r = value / county;
+  if (r >= 1.5) return `de ${r.toLocaleString("ro-RO", { maximumFractionDigits: 1 })} ori media județului`;
+  if (r >= 1.1) return `cu ${Math.round((r - 1) * 100)}% peste media județului`;
+  if (r <= 0.9) return `la ${Math.round(r * 100)}% din media județului`;
+  return "aproape de media județului";
+}
+
+function Years({ years }: { years: MapUatResponse["years"] }) {
+  const max = Math.max(1, ...years.flatMap((y) => [y.perCapita ?? 0, y.countyPerCapita ?? 0]));
+  const peak = years.reduce((a, y) => ((y.perCapita ?? 0) > (a?.perCapita ?? 0) ? y : a), years[0]);
+  const W = 260, H = 96, bw = W / Math.max(1, years.length);
+  const now = new Date().getFullYear();
+  return <svg className="mx-p-years" viewBox={`0 0 ${W} ${H + 16}`} role="img" aria-label={`Lei pe locuitor pe ani: ${years.map((y) => `${y.year} ${y.perCapita === null ? "fără cifră" : int(y.perCapita)}`).join(", ")}.`}>
+    {years.map((y, i) => {
+      const h = ((y.perCapita ?? 0) / max) * (H - 4), x = i * bw + bw * 0.16, cy = y.countyPerCapita === null ? null : H - (y.countyPerCapita / max) * (H - 4);
+      const cls = `${y === peak && (y.perCapita ?? 0) > 0 ? " is-peak" : ""}${y.selected ? "" : " is-out"}${Number(y.year) >= now ? " is-current" : ""}`;
+      return <g key={y.year}>
+        <rect className={`mx-p-bar${cls}`} x={x} y={H - h} width={bw * 0.68} height={Math.max(h, 0)} rx="1.5"><title>{`${y.year}: ${y.perCapita === null ? "fără cifră" : `${int(y.perCapita)} lei pe locuitor`}${y.countyPerCapita === null ? "" : ` · județul ${int(y.countyPerCapita)}`}`}</title></rect>
+        {cy !== null && <line className="mx-p-avg" x1={i * bw + 1} x2={(i + 1) * bw - 1} y1={cy} y2={cy} />}
+        <text className="mx-p-tick" x={x + bw * 0.34} y={H + 12} textAnchor="middle">{y.year.slice(2)}</text>
+      </g>;
+    })}
+  </svg>;
+}
+
+function Neighbours({ data, onPick }: { data: MapUatResponse; onPick: (key: string) => void }) {
+  const list = data.neighbours.filter((n) => n.perCapita !== null);
+  const max = Math.max(1, ...list.map((n) => n.perCapita!));
+  // Drawn at the panel's own proportions (scaled uniformly), so the dots stay round and the words unstretched.
+  // Dots stack where they meet; a tall stack is squeezed into the band under the median's label.
+  const W = 560, H = 78, TOP = 18, cols = new Map<number, number>();
+  const raw = [...list].sort((a, b) => a.perCapita! - b.perCapita!).map((n) => {
+    const x = 10 + (n.perCapita! / max) * (W - 20), c = Math.round(x / 11), k = cols.get(c) ?? 0;
+    cols.set(c, k + 1);
+    return { n, x, off: k === 0 ? 0 : Math.ceil(k / 2) * 10 * (k % 2 ? -1 : 1) };
+  });
+  const half = (H - TOP) / 2 - 6, widest = Math.max(1, ...raw.map((d) => Math.abs(d.off))), squeeze = widest > half ? half / widest : 1;
+  const dots = raw.map((d) => ({ ...d, y: TOP + (H - TOP) / 2 + d.off * squeeze }));
+  const avg = data.county.perCapita === null ? null : 10 + (data.county.perCapita / max) * (W - 20);
+  return <svg className="mx-p-near" viewBox={`0 0 ${W} ${H + 18}`} role="img"
+    aria-label={`Lei pe locuitor în cele ${data.ranked} UAT-uri din ${data.county.name}; ${data.uat.name} ${data.place ? `e ${ordinal(data.place)}` : "nu are cifră"}.`}>
+    {avg !== null && <><line className="mx-p-avg" x1={avg} x2={avg} y1={TOP - 4} y2={H} /><text className="mx-p-tick" x={avg + 6} y={11}>media județului</text></>}
+    {dots.map(({ n, x, y }) => n.key === data.uat.key
+      ? <circle key={n.key} className="mx-p-me" cx={x} cy={y} r="7" vectorEffect="non-scaling-stroke"><title>{`${n.name}: ${int(n.perCapita!)} lei pe locuitor`}</title></circle>
+      : <circle key={n.key} className="mx-p-dot" cx={x} cy={y} r="4.2" onClick={() => onPick(n.key)}><title>{`${n.name}: ${int(n.perCapita!)} lei pe locuitor`}</title></circle>)}
+    <text className="mx-p-tick" x={10} y={H + 16}>0</text>
+    <text className="mx-p-tick" x={W - 10} y={H + 16} textAnchor="end">{int(max)} lei pe locuitor</text>
+  </svg>;
+}
+
+export default function UatPanel({ siruta, query, onClose, onPick }: { siruta: string; query: string; onClose: () => void; onPick: (key: string) => void }) {
+  const [state, setState] = useState<{ key: string; data: MapUatResponse | null; error: string }>({ key: "", data: null, error: "" });
+  const key = `siruta=${siruta}&${query}`;
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/map/uat?${key}`, { signal: controller.signal }).then(async (r) => {
+      const body = await r.json();
+      setState({ key, data: r.ok ? body as MapUatResponse : null, error: r.ok ? "" : body.error ?? "Datele UAT-ului nu au putut fi încărcate." });
+    }).catch(() => { if (!controller.signal.aborted) setState({ key, data: null, error: "Datele UAT-ului nu au putut fi încărcate. Reîncearcă." }); });
+    return () => controller.abort();
+  }, [key]);
+  const data = state.key === key ? state.data : null;
+  const loading = state.key !== key;
+  const d = data ?? (state.data && state.data.uat.key === siruta ? state.data : null);
+
+  const head = d && <>
+    <p className="mx-p-kick">{d.uat.kind} · {d.county.name}{d.uat.population ? ` · ${withDe(d.uat.population, "locuitor", "locuitori")}` : ""}
+      {d.townHalls.map((t) => <span key={t.id}> · <EntityName id={t.id} role="authority">{t.name}</EntityName></span>)}</p>
+    <h2 id="mx-p-h">{d.townHalls[0] ? <Link href={entityHref(d.townHalls[0].id, "authority")}>{d.uat.name}</Link> : d.uat.name}</h2>
+  </>;
+
+  // The panel slides in once; another UAT only replays its content's cascade (the body's key).
+  return <section className={`mx-panel${loading ? " is-loading" : ""}`} aria-labelledby="mx-p-h"><div className="mx-p-body" key={d?.uat.key ?? "wait"}>
+    <button type="button" className="mx-p-close" onClick={onClose} aria-label="Închide panoul">
+      <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+    </button>
+    {!d ? (state.error && !loading ? <p className="mx-p-error" role="alert">{state.error}</p> : <p className="mx-p-wait" role="status">Se încarcă UAT-ul…</p>)
+      : d.uat.gap === "no_admin" ? <>
+        {head}
+        <p className="mx-p-lead">Primăria lui {d.uat.name} nu e identificată sigur în date, deci nu avem cifra lui: valoarea e necunoscută, nu zero.</p>
+        <div className="mx-p-sec mx-p-wide"><h3>Printre vecini <small>lei pe locuitor în {d.county.name}; apasă un punct ca să deschizi UAT-ul</small></h3><Neighbours data={d} onPick={onPick} /></div>
+      </> : <>
+        {head}
+        {(() => {
+          const value = d.uat.value ?? 0, pc = d.uat.perCapita ?? 0, total = d.cpv.reduce((a, c) => a + c.value, 0);
+          const vs = versus(pc, d.county.perCapita);
+          const counted = d.years.filter((y) => y.countyPerCapita !== null && y.perCapita !== null);
+          const above = counted.filter((y) => y.perCapita! > y.countyPerCapita!).length;
+          const peak = d.years.reduce((a, y) => ((y.perCapita ?? 0) > (a?.perCapita ?? 0) ? y : a), d.years[0]);
+          const supTotal = d.suppliers.reduce((a, s) => a + s.value, 0);
+          const top = d.suppliers[0];
+          return <>
+            <p className="mx-p-lead">{d.uat.name} a contractat {short(value)} lei: <em>{int(pc)} lei pe locuitor</em>{vs ? `, ${vs}` : ""}
+              {d.place ? `, ${ordinal(d.place)} din cele ${withDe(d.ranked, "UAT", "UAT-uri")} ale județului ${d.county.name}` : ""}.</p>
+            <div className="mx-p-cols">
+              <div className="mx-p-sec"><h3>Cât?</h3>
+                <p>{peak && (peak.perCapita ?? 0) > 0 ? <>Vârful în <b>{peak.year}</b>: {int(peak.perCapita!)} lei pe locuitor.</> : "Fără achiziții pe ani în această selecție."}
+                  {counted.length > 0 && <> Peste media județului în {above} din {counted.length} ani.</>}</p>
+                <Years years={d.years} />
+              </div>
+              <div className="mx-p-sec"><h3>Pe ce?</h3>
+                <p>{d.cpv[0] ? <><b>{pct(d.cpv[0].value, total)}%</b> {d.cpv[0].name.toLowerCase()}{d.cpv[1] ? <>, apoi {d.cpv[1].name.toLowerCase()}{d.cpv[2] ? ` și ${d.cpv[2].name.toLowerCase()}` : ""}</> : ""}.</> : "Fără domenii în această selecție."}</p>
+                <ul className="mx-p-rows">{d.cpv.slice(0, 5).map((c) => <li key={c.code ?? "none"}><span>{c.name}</span><i style={{ width: `${Math.max(2, pct(c.value, d.cpv[0]!.value))}%` }} /><b>{pct(c.value, total)}%</b></li>)}</ul>
+              </div>
+              <div className="mx-p-sec"><h3>Cui?</h3>
+                <p>{top ? (d.suppliers.length === 1 ? <>Un singur furnizor: <EntityName id={top.id} role="supplier">{top.name}</EntityName>.</>
+                  : <><EntityName id={top.id} role="supplier">{top.name}</EntityName> ia <b>{pct(top.value, value)}%</b>; primii {d.suppliers.length}, {pct(supTotal, value)}%.</>) : "Fără furnizori în această selecție."}</p>
+                <ul className="mx-p-rows">{d.suppliers.map((s) => <li key={s.id}><span><EntityName id={s.id} role="supplier">{s.name}</EntityName></span>
+                  <i style={{ width: `${Math.max(2, pct(s.value, top!.value))}%` }} /><b title={`${short(s.value)} lei · ${withDe(s.records, "înregistrare", "înregistrări")}`}>{pct(s.value, value)}%</b></li>)}</ul>
+              </div>
+            </div>
+            <div className="mx-p-sec mx-p-wide"><h3>Printre vecini <small>lei pe locuitor în {d.county.name}; apasă un punct ca să deschizi UAT-ul</small></h3><Neighbours data={d} onPick={onPick} /></div>
+            <p className="mx-p-note">Valori contractate, nu plăți. Prin proceduri: {pct(d.channels.contracts, d.channels.contracts + d.channels.da)}%; directe: {pct(d.channels.da, d.channels.contracts + d.channels.da)}%.</p>
+          </>;
+        })()}
+      </>}
+  </div></section>;
+}

@@ -5,8 +5,8 @@ import { COUNTY_POPULATION, PER_CAPITA_SOURCE, martsCounty, readPerCapitaPopulat
 import catalog from "./reference/population-rpl2021.json" with { type: "json" };
 import geo from "./reference/uat-geo.json" with { type: "json" };
 import {
-  areaOf, countyKey, lei, MapError, sumByInstitution,
-  type MapArea, type MapInstitution, type MapOptions, type MapResponse, type MapRow, type MapSelection,
+  areaOf, countyKey, lei, MapError, perCapita, rowSelected, sumByInstitution,
+  type MapArea, type MapInstitution, type MapOptions, type MapResponse, type MapRow, type MapSelection, type MapUatResponse,
 } from "./map-capita-shared";
 
 /*
@@ -191,5 +191,69 @@ export async function getMapOptions(): Promise<MapOptions> {
     undated: { value: lei(undated.value), records: undated.records },
     cpv: [...cpv].sort((a, b) => b[1].value - a[1].value).map(([code, t]) => ({ code, name: domainName(code, official.get(code)), official: official.get(code) ?? null, value: lei(t.value), records: t.records })),
     datasets: ["all", "da", "contracts"],
+  };
+}
+
+/**
+ * One UAT's panel: its figures in the selection beside the county's, its years (all of them, the selection's CPV and
+ * channel), divisions and channels (the selection's years), its largest suppliers (read live from the transaction marts,
+ * the same population as the map's rows: DAs up to 2,000,000 lei, contract allocations) and the county's other UATs.
+ */
+export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUatResponse> {
+  const unit = UATS.find((u) => u.siruta === siruta);
+  if (!unit) throw new MapError("UAT-ul nu există.", 404);
+  const county = COUNTY_BY_KEY.get(unit.county)!;
+  const sql = db();
+  const [data, official] = await Promise.all([readMapKind(sql), divisionNames(sql)]);
+  const { areas } = uatAreas(data, s, unit.county);
+  const area = areas.find((a) => a.key === String(siruta))!;
+  const ranked = areas.filter((a) => a.perCapita !== null).sort((a, b) => b.perCapita! - a.perCapita!);
+  const countyArea = countyAreas(data, s).find((a) => a.key === unit.county) ?? null;
+  const members = data.institutions.map((inst, i) => (inst.level === "local" && inst.siruta === siruta ? i : -1)).filter((i) => i >= 0);
+  const mine = new Set(members);
+  const own = data.rows.filter((r) => mine.has(r.a));
+  const yearsSet = s.years === "all" ? null : new Set(s.years), cpvSet = s.cpv === "all" ? null : new Set(s.cpv);
+  const population = UNIT_POPULATION.get(siruta) ?? null;
+  // Every year with rows anywhere in the kind, so a year without purchases shows as one.
+  const allYears = [...new Set(data.rows.map((r) => r.y).filter((y): y is string => y !== null))].sort();
+  const years = allYears.map((year) => {
+    const one = { ...s, years: [year] }, ys = new Set([year]);
+    const value = own.filter((r) => rowSelected(r, one, ys, cpvSet)).reduce((a, r) => a + r.v, 0);
+    const c = countyAreas(data, one).find((a) => a.key === unit.county);
+    return { year, value: lei(value), perCapita: area.gap ? null : perCapita(value, population), countyPerCapita: c?.perCapita ?? null, selected: !yearsSet || yearsSet.has(year) };
+  });
+  const byCpv = new Map<string | null, number>(), channels = { da: 0, contracts: 0 };
+  for (const r of own) {
+    if (rowSelected(r, { ...s, dataset: "all" }, yearsSet, cpvSet)) channels[r.src] += r.v;
+    if (rowSelected(r, s, yearsSet, cpvSet)) byCpv.set(r.c, (byCpv.get(r.c) ?? 0) + r.v);
+  }
+  const ids = members.map((i) => data.institutions[i]!.id);
+  const named = ids.length ? (await sql`select id::text id, name_display name from core.entities where id = any(${sql.array(ids)}::bigint[])`) as unknown as { id: string; name: string }[] : [];
+  const valueOf = (i: number) => own.filter((r) => r.a === i && rowSelected(r, s, yearsSet, cpvSet)).reduce((a, r) => a + r.v, 0);
+  const townHalls = members.map((i) => ({ id: data.institutions[i]!.id, name: named.find((n) => n.id === data.institutions[i]!.id)?.name ?? "", value: lei(valueOf(i)) }))
+    .sort((a, b) => b.value - a.value);
+  const suppliers = ids.length ? (await sql`
+    select x.supplier_id::text id, e.name_display name, sum(x.v)::float8 value, count(*)::int records from (
+      select supplier_id, closing_value v, finalization_date d, cpv_code c from marts.da_transactions
+        where authority_id = any(${sql.array(ids)}::bigint[]) and closing_value > 0 and closing_value <= 2000000 and supplier_id is not null and ${s.dataset !== "contracts"}
+      union all
+      select supplier_id, closing_value, finalization_date, cpv_code from marts.contract_transactions
+        where authority_id = any(${sql.array(ids)}::bigint[]) and closing_value > 0 and supplier_id is not null and ${s.dataset !== "da"}
+    ) x join core.entities e on e.id = x.supplier_id
+    where ${yearsSet ? sql`substr(x.d, 1, 4) = any(${sql.array([...yearsSet])}::text[])` : sql`true`}
+      and ${cpvSet ? sql`substr(x.c, 1, 2) = any(${sql.array([...cpvSet])}::text[])` : sql`true`}
+    group by 1, 2 order by value desc limit 5`) as unknown as { id: string; name: string; value: number; records: number }[] : [];
+  return {
+    selection: s,
+    county: { key: unit.county, name: county.name, perCapita: countyArea?.perCapita ?? null },
+    uat: { ...area, kind: unit.kind },
+    townHalls,
+    place: area.perCapita === null ? null : ranked.findIndex((a) => a.key === area.key) + 1,
+    ranked: ranked.length,
+    years,
+    cpv: [...byCpv].sort((a, b) => b[1] - a[1]).map(([code, value]) => ({ code, name: code === null ? "fără cod CPV" : domainName(code, official.get(code)), value: lei(value) })),
+    channels: { da: lei(channels.da), contracts: lei(channels.contracts) },
+    suppliers: suppliers.map((x) => ({ ...x, value: lei(Number(x.value)) })),
+    neighbours: areas.map((a) => ({ key: a.key, name: a.name, perCapita: a.perCapita })),
   };
 }

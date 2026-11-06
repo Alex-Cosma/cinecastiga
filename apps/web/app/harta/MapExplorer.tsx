@@ -6,6 +6,7 @@ import OptionList from "@/app/intreaba/builder/pickers/OptionList";
 import type { KitOption } from "@/app/intreaba/builder/kit-types";
 import "@/app/intreaba/builder/filters-kit.css";
 import Term from "@/components/Term";
+import UatPanel from "./UatPanel";
 import type { MapArea, MapDataset, MapOptions, MapResponse } from "@/lib/map-capita-shared";
 
 /*
@@ -72,7 +73,7 @@ function Pick({ label, text, title, children, wide = false }: { label: string; t
   </>;
 }
 
-export default function MapExplorer({ initial }: { initial: { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined } }) {
+export default function MapExplorer({ initial }: { initial: { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined; uat?: string | undefined } }) {
   const parse = (raw: string | undefined, valid: RegExp): Years => {
     const items = (raw ?? "").split(",").map((s) => s.trim()).filter((s) => valid.test(s));
     return items.length ? [...new Set(items)].sort() : "all";
@@ -81,6 +82,8 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
   const [cpv, setCpv] = useState<Years>(() => parse(initial.cpv, /^\d\d$/));
   const [dataset, setDataset] = useState<MapDataset>(() => DATASETS.find((d) => d.url === initial.canal)?.value ?? "all");
   const [county, setCounty] = useState<string | null>(initial.judet && /^[a-z-]{2,20}$/.test(initial.judet) ? initial.judet : null);
+  // The UAT whose panel is open (owner, 6 November 2026): its SIRUTA, inside the open county.
+  const [uat, setUat] = useState<string | null>(initial.judet && initial.uat && /^\d{1,7}$/.test(initial.uat) ? initial.uat : null);
   const [geo, setGeo] = useState<Geo | null>(null);
   const [countyGeo, setCountyGeo] = useState<Record<string, CountyGeo>>({});
   const [options, setOptions] = useState<MapOptions | null>(null);
@@ -138,8 +141,12 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
   // Back closes a county opened by a click (its own history entry); the breadcrumb and Escape do the same.
   const fromPop = useRef(false);
   const shownCounty = useRef<string | null>(county);
+  const shownUat = useRef<string | null>(uat);
   useEffect(() => {
-    const onPop = () => { const j = new URLSearchParams(window.location.search).get("judet"); fromPop.current = true; setCounty(j && /^[a-z-]{2,20}$/.test(j) ? j : null); };
+    const onPop = () => {
+      const p = new URLSearchParams(window.location.search), j = p.get("judet"), u = p.get("uat");
+      fromPop.current = true; setCounty(j && /^[a-z-]{2,20}$/.test(j) ? j : null); setUat(j && u && /^\d{1,7}$/.test(u) ? u : null);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -151,18 +158,23 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     const canal = DATASETS.find((d) => d.value === dataset)?.url;
     if (canal) p.set("canal", canal);
     if (county) p.set("judet", county);
+    if (county && uat) p.set("uat", uat);
     const q = p.toString(), url = `${window.location.pathname}${q ? `?${q}` : ""}`;
-    const opened = county !== null && county !== shownCounty.current && !fromPop.current;
+    // Opening a county or a UAT's panel is a history entry: Back closes it.
+    const opened = !fromPop.current && ((county !== null && county !== shownCounty.current) || (uat !== null && uat !== shownUat.current));
     if (opened) window.history.pushState(null, "", url); else window.history.replaceState(null, "", url);
-    shownCounty.current = county; fromPop.current = false;
-  }, [years, cpv, dataset, county]);
+    shownCounty.current = county; shownUat.current = uat; fromPop.current = false;
+  }, [years, cpv, dataset, county, uat]);
   // Escape steps back to the country.
   useEffect(() => {
     if (!county) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector("dialog[open]")) setCounty(null); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
+      if (uat) setUat(null); else setCounty(null);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [county]);
+  }, [county, uat]);
 
   // The glide: the viewBox eases from where it is to the county's box (or back to the country).
   const shape = geo && county ? geo.counties.find((c) => c.key === county) : undefined;
@@ -213,6 +225,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
   const shown = hover ? byKey.get(hover) ?? (loc?.city?.key === hover ? loc.city : undefined) : undefined;
   const busy = !level || (county !== null && !countyGeo[county]);
   const uatGeo = county ? countyGeo[county] : undefined;
+  const chosen = uat && uatGeo ? uatGeo.uats.find((u) => String(u.siruta) === uat)?.d ?? null : null;
   const outline = !hover || !geo ? null : county ? uatGeo?.uats.find((u) => String(u.siruta) === hover)?.d ?? null : geo.counties.find((c) => c.key === hover)?.d ?? null;
   const hoverPlace = hover ? ranked.findIndex((a) => a.key === hover && a.perCapita !== null) + 1 : 0;
   const [atEnd, setAtEnd] = useState(false);
@@ -227,15 +240,19 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     const list = listRef.current;
     const row = hover && fromMap.current ? list?.querySelector<HTMLElement>(`[data-key="${hover}"]`) : null;
     if (!list || !row) return;
-    if (row.offsetTop < list.scrollTop) list.scrollTop = row.offsetTop - 8;
-    else if (row.offsetTop + row.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = row.offsetTop + row.offsetHeight - list.clientHeight + 8;
+    // Measured against the list itself (offsetTop counts from the page's positioned ancestor, which hid the top rows);
+    // the bottom keeps clear of the fade.
+    const top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop, bottom = top + row.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top - 8;
+    else if (bottom > list.scrollTop + list.clientHeight - 44) list.scrollTop = bottom - list.clientHeight + 48;
   }, [hover]);
 
   function track(event: ReactPointerEvent<HTMLDivElement>) {
     const rect = stageRef.current?.getBoundingClientRect();
     if (rect) setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
   }
-  const openCounty = (key: string) => { setHover(null); setCounty(key); };
+  const openCounty = (key: string) => { setHover(null); setUat(null); setCounty(key); };
+  const openUat = (key: string) => { setHover(key); setUat(key); };
 
   const yearOptions: KitOption[] = [{ value: "all", label: "Toată perioada", detail: `${yearsWords("all", allYears)}, cu înregistrările fără dată` },
     ...(options?.years ?? []).map((y) => ({ value: y.year, label: y.year, count: `${short(y.value)} lei`, ...(Number(y.year) >= new Date().getFullYear() ? { detail: "an în curs, incomplet" } : {}) }))];
@@ -267,9 +284,9 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
       <div className="mx-seg" role="group" aria-label="Achiziții">{DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={dataset === d.value} onClick={() => setDataset(d.value)}>{d.label}</button>)}</div>
     </div>
 
-    {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div className="mx-body">
+    {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div className={`mx-body${county && uat ? " has-panel" : ""}`}>
       <section className={`mx-stage${busy ? " is-busy" : ""}`} aria-label={county ? `Harta județului ${countyName}` : "Harta României pe județe"}>
-        {county && <p className="mx-crumb"><button type="button" onClick={() => setCounty(null)}><Arrow back /> România</button><span>· {countyName}</span></p>}
+        {county && <p className="mx-crumb"><button type="button" onClick={() => { setUat(null); setCounty(null); }}><Arrow back /> România</button><span>· {countyName}</span></p>}
         <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}>
           {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img"
             aria-label={`${county ? countyName : "România"}: lei pe locuitor${average !== null ? `, în medie ${int(average)}` : ""}. Clasamentul de alături are aceleași cifre.`}>
@@ -288,12 +305,13 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
               {uatGeo.uats.map((u) => {
                 const key = String(u.siruta), a = byKey.get(key), gap = !a || a.perCapita === null;
                 return <path key={key} d={u.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" className={`mx-area${gap ? " is-gap" : ""}${hover === key ? " is-hover" : ""}`}
-                  style={fill(a)} onPointerEnter={() => { fromMap.current = true; setHover(key); }} onClick={() => setHover(key)} />;
+                  style={fill(a)} onPointerEnter={() => { fromMap.current = true; setHover(key); }} onClick={() => openUat(key)} />;
               })}
             </g>}
             {/* Drawn last so their ink closes on every edge: the open county's border, the hovered area's outline. */}
             {county && shape && <path className="mx-open-edge" d={shape.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
             {outline && <path className="mx-outline" d={outline} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
+            {chosen && <path className="mx-chosen" d={chosen} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
           </svg>}
           {shown && pointer && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
             <b>{shown.name}</b>
@@ -323,8 +341,8 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
             const gap = a.perCapita === null;
             return <li key={a.key} data-key={a.key}>
               <button type="button" className={`mx-row${hover === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
-                onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)} onClick={() => (county ? setHover(a.key) : openCounty(a.key))}
-                aria-label={`${a.name}: ${gap ? "fără cifră" : `${int(a.perCapita!)} lei pe locuitor`}${county ? "" : ". Deschide UAT-urile județului"}`}>
+                onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)} onClick={() => (county ? openUat(a.key) : openCounty(a.key))}
+                aria-label={`${a.name}: ${gap ? "fără cifră" : `${int(a.perCapita!)} lei pe locuitor`}${county ? ". Deschide fișa UAT-ului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
                 <span className="mx-n">{gap ? "" : i + 1}</span>
                 <span className="mx-name">{a.name}{a.coverage !== undefined && a.coverage < 0.9 && <small>acoperire {Math.round(a.coverage * 100)}%</small>}</span>
                 <span className="mx-bar" aria-hidden="true">{!gap && <i style={{ width: `${Math.max(1.5, (a.perCapita! / max) * 100)}%`, opacity: 0.25 + 0.75 * (a.perCapita! / max) }} />}</span>
@@ -337,6 +355,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
         {!busy && !ranked.length && <p className="mx-note">Nicio valoare în această selecție.</p>}
         <p className="mx-note">{county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
+      {county && uat && <UatPanel siruta={uat} query={selection} onClose={() => setUat(null)} onPick={openUat} />}
     </div>}
   </div>;
 }
