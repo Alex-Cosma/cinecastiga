@@ -8,7 +8,9 @@
 @media (max-width: 640px) { :root { --chart-step: 12ms; --chart-cap: 160ms; } }
 
 .cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw, .cm-in {
-  animation: var(--cm-k) var(--cm-dur, var(--chart-in)) var(--ease) both;
+  /* backwards: the start state holds through the delay; once over, nothing is held, so a later tween (.cm-tw) on the
+     same element still transitions and nothing stays clipped. */
+  animation: var(--cm-k) var(--cm-dur, var(--chart-in)) var(--ease) backwards;
   animation-delay: calc(var(--cm-d, 0ms) + min(calc(var(--i, 0) * var(--chart-step)), var(--chart-cap)));
 }
 .cm-x { --cm-k: cm-x; }       /* a bar grows to the right; a stacked bar as one */
@@ -21,10 +23,11 @@
    transform of its own, e.g. translateX(-50%), uses .cm-fade instead: the keyframe would replace its transform) */
 .cm-in { --cm-k: cm-fade; --cm-dur: var(--fast); } /* a mark added by an update */
 .cm-late { --cm-d: 300ms; }   /* the subject's own mark comes last */
-@keyframes cm-x { from { clip-path: inset(0 100% 0 0); } }
-@keyframes cm-xr { from { clip-path: inset(0 0 0 100%); } }
-@keyframes cm-y { from { clip-path: inset(100% 0 0 0); } }
-@keyframes cm-yd { from { clip-path: inset(0 0 100% 0); } }
+/* Both ends given: inset() does not interpolate to the underlying `none`. */
+@keyframes cm-x { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
+@keyframes cm-xr { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0); } }
+@keyframes cm-y { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
+@keyframes cm-yd { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
 @keyframes cm-fade { from { opacity: 0; } }
 @keyframes cm-pt { from { opacity: 0; transform: scale(.5); } }
 

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { BUYER_REGIME_OVERRIDES, FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 import { DA_CEILING_ERAS } from "@seap/domain";
 import DataCoverage from "@/components/DataCoverage";
@@ -67,7 +68,7 @@ function BandBar({ label, b, who }: { label: string; b: BandCounts; who: string 
   return (
     <div className="mt-row">
       <b>{formatInt(b.total)} {label}</b>
-      <div className="mt-pbar" role="img" aria-label={`${who} cu cel puțin 10 achiziții directe: ${words}`}>
+      <div className="mt-pbar cm-x" role="img" aria-label={`${who} cu cel puțin 10 achiziții directe: ${words}`}>
         <i className="mt-z" style={{ flex: String(b.none) }} />
         <i className="mt-l" style={{ flex: String(b.slab) }} />
         <i className="mt-m" style={{ flex: String(b.moderat) }} />
@@ -78,20 +79,21 @@ function BandBar({ label, b, who }: { label: string; b: BandCounts; who: string 
   );
 }
 
-/** The non-zero scores of the institutions (10–100), by tens; one series, its numbers written above the bars. */
+/** The non-zero scores of the institutions (10–100), by tens; one series, its numbers written above the bars. Its bins
+ *  grow from the baseline in score order when it comes into view; the numbers are there from the start. */
 function ScoreHistogram({ kinds }: { kinds: MethodologyFigures["kinds"] }) {
   const bins = Array.from({ length: 9 }, (_, i) => kinds.reduce((sum, k) => sum + (k.histogram[i] ?? 0), 0));
   const top = Math.max(1, ...bins);
   const total = bins.reduce((a, b) => a + b, 0);
   const label = (i: number) => (i === 8 ? "90–100" : `${(i + 1) * 10}–${(i + 1) * 10 + 9}`);
   return (
-    <figure className="mt-shist">
+    <figure className="mt-shist" data-chart="">
       <figcaption>Instituțiile cu scor de cel puțin 10, pe intervale de scor: {formatInt(total)} în total</figcaption>
       <div className="mt-shist-bars" role="img" aria-label={`Instituțiile cu scor de cel puțin 10, pe intervale de scor: ${bins.map((n, i) => `${label(i)}: ${formatInt(n)}`).join("; ")}`}>
         {bins.map((n, i) => (
           <div key={i} title={`${label(i)}: ${formatInt(n)}`}>
             <span>{formatInt(n)}</span>
-            <i style={{ height: `${Math.max(n ? 2 : 0, (100 * n) / top)}%` }} />
+            <i className="cm-y" style={{ height: `${Math.max(n ? 2 : 0, (100 * n) / top)}%`, "--i": i } as CSSProperties} />
           </div>
         ))}
       </div>
@@ -1155,7 +1157,8 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                   <figcaption>Grupul de comparație nu a putut fi citit acum.</figcaption>
                 )}
             </figure>
-            <figure className="mt-fig mt-dist" aria-labelledby="dist-t">
+            {/* Real data (the two BandBars): each bar grows as a whole when the figure comes into view, both together. */}
+            <figure className="mt-fig mt-dist" aria-labelledby="dist-t" data-chart="">
               <p id="dist-t" style={{ fontWeight: "600" }}>Cum arată scorurile în toată țara</p>
               {f ? (
                 <>

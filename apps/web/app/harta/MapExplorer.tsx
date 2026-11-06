@@ -9,6 +9,7 @@ import Term from "@/components/Term";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import UatPanel from "./UatPanel";
+import { useEntrance, useFillIn, useGlide } from "./motion";
 import type { MapArea, MapDataset, MapOptions, MapResponse } from "@/lib/map-capita-shared";
 
 /*
@@ -99,8 +100,6 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
   const [search, setSearch] = useState("");
   // Phones show the first 15 of the ranking (owner: no long phone lists); a county change folds it again.
   const [unfolded, setUnfolded] = useState<string | null>(null);
-  const [view, setView] = useState<View | null>(null);
-  const viewRef = useRef<View | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
   // Where the hover came from: only the map's scrolls the ranking (a row under the pointer must never move away).
   const fromMap = useRef(false);
@@ -179,7 +178,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     return () => window.removeEventListener("keydown", onKey);
   }, [county, uat]);
 
-  // The glide: the viewBox eases from where it is to the county's box (or back to the country).
+  // The glide (the camera, motion.ts): the viewBox eases from where it is to the county's box (or back to the country).
   const shape = geo && county ? geo.counties.find((c) => c.key === county) : undefined;
   const target: View | null = useMemo(() => {
     if (!geo) return null;
@@ -188,22 +187,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     const w = x1 - x0, h = y1 - y0, pad = Math.max(w, h) * 0.08;
     return [x0 - pad, y0 - pad, w + 2 * pad, h + 2 * pad];
   }, [geo, shape]);
-  useEffect(() => {
-    if (!target) return;
-    const from = viewRef.current;
-    const reduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!from || reduced) { viewRef.current = target; setView(target); return; }
-    let raf = 0;
-    const t0 = performance.now(), D = 560;
-    const step = (now: number) => {
-      const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
-      const next = from.map((f, i) => f + (target[i]! - f) * e) as View;
-      viewRef.current = next; setView(next);
-      if (k < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target]);
+  const view = useGlide(target);
 
   // Same areas, new numbers (a filter): the old ones stay, dimmed, with a floating status. Another level (a county
   // opened, the first load) has no numbers to dim: its ranking is a ghost of its rows (owner, 6 November 2026).
@@ -228,13 +212,20 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
   const kindLabel = options?.kinds[0]?.label ?? "Primării și consilii județene";
   const cpvWords = cpv === "all" ? "toate domeniile" : cpv.length === 1 ? (options?.cpv.find((c) => c.code === cpv[0])?.name ?? `CPV ${cpv[0]}`).toLowerCase() : `${cpv.length} domenii CPV`;
   const channelWords = dataset === "da" ? ", prin achiziții directe" : dataset === "contracts" ? ", prin proceduri" : "";
-  const fill = (a: MapArea | undefined): CSSProperties | undefined => (a && a.perCapita !== null ? { fillOpacity: 0.07 + 0.93 * (a.perCapita / max) } : undefined);
+  const fill = (a: MapArea | undefined): CSSProperties | undefined => (a && a.perCapita !== null ? { fillOpacity: BASE.fillOpacity + (1 - BASE.fillOpacity) * (a.perCapita / max) } : undefined);
+  // The counties fill in together once their numbers are in (motion.ts); until then they wait at the base tint.
+  const natFilled = useFillIn(Boolean(geo && view && nat));
   const shown = hover ? byKey.get(hover) ?? (loc?.city?.key === hover ? loc.city : undefined) : undefined;
   const busy = !level || (county !== null && !countyGeo[county]);
   const uatGeo = county ? countyGeo[county] : undefined;
   const chosen = uat && uatGeo ? uatGeo.uats.find((u) => String(u.siruta) === uat)?.d ?? null : null;
   const outline = !hover || !geo ? null : county ? uatGeo?.uats.find((u) => String(u.siruta) === hover)?.d ?? null : geo.counties.find((c) => c.key === hover)?.d ?? null;
   const hoverPlace = hover ? ranked.findIndex((a) => a.key === hover && a.perCapita !== null) + 1 : 0;
+  // The ranking's bars grow (the first ten, top down) when a level's rows first appear; a filter then tweens their
+  // widths in place, and the rows take their new order at once (no sliding).
+  const rankLevel = county ?? "";
+  const rankKeys = useMemo(() => ranked.map((a) => a.key), [ranked]);
+  const rankMotion = useEntrance(rankLevel, rankKeys);
   const [atEnd, setAtEnd] = useState(false);
   // A list that fits (or is scrolled to its end) carries no fade: measured whenever its rows change.
   useEffect(() => {
@@ -301,20 +292,15 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
             <g className={county ? "mx-counties is-back" : "mx-counties"}>
               {geo.counties.map((c) => {
                 const a = nat?.areas.find((x) => x.key === c.key);
-                const gap = !a || a.perCapita === null;
+                const gap = natFilled && (!a || a.perCapita === null);
                 return <path key={c.key} d={c.d} fillRule="evenodd" vectorEffect="non-scaling-stroke"
                   className={`mx-area${gap ? " is-gap" : ""}${!county && hover === c.key ? " is-hover" : ""}${county === c.key ? " is-open" : ""}`}
-                  style={county ? undefined : fill(a)}
+                  style={county ? undefined : natFilled ? fill(a) : BASE}
                   onPointerEnter={county ? undefined : () => { fromMap.current = true; setHover(c.key); }} onClick={() => (county === c.key ? undefined : openCounty(c.key))} />;
               })}
             </g>
-            {county && uatGeo && <g className="mx-uats" key={county}>
-              {uatGeo.uats.map((u) => {
-                const key = String(u.siruta), a = byKey.get(key), gap = !a || a.perCapita === null;
-                return <path key={key} d={u.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" className={`mx-area${gap ? " is-gap" : ""}${hover === key ? " is-hover" : ""}`}
-                  style={fill(a)} onPointerEnter={() => { fromMap.current = true; setHover(key); }} onClick={() => openUat(key)} />;
-              })}
-            </g>}
+            {county && uatGeo && <UatLayer key={county} uats={uatGeo.uats} ready={loc !== null} byKey={byKey} hover={hover} fill={fill}
+              onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openUat} />}
             {/* Drawn last so their ink closes on every edge: the open county's border, the hovered area's outline. */}
             {county && shape && <path className="mx-open-edge" d={shape.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
             {outline && <path className="mx-outline" d={outline} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
@@ -344,8 +330,8 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
           <b>{loc.city.name}</b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}</span>
           <em>{loc.city.perCapita === null ? "—" : `${int(loc.city.perCapita)} lei`}</em>
         </div>}
-        <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}`} ref={listRef}
-          onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4); }}>
+        <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}`} ref={listRef} key={rankLevel}
+          data-chart="" onAnimationEnd={rankMotion.onAnimationEnd} onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4); }}>
           {ranked.map((a, i) => {
             const gap = a.perCapita === null;
             return <li key={a.key} data-key={a.key}>
@@ -354,7 +340,8 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
                 aria-label={`${a.name}: ${gap ? "fără cifră" : `${int(a.perCapita!)} lei pe locuitor`}${county ? ". Deschide fișa UAT-ului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
                 <span className="mx-n">{gap ? "" : i + 1}</span>
                 <span className="mx-name">{a.name}{a.coverage !== undefined && a.coverage < 0.9 && <small>acoperire {Math.round(a.coverage * 100)}%</small>}</span>
-                <span className="mx-bar" aria-hidden="true">{!gap && <i style={{ width: `${Math.max(1.5, (a.perCapita! / max) * 100)}%`, opacity: 0.25 + 0.75 * (a.perCapita! / max) }} />}</span>
+                <span className="mx-bar" aria-hidden="true">{!gap && <i className={`cm-tw ${rankMotion.mark(a.key, i < 10 ? "cm-x" : "")}`}
+                  style={{ width: `${Math.max(1.5, (a.perCapita! / max) * 100)}%`, opacity: 0.25 + 0.75 * (a.perCapita! / max), "--i": i } as CSSProperties} />}</span>
                 <span className="mx-v">{gap ? "—" : int(a.perCapita!)}</span>
               </button>
             </li>;
@@ -370,6 +357,24 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     </div>}
     {stale && <FloatStatus>Se încarcă…</FloatStatus>}
   </div>;
+}
+
+/** The ramp's base tint: an area at zero lei, and every area of a layer whose numbers are not in yet. */
+const BASE = { fillOpacity: 0.07 } as const;
+
+/** The open county's UATs: a layer of their own (keyed by county), so each opening fills in anew (motion.ts). */
+function UatLayer({ uats, ready, byKey, hover, fill, onHover, onOpen }: {
+  uats: UatShape[]; ready: boolean; byKey: Map<string, MapArea>; hover: string | null;
+  fill: (a: MapArea | undefined) => CSSProperties | undefined; onHover: (key: string) => void; onOpen: (key: string) => void;
+}) {
+  const filled = useFillIn(ready);
+  return <g className="mx-uats">
+    {uats.map((u) => {
+      const key = String(u.siruta), a = byKey.get(key), gap = filled && (!a || a.perCapita === null);
+      return <path key={key} d={u.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" className={`mx-area${gap ? " is-gap" : ""}${hover === key ? " is-hover" : ""}`}
+        style={filled ? fill(a) : BASE} onPointerEnter={() => onHover(key)} onClick={() => onOpen(key)} />;
+    })}
+  </g>;
 }
 
 /*

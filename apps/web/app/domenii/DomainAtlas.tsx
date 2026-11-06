@@ -23,7 +23,15 @@ export interface DomainAtlasProps {
   onExplore: (code: string) => void;
   onDetails: (code: string) => void;
   shareLabel?: string;
+  /** What the atlas shows (the domain drilled into, a search or not, all divisions). Another scope re-enters; the same
+   *  scope with other numbers or another order (a year, a sort, a refined search) fades in only the tiles that changed. */
+  scope?: string;
+  /** Kept by the page across remounts of the atlas, so the first entrance plays once per page view. */
+  memory?: { current: AtlasMemory | null };
 }
+
+/** The last drawing: its scope, each tile's place and value by code, and whether its entrance has played. */
+export interface AtlasMemory { scope: string; tiles: ReadonlyMap<string, string>; played: boolean }
 
 type RenderedNode = AtlasNode & { color: string };
 interface AtlasItem {
@@ -37,16 +45,20 @@ interface AtlasItem {
 }
 
 /** The parent owns navigation; this component only renders and activates tiles. */
-export function DomainAtlas({ nodes, onExplore, onDetails, shareLabel = "din selecție" }: DomainAtlasProps) {
+export function DomainAtlas({ nodes, onExplore, onDetails, shareLabel = "din selecție", scope = "", memory }: DomainAtlasProps) {
   const container = useRef<HTMLDivElement>(null);
+  const own = useRef<AtlasMemory | null>(null);
   const tooltipId = useId();
   const explore = useEffectEvent(onExplore);
   const details = useEffectEvent(onDetails);
+  const motion = useEffectEvent(() => ({ scope, memory: memory ?? own }));
   useEffect(() => {
     if (!container.current) return;
-    return mountAtlas(container.current, nodes, explore, details, shareLabel, tooltipId);
+    const { scope: shown, memory: kept } = motion();
+    return mountAtlas(container.current, nodes, explore, details, shareLabel, tooltipId, shown, kept);
   }, [nodes, shareLabel, tooltipId]);
-  return <div ref={container} className="domain-atlas" data-domain-atlas="" />;
+  // data-chart: Reveal holds the first entrance (cm-wait) until the atlas is scrolled into view.
+  return <div ref={container} className="domain-atlas" data-domain-atlas="" data-chart="" />;
 }
 
 export default DomainAtlas;
@@ -98,6 +110,8 @@ function mountAtlas(
   onDetails: (code: string) => void,
   shareLabel: string,
   tooltipId: string,
+  scope: string,
+  memory: { current: AtlasMemory | null },
 ): () => void {
   const data = nodes.filter((node) => Number.isFinite(Number(node.value)) && Number(node.value) > 0)
     .map((node, index) => ({ ...node, value: Number(node.value), color: node.color || palette[index % palette.length]! }))
@@ -220,12 +234,41 @@ function mountAtlas(
     const groups: AtlasItem[] = [];
     const tiles = squarify(data.map((node) => ({ value: node.value, node })), 0, 0, width, height);
     currentGroups = groups;
+    // Motion (DESIGN.md "Charts in motion", the shared kit's classes): the page's first view fades the tiles in, in
+    // layout order (largest first), over --slow with the kit's stagger; Reveal holds it until the atlas is in view.
+    // Another scope (a drill, a search begun or cleared, all divisions), or a mostly different set of tiles, re-enters
+    // quickly. The same scope with new numbers or order (a year, a sort, a refined search) fades in only the tiles that
+    // changed, at once. Tiles never zoom or travel, and their labels never move. A redraw for a new size is instant.
+    // Above 300 tiles to fade (a broad search), the drawing fades as one instead.
+    const shapes = new Map(tiles.map((tile) => [String(tile.node.code), `${Math.round(tile.x)},${Math.round(tile.y)},${Math.round(tile.w)},${Math.round(tile.h)},${tile.node.value},${tile.node.name}`]));
+    const before = memory.current;
+    const kept = before ? [...shapes.keys()].filter((code) => before.tiles.has(code)).length : 0;
+    const same = !!before && kept === shapes.size && kept === before.tiles.size && [...shapes].every(([code, shape]) => before.tiles.get(code) === shape);
+    const mode: "first" | "enter" | "place" | "none" = !before?.played ? "first" : !firstDraw || same ? "none"
+      : before.scope !== scope || kept < shapes.size / 2 ? "enter" : "place";
+    const changed = (code: string) => mode === "first" || mode === "enter" || (mode === "place" && before?.tiles.get(code) !== shapes.get(code));
+    const fading = mode === "none" ? 0 : tiles.filter((tile) => changed(String(tile.node.code))).length;
+    const entrance = mode === "first" ? "cm-fade" : fading ? "cm-in" : "";
+    const whole = fading > 300;
+    const plain = (target: Element, name: string) => target.addEventListener("animationend", () => target.classList.remove(name), { once: true });
+    svg.style.removeProperty("--chart-cap");
+    if (mode === "enter") svg.style.setProperty("--chart-cap", "120ms");
+    if (whole) { svg.classList.add(entrance); plain(svg, entrance); }
+    const record: AtlasMemory = { scope, tiles: shapes, played: mode !== "first" };
+    memory.current = record;
+    if (!record.played) svg.addEventListener("animationend", () => { record.played = true; }, { once: true });
     for (const [index, tile] of tiles.entries()) {
       const { node } = tile;
       const share = node.value / total * 100;
       const ink = labelColor(node.color);
       const group = el("g", { "data-atlas-tile": node.code });
-      group.style.cssText = `transition:${motion.matches ? "none" : "opacity 170ms ease"}`;
+      group.style.cssText = `transition:${motion.matches ? "none" : "opacity var(--fast) var(--ease)"}`;
+      if (entrance && !whole && changed(String(node.code))) {
+        group.classList.add(entrance);
+        if (mode !== "place") group.style.setProperty("--i", String(mode === "enter" ? index / 2 : index));
+        // Once played, the tile is plain again: hover dimming (inline opacity) is never held by a finished animation.
+        plain(group, entrance);
+      }
       const body = el("g", {
         role: "button", tabindex: "0", "data-atlas-code": node.code, "data-atlas-action": "explore",
         "aria-label": `${node.name}. ${actionFor(node)}.`,
@@ -239,7 +282,7 @@ function mountAtlas(
       const face = el("rect", { x: tile.x + 2, y: tile.y + 2, width: w, height: h, rx: Math.min(6, w / 2, h / 2), fill: node.color });
       body.append(face);
       const outline = el("rect", { x: tile.x + 4, y: tile.y + 4, width: Math.max(0, w - 4), height: Math.max(0, h - 4), rx: 4, fill: "none", stroke: ink, "stroke-width": 1.6, opacity: 0, "pointer-events": "none" });
-      outline.style.transition = motion.matches ? "none" : "opacity 170ms ease";
+      outline.style.transition = motion.matches ? "none" : "opacity var(--fast) var(--ease)";
       body.append(outline);
       const hasArrow = w >= 70 && h >= 64;
       const roomy = w >= 210 && h >= 150;
@@ -341,9 +384,6 @@ function mountAtlas(
       });
       groups.push(item);
       svg.append(group);
-      if (firstDraw && !motion.matches && group.animate) {
-        group.animate([{ opacity: 0, transform: "translateY(5px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 250, delay: Math.min(index * 18, 180), easing: "cubic-bezier(.2,.7,.2,1)", fill: "backwards" });
-      }
     }
     if (focusedCode) {
       const item = groups.find((item) => String(item.node.code) === focusedCode);

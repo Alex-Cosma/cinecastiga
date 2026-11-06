@@ -35,8 +35,10 @@
 .mx-stage.is-busy .mx-map>svg{opacity:.55;transition:opacity .15s ease .25s}
 .mx-busy{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
 
-/* One continuous intensity: --map-4 (deep green on light, pale green on dark) over the surface, its opacity proportional to lei per inhabitant. */
-.mx-area{fill:var(--map-4);stroke:var(--paper);stroke-width:.8;cursor:pointer;transition:fill .45s var(--ease),fill-opacity .45s var(--ease)}
+/* One continuous intensity: --map-4 (deep green on light, pale green on dark) over the surface, its opacity proportional to lei per inhabitant.
+   The transition is the map's motion: a layer's first fill (from the base tint, all areas together; MapExplorer
+   useFillIn) and a filter's new values. */
+.mx-area{fill:var(--map-4);stroke:var(--paper);stroke-width:.8;cursor:pointer;transition:fill var(--slow) var(--ease),fill-opacity var(--slow) var(--ease)}
 /* Drawn above every area, so the ink closes on all edges. */
 .mx-outline{fill:none;stroke:var(--ink);stroke-width:2}
 .mx-open-edge{fill:none;stroke:var(--ink2);stroke-width:1.5}
@@ -46,7 +48,8 @@
 .mx-counties.is-back .mx-area{fill:var(--paper);fill-opacity:1;stroke:var(--line);cursor:pointer}
 .mx-counties.is-back .mx-area:hover{fill:var(--accent-soft)}
 .mx-counties.is-back .mx-area.is-open{fill:none;stroke:none;pointer-events:none}
-.mx-uats{animation:mx-in .5s var(--ease) both}
+/* The open county's layer appears with the camera's glide; its areas then fill in (above). */
+.mx-uats{animation:mx-in var(--slow) var(--ease) both}
 .mx-uats .mx-area{stroke-width:.6}
 @keyframes mx-in{from{opacity:0}}
 
@@ -124,22 +127,29 @@
 /* ---- a UAT's panel (owner, 6 November 2026, "Povestea în trei întrebări") ----
    The map and the ranking draw back into the left column, the panel comes in from the right; another UAT replays
    only the panel's content. */
-.mx-body{transition:grid-template-columns .5s var(--ease)}
+.mx-body{transition:grid-template-columns var(--slow) var(--ease)}
 .mx-body.has-panel{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-areas:"stage panel" "rank panel"}
 .mx-body.has-panel .mx-stage{grid-area:stage}
-.mx-body.has-panel .mx-rank{grid-area:rank;animation:mx-rise .45s var(--ease) both}
+.mx-body.has-panel .mx-rank{grid-area:rank;animation:mx-rise var(--slow) var(--ease) both}
 .mx-body.has-panel .mx-rows{max-height:300px}
 .mx-chosen{fill:none;stroke:var(--orange);stroke-width:2.4}
-.mx-panel{grid-area:panel;position:relative;min-width:0;align-self:start;padding:18px 22px 20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 10px 30px rgba(36,58,48,.08);animation:mx-panel-in .5s var(--ease) both}
+.mx-panel{grid-area:panel;position:relative;min-width:0;align-self:start;padding:18px 22px 20px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:0 10px 30px rgba(36,58,48,.08);animation:mx-panel-in var(--slow) var(--ease) both}
 .mx-panel.is-loading .mx-p-body{opacity:.6;transition:opacity var(--fast) var(--ease)}
 @keyframes mx-panel-in{from{opacity:0;transform:translateX(56px)}}
 @keyframes mx-rise{from{opacity:0;transform:translateY(8px)}}
-.mx-p-body>*{animation:mx-rise .45s var(--ease) both}
-.mx-p-body>:nth-child(2){animation-delay:.05s}
-.mx-p-body>:nth-child(3){animation-delay:.1s}
-.mx-p-body>:nth-child(4){animation-delay:.16s}
-.mx-p-body>:nth-child(5){animation-delay:.22s}
-.mx-p-body>:nth-child(6){animation-delay:.28s}
+/* The panel's sections fade in turn (--mx-sec), in place: they replace a ghost of their own shape, so text does not
+   rise, and the stagger is short so the panel is never blank for long. A chart inside a section starts with it: its
+   bars grow from the baseline and its dots appear while the section fades in (the kit's --cm-d). */
+.mx-p-body>*{animation:g-in var(--med) var(--ease) backwards;animation-delay:var(--mx-sec,0ms)}
+.mx-p-body>:nth-child(2){--mx-sec:30ms}
+.mx-p-body>:nth-child(3){--mx-sec:60ms}
+.mx-p-body>:nth-child(4){--mx-sec:90ms}
+.mx-p-body>:nth-child(5){--mx-sec:120ms}
+.mx-p-body>:nth-child(n+6){--mx-sec:150ms}
+.mx-p-body :is(.cm-x,.cm-y,.cm-pt,.cm-fade){--cm-d:var(--mx-sec,0ms)}
+/* The county's average follows each year's bar; this UAT's ring among its neighbours comes last. */
+.mx-p-body .mx-p-avg{--cm-d:calc(var(--mx-sec,0ms) + var(--med))}
+.mx-p-body .cm-late{--cm-d:calc(var(--mx-sec,0ms) + 300ms)}
 .mx-p-close{position:absolute;top:14px;right:14px;z-index:2;display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--muted)}
 .mx-p-close:hover{color:var(--ink);border-color:var(--muted)}
 .mx-p-kick{margin:0;padding-right:44px;font-size:13px;color:var(--muted)}
@@ -159,7 +169,9 @@
 .mx-p-sec>p a,.mx-p-rows a{color:var(--ink);font-weight:600;text-decoration:none}
 .mx-p-sec>p a:hover,.mx-p-rows a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 .mx-p-years{display:block;width:100%;height:auto;overflow:visible}
-.mx-p-bar{fill:var(--accent)}
+/* Another filter for the same UAT: its years' bars and dots move to the new values (the county's average moves by its
+   transform, .cm-tw). */
+.mx-p-bar{fill:var(--accent);transition:y var(--med) var(--ease),height var(--med) var(--ease)}
 .mx-p-bar.is-peak{fill:var(--orange)}
 .mx-p-bar.is-current{opacity:.55}
 .mx-p-bar.is-out{opacity:.25}
@@ -172,9 +184,9 @@
 .mx-p-rows b{font:500 12.5px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 .mx-p-wide{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
 .mx-p-near{display:block;width:100%;height:auto;overflow:visible}
-.mx-p-dot{fill:var(--choro-2);cursor:pointer;transition:fill var(--fast) var(--ease)}
+.mx-p-dot{fill:var(--choro-2);cursor:pointer;transition:fill var(--fast) var(--ease),cx var(--med) var(--ease),cy var(--med) var(--ease)}
 .mx-p-dot:hover{fill:var(--choro-4)}
-.mx-p-me{fill:none;stroke:var(--orange);stroke-width:2.5}
+.mx-p-me{fill:none;stroke:var(--orange);stroke-width:2.5;transition:cx var(--med) var(--ease),cy var(--med) var(--ease)}
 .mx-p-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
 .mx-p-wait,.mx-p-error{margin:8px 0;font-size:14px;color:var(--muted)}
 /* The ghost while a UAT loads: its content's shape in quiet pulsing blocks, shown after 120 ms so a quick answer never flashes it. */
@@ -193,4 +205,4 @@
   .mx-p-lead{font-size:18px}
   .mx-p-close{min-width:44px;min-height:44px}
 }
-@media (prefers-reduced-motion:reduce){.mx-body{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
+@media (prefers-reduced-motion:reduce){.mx-body,.mx-p-bar,.mx-p-dot,.mx-p-me{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
