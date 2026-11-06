@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getRadiografie } from "@/lib/radiografie";
 import { formatRon, formatInt } from "@/lib/format";
 import RadiografieExplorer from "./RadiografieExplorer";
+import { ghostHold } from "@/lib/ghost-hold";
 import "./radiografie.css";
 export const dynamic = "force-dynamic";
 export default async function RadiografiePage({ params, searchParams }: {
@@ -13,6 +14,8 @@ export default async function RadiografiePage({ params, searchParams }: {
     }>;
     searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+    // Development only: a check can hold the render to photograph loading.tsx (lib/ghost-hold.ts).
+    await ghostHold();
     const { id } = await params;
     await redirectCanonicalEntity(id,"/radiografie",await searchParams);
     const data = await getRadiografie(id);

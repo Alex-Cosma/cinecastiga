@@ -51,7 +51,8 @@ button.cx-label:hover b,button.cx-label.hov b{color:var(--accent);text-decoratio
 .cx-label.rest b{font-weight:500;color:var(--ink2)}
 .cx-label.root b{color:var(--orange)}
 .cx-flow-wait{position:absolute;top:40%;max-width:19%;margin:0;font-size:13.5px;color:var(--muted)}
-.cx-flow-loading{padding:60px 20px;text-align:center;color:var(--muted)}
+/* the ghost of the right column (the chosen partner's own partners loading), over the real stage */
+.cx-flow-g{position:absolute;inset:0;pointer-events:none}
 .cx-empty{padding:28px 22px}.cx-empty h2{margin:0;font:700 19px var(--display)}.cx-empty p{margin:6px 0 0;color:var(--ink2);max-width:70ch}
 
 .cx-dock{padding:16px 22px 14px;border-top:1px solid var(--line);background:var(--accent-soft);outline:none}
@@ -92,6 +93,7 @@ button.cx-label:hover b,button.cx-label.hov b{color:var(--accent);text-decoratio
 .cx-strips .c0{--b:var(--choro-4)}.cx-strips .c1{--b:var(--choro-3)}.cx-strips .c2{--b:var(--choro-2)}.cx-strips .c3{--b:var(--choro-1)}.cx-strips .c4{--b:var(--choro-0)}
 .cx-strip-seg.rest{--b:var(--choro-0);opacity:.6}.cx-strip-seg.root{--b:var(--orange);opacity:1}
 .cx-strip-seg.on{opacity:1;box-shadow:inset 0 0 0 2px var(--accent)}
+.cx-strip-g{flex:1 1 0;min-width:4px;height:100%;border-radius:0}
 .cx-list-switch{display:none}
 
 /* the complete lists */
@@ -118,7 +120,10 @@ button.cx-label:hover b,button.cx-label.hov b{color:var(--accent);text-decoratio
 .cx-pager{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .cx-pager button{min-height:36px;padding:6px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-weight:600;font-size:13px}
 .cx-pager button:disabled{color:var(--muted);opacity:.55;cursor:default}
-.cx-wait,.cx-empty-line{margin:12px 0;font-size:13.5px;color:var(--muted)}
+.cx-empty-line{margin:12px 0;font-size:13.5px;color:var(--muted)}
+/* ghosts: a line in the dock's path takes the names' size, not the joining words'; the second list's search before a partner is chosen */
+.cx-dock-path .g-line{font-size:15px}
+span.cx-search{display:block}
 .cx-error{margin:18px 0;padding:16px 18px;border-radius:10px;background:var(--risk-soft);color:var(--ink)}
 .cx-error p{margin:0 0 10px}
 
@@ -139,7 +144,8 @@ button.cx-label:hover b,button.cx-label.hov b{color:var(--accent);text-decoratio
   .cx-strips{display:block}
   .cx-list-switch{display:flex;margin-top:20px;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--surface)}
   .cx-list-switch button{flex:1;min-height:40px;padding:6px 10px;border:0;background:none;color:var(--ink2);font-size:13.5px;font-weight:500}
-  .cx-list-switch button+button{border-left:1px solid var(--line)}
+  .cx-list-switch>span{flex:1;display:block;align-content:center;min-height:40px;padding:6px 10px;color:var(--ink2);font-size:13.5px;font-weight:500;text-align:center}
+  .cx-list-switch button+button,.cx-list-switch>span+span{border-left:1px solid var(--line)}
   .cx-list-switch button[aria-selected="true"]{background:var(--accent);color:var(--on-accent)}
   .cx-lists.show-root .cx-list.second,.cx-lists.show-second .cx-list.root{display:none}
   .cx-list-switch+.cx-lists{margin-top:14px}

@@ -71,15 +71,24 @@
 .rv-rank td.rv-rank-empty{padding:16px 8px;cursor:default;text-align:left}
 .rv-rank-empty span{margin-right:10px;font-weight:600;color:var(--ink)}
 .rv-ranking .rv-rank-empty button{min-height:0;margin:4px 0;padding:5px 12px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--ink2);font:inherit;font-size:13px;cursor:pointer}
-.rv-ghost td span{display:block;width:70%;height:12px;border-radius:4px;background:var(--sunk)}
+/* the route's ghost (loading.tsx): links and the supplier card's details as quiet replicas */
+.rv-g-link{color:var(--accent)}
+.rv-tabs .rv-tab-n-g{color:transparent}
+.rv-footer .rv-g-link{white-space:nowrap}
+.rv-details-g{display:list-item;list-style:disclosure-closed inside;min-height:32px;color:var(--accent);font-weight:500}
+@media(max-width:760px){.rv-footer .rv-g-link{display:block;margin-top:16px}}
+/* ghost rows (SupplierRowsGhost): the real cells, not clickable */
+.rv-rank tbody tr.rv-g-row{cursor:default}
+.rv-rank tbody tr.rv-g-row:hover{background:none}
 .rv-pager{color:var(--ink2)}
 .rv-pager button[aria-disabled=true]{opacity:.45;cursor:default}
 @media(max-width:760px){
 .rv-sortpills{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .rv-filterpills{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
 .rv-filterpill{display:inline-flex;align-items:center;gap:2px;min-height:36px;padding:0 4px 0 12px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--ink2);font-size:13px}
-.rv-ranking .rv-sortpills button{min-height:36px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);border-radius:999px;padding:7px 12px;font:500 12.5px/1.3 var(--body)}
-.rv-ranking .rv-sortpills button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rv-ranking .rv-sortpills :is(button,.rv-pill-g){min-height:36px;border:1px solid var(--line2);background:var(--surface);color:var(--ink2);border-radius:999px;padding:7px 12px;font:500 12.5px/1.3 var(--body)}
+.rv-ranking .rv-sortpills .rv-pill-g{display:inline-flex;align-items:center;opacity:.6}
+.rv-ranking .rv-sortpills :is(button[aria-pressed=true],.rv-pill-g[data-on]){background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .rv-legend{margin-left:0}
 .rv-rank-wrap{padding:0;border:0;background:none}
 .rv-rank,.rv-rank tbody,.rv-rank tr,.rv-rank td{display:block}
@@ -94,7 +103,6 @@
 .rv-rank td.c-recs{grid-column:1/-1;grid-row:3;text-align:left}
 .rv-rank td.c-recs .v{display:none}
 .rv-rank .rv-stack{display:none}
-.rv-rank tbody tr.rv-ghost{display:block}
 }
 /* The chart's supplier choice sits in its corner, left of the zoom (owner, 4 November 2026). */
 .rv-zoom{gap:14px}

@@ -20,6 +20,8 @@ import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows"
 import { emptyState, statusLine } from "./tx-filters";
 import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
+import { G, Ghost } from "@/components/ghost/Ghost";
+import { FloatStatus } from "@/components/ghost/client";
 
 /**
  * The entity page's records table, to the drill-table standard: 10 rows a page, sortable dates and values, a SEAP
@@ -30,6 +32,10 @@ import EntityName from "@/components/EntityName";
  * switch, the year list, the signal chips and the „Arată excluse” box (now a type, in the Tip funnel). The selection
  * the rows come from is the one the funnels, the band, the status line and the address show; an empty table says why
  * and offers to take each filter out.
+ *
+ * Loading (owner, 6 November 2026): page 1 comes with the server's page (`first`), so the table is there at the first
+ * paint and the page never grows under the reader. A sort, a filter or another page keeps the old rows in place, dimmed,
+ * with a floating status; ghost rows only when there is nothing to show (no server page, a retry after an error).
  */
 
 interface Resp {
@@ -44,12 +50,18 @@ export default function TxTable({
   role,
   isAuth,
   initial = {},
+  first,
+  count,
 }: {
   entityId: string;
   role: "furnizor" | "autoritate";
   isAuth: boolean;
   /** The filters the page's address carries (lib/entity-tx-columns.ts). */
   initial?: FilterState;
+  /** Page 1 under those filters, sorted by value, as the server rendered it: shown without fetching it again. */
+  first?: { rows: DaTx[]; total: number } | null | undefined;
+  /** The entity's records in this role (the "Achiziții" tab's count): how many ghost rows a page without filters has. */
+  count?: number | undefined;
 }) {
   const columns = txColumns(isAuth);
   const [page, setPage] = useState(1);
@@ -79,7 +91,9 @@ export default function TxTable({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- `filters.replace` only sets state
 
   const p = filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir }));
-  const { data, loading, error, retry } = useEntityTable<Resp>(`/api/entity-tx?${p.toString()}`);
+  const url = `/api/entity-tx?${p.toString()}`;
+  const [seed] = useState(() => (first ? { url, data: { ok: true, rows: first.rows, total: first.total } satisfies Resp } : undefined));
+  const { data, loading, error, retry } = useEntityTable<Resp>(url, seed);
 
   const sortBy = (key: "value" | "date") => {
     if (sort === key) setDir(dir === "desc" ? "asc" : "desc");
@@ -94,6 +108,11 @@ export default function TxTable({
   const rows = data?.rows ?? [];
   // While a new page loads, the old rows stay where they are, dimmed and out of reach; ghost rows only before the first.
   const stale = loading && rows.length > 0;
+  // The status line keeps the shown rows' words while others load (the floating status says it is loading), so it
+  // neither changes length nor is read out twice.
+  const line = loading ? null : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, page, pages, filters.state);
+  const [shownLine, setShownLine] = useState(line);
+  if (line !== null && line !== shownLine) setShownLine(line);
   // A new page starts under the sticky header and tabs, where the reader left the old one's first row, not at its
   // end (a phone's cards are much taller than the rows that stood in for them).
   const goPage = (n: number) => {
@@ -128,11 +147,11 @@ export default function TxTable({
     <div>
       {tip.el}
       <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={update} />
-      <div className="ask-detmeta" role="status" ref={status} tabIndex={-1}>
-        {loading ? "Se încarcă înregistrările…" : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, page, pages, filters.state)}
+      <div className={`ask-detmeta${stale ? " g-stale" : ""}`} role="status" ref={status} tabIndex={-1}>
+        {line ?? (stale ? shownLine : "Se încarcă înregistrările…")}
       </div>
-      <div className="ask-tablewrap" aria-busy={loading}>
-        <table className={`ask-table ask-drill ent-tx${stale ? " tx-loading" : ""}`} aria-label="Toate achizițiile și contractele">
+      <div className={`ask-tablewrap${stale ? " g-stale" : ""}`} aria-busy={loading}>
+        <table className="ask-table ask-drill ent-tx" aria-label="Toate achizițiile și contractele">
           <thead>
             <tr>
               {/* Sorting and filtering are buttons in the header, their state on it (keyboard and screen readers). */}
@@ -159,17 +178,8 @@ export default function TxTable({
               <th scope="col" className="col-links">Sursă</th>
             </tr>
           </thead>
+          {loading && rows.length === 0 ? <TxGhostRows n={Object.keys(filters.state).length === 0 && count !== undefined ? Math.max(1, Math.min(10, count)) : 10} /> :
           <tbody inert={stale || undefined}>
-            {loading && rows.length === 0 &&
-              Array.from({ length: 10 }, (_, i) => (
-                <tr key={`ghost-${i}`} className="tx-ghost">
-                  {Array.from({ length: nCols }, (_, j) => (
-                    <td key={j}>
-                      <span className="gh" />
-                    </td>
-                  ))}
-                </tr>
-              ))}
             {error && (
               <tr>
                 <td colSpan={nCols} className="tx-empty">
@@ -288,9 +298,10 @@ export default function TxTable({
               </tr>
               );
             })}
-          </tbody>
+          </tbody>}
         </table>
       </div>
+      {stale && <FloatStatus>Se încarcă înregistrările…</FloatStatus>}
       {pages > 1 && (
         <div className="ask-pager">
           {/* aria-disabled, not disabled: the focused button keeps the focus while the next page loads */}
@@ -304,5 +315,27 @@ export default function TxTable({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The rows before the first answer (no server page, or a retry after an error): the real row and cell classes, with
+ * the lines of a typical record (two or three on a desktop, a phone's card of about 185 px; measured on four entities).
+ * Shown after 120 ms, so a quick answer never flashes it; the status line above says it is loading.
+ */
+function TxGhostRows({ n }: { n: number }) {
+  return (
+    <Ghost as="tbody" name="entity-tx" wait="client">
+      <G.Rows n={n} as="tr" cells={(i) => <>
+        <td className="c-date"><G.Line w="76%" /></td>
+        <td className="c-src"><G.Line w="64px" inline /></td>
+        <td className="c-party"><G.Line w={i % 3 === 1 ? "58%" : "88%"} /><G.Line w={i % 3 === 0 ? "76%" : "46%"} only="not-phone" />
+          {i % 3 === 0 && <G.Line w="30%" only="not-phone" />}</td>
+        <td className="c-cpv"><G.Line w="82%" /><G.Line w="48%" only="phone" /></td>
+        <td className="num c-val"><G.Line w="70%" inline /></td>
+        <td className="c-flags" data-empty="1" />
+        <td className="c-links"><G.Line w="64%" /><G.Line w="42%" only="phone" /></td>
+      </>} />
+    </Ghost>
   );
 }

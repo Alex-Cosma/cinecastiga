@@ -9,7 +9,37 @@ import { INITIAL_ZOOM, boundZoom, zoomAt, percent, yearRange } from "@/lib/radio
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import { pairSpec } from "@/lib/ask/site-links";
 import SupplierTable from "./SupplierTable";
+import { G } from "@/components/ghost/Ghost";
 import { recordWords, sharePct } from "./supplier-words";
+
+/** A fixed decorative scatter (never data): [share of the authority, share of the firm, size]. */
+const GHOST_POINTS: readonly [number, number, number][] = [[.18, .94, 12], [.24, .9, 10], [.31, .95, 12], [.36, .95, 12], [.54, .95, 15], [.8, .95, 16],
+    [.2, .52, 10], [.21, .36, 10], [.29, .24, 12], [.33, .2, 11], [.37, .14, 12]];
+
+/**
+ * The panel as the route's ghost draws it (owner, 6 November 2026: "ghost data loading"): its heading, the controls as
+ * quiet inert replicas, the chart's grid and axes with a decorative scatter, and the chosen supplier's card.
+ */
+export function DependencyScatterGhost() {
+    return <section className="rv-workspace" aria-hidden="true">
+ <div className="rv-workspace-heading"><h2>Cât de strânsă este relația?</h2></div>
+ <div className="rv-split"><div><div className="rv-dependency-chart">
+ <div className="rv-zoom g-quiet" inert><span className="rv-limit"><select tabIndex={-1} defaultValue={12}><option value={12}>Primii 12 după valoare</option></select></span>
+ <div><button type="button" tabIndex={-1} disabled>−</button><output>1×</output><button type="button" tabIndex={-1}>+</button><button type="button" tabIndex={-1}>Resetează</button></div></div>
+ <div className="rv-viewport"><svg viewBox="0 0 700 370">
+ {[0, .25, .5, .75, 1].map(t => <g key={t}><line className="rv-grid" x1={62} x2={675} y1={68 + t * 250} y2={68 + t * 250}/><text className="rv-axis" x={50} y={72 + t * 250} textAnchor="end">{percent(1 - t)}</text>
+ <rect className="g-svg" x={62 + t * 613 - 14} y={333} width={28} height={10} rx={3}/></g>)}
+ <text className="rv-chart-label" x={62} y={17}>Cât din câștigurile publice ale firmei vin de aici</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea atribuită de autoritate</text>
+ {GHOST_POINTS.map(([x, y, r], i) => <circle key={i} className="g-svg" cx={62 + x * 613} cy={68 + (1 - y) * 250} r={r}/>)}</svg></div></div></div>
+ <aside className="rv-selection"><p className="rv-small"><G.Line w="42%"/></p><h3><G.Line w="76%"/></h3><dl>
+ <div><dt>Valoare alocată <span className="term term-tip"><span className="term-trigger"><span className="term-mark">?</span></span></span></dt><dd><G.Line w="7ch"/><small><G.Line w="70%"/><G.Line w="40%" only="phone"/></small></dd></div>
+ <div><dt>Din valoarea atribuită de autoritate</dt><dd><G.Line w="4ch"/></dd></div>
+ <div><dt>Cât din câștigurile publice ale firmei vin de aici</dt><dd><G.Line w="4ch"/><small><G.Line w="84%"/><G.Line w="44%" only="phone"/></small></dd></div>
+ <div><dt>Înregistrări în relație</dt><dd><G.Line w="3ch"/><small><G.Line w="36%"/></small></dd></div></dl>
+ <button type="button" className="rv-primary g-quiet" tabIndex={-1} inert>Verifică relația în înregistrări</button>
+ <div className="rv-details"><span className="rv-details-g">Context financiar și concurență</span></div></aside></div>
+ </section>;
+}
 
 /**
  * „Cât de strânsă este relația?” (owner, 2 November 2026): every supplier of the authority over both channels,

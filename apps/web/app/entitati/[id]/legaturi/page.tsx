@@ -22,5 +22,5 @@ export default async function ConnectionsPage({ params, searchParams }: {
   const raw = await searchParams;
   const initial = Object.fromEntries(Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
   const role = parseRoleParam(initial.rol) ?? profile.roles[0]?.role ?? "authority";
-  return <ConnectionsExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} role={role} initial={initial} />;
+  return <ConnectionsExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role} initial={initial} />;
 }

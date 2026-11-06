@@ -10,11 +10,15 @@ import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
 import { consortiumRankingNote } from "@/lib/consortium";
 import Term from "@/components/Term";
+import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
+import { FloatStatus } from "@/components/ghost/client";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
  * list (10/page, both channels, winner-split basis) with a per-row deep link
  * into the search drill: exact ids + names, all sources, rows auto-opened.
+ * Another page keeps the shown rows in place, dimmed, under a floating status (owner, 6 November 2026); ghost rows only
+ * when there are none to keep (a retry after an error).
  */
 
 interface Resp {
@@ -56,29 +60,23 @@ export default function PartnersTable({
 
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 10));
+  const rows = data?.rows ?? [];
+  const stale = loading && rows.length > 0;
+  // The count keeps its words while another page loads: they do not change with the page.
+  const [shownTotal, setShownTotal] = useState(total);
+  if (!loading && total !== shownTotal) setShownTotal(total);
 
   return (
     <div>
       {tip.el}
-      <p className="hint" role="status">
-        {loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale</>}
+      <p className={`hint${stale ? " g-stale" : ""}`} role="status">
+        {stale ? <>{formatInt(shownTotal)} parteneri · ambele canale</> : loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale</>}
       </p>
-      <div className="bars ent-partners" aria-busy={loading}>
-        {loading &&
-          Array.from({ length: 10 }, (_, i) => (
-            <div className="bar-row tx-ghost" key={`g-${i}`}>
-              <div className="bar-label">
-                <span className="gh" />
-              </div>
-              <div className="bar-track" />
-              <div className="bar-val">
-                <span className="gh" />
-              </div>
-            </div>
-          ))}
+      {loading && rows.length === 0 ? <PartnersGhost /> :
+      <div className={`bars ent-partners${stale ? " g-stale" : ""}`} aria-busy={loading} inert={stale || undefined}>
         {error && <p className="county">{error} <button type="button" onClick={retry}>Reîncearcă</button></p>}
-        {!loading && !error && !data?.rows?.length && <p className="county">Niciun partener înregistrat.</p>}
-        {!loading && data?.rows?.map((p) => (
+        {!loading && !error && rows.length === 0 && <p className="county">Niciun partener înregistrat.</p>}
+        {!error && rows.map((p) => (
           <div className="bar-row ent-tip" key={p.partnerId}>
             <div className="bar-label" {...tip.bindClip(cleanName(p.partnerName))}>
               {p.partnerId !== "0" ? <Link href={`/entitati/${p.partnerId}`}>{p.partnerName ? cleanName(p.partnerName) : `Entitate #${p.partnerId}`}</Link> : <span>Partener neidentificat</span>}
@@ -108,20 +106,36 @@ export default function PartnersTable({
             </div>
           </div>
         ))}
-      </div>
+      </div>}
+      {stale && <FloatStatus>Se încarcă partenerii…</FloatStatus>}
       {pages > 1 && (
         <div className="pager">
-          <button type="button" disabled={loading || page <= 1} onClick={() => setPage(page - 1)}>
+          {/* aria-disabled, not disabled: the focused button keeps the focus while the next page loads */}
+          <button type="button" aria-disabled={loading || page <= 1} onClick={() => { if (!loading && page > 1) setPage(page - 1); }}>
             ← Anterior
           </button>
           <span className="note">
             Pagina {page} din {formatInt(pages)}
           </span>
-          <button type="button" disabled={loading || page >= pages} onClick={() => setPage(page + 1)}>
+          <button type="button" aria-disabled={loading || page >= pages} onClick={() => { if (!loading && page < pages) setPage(page + 1); }}>
             Următor →
           </button>
         </div>
       )}
     </div>
+  );
+}
+
+/** Ten rows of the list before its first answer: the real row, label, track and value classes. Shown after 120 ms. */
+function PartnersGhost() {
+  return (
+    <Ghost className="bars ent-partners" name="entity-partners" wait="client">
+      <G.Rows n={10} as="div" className="bar-row" cells={(i) => <>
+        <div className="bar-label"><G.Line w={rankWidth(i, 86, 5, 48)} /></div>
+        <div className="bar-track g-quiet" />
+        <div className="bar-val"><G.Line w="96px" inline /></div>
+        <div className="bar-go"><G.Line w="88px" inline /></div>
+      </>} />
+    </Ghost>
   );
 }
