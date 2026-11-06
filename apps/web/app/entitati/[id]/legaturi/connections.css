@@ -35,12 +35,18 @@
 .cx-band:hover,.cx-band.hov{opacity:.8}.cx-band.on{opacity:.95}.cx-band.dim{opacity:.28}.cx-band.dim:hover,.cx-band.dim.hov{opacity:.6}
 .cx-node{fill:var(--b)}.cx-node.on{fill:var(--accent)}
 /* the chosen partner's partners fan out of its node, once, when it is chosen */
-.cx-band2{fill:var(--choro-2);opacity:.3;cursor:pointer;transition:opacity var(--fast) var(--ease);animation:cx-fan .45s cubic-bezier(.16,1,.3,1) both}
+.cx-band2{fill:var(--choro-2);opacity:.3;cursor:pointer;transition:opacity var(--fast) var(--ease);animation:cx-fan var(--slow) var(--ease) both}
 @keyframes cx-fan{from{opacity:0}}
 .cx-band2:hover,.cx-band2.hov{opacity:.55}.cx-band2.on{opacity:.8;fill:var(--choro-3)}.cx-band2.dim{opacity:.18}
 .cx-band2.root{fill:var(--choro-4);opacity:.45;cursor:default}
 .cx-band2.rest{fill:var(--line2);opacity:.5}
 .cx-node2{fill:var(--choro-3)}.cx-node2.rest{fill:var(--line2)}.cx-node2.root{fill:var(--orange)}
+/* Charts in motion (owner, 6 November 2026): at the first drawing the partners' nodes and names come after the bands
+   (.cx-after: --fast, from 260 ms). The names sit in one layer over the stage, so they can fade as a group; the layer
+   lets the pointer through to the bands. */
+.cx-after{--cm-dur:var(--fast);--cm-d:260ms}
+.cx-flow-labels{position:absolute;inset:0;pointer-events:none}
+.cx-flow-labels>*{pointer-events:auto}
 .cx-label{position:absolute;display:block;max-width:calc(33% - 30px);margin:0;padding:3px 7px;border:0;border-radius:6px;background:none;color:var(--ink);text-align:left;line-height:1.25}
 .cx-label b{display:block;overflow:hidden;font-size:13.5px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
 .cx-label span{display:block;font:500 12.5px/1.3 var(--mono);color:var(--muted)}
@@ -135,6 +141,9 @@ span.cx-search{display:block}
 .cx-dock-note .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
 
 @media (prefers-reduced-motion:reduce){.cx-band,.cx-band2{transition:none;animation:none}}
+/* Back/forward and print: the fan is drawn finished, like every chart (components/motion/chart-motion.css). */
+[data-motion="settled"] .cx-band2{animation:none}
+@media print{.cx-band2{animation:none}}
 @media (max-width:1000px){.cx-legs{grid-template-columns:1fr}.cx-legs .cx-leg+.cx-leg{padding:12px 0 0;border-left:0;border-top:1px solid var(--accent-line)}}
 /* A phone has no room for the flow: the lists with their share bars are the page, the dock first. */
 @media (max-width:760px){

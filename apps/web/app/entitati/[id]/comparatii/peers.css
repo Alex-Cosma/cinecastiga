@@ -50,9 +50,16 @@
 .pxs-axis{stroke:var(--line2);stroke-width:1}
 .pxs-median line{stroke:var(--ink);stroke-width:1;stroke-dasharray:4 4}
 .pxs-median text{font:12.5px var(--body);fill:var(--ink2)}
-.pxs-dot{fill:var(--choro-2);transition:cx .5s cubic-bezier(.16,1,.3,1),cy .5s cubic-bezier(.16,1,.3,1),r var(--fast) var(--ease)}
+/* Charts in motion (owner, 6 November 2026): the band and the median fade in first (--fast), the dots next, in place and
+   all together, the entity's ring, its rule and its words last (.cm-late). A new measure or filter slides the dots that
+   stay over --med; above 400 dots (.pxs-many) they do not slide, the group crossfades instead. */
+.pxs-band.cm-fade,.pxs-median.cm-fade{--cm-dur:var(--fast)}
+.pxs-dot.cm-pt,.pxs-dots.cm-fade{--cm-d:100ms}
+.pxs-band{transition:x var(--med) var(--ease),width var(--med) var(--ease)}
+.pxs-dot{fill:var(--choro-2);transition:cx var(--med) var(--ease),cy var(--med) var(--ease),r var(--fast) var(--ease)}
+.pxs-many .pxs-dot{transition:r var(--fast) var(--ease)}
 .pxs-dot.on{fill:var(--choro-4)}
-.pxs-focal{fill:color-mix(in srgb,var(--orange) 16%,transparent);stroke:var(--orange);stroke-width:2.5;transition:cx .5s cubic-bezier(.16,1,.3,1)}
+.pxs-focal{fill:color-mix(in srgb,var(--orange) 16%,transparent);stroke:var(--orange);stroke-width:2.5;transition:cx var(--med) var(--ease)}
 .pxs-focal-rule{stroke:var(--orange);stroke-width:1.5}
 .pxs-focal-t{font:600 13px var(--body);fill:var(--orange);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
 .pxs-tip{position:absolute;z-index:3;transform:translate(-50%,calc(-100% - 12px));display:grid;gap:1px;width:max-content;max-width:min(320px,90vw);padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);pointer-events:none;font-size:13px;line-height:1.4;color:var(--ink2)}
@@ -142,4 +149,4 @@ span.pxs-src{display:inline-flex;align-items:center}
   .pxs-row .pxs-track{display:none}
   .pxs-facts dd{font-size:15px}
 }
-@media (prefers-reduced-motion:reduce){.pxs-dot,.pxs-focal,.pxs-method summary svg{transition:none}}
+@media (prefers-reduced-motion:reduce){.pxs-band,.pxs-dot,.pxs-focal,.pxs-method summary svg{transition:none}}
