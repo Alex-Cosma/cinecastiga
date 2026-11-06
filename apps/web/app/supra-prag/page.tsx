@@ -6,6 +6,8 @@ import { getTedAwards } from "@/lib/ted-awards";
 import { TED_COLUMNS } from "@/lib/ted-columns";
 import { readFilters } from "@/lib/table-filters/codec";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
+import { PendingRegion, RegionLink } from "@/components/ghost/client";
+import { ghostHold } from "@/lib/ghost-hold";
 import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmount, competitionLabel, tedAmountHeadline, tedCountryNeedsReview, tedCoverageNote, TED_COUNTRY_UNRESOLVED, TED_COUNTRY_REVIEW_LABEL } from "@/lib/ted";
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
@@ -77,6 +79,7 @@ export default async function SupraPragPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  await ghostHold();
   const sp = await searchParams;
   // The table's filters are its column funnels (owner, 4 November 2026; lib/ted-columns.ts), the old links' parameters read too.
   const filters = readFilters(TED_COLUMNS, (key) => sp[key]);
@@ -149,15 +152,18 @@ export default async function SupraPragPage({
         </p> : null}
       </section>
 
+      {/* The country chips, the funnels, the sort and the pager change the list: it stays in place, dimmed, while the
+          next one comes (owner, 6 November 2026); the pager still opens the next page at the start of the list. */}
+      <PendingRegion label="Se încarcă atribuirile…">
       {stats.byCountry.length > 0 ? (
         <section className="section">
           <h2 className="ted-tip-line">Firme străine câștigătoare, după țară <Term id="ted-tari" tip /></h2>
           <div className="filters" style={{ flexWrap: "wrap" }}>
             {stats.byCountry.slice(0, 12).map((c) => (
-              <Link key={c.country} scroll={false} href={qstr({ tara: countries.includes(c.country) ? undefined : c.country, extern: undefined })}
+              <RegionLink key={c.country} scroll={false} href={qstr({ tara: countries.includes(c.country) ? undefined : c.country, extern: undefined })}
                 className={countries.includes(c.country) ? "on" : ""}>
                 {countryName(c.country)} · {formatInt(c.n)} rezultate
-              </Link>
+              </RegionLink>
             ))}
           </div>
         </section>
@@ -180,9 +186,9 @@ export default async function SupraPragPage({
               <th><UrlFunnel table="ted" column="procedura" label="Procedură" /></th>
               <th style={{ textAlign: "right" }}>
                 <span className="th-filter">
-                  <Link scroll={false} href={qstr({ sort: sort === "value" ? undefined : "value" })} title={sort === "value" ? "Înapoi la cele mai noi" : "Ordonează după valoarea în lei"}>
+                  <RegionLink scroll={false} href={qstr({ sort: sort === "value" ? undefined : "value" })} title={sort === "value" ? "Înapoi la cele mai noi" : "Ordonează după valoarea în lei"}>
                     Valoare{sort === "value" ? " ▾" : ""}
-                  </Link>
+                  </RegionLink>
                   <UrlFunnel table="ted" column="valoare" align="end" /><Term id="ted-valori" tip />
                 </span>
               </th>
@@ -229,15 +235,15 @@ export default async function SupraPragPage({
           </tbody>
         </table>
 
-        {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <Link href="/supra-prag">Vezi toate rezultatele TED</Link>.</p> : null}
+        {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <RegionLink href="/supra-prag" scroll>Vezi toate rezultatele TED</RegionLink>.</p> : null}
 
         {totalPages > 1 ? (
           <div className="pager">
-            {page > 1 ? <Link href={pageUrl(page - 1)}>← anterioarele</Link> : <span className="off">← anterioarele</span>}
+            {page > 1 ? <RegionLink href={pageUrl(page - 1)} scroll>← anterioarele</RegionLink> : <span className="off">← anterioarele</span>}
             <span className="pager-pos">
               pagina {formatInt(page)} / {formatInt(totalPages)} · {formatInt(awards.total)} rezultate
             </span>
-            {page < totalPages ? <Link href={pageUrl(page + 1)}>următoarele →</Link> : <span className="off">următoarele →</span>}
+            {page < totalPages ? <RegionLink href={pageUrl(page + 1)} scroll>următoarele →</RegionLink> : <span className="off">următoarele →</span>}
           </div>
         ) : null}
 
@@ -245,6 +251,7 @@ export default async function SupraPragPage({
           Potrivirile posibile sunt marcate separat de cele confirmate <Term id="potrivire-ted" tip /> · <Link href="/metodologie">Metodologia →</Link>
         </p>
       </section>
+      </PendingRegion>
     </>
   );
 }

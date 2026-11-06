@@ -9,6 +9,7 @@ import Term from "@/components/Term";
 import { LOT_COLUMNS } from "@/lib/notice-lots-columns";
 import { readFilters } from "@/lib/table-filters/codec";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
+import { PendingRegion, RegionLink } from "@/components/ghost/client";
 import "./notice.css";
 
 /**
@@ -134,7 +135,8 @@ export default async function NoticePage({
         )}
       </div>
 
-      <section className="section">
+      {/* The funnels and the pager keep the records in place, dimmed, while the next ones come (owner, 6 November 2026). */}
+      <PendingRegion as="section" className="section" label="Se încarcă înregistrările…">
         <h2 id="inregistrari" className="list-anchor">Înregistrările din acest anunț</h2>
         <UrlFilterBand table="loturi" scope={scope} />
         {(pages > 1 || n.nShown !== n.nLots) && (
@@ -191,14 +193,14 @@ export default async function NoticePage({
         {n.lots.length === 0 && n.nShown !== n.nLots && <p className="note">Nicio înregistrare cu filtrele alese.</p>}
         {pages > 1 && (
           <div className="pager">
-            {n.page > 1 && <Link href={pageHref(n.page - 1)}>← Anterior</Link>}
+            {n.page > 1 && <RegionLink href={pageHref(n.page - 1)} scroll>← Anterior</RegionLink>}
             <span className="note">
               Pagina {n.page} din {formatInt(pages)}
             </span>
-            {n.page < pages && <Link href={pageHref(n.page + 1)}>Următor →</Link>}
+            {n.page < pages && <RegionLink href={pageHref(n.page + 1)} scroll>Următor →</RegionLink>}
           </div>
         )}
-      </section>
+      </PendingRegion>
 
       <p className="note">
         {n.frameworkValue != null && <>Plafoane publicate: {formatRonFull(n.frameworkValue)}. </>}

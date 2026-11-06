@@ -13,6 +13,8 @@ import { RISK_BAND_CLASS, RISK_CRITERIA, riskBand, riskLabel, riskPoints, riskSc
 import { cleanName, countyLabel, formatExactDecimal, formatInt, formatRon } from "@/lib/format";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
+import { FloatStatus } from "@/components/ghost/client";
 import SignalDialog from "./SignalDialog";
 import { caseMeter } from "./CaseMeter";
 
@@ -70,6 +72,8 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   const [notice, setNotice] = useState("");
   const memory = useRef<Partial<Record<SignalState["view"], SignalState>>>({}), resultsRef = useRef<HTMLElement>(null), focusResults = useRef(false);
   const active = pending ? requested : state, key = signalUrl(state), code = active.code, meta = FLAG_META[code]!;
+  // A filter, a page or the sort keep the list in place, dimmed; only the other tab (another kind of row) is a ghost.
+  const reshaping = pending && requested.view !== state.view;
   const total = signals?.total ?? risk?.total ?? 0, criteria = RISK_CRITERIA[active.role];
   useEffect(() => { if (!pending && focusResults.current) { resultsRef.current?.scrollIntoView({ block: "start" }); resultsRef.current?.focus({ preventScroll: true }); focusResults.current = false; } }, [pending, key]);
   function navigate(patch: Partial<SignalState>, scroll = false) {
@@ -128,9 +132,10 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     </section>
     {notice && <p className="sg-notice" role="status">{notice}</p>}
     <div className="sg-context"><div><h2>{active.view === "signals" ? flagLabel(code) : active.role === "authority" ? "Instituțiile după risc" : "Firmele după risc"}</h2><p>{active.view === "cri" ? `Riscul adună ${criteria.length} tipare din achizițiile directe, de la 0 la 100. Nu este o probabilitate de corupție.` : meta.short}</p></div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`}>Criterii și limite →</Link></div>
-    <p className="sr-only" role="status" aria-live="polite">{pending ? "Se încarcă rezultatele…" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
-    <section ref={resultsRef} className="sg-results" tabIndex={-1} aria-label="Rezultate" aria-busy={pending}>
-      {pending ? <SignalsLoading/> : error ? <div className="sg-empty" role="alert"><h3>Rezultatele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setRequested(state); startTransition(() => router.refresh()); }}>Reîncearcă</button></div> : <>
+    {/* While a change is on its way the status is the floating one (same view) or the ghost's (another view). */}
+    <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
+    <section ref={resultsRef} className={`sg-results${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined}>
+      {reshaping ? <ResultsGhost state={requested}/> : error ? <div className="sg-empty" role="alert"><h3>Rezultatele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setRequested(state); startTransition(() => router.refresh()); }}>Reîncearcă</button></div> : <>
         {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "autorități" : "firme"} cu tipare</h3><p>din {formatInt(distTotal)} cu minimum 10 achiziții directe · {formatInt(distNone)} fără niciun tipar</p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }) => <button key={bin} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)}`} style={{ height: `${Math.max(2, n / distMax * 70)}px` }}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls"><span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : "Toate valorile riscului"}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span><div><label>Ordonează <select value={active.sort} onChange={e => navigate({ sort: e.target.value as RiskGroupSort, dir: e.target.value === "name" ? "asc" : "desc" })}>{sorts.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="sg-secondary" onClick={() => navigate({ dir: active.dir === "asc" ? "desc" : "asc" })}>{active.dir === "asc" ? "Crescător" : "Descrescător"}</button></div></div></>}
         {toolbar()}
         {total > 0 ? <>
@@ -151,9 +156,41 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
           {toolbar(true)}</> : <div className="sg-empty"><h3>Niciun rezultat pentru această selecție</h3><p>Nu există {active.view === "signals" ? "apariții calculate" : "entități eligibile"} pentru {active.role === "authority" ? "autorități" : "firme"}{active.county ? ` din ${active.county}` : " în selecția curentă"}.</p>{active.county ? <button className="sg-primary" onClick={() => navigate({ county: null })}>Caută în toate județele</button> : active.view === "cri" ? <button className="sg-primary" onClick={() => navigate({ criteria: null, band: null })}>Arată toate valorile riscului</button> : <button className="sg-primary" onClick={() => setDialog("type")}>Alege alt tip de semnal</button>}</div>}
       </>}
     </section>
+    {pending && !reshaping && <FloatStatus>Se încarcă rezultatele…</FloatStatus>}
     <footer className="sg-foot"><p>Un semnal nu este o dovadă de ilegalitate. Valorile pot acoperi aceleași achiziții și nu se adună.</p></footer>
     {dialog === "type" && <TypeChooser code={code} role={active.role} counts={pending ? {} : counts} choose={code => navigate({ code })} close={() => setDialog(null)}/>}
     {dialog === "filters" && <MobileFilters state={active} apply={navigate} close={() => setDialog(null)}/>}
   </div>;
 }
-export function SignalsLoading() { return <div className="sg-loading"><p role="status"><span className="sg-spinner" aria-hidden="true"/>Se încarcă rezultatele…</p>{Array.from({ length: 10 }, (_, i) => <div className="sg-skeleton" key={i} aria-hidden="true"><span/><span/><span/></div>)}</div>; }
+/** The bar above and under the rows: the count and the pager (min-height keeps it as tall as the real one). */
+function ToolbarGhost({ bottom = false }: { bottom?: boolean }) {
+  return <div className={`sg-toolbar${bottom ? " sg-bottom-toolbar" : ""}`} aria-hidden="true"><p className="sg-result-total"><G.Line inline w="16ch"/></p><G.Line inline w="11rem"/></div>;
+}
+/**
+ * The results of a tab that is not on screen yet ("Cazuri, pe tipar" ↔ "Clasament după risc"): that view's real rows and
+ * classes, a page of 10, its controls with the requested values. Shown only after 120 ms, so a quick answer never flashes it.
+ */
+function ResultsGhost({ state }: { state: SignalState }) {
+  const cri = state.view === "cri";
+  return <Ghost name="semnale-results" label="Se încarcă rezultatele…" wait="client">
+    {cri && <><div className="sg-cri-overview" aria-hidden="true"><div><h3><G.Line w="62%"/></h3><p><G.Line w="88%"/><G.Line w="40%" only="phone"/></p></div>
+      <div className="sg-histogram"><svg className="sg-hist-ghost" viewBox="0 0 100 118" preserveAspectRatio="none">{[30, 46, 58, 64, 52, 40, 28, 18, 10, 5].map((h, i) => <rect key={i} className="g-svg" x={i * 10 + 1.5} y={96 - h} width="7" height={h} rx="1"/>)}</svg></div></div>
+      <div className="sg-cri-controls" aria-hidden="true" inert><span>{state.criteria !== null || state.band ? <G.Line inline w="12ch"/> : "Toate valorile riscului"}</span><div><label>Ordonează <select defaultValue={state.sort}>{sorts.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="sg-secondary">{state.dir === "asc" ? "Crescător" : "Descrescător"}</button></div></div></>}
+    <ToolbarGhost/>
+    {cri
+      ? <G.Rows n={10} as="article" className="sg-result sg-rank-row" cells={i => <>
+        {/* On a phone the ranking's long names often take two lines: the ghost takes the average. */}
+        <div className="sg-entity"><div className="sg-entity-name"><G.Line w={rankWidth(i, 78, 5, 40)}/><G.Line w="36%" only="phone"/></div><p className="sg-meta"><G.Line w="72%"/><G.Line w="38%" only="phone"/></p></div>
+        <div className="sg-comp-col"><div className="sg-comp"/><p className="sg-meta"><G.Line w="58%"/></p></div>
+        <div className="sg-score"><strong className="cri-pill risk-slab"><G.Line inline w="5ch"/></strong><small><G.Line inline w="7ch"/></small></div>
+        <span className="sg-open"/></>}/>
+      : <G.Rows n={10} as="article" className="sg-result sg-case-row" cells={i => <>
+        <div className="sg-entity"><div className="sg-entity-name"><G.Line w={rankWidth(i, 78, 5, 40)}/></div><p className="sg-meta"><G.Line w="64%"/></p></div>
+        <div className="sg-partner-col"><div className="sg-partner"><G.Line w="70%"/></div><p className="sg-meta"><G.Line w="88%"/></p></div>
+        <div className="sg-meter-col"><span className="sg-meter"/></div>
+        <div className="sg-amount"><strong><G.Line inline w="10ch"/></strong><small><G.Line inline w="12ch"/></small></div>
+        <div className="sg-x"><G.Line inline w="2.4ch"/></div>
+        <span className="sg-open"/></>}/>}
+    <ToolbarGhost bottom/>
+  </Ghost>;
+}

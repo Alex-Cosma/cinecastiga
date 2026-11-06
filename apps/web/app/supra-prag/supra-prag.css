@@ -5,3 +5,8 @@
 .ted-tip-up .term-tip>.term-def,.ted-tip-line .term-tip.ted-tip-above>.term-def{top:auto;bottom:calc(100% + 6px)}
 h2.ted-tip-line .term-tip{font-size:15px;font-weight:400;letter-spacing:0}
 .filters.ted-tip-line .term-tip{align-self:center}
+/* The route ghost (loading.tsx): the loaded table's column shares, and the rest of a page of 60 rows reserved
+   (typical rows: 186 px wide, 200 px on a phone). */
+@media (min-width:641px){.tp-ghost-table .c1{width:35%}.tp-ghost-table .c2{width:40%}.tp-ghost-table .c3{width:11%}.tp-ghost-table .c4{width:14%}}
+.tp-ghost-rest{block-size:9000px}
+@media (max-width:640px){.tp-ghost-rest{block-size:9642px}}

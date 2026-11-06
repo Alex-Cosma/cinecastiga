@@ -1,11 +1,6 @@
-import styles from "./loading.module.css";
+import { DomainsGhost } from "./DomainExplorer";
 
+/** The atlas takes seconds to prepare on a cold year (prod 4–20 s): the ghost of the loaded page meanwhile. */
 export default function DomainsLoading() {
-  return <section className={styles.shell} aria-busy="true" aria-label="Se încarcă domeniile de achiziții">
-    <p className={styles.eyebrow}>DESCOPERĂ / DOMENII</p>
-    <h1 className={styles.title}>Ce cumpără<br /><span>instituțiile publice?</span></h1>
-    <p className={styles.message} role="status">Pregătim harta domeniilor și valorile din înregistrările publice.</p>
-    <div className={styles.toolbar} aria-hidden="true" />
-    <div className={styles.canvas} aria-hidden="true"><span /><span /><span /></div>
-  </section>;
+  return <DomainsGhost />;
 }

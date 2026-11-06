@@ -66,4 +66,3 @@ button.tf-fun.tf-fun.open::after{display:none}
 .tf-band .tf-chip button:hover{background:var(--accent-line)}
 .tf-band button.tf-band-all{min-height:0;border-radius:4px;padding:4px;border:0;background:transparent;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
 .th-sep{margin:0 4px;color:var(--faint)}
-.tf-band-pending{opacity:.6}
