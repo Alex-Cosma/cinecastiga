@@ -5,22 +5,26 @@ primary_target: "apps/web/app/entitati/[id]/legaturi/page.tsx"
 related_targets: ["apps/web/app/entitati/[id]/legaturi/ConnectionsExplorer.tsx","apps/web/app/entitati/[id]/legaturi/connections.css"]
 ---
 
-# Procurement relationships
+# Procurement relationships ("Cum sunt legate?")
 
-Mode: Operate. Scope: an extension of entity profiles, reached through “Cum sunt legate?”. The user approved the focused Batch 4: documented procurement relationships, original sources, preservation in investigations and desktop/mobile verification. Peer comparisons and external ownership enrichment remain separate work.
+Mode: Operate. An entity's analysis page (/entitati/{id}/legaturi), beside Semnale, Radiografie and Comparații. Owner, 6 November 2026: redo the whole page; the reader first wants the partners and their weight, then the path through one of them ("Partenerii, apoi traseul"). Problems to remove: nothing important stands out, the path is hard to follow, it reads as a form, the phone is one long list.
+
+Audience: journalists, councillors, citizens checking one firm or institution. Job: see who it works with and how much each weighs, pick one partner, see who else works with that partner, open the exact records of each leg, save the path in an investigation.
+
+Constraints kept: exact decimal values; consortium shares without double counting; the type and year filters apply to the whole path; source coverage and exclusions visible in the method note; private capture permissions inherited; identities pinned to the checkpoint (copied links restore the path); a shared partner proves no ownership, transfer or wrongdoing; values are recorded, not payments.
+
+Approved sketch: apps/web/.impeccable/mocks/decision/legaturi/flux.html (card "Fluxul banilor", owner: "implementează varianta A").
 
 ## Direction contract
 
-THESIS: Follow one comprehensible connection at a time. A selected supplier reveals other buying institutions; a selected institution reveals other suppliers. Every connection has a source action.
+THESIS: the money drawn as flow: from the entity to its partners, then from the chosen partner to that partner's other partners, each band as wide as its value. It refuses the stacked list of identical rows with an "Explorează legătura" button each.
 
-OWN-WORLD: Inherit the approved forest/ivory theme, Bricolage headings, IBM Plex body, thin dividers and native controls. No new visual identity. The reporter may work in daylight or at night; retain both existing themes.
+OWN-WORLD: the incumbent forest and ivory system: Bricolage headings, IBM Plex text, Plex Mono amounts; the choropleth greens for bands (darkest = largest, the chosen band at full ink), one orange mark for the root entity's place among the chosen partner's partners; thin rules, flat surfaces, a soft green dock.
 
-STORY: Start from a known entity, choose a partner, inspect another connection, verify either leg or the whole selection, then preserve it in a private investigation. Shared procurement partners establish procurement relationships only.
+STORY: the reader sees at once who carries the money (shares, the top four's sum), picks a band, sees where the root stands among that partner's partners, picks a third party, opens the sources of either leg or both, saves the path.
 
-FIRST VIEWPORT: Entity breadcrumb and “Cum sunt legate?” above a compact dataset/year form. A searchable partner list sits beside the chosen connection and its evidence actions. The original entity remains visible in the path. Mobile switches to a focused detail view with an explicit return to the partner list.
+FIRST VIEWPORT: crumb to the entity (type, county); "Cum sunt legate?" with a one-line lede (total, partner count, years, the top four's share); top right a segmented type control and one period button opening the site's period picker (Întreabă's component 12: presets, then a free range of years); the flow stage full width: root bar, ribbons leaving it together and opening out to the four largest partners (and the chosen one) with value and share plus one "alte N" band, the chosen partner's five largest partners on the right with the root in orange at its rank; the dock under the stage as one band, path and facts left, "Vezi cele N surse" and "Salvează în anchetă" right. Under the stage, the complete lists with search, pages and one bar scale. On a phone the flow becomes two tappable share strips, the dock follows them, then one list at a time behind a two-way switch (owner: the old phone page was one long list).
 
-FORM: Assigned extension, code-led; seed not applicable to the user-approved scope. The signature interaction is expanding a two-node procurement connection into a three-node path, with both legs still independently inspectable. A functional HTML sketch precedes application integration.
+FORM: Fluxul banilor, position 4 of 7 on the ranked list (dealt lead). seed:469fe5a23330eec3
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
-
-Constraints: exact decimal values; no full-contract double counting through consortium members; source coverage and value exclusions visible; private capture permissions inherited; stale identities rejected. No inferred ownership, criminality or transfers between the two end nodes.

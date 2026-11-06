@@ -3,6 +3,7 @@ import { sharedSql } from "@/lib/shared-db";
 import { readSignalEvidence } from "@/lib/signal-evidence";
 import { readRadiografieEvidence, validateRadiografieSelection } from "@/lib/radiografie-evidence";
 import { evidenceCsv } from "@/lib/ask/evidence";
+import { readRecordTitles } from "@/lib/source-evidence";
 
 /** Public procurement sources. This endpoint never reads private case tables. */
 export async function GET(request: Request) {
@@ -24,10 +25,7 @@ export async function GET(request: Request) {
     if (json) {
       const currentPage = Math.min(page, Math.max(0, Math.ceil(evidence.sourceCount / 50) - 1));
       const records=evidence.records.slice(currentPage*50,currentPage*50+50);
-      const daIds=records.filter(r=>r.src==="da").map(r=>r.refId),contractIds=records.filter(r=>r.src==="contracts").map(r=>r.refId);
-      const titles = new Map<string,string>();
-      if(daIds.length)for(const row of await sql`select da.sicap_da_id::text id, raw.payload->>'directAcquisitionName' title from core.direct_acquisitions da left join raw.raw_documents raw on raw.id=da.raw_id where da.sicap_da_id=any(${daIds}::bigint[])`)if(row.title)titles.set(`da:${row.id}`,String(row.title));
-      if(contractIds.length)for(const row of await sql`select ca_notice_contract_id::text id,title from core.contracts where ca_notice_contract_id=any(${contractIds}::bigint[])`)if(row.title)titles.set(`contracts:${row.id}`,String(row.title));
+      const titles = await readRecordTitles(sql, records);
       return NextResponse.json({...evidence, records:records.map(r=>({...r,title:titles.get(`${r.src}:${r.refId}`)??null})),page:currentPage}, {headers:{"cache-control":"no-store"}});
     }
     const csv = evidenceCsv(evidence.records.map(row => ({ ...row, valueExact: row.originalValueExact === null ? "" : row.valueExact })));

@@ -2,8 +2,27 @@ import { cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, type DbSql }
 import { flagFindingLabel } from "./flags";
 import { numericSourceIds } from "./signal-sources";
 import { awardUrl, daUrl } from "./elicitatie";
-import { readDaEvidence, readContractEvidence, sourceEvidence, type SourceEvidence } from "./source-evidence";
+import { readDaEvidence, readContractEvidence, sourceEvidence, type SourceEvidence, type SourceRecord } from "./source-evidence";
+import { sumDecimalStrings } from "./ask/evidence";
 import type { DrillRow } from "./ask/compile";
+
+/** How many of a partner signal's other acquisitions travel with it, largest first. */
+export const ASIDE_SHOWN = 10;
+
+/**
+ * A concentration (an institution's main supplier) or a dependence (a firm's main client) signal: the acquisitions
+ * with that partner are the signal's sources; the rest of the profile is set aside. The partner is the one the build
+ * stored (top_supplier, top_authority), else the flag's partner; without one, nothing is set aside.
+ */
+export function splitPartnerRecords<T extends Pick<DrillRow, "authorityId" | "supplierId">>(code: string, evidence: Record<string, unknown>, flagPartner: unknown, all: readonly T[]): { partnerId: string | null; mine: T[]; aside: T[] } {
+  const stored = code === "da_dependence" ? evidence.top_authority : evidence.top_supplier;
+  const partner = [stored, flagPartner].map((v) => (v == null ? "" : String(v))).find((v) => /^[1-9]\d*$/.test(v)) ?? null;
+  if (!partner) return { partnerId: null, mine: [...all], aside: [] };
+  const side = (row: T) => (code === "da_dependence" ? row.authorityId : row.supplierId);
+  return { partnerId: partner, mine: all.filter((row) => side(row) === partner), aside: all.filter((row) => side(row) !== partner) };
+}
+/** A partner signal's set-aside acquisitions, as its context carries them. */
+export type AsideRecords = { count: number; totalExact: string; top: SourceRecord[] };
 
 /** The transaction belongs to the caller: display and capture use the same selection. */
 export async function readSignalEvidence(sql: DbSql, id: string): Promise<SourceEvidence | null> {
@@ -54,7 +73,19 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
     const roleWhere = flag.subject_type === "authority" ? sql`da.authority_entity_id = ${flag.subject}` : sql`da.supplier_entity_id = ${flag.subject}`;
     const period = code === "da_year_end" ? sql`and extract(year from da.finalization_date)::text = ${flag.period}` : sql``;
     const knownParties = code === "da_year_end" ? sql`` : sql`and da.authority_entity_id is not null and da.supplier_entity_id is not null and da.supplier_entity_id <> da.authority_entity_id`;
-    records = await readDaEvidence(sql, sql`${eligibleDa} and ${roleWhere} ${period} ${knownParties}`);
+    const all = await readDaEvidence(sql, sql`${eligibleDa} and ${roleWhere} ${period} ${knownParties}`);
+    if (code === "da_year_end") records = all;
+    else {
+      // The signal's sources are the acquisitions with the main partner (owner, 6 November 2026); the profile's
+      // other acquisitions are its remaining share, kept beside them as a count, a sum and the largest few.
+      const split = splitPartnerRecords(code, e, flag.partner, all);
+      records = split.mine;
+      context.partnerId = split.partnerId;
+      context.allTotalExact = sumDecimalStrings(all.map((row) => row.valueExact));
+      const aside: AsideRecords = { count: split.aside.length, totalExact: sumDecimalStrings(split.aside.map((row) => row.valueExact)),
+        top: [...split.aside].sort((a, b) => b.value - a.value).slice(0, ASIDE_SHOWN) };
+      context.aside = aside;
+    }
   } else if (["award_concentration", "award_dependence"].includes(code)) {
     records = await readContractEvidence(sql, sql`ct.closing_value > 0 and ct.authority_id is not null and ct.supplier_id is not null
       and ${flag.subject_type === "authority" ? sql`ct.authority_id = ${flag.subject}` : sql`ct.supplier_id = ${flag.subject}`}`);
@@ -103,7 +134,9 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
   const result = sourceEvidence({ title: flagFindingLabel(code), methodology: String(flag.methodology_version), records, context, warnings });
   if (context.membership === "reconstructed_from_current_records") warnings.push("Selecția este reconstituită din datele actuale după criteriile semnalului. O captură o păstrează la momentul salvării.");
   if (flag.subject_type !== "award" && typeof flag.recorded_total === "string" && /^-?\d+(\.\d+)?$/.test(flag.recorded_total)) {
-    const [check] = await sql`select ${result.totalExact}::numeric = ${flag.recorded_total}::numeric matches`;
+    // A partner signal records the profile's whole total: it is checked against all its acquisitions, not the partner's.
+    const compared = typeof context.allTotalExact === "string" ? context.allTotalExact : result.totalExact;
+    const [check] = await sql`select ${compared}::numeric = ${flag.recorded_total}::numeric matches`;
     context.reconciled = !!check?.matches;
     if (!check?.matches) warnings.push("Suma surselor actuale diferă de suma înregistrată în semnal. Diferența rămâne vizibilă în captură și în export.");
   }

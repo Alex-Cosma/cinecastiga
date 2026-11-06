@@ -5,6 +5,7 @@ vi.mock("@/lib/signal-evidence", () => ({ readSignalEvidence: vi.fn() }));
 vi.mock("@/lib/radiografie-evidence", async () => ({ ...await import("./radiografie-evidence"), readRadiografieEvidence: mocks.read }));
 vi.mock("@/lib/ask/evidence", () => import("./ask/evidence"));
 vi.mock("@/lib/shared-db", () => import("./shared-db"));
+vi.mock("@/lib/source-evidence", () => import("./source-evidence"));
 import { GET } from "../app/api/evidence/sources/route";
 beforeEach(() => { vi.clearAllMocks(); delete (globalThis as { __seapSql?: unknown }).__seapSql; mocks.sql.begin.mockImplementation(async (_isolation, fn) => fn(mocks.sql)); });
 describe("public radiography source pages", () => {

@@ -22,7 +22,7 @@ export interface SignalState {
   band: { from: number; to: number } | null;
   sort: RiskGroupSort;
   dir: "asc" | "desc";
-  /** Signals of one entity (from its profile), in the role it is viewed in. Signals view only. */
+  /** Signals of one entity, in the role it is viewed in: its page /entitati/{id}/semnale. Signals view only. */
   entity: string | null;
 }
 const ENTITY_ID = /^[1-9]\d{0,17}$/;
@@ -48,6 +48,18 @@ export function parseSignalState(params: Record<string, string | undefined>): Si
 }
 
 /** Every navigation keeps the applied role/county; changing a condition resets paging. */
+/** An entity's signals page. */
+export const entitySignalsPath = (entity: string) => `/entitati/${entity}/semnale`;
+
+/** An entity page's link without `?rol=`, for an entity with a single role (the entity pages' convention). */
+export function withoutRole(href: string): string {
+  const [path, hash] = href.split("#") as [string, string | undefined];
+  const [base, query = ""] = path.split("?") as [string, string | undefined];
+  const q = new URLSearchParams(query);
+  q.delete("rol");
+  return `${base}${q.size ? `?${q.toString()}` : ""}${hash !== undefined ? `#${hash}` : ""}`;
+}
+
 export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}): string {
   const next = { ...state, ...patch };
   if (Object.hasOwn(patch, "code")) {
@@ -63,9 +75,15 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
   if (next.view === "signals") { next.band = null; next.criteria = null; } else next.entity = null;
   const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity"].some((key) => Object.hasOwn(patch, key));
   const page = patch.page ?? (changedFilter ? 0 : state.page);
+  // One entity's signals are one of its pages, as its other analyses (owner, 6 November 2026): /entitati/{id}/semnale,
+  // the role in the entity pages' spelling (the page drops it for an entity with a single role).
+  if (next.view === "signals" && next.entity) {
+    const q = new URLSearchParams({ tip: next.code, rol: next.role === "supplier" ? "furnizor" : "autoritate" });
+    if (page > 0) q.set("p", String(page));
+    return `${entitySignalsPath(next.entity)}?${q.toString()}`;
+  }
   const q = new URLSearchParams({ tip: next.code, rol: next.role });
   if (next.county) q.set("jud", next.county);
-  if (next.entity) q.set("ent", next.entity);
   if (next.view === "cri") q.set("view", "cri");
   if (next.view === "cri" && next.criteria !== null) q.set("criteria", String(next.criteria));
   if (next.band) {

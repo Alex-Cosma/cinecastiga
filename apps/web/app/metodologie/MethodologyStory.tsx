@@ -642,7 +642,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                     </details>
                     <p className="mt-doc"><b>Ce documente lămuresc:</b> <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: referatele de necesitate">referatele de necesitate</button><span className="mt-def" hidden>documentele în care fiecare școală a scris de ce are nevoie de mobilier</span> și programul anual al achizițiilor.</p>
                     <div className="mt-pair">
-                      <div><b>Se poate explica</b>Erau trei școli, cu nevoi apărute pe rând, sau bugetul a venit în mai multe tranșe.</div>
+                      <div><b>Explicații posibile</b>Erau trei școli, cu nevoi apărute pe rând, sau bugetul a venit în mai multe tranșe.</div>
                       <div><b>De ce poate conta</b>Legea interzice împărțirea unei achiziții pentru a evita procedura (Legea 98/2016, art. 11). Ea are în vedere necesarul estimat pe un an, indiferent de firmă, iar noi adunăm doar comenzile de același fel la aceeași firmă.</div>
                     </div>
                   </div>
@@ -697,7 +697,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                     </details>
                     <p className="mt-doc"><b>Ce documente lămuresc:</b> ofertele primite și prețurile din catalogul SEAP.</p>
                     <div className="mt-pair">
-                      <div><b>Se poate explica</b>Prețul pieței chiar e aproape de plafon, prețul pus de furnizor în catalogul SEAP ajunge acolo sau bugetul a fost exact atât.</div>
+                      <div><b>Explicații posibile</b>Prețul pieței chiar e aproape de plafon, prețul pus de furnizor în catalogul SEAP ajunge acolo sau bugetul a fost exact atât.</div>
                       <div><b>De ce poate conta</b>Dacă nevoia reală era mai mare, sumele fixate chiar sub limită pot ocoli procedura.</div>
                     </div>
                   </div>
@@ -731,7 +731,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                     </details>
                     <p className="mt-doc"><b>Ce documente lămuresc:</b> <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: nota justificativă">nota justificativă</button><span className="mt-def" hidden>documentul în care primăria arată cum a ales firma și cum a stabilit valoarea</span> și suma din contract, fără TVA.</p>
                     <div className="mt-pair">
-                      <div><b>Se poate explica</b>O greșeală la introducerea în SEAP: de exemplu, și valoarea estimată a fost trecută cu TVA. Nu includem aici serviciile din <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: Anexa 2">Anexa 2</button><span className="mt-def" hidden>lista din Legea 98/2016 cu servicii sociale, de sănătate, culturale și altele</span> și produsele medicale (CPV 33). Pentru serviciile din Anexa 2, legea cere o procedură proprie a instituției (art. 111), așa că nu le comparăm cu plafonul achiziției directe.</div>
+                      <div><b>Explicații posibile</b>O greșeală la introducerea în SEAP: de exemplu, și valoarea estimată a fost trecută cu TVA. Nu includem aici serviciile din <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: Anexa 2">Anexa 2</button><span className="mt-def" hidden>lista din Legea 98/2016 cu servicii sociale, de sănătate, culturale și altele</span> și produsele medicale (CPV 33). Pentru serviciile din Anexa 2, legea cere o procedură proprie a instituției (art. 111), așa că nu le comparăm cu plafonul achiziției directe.</div>
                       <div><b>De ce poate conta</b>Peste plafon, legea cere o procedură.</div>
                     </div>
                   </div>
@@ -791,7 +791,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                     </details>
                     <p className="mt-doc"><b>Ce documente lămuresc:</b> hotărârile de <button type="button" className="mt-term" aria-expanded="false" aria-label="Explicație: rectificare a bugetului">rectificare a bugetului</button><span className="mt-def" hidden>schimbarea bugetului în timpul anului, votată de consiliul local</span> și datele contractelor. Dacă ești consilier, verifică data hotărârii.</p>
                     <div className="mt-pair">
-                      <div><b>Se poate explica</b>Rectificarea bugetară din toamnă a adus banii târziu, lucrările erau planificate pentru iarnă sau comenzile din afara catalogului au fost publicate deodată. Contractat în decembrie nu înseamnă plătit în decembrie.</div>
+                      <div><b>Explicații posibile</b>Rectificarea bugetară din toamnă a adus banii târziu, lucrările erau planificate pentru iarnă sau comenzile din afara catalogului au fost publicate deodată. Contractat în decembrie nu înseamnă plătit în decembrie.</div>
                       <div><b>De ce poate conta</b>La final de an, bugetele se închid și contractele se înghesuie, iar fiecare devine mai greu de verificat. Merită întrebat de ce s-au încheiat atunci.</div>
                     </div>
                   </div>

@@ -12,6 +12,7 @@ import {
 } from "../../lib/ask/peer-groups-shared";
 import { RISK_BAND_CLASS, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { cleanName, formatInt } from "../../lib/format";
+import { parseSignalState, signalUrl } from "../../lib/signals-shared";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import EmptyState from "./answer/EmptyState";
 import HelpTip from "./builder/HelpTip";
@@ -362,7 +363,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
             <span className={`dist-part-pts${part ? " is-met" : ""}`}>{part ? `+${formatInt(points[c.code as RiskCriterion] ?? 0)}` : "fără tipar"}</span>
             <span className="dist-crit-bar" aria-hidden="true"><span style={{ width: `${share * 100}%` }} />{!national && <i style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>
-            {part && <a className="dist-crit-cases" href={`/semnale?tip=${encodeURIComponent(c.code)}&rol=${role}&ent=${f.entityId}`}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
+            {part && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(f.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
           </li>;
         })}
       </ul>
@@ -483,7 +484,7 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
             <span className={`dist-crit-own${met ? " is-met" : ""}`}><i aria-hidden="true" />{met ? "da" : "nu"}</span>
             <span className="dist-crit-bar" aria-hidden="true"><span style={{ width: `${share * 100}%` }} />{!national && <i style={{ left: `${country * 100}%` }} />}</span>
             <span className="dist-crit-n">{shown(c.others)}</span>
-            {met && <a className="dist-crit-cases" href={`/semnale?tip=${encodeURIComponent(c.code)}&rol=${role}&ent=${focal.entityId}`}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
+            {met && <a className="dist-crit-cases" href={signalUrl(parseSignalState({ tip: c.code, rol: role, ent: String(focal.entityId) }))}>Vezi cazurile<span className="qb-glyph" aria-hidden="true">↗</span></a>}
           </li>;
         })}
       </ul>

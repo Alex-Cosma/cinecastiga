@@ -16,7 +16,7 @@ describe("the entity page's signal rows (variant A, 4 November 2026)", () => {
     expect(signalSentence("da_split", { x: 1, groups: 1, share: 0.02 }, "supplier"))
       .toMatch(/^O dată, aceeași instituție a cumpărat de la firmă/);
     expect(signalSentence("da_round", { x: 2, n: 16, expected: 5.8 }, "authority"))
-      .toBe("16 achiziții s-au oprit la 96–100% din plafon. După media instituțiilor de același tip, ne-am aștepta la vreo 6.");
+      .toBe("16 achiziții s-au oprit la 96–100% din plafon. După restul achizițiilor directe și media națională, ne-am aștepta la vreo 6.");
     expect(signalSentence("da_round", { x: 1, n: 1 }, "authority")).toBe("1 achiziție s-a oprit la 96–100% din plafon.");
     expect(signalSentence("da_above_ceiling", { x: 2, n: 3, value: 1_300_000, share: 0.08 }, "authority"))
       .toMatch(/^3 achiziții directe au trecut de plafon: cu valoarea estimată sau cu suma finală, chiar și cu TVA\. Împreună: .+, 8% din bani\.$/);

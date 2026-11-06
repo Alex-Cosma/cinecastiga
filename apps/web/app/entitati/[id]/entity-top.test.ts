@@ -99,25 +99,27 @@ describe("the entity page's top", () => {
 
   it("lists the tabs in the page's order and gives the page its own title", () => {
     const tabs = page.slice(page.indexOf("<SectionNav"), page.indexOf("/>", page.indexOf("<SectionNav")));
-    const at = ['"top"', '"conducere", label: "Conducere"', '"parteneri"', '"achizitii"', '"semnale"', '"Titular"'].map((s) => tabs.indexOf(s));
+    const at = ['"top"', '"conducere", label: "Conducere"', '"parteneri"', '"achizitii"', '"Titular"'].map((s) => tabs.indexOf(s));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
     expect(page).toContain("export async function generateMetadata(");
   });
 
-  it("orders the sections as the tabs: summary, partners, acquisitions, signals (owner, 4 November 2026)", () => {
-    // The signals section is its own component (variant A, 4 November 2026): its place is where the page mounts it.
-    const at = ['id="top"', 'id="parteneri"', 'id="achizitii"', "<SignalsBreakdown"].map((s) => page.indexOf(s));
+  it("orders the sections as the tabs: summary, partners, acquisitions (owner, 4 November 2026)", () => {
+    const at = ['id="top"', 'id="parteneri"', 'id="achizitii"'].map((s) => page.indexOf(s));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
-    expect(readFileSync(new URL("./SignalsBreakdown.tsx", import.meta.url), "utf8")).toContain('id="semnale"');
   });
 
-  it("reads the partner list for the signals only when a concentration or dependence signal names its first (audit P1F4)", () => {
-    expect(page).toContain("row.scoreParts.da_concentration || row.scoreParts.da_dependence ? getEntityPartners(id, role, 12) : Promise.resolve([])");
-    expect(page.match(/getEntityPartners\(/g)).toHaveLength(1);
-    const breakdown = readFileSync(new URL("./SignalsBreakdown.tsx", import.meta.url), "utf8");
-    expect(breakdown).toContain('(code === "da_concentration" || code === "da_dependence") && p.topPartner');
+  it("has no signals section: the score's criteria are on the top's bar, the signals page among the analyses (owner, 6 November 2026)", () => {
+    expect(page).not.toContain('id: "semnale"');
+    expect(page).toContain("<ScoreSignals ");
+    expect(page).toContain('label: "Semnale"');
+    expect(page.indexOf('label: "Semnale"')).toBeLessThan(page.indexOf('label: "Legături"'));
+    // Its links open each pattern's page on /semnale.
+    expect(readFileSync(new URL("./ScoreSignals.tsx", import.meta.url), "utf8")).toContain("href={signalsHref(code)}");
+    // What only the section read is no longer read.
+    for (const gone of ["getEntityPartners(", "getEntityMonthly(", "getEntityFlagEvidence(", "getEntityFlagRowCounts(", "getSplitPairsPaged("]) expect(page).not.toContain(gone);
   });
 
   it("keeps ?rol= only for an entity that both buys and sells", () => {

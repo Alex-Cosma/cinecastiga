@@ -29,6 +29,22 @@ export function sourceEvidence(input: Omit<SourceEvidence, "sourceCount" | "tota
   return { ...input, records, sourceCount: records.length, totalExact: sumDecimalStrings(records.map(row => row.valueExact)) };
 }
 
+/**
+ * The published names of records, keyed `${src}:${refId}`: a direct acquisition's from its source document, a
+ * contract's title. A record without one keeps its CPV name where it is shown.
+ */
+export async function readRecordTitles(sql: DbSql, records: readonly Pick<DrillRow, "src" | "refId">[]): Promise<Map<string, string>> {
+  const daIds = records.filter((r) => r.src === "da" && r.refId).map((r) => r.refId!);
+  const contractIds = records.filter((r) => r.src === "contracts" && r.refId).map((r) => r.refId!);
+  const titles = new Map<string, string>();
+  if (daIds.length) for (const row of await sql`select da.sicap_da_id::text id, raw.payload->>'directAcquisitionName' title
+    from core.direct_acquisitions da left join raw.raw_documents raw on raw.id = da.raw_id where da.sicap_da_id = any(${daIds}::bigint[])`)
+    if (row.title) titles.set(`da:${row.id}`, String(row.title));
+  if (contractIds.length) for (const row of await sql`select ca_notice_contract_id::text id, title from core.contracts where ca_notice_contract_id = any(${contractIds}::bigint[])`)
+    if (row.title) titles.set(`contracts:${row.id}`, String(row.title));
+  return titles;
+}
+
 /** Aliases are da (raw acquisition), a (authority), s (supplier). */
 export async function readDaEvidence(sql: DbSql, where: ReturnType<DbSql>): Promise<SourceRecord[]> {
   const rows = await sql`select da.da_code "daCode", (da.finalization_date at time zone 'Europe/Bucharest')::date::text date,

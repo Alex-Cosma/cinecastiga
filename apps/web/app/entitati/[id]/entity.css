@@ -66,6 +66,29 @@
 .ent-risk-ticks{position:absolute;left:0;right:0;top:14px;font-size:12px;line-height:1.4;color:var(--muted)}
 .ent-risk-ticks>span{position:absolute;white-space:nowrap}
 .ent-risk-peer{margin:0;font-size:13px;line-height:1.5;color:var(--ink2)}
+.ent-risk-method{align-self:flex-start;font-size:13px;font-weight:500}
+/* Where the score comes from (owner, 6 November 2026): its criteria on the bar, each a link to its page on /semnale. */
+.ent-sig{display:flex;flex-direction:column;gap:6px;margin:2px 0 6px}
+.ent-sig .c0{--seg:var(--choro-4)}.ent-sig .c1{--seg:var(--choro-3)}.ent-sig .c2{--seg:var(--choro-2)}.ent-sig .c3{--seg:var(--choro-1)}.ent-sig .c4{--seg:var(--choro-0)}
+.ent-sig-bar{position:relative;height:24px}
+.ent-sig-bar .ent-track{position:absolute;inset:6px 0;border-radius:5px;background:var(--sunk)}
+.ent-sig-bar .ent-seg,.ent-sig-bar .ent-rest{position:absolute;top:0;bottom:0;outline-offset:2px}
+.ent-sig-bar .ent-seg::before{content:"";position:absolute;inset:6px 0 6px 2px;background:var(--seg);transition:inset var(--fast) var(--ease)}
+.ent-sig-bar .ent-seg:first-of-type::before{left:0;border-radius:5px 0 0 5px}
+.ent-sig-bar .ent-seg:hover::before,.ent-sig-bar .ent-seg:focus-visible::before{inset:3px 0 3px 2px}
+.ent-sig-bar .ent-seg:first-of-type:hover::before,.ent-sig-bar .ent-seg:first-of-type:focus-visible::before{left:0}
+.ent-sig-bar .ent-rest{cursor:default}
+.ent-sig-bar .ent-sig-tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:6;width:max-content;max-width:240px;padding:7px 10px;border-radius:7px;background:var(--ink);color:var(--paper);font:400 12.5px/1.45 var(--body);text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.2);pointer-events:none}
+.ent-sig-bar .ent-sig-tip>*{display:block}.ent-sig-bar .ent-sig-tip b{font-weight:600}
+.ent-sig-bar .ent-sig-tip.l{left:0;transform:none}.ent-sig-bar .ent-sig-tip.r{left:auto;right:0;transform:none}
+.ent-sig-bar .ent-seg:hover>.ent-sig-tip,.ent-sig-bar .ent-seg:focus-visible>.ent-sig-tip,.ent-sig-bar .ent-rest:hover>.ent-sig-tip,.ent-sig-bar .ent-rest:focus-visible>.ent-sig-tip{display:block}
+.ent-sig-bar .ent-tick{position:absolute;top:1px;bottom:1px;border-left:1px dashed var(--muted);pointer-events:none}
+.ent-sig-bar .ent-marker{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--orange);pointer-events:none}
+.ent-sig-scale{position:relative;height:16px;font-size:12px;line-height:1;color:var(--muted)}
+.ent-sig-scale span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.ent-sig-out{margin:2px 0 0;font-size:13px;line-height:1.5;color:var(--ink2)}
+.ent-sig-out a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
+.ent-sig-out a:hover{color:var(--accent);text-decoration-color:currentColor}
 /* activity: a ledger, each channel's row a link to its records */
 .ent-ledger{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .ent-ledger thead th{padding:0 0 6px 14px;font:600 12px/1.4 var(--body);color:var(--muted);text-align:right;white-space:nowrap}
@@ -152,9 +175,6 @@
 .method-head .mh-rule{flex:1 0 100%;margin:0;font-size:13px}
 .method-head .mh-rule>summary{cursor:pointer;width:fit-content;color:var(--accent);font-weight:500}
 .method-head .mh-rule>.mh-desc{margin:6px 0 2px;max-width:none;line-height:1.6}
-.yem-row{display:flex;flex-wrap:wrap;gap:4px 28px;margin-bottom:12px}
-.yem-fig{flex:1 1 240px;max-width:420px;min-width:0}
-.yem-cap{margin:10px 0 0;font:600 13px/1.4 var(--body);color:var(--ink2)}
 
 /* ---- consortium labels ---- */
 .cons-tag{display:inline-flex;flex:none;padding:0 7px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font:500 11.5px/1.6 var(--body);white-space:nowrap;cursor:help}
@@ -212,7 +232,7 @@
 /* ---- on a phone no text under 12px (owner, 1 November 2026; critique of 2 November): the section counts,
    the December charts' months, the records' source tags and signal badges ---- */
 @media (max-width:700px){
-  .subnav-in a .c,.yem .b .l,.ent-tx .ask-srctag,.ent-tx .flag-badge.sm,.cons-tag{font-size:12px}
+  .subnav-in a .c,.ent-tx .ask-srctag,.ent-tx .flag-badge.sm,.cons-tag{font-size:12px}
 }
 
 /* ---- the section navigation matches the page gutter on phones ---- */
@@ -258,21 +278,6 @@
 }
 
 @media (max-width:720px){
-  .split-pairs .split-pairs-scroll{overflow:visible}
-  .split-pairs table.split-pairs-table{min-width:0;width:100%}
-  .split-pairs table.split-pairs-table,.split-pairs .split-pairs-table tbody,.split-pairs .split-pairs-table tr,.split-pairs .split-pairs-table td{display:block}
-  /* As cards, the header stays as a row of pills: its funnels are still reachable. */
-  .split-pairs .split-pairs-table thead{display:block}
-  .split-pairs .split-pairs-table thead tr{display:flex;flex-wrap:wrap;gap:6px;padding:8px 18px}
-  .split-pairs .split-pairs-table thead th{display:inline-flex;align-items:center;width:auto;padding:2px 4px 2px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);text-transform:none;letter-spacing:0;font:500 12.5px/1.6 var(--body)}
-  .split-pairs .split-pairs-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 18px;border-bottom:1px solid var(--line)}
-  .split-pairs .split-pairs-table tbody tr td{padding:0;border:0;background:none}
-  .split-pairs .split-pairs-table td.c-party{grid-column:1/-1;font-weight:500}
-  .split-pairs .split-pairs-table td.c-year{grid-column:1}
-  .split-pairs .split-pairs-table td.c-count{grid-column:2;text-align:right;white-space:nowrap}
-  .split-pairs .split-pairs-table td.c-count::before{content:attr(data-label) " ";color:var(--muted);font-size:12.5px}
-  .split-pairs .split-pairs-table td.c-total{grid-column:1/-1;text-align:left;white-space:normal}
-  .split-pairs .split-pairs-table tr.split-pairs-placeholder td{grid-column:1/-1}
 
   .ent-partners .bar-row{grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:6px 0}
   .ent-partners .bar-label{grid-column:1/-1;white-space:normal;overflow:visible}
@@ -285,6 +290,20 @@
 /* The header (owner, 4 November 2026, variant A): the name takes the width, the two actions sit at its foot on the
    right, the registries are quiet links beside the CUI and the analyses are linked once, beside the tabs. */
 .ehead{align-items:end}
+/* The header's tags (a score note, "Inactiv"): at the right of the role's line, each reason on hover or tap. */
+.ehead.has-flags{position:relative}
+.ehead.has-flags .eyebrow{padding-right:110px}
+.ehead.has-flags.n2 .eyebrow{padding-right:240px}
+.ehead-flags{position:absolute;top:0;right:0;z-index:4;display:flex;gap:6px}
+.ehead-flag{position:relative}
+@media (max-width:600px){
+  .ehead.has-flags.n2 .eyebrow{padding-right:0}
+  .ehead.has-flags.n2 .ehead-flags{position:static;justify-content:flex-end;margin-bottom:-6px}
+}
+.ehead-flag>.term-trigger{display:inline-flex;align-items:center;min-height:24px;padding:2px 10px;border:1px solid var(--line2);border-radius:999px;background:var(--sunk);color:var(--ink2);font:600 12.5px/1.2 var(--body);text-decoration:none;cursor:help}
+.ehead-flag>.term-trigger:hover,.ehead-flag.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
+.ehead-flag>.term-trigger>.term-mark{display:none}
+.ehead-flag>.term-def{left:auto;right:0;width:min(300px,calc(100vw - 32px));top:calc(100% + 6px);bottom:auto}
 .ehead-acts{padding-top:0;flex-wrap:nowrap}
 .ehead-acts>.clipbtn,.ehead-acts>.clipbtn:hover{padding:0;border:0;background:transparent;box-shadow:none;transform:none}
 .ehead-acts .follow-action,.ehead-acts .clipbtn-t{min-height:40px;padding:8px 15px;border-radius:7px;font-size:13.5px;font-weight:500;white-space:nowrap}
@@ -296,7 +315,16 @@
 .ehead-reg{display:inline-flex;flex-wrap:wrap;gap:4px 12px;padding-left:14px;border-left:1px solid var(--line2)}
 .ehead-reg a{color:var(--ink2);font-size:13px;text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
 .ehead-reg a:hover{color:var(--accent);text-decoration-color:currentColor}
-.subnav-in a.ext~a.ext{margin-left:6px}
+/* The analysis pages (owner, 6 November 2026, variant A): one group of buttons at the end of the tab row, each with its
+   icon; "Semnale" carries the number of signal types, in its risk band's color. On a phone, a 2×2 grid under the header. */
+.subnav-in .subnav-tools{margin-left:auto;align-self:center;display:inline-flex;flex:none;border:1px solid var(--line2);border-radius:9px;background:var(--surface);overflow:hidden}
+.subnav-in .subnav-tools a{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;color:var(--ink);font-size:13.5px;font-weight:500;white-space:nowrap;transition:background var(--fast),color var(--fast)}
+.subnav-in .subnav-tools a+a{border-left:1px solid var(--line)}
+.subnav-in .subnav-tools a:hover{background:var(--accent-soft);color:var(--accent);text-decoration:none}
+.subnav-tools .an-ico,.ehead-views .an-ico{flex:none;color:var(--accent)}
+.subnav-tools .n,.ehead-views .n{min-width:18px;padding:2px 6px;border-radius:999px;background:var(--sunk);color:var(--ink2);font:600 12px/1.1 var(--mono);text-align:center}
+.subnav-tools [data-band="puternic"] .n,.ehead-views [data-band="puternic"] .n{background:var(--risk-soft);color:var(--risk)}
+.subnav-tools [data-band="moderat"] .n,.ehead-views [data-band="moderat"] .n{background:var(--amber-soft);color:var(--amber-ink,var(--amber))}
 .ehead-views{display:none}
 @media (max-width:860px){
   .ehead-acts{justify-content:stretch}
@@ -306,81 +334,16 @@
 }
 @media (max-width:700px){
   .ehead-reg{padding-left:0;border-left:0;flex-basis:100%}
-  .ehead-views{display:flex;gap:8px;margin:-6px 0 4px}
-  .ehead-views a{flex:1;text-align:center;font-size:13px;font-weight:500;color:var(--accent);background:var(--accent-soft);border-radius:7px;padding:8px 4px}
-  .ehead-views a:hover{text-decoration:none;background:var(--sunk)}
-  .subnav-in a.ext{display:none}
+  .ehead-views{display:grid;grid-template-columns:1fr 1fr;margin:-6px 0 4px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);overflow:hidden}
+  .ehead-views a{display:flex;align-items:center;gap:8px;min-height:46px;padding:10px 14px;color:var(--ink);font-size:14px;font-weight:500}
+  .ehead-views a:nth-child(even){border-left:1px solid var(--line)}
+  .ehead-views a:nth-child(n+3){border-top:1px solid var(--line)}
+  .ehead-views a:last-child:nth-child(odd){grid-column:1/-1}
+  .ehead-views a:hover{text-decoration:none;background:var(--accent-soft);color:var(--accent)}
+  .subnav-in .subnav-tools{display:none}
 }
 /* A reviewed older or secondary identity (lib/entity-successors.ts): one line, where the institution's activity is now. */
 .ent-successor{margin:-6px 0 14px;padding:9px 14px;border-radius:8px;background:var(--sunk);color:var(--ink2);font-size:14px}
 .ent-successor a{color:var(--accent);font-weight:600}
 .ent-successor .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 
-/* Signals, variant A (owner, 4 November 2026): the score split into its criteria, then one row per criterion. */
-.sig .sig-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
-.sig .sig-lede{margin:6px 0 0;color:var(--ink2);font-size:15px}
-.sig .sig-method{font-size:14px;white-space:nowrap}
-.sig .c0{--seg:var(--choro-4)}.sig .c1{--seg:var(--choro-3)}.sig .c2{--seg:var(--choro-2)}.sig .c3{--seg:var(--choro-1)}.sig .c4{--seg:var(--choro-0)}
-.sig-score{margin-top:20px;border:1px solid var(--line);border-radius:15px;background:var(--surface);padding:24px 28px 18px}
-.sig-bar{position:relative;height:40px}
-.sig-bar .sig-track{position:absolute;inset:8px 0;background:var(--sunk);border-radius:6px}
-.sig-bar .sig-seg{position:absolute;top:8px;bottom:8px;background:var(--seg);box-shadow:inset 2px 0 0 var(--surface)}
-.sig-bar .sig-seg:first-of-type{border-radius:6px 0 0 6px;box-shadow:none}
-.sig-bar .sig-tick{position:absolute;top:2px;bottom:2px;border-left:1px dashed var(--muted)}
-.sig-bar .sig-marker{position:absolute;top:0;bottom:0;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--orange)}
-.sig-scale{position:relative;height:18px;font-size:12px;color:var(--muted)}
-.sig-scale span{position:absolute;top:0}.sig-scale .mid{transform:translateX(-50%)}
-.sig-legend{list-style:none;margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--line);display:flex;flex-wrap:wrap;gap:10px 26px;font-size:14px}
-.sig-legend li{display:inline-flex;align-items:center;gap:8px}.sig-legend b{font-variant-numeric:tabular-nums}
-.sig-legend li.quiet{color:var(--muted)}
-.sig-swatch{width:12px;height:12px;border-radius:3px;background:var(--seg);flex:none}
-.sig-swatch.none{background:none;border:1px dashed var(--muted)}
-.sig-rows{margin-top:8px;border-top:1px solid var(--line2)}
-.sig-row{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,380px);gap:8px 28px;padding:26px 0;border-bottom:1px solid var(--line)}
-.sig-pts{font-family:var(--display);font-size:28px;font-weight:650;line-height:1.1;color:var(--ink);font-variant-numeric:tabular-nums}
-.sig-pts::after{content:"";display:block;width:30px;height:5px;border-radius:3px;margin-top:8px;background:var(--seg)}
-.sig-body{display:flex;flex-direction:column;gap:10px;min-width:0}
-.sig-body h3{margin:0;font-family:var(--display);font-size:21px}
-.sig-sentence{margin:0;font-size:15px;line-height:1.6;color:var(--ink2);max-width:68ch}
-.sig-guide{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:2px}
-.sig-guide p{margin:0;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.55;border:1px solid var(--line);background:var(--surface)}
-.sig-guide p:first-child{background:var(--sunk);border-color:transparent}
-.sig-guide b{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ink2);margin-bottom:4px}
-.sig-link{font-size:14px;font-weight:500;align-self:flex-start;padding:4px 0}
-.sig-pic{min-width:0;display:flex;flex-direction:column;gap:8px}
-.sig-cap{margin:0;font-size:13px;color:var(--ink2)}
-.sig-share{height:18px;border-radius:4px;background:var(--sunk);overflow:hidden}
-.sig-share-fill{display:block;height:100%;background:var(--seg)}
-.sig-split{margin:0}
-.sig-split figcaption{font-size:12px;color:var(--muted);margin-bottom:8px}
-.sig-split ol{list-style:none;margin:0;padding:0;position:relative;display:flex;flex-direction:column;gap:9px}
-.sig-split .track{position:relative;display:block;height:12px}
-.sig-split .track::after{content:"";position:absolute;top:-3px;bottom:-3px;left:var(--plafon);border-left:1.5px solid var(--orange)}
-.sig-split li{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
-.sig-split .bar{display:block;height:100%;border-radius:3px;background:var(--choro-4)}
-.sig-split .lab b{color:var(--ink)}
-.sig-plafon{margin:6px 0 0;font-size:12px;color:var(--orange)}
-.sig-vs{display:grid;grid-template-columns:70px minmax(0,1fr) 36px;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
-.sig-vs .bar{height:14px;border-radius:3px;background:var(--choro-2)}.sig-vs .bar.exp{background:var(--line2)}
-.sig-vs b{color:var(--ink);font-variant-numeric:tabular-nums}
-.sig-all{grid-column:2 / -1;margin-top:4px}
-.sig-all>summary{cursor:pointer;font-size:14px;color:var(--accent);min-height:44px;display:flex;align-items:center}
-.sig-others{margin-top:18px;font-size:14px}
-.sig-others h3{margin:0 0 8px;font-size:15px;color:var(--ink2)}
-.sig-others ul{list-style:none;margin:0;padding:0}
-.sig-others li{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr) auto;gap:4px 18px;padding:10px 0;border-bottom:1px solid var(--line)}
-.sig-others li>span{color:var(--muted)}.sig-others .n{font-variant-numeric:tabular-nums;color:var(--ink2)}
-.sig-note{margin:0 0 8px;color:var(--muted)}
-@media(max-width:900px){.sig-row{grid-template-columns:52px minmax(0,1fr)}.sig-pic{grid-column:2}.sig-all{grid-column:1 / -1}}
-@media(max-width:700px){
-  .sig-score{padding:18px 16px 14px}
-  .sig-scale .mid{display:none}
-  .sig-legend{flex-direction:column;gap:8px}
-  .sig-row{grid-template-columns:minmax(0,1fr);gap:10px;padding:20px 0}
-  .sig-body{display:contents}
-  .sig-body h3{order:1}.sig-sentence{order:2}.sig-pic{order:3;margin:4px 0}.sig-guide{order:4}.sig-link{order:5}.sig-all{order:6}
-  .sig-pts{font-size:20px}.sig-pic,.sig-all{grid-column:1}
-  .sig-guide{grid-template-columns:minmax(0,1fr)}
-  .sig-link{min-height:44px;display:flex;align-items:center}
-  .sig-others li{grid-template-columns:minmax(0,1fr) auto}.sig-others li>span:not(.n){grid-column:1 / -1;order:3}
-}
