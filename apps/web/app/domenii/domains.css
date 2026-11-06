@@ -60,10 +60,13 @@
 .dm-caption button{font-size:10px;background:transparent;border:0;padding:0;text-decoration:underline;text-underline-offset:3px;color:var(--accent);flex:none}
 .dm-empty{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:1px dashed var(--accent-line);background:var(--surface);border-radius:15px;padding:25px}
 .dm-empty h3{font-family:var(--display);font-size:25px;font-weight:500;margin:0 0 9px}.dm-empty p{color:var(--muted);font-size:13px;line-height:1.6}.dm-empty button{margin-top:9px}
-.dm-content-frame{position:relative;min-height:155px}.dm-frame-content[inert]{opacity:.2;pointer-events:none}
-.dm-loading-cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:15px;padding:min(90px,15vh) 25px 25px;text-align:center;background:var(--glass);border:1px solid var(--line);border-radius:15px;z-index:3;overflow:auto}
-.dm-loading-cover h3{font:500 24px/1.35 var(--display);letter-spacing:-.5px;max-width:480px;margin:0}.dm-loading-cover p{font-size:12px;line-height:1.6;color:var(--muted);max-width:420px;margin:0}.dm-loading-cover>.dm-text-link{margin-top:4px}
-.dm-spinner{height:26px;width:26px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:dm-spin .85s linear infinite}
+.dm-content-frame{position:relative;min-height:155px}.dm-frame-content[inert]{pointer-events:none}.dm-frame-off{opacity:.2}
+/* A year that could not be loaded: the old atlas faded under the message. (A year on its way keeps the old atlas dimmed,
+   with the floating status; owner, 6 November 2026.) */
+.dm-error-cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:15px;padding:min(90px,15vh) 25px 25px;text-align:center;background:var(--glass);border:1px solid var(--line);border-radius:15px;z-index:3;overflow:auto}
+.dm-error-cover h3{font:500 24px/1.35 var(--display);letter-spacing:-.5px;max-width:480px;margin:0}.dm-error-cover p{font-size:12px;line-height:1.6;color:var(--muted);max-width:420px;margin:0}.dm-error-cover>.dm-text-link{margin-top:4px}
+.dm-atlas-ghost{position:absolute;inset:0;width:100%;height:100%}
+.dm-error-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
 .dm-notice{font-size:12px;line-height:1.7;padding:12px 16px;border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:8px;color:var(--ink);margin-top:18px}
 .dm-breadcrumbs{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px;padding-top:22px;flex-wrap:wrap}
 .dm-breadcrumbs button{background:transparent;color:var(--accent);border:0;padding:3px 0;font-size:11px;display:inline-flex;align-items:center;gap:5px;text-align:left}
@@ -91,7 +94,6 @@
 .dm-next-step>a{font-size:12px;font-weight:500;display:inline-flex;gap:14px;align-items:center;color:var(--ink)}.dm-next-step>a:hover{text-decoration:underline}.dm-next-step>a svg{color:var(--orange)}
 .dm-method{margin-top:28px;color:var(--muted);font-size:11px;line-height:1.85;border-top:1px solid var(--line);padding-top:16px}
 .dm-method summary{cursor:pointer;color:var(--ink);font-size:11px}.dm-method p{margin:12px 0;max-width:1000px}.dm-method a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
-@keyframes dm-spin{to{transform:rotate(360deg)}}
 @media(min-width:1500px){.domains-page{--domain-atlas-height:530px}.dm-hero{padding-top:52px;padding-bottom:40px}.dm-atlas-list{max-height:422px}}
 @media(max-width:1050px){.dm-hero{grid-template-columns:1fr 240px;gap:30px}.domains-page h1{font-size:48px}.dm-atlas-layout{grid-template-columns:minmax(0,1fr) 205px}.dm-detail-hero{grid-template-columns:1fr}.dm-detail-actions{margin-top:-10px}.dm-question-strip{grid-template-columns:repeat(3,1fr)}.dm-question-strip>p{grid-column:1/-1}.dm-question-strip>p strong{display:inline;margin-right:5px}.dm-hero-context{padding-left:20px}.dm-national-value{font-size:30px}}
 @media(max-width:760px){

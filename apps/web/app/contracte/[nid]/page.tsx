@@ -15,6 +15,7 @@ import Term from "@/components/Term";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { pairSpec } from "@/lib/ask/site-links";
 import { consortiumShareLabel } from "@/lib/consortium";
+import { ghostHold } from "@/lib/ghost-hold";
 import "./contract.css";
 
 /**
@@ -52,6 +53,7 @@ export default async function ContractPage({
 }: {
   params: Promise<{ nid: string }>;
 }) {
+  await ghostHold();
   const { nid } = await params;
   const c = await getContractDetail(nid);
   if (!c) notFound();

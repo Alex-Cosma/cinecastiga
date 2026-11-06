@@ -11,7 +11,8 @@ import Term from "@/components/Term";
 import DiscoveryIcon from "./DiscoveryIcon";
 
 // A county opens "Pe ce se duc banii?" (the breakdown by subject) for it, the
-// question this card asks, rather than a single total.
+// question this card asks, rather than a single total. Client navigation (next/link inside the SVG): a whole page
+// load landed on Ask's start page before its answer; 42 links in view are not prefetched.
 const countyHref = countyBreakdownHref;
 const mapHref = askHref(NATIONAL_MAP_SPEC);
 
@@ -35,7 +36,7 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
     <svg viewBox={`0 0 ${countyMap.width} ${countyMap.height}`} className="d-romania-map" role="group" aria-label="Alege un județ pe hartă. Aceleași opțiuni sunt disponibile în selectorul de mai jos." onMouseLeave={() => setHovered("")}>
       {countyMap.shapes.map((shape) => {
         const data = values.get(shape.key), bucket = data ? thresholds.filter((threshold) => data.amount > threshold).length : -1;
-        return <a key={shape.key} href={countyHref(shape.label)} aria-label={`${shape.label}: ${data ? `${formatRon(data.amount)}. Vezi pe ce se duc banii.` : "Fără valoare localizată în arhivă. Vezi pe ce se duc banii."}`} onFocus={() => setHovered(shape.key)} onBlur={() => setHovered("")} onMouseEnter={() => setHovered(shape.key)}><path d={shape.d} className={`d-county d-county-${bucket}${focusKey === shape.key ? " selected" : ""}`}><title>{`${shape.label}${data ? ` · ${formatRon(data.amount)}` : " · date indisponibile"}`}</title></path></a>;
+        return <Link key={shape.key} href={countyHref(shape.label)} prefetch={false} aria-label={`${shape.label}: ${data ? `${formatRon(data.amount)}. Vezi pe ce se duc banii.` : "Fără valoare localizată în arhivă. Vezi pe ce se duc banii."}`} onFocus={() => setHovered(shape.key)} onBlur={() => setHovered("")} onMouseEnter={() => setHovered(shape.key)}><path d={shape.d} className={`d-county d-county-${bucket}${focusKey === shape.key ? " selected" : ""}`}><title>{`${shape.label}${data ? ` · ${formatRon(data.amount)}` : " · date indisponibile"}`}</title></path></Link>;
       })}
     </svg>
     <div className="d-map-legend"><span>Valoare înregistrată</span><div aria-label="De la valoare mai mică la valoare mai mare">{[0, 1, 2, 3, 4].map((n) => <i key={n} className={`d-map-swatch-${n}`} />)}</div><span>mai mare</span></div>

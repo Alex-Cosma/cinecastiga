@@ -4,6 +4,7 @@ import ScopeConditions from "./ScopeConditions";
 import RefreshCoverage from "./RefreshCoverage";
 import { useEffect, useId, useState } from "react";
 import Term from "@/components/Term";
+import { G, rankWidth } from "@/components/ghost/Ghost";
 import type { MonitoringCheckpoint } from "@seap/db";
 import type { MonitoringPreferences, MonitoringRun, MonitoringScope } from "@/lib/monitoring-shared";
 import { MONITORING_CHANGE_TYPES, monitoringRunTag, selectionHref } from "@/lib/monitoring-shared";
@@ -45,6 +46,20 @@ export function Preferences({ value, onChange, disabled = false }: { value: Moni
   const [digest, setDigest] = useState<DigestStatus | null>(null), minimumId = useId();
   useEffect(() => { const controller = new AbortController(); void api<DigestStatus>("/api/urmariri/digest", { signal: controller.signal }).then(setDigest).catch(() => {}); return () => controller.abort(); }, []);
   return <fieldset className="mon-preferences" disabled={disabled}><legend>Ce modificări te interesează?</legend>{MONITORING_CHANGE_TYPES.map(type => <label className="mon-check" key={type}><input type="checkbox" checked={value.types.includes(type)} onChange={event => onChange({ ...value, types: event.target.checked ? [...value.types, type] : value.types.filter(t => t !== type) })} />{changeNames[type]}</label>)}<div className="mon-field mon-tip-line"><label htmlFor={minimumId}>Valoarea minimă a unei înregistrări · lei</label><Term id="valoare-minima-alerta" tip /><input id={minimumId} type="text" inputMode="decimal" value={value.minimumValueExact} onChange={e => onChange({ ...value, minimumValueExact: e.target.value.replace(",", ".") })} /></div><label className="mon-check"><input type="checkbox" checked={value.digest} disabled={!digest?.available && !value.digest} onChange={e => onChange({ ...value, digest: e.target.checked })} />Trimite-mi un rezumat zilnic prin e-mail</label><p className="mon-muted">{digest?.available ? "Doar când există actualizări relevante. Poți opri e-mailurile oricând de aici." : digest?.reason?.startsWith("Confirmă") ? digest.reason : "Rezumatele prin e-mail nu sunt încă disponibile aici. Urmăririle continuă în aplicație."}</p>{digest?.latest && ["failed", "uncertain"].includes(digest.latest.status) && <p className="mon-caution">{digest.latest.error ?? "Ultimul rezumat nu are livrarea confirmată. Verifică actualizările din cont."}</p>}</fieldset>;
+}
+/*
+ * Ghosts while a private list or page loads (owner, 6 November 2026: "ghost data loading"). Real labels stay real,
+ * what comes from the account's data is a pulsing line; buttons are inert copies, so nothing in a ghost takes focus.
+ * They are never filled with names or titles: the data is private.
+ */
+export function RunCardGhost({ i = 0 }: { i?: number }) {
+  return <article className="mon-update" aria-hidden="true"><div className="mon-meta"><span className="mon-tag"><G.Line inline w="7.5em" /></span><G.Line inline w="9.5em" /></div>
+    <div className="mon-row"><div className="mon-g-fill"><h2><G.Line w={rankWidth(i, 66, 12, 42)} /><G.Line w="40%" only="phone" /></h2><div className="mon-facts"><G.Line inline w="10em" /><G.Line inline w="7em" /></div></div>
+      <span className="mon-button g-quiet">Vezi modificările →</span></div></article>;
+}
+/** The freshness line above the lists, before the first answer says how recent the data is. */
+export function RefreshGhost() {
+  return <div className="mon-freshness" aria-hidden="true"><p className="mon-tip-line"><G.Line w="17em" /></p><p className="mon-small-details mon-g-summary"><G.Line inline w="13em" /></p></div>;
 }
 export function RunCard({ run }: { run: MonitoringRun }) {
   const c = run.counts;

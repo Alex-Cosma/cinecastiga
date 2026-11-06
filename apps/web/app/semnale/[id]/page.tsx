@@ -12,6 +12,7 @@ import { readSignalEvidence } from "@/lib/signal-evidence";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
+import { PendingRegion, RegionLink } from "@/components/ghost/client";
 import "../signals.css";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,8 @@ export default async function SignalSourcesPage({ params, searchParams }: {
     <p>Metodologie {finding.methodology} · pistă de verificat, nu dovadă.</p>
     <ClipButton kind="signal" refId={id} label={flagFindingLabel(finding.code)} />
     <p><a href={`/api/evidence/sources?kind=signal&id=${id}`} download>Descarcă înregistrările disponibile · CSV ↓</a></p>
-    {finding.sourceIds.length > 0 && <section className="section">
+    {/* Another page of the sources keeps this one in place, dimmed, until it comes (owner, 6 November 2026). */}
+    {finding.sourceIds.length > 0 && <PendingRegion as="section" className="section" label="Se încarcă achizițiile…">
       <h2 id="achizitii-semnal" className="list-anchor">Achizițiile care au declanșat acest semnal</h2>
       {finding.reconciled
         ? <p><strong>{formatInt(recordedCount)} achiziții · {exact(recordedTotal)} lei</strong> · CPV {String(evidence.cpv_class ?? "necunoscut")} · {purchaseType}</p>
@@ -73,8 +75,8 @@ export default async function SignalSourcesPage({ params, searchParams }: {
         {finding.records.map(row => <tr key={row.id}><td><a href={daUrl(row.id)} target="_blank" rel="noreferrer">{row.code ?? `SEAP ${row.id}`} ↗</a>{!row.available && <div className="note">Înregistrare indisponibilă în datele curente</div>}</td><td data-label="Finalizare">{coverageDate(row.date)}</td><td data-label="CPV">{row.cpv ?? "necunoscut"}</td><td className="num" data-label="Valoare înregistrată · lei">{exact(row.value)}</td></tr>)}
       </tbody></table></div>
       {pages > 1 && <p className="note">Pagina {finding.page + 1} / {pages}</p>}
-      <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <Link href={`/semnale/${id}?p=${finding.page - 1}#achizitii-semnal`}>← Anterioara</Link>}{(finding.page + 1) * 50 < finding.sourceIds.length && <Link href={`/semnale/${id}?p=${finding.page + 1}#achizitii-semnal`}>Următoarea →</Link>}</nav>
-    </section>}
+      <nav className="pager" aria-label="Paginarea surselor">{finding.page > 0 && <RegionLink href={`/semnale/${id}?p=${finding.page - 1}#achizitii-semnal`} scroll>← Anterioara</RegionLink>}{(finding.page + 1) * 50 < finding.sourceIds.length && <RegionLink href={`/semnale/${id}?p=${finding.page + 1}#achizitii-semnal`} scroll>Următoarea →</RegionLink>}</nav>
+    </PendingRegion>}
     {finding.contracts.length > 0 && <section className="section">
       <h2>Contractele și loturile folosite în semnal</h2>
       {!finding.contractMembershipValid && <p className="note">Lista înregistrată conține referințe incomplete sau nevalide. Sursele de mai jos reprezintă numai partea care poate fi verificată.</p>}

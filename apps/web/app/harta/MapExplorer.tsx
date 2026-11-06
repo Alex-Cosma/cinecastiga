@@ -6,6 +6,8 @@ import OptionList from "@/app/intreaba/builder/pickers/OptionList";
 import type { KitOption } from "@/app/intreaba/builder/kit-types";
 import "@/app/intreaba/builder/filters-kit.css";
 import Term from "@/components/Term";
+import { G, Ghost } from "@/components/ghost/Ghost";
+import { FloatStatus } from "@/components/ghost/client";
 import UatPanel from "./UatPanel";
 import type { MapArea, MapDataset, MapOptions, MapResponse } from "@/lib/map-capita-shared";
 
@@ -88,7 +90,8 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
   const [countyGeo, setCountyGeo] = useState<Record<string, CountyGeo>>({});
   const [options, setOptions] = useState<MapOptions | null>(null);
   const [national, setNational] = useState<{ key: string; data: MapResponse } | null>(null);
-  const [local, setLocal] = useState<{ key: string; data: MapResponse } | null>(null);
+  // The county's numbers remember their county: another filter keeps them on screen, dimmed, until the new ones arrive.
+  const [local, setLocal] = useState<{ key: string; county: string; data: MapResponse } | null>(null);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const [hover, setHover] = useState<string | null>(null);
@@ -133,7 +136,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     setError("");
     void Promise.all([
       national?.key === nationalKey ? null : load(nationalKey, setNational),
-      localKey && local?.key !== localKey ? load(localKey, setLocal) : null,
+      localKey && county && local?.key !== localKey ? load(localKey, (v) => setLocal({ ...v, county })) : null,
     ]).catch((e: unknown) => { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Harta nu s-a putut încărca."); });
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -202,9 +205,13 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     return () => cancelAnimationFrame(raf);
   }, [target]);
 
+  // Same areas, new numbers (a filter): the old ones stay, dimmed, with a floating status. Another level (a county
+  // opened, the first load) has no numbers to dim: its ranking is a ghost of its rows (owner, 6 November 2026).
   const nat = national?.data;
-  const loc = county && local?.key === localKey ? local.data : null;
+  const natStale = national !== null && national.key !== nationalKey;
+  const loc = county && local?.county === county ? local.data : null;
   const level: MapResponse | null | undefined = county ? loc : nat;
+  const stale = level ? (county ? local!.key !== localKey : natStale) : false;
   const areas = useMemo(() => level?.areas ?? [], [level]);
   const byKey = useMemo(() => new Map(areas.map((a) => [a.key, a])), [areas]);
   const max = Math.max(1, ...areas.map((a) => a.perCapita ?? 0));
@@ -266,7 +273,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     <header className="mx-head">
       <h1>{county ? `Lei pe locuitor în ${countyName || "județ"}` : "Lei pe locuitor, pe județe"}</h1>
       <p className="mx-lede">Ce au contractat primăriile și consiliile județene, {yearsWords(years, allYears)}, {cpvWords}{channelWords}.
-        {average !== null && <> {county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{int(average)} lei</b> pe locuitor.</>}</p>
+        {(average !== null || !nat) && <> <span className={natStale ? "g-stale" : undefined}>{county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${int(average)} lei` : <G.Line inline w="4.6em" />}</b> pe locuitor.</span></>}</p>
     </header>
 
     <div className="mx-filters" role="group" aria-label="Ce arată harta">
@@ -288,7 +295,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
       <section className={`mx-stage${busy ? " is-busy" : ""}`} aria-label={county ? `Harta județului ${countyName}` : "Harta României pe județe"}>
         {county && <p className="mx-crumb"><button type="button" onClick={() => { setUat(null); setCounty(null); }}><Arrow back /> România</button><span>· {countyName}</span></p>}
         <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}>
-          {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img"
+          {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" className={stale ? "g-stale" : undefined}
             aria-label={`${county ? countyName : "România"}: lei pe locuitor${average !== null ? `, în medie ${int(average)}` : ""}. Clasamentul de alături are aceleași cifre.`}>
             <defs><pattern id="mx-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform={`rotate(45) scale(${view[2] / geo.width})`}><rect width="6" height="6" className="mx-hatch-bg" /><line x1="0" y1="0" x2="0" y2="6" className="mx-hatch-line" /></pattern></defs>
             <g className={county ? "mx-counties is-back" : "mx-counties"}>
@@ -320,22 +327,24 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
             {shown.value !== null && <span className="mx-card-sub">{short(shown.value)} lei · {withDe(shown.denominator ?? shown.population ?? 0, "locuitor", "locuitori")}{shown.coverage !== undefined && shown.coverage < 0.9 ? ` · acoperire ${Math.round(shown.coverage * 100)}%` : ""}</span>}
             {!county && <span className="mx-card-go">Apasă: UAT-urile județului <Arrow /></span>}
           </div>}
-          {busy && <p className="mx-busy" role="status">Se încarcă…</p>}
+          {busy && <p className="mx-busy g-float" role="status">Se încarcă…</p>}
         </div>
         <div className="mx-foot">
-          <div className="mx-legend" aria-hidden="true"><span className="mx-legend-g"><span>0</span><i /><span>{int(max)} lei pe locuitor</span></span>
+          <div className="mx-legend" aria-hidden="true"><span className="mx-legend-g"><span>0</span><i /><span>{level ? int(max) : <G.Line inline w="3.4em" />} lei pe locuitor</span></span>
             {areas.some((a) => a.perCapita === null) && <span className="mx-legend-g"><b className="mx-legend-gap" /><span>{county ? "primărie neidentificată" : "fără cifră"}</span></span>}</div>
           <p className="mx-attr">Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>), simplificate. Populația: INS, RPL 2021.</p>
         </div>
       </section>
 
-      <aside className="mx-rank" aria-labelledby="mx-rank-h">
+      <aside className="mx-rank" aria-labelledby="mx-rank-h" aria-busy={!level || stale || undefined}>
         <h2 id="mx-rank-h">{county ? (county === "bucuresti" ? "Sectoarele" : "UAT-urile") : "Județele"} <span aria-live="polite">lei pe locuitor{shown && hoverPlace > 0 ? ` · ${shown.name} ${place(hoverPlace)}` : ""}</span></h2>
-        {county && loc?.city && <div className={`mx-city${hover === loc.city.key ? " is-hover" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
+        {!level ? <RankGhost names={county ? uatGeo?.uats.map((u) => u.name) ?? null : geo?.counties.map((c) => c.name) ?? null} rows={county ? null : 42}
+          city={county === "bucuresti"} folded={unfolded !== (county ?? "")} key={county ?? ""} /> : <>
+        {county && loc?.city && <div className={`mx-city${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
           <b>{loc.city.name}</b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}</span>
           <em>{loc.city.perCapita === null ? "—" : `${int(loc.city.perCapita)} lei`}</em>
         </div>}
-        <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}`} ref={listRef}
+        <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}`} ref={listRef}
           onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4); }}>
           {ranked.map((a, i) => {
             const gap = a.perCapita === null;
@@ -353,10 +362,31 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
         </ol>
         {ranked.length > 15 && unfolded !== (county ?? "") && <button type="button" className="mx-more" onClick={() => setUnfolded(county ?? "")}>Toate cele {ranked.length}</button>}
         {!busy && !ranked.length && <p className="mx-note">Nicio valoare în această selecție.</p>}
+        </>}
         <p className="mx-note">{county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
       {county && uat && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
         onClose={() => setUat(null)} onPick={openUat} />}
     </div>}
+    {stale && <FloatStatus>Se încarcă…</FloatStatus>}
   </div>;
+}
+
+/*
+ * The ranking while a level loads (owner, 6 November 2026: "ghost data loading"): its rows, as many as the level has
+ * and with their real names once the shapes are in (counties, or the county's UATs), the rank, bar and value pulsing.
+ * The names are in the map's order, not ranked yet; the list keeps its height (15 rows and "Toate cele N" on phones).
+ */
+function RankGhost({ names, rows, city, folded }: { names: string[] | null; rows: number | null; city: boolean; folded: boolean }) {
+  const n = names?.length ?? rows ?? 15;
+  return <Ghost className="mx-rank-ghost" name="mx-rank" wait="client">
+    {city && <div className="mx-city" aria-hidden="true"><b>Primăria Municipiului București</b><span><G.Line w="70%" /></span><em><G.Line w="4.5em" /></em></div>}
+    <ol className={`mx-rows${folded ? " is-folded" : ""}`} aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => <li key={i}><div className="mx-row">
+        <span className="mx-n" /><span className="mx-name">{names?.[i] ?? <G.Line w={`${58 - (i % 4) * 9}%`} />}</span>
+        <span className="mx-bar" /><span className="mx-v"><G.Line w="100%" /></span>
+      </div></li>)}
+    </ol>
+    {n > 15 && folded && <p className="mx-more" aria-hidden="true">Toate cele {n}</p>}
+  </Ghost>;
 }
