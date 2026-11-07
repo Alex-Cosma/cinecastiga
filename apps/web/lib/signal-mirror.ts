@@ -204,7 +204,7 @@ export const decemberRecords = <T extends Pick<DrillRow, "date">>(records: reado
   records.filter((r) => String(r.date ?? "").startsWith(`${year}-12`));
 
 /**
- * "O firmă primește mare parte din bani" (an institution's main supplier) and "Un singur client public mare" (a firm's
+ * "O firmă are mare parte din valoare" (an institution's main supplier) and "Un singur client public mare" (a firm's
  * main client): the partner's share for the profile, and the profile's share for the partner when the build stored it.
  */
 export interface PartnerShare {

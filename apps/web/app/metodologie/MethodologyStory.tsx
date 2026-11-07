@@ -979,7 +979,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <li><a href="#formula">Toate regulile formulei</a></li>
               </ul>
             </details>
-            <p>Sunt patru familii: <b>plafonul</b> (cele trei de mai sus), <b>legătura cu o singură firmă</b> („O firmă primește mare parte din bani” la instituții, „Un singur client public mare” la firme), <b>decembrie</b> și <b>capacitatea firmei</b> („Contracte directe peste cifra de afaceri”, care contează pe jumătate când e singură). Cu un singur tipar, scorul ajunge cel mult la 60, adică „moderat”. „Pronunțat” începe de la 68, deci cere cel puțin două tipare.</p>
+            <p>Sunt patru familii: <b>plafonul</b> (cele trei de mai sus), <b>legătura cu o singură firmă</b> („O firmă are mare parte din valoare” la instituții, „Un singur client public mare” la firme), <b>decembrie</b> și <b>capacitatea firmei</b> („Contracte directe peste cifra de afaceri”, care contează pe jumătate când e singură). Cu un singur tipar, scorul ajunge cel mult la 60, adică „moderat”. „Pronunțat” începe de la 68, deci cere cel puțin două tipare.</p>
             <figure className="mt-fig mt-mix" aria-labelledby="mix-t">
               <p id="mix-t" style={{ fontWeight: "600" }}>Încearcă: pornește și oprește tiparele comunei</p>
               <div className="mt-toggles">
@@ -987,7 +987,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                 <button type="button" className="mt-tg" data-k="round" aria-pressed="true"><i /><span>Multe sume imediat sub plafon<small>familia plafonului · singur 20</small></span></button>
                 <button type="button" className="mt-tg" data-k="above" aria-pressed="true"><i /><span>Declarate directe, peste plafon<small>familia plafonului · singur 20</small></span></button>
                 <button type="button" className="mt-tg" data-k="dec" aria-pressed="true"><i /><span>Mulți bani contractați în decembrie<small>familia decembrie · singur 17</small></span></button>
-                <button type="button" className="mt-tg" data-k="rel" aria-pressed="false"><i /><span>O firmă primește mare parte din bani<small>exemplu: comuna nu are acest tipar; dacă o firmă ar primi 75% din bani, singur 40</small></span></button>
+                <button type="button" className="mt-tg" data-k="rel" aria-pressed="false"><i /><span>O firmă are mare parte din valoare<small>exemplu: comuna nu are acest tipar; dacă o firmă ar primi 75% din bani, singur 40</small></span></button>
               </div>
               <div className="mt-big-score" aria-hidden="true">
                 <b id="mx">55</b>
@@ -1502,7 +1502,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       </tr>
                       <tr>
                         <td>Limita dovezilor</td>
-                        <td>Se aplică fiecărui tipar. După număr: cel mult nivelul 1 la 10 achiziții directe și 3 de la 30, proporțional între ele. La tiparele despre sume („Adunate, trec de plafon”, „Declarate directe, peste plafon”, capacitatea), de la 5 achiziții contează și valoarea: 1 la 0,5 milioane lei, 2 la 1 milion, 3 la 2 milioane; se ia limita mai mare dintre cele două. La „Multe sume imediat sub plafon”, „Un singur client public mare” și „O firmă primește mare parte din bani” contează doar numărul. Decembrie are limita lui.</td>
+                        <td>Se aplică fiecărui tipar. După număr: cel mult nivelul 1 la 10 achiziții directe și 3 de la 30, proporțional între ele. La tiparele despre sume („Adunate, trec de plafon”, „Declarate directe, peste plafon”, capacitatea), de la 5 achiziții contează și valoarea: 1 la 0,5 milioane lei, 2 la 1 milion, 3 la 2 milioane; se ia limita mai mare dintre cele două. La „Multe sume imediat sub plafon”, „Un singur client public mare” și „O firmă are mare parte din valoare” contează doar numărul. Decembrie are limita lui.</td>
                       </tr>
                       <tr>
                         <td>Adunate, trec de plafon</td>
@@ -1521,7 +1521,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                         <td>un an e marcat când partea lui decembrie trece de percentila 95 a instituțiilor de același tip, în același an, și ajunge la cel puțin 35%; pași = (partea lui decembrie − mediana) ÷ (percentila 95 − mediana); media pașilor celor mai mari două decembrii, înmulțită cu ani ÷ (ani + 2); nivel = 1,25 × (pași − 1) ÷ 1,5, cel mult 1,25</td>
                       </tr>
                       <tr>
-                        <td>O firmă primește mare parte din bani</td>
+                        <td>O firmă are mare parte din valoare</td>
                         <td>partea unui furnizor din valoarea directă, fără cea mai mare achiziție a lui: de la 50% (nivel 0) la 60% (nivel 1), 75% (nivel 2) și 90% (nivel 3); familia legăturii rămâne cel mult 2 la o instituție</td>
                       </tr>
                       <tr>
@@ -1690,7 +1690,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <details suppressHydrationWarning id="niveluri">
               <summary>Nivelul fiecărui tipar (1, 2, 3)</summary>
               <div className="mt-body">
-                <p>Fiecare tipar găsit are o tărie de la 1 la 3, măsurată față de mărimea profilului; între praguri crește proporțional, de la un prag de început până la nivelul 1. <b>Peste nivelul 1 contează și câte dovezi sunt</b> (limita dovezilor): la tiparele despre sume („Declarate directe, peste plafon”, „Adunate, trec de plafon”, capacitatea), limita urcă cu numărul de achiziții directe (1 la 10, 3 la 30) sau, de la 5 achiziții, cu valoarea lor (1 la 0,5 milioane lei, 2 la 1 milion, 3 la 2 milioane); se ia limita mai mare. La celelalte („Multe sume imediat sub plafon”, „Un singur client public mare”, „O firmă primește mare parte din bani”) contează doar numărul. Decembrie are limita lui.</p>
+                <p>Fiecare tipar găsit are o tărie de la 1 la 3, măsurată față de mărimea profilului; între praguri crește proporțional, de la un prag de început până la nivelul 1. <b>Peste nivelul 1 contează și câte dovezi sunt</b> (limita dovezilor): la tiparele despre sume („Declarate directe, peste plafon”, „Adunate, trec de plafon”, capacitatea), limita urcă cu numărul de achiziții directe (1 la 10, 3 la 30) sau, de la 5 achiziții, cu valoarea lor (1 la 0,5 milioane lei, 2 la 1 milion, 3 la 2 milioane); se ia limita mai mare. La celelalte („Multe sume imediat sub plafon”, „Un singur client public mare”, „O firmă are mare parte din valoare”) contează doar numărul. Decembrie are limita lui.</p>
                 <div className="mt-tw">
                   <table className="mt-lvtab">
                     <thead>
@@ -1727,7 +1727,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                         <td data-l="Nivelul 3">—</td>
                       </tr>
                       <tr>
-                        <th scope="row"><a href="#da_concentration">O firmă primește mare parte din bani</a></th>
+                        <th scope="row"><a href="#da_concentration">O firmă are mare parte din valoare</a></th>
                         <td data-l="Nivelul 1">60% din valoare la un furnizor, fără cea mai mare achiziție a lui, de la 50%</td>
                         <td data-l="Nivelul 2">75%</td>
                         <td data-l="Nivelul 3">90% (familia rămâne cel mult 2)</td>
@@ -1752,7 +1752,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                   <li><b>Adunate, trec de plafon:</b> cel puțin 3 achiziții directe ale aceleiași instituții de la aceeași firmă, în același an, cu aceeași clasă CPV și același tip. Ponderea unui grup depinde de cât trece suma lui de plafon (zero la 1,2×, deplină de la 2×) și de mărimea achizițiilor; grupurile mai ales din Anexa 2 nu contează. Nu contează nici produsele medicale (CPV 33), nici grupurile cu cel puțin 12 comenzi sub 10% din plafon în medie: apar ca „comenzi repetate, fără acord-cadru”, fără puncte. Legea cere ca nevoia unui an să fie cumulată, dar asta e o problemă de planificare, nu o pistă de fragmentare. Clasa CPV (primele 4 cifre) e o aproximare a „aceluiași obiect” din lege.</li>
                   <li><b>Multe sume imediat sub plafon:</b> achizițiile la 96–100% din plafon, comparate cu câte ar fi de așteptat după media națională, la același tip și aceleași plafoane: „așteptate” = numărul achizițiilor profilului între 50% și 96% din plafon, înmulțit cu raportul național dintre achizițiile la 96–100% și cele la 50–96%, pe același tip și aceleași plafoane. Tăria = log₂ al raportului (găsite + 1) ÷ (așteptate + 1), cu cel puțin 0,5 așteptate; nivelul 2 cere cel puțin 5 astfel de achiziții, nivelul 3 cel puțin 8.</li>
                   <li><b>Decembrie:</b> un an e marcat când partea lui decembrie trece de cea a 95% din instituțiile de același tip și ajunge la cel puțin 35%. Tăria: cât de departe sunt cele mai mari două decembrii de mediana lor, înmulțită cu ani ÷ (ani + 2); cel mult 1,25, deci, singur, tiparul rămâne „slab”.</li>
-                  <li><b>O firmă primește mare parte din bani:</b> tiparul ajunge la nivelul 3, dar familia legăturii rămâne cel mult 2 la o instituție.</li>
+                  <li><b>O firmă are mare parte din valoare:</b> tiparul ajunge la nivelul 3, dar familia legăturii rămâne cel mult 2 la o instituție.</li>
                   <li><b>Contracte directe peste cifra de afaceri:</b> doar cu bilanțul aceluiași an; un an fără bilanț, cum e anul în curs, nu se evaluează. O cifră de afaceri sub 10.000 lei sau 0 angajați la 500.000 lei contractați dau cel puțin nivelul 1; +0,5 pentru o firmă în primii doi ani de la înregistrarea la Registrul Comerțului. Explicații posibile: subcontractarea, o firmă abia înființată cu un contract mare. Un contract pe mai mulți ani intră cu toată valoarea în anul atribuirii și poate umfla raportul; de aceea, singur, tiparul contează pe jumătate.</li>
                   <li><b>La o firmă</b>, „Declarate directe, peste plafon”, „Adunate, trec de plafon” și „Multe sume imediat sub plafon” țin de obligația cumpărătorului: împreună cântăresc cel mult 1,5 când vânzările firmei sunt împrăștiate; limita crește treptat când partea primelor două instituții trece de 60% și dispare la 80%. La utilități și furnizorii de masă contează doar partea cu primele două instituții.</li>
                   <li><b>Cumpărătorii:</b> plafonul se verifică la instituțiile publice, la asociațiile de dezvoltare intercomunitară (ADI) și la operatorii sectoriali publici. Cumpărătorii privați nu primesc scor: tiparele lor apar doar ca observații. La asociații, inclusiv organizațiile utilizatorilor de apă pentru irigații, „Declarate directe, peste plafon” nu se verifică, iar „Adunate, trec de plafon” cântărește pe jumătate. Firma unei instituții (in-house) nu primește scor. Regimul se stabilește după forma juridică și după nume, cu excepțiile verificate de mână de mai jos.</li>
@@ -1921,6 +1921,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <summary>Ce s-a schimbat și când</summary>
               <div className="mt-body">
                 <ul>
+                  <li id="schimbari-nume-20261107"><b>7 noiembrie 2026, nume nou</b>, cu aceleași reguli și scoruri: „O firmă primește mare parte din bani” → „O firmă are mare parte din valoare” (valorile sunt contractate, nu plăți).</li>
                   <li id="schimbari-risc-20261105"><b>5 noiembrie 2026, rf-2026.22</b>, după un audit al tuturor instituțiilor și firmelor:
                     <ul>
                       <li>Scor doar de la 10 achiziții directe; sub 10 puncte, „fără semnal în scor”.</li>
@@ -1955,7 +1956,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
                       <li>Tiparele se combină pe familii, ca dovezile de același fel să nu se adune ca independente; banda de sus cere cel puțin două tipare.</li>
                       <li>Tăria se măsoară față de mărimea profilului: câteva cazuri la mii de achiziții rămân slabe.</li>
                       <li>„Declarate directe, peste plafon” numără doar cazurile clare (estimarea peste plafon sau închiderea peste plafon și cu TVA) și doar la cumpărătorii obligați de plafon; operatorii sectoriali publici sunt verificați ca orice instituție.</li>
-                      <li>„O firmă primește mare parte din bani” se calculează fără cea mai mare achiziție a furnizorului; „Un singur client public mare” apare de la 70%.</li>
+                      <li>„O firmă are mare parte din valoare” se calculează fără cea mai mare achiziție a furnizorului; „Un singur client public mare” apare de la 70%.</li>
                       <li>Tipar nou pentru firme: <a href="#da_capacity">„Contracte directe peste cifra de afaceri”</a>.</li>
                       <li>Firma unei instituții (in-house) nu primește scor; la o firmă, „Declarate directe, peste plafon” și „Adunate, trec de plafon” cântăresc puțin dacă nu sunt concentrate la 1–2 instituții.</li>
                     </ul>

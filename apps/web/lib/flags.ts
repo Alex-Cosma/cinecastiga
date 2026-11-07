@@ -50,8 +50,8 @@ export const FLAG_META: Record<string, FlagMeta> = {
   },
   da_concentration: {
     code: "da_concentration",
-    title: "O firmă primește mare parte din bani",
-    label: "O firmă primește mare parte din bani",
+    title: "O firmă are mare parte din valoare",
+    label: "O firmă are mare parte din valoare",
     entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui, cu 3+ achiziții în 2+ ani (minimum 3 furnizori și 100.000 lei). Utilitățile și firma instituției nu intră.",
     subject: "authority",
     short: "Un singur furnizor primește o parte mare din valoarea achizițiilor directe.",

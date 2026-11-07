@@ -32,6 +32,16 @@ describe("value wording (audit F36)", () => {
     expect(offending).toEqual([]);
   });
 
+  // Owner, 7 November 2026: a firm "contracted" (not "received") a value, and a share "is" with a firm (not "the money
+  // went to it"); the pattern is "O firmă are mare parte din valoare".
+  it.each(["./../signal-case-words.ts", "../../app/semnale/[id]/page.tsx", "../flags.ts", "../../app/metodologie/MethodologyStory.tsx",
+    "../../app/metodologie/MethodologyBehavior.tsx"])("%s says contracted, not received", (file) => {
+    const source = readFileSync(new URL(file, import.meta.url), "utf8");
+    const offending = source.split("\n").filter((line) => /\ba primit\b|\bau mers la\b|\bbanii\b[^.„”]{0,80}\bau mers\b/.test(line));
+    expect(offending).toEqual([]);
+    expect(source.replace(/„O firmă ia mare parte din bani” → „O firmă primește mare parte din bani”|„O firmă primește mare parte din bani” → /g, "")).not.toContain("primește mare parte din bani");
+  });
+
   it("says the map's values are contracted, not paid (owner, 6 November 2026: lei per inhabitant)", () => {
     const source = readFileSync(new URL("../../app/harta/MapExplorer.tsx", import.meta.url), "utf8");
     expect(source).toContain("Ce au contractat primăriile și consiliile județene");

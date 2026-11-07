@@ -82,7 +82,7 @@ function headOf(d: SignalPageData): Head {
       const shares = partyShares(d.source.records, "supplier"), top = shares[0];
       if (!top) break;
       return {
-        title: <>{cap(shareWords(top.share))} din valoarea contractelor instituției au mers la o singură firmă: <Party party={top} role="supplier" /></>,
+        title: <>{cap(shareWords(top.share))} din valoarea contractelor instituției e la o singură firmă: <Party party={top} role="supplier" /></>,
         parties: <>{entity} · {countWords(shares.length, "furnizor", "furnizori")} cu contracte prin proceduri</>,
         value: { amount: cap(shareWords(top.share)), label: "din valoarea contractelor prin proceduri", notes: [<>{lei(top.valueExact)} din {lei(d.source.totalExact)}</>] },
       };

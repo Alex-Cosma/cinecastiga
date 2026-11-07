@@ -21,7 +21,7 @@ export function splitWords(role: RiskRole, s: SplitSummary, part: ScorePart | un
   const counted = part?.groups != null ? n(part.groups) : s.counted;
   const times = counted || s.groups;
   const who = role === "authority"
-    ? "aceeași firmă a primit în același an mai multe achiziții directe pentru același fel de lucru"
+    ? "aceeași firmă a câștigat în același an mai multe achiziții directe pentru același fel de lucru"
     : "aceeași instituție a cumpărat de la firmă, în același an, mai multe achiziții directe pentru același fel de lucru";
   const title = `${times === 1 ? "O dată" : `De ${formatInt(times)} ori`}, ${who}: luate pe rând sunt sub plafon, adunate îl depășesc.`;
   const where = s.groups === 1 ? `într-un grup` : `în ${formatInt(s.groups)} grupuri`;
@@ -70,7 +70,7 @@ export function partnerWords(code: "da_concentration" | "da_dependence", entityN
       + (s.reverse != null ? ` Pentru ${partner}, firma e ${pctWords(s.reverse)} din ce cumpără direct.` : "");
     return { title, lede };
   }
-  const title = `${pctWords(s.share)} din banii achizițiilor directe ale instituției au mers la o singură firmă: ${partner}.`;
+  const title = `${pctWords(s.share)} din valoarea achizițiilor directe ale instituției e la o singură firmă: ${partner}.`;
   const lede = `${countWords(s.count ?? dates.length, "achiziție directă", "achiziții directe")}${when ? `, ${when}` : ""}, ${formatRon(partnerTotal)}.`
     + (s.adjusted != null ? ` Fără cea mai mare achiziție a ei, tot ${pctWords(s.adjusted)}.` : "")
     + (s.partners != null ? ` ${countWords(s.partners, "furnizor", "furnizori")} în date.` : "");
@@ -78,7 +78,7 @@ export function partnerWords(code: "da_concentration" | "da_dependence", entityN
 }
 
 export function capacityWords(c: Capacity): CaseWords {
-  const got = `a primit prin achiziții directe ${formatRon(c.daValue)}`;
+  const got = `a contractat prin achiziții directe ${formatRon(c.daValue)}`;
   const title = c.zeroStaff ? `În ${c.year}, firma ${got} fără să aibă angajați.`
     : c.turnover != null && c.turnover > 0 && c.ratio != null ? `În ${c.year}, firma ${got}, de ${ratioWords(c.ratio).replace("×", "")} ori cifra ei de afaceri.`
     : `În ${c.year}, firma ${got}, cu o cifră de afaceri ${c.implausible ? "nerealistă" : "nepublicată"} în bilanț.`;

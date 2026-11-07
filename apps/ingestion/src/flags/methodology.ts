@@ -71,7 +71,7 @@ export const FLAG_DEFS: FlagDef[] = [
   },
   {
     code: "da_concentration",
-    title: "O firmă primește mare parte din bani",
+    title: "O firmă are mare parte din valoare",
     subject: "authority",
     description:
       "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați ca furnizor principal; o companie privată cumpărătoare nu e evaluată.",
