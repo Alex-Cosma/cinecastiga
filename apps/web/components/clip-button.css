@@ -1,0 +1,68 @@
+/*
+ * "Salvează în anchetă" (owner, 7 November 2026): one look on every page. The wrapper draws nothing (it used to
+ * draw a second box around the button); the button is the site's surface button with its bookmark, filled on an
+ * entity's header, an icon alone in a table row. The dialog lives at the end of the page (a portal), so the legacy
+ * `.clipbtn-pop` rules no longer reach it.
+ */
+.clipbtn.clipbtn,.clipbtn.clipbtn:hover{display:inline-block;position:relative;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;transform:none;font:inherit}
+.clipbtn .clipbtn-t{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13.5px/1.2 var(--body);white-space:nowrap;cursor:pointer;transition:background var(--fast,.16s) ease,border-color var(--fast,.16s) ease}
+.clipbtn .clipbtn-t:hover{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.clipbtn .clipbtn-t[aria-expanded=true]{background:var(--accent-soft);border-color:var(--accent-line)}
+.clipbtn .clipbtn-t:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.clipbtn .clipbtn-t.pri{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.clipbtn .clipbtn-t.pri:hover,.clipbtn .clipbtn-t.pri[aria-expanded=true]{background:var(--ink);border-color:var(--ink);color:var(--on-accent)}
+.clipbtn .clipbtn-t.ico{width:32px;height:32px;min-height:0;padding:0;border-radius:7px}
+.clipbtn .clipbtn-ico{flex:none}
+
+/* The dialog: under or above its button on a wide screen (placed by the component), a bottom sheet on a phone. */
+.save-dialog{position:fixed;z-index:70;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;padding:16px 18px 18px;background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow2);font:14px/1.5 var(--body);text-align:left;white-space:normal;animation:save-in .18s cubic-bezier(.2,.8,.2,1) both}
+.save-dialog:focus{outline:none}.save-dialog a:focus-visible,.save-dialog .save-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.save-dialog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.save-dialog.save-above{animation-name:save-in-up}
+.save-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px -6px 0 0}
+.save-head h2{margin:0;font:600 17px/1.3 var(--display);letter-spacing:-.01em;color:var(--ink)}
+.save-dialog .save-close{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer}
+.save-dialog .save-close:hover{background:var(--sunk);color:var(--ink)}
+.save-subject{display:grid;gap:2px;margin:0;padding:10px 12px;border-radius:8px;background:var(--sunk);font-size:14px;line-height:1.45;overflow-wrap:anywhere}
+.save-subject .save-kind{color:var(--ink2);font-size:13px;text-transform:none;letter-spacing:0}.save-subject strong{font-weight:600;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.save-subject .save-detail{font-variant-numeric:tabular-nums;white-space:nowrap}
+.save-dossiers{border:0;margin:0;padding:0;min-width:0}
+.save-dossiers legend{padding:0;margin:0 0 6px;font-size:13px;font-weight:600;color:var(--ink2)}
+.save-options{display:grid;gap:2px;max-height:min(220px,32dvh);overflow:auto;overscroll-behavior:contain;padding:2px}
+.save-option{display:grid;grid-template-columns:20px minmax(0,1fr);align-items:start;gap:8px;padding:7px 8px;border-radius:7px;cursor:pointer;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.save-option:hover{background:var(--sunk)}.save-option:has(input:checked){background:var(--accent-soft)}
+.save-option input{margin:2px 0 0;width:16px;height:16px;accent-color:var(--accent)}
+.save-here{color:var(--accent-ink);font-weight:600}
+.save-field{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--ink2)}
+.save-optional{font-weight:400;color:var(--muted)}
+.save-field input,.save-field textarea{font:inherit;font-size:14px;font-weight:400;color:var(--ink);width:100%;min-width:0;box-sizing:border-box;padding:9px 11px;border:1px solid var(--line2);border-radius:7px;background:var(--surface);caret-color:var(--accent)}
+.save-field textarea{resize:vertical;min-height:60px}
+.save-field input:focus-visible,.save-field textarea:focus-visible,.save-option input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.save-existing{margin:0;padding:9px 12px;border-radius:8px;background:var(--amber-soft);color:var(--ink2);font-size:14px}
+.save-existing a{font-weight:600}
+.save-hint{margin:0;font-size:13px;color:var(--muted)}
+.save-error{margin:0;font-size:13px;color:var(--risk)}
+.save-done p{margin:0 0 6px}
+.save-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.save-dialog .save-primary,.save-dialog .save-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 15px;border-radius:8px;font:600 13.5px/1.2 var(--body);cursor:pointer;text-decoration:none}
+.save-dialog .save-primary{border:1px solid var(--accent);background:var(--accent);color:var(--on-accent)}
+.save-dialog .save-primary:hover{background:var(--ink);border-color:var(--ink)}
+.save-dialog .save-primary:disabled{opacity:.6;cursor:wait}
+.save-dialog .save-secondary{border:1px solid var(--line2);background:var(--surface);color:var(--accent)}
+.save-dialog .save-secondary:hover{background:var(--sunk)}
+.save-dialog :is(.save-primary,.save-secondary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.save-backdrop{position:fixed;inset:0;z-index:69;background:color-mix(in srgb,var(--ink) 38%,transparent);animation:save-fade .18s ease both}
+
+@media (max-width:700px){
+  .clipbtn .clipbtn-t{min-height:44px}
+  .clipbtn .clipbtn-t.ico{width:40px;height:40px}
+  .save-dialog.save-sheet{left:0;right:0;bottom:0;top:auto;width:auto;max-height:88dvh;border-radius:16px 16px 0 0;border-bottom:0;padding:14px 16px calc(18px + env(safe-area-inset-bottom));animation-name:save-sheet-in}
+  .save-field input,.save-field textarea{font-size:16px}
+  .save-option{min-height:44px;align-items:center;font-size:15px}.save-option input{margin:0}
+  .save-options{max-height:min(260px,36dvh)}
+  .save-dialog .save-primary,.save-dialog .save-secondary{min-height:44px;flex:1 1 auto}
+  .save-dialog .save-close{width:44px;height:44px}
+}
+@keyframes save-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes save-in-up{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes save-sheet-in{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes save-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.save-dialog,.save-backdrop{animation:none}.clipbtn .clipbtn-t{transition:none}}

@@ -246,6 +246,9 @@
 .cq-answer-actions > .cq-save-wrap > .cq-save-question { width: 100%; min-width: 0; }
 .cq-answer-actions > .cq-share,
 .cq-answer-actions > .cq-save-wrap > .cq-save-question { min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; }
+/* "Salvează în anchetă" (components/clip-button.css) as wide and as tall as its neighbours. */
+.cq-answer-actions > .clipbtn { width: 100%; min-width: 0; }
+.cq-answer-actions > .clipbtn > .clipbtn-t { width: 100%; min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; border-color: var(--line-strong, var(--line)); }
 .cq-source-main {
   display: flex;
   align-items: center;
@@ -706,15 +709,6 @@
   display: block;
   margin: 10px 0;
 }
-.cq-app .clipbtn-t {
-  font-size: 12px;
-  color: var(--muted);
-  background: none;
-  border: 0;
-}
-.cq-app .clipbtn-pop {
-  z-index: 40;
-}
 .cq-result .ask-fact .verdict {
   font-size: 28px;
   color: var(--accent);
@@ -1025,16 +1019,6 @@
   }
   .cq-answer-tools button {
     font-size: 11px;
-  }
-  .cq-app .clipbtn-pop {
-    position: fixed;
-    top: auto;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    width: auto;
-    max-height: 80dvh;
-    overflow: auto;
   }
   .cq-natural h2 {
     font-size: 27px;

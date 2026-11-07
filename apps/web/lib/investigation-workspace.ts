@@ -157,11 +157,29 @@ export async function revokeWorkspaceInvite(userId: string, id: string, inviteId
 
 export async function readWorkspaceInvite(userId: string, token: string, sql: DbSql = workspaceDatabase()) {
   if (!validToken(token)) return null;
-  const [invite] = await sql`select v.id,v.investigation_id "investigationId",i.title,v.role,v.expires_at::text "expiresAt"
+  // Who invited, and how much the dossier holds, so the invitee knows what they accept (owner, 7 November 2026).
+  const [invite] = await sql`select v.id,v.investigation_id "investigationId",i.title,v.role,v.expires_at::text "expiresAt",
+      inviter.name "inviterName",
+      ((select count(*)::int from app.clips c where c.investigation_id=i.id)
+        + (select count(*)::int from app.workspace_entries e where e.investigation_id=i.id and e.kind='note' and e.deleted_at is null)) "nClips",
+      (select count(*)::int from app.workspace_entries e where e.investigation_id=i.id and e.kind='question' and e.deleted_at is null) "nQuestions"
     from app.investigation_invites v join app.investigations i on i.id=v.investigation_id
     join auth.users u on lower(u.email)=v.email and u.id=${userId} and u.email_verified=true
+    left join auth.users inviter on inviter.id=v.created_by
     where v.token_hash=${inviteTokenHash(token)} and v.revoked_at is null and v.accepted_at is null and v.expires_at>now()`;
-  return invite ? { id: String(invite.id), investigationId: String(invite.investigationId), title: String(invite.title), role: String(invite.role), expiresAt: String(invite.expiresAt) } : null;
+  return invite ? { id: String(invite.id), investigationId: String(invite.investigationId), title: String(invite.title), role: String(invite.role), expiresAt: String(invite.expiresAt),
+    inviterName: invite.inviterName == null ? null : String(invite.inviterName), nClips: Number(invite.nClips ?? 0), nQuestions: Number(invite.nQuestions ?? 0) } : null;
+}
+
+/** The owner opening their own invitation link: whom it is for and what became of it, never an error (owner, 7 November 2026). */
+export async function readInviteForOwner(userId: string, token: string, sql: DbSql = workspaceDatabase()) {
+  if (!validToken(token)) return null;
+  const [invite] = await sql`select v.investigation_id "investigationId",i.title,v.email,v.role,v.expires_at::text "expiresAt",
+      case when v.accepted_at is not null then 'accepted' when v.revoked_at is not null then 'revoked' when v.expires_at<=now() then 'expired' else 'pending' end state
+    from app.investigation_invites v join app.investigations i on i.id=v.investigation_id
+    where v.token_hash=${inviteTokenHash(token)} and i.owner_user_id=${userId}`;
+  return invite ? { investigationId: String(invite.investigationId), title: String(invite.title), email: String(invite.email), role: String(invite.role),
+    expiresAt: String(invite.expiresAt), state: String(invite.state) as "accepted" | "revoked" | "expired" | "pending" } : null;
 }
 export async function acceptWorkspaceInvite(userId: string, token: string, sql: DbSql = workspaceDatabase()) {
   if (!validToken(token)) throw new WorkspaceError("Invitația nu este disponibilă pentru acest cont.", 404);

@@ -5,6 +5,7 @@ import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./eviden
 import { validateCaptureRequest } from "./evidence-capture-input";
 import { captureSummary, queueCapture } from "./evidence-captures";
 import { sharedRepresentativePairs, type MemberRepRow } from "./shared-representatives";
+import { moneyUnit } from "./evidence-clip";
 
 /**
  * Data access for watchdog investigations ("anchete"). Server-only.
@@ -33,9 +34,23 @@ export interface InvestigationRow {
   description: string | null;
   status: InvStatus;
   nClips: number;
+  /** What the dossier's "Dovezi" tab counts: the saved items and the editorial notes (owner, 7 November 2026). */
+  nEvidence?: number;
   createdAt: string;
   updatedAt: string;
   access?: InvestigationAccess;
+  /** Shared: the owner's name when the reader is a member; the number of members when the reader owns it. */
+  ownerName?: string | null;
+  nMembers?: number;
+}
+
+/** An invitation addressed to this account's confirmed address, still open (its link is the owner's to send). */
+export interface PendingInvite {
+  id: string;
+  investigationTitle: string;
+  role: "editor" | "viewer";
+  inviterName: string | null;
+  expiresAt: string;
 }
 
 export interface ClipRow {
@@ -54,7 +69,11 @@ export interface ClipRow {
   methodologyChanged?: boolean;
   capture?: CaptureSummary | null;
   captures?: CaptureSummary[];
+  /** A saved contract's or acquisition's parties, with their ids, read from its records. */
+  parties?: ClipParties | null;
 }
+
+export interface ClipParties { authorityId: string | null; authority: string | null; suppliers: { id: string | null; name: string | null }[] }
 
 /* ── investigations CRUD ─────────────────────────────────────────────── */
 
@@ -65,7 +84,10 @@ export async function listInvestigations(
   const rows = (await sql`
     select i.id, i.title, i.description, i.status,
            i.created_at, i.updated_at, case when i.owner_user_id = ${userId} then 'owner' else m.role end role,
-           (select count(*) from app.clips c where c.investigation_id = i.id) n_clips
+           (select count(*) from app.clips c where c.investigation_id = i.id) n_clips,
+           (select count(*) from app.workspace_entries e where e.investigation_id = i.id and e.kind = 'note' and e.deleted_at is null) n_notes,
+           (select count(*) from app.investigation_members x where x.investigation_id = i.id) n_members,
+           case when i.owner_user_id = ${userId} then null else (select u.name from auth.users u where u.id = i.owner_user_id) end owner_name
     from app.investigations i
     left join app.investigation_members m on m.investigation_id=i.id and m.user_id=${userId}
     where i.owner_user_id = ${userId} or m.user_id is not null
@@ -78,6 +100,9 @@ export async function listInvestigations(
     created_at: string;
     updated_at: string;
     n_clips: string;
+    n_notes: string;
+    n_members: string;
+    owner_name: string | null;
     role: InvestigationAccess["role"];
   }[];
   return rows.map((r) => ({
@@ -86,10 +111,30 @@ export async function listInvestigations(
     description: r.description,
     status: r.status as InvStatus,
     nClips: Number(r.n_clips),
+    nEvidence: Number(r.n_clips) + Number(r.n_notes),
     createdAt: String(r.created_at),
     updatedAt: String(r.updated_at),
     access: { role:r.role,canEdit:r.role!=="viewer",canManage:r.role==="owner" },
+    ownerName: r.owner_name,
+    nMembers: Number(r.n_members),
   }));
+}
+
+/** Open invitations addressed to this account's confirmed address. The link stays the owner's to send: only its
+ *  hash is stored, so the list says where to look rather than offering a way in. */
+export async function listPendingInvites(userId: string): Promise<PendingInvite[]> {
+  const rows = await db()`
+    select v.id, i.title, v.role, u2.name inviter, v.expires_at::text expires_at
+    from app.investigation_invites v
+    join app.investigations i on i.id = v.investigation_id
+    join auth.users u on u.id = ${userId} and u.email_verified = true and lower(u.email) = v.email
+    left join auth.users u2 on u2.id = v.created_by
+    where v.revoked_at is null and v.accepted_at is null and v.expires_at > now()
+      and i.owner_user_id <> ${userId}
+      and not exists (select 1 from app.investigation_members m where m.investigation_id = i.id and m.user_id = ${userId})
+    order by v.expires_at`;
+  return rows.map((r) => ({ id: String(r.id), investigationTitle: String(r.title), role: r.role === "editor" ? "editor" : "viewer",
+    inviterName: r.inviter == null ? null : String(r.inviter), expiresAt: String(r.expires_at) }));
 }
 
 export async function createInvestigation(
@@ -443,6 +488,8 @@ export interface CastRelation {
   type: "pair_da" | "pair_contract" | "shared_admin";
   label: string;
   valueRon?: number;
+  /** The exact sum of the pair's records (the relation's own text). */
+  valueExact?: string;
   count?: number;
 }
 
@@ -507,6 +554,7 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
         type: "pair_da",
         label: "achiziții directe",
         valueRon: Number(p.v),
+        valueExact: String(p.v),
         count: Number(p.n),
       });
     }
@@ -524,6 +572,7 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
         type: "pair_contract",
         label: "contracte",
         valueRon: Number(p.v),
+        valueExact: String(p.v),
         count: Number(p.n),
       });
     }
@@ -575,11 +624,146 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
   return { members, relations };
 }
 
+/**
+ * The dossier's saved records at a glance ("Pe scurt", owner 7 November 2026): every record of the latest complete
+ * version of each saved item, a record counted once even when several items hold it (a direct acquisition, or one
+ * supplier's share of a contract, keyed by its stream, source id and supplier).
+ */
+export interface DossierRecords {
+  count: number;
+  /** The exact sum of the known values; values the source does not publish are counted in `unknownValues`. */
+  totalExact: string | null;
+  unknownValues: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+  /** Rows of the latest versions, repeats across items included. */
+  savedRows: number;
+  /** Over DOSSIER_SUMMARY_CAP saved rows the distinct count and total are not recomputed on each view (0 / null). */
+  capped: boolean;
+}
+
+/** Above this many saved rows a dossier view does not deduplicate them (that is the export's and each sheet's work). */
+export const DOSSIER_SUMMARY_CAP = 100_000;
+
+/** A dated event read from a saved record (a contract's date, a direct acquisition's finalization), not written by people. */
+export interface SourceEvent {
+  clipId: string;
+  date: string;
+  kind: "contract" | "da";
+  /** What happened on that date, in words. */
+  label: string;
+  title: string;
+  valueExact: string | null;
+  /** "lei", or the contract's own currency code (moneyUnit in lib/evidence-clip.ts). */
+  unit: string;
+  href: string;
+  sourceUrl: string | null;
+}
+
 export interface Dosar {
   investigation: InvestigationRow;
   clips: ClipRow[];
   access: InvestigationAccess;
   cast: { members: CastMember[]; relations: CastRelation[] };
+  records: DossierRecords;
+  sourceEvents: SourceEvent[];
+}
+
+const calendarDay = (value: unknown): string | null => typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
+
+export async function dossierRecords(q: DbSql, id: string): Promise<DossierRecords> {
+  const [size] = await q`select coalesce(sum(row_count), 0)::bigint n from (select distinct on (clip_id) row_count from app.evidence_captures
+    where investigation_id = ${id} and status = 'complete' order by clip_id, version desc) l`;
+  const savedRows = Number(size?.n ?? 0);
+  if (savedRows > DOSSIER_SUMMARY_CAP) return { count: 0, totalExact: null, unknownValues: 0, dateFrom: null, dateTo: null, savedRows, capped: true };
+  // One row per direct acquisition (its id alone: a supplier's identity may differ between versions) and per supplier
+  // share of a contract (an unidentified winner by name, else that row).
+  const [row] = await q`
+    with latest as (
+      select distinct on (clip_id) id, completed_at from app.evidence_captures
+      where investigation_id = ${id} and status = 'complete' order by clip_id, version desc
+    ), distinct_rows as (
+      select distinct on (k.src, k.ref, k.party)
+        left(r.record->>'date', 10) d, r.value_exact v
+      from app.evidence_capture_rows r join latest l on l.id = r.capture_id
+      cross join lateral (select r.record->>'src' src, coalesce(r.record->>'refId', r.capture_id::text || ':' || r.row_no::text) ref,
+        case when r.record->>'src' = 'da' then '' else coalesce(r.record->>'supplierId', 'n:' || (r.record->>'supplier'), r.capture_id::text || ':' || r.row_no::text) end party) k
+      order by k.src, k.ref, k.party, l.completed_at desc
+    )
+    select count(*)::int n, trim_scale(sum(v))::text total, count(*) filter (where v is null)::int unknown,
+      min(d) filter (where d ~ '^\\d{4}-\\d{2}-\\d{2}$') date_from, max(d) filter (where d ~ '^\\d{4}-\\d{2}-\\d{2}$') date_to
+    from distinct_rows`;
+  return { count: Number(row?.n ?? 0), totalExact: row?.total == null ? null : String(row.total), unknownValues: Number(row?.unknown ?? 0),
+    dateFrom: row?.date_from ?? null, dateTo: row?.date_to ?? null, savedRows, capped: false };
+}
+
+type SavedClip = Pick<ClipRow, "id" | "kind" | "refId" | "snapshot" | "capture">;
+
+/** The saved records of the contract, direct-acquisition and notice items (their latest complete version, at most
+ *  200 each): their dates and parties. An entity's or a question's thousands of records stay in their lists. */
+export async function readSavedRecords(q: DbSql, id: string, clips: SavedClip[]): Promise<Map<string, Record<string, unknown>[]>> {
+  const wanted = clips.filter((clip) => ["contract", "da", "notice"].includes(clip.kind) && clip.capture);
+  const out = new Map<string, Record<string, unknown>[]>();
+  if (!wanted.length) return out;
+  const rows = await q`
+    with latest as (
+      select distinct on (clip_id) id, clip_id from app.evidence_captures
+      where investigation_id = ${id} and status = 'complete' and clip_id = any(${q.array(wanted.map((clip) => clip.id))}::uuid[])
+      order by clip_id, version desc
+    )
+    select l.clip_id::text clip_id, r.record from latest l
+    join lateral (select record from app.evidence_capture_rows where capture_id = l.id order by row_no limit 200) r on true`;
+  for (const row of rows) out.set(String(row.clip_id), [...(out.get(String(row.clip_id)) ?? []), row.record as Record<string, unknown>]);
+  return out;
+}
+
+/** Who bought from whom in a saved contract or acquisition, from its records (the ids the summary does not keep). */
+export function recordParties(records: readonly Record<string, unknown>[]): ClipParties | null {
+  const first = records[0];
+  if (!first) return null;
+  const text = (value: unknown) => typeof value === "string" && value ? value : null;
+  const suppliers = [...new Map(records.map((r) => [String(r.supplierId ?? r.supplier ?? ""), { id: text(r.supplierId), name: text(r.supplier) }])).values()];
+  return { authorityId: text(first.authorityId), authority: text(first.authority), suppliers };
+}
+
+/** The dates of the saved contract, direct-acquisition and notice items, from their records: a contract's date, an
+ *  acquisition's finalization, each contract a notice awarded. Pure. */
+export function sourceEventsFrom(clips: SavedClip[], recordsByClip: Map<string, Record<string, unknown>[]>): SourceEvent[] {
+  const out: SourceEvent[] = [];
+  for (const clip of clips) {
+    const records = recordsByClip.get(clip.id);
+    if (!records || !["contract", "da", "notice"].includes(clip.kind)) continue;
+    const summary = clip.snapshot ?? {};
+    if (clip.kind === "contract") {
+      const date = calendarDay(summary.date) ?? calendarDay(records[0]?.date);
+      if (!date || !clip.refId) continue;
+      out.push({ clipId: clip.id, date, kind: "contract", label: "Data contractului", title: String(summary.title ?? records[0]?.daCode ?? `Contract ${clip.refId}`),
+        valueExact: typeof summary.contractValueFull === "string" ? summary.contractValueFull : typeof summary.valueExact === "string" ? summary.valueExact : null,
+        unit: moneyUnit(summary.currency), href: `/contracte/${clip.refId}`, sourceUrl: typeof records[0]?.sourceUrl === "string" ? records[0].sourceUrl : null });
+    } else if (clip.kind === "da") {
+      const date = calendarDay(records[0]?.date) ?? calendarDay(summary.date);
+      if (!date || !clip.refId) continue;
+      out.push({ clipId: clip.id, date, kind: "da", label: "Achiziție directă finalizată", title: String(summary.title ?? records[0]?.daCode ?? `Achiziția ${clip.refId}`),
+        valueExact: typeof summary.valueExact === "string" ? summary.valueExact : typeof records[0]?.valueExact === "string" ? records[0].valueExact : null,
+        unit: "lei", href: `/achizitii/${clip.refId}`, sourceUrl: typeof records[0]?.sourceUrl === "string" ? records[0].sourceUrl : null });
+    } else {
+      // A notice: one event per contract it awarded (the supplier shares of one contract share its date).
+      const seen = new Set<string>();
+      for (const record of records) {
+        const ref = typeof record.refId === "string" ? record.refId : null, date = calendarDay(record.date);
+        if (!ref || !date || seen.has(ref)) continue;
+        seen.add(ref);
+        out.push({ clipId: clip.id, date, kind: "contract", label: `Contract din anunțul ${String(summary.noticeNo ?? record.daCode ?? "")}`.trim(),
+          title: String(record.daCode ?? `Contract ${ref}`), valueExact: typeof record.contractValueFull === "string" ? record.contractValueFull : null,
+          unit: moneyUnit(record.currency), href: `/contracte/${ref}`, sourceUrl: typeof record.sourceUrl === "string" ? record.sourceUrl : null });
+      }
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+}
+
+export async function sourceEvents(q: DbSql, id: string, clips: SavedClip[]): Promise<SourceEvent[]> {
+  return sourceEventsFrom(clips, await readSavedRecords(q, id, clips));
 }
 
 export async function getDosar(
@@ -650,6 +834,10 @@ export async function getDosar(
     if (drift.length) c.drift = drift;
   }
   const cast = await castRelations(clips);
-  return { investigation: inv, clips, cast, access };
+  const records = await dossierRecords(sql, id);
+  const saved = await readSavedRecords(sql, id, clips);
+  for (const clip of clips) if (clip.kind === "contract" || clip.kind === "da") clip.parties = recordParties(saved.get(clip.id) ?? []);
+  const events = sourceEventsFrom(clips, saved);
+  return { investigation: inv, clips, cast, access, records, sourceEvents: events };
   },db());
 }

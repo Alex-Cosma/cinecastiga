@@ -6,7 +6,43 @@
 h2.ted-tip-line .term-tip{font-size:15px;font-weight:400;letter-spacing:0}
 .filters.ted-tip-line .term-tip{align-self:center}
 /* The route ghost (loading.tsx): the loaded table's column shares, and the rest of a page of 60 rows reserved
-   (typical rows: 186 px wide, 200 px on a phone). */
-@media (min-width:641px){.tp-ghost-table .c1{width:35%}.tp-ghost-table .c2{width:40%}.tp-ghost-table .c3{width:11%}.tp-ghost-table .c4{width:14%}}
-.tp-ghost-rest{block-size:9000px}
-@media (max-width:640px){.tp-ghost-rest{block-size:9642px}}
+   (typical rows: 161 px wide; on a phone a stacked card, 388 px; measured 7 November 2026). */
+@media (min-width:721px){.tp-ghost-table .c1{width:35%}.tp-ghost-table .c2{width:40%}.tp-ghost-table .c3{width:11%}.tp-ghost-table .c4{width:14%}}
+.tp-ghost-rest{block-size:7740px}
+@media (max-width:720px){.tp-ghost-rest{block-size:18650px}}
+
+/* The results table (critique fixes, 7 November 2026). The wrapper's box is the shared source-table look; its tips and
+   funnel windows must not be clipped, so it does not hide what overflows. */
+.tp-stack.ask-tablewrap{overflow:visible}
+.tp-stack table.rank th{background:transparent}
+.tp-nowrap{white-space:nowrap}
+/* A consortium's winners, apart and each a link. */
+.tp-winners .tp-sep{color:var(--muted)}
+.tp-winners .flag-tag{margin-right:2px}
+/* The value cell: the amount in figures, its kind and the source details in reading type (not the mono of .num). */
+table.rank td.tp-value{white-space:normal}
+.tp-value .tp-amount{font-size:14px}
+.tp-value .tp-amount-kind,.tp-value .tp-src{font-family:var(--body)}
+.tp-src{text-align:left;margin-top:8px;max-width:24rem;font-size:13px}
+.tp-src>summary{cursor:pointer;color:var(--accent);font-size:13px;line-height:1.4}
+.tp-src .tp-src-row{margin-top:8px;overflow-wrap:anywhere}
+/* Labels: the warning badge in the darker amber (≥ 4.5:1), "și în SEAP" in secondary ink; "Fără potrivire SEAP" is an
+   outline, quieter than the amount it sits beside. */
+.tp-stack .badge.warn{color:var(--amber-pill)}
+.tp-stack .ted-label.seap{color:var(--ink2)}
+.tp-stack .ted-label.only{background:transparent;color:var(--ink2);border:1px solid var(--line2);padding:1px 7px}
+table.rank td.tp-value .src a{font-size:12px;color:var(--ink2);text-underline-offset:3px}
+@media (max-width:720px){
+  /* One card per result: the parties and the object across, procedure and value side by side. The header stays as a
+     wrapping bar of its funnels (they are the table's filters). Selectors outweigh globals' .rank-stack rules. */
+  .ask-tablewrap.rank-stack.tp-stack table.rank thead{position:static;display:block;width:auto;height:auto;overflow:visible;clip-path:none}
+  .ask-tablewrap.rank-stack.tp-stack table.rank thead tr{display:flex;flex-wrap:wrap;gap:4px 16px;padding:8px 14px;border-bottom:1px solid var(--line)}
+  .ask-tablewrap.rank-stack.tp-stack table.rank thead th{display:block;padding:0;border:0;text-align:left}
+  .tp-stack .th-filter{flex-wrap:wrap;white-space:normal}
+  .ask-tablewrap.rank-stack.tp-stack table.rank td:nth-child(2){grid-column:1/-1}
+  .ask-tablewrap.rank-stack.tp-stack table.rank td[data-label]::before{font-size:12px}
+  .tp-stack .ted-label{font-size:12px}
+  .tp-stack .arrow-to,.tp-stack .obj-title{font-size:14px}
+  .tp-src{margin-top:6px}
+  table.rank td.tp-value .src a{display:inline-flex;align-items:center;min-height:44px;font-size:14px}
+}

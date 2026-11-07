@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { sessionUserId } from "@/lib/session";
 import { createInvestigation, listInvestigations } from "@/lib/anchete";
+import { readClipSubject, readSavedIn } from "@/lib/clip-subject";
 
-export async function GET() {
+/** The dossiers of the account. With `kind` and `ref` (the save dialog), also which of them already hold that item
+ *  (`savedIn`: dossier id → item id) and what the item is (`subject`), so a second save is never silent. */
+export async function GET(req: Request) {
   const uid = await sessionUserId();
   if (!uid) return NextResponse.json({ error: "neautentificat" }, { status: 401 });
-  return NextResponse.json({ investigations: await listInvestigations(uid) }, { headers:{ "Cache-Control":"no-store" } });
+  const url = new URL(req.url), kind = url.searchParams.get("kind"), ref = url.searchParams.get("ref");
+  let spec: unknown = null;
+  try { spec = JSON.parse(url.searchParams.get("spec") ?? "null"); } catch { spec = null; }
+  const [investigations, savedIn, subject] = await Promise.all([listInvestigations(uid),
+    kind && ref ? readSavedIn(uid, kind, ref, spec) : Promise.resolve({}),
+    kind && ref ? readClipSubject(kind, ref).catch(() => null) : Promise.resolve(null)]);
+  return NextResponse.json({ investigations, ...(kind ? { savedIn, subject } : {}) }, { headers:{ "Cache-Control":"no-store" } });
 }
 
 export async function POST(req: Request) {

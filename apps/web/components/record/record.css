@@ -26,6 +26,8 @@
 .record-actions .record-seap { display: inline-flex; align-items: center; min-height: 40px; font-weight: 600; text-underline-offset: 4px; }
 .record-signal-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 14px; font-weight: 600; text-decoration: none; }
 .record-signal-chip:hover { text-decoration: underline; }
+/* A head with no action for this viewer (a signal's page, signed out) keeps no empty row. */
+.record-actions:empty { display: none; }
 
 .record-section { margin-top: 34px; scroll-margin-top: 110px; }
 .record-section > h2 { font-size: 22px; margin: 0 0 14px; }
@@ -62,6 +64,38 @@
 .record-items td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
 .record-items .record-num { text-align: right; white-space: nowrap; }
 
+/* Who holds how much of a total (ShareList): the name, the share and its amount, the bar under them. */
+.record-shares { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.record-shares li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 18px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.record-share-name { font-size: 15px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.record-share-figure { font-size: 14px; color: var(--ink2); text-align: right; font-variant-numeric: tabular-nums; }
+.record-share-figure b { font-size: 15px; color: var(--ink); }
+.record-share-figure span { display: block; font-size: 13px; }
+.record-share-bar { grid-column: 1 / -1; display: block; height: 8px; border-radius: 4px; background: var(--sunk); overflow: hidden; }
+.record-share-bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+.record-shares li:first-child .record-share-bar i { background: var(--amber); }
+.record-shares-more { margin-top: 10px; font-size: 13px; color: var(--muted); }
+
+.record-links { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.record-links li { font-size: 15px; line-height: 1.5; }
+.record-links a { display: inline-flex; align-items: center; min-height: 36px; text-underline-offset: 4px; }
+
+/* A firm's balance sheets, year by year (the year a signal reads marked). */
+/* A short table that stays a table on a phone: three narrow columns fit at 320 px. */
+.record-years { width: 100%; max-width: 560px; margin-top: 14px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.record-years th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line2); vertical-align: bottom; }
+.record-years td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); }
+.record-years .record-num { text-align: right; white-space: nowrap; }
+.record-years th:last-child, .record-years td:last-child { padding-right: 0; }
+.record-years caption { caption-side: bottom; text-align: left; padding-top: 8px; font-size: 13px; color: var(--muted); }
+.record-years tr.on td { font-weight: 600; color: var(--ink); }
+.record-reps { list-style: none; margin: 0; padding: 0; }
+.record-reps li + li { margin-top: 4px; }
+
+.record-caveat { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink2); }
+.record-caveat summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.record-caveat p { margin-top: 8px; max-width: 72ch; line-height: 1.55; }
+
 .record-sources ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .record-sources li a { display: inline-flex; align-items: center; min-height: 36px; font-size: 15px; text-underline-offset: 4px; overflow-wrap: anywhere; }
 .record-sources > p { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 72ch; }
@@ -84,7 +118,7 @@
 
 /* A (?) explanation opens under the line that holds it, left-aligned and never wider than it, so a 390 px page never
    scrolls sideways (the rule of the old contract page, for every block of the template). */
-.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status) { position: relative; }
-.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status) .term-tip > .term-def {
+.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status, .record-meta, .record-sources > p) { position: relative; }
+.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status, .record-meta, .record-sources > p) .term-tip > .term-def {
   top: calc(100% + 6px); bottom: auto; left: 0; right: auto; width: max-content; max-width: min(46ch, 100%);
 }

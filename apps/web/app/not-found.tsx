@@ -1,20 +1,17 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { pageTitle } from "@/lib/site";
+import NotFoundAddress from "./NotFoundAddress";
 
+export const metadata: Metadata = { title: "Pagina nu există" };
+
+/** Any address with no page, and a record page whose record is not in the data (its status stays 404). */
 export default function NotFound() {
   return (
     <div className="err-page">
-      <h1 className="page-title">Nu există această pagină</h1>
-      <p className="page-sub">
-        Entitatea, contractul sau anunțul căutat nu este în datele noastre, sau adresa e greșită.
-      </p>
-      <div className="err-acts">
-        <Link href="/" className="btn pri">
-          Caută o entitate
-        </Link>
-        <Link href="/semnale" className="btn">
-          Semnale de risc
-        </Link>
-      </div>
+      {/* A record page that threw keeps its own metadata after the client renders this boundary: the tab title is set here too. */}
+      <title>{pageTitle("Pagina nu există")}</title>
+      <h1 className="page-title">Pagina nu există</h1>
+      <NotFoundAddress />
     </div>
   );
 }

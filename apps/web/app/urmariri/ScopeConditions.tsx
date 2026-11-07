@@ -8,7 +8,9 @@ import type { NetworkGroup } from "../../lib/ask/network-shared";
 /** The question's row of a network's group (describeConditions networkPartners). */
 const NETWORK_PARTNERS_ROW = "Partenerii";
 import { countWords } from "../../lib/ask/answer-text";
-import { formatBucharestDay, formatInt } from "../../lib/format";
+import { cleanName, formatBucharestDay, formatInt } from "../../lib/format";
+import EntityName from "../../components/EntityName";
+import type { ReactNode } from "react";
 /** An old link's tenth of the index (0–1) as the band of the score it selects: 0.2–0.3 → 20–29, 0.9–1 → 90–100 (evidence.ts riskBucketScore). */
 const bucketBand = (bucket: { from: number; to: number }) => ({ from: Math.round(bucket.from * 10) * 10, to: bucket.to >= 1 ? 100 : Math.round(bucket.to * 10) * 10 - 1 });
 /** "20–29", or "0" for the band without patterns: a score out of 100, not a percentage. */
@@ -47,6 +49,11 @@ export default function ScopeConditions({ scope }: { scope: MonitoringScope }) {
   // fact_check-2: the lines of a verification's answer, as it names them.
   if (subgroup?.consortium) selection.push({ label: "Contracte", value: "Doar cele în asociere" });
   if (subgroup?.singleBid) selection.push({ label: "Concurență", value: "Doar licitațiile cu o singură ofertă (TED)" });
-  const list = (rows: { label: string; value: string }[]) => <dl className="mon-scope-conditions">{rows.map((item, i) => <div key={i}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
-  return <>{list(items)}{receipt && <div className="mon-population"><p>{receipt.intro}</p><strong>{receipt.operator}</strong>{receipt.groups.map((group, i) => <div key={i}><span>{group.title}</span><ul>{group.items.map((item, index) => <li key={index}>{item}</li>)}</ul></div>)}</div>}{selection.length > 0 && <div className="mon-selection"><p><strong>Din aceste rezultate, urmărim doar selecția de mai jos.</strong> Toate aceste restricții se aplică împreună, peste condițiile întrebării.</p>{list(selection)}</div>}</>;
+  // The institution or firm of the question by its name, a link to its page, without the raw id (owner, 7 November 2026).
+  const f = spec.filters as { authorityId?: number | string; authorityName?: string; supplierId?: number | string; supplierName?: string } | undefined;
+  const named = (row: { label: string; value: string }): { label: string; value: ReactNode } =>
+    row.label === "Instituție" && f?.authorityId ? { label: row.label, value: <EntityName id={String(f.authorityId)} role="authority">{cleanName(f.authorityName ?? row.value)}</EntityName> }
+      : row.label === "Firmă" && f?.supplierId ? { label: row.label, value: <EntityName id={String(f.supplierId)} role="supplier">{cleanName(f.supplierName ?? row.value)}</EntityName> } : row;
+  const list = (rows: { label: string; value: ReactNode }[]) => <dl className="mon-scope-conditions">{rows.map((item, i) => <div key={i}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>;
+  return <>{list(items.map(named))}{receipt && <div className="mon-population"><p>{receipt.intro}</p><strong>{receipt.operator}</strong>{receipt.groups.map((group, i) => <div key={i}><span>{group.title}</span><ul>{group.items.map((item, index) => <li key={index}>{item}</li>)}</ul></div>)}</div>}{selection.length > 0 && <div className="mon-selection"><p><strong>Din aceste rezultate, urmărim doar selecția de mai jos.</strong> Toate aceste restricții se aplică împreună, peste condițiile întrebării.</p>{list(selection)}</div>}</>;
 }

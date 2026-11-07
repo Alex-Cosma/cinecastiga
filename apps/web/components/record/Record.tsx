@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import Term from "@/components/Term";
 import { FLAG_META, flagFindingLabel } from "@/lib/flags";
@@ -28,15 +28,18 @@ export interface RecordValue {
 }
 
 /** The head: title, lot, who from whom, the value and its notes, the record's identity line and its actions. */
-export function RecordHead({ title, lot, status, parties, value, meta, actions, signals }: {
-  title: ReactNode; lot?: string | null; status?: ReactNode; parties?: ReactNode; value?: RecordValue | null;
+export function RecordHead({ title, lot, lotLabel = "Lot", status, parties, value, meta, actions, signals }: {
+  title: ReactNode; lot?: string | null;
+  /** The word before `lot` ("Obiect" on a signal's page, where the line is the notice's object). */
+  lotLabel?: string;
+  status?: ReactNode; parties?: ReactNode; value?: RecordValue | null;
   meta: ReactNode[]; actions: ReactNode; signals?: number;
 }) {
   const items = meta.filter(Boolean);
   return <header className="record-head">
     <div className="record-title">
       <h1>{title}</h1>
-      {lot && <p className="record-lot"><span>Lot</span> {lot}</p>}
+      {lot && <p className="record-lot"><span>{lotLabel}</span> {lot}</p>}
       {status && <p className="record-status" role="note">{status}</p>}
       {parties && <p className="record-parties">{parties}</p>}
     </div>
@@ -134,6 +137,37 @@ export function pairLines(pair: PairContext | null | undefined): ReactNode[] {
     out.push(<>{parts.join(" · ")} în {s.year} <span className="record-quiet">· bilanț MF</span></>);
   }
   return out;
+}
+
+export interface ShareRow {
+  key: string;
+  name: ReactNode;
+  /** 0..1, drawn as the bar's length. */
+  share: number;
+  /** The share in words ("98%", "peste 99%"). */
+  shareText: string;
+  /** The exact amount and what it counts, one short line. */
+  detail: ReactNode;
+}
+/**
+ * Who holds how much of a total (a signal's suppliers or institutions, a group's firms): one row each, the name, a bar
+ * for the share and the exact amount. The bars grow from 0 together on first view (chart-motion.css).
+ */
+export function ShareList({ rows, label }: { rows: ShareRow[]; label: string }) {
+  return <ol className="record-shares" aria-label={label} data-chart>
+    {rows.map((r, i) => <li key={r.key} style={{ "--i": i } as CSSProperties}>
+      <p className="record-share-name">{r.name}</p>
+      <p className="record-share-figure"><b>{r.shareText}</b> <span>{r.detail}</span></p>
+      <span className="record-share-bar" aria-hidden="true"><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, r.share * 100))}%` }} /></span>
+    </li>)}
+  </ol>;
+}
+
+/** A short list of links with a count each (an entity's other signals): one line per link, the count beside it. */
+export function LinkList({ items }: { items: { key: string; href: string; label: ReactNode; count?: ReactNode }[] }) {
+  return <ul className="record-links">
+    {items.map((it) => <li key={it.key}><Link href={it.href} prefetch={false}>{it.label}</Link>{it.count && <span className="record-quiet"> · {it.count}</span>}</li>)}
+  </ul>;
 }
 
 export interface Source { href: string; label: ReactNode; external?: boolean }

@@ -12,9 +12,12 @@ import { startTransition } from "react";
 export default function ErrorPage({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const router = useRouter();
   return (
-    <div className="err-page" role="alert">
-      <h1 className="page-title">Pagina nu <span className="nowrap">s-a putut</span> încărca</h1>
-      <p className="page-sub">De obicei e trecător. Încearcă din nou.</p>
+    <div className="err-page">
+      {/* Only the message is announced, not the buttons around it. */}
+      <div role="alert">
+        <h1 className="page-title">Pagina nu <span className="nowrap">s-a putut</span> încărca</h1>
+        <p className="page-sub">De obicei e trecător. Încearcă din nou.</p>
+      </div>
       <div className="err-acts">
         <button type="button" className="btn pri" onClick={() => startTransition(() => { router.refresh(); reset(); })}>
           Încearcă din nou

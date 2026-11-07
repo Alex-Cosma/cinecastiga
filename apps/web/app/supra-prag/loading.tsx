@@ -16,8 +16,8 @@ export default function SupraPragLoading() {
   return (
     <Ghost name="supra-prag" label="Se încarcă atribuirile TED…" wait="suspense">
       <h1 className="page-title">Atribuiri publicate în TED</h1>
-      <p className="page-sub">
-        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor SEAP.
+      <p className="page-sub ted-tip-line" inert>
+        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title="TED, peste prag" text="" /></span>
       </p>
       <p className="hint ted-tip-line" inert>
         <G.Line inline w="min(36rem, 74%)" /><Term tip title="Acoperire TED" text="" />{" · "}<a>Acoperire →</a>
@@ -44,6 +44,7 @@ export default function SupraPragLoading() {
       <section className="section">
         <h2>Explorează atribuirile</h2>
         <p className="hint"><G.Line w="16rem" /></p>
+        <div className="ask-tablewrap rank-stack tp-stack">
         <table className="rank list-anchor tp-ghost-table">
           {/* The loaded table's column shares (its long titles widen the second column). */}
           <colgroup><col className="c1" /><col className="c2" /><col className="c3" /><col className="c4" /></colgroup>
@@ -52,26 +53,27 @@ export default function SupraPragLoading() {
               <th><span className="th-filter"><FunnelGhost label="Autoritate" /><span className="th-sep" aria-hidden="true">→</span><FunnelGhost label="Câștigător" /><span className="th-sep" aria-hidden="true">·</span><FunnelGhost label="Țara" /></span></th>
               <th><span className="th-filter"><FunnelGhost label="Obiect" /><span className="th-sep" aria-hidden="true">·</span><FunnelGhost label="SEAP" /><Term id="ted-fara-potrivire" tip className="ted-tip-above" /><span className="th-sep" aria-hidden="true">·</span><FunnelGhost label="Oferte" /></span></th>
               <th><FunnelGhost label="Procedură" /></th>
-              <th style={{ textAlign: "right" }}><span className="th-filter"><a>Valoare</a><FunnelGhost /><Term id="ted-valori" tip /></span></th>
+              <th className="num"><span className="th-filter"><a>Valoare</a><FunnelGhost /><Term id="ted-valori" tip /></span></th>
             </tr>
           </thead>
           <tbody inert>
             <G.Rows n={12} as="tr" cells={(i) => <>
-              <td><G.Line w={rankWidth(i, 74, 4, 46)} /><div className="arrow-to"><G.Line w="52%" /></div><div className="county"><G.Line w="28%" /></div></td>
-              <td className="county">
+              <td><G.Line w={rankWidth(i, 74, 4, 46)} /><div className="arrow-to tp-winners"><G.Line w="52%" /></div><div className="county"><G.Line w="28%" /></div></td>
+              <td className="county" data-label="Obiect">
                 <div className="obj-title"><G.Line w="88%" /></div><G.Line w="72%" /><div><G.Line w="7rem" /></div>
                 <div className="badges"><span className="ted-label only"><G.Line inline w="15ch" /></span><span className="badge"><G.Line inline w="15ch" /></span><span className="badge"><G.Line inline w="10ch" /></span></div>
               </td>
-              <td className="county"><G.Line w="7rem" /></td>
-              <td className="num" style={{ whiteSpace: "normal" }}>
-                <div><G.Line inline w="9ch" /></div>
-                <div className="county"><G.Line w="92%" /><G.Line w="70%" /><G.Line w="54%" only="phone" /></div>
-                <details style={{ textAlign: "left", marginTop: "0.5rem", maxWidth: "24rem" }}><summary>Valorile și referințele din sursă</summary></details>
-                <div className="src"><a>TED <G.Line inline w="11ch" /></a></div>
+              <td className="county" data-label="Procedură"><G.Line w="7rem" /></td>
+              <td className="num tp-value" data-label="Valoare">
+                <div className="tp-amount"><G.Line inline w="9ch" /></div>
+                <div className="county tp-amount-kind"><G.Line w="92%" /><G.Line w="70%" /></div>
+                <details className="tp-src"><summary>Valorile și referințele din sursă</summary></details>
+                <div className="src"><a>TED <G.Line inline w="11ch" /> ↗</a></div>
               </td>
             </>} />
           </tbody>
         </table>
+        </div>
         {/* The other 48 rows of a page of 60, reserved: the document keeps its length when the list arrives. */}
         <div className="tp-ghost-rest" aria-hidden="true" />
         <div className="pager" inert>

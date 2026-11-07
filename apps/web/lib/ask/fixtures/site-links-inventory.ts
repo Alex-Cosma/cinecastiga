@@ -48,7 +48,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
     corpus: ["site:domain-ranking", "site:domain-evolution", "site:domain-sources-all", "site:domain-sources-division", "site:domain-sources-other"] },
   { file: "lib/domains-shared.ts", occurrences: 1, kind: "producer", what: "domainSourceUrl: a domain's records as a link (raw btoa, the same bytes as encodeSpec)",
     corpus: ["site:domain-sources-all", "site:domain-sources-division", "site:domain-sources-other"] },
-  { file: "app/anchete/DossierEvidence.tsx", occurrences: 5, kind: "producer", what: "Dossier: a saved person opens the firms they represent; a saved question reopens with its scope (relay)",
+  { file: "lib/evidence-clip.ts", occurrences: 5, kind: "producer", what: "Dossier (app/anchete/DossierEvidence.tsx via lib/evidence-clip.ts): a saved person opens the firms they represent; a saved question reopens with its scope (relay)",
     corpus: ["site:person-clip", "saved:watch-selection"] },
   { file: "lib/evidence-captures.ts", occurrences: 1, kind: "producer", what: "Evidence captures of an entity (buyer or firm) and of a person", corpus: ["site:capture-entity", "site:capture-person"] },
   { file: "lib/topic-search/interpretation.ts", occurrences: 7, kind: "producer", what: "Search page \"Pe scurt\": a total, the first three winners and the buyer's domains; otherwise `?q=`",
