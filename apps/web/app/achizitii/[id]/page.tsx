@@ -30,7 +30,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const x = await getAcquisitionContext(id, d);
   const title = titleOf(d);
   const state = daState(d.state);
-  const purchase = state.kind === "accepted";
+  // Only a refused or unaccepted offer is "not a purchase"; a state the source does not give stays a purchase in doubt.
+  const purchase = state.kind !== "refused" && state.kind !== "unaccepted";
   const amount = (value: string | null) => value == null ? "Valoare neprecizată" : `${formatExactDecimal(value)} lei`;
   const authority = d.authorityId ? <EntityName id={d.authorityId} role="authority">{cleanName(d.authority)}</EntityName> : <span>{d.authority ?? "Instituție neprecizată"}</span>;
   const supplier = d.supplierId ? <EntityName id={d.supplierId} role="supplier">{cleanName(d.supplier)}</EntityName> : <span>{d.supplier ?? "furnizor neprecizat"}</span>;
