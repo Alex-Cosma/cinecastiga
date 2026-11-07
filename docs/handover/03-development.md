@@ -130,7 +130,7 @@ Pentru pornirea web nu e necesar un worker de documente. Citirea PDF/OCR existen
 6. Profil → comparații: populație, grup editabil, toți anii/toate domeniile, surse.
 7. Login cu contul nou; OTP din consolă dacă nu ai activat excepția locală 2FA. Creează o anchetă locală și salvează o dovadă mică.
 8. Deschide un PDF deja arhivat și schimbă pagina; imaginea și OCR trebuie să corespundă.
-9. `/admin`: Colectare, Procesare, Fișiere, Jurnal, Feedback și Conturi; contul nou, colectare oprită. Feedbackul privat, cozile și jurnalul de producție sunt intenționat absente.
+9. `/admin`: Acum, Trafic SEAP (Fluxuri, Conexiune, Jurnal), Procesare, Fișiere, Oameni; contul nou, colectare oprită. Feedbackul privat, cozile și jurnalul de producție sunt intenționat absente.
 10. DevTools și consola serverului: fără erori de schemă/migrații. Nicio cerere SEAP nu trebuie declanșată de simpla explorare.
 
 Capturile sunt pornite de rutele web prin `after(() => processCapture(...))`; nu cer un worker SEAP separat. Urmăririle au worker dedicat: `apps/web/scripts/monitoring-worker.ts`, cu opțiunea `--once` pentru o verificare limitată. Acesta nu colectează SEAP și nu trimite email. Verifică `DATABASE_URL` înainte de pornire; digest-urile sunt o comandă separată.

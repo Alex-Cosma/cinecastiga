@@ -98,7 +98,7 @@ Toate căile sunt relative la rădăcină.
 | Comparații | `lib/peers*.ts`, `peer-population.ts`, `app/api/peers/`, `app/entitati/[id]/comparatii/` |
 | Populație RPL2021 | `apps/web/lib/reference/population-rpl2021.json`; `packages/db/scripts/parse-population-rpl2021.py` |
 | Fișiere | `apps/web/lib/documents/{store,seap,worker,process,rate-limit,shared}.ts`; `apps/web/scripts/documents/worker.ts` |
-| Admin | `app/admin/layout.tsx`, `AdminNavigation.tsx`, `CollectionDashboard.tsx`, `RecoveryOverview.tsx`, `DocumentQueue.tsx`; `lib/admin/` |
+| Admin | `app/admin/layout.tsx`; shell-ul client `CollectionDashboard.tsx` (un singur status pentru toate paginile, fiecare pagină montată și ascunsă, ca draft-urile să rămână); `model.ts` (filele, starea colectării într-un singur loc: `collectionState`); `AdminNavigation.tsx`, `LiveBand.tsx`, `AcumView.tsx`, `FluxuriView.tsx`, `ProxyControl.tsx` + `LimitsForm.tsx`, `Journal.tsx`, `ProcessingOverview.tsx` + `ScheduleForm.tsx`, `DocumentCollection.tsx`, `DocumentQueue.tsx`, `oameni/` (pagină server); redirecturile vechi în `next.config.mjs`; `lib/admin/` |
 | Estimare recuperare | `lib/admin/recovery-status.ts`, `recovery-forecast.ts` și testele lor |
 | Autentificare | `apps/web/lib/auth.ts`, `mail.ts`, `scripts/seed-admin.ts`; `packages/db/src/schema/auth.ts` |
 | Colectare durabilă | `apps/ingestion/src/scripts/collection.ts`, `src/collection/` |

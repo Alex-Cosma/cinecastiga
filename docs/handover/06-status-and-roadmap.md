@@ -25,7 +25,7 @@ Sarcinile sunt unități tehnice, nu număr de contracte. `deferred` nu înseamn
 
 ## Admin și estimările recente
 
-Implementate: `/admin`, `/admin/procesare`, `/admin/fisiere`, `/admin/jurnal`, `/admin/feedback`, `/admin/conturi`; layout persistat, rezumat comun, focus/navigare coerente, stări de încărcare/eroare, drafturi de setări păstrate și paginare 10 rânduri. Feedbackul anonim a fost adăugat în lotul din 30 septembrie.
+Implementate (structura din 7 noiembrie 2026): `/admin` (Acum), `/admin/trafic`, `/admin/trafic/conexiune`, `/admin/trafic/jurnal`, `/admin/procesare`, `/admin/fisiere`, `/admin/oameni`; adresele vechi redirecționează; layout persistat, rezumat comun, focus/navigare coerente, stări de încărcare/eroare, drafturi de setări păstrate și paginare 10 rânduri. Feedbackul anonim a fost adăugat în lotul din 30 septembrie.
 
 Progresul pe flux este fracția din coada **cunoscută**, care se poate mări după paginare/partiționare. Progresul general estimează separat instituții și zile de anunțuri, liste, detalii și pagini de contracte, ponderat după lucru; nu face media celor trei procente.
 
