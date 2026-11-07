@@ -1,241 +1,171 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import ContractPublications from "@/components/ContractPublications";
 import ContractFiles from "@/components/documents/ContractFiles";
 import { getContractFiles } from "@/lib/documents/store";
 import { sessionUserId } from "@/lib/session";
 import { notFound } from "next/navigation";
-import { getContractDetail } from "@/lib/marts";
+import { getContractDetail, type ContractDetail } from "@/lib/marts";
+import { getContractContext, tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
-import { FLAG_META, flagLabel } from "@/lib/flags";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
+import { kindLabel, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
 import ClipButton from "@/components/ClipButton";
+import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
-import { encodeSpec } from "@/lib/ask/permalink";
-import { pairSpec } from "@/lib/ask/site-links";
+import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party, type Source } from "@/components/record/Record";
 import { consortiumShareLabel } from "@/lib/consortium";
 import { ghostHold } from "@/lib/ghost-hold";
-import "./contract.css";
 
 /**
- * Contract detail — the plain-language twin of SEAP's award-notice page,
- * keyed by SICAP's own contract id (`ca_notice_contract_id`), so URLs survive
- * re-normalizes. Phase 1: parties, money (with winner-split honesty),
- * competition context, pair history, award-level red flags, source links.
- * Lots/criteria/documents wait on the eForms detail mapping.
+ * Contract detail: the plain-language twin of SEAP's award notice, keyed by SICAP's own contract id
+ * (`ca_notice_contract_id`) so URLs survive re-normalizes. Record template of 7 November 2026: what was bought, who
+ * from whom, the value with its notes, the signals, then the award's facts, the parties, the documents and the sources.
  */
 
 export const dynamic = "force-dynamic";
 
-/** "2020/S 190-458412" → TED's canonical pubnum "458412-2020". */
-function tedPubnum(no: string): string | null {
-  const m = /^(\d{4})\/S\s+\d+-(\d+)$/.exec(no.trim());
-  return m ? `${m[2]}-${m[1]}` : null;
+/** One read per request: the tab title and the page share it. */
+const contractDetail = cache(getContractDetail);
+
+const headlineOf = (c: ContractDetail, noticeTitle: string | null) =>
+  recordHeadline({ title: c.title, lot: c.lotsCaption, noticeTitle, cpvName: c.cpvName, noticeNo: c.noticeNo, kind: kindLabel(c.financialKind) });
+
+export async function generateMetadata({ params }: { params: Promise<{ nid: string }> }): Promise<Metadata> {
+  const c = await contractDetail((await params).nid);
+  return c ? { title: `${cleanName(headlineOf(c, null)).slice(0, 70)} · ${cleanName(c.authority?.name) || "contract"}` } : {};
 }
 
-function pairDrillUrl(
-  authority: { id: string; name: string },
-  supplier: { id: string; name: string },
-): string {
-  return `/?spec=${encodeURIComponent(encodeSpec(pairSpec(authority, supplier)))}&drill=1`;
-}
+const moneyNote = (c: ContractDetail) => c.amountStatus === "converted" && c.valueRonExact !== null
+  ? <>Echivalent verificat în SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs {c.currencyRate}</>
+  : !["ron", "converted", "legacy_ron"].includes(c.amountStatus)
+    ? <>Valoarea în lei nu e verificată ({c.amountStatus === "legacy_unknown" ? "înregistrare istorică fără unitate confirmată" : c.amountStatus === "inconsistent" ? "sume sau monede neconcordante în sursă" : "date monetare incomplete"}); nu intră în totalurile în lei.</>
+    : null;
 
-/** Titles like "Contract", "Contract 707" carry no information — lead with CPV. */
-function isGenericTitle(t: string | null): boolean {
-  if (!t) return true;
-  const s = t.trim();
-  return s.length < 12 || /^(contract|acord[- ]cadru)[\s\d./-]*$/i.test(s);
-}
+const valueLabel = (c: ContractDetail) => c.financialKind === "framework" ? <>Plafon publicat <Term tip id="plafon-acord-cadru" /></>
+  : c.financialKind === "amendment" ? <>Valoarea actului adițional <Term tip id="act-aditional" /></>
+  : c.amountStatus === "legacy_ron" ? <Term tip id="valoare-inregistrata">Valoare înregistrată</Term>
+  : <Term tip id="valoare-inregistrata">Valoarea contractului</Term>;
 
-export default async function ContractPage({
-  params,
-}: {
-  params: Promise<{ nid: string }>;
-}) {
+/** Why this value stays out of the totals, said once, beside the value. */
+const totalsNote = (c: ContractDetail) =>
+  c.financialKind === "framework" ? "Separat de totaluri: se numără comenzile subsecvente."
+  : c.financialKind === "amendment" ? "Act adițional: nu se adaugă la totaluri."
+  : c.financialKind === "review" ? "Tip de contract neclar: în afara totalurilor până la verificare."
+  : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Motivul</Link></>
+  : c.winnerIsAuthority ? <>Câștigătorul înregistrat e chiar instituția: în afara totalurilor și clasamentelor. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></>
+  : c.aboveValueCap ? <>Peste 1 mld. lei: filtru al site-ului, în afara totalurilor. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></>
+  : null;
+
+export default async function ContractPage({ params }: { params: Promise<{ nid: string }> }) {
   await ghostHold();
   const { nid } = await params;
-  const c = await getContractDetail(nid);
+  const c = await contractDetail(nid);
   if (!c) notFound();
 
-  const [files, userId] = await Promise.all([getContractFiles(nid), sessionUserId()]);
-  const headline = isGenericTitle(c.title) ? (files.notice?.title ?? c.cpvName ?? c.title ?? "Contract") : c.title!;
-  const ted = c.tedNoticeNo ? tedPubnum(c.tedNoticeNo) : null;
+  const [files, userId, x] = await Promise.all([getContractFiles(nid), sessionUserId(), getContractContext(c)]);
+  const headline = cleanName(headlineOf(c, files.notice?.title ?? null));
+  const lot = meaningfulLot(c.lotsCaption, headline);
+  const kind = kindLabel(c.financialKind);
+  const procedure = procedureLabel(c.procedureType);
+  const tedNo = x.ted?.publicationNumber ?? (c.tedNoticeNo ? tedPublicationNumber(c.tedNoticeNo) : null);
+  const tedHref = x.ted?.url ?? (tedNo ? tedNoticeUrl(tedNo) : null);
   const multiWinner = c.winners.length > 1 || c.nWinners > 1;
-  // "⅓ din 381.909.792,16 lei · consorțiu de 3": the equal split the marts apply.
   const splitLabel = consortiumShareLabel(c.nWinners, c.splitFromRonExact ? `${formatExactDecimal(c.splitFromRonExact)} lei` : null);
+  const currency = c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)";
+  const authority = c.authority ? <EntityName id={c.authority.entityId} role="authority">{cleanName(c.authority.name)}</EntityName> : <span>Instituție neprecizată</span>;
+  const winnerNames = c.winners.map((w, i) => <span key={w.entityId}>{i > 0 && (i === c.winners.length - 1 ? " și " : ", ")}<EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName></span>);
+  // The award's own figures are the whole notice's: shown only when they add something to this contract's value.
+  const award = c.awardValueRon != null && c.awardValueRon > 0 && c.noticeLotCount > 1 ? c.awardValueRon : null;
+  const offers = c.lowestOfferRon != null && c.highestOfferRon != null && c.highestOfferRon > 0
+    ? (c.lowestOfferRon === c.highestOfferRon ? formatRon(c.lowestOfferRon) : `${formatRon(c.lowestOfferRon)} – ${formatRon(c.highestOfferRon)}`) : null;
+  // The mart's count holds only when every confirmed TED link agrees; one TED lot's count is the fallback.
+  const tenders = c.tendersReceived ?? x.ted?.tendersReceived ?? null;
+
+  const parties: Party[] = [
+    { key: "a", role: "Instituția", name: authority, lines: [countyLabel(c.authority?.county)] },
+    ...c.winners.map((w, i): Party => {
+      const pair = x.pairs.find((p) => p.supplierId === w.entityId);
+      const others = pair ? pair.history.nDa + pair.history.nCt : 0;
+      return {
+        key: w.entityId,
+        role: c.winners.length > 1 ? `Câștigătorul ${i + 1} din ${c.winners.length}` : "Câștigătorul",
+        name: <EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName>,
+        lines: [
+          countyLabel(w.county),
+          multiWinner && w.shareRonExact != null && <><Term tip id="consortiu">Cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</>,
+          c.authority && others > 0 && <a href={pairHref({ id: c.authority.entityId, name: cleanName(c.authority.name) }, { id: w.entityId, name: cleanName(w.name) })}>
+            Încă {others === 1 ? "o înregistrare" : `${formatInt(others)} înregistrări`} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
+          ...pairLines(pair),
+          c.winnerIsAuthority && <span className="warn">E chiar instituția: neconcordanță în sursă. Verifică furnizorul real în SEAP.</span>,
+        ],
+      };
+    }),
+  ];
+
+  const sources: Source[] = [
+    ...(c.caNoticeId ? [{ href: awardUrl(c.caNoticeId), label: `Anunțul de atribuire${c.noticeNo ? ` ${c.noticeNo}` : ""} în SEAP`, external: true }] : []),
+    ...(files.notice ? [{ href: files.notice.url, label: `Anunțul de participare ${files.notice.noticeNo ?? ""} în SEAP`.replace("  ", " "), external: true }] : []),
+    ...(tedHref ? [{ href: tedHref, label: `Publicarea în TED ${tedNo ?? ""}`.trim(), external: true }] : []),
+    ...(c.caNoticeId && c.noticeLotCount > 1 ? [{ href: `/anunturi/${c.caNoticeId}`, label: `Anunțul, cu toate cele ${formatInt(c.noticeLotCount)} înregistrări` }] : []),
+  ];
 
   return (
-    <>
-      <div className="profile-head">
-        <h1>{cleanName(headline)}</h1>
-        <ClipButton kind="contract" refId={String(nid)} label={cleanName(headline)} />
-        <div>
-          <span className="badge plain">contract atribuit prin procedură</span>
-          {c.procedureType && <span className="badge plain">{c.procedureType}</span>}
-          {c.isSingleBidder === true && <span className="flag-tag">un singur ofertant</span>}
-          {c.contractNo && <span className="note">nr. {c.contractNo}</span>}{" "}
-          {c.contractDate && <span className="note">semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span title="Data din sursă este anterioară arhivei (2018). Valoarea rămâne în totaluri, dar contractul nu este atribuit niciunui an."> · dată sursă improbabilă</span>}</span>}
-        </div>
-        {(c.cpvName || c.cpvCode) && (
-          <p className="note">
-            Domeniu CPV{c.cpvFromNotice ? " din anunț" : ""}: {c.cpvName ?? "Denumire neprecizată"}
-            {c.cpvCode ? ` (${c.cpvCode})` : ""}
-          </p>
-        )}
-        <div className="ext-links">
-          {c.caNoticeId && c.noticeLotCount > 1 && (
-            <Link href={`/anunturi/${c.caNoticeId}`}>
-              Anunț cu {formatInt(c.noticeLotCount)} înregistrări →
-            </Link>
-          )}
-          {c.caNoticeId && (
-            <a href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">
-              Anunțul în SEAP ↗
-            </a>
-          )}
-          {ted && (
-            <a
-              href={`https://ted.europa.eu/en/notice/-/detail/${ted}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              TED {c.tedNoticeNo} ↗
-            </a>
-          )}
-        </div>
-      </div>
+    <RecordPage className="contract-record">
+      <RecordHead
+        title={headline}
+        lot={lot}
+        parties={<>{authority} a contractat cu {winnerNames.length ? winnerNames : "un câștigător neprecizat"}</>}
+        value={{
+          amount: c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${currency}` : "Valoare nepublicată",
+          label: valueLabel(c),
+          notes: [moneyNote(c), totalsNote(c)],
+        }}
+        meta={[
+          <span className="record-kind" key="k">{kind}</span>,
+          c.contractDate && <span key="d">Semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span className="record-quiet" title="Data din sursă e anterioară arhivei (2018): valoarea rămâne în totaluri, fără an."> · dată improbabilă</span>}</span>,
+          procedure && <span key="p">{procedure}</span>,
+          c.isSingleBidder === true && <span key="o">un singur ofertant</span>,
+          c.contractNo && <span key="n">nr. {c.contractNo}</span>,
+        ]}
+        actions={<>
+          {c.caNoticeId && <a className="record-seap" href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (anunțul de atribuire, filă nouă)</span></a>}
+          <ClipButton kind="contract" refId={String(nid)} label={headline} />
+        </>}
+        signals={c.flags.length}
+      />
 
       <ContractPublications publications={c.publications} currentId={nid} countedOnce={c.countedOnce} />
-      <nav className="ext-links" aria-label="Secțiunile contractului"><a href="#fisiere">Documente ↓</a></nav>
-      {c.amountStatus === 'converted' && c.valueRonExact !== null && <p className="note">Echivalent verificat în sursa SEAP: <strong>{formatExactDecimal(c.valueRonExact)} lei</strong> · curs raportat {c.currencyRate}. Această valoare este folosită pentru calculele în lei, dacă înregistrarea îndeplinește și celelalte criterii de includere.</p>}
-      {!['ron','converted','legacy_ron'].includes(c.amountStatus) && <p className="note">Valoarea în lei nu este verificată ({c.amountStatus === 'legacy_unknown' ? 'înregistrare istorică fără unitate confirmată' : c.amountStatus === 'inconsistent' ? 'sume sau monede neconcordante în sursă' : 'date monetare incomplete sau de reverificat'}). Înregistrarea este exclusă din totalurile în lei după recalculare. Verifică documentele SEAP.</p>}
-      <div className="stat-grid">
-        <div className="stat">
-          <div className="n">{c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${c.currency?.toUpperCase() === "RON" ? "lei" : c.currency ?? "(monedă neprecizată)"}` : "—"}</div>
-          <div className="l">
-            {c.financialKind === 'framework' ? 'Plafon publicat, separat de totaluri' : c.financialKind === 'amendment' ? 'Valoarea publicată a actului adițional' : c.excludedIdentity ? 'Valoare sursă · exclusă temporar' : c.winnerIsAuthority ? 'Valoare sursă · fără furnizor cunoscut, separată de totaluri' : c.aboveValueCap ? 'Valoare sursă · peste 1 miliard lei, separată de totaluri' : c.amountStatus === 'legacy_ron' ? 'Valoare înregistrată' : 'Valoarea acestei publicații'}{c.currency && c.currency !== "RON" ? ` (${c.currency})` : ""}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="n">{c.awardValueRon != null ? formatRon(c.awardValueRon) : "—"}</div>
-          <div className="l">Valoare atribuită (tot anunțul)</div>
-        </div>
-        <div className="stat">
-          <div className="n">{c.tendersReceived != null ? formatInt(c.tendersReceived) : "—"}</div>
-          <div className="l">Oferte primite</div>
-        </div>
-        {c.lowestOfferRon != null && c.highestOfferRon != null && c.highestOfferRon > 0 && (
-          <div className="stat">
-            <div className="n">
-              {formatRon(c.lowestOfferRon)} – {formatRon(c.highestOfferRon)}
-            </div>
-            <div className="l">Interval oferte (min–max)</div>
-          </div>
-        )}
-      </div>
 
-      <section className="section ct-tip-col">
-        <h2>Cine cu cine</h2>
-        <table className="rank">
-          <tbody>
-            <tr>
-              <td className="county" style={{ width: 140 }}>
-                Autoritate
-              </td>
-              <td>
-                {c.authority ? (
-                  <Link href={`/entitati/${c.authority.entityId}?rol=autoritate`}>
-                    {cleanName(c.authority.name)}
-                  </Link>
-                ) : (
-                  "—"
-                )}
-                {countyLabel(c.authority?.county) && <span className="county"> · {countyLabel(c.authority?.county)}</span>}
-              </td>
-            </tr>
-            {c.winners.map((w, i) => (
-              <tr key={w.entityId}>
-                <td className="county">
-                  {c.winners.length > 1 ? `Câștigător ${i + 1}` : "Câștigător"}
-                </td>
-                <td>
-                  <Link href={`/entitati/${w.entityId}?rol=furnizor`}>{cleanName(w.name)}</Link>
-                  {countyLabel(w.county) && <span className="county"> · {countyLabel(w.county)}</span>}
-                  {multiWinner && w.shareRon != null && (
-                    <span className="county"> · <Term tip id="consortiu">cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</span>
-                  )}
-                  {c.authority && (w.pairNDa > 0 || w.pairNCt > 0) && (
-                    <>
-                      {" — istoric cu autoritatea: "}
-                      <a
-                        href={pairDrillUrl(
-                          { id: c.authority.entityId, name: cleanName(c.authority.name) },
-                          { id: w.entityId, name: cleanName(w.name) },
-                        )}
-                      >
-                        {w.pairNDa + w.pairNCt === 1
-                          ? "o tranzacție"
-                          : `${formatInt(w.pairNDa + w.pairNCt)} tranzacții`}{" "}
-                        · {formatRon(w.pairTotalRon)} →
-                      </a>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <SignalList flags={c.flags} authorityId={c.authority?.entityId ?? null}
+        fallbackEvidence={(f) => f.evidence?.["value"] != null ? <>{procedureLabel(String(f.evidence?.["procedure"] ?? c.procedureType ?? ""))} · {awardValueLabel(f.evidence)}: {formatRonFull(Number(f.evidence?.["value"]))}{noticeContractsNote(f.evidence!) ? ` · ${noticeContractsNote(f.evidence!).trim()}` : ""}</> : null} />
 
-      <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId?{sourceUrl:awardUrl(c.caNoticeId)}:{})} />
+      <RecordSection id="atribuire" title="Atribuirea">
+        <Facts facts={[
+          award != null && { label: "Valoarea anunțului (toate contractele)", value: <>{formatRon(award)}<small>{formatInt(c.noticeLotCount)} înregistrări în anunț</small></> },
+          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 ? " · un singur ofertant" : ""}</> : <span className="record-quiet">Număr nepublicat</span> },
+          offers && { label: c.noticeLotCount > 1 ? "Oferte, de la cea mai mică la cea mai mare (tot anunțul)" : "Oferte, de la cea mai mică la cea mai mare", value: offers },
+          x.ted?.estimateRon != null && { label: <Term tip id="estimare-ted">Estimarea din TED, fără TVA</Term>, value: <>{formatExactDecimal(x.ted.estimateRon)} lei{x.ted.lotTitle && <small>{x.ted.lotTitle}</small>}</> },
+          x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED" },
+          procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
+          (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: <>{c.cpvName ?? "Denumire neprecizată"}{c.cpvCode && <small>{c.cpvCode}</small>}</> },
+          c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
+          x.framework?.role === "framework" && { label: <Term tip id="comenzi-identificate">Comenzi subsecvente identificate</Term>, value: x.framework.calloffs > 0 ? <>{formatInt(x.framework.calloffs)}{x.framework.calloffsRon != null && ` · ${formatExactDecimal(x.framework.calloffsRon)} lei`}</> : <span className="record-quiet">Niciuna găsită (nu înseamnă zero)</span> },
+          x.framework?.role === "calloff" && { label: "Acordul-cadru", value: <Link href={`/contracte/${x.framework.frameworkNatId}`}>{cleanName(x.framework.frameworkTitle) || "Acordul-cadru al comenzii"}</Link> },
+          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a><small>Recunoscute după numele fișierului: pot fi greșit clasificate.</small></>, wide: true },
+        ]} />
+      </RecordSection>
 
-      {c.flags.length > 0 && (
-        <section className="section">
-          <h2>Semnale pe această atribuire</h2>
-          {c.flags.map((f) => {
-            const m = FLAG_META[f.code];
-            const val = f.evidence?.["value"];
-            return (
-              <div className="role-card" key={f.code}>
-                <h3>{flagLabel(f.code)}</h3>
-                <p>{m?.short}</p>
-                {val != null && (
-                  <p className="note">
-                    {String(f.evidence?.["procedure"] ?? c.procedureType ?? "")} ·{" "}
-                    {awardValueLabel(f.evidence)}: {formatRonFull(Number(val))}
-                    {f.evidence ? noticeContractsNote(f.evidence) : ""}
-                  </p>
-                )}
-                {m?.caveat && <p className="note">{m.caveat}</p>}
-              </div>
-            );
-          })}
-        </section>
-      )}
+      <RecordSection id="parti" title="Instituție și câștigători">
+        <PartyList parties={parties} />
+      </RecordSection>
 
-      {c.financialKind === 'amendment' && (
-        <p className="note ct-tip"><b>Act adițional, neadăugat la totaluri</b> <Term tip id="act-aditional" /></p>
-      )}
-      {c.financialKind === 'review' && (
-        <p className="note"><b>Tip de contract neclar.</b> Păstrăm valoarea sursă, dar o excludem din totaluri până la verificare.</p>
-      )}
-      {c.financialKind === 'framework' && (
-        <p className="note ct-tip"><b>Plafon de acord-cadru, separat de totaluri</b> <Term tip id="plafon-acord-cadru" /></p>
-      )}
-      {c.winnerIsAuthority && <p className="note"><b>Câștigătorul înregistrat este chiar autoritatea:</b> neconcordanță în sursă,
-        exclusă din totaluri și clasamente. Verifică furnizorul real în SEAP · <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
-      {c.aboveValueCap && !c.nonAdditive && !c.excludedIdentity && !c.winnerIsAuthority && <p className="note"><b>Peste 1 mld. lei:</b> filtru
-        al aplicației, nu o eroare; nu intră în totaluri sau clasamente. Verifică suma în SEAP · <Link href="/metodologie#totaluri">Cum se formează totalurile</Link>.</p>}
-      {c.excludedIdentity && <p className="note"><b>Exclus temporar din totaluri.</b> Identitatea acestei înregistrări
-        față de alte publicații nu este încă lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Vezi motivul și toate sursele comparate</Link>.</p>}
+      <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId ? { sourceUrl: awardUrl(c.caNoticeId) } : {})} />
 
-      <p className="note">
-        Sursa:{" "}
-        {c.caNoticeId
-          ? <a href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""} ↗</a>
-          : <>anunțul de atribuire SICAP{c.noticeNo ? ` ${c.noticeNo}` : ""}</>}
-      </p>
-    </>
+      <Sources sources={sources} />
+    </RecordPage>
   );
 }

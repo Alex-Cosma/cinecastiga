@@ -1,0 +1,90 @@
+/* The record template (owner, 7 November 2026): one reading column, the head answers who bought what from whom and
+   for how much; everything below is evidence. Base: the direct acquisition's calm page. */
+.record { max-width: 1040px; margin-inline: auto; padding-block: 20px 56px; }
+
+.record-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); grid-template-areas: "title value" "meta meta" "actions actions"; gap: 18px 48px; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
+.record-title { grid-area: title; min-width: 0; }
+.record-head h1 { font-size: clamp(26px, 3vw, 38px); line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; text-wrap: balance; }
+.record-head h1 .term-tip { font-size: 16px; vertical-align: .35em; }
+.record-lot { margin-top: 12px; font-size: 15px; line-height: 1.5; color: var(--ink2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.record-lot > span { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 6px; }
+.record-status { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: var(--amber-soft); color: var(--amber); font-size: 15px; font-weight: 600; line-height: 1.45; }
+.record-status .term-tip { font-weight: 400; }
+.record-parties { margin-top: 14px; font-size: 17px; line-height: 1.5; overflow-wrap: anywhere; }
+.record-parties .record-quiet { color: var(--muted); }
+
+.record-value { grid-area: value; align-self: start; padding: 16px 18px; border-radius: 10px; background: var(--sunk); }
+.record-amount { font: 650 30px/1.15 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.record-amount-label { margin-top: 4px; font-size: 13px; color: var(--ink2); }
+.record-value-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; color: var(--ink2); }
+.record-value-note:first-of-type { margin-top: 12px; }
+
+.record-meta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 6px 0; font-size: 14px; color: var(--ink2); }
+.record-meta > span:not(:last-child)::after { content: "·"; margin: 0 10px; color: var(--muted); }
+.record-meta .record-kind { font-weight: 600; color: var(--ink); }
+.record-actions { grid-area: actions; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; }
+.record-actions .record-seap { display: inline-flex; align-items: center; min-height: 40px; font-weight: 600; text-underline-offset: 4px; }
+.record-signal-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 14px; font-weight: 600; text-decoration: none; }
+.record-signal-chip:hover { text-decoration: underline; }
+
+.record-section { margin-top: 34px; scroll-margin-top: 110px; }
+.record-section > h2 { font-size: 22px; margin: 0 0 14px; }
+.record-lead { font-size: 14px; color: var(--muted); margin: -6px 0 14px; }
+
+.record-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; margin: 0; }
+.record-facts > div { padding: 12px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.record-facts > div.wide { grid-column: 1 / -1; }
+.record-facts dt { font-size: 13px; color: var(--muted); margin-bottom: 3px; }
+.record-facts dd { margin: 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.record-facts dd small { display: block; font-size: 13px; color: var(--ink2); margin-top: 2px; }
+.record-missing { margin-top: 12px; font-size: 13px; color: var(--muted); }
+.record-quiet { color: var(--muted); }
+
+.record-signal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.record-signal-list li { padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--amber-soft) 45%, var(--surface)); }
+.record-signal-list h3 { font-size: 17px; }
+.record-signal-list p { margin-top: 6px; font-size: 15px; line-height: 1.55; max-width: 72ch; }
+.record-signal-list .record-evidence { font-size: 14px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.record-signal-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 22px; font-size: 14px !important; }
+.record-signal-links summary { cursor: pointer; color: var(--accent); }
+.record-signal-links details[open] { flex-basis: 100%; }
+.record-signal-links details p { font-size: 14px; color: var(--ink2); }
+
+.record-parties-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.record-parties-list li { padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); min-width: 0; }
+.record-party-role { font-size: 12px; font-weight: 600; color: var(--muted); }
+.record-party-name { margin-top: 2px; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.record-party-line { margin-top: 6px; font-size: 14px; line-height: 1.5; color: var(--ink2); overflow-wrap: anywhere; }
+.record-party-line.warn { color: var(--amber); }
+
+.record-items { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.record-items th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line2); }
+.record-items td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+.record-items .record-num { text-align: right; white-space: nowrap; }
+
+.record-sources ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.record-sources li a { display: inline-flex; align-items: center; min-height: 36px; font-size: 15px; text-underline-offset: 4px; overflow-wrap: anywhere; }
+.record-sources > p { margin-top: 10px; font-size: 13px; color: var(--muted); max-width: 72ch; }
+
+@media (max-width: 760px) {
+  .record-head { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "value" "meta" "actions"; gap: 16px; }
+  .record-facts { grid-template-columns: minmax(0, 1fr); }
+  .record-amount { font-size: 26px; }
+}
+@media (max-width: 700px) {
+  /* The (?) mark stays legible on a phone. */
+  .record .term-mark { font-size: 12px; }
+  .record-items thead { display: none; }
+  .record-items, .record-items tbody, .record-items tr, .record-items td { display: block; }
+  .record-items tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .record-items td { border: 0; padding: 2px 0; }
+  .record-items .record-num { text-align: left; }
+  .record-items td[data-label]::before { content: attr(data-label) " "; color: var(--muted); font-size: 13px; }
+}
+
+/* A (?) explanation opens under the line that holds it, left-aligned and never wider than it, so a 390 px page never
+   scrolls sideways (the rule of the old contract page, for every block of the template). */
+.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status) { position: relative; }
+.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status) .term-tip > .term-def {
+  top: calc(100% + 6px); bottom: auto; left: 0; right: auto; width: max-content; max-width: min(46ch, 100%);
+}

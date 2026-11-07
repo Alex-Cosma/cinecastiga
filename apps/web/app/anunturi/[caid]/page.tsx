@@ -1,211 +1,159 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAwardNoticeDetail } from "@/lib/marts";
+import { getAwardNoticeDetail, type AwardNoticeDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
+import { isGenericTitle, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
+import { tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import ClipButton from "@/components/ClipButton";
+import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import { LOT_COLUMNS } from "@/lib/notice-lots-columns";
 import { readFilters } from "@/lib/table-filters/codec";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
 import { PendingRegion, RegionLink } from "@/components/ghost/client";
+import { Facts, RecordHead, RecordPage, RecordSection, Sources, type Source } from "@/components/record/Record";
 import "./notice.css";
 
 /**
- * Award-notice page — the "mother" of its contracts: one procedure, N lots.
- * Keyed by SICAP's ca_notice_id. Each lot links to its /contracte page; big
- * frameworks (max ~2.700 lots) paginate via ?p=.
- *
- * SEAP republishes an award notice under the same number when it adds
- * call-offs (new caNoticeId, new contract ids, new state date). The date shown
- * is that of this version, next to the first contract of the notice across
- * its versions (owner decision of 21 October 2026).
+ * Award-notice page, the "mother" of its contracts: one procedure, N records, keyed by SICAP's ca_notice_id. Each
+ * record links to its /contracte page; big frameworks (max ~2.700 records) paginate via ?p=. SEAP republishes an award
+ * notice under the same number when it adds call-offs; the date shown is this version's, next to the first contract
+ * across its versions (owner, 21 October 2026). Record template of 7 November 2026.
  */
 
 export const dynamic = "force-dynamic";
 
-function tedPubnum(no: string): string | null {
-  const m = /^(\d{4})\/S\s+\d+-(\d+)$/.exec(no.trim());
-  return m ? `${m[2]}-${m[1]}` : null;
+/** One read per request and address: the tab title and the page share it (the query string keys the filters). */
+const noticeDetail = cache((caid: string, query: string) => {
+  const sp = Object.fromEntries(new URLSearchParams(query));
+  return getAwardNoticeDetail(caid, Math.max(1, Number(sp["p"]) || 1), 50, readFilters(LOT_COLUMNS, (key) => sp[key]));
+});
+const queryOf = (sp: Record<string, string | undefined>) => new URLSearchParams(Object.entries(sp).filter((e): e is [string, string] => e[1] !== undefined)).toString();
+
+const headlineOf = (n: AwardNoticeDetail) => recordHeadline({ cpvName: n.cpvName, noticeNo: n.noticeNo, kind: `Anunț de atribuire ${n.noticeNo ?? n.caNoticeId}` });
+
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ caid: string }>; searchParams: Promise<Record<string, string | undefined>> }): Promise<Metadata> {
+  const n = await noticeDetail((await params).caid, queryOf(await searchParams));
+  return n ? { title: `${cleanName(headlineOf(n)).slice(0, 70)} · ${cleanName(n.authority?.name) || "anunț de atribuire"}` } : {};
 }
 
-export default async function NoticePage({
-  params,
-  searchParams,
-}: {
+export default async function NoticePage({ params, searchParams }: {
   params: Promise<{ caid: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { caid } = await params;
   const sp = await searchParams;
-  const pageNo = Math.max(1, Number(sp["p"]) || 1);
-  // The records' column funnels (owner, 4 November 2026; lib/notice-lots-columns.ts).
-  const filters = readFilters(LOT_COLUMNS, (key) => sp[key]);
-  const n = await getAwardNoticeDetail(caid, pageNo, 50, filters);
+  // The records' column funnels (owner, 4 November 2026; lib/notice-lots-columns.ts) and the page, from the address.
+  const n = await noticeDetail(caid, queryOf(sp));
   if (!n) notFound();
 
-  const ted = n.tedNoticeNo ? tedPubnum(n.tedNoticeNo) : null;
+  const ted = n.tedNoticeNo ? tedPublicationNumber(n.tedNoticeNo) : null;
   const pages = Math.max(1, Math.ceil(n.nShown / n.pageSize));
   const scope = { caid: String(caid) };
-  // A page link keeps the funnels' filters.
   const pageHref = (p: number) => {
     const q = new URLSearchParams(Object.entries(sp).filter((e): e is [string, string] => e[1] !== undefined));
     q.set("p", String(p));
     return `?${q.toString()}#inregistrari`;
   };
+  const headline = cleanName(headlineOf(n));
+  const procedure = procedureLabel(n.procedureType);
+  const offers = n.lowestOfferRon != null && n.highestOfferRon != null && n.highestOfferRon > 0
+    ? (n.lowestOfferRon === n.highestOfferRon ? formatRon(n.lowestOfferRon) : `${formatRon(n.lowestOfferRon)} – ${formatRon(n.highestOfferRon)}`) : null;
+  const sources: Source[] = [
+    { href: awardUrl(n.caNoticeId), label: `Anunțul de atribuire${n.noticeNo ? ` ${n.noticeNo}` : ""} în SEAP`, external: true },
+    ...(ted ? [{ href: tedNoticeUrl(ted)!, label: `Publicarea în TED ${ted}`, external: true }] : []),
+  ];
 
   return (
-    <>
-      <div className="profile-head">
-        <h1>{n.cpvName ? cleanName(n.cpvName) : `Anunț de atribuire ${n.noticeNo ?? caid}`}</h1>
-        <ClipButton kind="notice" refId={String(caid)} label={n.noticeNo ?? String(caid)} />
-        <div>
-          <span className="badge plain">anunț de atribuire</span>
-          {n.procedureType && <span className="badge plain">{n.procedureType}</span>}
-          {n.noticeNo && <span className="note">nr. {n.noticeNo}</span>}{" "}
-          {n.versionDate && <span className="note">data acestei versiuni: {formatCalendarDate(n.versionDate)}</span>}{" "}
-          <span className="note">
-            primul contract din anunț: {n.firstContractDate ? formatCalendarDate(n.firstContractDate) : "fără dată plauzibilă"}
-          </span>
-        </div>
-        {n.versions.length > 1 && (
-          <p className="note nt-tip">
-            {formatInt(n.versions.length)} versiuni SEAP, nu le aduna <Term tip id="versiuni-anunt" />:{" "}
-            {n.versions.map((v, i) => (
-              <span key={v.caNoticeId}>
-                {i > 0 && ", "}
-                {v.caNoticeId === n.caNoticeId ? (
-                  <span aria-current="page">{formatCalendarDate(v.versionDate)} (aceasta)</span>
-                ) : (
-                  <Link href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>
-                )}
-              </span>
-            ))}
-            .
-          </p>
-        )}
-        {n.authority && (
-          <p className="note">
-            Autoritate:{" "}
-            <Link href={`/entitati/${n.authority.entityId}?rol=autoritate`}>
-              {cleanName(n.authority.name)}
-            </Link>
-            {countyLabel(n.authority.county) ? ` · ${countyLabel(n.authority.county)}` : ""}
-          </p>
-        )}
-        <div className="ext-links">
-          <a href={awardUrl(n.caNoticeId)} target="_blank" rel="noopener noreferrer">
-            anunțul pe e-licitatie.ro ↗
-          </a>
-          {ted && (
-            <a
-              href={`https://ted.europa.eu/en/notice/-/detail/${ted}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              TED {n.tedNoticeNo} ↗
-            </a>
-          )}
-        </div>
-      </div>
+    <RecordPage className="notice-record">
+      <RecordHead
+        title={headline}
+        parties={n.authority ? <><EntityName id={n.authority.entityId} role="authority">{cleanName(n.authority.name)}</EntityName>{countyLabel(n.authority.county) && <span className="record-quiet"> · {countyLabel(n.authority.county)}</span>} a atribuit {n.nLots === 1 ? "o înregistrare" : `${formatInt(n.nLots)} înregistrări`}</> : null}
+        value={{
+          amount: n.totalContractValue != null ? formatRon(n.totalContractValue) : "Nicio valoare identificată",
+          label: <Term tip id="comenzi-identificate">Contracte și comenzi identificate</Term>,
+          notes: [
+            n.frameworkValue != null && <>Plafoane de acord-cadru publicate: {formatRonFull(n.frameworkValue)}, separate de totaluri.</>,
+            n.versions.length > 1 && "Republicările aceluiași anunț nu se adună.",
+          ],
+        }}
+        meta={[
+          <span className="record-kind" key="k">Anunț de atribuire</span>,
+          procedure && <span key="p">{procedure}</span>,
+          n.noticeNo && <span key="n">{n.noticeNo}</span>,
+          n.versionDate && <span key="v">Versiunea din {formatCalendarDate(n.versionDate)}</span>,
+        ]}
+        actions={<>
+          <a className="record-seap" href={awardUrl(n.caNoticeId)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (anunțul de atribuire, filă nouă)</span></a>
+          <ClipButton kind="notice" refId={String(caid)} label={n.noticeNo ?? String(caid)} />
+        </>}
+      />
 
-      <div className="stat-grid nt-stats">
-        <div className="stat">
-          <div className="n">{formatInt(n.nLots)}</div>
-          <div className="l">Înregistrări publicate</div>
-        </div>
-        <div className="stat">
-          <div className="n">
-            {n.totalContractValue != null ? formatRon(n.totalContractValue) : "—"}
-          </div>
-          <div className="l nt-tip"><Term tip id="comenzi-identificate">Contracte și comenzi identificate</Term></div>
-        </div>
-        <div className="stat">
-          <div className="n">{n.awardValueRon != null ? formatRon(n.awardValueRon) : "—"}</div>
-          <div className="l nt-tip"><Term tip id="valoare-atribuita">Valoare atribuită (anunț)</Term></div>
-        </div>
-        {n.lowestOfferRon != null && n.highestOfferRon != null && n.highestOfferRon > 0 && (
-          <div className="stat">
-            <div className="n">
-              {formatRon(n.lowestOfferRon)} – {formatRon(n.highestOfferRon)}
-            </div>
-            <div className="l">Interval oferte (min–max)</div>
-          </div>
-        )}
-      </div>
+      <RecordSection id="atribuire" title="Atribuirea">
+        <Facts facts={[
+          n.awardValueRon != null && n.awardValueRon > 0 && { label: <Term tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: formatRon(n.awardValueRon) },
+          offers && { label: "Oferte, de la cea mai mică la cea mai mare", value: offers },
+          procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
+          (n.cpvName || n.cpvCode) && { label: "Domeniu CPV", value: <>{n.cpvName ?? "Denumire neprecizată"}{n.cpvCode && <small>{n.cpvCode}</small>}</> },
+          { label: "Primul contract din anunț", value: n.firstContractDate ? formatCalendarDate(n.firstContractDate) : <span className="record-quiet">Fără dată plauzibilă</span> },
+          n.versions.length > 1 && { label: <Term tip id="versiuni-anunt">Versiuni SEAP</Term>, wide: true, value: n.versions.map((v, i) => <span key={v.caNoticeId}>{i > 0 && ", "}{v.caNoticeId === n.caNoticeId
+            ? <span aria-current="page">{formatCalendarDate(v.versionDate)} (aceasta)</span>
+            : <Link href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>}</span>) },
+        ]} />
+      </RecordSection>
 
       {/* The funnels and the pager keep the records in place, dimmed, while the next ones come (owner, 6 November 2026). */}
-      <PendingRegion as="section" className="section" label="Se încarcă înregistrările…">
+      <PendingRegion as="section" className="record-section notice-lots" label="Se încarcă înregistrările…">
         <h2 id="inregistrari" className="list-anchor">Înregistrările din acest anunț</h2>
         <UrlFilterBand table="loturi" scope={scope} />
         {(pages > 1 || n.nShown !== n.nLots) && (
-          <p className="hint">
+          <p className="record-lead">
             {n.nShown !== n.nLots ? `${formatInt(n.nShown)} din ${formatInt(n.nLots)}` : formatInt(n.nLots)} înregistrări
             {pages > 1 ? ` · pagina ${n.page} din ${formatInt(pages)}` : ""} · ordonate după valoare
           </p>
         )}
-        <table className="rank">
+        <table className="record-lots">
           <thead>
             <tr>
-              <th>Nr.</th>
-              <th><UrlFunnel table="loturi" column="tip" label="Obiect · tip" scope={scope} /></th>
-              <th><UrlFunnel table="loturi" column="castigator" label="Câștigător" scope={scope} /></th>
-              <th><UrlFunnel table="loturi" column="data" label="Data" scope={scope} /></th>
-              <th style={{ textAlign: "right" }}><UrlFunnel table="loturi" column="valoare" label="Valoare" align="end" scope={scope} /></th>
-              <th />
+              <th scope="col"><UrlFunnel table="loturi" column="tip" label="Obiect · tip" scope={scope} /></th>
+              <th scope="col"><UrlFunnel table="loturi" column="castigator" label="Câștigător" scope={scope} /></th>
+              <th scope="col"><UrlFunnel table="loturi" column="data" label="Data" scope={scope} /></th>
+              <th scope="col" className="lot-value"><UrlFunnel table="loturi" column="valoare" label="Valoare" align="end" scope={scope} /></th>
             </tr>
           </thead>
           <tbody>
             {n.lots.map((l) => (
               <tr key={l.natId}>
-                <td className="county">{l.contractNo ?? "—"}</td>
-                <td>
-                  {cleanName(l.title) || "—"}
-                  {l.financialKind === 'framework' && (
-                    <span className="county"> · plafon, nu comandă</span>
-                  )}
-                  {l.financialKind === 'amendment' && <span className="county"> · act adițional, neaditiv</span>}
-                  {l.temporarilyExcluded && <span className="county"> · exclus temporar din totaluri</span>}
-                  {l.financialKind === 'review' && <span className="county"> · tip neclar, de verificat</span>}
+                <th scope="row" className="lot-object">
+                  <Link href={`/contracte/${l.natId}`}>{cleanName(isGenericTitle(l.title) ? meaningfulLot(l.lotsCaption, null) ?? l.title : l.title) || (l.contractNo ? `Contractul nr. ${l.contractNo}` : "Contractul")}</Link>
+                  <small>{[l.contractNo && `nr. ${l.contractNo}`, l.financialKind === "framework" && "plafon de acord-cadru", l.financialKind === "calloff" && "comandă subsecventă", l.financialKind === "amendment" && "act adițional, neadăugat", l.financialKind === "review" && "tip neclar, de verificat", l.temporarilyExcluded && "exclus temporar din totaluri"].filter(Boolean).join(" · ")}</small>
+                </th>
+                <td data-label="Câștigător">
+                  {l.winners.length === 0 ? "—" : l.winners.map((w, i) => (
+                    <span key={w.entityId}>{i > 0 && ", "}<EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName></span>
+                  ))}
                 </td>
-                <td>
-                  {l.winners.length === 0
-                    ? "—"
-                    : l.winners.map((w, i) => (
-                        <span key={w.entityId}>
-                          {i > 0 && ", "}
-                          <Link href={`/entitati/${w.entityId}?rol=furnizor`}>
-                            {cleanName(w.name)}
-                          </Link>
-                        </span>
-                      ))}
-                </td>
-                <td className="county">{l.contractDate ? l.contractDate.slice(0, 10) : "—"}{l.contractDate && l.contractDate < CONTRACT_DATE_FLOOR && <small> dată sursă improbabilă</small>}</td>
-                <td className="num">{formatRonFull(l.contractValue)}</td>
-                <td>
-                  <Link href={`/contracte/${l.natId}`}>detalii →</Link>
-                </td>
+                <td data-label="Data">{l.contractDate ? formatCalendarDate(l.contractDate.slice(0, 10)) : "—"}{l.contractDate && l.contractDate < CONTRACT_DATE_FLOOR && <small> dată improbabilă</small>}</td>
+                <td data-label="Valoare" className="lot-value">{formatRonFull(l.contractValue)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {n.lots.length === 0 && n.nShown !== n.nLots && <p className="note">Nicio înregistrare cu filtrele alese.</p>}
+        {n.lots.length === 0 && n.nShown !== n.nLots && <p className="record-missing">Nicio înregistrare cu filtrele alese.</p>}
         {pages > 1 && (
           <div className="pager">
             {n.page > 1 && <RegionLink href={pageHref(n.page - 1)} scroll>← Anterior</RegionLink>}
-            <span className="note">
-              Pagina {n.page} din {formatInt(pages)}
-            </span>
+            <span className="note">Pagina {n.page} din {formatInt(pages)}</span>
             {n.page < pages && <RegionLink href={pageHref(n.page + 1)} scroll>Următor →</RegionLink>}
           </div>
         )}
       </PendingRegion>
 
-      <p className="note">
-        {n.frameworkValue != null && <>Plafoane publicate: {formatRonFull(n.frameworkValue)}. </>}
-        Nu aduna republicările. Valori înregistrate, nu plăți.
-      </p>
-    </>
+      <Sources sources={sources}><p>Valori contractate, nu plăți.</p></Sources>
+    </RecordPage>
   );
 }

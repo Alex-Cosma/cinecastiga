@@ -1020,6 +1020,8 @@ export interface ContractDetail {
   /** SICAP's own contract id — the stable URL key. */
   natId: string;
   contractId: string;
+  /** The publication the statistics count (the identity decision's canonical contract, else contractId). */
+  statisticsContractId: string;
   contractNo: string | null;
   title: string | null;
   lotsCaption: string | null;
@@ -1196,6 +1198,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     excludedIdentity:r["excluded_identity"] == null ? null : String(r["excluded_identity"]),
     natId: String(r["nat_id"]),
     contractId,
+    statisticsContractId: String(statisticsId),
     contractNo: (r["contract_no"] as string | null) ?? null,
     title: (r["title"] as string | null) ?? null,
     lotsCaption: (r["lots_caption"] as string | null) ?? null,
@@ -1258,6 +1261,8 @@ export interface NoticeLot {
   natId: string;
   contractNo: string | null;
   title: string | null;
+  /** The lot's own object (core.contracts.lots_caption): what a framework's many "ACORD CADRU" rows differ by. */
+  lotsCaption: string | null;
   contractDate: string | null;
   contractValue: number | null;
   financialKind: string;
@@ -1355,7 +1360,7 @@ export async function getAwardNoticeDetail(
     : nLots;
 
   const lots = (await sql`
-    select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title,
+    select c.id, c.ca_notice_contract_id nat_id, c.contract_no, c.title, c.lots_caption,
            to_char(c.contract_date at time zone 'Europe/Bucharest','YYYY-MM-DD') contract_date,
            ${contractRonValue(sql)} contract_value, ${contractKind(sql)} financial_kind,
            ${contractTemporarilyExcluded(sql)} temporarily_excluded
@@ -1415,6 +1420,7 @@ export async function getAwardNoticeDetail(
       natId: String(l["nat_id"]),
       contractNo: (l["contract_no"] as string | null) ?? null,
       title: (l["title"] as string | null) ?? null,
+      lotsCaption: (l["lots_caption"] as string | null) ?? null,
       contractDate: (l["contract_date"] as string | null) ?? null,
       contractValue: l["contract_value"] != null ? Number(l["contract_value"]) : null,
       financialKind: String(l["financial_kind"]),
