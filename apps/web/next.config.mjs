@@ -24,7 +24,15 @@ const nextConfig = {
   typescript: { tsconfigPath: "tsconfig.build.json" },
   // The beginner guide became the methodology's "Pe scurt" lane (owner, 5 November 2026); old links keep working.
   async redirects() {
-    return [{ source: "/ghid", destination: "/metodologie", permanent: true }];
+    return [
+      { source: "/ghid", destination: "/metodologie", permanent: true },
+      // The administration's pages moved under Acum, Trafic SEAP and Oameni (owner, 7 November 2026). Temporary: the
+      // addresses are private and could be reused. The query (e.g. the accounts' funnels) is kept.
+      { source: "/admin/conexiune", destination: "/admin/trafic/conexiune", permanent: false },
+      { source: "/admin/jurnal", destination: "/admin/trafic/jurnal", permanent: false },
+      { source: "/admin/feedback", destination: "/admin/oameni", permanent: false },
+      { source: "/admin/conturi", destination: "/admin/oameni", permanent: false },
+    ];
   },
   // Next 16.2's scroll-to-top on navigation started from the first node a route segment renders; in production that
   // node is a <script> or stylesheet React hoists into <head>, so pages with client components (e.g. /semnale) opened at

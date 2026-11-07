@@ -1,0 +1,31 @@
+/* Mesaje (owner, 7 November 2026): the visitors' messages, in the admin's own tokens (collection.css). */
+.collection-admin .admin-people .feedback-entries { margin-top: 18px; }
+.collection-admin .admin-people .feedback-entry { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.collection-admin .admin-people .feedback-entry:first-child { border-top: 1px solid var(--line); }
+.collection-admin .admin-people .feedback-entry-head { display: flex; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 8px; font-size: 14px; }
+.collection-admin .admin-people .feedback-entry-head strong { font-weight: 600; }
+.collection-admin .admin-people .feedback-entry-head time { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.collection-admin .admin-people .feedback-entry details > summary { width: fit-content; max-width: 75ch; padding: 0; list-style: none; cursor: pointer; color: var(--ink); font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.collection-admin .admin-people .feedback-entry details > summary::-webkit-details-marker { display: none; }
+.collection-admin .admin-people .feedback-read,
+.collection-admin .admin-people .feedback-close-message { display: block; margin-top: 6px; color: var(--accent); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.collection-admin .admin-people .feedback-close-message { display: none; }
+.collection-admin .admin-people .feedback-entry details[open] :is(.feedback-read, .feedback-preview) { display: none; }
+.collection-admin .admin-people .feedback-entry details[open] .feedback-close-message { display: block; }
+.collection-admin .admin-people .feedback-message { max-width: 75ch; margin: 12px 0 0; font-size: 15px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.collection-admin .admin-people .feedback-entry-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 20px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+.collection-admin .admin-people .feedback-entry-actions a { min-width: 0; overflow-wrap: anywhere; }
+.collection-admin .admin-people .feedback-entry-actions a span { display: block; font-size: 12px; color: var(--muted); }
+.collection-admin .admin-people .feedback-delete { min-height: 36px; padding: 6px 12px; color: var(--risk); }
+.collection-admin .admin-people .feedback-delete-confirm { margin-top: 12px; padding: 14px 16px; border-radius: 8px; background: var(--sunk); }
+.collection-admin .admin-people .feedback-delete-confirm p { margin: 0 0 12px; font-size: 14px; }
+.collection-admin .admin-people .feedback-delete-confirm > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.collection-admin .admin-people .feedback-delete-confirm .button { min-height: 36px; padding: 6px 12px; }
+.collection-admin .admin-people .feedback-empty { margin-top: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.collection-admin .admin-people .feedback-inbox-error { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; }
+.collection-admin .admin-people .feedback-inbox-error .text-button { color: inherit; font-size: 13px; }
+@media (max-width: 600px) {
+  .collection-admin .admin-people .feedback-entry-head { flex-direction: column; gap: 2px; }
+  .collection-admin .admin-people .feedback-delete,
+  .collection-admin .admin-people .feedback-delete-confirm .button { min-height: 44px; }
+}
