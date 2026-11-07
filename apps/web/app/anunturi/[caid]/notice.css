@@ -4,7 +4,7 @@
 .record-lots thead th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line2); white-space: nowrap; }
 .record-lots tbody th, .record-lots td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; font-weight: 400; overflow-wrap: anywhere; }
 .record-lots .lot-object { width: 46%; }
-.record-lots .lot-object a { font-weight: 600; }
+.record-lots .lot-object a { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .record-lots .lot-object small, .record-lots td small { display: block; margin-top: 3px; font-size: 13px; color: var(--muted); }
 .record-lots .lot-value { text-align: right; white-space: nowrap; padding-right: 0; }
 .record-lots thead .lot-value .th-filter { justify-content: flex-end; }
