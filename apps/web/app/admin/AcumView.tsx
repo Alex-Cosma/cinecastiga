@@ -51,7 +51,7 @@ export default function AcumView({data, state, stale, saving, change, now, activ
   if (stopped) check.push({text: `${fmt(stopped)} ${stopped === 1 ? 'proxy oprit' : 'proxy-uri oprite'} după erori.`, href: '/admin/trafic/conexiune', link: 'Conexiune'});
   const ted = data.historical?.ted;
   if (ted?.failedAttempt && (c.paused_streams as string[]).includes('ted')) check.push({text: 'TED s-a oprit după o încercare eșuată.', href: '/admin/trafic/jurnal', link: 'Jurnal'});
-  if (side.disk !== null && side.disk >= 85) check.push({text: `Discul e aproape plin: ${side.disk}% ocupat.`, href: '/admin/fisiere', link: 'Fișiere'});
+  if (side.disk !== null && side.disk >= 90) check.push({text: `Discul e aproape plin: ${side.disk}% ocupat.`, href: '/admin/fisiere', link: 'Fișiere'});
 
   const paused = (c.paused_streams as string[]).filter(s => s !== 'documents').map(s => STREAM_LABELS[s] ?? s);
   const gaps = f ? [f.failed > 0 ? `${fmt(f.failed)} ${f.failed === 1 ? 'sarcină eșuată' : 'sarcini eșuate'}` : null, f.deferred > 0 ? `${fmt(f.deferred)} detalii nepreluate` : null].filter(Boolean) : [];

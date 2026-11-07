@@ -37,7 +37,7 @@ export default function LimitsForm({data, form, setForm, dirty, stale, saving, r
             <div className="presets" role="group" aria-label="Intervale uzuale">
               {[[50, 70], [90, 120], [120, 180]].map(([a, b]) => <button key={a} type="button" className="preset" aria-pressed={min === a && max === b} onClick={() => edit({min: String(a), max: String(b)})}>{a}–{b} s</button>)}
             </div>
-            <p className={`rate-estimate${valid && min < 50 ? ' warn' : ''}`}>{valid ? `≈ ${fmt(Math.round(7200 / (min + max)))} cereri pe oră${min < 50 ? ' · mai rapid decât intervalul convenit, 50–70 s' : ''}` : 'Interval nevalid: minimum 1, maximum 3600, minimul cel mult cât maximul.'}</p>
+            <p className="rate-estimate">{valid ? `≈ ${fmt(Math.round(7200 / (min + max)))} cereri pe oră` : 'Interval nevalid: minimum 1, maximum 3600, minimul cel mult cât maximul.'}</p>
           </div>
         </div> : <p className="limit-note">Prin proxy-uri, pauza se alege pe fiecare IP, în setările de mai sus.</p>}
         <div className="limit-row">

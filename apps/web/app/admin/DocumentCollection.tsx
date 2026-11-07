@@ -14,7 +14,7 @@ const AUTO_LABEL='Descarcă automat caietele de sarcini',AUTO_HINT='Doar caietel
 const MORE='Ce se colectează și cum se păstrează progresul';
 
 export default function DocumentCollection(){
- const [data,setData]=useState<DocumentCollectionStatus|null>(null),[stale,setStale]=useState(false),[saving,setSaving]=useState<'main'|'auto'|'retry'|'stream'|null>(null);
+ const [data,setData]=useState<DocumentCollectionStatus|null>(null),[stale,setStale]=useState(false),[saving,setSaving]=useState<'main'|'auto'|'retry'|null>(null);
  const [message,setMessage]=useState<{text:string;error:boolean}|null>(null),[autoDraft,setAutoDraft]=useState<boolean|null>(null);
  const [confirmAuto,setConfirmAuto]=useState(false);
  const pending=useRef(false),request=useRef<AbortController|null>(null);
@@ -26,17 +26,22 @@ export default function DocumentCollection(){
  },[]);
  useEffect(()=>{void refresh();const timer=setInterval(()=>{if(!document.hidden)void refresh();},15000);return()=>{clearInterval(timer);request.current?.abort();request.current=null;pending.current=false;};},[refresh]);
  useEffect(()=>{if(!message||message.error)return;const t=setTimeout(()=>setMessage(null),6000);return()=>clearTimeout(t);},[message]);
- async function post(url:string,body:Record<string,unknown>,done:string,which:NonNullable<typeof saving>){
+ /** One command, possibly in two requests (the collection's pause and the SEAP documents stream); stops at the first refusal. */
+ async function post(requests:Array<{url:string;body:Record<string,unknown>}>,done:string,which:NonNullable<typeof saving>){
   setSaving(which);setMessage(null);
   // Only the server's own (Romanian) refusals are shown; a network failure or timeout gets one plain sentence.
-  try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});const result=await r.json().catch(()=>({}));setMessage(r.ok?{text:done,error:false}:{text:typeof result.error==='string'?result.error:'Comanda nu a fost salvată. Reîncearcă.',error:true});}
+  try{let refusal:string|null=null;for(const {url,body} of requests){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(20000)});const result=await r.json().catch(()=>({}));if(!r.ok){refusal=typeof result.error==='string'?result.error:'Comanda nu a fost salvată. Reîncearcă.';break;}}setMessage(refusal?{text:refusal,error:true}:{text:done,error:false});}
   catch{setMessage({text:'Comanda nu a ajuns la server. Reîncearcă.',error:true});}
   // A poll already in flight may predate the command: replace it, so the switch never flips back to the old value.
   finally{request.current?.abort();pending.current=false;await refresh();setAutoDraft(null);setSaving(null);}
  }
- const change=(action:Action)=>{if(!data)return;if(action==='downloads-on'||action==='downloads-off')setAutoDraft(action==='downloads-on');void post('/api/admin/documents',{action,revision:data.control.revision},DONE[action],action.startsWith('downloads')?'auto':action==='retry'?'retry':'main');};
- // The SEAP documents stream (paused by the stream circuit) lives on the collection control, not here.
- const resumeStream=()=>{if(data)void post('/api/admin/collection',{action:'stream',stream:'documents',paused:false,revision:data.source.revision},'Fluxul SEAP de fișiere e reluat.','stream');};
+ const change=(action:Action)=>{if(!data)return;if(action==='downloads-on'||action==='downloads-off')setAutoDraft(action==='downloads-on');void post([{url:'/api/admin/documents',body:{action,revision:data.control.revision}}],DONE[action],action.startsWith('downloads')?'auto':action==='retry'?'retry':'main');};
+ // One button for the files (owner, 7 November 2026): resuming also reopens the SEAP documents stream that the stream
+ // circuit closed after transport errors (it lives on the collection control); the band on Acum stays the stop of all SEAP traffic.
+ const resumeFiles=()=>{if(!data)return;const streamClosed=data.source.paused_streams.includes('documents');void post([
+  ...(data.control.paused?[{url:'/api/admin/documents',body:{action:'resume',revision:data.control.revision}}]:[]),
+  ...(streamClosed?[{url:'/api/admin/collection',body:{action:'stream',stream:'documents',paused:false,revision:data.source.revision}}]:[]),
+ ],'Fișierele sunt reluate.','main');};
 
  const c=data?.control,busy=!!saving||stale;
  const waiting=data&&(data.source.maintenance?'Așteaptă procesarea nocturnă':data.source.blocked_reason?'Așteaptă verificarea erorii SEAP':data.source.paused||data.source.paused_streams.includes('documents')?'Colectarea SEAP e pe pauză':data.quiet?'Pauza SEAP 02:59–03:30':!data.source.proxy_enabled?'Așteaptă activarea proxy-urilor':null);
@@ -78,9 +83,9 @@ export default function DocumentCollection(){
   </div>
   <div className="document-collection-panels">
    <div className="document-collection-controls">
-    {streamPaused&&<div className="document-stream-paused"><p role="status">Fluxul SEAP de fișiere e oprit{data.source.stream_reason?`: ${data.source.stream_reason}`:'.'}</p><button type="button" className="button" disabled={busy} aria-busy={saving==='stream'||undefined} onClick={resumeStream}>{saving==='stream'?'Se salvează…':'Reia fluxul'}</button></div>}
+    {streamPaused&&<div className="document-stream-paused"><p role="status">Fluxul SEAP de fișiere s-a oprit{data.source.stream_reason?`: ${data.source.stream_reason.replace(/\.$/,'')}.`:'.'} „Reia fișierele” îl redeschide.</p></div>}
     <div className={`document-collection-actions${stale?' g-stale':''}`}>
-     <button type="button" className="button primary" disabled={busy} aria-busy={saving==='main'||undefined} onClick={()=>change(!c.enabled?'start':c.paused?'resume':'pause')}>{saving==='main'?'Se salvează…':!c.enabled?'Pornește colectarea fișierelor':c.paused?'Reia colectarea fișierelor':'Pune colectarea pe pauză'}</button>
+     <button type="button" className="button primary" disabled={busy} aria-busy={saving==='main'||undefined} onClick={()=>!c.enabled?change('start'):c.paused||streamPaused?resumeFiles():change('pause')}>{saving==='main'?'Se salvează…':!c.enabled?'Pornește colectarea fișierelor':c.paused||streamPaused?'Reia fișierele':'Pune fișierele pe pauză'}</button>
      {failed>0&&<button type="button" className="button" disabled={busy} aria-busy={saving==='retry'||undefined} onClick={()=>change('retry')}>{saving==='retry'?'Se salvează…':`Reîncearcă ${fmt(failed)} eșuate`}</button>}
     </div>
     <div className={`setting-row document-auto${stale?' g-stale':''}`}>

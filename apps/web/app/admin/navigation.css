@@ -191,7 +191,7 @@
 .collection-admin .unit-input.compact input { font-size: 16px; }
 .collection-admin .preset[aria-pressed=true] { background: var(--soft); border-color: var(--line2); color: var(--accent); }
 .collection-admin .rate-estimate { padding: 12px 0 0; font-size: 13px; color: var(--accent); font-weight: 600; }
-.collection-admin .rate-estimate.warn { color: var(--warn); }
+
 .collection-admin .rules { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; color: var(--secondary); }
 .collection-admin .rules summary { padding: 8px 0; color: var(--accent); font-weight: 500; width: fit-content; }
 .collection-admin .rules ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.7; max-width: 80ch; }
