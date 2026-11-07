@@ -43,7 +43,7 @@ describe("the signals of a profile", () => {
   });
 
   it("have a short label and a rule at the level of an entity, the same ones the entity page shows", () => {
-    expect(SCATTER_FLAGS.map(flagLabel)).toEqual(["Adunate, trec de plafon", "Multe sume imediat sub plafon", "Mulți bani contractați în decembrie", "O firmă primește mare parte din bani", "Un singur client public mare", "Declarate directe, peste plafon"]);
+    expect(SCATTER_FLAGS.map(flagLabel)).toEqual(["Adunate, trec de plafon", "Multe sume imediat sub plafon", "Mulți bani contractați în decembrie", "O firmă are mare parte din valoare", "Un singur client public mare", "Declarate directe, peste plafon"]);
     for (const code of SCATTER_FLAGS) {
       expect(FLAG_META[code]!.title.length).toBeGreaterThan(flagLabel(code).length - 1);
       expect(flagEntityRule(code), code).not.toBe("");
@@ -99,7 +99,7 @@ describe("the cloud's keys in a spec", () => {
     expect(validateSpec(cloud({ scatter: { flag: "da_split", rankBy: "value" } }))).toHaveProperty("scatter", { flag: "da_split", rankBy: "value" });
     expect(validateSpec(cloud({ scatter: { flag: "da_dependence" } }))).toEqual({ error: SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))! });
     expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_dependence" } }))).toBe("Un singur client public mare se aplică doar firmelor. Alege alt semnal sau scoate-l.");
-    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).toBe("O firmă primește mare parte din bani se aplică doar instituțiilor. Alege alt semnal sau scoate-l.");
+    expect(SCATTER_RULES.flag(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).toBe("O firmă are mare parte din valoare se aplică doar instituțiilor. Alege alt semnal sau scoate-l.");
     // The refusal names the signal chosen: December's peak on firms is refused as itself (review: it read as concentration).
     expect(validateSpec(cloud({ scatter: { flag: "da_year_end" } }, "supplier"))).toEqual({ error: "Mulți bani contractați în decembrie se aplică doar instituțiilor. Alege alt semnal sau scoate-l." });
     expect(runnableError(cloud({ scatter: { flag: "da_concentration" } }, "supplier"))).not.toBeNull();
@@ -151,7 +151,7 @@ describe("the cloud's keys in a spec", () => {
     const slot = { id: "dim" as const, picker: "subject" as const };
     const turned = chooseValue(draft, slot, { filter: "dim", value: { dim: "supplier" } } as never);
     expect(turned.spec.scatter).toEqual({ rankBy: "risk" });
-    expect(turned.notes.join(" ")).toMatch(/Am scos „semnal: o firmă primește mare parte din bani”/);
+    expect(turned.notes.join(" ")).toMatch(/Am scos „semnal: o firmă are mare parte din valoare”/);
     // The signals both roles have stay.
     const kept = chooseValue({ ...draft, scatter: { rankBy: "risk", flag: "da_split" } }, slot, { filter: "dim", value: { dim: "supplier" } } as never);
     expect(kept.spec.scatter).toEqual({ rankBy: "risk", flag: "da_split" });

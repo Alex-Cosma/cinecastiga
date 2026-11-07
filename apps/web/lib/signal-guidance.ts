@@ -63,7 +63,7 @@ export function signalSentence(code: RiskCriterion, part: ScorePart, role: RiskR
       if (!groups) return null;
       const share = part.rawShare != null ? n(part.rawShare) : n(part.share);
       const who = role === "authority"
-        ? "aceeași firmă a primit în același an mai multe achiziții directe pentru același fel de lucru"
+        ? "aceeași firmă a câștigat în același an mai multe achiziții directe pentru același fel de lucru"
         : "aceeași instituție a cumpărat de la firmă, în același an, mai multe achiziții directe pentru același fel de lucru";
       // rf-2026.22 (S7): the lei of the counted groups, where the build stores them.
       const lei = part.value != null ? `${formatRon(n(part.value))}, ` : "";

@@ -54,7 +54,7 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("Multe sume imediat sub plafon 12");
     expect(words).toContain("Mulți bani contractați în decembrie 19");
     expect(words).toContain("Declarate directe, peste plafon 4");
-    // "O firmă primește mare parte din bani" has none in this group: no chip; „Finalizare rapidă” is no signal any more.
+    // "O firmă are mare parte din valoare" has none in this group: no chip; „Finalizare rapidă” is no signal any more.
     // The strip holds two options of the order and the group's own (Tot grupul, the four signals).
     expect(markup.match(/role="radio"/g)).toHaveLength(7);
     expect(markup).not.toMatch(/role="radio"[^>]*>(?:<[^>]+>)*[^<]*Concentrare/);
@@ -377,7 +377,7 @@ describe("the chart's geometry and words", () => {
     expect(flagTag({ code: "da_round", share: 0.252 }).text).toBe("Multe sume imediat sub plafon · 25,2%");
     expect(flagTag({ code: "da_above_ceiling", share: 0.004 }).text).toBe("Declarate directe, peste plafon · 0,4%");
     expect(flagTag({ code: "da_dependence", share: 1, single: true }).text).toBe("Un singur client public mare · un singur client");
-    expect(flagTag({ code: "da_concentration", share: 0.91 }).text).toBe("O firmă primește mare parte din bani · 91%");
+    expect(flagTag({ code: "da_concentration", share: 0.91 }).text).toBe("O firmă are mare parte din valoare · 91%");
     // A stored answer's retired signal keeps its label.
     expect(flagTag({ code: "da_rapid", share: 0.252 }).text).toBe("Finalizare rapidă · 25,2%");
     expect(withFacts([{ code: "da_round" }, { code: "da_split", years: [2019] }], [{ code: "da_round", share: 0.25, rows: 647 }]))

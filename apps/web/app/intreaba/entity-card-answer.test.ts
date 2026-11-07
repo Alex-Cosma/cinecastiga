@@ -180,7 +180,7 @@ describe("the ranking by the risk score (entity_card-3)", () => {
     // Three patterns fit: no „+1” in the third one's place.
     expect(riskFacts(ranked(1, 88, { flags: flags.slice(0, 3), nFlags: 3 }), hospitals).map((t) => [t.text, t.tone ?? "neutral"]))
       .toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["multe sume imediat sub plafon", "signal"]]);
-    expect(patternWord("da_concentration")).toBe("o firmă primește mare parte din bani");
+    expect(patternWord("da_concentration")).toBe("o firmă are mare parte din valoare");
     // A code the site no longer names (da_rapid, retired) stays the code.
     expect(patternWord("da_rapid")).toBe("da_rapid");
     expect(riskFacts(ranked(2, 40, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))

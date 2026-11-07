@@ -21,7 +21,7 @@ const NAMES: Record<Code, string> = {
   round: "Multe sume imediat sub plafon",
   above: "Declarate directe, peste plafon",
   dec: "Mulți bani contractați în decembrie",
-  rel: "O firmă primește mare parte din bani",
+  rel: "O firmă are mare parte din valoare",
 };
 const STEPS: Code[][] = [["split"], ["split", "round"], ["split", "round", "above"], ["split", "round", "above", "dec"]];
 const SINGLE: Partial<Record<Code, number>> = { split: 30, round: 20, above: 20 };
@@ -163,7 +163,7 @@ function mount(root: HTMLElement): () => void {
     const fams = (avoid.length ? 1 : 0) + (mixOn.dec ? 1 : 0) + (mixOn.rel ? 1 : 0);
     if (avoid.length) lines.push("Familia plafonului, singură: " + avoid.map((k, i) => (i ? "40% din " : "") + SINGLE[k]).join(" + ") + " = <b>" + A + "</b>");
     if (mixOn.dec) lines.push("Decembrie, singur: <b>" + Math.round(20 * p.C) + "</b>");
-    if (mixOn.rel) lines.push("O firmă primește mare parte din bani, singur: <b>" + Math.round(20 * p.R) + "</b>");
+    if (mixOn.rel) lines.push("O firmă are mare parte din valoare, singur: <b>" + Math.round(20 * p.R) + "</b>");
     lines.push((fams > 1 ? "Împreună, fiecare familie umple doar din ce a rămas gol: " : "Scor: ") + "<b>" + s + " din 100</b>");
     const pt = points(mixOn);
     const pl = ORD.filter((k) => mixOn[k] && (pt[k] ?? 0) > 0).map((k) => NAMES[k] + " " + pt[k]);

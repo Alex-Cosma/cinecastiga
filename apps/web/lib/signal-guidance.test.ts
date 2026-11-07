@@ -12,7 +12,7 @@ describe("the entity page's signal rows (variant A, 4 November 2026)", () => {
 
   it("write what was found as a sentence, from the score's parts", () => {
     expect(signalSentence("da_split", { x: 3, groups: 4, rawShare: 0.153 }, "authority"))
-      .toBe("De 4 ori, aceeași firmă a primit în același an mai multe achiziții directe pentru același fel de lucru. Luate pe rând sunt sub plafon; adunate, îl depășesc. Împreună: 15% din bani.");
+      .toBe("De 4 ori, aceeași firmă a câștigat în același an mai multe achiziții directe pentru același fel de lucru. Luate pe rând sunt sub plafon; adunate, îl depășesc. Împreună: 15% din bani.");
     expect(signalSentence("da_split", { x: 1, groups: 1, share: 0.02 }, "supplier"))
       .toMatch(/^O dată, aceeași instituție a cumpărat de la firmă/);
     expect(signalSentence("da_round", { x: 2, n: 16, expected: 5.8 }, "authority"))
