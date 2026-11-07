@@ -1,0 +1,121 @@
+/* Oameni (owner, 7 November 2026): Mesaje, then Conturi. Every rule is scoped under .admin-people and carries one
+   class more than collection.css, whose older element rules for admin tables (.collection-admin table / th / td,
+   th:first-child, td:nth-child(2) and (4)) would otherwise size and colour these cells. */
+
+.collection-admin .admin-people .people-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.collection-admin .admin-people .people-heading h2 { font: 600 23px/1.25 var(--heading); letter-spacing: -.02em; }
+.collection-admin .admin-people .people-heading h2:focus { outline: none; }
+.collection-admin .admin-people .people-heading .subtle { font-size: 13px; }
+.collection-admin .admin-people .people-reload { margin-left: auto; font-size: 13px; }
+.collection-admin .admin-people .people-reload:disabled { opacity: .55; }
+.collection-admin .admin-people .section-description { margin-top: 6px; font-size: 13px; color: var(--muted); }
+.collection-admin .admin-people .people-accounts { margin-top: 44px; padding-top: 32px; border-top: 1px solid var(--line); }
+
+/* Buttons: the admin's .button, a size smaller inside rows and questions; the risky confirmation in the risk colour. */
+.collection-admin .admin-people .button { font-size: 13px; }
+.collection-admin .admin-people summary.button { color: var(--ink); } /* a disclosure drawn as a button; summaries elsewhere are muted */
+.collection-admin .admin-people .button:disabled { opacity: .55; }
+.collection-admin .admin-people .button[aria-disabled="true"] { opacity: .7; cursor: progress; }
+.collection-admin .admin-people .people-danger { color: var(--risk); border-color: color-mix(in srgb, var(--risk) 45%, var(--line2)); }
+.collection-admin .admin-people .people-danger:hover { background: var(--risk-soft); border-color: var(--risk); }
+.collection-admin .admin-people .people-alert { margin-top: 14px; padding: 10px 14px; border-radius: 7px; background: var(--risk-soft); color: var(--risk); font-size: 14px; line-height: 1.5; }
+
+/* „Adaugă cont”: a secondary button that opens the form under it. */
+.collection-admin .admin-people .people-create { margin-top: 18px; }
+.collection-admin .admin-people .people-create > summary { list-style: none; width: fit-content; cursor: pointer; gap: 6px; }
+.collection-admin .admin-people .people-create > summary::-webkit-details-marker { display: none; }
+.collection-admin .admin-people .people-create > summary svg { width: 16px; height: 16px; }
+.collection-admin .admin-people .people-create[open] > summary { background: var(--soft); border-color: var(--accent); color: var(--accent); }
+.collection-admin .admin-people .people-create-form { display: grid; gap: 16px; max-width: 900px; margin-top: 12px; padding: 18px 20px; border-radius: 10px; background: var(--sunk); }
+.collection-admin .admin-people .people-create-form .people-alert { margin-top: 0; }
+.collection-admin .admin-people .people-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; align-items: start; }
+.collection-admin .admin-people .people-field { display: grid; gap: 6px; min-width: 0; }
+.collection-admin .admin-people .people-field label { font-size: 13px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.collection-admin .admin-people .people-field label span { font-weight: 400; color: var(--muted); }
+.collection-admin .admin-people .people-field input,
+.collection-admin .admin-people .people-password { width: 100%; min-width: 0; border: 1px solid var(--line2); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.collection-admin .admin-people .people-field input { padding: 9px 12px; font-size: 15px; line-height: 1.4; outline-offset: 2px; }
+.collection-admin .admin-people .people-password { display: flex; align-items: stretch; }
+.collection-admin .admin-people .people-password input { flex: 1; border: 0; background: transparent; }
+.collection-admin .admin-people .people-password input:focus-visible { outline: none; }
+.collection-admin .admin-people .people-password:has(input:focus-visible) { outline: 3px solid var(--orange); outline-offset: 2px; }
+.collection-admin .admin-people .people-reveal { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 0 12px; border-left: 1px solid var(--line); border-radius: 0 6px 6px 0; background: none; color: var(--accent); font-size: 13px; font-weight: 600; outline-offset: -3px; }
+.collection-admin .admin-people .people-reveal:hover { background: var(--soft); }
+.collection-admin .admin-people .people-reveal[aria-pressed="true"] { background: var(--soft); }
+.collection-admin .admin-people .people-reveal svg { width: 16px; height: 16px; }
+.collection-admin .admin-people .people-hint { font-size: 12px; line-height: 1.45; color: var(--muted); }
+.collection-admin .admin-people .people-form-end { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
+.collection-admin .admin-people .people-form-end .people-hint { flex: 1 1 280px; }
+
+/* The accounts table: sentence-case headers like the rest of the admin, 14px rows, the commands in the last column. */
+.collection-admin .admin-people .people-table { width: 100%; margin-top: 18px; border-collapse: collapse; font-size: 14px; }
+.collection-admin .admin-people .people-table thead th { width: auto; padding: 5px 12px; background: var(--sunk); color: var(--secondary); font-size: 13px; font-weight: 500; text-align: left; text-transform: none; letter-spacing: 0; white-space: nowrap; vertical-align: middle; }
+.collection-admin .admin-people .people-table thead th:first-child { padding-left: 14px; }
+.collection-admin .admin-people .people-table thead .people-th-actions { width: 356px; }
+/* The state in sentence case, like the headers (globals.css .badge is upper case and letter-spaced). */
+.collection-admin .admin-people .people-table .badge { margin: 0; font-family: var(--body); font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.collection-admin .admin-people .people-table tbody th,
+.collection-admin .admin-people .people-table td { width: auto; padding: 12px; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font-size: 14px; font-weight: 400; text-align: left; white-space: nowrap; vertical-align: middle; }
+.collection-admin .admin-people .people-table tbody th { padding-left: 14px; white-space: normal; }
+.collection-admin .admin-people .people-email { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.collection-admin .admin-people .people-name { display: block; margin-top: 1px; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.collection-admin .admin-people .people-table tr.is-banned .people-email { color: var(--muted); }
+.collection-admin .admin-people .people-table time { color: var(--secondary); }
+.collection-admin .admin-people .people-table td.people-actions-cell { white-space: normal; }
+.collection-admin .admin-people .people-table td.people-none { padding: 18px 14px; color: var(--secondary); white-space: normal; }
+.collection-admin .admin-people .people-self { font-size: 13px; color: var(--muted); }
+
+/* A row's commands, and the question or form that takes their place. */
+.collection-admin .admin-people .people-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.collection-admin .admin-people .people-actions .button,
+.collection-admin .admin-people .people-panel .button { min-height: 36px; padding: 6px 12px; white-space: nowrap; }
+.collection-admin .admin-people .people-ask > summary { list-style: none; cursor: pointer; }
+.collection-admin .admin-people .people-ask > summary::-webkit-details-marker { display: none; }
+.collection-admin .admin-people .people-ask[open] { flex-basis: 100%; }
+.collection-admin .admin-people .people-ask[open] > summary { background: var(--soft); border-color: var(--accent); width: fit-content; }
+.collection-admin .admin-people .people-ask > .people-panel { margin-top: 8px; }
+.collection-admin .admin-people .people-panel { display: grid; gap: 10px; padding: 12px 14px; border-radius: 8px; background: var(--sunk); }
+.collection-admin .admin-people .people-panel p { font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.collection-admin .admin-people .people-panel b { font-weight: 600; }
+.collection-admin .admin-people .people-panel-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.collection-admin .admin-people .people-password-form { display: grid; gap: 10px; }
+.collection-admin .admin-people .people-panel .people-field input { padding-block: 7px; }
+
+/* Up to a tablet the rows are cards and the header is a visible row of filters: no column scrolls sideways and no
+   filter is a hidden tab stop. */
+@media (max-width: 900px) {
+  .collection-admin .admin-people .people-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .collection-admin .admin-people .people-table,
+  .collection-admin .admin-people .people-table thead,
+  .collection-admin .admin-people .people-table tbody { display: block; }
+  .collection-admin .admin-people .people-table thead tr { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; padding: 4px 12px; border-radius: 8px; background: var(--sunk); }
+  .collection-admin .admin-people .people-table thead tr::before { content: "Filtrează după" / ""; margin-right: 2px; color: var(--muted); font-size: 13px; }
+  .collection-admin .admin-people .people-table thead th,
+  .collection-admin .admin-people .people-table thead th:first-child { display: block; padding: 0; background: none; }
+  .collection-admin .admin-people .people-table thead .people-th-actions { display: none; }
+  .collection-admin .admin-people .people-table tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 150px)); gap: 12px 24px; padding: 16px 2px; border-bottom: 1px solid var(--line); }
+  .collection-admin .admin-people .people-table tbody th,
+  .collection-admin .admin-people .people-table td { display: block; padding: 0; border: 0; }
+  .collection-admin .admin-people .people-table .people-account,
+  .collection-admin .admin-people .people-table .people-actions-cell,
+  .collection-admin .admin-people .people-table .people-none { grid-column: 1 / -1; }
+  .collection-admin .admin-people .people-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--muted); font-size: 12px; }
+  .collection-admin .admin-people .people-email { font-size: 15px; }
+}
+@media (max-width: 600px) {
+  .collection-admin .admin-people .people-heading h2 { font-size: 21px; }
+  .collection-admin .admin-people .people-accounts { margin-top: 36px; padding-top: 28px; }
+  .collection-admin .admin-people .people-create-form { padding: 16px; }
+  .collection-admin .admin-people .people-fields { grid-template-columns: minmax(0, 1fr); }
+  .collection-admin .admin-people .people-field input { font-size: 16px; }
+  .collection-admin .admin-people .button,
+  .collection-admin .admin-people .people-actions .button,
+  .collection-admin .admin-people .people-panel .button { min-height: 44px; }
+  .collection-admin .admin-people .people-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .collection-admin .admin-people .people-actions > *,
+  .collection-admin .admin-people .people-actions .button { width: 100%; padding-inline: 6px; }
+  .collection-admin .admin-people .people-ask[open] { grid-column: 1 / -1; }
+  .collection-admin .admin-people .people-table tbody tr { gap: 12px 16px; }
+  .collection-admin .admin-people .people-reveal { min-width: 44px; }
+}
+.collection-admin .admin-people .people-accounts .tf-band { margin-top: 16px; }

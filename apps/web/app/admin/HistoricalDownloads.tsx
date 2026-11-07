@@ -26,7 +26,7 @@ export default function HistoricalDownloads({data,stale}:{data:CollectionStatus;
   <div className="recovery-heading"><h2 id="historical-title">Descărcări istorice</h2><span>În fundal, după colectarea zilnică · nu intră în progresul de mai sus</span></div>
   <div className="historical-grid">
    <article className="historical-card" aria-labelledby="historical-awards">
-    <div className="historical-card-heading"><h3 id="historical-awards">Atribuiri SEAP · detalii și loturi</h3><span className={`badge ${awardsHalted&&!awardsDone?'warning':'neutral'}`}>{awardsState}</span></div>
+    <div className="historical-card-heading"><h3 id="historical-awards">Atribuiri SEAP · detalii și loturi</h3><span className="badge neutral">{awardsState}</span></div>
     {!a.lastEnqueue?<p className="historical-note">Nicio descărcare istorică programată.</p>:<>
      <div className="historical-figure"><strong>{f.percent===null?'—':`≈ ${f.percent}%`}</strong><span>din cererile estimate · {fmt(f.done)} încheiate</span></div>
      {f.percent!==null&&<progress max={100} value={f.percent} aria-label="Progresul descărcării istorice SEAP"/>}
@@ -43,7 +43,7 @@ export default function HistoricalDownloads({data,stale}:{data:CollectionStatus;
     </>}
    </article>
    <article className="historical-card" aria-labelledby="historical-ted">
-    <div className="historical-card-heading"><h3 id="historical-ted">TED · pachete zilnice OJ S</h3><span className={`badge ${tedPaused?'warning':'neutral'}`}>{tedState}</span></div>
+    <div className="historical-card-heading"><h3 id="historical-ted">TED · pachete zilnice OJ S</h3><span className={`badge ${tedPaused&&t.failedAttempt?'warning':'neutral'}`}>{tedState}</span></div>
     {!t.latest?<p className="historical-note">Niciun pachet TED arhivat încă.</p>:<>
      <div className="historical-figure"><strong>{ojs(t.latest.ojs)}</strong><span>ultimul număr arhivat · {day(t.latest.day)}</span></div>
      <p className="historical-eta">{t.behind===0?'La zi cu numerele publicate.':tedPaused?'Termen suspendat cât timp fluxul TED e pe pauză.':<>≈ {fmt(t.behind!)} {t.behind===1?'număr rămas':'numere rămase'} · ≈ {duration(tedMinutes)} · încheiere estimată {finish(now,tedMinutes)}</>}</p>
