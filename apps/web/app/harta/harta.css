@@ -38,18 +38,18 @@
 /* One continuous intensity: --map-4 (deep green on light, pale green on dark) over the surface, its opacity proportional to lei per inhabitant.
    The transition is the map's motion: a layer's first fill (from the base tint, all areas together; MapExplorer
    useFillIn) and a filter's new values. */
-.mx-area{fill:var(--map-4);stroke:var(--paper);stroke-width:.8;cursor:pointer;transition:fill var(--slow) var(--ease),fill-opacity var(--slow) var(--ease)}
+.mx-area{fill:var(--map-4);stroke:var(--paper);stroke-width:.8;cursor:pointer;transition:fill calc(var(--slow) * var(--chart-pace)) var(--ease),fill-opacity calc(var(--slow) * var(--chart-pace)) var(--ease)}
 /* Drawn above every area, so the ink closes on all edges. */
 .mx-outline{fill:none;stroke:var(--ink);stroke-width:2}
 .mx-open-edge{fill:none;stroke:var(--ink2);stroke-width:1.5}
 .mx-area.is-gap{fill:url(#mx-hatch);fill-opacity:1}
 .mx-hatch-bg{fill:var(--sunk)}
 .mx-hatch-line{stroke:var(--line2);stroke-width:2}
-.mx-counties.is-back .mx-area{fill:var(--paper);fill-opacity:1;stroke:var(--line);cursor:pointer}
+.mx-counties.is-back .mx-area{fill:var(--paper);fill-opacity:1;stroke:var(--line);cursor:pointer;transition-duration:var(--slow)} /* a hover, not a chart: off the pace */
 .mx-counties.is-back .mx-area:hover{fill:var(--accent-soft)}
 .mx-counties.is-back .mx-area.is-open{fill:none;stroke:none;pointer-events:none}
 /* The open county's layer appears with the camera's glide; its areas then fill in (above). */
-.mx-uats{animation:mx-in var(--slow) var(--ease) both}
+.mx-uats{animation:mx-in calc(var(--slow) * var(--chart-pace)) var(--ease) both}
 .mx-uats .mx-area{stroke-width:.6}
 @keyframes mx-in{from{opacity:0}}
 
@@ -171,7 +171,7 @@
 .mx-p-years{display:block;width:100%;height:auto;overflow:visible}
 /* Another filter for the same UAT: its years' bars and dots move to the new values (the county's average moves by its
    transform, .cm-tw). */
-.mx-p-bar{fill:var(--accent);transition:y var(--med) var(--ease),height var(--med) var(--ease)}
+.mx-p-bar{fill:var(--accent);transition:y calc(var(--med) * var(--chart-pace)) var(--ease),height calc(var(--med) * var(--chart-pace)) var(--ease)}
 .mx-p-bar.is-peak{fill:var(--orange)}
 .mx-p-bar.is-current{opacity:.55}
 .mx-p-bar.is-out{opacity:.25}
@@ -199,9 +199,9 @@ span.mx-p-yr{cursor:default}
 .mx-p-rows b{font:500 12.5px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 .mx-p-wide{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
 .mx-p-near{display:block;width:100%;height:auto;overflow:visible}
-.mx-p-dot{fill:var(--choro-2);cursor:pointer;stroke:transparent;stroke-width:8px;transition:fill var(--fast) var(--ease),cx var(--med) var(--ease),cy var(--med) var(--ease)}
+.mx-p-dot{fill:var(--choro-2);cursor:pointer;stroke:transparent;stroke-width:8px;transition:fill var(--fast) var(--ease),cx calc(var(--med) * var(--chart-pace)) var(--ease),cy calc(var(--med) * var(--chart-pace)) var(--ease)}
 .mx-p-dot:hover{fill:var(--choro-4)}
-.mx-p-me{fill:none;stroke:var(--orange);stroke-width:2.5;transition:cx var(--med) var(--ease),cy var(--med) var(--ease)}
+.mx-p-me{fill:none;stroke:var(--orange);stroke-width:2.5;transition:cx calc(var(--med) * var(--chart-pace)) var(--ease),cy calc(var(--med) * var(--chart-pace)) var(--ease)}
 .mx-p-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
 .mx-p-wait,.mx-p-error{margin:8px 0;font-size:14px;color:var(--muted)}
 /* The ghost while a UAT loads: its content's shape in quiet pulsing blocks, shown after 120 ms so a quick answer never flashes it. */

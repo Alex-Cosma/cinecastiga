@@ -55,11 +55,11 @@
    stay over --med; above 400 dots (.pxs-many) they do not slide, the group crossfades instead. */
 .pxs-band.cm-fade,.pxs-median.cm-fade{--cm-dur:var(--fast)}
 .pxs-dot.cm-pt,.pxs-dots.cm-fade{--cm-d:100ms}
-.pxs-band{transition:x var(--med) var(--ease),width var(--med) var(--ease)}
-.pxs-dot{fill:var(--choro-2);transition:cx var(--med) var(--ease),cy var(--med) var(--ease),r var(--fast) var(--ease)}
+.pxs-band{transition:x calc(var(--med) * var(--chart-pace)) var(--ease),width calc(var(--med) * var(--chart-pace)) var(--ease)}
+.pxs-dot{fill:var(--choro-2);transition:cx calc(var(--med) * var(--chart-pace)) var(--ease),cy calc(var(--med) * var(--chart-pace)) var(--ease),r var(--fast) var(--ease)}
 .pxs-many .pxs-dot{transition:r var(--fast) var(--ease)}
 .pxs-dot.on{fill:var(--choro-4)}
-.pxs-focal{fill:color-mix(in srgb,var(--orange) 16%,transparent);stroke:var(--orange);stroke-width:2.5;transition:cx var(--med) var(--ease)}
+.pxs-focal{fill:color-mix(in srgb,var(--orange) 16%,transparent);stroke:var(--orange);stroke-width:2.5;transition:cx calc(var(--med) * var(--chart-pace)) var(--ease)}
 .pxs-focal-rule{stroke:var(--orange);stroke-width:1.5}
 .pxs-focal-t{font:600 13px var(--body);fill:var(--orange);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
 .pxs-tip{position:absolute;z-index:3;transform:translate(-50%,calc(-100% - 12px));display:grid;gap:1px;width:max-content;max-width:min(320px,90vw);padding:8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);pointer-events:none;font-size:13px;line-height:1.4;color:var(--ink2)}

@@ -4,14 +4,19 @@
    view, when the chart first enters the viewport (app/Reveal.tsx arms the gate), never on back/forward. Data changing
    for the same subject tweens (.cm-tw). Bars are revealed with clip-path, not scaled: rounded ends keep their shape and
    numbers inside segments are never squashed. Stagger in reading order only: style="--i: n". */
-:root { --chart-in: var(--slow); --chart-tw: var(--med); --chart-step: 24ms; --chart-cap: 240ms; }
+/* The pace (owner, 7 November 2026): one number for the speed of every chart on the site. 1 is the motion of
+   6 November; 1.5 takes half as long again. Durations, delays and staggers are written at pace 1 (these tokens, a
+   chart's own --cm-dur/--cm-d) and multiplied where they are used: entrances and tweens here, the map fills and the
+   chart tweens of harta.css, peers.css, connections.css, relations.css and question-results.css, and the JS glides and
+   fills (components/motion/pace.ts). Hover feedback, panels and the methodology's story keep their own timing. */
+:root { --chart-pace: 1.5; --chart-in: var(--slow); --chart-tw: var(--med); --chart-step: 24ms; --chart-cap: 240ms; }
 @media (max-width: 640px) { :root { --chart-step: 12ms; --chart-cap: 160ms; } }
 
 .cm-x, .cm-xr, .cm-y, .cm-yd, .cm-pt, .cm-fade, .cm-draw, .cm-in {
   /* backwards: the start state holds through the delay; once over, nothing is held, so a later tween (.cm-tw) on the
      same element still transitions and nothing stays clipped. */
-  animation: var(--cm-k) var(--cm-dur, var(--chart-in)) var(--ease) backwards;
-  animation-delay: calc(var(--cm-d, 0ms) + min(calc(var(--i, 0) * var(--chart-step)), var(--chart-cap)));
+  animation: var(--cm-k) calc(var(--cm-dur, var(--chart-in)) * var(--chart-pace)) var(--ease) backwards;
+  animation-delay: calc((var(--cm-d, 0ms) + min(calc(var(--i, 0) * var(--chart-step)), var(--chart-cap))) * var(--chart-pace));
 }
 .cm-x { --cm-k: cm-x; }       /* a bar grows to the right; a stacked bar as one */
 .cm-xr { --cm-k: cm-xr; }     /* a bar grows to the left (the left half of a diverging pair) */
@@ -32,9 +37,10 @@
 @keyframes cm-pt { from { opacity: 0; transform: scale(.5); } }
 
 /* Data changing in place for the same subject: React keeps the element and changes its inline geometry. */
-.cm-tw { transition: width var(--chart-tw) var(--ease), height var(--chart-tw) var(--ease), left var(--chart-tw) var(--ease),
-  bottom var(--chart-tw) var(--ease), flex-grow var(--chart-tw) var(--ease), transform var(--chart-tw) var(--ease),
-  fill var(--chart-tw) var(--ease), fill-opacity var(--chart-tw) var(--ease), opacity var(--chart-tw) var(--ease); }
+.cm-tw { --cm-tw: calc(var(--chart-tw) * var(--chart-pace));
+  transition: width var(--cm-tw) var(--ease), height var(--cm-tw) var(--ease), left var(--cm-tw) var(--ease),
+  bottom var(--cm-tw) var(--ease), flex-grow var(--cm-tw) var(--ease), transform var(--cm-tw) var(--ease),
+  fill var(--cm-tw) var(--ease), fill-opacity var(--cm-tw) var(--ease), opacity var(--cm-tw) var(--ease); }
 
 /* The gate: a chart that starts below the fold waits, hidden, until it is scrolled into view. Only JS arms it, so
    without JS, before hydration and in print every chart is complete. */

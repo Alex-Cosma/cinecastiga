@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type AnimationEvent } from "react";
+import { chartPace } from "@/components/motion/pace";
 
 /*
  * Motion for /harta's charts (owner, 6 November 2026; DESIGN.md "Charts in motion"). The vocabulary is the shared kit
@@ -50,7 +51,8 @@ export function useEntrance(subject: string, keys: readonly string[]) {
 }
 
 /**
- * The map's camera: the SVG viewBox eases (ease-out cubic) from where it is to the target, over 560 ms. The one
+ * The map's camera: the SVG viewBox eases (ease-out cubic) from where it is to the target, over 560 ms at pace 1
+ * (--chart-pace, components/motion/pace.ts). The one
  * motion on the site longer than --slow besides the methodology's story (DESIGN.md: "the /harta camera move"). The
  * first view, and reduced motion, take the target at once.
  */
@@ -62,9 +64,9 @@ export function useGlide<T extends readonly number[]>(target: T | null, duration
     const from = at.current;
     if (!from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { at.current = target; setView(target); return; }
     let raf = 0;
-    const t0 = performance.now();
+    const t0 = performance.now(), length = duration * chartPace();
     const step = (now: number) => {
-      const k = Math.min(1, (now - t0) / duration), e = 1 - Math.pow(1 - k, 3);
+      const k = Math.min(1, (now - t0) / length), e = 1 - Math.pow(1 - k, 3);
       const next = from.map((f, i) => f + (target[i]! - f) * e) as unknown as T;
       at.current = next; setView(next);
       if (k < 1) raf = requestAnimationFrame(step);
