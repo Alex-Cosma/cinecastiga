@@ -155,6 +155,8 @@ Corners are gently rounded. Compact fields/messages, controls, larger surfaces, 
 
 **Navigation.** The shared header and private-workspace destination links retain the approved typography and active underline. Active state is exposed semantically as well as visually. Responsive navigation changes arrangement rather than inventing a separate mobile identity.
 
+**Administration (owner, 7 November 2026).** An Operate surface: sticky tabs (Acum, Trafic SEAP, Procesare, Fișiere, Oameni), the page name as h1, one form and one committing button per task. The collector's band is the one dark surface: only a healthy run is forest green; waits and pauses are grey-green, maintenance dark amber, a SEAP refusal brown, silence neutral grey, and each state also has its own dot and words (`app/admin/navigation.css`, `--band-*`). A command's outcome floats under the tabs and never moves the page. Gaps that the next runs will fill are information, not alarms.
+
 **Status chips.** Small accent-soft labels communicate source-change or review state with text. Color is reinforcement, not the only cue.
 
 **Preserved evidence.** A sunk panel separates the frozen record action from live comparison links. Clear source counts and “before” / “after” wording identify what will open. This is a signature investigative component already present in the Batch 2 workspace and extended by monitoring.
