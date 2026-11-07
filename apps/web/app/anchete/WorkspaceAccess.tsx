@@ -2,6 +2,7 @@
 import { useState, type FormEvent } from "react";
 import type { WorkspaceMembers } from "@/lib/investigation-workspace";
 import { Ghost } from "@/components/ghost/Ghost";
+import { privateDay } from "@/lib/private-format";
 
 export default function WorkspaceAccess({ id }: { id: string }) {
   const [data, setData] = useState<WorkspaceMembers | null>(null);
@@ -35,7 +36,7 @@ export default function WorkspaceAccess({ id }: { id: string }) {
           <button type="submit" className="iw-primary">{busy ? "Se creează…" : "Creează link de invitație"}</button><p className="iw-muted">Valabil 7 zile. Trimite tu linkul; nu trimitem e-mail.</p>
         </fieldset></form>;
   return <details className="iw-access" onToggle={event => { if (event.currentTarget.open && !data) void reload().catch(failure => setError(String(failure.message))); }}>
-    <summary>Acces privat și colaboratori</summary>
+    <summary>Colaboratori</summary>
     <div className="iw-access-content"><p>Dosarul este privat. Invitația funcționează doar pentru contul cu adresa aleasă și confirmată; simpla posesie a linkului nu oferă acces.</p>
       {error && <p className="iw-error" role="alert">{error}</p>}<p role="status">{notice}</p>
       {/* While the access list loads (owner, 6 November 2026: "ghost data loading"), the invitation form is already in
@@ -50,8 +51,8 @@ export default function WorkspaceAccess({ id }: { id: string }) {
           <details><summary>Retrage accesul</summary><p>{member.name} nu va mai putea deschide dosarul. Copiile deja exportate rămân la destinatar.</p><button type="button" className="iw-danger" disabled={busy} onClick={() => { void act(`${base}/members/${member.id}`, "DELETE"); setInvite(""); }}>Confirmă retragerea</button></details>
         </li>)}</ul>}
         {shareForm(false)}
-        {invite && <div className="iw-invite-copy"><label>Linkul creat<input readOnly value={invite} onFocus={event => event.currentTarget.select()} /></label><button type="button" onClick={() => void navigator.clipboard.writeText(invite).then(() => setCopied(true)).catch(() => setError("Selectează și copiază linkul din câmp."))}>{copied ? "Link copiat" : "Copiază linkul"}</button></div>}
-        {data.invites.length > 0 && <><h3>Invitații în așteptare</h3><ul className="iw-pending-invites">{data.invites.map(item => <li key={item.id}><span>{item.email} · {item.role === "editor" ? "editor" : "cititor"}<small>Expiră la {new Date(item.expiresAt).toLocaleDateString("ro-RO")}</small></span><button type="button" disabled={busy} onClick={() => { void act(`${base}/invites/${item.id}`, "DELETE"); setInvite(""); }}>Revocă invitația</button></li>)}</ul></>}
+        {invite && <div className="iw-invite-copy" role="status"><p className="iw-invite-once">Linkul apare o singură dată: copiază-l acum și trimite-l colegului.</p><label>Linkul invitației<input readOnly value={invite} onFocus={event => event.currentTarget.select()} /></label><button type="button" onClick={() => void navigator.clipboard.writeText(invite).then(() => setCopied(true)).catch(() => setError("Selectează și copiază linkul din câmp."))}>{copied ? "Link copiat" : "Copiază linkul"}</button></div>}
+        {data.invites.length > 0 && <><h3>Invitații în așteptare</h3><ul className="iw-pending-invites">{data.invites.map(item => <li key={item.id}><span>{item.email} · {item.role === "editor" ? "editor" : "cititor"}<small>Expiră la {privateDay(item.expiresAt)}</small></span><button type="button" disabled={busy} onClick={() => { void act(`${base}/invites/${item.id}`, "DELETE"); setInvite(""); }}>Revocă invitația</button></li>)}</ul></>}
       </>}
     </div>
   </details>;

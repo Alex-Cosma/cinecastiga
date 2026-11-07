@@ -49,7 +49,13 @@
 .d-global-search{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:transparent;color:var(--ink);font-family:var(--body);font-size:11px;cursor:pointer;min-height:36px;white-space:nowrap}
 .d-global-search>.d-icon{width:16px;height:16px}.d-global-search kbd{font:10px var(--body);background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-left:6px;color:var(--muted)}
 .d-global-search:hover{background:var(--accent-soft)}.hdr-right .theme-btn{background:transparent;border-color:var(--line);width:30px;height:30px}
-.hdr-right .user-nav{font-size:11px}.hdr-right .user-nav a{padding:6px 4px}.hdr-right .user-nav a[href="/anchete"]{display:none}
+.hdr-right .user-nav{font-size:11px}.hdr-right .user-nav a{padding:6px 4px}
+/* The account avatar on /cont: a ring in the active colour (no pill, no size change: the header layout is approved). */
+.user-nav .avatar-link.on{background:none}.user-nav .avatar-link.on .avatar{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--accent)}
+/* The main navigation's links are as tall as the header: an outline around them would be cut at the window's top
+   edge. The site's ring (3px orange, 4px off the text) is drawn around the label instead. */
+.d-main-nav>a:focus-visible{outline:none}
+.d-main-nav>a:focus-visible:before{content:"";position:absolute;left:-7px;right:-7px;top:50%;height:calc(1.3em + 14px);transform:translateY(-50%);border:3px solid var(--orange);border-radius:4px;pointer-events:none}
 .site-footer{margin-top:20px}.site-footer .wrap{grid-template-columns:1.8fr 1.1fr .7fr;gap:50px;font-size:11px;line-height:1.9;padding-top:30px;padding-bottom:36px}.site-footer h4{font-size:10px;letter-spacing:1px}.site-footer .d-footer-brand{font-size:23px;letter-spacing:-1px;text-transform:none;color:var(--accent);line-height:1.2;margin-bottom:13px}.site-footer ul{gap:5px}
 
 .discovery-page{padding:0 0 15px}.discovery-page h1,.discovery-page h2,.discovery-page h3{font-family:var(--display);line-height:1.12;margin:0;font-weight:500}.discovery-page p{margin:0}.discovery-page a:hover{text-decoration:none}

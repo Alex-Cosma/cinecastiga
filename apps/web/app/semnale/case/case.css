@@ -210,7 +210,6 @@ a.c-title:hover{color:var(--accent);text-decoration:underline}
 .c-seap{display:inline-flex;align-items:center;gap:3px;height:30px;padding:0 4px;vertical-align:middle;color:var(--accent);font-size:13px;font-weight:600;text-decoration:none}
 .c-seap:hover{text-decoration:underline}
 .c-act .clipbtn{vertical-align:middle;margin-left:6px;font-size:14px}
-.c-act .clipbtn-pop{left:auto;right:0;text-align:left;white-space:normal;max-width:calc(100vw - 32px)}
 .sgc .clipbtn,.sgc .clipbtn:hover{padding:0;border:0;background:transparent;box-shadow:none;transform:none}
 .sgc .clipbtn-t.ico{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid var(--line2);border-radius:7px;background:var(--surface);color:var(--accent)}
 .sgc .clipbtn-t.ico:hover{border-color:var(--accent-line);background:var(--accent-soft)}

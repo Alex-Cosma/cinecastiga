@@ -11,7 +11,9 @@ import { MONITORING_CHANGE_TYPES, monitoringRunTag, selectionHref } from "@/lib/
 import { questionTitle } from "@/lib/ask/filters/title";
 import { formatExactDecimal, formatInt } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
-export const moment = (value: string | null | undefined) => value ? new Date(value).toLocaleString("ro-RO", { timeZone: "Europe/Bucharest", dateStyle: "medium", timeStyle: "short" }) : "Încă neverificată";
+import { privateDay, privateMoment, uniqueNotes } from "@/lib/private-format";
+/** One date format in the private space (owner, 7 November 2026): dd.mm.yyyy, with the hour where a check's moment matters. */
+export const moment = (value: string | null | undefined) => privateMoment(value, "Încă neverificată");
 export const money = (value: string | null | undefined) => value == null ? "Valoare necunoscută" : `${formatExactDecimal(value)} lei`;
 export const updateHref = (run: MonitoringRun) => `/urmariri/${run.watchId}/actualizari/${run.id}`;
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -38,7 +40,9 @@ export function ScopeSummary({ scope, notes = [] }: { scope: MonitoringScope; no
   // The question's own sentence (its period included); the receipt below states every rule separately.
   // Do not turn grouped OR date predicates into a single inferred date range.
   const question = questionTitle(scope.spec);
-  return <div className="mon-scope"><p><strong>Întrebarea de pornire: </strong>{question}</p><ScopeConditions scope={scope} />{notes.map((note, i) => <p className="mon-muted" key={i}>{note}</p>)}<Link href={selectionHref(scope)}>Deschide întrebarea și sursele →</Link>{scope.options.members && <p className="mon-muted">Legătura arată grupa de azi; urmărirea păstrează membrii fixați.</p>}<details><summary>Detalii tehnice ale selecției</summary><pre>{JSON.stringify(technical(scope), null, 2)}</pre></details></div>;
+  // Each limit once; three in view, the rest under "Toate limitele (n)" (owner, 7 November 2026).
+  const limits = uniqueNotes(notes);
+  return <div className="mon-scope"><p><strong>Întrebarea de pornire: </strong>{question}</p><ScopeConditions scope={scope} />{limits.shown.length > 0 && <ul className="mon-limits">{limits.shown.map((note, i) => <li key={i}>{note}</li>)}</ul>}{limits.rest.length > 0 && <details className="mon-limits-more"><summary>Toate limitele ({limits.all.length})</summary><ul className="mon-limits">{limits.rest.map((note, i) => <li key={i}>{note}</li>)}</ul></details>}<Link href={selectionHref(scope)}>Deschide întrebarea și sursele →</Link>{scope.options.members && <p className="mon-muted">Legătura arată grupa de azi; urmărirea păstrează membrii fixați.</p>}<details><summary>Detalii tehnice ale selecției</summary><pre>{JSON.stringify(technical(scope), null, 2)}</pre></details></div>;
 }
 export const changeNames = { added: "Înregistrări intrate în selecție", changed: "Corecții în datele sursă", removed: "Înregistrări ieșite din selecție", recalculated: "Rezultate recalculate", methodology: "Metodologie modificată" };
 export interface DigestStatus { available: boolean; reason: string | null; optedInWatches: number; latest: { period: string; status: string; updateCount: number; sentAt: string | null; error: string | null } | null }
@@ -61,7 +65,12 @@ export function RunCardGhost({ i = 0 }: { i?: number }) {
 export function RefreshGhost() {
   return <div className="mon-freshness" aria-hidden="true"><p className="mon-tip-line"><G.Line w="17em" /></p><p className="mon-small-details mon-g-summary"><G.Line inline w="13em" /></p></div>;
 }
-export function RunCard({ run }: { run: MonitoringRun }) {
+/** A run's kind in words: the title of its own page and of its card in the watch's history (owner, 7 November 2026). */
+export const runKindTitle = (run: Pick<MonitoringRun, "kind">) => run.kind === "baseline" ? "Situația de referință" : run.kind === "unchanged" ? "Verificare fără modificări" : "Actualizare";
+export function RunCard({ run, inWatch = false }: { run: MonitoringRun; inWatch?: boolean }) {
   const c = run.counts;
-  return <article className={`mon-update${run.reviewedAt ? " mon-reviewed" : ""}`}><div className="mon-meta"><span className="mon-tag">{monitoringRunTag(run)}</span><time dateTime={run.checkedAt}>{moment(run.checkedAt)}</time>{run.reviewedAt && <span>Verificat ✓</span>}</div><div className="mon-row"><div><h2><Link href={updateHref(run)}>{run.watchTitle}</Link></h2><div className="mon-facts">{c.added > 0 && <span><b>{formatInt(c.added)}</b> intrate în selecție</span>}{c.changed > 0 && <span><b>{formatInt(c.changed)}</b> modificate</span>}{c.removed > 0 && <span><b>{formatInt(c.removed)}</b> ieșite din selecție</span>}{run.kind === "baseline" && <span>{run.rowCount === null ? "Înregistrări păstrate" : countWords(run.rowCount, "înregistrare păstrată", "înregistrări păstrate")} ca reper</span>}{run.kind === "unchanged" && <span>Selecția, rezultatul și metodologia sunt neschimbate.</span>}{run.kind === "update" && c.added + c.removed + c.changed === 0 && <span>Înregistrările sursă sunt neschimbate. Verifică diferențele de rezultat sau metodologie.</span>}</div></div><Link className="mon-button" href={updateHref(run)}>{run.kind === "baseline" ? "Vezi înregistrările" : "Vezi modificările"} →</Link></div></article>;
+  // In the watch's own history the card is the run (kind and day), not the watch's title again.
+  const title = inWatch ? `${runKindTitle(run)} · ${privateDay(run.checkedAt)}` : run.watchTitle;
+  return <article className={`mon-update${run.reviewedAt ? " mon-reviewed" : ""}`}><div className="mon-meta">{(!inWatch || run.kind === "update") && <span className="mon-tag">{monitoringRunTag(run)}</span>}<time dateTime={run.checkedAt}>{moment(run.checkedAt)}</time>{run.reviewedAt && <span>Verificat</span>}</div><div className="mon-row"><div><h2><Link href={updateHref(run)}>{title}</Link></h2><div className="mon-facts">{c.added > 0 && <span><b>{formatInt(c.added)}</b> intrate în selecție</span>}{c.changed > 0 && <span><b>{formatInt(c.changed)}</b> modificate</span>}{c.removed > 0 && <span><b>{formatInt(c.removed)}</b> ieșite din selecție</span>}{run.kind === "baseline" && <span>{run.rowCount === null ? "Înregistrări păstrate" : countWords(run.rowCount, "înregistrare păstrată", "înregistrări păstrate")} ca reper{run.totalExact !== null ? ` · ${money(run.totalExact)}` : ""}</span>}{run.kind === "unchanged" && <span>Selecția, rezultatul și metodologia sunt neschimbate.</span>}{run.kind === "update" && c.added + c.removed + c.changed === 0 && <span>Înregistrările sursă sunt neschimbate. Verifică diferențele de rezultat sau metodologie.</span>}</div></div><Link className="mon-button" href={updateHref(run)}>{run.kind === "baseline" ? "Vezi înregistrările" : "Vezi modificările"} →</Link></div></article>;
 }
+

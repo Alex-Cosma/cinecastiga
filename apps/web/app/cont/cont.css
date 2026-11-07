@@ -1,0 +1,53 @@
+/* /cont, the private space's third tab (owner, 7 November 2026): the anchete page's vocabulary (display headings, open
+   sections split by a line, a label column beside its form), fields with resting borders at 3:1 or more. */
+.cont-page{--field-line:color-mix(in srgb,var(--muted) 85%,var(--surface))}
+.cont-title{font-family:var(--display);font-size:36px;line-height:1.15;letter-spacing:-.025em;margin:0 0 22px}
+.cont-identity{display:flex;align-items:flex-start;justify-content:space-between;gap:16px 32px;padding:0 0 30px}
+.cont-facts{display:grid;gap:8px;margin:0;min-width:0}
+.cont-facts>div{display:grid;grid-template-columns:8.5rem minmax(0,1fr);gap:16px;align-items:baseline}
+.cont-facts dt{font-size:13px;color:var(--muted)}
+.cont-facts dd{margin:0;font-size:15px;color:var(--ink);min-width:0}
+.cont-facts a{text-underline-offset:4px}
+.cont-section{display:grid;grid-template-columns:1fr 1.5fr;gap:40px;padding:34px 0;border-top:1px solid var(--line2)}
+.cont-section h2{font-family:var(--display);font-size:26px;line-height:1.25;letter-spacing:-.015em;margin:0}
+.cont-form{display:grid;gap:18px;max-width:440px}
+.cont-field{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--ink2)}
+.cont-field input{font:inherit;font-size:15px;font-weight:400;color:var(--ink);background:var(--surface);border:1px solid var(--field-line);border-radius:8px;padding:10px 12px;min-height:44px;width:100%;min-width:0;box-sizing:border-box;caret-color:var(--accent);transition:border-color var(--fast)}
+.cont-field input:hover{border-color:var(--ink2)}
+.cont-field input:focus{border-color:var(--accent)}
+.cont-field input[aria-invalid=true]{border-color:var(--risk)}
+.cont-pass{display:flex;gap:8px}
+.cont-pass input{flex:1}
+.cont-show{min-width:6.5em}
+.cont-rule{margin:0;font-size:13px;font-weight:400;color:var(--muted)}
+.cont-note{margin:0;font-size:13px;color:var(--ink2)}
+.cont-actions{display:flex}
+.cont-primary{display:inline-flex;justify-content:center;align-items:center;min-height:44px;padding:10px 17px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background var(--fast),border-color var(--fast)}
+.cont-primary:hover:not(:disabled){background:var(--ink);border-color:var(--ink)}
+.cont-button,.cont-show{display:inline-flex;justify-content:center;align-items:center;min-height:44px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:inherit;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background var(--fast),border-color var(--fast)}
+.cont-button:hover:not(:disabled),.cont-show:hover{background:var(--sunk);border-color:var(--accent-line)}
+.cont-primary:disabled,.cont-button:disabled{opacity:.6;cursor:default}
+/* Live regions stay in the accessibility tree while empty (announced when filled); out of the grid, they add no gap. */
+.cont-alert:empty,.cont-done:empty{position:absolute}
+.cont-alert p{margin:0;font-size:14px;line-height:1.5;color:var(--risk)}
+.cont-alert a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.cont-done{margin:0;font-size:14px;color:var(--ink)}
+.cont-sessions-wrap{display:grid;gap:14px;min-width:0}
+.cont-sessions{list-style:none;margin:0;padding:0}
+.cont-session{display:flex;align-items:center;justify-content:space-between;gap:12px 24px;padding:14px 0;border-bottom:1px solid var(--line)}
+.cont-session:first-child{padding-top:0}
+.cont-session>div{min-width:0}
+.cont-device{margin:0;font-size:15px;font-weight:600;color:var(--ink)}
+.cont-this{display:inline-block;margin-left:10px;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:12px;font-weight:500;vertical-align:1px}
+.cont-meta{margin:2px 0 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+@media(max-width:760px){
+  .cont-section{grid-template-columns:1fr;gap:18px;padding:26px 0}
+  .cont-form{max-width:none}
+}
+@media(max-width:700px){
+  .cont-title{font-size:30px}
+  .cont-identity{flex-direction:column;padding-bottom:26px}
+  .cont-facts>div{grid-template-columns:7rem minmax(0,1fr);gap:12px}
+  .cont-field input{font-size:16px}
+  .cont-session{align-items:flex-start;flex-direction:column}
+}

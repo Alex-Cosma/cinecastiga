@@ -14,7 +14,10 @@ export interface AtlasNode {
   count?: number;
   children?: readonly unknown[];
   isLeaf?: boolean;
+  /** A CSS colour for the tile, normally a theme variable (`var(--dm-c-45)`, domains.css), so dark mode has its own. */
   color?: string;
+  /** The text colour on that fill (≥ 4.5:1 in both themes), also a theme variable. */
+  ink?: string;
   isOther?: boolean;
 }
 
@@ -33,7 +36,7 @@ export interface DomainAtlasProps {
 /** The last drawing: its scope, each tile's place and value by code, and whether its entrance has played. */
 export interface AtlasMemory { scope: string; tiles: ReadonlyMap<string, string>; played: boolean }
 
-type RenderedNode = AtlasNode & { color: string };
+type RenderedNode = AtlasNode & { color: string; ink: string };
 interface AtlasItem {
   group: SVGGElement;
   body: SVGGElement;
@@ -63,7 +66,8 @@ export function DomainAtlas({ nodes, onExplore, onDetails, shareLabel = "din sel
 
 export default DomainAtlas;
 const NS = "http://www.w3.org/2000/svg";
-const palette = ["#315b47", "#52775b", "#8aa17a", "#b2bf97", "#668c82", "#bd916f", "#d5dbc0", "#78946e"];
+/* Without a colour from the page, the tiles take the theme's fallback palette (domains.css: light and dark values). */
+const palette = [0, 1, 2, 3, 4].map((i) => ({ color: `var(--dm-p-${i})`, ink: i === 0 ? "var(--dm-ink-on-deep)" : "var(--dm-ink-on-pale)" }));
 const money = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
 const exactMoney = new Intl.NumberFormat("ro-RO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
@@ -80,28 +84,6 @@ function compactMoney(value: number): string {
   return `${money.format(value)} lei`;
 }
 
-function labelColor(color: string): string {
-  // Canvas resolves ordinary CSS colors to RGB without external dependencies.
-  const context = document.createElement("canvas").getContext("2d");
-  if (!context) return "#fffef5";
-  context.fillStyle = "#315b47";
-  context.fillStyle = color;
-  const resolved = context.fillStyle;
-  let rgb: number[];
-  if (resolved.startsWith("#")) {
-    let hex = resolved.slice(1);
-    if (hex.length === 3) hex = [...hex].map((character) => character + character).join("");
-    rgb = [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16));
-  } else {
-    rgb = (resolved.match(/[\d.]+/g) || [49, 91, 71]).slice(0, 3).map(Number);
-  }
-  const luminance = rgb.map((channel) => {
-    const value = channel / 255;
-    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  }).reduce((sum, value, index) => sum + value * ([0.2126, 0.7152, 0.0722][index] ?? 0), 0);
-  return 1.05 / (luminance + 0.05) > (luminance + 0.05) / 0.087 ? "#fffef5" : "#203c2f";
-}
-
 /** DOM ownership is limited to the component's empty mount and its tooltip. */
 function mountAtlas(
   container: HTMLDivElement,
@@ -114,7 +96,10 @@ function mountAtlas(
   memory: { current: AtlasMemory | null },
 ): () => void {
   const data = nodes.filter((node) => Number.isFinite(Number(node.value)) && Number(node.value) > 0)
-    .map((node, index) => ({ ...node, value: Number(node.value), color: node.color || palette[index % palette.length]! }))
+    .map((node, index) => {
+      const fallback = palette[index % palette.length]!;
+      return { ...node, value: Number(node.value), color: node.color || fallback.color, ink: node.color ? node.ink || "var(--dm-ink-on-pale)" : fallback.ink };
+    })
     .sort((a, b) => b.value - a.value);
   const total = data.reduce((sum, node) => sum + node.value, 0);
   const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -185,16 +170,17 @@ function mountAtlas(
     }
     const description = node.isOther ? `${node.children?.length || ""} domenii grupate` : `CPV ${node.code}`;
     const hint = owner === active.arrow || (active === hovered && hoveredAction === "details") ? "Deschide detaliile și contractele" : actionFor(node);
+    // Rows by class (domain-atlas.css): the theme's own muted text and line, in light and dark.
     const rows: [string, string][] = [
-      [node.name, "font-size:16px;font-weight:600;line-height:1.3;letter-spacing:-.25px"],
-      ...(node.officialName && node.officialName !== node.name ? [[node.officialName, "margin-top:5px;font-size:11px;color:#687561"] as [string, string]] : []),
-      [description, "margin-top:9px;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#687561"],
-      [node.valueExact !== undefined ? formatEvidenceAmount(node.valueExact) : `${exactMoney.format(node.value)} lei`, "margin-top:8px;font-size:17px;font-weight:550;font-variant-numeric:tabular-nums;letter-spacing:-.3px"],
-      [`${percent.format(share)}% ${shareLabel}`, "margin-top:1px;color:#687561"],
-      [`${hint} →`, "margin-top:12px;padding-top:10px;border-top:1px solid #e2e7db;font-weight:550;font-size:11px"],
+      [node.name, "dat-name"],
+      ...(node.officialName && node.officialName !== node.name ? [[node.officialName, "dat-official"] as [string, string]] : []),
+      [description, "dat-code"],
+      [node.valueExact !== undefined ? formatEvidenceAmount(node.valueExact) : `${exactMoney.format(node.value)} lei`, "dat-value"],
+      [`${percent.format(share)}% ${shareLabel}`, "dat-share"],
+      [`${hint} →`, "dat-hint"],
     ];
-    tooltip.replaceChildren(...rows.map(([text, style]) => {
-      const row = document.createElement("div"); row.textContent = text; row.style.cssText = style; return row;
+    tooltip.replaceChildren(...rows.map(([text, className]) => {
+      const row = document.createElement("div"); row.textContent = text; row.className = className; return row;
     }));
     tooltip.hidden = false;
     positionTooltip(active, active === hovered);
@@ -260,8 +246,9 @@ function mountAtlas(
     for (const [index, tile] of tiles.entries()) {
       const { node } = tile;
       const share = node.value / total * 100;
-      const ink = labelColor(node.color);
-      const group = el("g", { "data-atlas-tile": node.code });
+      const ink = node.ink;
+      // The tile's group only holds its two controls: never a stop of its own in the Tab order (Chrome made it one).
+      const group = el("g", { "data-atlas-tile": node.code, tabindex: "-1" });
       group.style.cssText = `transition:${motion.matches ? "none" : "opacity var(--fast) var(--ease)"}`;
       if (entrance && !whole && changed(String(node.code))) {
         group.classList.add(entrance);
@@ -279,9 +266,12 @@ function mountAtlas(
       // have a shared four-pixel gutter, without inflating small categories.
       body.append(el("rect", { x: tile.x, y: tile.y, width: tile.w, height: tile.h, fill: "transparent" }));
       const w = Math.max(0, tile.w - 4), h = Math.max(0, tile.h - 4);
-      const face = el("rect", { x: tile.x + 2, y: tile.y + 2, width: w, height: h, rx: Math.min(6, w / 2, h / 2), fill: node.color });
+      // Fill and ink are theme variables: a style, since SVG presentation attributes do not read var().
+      const face = el("rect", { x: tile.x + 2, y: tile.y + 2, width: w, height: h, rx: Math.min(6, w / 2, h / 2) });
+      face.style.fill = node.color;
       body.append(face);
-      const outline = el("rect", { x: tile.x + 4, y: tile.y + 4, width: Math.max(0, w - 4), height: Math.max(0, h - 4), rx: 4, fill: "none", stroke: ink, "stroke-width": 1.6, opacity: 0, "pointer-events": "none" });
+      const outline = el("rect", { x: tile.x + 4, y: tile.y + 4, width: Math.max(0, w - 4), height: Math.max(0, h - 4), rx: 4, fill: "none", "stroke-width": 1.6, opacity: 0, "pointer-events": "none" });
+      outline.style.stroke = ink;
       outline.style.transition = motion.matches ? "none" : "opacity var(--fast) var(--ease)";
       body.append(outline);
       const hasArrow = w >= 70 && h >= 64;
@@ -297,10 +287,11 @@ function mountAtlas(
         const content = el("foreignObject", { x: tile.x + 2 + padding, y: tile.y + 2 + padding, width: Math.max(0, w - 2 * padding), height: Math.max(0, h - 2 * padding), "pointer-events": "none", "aria-hidden": "true" });
         const label = document.createElement("div");
         label.style.cssText = `display:flex;flex-direction:column;gap:${roomy ? 9 : 5}px;height:100%;overflow:hidden;color:${ink};font-family:inherit;line-height:1.35;text-align:left;box-sizing:border-box`;
+        // Labels keep the full ink (no opacity): ≥ 4.5:1 on every fill, in both themes.
         if (roomy) {
           const code = document.createElement("span");
-          code.textContent = node.isOther ? `${node.children?.length || ''} DOMENII GRUPATE` : `CPV ${node.code}`;
-          code.style.cssText = "font-size:10px;letter-spacing:1.1px;opacity:.75;flex:none";
+          code.textContent = node.isOther ? `${node.children?.length || ''} domenii grupate` : `CPV ${node.code}`;
+          code.style.cssText = "font-size:11px;letter-spacing:1px;text-transform:uppercase;flex:none";
           label.append(code);
         }
         const name = document.createElement("strong");
@@ -310,13 +301,13 @@ function mountAtlas(
         if (roomy || h >= 120 || (w >= 170 && h >= 94)) {
           const value = document.createElement("span");
           value.textContent = compactMoney(node.value);
-          value.style.cssText = `font-size:${roomy ? 18 : 12}px;font-variant-numeric:tabular-nums;letter-spacing:-.25px;opacity:.88;flex:none`;
+          value.style.cssText = `font-size:${roomy ? 18 : 12}px;font-variant-numeric:tabular-nums;letter-spacing:-.25px;flex:none`;
           if (hasArrow && !roomy) value.style.maxWidth = `${Math.max(0, w - 2 * padding - 44)}px`;
           label.append(value);
         }
         if (roomy) {
           const foot = document.createElement("span");
-          foot.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:12px;font-size:11px;opacity:.8;flex:none";
+          foot.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:12px;font-size:12px;flex:none";
           const amount = document.createElement("span");
           amount.textContent = `${percent.format(share)}% ${shareLabel}`;
           foot.style.paddingRight = "38px";
@@ -348,8 +339,11 @@ function mountAtlas(
           "aria-label": `Detalii și contracte — ${node.name}`,
         });
         arrow.style.cssText = "cursor:pointer;outline:none";
-        const arrowFace = el("rect", { x: x + 6, y: y + 6, width: 32, height: 32, rx: 9, fill: ink, "fill-opacity": ".07", stroke: ink, "stroke-opacity": ".14", "stroke-width": 1.4 });
-        arrow.append(el("rect", { x, y, width: size, height: size, fill: "transparent" }), arrowFace, el("path", { d: `M${x + 16} ${y + 28}l12-12m-11 0h11v11`, fill: "none", stroke: ink, "stroke-width": 1.7, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none" }));
+        const arrowFace = el("rect", { x: x + 6, y: y + 6, width: 32, height: 32, rx: 9, "fill-opacity": ".07", "stroke-opacity": ".14", "stroke-width": 1.4 });
+        arrowFace.style.fill = ink; arrowFace.style.stroke = ink;
+        const arrowPath = el("path", { d: `M${x + 16} ${y + 28}l12-12m-11 0h11v11`, fill: "none", "stroke-width": 1.7, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none" });
+        arrowPath.style.stroke = ink;
+        arrow.append(el("rect", { x, y, width: size, height: size, fill: "transparent" }), arrowFace, arrowPath);
         arrow.addEventListener("pointerdown", (event) => event.stopPropagation());
         arrow.addEventListener("click", (event) => activate(event, onDetails));
         arrow.addEventListener("keydown", (event) => {

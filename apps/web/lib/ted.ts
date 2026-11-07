@@ -31,9 +31,12 @@ export function formatTedAmount(value: string | number | null, currency: string 
   const match = /^([+-]?)(\d+)(?:\.(\d*))?$/.exec(decimal);
   if (!match) return "Valoare indisponibilă";
   const integer = new Intl.NumberFormat("ro-RO").format(BigInt(`${match[1] === "-" ? "-" : ""}${match[2]}`));
-  const fraction = (match[3] ?? "").replace(/0+$/, "");
+  // TED's trailing zeros are notation, not precision; a single decimal is written in bani (848.444,80), like the site's
+  // other amounts, and RON as "lei".
+  const trimmed = (match[3] ?? "").replace(/0+$/, ""), fraction = trimmed.length === 1 ? `${trimmed}0` : trimmed;
   const sign = match[1] === "-" && BigInt(match[2]!) === 0n ? "−" : "";
-  return `${sign}${integer}${fraction ? `,${fraction}` : ""} ${currency || "(monedă neprecizată)"}`;
+  const unit = currency && currency.trim().toUpperCase() === "RON" ? "lei" : currency || "(monedă neprecizată)";
+  return `${sign}${integer}${fraction ? `,${fraction}` : ""} ${unit}`;
 }
 
 export function competitionLabel(count: number | null): string {

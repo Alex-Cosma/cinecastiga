@@ -4,9 +4,10 @@ import { competitionLabel, entityCountryLabel, formatTedAmount, TED_LABEL, tedPa
 describe("TED evidence presentation", () => {
   it("preserves exact decimals above the safe integer boundary and original currencies", () => {
     expect(formatTedAmount("9007199254740993.12345", "EUR")).toBe("9.007.199.254.740.993,12345 EUR");
-    expect(formatTedAmount("0.00", "RON")).toBe("0 RON");
-    expect(formatTedAmount(".5000", "RON")).toBe("0,5 RON");
-    expect(formatTedAmount("-0.5", "USD")).toBe("−0,5 USD");
+    expect(formatTedAmount("0.00", "RON")).toBe("0 lei");
+    expect(formatTedAmount(".5000", "RON")).toBe("0,50 lei");
+    expect(formatTedAmount("848444.8", "RON")).toBe("848.444,80 lei");
+    expect(formatTedAmount("-0.5", "USD")).toBe("−0,50 USD");
   });
   it("does not silently assume RON or turn missing into zero", () => {
     expect(formatTedAmount("19.5", null)).toContain("monedă neprecizată");
@@ -18,7 +19,7 @@ describe("TED evidence presentation", () => {
     expect(tedAmountHeadline({ awardedValue: null, currency: null, amountKind: "framework_offer", amountDetails: details })).toBe("100 EUR");
     expect(tedAmountHeadline({ awardedValue: null, currency: null, amountKind: "tender_range", amountDetails: { ...details,
       amounts: [{ kind: "tender_lower", value: "0", currency: "RON", source: "LowerTenderAmount" },
-        { kind: "tender_upper", value: "100", currency: "RON", source: "HigherTenderAmount" }] } })).toBe("Minim 0 RON · Maxim 100 RON");
+        { kind: "tender_upper", value: "100", currency: "RON", source: "HigherTenderAmount" }] } })).toBe("Minim 0 lei · Maxim 100 lei");
   });
   it("keeps malformed and excessive URL pages within the actual result set", () => {
     expect(tedPagination(Infinity, 60, 100).page).toBe(1);

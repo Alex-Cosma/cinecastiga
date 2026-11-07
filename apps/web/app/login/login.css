@@ -1,0 +1,33 @@
+/* /login (owner, 7 November 2026): a door with a sign. The card keeps the shared .auth-card look; its fields and buttons
+   are the site's own: resting borders at 3:1 or more, the site's orange focus ring, a plain forest primary button. */
+.login-card{--field-line:color-mix(in srgb,var(--muted) 85%,var(--surface));color:var(--ink)}
+.login-card .page-title{margin-bottom:6px}
+.login-step{margin:0;font-size:13px;color:var(--muted)}
+.login-context{margin:12px 0 0;font-size:15px;line-height:1.5;color:var(--ink)}
+.login-form{display:grid;gap:16px;margin-top:20px}
+.login-field{display:grid;gap:6px;font-size:13px;font-weight:600;color:var(--ink2)}
+.login-field input{font:inherit;font-size:15px;font-weight:400;color:var(--ink);background:var(--surface);border:1px solid var(--field-line);border-radius:8px;padding:10px 12px;min-height:44px;width:100%;box-sizing:border-box;caret-color:var(--accent);transition:border-color var(--fast)}
+.login-field input:hover{border-color:var(--ink2)}
+.login-field input:focus{border-color:var(--accent)}
+.login-field input[aria-invalid=true]{border-color:var(--risk)}
+.login-field .login-code{font-family:var(--mono);font-size:22px;letter-spacing:.4em;text-align:center;padding-left:calc(12px + .4em)}
+/* Live regions stay in the accessibility tree while empty (announced when filled); out of the grid, they add no gap. */
+.login-alert:empty,.login-status:empty{position:absolute}
+.login-alert p{margin:0;font-size:14px;line-height:1.5;color:var(--risk)}
+.login-alert a{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.login-submit{display:inline-flex;justify-content:center;align-items:center;min-height:44px;padding:10px 18px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background var(--fast),border-color var(--fast)}
+.login-submit:hover:not(:disabled){background:var(--ink);border-color:var(--ink)}
+.login-submit:disabled{opacity:.6;cursor:default}
+.login-sent{margin:0;font-size:15px;line-height:1.5;color:var(--ink);overflow-wrap:anywhere}
+.login-sent b{font-weight:600}
+.login-status{margin:0;font-size:14px;color:var(--ink)}
+.login-links{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;margin-top:-6px}
+.login-link{display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;font:inherit;font-size:14px;color:var(--accent);cursor:pointer;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--accent) 40%,transparent);text-underline-offset:4px}
+.login-link:hover:not(:disabled){text-decoration-color:currentColor}
+.login-link:disabled{color:var(--muted);text-decoration:none;cursor:default}
+.login-help{margin:22px 0 0;padding-top:18px;border-top:1px solid var(--line);font-size:14px;line-height:1.5;color:var(--ink2)}
+.login-help a{white-space:nowrap;text-underline-offset:3px}
+@media(max-width:700px){
+  .login-field input{font-size:16px}
+  .login-field .login-code{font-size:22px}
+}

@@ -56,6 +56,18 @@ export interface EvidenceDrawerProps {
 type Response = ({ ok: true } & DrillResult) | { ok: false; error: string };
 const count = (n: number) => n.toLocaleString("ro-RO");
 
+/** A request that never reached the server, or an answer that was not ours (a proxy's page instead of JSON). */
+const OFFLINE = "Nu am putut ajunge la server. Verifică legătura la internet.";
+/**
+ * What a refused request says to the reader: the server's own Romanian words, or ours. The browser's ("Failed to
+ * fetch", "Load failed", a JSON parse error) never reach the screen.
+ */
+function refusalText(error: unknown, onStale: (() => boolean) | undefined, fallback: string): string | null {
+  if (error instanceof SourceRequestError) return sourceRefusal(error, onStale, fallback);
+  if (error instanceof TypeError || error instanceof SyntaxError) return OFFLINE;
+  return error instanceof Error && /[ăâîșțĂÂÎȘȚ]/.test(error.message) ? error.message : fallback;
+}
+
 /** The rows of a page of sources (compile.ts DRILL_PAGE_SIZE). */
 const SOURCES_PAGE = 10;
 const GHOST_TITLES = ["86%", "64%", "92%", "58%", "78%", "70%", "88%", "54%", "74%", "66%"];
@@ -183,7 +195,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       } catch (e) {
         if (controller.signal.aborted) return;
         // A trend's months moved with the data (plan §2.8): the answer is reloaded once, never another list shown.
-        const refusal = sourceRefusal(e, staleRef.current, "Sursele nu au putut fi încărcate.");
+        const refusal = refusalText(e, staleRef.current, "Sursele nu au putut fi încărcate.");
         if (refusal !== null) setError(refusal);
       } finally {
         clearTimeout(slowTimer);
@@ -207,7 +219,7 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       downloadSourceCsv(file);
       setExportMessage(file.message);
     } catch (e) {
-      const refusal = controller.signal.aborted ? null : sourceRefusal(e, staleRef.current, "Export nereușit.");
+      const refusal = controller.signal.aborted ? null : refusalText(e, staleRef.current, "Exportul nu a reușit. Încearcă din nou.");
       if (refusal !== null) setExportMessage(refusal);
     } finally {
       if (!controller.signal.aborted) setExporting(null);

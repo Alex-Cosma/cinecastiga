@@ -1,20 +1,48 @@
+/* The records behind a finding (SourceEvidenceView): inside a record page's section, or on its own. */
 .source-evidence { margin-block: 2rem; }
+.record-section > .source-evidence { margin-block: 0; }
 .source-evidence-intro { display: flex; align-items: start; justify-content: space-between; gap: 1.5rem; }
 .source-evidence-intro h2 { margin: 0 0 .6rem; max-width: 36ch; text-wrap: balance; }
 .source-evidence-intro p { font-variant-numeric: tabular-nums; }
+.source-evidence-count { font-size: 15px; color: var(--ink2); }
+.source-evidence-count strong { color: var(--ink); }
+.source-evidence-csv { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-top: 4px; font-size: 15px; text-underline-offset: 4px; }
 .source-evidence-save { position: relative; display: flex; align-items: center; gap: .25rem; }
 .source-evidence-save .term-tip > .term-def { top: calc(100% + 6px); bottom: auto; left: auto; right: 0; width: min(340px, calc(100vw - 32px)); }
-.source-evidence-basis { position: relative; }
+.source-evidence-basis { position: relative; margin: 14px 0 12px; font-size: 14px; color: var(--ink2); }
 .source-evidence-basis .term-tip > .term-def { top: calc(100% + 6px); bottom: auto; right: auto; width: max-content; max-width: min(46ch, 100%); }
-.source-evidence-notes { margin-block: 1.5rem; border-block: 1px solid var(--line, #d5dbd3); padding-block: 1rem; }
+.source-evidence-notes { margin-block: 1rem 1.25rem; border-block: 1px solid var(--line); padding-block: .9rem; }
 .source-evidence-notes summary { font-weight: 600; cursor: pointer; }
-.source-evidence-notes ul { margin-block: 1rem 0; padding-left: 1.25rem; max-width: 75ch; }
-.source-evidence-notes li + li { margin-top: .75rem; }
-.source-evidence-table { min-width: 680px; }
-.source-evidence-table th.num { text-align: right; }
+.source-evidence-notes ul { margin-block: .8rem 0; padding-left: 1.25rem; max-width: 75ch; font-size: 14px; line-height: 1.55; color: var(--ink2); }
+.source-evidence-notes li + li { margin-top: .6rem; }
+
+.source-evidence-shared { margin: 0 0 12px; font-size: 14px; line-height: 1.5; color: var(--ink2); max-width: 90ch; overflow-wrap: anywhere; }
 .source-evidence-table td { vertical-align: top; }
-.source-evidence-table small { display: block; margin-top: .35rem; color: var(--muted); white-space: normal; }
-.source-evidence-links { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .5rem; }
+.source-evidence-table th.num { text-align: right; }
+.source-evidence-table .se-record { min-width: 0; width: 38%; }
+.source-evidence-table .se-title { display: block; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; text-underline-offset: 3px; }
+.source-evidence-table .se-code, .source-evidence-table .se-note { display: block; margin-top: 4px; font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.source-evidence-table .num .se-note { font-variant-numeric: normal; }
+.source-evidence-table .se-party { display: block; line-height: 1.45; overflow-wrap: anywhere; }
+.source-evidence-table .se-party + .se-party { margin-top: 6px; }
+.source-evidence-table .se-role { display: block; font-size: 12px; color: var(--muted); }
+.source-evidence-table .se-share { color: var(--ink2); font-variant-numeric: tabular-nums; }
+.source-evidence-links { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 4px; font-size: 14px; }
+.source-evidence-links a { display: inline-flex; align-items: center; min-height: 32px; text-underline-offset: 3px; }
 .source-evidence-empty { padding: 2rem 0; max-width: 65ch; }
 .source-evidence a:focus-visible, .source-evidence summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-@media (max-width: 640px) { .source-evidence-intro { flex-direction: column; } .source-evidence-save { width: 100%; } .source-evidence-intro .clipbtn { width: 100%; } }
+
+@media (max-width: 720px) {
+  /* Stacked rows: the record and its parties each on a full line, the date and the value side by side. */
+  .source-evidence-table .se-record, .source-evidence-table .se-parties { grid-column: 1 / -1; width: auto; }
+  /* Above the shared stacked-table rule (globals.css): labels ≥ 12px in the body face; the parties name their own roles. */
+  .ask-tablewrap.rank-stack table.source-evidence-table td[data-label]::before { font: 400 12px/1.4 var(--body); }
+  .ask-tablewrap.rank-stack table.source-evidence-table td.se-parties[data-label]::before { display: none; }
+  .source-evidence-table .se-title { font-size: 15px; }
+  .source-evidence-links a { min-height: 44px; }
+}
+@media (max-width: 640px) {
+  .source-evidence-intro { flex-direction: column; }
+  .source-evidence-save { width: 100%; }
+  .source-evidence-intro .clipbtn { width: 100%; }
+}

@@ -23,9 +23,16 @@ export const metadata: Metadata = {
 /** A winner's name as TED's tender and award parts both spell it: no diacritics, case, punctuation or SC/SRL/SA. */
 const winnerKey = (name: string) => cleanName(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^SC(?=[A-Z0-9])/, "").replace(/(SRL|SA)$/, "");
 
+/** What TED and "supra-prag" mean, said once beside the page's first mention of the EU journal. */
+const TED_TERM = {
+  title: "TED, peste prag",
+  text: "TED este jurnalul oficial al UE pentru achiziții publice. Acolo apar procedurile peste pragurile europene („supra-prag”). De regulă ele sunt și în SEAP, de aceea valorile TED nu se adună la totaluri.",
+};
+
 const TED_NOTICE_URL = (pub: string | null) =>
   pub ? `https://ted.europa.eu/en/notice/${pub}/html` : null;
 
+/** The winners, each a link to its page, a consortium's members apart (" · "), never glued into one name. */
 function winnerCell(a: TedAward) {
   if (a.winnerSelectionStatus === "not-awarded" || a.winnerSelectionStatus === "clos-nw") return <span>Fără câștigător desemnat</span>;
   if (!a.winnerNames.length) return <span>Câștigător neidentificat în datele preluate</span>;
@@ -37,10 +44,11 @@ function winnerCell(a: TedAward) {
         <span className="flag-tag">{countryName(country)}</span>
       ) : null;
     return (
-      <div key={`${id}-${i}`}>
-        {id ? <Link href={`/entitati/${id}`}>{cleanName(name)}</Link> : cleanName(name)}
+      <span key={`${id}-${i}`} className="tp-winner">
+        {i > 0 && <span className="tp-sep" aria-hidden="true"> · </span>}
+        <EntityName id={id} role="supplier">{cleanName(name)}</EntityName>
         {foreignTag}
-      </div>
+      </span>
     );
   });
 }
@@ -51,13 +59,13 @@ function amountCell(a: TedAward) {
   const label = TED_AMOUNT_LABEL[kind] ?? TED_AMOUNT_LABEL.legacy_unknown;
   const main = tedAmountHeadline(a);
   return <>
-    <div>{main}</div>
-    <div className="county">{label}</div>
-    {details?.amounts.length ? <details style={{ textAlign: "left", marginTop: "0.5rem", maxWidth: "24rem" }}>
+    <div className="tp-amount">{main}</div>
+    <div className="county tp-amount-kind">{label}</div>
+    {details?.amounts.length ? <details className="tp-src">
       <summary>Valorile și referințele din sursă</summary>
       {details.amounts.map((v, i) => {
         const tender = details.tenders.find((t) => t.id === v.tenderId);
-        return <div key={`${v.tenderId ?? v.resultId}-${v.kind}-${i}`} className="county" style={{ marginTop: "0.5rem", overflowWrap: "anywhere" }}>
+        return <div key={`${v.tenderId ?? v.resultId}-${v.kind}-${i}`} className="county tp-src-row">
           <strong>{TED_AMOUNT_LABEL[v.kind] ?? v.kind}: {formatTedAmount(v.value, v.currency)}</strong>
           {v.tenderId ? <div>{v.tenderId}{tender?.winnerNames?.length ? <> · {tender.winnerNames.map((name, j) => {
             const at = a.winnerNames.findIndex((winner) => winnerKey(winner) === winnerKey(name));
@@ -70,7 +78,7 @@ function amountCell(a: TedAward) {
       })}
       <p className="county">Valorile ofertelor, intervalele și plafoanele sunt păstrate separat. Nu reprezintă plăți verificate.</p>
     </details> : null}
-    {details?.missingTenderIds.length ? <div className="county">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
+    {details?.missingTenderIds.length ? <div className="county tp-amount-kind">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
   </>;
 }
 
@@ -110,8 +118,8 @@ export default async function SupraPragPage({
   return (
     <>
       <h1 className="page-title">Atribuiri publicate în TED</h1>
-      <p className="page-sub">
-        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor SEAP.
+      <p className="page-sub ted-tip-line">
+        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title={TED_TERM.title} text={TED_TERM.text} /></span>
       </p>
       <p className="hint ted-tip-line">
         {coverageNote.line}{coverageNote.tip && <Term tip title="Acoperire TED" text={coverageNote.tip} />}{" · "}
@@ -177,6 +185,8 @@ export default async function SupraPragPage({
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
         </p> : null}
+        {/* On a phone each result is a card (rank-stack) and the header's funnels wrap above the cards as a filter bar. */}
+        <div className="ask-tablewrap rank-stack tp-stack">
         <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
@@ -184,7 +194,7 @@ export default async function SupraPragPage({
               <th><span className="th-filter"><UrlFunnel table="ted" column="autoritate" label="Autoritate" /><span className="th-sep" aria-hidden="true">→</span><UrlFunnel table="ted" column="castigator" label="Câștigător" /><span className="th-sep" aria-hidden="true">·</span><UrlFunnel table="ted" column="tara" label="Țara" /></span></th>
               <th><span className="th-filter"><UrlFunnel table="ted" column="cpv" label="Obiect" /><span className="th-sep" aria-hidden="true">·</span><UrlFunnel table="ted" column="potrivire" label="SEAP" /><Term id="ted-fara-potrivire" tip className="ted-tip-above" /><span className="th-sep" aria-hidden="true">·</span><UrlFunnel table="ted" column="oferte" label="Oferte" /></span></th>
               <th><UrlFunnel table="ted" column="procedura" label="Procedură" /></th>
-              <th style={{ textAlign: "right" }}>
+              <th className="num">
                 <span className="th-filter">
                   <RegionLink scroll={false} href={qstr({ sort: sort === "value" ? undefined : "value" })} title={sort === "value" ? "Înapoi la cele mai noi" : "Ordonează după valoarea în lei"}>
                     Valoare{sort === "value" ? " ▾" : ""}
@@ -198,16 +208,12 @@ export default async function SupraPragPage({
             {awards.rows.map((a) => (
               <tr key={a.tedLotResultId}>
                 <td>
-                  {a.buyerEntityId ? (
-                    <Link href={`/entitati/${a.buyerEntityId}`}>{cleanName(a.buyerName)}</Link>
-                  ) : (
-                    cleanName(a.buyerName)
-                  )}
-                  <div className="arrow-to">→ {winnerCell(a)}</div>
+                  <EntityName id={a.buyerEntityId} role="authority">{cleanName(a.buyerName)}</EntityName>
+                  <div className="arrow-to tp-winners">→ {winnerCell(a)}</div>
                   {a.buyerCounty ? <div className="county">{a.buyerCounty}</div> : null}
                   {tedCountryNeedsReview(a.isForeign, a.winnerCountries) ? <div className="county">{TED_COUNTRY_REVIEW_LABEL}</div> : null}
                 </td>
-                <td className="county">
+                <td className="county" data-label="Obiect">
                   {a.title ? <div className="obj-title">{a.title}</div> : null}
                   {a.cpvName ?? a.cpvCode ?? "—"}
                   {a.lotId ? <div>Lot: {a.lotId}</div> : null}
@@ -219,13 +225,13 @@ export default async function SupraPragPage({
                     {a.euFunded ? <span className="badge">fonduri UE</span> : null}
                   </div>
                 </td>
-                <td className="county">{procedureName(a.procedureType)}</td>
-                <td className="num" style={{ whiteSpace: "normal" }}>
+                <td className="county" data-label="Procedură">{procedureName(a.procedureType)}</td>
+                <td className="num tp-value" data-label="Valoare">
                   {amountCell(a)}
                   {a.publicationNumber ? (
                     <div className="src">
-                      <a href={TED_NOTICE_URL(a.publicationNumber)!} target="_blank" rel="noreferrer">
-                        TED {a.publicationNumber}
+                      <a href={TED_NOTICE_URL(a.publicationNumber)!} target="_blank" rel="noopener noreferrer">
+                        TED {a.publicationNumber} <span aria-hidden="true">↗</span>
                       </a>
                     </div>
                   ) : null}
@@ -234,6 +240,7 @@ export default async function SupraPragPage({
             ))}
           </tbody>
         </table>
+        </div>
 
         {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <RegionLink href="/supra-prag" scroll>Vezi toate rezultatele TED</RegionLink>.</p> : null}
 

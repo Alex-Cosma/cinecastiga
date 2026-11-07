@@ -56,19 +56,19 @@ describe("the answer's targets and contrast", () => {
   });
 
   it("hides nothing a reader needs: a trend row's partner wraps, the answer's capture popover is above the rows and inside the page (F2-tests)", () => {
-    const results = css("./question-results.css"), globals = css("../globals.css");
+    const results = css("./question-results.css"), clip = css("../../components/clip-button.css");
+    const clipButton = readFileSync(new URL("../../components/ClipButton.tsx", import.meta.url), "utf8");
     // The partner's whole name ("în 2024: 100% de la COMPANIA NATIONALA DE ADMINISTRARE…"), never cut by "…" on a phone.
     const partner = results.slice(results.indexOf(".qb-trow-partner > span {"), results.indexOf("}", results.indexOf(".qb-trow-partner > span {")));
     expect(partner).toContain("overflow-wrap: break-word");
     expect(partner).not.toMatch(/text-overflow|nowrap|overflow: hidden/);
-    // The hover lift is a transform: on .clipbtn it would make a stacking context under the trend's positioned rows
-    // (they took the clicks) and the phone's fixed sheet's containing block. Open, no lift (after the hover rule).
-    const hover = globals.indexOf(".clipbtn:hover { background: var(--sunk); transform: translateY(-1px);");
-    expect(hover).toBeGreaterThanOrEqual(0);
-    expect(globals.indexOf(".clipbtn:has(> .clipbtn-pop) { transform: none; }")).toBeGreaterThan(hover);
-    // Leftward from the right-hand column; a corner panel on a tablet; the phone keeps its sheet (question-results.css).
-    expect(globals).toContain("@media (min-width: 851px) { .cq-answer-actions .clipbtn-pop { left: auto; right: 0; } }");
-    expect(globals).toMatch(/@media \(min-width: 601px\) and \(max-width: 850px\) \{ \.cq-answer-actions \.clipbtn-pop \{ position: fixed; top: auto; bottom: 16px; left: auto; right: 16px; width: min\(340px, calc\(100vw - 32px\)\);/);
+    // A transform on the button's wrapper made a stacking context under the trend's positioned rows (they took the
+    // clicks). The wrapper never lifts; the save dialog (7 November 2026) lives at the end of the page, fixed inside the
+    // window (placed by the component on a wide screen, a bottom sheet on a phone), so no row or column can cover or cut it.
+    expect(clip).toMatch(/\.clipbtn\.clipbtn,\.clipbtn\.clipbtn:hover\{[^}]*transform:none/);
+    expect(clipButton).toContain("createPortal(panel, document.body)");
+    expect(clip).toMatch(/\.save-dialog\{position:fixed;[^}]*max-height:calc\(100dvh - 32px\)/);
+    expect(clip).toMatch(/@media \(max-width:700px\)\{[^]*\.save-dialog\.save-sheet\{left:0;right:0;bottom:0;top:auto;/);
     // A signed-in reader's five actions never squash into each other: the records' button on its row, the others two
     // by two under it, as wide as it (owner, 2 November 2026), at every width.
     const actions = results.slice(results.indexOf(".cq-answer-actions {"), results.indexOf("}", results.indexOf(".cq-answer-actions {")));

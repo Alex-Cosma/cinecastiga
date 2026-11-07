@@ -1,0 +1,4 @@
+/* A phone's stacked publications: the field names at the readable minimum (12px; globals' rank-stack sets 11px). */
+@media (max-width: 720px) {
+  .excl-stack.ask-tablewrap.rank-stack table.rank td[data-label]::before { font-size: 12px; }
+}

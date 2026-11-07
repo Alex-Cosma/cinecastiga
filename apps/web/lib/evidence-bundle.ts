@@ -5,6 +5,8 @@ import { readInvestigationWorkspace } from "./investigation-workspace";
 import { captureDatabase, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { textChunks, zip64, type ZipEntry } from "./evidence-zip";
 import type { FrozenRecord } from "./evidence-captures-shared";
+import { caietMarkdown, type CaietClip } from "./evidence-caiet";
+import { dossierRecords, sourceEvents } from "./anchete";
 
 const json=(value:unknown)=>JSON.stringify(value,null,2)+"\n";
 const md=(value:unknown)=>String(value??"").replace(/[\\`*_{}[\]<>#|]/g,"\\$&");
@@ -28,6 +30,7 @@ export function bundleMarkdown(data:BundleData,base:string):string{
   const lines=[`# ${md(inv.title)}`,"",md(inv.description),"",`Exportat: ${data.exportedAt}. Stare: ${md(inv.status)}.`,"",
     "> Valorile sunt date înregistrate, nu plăți verificate. Semnalele statistice sunt piste de verificare, nu dovezi de nereguli.","",
     "Capturile complete sunt înregistrări server ale surselor și selecției la momentul indicat. O versiune nouă nu o înlocuiește pe cea veche. Exportul nu include fișierele originale PDF/P7S. Pasajele din documente păstrează pagina, amprenta și legăturile către originalele arhivate în aplicație și sursa SEAP.","",
+    "Pentru citit: caiet.md (întrebările cu dovezile legate, dovezile cu valorile exacte și linkurile lor, cronologia și verificările). Fișierele de mai jos sunt înregistrarea completă.","",
     "CSV: sumele și identificatorii sunt text zecimal exact; la import setați aceste coloane ca text. Câmpurile text care ar putea fi formule sunt protejate cu apostrof; JSON păstrează textul original. O valoare goală înseamnă lipsă, nu zero.",""];
   for(const clip of data.clips){
     lines.push(`## ${md(clip.kind)} · ${md(clip.ref_id??clip.id)}`,"",md(clip.note),"");
@@ -79,7 +82,7 @@ export function bundleMarkdown(data:BundleData,base:string):string{
         lines.push("");
       }
       lines.push(`Înregistrată: ${md(summary.capturedAt??capture.completed_at)}. Rânduri: ${capture.row_count}.`,
-        `Sumă exactă a cotelor / achizițiilor: ${capture.total_exact==null?"necunoscută (există valori lipsă)":`${capture.total_exact} RON`}.`,
+        `Sumă exactă a cotelor / achizițiilor: ${capture.total_exact==null?"necunoscută (există valori lipsă)":`${capture.total_exact} lei`}.`,
         `Metodologie: ${md((capture.methodology as Record<string,unknown>)?.version)}.`,
         `[Captură în aplicație](${base}/anchete/${inv.id}/dovezi/${capture.id})`,"",
         "Selecția exactă (inclusiv filtrele locale ale listei):","","```json",json(capture.request).trim(),"```","");
@@ -96,11 +99,28 @@ async function* capturedRows(q:DbSql,id:string):AsyncGenerator<{cursor:string;re
   for(;;){const rows=await q`select row_no::text cursor,record from app.evidence_capture_rows where capture_id=${id} and row_no>${after} order by row_no limit 2000`;
     if(!rows.length)return;for(const row of rows)yield row as {cursor:string;record:FrozenRecord};after=String(rows.at(-1)!.cursor);}
 }
-async function* rowsCsv(q:DbSql,capture:Record<string,unknown>):AsyncGenerator<Uint8Array>{
+export async function* rowsCsv(q:DbSql,capture:Record<string,unknown>):AsyncGenerator<Uint8Array>{
   yield Buffer.from(csvLine(["row","stream","reference_id","date","authority_id","authority","supplier_id","supplier","county","cpv","cpv_name","value_exact_ron","contract_full_value_ron","consortium_winners","state","seap_url","ted_url"]));
   let n=0;
   for await(const {cursor,record:r} of capturedRows(q,String(capture.id))){n++;yield Buffer.from(csvLine([cursor,r.src,r.refId,r.date,r.authorityId,r.authority,r.supplierId,r.supplier,r.county,r.cpvCode,r.cpvName,r.valueExact,r.contractValueFull,r.nWinners,r.state,r.sourceUrl,r.tedUrl],[0,2,4,6,11,12,13]));}
   if(n!==Number(capture.row_count))throw new Error("Frozen evidence row count mismatch");
+}
+/** A complete capture never changes, so its fingerprint is computed once per server. */
+const fingerprints=new Map<string,string>();
+/**
+ * The capture's fingerprint for a citation: the SHA-256 of its rows.csv exactly as the export writes it, so the
+ * manifest.json of any later export repeats it (owner, 7 November 2026: "fișa de probă"). Complete captures only.
+ */
+/** Above this many rows a page does not hash the whole capture on view: its fingerprint is in the export's manifest. */
+export const FINGERPRINT_ROW_CAP=50_000;
+export async function captureFingerprint(captureId:string,rowCount:number|null,database:DbSql=captureDatabase()):Promise<string|null>{
+  if(!isWorkspaceId(captureId)||rowCount===null||rowCount>FINGERPRINT_ROW_CAP)return null;
+  const known=fingerprints.get(captureId);if(known)return known;
+  const hash=createHash("sha256");
+  for await(const chunk of rowsCsv(database,{id:captureId,row_count:rowCount}))hash.update(chunk);
+  const digest=hash.digest("hex");
+  if(fingerprints.size>500)fingerprints.delete(fingerprints.keys().next().value!);
+  fingerprints.set(captureId,digest);return digest;
 }
 async function* rowsJson(q:DbSql,id:string):AsyncGenerator<Uint8Array>{for await(const row of capturedRows(q,id))yield Buffer.from(JSON.stringify(row)+"\n");}
 async function* sourcesCsv(q:DbSql,capture:Record<string,unknown>):AsyncGenerator<Uint8Array>{
@@ -109,11 +129,30 @@ async function* sourcesCsv(q:DbSql,capture:Record<string,unknown>):AsyncGenerato
   const summary=capture.summary as Record<string,unknown>|null;
   if(Array.isArray(summary?.sourceUrls))for(const url of summary.sourceUrls)yield Buffer.from(csvLine(["context",url,""]));
 }
+/** The dossier read aloud (caiet.md): each item named after its latest complete version, as the dossier shows it. */
+async function caietFor(q:DbSql,data:BundleData,base:string):Promise<string>{
+  const id=String(data.investigation.id);
+  const clips:CaietClip[]=data.clips.map(clip=>{
+    const complete=data.captures.filter(c=>c.clip_id===clip.id&&c.status==="complete").sort((a,b)=>Number(b.version)-Number(a.version))[0];
+    const summary=(complete?.summary??null) as Record<string,unknown>|null;
+    return {id:String(clip.id),kind:String(clip.kind),refId:clip.ref_id==null?null:String(clip.ref_id),spec:clip.spec,
+      snapshot:summary??(clip.snapshot as Record<string,unknown>|null),note:clip.note==null?null:String(clip.note),createdAt:String(clip.created_at instanceof Date?clip.created_at.toISOString():clip.created_at),
+      capture:complete?{id:String(complete.id),version:Number(complete.version),status:"complete",createdAt:"",startedAt:null,completedAt:null,rowCount:Number(complete.row_count),
+        totalExact:complete.total_exact==null?null:String(complete.total_exact),error:null,methodology:null,scope:complete.request as never,summary}:null,
+      captureId:complete?String(complete.id):null,rowCount:complete?Number(complete.row_count):null,totalExact:complete?.total_exact==null?null:String(complete.total_exact),
+      capturedAt:typeof summary?.capturedAt==="string"?summary.capturedAt:complete?.completed_at instanceof Date?complete.completed_at.toISOString():null,version:complete?Number(complete.version):null};
+  });
+  const events=await sourceEvents(q,id,clips.map(clip=>({id:clip.id,kind:clip.kind as never,refId:clip.refId,snapshot:clip.snapshot,capture:clip.capture??null})));
+  return caietMarkdown({title:String(data.investigation.title),description:data.investigation.description==null?null:String(data.investigation.description),
+    exportedAt:data.exportedAt,base,investigationId:id,clips,entries:data.workspace.entries,links:data.workspace.links,
+    records:await dossierRecords(q,id),sourceEvents:events});
+}
 async function* bundleEntries(q:DbSql,data:BundleData,base:string):AsyncGenerator<ZipEntry>{
   const manifest:{path:string;sha256:string;bytes:string}[]=[];
   const entry=(name:string,data:AsyncIterable<Uint8Array>):ZipEntry=>({name,data:(async function*(){const hash=createHash("sha256");let bytes=0n;
     for await(const chunk of data){hash.update(chunk);bytes+=BigInt(chunk.length);yield chunk;}manifest.push({path:name,sha256:hash.digest("hex"),bytes:String(bytes)});})()});
   yield entry("README.md",textChunks(bundleMarkdown(data,base)));
+  yield entry("caiet.md",textChunks(await caietFor(q,data,base)));
   yield entry("methodology.json",textChunks(json(CAPTURE_METHODOLOGY)));
   yield entry("methodology.md",textChunks(`# Metodologie ${CAPTURE_METHODOLOGY.version}\n\n${Object.values(CAPTURE_METHODOLOGY).slice(2).join("\n\n")}\n\nMetadatele fiecărei versiuni păstrează metodologia, acoperirea importului și selecția efectivă de la momentul capturii.\n`));
   yield entry("workspace.json",textChunks(json(data.workspace)));

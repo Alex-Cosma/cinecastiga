@@ -38,6 +38,8 @@ describe("main navigation", () => {
     expect(active("/intreabare")).toEqual([]);
     expect(active("/anchete/abc")).toEqual(["Anchete"]);
     expect(active("/urmariri")).toEqual(["Anchete"]);
+    expect(active("/cont")).toEqual(["Anchete"]);
+    expect(active("/contracte/9")).toEqual(["Descoperă"]);
     expect(active("/metodologie")).toEqual(["Ghid"]);
     expect(active("/metodologie/excluderi")).toEqual(["Ghid"]);
     expect(active("/ghidaj")).toEqual([]);

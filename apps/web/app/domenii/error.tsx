@@ -9,8 +9,8 @@ export default function DomainsError({ reset }: { error: Error & { digest?: stri
   const router = useRouter();
   return <div className="domains-page" role="alert">
     <section className="dm-hero"><div>
-      <p className="dm-eyebrow"><span className="dm-dash" />DESCOPERĂ / DOMENII</p>
-      <h1>Harta nu s-a putut încărca.</h1>
+      <p className="dm-eyebrow"><span className="dm-dash" />Descoperă / Domenii</p>
+      <h1>Domeniile nu s-au putut încărca.</h1>
       <div className="dm-error-actions">
         <button type="button" className="dm-button" onClick={() => startTransition(() => { router.refresh(); reset(); })}>Încearcă din nou</button>
         <Link href="/domenii" className="dm-button dm-secondary">Deschide anul implicit</Link>
