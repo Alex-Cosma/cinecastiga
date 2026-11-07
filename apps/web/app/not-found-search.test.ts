@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseTopicScope } from "@/lib/topic-search/shared";
+import { parseTopicScope } from "../lib/topic-search/shared";
 import { searchHref, searchWords } from "./not-found-search";
 
 describe("404 search", () => {
