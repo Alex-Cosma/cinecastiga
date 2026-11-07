@@ -1,3 +1,4 @@
+import { countyKnown } from "./counties";
 const int = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 0 });
 const dec = new Intl.NumberFormat("ro-RO", { maximumFractionDigits: 1 });
 
@@ -81,7 +82,8 @@ export function countyLabel(county: string | null | undefined, country?: string 
   const value = county?.trim();
   if (!value) return null;
   if (isAbroadCounty(value)) return country?.trim() || "firmă străină";
-  return value;
+  // Shown with diacritics ("Timis" → "Timiș"); an unknown value keeps the source's spelling.
+  return countyKnown(value) ?? value;
 }
 
 /**

@@ -158,6 +158,18 @@ export const GLOSSARY = {
     title: "Contracte și comenzi identificate",
     text: "Contractele și subsecventele acestei publicații. Plafoanele, actele adiționale și tipurile neclare sunt separate. Lipsa comenzilor nu înseamnă cheltuieli zero.",
   },
+  "dependenta-firma": {
+    title: "Partea instituției",
+    text: "Cât din valoarea contractelor publice înregistrate ale firmei (achiziții directe și cote din contracte) vine de la această instituție. Nu e venitul firmei: clienții privați lipsesc, iar plafoanele acordurilor-cadru nu intră.",
+  },
+  "estimare-ted": {
+    title: "Estimarea din TED",
+    text: "Valoarea estimată publicată în TED pentru lot, fără TVA. La atribuire, SEAP repetă valoarea câștigătoare ca „estimare”, de aceea arătăm doar estimarea din TED.",
+  },
+  "oferta-refuzata": {
+    title: "Ofertă refuzată sau neacceptată",
+    text: "SEAP păstrează și achizițiile directe în care oferta n-a fost acceptată. Nu sunt cumpărări: nu intră în totaluri sau clasamente.",
+  },
   "versiuni-anunt": {
     title: "Versiuni ale anunțului",
     text: "SEAP republică anunțul sub același număr, de regulă când adaugă contracte subsecvente; fiecare versiune are propriile înregistrări.",

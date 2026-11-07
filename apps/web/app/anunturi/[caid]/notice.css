@@ -1,7 +1,22 @@
-/* Award notice page (/anunturi/[caid]): where its (?) explanations open.
-   Each opens under the line or number label that holds it, left-aligned and
-   never wider than that box, so a 390 px page never scrolls sideways. */
-.nt-tip{position:relative}
-.nt-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
-/* the number strip lets an explanation overlap the table below it */
-.nt-stats{overflow:visible}
+/* The award notice's records (record template, 7 November 2026): a table on wide screens, two-line rows on a phone,
+   never a sideways scroll (owner rule). The object is the row's header and its link to the contract. */
+.record-lots { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.record-lots thead th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+.record-lots tbody th, .record-lots td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; font-weight: 400; overflow-wrap: anywhere; }
+.record-lots .lot-object { width: 46%; }
+.record-lots .lot-object a { font-weight: 600; }
+.record-lots .lot-object small, .record-lots td small { display: block; margin-top: 3px; font-size: 13px; color: var(--muted); }
+.record-lots .lot-value { text-align: right; white-space: nowrap; padding-right: 0; }
+.record-lots thead .lot-value .th-filter { justify-content: flex-end; }
+.notice-lots .pager { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+@media (max-width: 700px) {
+  .record-lots thead tr { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 10px; background: var(--sunk); border-radius: 8px; }
+  .record-lots thead th { border: 0; padding: 4px 0; }
+  .record-lots, .record-lots thead, .record-lots tbody { display: block; }
+  .record-lots tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .record-lots tbody th, .record-lots td { display: block; border: 0; padding: 0; width: auto; }
+  .record-lots .lot-object { grid-column: 1 / -1; }
+  .record-lots td[data-label="Câștigător"] { grid-column: 1; }
+  .record-lots td[data-label="Data"] { grid-column: 1; color: var(--muted); }
+  .record-lots td.lot-value { grid-column: 2; grid-row: 2 / 4; align-self: start; font-weight: 600; }
+}

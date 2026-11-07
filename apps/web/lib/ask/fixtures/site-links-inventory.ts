@@ -38,7 +38,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/entitati/[id]/page.tsx", occurrences: 5, kind: "producer", what: "Entity page: its records per channel (sources open), the firms of a representative",
     corpus: ["site:entity-channel-authority-da", "site:entity-channel-authority-contracts", "site:entity-channel-authority-all", "site:entity-channel-supplier-da", "site:person-firms"] },
   { file: "app/entitati/[id]/PartnersTable.tsx", occurrences: 3, kind: "producer", what: "Entity page partners: one buyer–firm pair (sources open)", corpus: ["site:pair"] },
-  { file: "app/contracte/[nid]/page.tsx", occurrences: 3, kind: "producer", what: "Contract page: the pair's records (sources open)", corpus: ["site:pair"] },
+  { file: "components/record/Record.tsx", occurrences: 3, kind: "producer", what: "Record pages (contract, direct acquisition): the pair's records (sources open)", corpus: ["site:pair"] },
   { file: "app/entitati/[id]/radiografie/DependencyScatter.tsx", occurrences: 2, kind: "producer", what: "Radiografie: the pair's procedure contracts, in the sources drawer", corpus: ["site:pair-contracts"] },
   { file: "app/entitati/[id]/legaturi/ConnectionsExplorer.tsx", occurrences: 1, kind: "producer", what: "Connections: the selected pairs' records in the drawer (connection-evidence-shared.ts, bound to a snapshot)",
     corpus: ["site:connection-evidence"] },
