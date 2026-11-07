@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAcquisitionContext, getAcquisitionDetail } from "@/lib/acquisition-detail";
 import { daUrl } from "@/lib/elicitatie";
@@ -43,7 +44,7 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const notes = [
     !purchase || x.counted || sameParty ? null : closing != null && closing > 2_000_000 ? "Nu intră în totaluri: peste 2 milioane lei, limita de plauzibilitate a site-ului." : closing != null && closing <= 0 ? "Nu intră în totaluri: valoare zero." : "Nu intră în totaluri.",
     x.valueSuspect === true && purchase && "Valoare neplauzibilă față de estimare: o verificăm separat.",
-    sameParty && (purchase ? "Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori." : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
+    sameParty && (purchase ? <>Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></> : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
   ];
   const h = x.pairHistory, s = x.slicing;
   const supplierLines = [
