@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { writeAddress } from "@/lib/address";
 
 /**
  * Drops `?rol=` from the address of an entity with a single role, without a reload: the role only picks a side of an
@@ -11,7 +12,7 @@ export default function DropRolParam() {
     const url = new URL(window.location.href);
     if (!url.searchParams.has("rol")) return;
     url.searchParams.delete("rol");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    writeAddress(`${url.pathname}${url.search}${url.hash}`);
   }, []);
   return null;
 }
