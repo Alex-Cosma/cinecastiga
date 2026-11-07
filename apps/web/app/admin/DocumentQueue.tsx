@@ -25,7 +25,8 @@ function publishStorage(next:NonNullable<StorageSnapshot>){
  storageSnapshot=next;storageListeners.forEach(listener=>listener());
 }
 const subscribeStorage=(listener:()=>void)=>{storageListeners.add(listener);return()=>{storageListeners.delete(listener);};};
-const FULL=85;
+// The disk alarm (owner, 7 November 2026): from 90% occupied; below that the percentage is information.
+const FULL=90;
 
 /** "Spațiu pe disc": the measured disk and the document archive, from the queue's last answer. */
 export function DocumentStorage(){
@@ -45,7 +46,7 @@ export function DocumentStorage(){
   <div className={`storage-body${stale&&storage?' g-stale':''}`}>
    {disk?<>
     <p className={`storage-verdict${full?' full':''}`}>{full?`Discul e aproape plin: ${disk.percent}% ocupat.`:`${disk.percent}% ocupat.`}</p>
-    {/* The meter turns orange where the verdict does: a displayed 85% (used/total ≥ 84,5%). */}
+    {/* The meter turns orange where the verdict does: a displayed 90% (used/total ≥ 89,5%). */}
     <meter min={0} max={disk.total} value={disk.used} high={disk.total*(FULL-.5)/100} optimum={0} aria-label={`Spațiu ocupat pe disc: ${disk.percent}%`}/>
     <p className="storage-values"><span><strong>{size(disk.used)}</strong> ocupați din {size(disk.total)}</span><span><strong>{size(disk.available)}</strong> disponibili</span></p>
    </>:<p className="storage-verdict" role="status">{storage?'Discul nu poate fi măsurat acum. Reîncercăm automat.':'Spațiul pe disc nu poate fi citit acum. Reîncercăm automat.'}</p>}
