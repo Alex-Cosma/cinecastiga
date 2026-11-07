@@ -194,8 +194,8 @@ export interface MapUatResponse {
   /** 1-based place by lei per inhabitant among the county's UATs with a figure; null with a gap. */
   place: number | null;
   ranked: number;
-  years: { year: string; value: number; perCapita: number | null; countyPerCapita: number | null; selected: boolean }[];
-  cpv: { code: string | null; name: string; value: number }[];
+  years: { year: string; value: number; records: number; perCapita: number | null; countyPerCapita: number | null; selected: boolean }[];
+  cpv: { code: string | null; name: string; value: number; records: number }[];
   channels: { da: number; contracts: number };
   suppliers: { id: string; name: string; value: number; records: number }[];
   neighbours: { key: string; name: string; perCapita: number | null }[];

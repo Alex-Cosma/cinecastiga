@@ -218,14 +218,18 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
   const allYears = [...new Set(data.rows.map((r) => r.y).filter((y): y is string => y !== null))].sort();
   const years = allYears.map((year) => {
     const one = { ...s, years: [year] }, ys = new Set([year]);
-    const value = own.filter((r) => rowSelected(r, one, ys, cpvSet)).reduce((a, r) => a + r.v, 0);
+    const picked = own.filter((r) => rowSelected(r, one, ys, cpvSet));
+    const value = picked.reduce((a, r) => a + r.v, 0), records = picked.reduce((a, r) => a + r.n, 0);
     const c = countyAreas(data, one).find((a) => a.key === unit.county);
-    return { year, value: lei(value), perCapita: area.gap ? null : perCapita(value, population), countyPerCapita: c?.perCapita ?? null, selected: !yearsSet || yearsSet.has(year) };
+    return { year, value: lei(value), records, perCapita: area.gap ? null : perCapita(value, population), countyPerCapita: c?.perCapita ?? null, selected: !yearsSet || yearsSet.has(year) };
   });
-  const byCpv = new Map<string | null, number>(), channels = { da: 0, contracts: 0 };
+  const byCpv = new Map<string | null, { value: number; records: number }>(), channels = { da: 0, contracts: 0 };
   for (const r of own) {
     if (rowSelected(r, { ...s, dataset: "all" }, yearsSet, cpvSet)) channels[r.src] += r.v;
-    if (rowSelected(r, s, yearsSet, cpvSet)) byCpv.set(r.c, (byCpv.get(r.c) ?? 0) + r.v);
+    if (rowSelected(r, s, yearsSet, cpvSet)) {
+      const c = byCpv.get(r.c) ?? byCpv.set(r.c, { value: 0, records: 0 }).get(r.c)!;
+      c.value += r.v; c.records += r.n;
+    }
   }
   const ids = members.map((i) => data.institutions[i]!.id);
   const named = ids.length ? (await sql`select id::text id, name_display name from core.entities where id = any(${sql.array(ids)}::bigint[])`) as unknown as { id: string; name: string }[] : [];
@@ -251,7 +255,7 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
     place: area.perCapita === null ? null : ranked.findIndex((a) => a.key === area.key) + 1,
     ranked: ranked.length,
     years,
-    cpv: [...byCpv].sort((a, b) => b[1] - a[1]).map(([code, value]) => ({ code, name: code === null ? "fără cod CPV" : domainName(code, official.get(code)), value: lei(value) })),
+    cpv: [...byCpv].sort((a, b) => b[1].value - a[1].value).map(([code, t]) => ({ code, name: code === null ? "fără cod CPV" : domainName(code, official.get(code)), value: lei(t.value), records: t.records })),
     channels: { da: lei(channels.da), contracts: lei(channels.contracts) },
     suppliers: suppliers.map((x) => ({ ...x, value: lei(Number(x.value)) })),
     neighbours: areas.map((a) => ({ key: a.key, name: a.name, perCapita: a.perCapita })),
