@@ -59,6 +59,8 @@ const Arrow = ({ back = false }: { back?: boolean }) => <svg viewBox="0 0 12 12"
   <path d={back ? "M10 6H2.5M5.5 3 2.5 6l3 3" : "M2 6h7.5M6.5 3l3 3-3 3"} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 /** "e primul", "e al 14-lea" (the ranking's header names the hovered area's place). */
 const place = (n: number) => (n === 1 ? "e primul" : `e al ${n}-lea`);
+/** How long the pointer rests on an area of the map before the ranking scrolls to its row (owner, 7 November 2026). */
+const FOLLOW_DELAY = 250;
 const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
 
 function Pick({ label, text, title, children, wide = false }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean }) {
@@ -233,16 +235,24 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     if (el) setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
   }, [ranked, unfolded, county]);
 
-  // The hovered row stays in view inside the ranking's own scroll (never the page's).
+  // The hovered row stays in view inside the ranking's own scroll (never the page's). Owner, 7 November 2026: the list
+  // follows only once the pointer rests on an area (FOLLOW_DELAY; crossing the map moves nothing) and then glides to
+  // the row instead of jumping. The row's highlight, the outline and the card stay instant.
   useEffect(() => {
-    const list = listRef.current;
-    const row = hover && fromMap.current ? list?.querySelector<HTMLElement>(`[data-key="${hover}"]`) : null;
-    if (!list || !row) return;
-    // Measured against the list itself (offsetTop counts from the page's positioned ancestor, which hid the top rows);
-    // the bottom keeps clear of the fade.
-    const top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop, bottom = top + row.offsetHeight;
-    if (top < list.scrollTop) list.scrollTop = top - 8;
-    else if (bottom > list.scrollTop + list.clientHeight - 44) list.scrollTop = bottom - list.clientHeight + 48;
+    if (!hover || !fromMap.current) return;
+    const timer = window.setTimeout(() => {
+      const list = listRef.current;
+      const row = list?.querySelector<HTMLElement>(`[data-key="${hover}"]`);
+      if (!list || !row) return;
+      // Measured against the list itself (offsetTop counts from the page's positioned ancestor, which hid the top rows);
+      // the bottom keeps clear of the fade.
+      const top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop, bottom = top + row.offsetHeight;
+      const to = top < list.scrollTop ? top - 8 : bottom > list.scrollTop + list.clientHeight - 44 ? bottom - list.clientHeight + 48 : null;
+      if (to === null) return;
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      list.scrollTo({ top: Math.max(0, to), behavior: reduce ? "auto" : "smooth" });
+    }, FOLLOW_DELAY);
+    return () => window.clearTimeout(timer);
   }, [hover]);
 
   function track(event: ReactPointerEvent<HTMLDivElement>) {

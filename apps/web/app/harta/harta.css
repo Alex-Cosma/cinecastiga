@@ -177,6 +177,21 @@
 .mx-p-bar.is-out{opacity:.25}
 .mx-p-avg{stroke:var(--ink);stroke-width:1;stroke-dasharray:3 3}
 .mx-p-tick{font:12px var(--body);fill:var(--muted)}
+/* A year's hit area (owner, 7 November 2026): an HTML column behind the chart, a whole column tall (the SVG lets the
+   pointer through); hovering or focusing it shows the year's tip under the chart, a click opens its records. */
+.mx-p-yrs{position:relative}
+.mx-p-yrs>.mx-p-years{position:relative;z-index:1;pointer-events:none}
+.mx-p-yr-cols{position:absolute;inset:0 0 auto;height:calc(100% * 96 / 112);display:grid}
+.mx-p-yr{display:block;border-radius:4px;cursor:pointer;transition:background var(--fast) var(--ease)}
+span.mx-p-yr{cursor:default}
+.mx-p-yr:hover,.mx-p-yr.is-active{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.mx-p-yr:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mx-p-tick.is-active{fill:var(--ink);font-weight:600}
+.mx-p-yr-tip{position:absolute;top:calc(100% - 2px);z-index:5;display:grid;gap:2px;padding:7px 10px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:0 4px 14px #0000001a;font-size:12.5px;line-height:1.5;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.mx-p-yr-tip>b{font:700 13.5px/1.4 var(--display);color:var(--ink)}
+.mx-p-yr-main{color:var(--ink);font-weight:600}
+.mx-p-yr-go{justify-self:start;margin-top:4px;padding:4px 0;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.mx-p-yr-tip small{font-size:12px;color:var(--muted)}
 .mx-p-rows{margin:0;padding:0;list-style:none}
 .mx-p-rows li{display:grid;grid-template-columns:minmax(0,1fr) 48px 38px;align-items:center;gap:8px;padding:3px 0;font-size:13px}
 .mx-p-rows li>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -184,7 +199,7 @@
 .mx-p-rows b{font:500 12.5px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 .mx-p-wide{margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
 .mx-p-near{display:block;width:100%;height:auto;overflow:visible}
-.mx-p-dot{fill:var(--choro-2);cursor:pointer;transition:fill var(--fast) var(--ease),cx var(--med) var(--ease),cy var(--med) var(--ease)}
+.mx-p-dot{fill:var(--choro-2);cursor:pointer;stroke:transparent;stroke-width:8px;transition:fill var(--fast) var(--ease),cx var(--med) var(--ease),cy var(--med) var(--ease)}
 .mx-p-dot:hover{fill:var(--choro-4)}
 .mx-p-me{fill:none;stroke:var(--orange);stroke-width:2.5;transition:cx var(--med) var(--ease),cy var(--med) var(--ease)}
 .mx-p-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
@@ -205,4 +220,4 @@
   .mx-p-lead{font-size:18px}
   .mx-p-close{min-width:44px;min-height:44px}
 }
-@media (prefers-reduced-motion:reduce){.mx-body,.mx-p-bar,.mx-p-dot,.mx-p-me{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
+@media (prefers-reduced-motion:reduce){.mx-body,.mx-p-bar,.mx-p-dot,.mx-p-me,.mx-p-yr{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
