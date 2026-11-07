@@ -91,6 +91,10 @@ Toate căile sunt relative la rădăcină.
 | Drawer și surse | `apps/web/app/intreaba/EvidenceDrawer.tsx`; `lib/source-evidence.ts`, `signal-evidence.ts`, `radiografie-evidence.ts` |
 | Dovezi imuabile | `lib/evidence-capture-input.ts`, `evidence-captures.ts`, `evidence-captures-shared.ts`, `evidence-bundle.ts`, `evidence-zip.ts` |
 | Anchete și permisiuni | `lib/investigation-access.ts`, `investigation-workspace.ts`, `workspace-api.ts`; `app/anchete/` |
+| Spațiul privat (7 noiembrie 2026) | `components/private/PrivateTrail.tsx` + `private.css` (filele și lățimea comună), `CopyCitation.tsx`; dosarul: `app/anchete/DossierBrief.tsx` („Pe scurt”), `RegistryFacts.tsx`, `lib/dossier-registry.ts`, `lib/evidence-clip.ts`, `lib/clip-subject.ts`, `lib/private-format.ts` (datele); fișa de probă: `lib/evidence-sheet.ts`, `lib/evidence-citation.ts`; caietul exportului: `lib/evidence-caiet.ts`; rute noi: `GET /api/anchete/[id]/captures/[captureId]/citare`, `…/csv`, `GET /api/anchete/[id]/registre/[entityId]`; `GET /api/anchete?kind&ref` spune și ce dosare au deja dovada |
+| Butonul „Salvează în anchetă” | `components/ClipButton.tsx` + `clip-button.css`: dialogul trăiește la capătul paginii (portal), fix în fereastră (sub/deasupra butonului ori peste pagină, o foaie jos pe telefon) |
+| Sursele semnalelor și ale Radiografiei | `app/semnale/[id]/page.tsx`, `lib/signal-page.ts` + `signal-page-words.ts` (titlul constatării, fișa firmei), `app/entitati/[id]/radiografie/surse/`, `lib/radiografie-page.ts`, `components/SourceEvidenceView.tsx`, `lib/source-groups.ts` (rândurile unei asocieri grupate), `components/record/FirmCard.tsx` |
+| Cont și 404 | `app/login/LoginForm.tsx` + `login-context.ts`, `app/cont/AccountPanel.tsx` + `device.ts`, `app/not-found.tsx` + `NotFoundAddress.tsx`, `app/entitati/[id]/not-found.tsx` (citește id-ul din `x-seap-path`, pus de `proxy.ts`) |
 | Rețete | `lib/recipes.ts`, `app/api/recipes/`, `app/intreaba/RecipeShelf.tsx` |
 | Urmăriri | `lib/monitoring*.ts`, `app/urmariri/`, `app/api/urmariri/`, `scripts/monitoring-worker.ts` |
 | Digest email | `lib/monitoring-digests.ts`, `scripts/monitoring-digests.ts` |
@@ -144,7 +148,7 @@ Deciziile de produs sunt în 01-product.md („Încărcarea ghost”, „Grafice
 
 Captura se reconstruiește pe server din identitatea selecției; un browser nu poate inventa totalul, lista de membri sau sursele. Copiere SQL-to-SQL într-un snapshot repeatable-read, valori zecimale exacte, versiuni imuabile și acces verificat din nou la publicare. Selecțiile nominale foarte mari au limite explicite; nu se trunchiază în tăcere. Exportul live CSV și captura integrală au mecanisme/limite distincte.
 
-ZIP64 permite pachete mari cu CSV/NDJSON, metodologie, istoric și manifest SHA-256. Nu afirmăm că un ZIP conține toate binarele externe dacă oferă doar referințele lor.
+ZIP64 permite pachete mari cu CSV/NDJSON, metodologie, istoric și manifest SHA-256. Din 7 noiembrie 2026 pachetul are și `caiet.md` (citibil), iar amprenta afișată pe fișa de probă și în „Copiază citarea” e SHA-256 al `rows.csv`, aceeași valoare ca în `manifest.json` și ca a CSV-ului descărcat de pe fișă. Nu afirmăm că un ZIP conține toate binarele externe dacă oferă doar referințele lor.
 
 ## Documente — mecanismul real
 
