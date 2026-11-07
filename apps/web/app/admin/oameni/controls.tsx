@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { useSearchParams } from "next/navigation";
+import { writeAddress } from "@/lib/address";
 
 /*
  * The small client pieces of Oameni (owner, 7 November 2026): a form's submit button with its pending text, a password
@@ -90,7 +91,7 @@ export function Outcome({ rev, focus }: { rev: string; focus: string | null }) {
     const url = new URL(window.location.href);
     if (!OUTCOME.some((key) => url.searchParams.has(key))) return;
     for (const key of OUTCOME) url.searchParams.delete(key);
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    writeAddress(`${url.pathname}${url.search}${url.hash}`);
   }, [rev]); // eslint-disable-line react-hooks/exhaustive-deps -- once per server render
   return null;
 }

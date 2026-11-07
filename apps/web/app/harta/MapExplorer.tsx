@@ -8,6 +8,7 @@ import "@/app/intreaba/builder/filters-kit.css";
 import Term from "@/components/Term";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import { writeAddress } from "@/lib/address";
 import UatPanel from "./UatPanel";
 import { useEntrance, useFillIn, useGlide } from "./motion";
 import type { MapArea, MapDataset, MapOptions, MapResponse } from "@/lib/map-capita-shared";
@@ -78,17 +79,28 @@ function Pick({ label, text, title, children, wide = false }: { label: string; t
   </>;
 }
 
-export default function MapExplorer({ initial }: { initial: { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined; uat?: string | undefined } }) {
+type Initial = { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined; uat?: string | undefined };
+
+export default function MapExplorer({ initial }: { initial: Initial }) {
+  // The address is the view. Back from a page opened here (a year of a UAT's panel) remounts the map from the
+  // router's cache, whose props are the first visit's (often a bare /harta), while the address already holds the
+  // county and the UAT that were open: the browser reads the address, the server its own copy of it.
+  const [start] = useState<Initial>(() => {
+    if (typeof window === "undefined") return initial;
+    const p = new URLSearchParams(window.location.search);
+    const one = (key: string) => { const all = p.getAll(key); return all.length === 1 ? all[0] : undefined; };
+    return { ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat") };
+  });
   const parse = (raw: string | undefined, valid: RegExp): Years => {
     const items = (raw ?? "").split(",").map((s) => s.trim()).filter((s) => valid.test(s));
     return items.length ? [...new Set(items)].sort() : "all";
   };
-  const [years, setYears] = useState<Years>(() => parse(initial.ani, /^20\d\d$/));
-  const [cpv, setCpv] = useState<Years>(() => parse(initial.cpv, /^\d\d$/));
-  const [dataset, setDataset] = useState<MapDataset>(() => DATASETS.find((d) => d.url === initial.canal)?.value ?? "all");
-  const [county, setCounty] = useState<string | null>(initial.judet && /^[a-z-]{2,20}$/.test(initial.judet) ? initial.judet : null);
+  const [years, setYears] = useState<Years>(() => parse(start.ani, /^20\d\d$/));
+  const [cpv, setCpv] = useState<Years>(() => parse(start.cpv, /^\d\d$/));
+  const [dataset, setDataset] = useState<MapDataset>(() => DATASETS.find((d) => d.url === start.canal)?.value ?? "all");
+  const [county, setCounty] = useState<string | null>(start.judet && /^[a-z-]{2,20}$/.test(start.judet) ? start.judet : null);
   // The UAT whose panel is open (owner, 6 November 2026): its SIRUTA, inside the open county.
-  const [uat, setUat] = useState<string | null>(initial.judet && initial.uat && /^\d{1,7}$/.test(initial.uat) ? initial.uat : null);
+  const [uat, setUat] = useState<string | null>(start.judet && start.uat && /^\d{1,7}$/.test(start.uat) ? start.uat : null);
   const [geo, setGeo] = useState<Geo | null>(null);
   const [countyGeo, setCountyGeo] = useState<Record<string, CountyGeo>>({});
   const [options, setOptions] = useState<MapOptions | null>(null);
@@ -166,7 +178,7 @@ export default function MapExplorer({ initial }: { initial: { ani?: string | und
     const q = p.toString(), url = `${window.location.pathname}${q ? `?${q}` : ""}`;
     // Opening a county or a UAT's panel is a history entry: Back closes it.
     const opened = !fromPop.current && ((county !== null && county !== shownCounty.current) || (uat !== null && uat !== shownUat.current));
-    if (opened) window.history.pushState(null, "", url); else window.history.replaceState(null, "", url);
+    writeAddress(url, opened ? "push" : "replace");
     shownCounty.current = county; shownUat.current = uat; fromPop.current = false;
   }, [years, cpv, dataset, county, uat]);
   // Escape steps back to the country.
