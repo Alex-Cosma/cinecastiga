@@ -35,7 +35,7 @@
 .cx-band:hover,.cx-band.hov{opacity:.8}.cx-band.on{opacity:.95}.cx-band.dim{opacity:.28}.cx-band.dim:hover,.cx-band.dim.hov{opacity:.6}
 .cx-node{fill:var(--b)}.cx-node.on{fill:var(--accent)}
 /* the chosen partner's partners fan out of its node, once, when it is chosen */
-.cx-band2{fill:var(--choro-2);opacity:.3;cursor:pointer;transition:opacity var(--fast) var(--ease);animation:cx-fan var(--slow) var(--ease) both}
+.cx-band2{fill:var(--choro-2);opacity:.3;cursor:pointer;transition:opacity var(--fast) var(--ease);animation:cx-fan calc(var(--slow) * var(--chart-pace)) var(--ease) both}
 @keyframes cx-fan{from{opacity:0}}
 .cx-band2:hover,.cx-band2.hov{opacity:.55}.cx-band2.on{opacity:.8;fill:var(--choro-3)}.cx-band2.dim{opacity:.18}
 .cx-band2.root{fill:var(--choro-4);opacity:.45;cursor:default}

@@ -17,6 +17,7 @@ import type { AnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
 import type { KitLink } from "./builder/kit-types";
 import { G } from "../../components/ghost/Ghost";
+import { chartPace } from "../../components/motion/pace";
 import { countyMetrics, localNotes, mapFirm, metricWords, nationalMetric, type CountyMetric, type MapLensValue } from "./map-answer";
 
 type MapData = Extract<BlockData, { block: "map" }>;
@@ -127,7 +128,7 @@ function useFillIn(ref: RefObject<Element | null>): "empty" | "filling" | "fille
       if (!entries.some((entry) => entry.isIntersecting)) return;
       io.disconnect();
       // A frame at the empty tint is painted first, so the fill has somewhere to start from.
-      frame = requestAnimationFrame(() => { setPhase("filling"); timer = window.setTimeout(done, 480); });
+      frame = requestAnimationFrame(() => { setPhase("filling"); timer = window.setTimeout(done, 480 * chartPace()); });
     }, { rootMargin: "0px 0px -6% 0px", threshold: 0.03 });
     io.observe(el);
     addEventListener("beforeprint", done);

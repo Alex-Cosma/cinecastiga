@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import Term from "@/components/Term";
+import { chartPace } from "@/components/motion/pace";
 import type { DepRow } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
 import { formatRon, formatInt } from "@/lib/format";
@@ -48,7 +49,7 @@ function ease(t: number): number {
     for (let i = 0; i < 20; i++) { const mid = (lo + hi) / 2; if (bx(mid) < t) lo = mid; else hi = mid; }
     return by((lo + hi) / 2);
 }
-/** --med: the zoom buttons' tween. */
+/** --med: the zoom buttons' tween, at pace 1 (--chart-pace, components/motion/pace.ts). */
 const GLIDE_MS = 260;
 
 /**
@@ -108,9 +109,9 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
         zoomRef.current = z;
         setZoom(z);
         if (matchMedia("(prefers-reduced-motion: reduce)").matches) { viewRef.current = z; setView(z); return; }
-        const from = viewRef.current, start = performance.now();
+        const from = viewRef.current, start = performance.now(), length = GLIDE_MS * chartPace();
         const step = (now: number) => {
-            const t = Math.min(1, (now - start) / GLIDE_MS), e = ease(t), w = 1 / from.k + (1 / z.k - 1 / from.k) * e;
+            const t = Math.min(1, (now - start) / length), e = ease(t), w = 1 / from.k + (1 / z.k - 1 / from.k) * e;
             const at = t >= 1 ? z : { k: 1 / w, x: from.x + (z.x - from.x) * e, y: from.y + (z.y - from.y) * e };
             viewRef.current = at;
             setView(at);

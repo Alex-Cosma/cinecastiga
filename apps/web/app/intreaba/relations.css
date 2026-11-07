@@ -94,4 +94,4 @@
    discs and names follow; a hover's emphasis stays quick while a new place turns over --med. */
 .qb-net .qb-net-spokes.cm-fade { --cm-k: qb-net-reach; transform-box: view-box; transform-origin: 50% 50%; }
 @keyframes qb-net-reach { from { transform: scale(0); } to { transform: scale(1); } }
-.qb-net .qb-net-spoke.cm-tw { transition: transform var(--chart-tw) var(--ease), opacity var(--fast) var(--ease); }
+.qb-net .qb-net-spoke.cm-tw { transition: transform calc(var(--chart-tw) * var(--chart-pace)) var(--ease), opacity var(--fast) var(--ease); }

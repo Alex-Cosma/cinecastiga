@@ -1128,7 +1128,7 @@
 /* Charts in motion (owner, 6 November 2026; the kit is components/motion/chart-motion.css, the subject key and the
    entrance classes answer/chart-motion.ts). The map's counties fill in together (MapBlock useFillIn) over --slow, then a
    new lens tweens their fill over --med; the hover keeps its quick filter. */
-.cq-result .ask-choropleth path.ask-county { transition: fill var(--chart-tw) var(--ease), filter var(--fast) var(--ease); }
-.cq-result .ask-choropleth.is-filling path.ask-county { transition-duration: var(--chart-in), var(--fast); }
+.cq-result .ask-choropleth path.ask-county { transition: fill calc(var(--chart-tw) * var(--chart-pace)) var(--ease), filter var(--fast) var(--ease); }
+.cq-result .ask-choropleth.is-filling path.ask-county { transition-duration: calc(var(--chart-in) * var(--chart-pace)), var(--fast); }
 /* The breakdown's bar: a segment another order or „Arată toate” adds grows from nothing while the others tween. */
 @starting-style { .cq-result .ask-comp.is-shown > .seg { width: 0 !important; } }
