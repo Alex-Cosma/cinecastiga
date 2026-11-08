@@ -12,7 +12,10 @@ import { useFillIn } from "./motion";
  * gather around the city's centre. The county's UATs stay as a quiet backdrop.
  */
 
-export default function HospitalLayer({ uats, hospitals, city, unit, ready, hover, tint, onHover, onOpen }: {
+/** A hospital's circle, by its beds (one function, so the packing is not redone on every render). */
+const byBeds = (a: MapArea): number => dotRadius(a.beds);
+
+export default function HospitalLayer({ uats, hospitals, city, unit, ready, hover, tint, onHover, onOpen, radius = byBeds }: {
   uats: { siruta: string | number; d: string }[];
   hospitals: readonly MapArea[];
   /** București's centre in the map's units (for the capital's hospitals), or null. */
@@ -25,18 +28,20 @@ export default function HospitalLayer({ uats, hospitals, city, unit, ready, hove
   tint: (a: MapArea) => number | null;
   onHover: (key: string | null) => void;
   onOpen: (a: MapArea) => void;
+  /** A circle's radius in screen pixels (hospitals: by beds; schools: by pupils). */
+  radius?: ((a: MapArea) => number) | undefined;
 }) {
   const filled = useFillIn(ready);
   const centres = useMemo(() => new Map(uats.map((u) => [Number(u.siruta), pathCentroid(u.d)])), [uats]);
   const dots = useMemo(() => {
     const items = hospitals.flatMap((a) => {
       const at = a.siruta === CITY ? city : a.siruta ? centres.get(a.siruta) ?? null : null;
-      return at ? [{ key: a.key, ax: at[0], ay: at[1], r: dotRadius(a.beds) * unit, area: a }] : [];
+      return at ? [{ key: a.key, ax: at[0], ay: at[1], r: radius(a) * unit, area: a }] : [];
     });
     const placed = packDots(items, 1.5 * unit);
     // The largest first, so a small circle is never hidden under a large one.
     return items.map((it) => ({ ...it, at: placed.get(it.key)! })).sort((a, b) => b.r - a.r || a.key.localeCompare(b.key));
-  }, [hospitals, centres, city, unit]);
+  }, [hospitals, centres, city, unit, radius]);
   return <g className="mx-dots">
     {dots.map((d) => {
       const t = tint(d.area);

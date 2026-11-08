@@ -41,6 +41,8 @@ export function pathCentroid(d: string): [number, number] | null {
 
 /** A circle's radius in screen pixels: its area proportional to the beds; a hospital without beds is a small ring. */
 export const dotRadius = (beds: number | null | undefined): number => (beds && beds > 0 ? 3 + 13 * Math.sqrt(Math.min(beds, 2000) / 2000) : 3.5);
+/** A school's circle (owner, 8 November 2026): its area proportional to its pupils, smaller than a hospital's (many share a town). */
+export const pupilRadius = (pupils: number | null | undefined): number => (pupils && pupils > 0 ? 2.5 + 8.5 * Math.sqrt(Math.min(pupils, 3000) / 3000) : 3);
 
 /**
  * Circles around their anchors without overlap: each town's circles start on a sunflower spiral around its centre,

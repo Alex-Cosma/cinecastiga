@@ -105,6 +105,10 @@ export const GLOSSARY = {
     title: "Cu instituțiile lor",
     text: "Fiecare primărie și consiliu județean, cu instituțiile publice pe care le finanțează ca ordonator principal de credite (lista Ministerului Finanțelor, 1 noiembrie 2026) și cu companiile ei (singurul acționar sau cel majoritar), verificate de mână pe sursă. Instituțiile consiliului județean se adună la județ, ale unei primării în UAT-ul ei. Școlile și spitalele nu intră: au hărțile lor; nici operatorii regionali de apă și asociațiile de UAT-uri.",
   },
+  "scolile-harta": {
+    title: "Școlile pe hartă",
+    text: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației (2025–2026), legate prin CIF, cu școlile comasate în ele în 2025; fără universități, palate și cluburi ale copiilor sau inspectorate. Harta arată ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Elevii sunt cei din anul școlar 2024–2025, preșcolarii incluși.",
+  },
   "plafoane-totaluri": {
     title: "Ce intră în totaluri",
     text: "Achizițiile directe acceptate de cel mult 2 milioane lei și contractele din proceduri de cel mult 1 miliard lei. Contractele peste acest plafon sunt separate de totaluri și listate pe pagina fiecărei instituții.",

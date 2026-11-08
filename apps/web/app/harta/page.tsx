@@ -10,7 +10,7 @@ import "./harta.css";
 
 export const metadata: Metadata = {
   title: "Hartă",
-  description: "Lei contractați pe locuitor de primării și consiliile județene, cu sau fără instituțiile lor, pe județe și pe UAT-uri; spitalele publice, cu lei pe pat pentru 2025.",
+  description: "Lei contractați pe locuitor de primării și consiliile județene, cu sau fără instituțiile lor, pe județe și pe UAT-uri; spitalele publice, cu lei pe pat pentru 2025; școlile publice, cu lei pe elev pentru 2025.",
 };
 
 export default async function HartaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
