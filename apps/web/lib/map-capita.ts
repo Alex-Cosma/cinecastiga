@@ -10,6 +10,7 @@ import {
 } from "./map-capita-shared";
 import { BEDS_SOURCE, countyHospitals, hospitalCounties, hospitalNames, loadHospitals, type HospitalData, type ReadRows } from "./map-hospitals";
 import { INSTITUTIONS_SOURCE, localInstitutions } from "./map-institutions";
+import { countySchools, loadSchools, PUPILS_SOURCE, schoolCounties, schoolNames, type SchoolData } from "./map-schools";
 
 /*
  * /harta's data (owner, 6 November 2026): the value contracted per inhabitant of the local administrations, by county
@@ -46,6 +47,7 @@ interface KindData {
 const CACHE_MS = 600_000;
 let cached: { marker: string; at: number; data: Promise<KindData> } | null = null;
 let cachedHospitals: { marker: string; at: number; data: Promise<HospitalData> } | null = null;
+let cachedSchools: { marker: string; at: number; data: Promise<SchoolData> } | null = null;
 
 /**
  * The build the rows belong to: the table's own file (a new one each night) and the profiles' (the list of
@@ -118,8 +120,18 @@ export async function readMapHospitals(sql: DbSql = db()): Promise<HospitalData>
   data.catch(() => { if (cachedHospitals?.data === data) cachedHospitals = null; });
   return data;
 }
+/** The schools of the current build (map-schools.ts), read once per build and per 10 minutes. */
+export async function readMapSchools(sql: DbSql = db()): Promise<SchoolData> {
+  const { marker, ready } = await buildMarker(sql);
+  const key = `${marker}:${ready}`;
+  if (cachedSchools && cachedSchools.marker === key && Date.now() - cachedSchools.at < CACHE_MS) return cachedSchools.data;
+  const data = loadSchools(sql, ready, readRows);
+  cachedSchools = { marker: key, at: Date.now(), data };
+  data.catch(() => { if (cachedSchools?.data === data) cachedSchools = null; });
+  return data;
+}
 /** Tests: read again. */
-export function forgetMapKind(): void { cached = null; cachedHospitals = null; }
+export function forgetMapKind(): void { cached = null; cachedHospitals = null; cachedSchools = null; }
 
 const NOTES = {
   population: `Populația: ${PER_CAPITA_SOURCE}.`,
@@ -135,6 +147,11 @@ const HOSPITAL_NOTES = {
   ...NOTES,
   kind: "Spitalele publice din lista CNAS pe 2025, legate de mână de instituțiile care cumpără, și celelalte instituții numite spital. Fiecare e desenat în orașul lui, nu la adresă. Valori contractate, nu plăți.",
   beds: BEDS_SOURCE,
+};
+const SCHOOL_NOTES = {
+  ...NOTES,
+  kind: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației 2025–2026, legate prin CIF (și al școlilor comasate în ele), fără universități, palate și cluburi ale copiilor sau inspectorate. Ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Fiecare e desenată în UAT-ul ei. Valori contractate, nu plăți.",
+  pupils: PUPILS_SOURCE,
 };
 const COUNTY_LIST = [...COUNTY_BY_KEY].map(([key, c]) => ({ key, name: c.name }));
 
@@ -198,6 +215,18 @@ export async function getMap(s: MapSelection): Promise<MapResponse> {
       source: data.source, metric, notes: HOSPITAL_NOTES,
     };
   }
+  if (s.kind === "schools") {
+    const sql = db();
+    const data = await readMapSchools(sql);
+    // Inside a county: its schools, with their current names (owner, 8 November 2026: as the hospitals).
+    const areas = s.level === "county" ? schoolCounties(data, s, COUNTY_LIST, metric === "perPupil")
+      : countySchools(data, s, s.county!, metric === "perPupil", await schoolNames(sql, data, s.county!));
+    return {
+      selection: s, county: county ? { key: s.county!, name: county.name } : null, areas, city: null,
+      totals: { value: lei(areas.reduce((a, x) => a + (x.value ?? 0), 0)), records: areas.reduce((a, x) => a + x.records, 0), buyers: areas.reduce((a, x) => a + x.buyers, 0) },
+      source: data.source, metric, notes: SCHOOL_NOTES,
+    };
+  }
   const data = await readMapKind();
   const { areas, city } = s.level === "county" ? { areas: countyAreas(data, s), city: null } : uatAreas(data, s, s.county!);
   const all = city ? [...areas, city] : areas;
@@ -229,15 +258,16 @@ function divisionNames(sql: DbSql): Promise<Map<string, string | null>> {
 const KINDS: MapOptions["kinds"] = [
   { key: "local_admin", label: "Primării și consilii județene", levels: ["county", "uat"] },
   { key: "hospitals", label: "Spitale publice", levels: ["county", "uat"] },
+  { key: "schools", label: "Școli publice", levels: ["county", "uat"] },
 ];
 
 /** The filters' choices for a kind (the administrations with their institutions or without): its years and CPV divisions with their totals. */
 export async function getMapOptions(kind: MapKind = "local_admin", withInstitutions = false): Promise<MapOptions> {
   const sql = db();
-  const [data, official] = await Promise.all([kind === "hospitals" ? readMapHospitals(sql) : readMapKind(sql), divisionNames(sql)]);
+  const [data, official] = await Promise.all([kind === "hospitals" ? readMapHospitals(sql) : kind === "schools" ? readMapSchools(sql) : readMapKind(sql), divisionNames(sql)]);
   const years = new Map<string, { value: number; records: number }>(), cpv = new Map<string, { value: number; records: number }>();
   const undated = { value: 0, records: 0 };
-  const kept = kind === "hospitals" ? null : (data as KindData).institutions.map((inst) => counted(inst, { withInstitutions }));
+  const kept = kind === "local_admin" ? (data as KindData).institutions.map((inst) => counted(inst, { withInstitutions })) : null;
   for (const r of data.rows) {
     if (kept && !kept[r.a]) continue;
     const y = r.y === null ? undated : years.get(r.y) ?? years.set(r.y, { value: 0, records: 0 }).get(r.y)!;

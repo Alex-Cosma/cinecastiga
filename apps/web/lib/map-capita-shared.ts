@@ -15,27 +15,38 @@ export type MapDataset = "all" | "da" | "contracts";
 /**
  * The kinds of institution the map can count: the local administrations, and since 8 November 2026 the public
  * hospitals (owner): CNAS's 2025 list of public hospitals with their approved beds (lib/reference/hospitals-cnas-2025.json,
- * linked by hand to the buying institutions) and every other institution named a hospital (lib/ask/authority-kind.ts).
+ * linked by hand to the buying institutions) and every other institution named a hospital (lib/ask/authority-kind.ts);
+ * and the public schools (owner, 8 November 2026): the Ministry of Education's network with its pupils
+ * (lib/reference/schools-me-2025.json, linked by CIF).
  */
-export const MAP_KINDS = ["local_admin", "hospitals"] as const;
+export const MAP_KINDS = ["local_admin", "hospitals", "schools"] as const;
 export type MapKind = (typeof MAP_KINDS)[number];
-/** The kind's word in an address (`?inst=spitale`); the local administrations have none, as before. */
-export const KIND_URL: Record<MapKind, string | null> = { local_admin: null, hospitals: "spitale" };
+/** The kind's word in an address (`?inst=spitale`, `?inst=scoli`); the local administrations have none, as before. */
+export const KIND_URL: Record<MapKind, string | null> = { local_admin: null, hospitals: "spitale", schools: "scoli" };
+/** The kinds drawn as circles inside a county, each institution in its UAT, with a list of them beside the map. */
+export const dotted = (kind: MapKind): boolean => kind === "hospitals" || kind === "schools";
 
 /**
  * The year of the hospitals' beds: CNAS publishes the structure approved at 31 December 2025, with no history. Owner,
  * 8 November 2026: lei per bed only when 2025 alone is chosen; any other choice of years shows the total contracted.
  */
 export const BEDS_YEAR = "2025";
-/** What an area's figure is: lei per inhabitant (local administrations), lei per bed (hospitals, 2025 alone), or lei. */
-export type MapMetric = "perCapita" | "perBed" | "value";
+/**
+ * The year of the schools' pupils (owner, 8 November 2026): the Ministry of Education's pupils of the school year
+ * 2024-2025, pre-school children included. Lei per pupil only when 2025 alone is chosen; any other choice shows the total.
+ */
+export const PUPILS_YEAR = "2025";
+/** What an area's figure is: lei per inhabitant (local administrations), lei per bed (hospitals) or per pupil (schools), 2025 alone, or lei. */
+export type MapMetric = "perCapita" | "perBed" | "perPupil" | "value";
 export function mapMetric(s: Pick<MapSelection, "kind" | "years">): MapMetric {
   if (s.kind === "local_admin") return "perCapita";
-  return s.years !== "all" && s.years.length === 1 && s.years[0] === BEDS_YEAR ? "perBed" : "value";
+  const alone = s.years !== "all" && s.years.length === 1 ? s.years[0] : null;
+  if (s.kind === "schools") return alone === PUPILS_YEAR ? "perPupil" : "value";
+  return alone === BEDS_YEAR ? "perBed" : "value";
 }
 /** An area's figure in a metric: what the map's tint, the ranking's bars and its order read. */
 export function figure(a: MapArea, metric: MapMetric): number | null {
-  return metric === "perCapita" ? a.perCapita : metric === "perBed" ? a.perBed ?? null : a.value;
+  return metric === "perCapita" ? a.perCapita : metric === "perBed" ? a.perBed ?? null : metric === "perPupil" ? a.perPupil ?? null : a.value;
 }
 
 export interface MapSelection {
@@ -66,7 +77,9 @@ export type MapGap =
   /** No population to divide by. */
   | "no_population"
   /** Hospitals, 2025 alone: no bed in CNAS's list (a hospital it does not hold, or a county without one). */
-  | "no_beds";
+  | "no_beds"
+  /** Schools, 2025 alone: no pupil in the Ministry of Education's list for 2024-2025. */
+  | "no_pupils";
 
 export interface MapArea {
   /** A county key ("bistrita-nasaud") or a UAT's SIRUTA code as text. */
@@ -98,9 +111,13 @@ export interface MapArea {
   beds?: number | null;
   /** Hospitals, 2025 alone: the 2025 value of the hospitals with beds / their beds; null otherwise. */
   perBed?: number | null;
-  /** A hospital (the open county's list): the UAT it is drawn in (SIRUTA; București's 179132 for the city's). */
+  /** Schools: the pupils of 2024-2025 of the area's schools (pre-school children included); null without any. */
+  pupils?: number | null;
+  /** Schools, 2025 alone: the 2025 value of the schools with pupils / their pupils; null otherwise. */
+  perPupil?: number | null;
+  /** A hospital or a school (the open county's list): the UAT it is drawn in (SIRUTA; București's 179132 for the city's). */
   siruta?: number | null;
-  /** A hospital: the institution its name links to (the identity with the largest value). */
+  /** A hospital or a school: the institution its name links to (the identity with the largest value). */
   entityId?: string | null;
   /** With the institutions (withInstitutions): the part of `value` the institutions and companies contracted. */
   subValue?: number | null;
@@ -120,7 +137,7 @@ export interface MapResponse {
   source: "rollup" | "live";
   /** What each area's figure is (mapMetric): the tint, the bars and the order read it. */
   metric: MapMetric;
-  notes: { population: string; geometry: string; kind: string; beds?: string; institutions?: string };
+  notes: { population: string; geometry: string; kind: string; beds?: string; pupils?: string; institutions?: string };
 }
 
 export interface MapOptions {
@@ -243,6 +260,8 @@ export function areaOf(key: string, name: string, population: number | null, mem
 
 /** A hospital of the map (lib/map-hospitals.ts): one of CNAS's list (its code, beds and place), or one named a hospital outside it (no beds). */
 export interface MapHospital { code: string; name: string; county: string; siruta: number | null; beds: number | null }
+/** A school of the map (lib/map-schools.ts): its SIIIR code, name, county, UAT and pupils of 2024-2025. */
+export interface MapSchool { code: string; name: string; county: string; siruta: number; pupils: number }
 
 function summed(members: readonly number[], sums: { v: Float64Array; n: Float64Array }): { value: number; records: number } {
   let value = 0, records = 0;
@@ -280,6 +299,36 @@ export function hospitalCountyArea(key: string, name: string, hospitals: readonl
     key, name, population: null, denominator: perBed && beds ? beds : null, value: lei(value), perCapita: null,
     records, buyers, institutions: hospitals.length, gap: perBed && !beds ? "no_beds" : null,
     beds: beds || null, perBed: perBed && beds ? bedsValue / beds : null,
+  };
+}
+
+/**
+ * One school (owner, 8 November 2026): its identities' sums. Lei per pupil only with `perPupil` (2025 alone, mapMetric)
+ * and pupils; a school without pupils then has the gap no_pupils, its value still shown.
+ */
+export function schoolArea(x: MapSchool, members: readonly number[], sums: { v: Float64Array; n: Float64Array }, perPupil: boolean, entityId: string | null): MapArea {
+  const { value, records } = summed(members, sums);
+  const pupils = x.pupils > 0 ? x.pupils : null;
+  return {
+    key: x.code, name: x.name, population: null, denominator: perPupil ? pupils : null, value: lei(value), perCapita: null,
+    records, buyers: records > 0 ? 1 : 0, institutions: 1, gap: perPupil && pupils === null ? "no_pupils" : null,
+    pupils, perPupil: perPupil && pupils !== null ? value / pupils : null, siruta: x.siruta, entityId,
+  };
+}
+
+/** A county's schools: every one in the value; lei per pupil (2025 alone) is the 2025 value of the schools with pupils over their pupils. */
+export function schoolCountyArea(key: string, name: string, schools: readonly { x: MapSchool; members: readonly number[] }[], sums: { v: Float64Array; n: Float64Array }, perPupil: boolean): MapArea {
+  let value = 0, records = 0, buyers = 0, pupils = 0, pupilsValue = 0;
+  for (const { x, members } of schools) {
+    const t = summed(members, sums);
+    value += t.value; records += t.records;
+    if (t.records > 0) buyers++;
+    if (x.pupils > 0) { pupils += x.pupils; pupilsValue += t.value; }
+  }
+  return {
+    key, name, population: null, denominator: perPupil && pupils ? pupils : null, value: lei(value), perCapita: null,
+    records, buyers, institutions: schools.length, gap: perPupil && !pupils ? "no_pupils" : null,
+    pupils: pupils || null, perPupil: perPupil && pupils ? pupilsValue / pupils : null,
   };
 }
 
