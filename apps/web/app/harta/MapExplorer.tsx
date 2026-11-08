@@ -39,7 +39,7 @@ const DATASETS: { value: MapDataset; label: string; url: string | null }[] = [
 const KINDS: KitOption[] = [
   { value: "local_admin", label: "Primării și consilii județene", detail: "primăria fiecărui UAT; la județ, și consiliul județean" },
   { value: "hospitals", label: "Spitale publice", detail: "lista CNAS, cu paturile; lei pe pat doar pentru 2025" },
-  { value: "schools", label: "Școli publice", detail: "rețeaua Ministerului Educației, cu elevii; lei pe elev doar pentru 2025" },
+  { value: "schools", label: "Școli și grădinițe publice", detail: "rețeaua Ministerului Educației, cu elevii; lei pe elev doar pentru 2025" },
 ];
 /** What a figure is called, after its number. */
 const UNIT: Record<MapMetric, string> = { perCapita: "pe locuitor", perBed: "pe pat", perPupil: "pe elev", value: "contractați" };
@@ -47,7 +47,7 @@ const UNIT: Record<MapMetric, string> = { perCapita: "pe locuitor", perBed: "pe 
 const KIND_WORDS: Record<MapKind, { plural: string; button: string }> = {
   local_admin: { plural: "UAT-urile", button: "Primării și CJ" },
   hospitals: { plural: "Spitalele", button: "Spitale" },
-  schools: { plural: "Școlile", button: "Școli" },
+  schools: { plural: "Școlile și grădinițele", button: "Școli și grădinițe" },
 };
 
 const int = (n: number) => Math.round(n).toLocaleString("ro-RO");
@@ -361,9 +361,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     <header className="mx-head">
       {hospitals
         ? <h1>{county ? `Spitalele din ${countyName || "județ"}` : metric === "perBed" ? "Lei pe pat de spital, pe județe" : "Spitalele, pe județe"}</h1>
-        : schools ? <h1>{county ? `Școlile din ${countyName || "județ"}` : metric === "perPupil" ? "Lei pe elev, pe județe" : "Școlile, pe județe"}</h1>
+        : schools ? <h1>{county ? `Școlile și grădinițele din ${countyName || "județ"}` : metric === "perPupil" ? "Lei pe elev, pe județe" : "Școlile și grădinițele, pe județe"}</h1>
         : <h1>{county ? `Lei pe locuitor în ${countyName || "județ"}` : "Lei pe locuitor, pe județe"}</h1>}
-      <p className="mx-lede">{hospitals ? "Ce au contractat spitalele publice" : schools ? "Ce au contractat școlile publice" : sub ? "Ce au contractat primăriile și consiliile județene, cu instituțiile lor" : "Ce au contractat primăriile și consiliile județene"}, {yearsWords(years, allYears)}, {cpvWords}{channelWords}.
+      <p className="mx-lede">{hospitals ? "Ce au contractat spitalele publice" : schools ? "Ce au contractat școlile și grădinițele publice" : sub ? "Ce au contractat primăriile și consiliile județene, cu instituțiile lor" : "Ce au contractat primăriile și consiliile județene"}, {yearsWords(years, allYears)}, {cpvWords}{channelWords}.
         {(average !== null || !nat) && <> <span className={natStale ? "g-stale" : undefined}>{dots
           ? (county ? countyName : metric === "perBed" || metric === "perPupil" ? "Media țării" : "În total")
           : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}.</span></>}</p>
@@ -394,7 +394,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         {county && <p className="mx-crumb"><button type="button" onClick={() => { setUat(null); setCounty(null); }}><Arrow back /> România</button><span>· {countyName}</span></p>}
         <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}>
           {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" className={stale ? "g-stale" : undefined}
-            aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli"}.` : "Clasamentul de alături are aceleași cifre."}`}>
+            aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli și grădinițe"}.` : "Clasamentul de alături are aceleași cifre."}`}>
             <defs><pattern id="mx-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform={`rotate(45) scale(${view[2] / geo.width})`}><rect width="6" height="6" className="mx-hatch-bg" /><line x1="0" y1="0" x2="0" y2="6" className="mx-hatch-line" /></pattern></defs>
             <g className={county ? "mx-counties is-back" : "mx-counties"}>
               {geo.counties.map((c) => {
@@ -429,17 +429,17 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {shown.value !== null && <span className="mx-card-sub">{short(shown.value)} lei · {withDe(shown.denominator ?? shown.population ?? 0, "locuitor", "locuitori")}{shown.coverage !== undefined && shown.coverage < 0.9 ? ` · acoperire ${Math.round(shown.coverage * 100)}%` : ""}</span>}
             {sub && shown.subValue ? <span className="mx-card-sub">din care instituțiile lor: {short(shown.subValue)} lei</span> : null}</>}
             {!county && <span className="mx-card-go">Apasă: {KIND_WORDS[kind].plural.toLowerCase()} județului <Arrow /></span>}
-            {county && dots && shown.entityId && <span className="mx-card-go">Apasă: pagina {schools ? "școlii" : "spitalului"} <Arrow /></span>}
+            {county && dots && shown.entityId && <span className="mx-card-go">Apasă: pagina {schools ? (/^gr[aă]din/i.test(shown.name) ? "grădiniței" : "școlii") : "spitalului"} <Arrow /></span>}
           </div>}
           {busy && <p className="mx-busy g-float" role="status">Se încarcă…</p>}
         </div>
         <div className="mx-foot">
           <div className="mx-legend" aria-hidden="true">
             {(!dots || !county || metric !== "value") && <span className="mx-legend-g"><span>0</span><i /><span>{level ? `${say(dotTop)}${dotTop < max ? "+" : ""}` : <G.Line inline w="3.4em" />} lei{metric === "value" ? "" : ` ${UNIT[metric]}`}</span></span>}
-            {county && dots && <span className="mx-legend-g"><b className="mx-legend-dots"><s /><s /><s /></b><span>{schools ? "cercul: elevii școlii" : "cercul: paturile spitalului"}</span></span>}
+            {county && dots && <span className="mx-legend-g"><b className="mx-legend-dots"><s /><s /><s /></b><span>{schools ? "cercul: elevii" : "cercul: paturile spitalului"}</span></span>}
             {areas.some((a) => fig(a) === null) && <span className="mx-legend-g">{county && dots ? <b className="mx-legend-ring" /> : <b className="mx-legend-gap" />}<span>{hospitals ? "fără paturi în lista CNAS" : schools ? "fără elevi în lista ministerului" : county ? "primărie neidentificată" : "fără cifră"}</span></span>}</div>
           <p className="mx-attr">Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
-              : schools ? <>Școli și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>, CC BY 4.0).</> : "Populația: INS, RPL 2021."}</p>
+              : schools ? <>Școli, grădinițe și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>, CC BY 4.0).</> : "Populația: INS, RPL 2021."}</p>
         </div>
       </section>
 
@@ -471,9 +471,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             return <li key={a.key} data-key={a.key}>
               <button type="button" className={`mx-row${hover === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
                 onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)} onClick={() => (county ? openUat(a.key) : openCounty(a.key))}
-                aria-label={`${a.name}: ${gap ? "fără cifră" : `${say(f)} lei ${UNIT[metric]}`}${total && a.value !== null ? `, ${short(a.value)} lei în total` : ""}${county ? ". Deschide fișa UAT-ului" : hospitals ? ". Deschide spitalele județului" : schools ? ". Deschide școlile județului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
+                aria-label={`${a.name}: ${gap ? "fără cifră" : `${say(f)} lei ${UNIT[metric]}`}${total && a.value !== null ? `, ${short(a.value)} lei în total` : ""}${county ? ". Deschide fișa UAT-ului" : hospitals ? ". Deschide spitalele județului" : schools ? ". Deschide școlile și grădinițele județului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
                 <span className="mx-n">{gap ? "" : i + 1}</span>
-                <span className="mx-name">{dots ? <>{a.name}{a.institutions ? <small>{hospitals ? withDe(a.institutions, "spital", "spitale") : withDe(a.institutions, "școală", "școli")}</small> : null}</> : (() => {
+                <span className="mx-name">{dots ? <>{a.name}{a.institutions ? <small>{hospitals ? withDe(a.institutions, "spital", "spitale") : withDe(a.institutions, "școală sau grădiniță", "școli și grădinițe")}</small> : null}</> : (() => {
                   // With the institutions, their part in brackets right after the name, fading in on the row's hover
                   // (owner, 8 November 2026); the coverage under 90% on the line below.
                   const cover = a.coverage !== undefined && a.coverage < 0.9 ? `acoperire ${Math.round(a.coverage * 100)}%` : null;
@@ -491,7 +491,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         </>}
         <p className="mx-note">{hospitals
           ? (county ? "Fiecare spital e desenat în orașul lui, nu la adresă." : metric === "perBed" ? "Lei pe pat: valoarea din 2025 a spitalelor cu paturi, la paturile lor aprobate." : `Lei pe pat apare doar cu ${BEDS_YEAR} ales singur.`)
-          : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși." : `Lei pe elev apare doar cu ${PUPILS_YEAR} ales singur.`} Doar ce cumpără școala <Term id="scolile-harta" tip />.</>
+          : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși." : `Lei pe elev apare doar cu ${PUPILS_YEAR} ales singur.`} Doar ce cumpără școala sau grădinița <Term id="scolile-harta" tip />.</>
           : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
       {county && uat && !dots && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
@@ -505,7 +505,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
 function DotCard({ a, metric, county, schools }: { a: MapArea; metric: MapMetric; county: boolean; schools: boolean }) {
   const size = schools ? (a.pupils ? withDe(a.pupils, "elev", "elevi") : null) : a.beds ? withDe(a.beds, "pat", "paturi") : null;
   const missing = schools ? "fără elevi în lista ministerului" : "fără paturi în lista CNAS";
-  const count = county ? (schools ? withDe(a.institutions, "școală", "școli") : withDe(a.institutions, "spital", "spitale")) : null;
+  const count = county ? (schools ? withDe(a.institutions, "școală sau grădiniță", "școli și grădinițe") : withDe(a.institutions, "spital", "spitale")) : null;
   if (metric === "perBed" || metric === "perPupil") {
     const per = metric === "perBed" ? a.perBed : a.perPupil;
     return <>

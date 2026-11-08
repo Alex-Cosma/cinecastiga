@@ -258,7 +258,7 @@ function divisionNames(sql: DbSql): Promise<Map<string, string | null>> {
 const KINDS: MapOptions["kinds"] = [
   { key: "local_admin", label: "Primării și consilii județene", levels: ["county", "uat"] },
   { key: "hospitals", label: "Spitale publice", levels: ["county", "uat"] },
-  { key: "schools", label: "Școli publice", levels: ["county", "uat"] },
+  { key: "schools", label: "Școli și grădinițe publice", levels: ["county", "uat"] },
 ];
 
 /** The filters' choices for a kind (the administrations with their institutions or without): its years and CPV divisions with their totals. */
