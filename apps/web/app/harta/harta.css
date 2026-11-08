@@ -101,6 +101,22 @@
 .mx-n{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
 .mx-name{min-width:0;font-weight:600;font-size:14px;line-height:1.3}
 .mx-name small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+/* A row's "(instituțiile: X lei)", right after its name (owner, 8 November 2026). With a mouse: small, only while the
+   row (or its area on the map) is hovered, after 0.25 s, fading in; it keeps its place on the name's line, so the row
+   neither grows nor moves, and gives way first when the line is short. Without hover (phones): shown, at 12px, under
+   the name when the line has no room. */
+.mx-line{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:5px}
+.mx-line>span:first-child{min-width:0}
+.mx-inst{font-weight:400;font-size:12px;color:var(--muted);white-space:nowrap}
+@media (hover:hover){
+  .mx-line{flex-wrap:nowrap}
+  .mx-inst{flex:0 1000 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:9px;opacity:0;transition:opacity .12s ease-out}
+  .mx-row:hover .mx-inst,.mx-row.is-hover .mx-inst,.mx-row:focus-visible .mx-inst{opacity:1;transition:opacity .2s cubic-bezier(.16,1,.3,1) .25s}
+}
+@media (hover:hover) and (prefers-reduced-motion:reduce){
+  .mx-inst{transition:none}
+  .mx-row:hover .mx-inst,.mx-row.is-hover .mx-inst,.mx-row:focus-visible .mx-inst{transition:opacity 0s linear .25s}
+}
 .mx-bar{display:block;height:7px;border-radius:2px;background:var(--sunk);overflow:hidden}
 .mx-bar i{display:block;height:100%;background:var(--map-4)}
 .mx-v{font:500 13px var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}

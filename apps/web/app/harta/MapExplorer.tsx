@@ -450,10 +450,12 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
                 onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)} onClick={() => (county ? openUat(a.key) : openCounty(a.key))}
                 aria-label={`${a.name}: ${gap ? "fără cifră" : `${say(f)} lei ${UNIT[metric]}`}${total && a.value !== null ? `, ${short(a.value)} lei în total` : ""}${county ? ". Deschide fișa UAT-ului" : hospitals ? ". Deschide spitalele județului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
                 <span className="mx-n">{gap ? "" : i + 1}</span>
-                <span className="mx-name">{a.name}{hospitals ? (a.institutions ? <small>{withDe(a.institutions, "spital", "spitale")}</small> : null) : (() => {
-                  // The coverage under 90%, and with the institutions their part (owner, 8 November 2026).
-                  const words = [a.coverage !== undefined && a.coverage < 0.9 ? `acoperire ${Math.round(a.coverage * 100)}%` : null, sub && a.subValue ? `instituțiile: ${short(a.subValue)} lei` : null].filter(Boolean);
-                  return words.length ? <small>{words.join(" · ")}</small> : null;
+                <span className="mx-name">{hospitals ? <>{a.name}{a.institutions ? <small>{withDe(a.institutions, "spital", "spitale")}</small> : null}</> : (() => {
+                  // With the institutions, their part in brackets right after the name, fading in on the row's hover
+                  // (owner, 8 November 2026); the coverage under 90% on the line below.
+                  const cover = a.coverage !== undefined && a.coverage < 0.9 ? `acoperire ${Math.round(a.coverage * 100)}%` : null;
+                  const inst = sub && a.subValue ? `(instituțiile: ${short(a.subValue)} lei)` : null;
+                  return <>{inst ? <span className="mx-line"><span>{a.name}</span><span className="mx-inst">{inst}</span></span> : a.name}{cover && <small>{cover}</small>}</>;
                 })()}</span>
                 {bar}
                 <span className="mx-v">{gap ? "—" : say(f)}</span>{total}
