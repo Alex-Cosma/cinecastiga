@@ -75,8 +75,6 @@ function toggle(current: Years, value: string): Years {
 }
 const Arrow = ({ back = false }: { back?: boolean }) => <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" className="mx-arrow">
   <path d={back ? "M10 6H2.5M5.5 3 2.5 6l3 3" : "M2 6h7.5M6.5 3l3 3-3 3"} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-/** "e primul", "e al 14-lea" (the ranking's header names the hovered area's place). */
-const place = (n: number) => (n === 1 ? "e primul" : `e al ${n}-lea`);
 /** How long the pointer rests on an area of the map before the ranking scrolls to its row (owner, 7 November 2026). */
 const FOLLOW_DELAY = 250;
 const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
@@ -292,7 +290,6 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const uatGeo = county ? countyGeo[county] : undefined;
   const chosen = uat && uatGeo && !dots ? uatGeo.uats.find((u) => String(u.siruta) === uat)?.d ?? null : null;
   const outline = !hover || !geo ? null : county ? uatGeo?.uats.find((u) => String(u.siruta) === hover)?.d ?? null : geo.counties.find((c) => c.key === hover)?.d ?? null;
-  const hoverPlace = hover ? ranked.findIndex((a) => a.key === hover && fig(a) !== null) + 1 : 0;
   // The open county's hospitals (owner, 8 November 2026): the map's units per pixel at the county's view, so a circle keeps its size.
   const [stageWidth, setStageWidth] = useState(0);
   useEffect(() => {
@@ -447,7 +444,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
       </section>
 
       <aside className="mx-rank" aria-labelledby="mx-rank-h" aria-busy={!level || stale || undefined}>
-        <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : "UAT-urile") : "Județele"} <span aria-live="polite">lei {UNIT[metric]}{metric === "perBed" ? ` · ${BEDS_YEAR}` : metric === "perPupil" ? ` · ${PUPILS_YEAR}` : ""}{shown && hoverPlace > 0 ? ` · ${shown.name} ${place(hoverPlace)}` : ""}</span></h2>
+        <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : "UAT-urile") : "Județele"} {/* The hovered area's place is not repeated here: its row is lit (owner, 8 November 2026). */}<span>lei {UNIT[metric]}{metric === "perBed" ? ` · ${BEDS_YEAR}` : metric === "perPupil" ? ` · ${PUPILS_YEAR}` : ""}</span></h2>
         {!level ? <RankGhost names={county ? (dots ? null : uatGeo?.uats.map((u) => u.name) ?? null) : geo?.counties.map((c) => c.name) ?? null} rows={county ? null : 42}
           city={county === "bucuresti"} folded={unfolded !== (county ?? "")} key={county ?? ""} /> : <>
         {county && loc?.city && <div className={`mx-city${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
