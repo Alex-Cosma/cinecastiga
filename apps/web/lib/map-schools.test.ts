@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pupilRadius } from "../app/harta/dots";
 import { COUNTIES } from "./counties";
 import { countyKey, figure, mapMetric, parseMapSelection, schoolArea, schoolCountyArea, sumByInstitution, type MapRow, type MapSchool } from "./map-capita-shared";
+import institutions from "./reference/local-institutions-2026.json";
 import reference from "./reference/schools-me-2025.json";
 import geo from "./reference/uat-geo.json";
 
@@ -81,6 +82,14 @@ describe("/harta schools: the reference list (lib/reference/schools-me-2025.json
       expect(pupils).toBeGreaterThanOrEqual(0);
       for (const cui of cuis) { expect(cui).toMatch(/^[1-9]\d{1,9}$/); expect(seen.has(cui), cui).toBe(false); seen.add(cui); }
     }
+  });
+
+  // Some schools in the network carry their town hall's CIF: the list leaves those out (build_reference.py, every
+  // administration of the Ministry of Finance's list) and map-schools.ts skips any identity named a town hall. Here, the
+  // administrations this repository knows by CIF (those with institutions on the map).
+  it("never links a school by the CIF of a town hall or county council the map knows", () => {
+    const administrations = new Set(Object.keys(institutions.parents));
+    for (const [code, , , , , cuis] of list) for (const cui of cuis) expect(administrations.has(cui), `${code} ${cui}`).toBe(false);
   });
 
   it("holds no universities and no children's palaces or inspectorates", () => {

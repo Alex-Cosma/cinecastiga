@@ -1,4 +1,5 @@
 import type { DbSql } from "@seap/db";
+import { readAuthorityKinds } from "./ask/authority-kind";
 import reference from "./reference/schools-me-2025.json" with { type: "json" };
 import { schoolArea, schoolCountyArea, sumByInstitution, type MapArea, type MapRow, type MapSchool, type MapSelection } from "./map-capita-shared";
 import type { ReadRows } from "./map-hospitals";
@@ -35,13 +36,19 @@ export async function loadSchools(sql: DbSql, ready: boolean, readRows: ReadRows
     for (const cui of cuis) byCui.set(cui, i);
     return { code, name, county, siruta, pupils };
   });
-  const identities = (await sql`select e.id::text id, e.cui_canonical cui from core.entities e
-    where e.cui_valid and e.cui_canonical = any(${sql.array([...byCui.keys()])}::text[]) and e.id <= 9007199254740991
-      and exists (select 1 from marts.entity_profile p where p.entity_id = e.id and p.role = 'authority')`) as unknown as { id: string; cui: string }[];
+  const [identities, kinds] = await Promise.all([
+    sql`select e.id::text id, e.cui_canonical cui from core.entities e
+      where e.cui_valid and e.cui_canonical = any(${sql.array([...byCui.keys()])}::text[]) and e.id <= 9007199254740991
+        and exists (select 1 from marts.entity_profile p where p.entity_id = e.id and p.role = 'authority')` as unknown as Promise<{ id: string; cui: string }[]>,
+    readAuthorityKinds(sql),
+  ]);
+  // A school in the network that carries its town hall's CIF (owner, 8 November 2026, Prahova) never brings the town
+  // hall in: an identity Întreabă names a commune, a town or a county council is left out, whatever the list says.
+  const administrations = new Set([...kinds.ids.comuna, ...kinds.ids.oras_municipiu, ...kinds.ids.consiliu_judetean]);
   const institutions: { id: string; school: number }[] = [], taken = new Set<string>();
   for (const row of identities) {
     const i = byCui.get(row.cui);
-    if (i === undefined || taken.has(row.id)) continue;
+    if (i === undefined || taken.has(row.id) || administrations.has(row.id)) continue;
     taken.add(row.id); institutions.push({ id: row.id, school: i });
   }
   const index = new Map(institutions.map((inst, i) => [inst.id, i]));
