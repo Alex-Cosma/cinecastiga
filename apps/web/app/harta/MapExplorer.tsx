@@ -89,7 +89,7 @@ function Pick({ label, text, title, children, wide = false }: { label: string; t
   </>;
 }
 
-type Initial = { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined; uat?: string | undefined; inst?: string | undefined };
+type Initial = { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined; uat?: string | undefined; inst?: string | undefined; cu?: string | undefined };
 
 export default function MapExplorer({ initial }: { initial: Initial }) {
   // The address is the view. Back from a page opened here (a year of a UAT's panel) remounts the map from the
@@ -99,7 +99,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     if (typeof window === "undefined") return initial;
     const p = new URLSearchParams(window.location.search);
     const one = (key: string) => { const all = p.getAll(key); return all.length === 1 ? all[0] : undefined; };
-    return { ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat"), inst: one("inst") };
+    return { ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat"), inst: one("inst"), cu: one("cu") };
   });
   const parse = (raw: string | undefined, valid: RegExp): Years => {
     const items = (raw ?? "").split(",").map((s) => s.trim()).filter((s) => valid.test(s));
@@ -111,6 +111,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // The kind of institution (owner, 8 November 2026): the local administrations, or the public hospitals (`?inst=spitale`).
   const [kind, setKind] = useState<MapKind>(() => (start.inst === KIND_URL.hospitals ? "hospitals" : "local_admin"));
   const hospitals = kind === "hospitals";
+  // The local administrations with their institutions (owner, 8 November 2026: a checkbox, `?cu=institutii`).
+  const [withInst, setWithInst] = useState<boolean>(() => start.cu === "institutii");
+  const sub = !hospitals && withInst;
   const router = useRouter();
   const [county, setCounty] = useState<string | null>(start.judet && /^[a-z-]{2,20}$/.test(start.judet) ? start.judet : null);
   // The UAT whose panel is open (owner, 6 November 2026): its SIRUTA, inside the open county.
@@ -135,8 +138,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
 
   const selection = useMemo(() => {
     const p = new URLSearchParams({ years: years === "all" ? "all" : years.join(","), cpv: cpv === "all" ? "all" : cpv.join(","), dataset, kind });
+    if (sub) p.set("sub", "1");
     return p.toString();
-  }, [years, cpv, dataset, kind]);
+  }, [years, cpv, dataset, kind, sub]);
   const nationalKey = `level=county&${selection}`;
   const localKey = county ? `level=uat&county=${county}&${selection}` : null;
 
@@ -146,9 +150,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   }, []);
   useEffect(() => {
     let live = true;
-    void fetch(`/api/map/options?kind=${kind}`).then((r) => r.json()).then((o: MapOptions) => { if (live) setOptions(o); }).catch(() => undefined);
+    void fetch(`/api/map/options?kind=${kind}${sub ? "&sub=1" : ""}`).then((r) => r.json()).then((o: MapOptions) => { if (live) setOptions(o); }).catch(() => undefined);
     return () => { live = false; };
-  }, [kind]);
+  }, [kind, sub]);
   // The chosen county's UATs, once per county.
   useEffect(() => {
     if (!county || countyGeo[county]) return;
@@ -189,6 +193,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const p = new URLSearchParams();
     const inst = KIND_URL[kind];
     if (inst) p.set("inst", inst);
+    if (sub) p.set("cu", "institutii");
     if (years !== "all") p.set("ani", years.join(","));
     if (cpv !== "all") p.set("cpv", cpv.join(","));
     const canal = DATASETS.find((d) => d.value === dataset)?.url;
@@ -200,7 +205,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const opened = !fromPop.current && ((county !== null && county !== shownCounty.current) || (uat !== null && uat !== shownUat.current));
     writeAddress(url, opened ? "push" : "replace");
     shownCounty.current = county; shownUat.current = uat; fromPop.current = false;
-  }, [years, cpv, dataset, county, uat, kind]);
+  }, [years, cpv, dataset, county, uat, kind, sub]);
   // Escape steps back to the country.
   useEffect(() => {
     if (!county) return;
@@ -336,7 +341,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
       {hospitals
         ? <h1>{county ? `Spitalele din ${countyName || "județ"}` : metric === "perBed" ? "Lei pe pat de spital, pe județe" : "Spitalele, pe județe"}</h1>
         : <h1>{county ? `Lei pe locuitor în ${countyName || "județ"}` : "Lei pe locuitor, pe județe"}</h1>}
-      <p className="mx-lede">{hospitals ? "Ce au contractat spitalele publice" : "Ce au contractat primăriile și consiliile județene"}, {yearsWords(years, allYears)}, {cpvWords}{channelWords}.
+      <p className="mx-lede">{hospitals ? "Ce au contractat spitalele publice" : sub ? "Ce au contractat primăriile și consiliile județene, cu instituțiile lor" : "Ce au contractat primăriile și consiliile județene"}, {yearsWords(years, allYears)}, {cpvWords}{channelWords}.
         {(average !== null || !nat) && <> <span className={natStale ? "g-stale" : undefined}>{hospitals
           ? (county ? countyName : metric === "perBed" ? "Media țării" : "În total")
           : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}.</span></>}</p>
@@ -347,6 +352,10 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         <OptionList label="Instituții" value={kind} options={KINDS}
           onChange={(v) => { if (v === "local_admin" || v === "hospitals") { setKind(v); setUat(null); setHover(null); } }} />
       </Pick>
+      {!hospitals && <label className="mx-check">
+        <input type="checkbox" checked={withInst} onChange={(e) => setWithInst(e.target.checked)} />
+        <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
+      </label>}
       <Pick label="Perioada" text={years === "all" ? "Toată perioada" : yearsWords(years, allYears)} title="Ce ani?">
         <OptionList label="Perioada" multiple values={years === "all" ? ["all"] : years} options={yearOptions} onChange={(v, source) => { if (source === "activate") setYears((y) => toggle(y, v)); }} />
       </Pick>
@@ -394,7 +403,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {hospitals ? <HospitalCard a={shown} metric={metric} county={!county} />
               : <>{shown.perCapita !== null ? <span><em>{int(shown.perCapita)} lei</em> pe locuitor</span>
               : <span className="mx-card-gap">{shown.gap === "no_admin" ? "Primăria nu e identificată sigur: valoare necunoscută, nu zero." : shown.gap === "no_council" ? "Consiliul județean nu e identificat: fără cifră pe locuitor." : "Fără populație cunoscută."}</span>}
-            {shown.value !== null && <span className="mx-card-sub">{short(shown.value)} lei · {withDe(shown.denominator ?? shown.population ?? 0, "locuitor", "locuitori")}{shown.coverage !== undefined && shown.coverage < 0.9 ? ` · acoperire ${Math.round(shown.coverage * 100)}%` : ""}</span>}</>}
+            {shown.value !== null && <span className="mx-card-sub">{short(shown.value)} lei · {withDe(shown.denominator ?? shown.population ?? 0, "locuitor", "locuitori")}{shown.coverage !== undefined && shown.coverage < 0.9 ? ` · acoperire ${Math.round(shown.coverage * 100)}%` : ""}</span>}
+            {sub && shown.subValue ? <span className="mx-card-sub">din care instituțiile lor: {short(shown.subValue)} lei</span> : null}</>}
             {!county && <span className="mx-card-go">Apasă: {hospitals ? "spitalele" : "UAT-urile"} județului <Arrow /></span>}
             {county && hospitals && shown.entityId && <span className="mx-card-go">Apasă: pagina spitalului <Arrow /></span>}
           </div>}
@@ -414,7 +424,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         {!level ? <RankGhost names={county ? (hospitals ? null : uatGeo?.uats.map((u) => u.name) ?? null) : geo?.counties.map((c) => c.name) ?? null} rows={county ? null : 42}
           city={county === "bucuresti"} folded={unfolded !== (county ?? "")} key={county ?? ""} /> : <>
         {county && loc?.city && <div className={`mx-city${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
-          <b>{loc.city.name}</b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}</span>
+          <b>{loc.city.name}</b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}{sub && loc.city.subValue ? `; instituțiile ei: ${short(loc.city.subValue)} lei` : ""}</span>
           <em>{loc.city.perCapita === null ? "—" : `${int(loc.city.perCapita)} lei`}</em>
         </div>}
         <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}${metric === "perBed" ? " has-total" : metric === "value" ? " is-lei" : ""}`} ref={listRef} key={rankLevel}
@@ -439,7 +449,11 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
                 onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)} onClick={() => (county ? openUat(a.key) : openCounty(a.key))}
                 aria-label={`${a.name}: ${gap ? "fără cifră" : `${say(f)} lei ${UNIT[metric]}`}${total && a.value !== null ? `, ${short(a.value)} lei în total` : ""}${county ? ". Deschide fișa UAT-ului" : hospitals ? ". Deschide spitalele județului" : ". Deschide UAT-urile județului"}`} aria-pressed={county ? uat === a.key : undefined}>
                 <span className="mx-n">{gap ? "" : i + 1}</span>
-                <span className="mx-name">{a.name}{hospitals ? (a.institutions ? <small>{withDe(a.institutions, "spital", "spitale")}</small> : null) : a.coverage !== undefined && a.coverage < 0.9 && <small>acoperire {Math.round(a.coverage * 100)}%</small>}</span>
+                <span className="mx-name">{a.name}{hospitals ? (a.institutions ? <small>{withDe(a.institutions, "spital", "spitale")}</small> : null) : (() => {
+                  // The coverage under 90%, and with the institutions their part (owner, 8 November 2026).
+                  const words = [a.coverage !== undefined && a.coverage < 0.9 ? `acoperire ${Math.round(a.coverage * 100)}%` : null, sub && a.subValue ? `instituțiile: ${short(a.subValue)} lei` : null].filter(Boolean);
+                  return words.length ? <small>{words.join(" · ")}</small> : null;
+                })()}</span>
                 {bar}
                 <span className="mx-v">{gap ? "—" : say(f)}</span>{total}
               </button>

@@ -48,6 +48,13 @@ export interface MapSelection {
   cpv: "all" | string[];
   dataset: MapDataset;
   kind: MapKind;
+  /**
+   * The local administrations with their institutions (owner, 8 November 2026; `sub=1`, the page's `?cu=institutii`):
+   * each town hall and county council adds the public institutions whose principal credit officer it is (the Ministry
+   * of Finance's list) and the companies it alone owns (verified by hand), schools and hospitals apart. False for any
+   * other kind.
+   */
+  withInstitutions: boolean;
 }
 
 /** Why an area has no value per inhabitant. */
@@ -95,6 +102,8 @@ export interface MapArea {
   siruta?: number | null;
   /** A hospital: the institution its name links to (the identity with the largest value). */
   entityId?: string | null;
+  /** With the institutions (withInstitutions): the part of `value` the institutions and companies contracted. */
+  subValue?: number | null;
 }
 
 export interface MapResponse {
@@ -111,7 +120,7 @@ export interface MapResponse {
   source: "rollup" | "live";
   /** What each area's figure is (mapMetric): the tint, the bars and the order read it. */
   metric: MapMetric;
-  notes: { population: string; geometry: string; kind: string; beds?: string };
+  notes: { population: string; geometry: string; kind: string; beds?: string; institutions?: string };
 }
 
 export interface MapOptions {
@@ -153,10 +162,12 @@ export function parseMapSelection(params: URLSearchParams): MapSelection {
   if (dataset !== "all" && dataset !== "da" && dataset !== "contracts") throw new MapError("Setul de date nu e valid.");
   const kind = params.get("kind") ?? "local_admin";
   if (!(MAP_KINDS as readonly string[]).includes(kind)) throw new MapError("Tipul de instituție nu e disponibil pe hartă.");
+  const sub = params.get("sub") ?? "0";
+  if (sub !== "0" && sub !== "1") throw new MapError("Parametrul sub e 0 sau 1.");
   return {
     level, county: level === "uat" ? county : null,
     years: list(params.get("years"), YEAR, "years", 30), cpv: list(params.get("cpv"), DIVISION, "cpv", 100),
-    dataset, kind: kind as MapKind,
+    dataset, kind: kind as MapKind, withInstitutions: kind === "local_admin" && sub === "1",
   };
 }
 
@@ -168,13 +179,29 @@ export function mapSelectionQuery(s: MapSelection): string {
   p.set("cpv", s.cpv === "all" ? "all" : s.cpv.join(","));
   p.set("dataset", s.dataset);
   p.set("kind", s.kind);
+  if (s.withInstitutions) p.set("sub", "1");
   return p.toString();
 }
 
 /** One grouped row: an institution (index into the administrations), its year, channel and division. */
 export interface MapRow { a: number; y: string | null; src: "da" | "contracts"; c: string | null; v: number; n: number }
-/** One institution of the kind: where it sits on the map. */
-export interface MapInstitution { id: string; county: string; siruta: number | null; level: "local" | "county" }
+/**
+ * One institution of the kind: where it sits on the map. An institution of a local administration (withInstitutions)
+ * has its administration's index as `parent` and sits where it does: a county council's at the county, a town hall's
+ * in its UAT, a București sector's in the sector, the capital's city hall's with the city.
+ */
+export interface MapInstitution { id: string; county: string; siruta: number | null; level: "local" | "county"; parent?: number }
+
+/** Whether an institution counts in a selection: the administrations always, their institutions only withInstitutions. */
+export const counted = (inst: MapInstitution, s: Pick<MapSelection, "withInstitutions">): boolean => inst.parent === undefined || s.withInstitutions;
+
+/** An area with the institutions' part of its value (withInstitutions; `members` holds both kinds). */
+export function withSubValue(area: MapArea, members: readonly number[], institutions: readonly MapInstitution[], sums: { v: Float64Array }, s: Pick<MapSelection, "withInstitutions">): MapArea {
+  if (!s.withInstitutions) return area;
+  let sub = 0;
+  for (const i of members) if (institutions[i]!.parent !== undefined) sub += sums.v[i]!;
+  return { ...area, subValue: area.value === null ? null : lei(sub) };
+}
 
 /** Whether a row is in the selection's years, divisions and channel. */
 export function rowSelected(row: MapRow, s: Pick<MapSelection, "years" | "cpv" | "dataset">, years: ReadonlySet<string> | null, cpv: ReadonlySet<string> | null): boolean {
@@ -267,6 +294,8 @@ export interface MapUatResponse {
   uat: MapArea & { kind: string };
   /** The UAT's own administration(s), the largest first: the name links to its page. */
   townHalls: { id: string; name: string; value: number }[];
+  /** With the institutions (withInstitutions): the town hall's institutions and companies, the largest first; else empty. */
+  institutions: { id: string; name: string; value: number }[];
   /** 1-based place by lei per inhabitant among the county's UATs with a figure; null with a gap. */
   place: number | null;
   ranked: number;
