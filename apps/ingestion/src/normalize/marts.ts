@@ -1,4 +1,4 @@
-import { contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
+import { calloffCeilingScale, withoutNestedLoops, contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
 import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
 import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
@@ -109,7 +109,21 @@ export async function runMarts(
     // decimal places to retain every positive winner allocation. Competition columns
     // from the CONFIRMED TED crosswalk tier only; null = unknown.
     // Shared source-role policy: republication identity, framework ceilings and
-    // non-additive amendments are handled independently; amounts stay intact.
+    // non-additive amendments are handled independently; source amounts stay intact.
+    // One exception in the counted amount (owner, 8 November 2026, contract-reporting-5): call-offs that declare more
+    // than their framework allows (calloffCeilingScale) count scaled together to its ceiling; pages and the
+    // award_calloffs_over_ceiling signal keep the declared values.
+    await q`drop table if exists pg_temp.calloff_scale`;
+    await withoutNestedLoops(q, () => q`
+      create temporary table calloff_scale on commit drop as
+      ${calloffCeilingScale(q, q`
+        select c.id from core.contracts c join core.awards aw on aw.ca_notice_id = c.ca_notice_id
+        where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
+          and ${contractRonValue(q)} <= ${awBound} and c.contract_date is not null
+          and aw.authority_entity_id is not null and ${contractReportable(q)}`)}
+    `);
+    await q`create index on calloff_scale (calloff_id)`;
+    log(`marts calloff_scale: ${(await q`select count(*)::int n from calloff_scale`)[0]?.n ?? 0} call-offs scaled to their framework ceiling`);
     await q`
       insert into marts.contract_transactions (
         contract_id, supplier_id, contract_no, ca_notice_id, notice_no,
@@ -120,7 +134,8 @@ export async function runMarts(
       )
       with base as (
         select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
-               aw.authority_entity_id authority_id, ${contractRonValue(q)} as contract_value, c.contract_date,
+               aw.authority_entity_id authority_id,
+               coalesce(round(${contractRonValue(q)} * (select s.scale from calloff_scale s where s.calloff_id = c.id), 2), ${contractRonValue(q)}) as contract_value, c.contract_date,
                ${contractDatePlausible(q)} as date_plausible,
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
         from core.contracts c

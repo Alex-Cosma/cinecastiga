@@ -96,6 +96,19 @@ export function onrcRoleNote(evidence: Record<string, unknown>): string {
     : " Calitatea în ONRC la această firmă nu este precizată.";
 }
 
+
+/** award_calloffs_over_ceiling (rf-2026.23): the declared call-offs against their frameworks' ceilings, and how many
+ * repeat the whole ceiling (owner, 8 November 2026: say that it may be a data-entry error, never hide what SEAP holds). */
+export function calloffsOverCeilingLine(evidence: Record<string, unknown>): string {
+  const num = (key: string) => { const v = Number(evidence[key]); return evidence[key] == null || !Number.isFinite(v) ? null : v; };
+  const value = num("value"), ceiling = num("ceiling"), calloffs = num("calloffs"), repeats = num("calloffs_repeating_ceiling") ?? 0;
+  const times = value !== null && ceiling ? (Math.round((value / ceiling) * 10) / 10).toFixed(1).replace(".", ",") : null;
+  const head = `Comenzile subsecvente declarate în SEAP: ${value === null ? "valoare necunoscută" : formatRon(value)}${calloffs ? ` (${calloffs === 1 ? "1 comandă" : `${calloffs} comenzi`})` : ""}, față de un plafon al acordului-cadru de ${ceiling === null ? "valoare necunoscută" : formatRon(ceiling)}${times ? `: de ${times} ori plafonul` : ""}.`;
+  if (repeats >= 2) return `${head} ${repeats} comenzi au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP. Valorile reale sunt în documentele contractelor.`;
+  if (repeats === 1) return `${head} O comandă are exact suma plafonului. Poate fi și o eroare de completare în SEAP.`;
+  return `${head} Poate fi o depășire reală sau o eroare de completare în SEAP.`;
+}
+
 /** Display-only explanations shared by entity profiles and the signal explorer. */
 export function riskEvidenceLine(code: string, evidence: Record<string, unknown> | null): string | null {
   if (!evidence) return null;
@@ -139,6 +152,8 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       return evidence.confirmed_contract_count
         ? `${n("confirmed_contract_count") === 1 ? "1 contract asociat unui lot TED" : `${s("confirmed_contract_count")} contracte asociate unor loturi TED`} cu o singură ofertă raportată.${singleBidValueNote(evidence)}${noticeContractsNote(evidence)}`
         : "Lista contractelor cu o singură ofertă raportată nu este disponibilă în această versiune a semnalului.";
+    case "award_calloffs_over_ceiling":
+      return calloffsOverCeilingLine(evidence);
     case "award_concentration":
       return `Furnizorul principal: ${pct("top_winner_pct")} din valoarea contractelor (${s("winners")} furnizori în date, HHI ${s("hhi")}).`;
     case "award_dependence":

@@ -78,10 +78,16 @@ export type FrameworkLink =
       role: "framework";
       /** Identified call-offs counted in the totals (marts.contract_transactions). 0 = none identified, not "none". */
       calloffs: number;
-      /** Their RON sum (all winners), null when none is counted. */
+      /** Their RON sum as the totals count it (all winners; scaled to the ceiling when they declare more, contract-reporting-5), null when none is counted. */
       calloffsRon: string | null;
+      /** The same call-offs' declared RON values, summed (what SEAP holds). */
+      declaredRon: string | null;
       /** Identified call-off publications, counted or not (republications, amendments-as-call-offs excluded by kind). */
       publications: number;
+      /** The framework's own RON ceiling (contractRonValue), null when not in verified lei. */
+      ceilingRon: string | null;
+      /** Counted call-offs whose own value is the whole ceiling (within 1%): the ceiling likely copied into each order. */
+      repeats: number;
     }
   | {
       role: "calloff";
@@ -90,6 +96,14 @@ export type FrameworkLink =
       frameworkDate: string | null;
       /** Framework publications matching (> 1: republications, or an ambiguous match — the first is shown). */
       candidates: number;
+      /** The framework's RON ceiling, and its counted call-offs (this one included): their number and declared sum. */
+      ceilingRon: string | null;
+      calloffs: number;
+      /** As the totals count them (scaled to the ceiling when over), and as declared in SEAP. */
+      calloffsRon: string | null;
+      declaredRon: string | null;
+      /** This call-off declares the framework's whole ceiling (within 1%). */
+      repeatsCeiling: boolean;
     };
 
 /** A complaint / CNSC document among the procedure's stored documents (classified from the file name or SEAP's type:

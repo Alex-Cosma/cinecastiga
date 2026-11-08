@@ -151,6 +151,19 @@ export const FLAG_META: Record<string, FlagMeta> = {
     caveat:
       `Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. ${AWARD_COUNTING_CAVEAT}`,
   },
+  award_calloffs_over_ceiling: {
+    code: "award_calloffs_over_ceiling",
+    title: "Comenzi declarate peste plafonul acordului-cadru",
+    label: "Comenzi peste plafon",
+    subject: "award",
+    short: "Comenzile subsecvente declarate în SEAP depășesc acordul-cadru din care sunt comandate.",
+    description:
+      "Anunț de atribuire ale cărui contracte subsecvente, așa cum le declară autoritatea în SEAP, însumează mai mult decât acordul-cadru din care sunt comandate: peste 120% din plafon și cu cel puțin 50.000 lei. Comenzile se leagă de acord pe toate versiunile anunțului (același cumpărător și număr de anunț), pe același lot și cu un câștigător comun. Valoarea este suma declarată a comenzilor, cea care intră în totaluri.",
+    rationale:
+      "Comenzile dintr-un acord-cadru nu pot depăși valoarea lui. Fie s-a cumpărat peste plafon, fie valorile au fost raportate greșit în SEAP; ambele merită verificate în documentele contractelor.",
+    caveat:
+      `Poate fi o eroare de introducere a datelor, mai ales când comenzile au aceeași sumă ca plafonul acordului-cadru (plafonul copiat în fiecare comandă). Un act adițional sau o ajustare de preț pot mări puțin plafonul. Semnalul nu intră în scor. ${AWARD_COUNTING_CAVEAT}`,
+  },
   award_concentration: {
     code: "award_concentration",
     title: "Concentrare pe un câștigător",
@@ -232,6 +245,7 @@ export const FLAG_ORDER = [
   "da_above_ceiling",
   "award_no_competition",
   "award_single_bid",
+  "award_calloffs_over_ceiling",
   "award_concentration",
   "award_dependence",
   "fin_tiny_staff",

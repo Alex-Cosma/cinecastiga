@@ -1,4 +1,4 @@
-import { canonicalContract, contractDatePlausible, contractReportable, contractRonValue, noticeContractsKind, type DbSql } from "@seap/db";
+import { CALLOFF_OVER_CEILING, canonicalContract, contractDatePlausible, contractReportable, contractRonValue, frameworkCalloffPairs, noticeContractsKind, type DbSql } from "@seap/db";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 
 type Fragment = ReturnType<DbSql>;
@@ -143,3 +143,42 @@ export function confirmedSingleBidAwardsSql(sql: DbSql, limits: { minValue: numb
       and signal_value <= ${limits.maxValue}::numeric
   `, tables);
 }
+
+/** award_calloffs_over_ceiling (owner, 8 November 2026, rf-2026.23): the call-offs an award notice declares in SEAP add
+ * up to more than the framework agreement they are ordered from, which the law does not allow (CALLOFF_OVER_CEILING:
+ * over 120% and by at least 50,000 lei; frameworkCalloffPairs: the notice's versions, the same lot, a winner in common).
+ * The evidence counts the call-offs that repeat the whole ceiling, most likely the ceiling copied into each order (a
+ * data-entry error), still what the authority declared. Informative, never in the score; the value is the declared sum. */
+export function calloffsOverCeilingSql(sql: DbSql, limits: { severityReference: number }, tables: AwardTables & { transactions?: Fragment } = {}): Fragment {
+  const transactions = tables.transactions ?? sql`marts.contract_transactions`;
+  const { ratio, minExcess, repeat } = CALLOFF_OVER_CEILING;
+  // The declared values (each call-off's own RON value), over the call-offs the totals count: the totals themselves
+  // count these call-offs scaled to the ceiling (calloffCeilingScale, contract-reporting-5), the signal says what SEAP holds.
+  return oncePerNotice(sql, "award_calloffs_over_ceiling", sql`
+    with pairs as (
+      select p.* from (${frameworkCalloffPairs(sql, tables)}) p
+      where p.calloff_id in (select contract_id from ${transactions})
+    ), per_fw as (
+      select framework_id, framework_notice_id, framework_nat_id, framework_no, max(ceiling) ceiling,
+        count(*) calloffs, count(*) filter (where abs(calloff_value - ceiling) <= ${repeat}::numeric * ceiling) repeats,
+        sum(calloff_value) declared
+      from pairs group by 1, 2, 3, 4
+    ), over_fw as (
+      select * from per_fw where declared > ${ratio}::numeric * ceiling and declared - ceiling >= ${minExcess}::numeric
+    ), per_notice as (
+      select o.framework_notice_id ca_notice_id, sum(o.declared) declared, sum(o.ceiling) ceiling, count(*) frameworks_over,
+        sum(o.calloffs) calloffs, sum(o.repeats) repeats,
+        jsonb_agg(jsonb_build_object('contract_id', o.framework_nat_id::text, 'contract_no', o.framework_no,
+          'ceiling', o.ceiling, 'declared', o.declared, 'calloffs', o.calloffs, 'repeats', o.repeats)
+          order by o.declared - o.ceiling desc) frameworks
+      from over_fw o group by 1
+    )
+    select a.id, least(1, (n.declared - n.ceiling) / ${limits.severityReference}::numeric) severity,
+      jsonb_build_object('value', n.declared, 'ceiling', n.ceiling, 'ratio', round(n.declared / n.ceiling, 2),
+        'frameworks_over', n.frameworks_over, 'calloffs', n.calloffs, 'calloffs_repeating_ceiling', n.repeats,
+        'frameworks', (select jsonb_agg(f) from (select f from jsonb_array_elements(n.frameworks) f limit 10) top)) evidence
+    from per_notice n
+    join lateral (select min(a0.id) id from ${tables.awards ?? sql`core.awards`} a0 where a0.ca_notice_id = n.ca_notice_id) a on a.id is not null
+  `, tables);
+}
+

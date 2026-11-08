@@ -39,6 +39,8 @@
 .record-facts dt { font-size: 13px; color: var(--muted); margin-bottom: 3px; }
 .record-facts dd { margin: 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .record-facts dd small { display: block; font-size: 13px; color: var(--ink2); margin-top: 2px; }
+/* Declared call-offs over their framework's ceiling (8 November 2026): a lead, said in the amber ink, never hidden. */
+.record-facts dd small.record-warn { margin-top: 6px; padding: 6px 9px; border: 1px solid var(--amber-line); border-radius: 8px; background: var(--amber-soft); color: var(--amber-ink); line-height: 1.45; }
 .record-missing { margin-top: 12px; font-size: 13px; color: var(--muted); }
 .record-quiet { color: var(--muted); }
 

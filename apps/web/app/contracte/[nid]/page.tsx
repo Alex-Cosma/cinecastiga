@@ -1,3 +1,4 @@
+import { CALLOFF_OVER_CEILING } from "@seap/db";
 import type { Metadata } from "next";
 import { cache } from "react";
 import Link from "next/link";
@@ -49,6 +50,23 @@ const valueLabel = (c: ContractDetail) => c.financialKind === "framework" ? <>Pl
   : c.financialKind === "amendment" ? <>Valoarea actului adițional <Term tip id="act-aditional" /></>
   : c.amountStatus === "legacy_ron" ? <Term tip id="valoare-inregistrata">Valoare înregistrată</Term>
   : <Term tip id="valoare-inregistrata">Valoarea contractului</Term>;
+
+/**
+ * Declared call-offs over their framework (owner, 8 November 2026): what SEAP holds is shown as declared, with how many
+ * times the ceiling it is and, when orders repeat the whole ceiling, that it is most likely a data-entry error; the
+ * totals count them scaled to the ceiling (contract-reporting-5). The same bounds as the totals and the signal.
+ */
+function overCeiling(declared: string | null, ceiling: string | null): string | null {
+  const d = Number(declared), c = Number(ceiling);
+  if (declared === null || ceiling === null || !(c > 0) || !(d > CALLOFF_OVER_CEILING.ratio * c) || d - c < CALLOFF_OVER_CEILING.minExcess) return null;
+  return (Math.round((d / c) * 10) / 10).toFixed(1).replace(".", ",");
+}
+
+/** The totals already count less than SEAP declares (contract-reporting-5 applied by the last processing): until the run
+ * after a deploy rebuilds the marts, they still hold the declared sum, and the page must not say they were reduced. */
+function countedBelow(counted: string | null, declared: string | null): boolean {
+  return counted !== null && declared !== null && Number(counted) < Number(declared) - 0.005;
+}
 
 /** Why this value stays out of the totals, said once, beside the value. */
 const totalsNote = (c: ContractDetail) =>
@@ -153,8 +171,10 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
           procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
           (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: <>{c.cpvName ?? "Denumire neprecizată"}{c.cpvCode && <small>{c.cpvCode}</small>}</> },
           c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
-          x.framework?.role === "framework" && { label: <Term tip id="comenzi-identificate">Comenzi subsecvente identificate</Term>, value: x.framework.calloffs > 0 ? <>{formatInt(x.framework.calloffs)}{x.framework.calloffsRon != null && ` · ${formatExactDecimal(x.framework.calloffsRon)} lei`}</> : <span className="record-quiet">Niciuna găsită (nu înseamnă zero)</span> },
-          x.framework?.role === "calloff" && { label: "Acordul-cadru", value: <Link href={`/contracte/${x.framework.frameworkNatId}`}>{cleanName(x.framework.frameworkTitle) || "Acordul-cadru al comenzii"}</Link> },
+          x.framework?.role === "framework" && { label: <Term tip id="comenzi-identificate">Comenzi subsecvente identificate</Term>, value: x.framework.calloffs > 0 ? <>{formatInt(x.framework.calloffs)}{x.framework.calloffsRon != null && ` · ${formatExactDecimal(x.framework.calloffsRon)} lei`}
+            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon); return times && <small className="record-warn">Comenzile declarate în SEAP însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul acordului-cadru.{f.repeats >= 2 ? ` ${formatInt(f.repeats)} comenzi au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP.` : " Poate fi o depășire reală sau o eroare de completare în SEAP."}{countedBelow(f.calloffsRon, f.declaredRon) ? " În totaluri se numără cel mult plafonul: comenzile sunt reduse proporțional." : ""}</small>; })()}</> : <span className="record-quiet">Niciuna găsită (nu înseamnă zero)</span>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon) !== null },
+          x.framework?.role === "calloff" && { label: "Acordul-cadru", value: <><Link href={`/contracte/${x.framework.frameworkNatId}`}>{cleanName(x.framework.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
+            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon); return times && <small className="record-warn">Comenzile lui declarate în SEAP ({formatInt(f.calloffs)}) însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul de {formatExactDecimal(f.ceilingRon!)} lei.{f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : " Poate fi o depășire reală sau o eroare de completare în SEAP."}{countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : ""}</small>; })()}</>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon) !== null },
           x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a><small>Recunoscute după numele fișierului: pot fi greșit clasificate.</small></>, wide: true },
         ]} />
       </RecordSection>

@@ -178,3 +178,19 @@ describe("direct acquisitions against their ceiling", () => {
     expect(riskEvidenceLine("da_rapid", { minutes: 3, closing: "1000" })).toBeNull();
   });
 });
+
+describe("award_calloffs_over_ceiling (owner, 8 November 2026)", () => {
+  it("states the declared call-offs against the ceiling and, when orders repeat the whole ceiling, a likely data-entry error", () => {
+    const line = riskEvidenceLine("award_calloffs_over_ceiling", { value: "184029312", ceiling: "46007328", calloffs: 4, calloffs_repeating_ceiling: 4 })!;
+    expect(line).toContain("de 4,0 ori plafonul");
+    expect(line).toContain("4 comenzi au exact suma plafonului");
+    expect(line).toContain("eroare de completare");
+    expect(riskEvidenceLine("award_calloffs_over_ceiling", { value: "1300000", ceiling: "1000000", calloffs: 3, calloffs_repeating_ceiling: 0 }))
+      .toContain("Poate fi o depășire reală sau o eroare de completare");
+  });
+
+  it("is an informative award signal whose caveat names the data-entry error", () => {
+    expect(FLAG_META.award_calloffs_over_ceiling?.subject).toBe("award");
+    expect(FLAG_META.award_calloffs_over_ceiling?.caveat).toContain("eroare de introducere a datelor");
+  });
+});
