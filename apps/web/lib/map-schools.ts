@@ -7,10 +7,10 @@ import type { ReadRows } from "./map-hospitals";
 /*
  * /harta's schools (owner, 8 November 2026). Which institutions: the public schools and kindergartens with legal
  * personality of the Ministry of Education's 2025-2026 school network, ministry-run schools included; not the
- * universities, the children's palaces and clubs, the school sports clubs, the inspectorates or the teachers' and
- * resource centres. Each is linked to the buying institutions by CIF: its own, and those of the schools merged into it
+ * universities, the crèches (and a town's crèche service), the children's palaces and clubs, the school sports clubs,
+ * the inspectorates or the teachers' and resource centres. Each is linked to the buying institutions by CIF: its own, and those of the schools merged into it
  * in 2025 (the 2024-2025 network, by the units' statistical codes). Its pupils are the Ministry's of 2024-2025,
- * pre-school children included, counted with the school each unit belongs to now. Each is drawn in its UAT (București:
+ * pre-school children included, crèche children not, counted with the school each unit belongs to now. Each is drawn in its UAT (București:
  * its sector). Built outside the repository (seap-filters-work/scratchpad/scoli-20261108/build_reference.py).
  */
 
