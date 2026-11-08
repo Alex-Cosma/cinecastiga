@@ -45,6 +45,13 @@ describe('strict tar.gz reader',()=>{
   await expect(read(tarGz(Array.from({length:4},(_,i)=>({name:`${i}.xml`,data:'x'}))),limits)).rejects.toThrow(/prea multe/);
   await expect(read(tarGz(Array.from({length:3},(_,i)=>({name:`${i}.xml`,data:'x'.repeat(999)})).concat([{name:'pad',data:'y'.repeat(60_000)}])),{...limits,maxMembers:10,maxFileBytes:100_000})).rejects.toThrow(/decompresie/);
  });
+
+ it('accepts members up to 128 MiB by default (owner, 8 November 2026: one OJ S 140/2026 notice is over 32 MiB)',async()=>{
+  expect(TED_PACKAGE_LIMITS.maxFileBytes).toBe(128*1024*1024);
+  // Declared sizes only: a 100 MiB member passes the size check and fails later as truncated; one over 128 MiB is refused.
+  await expect(read(tarGz([{name:'big.xml',size:100*1024*1024}],{end:false}))).rejects.toThrow(/trunchiat/);
+  await expect(read(tarGz([{name:'big.xml',size:128*1024*1024+1}],{end:false}))).rejects.toThrow(/dimensiunea maximă/);
+ });
 });
 
 describe('TED daily package reader',()=>{
