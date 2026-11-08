@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type CSSProperties } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { rovingKeyDown, rovingStop } from "../keyboard";
 import type { ChangeSource, KitOption, KitRestRow } from "../kit-types";
 import HelpTip from "../HelpTip";
@@ -27,6 +27,8 @@ export interface OptionListProps {
   onChange?: (value: string, source: ChangeSource) => void;
   rest?: readonly KitRestRow[];
   link?: { label: string; onClick: () => void; className?: string };
+  /** A control right under one option, out of the radios' roving order (the map's "cu instituțiile lor"). */
+  under?: { after: string; node: ReactNode } | undefined;
 }
 
 const pct = (share: number) => `${Math.round(Math.max(0, Math.min(1, share)) * 1000) / 10}%`;
@@ -40,7 +42,7 @@ function RestRow({ row }: { row: KitRestRow }) {
   </div>;
 }
 
-export default function OptionList({ label, options, multiple = false, value = null, values = [], onChange, rest = [], link }: OptionListProps) {
+export default function OptionList({ label, options, multiple = false, value = null, values = [], onChange, rest = [], link, under }: OptionListProps) {
   const isOn = (option: KitOption) => multiple ? values.includes(option.value) : option.value === value;
   const stop = multiple ? -1 : rovingStop(options.findIndex(isOn), options.map(option => !!option.disabled));
   return <>
@@ -78,6 +80,7 @@ export default function OptionList({ label, options, multiple = false, value = n
             </span>
             <span className="qb-opt-n">{option.count}</span>
           </button>
+          {under?.after === option.value && under.node}
           {rest.filter(row => row.after === option.value).map(row => <RestRow key={`rest:${row.label}`} row={row} />)}
         </Fragment>;
       })}
