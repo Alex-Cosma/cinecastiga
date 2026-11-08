@@ -74,11 +74,11 @@ const place = (n: number) => (n === 1 ? "e primul" : `e al ${n}-lea`);
 const FOLLOW_DELAY = 250;
 const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
 
-function Pick({ label, text, title, children, wide = false }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean }) {
+function Pick({ label, text, title, children, wide = false, className }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   return <>
-    <button ref={button} type="button" className="mx-pick" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
+    <button ref={button} type="button" className={className ? `mx-pick ${className}` : "mx-pick"} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
       <span>{label}</span><b>{text}</b>
       <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
     </button>
@@ -111,8 +111,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // The kind of institution (owner, 8 November 2026): the local administrations, or the public hospitals (`?inst=spitale`).
   const [kind, setKind] = useState<MapKind>(() => (start.inst === KIND_URL.hospitals ? "hospitals" : "local_admin"));
   const hospitals = kind === "hospitals";
-  // The local administrations with their institutions (owner, 8 November 2026: a checkbox, `?cu=institutii`).
-  const [withInst, setWithInst] = useState<boolean>(() => start.cu === "institutii");
+  // The local administrations with their institutions (owner, 8 November 2026): a checkbox under "Primării și consilii
+  // județene" in the kind's window, ticked by default; `?cu=fara` without them (an old `?cu=institutii` still opens them).
+  const [withInst, setWithInst] = useState<boolean>(() => start.cu !== "fara");
   const sub = !hospitals && withInst;
   const router = useRouter();
   const [county, setCounty] = useState<string | null>(start.judet && /^[a-z-]{2,20}$/.test(start.judet) ? start.judet : null);
@@ -193,7 +194,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const p = new URLSearchParams();
     const inst = KIND_URL[kind];
     if (inst) p.set("inst", inst);
-    if (sub) p.set("cu", "institutii");
+    if (kind === "local_admin" && !sub) p.set("cu", "fara");
     if (years !== "all") p.set("ani", years.join(","));
     if (cpv !== "all") p.set("cpv", cpv.join(","));
     const canal = DATASETS.find((d) => d.value === dataset)?.url;
@@ -348,14 +349,14 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     </header>
 
     <div className="mx-filters" role="group" aria-label="Ce arată harta">
-      <Pick label="Instituții" text={hospitals ? "Spitale" : "Primării și CJ"} title="Ce instituții?">
+      <Pick label="Instituții" text={hospitals ? "Spitale" : sub ? "Primării și CJ, cu instituțiile lor" : "Primării și CJ"} title="Ce instituții?" className="mx-pick--kind">
         <OptionList label="Instituții" value={kind} options={KINDS}
-          onChange={(v) => { if (v === "local_admin" || v === "hospitals") { setKind(v); setUat(null); setHover(null); } }} />
+          onChange={(v) => { if (v === "local_admin" || v === "hospitals") { setKind(v); setUat(null); setHover(null); } }}
+          under={hospitals ? undefined : { after: "local_admin", node: <label className="mx-check">
+            <input type="checkbox" checked={withInst} onChange={(e) => setWithInst(e.target.checked)} />
+            <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
+          </label> }} />
       </Pick>
-      {!hospitals && <label className="mx-check">
-        <input type="checkbox" checked={withInst} onChange={(e) => setWithInst(e.target.checked)} />
-        <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
-      </label>}
       <Pick label="Perioada" text={years === "all" ? "Toată perioada" : yearsWords(years, allYears)} title="Ce ani?">
         <OptionList label="Perioada" multiple values={years === "all" ? ["all"] : years} options={yearOptions} onChange={(v, source) => { if (source === "activate") setYears((y) => toggle(y, v)); }} />
       </Pick>
