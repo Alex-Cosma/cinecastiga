@@ -1,8 +1,8 @@
-import { cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, type DbSql } from "@seap/db";
+import { cuiCorroborated, onrcIdentityBirthDate, repRoleLinksFirms, withoutNestedLoops, type DbSql } from "@seap/db";
 import { DA_CPV_TYPE_PATTERN } from "@seap/domain";
 import { METHODOLOGY_VERSION } from "./methodology.js";
 import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thresholds.js";
-import { confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
+import { calloffsOverCeilingSql, confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
 import { annex2Sql, authorityDecemberSql } from "./score.js";
 import { buyerRegimeSql, entityNameSql, INHOUSE_SUPPLIER_NAME, UTILITY_SUPPLIER_NAME } from "./regime.js";
 
@@ -476,6 +476,13 @@ async function buildFlags(
     insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
     ${confirmedSingleBidAwardsSql(sql, { minValue: awSingleBidMin, maxValue: awMaxPlausible, severityReference: awSevRef })}
   `;
+
+  // ── award_calloffs_over_ceiling: declared call-offs over their framework (per award notice; informative) ──
+  // Hash joins, as the totals' cap in runMarts (the planner misreads the contract kind; withoutNestedLoops).
+  await withoutNestedLoops(sql, () => sql`
+    insert into core.flags (subject_type, subject_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    ${calloffsOverCeilingSql(sql, { severityReference: awSevRef })}
+  `);
 
   // ── award_concentration: one winner captures an authority (per authority) ───
   await sql`

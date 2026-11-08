@@ -93,7 +93,7 @@ export function caseUnitWords(code: string, count: number): string {
     case "da_round": return countWords(count, "sumă", "sume");
     case "da_above_ceiling": return countWords(count, "achiziție", "achiziții");
     case "da_year_end": case "da_capacity": case "fin_tiny_staff": return countWords(count, "an", "ani");
-    case "award_no_competition": case "award_single_bid": return countWords(count, "procedură", "proceduri");
+    case "award_no_competition": case "award_single_bid": case "award_calloffs_over_ceiling": return countWords(count, "procedură", "proceduri");
     case "net_shared_admin": return countWords(count, "legătură", "legături");
     default: return countWords(count, "caz", "cazuri");
   }

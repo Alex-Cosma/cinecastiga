@@ -1,4 +1,4 @@
-import { contractKind, corroboratedCui, createDb, type DbSql } from "@seap/db";
+import { CALLOFF_OVER_CEILING, contractKind, contractRonValue, corroboratedCui, createDb, type DbSql } from "@seap/db";
 import { daPurchaseType } from "@seap/domain";
 import type { ContractDetail } from "./marts";
 import type { CnscMention, ContractContext, FrameworkLink, PairContext, PairHistory, TedContext } from "./record-types";
@@ -263,26 +263,46 @@ const sharesWinner = (q: DbSql, contractId: string, alias: string) => q`(
   or exists (select 1 from core.contract_winners wx join core.contract_winners w0 on w0.entity_id = wx.entity_id
              where wx.contract_id = ${q(alias)}.id and w0.contract_id = ${contractId}))`;
 
+
+/**
+ * One framework's call-offs: over the notice's versions, one of its lots (or all), a winner in common, counted as the
+ * totals count them; with the framework's RON ceiling and how many call-offs declare that whole ceiling (the
+ * award_calloffs_over_ceiling signal reads the same match, apps/ingestion/src/flags/competition.ts).
+ */
+async function frameworkCalloffs(q: DbSql, caNoticeId: string, frameworkId: string, lots: string) {
+  const [r] = await q<{ publications: number; counted: number; declared: string | null; ron: string | null; ceiling: string | null; repeats: number }[]>`
+    with fam as (${family(q, caNoticeId)}),
+    ceiling as (select ${contractRonValue(q)} v from core.contracts c where c.id = ${frameworkId}),
+    calloffs as (
+      -- The call-off's own declared RON value (contractRonValue, on alias x).
+      select distinct x.id, (case when x.amount_status in ('ron','converted') and x.amount_raw_id = x.raw_id then x.value_ron
+          when x.amount_status is null and upper(trim(x.currency)) = 'RON' then x.contract_value end) value
+      from fam join core.contracts x on x.ca_notice_id = fam.ca_notice_id
+      where x.id <> ${frameworkId} and nullif(btrim(x.lots_caption), '') is not null
+        and ${lotWithin(q, q`${lots}::text`, q`x.lots_caption`)}
+        and ${contractKind(q, "x")} = 'calloff' and ${sharesWinner(q, frameworkId, "x")}
+    ),
+    counted as (
+      select c.id, c.value, sum(ct.closing_value) ron from calloffs c join marts.contract_transactions ct on ct.contract_id = c.id group by 1, 2
+    )
+    select (select count(*)::int from calloffs) publications, count(*)::int counted,
+      sum(value)::text declared, sum(ron)::text ron, (select v::text from ceiling) ceiling,
+      count(*) filter (where abs(value - (select v from ceiling)) <= ${CALLOFF_OVER_CEILING.repeat}::numeric * (select v from ceiling))::int repeats
+    from counted`;
+  return { publications: Number(r?.publications ?? 0), counted: Number(r?.counted ?? 0), declared: r?.declared ?? null, ron: r?.ron ?? null,
+    ceiling: r?.ceiling ?? null, repeats: Number(r?.repeats ?? 0) };
+}
+
 async function frameworkLink(q: DbSql, detail: ContractDetail, lots: string | null): Promise<FrameworkLink | null> {
   const kind = detail.financialKind;
   if ((kind !== "framework" && kind !== "calloff") || !detail.caNoticeId || !lots) return null;
   if (kind === "framework") {
-    const [r] = await q<{ publications: number; counted: number; ron: string | null }[]>`
-      with fam as (${family(q, detail.caNoticeId)}),
-      calloffs as (
-        select distinct x.id from fam join core.contracts x on x.ca_notice_id = fam.ca_notice_id
-        where x.id <> ${detail.contractId} and nullif(btrim(x.lots_caption), '') is not null
-          and ${lotWithin(q, q`${lots}::text`, q`x.lots_caption`)}
-          and ${contractKind(q, "x")} = 'calloff' and ${sharesWinner(q, detail.contractId, "x")}
-      )
-      select (select count(*)::int from calloffs) publications,
-        count(distinct ct.contract_id)::int counted, sum(ct.closing_value)::text ron
-      from calloffs c join marts.contract_transactions ct on ct.contract_id = c.id`;
-    return { role: "framework", calloffs: Number(r?.counted ?? 0), calloffsRon: r?.ron ?? null, publications: Number(r?.publications ?? 0) };
+    const r = await frameworkCalloffs(q, detail.caNoticeId, detail.contractId, lots);
+    return { role: "framework", calloffs: r.counted, calloffsRon: r.ron, declaredRon: r.declared, publications: r.publications, ceilingRon: r.ceiling, repeats: r.repeats };
   }
-  const [r] = await q<{ nat_id: string; title: string | null; framework_day: string | null; candidates: number }[]>`
+  const [r] = await q<{ id: string; ca_notice_id: string; lots: string; nat_id: string; title: string | null; framework_day: string | null; candidates: number }[]>`
     with fam as (${family(q, detail.caNoticeId)})
-    select f.ca_notice_contract_id::text nat_id, nullif(btrim(f.title), '') title,
+    select f.id::text id, f.ca_notice_id::text ca_notice_id, f.lots_caption lots, f.ca_notice_contract_id::text nat_id, nullif(btrim(f.title), '') title,
       to_char(f.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') framework_day, count(*) over ()::int candidates
     from fam join core.contracts f on f.ca_notice_id = fam.ca_notice_id
     where f.id <> ${detail.contractId} and nullif(btrim(f.lots_caption), '') is not null
@@ -290,7 +310,12 @@ async function frameworkLink(q: DbSql, detail: ContractDetail, lots: string | nu
       and ${contractKind(q, "f")} = 'framework' and ${sharesWinner(q, detail.contractId, "f")}
     order by (f.ca_notice_id = ${detail.caNoticeId}) desc, f.contract_date nulls last, f.id
     limit 1`;
-  return r ? { role: "calloff", frameworkNatId: r.nat_id, frameworkTitle: r.title, frameworkDate: r.framework_day, candidates: Number(r.candidates) } : null;
+  if (!r) return null;
+  const sums = await frameworkCalloffs(q, r.ca_notice_id, r.id, r.lots);
+  const own = detail.valueRonExact ?? (detail.amountStatus === "ron" || detail.amountStatus === "legacy_ron" ? detail.contractValueExact : null);
+  const repeatsCeiling = own !== null && sums.ceiling !== null && Math.abs(Number(own) - Number(sums.ceiling)) <= CALLOFF_OVER_CEILING.repeat * Number(sums.ceiling);
+  return { role: "calloff", frameworkNatId: r.nat_id, frameworkTitle: r.title, frameworkDate: r.framework_day, candidates: Number(r.candidates),
+    ceilingRon: sums.ceiling, calloffs: sums.counted, calloffsRon: sums.ron, declaredRon: sums.declared, repeatsCeiling };
 }
 
 // ── CNSC ────────────────────────────────────────────────────────────────────

@@ -44,7 +44,7 @@
  * publication records it; when it differs, the next scheduled run is full
  * (processing.ts), since a daily run keeps the previous risk.
  */
-export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.22';
+export const FLAGS_METHODOLOGY_VERSION = 'rf-2026.23';
 
 /**
  * Buyers reviewed by hand (owner decision S6 of 5 November 2026), by CUI:

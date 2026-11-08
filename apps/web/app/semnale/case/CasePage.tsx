@@ -451,6 +451,7 @@ function outsideTitle(code: string, n: number): string {
   switch (code) {
     case "award_no_competition": return `${countWords(n, "procedură negociată", "proceduri negociate")} fără anunț prealabil.`;
     case "award_single_bid": return `${countWords(n, "procedură", "proceduri")} cu o singură ofertă raportată în TED.`;
+    case "award_calloffs_over_ceiling": return `${countWords(n, "procedură", "proceduri")} cu comenzi declarate peste plafonul acordului-cadru.`;
     default: return `${flagLabel(code)}: ${caseUnitWords(code, n)}.`;
   }
 }

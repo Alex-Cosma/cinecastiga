@@ -40,6 +40,9 @@ import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 //   medical supplies (CPV 33) and small recurring orders out of da_split; da_round expects at least 0.5 and needs 5 / 8
 //   records for levels 2 / 3; a firm's buyer-duty cap over the whole family; capacity alone counts half; a private
 //   buyer has no score; misspelt OUAIs are associations, "ADI …" is classic, a reviewed list of buyers by CUI.
+// rf-2026.23: award_calloffs_over_ceiling (owner, 8 November 2026): an award notice whose declared call-offs exceed the
+//   framework agreement they are ordered from (over 120% and by at least 50,000 lei), with the call-offs that repeat the
+//   whole ceiling (likely a data-entry error). Informative, not in the score; no other signal changes.
 // The version itself lives in @seap/db, where the nightly scheduler reads it.
 export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 
@@ -154,6 +157,17 @@ export const FLAG_DEFS: FlagDef[] = [
       "O singură ofertă primită justifică verificarea accesului la procedură, a cerințelor și a pieței furnizorilor; nu identifică singură cauza concurenței reduse.",
     caveat:
       "Numărul de oferte nu este numărul membrilor unui consorțiu. Un lot cu o ofertă nu descrie toate loturile anunțului. Valoarea afișată este a anunțului sau, când aceasta lipsește, a contractelor citate; contractele citate pot însuma mai mult decât valoarea anunțului. Numerele lipsă, contradictorii și asocierile ambigue rămân necunoscute. Piețele de nișă pot avea legitim o singură ofertă. Semnalul se numără o dată pentru fiecare anunț de atribuire (apariții). Versiunile pe care SEAP le republică sub același număr de anunț se numără o singură dată, la ultima versiune care îndeplinește criteriul. Același contract republicat sub alt număr de anunț, sau un acord-cadru și contractul subsecvent atribuit din el, pot apărea ca apariții separate. Anul semnalului este anul primului contract din anunț, din oricare versiune; un anunț fără contract cu dată plauzibilă primește anul primei versiuni preluate. Când anunțul conține doar plafonul unui acord-cadru, valoarea afișată este plafonul, nu o cheltuială, și nu se adună la totaluri.",
+  },
+  {
+    code: "award_calloffs_over_ceiling",
+    title: "Comenzi declarate peste plafonul acordului-cadru",
+    subject: "award",
+    description:
+      "Anunț de atribuire ale cărui contracte subsecvente, așa cum le declară autoritatea în SEAP, însumează mai mult decât acordul-cadru din care sunt comandate: peste 120% din plafon și cu cel puțin 50.000 lei. Comenzile se leagă de acord pe toate versiunile anunțului (același cumpărător și număr de anunț), pe același lot și cu un câștigător comun. Valoarea este suma declarată a comenzilor, cea care intră în totaluri.",
+    rationale:
+      "Comenzile dintr-un acord-cadru nu pot depăși valoarea lui. Fie s-a cumpărat peste plafon, fie valorile au fost raportate greșit în SEAP; ambele merită verificate în documentele contractelor.",
+    caveat:
+      "Poate fi o eroare de introducere a datelor, mai ales când comenzile au aceeași sumă ca plafonul acordului-cadru (plafonul copiat în fiecare comandă); câte comenzi repetă plafonul se vede în detalii. Un act adițional sau o ajustare de preț pot mări puțin plafonul. Semnalul nu intră în scor.",
   },
   {
     code: "award_concentration",

@@ -115,6 +115,20 @@ function headOf(d: SignalPageData): Head {
         meta: d.code === "award_single_bid" ? [procedureLabel(d.award?.procedure ?? (typeof e.procedure === "string" ? e.procedure : null))] : [],
       };
     }
+    case "award_calloffs_over_ceiling": {
+      const value = numOf(e.value), ceiling = numOf(e.ceiling), repeats = numOf(e.calloffs_repeating_ceiling) ?? 0, calloffs = numOf(e.calloffs);
+      const times = value !== null && ceiling ? (Math.round((value / ceiling) * 10) / 10).toFixed(1).replace(".", ",") : null;
+      return {
+        title: <>Comenzi declarate peste plafonul acordului-cadru <Term tip id="plafon-acord-cadru" /></>,
+        lot: d.award?.title ? cleanName(d.award.title) : null,
+        parties: <>{entity ?? "Instituția"} a declarat comenzi către {winnerNames}</>,
+        value: { amount: lei(e.value), label: `${calloffs ? countWords(calloffs, "comandă declarată", "comenzi declarate") : "comenzile declarate"} în SEAP`, notes: [
+          <>Plafonul acordului-cadru: {lei(e.ceiling)}{times ? <>, depășit de {times} ori</> : null}</>,
+          repeats >= 2 ? <>{repeats} comenzi au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP</>
+            : <>Poate fi o depășire reală sau o eroare de completare în SEAP</>] },
+        meta: [],
+      };
+    }
     case "fin_tiny_staff": {
       const year = String(e.year ?? d.period ?? ""), staff = numOf(e.employees), total = numOf(e.total);
       return {
@@ -249,7 +263,7 @@ export default async function SignalPage({ params, searchParams }: {
     <Shares d={d} />
     {d.firm && <FirmCard firm={d.firm} years={signalYears(d)} title={d.code === "net_shared_admin" ? "Firma semnalului" : "Firma"} />}
 
-    <RecordSection id="inregistrari" title={d.code === "award_single_bid" ? "Contractele cu o singură ofertă" : d.code === "award_no_competition" ? "Contractele anunțului" : "Înregistrările din semnal"}>
+    <RecordSection id="inregistrari" title={d.code === "award_single_bid" ? "Contractele cu o singură ofertă" : d.code === "award_no_competition" ? "Contractele anunțului" : d.code === "award_calloffs_over_ceiling" ? "Comenzile anunțului" : "Înregistrările din semnal"}>
       <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} kind="signal" refId={id} heading={null} save={false} titles={d.titles} notes={lotNotes(d)} />
     </RecordSection>
 

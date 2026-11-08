@@ -21,7 +21,7 @@ import { caseMeter } from "./CaseMeter";
 const groups: [string, string[]][] = [
   ["Praguri și calendar", ["da_split", "da_round", "da_above_ceiling", "da_year_end"]],
   ["Concentrarea achizițiilor", ["da_concentration", "da_dependence", "award_concentration", "award_dependence"]],
-  ["Proceduri și oferte", ["award_no_competition", "award_single_bid"]],
+  ["Proceduri și oferte", ["award_no_competition", "award_single_bid", "award_calloffs_over_ceiling"]],
   ["Firme și legături", ["da_capacity", "fin_tiny_staff", "fin_public_reliance", "net_shared_admin"]],
 ];
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
