@@ -252,6 +252,14 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const metric: MapMetric = level?.metric ?? mapMetric({ kind, years });
   const fig = (a: MapArea | null | undefined): number | null => (a ? figure(a, metric) : null);
   const max = Math.max(1, ...areas.map((a) => fig(a) ?? 0));
+  // A county's schools (owner, 8 November 2026): the circles' ramp stops at the 95th percentile, so a few outliers (a
+  // police school's 40,000 lei per pupil) do not pale every other school; those above it take the darkest tint. The
+  // list keeps the exact figures and its bars.
+  const dotTop = (() => {
+    if (!county || !schools) return max;
+    const v = areas.map((a) => fig(a)).filter((f): f is number => f !== null).sort((a, b) => a - b);
+    return v.length ? Math.min(max, Math.max(1, v[Math.floor(0.95 * (v.length - 1))]!)) : max;
+  })();
   const ranked = useMemo(() => [...areas].sort((a, b) => (figure(b, metric) ?? -1) - (figure(a, metric) ?? -1) || a.name.localeCompare(b.name, "ro")), [areas, metric]);
   const countyArea = county ? nat?.areas.find((a) => a.key === county) : undefined;
   const countyName = shape?.name ?? countyArea?.name ?? countyGeo[county ?? ""]?.name ?? "";
@@ -413,7 +421,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {county && uatGeo && dots && unit > 0 && <HospitalLayer key={`${kind}:${county}`} uats={uatGeo.uats} hospitals={loc?.areas ?? []} city={cityCentre} unit={unit}
               radius={schools ? byPupils : undefined}
               // A circle never fades into the backdrop: its ramp starts at 22% (the counties' at 7%).
-              ready={loc !== null} hover={hover} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * (f / max); }}
+              ready={loc !== null} hover={hover} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
           </svg>}
           {shown && pointer && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
@@ -430,7 +438,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         </div>
         <div className="mx-foot">
           <div className="mx-legend" aria-hidden="true">
-            {(!dots || !county || metric !== "value") && <span className="mx-legend-g"><span>0</span><i /><span>{level ? say(max) : <G.Line inline w="3.4em" />} lei{metric === "value" ? "" : ` ${UNIT[metric]}`}</span></span>}
+            {(!dots || !county || metric !== "value") && <span className="mx-legend-g"><span>0</span><i /><span>{level ? `${say(dotTop)}${dotTop < max ? "+" : ""}` : <G.Line inline w="3.4em" />} lei{metric === "value" ? "" : ` ${UNIT[metric]}`}</span></span>}
             {county && dots && <span className="mx-legend-g"><b className="mx-legend-dots"><s /><s /><s /></b><span>{schools ? "cercul: elevii școlii" : "cercul: paturile spitalului"}</span></span>}
             {areas.some((a) => fig(a) === null) && <span className="mx-legend-g">{county && dots ? <b className="mx-legend-ring" /> : <b className="mx-legend-gap" />}<span>{hospitals ? "fără paturi în lista CNAS" : schools ? "fără elevi în lista ministerului" : county ? "primărie neidentificată" : "fără cifră"}</span></span>}</div>
           <p className="mx-attr">Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
