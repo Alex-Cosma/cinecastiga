@@ -265,7 +265,7 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
           const channel = d.selection.dataset === "da" ? "&tip=directe" : d.selection.dataset === "contracts" ? "&tip=contracte" : "";
           const yearHref = hall ? (year: string) => `${entityHref(hall.id, "authority")}&an=${year}${channel}#achizitii` : null;
           return <>
-            <p className="mx-p-lead">{d.uat.name} a contractat {short(value)} lei: <em>{int(pc)} lei pe locuitor</em>{vs ? `, ${vs}` : ""}
+            <p className="mx-p-lead">{d.uat.name} a contractat{d.selection.withInstitutions ? ", cu instituțiile primăriei," : ""} {short(value)} lei: <em>{int(pc)} lei pe locuitor</em>{vs ? `, ${vs}` : ""}
               {d.place ? `, ${ordinal(d.place)} din cele ${withDe(d.ranked, "UAT", "UAT-uri")} ale județului ${d.county.name}` : ""}.</p>
             <div className="mx-p-cols">
               <div className="mx-p-sec"><h3>Cât?</h3>
@@ -285,6 +285,15 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
                   value: `${pct(s.value, value)}%`, tip: [s.name, `${int(s.value)} lei · ${pct(s.value, value)}% din total`, withDe(s.records, "înregistrare", "înregistrări")] }))} />
               </div>
             </div>
+            {/* With the institutions (owner, 8 November 2026): which of the town hall's, and how much of the total. */}
+            {d.institutions.length > 0 && (() => {
+              const subTotal = d.institutions.reduce((a, x) => a + x.value, 0), first = d.institutions[0]!.value;
+              return <div className="mx-p-sec mx-p-wide"><h3>Instituțiile primăriei <small>{short(subTotal)} lei din {short(value)}, {withDe(d.institutions.length, "instituție", "instituții")}</small></h3>
+                <Rows tip={t.bind} rows={d.institutions.slice(0, 8).map((x) => ({ key: x.id, name: <EntityName id={x.id} role="authority">{x.name}</EntityName>, bar: pct(x.value, first),
+                  value: `${pct(x.value, value)}%`, tip: [x.name, `${int(x.value)} lei · ${pct(x.value, value)}% din total`] }))} />
+                {d.institutions.length > 8 && <p className="mx-p-more">Și încă {withDe(d.institutions.length - 8, "instituție", "instituții")}, cu {short(d.institutions.slice(8).reduce((a, x) => a + x.value, 0))} lei.</p>}
+              </div>;
+            })()}
             <div className="mx-p-sec mx-p-wide"><h3>Printre vecini <small>lei pe locuitor în {d.county.name}; apasă un punct ca să deschizi UAT-ul</small></h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
             <p className="mx-p-note">Valori contractate, nu plăți. Prin proceduri: {pct(d.channels.contracts, d.channels.contracts + d.channels.da)}%; directe: {pct(d.channels.da, d.channels.contracts + d.channels.da)}%.</p>
           </>;

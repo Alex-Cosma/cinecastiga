@@ -5,10 +5,11 @@ import { COUNTY_POPULATION, PER_CAPITA_SOURCE, martsCounty, readPerCapitaPopulat
 import catalog from "./reference/population-rpl2021.json" with { type: "json" };
 import geo from "./reference/uat-geo.json" with { type: "json" };
 import {
-  areaOf, countyKey, lei, MapError, mapMetric, perCapita, rowSelected, sumByInstitution,
+  areaOf, counted, countyKey, lei, MapError, mapMetric, perCapita, rowSelected, sumByInstitution, withSubValue,
   type MapArea, type MapInstitution, type MapKind, type MapOptions, type MapResponse, type MapRow, type MapSelection, type MapUatResponse,
 } from "./map-capita-shared";
 import { BEDS_SOURCE, countyHospitals, hospitalCounties, hospitalNames, loadHospitals, type HospitalData, type ReadRows } from "./map-hospitals";
+import { INSTITUTIONS_SOURCE, localInstitutions } from "./map-institutions";
 
 /*
  * /harta's data (owner, 6 November 2026): the value contracted per inhabitant of the local administrations, by county
@@ -80,11 +81,15 @@ const readRows: ReadRows = async (sql, list, ready) => {
 
 async function loadKind(sql: DbSql, ready: boolean): Promise<KindData> {
   const p = await readPerCapitaPopulations(sql);
-  const institutions: MapInstitution[] = p.ids.map((id, i) => ({
+  const admins: MapInstitution[] = p.ids.map((id, i) => ({
     id, county: p.counties[i]!, siruta: p.sirutas[i] ?? null, level: p.levels.get(id) === "county" ? "county" : "local",
   }));
-  const index = new Map(p.ids.map((id, i) => [id, i]));
-  const raw = await readRows(sql, p.ids, ready);
+  // Their institutions (owner, 8 November 2026), after them, each where its administration sits; counted only on demand.
+  const subs = await localInstitutions(sql, p.ids);
+  const institutions: MapInstitution[] = [...admins, ...subs.map((x) => ({ ...admins[x.parent]!, id: x.id, parent: x.parent }))];
+  const ids = institutions.map((inst) => inst.id);
+  const index = new Map(ids.map((id, i) => [id, i]));
+  const raw = await readRows(sql, ids, ready);
   const rows: MapRow[] = [];
   for (const r of raw) {
     const a = index.get(String(r.a));
@@ -121,6 +126,11 @@ const NOTES = {
   geometry: "Limitele UAT: ANCPI, 07.03.2024, și denumirile INS SIRUTA s1 2026 (data.gov.ro, CC BY 4.0), simplificate.",
   kind: "Primăriile și consiliile județene identificate strict (nume, județ și cod SIRUTA concordante, CUI valid). Un județ adună primăriile lui și consiliul județean; un UAT, primăria lui. Valori contractate, nu plăți.",
 };
+const INSTITUTION_NOTES = {
+  ...NOTES,
+  kind: "Primăriile și consiliile județene, fiecare cu instituțiile și companiile ei: instituțiile consiliului județean la județ, ale unei primării în UAT-ul ei, ale primăriei capitalei la tot orașul. Școlile, spitalele, operatorii regionali de apă și asociațiile de UAT-uri nu intră. Valori contractate, nu plăți.",
+  institutions: INSTITUTIONS_SOURCE,
+};
 const HOSPITAL_NOTES = {
   ...NOTES,
   kind: "Spitalele publice din lista CNAS pe 2025, legate de mână de instituțiile care cumpără, și celelalte instituții numite spital. Fiecare e desenat în orașul lui, nu la adresă. Valori contractate, nu plăți.",
@@ -138,17 +148,19 @@ export function countyAreas(data: KindData, s: MapSelection): MapArea[] {
   const members = new Map<string, number[]>();
   const covered = new Map<string, number>();
   data.institutions.forEach((inst, i) => {
+    if (!counted(inst, s)) return;
     members.set(inst.county, [...(members.get(inst.county) ?? []), i]);
     // Population living in UATs whose administration is in the list (București: the city hall's is the whole city's).
-    if (inst.level === "local" && inst.siruta !== null) covered.set(inst.county, (covered.get(inst.county) ?? 0) + (UNIT_POPULATION.get(inst.siruta) ?? 0));
+    if (inst.parent === undefined && inst.level === "local" && inst.siruta !== null) covered.set(inst.county, (covered.get(inst.county) ?? 0) + (UNIT_POPULATION.get(inst.siruta) ?? 0));
   });
   return [...COUNTY_BY_KEY].map(([key, c]) => {
     const population = COUNTY_POPULATION.get(c.marts) ?? null;
     const gap = c.marts !== "Bucuresti" && !data.councils.has(c.marts) ? "no_council" as const : null;
     // București's city hall serves the whole city, which holds the six sectors: its denominator is the city's population.
     const people = c.marts === "Bucuresti" ? population : covered.get(c.marts) ?? null;
-    const area = areaOf(key, c.name, population, members.get(c.marts) ?? [], sums, gap, people);
-    return { ...area, coverage: population && people ? Math.min(1, people / population) : 0 };
+    const mine = members.get(c.marts) ?? [];
+    const area = areaOf(key, c.name, population, mine, sums, gap, people);
+    return withSubValue({ ...area, coverage: population && people ? Math.min(1, people / population) : 0 }, mine, data.institutions, sums, s);
   });
 }
 
@@ -157,14 +169,16 @@ export function uatAreas(data: KindData, s: MapSelection, county: string): { are
   const sums = sumByInstitution(data.rows, data.institutions.length, s);
   const bySiruta = new Map<number, number[]>();
   data.institutions.forEach((inst, i) => {
-    if (inst.level === "local" && inst.siruta !== null) bySiruta.set(inst.siruta, [...(bySiruta.get(inst.siruta) ?? []), i]);
+    if (counted(inst, s) && inst.level === "local" && inst.siruta !== null) bySiruta.set(inst.siruta, [...(bySiruta.get(inst.siruta) ?? []), i]);
   });
+  // A UAT without its own town hall has no figure, whatever institution sits there.
+  const hasAdmin = (members: readonly number[]) => members.some((i) => data.institutions[i]!.parent === undefined);
   const areas = (UATS_BY_COUNTY.get(county) ?? []).map((u) => {
     const members = bySiruta.get(u.siruta) ?? [];
-    return areaOf(String(u.siruta), u.name, UNIT_POPULATION.get(u.siruta) ?? null, members, sums, members.length ? null : "no_admin");
+    return withSubValue(areaOf(String(u.siruta), u.name, UNIT_POPULATION.get(u.siruta) ?? null, members, sums, hasAdmin(members) ? null : "no_admin"), members, data.institutions, sums, s);
   });
   const cityMembers = county === "bucuresti" ? bySiruta.get(BUCHAREST_SIRUTA) ?? [] : null;
-  const city = cityMembers ? areaOf(String(BUCHAREST_SIRUTA), "Primăria Municipiului București", UNIT_POPULATION.get(BUCHAREST_SIRUTA) ?? null, cityMembers, sums, cityMembers.length ? null : "no_admin") : null;
+  const city = cityMembers ? withSubValue(areaOf(String(BUCHAREST_SIRUTA), "Primăria Municipiului București", UNIT_POPULATION.get(BUCHAREST_SIRUTA) ?? null, cityMembers, sums, hasAdmin(cityMembers) ? null : "no_admin"), cityMembers, data.institutions, sums, s) : null;
   return { areas, city };
 }
 
@@ -194,7 +208,7 @@ export async function getMap(s: MapSelection): Promise<MapResponse> {
     totals: { value: lei(all.reduce((a, x) => a + (x.value ?? 0), 0)), records: all.reduce((a, x) => a + x.records, 0), buyers: all.reduce((a, x) => a + x.buyers, 0) },
     source: data.source,
     metric,
-    notes: NOTES,
+    notes: s.withInstitutions ? INSTITUTION_NOTES : NOTES,
   };
 }
 
@@ -217,13 +231,15 @@ const KINDS: MapOptions["kinds"] = [
   { key: "hospitals", label: "Spitale publice", levels: ["county", "uat"] },
 ];
 
-/** The filters' choices for a kind: its years and CPV divisions with their totals. */
-export async function getMapOptions(kind: MapKind = "local_admin"): Promise<MapOptions> {
+/** The filters' choices for a kind (the administrations with their institutions or without): its years and CPV divisions with their totals. */
+export async function getMapOptions(kind: MapKind = "local_admin", withInstitutions = false): Promise<MapOptions> {
   const sql = db();
   const [data, official] = await Promise.all([kind === "hospitals" ? readMapHospitals(sql) : readMapKind(sql), divisionNames(sql)]);
   const years = new Map<string, { value: number; records: number }>(), cpv = new Map<string, { value: number; records: number }>();
   const undated = { value: 0, records: 0 };
+  const kept = kind === "hospitals" ? null : (data as KindData).institutions.map((inst) => counted(inst, { withInstitutions }));
   for (const r of data.rows) {
+    if (kept && !kept[r.a]) continue;
     const y = r.y === null ? undated : years.get(r.y) ?? years.set(r.y, { value: 0, records: 0 }).get(r.y)!;
     y.value += r.v; y.records += r.n;
     if (r.c !== null) { const c = cpv.get(r.c) ?? cpv.set(r.c, { value: 0, records: 0 }).get(r.c)!; c.value += r.v; c.records += r.n; }
@@ -253,7 +269,7 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
   const area = areas.find((a) => a.key === String(siruta))!;
   const ranked = areas.filter((a) => a.perCapita !== null).sort((a, b) => b.perCapita! - a.perCapita!);
   const countyArea = countyAreas(data, s).find((a) => a.key === unit.county) ?? null;
-  const members = data.institutions.map((inst, i) => (inst.level === "local" && inst.siruta === siruta ? i : -1)).filter((i) => i >= 0);
+  const members = data.institutions.map((inst, i) => (counted(inst, s) && inst.level === "local" && inst.siruta === siruta ? i : -1)).filter((i) => i >= 0);
   const mine = new Set(members);
   const own = data.rows.filter((r) => mine.has(r.a));
   const yearsSet = s.years === "all" ? null : new Set(s.years), cpvSet = s.cpv === "all" ? null : new Set(s.cpv);
@@ -278,8 +294,12 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
   const ids = members.map((i) => data.institutions[i]!.id);
   const named = ids.length ? (await sql`select id::text id, name_display name from core.entities where id = any(${sql.array(ids)}::bigint[])`) as unknown as { id: string; name: string }[] : [];
   const valueOf = (i: number) => own.filter((r) => r.a === i && rowSelected(r, s, yearsSet, cpvSet)).reduce((a, r) => a + r.v, 0);
-  const townHalls = members.map((i) => ({ id: data.institutions[i]!.id, name: named.find((n) => n.id === data.institutions[i]!.id)?.name ?? "", value: lei(valueOf(i)) }))
-    .sort((a, b) => b.value - a.value);
+  const listed = (keep: (i: number) => boolean) => members.filter(keep)
+    .map((i) => ({ id: data.institutions[i]!.id, name: named.find((n) => n.id === data.institutions[i]!.id)?.name ?? "", value: lei(valueOf(i)) }))
+    .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, "ro"));
+  const townHalls = listed((i) => data.institutions[i]!.parent === undefined);
+  // With the institutions: the town hall's own, those with a value in the selection (owner, 8 November 2026).
+  const institutions = listed((i) => data.institutions[i]!.parent !== undefined).filter((x) => x.value > 0);
   const suppliers = ids.length ? (await sql`
     select x.supplier_id::text id, e.name_display name, sum(x.v)::float8 value, count(*)::int records from (
       select supplier_id, closing_value v, finalization_date d, cpv_code c from marts.da_transactions
@@ -296,6 +316,7 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
     county: { key: unit.county, name: county.name, perCapita: countyArea?.perCapita ?? null },
     uat: { ...area, kind: unit.kind },
     townHalls,
+    institutions,
     place: area.perCapita === null ? null : ranked.findIndex((a) => a.key === area.key) + 1,
     ranked: ranked.length,
     years,

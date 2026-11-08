@@ -106,7 +106,7 @@ describe("the answer's targets and contrast", () => {
 
   it("keeps /harta's targets 44 px under 640 px and its ranking as the keyboard path (S4 tests; owner, 6 November 2026)", () => {
     const harta = css("../harta/harta.css");
-    expect(harta).toContain(".mx-seg button,.mx-pick{min-height:44px}");
+    expect(harta).toContain(".mx-seg button,.mx-pick,.mx-check{min-height:44px}");
     expect(harta).toContain(".mx-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}");
     const explorer = readFileSync(new URL("../harta/MapExplorer.tsx", import.meta.url), "utf8");
     // Every area on the map is a button in the ranking, with its figure in words (per inhabitant, per bed or the total);

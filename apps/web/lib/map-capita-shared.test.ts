@@ -9,12 +9,12 @@ const params = (q: string) => new URLSearchParams(q);
 
 describe("/harta selection", () => {
   it("defaults to every year, division and channel of the local administrations, by county", () => {
-    expect(parseMapSelection(params(""))).toEqual({ level: "county", county: null, years: "all", cpv: "all", dataset: "all", kind: "local_admin" });
+    expect(parseMapSelection(params(""))).toEqual({ level: "county", county: null, years: "all", cpv: "all", dataset: "all", kind: "local_admin", withInstitutions: false });
   });
 
   it("reads several years and divisions, deduplicated and sorted, and round-trips", () => {
     const s = parseMapSelection(params("level=uat&county=satu-mare&years=2025,2024,2025&cpv=45,33&dataset=da"));
-    expect(s).toEqual({ level: "uat", county: "satu-mare", years: ["2024", "2025"], cpv: ["33", "45"], dataset: "da", kind: "local_admin" });
+    expect(s).toEqual({ level: "uat", county: "satu-mare", years: ["2024", "2025"], cpv: ["33", "45"], dataset: "da", kind: "local_admin", withInstitutions: false });
     expect(parseMapSelection(new URLSearchParams(mapSelectionQuery(s)))).toEqual(s);
   });
 
@@ -71,5 +71,15 @@ describe("/harta geometry", () => {
     expect(shapes.length).toBe(3186);
     expect(shapes.filter((s) => !population.has(s))).toEqual([]);
     expect(catalog.units.filter((u) => !shapes.includes(u.siruta)).map((u) => u.siruta)).toEqual([179132]);
+  });
+});
+
+describe("/harta: the administrations with their institutions (owner, 8 November 2026)", () => {
+  it("reads sub=1 only for the local administrations", () => {
+    expect(parseMapSelection(new URLSearchParams("sub=1")).withInstitutions).toBe(true);
+    expect(parseMapSelection(new URLSearchParams("sub=1&kind=hospitals")).withInstitutions).toBe(false);
+    expect(parseMapSelection(new URLSearchParams("")).withInstitutions).toBe(false);
+    expect(() => parseMapSelection(new URLSearchParams("sub=da"))).toThrow();
+    expect(mapSelectionQuery(parseMapSelection(new URLSearchParams("sub=1")))).toContain("sub=1");
   });
 });
