@@ -10,7 +10,8 @@ import {createGunzip} from 'node:zlib';
  * traversal, oversize members, bad checksums and truncation fail the whole package.
  */
 export interface TarLimits {maxMembers:number;maxFileBytes:number;maxTotalBytes:number}
-export const TED_PACKAGE_LIMITS:TarLimits={maxMembers:100_000,maxFileBytes:32*1024*1024,maxTotalBytes:1024*1024*1024};
+/** 128 MiB per member since 8 November 2026 (owner): one notice of OJ S 140/2026 is over 32 MiB and stopped the stream. */
+export const TED_PACKAGE_LIMITS:TarLimits={maxMembers:100_000,maxFileBytes:128*1024*1024,maxTotalBytes:1024*1024*1024};
 const BLOCK=512,META_MAX=64*1024;
 
 class ByteReader {
