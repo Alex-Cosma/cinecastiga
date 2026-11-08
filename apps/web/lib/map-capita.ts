@@ -150,7 +150,7 @@ const HOSPITAL_NOTES = {
 };
 const SCHOOL_NOTES = {
   ...NOTES,
-  kind: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației 2025–2026, legate prin CIF (și al școlilor comasate în ele), fără universități, palate și cluburi ale copiilor sau inspectorate. Ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Fiecare e desenată în UAT-ul ei. Valori contractate, nu plăți.",
+  kind: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației 2025–2026, legate prin CIF (și al școlilor comasate în ele), fără universități, creșe, palate și cluburi ale copiilor sau inspectorate. Ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Fiecare e desenată în UAT-ul ei. Valori contractate, nu plăți.",
   pupils: PUPILS_SOURCE,
 };
 const COUNTY_LIST = [...COUNTY_BY_KEY].map(([key, c]) => ({ key, name: c.name }));

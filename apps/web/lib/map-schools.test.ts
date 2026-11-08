@@ -92,7 +92,7 @@ describe("/harta schools: the reference list (lib/reference/schools-me-2025.json
     for (const [code, , , , , cuis] of list) for (const cui of cuis) expect(administrations.has(cui), `${code} ${cui}`).toBe(false);
   });
 
-  it("holds no universities and no children's palaces or inspectorates", () => {
-    for (const [, name] of list) expect(name).not.toMatch(/^universit|palatul copiilor|inspectoratul/i);
+  it("holds no universities, crèches, children's palaces or inspectorates", () => {
+    for (const [, name] of list) expect(name).not.toMatch(/^universit|^cre[sșş][aăe]|palatul copiilor|inspectoratul/i);
   });
 });

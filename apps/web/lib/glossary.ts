@@ -107,7 +107,7 @@ export const GLOSSARY = {
   },
   "scolile-harta": {
     title: "Școlile pe hartă",
-    text: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației (2025–2026), legate prin CIF, cu școlile comasate în ele în 2025; fără universități, palate și cluburi ale copiilor sau inspectorate. Harta arată ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Elevii sunt cei din anul școlar 2024–2025, preșcolarii incluși.",
+    text: "Școlile și grădinițele publice cu personalitate juridică din rețeaua Ministerului Educației (2025–2026), legate prin CIF, cu școlile comasate în ele în 2025; fără universități, creșe, palate și cluburi ale copiilor sau inspectorate. Harta arată ce cumpără școala însăși: renovările și școlile noi le cumpără de obicei primăria sau consiliul județean. Elevii sunt cei din anul școlar 2024–2025, preșcolarii incluși.",
   },
   "plafoane-totaluri": {
     title: "Ce intră în totaluri",
