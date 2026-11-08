@@ -1,0 +1,4903 @@
+{
+"version": "cnas-2025.1",
+"source": "CNAS, cnas.ro/spitale: Macheta SPITALE AN 2025 (Ministerul Sănătății / DRNC) — extras 22.05.2026",
+"period": "2025",
+"beds": "paturi aprobate (structura organizatorică aprobată de Ministerul Sănătății la 31.12.2025), total pe tipuri",
+"reviewed": "2026-11-08: legătura cu instituțiile SEAP verificată de mână (nume, anunțuri TED ale unităților militare, secții)",
+"hospitals": [
+{
+"code": "AB01",
+"name": "SPITALUL JUDETEAN DE URGENTA ALBA IULIA",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA ALBA IULIA",
+"county": "alba",
+"siruta": 1017,
+"beds": 763,
+"cuis": [
+"4613342"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB02",
+"name": "SPITALUL DE BOLI CRONICE CÎMPENI",
+"cnasName": "SPITALUL DE BOLI CRONICE CIMPENI",
+"county": "alba",
+"siruta": 1455,
+"beds": 87,
+"cuis": [
+"4331104"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "AB03",
+"name": "SPITALUL MUNICIPAL BLAJ",
+"cnasName": "SPITALUL MUNICIPAL BLAJ",
+"county": "alba",
+"siruta": 1348,
+"beds": 285,
+"cuis": [
+"4934679"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB04",
+"name": "SPITALUL ORASENESC \"DR. ALEXANDRU BORZA\" ABRUD",
+"cnasName": "SPITALUL ORASENESC \"DR. ALEXANDRU BORZA\" ABRUD",
+"county": "alba",
+"siruta": 1151,
+"beds": 95,
+"cuis": [
+"4562940"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB05",
+"name": "SPITALUL MUNICIPAL AIUD",
+"cnasName": "SPITALUL MUNICIPAL AIUD",
+"county": "alba",
+"siruta": 1213,
+"beds": 220,
+"cuis": [
+"4613628"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB06",
+"name": "SPITALUL ORASENESC CAMPENI",
+"cnasName": "SPITALUL ORASENESC CIMPENI",
+"county": "alba",
+"siruta": 1455,
+"beds": 135,
+"cuis": [
+"4331074"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB08",
+"name": "SPITALUL MUNICIPAL SEBES",
+"cnasName": "SPITALUL MUNICIPAL SEBES",
+"county": "alba",
+"siruta": 1874,
+"beds": 241,
+"cuis": [
+"4331210"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB09",
+"name": "SPITALUL ORASENESC CUGIR",
+"cnasName": "SPITALUL ORASENESC CUGIR",
+"county": "alba",
+"siruta": 1696,
+"beds": 150,
+"cuis": [
+"4331325"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AB12",
+"name": "Spitalul de Pneumoftiziologie Aiud",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE AIUD",
+"county": "alba",
+"siruta": 1213,
+"beds": 120,
+"cuis": [
+"4331066"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG01",
+"name": "SPITALUL JUDETEAN DE URGENTA PITESTI",
+"cnasName": "SPITALUL JUDETEAN PITESTI",
+"county": "arges",
+"siruta": 13169,
+"beds": 922,
+"cuis": [
+"4122205"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG02",
+"name": "Spitalul de Pediatrie Pitesti",
+"cnasName": "SPITALUL DE PEDIATRIE",
+"county": "arges",
+"siruta": 13169,
+"beds": 281,
+"cuis": [
+"4318075"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG04",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE CAMPULUNG",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE  CAMPULUNG",
+"county": "arges",
+"siruta": 13490,
+"beds": 87,
+"cuis": [
+"5010021"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG05",
+"name": "Spitalul Municipal Campulung Muscel",
+"cnasName": "SPITALUL MUNICIPAL CAMPULUNG",
+"county": "arges",
+"siruta": 13490,
+"beds": 417,
+"cuis": [
+"4756466"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG06",
+"name": "SPITALUL ORASANESC REGELE CAROL I COSTESTI",
+"cnasName": "SPITALUL ORASENESC \"REGELE CAROL I\" COSTESTI",
+"county": "arges",
+"siruta": 13668,
+"beds": 139,
+"cuis": [
+"5172597"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG07",
+"name": "SPITALUL MUNICIPAL CURTEA DE ARGES",
+"cnasName": "SPITALUL MUNICIPAL CURTEA DE ARGES",
+"county": "arges",
+"siruta": 13622,
+"beds": 220,
+"cuis": [
+"5010099"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG08",
+"name": "SPITALUL ORASENESC  MIOVENI",
+"cnasName": "SPITALUL ORASENESC MIOVENI",
+"county": "arges",
+"siruta": 13301,
+"beds": 250,
+"cuis": [
+"4318202"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG10",
+"name": "SPITALUL DE BOLI CRONICE SI GERIATRIE  \"CONSTANTIN BALACEANU STOLNICI\"",
+"cnasName": "SPITALUL DE BOLI CRONICE SI GERIATRIE STEFANESTI",
+"county": "arges",
+"siruta": 13392,
+"beds": 105,
+"cuis": [
+"4318458"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG13",
+"name": "SPITALUL DE PSIHIATRIE  SFANTA MARIA  VEDEA",
+"cnasName": "SPITALUL DE PSIHIATRIE\"SF.MARIA\"VEDEA",
+"county": "arges",
+"siruta": 19793,
+"beds": 210,
+"cuis": [
+"4318385"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG14",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE \"SF.ANDREI\"",
+"cnasName": "SPITALUL DE RECUPERARE RESPIRATORIE SI PNEUMOLOGIE \"SF.ANDREI\" VALEA IASULUI",
+"county": "arges",
+"siruta": 19695,
+"beds": 218,
+"cuis": [
+"4122019"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG15",
+"name": "Spitalul de Pneumoftiziologie Leordeni",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE  LEORDENI",
+"county": "arges",
+"siruta": 16757,
+"beds": 104,
+"cuis": [
+"4469485"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AG16",
+"name": "SPITALUL DE RECUPERARE BRADET",
+"cnasName": "SPITALUL DE RECUPERARE BRADET",
+"county": "arges",
+"siruta": 14753,
+"beds": 200,
+"cuis": [
+"4543972"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "AG25",
+"name": "Spitalul de Boli Cronice Calinesti",
+"cnasName": "SPITALUL DE BOLI CRONICE CALINESTI",
+"county": "arges",
+"siruta": 15108,
+"beds": 92,
+"cuis": [
+"31184060"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AR01",
+"name": "Spitalul Clinic Judetean de Urgenta Arad",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA ARAD",
+"county": "arad",
+"siruta": 9262,
+"beds": 1301,
+"cuis": [
+"3519879"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AR05",
+"name": "SPITALUL ORASENESC INEU",
+"cnasName": "SPITALUL  ORASENESC  INEU",
+"county": "arad",
+"siruta": 9538,
+"beds": 117,
+"cuis": [
+"3519062"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AR06",
+"name": "Spitalul Orasenesc Lipova",
+"cnasName": "SPITALUL  ORASENESC  LIPOVA",
+"county": "arad",
+"siruta": 9574,
+"beds": 112,
+"cuis": [
+"3518806"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AR07",
+"name": "Spitalul de Boli Cronice Sebis",
+"cnasName": "SPITALUL    DE  BOLI  CRONICE   SEBIS.",
+"county": "arad",
+"siruta": 9690,
+"beds": 91,
+"cuis": [
+"3861919"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "AR08",
+"name": "Spitalul de Psihiatrie Mocrea",
+"cnasName": "SPITALUL DE PSIHIATRIE MOCREA",
+"county": "arad",
+"siruta": 9538,
+"beds": 150,
+"cuis": [
+"3678360"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "AR11",
+"name": "SPITALUL DE RECUPERARE NEUROMOTORIE DR CORNELIU BARSAN DEZNA",
+"cnasName": "SPITALUL DE RECUPERARE NEUROMOTORIE \"DR.CORNELIU BARSAN\" DEZNA",
+"county": "arad",
+"siruta": 10649,
+"beds": 75,
+"cuis": [
+"3861927"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "AR13",
+"name": "Spitalul de Psihiatrie Capalnas",
+"cnasName": "SPITALUL DE PSIHIATRIE CAPALNAS",
+"county": "arad",
+"siruta": 10006,
+"beds": 105,
+"cuis": [
+"3678394"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "BC01",
+"name": "SPITALUL JUDETEAN DE URGENTA BACAU",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA BACAU",
+"county": "bacau",
+"siruta": 20297,
+"beds": 1449,
+"cuis": [
+"4278728"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BC02",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE BACAU",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE BACAU",
+"county": "bacau",
+"siruta": 20297,
+"beds": 176,
+"cuis": [
+"4278213"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BC03",
+"name": "SPITALUL MUNICIPAL\"SF.IERARH DR.LUCA\" ONESTI",
+"cnasName": "SPITALUL MUNICIPAL \"SFANTUL IERARH DR. LUCA\" ONEȘTI",
+"county": "bacau",
+"siruta": 20563,
+"beds": 599,
+"cuis": [
+"4278825"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BC04",
+"name": "Spitalul orasenesc Buhusi",
+"cnasName": "SPITALUL \"PROF.DR.EDUARD APETREI \" BUHUȘI",
+"county": "bacau",
+"siruta": 20778,
+"beds": 188,
+"cuis": [
+"4187271"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BC05",
+"name": "SPITALUL ORASENESC \"IOAN LASCAR\" COMANESTI",
+"cnasName": "SPITALUL ORASENESC \"IOAN LASCAR\" COMANESTI",
+"county": "bacau",
+"siruta": 20821,
+"beds": 140,
+"cuis": [
+"4353056"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BC06",
+"name": "SPITALUL MUNICIPAL DE URGENTA MOINESTI",
+"cnasName": "SPITALUL MUNICIPAL DE URGENTA MOINESTI",
+"county": "bacau",
+"siruta": 20876,
+"beds": 440,
+"cuis": [
+"4278710"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH01",
+"name": "SPITAL CLINIC JUDETEAN DE URGENTA ORADEA",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA BIHOR",
+"county": "bihor",
+"siruta": 26564,
+"beds": 1865,
+"cuis": [
+"4208498"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH07",
+"name": "Spitalul Orasenesc Alesd",
+"cnasName": "SPITALUL ORASENESC ALESD",
+"county": "bihor",
+"siruta": 26699,
+"beds": 145,
+"cuis": [
+"4348890"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH09",
+"name": "SPITALUL MUNICIPAL EP. N. POPOVICI BEIUS",
+"cnasName": "SPITALUL MUNICIPAL EP NICOLAE POPOVICIU BEIUS",
+"county": "bihor",
+"siruta": 26804,
+"beds": 237,
+"cuis": [
+"4558680"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH10",
+"name": "SPITALUL MUNICIPAL \"DR.POP MIRCEA\" MARGHITA",
+"cnasName": "SPITALUL MUNICIPAL \"DR. POP MIRCEA\" MARGHITA",
+"county": "bihor",
+"siruta": 26877,
+"beds": 281,
+"cuis": [
+"4230517"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH11",
+"name": "Spitalul de Psihiatrie Nucet",
+"cnasName": "SP. DE PSIHIATRIE NUCET",
+"county": "bihor",
+"siruta": 26920,
+"beds": 226,
+"cuis": [
+"5105385"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH12",
+"name": "Spitalul Municipal Salonta",
+"cnasName": "SPITALUL MUNICIPAL SALONTA",
+"county": "bihor",
+"siruta": 26975,
+"beds": 133,
+"cuis": [
+"4287947"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH13",
+"name": "SPITALUL ORASENESC STEI",
+"cnasName": "SPITALUL ORASENESC STEI",
+"county": "bihor",
+"siruta": 26840,
+"beds": 57,
+"cuis": [
+"5120377"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BH14",
+"name": "SPITALUL DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA",
+"cnasName": "SP. DE PSIHIATRIE SI MASURI DE SIGURANTA STEI",
+"county": "bihor",
+"siruta": 26840,
+"beds": 312,
+"cuis": [
+"5021730"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "BH18",
+"name": "Spitalul Clinic de Recuperare Medicala Baile Felix",
+"cnasName": "SP. CLINIC DE RECUPERARE MEDICALA BAILE FELIX",
+"county": "bihor",
+"siruta": 26582,
+"beds": 260,
+"cuis": [
+"4245038"
+],
+"ministry": true,
+"placed": "manual"
+},
+{
+"code": "BH33",
+"name": "CENTRUL DE SANATATE MULTIFUNCTIONAL BRATCA",
+"cnasName": "CENTRUL DE SANATATE MULTIFUNCTIONAL BRATCA",
+"county": "bihor",
+"siruta": 27686,
+"beds": 19,
+"cuis": [
+"31074580"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BN01",
+"name": "SPITALUL JUDETEAN DE URGENTA BISTRITA",
+"cnasName": "SPITALUL CLINIC JUDEŢEAN DE URGENŢĂ BISTRIŢA",
+"county": "bistrita-nasaud",
+"siruta": 32394,
+"beds": 1065,
+"cuis": [
+"4347593"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BN02",
+"name": "Spitalul Orasenesc \"dr. George Trifon\" Nasaud",
+"cnasName": "SPITALUL ORĂŞENESC \" DR. GEORGE TRIFON\" NĂSĂUD",
+"county": "bistrita-nasaud",
+"siruta": 32544,
+"beds": 183,
+"cuis": [
+"4347879"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BN03",
+"name": "Spital Orasenesc Beclean",
+"cnasName": "SPITALUL ORĂŞENESC BECLEAN",
+"county": "bistrita-nasaud",
+"siruta": 32483,
+"beds": 236,
+"cuis": [
+"4512208"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BR01",
+"name": "SPITALUL JUDETEAN DE URGENTA BRAILA",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA BR.",
+"county": "braila",
+"siruta": 42682,
+"beds": 1100,
+"cuis": [
+"4342863"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BR05",
+"name": "Spitalul Orasenesc Faurei",
+"cnasName": "SPITALUL ORASENESC FAUREI",
+"county": "braila",
+"siruta": 42753,
+"beds": 83,
+"cuis": [
+"4721239"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BR07",
+"name": "SPITALUL DE PSIHIATRIE \"SF. PANTELIMON\" BRAILA",
+"cnasName": "SPITALUL DE PSIHIATRIE \"SF. PANTELIMON\"",
+"county": "braila",
+"siruta": 42682,
+"beds": 422,
+"cuis": [
+"14984313"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BR09",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE BRAILA",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE BR.",
+"county": "braila",
+"siruta": 42682,
+"beds": 162,
+"cuis": [
+"11333442"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BT01",
+"name": "Spitalul Judetan de Urgenta \"Mavromati\" Botosani",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA\n \"MAVROMATI\" BOTOSANI",
+"county": "botosani",
+"siruta": 35731,
+"beds": 1627,
+"cuis": [
+"4557951"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BT02",
+"name": "Spitalul de Recuperare \"Sf.Gheorghe\" Botosani",
+"cnasName": "SPITALUL DE RECUPERARE \n \"SF. GHEORGHE\" BOTOSANI",
+"county": "botosani",
+"siruta": 35731,
+"beds": 220,
+"cuis": [
+"3372262"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BT06",
+"name": "SPITALUL MUNICIPAL DOROHOI",
+"cnasName": "SPITALUL MUNICIPAL DOROHOI",
+"county": "botosani",
+"siruta": 36006,
+"beds": 368,
+"cuis": [
+"13727320"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BT10",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE BOTOSANI",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE BOTOSANI",
+"county": "botosani",
+"siruta": 35731,
+"beds": 130,
+"cuis": [
+"14835931"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV01",
+"name": "SPITALUL CLINIC JUDETEAN DE URGENTA BRASOV",
+"cnasName": "SPITALUL CLINIC JUDETEAN  DE URGENTA BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 966,
+"cuis": [
+"4384117"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV02",
+"name": "Spitalul Clinic de Obstetrica-Ginecologie Dr. I.A. Sbarcea Brasov",
+"cnasName": "SPITALUL CLINIC DE OBSTETRICA-GINECOLOGIE \"DR.ION SBARCEA\" BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 285,
+"cuis": [
+"4443183"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV03",
+"name": "Spitalul Clinic de Urgenta pentru Copii Brasov",
+"cnasName": "SPITALUL CLINIC DE URGENTA PENTRU COPII BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 236,
+"cuis": [
+"4317738"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV05",
+"name": "SPITALUL CLINIC DE PNEUMOFTIZIOLOGIE BRASOV",
+"cnasName": "SPITALUL CLINIC DE PNEUMOFTIZIOLOGIE SI BOLI INFECTIOASE BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 279,
+"cuis": [
+"4384273",
+"4443175"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV06",
+"name": "Spitalul Municipal \" DR. AUREL TULBURE\" Fagaras",
+"cnasName": "SPITALUL MUNICIPAL \"DR. AUREL TULBURE\" FAGARAS",
+"county": "brasov",
+"siruta": 40278,
+"beds": 305,
+"cuis": [
+"4384389"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV08",
+"name": "SPITALUL MUNICIPAL CODLEA",
+"cnasName": "SPITALUL MUNICIPAL CODLEA",
+"county": "brasov",
+"siruta": 40241,
+"beds": 97,
+"cuis": [
+"4317550"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV09",
+"name": "SPITALUL MUNICIPAL SACELE",
+"cnasName": "SPITALUL MUNICIPAL SACELE",
+"county": "brasov",
+"siruta": 40438,
+"beds": 75,
+"cuis": [
+"4317665"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV10",
+"name": "Spital Dr.C.T.Sparchez",
+"cnasName": "SPITALUL ORASENESC \"DR.C.T. SPARCHEZ\" ZARNESTI",
+"county": "brasov",
+"siruta": 40492,
+"beds": 137,
+"cuis": [
+"4646889"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV12",
+"name": "SPITAL ORASENESC RUPEA",
+"cnasName": "SPITALUL ORASENESC RUPEA",
+"county": "brasov",
+"siruta": 40394,
+"beds": 85,
+"cuis": [
+"4384516"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV13",
+"name": "Spitalul  Clinic de Psihiatrie si Neurologie Brasov",
+"cnasName": "SPITALUL CLINIC DE PSIHIATRIE SI NEUROLOGIE BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 617,
+"cuis": [
+"4317770"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BV34",
+"name": "SPITALUL ORASENESC VICTORIA",
+"cnasName": "SPITALUL ORASENESC VICTORIA",
+"county": "brasov",
+"siruta": 40465,
+"beds": 73,
+"cuis": [
+"44582920"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BZ01",
+"name": "SPITALUL JUDETEAN DE URGENTA BUZAU",
+"cnasName": "SP.JUDETEAN DE URGENTA BUZAU",
+"county": "buzau",
+"siruta": 44818,
+"beds": 935,
+"cuis": [
+"4055750"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BZ02",
+"name": "SPITAL MUNICIPAL RAMNICU SARAT",
+"cnasName": "SP.MUNICIPAL RAMNICU SARAT",
+"county": "buzau",
+"siruta": 44845,
+"beds": 419,
+"cuis": [
+"4697653"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BZ04",
+"name": "Spitalul Orasenesc Nehoiu",
+"cnasName": "SP.ORASENESC NEHOIU",
+"county": "buzau",
+"siruta": 47916,
+"beds": 134,
+"cuis": [
+"4088146"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BZ07",
+"name": "SPITALUL DE BOLI CRONICE SMEENI",
+"cnasName": "SP.BOLI CRONICE SMEENI",
+"county": "buzau",
+"siruta": 49545,
+"beds": 47,
+"cuis": [
+"4385457"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "BZ09",
+"name": "SPITALUL DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA SAPOCA",
+"cnasName": "SP.DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA SAPOCA",
+"county": "buzau",
+"siruta": 49206,
+"beds": 850,
+"cuis": [
+"3724415"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "B_01",
+"name": "SPITALUL CLINIC SFANTA MARIA",
+"cnasName": "SPITALUL CLINIC\n SFANTA MARIA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 303,
+"cuis": [
+"4382558"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_02",
+"name": "Spitalul Clinic de Urgenta Bucuresti",
+"cnasName": "SPITALUL CLINIC DE URGENTA BUCURESTI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 747,
+"cuis": [
+"4505332"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_03",
+"name": "SPITALUL CLINIC DE URGENTA CHIRURGIE PLASTICA REPARATORIE SI ARSURI BUCURESTI",
+"cnasName": "SPITALUL CLINIC DE CHIRURGIE PLASTICA REPARATORIE SI ARSURI BUCURESTI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 63,
+"cuis": [
+"4967072"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_04",
+"name": "SPITALUL CLINIC DE NEFROLOGIE \"DR. CAROL DAVILA\"",
+"cnasName": "SPITALUL CLINIC DE NEFROLOGIE \"DR.CAROL DAVILA\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 215,
+"cuis": [
+"4382469"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_05",
+"name": "Spitalul Clinic de Urgenta pentru Copii \"Grigore Alexandrescu\"",
+"cnasName": "SCUC \"GR.ALEX.\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 441,
+"cuis": [
+"4284134"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_06",
+"name": "SPITALUL CLINIC FILANTROPIA",
+"cnasName": "SPITALUL CLINIC FILANTROPIA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 191,
+"cuis": [
+"4532388"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_08",
+"name": "SPITALUL CLINIC DE URGENTE OFTALMOLOGICE",
+"cnasName": "SPITALUL CLINIC DE OFTALMOLOGIE",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 142,
+"cuis": [
+"4505421"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_09",
+"name": "SPITALUL CLINIC DE CHIRURGIE ORO-MAXILO-FACIALA PROF. DR. DAN THEODORESCU",
+"cnasName": "SPITALUL CLINIC DE CHIRURGIE ORO MAXILO FACIALA \"PROF. DR. DAN THEODORESCU\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 66,
+"cuis": [
+"4267265"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_10",
+"name": "Institutul National de Gerontologie si Geriatrie  ANA ASLAN",
+"cnasName": "INSTITUTUL NATIONAL DE GERONTOLOGIE SI GERIATRIE \"ANA ASLAN\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 585,
+"cuis": [
+"4283333"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_11",
+"name": "INSTITUTUL ONCOLOGIC PROF DR ALEXANDRU TRESTIOREANU",
+"cnasName": "INSTITUTUL ONCOLOGIC\nPROF. DR. AL. TRESTIOREANU\nBUCUREŞTI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 652,
+"cuis": [
+"4203709"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_12",
+"name": "INSTITUTUL NATIONAL DE ENDOCRINOLOGIE C.I.PARHON",
+"cnasName": "INSTITUTUL  NATIONAL DE ENDOCRINOLOGIE ''C.I.PARHON\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 358,
+"cuis": [
+"4505367"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_13",
+"name": "Spitalul Clinic Dr. I. Cantacuzino",
+"cnasName": "SPITALUL CLINIC DR. I. CANTACUZINO",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 353,
+"cuis": [
+"4203490"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_14",
+"name": "Institutul de Diabet, Nutritie si Boli Metabolice \"Prof. dr. N. C. Paulescu\"",
+"cnasName": "INSTITUTUL NATIONAL DE DIABET, NUTRITIE SI BOLI METABOLICE \"PROF. DR. N. PAULESCU\" BUCURESTI''",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 181,
+"cuis": [
+"4204151"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_15",
+"name": "Spitalulul Clinic de Ortopedie Traumatologie si TBC Osteoarticular Foisor",
+"cnasName": "SPITALUL CLINIC DE ORTOPEDIE TRAUMATOLOGIE SI TBC OSTEOARTICULAR \"FOISOR\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 241,
+"cuis": [
+"5062357"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_16",
+"name": "Spitalul Clinic Colentina",
+"cnasName": "SPITALUL CLINIC COLENTINA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 933,
+"cuis": [
+"4283929"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_18",
+"name": "INSTITUTUL CLINIC FUNDENI",
+"cnasName": "INSTITUTUL CLINIC FUNDENI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 1198,
+"cuis": [
+"4204003"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_19",
+"name": "Institutul de Boli Cardiovasculare \"Prof.Dr.C.C. Iliescu\"",
+"cnasName": "IUBCV ILIESCU",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 331,
+"cuis": [
+"4203628"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_20",
+"name": "Institutul National pentru Sanatatea Mamei si Copilului \"Alessandrescu-Rusescu Bucuresti\"",
+"cnasName": "IOMC ALFRED RUSESCU",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 541,
+"cuis": [
+"4266308"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_21",
+"name": "SPITALUL CLINIC DE URGENTA SF. PANTELIMON",
+"cnasName": "SP.CLINIC\nDE URGENTA\"SF.PANTELIMON",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 547,
+"cuis": [
+"4203881"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_22",
+"name": "Spitalul Clinic de Copii Dr.Victor Gomoiu",
+"cnasName": "SPITALUL CLINIC DE COPII DR. VICTOR GOMOIU",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 246,
+"cuis": [
+"4283759"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_23",
+"name": "SPITALUL CLINIC COLTEA",
+"cnasName": "SPITALUL CLINIC COLTEA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 335,
+"cuis": [
+"4192960"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_25",
+"name": "Spitalul de Boli Infectioase si Tropicale \"Dr. Victor Babes\"",
+"cnasName": "SPITALUL CLINIC DE BOLI INFECTIOASE SI TROPICALE \"DR.VICTOR BABES\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 510,
+"cuis": [
+"4266049"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_27",
+"name": "Spitalul Clinic de Psihiatrie Prof. Dr. Alexandru Obregia",
+"cnasName": "SPITALULCLINIC DE PSIHIATRIE ,, PROF DR. ALEX. OBREGIA\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 1175,
+"cuis": [
+"4266162"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_28",
+"name": "SPITALUL CLINIC DE URGENTA PENTRU COPII ,,Maria Sklodowska Curie\"",
+"cnasName": "SPITALUL CLINIC DE URGENTA PENTRU COPII \"M S CURIE\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 528,
+"cuis": [
+"4183164"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_29",
+"name": "SPITALUL CLINIC DE URGENTA SF.IOAN",
+"cnasName": "SPITALUL CLINIC DE URGENTA \"SFANTUL IOAN",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 678,
+"cuis": [
+"4204178"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_31",
+"name": "Spitalul Clinic \"Prof.Dr.Th.Burghele\"",
+"cnasName": "SP.CL.PROF.DR.TH.BURGHELE",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 337,
+"cuis": [
+"4283538"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_32",
+"name": "Institutul de Fonoaudiologie si Chirurgie Functionala - O.R.L. Prof. Dr. D. Hociota",
+"cnasName": "INSTITUTUL DE FONOAUDIOLOGIE SI CHIRURGIE FUNCTIONALA ORL\"PROF.DR.DORIN HOCIOTA\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 341,
+"cuis": [
+"4316210"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_33",
+"name": "SPITALUL UNIVERSITAR DE URGENTA BUCURESTI",
+"cnasName": "SPITALUL UNIVERSITAR DE URGENTA BUCURESTI [SUUB]",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 1198,
+"cuis": [
+"4283570"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_34",
+"name": "SPITALUL CLINIC PANAIT SIRBU",
+"cnasName": "SP.\"PANAIT SARBU\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 214,
+"cuis": [
+"4316295"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_35",
+"name": "Spitalul Clinic de Urgenta Bagdasar-Arseni",
+"cnasName": "SPITALUL CLINIC DE URGENTA BAGDASAR-ARSENI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 553,
+"cuis": [
+"4943871"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_36",
+"name": "Institutul National de Neurologie si Boli Neurovasculare",
+"cnasName": "INNBN VOICULESCU",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 300,
+"cuis": [
+"7548010"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_38",
+"name": "CENTRUL DE EVALUARE SI TRATAMENT A TOXICODEPENDENTELOR PENTRU TINERI SF. STELIAN",
+"cnasName": "CETTT\"SF.STELIAN\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 55,
+"cuis": [
+"4364632"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_40",
+"name": "Spitalul de Pneumoftiziologie Sf. Stefan",
+"cnasName": "SPITALUL DE PNEUMOLOGIE \"SF STEFAN\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 128,
+"cuis": [
+"4203911"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_41",
+"name": "Centrul Clinic de Boli Reumatismale Dr.Ion Stoia",
+"cnasName": "CENTRUL CLINIC DE BOLI REUMATISMALE \"DR. ION STOIA\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 128,
+"cuis": [
+"4265990"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_42",
+"name": "SPITALUL CLINIC NICOLAE MALAXA",
+"cnasName": "SP.CL.\"N.MALAXA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 273,
+"cuis": [
+"4203938"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_47",
+"name": "INSTITUTUL DE PNEUMOFTIZIOLOGIE \"MARIUS NASTA\"",
+"cnasName": "INSTITUTUL DE PNEUMOFTIZIOLOGIE \"MARIUS NASTA\"- BUCURESTI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 427,
+"cuis": [
+"4316180"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_48",
+"name": "I.N.B.I. \"Prof. Dr. Matei Bals\"",
+"cnasName": "INTITUTUL NATIONAL DE BOLI INFECTIOASE PROF DR MATEI BALS, BUCURESTI",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 700,
+"cuis": [
+"9524980"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_49",
+"name": "Centrul NationalClinic de Recuperare Neuropsihomotorie Copii Dr. Nicolae Robanescu",
+"cnasName": "CENTRUL NATIONAL CLINIC DE RECUPERARE NEUROPSIHOMOTORIE COPII DR.NICOLAE ROBANESCU",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 119,
+"cuis": [
+"21101334"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_60",
+"name": "SPITALUL DE BOLI CRONICE SF LUCA",
+"cnasName": "SPITALUL DE BOLI CRONICE SI GERIATRIE SF LUCA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 311,
+"cuis": [
+"4340650"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_70",
+"name": "INSTITUTUL NATIONAL DE RECUPERARE, MEDICINA FIZICA SI BALNEOCLIMATOLOGIE",
+"cnasName": "INSTITUTUL NAȚIONAL DE RECUPERARE, MEDICINĂ FIZICĂ ȘI BALNEOCLIMATOLOGIE",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 310,
+"cuis": [
+"4266006"
+],
+"ministry": true,
+"placed": "city"
+},
+{
+"code": "B_80",
+"name": "SPITALUL UNIVERSITAR DE URGENTA ELIAS",
+"cnasName": "SPITALUL UNIVERITAR DE URGENTA ELIAS",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 953,
+"cuis": [
+"4192537"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "B_90",
+"name": "SPITALUL DE PSIHIATRIE TITAN DR.CONSTANTIN GORGOS",
+"cnasName": "SPITALUL DE PSIHIATRIE TITAN DR. C-TIN GORGOS",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 90,
+"cuis": [
+"14908162"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "CJ01",
+"name": "Spitalul Clinic Judetean de Urgenta Cluj-Napoca",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 1642,
+"cuis": [
+"4288080"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CJ02",
+"name": "Institutul Regional de Gastroenterologie-Hepatologie \"Prof. Dr. Octavian Fodor\" Cluj",
+"cnasName": "INSTITUTUL REGIONAL DE GASTROENTEROLOGIE-HEPATO “PROF. DR. OCTAVIAN FODOR”CLUJ",
+"county": "cluj",
+"siruta": 54975,
+"beds": 430,
+"cuis": [
+"4354523"
+],
+"ministry": true,
+"placed": "manual"
+},
+{
+"code": "CJ03",
+"name": "Spitalul Clinic de Urgenta pentru Copii Cluj-Napoca",
+"cnasName": "SPITALUL CLINIC DE URGENTA PENTRU COPII CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 539,
+"cuis": [
+"4426352"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ04",
+"name": "Spitalul Clinic de Pneumoftiziologie Leon Daniello",
+"cnasName": "SPITAL DE PNEUMOFTIZIOLOGIE \"LEON DANIELLO\" CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 235,
+"cuis": [
+"4354540"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ05",
+"name": "SPITALUL CLINIC DE BOLI INFECTIOASE CLUJ",
+"cnasName": "SPITALUL CLINIC DE BOLI INFECTIOASE CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 227,
+"cuis": [
+"4485715"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ06",
+"name": "SPITALUL CLINIC DE RECUPERARE CLUJ-NAPOCA",
+"cnasName": "SPITALUL CLINIC DE RECUPERARE CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 405,
+"cuis": [
+"4288063"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ07",
+"name": "SPITALUL CLINIC MUNICIPAL CLUJ-NAPOCA",
+"cnasName": "SPITALUL CLINIC MUNICIPAL CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 391,
+"cuis": [
+"4547117"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ08",
+"name": "Institutul Oncologic Prof. Dr. I. Chiricuta Cluj-Napoca",
+"cnasName": "INSTITUTUL ONCOLOGIC \"PROF. DR. I. CHIRICUTA\" CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 608,
+"cuis": [
+"4547125"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CJ09",
+"name": "INSTITUTUL INIMII DE URGENTA PENTRU BOLI CARDIOVASCULARE\"Niculae Stancioiu\" Cluj-Napoca",
+"cnasName": "INSTITUTUL INIMII DE URGENTA PENTRU BOLI CARDIOVASCULARE \"DR. N. STANCIOIU\" CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 197,
+"cuis": [
+"4617719"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CJ10",
+"name": "Spitalul Municipal Dej",
+"cnasName": "SPITALUL MUNICIPAL DEJ",
+"county": "cluj",
+"siruta": 55008,
+"beds": 370,
+"cuis": [
+"4305997"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ11",
+"name": "Spitalul Municipal Turda",
+"cnasName": "SPITALUL MUNICIPAL TURDA",
+"county": "cluj",
+"siruta": 55259,
+"beds": 371,
+"cuis": [
+"4287971"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ12",
+"name": "SPITALUL MUNICIPAL GHERLA",
+"cnasName": "SPITALUL MUNICIPAL GHERLA",
+"county": "cluj",
+"siruta": 55384,
+"beds": 100,
+"cuis": [
+"4546995"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ13",
+"name": "SPITALUL ORASENESC HUEDIN",
+"cnasName": "SPITALUL ORASENESC HUEDIN",
+"county": "cluj",
+"siruta": 55446,
+"beds": 175,
+"cuis": [
+"4485618"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ14",
+"name": "SPITALUL MUNICIPAL \"DR. CORNEL IGNA\" CAMPIA TURZII",
+"cnasName": "SPITALUL MUNICIPAL CAMPIA TURZII",
+"county": "cluj",
+"siruta": 55357,
+"beds": 113,
+"cuis": [
+"4288268"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ19",
+"name": "SPITALUL DE BOLI PSIHICE CRONICE BORSA",
+"cnasName": "SPITALUL BOLI PSIHICE CRONICE BORSA",
+"county": "cluj",
+"siruta": 56265,
+"beds": 195,
+"cuis": [
+"4305792"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CJ21",
+"name": "Institutul Clinic de Urologie si Transplant Renal Cluj",
+"cnasName": "INSTITUTUL DE UROLOGIE SI TRANSPLANT RENAL CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 83,
+"cuis": [
+"12653879"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CL01",
+"name": "SPITALUL JUDETEAN DE URGENTA DR.POMPEI SAMARIAN CALARASI",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA CALARASI",
+"county": "calarasi",
+"siruta": 92569,
+"beds": 583,
+"cuis": [
+"3233078"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CL02",
+"name": "SPITALUL MUNICIPAL OLTENITA",
+"cnasName": "SPITALUL MUNICIPAL OLTENITA",
+"county": "calarasi",
+"siruta": 100610,
+"beds": 230,
+"cuis": [
+"4294138"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CL03",
+"name": "SPITAL ORASENESC LEHLIU GARA",
+"cnasName": "SPITALUL ORASENESC LEHLIU",
+"county": "calarasi",
+"siruta": 93888,
+"beds": 124,
+"cuis": [
+"3797212"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CL06",
+"name": "Spitalul de Psihiatrie Sapunari",
+"cnasName": "SPITALUL DE PSIHIATRIE SAPUNARI",
+"county": "calarasi",
+"siruta": 93851,
+"beds": 170,
+"cuis": [
+"3466375"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "CL07",
+"name": "Spitalul de Pneumoftiziologie Calarasi",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE CALARASI",
+"county": "calarasi",
+"siruta": 92569,
+"beds": 112,
+"cuis": [
+"4294049"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CS01",
+"name": "SPITALUL JUDETEAN DE URGENTA RESITA",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA RESITA",
+"county": "caras-severin",
+"siruta": 50790,
+"beds": 821,
+"cuis": [
+"1061626"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CS02",
+"name": "SPITALUL MUNICIPAL DE URGENTA CARANSEBES",
+"cnasName": "SPITALUL MUNICIPAL DE URGENTA CARANSEBES",
+"county": "caras-severin",
+"siruta": 51010,
+"beds": 388,
+"cuis": [
+"3228209"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CS03",
+"name": "SPITALUL ORASENESC ORAVITA",
+"cnasName": "SPITALUL ORASENESC ORAVITA",
+"county": "caras-severin",
+"siruta": 51118,
+"beds": 210,
+"cuis": [
+"3228187"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CS05",
+"name": "SPITALUL ORASENESC MOLDOVA NOUA",
+"cnasName": "SPITALUL ORASENESC MOLDOVA NOUA",
+"county": "caras-severin",
+"siruta": 51056,
+"beds": 143,
+"cuis": [
+"3228195"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CS07",
+"name": "SPITALUL ORASENESC OTELU ROSU",
+"cnasName": "SPITALUL ORASENESC OTELU ROSU",
+"county": "caras-severin",
+"siruta": 51207,
+"beds": 103,
+"cuis": [
+"3228128"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT01",
+"name": "SPITALUL CLINIC JUDETEAN DE URGENTA SF. APOSTOL ANDREI",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA \"SF. APOSTOL ANDREI\" CONSTANTA",
+"county": "constanta",
+"siruta": 60419,
+"beds": 1307,
+"cuis": [
+"4301103"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT03",
+"name": "SPITALUL CLINIC DE PNEUMOFTIZIOLOGIE CONSTANTA",
+"cnasName": "SPITALUL CLINIC DE  PNEUMOFTIZIOLOGIE CONSTANTA",
+"county": "constanta",
+"siruta": 60419,
+"beds": 131,
+"cuis": [
+"2983845"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT04",
+"name": "SPITALUL MUNICIPAL MEDGIDIA",
+"cnasName": "SPITALUL MUNICIPAL MEDGIDIA",
+"county": "constanta",
+"siruta": 60847,
+"beds": 335,
+"cuis": [
+"4300752"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT05",
+"name": "Spital Orasenesc Cernavoda",
+"cnasName": "SPITALUL ORASENESC CERNAVODA",
+"county": "constanta",
+"siruta": 60776,
+"beds": 66,
+"cuis": [
+"4304754"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT06",
+"name": "SPITALUL MUNICIPAL MANGALIA",
+"cnasName": "SPITALUL MUNICIPAL MANGALIA",
+"county": "constanta",
+"siruta": 60482,
+"beds": 274,
+"cuis": [
+"4515441"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT07",
+"name": "SPITALUL ORASENESC HARSOVA",
+"cnasName": "SPITALUL ORASENESC HARSOVA",
+"county": "constanta",
+"siruta": 60801,
+"beds": 82,
+"cuis": [
+"4700791"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT11",
+"name": "SANATORIUL BALNEAR SI DE RECUPERARE TECHIRGHIOL",
+"cnasName": "SANATORIU TECHIRGHIOL - SECTII SPITAL",
+"county": "constanta",
+"siruta": 60534,
+"beds": 560,
+"cuis": [
+"4300868"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CT12",
+"name": "SPITALUL CLINIC DE RECUPERARE MEDICINA FIZICA SI BALNEOLOGIE EFORIE NORD",
+"cnasName": "SPITALUL CLINIC DE RECUPERARE, MEDICINA FIZICA SI BALNEOLOGIE EFORIE NORD",
+"county": "constanta",
+"siruta": 60455,
+"beds": 150,
+"cuis": [
+"4300817"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CT14",
+"name": "Spitalul Clinic de Boli Infectioase Constanta",
+"cnasName": "SPITALUL CLINIC DE BOLI INFECTIOASE CONSTANTA",
+"county": "constanta",
+"siruta": 60419,
+"beds": 225,
+"cuis": [
+"15113490"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CT16",
+"name": "SANATORIUL BALNEAR SI DE RECUPERARE MANGALIA",
+"cnasName": "SANATORIU MANGALIA - SECTIE SPITAL",
+"county": "constanta",
+"siruta": 60482,
+"beds": 150,
+"cuis": [
+"4515565"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "CV01",
+"name": "Spitalul Judetean de Urgenta Dr. Fogolyán Kristóf",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA \"DR.FOGOLYAN KRISTOF\" SF.GHEORGHE",
+"county": "covasna",
+"siruta": 63394,
+"beds": 630,
+"cuis": [
+"4202010"
+],
+"ministry": false,
+"placed": "seat"
+},
+{
+"code": "CV03",
+"name": "Spitalul Municipal Targu Secuiesc",
+"cnasName": "SPITALUL MUNICIPAL TG.SECUIESC",
+"county": "covasna",
+"siruta": 63740,
+"beds": 255,
+"cuis": [
+"4404524"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CV04",
+"name": "Spitalul Orasenesc Baraolt",
+"cnasName": "SPITALUL ORĂŞENESC BARAOLT",
+"county": "covasna",
+"siruta": 63447,
+"beds": 79,
+"cuis": [
+"4404320"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "CV05",
+"name": "Spitalul de REcuperare Cardiovasculara \" Dr. Benedek Geza\" Covasna",
+"cnasName": "SPITALUL DE RECUPERARE CARDIOVASCULARA \"DR.BENEDEK GEZA\" COVASNA",
+"county": "covasna",
+"siruta": 63526,
+"beds": 905,
+"cuis": [
+"4404559"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "DB01",
+"name": "SPITALUL JUDETEAN DE URGENTA TARGOVISTE",
+"cnasName": "SPITAL JUDETEAN DE URGENTA TARGOVISTE",
+"county": "dambovita",
+"siruta": 65342,
+"beds": 1796,
+"cuis": [
+"4206845"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DB02",
+"name": "Spital Orasenesc Pucioasa",
+"cnasName": "SPITAL ORASENESC PUCIOASA",
+"county": "dambovita",
+"siruta": 65921,
+"beds": 282,
+"cuis": [
+"4206977"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DB03",
+"name": "SPITALUL ORASENESC GAESTI",
+"cnasName": "SPITAL ORASENESC GAESTI",
+"county": "dambovita",
+"siruta": 65681,
+"beds": 156,
+"cuis": [
+"4279766"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DB04",
+"name": "Spitalul Municipal Moreni",
+"cnasName": "SPITAL MUNICIPAL MORENI",
+"county": "dambovita",
+"siruta": 65841,
+"beds": 202,
+"cuis": [
+"4206896"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ01",
+"name": "Spitalul Clinic Judetean de Urgenta Craiova",
+"cnasName": "SPITALUL JUDETEAN CLINIC DE URGENTA CRAIOVA",
+"county": "dolj",
+"siruta": 69900,
+"beds": 1529,
+"cuis": [
+"5002142"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "DJ02",
+"name": "Spital Clinic Municipal Filantropia Craiova",
+"cnasName": "SPITALUL MUNICIPAL CLINIC \"FILANTROPIA\" CRAIOVA",
+"county": "dolj",
+"siruta": 69900,
+"beds": 525,
+"cuis": [
+"5002177"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ03",
+"name": "Spitalul Clinic de Pneumoftiziologie Victor Babes Craiova",
+"cnasName": "SPITALUL CLINIC DE BOLI INFECTIOASE SI PNEUMOFTIZIOLOGIE \"VICTOR BABES\" CRAIOVA",
+"county": "dolj",
+"siruta": 69900,
+"beds": 435,
+"cuis": [
+"4417060"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ04",
+"name": "SPITALUL MUNICIPAL  PROF DR IRINEL POPESCU BAILESTI",
+"cnasName": "SPITALUL MUNICIPAL \"DR. IRINEL POPESCU\" BAILESTI",
+"county": "dolj",
+"siruta": 70316,
+"beds": 138,
+"cuis": [
+"4554408"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ05",
+"name": "SPITALUL FILISANILOR",
+"cnasName": "SPITALUL \"FILISANILOR\" FILIASI",
+"county": "dolj",
+"siruta": 70414,
+"beds": 164,
+"cuis": [
+"5077722"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ06",
+"name": "Spitalul Orasenesc Segarcea",
+"cnasName": "SPITALUL ORASENESC SEGARCEA",
+"county": "dolj",
+"siruta": 70502,
+"beds": 122,
+"cuis": [
+"4332231"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ07",
+"name": "Spitalul Municipal Calafat",
+"cnasName": "SPITALUL MUNICIPAL CALAFAT",
+"county": "dolj",
+"siruta": 70352,
+"beds": 275,
+"cuis": [
+"4830040"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ13",
+"name": "SPITALUL ORASENESC ASEZAMINTELE BRANCOVENESTI DABULENI",
+"cnasName": "SPITAL ORASENESC \"ASEZAMINTELE BRANCOVENESTI\" DABULENI",
+"county": "dolj",
+"siruta": 72007,
+"beds": 102,
+"cuis": [
+"5764980"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "DJ18",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE LEAMNA DE SUS",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE LEAMNA",
+"county": "dolj",
+"siruta": 69964,
+"beds": 157,
+"cuis": [
+"5046653"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "DJ19",
+"name": "SPITALUL DE PSIHIATRIE POIANA MARE",
+"cnasName": "SPITALUL DE PSIHIATRIE POIANA MARE",
+"county": "dolj",
+"siruta": 73736,
+"beds": 500,
+"cuis": [
+"4711561"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "DJ20",
+"name": "SPITALUL CLINIC DE NEUROPSIHIATRIE CRAIOVA",
+"cnasName": "SPITALUL CLINIC DE NEUROPSIHIATRIE CRAIOVA",
+"county": "dolj",
+"siruta": 69900,
+"beds": 388,
+"cuis": [
+"12688940"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ01",
+"name": "SPITALUL JUDEȚEAN DE URGENȚĂ TG-JIU",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA TARGU JIU",
+"county": "gorj",
+"siruta": 77812,
+"beds": 1078,
+"cuis": [
+"4448067"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ02",
+"name": "SPITAL MUNICIPAL MOTRU",
+"cnasName": "SPITALUL MUNICIPAL MOTRU",
+"county": "gorj",
+"siruta": 78141,
+"beds": 226,
+"cuis": [
+"5632555"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ03",
+"name": "SPITALUL DE URGENTA TG-CARBUNESTI",
+"cnasName": "SPITALUL  DE URGENTA TARGU-CARBUNESTI",
+"county": "gorj",
+"siruta": 78329,
+"beds": 371,
+"cuis": [
+"4510266"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ04",
+"name": "SPITAL ORASENESC ROVINARI",
+"cnasName": "SPITALUL ORASENESC SFANTUL STEFAN ROVINARI",
+"county": "gorj",
+"siruta": 82895,
+"beds": 137,
+"cuis": [
+"4351810"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ05",
+"name": "SPITALUL ORASENESC NOVACI",
+"cnasName": "SPITALUL ORASENESC NOVACI",
+"county": "gorj",
+"siruta": 78258,
+"beds": 158,
+"cuis": [
+"4666118"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ06",
+"name": "SPITALUL ORASENESC BUMBESTI-JIU",
+"cnasName": "SPITALUL ORASENESC DR GHEORGHE CONSTANTINESCU BUMBESTI-JIU",
+"county": "gorj",
+"siruta": 79308,
+"beds": 132,
+"cuis": [
+"4448199"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ10",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE TUDOR VLADIMIRESCU",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE TUDOR VLADIMIRESCU RUNCU",
+"county": "gorj",
+"siruta": 81576,
+"beds": 226,
+"cuis": [
+"4351870"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GJ11",
+"name": "Spitalul Orasenesc Turceni",
+"cnasName": "SPITALUL ORASENESC TURCENI",
+"county": "gorj",
+"siruta": 82617,
+"beds": 193,
+"cuis": [
+"7530616"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL01",
+"name": "Spitalul Clinic Judetean de Urgenta\"Sfantul Apostol Andrei\"",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA \"SF. APOSTOL ANDREI\" GALATI",
+"county": "galati",
+"siruta": 75098,
+"beds": 1276,
+"cuis": [
+"3126853"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL02",
+"name": "Spitalul Clinic de Urgenta pentru Copii \"Sf. Ioan\" Galati",
+"cnasName": "SPITALUL PENTRU COPII \"SF. IOAN\" GALATI",
+"county": "galati",
+"siruta": 75098,
+"beds": 306,
+"cuis": [
+"3346875"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL03",
+"name": "SPITALUL DE PSIHIATRIE ELISABETA DOAMNA",
+"cnasName": "SPITALUL DE PSIHIATRIE ELISABETA DOAMNA",
+"county": "galati",
+"siruta": 75098,
+"beds": 245,
+"cuis": [
+"3264511"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "GL04",
+"name": "SPITALUL CLINIC DE OBSTETRICA-GINECOLOGIE BUNA VESTIRE GALATI",
+"cnasName": "SPITALUL DE OBSTETRICA-GINECOLOGIE \"BUNAVESTIRE\" GALATI",
+"county": "galati",
+"siruta": 75098,
+"beds": 115,
+"cuis": [
+"3264481"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL05",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE GALATI",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE",
+"county": "galati",
+"siruta": 75098,
+"beds": 311,
+"cuis": [
+"4068718"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL06",
+"name": "Spitalul Clinic de Boli Infectioase \"Sf. Cuv. Parascheva\" Galati",
+"cnasName": "SPITALUL DE BOLI INFECTIOASE \"CUVIOASA PARASCHEVA\" GALATI",
+"county": "galati",
+"siruta": 75098,
+"beds": 172,
+"cuis": [
+"3347072"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL07",
+"name": "Spitalul MUnicipal \"Anton Cincu\" Tecuci",
+"cnasName": "SPITALUL MUNICIPAL \"ANTON CINCU\" TECUCI",
+"county": "galati",
+"siruta": 75203,
+"beds": 265,
+"cuis": [
+"4322270"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GL08",
+"name": "SPITAL ORASENESC TARGU BUJOR",
+"cnasName": "SPITALUL ORASENESC TG.BUJOR",
+"county": "galati",
+"siruta": 75472,
+"beds": 66,
+"cuis": [
+"3346913"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GR01",
+"name": "Spitalul Judetean Giurgiu",
+"cnasName": "SP.JUD.URG.GIURGIU",
+"county": "giurgiu",
+"siruta": 100521,
+"beds": 559,
+"cuis": [
+"4352620"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GR05",
+"name": "SPITALUL ORASENESC BOLINTIN VALE",
+"cnasName": "SP.ORASENESC BOLINTIN VALE",
+"county": "giurgiu",
+"siruta": 101190,
+"beds": 183,
+"cuis": [
+"4352689"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "GR07",
+"name": "Spital Pneumoftiziologie Izvoru",
+"cnasName": "SP.PNEUMOFTIZIOLOG.IZVORU",
+"county": "giurgiu",
+"siruta": 105972,
+"beds": 128,
+"cuis": [
+"4352638"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "HD01",
+"name": "SPITALUL JUDETEAN DE URGENTA DEVA",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA DEVA",
+"county": "hunedoara",
+"siruta": 86687,
+"beds": 792,
+"cuis": [
+"4374385"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD02",
+"name": "SPITALUL MUNICIPAL DR. ALEXANDRU SIMIONESCU HUNEDOARA",
+"cnasName": "SPITALUL MUNICIPAL \"DR. AL. SIMIONESCU\" HUNEDOARA",
+"county": "hunedoara",
+"siruta": 86810,
+"beds": 630,
+"cuis": [
+"5453860"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD03",
+"name": "SPITALUL DE URGENTA PETROSANI",
+"cnasName": "SPITALUL DE URGENTA PETROSANI",
+"county": "hunedoara",
+"siruta": 86990,
+"beds": 682,
+"cuis": [
+"4374873"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD05",
+"name": "SPITALUL MUNICIPAL LUPENI",
+"cnasName": "SPITALUL MUNICIPAL LUPENI",
+"county": "hunedoara",
+"siruta": 87059,
+"beds": 185,
+"cuis": [
+"4375054"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD06",
+"name": "Spital Municipal Vulcan",
+"cnasName": "SPITALUL MUNICIPAL VULCAN",
+"county": "hunedoara",
+"siruta": 87175,
+"beds": 115,
+"cuis": [
+"4469019"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD07",
+"name": "SPITAL MUNICIPAL BRAD",
+"cnasName": "SPITALUL MUNICIPAL BRAD",
+"county": "hunedoara",
+"siruta": 87291,
+"beds": 154,
+"cuis": [
+"4944672"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD08",
+"name": "SPITALUL MUNICIPAL ORASTIE",
+"cnasName": "SPITALUL MUNICIPAL ORASTIE",
+"county": "hunedoara",
+"siruta": 87638,
+"beds": 171,
+"cuis": [
+"5808334"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD09",
+"name": "SPITALUL ORASENESC HATEG",
+"cnasName": "SPITALUL ORASENESC HATEG",
+"county": "hunedoara",
+"siruta": 87576,
+"beds": 137,
+"cuis": [
+"4375011"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD15",
+"name": "Sanatoriul de Pneumoftiziologie Geoagiu",
+"cnasName": "SANATORIUL DE PNEUMOFTIZIOLOGIE GEOAGIU ( CRONIC+SP. ZI)",
+"county": "hunedoara",
+"siruta": 89561,
+"beds": 36,
+"cuis": [
+"5069258"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD16",
+"name": "SANATORIUL PNEUMOFTIZIOLOGIE BRAD",
+"cnasName": "SANATORIUL DE PNEUMOFTIZIOLOGIE BRAD ( CRONIC+SP. ZI)",
+"county": "hunedoara",
+"siruta": 87291,
+"beds": 79,
+"cuis": [
+"4634256"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HD18",
+"name": "Spitalul de Psihiatrie Zam",
+"cnasName": "SPITALUL DE PSIHIATRIE ZAM",
+"county": "hunedoara",
+"siruta": 92177,
+"beds": 350,
+"cuis": [
+"4373967"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "HR01",
+"name": "Spitalul Judetean de Urgenta Miercurea Ciuc",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA MIERCUREA CIUC",
+"county": "harghita",
+"siruta": 83320,
+"beds": 808,
+"cuis": [
+"4245305"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HR02",
+"name": "Spitalul Municipal Odorheiu Secuiesc",
+"cnasName": "SPITALUL MUNICIPAL ODORHEIU SECUIESC",
+"county": "harghita",
+"siruta": 83133,
+"beds": 557,
+"cuis": [
+"4245259"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HR03",
+"name": "SPITAL MUNICIPAL GHEORGHENI",
+"cnasName": "SPITALUL MUNICIPAL GHEORGHENI",
+"county": "harghita",
+"siruta": 83561,
+"beds": 200,
+"cuis": [
+"4367370"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HR04",
+"name": "SPITALUL MUNICIPAL TOPLITA",
+"cnasName": "SPITALUL MUNICIPAL TOPLITA",
+"county": "harghita",
+"siruta": 83632,
+"beds": 173,
+"cuis": [
+"4367400"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "HR07",
+"name": "SPITALUL DE PSIHIATRIE TULGHES",
+"cnasName": "SPITALUL DE PSIHIATRIE TULGHES",
+"county": "harghita",
+"siruta": 86133,
+"beds": 328,
+"cuis": [
+"4367728"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IF01",
+"name": "SPITALUL DE OBSTETRICA-GINECOLOGIE BUFTEA",
+"cnasName": "SP. DE OBSTETRICA GINECOLOGIE BUFTEA",
+"county": "ilfov",
+"siruta": 100576,
+"beds": 85,
+"cuis": [
+"4364420"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IF03",
+"name": "SPITALUL DE PSIHIATRIE \"Eftimie Diamandescu\" Balaceanca",
+"cnasName": "SP. EFTIMIE DIAMANDESCU BALACEANCA",
+"county": "ilfov",
+"siruta": 101742,
+"beds": 288,
+"cuis": [
+"4364519"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "IF06",
+"name": "SPITALUL CLINIC JUDETEAN DE URGENTA ILFOV",
+"cnasName": "SP.CLINIC JUDETEAN DE URGENTA ILFOV",
+"county": "ilfov",
+"siruta": 179132,
+"beds": 391,
+"cuis": [
+"14989140"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "IL01",
+"name": "Spitalul Judetean de Urgenta Slobozia",
+"cnasName": "SPITALUL JUD. DE URGENTA SLOBOZIA",
+"county": "ialomita",
+"siruta": 92658,
+"beds": 540,
+"cuis": [
+"4231768"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IL02",
+"name": "SPITALUL MUNICIPAL URZICENI",
+"cnasName": "SPITALUL MUNICIPAL URZICENI",
+"county": "ialomita",
+"siruta": 100683,
+"beds": 139,
+"cuis": [
+"4364969"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IL03",
+"name": "SPITALUL MUNICIPAL \" ANGHEL SALIGNY\" FETESTI",
+"cnasName": "SPITALUL MUNICIPAL FETESTI",
+"county": "ialomita",
+"siruta": 92701,
+"beds": 172,
+"cuis": [
+"4365220"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IL04",
+"name": "SPITALUL ORASENESC TANDAREI",
+"cnasName": "SPITALUL ORASENESC TANDAREI",
+"county": "ialomita",
+"siruta": 92765,
+"beds": 76,
+"cuis": [
+"4365417"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS01",
+"name": "SPITALUL CLINIC JUDETEAN DE URGENTA SF.SPIRIDON IASI",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA \"SF. SPIRIDON\"",
+"county": "iasi",
+"siruta": 95060,
+"beds": 1178,
+"cuis": [
+"4701312"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "IS02",
+"name": "Spitalul Clinic de Urgenta pentru Copii \"Sf.Maria\" Iasi",
+"cnasName": "SPITALUL CLINIC DE URGENTA PENTRU COPII \"SF.MARIA\"",
+"county": "iasi",
+"siruta": 95060,
+"beds": 672,
+"cuis": [
+"4701339"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS03",
+"name": "Institutul de Boli Cardiovasculare Prof. Dr. I. M. Georgescu",
+"cnasName": "INSTITUTUL DE BOLI CARDIOVASCULARE \"PROF.DR. G.I.M. GEORGESCU\"",
+"county": "iasi",
+"siruta": 95060,
+"beds": 150,
+"cuis": [
+"8615184"
+],
+"ministry": true,
+"placed": "manual"
+},
+{
+"code": "IS04",
+"name": "SPITALUL CLINIC DR. C. I. PARHON",
+"cnasName": "SPITALUL CLINIC  DR.C.I.PARHON",
+"county": "iasi",
+"siruta": 95060,
+"beds": 218,
+"cuis": [
+"4540895"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "IS05",
+"name": "SPITALUL CLINIC OBSTETRICA GINECOLOGIE CUZA-VODA",
+"cnasName": "SPITALUL CLINIC DE OBSTETRICA-GINECOLOGIE \"CUZA-VODA\"",
+"county": "iasi",
+"siruta": 95060,
+"beds": 420,
+"cuis": [
+"4701320"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "IS06",
+"name": "Spitalul Clinic de Obstetrica-Ginecologie Elena Doamna  Iasi",
+"cnasName": "SPITALUL CLINIC OBSTETRICA-GINECOLOGIE \"ELENA DOAMNA\" IASI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 128,
+"cuis": [
+"4701401"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS07",
+"name": "Spitalul Clinic de Pneumoftiziologie Iasi",
+"cnasName": "SPITALUL CLINIC PNEUMOFTIZIOLOGIE",
+"county": "iasi",
+"siruta": 95060,
+"beds": 350,
+"cuis": [
+"4541262"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS08",
+"name": "INSTITUTUL DE PSIHIATRIE \"SOCOLA\" IASI",
+"cnasName": "INSTITUTUL  PSIHIATRIE SOCOLA IASI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 875,
+"cuis": [
+"4541165"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "IS09",
+"name": "SPITALUL CLINIC DE BOLI INFECTIOASE \"SF. PARASCHEVA\", IASI",
+"cnasName": "SPITALUL CLINIC DE BOLI INFECTIOASE \"SF. PARASCHEVA\" IASI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 310,
+"cuis": [
+"4541521"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS11",
+"name": "Spitalul Clinic de Urgenta \"Prof. Dr. Nicolae Oblu\" Iasi",
+"cnasName": "SPITALUL CLINIC DE URGENTA \"PROF. DR. N. OBLU\" IASI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 331,
+"cuis": [
+"4540810"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS12",
+"name": "SPITALUL CLINIC DE RECUPERARE IASI",
+"cnasName": "SPITAL CLINIC RECUPERARE IASI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 540,
+"cuis": [
+"4541092"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS13",
+"name": "SPITALUL ORASENESC HIRLAU",
+"cnasName": "SPITALUL ORASENESC HARLAU",
+"county": "iasi",
+"siruta": 95355,
+"beds": 118,
+"cuis": [
+"4701258"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS14",
+"name": "Spitalul Municipal de Urgenta Pascani",
+"cnasName": "SPITALUL MUNICIPAL DE URGENTA PASCANI",
+"county": "iasi",
+"siruta": 95391,
+"beds": 410,
+"cuis": [
+"4701371"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS15",
+"name": "SPITALUL DE BOLI CRONICE \"SFANTUL IOAN\" TG.FRUMOS",
+"cnasName": "SPITALUL DE BOLI CRONICE SF IOAN TG FRUMOS",
+"county": "iasi",
+"siruta": 95471,
+"beds": 65,
+"cuis": [
+"4701240"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "IS21",
+"name": "SPITALUL DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA PADURENI GRAJDURI",
+"cnasName": "SPITAL DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA PADURENI GRAJDURI",
+"county": "iasi",
+"siruta": 97241,
+"beds": 251,
+"cuis": [
+"11732192"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "IS36",
+"name": "Institutul Regional de Oncologie Iasi",
+"cnasName": "INSTITUTUL REGIONAL DE ONCOLOGIE",
+"county": "iasi",
+"siruta": 95060,
+"beds": 366,
+"cuis": [
+"29067408"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "M01",
+"name": "Ministerul Apararii Nationale - Unitatea Militara 02474 -Spitalul Militar de Urgenta Regina Maria",
+"cnasName": "SPITALUL CLINIC MILITAR DE URGENTA  'REGINA MARIA' BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 187,
+"cuis": [
+"4688639"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M02",
+"name": "UNITATEA MILITARA 02590(SPITALUL CLINIC DE URGENTA MILITAR DR.STEFAN ODOBLEJA CRAIOVA)",
+"cnasName": "SPITALUL CLINIC MILITAR DE URGENTA \"DR.STEFAN ODOBLEJA\" CRAIOVA",
+"county": "dolj",
+"siruta": 69900,
+"beds": 200,
+"cuis": [
+"5002185"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M03",
+"name": "Ministerul Apararii - Spitalul Militar de Urgenta \"Dr. Constantin Papilian\"Cluj-Napoca (U.M 02454)",
+"cnasName": "SPITALUL CLINIC MILITAR DE URGENTA DR.CONSTANTIN PAPILIAN CLUJ-NAPOCA",
+"county": "cluj",
+"siruta": 54975,
+"beds": 287,
+"cuis": [
+"5399442"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M04",
+"name": "MINISTERUL APARARII - UNITATEA MILITARA 02489 GALATI",
+"cnasName": "SPITALUL MILITAR DE URGENTA DR.ARISTIDE SERFIOTI GALATI",
+"county": "galati",
+"siruta": 75098,
+"beds": 200,
+"cuis": [
+"3346980"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M05",
+"name": "Ministerul Apararii - Unitatea Militara nr. 02558 Timisoara",
+"cnasName": "SPITALUL CLINIC MILITAR DE URGENTA DR. VICTOR POPESCU TIMISOARA",
+"county": "timis",
+"siruta": 155243,
+"beds": 175,
+"cuis": [
+"4269134"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M06",
+"name": "SPITALUL CLINIC DE URGENTA \"AVRAM IANCU\" ORADEA",
+"cnasName": "SPITALUL CLINIC DE URGENTA \"AVRAM IANCU\" ORADEA",
+"county": "bihor",
+"siruta": 26564,
+"beds": 242,
+"cuis": [
+"4784130"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "M07",
+"name": "Spitalul Universitar de Urgenta Militar Central \"Dr. Carol Davila\"",
+"cnasName": "SPITALUL UNIVERSITAR DE URGENŢĂ MILITAR CENTRAL DR. CAROL DAVILA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 1371,
+"cuis": [
+"4364594"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "M08",
+"name": "MINISTERUL APARARII UM 02534 IASI",
+"cnasName": "SPITALUL CLINIC MILITAR DE URGENŢĂ DR. IACOB CZIHAC IAŞI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 185,
+"cuis": [
+"4540054"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M09",
+"name": "MINISTERUL APARARII - U.M 02460",
+"cnasName": "SPITALUL CLINIC MILITAR DE URGENŢĂ DR. ALEXANDRU AUGUSTIN SIBIU",
+"county": "sibiu",
+"siruta": 143450,
+"beds": 200,
+"cuis": [
+"4406096"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M10",
+"name": "MINISTERUL APARARII - UNITATEA MILITARA 02497 PITESTI",
+"cnasName": "SPITALUL MILITAR DE URGENTA DR. ION JIANU PITESTI",
+"county": "arges",
+"siruta": 13169,
+"beds": 175,
+"cuis": [
+"4318016"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M11",
+"name": "Ministerul Apararii - U.M 02175 Constanta",
+"cnasName": "SPITALUL MILITAR DE URGENTA \"DR. ALEXANDRU GAFENCU\" CONSTANTA",
+"county": "constanta",
+"siruta": 60419,
+"beds": 200,
+"cuis": [
+"4301383"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M12",
+"name": "MINISTERUL APARARII - UNITATEA MILITARA 02417 FOCSANI",
+"cnasName": "SPITALUL MILITAR DE URGENŢĂ DR. ALEXANDRU POPESCU FOCŞANI",
+"county": "vrancea",
+"siruta": 174744,
+"beds": 175,
+"cuis": [
+"4297584"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M14",
+"name": "SPITALUL DE URGENTA AL MAI \"PROF. DR. DIMITRIE GEROTA\"BUCURESTI",
+"cnasName": "SPITALUL DE URGENTA \"PROF.DR. DIMITRIE GEROTA\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 508,
+"cuis": [
+"4283767"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "M15",
+"name": "UNITATEA MILITARA 0521 BUCURESTI",
+"cnasName": "SPITALUL CLINIC DE URGENŢĂ PROF. DR. AGRIPPA IONESCU",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 501,
+"cuis": [
+"8372077"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "M16",
+"name": "SPITALUL PROF. DR. CONSTANTIN ANGELESCU",
+"cnasName": "SPITALUL \"PROF.DR. CONSTANTIN ANGELESCU\"",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 138,
+"cuis": [
+"4192936"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "M17",
+"name": "Penitenciar Spital Bucuresti Jilava",
+"cnasName": "SPITALUL PENITENCIAR BUCURESTI - JILAVA",
+"county": "ilfov",
+"siruta": 179383,
+"beds": 200,
+"cuis": [
+"4266146"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M18",
+"name": "PENITENCIARUL SPITAL MIOVENI",
+"cnasName": "SPITALUL PENITENCIAR MIOVENI",
+"county": "arges",
+"siruta": 13301,
+"beds": 141,
+"cuis": [
+"11750504"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M19",
+"name": "PENITENCIAR SPITAL DEJ",
+"cnasName": "SPITALUL PENITENCIAR DEJ",
+"county": "cluj",
+"siruta": 55008,
+"beds": 126,
+"cuis": [
+"9709368"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M20",
+"name": "PENITENCIAR-SPITAL CONSTANTA - POARTA ALBA",
+"cnasName": "SPITALUL PENITENCIAR POARTA ALBA",
+"county": "constanta",
+"siruta": 62761,
+"beds": 160,
+"cuis": [
+"11664802"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M21",
+"name": "PENITENCIARUL SPITAL TARGU OCNA",
+"cnasName": "SPITALUL PENITENCIAR TG OCNA",
+"county": "bacau",
+"siruta": 20965,
+"beds": 120,
+"cuis": [
+"10167490"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "M22",
+"name": "PENITENCIAR SPITAL BUCURESTI RAHOVA",
+"cnasName": "SPITALUL PENITENCIAR RAHOVA",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 104,
+"cuis": [
+"15249612"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "M24",
+"name": "MINISTERUL APARARII NATIONALE- U.M. 02587 (INSTITUTUL NATIONAL DE MEDICINA AERONAUTICA SI SPATIALA)",
+"cnasName": "INMAS",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 12,
+"cuis": [
+"4267028"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "MH01",
+"name": "SPITALUL JUDETEAN DE URGENTA DR.TR.SEVERIN",
+"cnasName": "SPITAL JUDETEAN DE URGENTA DROBETA TURNU SEVERIN",
+"county": "mehedinti",
+"siruta": 109773,
+"beds": 1181,
+"cuis": [
+"4222239"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MH02",
+"name": "SPITALUL MUNICIPAL ORSOVA",
+"cnasName": "SPITAL MUNICIPAL ORSOVA",
+"county": "mehedinti",
+"siruta": 110063,
+"beds": 135,
+"cuis": [
+"4484566"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MH05",
+"name": "SPITAL ORASENESC BAIA DE ARAMA",
+"cnasName": "SPITAL ORASENESC BAIA DE ARAMA",
+"county": "mehedinti",
+"siruta": 109924,
+"beds": 86,
+"cuis": [
+"4337581"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM01",
+"name": "SPITALUL JUDETEAN DE URGENTA\"DR. CONSTANTIN OPRIS\" BAIA MARE",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA DR. CONSTANTIN OPRIS BAIA MARE",
+"county": "maramures",
+"siruta": 106318,
+"beds": 975,
+"cuis": [
+"3694594"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM02",
+"name": "Spitalul de Boli infectioase si Psihiatrie Baia Mare",
+"cnasName": "SPITALUL DE BOLI INFECTIOASE SI PSIHIATRIE BAIA MARE",
+"county": "maramures",
+"siruta": 106318,
+"beds": 156,
+"cuis": [
+"3627501"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM03",
+"name": "SPITAL DE PNEUMOFTIZIOLOGIE Dr. Nicolae Rusdea Baia Mare",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE DR. NICOLAE RUSDEA",
+"county": "maramures",
+"siruta": 106318,
+"beds": 218,
+"cuis": [
+"3627145"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM04",
+"name": "SPITALUL MUNICIPAL SIGHETU MARMATIEI",
+"cnasName": "SPITALUL MUNICIPAL SIGHETU MARMATIEI",
+"county": "maramures",
+"siruta": 106559,
+"beds": 728,
+"cuis": [
+"3627587"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM06",
+"name": "SPITALUL DE PSIHIATRIE CAVNIC",
+"cnasName": "SPITALUL DE PSIHIATRIE CAVNIC",
+"county": "maramures",
+"siruta": 106782,
+"beds": 90,
+"cuis": [
+"3694560"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM07",
+"name": "SPITALUL DE RECUPERARE BORSA",
+"cnasName": "SPITALUL DE RECUPERARE BORSA",
+"county": "maramures",
+"siruta": 106746,
+"beds": 360,
+"cuis": [
+"3694896"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "MM08",
+"name": "SPITAL ORASENESC TG LAPUS",
+"cnasName": "SPITALUL ORASENESC TARGU LAPUS",
+"county": "maramures",
+"siruta": 106817,
+"beds": 101,
+"cuis": [
+"3695247"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MM09",
+"name": "SPITALUL ORASENESC VISEU DE SUS",
+"cnasName": "SPITALUL ORASENESC VISEU DE SUS",
+"county": "maramures",
+"siruta": 106979,
+"beds": 222,
+"cuis": [
+"3694950"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS01",
+"name": "Spitalul Clinic Judetean de Urgenta Targu.Mures",
+"cnasName": "SPITALUL JUDETEAN CLINIC DE URGENTA TARGU MURES",
+"county": "mures",
+"siruta": 114319,
+"beds": 1212,
+"cuis": [
+"4323209"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "MS02",
+"name": "SPITALUL CLINIC JUDETEAN MURES",
+"cnasName": "SPITALUL CLINIC JUDETEAN MURES",
+"county": "mures",
+"siruta": 114319,
+"beds": 1330,
+"cuis": [
+"24014380"
+],
+"ministry": false,
+"placed": "seat"
+},
+{
+"code": "MS04",
+"name": "SPITALUL MUNICIPAL SIGHISOARA",
+"cnasName": "SPITALUL MUNICIPAL SIGHISOARA",
+"county": "mures",
+"siruta": 114514,
+"beds": 263,
+"cuis": [
+"4323403"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS05",
+"name": "SPITALUL ORASENESC \"DR. VALER RUSSU\" LUDUS",
+"cnasName": "SPITALUL ORASENESC \"DR. VAIER RUSSU\" LUDUS",
+"county": "mures",
+"siruta": 114710,
+"beds": 228,
+"cuis": [
+"4323543"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS06",
+"name": "SPITALUL MUNICIPAL \"Dr. Eugen Nicoara\" REGHIN",
+"cnasName": "SPITALUL MUNICIPAL \"DR. E. NICOARA\" REGHIN",
+"county": "mures",
+"siruta": 114809,
+"beds": 285,
+"cuis": [
+"1235218"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS07",
+"name": "Spitalul Municipal \"Dr. Gheorghe Marinescu\" Tarnaveni",
+"cnasName": "SPITALUL MUNICIPAL \"DR. GH. MARINESCU\" TARNAVENI",
+"county": "mures",
+"siruta": 114925,
+"beds": 565,
+"cuis": [
+"4322386"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS11",
+"name": "SPITAL ORASENESC SANGEORGIU DE PADURE",
+"cnasName": "CENTRUL DE SANATATE SANGEORGIU DE PADURE",
+"county": "mures",
+"siruta": 119331,
+"beds": 49,
+"cuis": [
+"4323314"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS21",
+"name": "Spitalul Sovata-Niraj",
+"cnasName": "SPITALUL SOVATA-NIRAJ",
+"county": "mures",
+"siruta": 114854,
+"beds": 41,
+"cuis": [
+"28605975"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "MS24",
+"name": "INSTITUTUL DE URGENTA PENTRU BOLI CARDIOVASCULARE SI TRANSPLANT TARGU MURES",
+"cnasName": "INSTITUTUL DE BOLI CARDIOVASCULARE SI TRANSPLANT TARGU MURES",
+"county": "mures",
+"siruta": 114319,
+"beds": 215,
+"cuis": [
+"32051606"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "NT01",
+"name": "SPITALUL JUDETEAN DE URGENTA PIATRA NEAMT",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA PIATRA- NEAMT",
+"county": "neamt",
+"siruta": 120726,
+"beds": 890,
+"cuis": [
+"2613362"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "NT02",
+"name": "Spitalul Municipal de Urgenta Roman",
+"cnasName": "SPITALUL MUNICIPAL DE URGENTA ROMAN",
+"county": "neamt",
+"siruta": 120860,
+"beds": 679,
+"cuis": [
+"2613940"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "NT03",
+"name": "SPITALUL ORASENESC \"SF. IERARH NICOLAE\"BICAZ",
+"cnasName": "SPITALUL ORASENESC SF. IER. NICOLAE  BICAZ",
+"county": "neamt",
+"siruta": 120968,
+"beds": 74,
+"cuis": [
+"2614473"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "NT04",
+"name": "SPITALUL ORASENESC \"Sfantul Dimitrie\" Targu Neamt",
+"cnasName": "SPITALUL  ORASENESC ''SFANTUL DIMITRIE'' TÎRGU NEAMT",
+"county": "neamt",
+"siruta": 121055,
+"beds": 250,
+"cuis": [
+"2614341"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "NT07",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE BISERICANI",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE BISERICANI",
+"county": "neamt",
+"siruta": 124938,
+"beds": 316,
+"cuis": [
+"2613095"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "NT08",
+"name": "SPITALUL DE PSIHIATRIE \"SF. NICOLAE \" ROMAN",
+"cnasName": "SPITALUL '' SFANTUL NICOLAE\" ROMAN",
+"county": "neamt",
+"siruta": 120860,
+"beds": 130,
+"cuis": [
+"2613966"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "OT01",
+"name": "Spitalul Judetean de Urgenta Slatina",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA SLATINA",
+"county": "olt",
+"siruta": 125347,
+"beds": 1164,
+"cuis": [
+"4394927"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "OT02",
+"name": "SPITALUL ORASENESC BALS",
+"cnasName": "SPITALUL ORĂSENESC BALS",
+"county": "olt",
+"siruta": 125418,
+"beds": 118,
+"cuis": [
+"4394846"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "OT03",
+"name": "SPITALUL MUNICIPAL CARACAL",
+"cnasName": "SPITALUL MUNICIPAL CARACAL",
+"county": "olt",
+"siruta": 125472,
+"beds": 440,
+"cuis": [
+"4395086"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "OT04",
+"name": "Spitalul Orasenesc Corabia",
+"cnasName": "SPITALUL ORĂSENESC CORABIA",
+"county": "olt",
+"siruta": 125542,
+"beds": 129,
+"cuis": [
+"4286453"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "OT08",
+"name": "Spitalul de Psihiatrie Cronici Schitu Greci",
+"cnasName": "SPITALUL DE PSIHIATRIE CRONICI SCHITU GRECI",
+"county": "olt",
+"siruta": 128659,
+"beds": 180,
+"cuis": [
+"5009418"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH01",
+"name": "SPITALUL JUDETEAN DE URGENTA PLOIESTI",
+"cnasName": "SPITALUL  JUDETEAN DE URGENTA DR.CONSTANTIN ANDREOIU PLOIESTI",
+"county": "prahova",
+"siruta": 130534,
+"beds": 1514,
+"cuis": [
+"2844545"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH05",
+"name": "SPITALUL DE ORTOPEDIE SI TRAUMATOLOGIE AZUGA",
+"cnasName": "SPITALUL DE ORTOPEDIE SI TRAUMATOLOGIE AZUGA",
+"county": "prahova",
+"siruta": 130954,
+"beds": 110,
+"cuis": [
+"2845125"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH06",
+"name": "SPITALUL ORASENESC BAICOI",
+"cnasName": "SPITALUL ORASENESC BAICOI",
+"county": "prahova",
+"siruta": 130981,
+"beds": 136,
+"cuis": [
+"2845265"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH07",
+"name": "Spitalul Municipal Campina",
+"cnasName": "SPITALUL MUNICIPAL CAMPINA",
+"county": "prahova",
+"siruta": 131256,
+"beds": 312,
+"cuis": [
+"2845818"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH08",
+"name": "Spitalul Orasenesc Sinaia",
+"cnasName": "SPITALUL ORASENESC SINAIA",
+"county": "prahova",
+"siruta": 131540,
+"beds": 105,
+"cuis": [
+"2843299"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH09",
+"name": "SPITALUL ORASENESC MIZIL",
+"cnasName": "SPITALUL ORASENESC \"SFANTA FILOFTEIA\" MIZIL",
+"county": "prahova",
+"siruta": 131407,
+"beds": 105,
+"cuis": [
+"2844561"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH101",
+"name": "Spital Orasenesc Urlati",
+"cnasName": "SPITALUL ORASENESC URLATI",
+"county": "prahova",
+"siruta": 131620,
+"beds": 72,
+"cuis": [
+"20794712"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH102",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE DRAJNA",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE DRAJNA",
+"county": "prahova",
+"siruta": 132896,
+"beds": 96,
+"cuis": [
+"2844499"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH12",
+"name": "SPITALUL ORASENESC VALENII DE MUNTE",
+"cnasName": "SPITALUL ORASENESC VALENII DE MUNTE",
+"county": "prahova",
+"siruta": 131817,
+"beds": 132,
+"cuis": [
+"2844200"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH13",
+"name": "SPITALUL DE PSIHIATRIE VOILA",
+"cnasName": "SPITALUL DE PSIHIATRIE VOILA",
+"county": "prahova",
+"siruta": 131256,
+"beds": 470,
+"cuis": [
+"2845826"
+],
+"ministry": false,
+"placed": "manual"
+},
+{
+"code": "PH14",
+"name": "SPITALUL DE BOLI PULMONARE BREAZA",
+"cnasName": "SPITALUL DE BOLI PULMONARE BREAZA",
+"county": "prahova",
+"siruta": 131103,
+"beds": 75,
+"cuis": [
+"2843469"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH96",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE FLORESTI - PRAHOVA",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE FLORESTI",
+"county": "prahova",
+"siruta": 133330,
+"beds": 150,
+"cuis": [
+"16616504"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH98",
+"name": "SPITALUL MUNICIPAL PLOIESTI",
+"cnasName": "SPITALUL MUNICIPAL PLOIESTI",
+"county": "prahova",
+"siruta": 130534,
+"beds": 294,
+"cuis": [
+"2844227"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "PH99",
+"name": "SPITALUL DE PEDIATRIE PLOIESTI",
+"cnasName": "SPITALUL DE PEDIATRIE PLOIESTI",
+"county": "prahova",
+"siruta": 130534,
+"beds": 143,
+"cuis": [
+"15513888"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB01",
+"name": "Spitalul Clinic Judetean de Urgenta Sibiu",
+"cnasName": "SPITALUL CLINIC JUDETEAN DE URGENTA SIBIU",
+"county": "sibiu",
+"siruta": 143450,
+"beds": 1017,
+"cuis": [
+"4240898"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB02",
+"name": "SPITALUL DE PSIHIATRIE \"DR. GH. PREDA\" SIBIU",
+"cnasName": "SPITALUL CLINIC DE PSIHIATRIE \"DR.GH.PREDA\"  SIBIU",
+"county": "sibiu",
+"siruta": 143450,
+"beds": 458,
+"cuis": [
+"4240871"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB03",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE SIBIU",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE SIBIU",
+"county": "sibiu",
+"siruta": 143450,
+"beds": 176,
+"cuis": [
+"4240650"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB04",
+"name": "SPITALUL  MUNICIPAL MEDIAS",
+"cnasName": "SPITALUL MUNICIPAL MEDIAS",
+"county": "sibiu",
+"siruta": 143619,
+"beds": 350,
+"cuis": [
+"4751469"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB05",
+"name": "SPITALUL ORASENESC AGNITA",
+"cnasName": "SPITALUL ORASENESC AGNITA",
+"county": "sibiu",
+"siruta": 143682,
+"beds": 50,
+"cuis": [
+"4241176"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB06",
+"name": "SPITALUL ORASENESC CISNADIE",
+"cnasName": "SPITALUL ORASENESC CISNADIE",
+"county": "sibiu",
+"siruta": 143735,
+"beds": 85,
+"cuis": [
+"4406100"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SB08",
+"name": "SPITALUL CLINIC DE PEDIATRIE SIBIU",
+"cnasName": "SPITALUL CLINIC DE PEDIATRIE SIBIU",
+"county": "sibiu",
+"siruta": 143450,
+"beds": 184,
+"cuis": [
+"11411672"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SJ01",
+"name": "SPITAL JUDETEAN DE URGENTA ZALAU",
+"cnasName": "SPITALUL  JUDETEAN DE URGENTA ZALAU",
+"county": "salaj",
+"siruta": 139704,
+"beds": 803,
+"cuis": [
+"4291719"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SJ02",
+"name": "SPITALUL ORS. \"PROF. DR. IOAN PUSCAS\" SIMLEU SILVANIEI",
+"cnasName": "SPITALUL OR.\"PROF.DR.IOAN PUSCAS\" SIMLEU SILVANIEI",
+"county": "salaj",
+"siruta": 139884,
+"beds": 225,
+"cuis": [
+"4291530"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SJ03",
+"name": "SPITALUL ORASENESC JIBOU DR. TRAIAN HERTA",
+"cnasName": "SPITALUL ORASENESC.\" DR.TRAIAN HERȚA.\" JIBOU",
+"county": "salaj",
+"siruta": 139811,
+"beds": 111,
+"cuis": [
+"4494934"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SJ05",
+"name": "SPITALUL DE BOLI CRONICE CRASNA",
+"cnasName": "SPITALUL DE BOLI CRONICE CRASNA",
+"county": "salaj",
+"siruta": 140627,
+"beds": 50,
+"cuis": [
+"4495050"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SM01",
+"name": "SPITALUL JUDETEAN SATU MARE",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA SATU MARE",
+"county": "satu-mare",
+"siruta": 136483,
+"beds": 1146,
+"cuis": [
+"3963722"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SM03",
+"name": "SPITALUL DE PNEUMOFTIZIOLOGIE SATU MARE",
+"cnasName": "SPITALUL DE PNEUMOFTIZIOLOGIE SATU MARE",
+"county": "satu-mare",
+"siruta": 136483,
+"beds": 184,
+"cuis": [
+"3897530"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SM04",
+"name": "SPITALUL MUNICIPAL CAREI",
+"cnasName": "SPITALUL MUNICIPAL CAREI",
+"county": "satu-mare",
+"siruta": 136526,
+"beds": 235,
+"cuis": [
+"4038636"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SM05",
+"name": "SPITALUL ORASENESC NEGRESTI OAS",
+"cnasName": "SPITALUL ORASENESC NEGRESTI OAS",
+"county": "satu-mare",
+"siruta": 136599,
+"beds": 248,
+"cuis": [
+"3963960"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV01",
+"name": "SPITALUL JUDETEAN DE URGENTA\"SFANTUL IOAN CEL NOU\"SUCEAVA",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA \"SF. IOAN CEL NOU\" SUCEAVA",
+"county": "suceava",
+"siruta": 146263,
+"beds": 1221,
+"cuis": [
+"4243983"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV02",
+"name": "SPITALUL MUNICIPAL CAMPULUNG MOLDOVENESC",
+"cnasName": "SPITALUL MUNICIPAL CAMPULUNG MOLDOVENESC",
+"county": "suceava",
+"siruta": 146502,
+"beds": 262,
+"cuis": [
+"4674625"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV03",
+"name": "SPITALUL MUNICIPAL FALTICENI",
+"cnasName": "SPITALUL MUNICIPAL FALTICENI",
+"county": "suceava",
+"siruta": 146539,
+"beds": 365,
+"cuis": [
+"5432514"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV04",
+"name": "Spital Orasenesc Gura Humorului",
+"cnasName": "SPITALUL ORASENESC GURA HUMORULUI",
+"county": "suceava",
+"siruta": 146584,
+"beds": 113,
+"cuis": [
+"5347770"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV05",
+"name": "SPITALUL MUNICIPAL \"SFINTII DOCTORI COSMA SI DAMIAN\" RADAUTI",
+"cnasName": "SPITALUL MUNICIPAL RADAUTI",
+"county": "suceava",
+"siruta": 146628,
+"beds": 470,
+"cuis": [
+"4327367"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV06",
+"name": "Spitalul de Boli Cronice Siret",
+"cnasName": "SPITALUL DE BOLI CRONICE SIRET",
+"county": "suceava",
+"siruta": 146655,
+"beds": 88,
+"cuis": [
+"4440969"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV07",
+"name": "SPITALUL MUNICIPAL VATRA DORNEI",
+"cnasName": "SPITALUL MUNICIPAL VATRA DORNEI",
+"county": "suceava",
+"siruta": 146744,
+"beds": 203,
+"cuis": [
+"4535414"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV08",
+"name": "Spitalul de Psihiatrie Cronici Siret",
+"cnasName": "SPITALUL DE PSIHIATRIE CRONICI SIRET",
+"county": "suceava",
+"siruta": 146655,
+"beds": 225,
+"cuis": [
+"15487479"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "SV12",
+"name": "SPITALUL DE PSIHIATRIE CAMPULUNG MOLDOVENESC",
+"cnasName": "SPITALUL DE PSIHIATRIE CAMPULUNG MOLDOVENESC",
+"county": "suceava",
+"siruta": 146502,
+"beds": 70,
+"cuis": [
+"11937660"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T03",
+"name": "Spital Clinic Cai Ferate Constanta",
+"cnasName": "SPITALUL CLINIC CF CONSTANTA",
+"county": "constanta",
+"siruta": 60419,
+"beds": 165,
+"cuis": [
+"4210790"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T04",
+"name": "SPITALUL CLINIC CF CRAIOVA",
+"cnasName": "SPITALUL CLINIC CAI FERATE CRAIOVA",
+"county": "dolj",
+"siruta": 69900,
+"beds": 132,
+"cuis": [
+"4332169"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T05",
+"name": "Spitalul Clinic CF Cluj-Napoca",
+"cnasName": "SPITALUL UNIVERSITAR CF CLUJ",
+"county": "cluj",
+"siruta": 54975,
+"beds": 273,
+"cuis": [
+"4288349"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T06",
+"name": "SPITALUL CLINIC CAI FERATE IASI",
+"cnasName": "SPITAL CLINIC CF IASI",
+"county": "iasi",
+"siruta": 95060,
+"beds": 320,
+"cuis": [
+"4981239"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T07",
+"name": "SPITALUL CLINIC C.F. TIMISOARA",
+"cnasName": "SPITALUL CLINIC CF TIMISOARA",
+"county": "timis",
+"siruta": 155243,
+"beds": 226,
+"cuis": [
+"2491516"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T08",
+"name": "SPITALUL CLINIC CF ORADEA",
+"cnasName": "SPITALUL CLINIC CF ORADEA",
+"county": "bihor",
+"siruta": 26564,
+"beds": 135,
+"cuis": [
+"4208552"
+],
+"ministry": false,
+"placed": "name",
+"sections": [
+"T16"
+]
+},
+{
+"code": "T09",
+"name": "Spitalul General C.F. Brasov",
+"cnasName": "SPITALUL GENERAL CAI FERATE BRASOV",
+"county": "brasov",
+"siruta": 40198,
+"beds": 122,
+"cuis": [
+"4443280"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T10",
+"name": "SPITALUL GENERAL CAI FERATE GALATI",
+"cnasName": "SPITALUL CFR GALATI",
+"county": "galati",
+"siruta": 75098,
+"beds": 235,
+"cuis": [
+"3127328"
+],
+"ministry": false,
+"placed": "name",
+"sections": [
+"T17"
+]
+},
+{
+"code": "T11",
+"name": "SPITALUL GENERAL C.F. PLOIESTI",
+"cnasName": "SPITALUL GENERAL CAI FERATE PLOIESTI",
+"county": "prahova",
+"siruta": 130534,
+"beds": 170,
+"cuis": [
+"2844375"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T12",
+"name": "Spital General CF Sibiu",
+"cnasName": "SPITAL GENERAL CF SIBIU",
+"county": "sibiu",
+"siruta": 143450,
+"beds": 64,
+"cuis": [
+"3096175"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T13",
+"name": "SPITALUL GENERAL CAI FERATE DROBETA TURNU SEVERIN",
+"cnasName": "SPITAL GENERAL CAI FERATE DROBETA TURNU SEVERIN",
+"county": "mehedinti",
+"siruta": 109773,
+"beds": 98,
+"cuis": [
+"4337395"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T14",
+"name": "SPITALUL GENERAL CAI FERATE PASCANI",
+"cnasName": "SPITAL GENERAL CF PASCANI",
+"county": "iasi",
+"siruta": 95391,
+"beds": 155,
+"cuis": [
+"4701290"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T15",
+"name": "SPITAL GENERAL CF SIMERIA",
+"cnasName": "SPITALUL GENERAL CF SIMERIA",
+"county": "hunedoara",
+"siruta": 87665,
+"beds": 105,
+"cuis": [
+"4375160"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TL01",
+"name": "Spitalul Judetean de Urgenta Tulcea",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA TULCEA",
+"county": "tulcea",
+"siruta": 159614,
+"beds": 758,
+"cuis": [
+"4026712"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TL03",
+"name": "SPITALUL ORASENESC MACIN",
+"cnasName": "SPITALUL ORASENESC MACIN",
+"county": "tulcea",
+"siruta": 159730,
+"beds": 85,
+"cuis": [
+"4321380"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM01",
+"name": "Spital Clinic Judetean de Urgenta \"Pius Brinzeu\" Timisoara",
+"cnasName": "SPITALUL JUDETEAN CLINIC DE URGENTA TIMISOARA",
+"county": "timis",
+"siruta": 155243,
+"beds": 1289,
+"cuis": [
+"4663448"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "TM02",
+"name": "Spitalul Clinic Municipal de Urgenta Timisoara",
+"cnasName": "SPITALUL MUNICIPAL CLINIC DE URGENTA TIMISOARA",
+"county": "timis",
+"siruta": 155243,
+"beds": 1084,
+"cuis": [
+"4483447"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM03",
+"name": "Spitalul Clinic de Urgenta pentru Copii Louis Turcanu",
+"cnasName": "SPITALUL CLINIC DE URGENTA PENTRU COPII \"L. TURCANU\" TIMISOARA",
+"county": "timis",
+"siruta": 155243,
+"beds": 528,
+"cuis": [
+"4548538"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM04",
+"name": "SPITALUL CLINIC DE BOLI INFECTIOASE SI PNEUMOFTIZIOLOGIE DR VICTOR BABES TIMISOARA",
+"cnasName": "SPITALUL CLINIC DE BOLI INFECTIOASE SI PNEUMOFTIZIOLOGIE \"DR. V. BABES\"",
+"county": "timis",
+"siruta": 155243,
+"beds": 325,
+"cuis": [
+"2487647"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM06",
+"name": "INSTITUTUL DE BOLI CARDIOVASCULARE TIMISOARA",
+"cnasName": "INSTITUTUL DE BOLI CARDIOVASCULARE TIMISOARA",
+"county": "timis",
+"siruta": 155243,
+"beds": 197,
+"cuis": [
+"5189211"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "TM07",
+"name": "Spitalul Municipal \"Dr. Teodor Andrei\" Lugoj",
+"cnasName": "SPITALUL MUNICIPAL LUGOJ",
+"county": "timis",
+"siruta": 155350,
+"beds": 374,
+"cuis": [
+"2501652"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM09",
+"name": "SPITALUL ORASENESC DETA",
+"cnasName": "SPITALUL ORASENESC DETA",
+"county": "timis",
+"siruta": 155458,
+"beds": 63,
+"cuis": [
+"2503408"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM10",
+"name": "SPITAL DR. KARL DIEL JIMBOLIA",
+"cnasName": "SPITALUL \"DR. KARL DIEL\" JIMBOLIA",
+"county": "timis",
+"siruta": 155494,
+"beds": 137,
+"cuis": [
+"2502771"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM11",
+"name": "Spitalul Orasenesc Sannicolau Mare",
+"cnasName": "SPITALUL ORASENESC SANNICOLAU MARE",
+"county": "timis",
+"siruta": 155528,
+"beds": 145,
+"cuis": [
+"4483765"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM12",
+"name": "Spitalul Orasenesc Faget",
+"cnasName": "SPITALUL ORASENESC FAGET",
+"county": "timis",
+"siruta": 156801,
+"beds": 127,
+"cuis": [
+"4663456"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TM15",
+"name": "SPITALUL DE PSIHIATRIE GATAIA",
+"cnasName": "SPITALUL DE PSIHIATRIE  GATAIA",
+"county": "timis",
+"siruta": 157086,
+"beds": 445,
+"cuis": [
+"4483811"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "TM16",
+"name": "SPITALUL DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA JEBEL",
+"cnasName": "SPITALUL DE DE PSIHIATRIE SI PENTRU MASURI DE SIGURANTA JEBEL",
+"county": "timis",
+"siruta": 157424,
+"beds": 495,
+"cuis": [
+"5189300"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "TM17",
+"name": "Centrul Medical de Evaluare,Terapie,Educatie Medicala Specifica si Recup pentru Copii si Tineri \"Cristian Serban\" Buzias",
+"cnasName": "CENTRUL CLINIC DE EVALUARE SI RECUPERARE PENTRU COPII SI ADOLESCENTI CRISTIAN SERBAN BUZIAS",
+"county": "timis",
+"siruta": 155403,
+"beds": 50,
+"cuis": [
+"11302934"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "TR01",
+"name": "SPITALUL JUDETEAN DE URGENTA ALEXANDRIA",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA ALEXANDRIA",
+"county": "teleorman",
+"siruta": 151790,
+"beds": 755,
+"cuis": [
+"4253650"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TR02",
+"name": "SPITALUL MUNICIPAL TURNU MAGURELE",
+"cnasName": "SPITALUL MUNICIPAL TURNU MAGURELE",
+"county": "teleorman",
+"siruta": 151683,
+"beds": 212,
+"cuis": [
+"4568152"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TR03",
+"name": "Spitalul Municipal Caritas- Rosiorii de Vede",
+"cnasName": "SPITALUL MUNICIPAL 'CARITAS'ROSIORI DE VEDE",
+"county": "teleorman",
+"siruta": 151870,
+"beds": 288,
+"cuis": [
+"4568004"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TR04",
+"name": "SPITALUL ORASENESC ZIMNICEA",
+"cnasName": "SPITALUL ORASENESC ZIMNICEA",
+"county": "teleorman",
+"siruta": 151978,
+"beds": 134,
+"cuis": [
+"4469140"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TR05",
+"name": "SPITAL DE PNEUMOFTIZIOLOGIE ROSIORII DE VEDE",
+"cnasName": "SPITALUL PNEUMOFTIZIOLOGIE ROSIORI DE VEDE",
+"county": "teleorman",
+"siruta": 151870,
+"beds": 191,
+"cuis": [
+"4568250"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "TR08",
+"name": "SPITALUL DE PSIHIATRIE POROSCHIA",
+"cnasName": "SPITALUL  PSIHIATRIE POROSCHIA",
+"county": "teleorman",
+"siruta": 151834,
+"beds": 185,
+"cuis": [
+"4568438"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "T_01",
+"name": "Spitalul Clinic CF nr. 2 Bucuresti",
+"cnasName": "SP CLINIC C.F.NR.2",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 551,
+"cuis": [
+"4505316"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "T_02",
+"name": "Spitalul Clinic Nr.1 C.F. Witting",
+"cnasName": "SPITALUL CLINIC NR.1 CF WITTING",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": 330,
+"cuis": [
+"4267257"
+],
+"ministry": false,
+"placed": "city"
+},
+{
+"code": "VL01",
+"name": "SPITALUL JUDETEAN DE URGENTA VALCEA",
+"cnasName": "SPITALUL JUDETEAN  DE URGENTA VALCEA",
+"county": "valcea",
+"siruta": 167473,
+"beds": 1431,
+"cuis": [
+"2540589"
+],
+"ministry": false,
+"placed": "seat"
+},
+{
+"code": "VL03",
+"name": "Spitalul Municipal Costache Nicolescu",
+"cnasName": "SPITALUL MUNICIPAL  \"COSTACHE NICOLESCU\"DRAGASANI",
+"county": "valcea",
+"siruta": 167981,
+"beds": 258,
+"cuis": [
+"2574042"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VL04",
+"name": "SPITALUL ORASENESC HOREZU",
+"cnasName": "SPITALUL ORASENESC HOREZU",
+"county": "valcea",
+"siruta": 168041,
+"beds": 165,
+"cuis": [
+"2541266"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VL05",
+"name": "SPITALUL ORASENESC BREZOI",
+"cnasName": "SPITALUL ORASENESC BREZOI",
+"county": "valcea",
+"siruta": 167794,
+"beds": 79,
+"cuis": [
+"2541908"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VL06",
+"name": "Spital Pneumoftiziologie  Constantin Anastasatu",
+"cnasName": "SPITALUL PNEUMOFTIZIOLOGIE  C. ANASTASATU\"MIHAESTI",
+"county": "valcea",
+"siruta": 171325,
+"beds": 158,
+"cuis": [
+"2541878"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VL09",
+"name": "Spitalul de Psihiatrie Dragoesti",
+"cnasName": "SPITALUL PSIHIATRIE DRAGOESTI",
+"county": "valcea",
+"siruta": 169547,
+"beds": 125,
+"cuis": [
+"2541916"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VN01",
+"name": "SPITALUL JUDETEAN DE URGENTA \"SF. PANTELIMON\" FOCSANI",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA \"SF. PANTELIMON\" FOCSANI",
+"county": "vrancea",
+"siruta": 174744,
+"beds": 768,
+"cuis": [
+"4350505"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "VN02",
+"name": "SPITALUL MUNICIPAL ADJUD",
+"cnasName": "SPITALUL MUNICIPAL ADJUD",
+"county": "vrancea",
+"siruta": 174860,
+"beds": 185,
+"cuis": [
+"4410690"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VN04",
+"name": "SPITALUL  ORASENESC PANCIU",
+"cnasName": "SPITALUL ORASENESC PANCIU",
+"county": "vrancea",
+"siruta": 175055,
+"beds": 70,
+"cuis": [
+"4350408"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VN07",
+"name": "SPITALUL \" N.N.SAVEANU \" VIDRA",
+"cnasName": "SPITALUL N.N. SAVEANU VIDRA",
+"county": "vrancea",
+"siruta": 178377,
+"beds": 56,
+"cuis": [
+"4447401"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "VN08",
+"name": "SPITALUL DE PSIHIATRIE CRONICI DUMBRAVENI",
+"cnasName": "SPITALUL DE PSIHIATRIE CRONICI DUMBRAVENI",
+"county": "vrancea",
+"siruta": 175938,
+"beds": 139,
+"cuis": [
+"4410631"
+],
+"ministry": true,
+"placed": "name"
+},
+{
+"code": "VS01",
+"name": "SPITALUL JUDETEAN DE URGENTA VASLUI",
+"cnasName": "SPITALUL JUDETEAN DE URGENTA VASLUI",
+"county": "vaslui",
+"siruta": 161945,
+"beds": 805,
+"cuis": [
+"3551942"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VS02",
+"name": "SPITALUL MUNICIPAL DE URGENTA \"ELENA BELDIMAN\"  BARLAD",
+"cnasName": "SPITALUL MUNICIPAL DE URGENTA \"ELENA BELDIMAN\" BARLAD",
+"county": "vaslui",
+"siruta": 161794,
+"beds": 749,
+"cuis": [
+"4446481"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VS04",
+"name": "Spitalul Municipal Dimitrie Castroian Husi",
+"cnasName": "SPITALUL MUNICIPAL \"DIMITRIE CASTROIAN\" HUSI",
+"county": "vaslui",
+"siruta": 161829,
+"beds": 285,
+"cuis": [
+"4359628"
+],
+"ministry": false,
+"placed": "name"
+},
+{
+"code": "VS07",
+"name": "SPITALUL DE PSIHIATRIE MURGENI",
+"cnasName": "SPITALUL DE PSIHIATRIE MURGENI",
+"county": "vaslui",
+"siruta": 164981,
+"beds": 141,
+"cuis": [
+"3890655"
+],
+"ministry": false,
+"placed": "name"
+}
+],
+"outside": [
+{
+"code": "x:4208463",
+"name": "SPITALUL CLINIC MUNICIPAL \"DR.GAVRIL CURTEANU\"",
+"county": "bihor",
+"siruta": 26564,
+"beds": null,
+"cuis": [
+"4208463"
+],
+"placed": "manual"
+},
+{
+"code": "x:4602092",
+"name": "INSTITUTUL NATIONAL DE HEMATOLOGIE  TRANSFUZIONALA Prof.Dr.C.T.Nicolau",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": null,
+"cuis": [
+"4602092"
+],
+"placed": "city"
+},
+{
+"code": "x:4340579",
+"name": "Institutul National de Expertiza Medicala si Recuperare a Capacitatii de Munca",
+"county": "bucuresti",
+"siruta": 179132,
+"beds": null,
+"cuis": [
+"4340579"
+],
+"placed": "city"
+},
+{
+"code": "x:2844260",
+"name": "SPITALUL OBSTETRICA GINECOLOGIE PLOIESTI",
+"county": "prahova",
+"siruta": 130534,
+"beds": null,
+"cuis": [
+"2844260"
+],
+"placed": "name"
+},
+{
+"code": "x:25040361",
+"name": "SPITALUL ORASENESC S.R.L.VIDELE",
+"county": "teleorman",
+"siruta": 151905,
+"beds": null,
+"cuis": [
+"25040361"
+],
+"placed": "name"
+},
+{
+"code": "x:4793871",
+"name": "SPITALUL TICHILESTI",
+"county": "tulcea",
+"siruta": 159687,
+"beds": null,
+"cuis": [
+"4793871"
+],
+"placed": "manual"
+},
+{
+"code": "x:3228233",
+"name": "SPITALUL ORASENESC ANINA",
+"county": "caras-severin",
+"siruta": 50889,
+"beds": null,
+"cuis": [
+"3228233"
+],
+"placed": "name"
+},
+{
+"code": "x:43094378",
+"name": "SPITALUL ORASENESC BALCESTI",
+"county": "valcea",
+"siruta": 168452,
+"beds": null,
+"cuis": [
+"43094378"
+],
+"placed": "manual"
+}
+]
+}

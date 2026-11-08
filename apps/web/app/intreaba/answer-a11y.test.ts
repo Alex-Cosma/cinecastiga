@@ -109,9 +109,11 @@ describe("the answer's targets and contrast", () => {
     expect(harta).toContain(".mx-seg button,.mx-pick{min-height:44px}");
     expect(harta).toContain(".mx-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}");
     const explorer = readFileSync(new URL("../harta/MapExplorer.tsx", import.meta.url), "utf8");
-    // Every area on the map is a button in the ranking, with its figure in words.
+    // Every area on the map is a button in the ranking, with its figure in words (per inhabitant, per bed or the total);
+    // a county's hospital is a row whose name is the link to its page (8 November 2026).
     expect(explorer).toContain('className={`mx-row');
-    expect(explorer).toContain("lei pe locuitor`}");
+    expect(explorer).toContain("lei ${UNIT[metric]}`}");
+    expect(explorer).toContain("<EntityName id={a.entityId}");
   });
 
   it("draws the kit's separators in --muted, never --faint (2.7:1 on the paper)", () => {
