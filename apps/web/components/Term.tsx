@@ -13,7 +13,14 @@ import { GLOSSARY, type GlossaryId } from "../lib/glossary";
  * can widen a 390 px screen). Escape or a second press closes it. Do not
  * place a Term inside a link or another button: split the link instead.
  */
-type TermProps = { children?: ReactNode; className?: string; tip?: boolean } & (
+type TermProps = {
+  children?: ReactNode; className?: string; tip?: boolean;
+  /**
+   * With `tip`: the explanation floats over everything, next to its "?" (fixed to the screen), instead of anchoring to
+   * the nearest positioned box: for a "?" inside a window that scrolls or clips (the map's "Instituții" window).
+   */
+  float?: boolean;
+} & (
   | { id: GlossaryId; title?: never; text?: never }
   // A caveat built from page data (one signal, one contract) that has no
   // fixed glossary entry. The binding wording still lives in the caller.
@@ -43,14 +50,24 @@ export function tipOpensBelow(anchorTop: number, height: number, ceiling: number
   return height > 0 && anchorTop - TIP_GAP - height < Math.max(0, ceiling);
 }
 
-export default function Term({ children, className, tip = false, ...source }: TermProps) {
+export default function Term({ children, className, tip = false, float = false, ...source }: TermProps) {
   const entry = source.id !== undefined ? GLOSSARY[source.id] : { title: source.title, text: source.text };
   const [open, setOpen] = useState(false);
   const [below, setBelow] = useState(false);
+  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
   const definition = useRef<HTMLSpanElement>(null);
   const definitionId = useId();
   // Measured once it shows (hover, focus or tap): its anchor's top against the screen's and the header's.
   const place = () => requestAnimationFrame(() => {
+    if (float) {
+      // Above the "?" when it fits on the screen, else below; kept 16 px inside the screen's sides.
+      const def = definition.current, trigger = def?.previousElementSibling?.getBoundingClientRect();
+      if (!def || !trigger || !def.offsetHeight) return;
+      const width = def.offsetWidth, height = def.offsetHeight, screen = document.documentElement.clientWidth;
+      const left = Math.max(16, Math.min(trigger.left - 12, screen - width - 16));
+      setAt({ left, top: trigger.top - TIP_GAP - height < 8 ? trigger.bottom + TIP_GAP : trigger.top - TIP_GAP - height });
+      return;
+    }
     const def = definition.current, anchor = def?.offsetParent?.getBoundingClientRect();
     if (!def || !anchor || !def.offsetHeight) return;
     const header = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
@@ -75,7 +92,8 @@ export default function Term({ children, className, tip = false, ...source }: Te
       <span className="term-mark" aria-hidden="true">?</span>
     </button>
     {/* Out of the tab order: shown on focus, its scrollable box would otherwise take a second stop (critique 2 November 2026). */}
-    <span id={definitionId} ref={definition} className="term-def" role="tooltip" tabIndex={-1}>
+    <span id={definitionId} ref={definition} className="term-def" role="tooltip" tabIndex={-1}
+      style={float ? { position: "fixed", left: at?.left ?? 0, top: at?.top ?? 0, right: "auto", bottom: "auto", width: "min(340px, calc(100vw - 32px))", zIndex: 70, visibility: at ? undefined : "hidden" } : undefined}>
       <b>{entry.title}.</b> {entry.text}
     </span>
   </span>;
