@@ -9,8 +9,8 @@ const CHIPS = [19, 15, 16.5, 16, 18.5, 17, 17.5, 17.5, 16, 17.5, 15.5, 15.5];
 
 /**
  * The page's ghost while the TED statistics and the list are read (prod 0.35–0.72 s): the static title, subtitle and
- * labels real, the numbers as lines, the twelve country chips, the list's header and its first twelve rows in the real
- * table; the rest of the page of 60 is reserved (`.tp-ghost-rest`) so the document keeps its length.
+ * labels real, the numbers as lines, the twelve country chips, the list's header and the page's ten rows in the real
+ * table (owner, 8 November 2026: ten results a page), so the document keeps its length.
  */
 export default function SupraPragLoading() {
   return (
@@ -57,7 +57,7 @@ export default function SupraPragLoading() {
             </tr>
           </thead>
           <tbody inert>
-            <G.Rows n={12} as="tr" cells={(i) => <>
+            <G.Rows n={10} as="tr" cells={(i) => <>
               <td><G.Line w={rankWidth(i, 74, 4, 46)} /><div className="arrow-to tp-winners"><G.Line w="52%" /></div><div className="county"><G.Line w="28%" /></div></td>
               <td className="county" data-label="Obiect">
                 <div className="obj-title"><G.Line w="88%" /></div><G.Line w="72%" /><div><G.Line w="7rem" /></div>
@@ -74,8 +74,6 @@ export default function SupraPragLoading() {
           </tbody>
         </table>
         </div>
-        {/* The other 48 rows of a page of 60, reserved: the document keeps its length when the list arrives. */}
-        <div className="tp-ghost-rest" aria-hidden="true" />
         <div className="pager" inert>
           <span className="off">← anterioarele</span><span className="pager-pos"><G.Line inline w="20ch" /></span><a>următoarele →</a>
         </div>

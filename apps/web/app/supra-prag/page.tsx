@@ -94,7 +94,8 @@ export default async function SupraPragPage({
   const countries = filters["tara"]?.kind === "options" ? filters["tara"].values : [];
   const sort = sp["sort"] === "value" ? "value" : "date";
   const requestedPage = Number(sp["p"] ?? "1");
-  const PAGE_SIZE = 60;
+  // Ten results a page (owner, 8 November 2026: a shorter list, the pager below it).
+  const PAGE_SIZE = 10;
 
   const [stats, coverage, awards] = await Promise.all([
     getTedStats(),
