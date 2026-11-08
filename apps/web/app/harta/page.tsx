@@ -10,11 +10,11 @@ import "./harta.css";
 
 export const metadata: Metadata = {
   title: "Hartă",
-  description: "Lei contractați pe locuitor de primării și consiliile județene, pe județe și pe UAT-uri.",
+  description: "Lei contractați pe locuitor de primării și consiliile județene, pe județe și pe UAT-uri; spitalele publice, cu lei pe pat pentru 2025.",
 };
 
 export default async function HartaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const one = (key: string) => (typeof params[key] === "string" ? params[key] as string : undefined);
-  return <MapExplorer initial={{ ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat") }} />;
+  return <MapExplorer initial={{ ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat"), inst: one("inst") }} />;
 }

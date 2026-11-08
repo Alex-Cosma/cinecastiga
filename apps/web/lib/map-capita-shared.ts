@@ -12,9 +12,31 @@
 
 export type MapLevel = "county" | "uat";
 export type MapDataset = "all" | "da" | "contracts";
-/** The kinds of institution the map can count; only the local administrations for now (owner: more kinds later). */
-export const MAP_KINDS = ["local_admin"] as const;
+/**
+ * The kinds of institution the map can count: the local administrations, and since 8 November 2026 the public
+ * hospitals (owner): CNAS's 2025 list of public hospitals with their approved beds (lib/reference/hospitals-cnas-2025.json,
+ * linked by hand to the buying institutions) and every other institution named a hospital (lib/ask/authority-kind.ts).
+ */
+export const MAP_KINDS = ["local_admin", "hospitals"] as const;
 export type MapKind = (typeof MAP_KINDS)[number];
+/** The kind's word in an address (`?inst=spitale`); the local administrations have none, as before. */
+export const KIND_URL: Record<MapKind, string | null> = { local_admin: null, hospitals: "spitale" };
+
+/**
+ * The year of the hospitals' beds: CNAS publishes the structure approved at 31 December 2025, with no history. Owner,
+ * 8 November 2026: lei per bed only when 2025 alone is chosen; any other choice of years shows the total contracted.
+ */
+export const BEDS_YEAR = "2025";
+/** What an area's figure is: lei per inhabitant (local administrations), lei per bed (hospitals, 2025 alone), or lei. */
+export type MapMetric = "perCapita" | "perBed" | "value";
+export function mapMetric(s: Pick<MapSelection, "kind" | "years">): MapMetric {
+  if (s.kind === "local_admin") return "perCapita";
+  return s.years !== "all" && s.years.length === 1 && s.years[0] === BEDS_YEAR ? "perBed" : "value";
+}
+/** An area's figure in a metric: what the map's tint, the ranking's bars and its order read. */
+export function figure(a: MapArea, metric: MapMetric): number | null {
+  return metric === "perCapita" ? a.perCapita : metric === "perBed" ? a.perBed ?? null : a.value;
+}
 
 export interface MapSelection {
   level: MapLevel;
@@ -35,7 +57,9 @@ export type MapGap =
   /** A county whose county council the strict list does not hold: its sum lacks the council's, so no per-inhabitant figure. */
   | "no_council"
   /** No population to divide by. */
-  | "no_population";
+  | "no_population"
+  /** Hospitals, 2025 alone: no bed in CNAS's list (a hospital it does not hold, or a county without one). */
+  | "no_beds";
 
 export interface MapArea {
   /** A county key ("bistrita-nasaud") or a UAT's SIRUTA code as text. */
@@ -63,6 +87,14 @@ export interface MapArea {
    * list holds (1 for București: its city hall is the whole city's). The page says it under 90% („acoperire 70%”).
    */
   coverage?: number;
+  /** Hospitals: the approved beds of the area's hospitals in CNAS's list (31 December 2025); null without any. */
+  beds?: number | null;
+  /** Hospitals, 2025 alone: the 2025 value of the hospitals with beds / their beds; null otherwise. */
+  perBed?: number | null;
+  /** A hospital (the open county's list): the UAT it is drawn in (SIRUTA; București's 179132 for the city's). */
+  siruta?: number | null;
+  /** A hospital: the institution its name links to (the identity with the largest value). */
+  entityId?: string | null;
 }
 
 export interface MapResponse {
@@ -77,7 +109,9 @@ export interface MapResponse {
   totals: { value: number; records: number; buyers: number };
   /** Where the rows came from: the nightly table, or the transaction marts when it is not built yet. */
   source: "rollup" | "live";
-  notes: { population: string; geometry: string; kind: string };
+  /** What each area's figure is (mapMetric): the tint, the bars and the order read it. */
+  metric: MapMetric;
+  notes: { population: string; geometry: string; kind: string; beds?: string };
 }
 
 export interface MapOptions {
@@ -178,6 +212,48 @@ export function areaOf(key: string, name: string, population: number | null, mem
   const known = gap === "no_admin" ? null : lei(value);
   const g = gap ?? (!denominator || denominator <= 0 ? "no_population" : null);
   return { key, name, population, denominator, value: known, perCapita: g ? null : perCapita(known, denominator), records, buyers, institutions: members.length, gap: g };
+}
+
+/** A hospital of the map (lib/map-hospitals.ts): one of CNAS's list (its code, beds and place), or one named a hospital outside it (no beds). */
+export interface MapHospital { code: string; name: string; county: string; siruta: number | null; beds: number | null }
+
+function summed(members: readonly number[], sums: { v: Float64Array; n: Float64Array }): { value: number; records: number } {
+  let value = 0, records = 0;
+  for (const i of members) { value += sums.v[i]!; records += sums.n[i]!; }
+  return { value, records };
+}
+
+/**
+ * One hospital (owner, 8 November 2026): its identities' sums (`members`, indexes of the institutions). Lei per bed only
+ * with `perBed` (2025 alone, mapMetric) and beds; a hospital without beds then has the gap no_beds, its value still shown.
+ */
+export function hospitalArea(h: MapHospital, members: readonly number[], sums: { v: Float64Array; n: Float64Array }, perBed: boolean, entityId: string | null): MapArea {
+  const { value, records } = summed(members, sums);
+  const beds = h.beds !== null && h.beds > 0 ? h.beds : null;
+  return {
+    key: h.code, name: h.name, population: null, denominator: perBed ? beds : null, value: lei(value), perCapita: null,
+    records, buyers: records > 0 ? 1 : 0, institutions: 1, gap: perBed && beds === null ? "no_beds" : null,
+    beds, perBed: perBed && beds !== null ? value / beds : null, siruta: h.siruta, entityId,
+  };
+}
+
+/**
+ * A county's hospitals: every one in the value; lei per bed (2025 alone) is the 2025 value of the hospitals with beds
+ * over their beds, so a hospital CNAS does not list neither adds lei nor hides a county's figure.
+ */
+export function hospitalCountyArea(key: string, name: string, hospitals: readonly { h: MapHospital; members: readonly number[] }[], sums: { v: Float64Array; n: Float64Array }, perBed: boolean): MapArea {
+  let value = 0, records = 0, buyers = 0, beds = 0, bedsValue = 0;
+  for (const { h, members } of hospitals) {
+    const t = summed(members, sums);
+    value += t.value; records += t.records;
+    if (t.records > 0) buyers++;
+    if (h.beds !== null && h.beds > 0) { beds += h.beds; bedsValue += t.value; }
+  }
+  return {
+    key, name, population: null, denominator: perBed && beds ? beds : null, value: lei(value), perCapita: null,
+    records, buyers, institutions: hospitals.length, gap: perBed && !beds ? "no_beds" : null,
+    beds: beds || null, perBed: perBed && beds ? bedsValue / beds : null,
+  };
 }
 
 /**

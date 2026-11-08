@@ -5,9 +5,10 @@ import { COUNTY_POPULATION, PER_CAPITA_SOURCE, martsCounty, readPerCapitaPopulat
 import catalog from "./reference/population-rpl2021.json" with { type: "json" };
 import geo from "./reference/uat-geo.json" with { type: "json" };
 import {
-  areaOf, countyKey, lei, MapError, perCapita, rowSelected, sumByInstitution,
-  type MapArea, type MapInstitution, type MapOptions, type MapResponse, type MapRow, type MapSelection, type MapUatResponse,
+  areaOf, countyKey, lei, MapError, mapMetric, perCapita, rowSelected, sumByInstitution,
+  type MapArea, type MapInstitution, type MapKind, type MapOptions, type MapResponse, type MapRow, type MapSelection, type MapUatResponse,
 } from "./map-capita-shared";
+import { BEDS_SOURCE, countyHospitals, hospitalCounties, hospitalNames, loadHospitals, type HospitalData, type ReadRows } from "./map-hospitals";
 
 /*
  * /harta's data (owner, 6 November 2026): the value contracted per inhabitant of the local administrations, by county
@@ -43,6 +44,7 @@ interface KindData {
 
 const CACHE_MS = 600_000;
 let cached: { marker: string; at: number; data: Promise<KindData> } | null = null;
+let cachedHospitals: { marker: string; at: number; data: Promise<HospitalData> } | null = null;
 
 /**
  * The build the rows belong to: the table's own file (a new one each night) and the profiles' (the list of
@@ -58,15 +60,11 @@ async function buildMarker(sql: DbSql): Promise<{ marker: string; ready: boolean
   return { marker: String(row?.marker ?? ""), ready: Boolean(row?.ready) };
 }
 
-async function loadKind(sql: DbSql, ready: boolean): Promise<KindData> {
-  const p = await readPerCapitaPopulations(sql);
-  const institutions: MapInstitution[] = p.ids.map((id, i) => ({
-    id, county: p.counties[i]!, siruta: p.sirutas[i] ?? null, level: p.levels.get(id) === "county" ? "county" : "local",
-  }));
-  const index = new Map(p.ids.map((id, i) => [id, i]));
-  const ids = sql.array(p.ids);
+/** A set of institutions' rows, grouped by year, channel and division (every kind reads them the same way). */
+const readRows: ReadRows = async (sql, list, ready) => {
+  const ids = sql.array(list);
   // Without the nightly table (its first build after this code), the same grouping read live from the marts, once per build.
-  const raw = (ready
+  return (ready
     ? await sql`select authority_id::text a, y, src, cpv2 c, v::float8 v, n::float8 n
         from marts.agg_authority_cpv_year where authority_id = any(${ids}::bigint[])`
     : await sql`select x.authority_id::text a, substr(x.finalization_date, 1, 4) y, x.src, substr(x.cpv_code, 1, 2) c,
@@ -78,6 +76,15 @@ async function loadKind(sql: DbSql, ready: boolean): Promise<KindData> {
           select authority_id, cpv_code, finalization_date, closing_value, 'contracts'
           from marts.contract_transactions where authority_id = any(${ids}::bigint[]) and closing_value > 0
         ) x group by 1, 2, 3, 4`) as unknown as { a: string; y: string | null; src: "da" | "contracts"; c: string | null; v: number; n: number }[];
+};
+
+async function loadKind(sql: DbSql, ready: boolean): Promise<KindData> {
+  const p = await readPerCapitaPopulations(sql);
+  const institutions: MapInstitution[] = p.ids.map((id, i) => ({
+    id, county: p.counties[i]!, siruta: p.sirutas[i] ?? null, level: p.levels.get(id) === "county" ? "county" : "local",
+  }));
+  const index = new Map(p.ids.map((id, i) => [id, i]));
+  const raw = await readRows(sql, p.ids, ready);
   const rows: MapRow[] = [];
   for (const r of raw) {
     const a = index.get(String(r.a));
@@ -96,14 +103,30 @@ export async function readMapKind(sql: DbSql = db()): Promise<KindData> {
   data.catch(() => { if (cached?.data === data) cached = null; });
   return data;
 }
+/** The hospitals of the current build (map-hospitals.ts), read once per build and per 10 minutes. */
+export async function readMapHospitals(sql: DbSql = db()): Promise<HospitalData> {
+  const { marker, ready } = await buildMarker(sql);
+  const key = `${marker}:${ready}`;
+  if (cachedHospitals && cachedHospitals.marker === key && Date.now() - cachedHospitals.at < CACHE_MS) return cachedHospitals.data;
+  const data = loadHospitals(sql, ready, readRows);
+  cachedHospitals = { marker: key, at: Date.now(), data };
+  data.catch(() => { if (cachedHospitals?.data === data) cachedHospitals = null; });
+  return data;
+}
 /** Tests: read again. */
-export function forgetMapKind(): void { cached = null; }
+export function forgetMapKind(): void { cached = null; cachedHospitals = null; }
 
 const NOTES = {
   population: `Populația: ${PER_CAPITA_SOURCE}.`,
   geometry: "Limitele UAT: ANCPI, 07.03.2024, și denumirile INS SIRUTA s1 2026 (data.gov.ro, CC BY 4.0), simplificate.",
   kind: "Primăriile și consiliile județene identificate strict (nume, județ și cod SIRUTA concordante, CUI valid). Un județ adună primăriile lui și consiliul județean; un UAT, primăria lui. Valori contractate, nu plăți.",
 };
+const HOSPITAL_NOTES = {
+  ...NOTES,
+  kind: "Spitalele publice din lista CNAS pe 2025, legate de mână de instituțiile care cumpără, și celelalte instituții numite spital. Fiecare e desenat în orașul lui, nu la adresă. Valori contractate, nu plăți.",
+  beds: BEDS_SOURCE,
+};
+const COUNTY_LIST = [...COUNTY_BY_KEY].map(([key, c]) => ({ key, name: c.name }));
 
 /**
  * The county level: each of the 42 counties, its town halls and council summed, divided by the population of the UATs
@@ -148,6 +171,19 @@ export function uatAreas(data: KindData, s: MapSelection, county: string): { are
 export async function getMap(s: MapSelection): Promise<MapResponse> {
   const county = s.level === "uat" ? COUNTY_BY_KEY.get(s.county ?? "") : null;
   if (s.level === "uat" && !county) throw new MapError("Județul nu există.", 404);
+  const metric = mapMetric(s);
+  if (s.kind === "hospitals") {
+    const sql = db();
+    const data = await readMapHospitals(sql);
+    // Inside a county: its hospitals, with their current names (owner, 8 November 2026: the list beside the map).
+    const areas = s.level === "county" ? hospitalCounties(data, s, COUNTY_LIST, metric === "perBed")
+      : countyHospitals(data, s, s.county!, metric === "perBed", await hospitalNames(sql, data));
+    return {
+      selection: s, county: county ? { key: s.county!, name: county.name } : null, areas, city: null,
+      totals: { value: lei(areas.reduce((a, x) => a + (x.value ?? 0), 0)), records: areas.reduce((a, x) => a + x.records, 0), buyers: areas.reduce((a, x) => a + x.buyers, 0) },
+      source: data.source, metric, notes: HOSPITAL_NOTES,
+    };
+  }
   const data = await readMapKind();
   const { areas, city } = s.level === "county" ? { areas: countyAreas(data, s), city: null } : uatAreas(data, s, s.county!);
   const all = city ? [...areas, city] : areas;
@@ -157,6 +193,7 @@ export async function getMap(s: MapSelection): Promise<MapResponse> {
     areas, city,
     totals: { value: lei(all.reduce((a, x) => a + (x.value ?? 0), 0)), records: all.reduce((a, x) => a + x.records, 0), buyers: all.reduce((a, x) => a + x.buyers, 0) },
     source: data.source,
+    metric,
     notes: NOTES,
   };
 }
@@ -174,10 +211,16 @@ function divisionNames(sql: DbSql): Promise<Map<string, string | null>> {
   return rows;
 }
 
-/** The filters' choices for the kind: its years and CPV divisions with their totals. */
-export async function getMapOptions(): Promise<MapOptions> {
+/** The kinds the map offers (the page's "Instituții" filter). */
+const KINDS: MapOptions["kinds"] = [
+  { key: "local_admin", label: "Primării și consilii județene", levels: ["county", "uat"] },
+  { key: "hospitals", label: "Spitale publice", levels: ["county", "uat"] },
+];
+
+/** The filters' choices for a kind: its years and CPV divisions with their totals. */
+export async function getMapOptions(kind: MapKind = "local_admin"): Promise<MapOptions> {
   const sql = db();
-  const [data, official] = await Promise.all([readMapKind(sql), divisionNames(sql)]);
+  const [data, official] = await Promise.all([kind === "hospitals" ? readMapHospitals(sql) : readMapKind(sql), divisionNames(sql)]);
   const years = new Map<string, { value: number; records: number }>(), cpv = new Map<string, { value: number; records: number }>();
   const undated = { value: 0, records: 0 };
   for (const r of data.rows) {
@@ -186,7 +229,7 @@ export async function getMapOptions(): Promise<MapOptions> {
     if (r.c !== null) { const c = cpv.get(r.c) ?? cpv.set(r.c, { value: 0, records: 0 }).get(r.c)!; c.value += r.v; c.records += r.n; }
   }
   return {
-    kinds: [{ key: "local_admin", label: "Primării și consilii județene", levels: ["county", "uat"] }],
+    kinds: KINDS,
     years: [...years].sort((a, b) => a[0].localeCompare(b[0])).map(([year, t]) => ({ year, value: lei(t.value), records: t.records })),
     undated: { value: lei(undated.value), records: undated.records },
     cpv: [...cpv].sort((a, b) => b[1].value - a[1].value).map(([code, t]) => ({ code, name: domainName(code, official.get(code)), official: official.get(code) ?? null, value: lei(t.value), records: t.records })),
@@ -200,6 +243,7 @@ export async function getMapOptions(): Promise<MapOptions> {
  * the same population as the map's rows: DAs up to 2,000,000 lei, contract allocations) and the county's other UATs.
  */
 export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUatResponse> {
+  if (s.kind !== "local_admin") throw new MapError("Fișa unui UAT e doar pentru primării.");
   const unit = UATS.find((u) => u.siruta === siruta);
   if (!unit) throw new MapError("UAT-ul nu există.", 404);
   const county = COUNTY_BY_KEY.get(unit.county)!;

@@ -52,6 +52,14 @@
 .mx-uats{animation:mx-in calc(var(--slow) * var(--chart-pace)) var(--ease) both}
 .mx-uats .mx-area{stroke-width:.6}
 @keyframes mx-in{from{opacity:0}}
+/* Hospitals inside a county (owner, 8 November 2026): the UATs a quiet backdrop, each hospital a circle in its town. */
+.mx-uats.is-plain .mx-area{fill:var(--paper);fill-opacity:1;stroke:var(--line);cursor:default}
+.mx-dots{animation:mx-in calc(var(--slow) * var(--chart-pace)) var(--ease) both}
+.mx-dot{cursor:pointer}
+.mx-dot-hit{fill:transparent}
+.mx-dot-m{fill:var(--map-4);stroke:var(--paper);stroke-width:1.5;transition:fill-opacity calc(var(--slow) * var(--chart-pace)) var(--ease)}
+.mx-dot.is-gap .mx-dot-m{fill:var(--surface);stroke:var(--ink2);stroke-width:1.2}
+.mx-dot.is-hover .mx-dot-m,.mx-dot:hover .mx-dot-m{stroke:var(--ink);stroke-width:2}
 
 .mx-card{position:absolute;z-index:3;transform:translate(14px,-50%);display:grid;gap:2px;width:max-content;max-width:280px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);pointer-events:none;font-size:13px;line-height:1.4}
 .mx-card.r{transform:translate(calc(-100% - 14px),-50%)}
@@ -66,6 +74,10 @@
 .mx-legend-g{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .mx-legend i{display:block;width:160px;height:10px;border-radius:3px;background:linear-gradient(90deg,color-mix(in srgb,var(--map-4) 7%,var(--surface)),var(--map-4))}
 .mx-legend-gap{display:block;width:14px;height:10px;border-radius:2px;background:repeating-linear-gradient(45deg,var(--sunk) 0 3px,var(--line2) 3px 5px)}
+.mx-legend-dots{display:inline-flex;align-items:center;gap:3px}
+.mx-legend-dots s{display:block;border-radius:50%;background:color-mix(in srgb,var(--map-4) 55%,var(--surface))}
+.mx-legend-dots s:nth-child(1){width:6px;height:6px}.mx-legend-dots s:nth-child(2){width:11px;height:11px}.mx-legend-dots s:nth-child(3){width:17px;height:17px}
+.mx-legend-ring{display:block;width:9px;height:9px;border-radius:50%;border:1.2px solid var(--ink2);background:var(--surface)}
 .mx-attr{margin:0 0 0 auto;max-width:52ch;font-size:12px;line-height:1.45;color:var(--muted)}
 .mx-attr a{color:var(--muted)}
 
@@ -82,7 +94,15 @@
 .mx-name small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
 .mx-bar{display:block;height:7px;border-radius:2px;background:var(--sunk);overflow:hidden}
 .mx-bar i{display:block;height:100%;background:var(--map-4)}
-.mx-v{font:500 13px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
+.mx-v{font:500 13px var(--mono);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Totals ("57,6 mil."): a wider figure column. */
+.mx-rows.is-lei .mx-row{grid-template-columns:26px minmax(0,1fr) minmax(50px,96px) 78px}
+/* 2025 alone (hospitals): lei per bed, then the total contracted in a column of its own. */
+.mx-rows.has-total .mx-row{grid-template-columns:26px minmax(0,1fr) minmax(32px,64px) 74px 66px}
+.mx-v2{font:400 12px var(--mono);text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mx-name .entity-name{color:inherit}
+/* A hospital's official name can run to six lines: two, the whole of it on hover. */
+.mx-name .mx-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .mx-row.is-gap .mx-name,.mx-row.is-gap .mx-v{color:var(--muted)}
 .mx-city{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 10px;margin:0 0 8px;padding:9px 12px;border:1px dashed var(--line2);border-radius:10px;background:var(--sunk)}
 .mx-city b{font-weight:600;font-size:14px}
@@ -112,13 +132,15 @@
   .mx-more{display:flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:8px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-weight:600}
   .mx-attr{text-align:left}
   .mx-row{grid-template-columns:24px minmax(0,1fr) 64px;min-height:44px}
+  .mx-rows.has-total .mx-row{grid-template-columns:24px minmax(0,1fr) 72px 62px}
+  .mx-rows.is-lei .mx-row{grid-template-columns:24px minmax(0,1fr) 78px}
   /* 44 px targets on phones (S4 tests). */
   .mx-seg button,.mx-pick{min-height:44px}
   .mx-crumb button{min-height:44px;margin-block:-12px}
   .mx-note .term-tip>.term-trigger{min-width:44px;min-height:44px;margin-block:-10px}
   .mx-row .mx-bar{display:none}
 }
-@media (prefers-reduced-motion:reduce){.mx-uats{animation:none}.mx-area{transition:none}.mx-stage.is-busy .mx-map>svg{transition:none}}
+@media (prefers-reduced-motion:reduce){.mx-uats,.mx-dots{animation:none}.mx-area,.mx-dot-m{transition:none}.mx-stage.is-busy .mx-map>svg{transition:none}}
 /* The ranking's ghost while a level loads (MapExplorer RankGhost): the real rows' grid, real names once known. */
 .mx-rank-ghost .mx-row{cursor:default}
 .mx-rank-ghost .mx-name{color:var(--muted)}
