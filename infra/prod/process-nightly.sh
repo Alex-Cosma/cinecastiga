@@ -21,6 +21,9 @@ case "${1:-}" in
  --recover-failed) [[ "${2:-}" =~ ^[a-f0-9-]{36}$ ]] || exit 2; run_id=$(run claim-recovery "$2");;
  # Operator-authorized full publication right after a new signals methodology (refused otherwise).
  --methodology-now) run_id=$(run claim-methodology);;
+ # Operator only, with the owner's consent: yesterday's publication back (blue/green), until the next build. Refused
+ # after a deploy that changed the schemas' structure is not checked here: read docs/handover/05-operations.md first.
+ --rollback) run rollback; docker compose restart web; echo "rolled back $(date -u +%FT%TZ)"; exit 0;;
  *) echo 'Unsupported processing invocation' >&2; exit 2;;
 esac
 [[ -n "$run_id" ]] || exit 0
