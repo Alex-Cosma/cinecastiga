@@ -772,3 +772,23 @@
 .mt .mt-shist-lab span{text-align:left}
 .mt .mt-shist-note{font-size:14px;line-height:1.5;color:var(--muted);margin:2px 0 0}
 .mt a.mt-report{display:inline-flex;align-items:center;text-decoration:none}
+/* The score's source, shown on the page (owner, 9 November 2026): one closed section per file inside "Codul,
+   constantele și licența". Lines wrap instead of scrolling sideways; the numbers are not copied with the code. */
+.mt .mt-codes{display:flex;flex-direction:column;gap:8px}
+.mt .mt-ref .mt-code{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.mt .mt-ref .mt-code>summary{min-height:48px;padding:6px 14px;font-size:15px;gap:6px 10px;flex-wrap:wrap}
+.mt .mt-ref .mt-code>summary::before{transform:rotate(-45deg)}
+.mt .mt-ref .mt-code[open]>summary::before{transform:rotate(45deg)}
+.mt .mt-code-t{color:var(--ink)}
+.mt .mt-code-p{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--ink2);overflow-wrap:anywhere}
+.mt .mt-code-n{font-size:13px;font-weight:400;color:var(--muted);margin-left:auto}
+.mt .mt-code-pre{margin:0;max-height:70vh;overflow-y:auto;overflow-x:hidden;border-top:1px solid var(--line);background:var(--sunk);padding:12px 12px 12px 0;font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;overflow-wrap:anywhere;counter-reset:mt-ln;tab-size:2}
+.mt .mt-code-pre:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mt .mt-code-l{display:block;position:relative;padding-left:6ch;min-height:1.6em}
+.mt .mt-code-l::before{counter-increment:mt-ln;content:counter(mt-ln);position:absolute;left:0;width:4.5ch;text-align:right;color:var(--muted);user-select:none}
+.mt .mt-k-comment{color:var(--muted);font-style:italic}
+.mt .mt-k-string{color:var(--accent)}
+.mt .mt-k-number{color:var(--orange)}
+.mt .mt-k-keyword{font-weight:600}
+.mt .mt-code-wait{display:block;padding-left:12px;color:var(--muted);font-family:var(--body)}
+.mt .mt-ref .mt-code .mt-code-raw{margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:14px}

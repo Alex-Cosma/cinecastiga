@@ -274,7 +274,8 @@ function mount(root: HTMLElement): () => void {
       const open = oa.getAttribute("aria-pressed") !== "true";
       oa.setAttribute("aria-pressed", String(open));
       oa.textContent = open ? "Închide toate regulile" : "Deschide toate regulile";
-      qa<HTMLDetailsElement>(".mt-ref details").forEach((d) => (d.open = open));
+      // Not the score's source files: two 400-line listings would bury the rules.
+      qa<HTMLDetailsElement>(".mt-ref details:not(.mt-code)").forEach((d) => (d.open = open));
     });
 
   function openTarget(id: string, initial = false) {
@@ -286,9 +287,8 @@ function mount(root: HTMLElement): () => void {
       setLane(l.id.slice(5), false);
       switched = true;
     }
-    const d = el.closest("details");
-    if (el instanceof HTMLDetailsElement) el.open = true;
-    if (d) d.open = true;
+    // Every enclosing section opens, so a link to a nested one (#cod-formula inside #cod) shows it.
+    for (let d = el.closest("details"); d; d = d.parentElement?.closest("details") ?? null) d.open = true;
     if (switched && l?.id === "lane-poveste") {
       const jn = q("#jumpnote");
       const sec = el.closest<HTMLElement>(".mt-ch");
