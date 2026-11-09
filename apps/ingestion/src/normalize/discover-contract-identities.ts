@@ -50,7 +50,10 @@ type AssessedGroup=ReturnType<typeof discoverPublicationGroups>[number];
 export async function revokedIdentityHolds(q: DbSql) {
   return (await q`select after->>'candidateId' candidate,after->>'fingerprint' observation,
       array(select jsonb_array_elements_text(after->'contracts')) contracts
-    from app.collection_audit where action='identity-revoked' and after->>'rules'=${IDENTITY_RULES_VERSION} order by id`)
+    from app.collection_audit a where action='identity-revoked' and after->>'rules'=${IDENTITY_RULES_VERSION}
+      -- A revocation inside a failed shadow build (blue/green, 9 November 2026) changed only discarded schemas.
+      and not exists (select 1 from app.processing_runs p where p.id::text=a.after->>'runId' and p.mode='shadow' and p.status='failed')
+    order by id`)
     .map(r=>({candidate:String(r.candidate),observation:String(r.observation),contracts:(r.contracts as string[]).map(String)}));
 }
 /** A newly found group that contains a revoked publication is recorded, never approved. */

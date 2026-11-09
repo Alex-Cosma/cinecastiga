@@ -135,9 +135,13 @@ export async function failProcessing(q:DbSql,id:string) {
      error='Construirea în umbră s-a oprit. Site-ul a rămas pe publicarea precedentă; verifică etapa și jurnalul de pe server.'
      where id=${id}::uuid and status='running' returning *`;
    const paused=!!run!.before_control.paused||!!control?.blocked_reason;
+   // A repair this build applied changed only the shadow schemas, now discarded: it is scheduled again, its report kept.
+   const reset=await tx`update app.data_repairs set status='scheduled',processing_run_id=null,applied_at=null,
+     error='Aplicată într-o construire în umbră care a eșuat; nepublicată, rămâne programată.'
+     where processing_run_id=${id}::uuid and status='applied' returning id`;
    await tx`update app.collection_control set paused=${paused},revision=revision+1,updated_at=clock_timestamp() where id=1`;
    await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
-     values('system:processor','Procesare programată','processing-failed','{}',${JSON.stringify({id:run!.id,stage:run!.stage,mode:'shadow',paused})}::jsonb)`;
+     values('system:processor','Procesare programată','processing-failed','{}',${JSON.stringify({id:run!.id,stage:run!.stage,mode:'shadow',paused,repairsRescheduled:reset.map(r=>String(r.id))})}::jsonb)`;
    return;
   }
   const [run]=await tx`update app.processing_runs set status='failed',completed_at=clock_timestamp(),
