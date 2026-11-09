@@ -33,7 +33,8 @@ try{
  const [busy]=await q`select (select count(*) from app.document_jobs where status in ('running','queued'))+(select count(*) from app.collection_requests where outcome='running')+(select count(*) from app.collection_retries where status='pending') n`;
  const [archived]=await q`select id from app.procurement_documents where notice_key=${notice.key} and source_id='110778324' and original_hash is not null`;
  if(!control?.paused||control.maintenance||control.blocked_reason||control.processing_enabled||Number(busy?.n)||archived)throw Error('Pilot preflight refused: check pause, active work, failures or existing original.');
- const [owner]=await q`select id from auth.users where email='contact@example.test'`;
+ const ownerEmail=process.env.PILOT_OWNER_EMAIL;if(!ownerEmail)throw Error('PILOT_OWNER_EMAIL (the local account that requests the file) is required.');
+ const [owner]=await q`select id from auth.users where email=${ownerEmail}`;
  if(!owner)throw Error('Pilot owner account missing.');
  console.log(JSON.stringify({event:'pilot-preflight',notice:notice.noticeNo,url:notice.url,filename:metadata.documentName,contractAssociationAvailable,proxyId:proxies[0]!.id,minSeconds:control.min_seconds,maxSeconds:control.max_seconds,maxRequests:6,execute:process.argv.includes('--run')}));
  if(process.argv.includes('--run')){

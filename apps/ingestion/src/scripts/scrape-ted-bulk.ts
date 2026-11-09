@@ -101,7 +101,7 @@ async function main(): Promise<void> {
     if (!packageFileArg) {
       const url = `https://ted.europa.eu/packages/monthly/${year}-${month}`;
       console.log(`downloading ${url} ...`);
-      sh("curl", ["-sfL", "-A", "seap-analytics/0.1 (contact: contact@example.test)", "--max-time", "600", "-o", pkg, url]);
+      sh("curl", ["-sfL", "-A", "seap-analytics/0.1 (contact: cineseuita@gmail.com)", "--max-time", "600", "-o", pkg, url]);
     }
 
     // 2. Extract monthly -> daily .tar.gz, then every daily -> per-notice XML.
