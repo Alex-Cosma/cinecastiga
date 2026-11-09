@@ -1,4 +1,4 @@
-import { calloffCeilingScale, withoutNestedLoops, contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
+import { calloffCeilingScale, scaledCalloffValue, withoutNestedLoops, contractReportable, contractDatePlausible, cuiCorroborated, refreshCuiCorroborations } from '@seap/db';
 import { contractRonValue, canonicalContract, assertContractIdentityQuality, assertContractExclusionsQuality, CONTRACT_VALUE_CAP_RON, winnerIsSupplier, ensureTransactionMartIndexes, SEAT_ABROAD_LABEL, SEAT_UNKNOWN_LABEL } from "@seap/db";
 import type { DbSql, SnapshotHashCache } from "@seap/db";
 import { applyFirmRegistry, type FirmRegistryReport } from "./firm-registry.js";
@@ -46,6 +46,20 @@ async function threshold(sql: DbSql, key: string, fallback: number): Promise<num
 }
 
 type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
+
+/**
+ * The call-offs the contract transactions count scaled to their framework's ceiling (owner, 8 November 2026,
+ * contract-reporting-5): calloffCeilingScale over the population the transactions count (runMarts requires
+ * award_max_plausible to be CONTRACT_VALUE_CAP_RON). The snapshot validation recomputes it from the sources with this
+ * same fragment. Run it inside withoutNestedLoops.
+ */
+export function countedCalloffScale(q: Parameters<typeof calloffCeilingScale>[0]) {
+  return calloffCeilingScale(q, q`
+    select c.id from core.contracts c join core.awards aw on aw.ca_notice_id = c.ca_notice_id
+    where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
+      and ${contractRonValue(q)} <= ${CONTRACT_VALUE_CAP_RON} and c.contract_date is not null
+      and aw.authority_entity_id is not null and ${contractReportable(q)}`);
+}
 
 /**
  * marts.spend_by_county, the source of /harta: per county and role, the
@@ -114,14 +128,7 @@ export async function runMarts(
     // than their framework allows (calloffCeilingScale) count scaled together to its ceiling; pages and the
     // award_calloffs_over_ceiling signal keep the declared values.
     await q`drop table if exists pg_temp.calloff_scale`;
-    await withoutNestedLoops(q, () => q`
-      create temporary table calloff_scale on commit drop as
-      ${calloffCeilingScale(q, q`
-        select c.id from core.contracts c join core.awards aw on aw.ca_notice_id = c.ca_notice_id
-        where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
-          and ${contractRonValue(q)} <= ${awBound} and c.contract_date is not null
-          and aw.authority_entity_id is not null and ${contractReportable(q)}`)}
-    `);
+    await withoutNestedLoops(q, () => q`create temporary table calloff_scale on commit drop as ${countedCalloffScale(q)}`);
     await q`create index on calloff_scale (calloff_id)`;
     log(`marts calloff_scale: ${(await q`select count(*)::int n from calloff_scale`)[0]?.n ?? 0} call-offs scaled to their framework ceiling`);
     await q`
@@ -135,11 +142,12 @@ export async function runMarts(
       with base as (
         select c.id contract_id, c.contract_no, c.ca_notice_id, aw.notice_no,
                aw.authority_entity_id authority_id,
-               coalesce(round(${contractRonValue(q)} * (select s.scale from calloff_scale s where s.calloff_id = c.id), 2), ${contractRonValue(q)}) as contract_value, c.contract_date,
+               coalesce(${scaledCalloffValue(q, contractRonValue(q), q`sc.scale`)}, ${contractRonValue(q)}) as contract_value, c.contract_date,
                ${contractDatePlausible(q)} as date_plausible,
                aw.cpv_code, aw.procedure_type, aw.acquisition_type
         from core.contracts c
         join core.awards aw on aw.ca_notice_id = c.ca_notice_id
+        left join calloff_scale sc on sc.calloff_id = c.id
         where ${canonicalContract(q)} and ${contractRonValue(q)} is not null and ${contractRonValue(q)} > 0
           and ${contractRonValue(q)} <= ${awBound}
           and c.contract_date is not null

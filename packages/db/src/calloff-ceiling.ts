@@ -13,8 +13,20 @@ type Fragment = ReturnType<DbSql>;
  * least `minExcess` lei, the totals count them scaled down together to the ceiling (the most the law allows), while
  * every page and the award_calloffs_over_ceiling signal keep and show the declared values. A call-off "repeats the
  * ceiling" when its own value is the ceiling within `repeat`.
+ *
+ * A ceiling that a single call-off exceeds more than `credible` times is not credible (owner, 9 November 2026): SEAP
+ * holds placeholders such as 0.01 lei, or 2,651 lei above call-offs of 8 million, and a call-off that repeats the
+ * ceiling is about 1 times it. There the ceiling is wrong, not the call-offs: they count as declared, with no signal.
  */
-export const CALLOFF_OVER_CEILING = { ratio: 1.2, minExcess: 50_000, repeat: 0.01 } as const;
+export const CALLOFF_OVER_CEILING = { ratio: 1.2, minExcess: 50_000, repeat: 0.01, credible: 10 } as const;
+
+/**
+ * A call-off's counted value when scaled (`value` × `scale`): to the cent, or, when that rounds to zero, exactly, so
+ * every winner keeps a positive share (the snapshot validation requires it). Null when `scale` is null.
+ */
+export function scaledCalloffValue(q: Query, value: ReturnType<typeof contractRonValue>, scale: Fragment): Fragment {
+  return q`case when round(${value} * ${scale}, 2) > 0 then round(${value} * ${scale}, 2) else ${value} * ${scale} end`;
+}
 
 /**
  * Every (framework agreement, call-off) pair: the framework a canonical contractKind 'framework' with a RON ceiling and
@@ -76,13 +88,14 @@ export async function withoutNestedLoops<T>(q: Query, run: () => Promise<T>): Pr
  * calloff_id, scale, framework_id.
  */
 export function calloffCeilingScale(q: Query, counted: Fragment, tables: { contracts?: Fragment; awards?: Fragment } = {}): Fragment {
-  const { ratio, minExcess } = CALLOFF_OVER_CEILING;
+  const { ratio, minExcess, credible } = CALLOFF_OVER_CEILING;
   return q`
     with pairs as (
       select p.* from (${frameworkCalloffPairs(q, tables)}) p where p.calloff_id in (${counted})
     ), over as (
       select framework_id, max(ceiling) / sum(calloff_value) scale from pairs group by framework_id
       having sum(calloff_value) > ${ratio}::numeric * max(ceiling) and sum(calloff_value) - max(ceiling) >= ${minExcess}::numeric
+        and max(calloff_value) <= ${credible}::numeric * max(ceiling)
     )
     select distinct on (p.calloff_id) p.calloff_id, o.scale, o.framework_id
     from pairs p join over o on o.framework_id = p.framework_id
