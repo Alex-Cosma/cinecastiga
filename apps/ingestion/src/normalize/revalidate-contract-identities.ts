@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import {readRecoveredIdentityArchives} from './contract-identity-archives.js';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
@@ -185,7 +186,7 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   const sql=tx as unknown as DbSql;
   await sql`set local statement_timeout='180s'`;await sql`set local work_mem='8MB'`;await sql`set local max_parallel_workers_per_gather=0`;await sql`set local jit=off`;
   const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision,extract(dow from r.scheduled_day)::int=c.risk_weekday risk_day from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for update of r,c`;
-  if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||run.stage!=='identity-repair'||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)throw Error('Publication revalidation requires backed-up, normalized maintenance with unchanged operator control');
+  if(!run||run.status!=='running'||!processingWritable(run)||run.revision!==run.control_revision||run.stage!=='identity-repair'||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)throw Error('Publication revalidation requires backed-up, normalized maintenance with unchanged operator control');
   const {report:before,staleGroups}=await inspectContractIdentityQuality(sql,identityHashes);
   if(before.valid)return {changedGroups:0,quality:before,mode:'none' as const};
   if(before.invalidDecisions)throw Error('Invalid approval registry requires manual recovery');

@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema/index.js";
+import { shadowSql } from "./shadow.js";
 
 export const DEFAULT_DATABASE_URL =
   "postgres://seap:seap_dev@localhost:5432/seap";
@@ -19,11 +20,21 @@ export function idleTimeoutFromEnv(env: Readonly<Record<string, string | undefin
   return Number(value);
 }
 
-export function createDb(url?: string, options?: {max?:number; idleTimeout?:number}) {
+/**
+ * The blue/green build (owner, 9 November 2026): with SEAP_SHADOW_BUILD=1 every connection the process opens sends its
+ * SQL to the shadow schemas (shadow.ts), the ones a module opens on its own included. Set only for the build command,
+ * which also connects as the build role, never for the swap or the web.
+ */
+export function shadowBuildFromEnv(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return env["SEAP_SHADOW_BUILD"] === "1";
+}
+
+export function createDb(url?: string, options?: {max?:number; idleTimeout?:number; shadow?:boolean}) {
   const connectionString =
     url ?? process.env["DATABASE_URL"] ?? DEFAULT_DATABASE_URL;
   const idleTimeout = options?.idleTimeout ?? idleTimeoutFromEnv();
-  const sql = postgres(connectionString, {max:options?.max??10, ...(idleTimeout ? {idle_timeout:idleTimeout} : {})});
+  const pool = postgres(connectionString, {max:options?.max??10, ...(idleTimeout ? {idle_timeout:idleTimeout} : {})});
+  const sql: typeof pool = options?.shadow ?? shadowBuildFromEnv() ? shadowSql(pool) : pool;
   return { db: drizzle(sql, { schema }), sql };
 }
 

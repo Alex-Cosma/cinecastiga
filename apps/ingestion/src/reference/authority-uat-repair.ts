@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import { processingStage, type DbSql } from '@seap/db';
 
 /**
@@ -71,9 +72,9 @@ export async function runAuthorityUatRepair(q:DbSql,runId:string,log:(message:st
   const [repair]=await sql`select status,processing_run_id::text run_id,report from app.data_repairs where id=${AUTHORITY_UAT_REPAIR_ID} for update`;
   if(repair?.status==='completed')return null;
   if(repair?.status==='applied'&&repair.run_id===runId)return repair.report;
-  const [run]=await sql`select r.status,r.scheduled_day::text run_day,r.stage,r.stages,r.raw_boundary,r.control_revision,c.maintenance,c.paused,c.revision
+  const [run]=await sql`select r.status,r.mode,r.scheduled_day::text run_day,r.stage,r.stages,r.raw_boundary,r.control_revision,c.maintenance,c.paused,c.revision
     from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for update of r`;
-  if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||!run.raw_boundary
+  if(!run||run.status!=='running'||!processingWritable(run)||run.revision!==run.control_revision||!run.raw_boundary
    ||!run.stages?.backup?.completedAt||!PRE_REFRESH.has(String(run.stage)))
    throw Error('Authority UAT repair requires a backed-up publication before normalization');
   await processingStage(sql,runId,'authority-uat-repair');

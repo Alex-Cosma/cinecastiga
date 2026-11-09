@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
@@ -39,7 +40,7 @@ export async function runScheduledReferenceRepair(q:DbSql,runId:string,log:(s:st
  try{
   const [r]=await q`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c
     where r.id=${runId}::uuid and c.id=1`;
-  if(!r||!r.maintenance||!r.paused||r.status!=='running')throw Error('Reference repair requires active maintenance');
+  if(!r||!processingWritable(r)||r.status!=='running')throw Error('Reference repair requires active maintenance');
   if(repair.scheduled_day>r.scheduled_day)return null;
   if(repair.status!=='scheduled')throw Error('Unfinished reference repair requires operator recovery');
   if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||r.stage!=='backup-verified')throw Error('Reference repair requires its backed-up full run');
@@ -50,9 +51,9 @@ export async function runScheduledReferenceRepair(q:DbSql,runId:string,log:(s:st
   return await q.begin(async tx=>{
    const sql=tx as unknown as DbSql;
    const [locked]=await sql`select status from app.data_repairs where id=${REFERENCE_REPAIR_ID} for update`;
-   const [live]=await sql`select r.status,r.scope,r.stage,c.maintenance,c.paused,c.revision,r.control_revision
+   const [live]=await sql`select r.status,r.mode,r.scope,r.stage,c.maintenance,c.paused,c.revision,r.control_revision
      from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1 for share of c`;
-   if(locked?.status!=='scheduled'||live?.status!=='running'||live.stage!=='reference-repair'||live.scope!=='full'||!live.maintenance||!live.paused||live.revision!==live.control_revision)throw Error('Publication state changed');
+   if(locked?.status!=='scheduled'||live?.status!=='running'||live.stage!=='reference-repair'||live.scope!=='full'||!processingWritable(live)||live.revision!==live.control_revision)throw Error('Publication state changed');
    await sql`set local work_mem='8MB'`;
    await sql`set local max_parallel_workers_per_gather=0`;
    await sql`set local jit=off`;

@@ -39,3 +39,5 @@ export * from './registry-collisions.js';
 
 export * from './onrc-identity.js';
 export * from './onrc-roles.js';
+export * from "./shadow.js";
+export * from "./shadow-swap.js";

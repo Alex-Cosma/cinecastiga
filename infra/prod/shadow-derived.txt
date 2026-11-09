@@ -1,0 +1,24 @@
+# marts tables every processing run rebuilds (TRUNCATE or DROP+CREATE) before any stage reads them: the shadow build
+# creates them empty instead of copying them (blue/green, 9 November 2026). Every other table of core, marts and
+# reference is copied. A name here must be rebuilt by every scope, daily included (process-nightly.test.mjs checks the
+# sources). agg_* (the rollups) are rebuilt by the transactions stage and are excluded by prefix in shadow-prepare.sh.
+ted_awards
+ted_stats
+contract_competition
+national_stats
+spend_by_type
+spend_by_cpv
+spend_by_county
+entity_profile
+entity_top_partners
+top_entities
+authority_concentration
+contract_transactions
+da_transactions
+supplier_dependency
+da_slicing
+lot_patterns
+pattern_elsewhere
+topic_acquisitions
+source_search
+source_search_next

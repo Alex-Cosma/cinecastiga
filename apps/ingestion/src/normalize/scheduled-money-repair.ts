@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import { processingStage, type DbSql } from '@seap/db';
 import { replayContractMoney } from './contract-money-replay.js';
 import { runContractMoneyQuality } from './contract-money-quality.js';
@@ -12,7 +13,7 @@ export async function runScheduledMoneyRepair(q:DbSql,runId:string,log:(message:
       if(!repair||repair.status==='completed')return null;
       const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c
         where r.id=${runId}::uuid and c.id=1`;
-      if(!r||!r.maintenance||!r.paused||r.status!=='running')throw Error('Repair requires active maintenance');
+      if(!r||!processingWritable(r)||r.status!=='running')throw Error('Repair requires active maintenance');
       if(repair.scheduled_day>r.scheduled_day)return null;
       if(repair.status!=='scheduled')throw Error('Unfinished currency repair requires operator recovery');
       if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||r.stage!=='backup-verified')

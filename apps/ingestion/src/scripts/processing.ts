@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import {runScheduledContractEvidence} from '../normalize/scheduled-contract-evidence.js';
 import {MAX_REVOKED_GROUPS,revalidateApprovedContractIdentities} from '../normalize/revalidate-contract-identities.js';
 import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
@@ -36,7 +37,7 @@ async function main() {
   if(command==='fail'){await failProcessing(sql,id!);return;}
   if(command==='finish'){await finishProcessing(sql,id!);return;}
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${id!}::uuid and c.id=1`;
-  if(!r||r.status!=='running'||!r.maintenance||!r.paused)throw Error('Processing requires an active run and maintenance');
+  if(!r||r.status!=='running'||!processingWritable(r))throw Error('Processing requires an active run and maintenance');
   if(command==='stage'){
    if(!['backup','backup-verified','restart','reopen'].includes(arg??''))throw Error('Unknown host stage');
    await processingStage(sql,id!,arg!);return;

@@ -18,11 +18,16 @@ export const processingRuns = appSchema.table('processing_runs', {
  stages: jsonb('stages').notNull().default({}),
  rawBoundary: text('raw_boundary'), checkpointId: uuid('checkpoint_id'),
  searchVerified: jsonb('search_verified'), error: text('error'),
+ /** 'in-place' (behind maintenance) or 'shadow' (blue/green, 9 November 2026: built into *_next, then swapped). */
+ mode: text('mode').notNull().default('in-place'),
+ /** A validated shadow build's checkpoint, written as the ready monitoring refresh by the swap. */
+ pendingCheckpoint: jsonb('pending_checkpoint'),
 }, t=>[
  uniqueIndex('processing_runs_day').on(t.scheduledDay).where(sql`${t.trigger} = 'scheduled'`),
  index('processing_runs_started').on(t.startedAt),
  check('processing_scope',sql`${t.scope} in ('daily','full')`),
  check('processing_trigger',sql`${t.trigger} in ('scheduled','manual')`),
+ check('processing_mode',sql`${t.mode} in ('in-place','shadow')`),
  check('processing_status',sql`${t.status} in ('running','ready','failed')`),
  check('processing_completion',sql`(${t.status}='running' and ${t.completedAt} is null) or (${t.status}<>'running' and ${t.completedAt} is not null)`),
 ]);
