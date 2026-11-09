@@ -192,7 +192,10 @@ export async function finishShadowProcessing(tx: DbSql | Parameters<Parameters<D
     ||!c?.paused||c.revision!==r.control_revision)throw Error('Shadow build or operator state changed; nothing swapped');
  const checkpointId=await publish(r.pending_checkpoint as Record<string, unknown>);
  await processingStage(tx as unknown as DbSql,id,'complete');
- await tx`update app.processing_runs set status='ready',completed_at=clock_timestamp(),checkpoint_id=${checkpointId}::uuid where id=${id}::uuid`;
+ // The migrations applied at the swap: a rollback to yesterday's schemas is refused once a deploy migrated the live ones.
+ await tx`update app.processing_runs set status='ready',completed_at=clock_timestamp(),checkpoint_id=${checkpointId}::uuid,
+   pending_checkpoint=pending_checkpoint||jsonb_build_object('migrationsAtSwap',(select count(*) from drizzle.__drizzle_migrations))
+   where id=${id}::uuid`;
  await tx`update app.data_repairs set status='completed',completed_at=clock_timestamp()
    where processing_run_id=${id}::uuid and status='applied'`;
  // A maintenance left by an earlier in-place failure ends with this verified publication; a source block keeps its pause.

@@ -4,7 +4,7 @@ import {MAX_REVOKED_GROUPS,revalidateApprovedContractIdentities} from '../normal
 import {discoverAndApproveContractIdentities} from '../normalize/discover-contract-identities.js';
 import {runScheduledIdentityRepair} from '../normalize/scheduled-contract-identity.js';
 import { runScheduledMoneyRepair } from '../normalize/scheduled-money-repair.js';
-import { diagnosticError, createDb, createSnapshotHashCache, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, claimMethodologyProcessing, failProcessing, finishProcessing, finishShadowProcessing, processingStage, collectionHeartbeat, publishShadowCheckpoint, shadowBuildFromEnv, swapShadowSchemas, type PendingCheckpoint } from '@seap/db';
+import { diagnosticError, createDb, createSnapshotHashCache, claimProcessing, claimRepairProcessing, claimRecoveryProcessing, claimMethodologyProcessing, failProcessing, finishProcessing, finishShadowProcessing, rollbackShadowSwap, processingStage, collectionHeartbeat, publishShadowCheckpoint, shadowBuildFromEnv, swapShadowSchemas, type PendingCheckpoint } from '@seap/db';
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import {runAuthorityUatRepair} from '../reference/authority-uat-repair.js';
 import {runAuthorityFragmentRepair} from '../reference/authority-fragment-repair.js';
@@ -16,8 +16,8 @@ import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.
 
 async function main() {
  const [command,id,arg]=process.argv.slice(2);
- if(!['claim','claim-repair','claim-recovery','claim-methodology','stage','freeze','refresh','swap','finish','fail'].includes(command??''))throw Error('Unknown processing command');
- if(!['claim','claim-repair','claim-methodology'].includes(command!)&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
+ if(!['claim','claim-repair','claim-recovery','claim-methodology','stage','freeze','refresh','swap','rollback','finish','fail'].includes(command??''))throw Error('Unknown processing command');
+ if(!['claim','claim-repair','claim-methodology','rollback'].includes(command!)&&!/^[0-9a-f-]{36}$/.test(id??''))throw Error('A processing run ID is required');
  // The reserved publication session must survive hour-long risk stages.
  const url=new URL(process.env['DATABASE_URL']!);url.searchParams.set('max_lifetime','0');
  const {db,sql}=createDb(url.toString());
@@ -36,6 +36,31 @@ async function main() {
   if(command==='claim-recovery'){const run=await claimRecoveryProcessing(sql,id!);console.log(run.id);return;}
   if(command==='claim-methodology'){const run=await claimMethodologyProcessing(sql);console.log(run.id);return;}
   if(command==='fail'){await failProcessing(sql,id!);return;}
+  if(command==='rollback'){
+   // Operator only (process-nightly.sh --rollback): yesterday's schemas back, until the next build drops them.
+   if(shadowBuildFromEnv())throw Error('A rollback runs on the live connection');
+   const report=await rollbackShadowSwap(sql,async tx=>{
+    const [run]=await tx`select id,checkpoint_id,(pending_checkpoint->>'migrationsAtSwap')::int migrations from app.processing_runs
+      where status='ready' and mode='shadow' order by completed_at desc limit 1`;
+    const [busy]=await tx`select id from app.processing_runs where status='running' limit 1`;
+    if(!run||busy)throw Error('A rollback needs the latest shadow publication and no running processing');
+    const [applied]=await tx`select count(*)::int n from drizzle.__drizzle_migrations`;
+    if(run.migrations!==applied!.n)throw Error('A deploy migrated the schemas after the swap: yesterday\'s schemas no longer match the code');
+    // The site reads the newest ready checkpoint: yesterday's is published again, as the newest.
+    const [previous]=await tx`select p.* from app.monitoring_refreshes p, app.monitoring_refreshes c where c.id=${run.checkpoint_id}
+      and p.status='ready' and p.kind='coordinated' and p.version<c.version order by p.version desc limit 1`;
+    if(!previous)throw Error('No earlier ready checkpoint to restore');
+    await publishShadowCheckpoint(tx,{kind:'coordinated',methodology:previous.methodology,sourceCoverage:previous.source_coverage,
+     validation:{...previous.validation,restoredFrom:String(previous.id),rolledBack:String(run.checkpoint_id)}});
+    await tx`update app.processing_runs set error='Publicare retrasă de operator: datele precedente sunt din nou publice.' where id=${run.id}`;
+    await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+     values('system:processor','Retragere autorizată','processing-rollback',${JSON.stringify({runId:run.id,checkpointId:run.checkpoint_id})}::jsonb,${JSON.stringify({restored:previous.id})}::jsonb)`;
+   });
+   const task=await meiliClient().swapIndexes([{indexes:[ENTITIES_INDEX,ENTITIES_NEXT_INDEX],rename:false}]).waitTask({timeout:120_000});
+   console.log(`rollback: ${JSON.stringify(report)}, search ${task.status}`);
+   if(task.status!=='succeeded')throw Error('Data rolled back; the search index swap did not succeed');
+   return;
+  }
   if(command==='finish'){await finishProcessing(sql,id!);return;}
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${id!}::uuid and c.id=1`;
   if(!r||r.status!=='running'||!processingWritable(r))throw Error('Processing requires an active run and maintenance');
