@@ -122,7 +122,8 @@ export async function snapshotHashSourceToken(q: IdentitySql): Promise<string | 
           and t.tgfoid=to_regprocedure('marts.contract_identity_source_changed()'))::int triggers,
       (select md5(string_agg(a.attrelid::regclass::text||'.'||a.attname||':'||format_type(a.atttypid,a.atttypmod),',' order by a.attrelid::regclass::text,a.attnum))
         from pg_attribute a join sources on sources.rel=a.attrelid where a.attnum>0 and not a.attisdropped) columns,
-      (select md5(p.prosrc) from pg_proc p where p.oid=to_regprocedure('marts.contract_identity_source_changed()')) body,
+      -- A shadow build's copy names marts_next (blue/green, 9 November 2026): compared as the migration wrote it.
+      (select md5(regexp_replace(p.prosrc,'\\m(core|marts|reference)_next\\.','\\1.','g')) from pg_proc p where p.oid=to_regprocedure('marts.contract_identity_source_changed()')) body,
       current_setting('TimeZone') timezone,current_setting('extra_float_digits') digits
     from marts.contract_identity_source_state s where s.id=1`;
   if(!s||s.own||!s.fires||s.missing!==0||s.triggers!==CONTRACT_IDENTITY_HASH_SOURCES.length||s.body!==CONTRACT_IDENTITY_SOURCE_TRIGGER_MD5)return null;

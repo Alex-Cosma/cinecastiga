@@ -200,8 +200,11 @@ export async function revalidateApprovedContractIdentities(q:DbSql,runId:string,
   // nothing outside the stale groups changed. Other full runs (archive collection
   // during maintenance, reporting changes, manual recovery) stay targeted: about
   // three hours each since the registry reached ~199,000 members (16 October).
-  const [baseline]=await sql`select after->>'rules' rules,(after->>'changedOutsideTargets')::int outside from app.collection_audit
-    where action='identity-revalidation' and after->>'mode'='full' order by id desc limit 1`;
+  // Not a full pass inside a failed shadow build (blue/green, 9 November 2026): its schemas were discarded.
+  const [baseline]=await sql`select after->>'rules' rules,(after->>'changedOutsideTargets')::int outside from app.collection_audit a
+    where action='identity-revalidation' and after->>'mode'='full'
+      and not exists (select 1 from app.processing_runs p where p.id::text=a.before->>'runId' and p.mode='shadow' and p.status='failed')
+    order by id desc limit 1`;
   const weekly=run.trigger==='scheduled'&&run.scope==='full'&&run.risk_day===true;
   const mode=!weekly&&baseline?.rules===IDENTITY_RULES_VERSION&&baseline?.outside===0?'targeted':'full';
   log(`Publication revalidation: ${mode}, ${staleGroups.length} approved groups with changed members`);
