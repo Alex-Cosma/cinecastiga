@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 const script=new URL('./process-nightly.sh',import.meta.url).pathname;
 const runId='00000000-0000-4000-8000-000000000001',digest='ab'.repeat(32);
-async function run(failure='',due=true,args=[],rawResume=false){
+async function run(failure='',due=true,args=[],rawResume=false,mode='in-place'){
  const dir=await mkdtemp(join(tmpdir(),'seap-nightly-'));
  try{
   await mkdir(join(dir,'bin'));await mkdir(join(dir,'.git'));await mkdir(join(dir,'infra/prod'),{recursive:true});
@@ -15,11 +15,13 @@ case "$*" in
  *"processing.js claim"|*"processing.js claim-repair reference-import-v1"|*"processing.js claim-recovery 11111111-1111-4111-8111-111111111111") if read -r caller_input; then echo "CONSUMED_CALLER_INPUT" >> "$TEST_LOG"; fi; if [ "$TEST_DUE" = yes ]; then echo 00000000-0000-4000-8000-000000000001; fi;;
  *"ps --status running -q collection") echo collection-fixture;;
  "inspect --format "*) echo False;;
+ *"select mode from app.processing_runs"*) echo "$TEST_MODE";;
  *"psql -X -v ON_ERROR_STOP=1 -U seap -d seap -Atc "*) if [ "$TEST_FAILURE" = drain ]; then exit 1; fi; echo 0;;
  *"select maintenance and collection_during_maintenance"*) [ "$TEST_RAW_RESUME" = yes ] && echo t || echo f;;
  *"pg_dump "*) echo backup; if [ "$TEST_FAILURE" = backup ]; then exit 1; fi;;
  *"pg_restore --list"*) cat >/dev/null; echo archive;;
  *"processing.js refresh "*) if [ "$TEST_FAILURE" = refresh ]; then exit 1; fi;;
+ *"processing.js swap "*) if [ "$TEST_FAILURE" = swap ]; then exit 1; fi;;
  *"source-search.js"*) if [ "$TEST_FAILURE" = search ]; then exit 1; fi;;
 esac`;
   // The public page answers 200 only when the test says the proxy never closed.
@@ -30,7 +32,9 @@ esac`;
   const timeout='echo "timeout $*" >> "$TEST_LOG"\nwhile [ "${1#-}" != "$1" ]; do shift; done\nshift\nexec "$@"';
   const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl,sleep,timeout,sha256sum:`cat >/dev/null; case "$TEST_FAILURE" in checksum) exit 1;; checksum-empty) exit 0;; esac; echo '${digest}  -'`};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
-  const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no'},encoding:'utf8'});
+  // The shadow preparation is its own script (shadow-prepare.sh, tested apart): here it only logs, or fails.
+  await writeFile(join(dir,'infra/prod/shadow-prepare.sh'),'#!/bin/sh\necho "shadow-prepare $*" >> "$TEST_LOG"\n[ "$TEST_FAILURE" != prepare ]\n',{mode:0o755});
+  const r=spawnSync('bash',[script,...args],{input:'caller-script-must-not-reach-container\n',env:{...process.env,PATH:join(dir,'bin')+':'+process.env.PATH,SEAP_DEPLOY_CHECKOUT:dir,SEAP_PROCESSING_BACKUPS:join(dir,'backups'),TEST_LOG:join(dir,'calls'),TEST_FAILURE:failure,TEST_RAW_RESUME:rawResume?'yes':'no',TEST_DUE:due?'yes':'no',TEST_MODE:mode,SHADOW_MIN_FREE_KB:'1'},encoding:'utf8'});
   const backup=join(dir,'backups',runId);
   return {status:r.status,calls:await readFile(join(dir,'calls'),'utf8').catch(()=> ''),backup,
    files:(await readdir(backup).catch(()=>[])).sort(),
@@ -106,4 +110,23 @@ test('operator recovery of a failed run uses the same backup and publication pat
 test('verified failure resumes only collection, retaining public maintenance and document stop',async()=>{
  const r=await run('refresh',true,[],true);assert.equal(r.status,1);
  assert.match(r.calls,/up -d --no-deps collection/);assert.doesNotMatch(r.calls,/processing.js finish |restart web|up -d --no-deps documents/);
+});
+
+// Blue/green (owner, 9 November 2026): a shadow build never closes the site.
+test('a shadow build keeps the site open: no 503, documents keep working, prepare, build as the build role, swap, then the web restarts',async()=>{
+ const r=await run('',true,[],false,'shadow');assert.equal(r.status,0);
+ const order=['stop collection','processing.js freeze','pg_dump','backup-verified','stage 00000000-0000-4000-8000-000000000001 shadow-prepare','shadow-prepare cinecastiga-postgres-1 seap','processor-build node apps/ingestion/dist/scripts/processing.js refresh','processing.js swap','restart web','source-search.js'];
+ let at=-1;for(const step of order){const i=r.calls.indexOf(step,at+1);assert.ok(i>at,`${step} after the previous step`);at=i;}
+ assert.doesNotMatch(r.calls,/stop collection documents|curl -sS -o \/dev\/null -w %\{http_code\} https:\/\/cinecastiga\.ro\/domenii.*\n.*sleep 30|processing\.js finish |sleep 30/);
+ assert.doesNotMatch(r.calls,/processor node apps\/ingestion\/dist\/scripts\/processing\.js refresh/);
+});
+test('a failed shadow build or preparation changes nothing published: no swap, no web restart, the run is failed',async()=>{
+ for(const failure of ['prepare','refresh']){
+  const r=await run(failure,true,[],false,'shadow');assert.equal(r.status,1,failure);
+  assert.match(r.calls,/processing.js fail /,failure);
+  assert.doesNotMatch(r.calls,/processing\.js swap |restart web|source-search/,failure);
+ }
+});
+test('an unknown processing mode stops before the drain',async()=>{
+ const r=await run('',true,[],false,'0');assert.equal(r.status,1);assert.doesNotMatch(r.calls,/stop |pg_dump/);
 });

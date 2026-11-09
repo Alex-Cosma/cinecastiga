@@ -1,6 +1,6 @@
 import { runContractMoneyQuality } from "../normalize/contract-money-quality.js";
 import { repairContractTypes } from '../normalize/contract-reporting.js';
-import { CONTRACT_REPORTING_VERSION, assertContractIdentityQuality, assertContractExclusionsQuality, publishMonitoringRefresh, type Db, type DbSql, type SnapshotHashCache } from "@seap/db";
+import { CONTRACT_REPORTING_VERSION, assertContractIdentityQuality, assertContractExclusionsQuality, buildShadowRefresh, publishMonitoringRefresh, type Db, type DbSql, type PendingCheckpoint, type SnapshotHashCache } from "@seap/db";
 import { runNormalize } from "../normalize/pipeline.js";
 import { runReconcile } from "../normalize/reconcile.js";
 import { runTedMart } from "../normalize/ted-mart.js";
@@ -21,8 +21,7 @@ export const MONITORING_METHODOLOGY = {
   tedNormalization: TED_NORMALIZATION_VERSION, transactionPopulation: "batch1-canonical-1", procurementCalendar: "Europe/Bucharest-v1",
 };
 
-/** Does not scrape. A baseline validates existing data without rewriting its timestamps. */
-export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
+export interface RefreshOptions {
   mode: "coordinated" | "baseline"; log?: (message: string) => void; timeoutMs?: number;
   scope?: RefreshScope; onStage?: (name: MonitoringStage | "validation") => Promise<void>;
   maxRawId?: bigint; repairContractIdentities?: () => Promise<unknown>; maxQuarantined?: number;
@@ -30,16 +29,33 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
    * the identity gates of identity-quality, reconcile and marts reuse hashes
    * while their sources are unchanged; the validation recomputes all of them. */
   identityHashes?: SnapshotHashCache;
-}) {
+}
+
+/** Does not scrape. A baseline validates existing data without rewriting its timestamps. */
+export async function runMonitoringRefresh(db: Db, sql: DbSql, options: RefreshOptions) {
+  if (options.mode === 'baseline' && (options.scope ?? "full") === 'daily') throw new Error('A daily update must process and validate its data');
+  // The publication's own `running` row is the newest: the previous checkpoint is the one before it.
+  return publishMonitoringRefresh(sql, options.mode, MONITORING_METHODOLOGY, () => refreshWork(db, sql, options, 1));
+}
+
+/**
+ * The blue/green build (owner, 9 November 2026): the same stages and validation, through a connection that writes the
+ * shadow schemas, with the site open. Publishes nothing: returns the checkpoint the swap will publish.
+ */
+export async function runShadowRefresh(db: Db, sql: DbSql, options: Omit<RefreshOptions, "mode">): Promise<PendingCheckpoint> {
+  // No row of its own: the previous checkpoint is the newest one.
+  return buildShadowRefresh(sql, MONITORING_METHODOLOGY, () => refreshWork(db, sql, { ...options, mode: "coordinated" }, 0));
+}
+
+async function refreshWork(db: Db, sql: DbSql, options: RefreshOptions, previousOffset: 0 | 1) {
   const identityHashes = options.identityHashes;
   const log = options.log ?? (() => {});
   const scope = options.scope ?? "full";
-  if (options.mode === 'baseline' && scope === 'daily') throw new Error('A daily update must process and validate its data');
-  return publishMonitoringRefresh(sql, options.mode, MONITORING_METHODOLOGY, async () => {
+  {
     // Keep the previous verified risk date instead of pretending a daily refresh
     // recalculated signals. Read under the publication gate, before any writes.
     const [previous] = await sql`select id, completed_at, validation, status, kind, methodology from app.monitoring_refreshes
-      order by version desc offset 1 limit 1`;
+      order by version desc offset ${previousOffset} limit 1`;
     const previousValidation = previous?.validation as Record<string, any> | undefined;
     const retainedRisk = previousValidation?.risk ? {...previousValidation.risk,checkpointId:previousValidation.risk.checkpointId??String(previous!.id)} : (previousValidation?.stages?.flags && previousValidation?.stages?.['flag-marts']
       ? { checkpointId: String(previous!.id), calculatedAt: new Date(previous!.completed_at).toISOString() } : null);
@@ -80,5 +96,5 @@ export async function runMonitoringRefresh(db: Db, sql: DbSql, options: {
         checkedAt: new Date().toISOString(),
       } };
     });
-  });
+  }
 }

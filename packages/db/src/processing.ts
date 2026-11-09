@@ -3,7 +3,11 @@ import { CONTRACT_REPORTING_VERSION } from './contract-reporting.js';
 import { FLAGS_METHODOLOGY_VERSION } from './profile-flags.js';
 
 /** Host runner holds the deployment lock before calling these operations. */
-export async function claimProcessing(q: DbSql, at?: Date) {
+/** A scheduled run either rebuilds in place behind maintenance or, blue/green (owner, 9 November 2026), builds into the
+ * shadow schemas with the site open; host configuration chooses (process-nightly.sh, PROCESSING_MODE). */
+export type ProcessingMode = 'in-place' | 'shadow';
+
+export async function claimProcessing(q: DbSql, at?: Date, mode: ProcessingMode = 'in-place') {
  await q`insert into app.collection_workers(id,kind,state) values('nightly-scheduler','scheduler','waiting')
    on conflict(id) do update set heartbeat_at=clock_timestamp(),state=excluded.state`;
  return q.begin(async tx=>{
@@ -25,14 +29,16 @@ export async function claimProcessing(q: DbSql, at?: Date) {
   // risk: a daily run would refuse it and leave the site closed until the next day.
   const flagsChanged=previous?.methodology?.flags!==FLAGS_METHODOLOGY_VERSION;
   const scope=reportingChanged||flagsChanged||(c.maintenance&&c.collection_during_maintenance)||c.weekday===c.risk_weekday?'full':'daily';
-  const [run]=await tx`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control)
-    values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,maintenance:c.maintenance,revision:c.revision})}::jsonb)
+  const [run]=await tx`insert into app.processing_runs(scheduled_day,scope,control_revision,before_control,mode)
+    values(${c.scheduled_day}::date,${scope},${c.revision+1},${JSON.stringify({paused:c.paused,maintenance:c.maintenance,revision:c.revision})}::jsonb,${mode})
     on conflict(scheduled_day) where trigger='scheduled' do nothing returning id,scope`;
   if(!run)return null;
-  await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+  // A shadow build pauses collection only: the site keeps serving the live schemas, untouched until the swap.
+  if(mode==='shadow')await tx`update app.collection_control set paused=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
+  else await tx`update app.collection_control set paused=true,maintenance=true,collection_during_maintenance=false,revision=revision+1,updated_at=clock_timestamp() where id=1`;
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
-    values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,maintenance:true,reportingChanged,flagsChanged})}::jsonb)`;
-  return {id:String(run.id),scope:String(run.scope)};
+    values('system:processor','Procesare programată','processing-start',${JSON.stringify({paused:c.paused})}::jsonb,${JSON.stringify({runId:run.id,scope,mode,maintenance:mode==='shadow'?Boolean(c.maintenance):true,reportingChanged,flagsChanged})}::jsonb)`;
+  return {id:String(run.id),scope:String(run.scope),mode};
  });
 }
 
@@ -121,6 +127,19 @@ export async function processingStage(q:DbSql,id:string,stage:string) {
 export async function failProcessing(q:DbSql,id:string) {
  return q.begin(async tx=>{
   const [control]=await tx`select * from app.collection_control where id=1 for update`;
+  const [shadow]=await tx`select mode from app.processing_runs where id=${id}::uuid and status='running' and mode='shadow'`;
+  if(shadow){
+   // Nothing live changed (blue/green, 9 November 2026): the site stays on the previous publication, collection
+   // resumes as it was, and the next scheduled build starts over. The shadow schemas stay for inspection until then.
+   const [run]=await tx`update app.processing_runs set status='failed',completed_at=clock_timestamp(),
+     error='Construirea în umbră s-a oprit. Site-ul a rămas pe publicarea precedentă; verifică etapa și jurnalul de pe server.'
+     where id=${id}::uuid and status='running' returning *`;
+   const paused=!!run!.before_control.paused||!!control?.blocked_reason;
+   await tx`update app.collection_control set paused=${paused},revision=revision+1,updated_at=clock_timestamp() where id=1`;
+   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+     values('system:processor','Procesare programată','processing-failed','{}',${JSON.stringify({id:run!.id,stage:run!.stage,mode:'shadow',paused})}::jsonb)`;
+   return;
+  }
   const [run]=await tx`update app.processing_runs set status='failed',completed_at=clock_timestamp(),
     error='Procesarea s-a oprit. Mentenanța rămâne activă; verifică etapa și jurnalul de pe server înainte de recuperare.'
     where id=${id}::uuid and status='running' returning *`;
@@ -154,6 +173,29 @@ export async function finishProcessing(q:DbSql,id:string) {
   await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
     values('system:processor','Procesare programată','processing-complete','{}',${JSON.stringify({runId:id,scope:r.scope})}::jsonb)`;
  });
+}
+
+/**
+ * Inside the swap's transaction (blue/green, owner 9 November 2026), after the schema rename: publishes the shadow
+ * build's validated checkpoint as the newest ready one, completes the run, and resumes collection as it was. Refuses
+ * when the run or the operator control changed since the claim, which rolls the rename back with it.
+ */
+export async function finishShadowProcessing(tx: DbSql | Parameters<Parameters<DbSql['begin']>[1]>[0], id: string,
+  publish: (pending: Record<string, unknown>) => Promise<string>): Promise<string> {
+ const [c]=await tx`select * from app.collection_control where id=1 for update`;
+ const [r]=await tx`select * from app.processing_runs where id=${id}::uuid for update`;
+ if(!r||r.status!=='running'||r.mode!=='shadow'||r.stage!=='swap'||!r.pending_checkpoint||!r.search_verified
+    ||!c?.paused||c.revision!==r.control_revision)throw Error('Shadow build or operator state changed; nothing swapped');
+ const checkpointId=await publish(r.pending_checkpoint as Record<string, unknown>);
+ await processingStage(tx as unknown as DbSql,id,'complete');
+ await tx`update app.processing_runs set status='ready',completed_at=clock_timestamp(),checkpoint_id=${checkpointId}::uuid where id=${id}::uuid`;
+ await tx`update app.data_repairs set status='completed',completed_at=clock_timestamp()
+   where processing_run_id=${id}::uuid and status='applied'`;
+ // A maintenance left by an earlier in-place failure ends with this verified publication; a source block keeps its pause.
+ await tx`update app.collection_control set maintenance=false,collection_during_maintenance=false,paused=${Boolean(r.before_control.paused)||!!c.blocked_reason},revision=revision+1,updated_at=clock_timestamp() where id=1`;
+ await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
+   values('system:processor','Procesare programată','processing-complete','{}',${JSON.stringify({runId:id,scope:r.scope,mode:'shadow',checkpointId})}::jsonb)`;
+ return checkpointId;
 }
 
 /** Stages before a run changes any data: workers finish what they started, then

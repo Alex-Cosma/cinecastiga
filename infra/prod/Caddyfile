@@ -23,6 +23,10 @@ import /etc/caddy/extra/cloudflare-only.caddy
 	reverse_proxy web:3000 {
 		# Override caller headers with the client address established by the trusted proxy chain.
 		header_up X-Feedback-Client-IP {client_ip}
+		# The web restarts after each publication (blue/green swap, 9 November 2026) to clear its caches: requests
+		# wait for it instead of failing with 502 while it starts.
+		lb_try_duration 45s
+		lb_try_interval 500ms
 	}
 }
 

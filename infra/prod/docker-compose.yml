@@ -209,6 +209,17 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      # 'shadow' (blue/green, owner 9 November 2026): the scheduled run builds into the shadow schemas with the site
+      # open and publishes by a schema swap; 'in-place' rebuilds behind maintenance. An operator setting in .env.
+      PROCESSING_MODE: ${PROCESSING_MODE:-in-place}
+
+  # The shadow build's processor: the same image, as the build role (no privilege on the live core, marts and
+  # reference) and with every connection rewritten to the shadow schemas. process-nightly.sh uses it for `refresh`.
+  processor-build:
+    extends: processor
+    environment:
+      DATABASE_URL: postgres://seap_build:${SEAP_BUILD_PASSWORD:-unset}@postgres:5432/seap
+      SEAP_SHADOW_BUILD: "1"
 
   caddy:
     <<: *logging

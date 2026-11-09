@@ -88,6 +88,9 @@ async function lifecycle<T>(sql: DbSql, kind: MonitoringCheckpoint["kind"], meth
   let locked = false, id: string | null = null;
   try {
     await connection`select pg_advisory_lock(${MONITORING_GATE[0]}, ${MONITORING_GATE[1]})`; locked = true;
+    // A shadow build copied the live schemas when it started: a write to them now would be lost at its swap.
+    const [shadow] = await connection`select id from app.processing_runs where status = 'running' and mode = 'shadow' limit 1`;
+    if (shadow) throw new Error("A shadow build is running; change the data after its swap");
     const [created] = await connection`insert into app.monitoring_refreshes (kind, methodology) values (${kind}, ${JSON.stringify(methodology)}::jsonb) returning id`;
     id = String(created!["id"]);
     const outcome = await writer.run({ sql }, work);
@@ -109,6 +112,36 @@ async function lifecycle<T>(sql: DbSql, kind: MonitoringCheckpoint["kind"], meth
 export async function withMonitoringWrite<T>(sql: DbSql, action: string, work: () => Promise<T>): Promise<T> {
   if (writer.getStore()?.sql === sql) return work();
   return (await lifecycle(sql, "manual", { action }, async () => ({ result: await work(), sourceCoverage: {}, validation: { coordinatedRefreshRequired: true } }))).result;
+}
+
+/** A validated shadow build waiting for its swap: what the swap publishes as the ready checkpoint. */
+export interface PendingCheckpoint { kind: "coordinated"; methodology: Record<string, unknown>; sourceCoverage: Record<string, unknown>; validation: Record<string, unknown> }
+
+/**
+ * The blue/green build (owner, 9 November 2026): runs the stages and the validation into the shadow schemas without
+ * the exclusive gate and without a `running` checkpoint row, so the site's readers keep answering from the live data
+ * for the whole build. It first waits out a manual write in progress (the gate), and from then on `lifecycle` refuses
+ * new ones while the shadow run is running. Nothing is published here: the swap does it (publishShadowCheckpoint).
+ */
+export async function buildShadowRefresh(sql: DbSql, methodology: Record<string, unknown>,
+  work: () => Promise<{ sourceCoverage: Record<string, unknown>; validation: Record<string, unknown> }>): Promise<PendingCheckpoint> {
+  if (writer.getStore()) throw new Error("Cannot build a nested monitoring refresh");
+  const connection = await sql.reserve();
+  try {
+    await connection`select pg_advisory_lock(${MONITORING_GATE[0]}, ${MONITORING_GATE[1]})`;
+    await connection`select pg_advisory_unlock(${MONITORING_GATE[0]}, ${MONITORING_GATE[1]})`;
+  } finally { connection.release(); }
+  const outcome = await writer.run({ sql }, work);
+  return { kind: "coordinated", methodology, ...outcome };
+}
+
+/** Inside the swap's transaction: the shadow build's checkpoint becomes the newest ready one, under the gate. */
+export async function publishShadowCheckpoint(q: DbSql | Parameters<Parameters<DbSql["begin"]>[1]>[0], pending: PendingCheckpoint): Promise<string> {
+  await q`select pg_advisory_xact_lock(${MONITORING_GATE[0]}, ${MONITORING_GATE[1]})`;
+  const [row] = await q`insert into app.monitoring_refreshes (kind, methodology, status, completed_at, source_coverage, validation)
+    values (${pending.kind}, ${JSON.stringify(pending.methodology)}::jsonb, 'ready', now(), ${JSON.stringify(pending.sourceCoverage)}::jsonb,
+      ${JSON.stringify(pending.validation)}::jsonb) returning id`;
+  return String(row!["id"]);
 }
 
 /** Publication is allowed only after all stages and validation return successfully. */
