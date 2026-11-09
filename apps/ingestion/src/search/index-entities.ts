@@ -15,6 +15,17 @@ export const ENTITIES_INDEX = "entities";
  * `entities` by swapIndexes right after the schema swap; the web always queries `entities`. */
 export const ENTITIES_NEXT_INDEX = "entities_next";
 
+/**
+ * Exchanges `entities` and `entities_next` (blue/green, 9 November 2026), the swap's search half. Meilisearch 1.16
+ * rejects the `rename` field that the 0.59 client's types require ("Unknown field `rename`"), so the payload carries
+ * only the pair. Resolves with the task's final status.
+ */
+export async function swapEntityIndexes(client: Pick<Meilisearch, "swapIndexes">, timeout = 120_000): Promise<string> {
+  const pair = { indexes: [ENTITIES_INDEX, ENTITIES_NEXT_INDEX] } as unknown as Parameters<Meilisearch["swapIndexes"]>[0][number];
+  const task = await client.swapIndexes([pair]).waitTask({ timeout });
+  return task.status;
+}
+
 export function meiliClient(): Meilisearch {
   return new Meilisearch({
     host: process.env["MEILISEARCH_URL"] ?? "http://localhost:7700",
