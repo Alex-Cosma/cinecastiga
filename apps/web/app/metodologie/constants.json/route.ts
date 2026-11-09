@@ -20,13 +20,14 @@ import { PEER_MINIMUM } from "@/lib/ask/peer-groups-shared";
 // /metodologie/constants.json: the risk score's constants as the code uses them (packages/db/src/profile-flags.ts,
 // packages/domain/src/procurement-thresholds.ts), linked from "Codul, constantele și licența". The per-pattern level
 // thresholds are written in the strength functions of profile-flags.ts and in the "Nivelul fiecărui tipar" table.
+// `source` is that file as text, the one /metodologie shows (owner, 9 November 2026: shown there, not linked).
 export const dynamic = "force-static";
 
 export function GET(): Response {
   return Response.json(
     {
       methodology: FLAGS_METHODOLOGY_VERSION,
-      source: `https://github.com/Alex-Cosma/seap-new/blob/${FLAGS_METHODOLOGY_VERSION}/packages/db/src/profile-flags.ts`,
+      source: "https://cinecastiga.ro/metodologie/cod/profile-flags.ts",
       license: "CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/deed.ro) for the derived data",
       score: {
         formula: "100 × (1 − Π(1 − weight × F)); F = a family's strongest level + rest × the others, up to the family cap",

@@ -10,6 +10,7 @@ import { ROADS_RANKING_SPEC } from "@/lib/ask/site-links";
 import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
 import { BRIEF_TERMS, GLOSSARY } from "@/lib/glossary";
 import { EXAMPLE_TOWN, type BandCounts, type KindKey, type MethodologyFigures } from "@/lib/methodology-figures";
+import ScoreCode from "./ScoreCode";
 
 // The /metodologie page body: the v24 prototype (seap-filters-work/scratchpad/metodologie-20261105), ported once by
 // port24.py and edited here since (classes mt-*, styles in metodologie-v24.css). The Regulile lane keeps v24's folds and
@@ -34,7 +35,6 @@ function scoreRoles(code: string): string | null {
 /** The version in force and its day; both change together with FLAGS_METHODOLOGY_VERSION (packages/db). */
 const VERSION = FLAGS_METHODOLOGY_VERSION;
 const VERSION_SINCE = "5 noiembrie 2026";
-const CODE_URL = (path: string) => `https://github.com/Alex-Cosma/seap-new/blob/${VERSION}/${path}`;
 
 const longDate = (iso: string | null | undefined) =>
   iso ? new Intl.DateTimeFormat("ro-RO", { timeZone: "Europe/Bucharest", day: "numeric", month: "long", year: "numeric" }).format(new Date(iso)) : null;
@@ -1452,7 +1452,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <p style={{ color: "var(--ink2)", margin: "10px 0 18px" }}>Metodologia în vigoare: <b>{VERSION}</b>, din {VERSION_SINCE}. Aici sunt pragurile, formulele și excepțiile exacte, plus istoricul schimbărilor. Fiecare regulă are linkul ei.</p>
             <div className="mt-ref-tools">
               <button type="button" className="mt-btn mt-openall" aria-pressed="false">Deschide toate regulile</button>
-              <a className="mt-btn-l" href={CODE_URL("packages/db/src/profile-flags.ts")}>Codul scorului, la {VERSION}</a>
+              <a className="mt-btn-l" href="#cod-formula">Codul scorului, la {VERSION}</a>
               <a className="mt-btn-l" href="/metodologie/constants.json">Constantele, ca JSON</a>
             </div>
             <details suppressHydrationWarning open id="constante">
@@ -1895,7 +1895,8 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <details suppressHydrationWarning id="cod">
               <summary>Codul, constantele și licența</summary>
               <div className="mt-body">
-                <p>Codul care calculează scorul, la versiunea {VERSION}: <a href={CODE_URL("packages/db/src/profile-flags.ts")}>formula și pragurile (profile-flags.ts)</a> și <a href={CODE_URL("apps/ingestion/src/flags/score.ts")}>calculul pe profiluri (score.ts)</a>, pe GitHub. Fiecare versiune a metodologiei are un tag cu numele ei.</p>
+                <p>Codul care calculează scorul, la versiunea {VERSION}, exact cum rulează pe site:</p>
+                <ScoreCode />
                 <p>Constantele formulei, ale benzilor și ale limitelor, într-un fișier: <a href="/metodologie/constants.json">constants.json</a>, citit din același cod. Pragurile fiecărui nivel sunt în tabelul <a href="#niveluri">„Nivelul fiecărui tipar”</a>.</p>
                 <p>Datele derivate (scorurile și tiparele) sunt publicate sub licența <a href="https://creativecommons.org/licenses/by/4.0/deed.ro">CC BY 4.0</a>.</p>
               </div>
@@ -1982,7 +1983,7 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           </section>
           <section className="mt-col mt-despre" id="despre" aria-labelledby="h-despre">
             <h2 id="h-despre">Despre cinecâștigă?</h2>
-            <p>Un proiect independent. Codul e public: <a href="https://github.com/Alex-Cosma/seap-new">github.com/Alex-Cosma/seap-new</a>. Contact: <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>. Răspundem în 10 zile lucrătoare.</p>
+            <p>Un proiect independent. Contact: <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>. Răspundem în 10 zile lucrătoare.</p>
             <p>Datele despre administratorii firmelor vin din Registrul Comerțului (nume, dată de naștere, localitate) și le folosim doar ca să recunoaștem aceeași persoană în mai multe firme. Data nașterii nu se publică. Pentru dreptul de opoziție sau de rectificare, scrie-ne la <a href="mailto:contact@cinecastiga.ro">contact@cinecastiga.ro</a>.</p>
           </section>
         </div>
