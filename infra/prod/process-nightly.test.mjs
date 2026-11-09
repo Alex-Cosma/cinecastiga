@@ -30,7 +30,10 @@ esac`;
   const sleep='case "$1" in 3|30) echo "sleep $1" >> "$TEST_LOG";; *) exec /bin/sleep "$@";; esac';
   // The search step's bound is logged, then its command runs (options, then the duration, then the command).
   const timeout='echo "timeout $*" >> "$TEST_LOG"\nwhile [ "${1#-}" != "$1" ]; do shift; done\nshift\nexec "$@"';
-  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl,sleep,timeout,sha256sum:`cat >/dev/null; case "$TEST_FAILURE" in checksum) exit 1;; checksum-empty) exit 0;; esac; echo '${digest}  -'`};
+  // The free-space gates read `df -Pk`: the fixture reports 200 GiB, so the result never depends on the machine's
+  // disk (the CI runner of a private repository has ~14 GB free, under the 20 GiB backup gate; 9 November 2026).
+  const df="printf 'Filesystem 1024-blocks Used Available Capacity Mounted on\\nfixture 1 1 209715200 1%% /\\n'";
+  const bins={docker,flock:'[ "$TEST_FAILURE" != lock ]',curl,sleep,timeout,df,sha256sum:`cat >/dev/null; case "$TEST_FAILURE" in checksum) exit 1;; checksum-empty) exit 0;; esac; echo '${digest}  -'`};
   for(const [name,body] of Object.entries(bins))await writeFile(join(dir,'bin',name),'#!/bin/sh\n'+body+'\n',{mode:0o755});
   // The shadow preparation is its own script (shadow-prepare.sh, tested apart): here it only logs, or fails.
   await writeFile(join(dir,'infra/prod/shadow-prepare.sh'),'#!/bin/sh\necho "shadow-prepare $*" >> "$TEST_LOG"\n[ "$TEST_FAILURE" != prepare ]\n',{mode:0o755});
