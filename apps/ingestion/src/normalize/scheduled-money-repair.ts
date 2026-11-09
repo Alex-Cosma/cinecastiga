@@ -16,7 +16,7 @@ export async function runScheduledMoneyRepair(q:DbSql,runId:string,log:(message:
       if(!r||!processingWritable(r)||r.status!=='running')throw Error('Repair requires active maintenance');
       if(repair.scheduled_day>r.scheduled_day)return null;
       if(repair.status!=='scheduled')throw Error('Unfinished currency repair requires operator recovery');
-      if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||r.stage!=='backup-verified')
+      if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||!['backup-verified','shadow-prepare'].includes(r.stage))
         throw Error('Currency repair requires its scheduled full run, frozen boundary and verified backup');
       await processingStage(sql,runId,'currency-repair');
       await sql`set local work_mem='8MB'`;

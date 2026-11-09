@@ -43,7 +43,7 @@ export async function runScheduledReferenceRepair(q:DbSql,runId:string,log:(s:st
   if(!r||!processingWritable(r)||r.status!=='running')throw Error('Reference repair requires active maintenance');
   if(repair.scheduled_day>r.scheduled_day)return null;
   if(repair.status!=='scheduled')throw Error('Unfinished reference repair requires operator recovery');
-  if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||r.stage!=='backup-verified')throw Error('Reference repair requires its backed-up full run');
+  if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||!['backup-verified','shadow-prepare'].includes(r.stage))throw Error('Reference repair requires its backed-up full run');
   const config=repair.report?.configuration;
   if(typeof config?.directory!=='string'||typeof config?.manifestSha256!=='string')throw Error('Pinned reference sources required');
   const input=await verifyReferenceBundle(config.directory,config.manifestSha256);

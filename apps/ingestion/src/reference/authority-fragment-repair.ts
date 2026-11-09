@@ -101,7 +101,7 @@ export function planFragment(h: FragmentHolder): FragmentOutcome {
   return { ...base, outcome: 'merge', uat: h.holderUat === null ? 'none' : h.targetUat === null ? 'move' : 'same' };
 }
 
-const PRE_REFRESH = new Set(['backup-verified', 'currency-repair', 'reference-repair', 'authority-uat-repair', 'authority-fragment-repair']);
+const PRE_REFRESH = new Set(['backup-verified', 'shadow-prepare', 'currency-repair', 'reference-repair', 'authority-uat-repair', 'authority-fragment-repair']);
 const PREFIX = String.raw`^\s*(?:RO)?\s*([0-9]{2,10})\M`;
 
 /** Called by the processing runner after the verified backup, before the refresh. */
