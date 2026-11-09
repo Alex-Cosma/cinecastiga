@@ -11,6 +11,9 @@ import { corroboratedCui, otherRegistryNames, type DbSql } from "@seap/db";
  * are not the SICAP name (1 November 2026).
  */
 export const ENTITIES_INDEX = "entities";
+/** The shadow build's index (blue/green, 9 November 2026): filled from the shadow schemas, then exchanged with
+ * `entities` by swapIndexes right after the schema swap; the web always queries `entities`. */
+export const ENTITIES_NEXT_INDEX = "entities_next";
 
 export function meiliClient(): Meilisearch {
   return new Meilisearch({
@@ -40,11 +43,12 @@ export interface IndexReport {
 
 export async function indexEntities(
   sql: DbSql,
-  opts: { log?: (m: string) => void } = {},
+  opts: { log?: (m: string) => void; indexUid?: string } = {},
 ): Promise<IndexReport> {
   const log = opts.log ?? (() => {});
   const client = meiliClient();
-  const index = client.index(ENTITIES_INDEX);
+  const uid = opts.indexUid ?? ENTITIES_INDEX;
+  const index = client.index(uid);
 
   // createIndex enqueues a task: an existing index fails asynchronously, so a
   // catch on the HTTP request does not prevent a failed indexing task.
@@ -55,10 +59,10 @@ export async function indexEntities(
     }
   };
   try {
-    await client.getIndex(ENTITIES_INDEX);
+    await client.getIndex(uid);
   } catch (error) {
     if ((error as { code?: string })?.code !== "index_not_found") throw error;
-    const task = await client.createIndex(ENTITIES_INDEX, { primaryKey: "id" });
+    const task = await client.createIndex(uid, { primaryKey: "id" });
     await waitForSuccess(task.taskUid, 120_000);
   }
   // Wipe before push: entity ids change on re-normalize, and upsert-only
