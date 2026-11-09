@@ -49,7 +49,7 @@ describe('public maintenance gate',()=>{
   expect(page.headers.get('content-type')).toContain('text/html');
   expect(page.headers.get('cache-control')).toContain('no-store');
   const html=await page.text();
-  expect(html).toContain('Actualizăm datele');expect(html).toContain('Anchetele și dovezile tale sunt păstrate');
+  expect(html).toContain('Actualizăm datele');expect(html).toContain('<p>Revino puțin mai târziu.</p>');expect(html).not.toContain('Anchetele');
   // The owner enters through this link during maintenance.
   expect(html).toContain('<a href="/admin">Acces administrator</a>');
   const api=await request('/api/search');
