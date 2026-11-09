@@ -212,6 +212,61 @@ Procedura:
 8. Repornește cache-uri/worker-i, verifică health și redeschide doar checkpoint-ul validat, cu revision neschimbat.
 9. Cu site-ul deschis, construiește textul stocat al căutării din sertare (`source-search.js`, [mai jos](#căutarea-în-surse-pe-textul-stocat-s6)). Până termină, sertarele caută pe nume; o eroare nu schimbă nimic publicat (`run.log`: `Source search build failed…`), iar rularea următoare îl reface. Retenția dump-urilor vechi rulează după el.
 
+### Procesarea în umbră, fără mentenanță (blue/green, decizia proprietarului din 9 noiembrie 2026)
+
+**De ce.** Pe 9 noiembrie rularea a căzut la validare, iar site-ul a stat pe 503 până la recuperare. Varianta „în loc” reface datele chiar în tabelele pe care le citește site-ul, deci trebuie să-l închidă. Varianta „în umbră” construiește totul pe copii și publică printr-o redenumire de câteva secunde. O cădere lasă site-ul pe datele de ieri.
+
+**Cum se alege.** `PROCESSING_MODE` din `.env`-ul serverului: `shadow` sau `in-place` (implicit). Este o setare de operator. Comenzile manuale `--recover-failed`, `--methodology-now` și `--reference-repair-now` rulează în continuare „în loc”.
+
+**Noaptea în umbră (`process-nightly.sh`, ramura `shadow`):**
+1. `claim` (același lock și aceeași regulă de o încercare pe zi). Colectarea intră în pauză; mentenanța nu se pornește, deci site-ul rămâne deschis. `app.processing_runs.mode = 'shadow'`.
+2. Drenează doar colectorul și îl oprește. Worker-ul de documente lucrează mai departe: scrie doar în `app` și în fișierele lui.
+3. Backup-ul complet, ca înainte, cu site-ul deschis.
+4. `shadow-prepare.sh`:
+   - șterge `*_prev` de ieri (aici se termină fereastra de rollback) și orice `*_next` rămas;
+   - creează `core_next`, `marts_next` și `reference_next` din structura live: tabele, secvențe, funcții, triggere, view-ul materializat și drepturi, toate deținute de rolul de build;
+   - copiază datele care nu se refac în fiecare noapte. `infra/prod/shadow-derived.txt` listează tabelele din `marts` refăcute de fiecare rulare, care pornesc goale; la fel `agg_*`;
+   - construiește indexurile, poziționează secvențele și rulează `analyze`. Local: ~5 min pentru ~14 GB.
+5. `refresh` pe serviciul `processor-build`:
+   - rolul `seap_build`, cu `SEAP_SHADOW_BUILD=1`: fiecare conexiune trimite SQL-ul spre `*_next` (`packages/db/src/shadow.ts`);
+   - aceleași etape și aceeași validare ca înainte;
+   - căutarea se construiește în indexul Meili `entities_next`;
+   - nu publică nimic: rezultatul validat stă în `processing_runs.pending_checkpoint`.
+6. `swap`, cu rolul `seap`, într-o singură tranzacție (`swapShadowSchemas`):
+   - toate obiectele construite trec la `seap` (`REASSIGN OWNED`);
+   - `core`, `marts` și `reference` devin `*_prev`, iar `*_next` devin live;
+   - corpurile funcțiilor revin la cele canonice;
+   - se scrie checkpoint-ul `ready`, iar rularea e marcată completă.
+
+   Apoi Meili face `swapIndexes(entities, entities_next)`.
+7. `docker compose restart web` golește cache-urile din proces. Caddy ține cererile cât pornește web-ul (`lb_try_duration 45s`). Apoi colectarea repornește, iar textul căutării în surse se reface ca înainte.
+
+**Siguranța.**
+- `seap_build` nu are niciun drept pe `core`, `marts` și `reference` live (`infra/prod/build-role.sql`). Un nume care scapă rescrierii cade cu „permission denied”, nu atinge datele site-ului.
+- La swap, rolul de build cedează tot ce a construit, deci nu deține niciodată un obiect live.
+- Postgres leagă tabelele, indexurile, triggerele, secvențele și view-ul prin ID intern, deci le mută la redenumire. Interogările pregătite deja în pool-urile web citesc tabelele noi imediat (verificat pe 9 noiembrie).
+- Cât rulează un build în umbră, `withMonitoringWrite` refuză modificările manuale: s-ar pierde la swap.
+
+**La eroare.**
+- Rularea devine `failed`, iar site-ul rămâne pe publicarea precedentă, fără mentenanță și fără recuperare manuală. Noaptea următoare o ia de la capăt.
+- Reparațiile aplicate în copie revin la `scheduled`.
+- Revocările de identitate și baseline-ul de revalidare din auditul acelei rulări sunt ignorate la citire.
+- `*_next` rămâne pentru inspecție până la build-ul următor.
+
+**Rollback** (doar cu acordul proprietarului): `bash /srv/seap/src/infra/prod/process-nightly.sh --rollback`.
+- Pune înapoi schemele de ieri și republică checkpoint-ul precedent ca cel mai nou. Schimbă înapoi indexul Meili și repornește web-ul.
+- Este refuzat dacă între timp un deploy a aplicat o migrație (`pending_checkpoint.migrationsAtSwap`), pentru că schemele de ieri nu mai corespund codului.
+
+**Spațiu.** `SHADOW_MIN_FREE_KB` (implicit 100 GiB) e poarta de disc înainte de pregătire. La vârf stau pe disc live, `*_next` și `*_prev`.
+
+**Punerea în funcțiune**, o singură dată, cu acordul proprietarului:
+1. Parola nouă `SEAP_BUILD_PASSWORD` în `.env`.
+2. Rularea `docker compose exec -T postgres psql -U seap -d seap -v pw="$SEAP_BUILD_PASSWORD" < build-role.sql`.
+3. Deploy-ul (migrația 0099, `processor-build`, Caddyfile).
+4. `PROCESSING_MODE=shadow` în `.env`.
+
+Prima noapte se urmărește.
+
 **Site-ul rămâne deschis în timpul drain-ului și al backup-ului (decizia proprietarului, 23 octombrie 2026).** Flagurile nu se schimbă: `claim` pune în continuare `maintenance` și `paused`, iar worker-ii și procesarea le cer ca înainte. Doar proxy-ul web (`apps/web/proxy.ts`, regula `publicSiteGate` din `packages/db/src/processing.ts`) servește paginile și API-urile publice cu `maintenance=true` când sunt îndeplinite toate condițiile:
 - există exact o rulare `running`, iar etapa ei este `drain` (de la `claim`, inclusiv `freeze`) sau `backup`;
 - rularea a pornit pe un site deschis: `before_control.maintenance = false`, salvat de `claim` de la această schimbare;

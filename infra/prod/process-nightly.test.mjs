@@ -130,3 +130,16 @@ test('a failed shadow build or preparation changes nothing published: no swap, n
 test('an unknown processing mode stops before the drain',async()=>{
  const r=await run('',true,[],false,'0');assert.equal(r.status,1);assert.doesNotMatch(r.calls,/stop |pg_dump/);
 });
+test('every table shadow-derived.txt lists is emptied or recreated by the processing code (else the shadow build would read it empty)',async()=>{
+ const {readdir:rd,readFile:rf}=await import('node:fs/promises');
+ const root=new URL('../../',import.meta.url).pathname;
+ async function sources(dir){const out=[];for(const e of await rd(dir,{withFileTypes:true})){const p=join(dir,e.name);if(e.isDirectory())out.push(...await sources(p));else if(/\.ts$/.test(e.name)&&!/\.test\.ts$/.test(e.name))out.push(await rf(p,'utf8'));}return out;}
+ const text=(await sources(join(root,'apps/ingestion/src'))).concat(await sources(join(root,'packages/db/src'))).join('\n').toLowerCase();
+ const listed=(await rf(join(root,'infra/prod/shadow-derived.txt'),'utf8')).split('\n').map(l=>l.trim()).filter(l=>l&&!l.startsWith('#'));
+ assert.ok(listed.length>10);
+ for(const name of listed){
+  const t=name.replace(/_/g,'_');
+  const rebuilt=new RegExp(`(truncate[^;\`]*\\bmarts\\.${t}\\b|drop table (if exists )?marts\\.${t}\\b|create table (if not exists )?marts\\.${t}\\b)`).test(text);
+  assert.ok(rebuilt,`${name} is not truncated or recreated in apps/ingestion/src or packages/db/src`);
+ }
+});
