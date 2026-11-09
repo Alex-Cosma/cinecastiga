@@ -22,6 +22,8 @@ import { questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { ANSWER_ERROR, breakdownLead, countWords, entityNoun, fileSlug, formatChange, formatShare, isHumanError, rankingRest, rankingShare, shouldAutoRun, type RankingTotals } from "@/lib/ask/answer-text";
 import { employeesWords, localityName } from "@/lib/ask/filters/words";
 import type { IntentResult } from "@/lib/intent/types";
+import { copyShortLink, prepareShortLink, shortLink } from "@/lib/short-link-client";
+import { namedThread, rememberThreadNames } from "./thread-names";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 import { validateEvidenceScope, validateEvidenceFilters, type EvidenceScope, type EvidenceFilters } from "@/lib/ask/evidence";
 import type { BlockData, ExecutedWindow, PartialYear, SankeyData } from "@/lib/ask/compile";
@@ -85,7 +87,7 @@ import { useCpvName } from "./cpv-name";
 import {
   CHANNEL_SHARE_TIP, DATA_RELOADED, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterNetwork, appliedAfterSankeyShown, appliedAfterStrip, appliedAfterTrendList, breakdownSuggestion, channelShares,
   deeperThread, readThread, sameMonthsSwitch, seriesSplitOptions, threadHref,
-  shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, type AnswerVariants, type Thread,
+  shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, writeThread, type AnswerVariants, type Thread,
 } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
@@ -243,6 +245,14 @@ export default function AskPanel({
   const [stripPatch, setStripPatch] = useState<StripPatch | null>(null);
   /** The breakdown's thread ("fir" in the URL): the levels above the one on screen. Gone at any new run. */
   const [thread, setThread] = useState<Thread | null>(null);
+  // A link's thread carries its levels' codes only (fir=33.331): the crumbs wait for their names from the catalogue.
+  useEffect(() => {
+    if (!thread) return;
+    if (thread.steps.every((s) => s.name !== null)) { rememberThreadNames(thread); return; }
+    let live = true;
+    void namedThread(thread).then((named) => { if (live) setThread((current) => current === thread ? named : current); });
+    return () => { live = false; };
+  }, [thread]);
   /** A link the builder opens without running it (a refused condition): "Vezi răspunsul" stays. */
   const [linkRuns, setLinkRuns] = useState(linked?.run ?? true);
   /** What opening that link changed (restoreLink's notes): the builder says it while the link waits. */
@@ -412,7 +422,7 @@ export default function AskPanel({
         url.searchParams.delete("q");
         url.searchParams.set("spec", encodeSpec(executed));
         if (!("tablePage" in body)) {
-          if (opts.thread?.steps.length) url.searchParams.set("fir", JSON.stringify(opts.thread));
+          if (opts.thread?.steps.length) url.searchParams.set("fir", writeThread(opts.thread));
           else url.searchParams.delete("fir");
         }
         url.searchParams.delete("drill");
@@ -679,7 +689,7 @@ export default function AskPanel({
   // The interpretation line stays with the answer its reading gave (a pill, the strip or the builder make another question).
   const reading = intent && applied ? understood[encodeSpec(applied)] : undefined;
   const line = intent && reading ? understoodLine(intent, reading) : null;
-  const crumbs = thread && applied ? threadCrumbs(thread, applied) : null;
+  const crumbs = thread && applied && thread.steps.every((s) => s.name !== null) ? threadCrumbs(thread, applied) : null;
   const band: BandState = applied ? {
     ...(stripKeys.includes("dataset") ? { stream: (applied.dataset ?? "all") as NonNullable<BandState["stream"]> } : {}),
     ...(stripKeys.includes("measure") ? { lens: mapLens ?? (applied.measure === "count" ? "count" as const : "value" as const) } : {}),
@@ -871,10 +881,11 @@ export default function AskPanel({
       .then((ran) => { if (ran) showToast(DATA_RELOADED); });
     return true;
   }, [applied, evidence, execute, resp?.data, showToast]);
-  const copy = async (text: string, message: string) => {
+  /** The answer's short link (/l/…), or its long address when the short one cannot be made. */
+  const copyLink = async (path: string) => {
     try {
-      await navigator.clipboard.writeText(text);
-      showToast(message);
+      await copyShortLink(path);
+      showToast("Link copiat. Îl poți lipi în WhatsApp.");
     } catch {
       showToast(
         "Copierea nu este disponibilă. Poți copia adresa din bara browserului.",
@@ -882,16 +893,16 @@ export default function AskPanel({
     }
   };
   /** The phone's share sheet when there is one; otherwise the link is copied. */
-  const share = async (url: string, text: string) => {
+  const share = async (path: string, text: string) => {
     if (typeof navigator.share === "function") {
       try {
-        await navigator.share({ title: text, text, url });
+        await navigator.share({ title: text, text, url: await shortLink(path) });
         return;
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
       }
     }
-    await copy(url, "Link copiat. Îl poți lipi în WhatsApp.");
+    await copyLink(path);
   };
   const interceptSource = (event: React.MouseEvent) => {
     if (
@@ -1206,7 +1217,8 @@ export default function AskPanel({
                 <button
                   type="button"
                   className="cq-share"
-                  onClick={() => void share(answerLink(applied), title)}
+                  onPointerDown={() => prepareShortLink(answerPath(applied, thread))}
+                  onClick={() => void share(answerPath(applied, thread), title)}
                 >
                   <ShareIcon />
                   Trimite
@@ -1520,9 +1532,8 @@ export default function AskPanel({
               <button
                 type="button"
                 className="cq-copy"
-                onClick={() =>
-                  void copy(answerLink(applied), "Link copiat. Îl poți lipi în WhatsApp.")
-                }
+                onPointerDown={() => prepareShortLink(answerPath(applied, thread))}
+                onClick={() => void copyLink(answerPath(applied, thread))}
               >
                 <CopyIcon />
                 Copiază linkul
@@ -2245,8 +2256,9 @@ function Loader({ label }: { label: string }) {
 }
 
 /** The link that reopens this answer (the page runs it on arrival). */
-function answerLink(spec: AskSpec): string {
-  return `${window.location.origin}/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}`;
+/** The answer's address on the site, with its thread; the copy and share buttons turn it into a short link (/l/…). */
+function answerPath(spec: AskSpec, thread: Thread | null): string {
+  return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}${thread?.steps.length ? `&fir=${encodeURIComponent(writeThread(thread))}` : ""}`;
 }
 
 function CopyIcon() {

@@ -4,7 +4,7 @@ import type { BlockData } from "../../lib/ask/compile";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv, leiDifference } from "./answer-csv";
 import {
-  PROCEDURE_STREAM, SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords,
+  PROCEDURE_STREAM, SINGLE_OFFER_STREAM, STRIP_QUERY_KEYS, answerHoldsList, appliedAfterStrip, appliedAfterTrendList, deeperThread, readThread, shownWords, streamOptions, threadCrumbs, threadHref, threadWords, writeThread,
   totalConditionWords,
 } from "./answer-state";
 import { patchDraft, trendListSwitch } from "./builder/view";
@@ -71,6 +71,22 @@ describe("the breakdown's thread (fir)", () => {
     expect(readThread("{not json", deeper)).toBeNull();
   });
 
+  it("travels as its codes only, its names left to the catalogue (short links, 9 November 2026)", () => {
+    const two = deeperThread(thread, deeper, "331", "Aparate");
+    const level = { ...breakdown, filters: { ...breakdown.filters, cpvTerm: "331" } };
+    expect(writeThread(two)).toBe("33.331");
+    expect(readThread("33.331", level)).toEqual({ root: null, steps: [{ code: "33", name: null }, { code: "331", name: null }] });
+    expect(readThread("33.331", deeper)).toBeNull();
+    // A root of words keeps them before the last "_"; the codes stay digits.
+    const rooted = deeperThread(null, { ...breakdown, filters: { cpvTerm: "medicamente_spital" } }, "3360", "Produse farmaceutice");
+    expect(writeThread(rooted)).toBe("medicamente_spital_3360");
+    expect(readThread("medicamente_spital_3360", { ...breakdown, filters: { cpvTerm: "3360" } })?.root).toBe("medicamente_spital");
+    expect(readThread("33.x", level)).toBeNull();
+    // Until the names come, a level reads as its code; the address carries no names at all.
+    expect(threadWords(readThread("33.331", level)!)).toBe("toate › CPV 33 › CPV 331");
+    expect(new URL(threadHref(breakdown, "331", two), "http://x").searchParams.get("fir")).toBe("33.331");
+  });
+
   it("leads back: each crumb is its level's question, the root without a domain or the thread", () => {
     const two = deeperThread(thread, deeper, "331", "Aparate");
     const { items, current } = threadCrumbs(two, { ...breakdown, filters: { ...breakdown.filters, cpvTerm: "331" } });
@@ -79,7 +95,7 @@ describe("the breakdown's thread (fir)", () => {
     expect(specOf(items[0]!.href).filters.cpvTerm).toBeUndefined();
     expect(new URL(items[0]!.href, "http://x").searchParams.get("fir")).toBeNull();
     expect(specOf(items[1]!.href).filters.cpvTerm).toBe("33");
-    expect(JSON.parse(new URL(items[1]!.href, "http://x").searchParams.get("fir")!)).toEqual(thread);
+    expect(new URL(items[1]!.href, "http://x").searchParams.get("fir")).toBe("33");
     // The deeper link keeps the question's other conditions and its measure.
     expect(specOf(threadHref(breakdown, "33", thread))).toMatchObject({ block: "breakdown", filters: { authorityKind: "spital", county: "Cluj", yearFrom: 2025, cpvTerm: "33" } });
   });

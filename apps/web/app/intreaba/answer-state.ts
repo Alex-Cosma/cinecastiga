@@ -246,17 +246,42 @@ export function shownWords(answer: { pills?: string[]; displaySql?: string; vari
  * names it; a capture does not (its server-built snapshot reads the spec, whose
  * domain is the thread's last level).
  */
-export interface Thread { root: string | null; steps: { code: string; name: string }[] }
+export interface Thread { root: string | null; steps: { code: string; name: string | null }[] }
+
+/** A level's name; null until the catalogue answers for a thread read from a link (thread-names.ts). */
+export const stepName = (step: Thread["steps"][number]): string => step.name ?? `CPV ${step.code}`;
+
+const THREAD_CODES = /^\d{2,8}(?:\.\d{2,8}){0,7}$/;
+
+/**
+ * The thread in the URL (short links, owner 9 November 2026): its codes only, "33.331", after its root and "_" when it
+ * has one ("medicamente_3360"; "_" is spelled the same in any encoding of an address). The names come back from the
+ * catalogue (thread-names.ts). A thread whose codes are not CPV codes keeps the JSON of the links made before, which
+ * readThread still reads.
+ */
+export function writeThread(thread: Thread): string {
+  const codes = thread.steps.map((s) => s.code).join(".");
+  if (!THREAD_CODES.test(codes)) return JSON.stringify(thread);
+  return thread.root ? `${thread.root}_${codes}` : codes;
+}
 
 /** The thread of a URL, when it leads to the breakdown on screen (its last step is the question's domain). */
 export function readThread(raw: string | null, spec: AskSpec): Thread | null {
   if (!raw || (spec.block !== "breakdown" && spec.block !== "sankey")) return null;
-  try {
-    const value = JSON.parse(raw) as Partial<Thread>;
-    const steps = Array.isArray(value.steps) ? value.steps.filter((s): s is Thread["steps"][number] => typeof s?.code === "string" && typeof s?.name === "string").slice(0, 8) : [];
-    if (!steps.length || steps[steps.length - 1]!.code !== String(spec.filters.cpvTerm ?? "")) return null;
-    return { root: typeof value.root === "string" && value.root ? value.root : null, steps };
-  } catch { return null; }
+  let thread: Thread;
+  if (raw.startsWith("{")) {
+    try {
+      const value = JSON.parse(raw) as Partial<Thread>;
+      const steps = Array.isArray(value.steps) ? value.steps.filter((s): s is { code: string; name: string } => typeof s?.code === "string" && typeof s?.name === "string").slice(0, 8) : [];
+      thread = { root: typeof value.root === "string" && value.root ? value.root : null, steps };
+    } catch { return null; }
+  } else {
+    const cut = raw.lastIndexOf("_"), codes = raw.slice(cut + 1);
+    if (!THREAD_CODES.test(codes)) return null;
+    thread = { root: cut > 0 ? raw.slice(0, cut) : null, steps: codes.split(".").map((code) => ({ code, name: null })) };
+  }
+  if (!thread.steps.length || thread.steps[thread.steps.length - 1]!.code !== String(spec.filters.cpvTerm ?? "")) return null;
+  return thread;
 }
 
 /** The thread one level down (a slice opened from the breakdown on screen). */
@@ -270,7 +295,7 @@ export function threadHref(spec: AskSpec, cpvTerm: string | null, thread: Thread
   // The flow goes down on itself (final sankey §3.3): the same question with the code; the breakdown opens its slice.
   const next = spec.block === "sankey" ? sankeyDeeperSpec(spec, cpvTerm ?? "") : breakdownDeeperSpec(spec, cpvTerm ?? "");
   if (!cpvTerm) delete next.filters.cpvTerm;
-  return `/intreaba?spec=${encodeURIComponent(encodeSpec(next))}${thread?.steps.length ? `&fir=${encodeURIComponent(JSON.stringify(thread))}` : ""}`;
+  return `/intreaba?spec=${encodeURIComponent(encodeSpec(next))}${thread?.steps.length ? `&fir=${encodeURIComponent(writeThread(thread))}` : ""}`;
 }
 
 /** The flow one CPV level down: the same question with that code as its domain (a code decides the kind). */
@@ -284,11 +309,11 @@ export function sankeyDeeperSpec(spec: AskSpec, code: string): AskSpec {
 export function threadCrumbs(thread: Thread, spec: AskSpec): { items: { label: string; href: string }[]; current: string } {
   const items = [
     { label: thread.root ? `„${thread.root}”` : "toate", href: threadHref(spec, thread.root, null) },
-    ...thread.steps.slice(0, -1).map((step, i) => ({ label: step.name, href: threadHref(spec, step.code, { root: thread.root, steps: thread.steps.slice(0, i + 1) }) })),
+    ...thread.steps.slice(0, -1).map((step, i) => ({ label: stepName(step), href: threadHref(spec, step.code, { root: thread.root, steps: thread.steps.slice(0, i + 1) }) })),
   ];
-  return { items, current: thread.steps[thread.steps.length - 1]!.name };
+  return { items, current: stepName(thread.steps[thread.steps.length - 1]!) };
 }
 
 /** The thread in words, for the shown result's CSV: "toate › Construcții › Lucrări de drumuri". */
 export const threadWords = (thread: Thread): string =>
-  [thread.root ? `„${thread.root}”` : "toate", ...thread.steps.map((s) => s.name)].join(" › ");
+  [thread.root ? `„${thread.root}”` : "toate", ...thread.steps.map(stepName)].join(" › ");
