@@ -183,7 +183,7 @@ describe("the flow's answer (final sankey §3.2–§3.4, §3.10)", () => {
     const deeper = sankeyDeeperSpec({ block: "sankey", measure: "value", filters: { authorityId: 1, purchaseKind: "lucrari" } }, "45");
     expect(deeper).toEqual({ block: "sankey", measure: "value", filters: { authorityId: 1, cpvTerm: "45" } });
     const href = new URL(threadHref(deeper, "4523", { root: null, steps: [{ code: "45", name: "Construcții" }, { code: "4523", name: "Drumuri" }] }), "http://x");
-    expect([decodeSpec(href.searchParams.get("spec")!), JSON.parse(href.searchParams.get("fir")!).steps.length]).toEqual([{ ...deeper, filters: { ...deeper.filters, cpvTerm: "4523" } }, 2]);
+    expect([decodeSpec(href.searchParams.get("spec")!), href.searchParams.get("fir")]).toEqual([{ ...deeper, filters: { ...deeper.filters, cpvTerm: "4523" } }, "45.4523"]);
   });
 
   it("stacks each side with room for its labels, the bands as thick as their share of each node", () => {
