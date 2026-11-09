@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import {createDb,type DbSql} from '@seap/db';
 import {importRecoveredIdentityArchives} from '../normalize/contract-identity-archives.js';
 const [file,sha256,source,runId]=process.argv.slice(2);
@@ -12,7 +13,7 @@ try {
    if(!runId)throw Error('Production evidence import requires an explicit backed-up processing run');
    const [run]=await q`select r.*,c.paused,c.maintenance,c.revision from app.processing_runs r cross join app.collection_control c
     where r.id=${runId}::uuid and c.id=1 for update of r,c`;
-   if(!run||run.status!=='running'||!run.paused||!run.maintenance||run.control_revision!==run.revision
+   if(!run||run.status!=='running'||!processingWritable(run)||run.control_revision!==run.revision
     ||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt)
      throw Error('Import requires frozen, backed-up maintenance');
   }

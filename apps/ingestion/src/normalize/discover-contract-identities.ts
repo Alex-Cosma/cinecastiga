@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import {createHash} from 'node:crypto';
 import { readRecoveredIdentityArchives } from './contract-identity-archives.js';
 import { assertContractIdentityQuality, assertContractExclusionsQuality, readContractIdentityMembers, type DbSql, type SnapshotHashCache } from '@seap/db';
@@ -106,7 +107,7 @@ export async function discoverAndApproveContractIdentities(q: DbSql, runId: stri
     const sql=tx as unknown as DbSql;
     const [run]=await sql`select r.*,c.maintenance,c.paused,c.revision from app.processing_runs r cross join app.collection_control c
       where r.id=${runId}::uuid and c.id=1 for update of r,c`;
-    if(!run||run.status!=='running'||!run.maintenance||!run.paused||run.revision!==run.control_revision||run.stage!=='identity-repair'
+    if(!run||run.status!=='running'||!processingWritable(run)||run.revision!==run.control_revision||run.stage!=='identity-repair'
       ||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)
       throw Error('New identity discovery requires backed-up, normalized maintenance with unchanged operator control');
     await assertContractIdentityQuality(sql,identityHashes);

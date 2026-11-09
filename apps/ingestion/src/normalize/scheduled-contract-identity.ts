@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {gunzipSync} from 'node:zlib';
@@ -62,7 +63,7 @@ export async function runScheduledIdentityRepair(q:DbSql,runId:string,log:(m:str
   const [repair]=await sql`select * from app.data_repairs where id=${IDENTITY_REPAIR_ID} for update`;
   if(!repair||repair.status==='completed')return null;
   const [r]=await sql`select r.*,c.maintenance,c.paused from app.processing_runs r cross join app.collection_control c where r.id=${runId}::uuid and c.id=1`;
-  if(!r||!r.maintenance||!r.paused||r.status!=='running')throw Error('Identity repair requires active maintenance');
+  if(!r||!processingWritable(r)||r.status!=='running')throw Error('Identity repair requires active maintenance');
   if(repair.scheduled_day>r.scheduled_day)return null;
   if(repair.status!=='scheduled')throw Error('Unfinished identity repair requires operator recovery');
   if(repair.scheduled_day!==r.scheduled_day||r.scope!=='full'||!r.raw_boundary||!r.stages?.backup?.completedAt||!r.stages?.normalize?.completedAt||r.stage!=='identity-repair')throw Error('Identity repair requires its backed-up and normalized full run');

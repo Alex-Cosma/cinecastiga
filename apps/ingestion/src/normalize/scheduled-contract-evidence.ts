@@ -1,3 +1,4 @@
+import { processingWritable } from "@seap/db";
 import type {DbSql} from '@seap/db';
 import {importRecoveredIdentityArchives} from './contract-identity-archives.js';
 export const CONTRACT_EVIDENCE_REPAIR_ID='contract-reporting-evidence-v1';
@@ -11,7 +12,7 @@ export async function runScheduledContractEvidence(q:DbSql,runId:string) {
   if(!repair||repair.status==='completed')return null;
   const [run]=await sql`select r.*,c.paused,c.maintenance,c.revision from app.processing_runs r cross join app.collection_control c
     where r.id=${runId}::uuid and c.id=1 for update of r,c`;
-  if(!run||run.status!=='running'||!run.paused||!run.maintenance||run.control_revision!==run.revision||run.scope!=='full'
+  if(!run||run.status!=='running'||!processingWritable(run)||run.control_revision!==run.revision||run.scope!=='full'
    ||run.stage!=='identity-repair'||!run.raw_boundary||!run.stages?.backup?.completedAt||!run.stages?.['backup-verified']?.completedAt||!run.stages?.normalize?.completedAt)
     throw Error('Recovered evidence requires a backed-up full publication');
   if(repair.scheduled_day>run.scheduled_day)throw Error('Reporting evidence import is scheduled for a later date');

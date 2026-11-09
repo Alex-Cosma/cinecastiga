@@ -201,3 +201,13 @@ export async function processingSchedule(q:DbSql) {
    from days`;
  return schedule??{next_at:null,next_risk_at:null};
 }
+
+/**
+ * Whether a running processing run may write its data now (blue/green, owner 9 November 2026), given the run row with
+ * its `mode` and the collection control's `maintenance` and `paused`: collection always paused; an in-place run behind
+ * maintenance, as before; a shadow build with the site open (it writes only core_next / marts_next / reference_next).
+ * The callers keep their own checks of status, stage, scope and revision.
+ */
+export function processingWritable(row: { mode?: unknown; maintenance?: unknown; paused?: unknown }): boolean {
+  return Boolean(row.paused) && (row.mode === 'shadow' || Boolean(row.maintenance));
+}
