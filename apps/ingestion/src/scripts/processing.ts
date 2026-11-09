@@ -11,7 +11,7 @@ import {runAuthorityFragmentRepair} from '../reference/authority-fragment-repair
 import { runMonitoringRefresh, runShadowRefresh } from '../monitoring/refresh.js';
 import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
-import { ENTITIES_INDEX, ENTITIES_NEXT_INDEX, indexEntities, meiliClient } from '../search/index-entities.js';
+import { ENTITIES_INDEX, ENTITIES_NEXT_INDEX, indexEntities, meiliClient, swapEntityIndexes } from '../search/index-entities.js';
 import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.js';
 
 async function main() {
@@ -56,9 +56,9 @@ async function main() {
     await tx`insert into app.collection_audit(actor_id,actor_name,action,before,after)
      values('system:processor','Retragere autorizată','processing-rollback',${JSON.stringify({runId:run.id,checkpointId:run.checkpoint_id})}::jsonb,${JSON.stringify({restored:previous.id})}::jsonb)`;
    });
-   const task=await meiliClient().swapIndexes([{indexes:[ENTITIES_INDEX,ENTITIES_NEXT_INDEX],rename:false}]).waitTask({timeout:120_000});
-   console.log(`rollback: ${JSON.stringify(report)}, search ${task.status}`);
-   if(task.status!=='succeeded')throw Error('Data rolled back; the search index swap did not succeed');
+   const status=await swapEntityIndexes(meiliClient());
+   console.log(`rollback: ${JSON.stringify(report)}, search ${status}`);
+   if(status!=='succeeded')throw Error('Data rolled back; the search index swap did not succeed');
    return;
   }
   if(command==='finish'){await finishProcessing(sql,id!);return;}
@@ -77,8 +77,8 @@ async function main() {
    },{buildRole:process.env['SEAP_BUILD_ROLE']??'seap_build'});
    console.log(`swap: ${JSON.stringify(report)}`);
    // Search follows the data: the index built from the shadow schemas becomes `entities` (yesterday's becomes entities_next).
-   const task=await meiliClient().swapIndexes([{indexes:[ENTITIES_INDEX,ENTITIES_NEXT_INDEX],rename:false}]).waitTask({timeout:120_000});
-   if(task.status!=='succeeded')throw Error(`Search index swap ${task.status}: the data is published, search still serves the previous index`);
+   const status=await swapEntityIndexes(meiliClient());
+   if(status!=='succeeded')throw Error(`Search index swap ${status}: the data is published, search still serves the previous index`);
    return;
   }
   if(command==='freeze') {
