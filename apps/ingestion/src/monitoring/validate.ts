@@ -1,9 +1,10 @@
-import { contractReportable } from '@seap/db';
+import { contractReportable, scaledCalloffValue, withoutNestedLoops } from '@seap/db';
 import { readContractMoneyQuality } from "@seap/db";
 import { contractRonValue, canonicalContract, readContractExclusionsQuality, readContractIdentityQuality, verifyContractIdentityQuality, winnerIsSupplier } from "@seap/db";
 import { validateSignalLookup, type DbSql, type SnapshotHashCache } from "@seap/db";
 import { METHODOLOGY_VERSION } from "../flags/methodology.js";
 import { assertCeilingEras } from "../flags/thresholds.js";
+import { countedCalloffScale } from "../normalize/marts.js";
 import { TED_NORMALIZATION_VERSION } from "../normalize/ted.js";
 
 export interface SnapshotCheck { check: string; passed: boolean; scope: string; details: unknown }
@@ -173,19 +174,27 @@ export async function validateBatch1Snapshot(q: DbSql, options: {
   return checks;
 }
 
-/** Complete contract population/allocation reconciliation; usable on public contract fixtures. */
+/** Complete contract population/allocation reconciliation; usable on public contract fixtures. A call-off runMarts
+ * counts scaled to its framework's ceiling (owner, 8 November 2026, contract-reporting-5) must be allocated its
+ * declared value times that scale, recomputed here from the sources with the same fragment (countedCalloffScale);
+ * every other contract its declared value. */
 export async function validateContractPopulation(q: DbSql) {
+  const scaled = (await withoutNestedLoops(q, () => q`
+    select s.calloff_id::text id, s.scale::text scale from (${countedCalloffScale(q)}) s`)) as unknown as { id: string; scale: string }[];
   const [allocations] = await q`
-    with winners as (select w.contract_id, count(distinct w.entity_id) n from core.contract_winners w
+    with scaled as (select * from unnest(${q.array(scaled.map(s => s.id))}::bigint[], ${q.array(scaled.map(s => s.scale))}::numeric[]) s(contract_id, scale)),
+    winners as (select w.contract_id, count(distinct w.entity_id) n from core.contract_winners w
       join core.contracts c on c.id = w.contract_id left join core.awards a on a.ca_notice_id = c.ca_notice_id
       where ${winnerIsSupplier(q)} group by w.contract_id),
     source as (
-      select c.id, c.ca_notice_contract_id, ${contractRonValue(q)} as contract_value, w.n winners,
+      select c.id, c.ca_notice_contract_id, coalesce(${scaledCalloffValue(q, contractRonValue(q), q`sc.scale`)}, ${contractRonValue(q)}) as contract_value,
+        w.n winners, sc.scale is not null scaled,
         coalesce(${canonicalContract(q)} and ${contractRonValue(q)} > 0 and ${contractRonValue(q)} <= 1000000000 and c.contract_date is not null
            and a.authority_entity_id is not null and w.n > 0
           and ${contractReportable(q)}, false) eligible
       from core.contracts c left join core.awards a on a.ca_notice_id = c.ca_notice_id
       left join winners w on w.contract_id = c.id
+      left join scaled sc on sc.contract_id = c.id
     ), allocated as (
       select contract_id, count(*) n, count(distinct supplier_id) suppliers,
         sum(closing_value) total, min(contract_value_full) full_min, max(contract_value_full) full_max,
@@ -207,6 +216,7 @@ export async function validateContractPopulation(q: DbSql) {
       count(*) filter (where missing_allocation)::text eligible_missing,
       count(*) filter (where excluded_but_included)::text excluded_included,
       count(*) filter (where allocation_mismatch)::text allocation_mismatches,
+      ${String(scaled.length)}::text scaled_calloffs,
       (select coalesce(jsonb_agg(to_jsonb(example)), '[]'::jsonb) from (
         select public_contract_id, source_value, allocated_value from compared
         where missing_allocation or excluded_but_included or allocation_mismatch

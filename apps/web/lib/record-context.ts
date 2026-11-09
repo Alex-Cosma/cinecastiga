@@ -270,7 +270,7 @@ const sharesWinner = (q: DbSql, contractId: string, alias: string) => q`(
  * award_calloffs_over_ceiling signal reads the same match, apps/ingestion/src/flags/competition.ts).
  */
 async function frameworkCalloffs(q: DbSql, caNoticeId: string, frameworkId: string, lots: string) {
-  const [r] = await q<{ publications: number; counted: number; declared: string | null; ron: string | null; ceiling: string | null; repeats: number }[]>`
+  const [r] = await q<{ publications: number; counted: number; declared: string | null; ron: string | null; ceiling: string | null; repeats: number; top: string | null }[]>`
     with fam as (${family(q, caNoticeId)}),
     ceiling as (select ${contractRonValue(q)} v from core.contracts c where c.id = ${frameworkId}),
     calloffs as (
@@ -286,11 +286,11 @@ async function frameworkCalloffs(q: DbSql, caNoticeId: string, frameworkId: stri
       select c.id, c.value, sum(ct.closing_value) ron from calloffs c join marts.contract_transactions ct on ct.contract_id = c.id group by 1, 2
     )
     select (select count(*)::int from calloffs) publications, count(*)::int counted,
-      sum(value)::text declared, sum(ron)::text ron, (select v::text from ceiling) ceiling,
+      sum(value)::text declared, sum(ron)::text ron, (select v::text from ceiling) ceiling, max(value)::text top,
       count(*) filter (where abs(value - (select v from ceiling)) <= ${CALLOFF_OVER_CEILING.repeat}::numeric * (select v from ceiling))::int repeats
     from counted`;
   return { publications: Number(r?.publications ?? 0), counted: Number(r?.counted ?? 0), declared: r?.declared ?? null, ron: r?.ron ?? null,
-    ceiling: r?.ceiling ?? null, repeats: Number(r?.repeats ?? 0) };
+    ceiling: r?.ceiling ?? null, repeats: Number(r?.repeats ?? 0), top: r?.top ?? null };
 }
 
 async function frameworkLink(q: DbSql, detail: ContractDetail, lots: string | null): Promise<FrameworkLink | null> {
@@ -298,7 +298,7 @@ async function frameworkLink(q: DbSql, detail: ContractDetail, lots: string | nu
   if ((kind !== "framework" && kind !== "calloff") || !detail.caNoticeId || !lots) return null;
   if (kind === "framework") {
     const r = await frameworkCalloffs(q, detail.caNoticeId, detail.contractId, lots);
-    return { role: "framework", calloffs: r.counted, calloffsRon: r.ron, declaredRon: r.declared, publications: r.publications, ceilingRon: r.ceiling, repeats: r.repeats };
+    return { role: "framework", calloffs: r.counted, calloffsRon: r.ron, declaredRon: r.declared, publications: r.publications, ceilingRon: r.ceiling, repeats: r.repeats, topRon: r.top };
   }
   const [r] = await q<{ id: string; ca_notice_id: string; lots: string; nat_id: string; title: string | null; framework_day: string | null; candidates: number }[]>`
     with fam as (${family(q, detail.caNoticeId)})
@@ -315,7 +315,7 @@ async function frameworkLink(q: DbSql, detail: ContractDetail, lots: string | nu
   const own = detail.valueRonExact ?? (detail.amountStatus === "ron" || detail.amountStatus === "legacy_ron" ? detail.contractValueExact : null);
   const repeatsCeiling = own !== null && sums.ceiling !== null && Math.abs(Number(own) - Number(sums.ceiling)) <= CALLOFF_OVER_CEILING.repeat * Number(sums.ceiling);
   return { role: "calloff", frameworkNatId: r.nat_id, frameworkTitle: r.title, frameworkDate: r.framework_day, candidates: Number(r.candidates),
-    ceilingRon: sums.ceiling, calloffs: sums.counted, calloffsRon: sums.ron, declaredRon: sums.declared, repeatsCeiling };
+    ceilingRon: sums.ceiling, calloffs: sums.counted, calloffsRon: sums.ron, declaredRon: sums.declared, repeatsCeiling, topRon: sums.top };
 }
 
 // ── CNSC ────────────────────────────────────────────────────────────────────

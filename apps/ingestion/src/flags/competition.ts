@@ -151,7 +151,7 @@ export function confirmedSingleBidAwardsSql(sql: DbSql, limits: { minValue: numb
  * data-entry error), still what the authority declared. Informative, never in the score; the value is the declared sum. */
 export function calloffsOverCeilingSql(sql: DbSql, limits: { severityReference: number }, tables: AwardTables & { transactions?: Fragment } = {}): Fragment {
   const transactions = tables.transactions ?? sql`marts.contract_transactions`;
-  const { ratio, minExcess, repeat } = CALLOFF_OVER_CEILING;
+  const { ratio, minExcess, repeat, credible } = CALLOFF_OVER_CEILING;
   // The declared values (each call-off's own RON value), over the call-offs the totals count: the totals themselves
   // count these call-offs scaled to the ceiling (calloffCeilingScale, contract-reporting-5), the signal says what SEAP holds.
   return oncePerNotice(sql, "award_calloffs_over_ceiling", sql`
@@ -161,10 +161,12 @@ export function calloffsOverCeilingSql(sql: DbSql, limits: { severityReference: 
     ), per_fw as (
       select framework_id, framework_notice_id, framework_nat_id, framework_no, max(ceiling) ceiling,
         count(*) calloffs, count(*) filter (where abs(calloff_value - ceiling) <= ${repeat}::numeric * ceiling) repeats,
-        sum(calloff_value) declared
+        sum(calloff_value) declared, max(calloff_value) top
       from pairs group by 1, 2, 3, 4
     ), over_fw as (
+      -- Not a framework whose ceiling a single call-off exceeds more than credible times: its ceiling is wrong (owner, 9 November 2026).
       select * from per_fw where declared > ${ratio}::numeric * ceiling and declared - ceiling >= ${minExcess}::numeric
+        and top <= ${credible}::numeric * ceiling
     ), per_notice as (
       select o.framework_notice_id ca_notice_id, sum(o.declared) declared, sum(o.ceiling) ceiling, count(*) frameworks_over,
         sum(o.calloffs) calloffs, sum(o.repeats) repeats,

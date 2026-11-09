@@ -88,6 +88,8 @@ export type FrameworkLink =
       ceilingRon: string | null;
       /** Counted call-offs whose own value is the whole ceiling (within 1%): the ceiling likely copied into each order. */
       repeats: number;
+      /** The largest counted call-off's declared RON value (a ceiling it exceeds CALLOFF_OVER_CEILING.credible times is not credible). */
+      topRon: string | null;
     }
   | {
       role: "calloff";
@@ -104,6 +106,8 @@ export type FrameworkLink =
       declaredRon: string | null;
       /** This call-off declares the framework's whole ceiling (within 1%). */
       repeatsCeiling: boolean;
+      /** The largest counted call-off's declared RON value. */
+      topRon: string | null;
     };
 
 /** A complaint / CNSC document among the procedure's stored documents (classified from the file name or SEAP's type:
