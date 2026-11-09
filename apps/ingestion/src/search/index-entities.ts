@@ -61,7 +61,10 @@ export async function indexEntities(
   try {
     await client.getIndex(uid);
   } catch (error) {
-    if ((error as { code?: string })?.code !== "index_not_found") throw error;
+    // meilisearch-js 0.59 puts the API error code in `cause` (seen 9 November 2026, when the shadow build first created
+    // entities_next); older clients put it on the error.
+    const failure = error as { code?: string; cause?: { code?: string } };
+    if ((failure?.cause?.code ?? failure?.code) !== "index_not_found") throw error;
     const task = await client.createIndex(uid, { primaryKey: "id" });
     await waitForSuccess(task.taskUid, 120_000);
   }
