@@ -69,7 +69,8 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
       const { i, r } = await ask(q);
       expect(i.subjects).toHaveLength(1);
       expect(r.spec?.filters.cpvTerm, q).toMatch(/^lucrari (de )?drumuri$/);
-      expect(i.subjects[0]!.label, q).toMatch(/^lucrari (de )?drumuri$/);
+      // the label is written in Romanian (spelling.ts); the term stays folded
+      expect(i.subjects[0]!.label, q).toMatch(/^lucrări (de )?drumuri$/);
     }
   });
 
@@ -89,9 +90,9 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     const { i, r } = await ask("parcuri si spatii verzi timisoara");
     expect(i.subjects.map((s) => s.term)).toEqual(["parcuri", "spatii verzi"]);
     expect(r.spec?.filters.cpvTerm).toBe("parcuri + spatii verzi");
-    expect(i.notes.join(" ")).toMatch(/Am adunat ambele domenii: „parcuri”, „spatii verzi”\. O achiziție care se potrivește cu mai multe e numărată o singură dată\./);
+    expect(i.notes.join(" ")).toMatch(/Am adunat ambele domenii: „parcuri”, „spații verzi”\. O achiziție care se potrivește cu mai multe e numărată o singură dată\./);
     expect(i.notes.join(" ")).not.toMatch(/primul domeniu/);
-    expect(r.sentence).toMatch(/„parcuri și spatii verzi”/);
+    expect(r.sentence).toMatch(/„parcuri și spații verzi”/);
   });
 
   it("a typed CPV code is that domain, with or without its check digit", async () => {
@@ -169,7 +170,7 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     expect(code.answer?.total.spec.filters.cpvTerm).toBe("45233140-2");
     const both = await onCauta("parcuri si spatii verzi");
     expect(both.answer?.total.spec.filters.cpvTerm).toBe("parcuri + spatii verzi");
-    expect(both.answer?.total.sentence).toMatch(/„parcuri și spatii verzi”/);
+    expect(both.answer?.total.sentence).toMatch(/„parcuri și spații verzi”/);
   });
 
   it("a one-letter typo in a place after a marker, from six letters on („oradia”)", async () => {
@@ -227,11 +228,11 @@ describe("vocabulary from the first-visitor test (migration 0082 and the rules a
     };
     for (const q of ["parcuri si spatii verzi timisoara", "cat a cheltuit primaria brasov pe parcuri si spatii verzi"]) {
       const t = await onCauta(q);
-      expect(t.question?.sentence, q).toMatch(/„parcuri și spatii verzi”/);
+      expect(t.question?.sentence, q).toMatch(/„parcuri și spații verzi”/);
       expect(t.answer?.total.spec.filters.cpvTerm, q).toBe("parcuri + spatii verzi");
       expect(t.answer?.total.spec.filters.uatSiruta, q).toBeGreaterThan(0);
       // the route lists the classes of what the answer counts ("Domenii incluse")
-      expect(t.subject, q).toMatchObject({ term: "parcuri + spatii verzi", label: "parcuri și spatii verzi" });
+      expect(t.subject, q).toMatchObject({ term: "parcuri + spatii verzi", label: "parcuri și spații verzi" });
     }
   });
 

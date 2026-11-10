@@ -209,6 +209,8 @@ export interface Vocabulary {
   places(): Promise<PlaceEntry[]>;
   /** Curated colloquial terms (reference.cpv_synonym), for typo tolerance. */
   synonyms(): Promise<string[]>;
+  /** Folded word → its Romanian spelling (spelling.ts), for labels of terms stored without diacritics. */
+  spelling?(): Promise<ReadonlyMap<string, string>>;
   /** /api/suggest CPV semantics: catalogue labels and synonyms containing every word. */
   cpv(foldedPhrase: string): Promise<CpvHit[]>;
   /**

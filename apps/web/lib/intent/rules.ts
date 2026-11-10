@@ -7,6 +7,7 @@ import { ABBREVIATIONS } from "../ask/entity-alias";
 import { placeKey } from "./places";
 import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
+import { spell } from "./spelling";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
   PlaceEntry, PlaceMatch, QuestionInterpreter, Span, Vocabulary,
@@ -384,7 +385,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.people(c, out);
     const cues = this.cues(c, out);
     this.lenses(c, out);
-    this.kinds(c, out);
+    await this.kinds(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
     await this.institutions(c, out, compareCue !== null);
     await this.compare(c, out, compareCue);
@@ -656,10 +657,27 @@ export class RulesInterpreter implements QuestionInterpreter {
         }
   }
 
-  private kinds(c: Cursor, out: Interpretation) {
+  /**
+   * Token positions inside a curated phrase of several words written as such („paturi de spital”): its institution
+   * word is part of the subject, not the buyers (owner, 10 November 2026: it read „Pături” bought by hospitals).
+   */
+  private async curatedPhraseTokens(c: Cursor): Promise<Set<number>> {
+    const words = c.tokens.map((t) => t.f), out = new Set<number>();
+    for (const term of await this.vocab.synonyms()) {
+      const pw = term.split(" ");
+      if (pw.length < 2 || !pw.some((w) => INSTITUTION_WORD.test(w))) continue;
+      for (let s = 0; s + pw.length <= words.length; s++)
+        if (pw.every((w, k) => words[s + k] === w)) for (let k = s; k < s + pw.length; k++) out.add(k);
+    }
+    return out;
+  }
+
+  private async kinds(c: Cursor, out: Interpretation) {
+    const curated = await this.curatedPhraseTokens(c);
     for (const [kind, re] of KIND_CUES) {
       // a singular institution noun followed by a name is a named authority (handled next)
       for (const h of c.all(re)) {
+        if (curated.has(h.i)) continue;
         const word = c.f(h.i);
         const singular = /^(spitalul|scoala|liceul|colegiul)$/.test(word) || (/^(consiliul|cj)$/.test(word) && (word === "cj" || c.f(h.i + 1) === "judetean"));
         if (singular && h.j < c.tokens.length && c.isFree(h.j, h.j + 1) && !PREPOSITION.has(c.f(h.j)) && !STOPWORDS.has(c.f(h.j))) continue;
@@ -1237,6 +1255,7 @@ export class RulesInterpreter implements QuestionInterpreter {
 
   // -------------------------------------------------------------- subjects
   private async subjects(c: Cursor, out: Interpretation) {
+    const spelling = (await this.vocab.spelling?.()) ?? new Map<string, string>();
     // a CPV code typed directly ("45233140", "45233140-2") is that domain, with its whole sub-tree
     for (let k = 0; k < c.tokens.length; k++) {
       const code = c.f(k);
@@ -1256,13 +1275,14 @@ export class RulesInterpreter implements QuestionInterpreter {
         if (out.subjects.some((s) => s.term === term)) { c.take(h.i, h.j, "subject"); continue; }
         const cpvName = (await this.vocab.cpv(term)).find((x) => x.term === term)?.cpvName ?? null;
         c.take(h.i, h.j, "subject");
-        out.subjects.push({ term, label: term, cpvName, source: "synonym", matched: c.span(h.i, h.j) });
+        out.subjects.push({ term, label: spell(term, spelling), cpvName, source: "synonym", matched: c.span(h.i, h.j) });
         // „software”, „laptop” are Romanian words too: nothing to say
-        if (fold(c.span(h.i, h.j).text) !== term && !stems(fold(c.span(h.i, h.j).text)).includes(term)) out.notes.push(`Am citit „${c.span(h.i, h.j).text}” ca „${term}”.`);
+        if (fold(c.span(h.i, h.j).text) !== term && !stems(fold(c.span(h.i, h.j).text)).includes(term)) out.notes.push(`Am citit „${c.span(h.i, h.j).text}” ca „${spell(term, spelling)}”.`);
       }
     }
     const runs: [number, number][] = [];
-    const usable = (k: number) => !c.used[k] && !INSTITUTION_WORD.test(c.f(k));
+    const curated = await this.curatedPhraseTokens(c);
+    const usable = (k: number) => !c.used[k] && (!INSTITUTION_WORD.test(c.f(k)) || curated.has(k));
     for (let i = 0; i < c.tokens.length; i++) {
       if (!usable(i) || (STOPWORDS.has(c.f(i)) && c.f(i) !== "de")) continue;
       let j = i;
@@ -1316,7 +1336,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       const typedWords = significant(fold(rawSpan(c.tokens, cand.i, cand.j))).join(" ");
       out.subjects.push({
         term: cand.hit.term,
-        label: isCode ? cand.hit.cpvName ?? `CPV ${cand.hit.term}` : typedWords === significant(fold(cand.hit.term)).join(" ") ? rawSpan(c.tokens, cand.i, cand.j).toLocaleLowerCase("ro-RO") : cand.hit.term,
+        // a curated term is stored without diacritics: its label is written in Romanian (spelling.ts)
+        label: isCode ? cand.hit.cpvName ?? `CPV ${cand.hit.term}` : spell(typedWords === significant(fold(cand.hit.term)).join(" ") ? rawSpan(c.tokens, cand.i, cand.j).toLocaleLowerCase("ro-RO") : cand.hit.term, spelling),
         cpvName: cand.hit.cpvName,
         source: isCode ? "catalog" : "synonym",
         matched: c.span(cand.i, cand.j),
@@ -1434,6 +1455,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       for (let k = from; k < to; k++) if (!c.used[k] && !STOPWORDS.has(c.f(k))) ks.push(k);
       return ks;
     };
+    // One identity per side. Several firms may carry the name („Strabag”): the one whose name is exactly the words is
+    // compared, and said (owner, 10 November 2026: „compară Strabag cu Porr Construct” was not read at all).
     const lookup = async (ks: number[], role: "authority" | "supplier" | null) => {
       const typed = significant(ks.map((k) => c.f(k)).join(" "));
       if (!typed.length) return null;
@@ -1441,10 +1464,32 @@ export class RulesInterpreter implements QuestionInterpreter {
       for (const r of roles) {
         const res = await this.resolve(r, typed);
         if (res.kind === "one") return { ...res.hit, role: r };
+        if (res.kind === "many") {
+          const exact = res.hits.filter((e) => sameName(typed, e.name));
+          if (exact.length === 1) {
+            const others = res.total - 1, text = ks.map((k) => c.tokens[k]!.raw).join(" ");
+            out.notes.push(`Am comparat „${exact[0]!.name}”, singura cu exact acest nume; ${others === 1 ? "încă una are" : `încă ${others} au`} „${text}” în nume.`);
+            return { ...exact[0]!, role: r };
+          }
+        }
       }
       return null;
     };
     let focal: EntityMatch | null = out.supplier ?? out.authority;
+    // The name after the connector was read first („… cu Porr Construct”, the name before it has several firms): it is
+    // the other side, and the comparison starts from the name before it.
+    if (focal && focal.matched.from >= connector.j) {
+      const firstKs = side(cueAt, connector.i);
+      const first = await lookup(firstKs, focal.role);
+      if (!first || first.id === focal.id) return;
+      const second = focal;
+      focal = { role: first.role, id: first.id, name: first.name, county: first.county, matched: c.span(firstKs[0]!, firstKs[firstKs.length - 1]! + 1) };
+      for (const k of firstKs) c.take(k, k + 1, "entity");
+      if (focal.role === "supplier") out.supplier = focal; else out.authority = focal;
+      c.take(connector.i, connector.j, "cue");
+      out.compareWith = { role: second.role, id: second.id, name: second.name, county: second.county, matched: second.matched };
+      return;
+    }
     // two named institutions or firms first; two places only when no name resolves
     const placesInstead = async () => {
       if (out.supplier || out.authority) return;

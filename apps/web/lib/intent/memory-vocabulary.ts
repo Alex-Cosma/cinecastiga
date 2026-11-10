@@ -1,5 +1,6 @@
 import { aliasQueries, queryTokens } from "../ask/entity-alias";
 import { buildPlaces, catalogUatSource, type UatSource } from "./places";
+import { buildSpelling } from "./spelling";
 import { fold, personPatterns } from "./text";
 import type { CpvHit, EntityHit, PersonHit, PlaceEntry, Vocabulary } from "./types";
 
@@ -29,6 +30,9 @@ export function memoryVocabulary(fx: MemoryFixture): Vocabulary {
     },
     async synonyms() {
       return fx.synonyms.map((s) => f(s.term));
+    },
+    async spelling() {
+      return buildSpelling(fx.catalog.map((c) => c.name));
     },
     async cpv(q): Promise<CpvHit[]> {
       const code = /^(\d{2,8})(?:-\d)?$/.exec(q.replace(/\s+/g, ""));
