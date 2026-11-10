@@ -163,6 +163,12 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
     // one word is never a curated phrase it is only part of: „cadouri” is the catalogue's gifts, not „cadouri de crăciun”
     expect((await read("cadouri")).subjects.map((x) => x.label)).toEqual(["Cadouri şi recompense"]);
     expect((await read("cadouri de craciun")).subjects.map((x) => x.term)).toEqual(["cadouri de craciun"]);
+    // „pomi de crăciun” is the catalogue's „Pom de Crăciun”; „primăria” marks the place of the lists
+    expect((await read("pomi de craciun")).subjects.map((x) => x.label)).toEqual(["Pom de Crăciun"]);
+    const trees = await page("pomi de craciun primaria brasov");
+    expect(trees.applied).toMatchObject({ place: "uat:40198" });
+    // no domain: no closest names for its words („MOBILA S.A.”)
+    expect((await page("aplicatie mobila")).applied.names).toBe("exact");
     // „presă” alone names no domain (never „Presă de bătut monede”)
     expect((await read("publicitate in presa")).subjects.map((x) => x.term)).not.toContain("presa");
     // „la noi în Târgu Jiu”: the place is named after all

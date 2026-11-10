@@ -331,7 +331,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (largest) out.applied = { ...out.applied, order: 'value' };
   // A subject's words are searched as a subject: no „closest names” for them in the names panel („MEV Software” for
   // „mentenanță software”). Words not understood beside a subject may be a firm's name („apa nova”): its closest names stay.
-  if (out.subject || applies || (loose?.kind === 'subjects' && loose.narrowed.every((w) => ACTION.has(foldText(w)))))
+  // „aplicație mobilă” (no domain) neither: its words are no firm's name to guess („MOBILA S.A.”)
+  if (out.subject || applies || (loose?.kind === 'subjects' && loose.narrowed.every((w) => ACTION.has(foldText(w)))) || i.notes.some((n) => /CPV nu are o clasă pentru/.test(n)))
     out.applied = { ...out.applied, names: 'exact' };
   // What the reading dropped or narrowed is said wherever the reading is used.
   if (out.answer || applies || out.question || loose)
@@ -339,7 +340,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
   out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
-  if (largest && out.applied.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
+  // said only where the lists search what was read (a question's own words are searched as typed, usually nothing)
+  if (largest && out.applied.q && out.applied.q !== scope.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? typedHref() : null);
   return out;
@@ -424,7 +426,9 @@ function compareAnswer(reading: Interpretation, choice: { pair?: NonNullable<Int
 }
 
 /** A registry name without its legal form and punctuation („SC Strabag SRL” → „strabag”). */
-const bareName = (name: string) => foldText(name).split(/[^a-z0-9]+/).filter((w) => w && !LEGAL_FORMS.has(w)).join(' ');
+const bareName = (name: string) => foldText(name).split(/[^a-z0-9]+/).filter((w) => w && !LEGAL_FORMS.has(w) && !NAME_CONNECTORS.has(w)).join(' ');
+/** Connectors a registry name may leave out („Universitatea din București” is „UNIVERSITATEA BUCURESTI”). */
+const NAME_CONNECTORS = new Set(['de', 'din', 'si', 'a', 'al', 'ale', 'la', 'in', 'pentru', 'cu', 'lui']);
 const LEGAL_FORMS = new Set(['sc', 'srl', 'sa', 's', 'r', 'l', 'srlv', 'pfa', 'ii', 'if', 'snc', 'scs', 'ra', 'ltd', 'gmbh', 'firma', 'firmei', 'societatea', 'compania']);
 
 /** The one alternative whose name is exactly the words typed (all of one role), or none. */
@@ -467,7 +471,7 @@ const ACTION = new Set(['mentenanta', 'intretinere', 'reparatii', 'reparatie', '
 const FIRM_WORD = new Set(['firma', 'firmei', 'societatea', 'societatii', 'compania', 'companiei', 'furnizorul', 'furnizorului', 'sc']);
 
 /** Words that mark a place as one ("în Cluj", "județul Iași"); an unmarked one may be a subject or a name ("poduri"). */
-const PLACE_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'sectorul', 'sectorului', 'localitatea']);
+const PLACE_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'sectorul', 'sectorului', 'localitatea', 'primaria', 'primariei', 'primarie']);
 
 const quote = (words: string[]) => words.map((w) => `„${w}”`).join(', ');
 
