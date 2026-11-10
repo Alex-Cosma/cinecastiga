@@ -19,8 +19,17 @@ const fx: MemoryFixture = {
     { code: "90620000-9", name: "Servicii de deszăpezire" },
     { code: "33192100-3", name: "Paturi medicale" },
     { code: "39511100-8", name: "Pături" },
+    { code: "45212224-2", name: "Lucrări de construcţii de stadioane" },
+    { code: "34144510-6", name: "Vehicule pentru transportul deşeurilor menajere" },
+    { code: "34110000-1", name: "Autoturisme" },
+    { code: "90500000-2", name: "Servicii privind deşeurile menajere şi deşeurile" },
   ],
-  synonyms: [...FIXTURE.synonyms, { term: "deszapezire", prefix: "90620000" }, { term: "paturi de spital", prefix: "33192100" }],
+  synonyms: [
+    ...FIXTURE.synonyms, { term: "deszapezire", prefix: "90620000" }, { term: "paturi de spital", prefix: "33192100" },
+    { term: "stadion", prefix: "45212224" }, { term: "masini", prefix: "34110000" }, { term: "gunoi", prefix: "90500000" },
+    { term: "masini de gunoi", prefix: "34144510" },
+  ],
+  authorities: [...FIXTURE.authorities, { id: 9300001, name: "JUDETUL CLUJ (CONSILIUL JUDETEAN)", county: "Cluj", total: 9_000_000_000 }],
   suppliers: [
     // one „Strabag” exactly, another carrying the name
     ...FIXTURE.suppliers.filter((e) => e.id !== 9000007),
@@ -68,6 +77,29 @@ describe("follow-ups of the „Pe scurt” rework (10 November 2026)", () => {
     const first = await read("compară Strabag cu Porr Construct");
     expect(first.supplier?.name).toBe("STRABAG SRL");
     expect(first.compareWith?.name).toBe("PORR CONSTRUCT");
+  });
+
+  it("never adds two curated subjects joined by „de”: the phrase has no domain, its titles are searched", async () => {
+    const i = await read("iluminat de stadion");
+    expect(i.subjects).toEqual([]);
+    expect(i.notes).toContain("„iluminat de stadion”: nu avem un domeniu pentru această expresie; căutăm titlurile cu aceste cuvinte, fără total.");
+    const t = await page("iluminat de stadion");
+    expect(t.answer).toBeNull();
+    expect(t.applied).toMatchObject({ q: "iluminat de stadion", names: "exact" });
+    // a curated phrase is its own subject („mașini de gunoi” are waste collection vehicles, not cars and waste)
+    expect((await read("mașini de gunoi")).subjects.map((s) => s.term)).toEqual(["masini de gunoi"]);
+    // two subjects without „de” stay a list
+    expect((await read("iluminat stadion")).subjects.length).toBeGreaterThan(0);
+  });
+
+  it("says that „CJ” without a county is every county council", async () => {
+    const note = "Toate consiliile județene; pentru unul anume scrie județul, de exemplu „CJ Cluj”.";
+    const i = await read("cine câștigă la CJ");
+    expect(i.authorityKind?.kind).toBe("consiliu_judetean");
+    expect(i.notes).toContain(note);
+    expect((await read("cine câștigă la consiliul județean")).notes).toContain(note);
+    expect((await read("cine câștigă la consiliile județene")).notes).not.toContain(note);
+    expect((await read("cine câștigă la CJ Cluj")).notes).not.toContain(note);
   });
 
   it("keeps an institution word inside a curated phrase („paturi de spital”)", async () => {

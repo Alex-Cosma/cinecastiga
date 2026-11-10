@@ -9,7 +9,7 @@ import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/t
 import type { Place, TopicScope } from './shared';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
 import { STOPWORDS, tokenize } from '../intent/text';
-import { NEVER_SUBJECT, TOWN_HALL_UNKNOWN } from '../intent/rules';
+import { NEVER_SUBJECT, NO_DOMAIN_SAID, TOWN_HALL_UNKNOWN } from '../intent/rules';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -332,13 +332,13 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // A subject's words are searched as a subject: no „closest names” for them in the names panel („MEV Software” for
   // „mentenanță software”). Words not understood beside a subject may be a firm's name („apa nova”): its closest names stay.
   // „aplicație mobilă” (no domain) neither: its words are no firm's name to guess („MOBILA S.A.”)
-  if (out.subject || applies || (loose?.kind === 'subjects' && loose.narrowed.every((w) => ACTION.has(foldText(w)))) || i.notes.some((n) => /CPV nu are o clasă pentru/.test(n)))
+  if (out.subject || applies || (loose?.kind === 'subjects' && loose.narrowed.every((w) => ACTION.has(foldText(w)))) || i.notes.some((n) => NO_DOMAIN_SAID.test(n)))
     out.applied = { ...out.applied, names: 'exact' };
   // What the reading dropped or narrowed is said wherever the reading is used.
   if (out.answer || applies || out.question || loose)
     out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
-  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru/.test(n))])];
+  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
   // said only where the lists search what was read (a question's own words are searched as typed, usually nothing)
   if (largest && out.applied.q && out.applied.q !== scope.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
