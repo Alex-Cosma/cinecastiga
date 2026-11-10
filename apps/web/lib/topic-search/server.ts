@@ -107,34 +107,58 @@ async function documentSearch(s:TopicScope):Promise<Omit<TopicDocumentsResult,'s
  return {documents:{total:Number(r!.total),hits},coverage:{known:Number(r!.known),ready:Number(r!.ready),pages:Number(r!.pages)}};
  });
 }
+/** Legal forms and connectors a registry name leaves out: „SC Strabag SRL” is stored as „strabag”. */
+const NAME_NOISE=new Set(['sc','srl','sa','s','r','l','srlv','pfa','ii','if','snc','scs','ra','ltd','gmbh','de','din','al','a','ale','si','la','pentru','lui','cu','in','cui','cif']);
+/** The words a name must contain: legal forms and connectors dropped (unless nothing else is left). */
+export function nameTerms(phrase:string):string[]{
+ const words=phrase.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+ const kept=words.filter(w=>!NAME_NOISE.has(w));
+ return kept.length?kept:words;
+}
+/**
+ * One name word: at the start of a word of the name, never inside one („anaf” is not BANAFOREST), short words and small
+ * numbers only whole („1” is not the „1” inside a CUI or „Sector 4”'s code), a CUI only from six digits.
+ */
+function termSql(q:DbSql,t:string){
+ const whole=q`(e.name_normalized=${t} or e.name_normalized like ${t+' %'} or e.name_normalized like ${'% '+t} or e.name_normalized like ${'% '+t+' %'})`;
+ if(/^\d+$/.test(t))return t.length>=6?q`(e.cui_canonical like ${t+'%'} or ${whole})`:whole;
+ if(t.length<=3)return whole;
+ return q`(e.name_normalized like ${t+'%'} or e.name_normalized like ${'% '+t+'%'})`;
+}
 async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bounded(async q=>{
  // Existing trigram index on canonical normalized names; all query terms required.
  const terms=fold(s.q).split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0,30);
  if(!terms.length)return {total:0,hits:[],suggestions:[]};
  const intent=entityIntent(s.q);
  let name=q`false`;
+ const typedNames:string[]=[];
  // „ sau ” separates alternatives, as in the titles (words.ts titleTerms)
  for(const phrase of fold(s.q).split(/\s+sau\s+/).flatMap(part=>aliasQueries(part))){
-  const words=phrase.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const words=nameTerms(phrase);
+  if(!words.length)continue;
+  typedNames.push(words.join(' '));
   let variant=q`true`;
   if(s.match==='phrase')variant=q`(e.name_normalized like ${'%'+words.join(' ')+'%'} or e.cui_canonical like ${'%'+words.join(' ')+'%'})`;
-  else for(const term of words)variant=q`${variant} and (e.name_normalized like ${'%'+term+'%'} or e.cui_canonical like ${'%'+term+'%'})`;
+  else for(const term of words)variant=q`${variant} and ${termSql(q,term)}`;
   name=q`${name} or (${variant})`;
  }name=q`(${name})`;
  if(intent.cui)name=q`(${name} or e.cui_canonical=${intent.cui})`;
+ const typed=typedNames[0]??intent.name;
  // Rank identity relevance before spending. A large unrelated institution must
  // not outrank an exact name/CUI just because it has more procurement.
  let authorityName=q`false`;
  for(const candidate of intent.authorityNames)authorityName=q`${authorityName} or e.name_normalized=${candidate} or e.name_normalized like ${candidate+' %'}`;
  const rank=q`case when e.cui_canonical=${intent.cui} then 100
-   when e.name_normalized=${intent.name} then 90
-   when ep.role='authority' and (${authorityName}) then 80 else 0 end`;
+   when e.name_normalized=${typed} then 90
+   when ep.role='authority' and (${authorityName}) then 80
+   when e.name_normalized like ${typed+' %'} then 60 else 0 end`;
+ const search=async(nameSql:typeof name,order:typeof name)=>{
  let activity=q`true`;
  if(s.place||s.from||s.type!=='all'){
   // Who has records in the selection: the name candidates first, then their records in one indexed pass each way.
   // A correlated exists() per candidate made Postgres scan every record of the year for each firm („catering 2025”:
   // 31 s, timeout; owner probe, 10 November 2026); this takes a quarter of a second.
-  const active=await q`with cand as materialized (select e.id,ep.role from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${name} and (${s.role}='' or ep.role=${s.role}))
+  const active=await q`with cand as materialized (select e.id,ep.role from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${nameSql} and (${s.role}='' or ep.role=${s.role}))
    select c.id::text id,c.role from cand c where c.role='authority' and exists(select 1 from marts.topic_acquisitions a where ${scopeSql(q,s)} and a.authority_id=c.id)
    union
    select c.id::text id,c.role from cand c join (select distinct unnest(a.supplier_ids) id from marts.topic_acquisitions a
@@ -142,13 +166,21 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
   const ids=(role:string)=>active.filter(r=>r.role===role).map(r=>String(r.id));
   activity=q`((ep.role='authority' and e.id=any(${ids('authority')}::bigint[])) or (ep.role='supplier' and e.id=any(${ids('supplier')}::bigint[])))`;
  }
- const where=q`${name} and ${activity} and (${s.role}='' or ep.role=${s.role})`;
+ const where=q`${nameSql} and ${activity} and (${s.role}='' or ep.role=${s.role})`;
  const [count]=await q`select count(distinct e.id)::int total from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${where}`;
  const limit=s.tab==='all'?3:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;
  const rows=await q`select e.id::text id,e.name_display name,e.cui_canonical cui,e.county,array_agg(distinct ep.role) roles,max(${rank}) match_rank from core.entities e join marts.entity_profile ep on ep.entity_id=e.id
- where ${where} group by e.id order by max(${rank}) desc,max(ep.total_ron_full) desc nulls last,e.id limit ${limit} offset ${offset}`;
- const hits=rows.map(({match_rank,...entity})=>entity) as unknown as EntityHit[];
- return {total:Number(count!.total),hits,suggestions:s.tab==='all'?hits.filter((_,i)=>Number(rows[i]!.match_rank)>0):[]};
+ where ${where} group by e.id order by ${order},max(ep.total_ron_full) desc nulls last,e.id limit ${limit} offset ${offset}`;
+ return {total:Number(count!.total),rows};
+ };
+ let found=await search(name,q`max(${rank}) desc`),approximate=false;
+ // Nothing by name: the closest names, said as such („Strabac” → Strabag; owner probe, 10 November 2026).
+ if(!found.total&&s.match==='words'&&!intent.cui&&typed.length>=4){
+  found=await search(q`(e.name_normalized % ${typed})`,q`max(similarity(e.name_normalized,${typed})) desc`);
+  approximate=found.total>0;
+ }
+ const hits=found.rows.map(({match_rank,...entity})=>entity) as unknown as EntityHit[];
+ return {total:found.total,hits,suggestions:s.tab==='all'&&!approximate?hits.filter((_,i)=>Number(found.rows[i]!.match_rank)>0):[],...(approximate?{approximate:true as const}:{})};
  });}
 async function checkedPlace(s:TopicScope){
  const place=await resolvePlace(s.place);if(s.place&&!place)throw new TopicInputError('Localitatea sau județul ales nu există în catalog. Alege din sugestii.');return place;

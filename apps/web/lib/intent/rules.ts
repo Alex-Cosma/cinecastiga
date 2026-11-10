@@ -1390,9 +1390,19 @@ export class RulesInterpreter implements QuestionInterpreter {
 
   /** A question that is only a name ("Constructii Erbașu", "cu cine lucrează erbasu"). */
   private async leftoverEntity(c: Cursor, out: Interpretation) {
-    if (out.subjects.length || out.place || out.authority || out.supplier || out.person || out.personAlternatives.length || out.placeAmbiguous || out.entityAlternatives.length) return;
     const free: number[] = [];
     for (let k = 0; k < c.tokens.length; k++) if (!c.used[k] && !STOPWORDS.has(c.f(k)) && !PREPOSITION.has(c.f(k))) free.push(k);
+    // A firm beside the institution already read („cât a primit Strabag de la CNAIR”): the other role, only when the
+    // words name exactly one firm (owner probe, 10 November 2026: the firm was dropped).
+    if (out.authority && !out.supplier && !out.subjects.length && !out.person && !out.entityAlternatives.length && free.length && free.length <= 4) {
+      const typed = significant(free.map((k) => c.f(k)).join(" "));
+      if (!typed.length || (typed.length === 1 && typed[0]!.length < 4)) return;
+      const span = c.span(free[0]!, free[free.length - 1]! + 1);
+      const s = await this.resolve("supplier", typed);
+      if (s.kind === "one" && s.hit.id !== out.authority.id) { for (const k of free) c.take(k, k + 1, "entity"); this.applyResolution(s, out, span, span.text); }
+      return;
+    }
+    if (out.subjects.length || out.place || out.authority || out.supplier || out.person || out.personAlternatives.length || out.placeAmbiguous || out.entityAlternatives.length) return;
     if (!free.length || free.length > 6) return;
     const typed = significant(free.map((k) => c.f(k)).join(" "));
     if (!typed.length || (typed.length === 1 && typed[0]!.length < 5)) return;
@@ -1401,6 +1411,15 @@ export class RulesInterpreter implements QuestionInterpreter {
     const take = () => { for (const k of free) c.take(k, k + 1, "entity"); };
     if (s.kind === "one" && a.kind === "none") { take(); this.applyResolution(s, out, span, span.text); return; }
     if (a.kind === "one" && s.kind === "none") { take(); this.applyResolution(a, out, span, span.text); return; }
+    // The same identity buys and sells (Hidroelectrica, a CUI): one entity, its role from the question's words —
+    // „câștigă la X”, „cumpără X” is the buyer; „de la X”, „X a câștigat”, „vinde” the seller (owner probe, 10 November
+    // 2026: the page asked to choose between an entity and itself).
+    if (s.kind === "one" && a.kind === "one" && s.hit.id === a.hit.id) {
+      const text = fold(out.text);
+      const seller = /\b(?:de la|a castigat|au castigat|castigat de|vinde|vand|furnizeaza|livreaza|firma|firmei|firmele)\b/.test(text);
+      const buyer = /\b(?:castiga la|castigat la|cumpara|cheltuie\w*|cheltuit|achizitioneaza|ia banii de la)\b/.test(text);
+      if (seller !== buyer) { take(); this.applyResolution(seller ? s : a, out, span, span.text); return; }
+    }
     const many = [s, a].filter((r): r is Extract<Resolution, { kind: "one" | "many" }> => r.kind !== "none");
     if (!many.length) return;
     take();

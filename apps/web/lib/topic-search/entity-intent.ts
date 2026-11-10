@@ -5,7 +5,8 @@ import { fold } from './shared';
  * Prefixes are only allowed for administrative names (Cluj → Cluj-Napoca).
  * Keep different legal identities separate even when their names are identical. */
 export function entityIntent(query: string) {
-  const name = fold(query).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  // „CUI 6891914”, „cif RO13863739”: the code itself
+  const name = fold(query).replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/^(?:cui|cif|cod fiscal)\s+(?=(?:ro\s*)?\d+$)/, '');
   const aliases = aliasQueries(name);
   const administrative = /^(?:primaria|primarie|municipiul|orasul|oras|comuna|sectorul|sector|judetul|cj|consiliul? judetean|prefectura|institutia prefectului)\s+\S/.test(name);
   return {

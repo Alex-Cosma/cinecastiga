@@ -1,0 +1,32 @@
+import { describe, expect, it } from 'vitest';
+import { aliasQueries } from '../ask/entity-alias';
+import { entityIntent } from './entity-intent';
+import { titleTerms, titleTsquery } from './words';
+
+// Owner probe, 10 November 2026: names, abbreviations and inflected words that found nothing.
+describe('/cauta names and title words', () => {
+  it('expands institution abbreviations, alone or before a place', () => {
+    expect(aliasQueries('sju bacau')).toContain('spitalul judetean de urgenta bacau');
+    expect(aliasQueries('dgaspc sector 2')).toContain('directia generala de asistenta sociala si protectia copilului sector 2');
+    expect(aliasQueries('anaf')).toContain('agentia nationala de administrare fiscala');
+    expect(aliasQueries('primaria capitalei')).toContain('municipiul bucuresti');
+    expect(aliasQueries('primaria municipiului cluj napoca')).toContain('municipiul cluj napoca');
+    expect(aliasQueries('primaria sectorului 1')).toContain('sectorul 1');
+    // the month is not the interior ministry
+    expect(aliasQueries('mai')).toEqual(['mai']);
+  });
+
+  it('reads a fiscal code written after „CUI” or „CIF”', () => {
+    expect(entityIntent('CUI 6891914').cui).toBe('6891914');
+    expect(entityIntent('cif RO13863739').cui).toBe('13863739');
+    expect(entityIntent('Strabag').cui).toBeNull();
+  });
+
+  it('searches titles by the base of inflected words, with „sau” between alternatives', () => {
+    expect(titleTsquery('laptopul')).toBe('(laptop:*)');
+    expect(titleTsquery('medicamentelor')).toBe('(medicamente:*)');
+    expect(titleTsquery('apă sau canalizare')).toBe('(apa) | (canalizar:*)');
+    // short words stay whole; only letters and digits reach the tsquery
+    expect(titleTerms("pod & 'drop")).toEqual([[{ word: 'pod', prefix: false }, { word: 'drop', prefix: false }]]);
+  });
+});

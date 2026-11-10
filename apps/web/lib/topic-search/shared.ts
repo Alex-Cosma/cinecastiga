@@ -8,7 +8,7 @@ export type AcquisitionHit={id:string;kind:'da'|'contracts';title:string;date:st
 export type DocumentHit={id:string;filename:string;page:number;pages:number[];text:string;method:string;noticeNo:string;noticeTitle:string;sourceUrl:string;contractId:string|null};
 export type EntityHit={id:string;name:string;cui:string|null;roles:string[];county:string|null};
 /** Titles, institutions and firms: the fast part of a search. */
-export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[]};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
+export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[];/** No name contains the words: the closest names instead. */approximate?:true};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
 /** Prepared document pages for the same selection, from /api/topic-search/documents. */
 export type TopicDocumentsResult={scope:TopicScope;documents:{total:number;hits:DocumentHit[]};coverage:{known:number;ready:number;pages:number}};
 export const PAGE_SIZE=10;
