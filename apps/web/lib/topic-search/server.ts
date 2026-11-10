@@ -108,7 +108,8 @@ async function documentSearch(s:TopicScope):Promise<Omit<TopicDocumentsResult,'s
  });
 }
 /** Legal forms and connectors a registry name leaves out: „SC Strabag SRL” is stored as „strabag”. */
-const NAME_NOISE=new Set(['sc','srl','sa','s','r','l','srlv','pfa','ii','if','snc','scs','ra','ltd','gmbh','de','din','al','a','ale','si','la','pentru','lui','cu','in','cui','cif']);
+const LEGAL_FORM=new Set(['sc','srl','sa','s','r','l','srlv','pfa','ii','if','snc','scs','ra','ltd','gmbh']);
+const NAME_NOISE=new Set([...LEGAL_FORM,'de','din','al','a','ale','si','la','pentru','lui','cu','in','cui','cif']);
 /** The words a name must contain: legal forms and connectors dropped (unless nothing else is left). */
 export function nameTerms(phrase:string):string[]{
  const words=phrase.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
@@ -144,14 +145,16 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  }name=q`(${name})`;
  if(intent.cui)name=q`(${name} or e.cui_canonical=${intent.cui})`;
  const typed=typedNames[0]??intent.name;
+ // the name as typed, connectors kept and legal forms dropped, as registry names are stored („… de Urgenta Bucuresti”)
+ const asTyped=[...new Set([intent.name,intent.name.split(' ').filter(w=>!LEGAL_FORM.has(w)).join(' '),typed])].filter(Boolean);
  // Rank identity relevance before spending. A large unrelated institution must
  // not outrank an exact name/CUI just because it has more procurement.
  let authorityName=q`false`;
  for(const candidate of intent.authorityNames)authorityName=q`${authorityName} or e.name_normalized=${candidate} or e.name_normalized like ${candidate+' %'}`;
  const rank=q`case when e.cui_canonical=${intent.cui} then 100
-   when e.name_normalized=${typed} then 90
+   when e.name_normalized=any(${asTyped}::text[]) then 90
    when ep.role='authority' and (${authorityName}) then 80
-   when e.name_normalized like ${typed+' %'} then 60 else 0 end`;
+   when e.name_normalized like any(${asTyped.map(t=>t+' %')}::text[]) then 60 else 0 end`;
  const search=async(nameSql:typeof name,order:typeof name)=>{
  let activity=q`true`;
  if(s.place||s.from||s.type!=='all'){
