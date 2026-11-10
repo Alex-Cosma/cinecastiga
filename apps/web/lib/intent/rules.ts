@@ -201,6 +201,15 @@ const NO_DOMAIN: [RegExp, string][] = [
   [/\baplicati(?:e|a|i|ile|ei|ilor)\s+(?:de\s+)?mobil(?:a|e|ele|ilor)\b/, "aplicațiile mobile"],
 ];
 export const NO_DOMAIN_NOTE = (said: string, what: string) => `„${said}”: CPV nu are o clasă pentru ${what}; căutăm titlurile cu aceste cuvinte, fără total.`;
+/**
+ * „X de Y” whose two parts are each a curated subject („mașini de gunoi”: cars and waste services) is one thing the
+ * vocabulary does not have, never the two added together (owner, 10 November 2026): its titles, without a total.
+ */
+export const PHRASE_NO_DOMAIN_NOTE = (said: string) => `„${said}”: nu avem un domeniu pentru această expresie; căutăm titlurile cu aceste cuvinte, fără total.`;
+/** The notes of words read as having no domain (both kinds above): the lists search them, „Pe scurt” has no total. */
+export const NO_DOMAIN_SAID = /CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie/;
+/** „CJ” or „consiliul județean” without a county (owner, 10 November 2026): every county council, and said. */
+export const COUNTY_COUNCILS_NOTE = "Toate consiliile județene; pentru unul anume scrie județul, de exemplu „CJ Cluj”.";
 const OWN_PLACE_SAID = /nu știm ce localitate/;
 export const OWN_PLACE_NOTE = (said: string) => `„${said}”: nu știm ce localitate este. Scrie numele ei, de exemplu „iluminat Buzău” sau „primăria Buzău”.`;
 
@@ -435,6 +444,9 @@ export class RulesInterpreter implements QuestionInterpreter {
     // A town hall in the centre of a profile, a network or a flow is its institution (the place alone is its records).
     if (cues.some((x) => x.intent === "signals" || x.intent === "network" || x.intent === "flow")) await this.townHall(out);
     await this.leftoverEntity(c, out);
+    // „cine câștigă la CJ”: one county council named without its county is every county council, and said
+    if (out.authorityKind?.kind === "consiliu_judetean" && /^(cj|consiliul|consiliului)$/.test(fold(out.authorityKind.matched.text.split(/\s+/)[0] ?? ""))
+      && !out.place && !out.placeAmbiguous && !out.authority) out.notes.push(COUNTY_COUNCILS_NOTE);
     this.settleIntent(cues, out);
     this.leftover(c, out);
     this.score(c, out);
@@ -1320,6 +1332,12 @@ export class RulesInterpreter implements QuestionInterpreter {
       const phrase = content.length >= 2 && c.tokens.slice(i, j).some((t, idx) => t.f === "de" && idx > 0 && idx < j - i - 1);
       const divisions = new Set(words.filter((w) => w.hit && /^\d/.test(w.hit.term)).map((w) => w.hit!.term.slice(0, 2)));
       const list = !phrase && nouns.every((w) => w.hit) && divisions.size <= 1;
+      const curatedInside = new Set(words.filter((w) => w.hit && !/^\d/.test(w.hit.term)).map((w) => w.hit!.term));
+      if (phrase && curatedInside.size >= 2) {
+        c.take(i, j, "blocked");
+        out.notes.push(PHRASE_NO_DOMAIN_NOTE(c.span(i, j).text));
+        continue;
+      }
       for (const w of words) {
         if (!w.hit) continue;
         if (content.length >= 2 && !list && /^\d/.test(w.hit.term)) continue;

@@ -499,4 +499,9 @@ insert into reference.cpv_synonym (term, cpv_prefix, note, exclude) values
 ('asfaltare','45233140',null,false),
 ('asfaltare','45233220',null,false),
 ('asfaltare','45233250',null,false),
-('asfaltare','45233221',null,true);
+('asfaltare','45233221',null,true),
+('servicii juridice','79100000','Include și certificatele de semnătură electronică (certificare juridică).',false),
+('masini de gunoi','34144510',null,false),
+('masina de gunoi','34144510',null,false),
+('autogunoiere','34144510',null,false),
+('autogunoiera','34144510',null,false);

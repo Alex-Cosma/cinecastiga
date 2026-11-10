@@ -729,6 +729,13 @@
       "when": 1794559531953,
       "tag": "0103_cpv_synonym_probe_vocabulary_3",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1794645931953,
+      "tag": "0104_cpv_synonym_open_items",
+      "breakpoints": true
     }
   ]
 }
