@@ -8,7 +8,7 @@ Acest document transmite mecanisme și decizii, nu autorizație permanentă de a
 
 - Domeniu: `https://cinecastiga.ro`.
 - VPS Debian 13/Docker, SSH `cinecastiga`: alias din `~/.ssh/config` (`HostName` = IP-ul serverului, `User seap`). IP-ul nu se scrie în repo.
-- Checkout: `/srv/seap/src`; compose: `/srv/seap/src/infra/prod`.
+- Checkout: `/srv/seap/src` (origin = https://github.com/Alex-Cosma/cinecastiga.git, citire prin HTTPS, fără cheie); compose: `/srv/seap/src/infra/prod`.
 - Secrete: `infra/prod/.env` pe server, niciodată în Git/handover.
 - Containere: `cinecastiga-web-1`, `cinecastiga-postgres-1`, `cinecastiga-meilisearch-1`, `cinecastiga-caddy-1`, `cinecastiga-documents-1`, `cinecastiga-collection-1`.
 - DB/user owner: `seap`; rol web/worker documente: `seap_web`, granturi limitate.

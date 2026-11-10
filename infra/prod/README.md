@@ -5,7 +5,7 @@
 Single netcup VPS (Debian 13, Docker), user `seap`, everything under `/srv/seap`:
 
 ```
-/srv/seap/src                    git checkout of this repo (origin = GitHub, read-only deploy key)
+/srv/seap/src                    git checkout of this repo (origin = public GitHub repo over HTTPS)
 /srv/seap/src/infra/prod         compose project: postgres, meilisearch, web, caddy
 /srv/seap/src/infra/prod/dumps   restore inputs (pg directory dump + meili dump), gitignored
 /srv/seap/src/infra/prod/.env    secrets (never committed)
@@ -79,10 +79,7 @@ an isolated PostgreSQL upgrade, rollback, permission and data-preservation test.
 
 Setup once:
 
-1. Server: `ssh-keygen -t ed25519 -N "" -f ~/.ssh/github_deploy`; add the public
-   key as a read-only **Deploy key** on the GitHub repo; clone with
-   `GIT_SSH_COMMAND='ssh -i ~/.ssh/github_deploy' git clone git@github.com:Alex-Cosma/seap-new.git /srv/seap/src`
-   and set `git config core.sshCommand 'ssh -i ~/.ssh/github_deploy'` in the checkout.
+1. Server: `git clone https://github.com/Alex-Cosma/cinecastiga.git /srv/seap/src` (public repository: no deploy key).
 2. Mac: `ssh-keygen -t ed25519 -N "" -f ~/.ssh/cinecastiga_ci`. Append to the
    server's `~seap/.ssh/authorized_keys` as one line:
    `command="/srv/seap/src/infra/prod/deploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA... cinecastiga-ci`

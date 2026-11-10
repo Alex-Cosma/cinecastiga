@@ -11,8 +11,8 @@
 ## 1. Repository și servicii locale
 
 ```sh
-git clone git@github.com:Alex-Cosma/seap-new.git
-cd seap-new
+git clone https://github.com/Alex-Cosma/cinecastiga.git
+cd cinecastiga
 git switch -c work/numele-tau-onboarding
 corepack enable
 corepack prepare pnpm@9.4.0 --activate

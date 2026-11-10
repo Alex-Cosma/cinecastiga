@@ -1,4 +1,6 @@
 import { appendFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 /**
  * Dev-session request log: every ask/drill/suggest request is appended as one
@@ -9,7 +11,7 @@ import { appendFile } from "node:fs/promises";
 
 const LOG =
   process.env.SEAP_DEVLOG ??
-  "~/Desktop/Personal/code/seap-heartbeat/asklog.ndjson";
+  join(homedir(), "Desktop/Personal/code/seap-heartbeat/asklog.ndjson");
 
 export function devlog(kind: string, payload: Record<string, unknown>): void {
   if (process.env.NODE_ENV === "production" || LOG === "off") return;

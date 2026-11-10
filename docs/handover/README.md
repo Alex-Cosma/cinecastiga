@@ -43,7 +43,8 @@ Documentele originale [01](01-product.md), [02](02-architecture.md), [05](05-ope
 
 ## Starea la predare
 
-- Repository: `git@github.com:Alex-Cosma/seap-new.git`; aplicație: `https://cinecastiga.ro`.
+- Repository: <https://github.com/Alex-Cosma/cinecastiga>; aplicație: `https://cinecastiga.ro`.
+- Mutare 10 noiembrie 2026: codul a trecut din `Alex-Cosma/seap-new` (acum privat, arhivă) în acest repo public, cu istoricul curățat (fără IP-ul serverului, persoane reale, emailuri personale). Hash-urile s-au schimbat: commiturile, linkurile `seap-new/actions` și SHA-urile scurte citate în documentele mai vechi sunt din repo-ul vechi; corespondența veche → nouă este în [commit-map-20261110.txt](commit-map-20261110.txt).
 - Ultima publicare de cod documentată: `5488af2`, download automat strict pentru caiete de sarcini; CI/deploy `38157671237` trecute. `d16d866` este commitul documentar de pe care începe lucrarea curentă. Verifică runtime-ul serverului pentru starea de acum.
 - Lucrarea curentă: **`fix/contract-reporting-integrity-20261011`**, necomisă/nepublicată la redactare. [Raport și verificări](../implementation/contract-reporting-integrity-20261011/README.md).
 - Preflight-ul pe copia publicațiilor repetate a verificat 75.974 de grupuri candidate noi. **748 de grupuri aveau posibil impact financiar în regula veche**; nu sunt dubluri dovedite. La 12 octombrie proprietarul a ales excluderea temporară explicită și separarea tuturor plafoanelor. Vezi [implementarea și verificările](../implementation/contract-reporting-integrity-20261011/POLICY-20261012.md); producția nu a fost modificată de această intervenție.

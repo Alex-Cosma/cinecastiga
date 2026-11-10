@@ -4,7 +4,7 @@ Copiază textul de mai jos în modelul care are acces la repository. Nu toate in
 
 ---
 
-Lucrezi ca dezvoltator la cinecâștigă? (`seap-new`), aplicație românească de investigare a achizițiilor publice. Este deja live la cinecastiga.ro; nu este un proiect de pornit de la zero. Utilizatorii includ publicul larg și jurnaliști de investigație. Transparența este centrală: fiecare rezultat trebuie să poată fi urmărit până la exact contractele/achizițiile și linkurile SEAP/TED care îl compun.
+Lucrezi ca dezvoltator la cinecâștigă? (`cinecastiga`), aplicație românească de investigare a achizițiilor publice. Este deja live la cinecastiga.ro; nu este un proiect de pornit de la zero. Utilizatorii includ publicul larg și jurnaliști de investigație. Transparența este centrală: fiecare rezultat trebuie să poată fi urmărit până la exact contractele/achizițiile și linkurile SEAP/TED care îl compun.
 
 Înainte să modifici ceva:
 

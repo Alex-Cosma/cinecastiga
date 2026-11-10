@@ -89,7 +89,7 @@ Acesta este punctul de intrare pentru colaborare, nu un plan de rescriere a proi
 
 ## Starea de plecare
 
-- Repository: `git@github.com:Alex-Cosma/seap-new.git`; aplicație: <https://cinecastiga.ro>.
+- Repository: <https://github.com/Alex-Cosma/cinecastiga> (până la 10 noiembrie 2026: `seap-new`, acum privat); aplicație: <https://cinecastiga.ro>.
 - Codul reparației și corecției finale verificat în producție: `c6763f3`. Pentru commitul final și verificări citește raportul din1 octombrie; commiturile exclusiv documentare pot exista pe `main` fără deploy.
 - CI + deploy al reparației: Actions `36886537522`, apoi `36906296990` pentru corecția finală, confirmate reușite. Publicarea datelor are propriile verificări și raport; un deploy reușit singur nu certifică reparația.
 - Lotul recent include Semnale A, feedback anonim cu secțiune admin separată, căutare/Explorează și corectarea calendarului. Funcționalitățile și backlogul sunt în [06-status-and-roadmap.md](06-status-and-roadmap.md).
