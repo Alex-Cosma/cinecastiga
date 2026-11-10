@@ -87,6 +87,8 @@ export function stems(word: string): string[] {
   strip("ile", 4, "i");
   // plural -e: "lemne" → "lemn" (only as an extra candidate; the word itself is tried too)
   strip("e", 4);
+  // plural -i of a short noun: "pomi" → "pom" (re-judging, 10 November 2026: „pomi de crăciun” missed „Pom de Crăciun”)
+  if (word.length === 4) strip("i", 3);
   return [...out];
 }
 
