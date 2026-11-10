@@ -2,7 +2,7 @@ import {createDb,type DbSql} from '@seap/db';
 import {daUrl,awardUrl} from '../elicitatie';
 import {aliasQueries} from '../ask/entity-alias';
 import {entityIntent} from './entity-intent';
-import {titleTsquery} from './words';
+import {titleTsquery,trailingCounty,wordForms} from './words';
 import {rankPlaces,type UatRow} from './places';
 import {COUNTIES} from '../counties';
 import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
@@ -127,10 +127,12 @@ export function glue(words:string[]):string[]{
  * One name word: at the start of a word of the name, never inside one („anaf” is not BANAFOREST), short words and small
  * numbers only whole („1” is not the „1” inside a CUI or „Sector 4”'s code), a CUI only from six digits.
  */
-function termSql(q:DbSql,t:string){
+function termSql(q:DbSql,t:string,exact=false){
  const whole=q`(e.name_normalized=${t} or e.name_normalized like ${t+' %'} or e.name_normalized like ${'% '+t} or e.name_normalized like ${'% '+t+' %'})`;
  if(/^\d+$/.test(t))return t.length>=6?q`(e.cui_canonical like ${t+'%'} or ${whole})`:whole;
  if(t.length<=3)return whole;
+ // a subject's word, whole and in its forms: „crăciun” is no „Crăciunești”, „flori” no „Florian” (re-judging, 10 November 2026)
+ if(exact)return q`(e.name_normalized ~ ${`(^| )(${wordForms(t).join('|')})( |$)`})`;
  return q`(e.name_normalized like ${t+'%'} or e.name_normalized like ${'% '+t+'%'})`;
 }
 async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bounded(async q=>{
@@ -147,11 +149,14 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
   typedNames.push(words.join(' '));
   let variant=q`true`;
   if(s.match==='phrase')variant=q`(e.name_normalized like ${'%'+words.join(' ')+'%'} or e.cui_canonical like ${'%'+words.join(' ')+'%'})`;
-  else for(const term of words)variant=q`${variant} and ${termSql(q,term)}`;
+  else for(const term of words)variant=q`${variant} and ${termSql(q,term,s.names==='exact')}`;
   name=q`${name} or (${variant})`;
+  const placed=s.match==='words'?trailingCounty(words):null;
+  if(placed){let inCounty=q`true`;for(const term of placed.rest)inCounty=q`${inCounty} and ${termSql(q,term,s.names==='exact')}`;
+   name=q`${name} or (${inCounty} and translate(lower(coalesce(e.county,'')),'-',' ')=${placed.county})`;}
   // short words glued in the registry („Dr. Max” is stored as „drmax”, „E.ON” as „eon”)
   const glued=glue(words);
-  if(s.match!=='phrase'&&glued.join(' ')!==words.join(' ')){let alt=q`true`;for(const term of glued)alt=q`${alt} and ${termSql(q,term)}`;name=q`${name} or (${alt})`;}
+  if(s.match!=='phrase'&&glued.join(' ')!==words.join(' ')){let alt=q`true`;for(const term of glued)alt=q`${alt} and ${termSql(q,term,s.names==='exact')}`;name=q`${name} or (${alt})`;}
  }name=q`(${name})`;
  if(intent.cui)name=q`(${name} or e.cui_canonical=${intent.cui})`;
  const typed=typedNames[0]??intent.name;

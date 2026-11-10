@@ -113,7 +113,7 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
   ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor))\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
-  ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul)?|in total|cheltuit|cheltuiala|cheltuielile|cheltuieli)\b/],
+  ["total", /\b(?:cat|cati|cata|cate|costa|costat|a costat|au costat|total(?:ul)?|in total|cheltuit|cheltuiala|cheltuielile|cheltuieli|cheltuielilor|costurile|costurilor)\b/],
 ];
 
 /** The retired signal's words (rules.cues): a signals question without a signal, and its note. */
@@ -187,14 +187,23 @@ const ENGLISH_SUBJECTS: [RegExp, string][] = [
   [/\b(?:fuel|petrol|diesel)\b/, "carburanti"],
   [/\b(?:cctv|surveillance\s+cameras?|video\s+cameras?)\b/, "camere video"],
 ];
-/** How to narrow a partial list of choices: a locality for institutions and firms, birth data only for people. */
 /**
  * „la noi”, „comuna mea”, „orașul nostru”: a place the words do not name. Understood, never a guess: the page asks which
  * (owner probe, 10 November 2026).
  */
 const OWN_PLACE = /\b(?:la noi|la mine|pe la noi|(?:in |din |la )?(?:orasul|comuna|satul|judetul|localitatea|municipiul|primaria|sectorul|zona) (?:meu|mea|nostru|noastra))\b/;
+/**
+ * Phrases CPV has no class for (owner, 10 November 2026, list 3: „aplicație mobilă” counted all application programming):
+ * understood, never a domain; the titles are searched for them and „Pe scurt” gives no total.
+ */
+const NO_DOMAIN: [RegExp, string][] = [
+  [/\baplicati(?:e|a|i|ile|ei|ilor)\s+(?:de\s+)?mobil(?:a|e|ele|ilor)\b/, "aplicațiile mobile"],
+];
+export const NO_DOMAIN_NOTE = (said: string, what: string) => `„${said}”: CPV nu are o clasă pentru ${what}; căutăm titlurile cu aceste cuvinte, fără total.`;
+const OWN_PLACE_SAID = /nu știm ce localitate/;
 export const OWN_PLACE_NOTE = (said: string) => `„${said}”: nu știm ce localitate este. Scrie numele ei, de exemplu „iluminat Buzău” sau „primăria Buzău”.`;
 
+/** How to narrow a partial list of choices: a locality for institutions and firms, birth data only for people. */
 export const ENTITY_HINT = "Scrie numele complet, cu localitatea.";
 export const PERSON_HINT = "Scrie numele complet, cu localitatea ori anul nașterii.";
 /** Where an institution's name gives way to its place ("… din județul Satu Mare"). */
@@ -231,7 +240,10 @@ const ADJECTIVE = new Set(["medical", "medicale", "medicala", "medicali", "scola
 export const NEVER_SUBJECT = new Set(["fara", "afara", "exceptand", "inafara", "trecut", "trecuta", "trecute", "trecutul", "viitor", "viitoare", "iarna",
   "vara", "toamna", "primavara", "iernii", "verii", "sector", "sectorul", "sectorului", "sectoare", "zona", "zonei", "oras", "orasul", "orasului",
   "copii", "copiii", "copiilor", "blocuri", "blocul", "bloc", "blocurilor", "unu", "doi", "doua", "trei", "patru", "cinci", "sase", "sapte", "opt",
-  "noua", "zece", "suta", "mie", "mii", "milion", "milioane", "miliard", "miliarde", "romania", "tara", "tarii", "intreaga", "intreg"]);
+  "noua", "zece", "suta", "mie", "mii", "milion", "milioane", "miliard", "miliarde", "romania", "tara", "tarii", "intreaga", "intreg",
+  // „presă” alone is the press or a press machine („Presă de bătut monede”); its phrases („abonamente presă”, „monitorizare
+  // presă”) are curated (list 3 re-judging, 10 November 2026)
+  "presa", "presei"]);
 /** Words that only modify a cue ("cel mai mare", "cele mai multe"). */
 const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
 
@@ -379,9 +391,21 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.suppliersByMarker(c, out);
     this.monthsAlone(c, out);
     this.ownPlace(c, out);
+    this.noDomain(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
     const marked = this.markedPlaces(c, out, byKey, localities);
-    const unmarked = this.unmarkedPlaces(c, byKey);
+    let unmarked = this.unmarkedPlaces(c, byKey);
+    // „poduri Argeș”, „drumuri și poduri Buzău”: a lone word that names a village and a curated subject is the subject when
+    // another place is named (re-judging, 10 November 2026: Comuna Poduri, Bacău, was read and Argeș dropped)
+    if (coded.length || marked.length || unmarked.length > 1) {
+      const synonyms = await this.vocab.synonyms();
+      unmarked = unmarked.filter((p) => {
+        const subject = p.to - p.from === 1 && !p.entries.some((e) => e.kind === "county") && synonyms.includes(c.f(p.from));
+        const other = [...coded, ...marked, ...unmarked].some((q) => q !== p);
+        if (subject && other) { c.used[p.from] = null; return false; }
+        return true;
+      });
+    }
     await this.namedRuns(c, out);
     await this.subjects(c, out);
     // „fără București”, „în afara Bucureștiului”, „exceptând Clujul”: a place cannot be left out, so it is not applied
@@ -404,6 +428,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       return false;
     });
     this.settlePlaces(kept, out);
+    // „la noi în Târgu Jiu”: the place is named after all
+    if (out.place || out.placeAmbiguous) out.notes = out.notes.filter((n) => !OWN_PLACE_SAID.test(n));
     await this.choicesInPlace(out);
     // A town hall in the centre of a profile, a network or a flow is its institution (the place alone is its records).
     if (cues.some((x) => x.intent === "signals" || x.intent === "network" || x.intent === "flow")) await this.townHall(out);
@@ -707,7 +733,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       // „ISJ Cluj”, „IPJ Iași”, „SUUB”: an abbreviation is a name of its own (owner probe, 10 November 2026)
       const abbreviated = OPENING_ABBREVIATIONS.includes(head) && !ACRONYMS[head];
       // "spitalul din Buzău": a kind and a place, not a name
-      if (h.j < c.tokens.length && /^(din|la|in|pentru)$/.test(c.f(h.j)) && !/^(cnair|anaf|cj)$/.test(head) && !abbreviated) continue;
+      // („Universitatea din București”, „din Craiova”: universities are named so; tried as a name first)
+      if (h.j < c.tokens.length && /^(din|la|in|pentru)$/.test(c.f(h.j)) && !/^(cnair|anaf|cj|universitatea)$/.test(head) && !abbreviated) continue;
       // "consiliul local" is a town hall (a place marker), not a named institution
       if (c.f(h.i) === "consiliul" && c.f(h.j) !== "judetean") continue;
       let end = h.j;
@@ -897,11 +924,20 @@ export class RulesInterpreter implements QuestionInterpreter {
     const month = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie";
     // („mai” is the month only after „luna”: „cel mai mare” is no May)
     const monthAlone = month.replace("|mai|", "|");
-    for (const h of c.all(new RegExp(`\\b(?:in\\s+|pe\\s+)?(?:(?:luna\\s+)?(?:${monthAlone})|luna\\s+mai|(?:primul|al doilea|al treilea|ultimul)\\s+trimestru|trimestrul\\s+(?:1|2|3|4|i|ii|iii|iv))\\b`))) {
+    for (const h of c.all(new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:(?:luna\\s+)?(?:${monthAlone})|luna\\s+mai|luna\\s+(?:trecuta|aceasta|asta|curenta|viitoare)|(?:saptamana|saptamanile)\\s+(?:trecuta|aceasta|asta|trecute)|(?:primul|al doilea|al treilea|ultimul)\\s+trimestru|trimestrul\\s+(?:1|2|3|4|i|ii|iii|iv))\\b`))) {
       if (!c.isFree(h.i, h.j)) continue;
       c.take(h.i, h.j, "modifier");
       out.notes.push(`„${c.span(h.i, h.j).text}”: lunile și trimestrele nu sunt încă un filtru al căutării; nu le-am aplicat.`);
     }
+  }
+
+  /** „aplicație mobilă”: words the catalogue has no class for; left as words to search (blocked), and said. */
+  private noDomain(c: Cursor, out: Interpretation) {
+    for (const [re, what] of NO_DOMAIN)
+      for (const h of c.all(re)) {
+        c.take(h.i, h.j, "blocked");
+        out.notes.push(NO_DOMAIN_NOTE(c.span(h.i, h.j).text, what));
+      }
   }
 
   /** „la noi”, „comuna mea”: understood as a place the words do not name, and said (never a guess, never a subject). */
@@ -1221,7 +1257,8 @@ export class RulesInterpreter implements QuestionInterpreter {
         const cpvName = (await this.vocab.cpv(term)).find((x) => x.term === term)?.cpvName ?? null;
         c.take(h.i, h.j, "subject");
         out.subjects.push({ term, label: term, cpvName, source: "synonym", matched: c.span(h.i, h.j) });
-        out.notes.push(`Am citit „${c.span(h.i, h.j).text}” ca „${term}”.`);
+        // „software”, „laptop” are Romanian words too: nothing to say
+        if (fold(c.span(h.i, h.j).text) !== term && !stems(fold(c.span(h.i, h.j).text)).includes(term)) out.notes.push(`Am citit „${c.span(h.i, h.j).text}” ca „${term}”.`);
       }
     }
     const runs: [number, number][] = [];
@@ -1337,6 +1374,9 @@ export class RulesInterpreter implements QuestionInterpreter {
     const fits = (h: CpvHit, match: (w: string, l: string) => boolean) => {
       const label = labelWords(h);
       if (words.length === 1 && /^\d/.test(h.term)) return leading(label, (l) => match(words[0]!, l));
+      // one word never stands for a curated phrase it is only part of: „cadouri” is not „cadouri de crăciun”, „zilele”
+      // not „zilele comunei” (list 3 re-judging, 10 November 2026)
+      if (words.length === 1 && label.length > 1) return false;
       return words.every((w) => label.some((l) => match(w, l)));
     };
     // A word the catalogue has as typed is never read as a near catalogue word: „anvelope” is tyres, not „anvelopare”.

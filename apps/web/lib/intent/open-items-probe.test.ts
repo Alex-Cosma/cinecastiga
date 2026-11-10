@@ -13,6 +13,8 @@ import { parseTopicScope } from "../topic-search/shared";
 const NOW = new Date("2026-11-10T10:00:00Z");
 const fx: MemoryFixture = {
   ...FIXTURE,
+  catalog: [...FIXTURE.catalog, { code: "18530000-3", name: "Cadouri şi recompense" }],
+  synonyms: [...FIXTURE.synonyms, { term: "cadouri de craciun", prefix: "18530000" }],
   authorities: [
     ...FIXTURE.authorities,
     { id: 7000001, name: "INSPECTORATUL SCOLAR JUDETEAN CLUJ", county: "Cluj", total: 40_000_000 },
@@ -22,6 +24,7 @@ const fx: MemoryFixture = {
     { id: 7000005, name: "Municipiul Timisoara", county: "Timis", total: 3_400_000_000 },
     { id: 7000006, name: "Direcția Generală de Administrare Monumente și Promovare Turistică a Județului Hunedoara", county: "Hunedoara", total: 9_000_000 },
     { id: 7000007, name: "Directia Generala de Asistenta Sociala si Protectia Copilului Sector 2", county: "Bucuresti", total: 360_000_000 },
+    { id: 7000008, name: "UNIVERSITATEA DIN BUCURESTI", county: "Bucuresti", total: 900_000_000 },
   ],
   suppliers: [
     // one „Strabag” exactly (the shared fixture has two: „STRABAG SRL” and „SC STRABAG SRL”, which stay a choice)
@@ -137,6 +140,37 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
     const part = await read("promovare turistica");
     expect(part.authority).toBeNull();
     expect(part.entityAlternatives.map((e) => e.id)).toEqual([7000006]);
+  });
+
+  it("third list (10 November 2026): words without a domain, months said, names of universities, a subject over a village", async () => {
+    // CPV has no class for mobile apps: no subject, no total, the words searched and said
+    const app = await page("aplicatie mobila");
+    expect(app.answer).toBeNull();
+    expect(app.subject).toBeNull();
+    expect(app.notes.join(" ")).toMatch(/CPV nu are o clasă pentru aplicațiile mobile/);
+    // „luna trecută” is a month, said, never dropped silently
+    expect((await read("asfalt buzau luna trecuta")).notes.join(" ")).toMatch(/„luna trecuta”: lunile/);
+    // „cheltuielilor” asks for the value
+    expect((await read("evolutia cheltuielilor cu iluminatul")).leftover).toEqual([]);
+    // „Universitatea din București” is its name, not a university in a place
+    const uni = await read("cine castiga la Universitatea din Bucuresti");
+    expect(uni.authority?.name).toBe("UNIVERSITATEA DIN BUCURESTI");
+    expect(uni.place).toBeNull();
+    // „poduri Argeș”: bridges in Argeș, not the village of Poduri; one place alone stays the place
+    const bridges = await read("poduri Arges");
+    expect(bridges.place).toMatchObject({ kind: "county", county: "Argeș" });
+    expect(bridges.subjects.map((x) => x.term)).toEqual(["poduri"]);
+    // one word is never a curated phrase it is only part of: „cadouri” is the catalogue's gifts, not „cadouri de crăciun”
+    expect((await read("cadouri")).subjects.map((x) => x.label)).toEqual(["Cadouri şi recompense"]);
+    expect((await read("cadouri de craciun")).subjects.map((x) => x.term)).toEqual(["cadouri de craciun"]);
+    // „presă” alone names no domain (never „Presă de bătut monede”)
+    expect((await read("publicitate in presa")).subjects.map((x) => x.term)).not.toContain("presa");
+    // „la noi în Târgu Jiu”: the place is named after all
+    const named = await read("cine ia contractul cu gunoiul la noi in Targu Jiu");
+    expect(named.place).toMatchObject({ name: "Municipiul Târgu Jiu" });
+    expect(named.notes.join(" ")).not.toMatch(/nu știm ce localitate/);
+    // a subject narrowed by words not understood: each part offered alone
+    expect((await page("iluminat de revelion")).alsoTry).toEqual(["revelion", "iluminat"]);
   });
 
   it("answers the largest records, and searches a subject's names without the closest names", async () => {

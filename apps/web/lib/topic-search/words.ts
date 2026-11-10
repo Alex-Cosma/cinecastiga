@@ -1,6 +1,7 @@
 import { STOPWORDS, fold as foldText, stems, tokenize } from '../intent/text';
 import type { PlaceMatch, Span, SubjectMatch } from '../intent/types';
 import { fold } from './shared';
+import { COUNTIES } from '../counties';
 
 /** Client-safe word plumbing shared by /cauta and the home search suggestions. */
 
@@ -98,6 +99,11 @@ export function titleTerms(q: string): { word: string; prefix: boolean }[][] {
     .filter((part) => part.length);
 }
 
+/** Words whose forms the endings would confuse with another word: the town hall („primăria”) is no „școală primară”. */
+const IRREGULAR: string[][] = [
+  ['primaria', 'primarie', 'primariei', 'primarii', 'primariile', 'primariilor'],
+];
+
 /** Romanian noun endings: a base and these are the forms a title may hold („laptop”, „laptopul”, „laptopuri”…). */
 const ENDINGS = ['', 'a', 'e', 'i', 'ul', 'ului', 'le', 'lor', 'ele', 'elor', 'ii', 'ilor', 'uri', 'urile', 'urilor', 'ea', 'ei', 'ile', 'iei', 'ie'];
 
@@ -107,8 +113,12 @@ const ENDINGS = ['', 'a', 'e', 'i', 'ul', 'ului', 'le', 'lor', 'ele', 'elor', 'i
  */
 export function wordForms(word: string): string[] {
   if (word.length < 5) return [word];
+  const irregular = IRREGULAR.find((forms) => forms.includes(word));
+  if (irregular) return irregular;
   const bases = new Set<string>([word, ...stems(word)]);
-  for (const b of [...bases]) if (/[aeiu]$/.test(b) && b.length > 4) bases.add(b.slice(0, -1));
+  // a final vowel after a consonant is an ending („scoala” → „scoal”); after a vowel it is the word („Buzău”, „Sibiu”,
+  // „Bacău” are not „buza”, „sibi”, „baca”; re-judging, 10 November 2026)
+  for (const b of [...bases]) if (/[^aeiou][aeiu]$/.test(b) && b.length > 4) bases.add(b.slice(0, -1));
   const out = new Set<string>();
   for (const b of bases) for (const e of ENDINGS) if (b.length >= 4) out.add(b + e);
   return [...out];
@@ -122,3 +132,22 @@ export function titleTsquery(q: string): string {
     .map((words) => `(${words.map((w) => { const forms = wordForms(w); return forms.length === 1 ? forms[0] : `(${forms.join(' | ')})`; }).join(' & ')})`)
     .join(' | ');
 }
+
+/** County names as name words („satu mare”, „bistrita nasaud”), folded, longest first. */
+const COUNTY_WORDS = COUNTIES.map((c) => ({ county: fold(c).replace(/[^a-z]+/g, ' ').trim(), words: fold(c).split(/[^a-z]+/).filter(Boolean) })).sort((a, b) => b.words.length - a.words.length);
+/**
+ * „Primăria Florești Cluj”: the county written after a name is where it is, not a word of the name (registry names rarely
+ * carry it): the name without it, in that county (re-judging, 10 November 2026: 179 near names, Florești Mehedinți first).
+ */
+export function trailingCounty(words: string[]): { county: string; rest: string[] } | null {
+  for (const c of COUNTY_WORDS) {
+    const n = c.words.length;
+    if (words.length <= n || words.slice(-n).join(' ') !== c.words.join(' ')) continue;
+    const rest = words.slice(0, -n);
+    // „comuna Iași”, „municipiul Iași” (a town hall's registered shapes): the county is the name, not where it is
+    return rest.some((w) => !GENERIC_NAME_WORDS.has(w)) ? { county: c.county, rest } : null;
+  }
+  return null;
+}
+/** Words of every institution's name: alone beside a county they name nothing in it. */
+const GENERIC_NAME_WORDS = new Set(['comuna', 'municipiul', 'orasul', 'oras', 'primaria', 'judetul', 'consiliul', 'judetean', 'sectorul', 'sector', 'local']);

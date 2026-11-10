@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aliasQueries } from '../ask/entity-alias';
 import { entityIntent } from './entity-intent';
-import { titleTerms, titleTsquery } from './words';
+import { titleTerms, titleTsquery, trailingCounty } from './words';
 
 // Owner probe, 10 November 2026: names, abbreviations and inflected words that found nothing.
 describe('/cauta names and title words', () => {
@@ -28,6 +28,15 @@ describe('/cauta names and title words', () => {
     expect(entityIntent('Strabag').cui).toBeNull();
   });
 
+  it('reads a county written after a name as where the name is', () => {
+    expect(trailingCounty(['comuna', 'floresti', 'cluj'])).toEqual({ county: 'cluj', rest: ['comuna', 'floresti'] });
+    expect(trailingCounty(['spitalul', 'judetean', 'satu', 'mare'])).toEqual({ county: 'satu mare', rest: ['spitalul', 'judetean'] });
+    // the county alone, or with only a town hall's words („comuna iasi”, „municipiul iasi”), is the name searched
+    expect(trailingCounty(['cluj'])).toBeNull();
+    expect(trailingCounty(['comuna', 'iasi'])).toBeNull();
+    expect(trailingCounty(['municipiul', 'iasi'])).toBeNull();
+  });
+
   it('searches titles by the base of inflected words, with „sau” between alternatives', () => {
     const forms = (q: string) => titleTsquery(q).replace(/[()]/g, '').split(/ [|&] /);
     expect(forms('laptopul')).toEqual(expect.arrayContaining(['laptop', 'laptopul', 'laptopuri', 'laptopurile']));
@@ -36,6 +45,12 @@ describe('/cauta names and title words', () => {
     expect(forms('artificii')).toContain('artificii');
     expect(forms('artificii')).not.toContain('artificiale');
     expect(titleTsquery('laptopul')).not.toMatch(/:\*/);
+    // a final vowel after a vowel is the word: „Buzău” is no „Buza”, „Sibiu” no „sibi”; the town hall no „școală primară”
+    expect(forms('buzau')).not.toContain('buza');
+    expect(forms('sibiu')).not.toContain('sibi');
+    expect(forms('primaria')).toEqual(expect.arrayContaining(['primaria', 'primariei', 'primarii']));
+    expect(forms('primaria')).not.toContain('primara');
+    expect(forms('primaria')).not.toContain('primare');
     expect(titleTsquery('apă sau canalizare')).toMatch(/^\(apa\) \| \(\(canalizare/);
     // short words stay whole; only letters and digits reach the tsquery
     expect(titleTerms("pod & 'drop")).toEqual([[{ word: 'pod', prefix: false }, { word: 'drop', prefix: false }]]);
