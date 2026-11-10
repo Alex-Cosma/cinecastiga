@@ -89,9 +89,20 @@ export function weakSubject(s: Pick<SubjectMatch, 'source' | 'matched' | 'cpvNam
  * „medicamentelor” finds „medicamente” (owner probe, 10 November 2026: inflected words found nothing). Folded,
  * letters and digits only, so the terms are safe inside a tsquery.
  */
+/**
+ * Words a title need not repeat (re-judging, 10 November 2026): „camere de supraveghere” required „de” and missed a
+ * third of the titles („camere supraveghere video”), „lucrări de drumuri” 9%. Kept when they are all the words.
+ */
+const CONNECTORS = new Set(['de', 'din', 'si', 'cu', 'la', 'pe', 'pentru', 'in', 'a', 'al', 'ale', 'ai', 'prin', 'privind']);
+const titleWords = (part: string): string[] => {
+  const words = fold(part).split(/[^a-z0-9]+/).filter(Boolean);
+  const content = words.filter((w) => !CONNECTORS.has(w));
+  return content.length ? content : words;
+};
+
 export function titleTerms(q: string): { word: string; prefix: boolean }[][] {
   return q.split(/\s+sau\s+/i)
-    .map((part) => fold(part).split(/[^a-z0-9]+/).filter(Boolean).map((w) => {
+    .map((part) => titleWords(part).map((w) => {
       if (w.length < 5) return { word: w, prefix: false };
       const base = stems(w).reduce((a, b) => (b.length < a.length ? b : a));
       return { word: base.length >= 4 ? base : w, prefix: true };
@@ -112,6 +123,8 @@ const ENDINGS = ['', 'a', 'e', 'i', 'ul', 'ului', 'le', 'lor', 'ele', 'elor', 'i
  * Explicit forms, not a prefix: „artificii” must not find „artificiale” (owner probe re-judging, 10 November 2026).
  */
 export function wordForms(word: string): string[] {
+  // a short plural in -i is its singular too („pomi” → „Pom de Crăciun”; re-judging, 10 November 2026)
+  if (word.length === 4 && /[^aeiou]i$/.test(word)) return [word, ...['', 'ul', 'ului', 'ii', 'ilor'].map((e) => word.slice(0, 3) + e)];
   if (word.length < 5) return [word];
   const irregular = IRREGULAR.find((forms) => forms.includes(word));
   if (irregular) return irregular;
@@ -127,7 +140,7 @@ export function wordForms(word: string): string[] {
 /** `titleTerms` as a Postgres tsquery for the 'simple' configuration ('' when there is nothing to search). */
 export function titleTsquery(q: string): string {
   return q.split(/\s+sau\s+/i)
-    .map((part) => fold(part).split(/[^a-z0-9]+/).filter(Boolean))
+    .map(titleWords)
     .filter((words) => words.length)
     .map((words) => `(${words.map((w) => { const forms = wordForms(w); return forms.length === 1 ? forms[0] : `(${forms.join(' | ')})`; }).join(' & ')})`)
     .join(' | ');
