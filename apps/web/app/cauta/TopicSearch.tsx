@@ -9,6 +9,7 @@ import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {Broader,SubjectAnswer,Understood,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
+import {titleTerms} from '@/lib/topic-search/words';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
 import {silentChoice} from '@/lib/topic-search/places';
@@ -25,8 +26,9 @@ function BestMatch({entity:e,unfiltered}:{entity:EntityHit;unfiltered:boolean}){
  </div>;
 }
 function Highlight({text,query}:{text:string;query:string}){
- const words=fold(query).split(/[^\p{L}\p{N}]+/u).filter(Boolean),normal=fold(text),ranges:[number,number][]=[];
- for(const word of words){let at=normal.indexOf(word);while(at>=0){ranges.push([at,at+word.length]);at=normal.indexOf(word,at+word.length);}}
+ // the same words the search used: bases of inflected words, marked to the end of the word they start
+ const terms=titleTerms(query).flat(),normal=fold(text),ranges:[number,number][]=[];
+ for(const {word,prefix} of terms){let at=normal.indexOf(word);while(at>=0){let end=at+word.length;if(prefix)while(end<normal.length&&/[a-z0-9]/.test(normal[end]!))end++;ranges.push([at,end]);at=normal.indexOf(word,end);}}
  ranges.sort((a,b)=>a[0]-b[0]);const merged:[number,number][]=[];for(const r of ranges){const last=merged.at(-1);if(last&&r[0]<=last[1])last[1]=Math.max(last[1],r[1]);else merged.push([...r]);}
  let cursor=0;const parts:React.ReactNode[]=[];for(const [a,b] of merged){parts.push(text.slice(cursor,a),<mark key={a}>{text.slice(a,b)}</mark>);cursor=b;}parts.push(text.slice(cursor));return <>{parts}</>;
 }
@@ -275,7 +277,7 @@ export default function TopicSearch(){
   {/* A tab opened by its link: the count is not known yet, and a tab's list usually has more than one page. */}
   {!result&&total==null&&scope.tab!=='all'&&<Ghost className="topic-pagination" name="topic-pages" wait="client"><span className="topic-control g-quiet" aria-hidden="true">Înapoi</span><span aria-hidden="true"><G.Line inline w="7.5em"/></span><span className="topic-control g-quiet" aria-hidden="true">Înainte</span></Ghost>}
   {total!=null&&total>PAGE_SIZE&&<nav className="topic-pagination" aria-label="Paginarea rezultatelor"><button type="button" className="topic-control" disabled={!result||scope.page<=1} onClick={()=>update({page:scope.page-1})}>Înapoi</button><span>Pagina {scope.page} din {formatInt(Math.ceil(total/PAGE_SIZE))}</span><button type="button" className="topic-control" disabled={!result||scope.page*PAGE_SIZE>=total||scope.page>=1000} onClick={()=>update({page:scope.page+1})}>Înainte</button></nav>}
-  <details className="topic-how"><summary>Cum funcționează căutarea</summary>{result&&<p>În arhivă, {formatInt(result.titleCoverage.searchable)} din {formatInt(result.titleCoverage.total)} de achiziții au titlu căutabil. Unele importuri istorice nu păstrează titlul; achizițiile lor rămân accesibile din profilurile instituțiilor și firmelor.</p>}<p>În titluri și documente căutăm cuvinte complete, fără diferențe între litere mari, mici sau diacritice. „Expresia în ordine” păstrează ordinea cuvintelor; punctuația nu schimbă potrivirea. În nume și CUI sunt acceptate și fragmente.</p><p>Perioada folosește data achiziției sau contractului, inclusiv ambii ani. Geografia folosește instituțiile asociate localității în catalog; instituțiile fără asociere pot lipsi.</p><p>Documentele sunt căutate doar când există o legătură verificată cu o procedură din selecție. Textul OCR poate avea erori. Rezultatele din documente sosesc separat, după titluri, instituții și firme.</p>{result?.builtAt&&<p>Index de titluri actualizat la {new Date(result.builtAt).toLocaleString('ro-RO')}.</p>}</details>
+  <details className="topic-how"><summary>Cum funcționează căutarea</summary>{result&&<p>În arhivă, {formatInt(result.titleCoverage.searchable)} din {formatInt(result.titleCoverage.total)} de achiziții au titlu căutabil. Unele importuri istorice nu păstrează titlul; achizițiile lor rămân accesibile din profilurile instituțiilor și firmelor.</p>}<p>În titluri și documente căutăm cuvintele și formele lor („laptopul” găsește și „laptopuri”), fără diferențe între litere mari, mici sau diacritice; „sau” caută oricare dintre variante. „Expresia în ordine” păstrează ordinea cuvintelor; punctuația nu schimbă potrivirea. În nume și CUI sunt acceptate și fragmente.</p><p>Perioada folosește data achiziției sau contractului, inclusiv ambii ani. Geografia folosește instituțiile asociate localității în catalog; instituțiile fără asociere pot lipsi.</p><p>Documentele sunt căutate doar când există o legătură verificată cu o procedură din selecție. Textul OCR poate avea erori. Rezultatele din documente sosesc separat, după titluri, instituții și firme.</p>{result?.builtAt&&<p>Index de titluri actualizat la {new Date(result.builtAt).toLocaleString('ro-RO')}.</p>}</details>
   </>}
   </div></div>;
  };

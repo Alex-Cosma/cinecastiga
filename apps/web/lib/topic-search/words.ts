@@ -81,3 +81,24 @@ export function weakSubject(s: Pick<SubjectMatch, 'source' | 'matched' | 'cpvNam
   const label = new Set(wordsOf(s.cpvName ?? s.label));
   return wordsOf(s.matched.text).some((w) => !label.has(w) && !stems(w).some((b) => label.has(b)));
 }
+
+/**
+ * The title search's words in whole-word mode: „ sau ” separates alternatives („apă sau canalizare”), and a word of
+ * five letters or more matches by its shortest base as a prefix, so „laptopul” finds „laptop” and „laptopuri” and
+ * „medicamentelor” finds „medicamente” (owner probe, 10 November 2026: inflected words found nothing). Folded,
+ * letters and digits only, so the terms are safe inside a tsquery.
+ */
+export function titleTerms(q: string): { word: string; prefix: boolean }[][] {
+  return q.split(/\s+sau\s+/i)
+    .map((part) => fold(part).split(/[^a-z0-9]+/).filter(Boolean).map((w) => {
+      if (w.length < 5) return { word: w, prefix: false };
+      const base = stems(w).reduce((a, b) => (b.length < a.length ? b : a));
+      return { word: base.length >= 4 ? base : w, prefix: true };
+    }))
+    .filter((part) => part.length);
+}
+
+/** `titleTerms` as a Postgres tsquery for the 'simple' configuration ('' when there is nothing to search). */
+export function titleTsquery(q: string): string {
+  return titleTerms(q).map((part) => `(${part.map((t) => (t.prefix ? `${t.word}:*` : t.word)).join(' & ')})`).join(' | ');
+}

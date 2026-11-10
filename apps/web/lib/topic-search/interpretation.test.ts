@@ -163,6 +163,27 @@ describe('interpretation → /cauta selection', () => {
     expect(s.applied).toEqual({ q: 'iluminat', place: '', from: '', to: '' });
   });
 
+  it('searches what the words name when the reading is not clean, and says the words not understood', async () => {
+    // a subject with a word around it not understood: the subject, the place said as one, the short answer
+    const noise = await read('ce firme domina iluminatul in buzau');
+    const n = applyInterpretation(noise.scope, noise.result, null, NOW);
+    expect(n.applied).toEqual({ q: 'iluminat', place: 'county:buzau', from: '', to: '' });
+    expect(n.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', county: 'Buzău' });
+    expect(n.subject?.term).toBe('iluminat');
+    expect(n.notes.join(' ')).toMatch(/Nu am înțeles „domina”/);
+    // words right after the subject that narrow it and have no domain: searched with it, no total
+    const narrow = await read('laptopuri scolare 2024');
+    const w = applyInterpretation(narrow.scope, narrow.result, null, NOW);
+    expect(w.applied).toEqual({ q: 'laptopuri scolare', place: '', from: '2024', to: '2024' });
+    expect(w.answer).toBeNull();
+    expect(w.subject).toBeNull();
+    expect(w.notes.join(' ')).toMatch(/„scolare” nu are un domeniu/);
+    // a firm with a year: the firm's name, the year as a filter
+    const firm = await read('Spedition UMB 2023');
+    const f = applyInterpretation(firm.scope, firm.result, null, NOW);
+    if (firm.result.interpretation.supplier) expect(f.applied).toEqual({ q: 'Spedition UMB', place: '', from: '2023', to: '2023' });
+  });
+
   it('says what the reading dropped, and never adds the second year of „X față de Y”', async () => {
     const versus = await read('iluminat 2024 fata de 2023');
     const v = applyInterpretation(versus.scope, versus.result, null, NOW);
