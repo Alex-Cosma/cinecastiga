@@ -47,6 +47,8 @@ describe("periods, regions and places people write (owner probe, 10 November 202
     expect(i.place).toBeNull();
     expect(i.leftover).toEqual([]);
     expect(i.notes.join(" ")).toMatch(/o regiune nu se poate aplica/);
+    // a region's word inside a firm's name is no region
+    expect((await read("Enel Energie Muntenia")).notes.join(" ")).not.toMatch(/regiune/);
   });
 
   it("reads a county's plate code after the county word", async () => {
