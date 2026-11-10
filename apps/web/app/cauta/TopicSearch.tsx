@@ -8,7 +8,7 @@ import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {Broader,SubjectAnswer,Understood,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
+import {Broader,SubjectAnswer,Understood,answerKey as answerKeyOf,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
@@ -215,7 +215,7 @@ export default function TopicSearch(){
   const question=t?.question??null;
   // A question's words searched as written; a question about one subject searches that subject instead.
   const literalQ=Boolean(question)&&effective.q===scope.q;
-  const answerKey=t?.answer?JSON.stringify([t.answer.total.spec,t.answer.top.spec]):'';
+  const answerKey=t?.answer?answerKeyOf(t.answer):'';
   // undefined while „Pe scurt” is still counting; null when it has no total.
   const counted=answerCount&&answerCount.key===answerKey?answerCount.count:undefined;
   const literalEmpty=Boolean(question&&result&&!result.entities.total&&!result.acquisitions.total&&!(docsResult?.documents.total));

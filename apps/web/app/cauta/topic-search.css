@@ -71,6 +71,14 @@
 .topic-answer-top>li{display:list-item}
 .topic-answer-top>li>a,.topic-answer-top>li>span:first-child{overflow-wrap:anywhere}
 .topic-answer-top>li>span:last-child{float:right;margin-left:12px;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:14px}
+/* „Pe scurt” beyond the first three firms: the years of an evolution, the two sides of a comparison, the largest records */
+.topic-answer-years,.topic-answer-sides{list-style:none;padding-left:0}
+.topic-answer-top small{font-size:12px;color:var(--ink2)}
+.topic-answer-records-top>li>span:first-child>small{display:block;margin-top:2px}
+/* a long title or name keeps its value on its first line */
+.topic-answer-records-top,.topic-answer-sides{list-style:none;padding-left:0}
+.topic-answer-records-top>li,.topic-answer-sides>li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:baseline}
+.topic-answer-records-top>li>span:last-child,.topic-answer-sides>li>span:last-child{float:none;margin-left:0;text-align:right}
 .topic-answer-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-weight:500;min-height:36px}
 /* No records: wider selections */
 .topic-broader{padding:6px 0 0;font-size:14px}

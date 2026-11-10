@@ -51,8 +51,8 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "lib/evidence-clip.ts", occurrences: 5, kind: "producer", what: "Dossier (app/anchete/DossierEvidence.tsx via lib/evidence-clip.ts): a saved person opens the firms they represent; a saved question reopens with its scope (relay)",
     corpus: ["site:person-clip", "saved:watch-selection"] },
   { file: "lib/evidence-captures.ts", occurrences: 1, kind: "producer", what: "Evidence captures of an entity (buyer or firm) and of a person", corpus: ["site:capture-entity", "site:capture-person"] },
-  { file: "lib/topic-search/interpretation.ts", occurrences: 5, kind: "producer", what: "Search page \"Pe scurt\": a total, the first three winners and the buyer's domains; otherwise `?q=`",
-    corpus: ["site:topic-total", "site:topic-top", "site:topic-domains"] },
+  { file: "lib/topic-search/interpretation.ts", occurrences: 6, kind: "producer", what: "Search page \"Pe scurt\": a total, then the first three winners or buyers, the years or the largest records; a comparison's two sides; the buyer's domains; otherwise `?q=`",
+    corpus: ["site:topic-total", "site:topic-top", "site:topic-domains", "site:topic-buyers", "site:topic-years", "site:topic-compare"] },
   { file: "lib/ask/source-spec.ts", occurrences: 6, kind: "derived", what: "A ranking row's or a year's records; a lone county council's place among the others and its total (\"Cine conduce?\")",
     corpus: ["site:source-entity-row", "site:source-entity-spec", "site:source-year", "site:leader-alone-peers", "site:leader-alone-total"] },
   // F4: a network node's and a flow's records open the drawer in place (NetworkAnswer, SankeyAnswer); the corpus keeps

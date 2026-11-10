@@ -12,8 +12,14 @@ describe('/cauta names and title words', () => {
     expect(aliasQueries('primaria capitalei')).toContain('municipiul bucuresti');
     expect(aliasQueries('primaria municipiului cluj napoca')).toContain('municipiul cluj napoca');
     expect(aliasQueries('primaria sectorului 1')).toContain('sectorul 1');
-    // the month is not the interior ministry
-    expect(aliasQueries('mai')).toEqual(['mai']);
+    // „MAI” is the interior ministry at the start of the words (the interpreter reads it only typed in capitals)
+    expect(aliasQueries('mai')).toEqual(['mai', 'ministerul afacerilor interne']);
+    // the shapes the registry writes: „Inspectoratul Școlar Județean Cluj”, „Inspectoratul Școlar al Jud Iași”
+    expect(aliasQueries('isj iasi')).toContain('inspectoratul scolar iasi');
+    // a sector's institution is registered without the city
+    expect(aliasQueries('dgaspc sector 2 bucuresti')).toContain('directia generala de asistenta sociala si protectia copilului sector 2');
+    // „primăria Cluj Napoca” is „MUNICIPIUL CLUJ-NAPOCA”
+    expect(aliasQueries('primaria cluj napoca')).toContain('municipiul cluj-napoca');
   });
 
   it('reads a fiscal code written after „CUI” or „CIF”', () => {
