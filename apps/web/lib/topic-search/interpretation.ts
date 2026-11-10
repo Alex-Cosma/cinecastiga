@@ -8,7 +8,7 @@ import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
-import { tokenize } from '../intent/text';
+import { STOPWORDS, tokenize } from '../intent/text';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -343,6 +343,9 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
   // the marker can lead the place's own span („in buzau”) or come right before it
   const marked = place ? PLACE_MARK.has(tokens[place.from]?.f ?? '') || PLACE_MARK.has(tokens[place.from - 1]?.f ?? '') : false;
   if (i.subjects.length && !hasEntity && !i.subjects.some(weakSubject)) {
+    // nothing but the subjects and small words: the words as typed are the person's own search („iluminat public”)
+    const inSubject = (k: number) => i.subjects.some((s) => k >= s.matched.from && k < s.matched.to);
+    if (!place && !i.period && i.intentSource !== 'cue' && tokens.every((t, k) => inSubject(k) || STOPWORDS.has(t.f))) return null;
     const narrowed: string[] = [];
     const parts = i.subjects.map((s) => {
       const inflected = s.source === 'synonym' && !s.label.includes(' ') && foldText(s.label) !== foldText(s.matched.text);
@@ -375,14 +378,17 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
   const alternatives = i.entityAlternatives.filter((e) => e.matched);
   const shared = alternatives.length && alternatives.every((e) => e.matched.from === alternatives[0]!.matched.from && e.matched.to === alternatives[0]!.matched.to) ? alternatives[0] : null;
   const entity = i.supplier ?? i.authority ?? (i.compareWith || i.person || i.personAlternatives.length ? null : shared);
-  if (entity?.matched) {
+  // a name typed alone stays as typed („E.ON Energie Romania”); a question, a year or a place around it is dropped
+  if (entity?.matched && (i.intentSource === 'cue' || i.period || place)) {
     const ignored = [...new Set(tokens.filter((t) => left.has(t.f)).map((t) => t.raw))];
     // a place right next to the name is part of it („Apa Nova București”, „Spitalul Județean Buzău”): searched with it
     const adjacent = Boolean(place) && !marked && (place!.from === entity.matched.to || place!.to === entity.matched.from);
     const from = adjacent ? Math.min(place!.from, entity.matched.from) : entity.matched.from, to = adjacent ? Math.max(place!.to, entity.matched.to) : entity.matched.to;
     return { kind: 'entity', words: spanOf(from, to), narrowed: [], notes: ignored.length ? [`Nu am înțeles ${quote(ignored)}.`] : [], placeApplies: Boolean(place) && !adjacent && !(place!.from < entity.matched.to && entity.matched.from < place!.to) };
   }
-  if (hasEntity || !i.leftover.length) return null;
+  // only a question or a reading with a place or period has words to drop: a name typed alone stays as typed
+  // („Euro Construct Trading 98” keeps „Euro”)
+  if (hasEntity || !i.leftover.length || (i.intentSource !== 'cue' && !i.period && !i.place)) return null;
   // nothing read but a place or a period: the words not understood are what the person is looking for
   const words = tokens.filter((t) => left.has(t.f)).map((t) => t.raw);
   const typed = spanOf(0, tokens.length);

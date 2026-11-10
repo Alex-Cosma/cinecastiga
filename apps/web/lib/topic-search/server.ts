@@ -113,7 +113,8 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  if(!terms.length)return {total:0,hits:[],suggestions:[]};
  const intent=entityIntent(s.q);
  let name=q`false`;
- for(const phrase of aliasQueries(fold(s.q))){
+ // „ sau ” separates alternatives, as in the titles (words.ts titleTerms)
+ for(const phrase of fold(s.q).split(/\s+sau\s+/).flatMap(part=>aliasQueries(part))){
   const words=phrase.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
   let variant=q`true`;
   if(s.match==='phrase')variant=q`(e.name_normalized like ${'%'+words.join(' ')+'%'} or e.cui_canonical like ${'%'+words.join(' ')+'%'})`;
