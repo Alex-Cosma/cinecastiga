@@ -1266,7 +1266,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       const tw = significant(fold(t));
       return tw.length === words.length && words.every((w, k) => tw[k] === w || wordMatches(w, tw[k]!));
     }).map((term) => ({ term, cpvName: null })) : [];
-    const hits = [...new Map([...lists.flat(), ...curated].map((h) => [h.term, h])).values()];
+    // (the lookup's rows last: they carry the class name the curated list has not)
+    const hits = [...new Map([...curated, ...lists.flat()].map((h) => [h.term, h])).values()];
     const labelWords = (h: CpvHit) => significant(fold(/^\d/.test(h.term) ? h.cpvName ?? "" : h.term));
     const strictWord = (w: string, l: string) => l === w || stems(w).includes(l) || stems(l).includes(w);
     // Typos and inflections from what was typed towards the vocabulary only: read the other way, the vocabulary word
