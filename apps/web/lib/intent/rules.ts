@@ -1214,8 +1214,11 @@ export class RulesInterpreter implements QuestionInterpreter {
     const typed = words.join(" ");
     const rank = (h: CpvHit) => {
       const synonym = !/^\d/.test(h.term);
-      const label = labelWords(h).join(" ");
-      const exact = label === typed || variants.includes(label) || stems(typed).includes(label);
+      const words = labelWords(h);
+      // „Servicii de cazare” is exactly „cazare”: the generic head adds nothing (owner probe, 10 November 2026)
+      const bare = words.length > 1 && LABEL_HEAD.has(words[0]!) ? words.slice(1).join(" ") : null;
+      const label = words.join(" ");
+      const exact = [label, bare].some((l) => l !== null && (l === typed || variants.includes(l) || stems(typed).includes(l)));
       return synonym && exact ? 0 : exact ? 1 : synonym ? 2 : 3;
     };
     // Among catalogue labels, the broadest class first (more trailing zeros in the code): „radiologie” is „Aparate de
