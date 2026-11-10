@@ -125,6 +125,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // A fragment of a catalogue word ("construct") or a reading with unexplained
   // words ("apa nova") is more likely a name: no subject reading at all.
   const subjectOk = Boolean(s0 && !weakSubject(s0) && !hasEntity && !i.leftover.length);
+  // Întreabă with the words as typed: the link of every answer that is not a chosen selection.
+  const typedHref = () => `/intreaba?q=${encodeURIComponent(scope.q)}`;
   const out: TopicInterpretation = {
     ...base,
     subject: subjectOk ? { term: s0!.term, label: s0!.label, cpvName: s0!.cpvName, source: s0!.source, notes: [] } : null,
@@ -195,7 +197,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     };
     const explicit = Boolean(scope.place || scope.from);
     // the spec counts every recognised subject ("parcuri + spatii verzi"): so does the sentence
-    return shortAnswer(answerReading, { place: answerPlace }, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
+    return shortAnswer(answerReading, { place: answerPlace }, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : typedHref()));
   };
   if (subjectOk) out.answer = subjectAnswer(place, period);
   // Question first: the words are a question the rules read cleanly, not title words.
@@ -206,7 +208,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     // "Cine…" and "cât…" get the total and the first three winners; other questions open in Întreabă.
     if (!out.answer && (i.intent === 'ranking_suppliers' || i.intent === 'total')) {
       const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
-      out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, () => `/intreaba?q=${encodeURIComponent(scope.q)}`);
+      out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, typedHref);
     }
     // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse");
     // several subjects are counted together ("parcuri + spatii verzi").
@@ -221,6 +223,15 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       out.applied = { q: reading.words, place: interpretedChip?.id ?? '', from: wordsPeriod?.from ?? '', to: wordsPeriod?.to ?? '' };
       out.fromWords = { place: interpretedChip, period: wordsPeriod };
     }
+  }
+  // A named institution with a subject and nothing else („CJ Cluj drumuri”, „medicamente Spitalul Județean Cluj 2024”)
+  // is the question it reads as: its sentence, its total and first three firms (owner probe, 10 November 2026).
+  if (!out.question && !applies && !scope.place && !scope.from && scope.type === 'all' && i.authority && !i.supplier && i.subjects.length
+    && !i.subjects.some(weakSubject) && !i.leftover.length && !i.entityAlternatives.length && !i.placeAmbiguous && result.spec && result.sentence && i.confidenceLabel === 'high') {
+    out.question = { sentence: result.sentence };
+    out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, { subject: subjectsLabel(i.subjects) }, typedHref);
+    const counted = out.answer?.total.spec.filters.cpvTerm;
+    if (counted && s0) out.subject = { term: counted, label: subjectsLabel(i.subjects) ?? s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] };
   }
   // The lists search what the words name, never the sentence as title words (owner probe, 10 November 2026: 40–60% of
   // the questions not read cleanly ended on an empty page). A reading with words left over is still used, and the
@@ -255,7 +266,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (out.answer || applies || out.question || loose)
     out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n)), ...(loose?.notes ?? [])])];
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
-  out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? `/intreaba?q=${encodeURIComponent(scope.q)}` : null);
+  out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? typedHref() : null);
   return out;
 }
 
@@ -379,7 +390,7 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
   const shared = alternatives.length && alternatives.every((e) => e.matched.from === alternatives[0]!.matched.from && e.matched.to === alternatives[0]!.matched.to) ? alternatives[0] : null;
   const entity = i.supplier ?? i.authority ?? (i.compareWith || i.person || i.personAlternatives.length ? null : shared);
   // a name typed alone stays as typed („E.ON Energie Romania”); a question, a year or a place around it is dropped
-  if (entity?.matched && (i.intentSource === 'cue' || i.period || place)) {
+  if (entity?.matched && (i.intentSource === 'cue' || i.period || place || i.subjects.length)) {
     const ignored = [...new Set(tokens.filter((t) => left.has(t.f)).map((t) => t.raw))];
     // a place right next to the name is part of it („Apa Nova București”, „Spitalul Județean Buzău”): searched with it
     const adjacent = Boolean(place) && !marked && (place!.from === entity.matched.to || place!.to === entity.matched.from);
