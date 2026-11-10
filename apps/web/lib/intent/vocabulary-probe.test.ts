@@ -19,6 +19,9 @@ const fx: MemoryFixture = {
     { code: "35111000-5", name: "Echipament de stingere a incendiilor" },
     { code: "42416100-6", name: "Ascensoare" },
     { code: "50750000-7", name: "Servicii de întreţinere a ascensoarelor" },
+    { code: "85100000-0", name: "Servicii de sănătate" },
+    { code: "32323500-8", name: "Sistem video de supraveghere" },
+    { code: "79320000-3", name: "Servicii de sondaje de opinie" },
   ],
   synonyms: [
     ...FIXTURE.synonyms,
@@ -29,6 +32,10 @@ const fx: MemoryFixture = {
     { term: "lifturi", prefix: "42416100" },
     { term: "lifturi", prefix: "50750000" },
     { term: "mentenanta lifturi", prefix: "50750000" },
+    // migration 0102
+    { term: "servicii medicale", prefix: "85100000" },
+    { term: "camere de supraveghere", prefix: "32323500" },
+    { term: "sondaje de opinie", prefix: "79320000" },
   ],
 };
 const interpreter = new RulesInterpreter(memoryVocabulary(fx));
@@ -46,5 +53,12 @@ describe("vocabulary from the /cauta probe (migration 0101)", () => {
     // maintenance of lifts is its own phrase; lifts alone are both
     expect(await subjects("mentenanta lifturi")).toEqual(["mentenanta lifturi"]);
     expect(await subjects("lifturi")).toEqual(["lifturi"]);
+  });
+
+  it("reads the second list as whole phrases (migration 0102)", async () => {
+    // health services, not medical waste
+    expect(await subjects("servicii medicale")).toEqual(["servicii medicale"]);
+    expect(await subjects("camere de supraveghere")).toEqual(["camere de supraveghere"]);
+    expect(await subjects("sondaje de opinie")).toEqual(["sondaje de opinie"]);
   });
 });

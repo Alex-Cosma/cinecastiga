@@ -1,0 +1,57 @@
+-- Vocabulary from the re-judging of the /cauta probe (10 November 2026; owner approved this second list).
+-- Words that still named no domain, or a wrong one: „sondaj” had none, „servicii medicale” read as medical
+-- waste, „camere de supraveghere” as rooms, „tomograf”, „țânțari”, „câini comunitari”, „website”, „aplicație
+-- mobilă” and the rest had nothing. „autostrăzi” counted only 45233110 (about ten records): most motorway
+-- contracts carry the common code 45233100 „autostrăzi și drumuri”, so it is added without its road children.
+-- Every prefix is an existing catalogue code. Additions only; re-running changes nothing.
+-- packages/db/seeds/cpv-synonyms.sql holds the same state.
+INSERT INTO reference.cpv_synonym (term, cpv_prefix, note, exclude) VALUES
+('sondaj','79320000',null,false),
+('sondaje','79320000',null,false),
+('sondaj de opinie','79320000',null,false),
+('sondaje de opinie','79320000',null,false),
+('lumini de sarbatori','31522000',null,false),
+('lumini de sarbatori','39298910',null,false),
+('decoratiuni de craciun','31522000',null,false),
+('decoratiuni de craciun','39298910',null,false),
+('camere de supraveghere','32333200',null,false),
+('camere de supraveghere','35125300',null,false),
+('camere de supraveghere','32323500',null,false),
+('camere supraveghere','32333200',null,false),
+('camere supraveghere','35125300',null,false),
+('camere supraveghere','32323500',null,false),
+('computer tomograf','33115000',null,false),
+('tomograf','33115000',null,false),
+('servicii de laborator','85145000',null,false),
+('analize de laborator','85145000',null,false),
+('servicii medicale','85100000',null,false),
+('tantari','90921000',null,false),
+('tantari','90922000',null,false),
+('curatenie stradala','90611000',null,false),
+('curatenie stradala','90612000',null,false),
+('maturat strazi','90611000',null,false),
+('maturat strazi','90612000',null,false),
+('reparatii auto','50112000',null,false),
+('asigurari auto','66514110',null,false),
+('asigurari auto','66516100',null,false),
+('website','72413000',null,false),
+('website','72415000',null,false),
+('site web','72413000',null,false),
+('site web','72415000',null,false),
+('concerte','92300000','Include toate serviciile de divertisment: concertele nu au un cod CPV propriu.',false),
+('aplicatie mobila','72212000',null,false),
+('aplicatie mobila','72262000',null,false),
+('aplicatii mobile','72212000',null,false),
+('aplicatii mobile','72262000',null,false),
+('chimioterapie','33652000',null,false),
+('hartie copiator','30197630',null,false),
+('caini comunitari','98380000',null,false),
+('anvelope auto','34350000',null,false),
+('paturi de spital','33192100',null,false),
+('autostrazi','45233100','Include și codul comun „autostrăzi și drumuri”, sub care e înregistrată cea mai mare parte a contractelor de autostradă; sub el apar și unele drumuri.',false),
+('autostrazi','45233120',null,true),
+('autostrazi','45233130',null,true),
+('autostrazi','45233140',null,true),
+('autostrazi','45233150',null,true),
+('autostrazi','45233160',null,true)
+ON CONFLICT DO NOTHING;
