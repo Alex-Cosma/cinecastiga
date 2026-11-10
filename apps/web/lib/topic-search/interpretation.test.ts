@@ -163,6 +163,19 @@ describe('interpretation → /cauta selection', () => {
     expect(s.applied).toEqual({ q: 'iluminat', place: '', from: '', to: '' });
   });
 
+  it('says what the reading dropped, and never adds the second year of „X față de Y”', async () => {
+    const versus = await read('iluminat 2024 fata de 2023');
+    const v = applyInterpretation(versus.scope, versus.result, null, NOW);
+    expect(v.answer?.total.spec.filters).toMatchObject({ yearFrom: 2024, yearTo: 2024 });
+    expect(v.notes.join(' ')).toMatch(/prima perioadă/);
+    if (v.fromWords.period) expect(v.fromWords.period).toMatchObject({ from: '2024', to: '2024' });
+    const excluded = await read('iluminat fara buzau');
+    const e = applyInterpretation(excluded.scope, excluded.result, null, NOW);
+    expect(e.applied.place).toBe('');
+    expect(e.answer?.total.spec.filters.county).toBeUndefined();
+    expect(e.notes.join(' ')).toMatch(/nu putem scoate un loc/);
+  });
+
   it('never answers a question with unexplained words, a choice to make, or a name search', async () => {
     // "podu" is not understood: no answer about all of Buzău's spending
     for (const q of ['cat a costat podu buzau', 'cine ia banii salcioara', 'primaria buzau', 'buzau']) {

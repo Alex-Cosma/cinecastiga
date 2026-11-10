@@ -16,6 +16,11 @@ const capital=(s:string)=>s.charAt(0).toLocaleUpperCase('ro-RO')+s.slice(1);
 export const searchHref=(scope:TopicScope,patch:Partial<TopicScope>,literal=false)=>{const p=topicParams({...scope,tab:'all',page:1,role:'',...patch});if(literal)p.set('literal','1');return `/cauta?${p}`;};
 const periodLabel=(from:string,to:string)=>from===to?from:`${from}–${to}`;
 
+/** What the reading dropped or narrowed, said under it (a place that cannot be left out, the first of two years…). */
+function ReadingNotes({notes}:{notes:string[]}){
+ return notes.length?<>{notes.map(n=><p key={n} className="topic-help topic-reading-note">{n}</p>)}</>:null;
+}
+
 /**
  * "Am înțeles": what /cauta took from the words, as chips the person can
  * remove or change. Explicit filters chosen on the page are shown as well,
@@ -30,9 +35,10 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  // A whole question: the interpreter's sentence is what is answered; the words are searched as written below.
  if(t.question)return <section className="topic-understood topic-question" aria-label="Cum am înțeles întrebarea">
   <p className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <strong>{t.question.sentence}</strong></p>
+  <ReadingNotes notes={t.notes}/>
   {!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
  </section>;
- if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note){
+ if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note&&!t.notes.length){
   // Nothing applied: a reading that needs a choice of person is chosen in Întreabă. Same-named firms and
   // institutions are listed first in the results, so they need no line of their own.
   return t.problem&&t.askHref&&!t.entityChoice?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
@@ -55,6 +61,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
    </ul>
   </div>
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
+  <ReadingNotes notes={t.notes}/>
   {t.note&&<p className="topic-help">{t.note}{t.askHref&&<> <Link prefetch={false} href={t.askHref}>Deschide în Întreabă</Link></>}</p>}
   {(t.placeAmbiguous||(t.note&&!placeChip))&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>{t.placeAmbiguous?'Mai multe localități au acest nume. Pe care o cauți?':'Poți căuta în titluri:'}</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
   {(fromWords.place||fromWords.period||t.subject)&&<p className="topic-help"><Link prefetch={false} href={literal}>Caută exact ce ai scris</Link></p>}

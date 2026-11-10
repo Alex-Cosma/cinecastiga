@@ -196,6 +196,30 @@ const LEGAL = new Set(["sc", "srl", "sa", "s", "r", "l", "srlv", "pfa", "ii", "i
 const GENERIC_SUBJECT = new Set(["lucrari", "lucrare", "lucrarile", "servicii", "serviciu", "serviciile", "produse", "produs", "echipamente", "echipament", "materiale", "material", "reparatii", "reparatie", "intretinere", "constructii", "constructie", "mentenanta", "furnizare", "livrare", "achizitionare", "bunuri", "dotari", "investitii", "investitie", "proiecte", "proiect", "modernizare", "reabilitare", "chestii", "lucruri"]);
 /** Generic words that keep a curated subject's meaning: "lucrări de drumuri" is "drumuri". */
 const WORKS_OR_SERVICES = new Set(["lucrari", "lucrare", "lucrarile", "lucrarilor", "servicii", "serviciu", "serviciile", "serviciilor"]);
+/**
+ * A catalogue label's generic head ("Servicii de psihiatrie", "Lucrări de drumuri", "Echipament de iluminat"): the
+ * word after it names the domain, so a single typed word may match it. After any other first word the typed word
+ * only hides inside the label ("supraveghere" in „Vedete de supraveghere”, owner probe 10 November 2026).
+ */
+const LABEL_HEAD = new Set(["servicii", "serviciu", "lucrari", "lucrare", "echipament", "echipamente", "materiale", "material", "produse", "produs",
+  "aparate", "aparat", "aparatura", "sisteme", "sistem", "instalatii", "instalatie", "articole", "articol", "accesorii", "piese", "dispozitive",
+  "dispozitiv", "unitati", "unitate", "consumabile", "utilaje", "kituri", "kit", "solutii"]);
+/**
+ * Adjectives narrow a subject and never name one: „școlare” alone is not „Cărți școlare”. They stay unexplained, so
+ * „uniforme școlare” never counts every uniform (military ones too) as if it were the whole answer.
+ */
+const ADJECTIVE = new Set(["medical", "medicale", "medicala", "medicali", "scolar", "scolare", "scolara", "scolari", "electric", "electrice",
+  "electrica", "electrici", "sanitar", "sanitare", "sanitara", "sanitari", "sportiv", "sportive", "sportiva", "sportivi", "chirurgical",
+  "chirurgicale", "chirurgicala", "sintetic", "sintetice", "sintetica", "urban", "urbane", "urbana", "rutier", "rutiere", "rutiera", "termic",
+  "termice", "termica", "digital", "digitale", "digitala", "social", "sociale", "sociala", "national", "nationale", "nationala", "judetean",
+  "judeteana", "judetene", "local", "locale", "locala", "nou", "noua", "noi", "vechi", "veche", "gratuit", "gratuite", "gratuita", "special",
+  "speciale", "speciala", "divers", "diverse", "necesar", "necesare", "festiv", "festive", "festiva", "modern", "moderne", "moderna", "mare",
+  "mari", "mic", "mici", "scump", "scumpe", "scumpa", "ieftin", "ieftine", "noile", "noul"]);
+/** Function, time, number and place words: never a subject alone („fără” is not „Benzină fără plumb”, „iarna” not ski gear). */
+const NEVER_SUBJECT = new Set(["fara", "afara", "exceptand", "inafara", "trecut", "trecuta", "trecute", "trecutul", "viitor", "viitoare", "iarna",
+  "vara", "toamna", "primavara", "iernii", "verii", "sector", "sectorul", "sectorului", "sectoare", "zona", "zonei", "oras", "orasul", "orasului",
+  "copii", "copiii", "copiilor", "blocuri", "blocul", "bloc", "blocurilor", "unu", "doi", "doua", "trei", "patru", "cinci", "sase", "sapte", "opt",
+  "noua", "zece", "suta", "mie", "mii", "milion", "milioane", "miliard", "miliarde", "romania", "tara", "tarii", "intreaga", "intreg"]);
 /** Words that only modify a cue ("cel mai mare", "cele mai multe"). */
 const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
 
@@ -335,7 +359,24 @@ export class RulesInterpreter implements QuestionInterpreter {
     const unmarked = this.unmarkedPlaces(c, byKey);
     await this.namedRuns(c, out);
     await this.subjects(c, out);
-    this.settlePlaces([...marked, ...unmarked].sort((a, b) => a.from - b.from), out);
+    // „fără București”, „în afara Bucureștiului”, „exceptând Clujul”: a place cannot be left out, so it is not applied
+    // (owner probe, 10 November 2026: „medicamente fără București” applied București, the opposite of the question).
+    const placesFound = [...marked, ...unmarked].sort((a, b) => a.from - b.from);
+    const negation = (from: number) => {
+      const a = c.f(from - 1), b = c.f(from - 2);
+      if (["fara", "exceptand", "minus", "afara", "inafara"].includes(a)) return from - 1;
+      if (a === "de" && ["afara", "fara"].includes(b)) return from - 2;
+      return null;
+    };
+    const kept = placesFound.filter((p) => {
+      const at = negation(Math.min(p.from, p.span.from));
+      if (at === null) return true;
+      const end = Math.max(p.to, p.span.to);
+      for (let k = at; k < end; k++) if (!c.used[k]) c.take(k, k + 1, "modifier");
+      out.notes.push(`„${c.span(at, end).text}”: nu putem scoate un loc din căutare, așa că am căutat în toată țara.`);
+      return false;
+    });
+    this.settlePlaces(kept, out);
     await this.choicesInPlace(out);
     // A town hall in the centre of a profile, a network or a flow is its institution (the place alone is its records).
     if (cues.some((x) => x.intent === "signals" || x.intent === "network" || x.intent === "flow")) await this.townHall(out);
@@ -437,7 +478,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (named) out.procedure = out.procedure ?? named;
       else out.notes.push(`Nu putem filtra încă după acest tip de procedură („${c.span(h.i, h.j).text}”); am folosit toate contractele atribuite prin proceduri.`);
     }
-    once(/\b(?:achizitii(?:le|lor)?|cumparari(?:le|lor)?|cumparaturi(?:le|lor)?)\s+direct(?:e|a)\b|\bachizitie\s+directa\b|\bachizitia\s+directa\b|\bin\s+mod\s+direct\b/, () => { out.dataset = "da"; });
+    once(/\b(?:achizitii(?:le|lor)?|cumparari(?:le|lor)?|cumparaturi(?:le|lor)?)\s+direct(?:e|a)\b|\bachizitie\s+directa\b|\bachizitia\s+directa\b|\bin\s+mod\s+direct\b|\bfara\s+(?:o\s+)?licitati(?:e|i)\b/, () => { out.dataset = "da"; });
     // "cele mai multe licitații": the number of records, before "licitații" is read as the stream
     once(/\b(?:cele mai multe|cei mai multi|cel mai des)(?=\s+(?:contracte|contractele|achizitii|achizitiile|licitatii|licitatiile|cumparari))/, () => { if (out.measure === null) out.measure = "count"; });
     once(/\b(?:licitati(?:e|i|ile|ilor)|proceduri(?:le|lor)?|procedura|procedurii)\b/, () => { if (out.dataset !== "da") out.dataset = "contracts"; });
@@ -1083,10 +1124,24 @@ export class RulesInterpreter implements QuestionInterpreter {
       const words: { k: number; hit: CpvHit | null }[] = await Promise.all(
         c.tokens.slice(i, j).map(async (t, idx) => ({
           k: i + idx,
-          hit: t.f.length >= 3 && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !retiredTerm(t.f) ? await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms) : null,
+          hit: t.f.length >= 3 && t.f !== "de" && !GENERIC_SUBJECT.has(t.f) && !ADJECTIVE.has(t.f) && !NEVER_SUBJECT.has(t.f) && !retiredTerm(t.f) ? await this.cpvFor([t.f]) ?? typoSynonym(t.f, synonyms) : null,
         })),
       );
-      for (const w of words) if (w.hit) candidates.push({ i: w.k, j: w.k + 1, hit: w.hit, generic: false });
+      // A phrase the vocabulary does not have is not split into catalogue words added together (owner probe,
+      // 10 November 2026: „camere de supraveghere” was „Camere gama” + „Vedete de supraveghere”). „X de Y” is one
+      // thing: only curated synonyms are read inside it. Without „de”, catalogue words count as a list
+      // („dezinsecție deratizare dezinfecție”) only when every word that is not an adjective names a domain.
+      // The words of a list belong together: one CPV division („dezinsecție deratizare dezinfecție” are all 90), while
+      // „computer tomograf” (30 + 33) is one device, not computers plus scanners.
+      const nouns = words.filter((w) => w.hit || (!ADJECTIVE.has(c.f(w.k)) && c.f(w.k) !== "de"));
+      const phrase = content.length >= 2 && c.tokens.slice(i, j).some((t, idx) => t.f === "de" && idx > 0 && idx < j - i - 1);
+      const divisions = new Set(words.filter((w) => w.hit && /^\d/.test(w.hit.term)).map((w) => w.hit!.term.slice(0, 2)));
+      const list = !phrase && nouns.every((w) => w.hit) && divisions.size <= 1;
+      for (const w of words) {
+        if (!w.hit) continue;
+        if (content.length >= 2 && !list && /^\d/.test(w.hit.term)) continue;
+        candidates.push({ i: w.k, j: w.k + 1, hit: w.hit, generic: false });
+      }
       for (let k = i; k < j && !retired; k++) { const entry = retiredTerm(c.f(k)); if (entry) retired = { k, entry }; }
     }
     const isSynonym = (h: CpvHit) => !/^\d/.test(h.term);
@@ -1134,16 +1189,28 @@ export class RulesInterpreter implements QuestionInterpreter {
    */
   private async cpvFor(words: string[]): Promise<CpvHit | null> {
     const shortest = (w: string) => stems(w).reduce((a, b) => (b.length < a.length ? b : a));
-    const variants = words.length === 1 ? [...new Set([words[0]!, shortest(words[0]!)])] : [words.map(shortest).join(" ")];
+    // The words as typed too: the stemmed phrase alone ("energi electric") ranks the curated "energie electrica" below
+    // eight catalogue labels and never sees it (owner probe, 10 November 2026).
+    const variants = words.length === 1 ? [...new Set([words[0]!, shortest(words[0]!)])] : [...new Set([words.join(" "), words.map(shortest).join(" ")])];
     const lists = await Promise.all(variants.map((v) => this.vocab.cpv(v)));
     const hits = [...new Map(lists.flat().map((h) => [h.term, h])).values()];
     const labelWords = (h: CpvHit) => significant(fold(/^\d/.test(h.term) ? h.cpvName ?? "" : h.term));
-    const hitsWord = (w: string, l: string) => l === w || stems(w).includes(l) || stems(l).includes(w) || (Math.min(w.length, l.length) >= 5 && (wordMatches(w, l) || wordMatches(l, w)));
-    const accepted = hits.filter((h) => {
+    const strictWord = (w: string, l: string) => l === w || stems(w).includes(l) || stems(l).includes(w);
+    // Typos and inflections from what was typed towards the vocabulary only: read the other way, the vocabulary word
+    // „anvelopare” was a typo of „anvelope” (owner probe, 10 November 2026: tyres counted as thermal insulation).
+    const hitsWord = (w: string, l: string) => strictWord(w, l) || (Math.min(w.length, l.length) >= 5 && wordMatches(w, l));
+    // A single word leads the label, or follows its generic head („Servicii de psihiatrie”).
+    const leading = (label: string[], match: (l: string) => boolean) => (label[0] !== undefined && match(label[0])) || (label[0] !== undefined && LABEL_HEAD.has(label[0]) && label[1] !== undefined && match(label[1]));
+    const fits = (h: CpvHit, match: (w: string, l: string) => boolean) => {
       const label = labelWords(h);
-      if (words.length === 1 && /^\d/.test(h.term)) return label.slice(0, 2).some((l) => hitsWord(words[0]!, l));
-      return words.every((w) => label.some((l) => hitsWord(w, l)));
-    });
+      if (words.length === 1 && /^\d/.test(h.term)) return leading(label, (l) => match(words[0]!, l));
+      return words.every((w) => label.some((l) => match(w, l)));
+    };
+    // A word the catalogue has as typed is never read as a near catalogue word: „anvelope” is tyres, not „anvelopare”.
+    // Curated synonyms keep their inflection and typo tolerance („laptop” → „laptopuri”).
+    const isCode = (h: CpvHit) => /^\d/.test(h.term);
+    const strictCatalog = hits.filter((h) => isCode(h) && fits(h, strictWord));
+    const accepted = [...hits.filter((h) => !isCode(h) && fits(h, hitsWord)), ...(strictCatalog.length ? strictCatalog : hits.filter((h) => isCode(h) && fits(h, hitsWord)))];
     const typed = words.join(" ");
     const rank = (h: CpvHit) => {
       const synonym = !/^\d/.test(h.term);
@@ -1151,7 +1218,15 @@ export class RulesInterpreter implements QuestionInterpreter {
       const exact = label === typed || variants.includes(label) || stems(typed).includes(label);
       return synonym && exact ? 0 : exact ? 1 : synonym ? 2 : 3;
     };
-    const best = accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx)[0]?.h ?? null;
+    // Among catalogue labels, the broadest class first (more trailing zeros in the code): „radiologie” is „Aparate de
+    // radiologie”, not „Radiologie cardiacă”; „contabilitate” the accounting services, not „Sistem de contabilitate”.
+    const level = (h: CpvHit) => (isCode(h) ? /0*$/.exec(h.term.slice(0, 8))![0].length : 0);
+    const sorted = accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || level(b.h) - level(a.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx);
+    // A bare word that leads labels in three or more CPV divisions („camere”: gamma, video, air, water…) names no
+    // domain: it is left unexplained rather than read as the shortest label.
+    const loose = sorted.filter((x) => rank(x.h) === 3);
+    if (words.length === 1 && sorted[0] && rank(sorted[0].h) === 3 && new Set(loose.map((x) => x.h.term.slice(0, 2))).size >= 3) return null;
+    const best = sorted[0]?.h ?? null;
     // "lucrări de drumuri": the curated "drumuri" (the whole road-works family) beats the
     // narrower catalogue label "Lucrări de drumuri"; "lucrări"/"servicii" add nothing to the
     // subject (unlike "echipamente", "materiale", which make it goods)

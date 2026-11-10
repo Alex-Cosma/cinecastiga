@@ -244,14 +244,41 @@ describe("beginner phrasings → interpretation", () => {
     expect(r.spec).not.toBeNull();
   });
 
-  it("22. «iluminat de crăciun»: two subjects named, both counted once", async () => {
-    const { i, r } = await ask("ce firme au luat contracte de iluminat de craciun in buzau");
-    expect(i.subjects.map((s) => s.term)).toEqual(["iluminat", "39298910-9"]);
-    expect(r.spec?.filters.cpvTerm).toBe("iluminat + 39298910-9");
-    expect(r.interpretation.notes.join(" ")).toMatch(/Am adunat ambele domenii: „iluminat”, „Pom de Crăciun”/);
-    expect(r.interpretation.notes.join(" ")).not.toMatch(/primul domeniu/);
-    expect(r.sentence).toMatch(/„iluminat și Pom de Crăciun”/);
+  it("22. «iluminat de crăciun»: a word hidden inside a catalogue label is reported, not guessed", async () => {
+    // „crăciun” only hides in „Pom de Crăciun” (second word, after a head that is not generic), like „supraveghere”
+    // in „Vedete de supraveghere” (owner probe, 10 November 2026): a curated synonym names it, never the label.
+    const { i } = await ask("ce firme au luat contracte de iluminat de craciun in buzau");
+    expect(i.subjects.map((s) => s.term)).toEqual(["iluminat"]);
+    expect(i.leftover).toEqual(["craciun"]);
     expect(i.supplier).toBeNull();
+  });
+
+  it("22b. a phrase the vocabulary lacks is not split into catalogue words added together", async () => {
+    // „X de Y” is one thing: no catalogue word is read inside it
+    const phrase = await ask("cine castiga pe camere de supraveghere");
+    expect(phrase.i.subjects).toEqual([]);
+    // an adjective is never a subject alone („școlare” is not „Cărți școlare”), and stays unexplained
+    const adjective = await ask("laptopuri scolare");
+    expect(adjective.i.subjects.map((s) => s.term)).toEqual(["laptopuri"]);
+    expect(adjective.i.leftover).toEqual(["scolare"]);
+    // function and time words are never a subject („fără” is not „Benzină fără plumb”)
+    for (const q of ["iluminat fara", "iluminat iarna"]) expect((await ask(q)).i.subjects.map((s) => s.term), q).toEqual(["iluminat"]);
+  });
+
+  it("22d. a place that is excluded is not applied, and the note says so", async () => {
+    for (const q of ["iluminat fara buzau", "iluminat in afara de buzau", "iluminat exceptand buzau"]) {
+      const { i } = await ask(q);
+      expect(i.place, q).toBeNull();
+      expect(i.subjects.map((s) => s.term), q).toEqual(["iluminat"]);
+      expect(i.leftover, q).toEqual([]);
+      expect(i.notes.join(" "), q).toMatch(/nu putem scoate un loc/);
+    }
+  });
+
+  it("22c. „fără licitație” is a direct award", async () => {
+    const { i } = await ask("laptopuri cumparate fara licitatie");
+    expect(i.dataset).toBe("da");
+    expect(i.leftover).toEqual([]);
   });
 
   it("23. nothing understood: no spec, a plain explanation", async () => {
