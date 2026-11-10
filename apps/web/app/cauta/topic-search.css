@@ -59,58 +59,145 @@
 .topic-understood-choose>div{display:flex;flex-wrap:wrap;gap:8px}
 .topic-understood-choose .topic-control{text-decoration:none}
 .topic-literal,.topic-understood-note{margin:-6px 0 16px}
-/* Short subject answer, computed by the Ask engine */
-.topic-answer{margin:0 0 28px;padding:20px 22px;border-radius:13px;background:var(--sunk);border:1px solid var(--line)}
+/* „Pe scurt” (owner, 10 November 2026: „arată foarte prost uneori”). What was counted, beside the title; the rows the
+   question asked for, each on one grid row with its value on the row's first line (a float once put amounts beside the
+   wrong firm on phones); the total with its records; how it was counted, folded into one closing row. A question about
+   the largest purchases, who or which years puts its rows first; a subject leads with its total. */
+.topic-answer{margin:0 0 28px;padding:20px 24px;border-radius:13px;background:var(--sunk);border:1px solid var(--line)}
+.topic-answer-head{position:relative;display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 12px;margin-bottom:14px}
+.topic-answer-nowrap{white-space:nowrap}
 .topic-answer h2{font-size:18px!important;font-weight:600}
-.topic-answer-question{margin:10px 0 4px!important;font-size:14px;color:var(--topic-muted)}
-.topic-answer-value{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin:4px 0 10px!important}
-.topic-answer-value>strong{font:600 30px var(--display);letter-spacing:-.025em;font-variant-numeric:tabular-nums}
-.topic-answer-value>span{font-size:13px;color:var(--topic-muted)}
-.topic-answer-top{margin:6px 0 10px;padding:0 0 0 22px;max-width:640px}
-.topic-answer-top>li{padding:5px 0;border-bottom:1px solid var(--line)}
-.topic-answer-top>li{display:list-item}
-.topic-answer-top>li>a,.topic-answer-top>li>span:first-child{overflow-wrap:anywhere}
-.topic-answer-top>li>span:last-child{float:right;margin-left:12px;font-variant-numeric:tabular-nums;color:var(--ink2);font-size:14px}
-/* „Pe scurt” beyond the first three firms: the years of an evolution, the two sides of a comparison, the largest records */
-.topic-answer-years,.topic-answer-sides{list-style:none;padding-left:0}
-.topic-answer-top small{font-size:12px;color:var(--ink2)}
-.topic-answer-records-top>li>span:first-child>small{display:block;margin-top:2px}
-/* a long title or name keeps its value on its first line */
-.topic-answer-records-top,.topic-answer-sides{list-style:none;padding-left:0}
-.topic-answer-records-top>li,.topic-answer-sides>li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;align-items:baseline}
-.topic-answer-records-top>li>span:last-child,.topic-answer-sides>li>span:last-child{float:none;margin-left:0;text-align:right}
-.topic-answer-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-weight:500;min-height:36px}
+.topic-answer-scope{margin:0!important;font-size:13px;color:var(--ink2)}
+/* the rows on the left, the total always on the right; the page's order (rows first after a question about them)
+   is what a phone reads */
+.topic-answer-body.has-list{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,250px);gap:20px 48px;align-items:start}
+.topic-answer-body.has-list>.topic-answer-main{grid-column:1;grid-row:1}
+.topic-answer-body.has-list>.topic-answer-rail{grid-column:2;grid-row:1}
+.topic-answer-label{margin:0 0 6px!important;font-size:13px;font-weight:600;color:var(--ink)}
+/* the total and its records */
+.topic-answer-value{margin:0!important}
+.topic-answer-value>strong{display:block;font:600 30px/1.2 var(--display);letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.is-led .topic-answer-value>strong{font-size:24px}
+.topic-answer-count{display:flex;align-items:center;min-height:36px;margin:0!important;font-size:14px;color:var(--ink2)}
+.topic-answer-count>a{display:inline-flex;align-items:center;gap:6px;margin-left:.3em;font-weight:600}
+.topic-answer-sub{margin:0!important;font-size:13px;color:var(--ink2)}
+.topic-answer>.topic-subject-note{margin-top:16px!important}
+/* the rows: rank, what, value */
+/* one grid for the whole list (subgrid rows), so every value and bar lines up with the others */
+.topic-answer-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1.5em minmax(0,1fr) auto;column-gap:12px}
+.topic-answer-list.is-years{grid-template-columns:auto minmax(0,1fr) auto auto}
+.topic-answer-row{position:relative;grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:baseline;padding:10px 0;border-top:1px solid var(--line2);line-height:1.5}
+.topic-answer-row:first-child{border-top:0;padding-top:2px}
+/* a ghost's lines have no text baseline: its rows align by their tops, as the loaded rows' first lines do */
+[data-g="topic-answer"] .topic-answer-row:not(.is-year){align-items:start}
+.topic-answer-rank{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.topic-answer-what{min-width:0;overflow-wrap:anywhere;font-size:15px;line-height:1.5}
+.topic-answer-what>small,.topic-answer-amount>small,.topic-answer-year>small{display:block;margin-top:1px;font-size:12px;font-weight:400;color:var(--ink2);line-height:1.6}
+.topic-answer-amount{text-align:right;white-space:nowrap;font-size:15px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+/* a name or a title is text with a link's line under it: links stand apart from the values in both themes */
+.topic-answer-what a,.topic-answer-sides a,.topic-answer-scope a{color:var(--ink);text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-decoration-thickness:1px;text-underline-offset:3px}
+.topic-answer-what a:hover,.topic-answer-sides a:hover,.topic-answer-scope a:hover{color:var(--accent);text-decoration-color:currentColor}
+/* a bar: a year against the largest year, a side against the larger side (chart-motion.css grows it once); a year the
+   archive holds in part is hatched, and says so in words */
+.topic-answer-bar{display:block;height:8px;border-radius:2px;background:var(--line)}
+.topic-answer-bar>span{display:block;height:100%;border-radius:2px;background:var(--bar)}
+.topic-answer-bar>.is-partial{background:repeating-linear-gradient(135deg,var(--bar) 0 3px,transparent 3px 6px);box-shadow:inset 0 0 0 1px var(--bar)}
+/* the largest purchases: a title of at most two lines (three on phones) and its parties on one; the row keeps their
+   full height below them, so nothing moves when they load and a short title has no gap under it */
+.topic-answer-title{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
+.is-record>.topic-answer-what{min-height:calc(2 * 22.5px + 1px + 19.2px)}
+.topic-answer-what>.topic-answer-parties{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:1;line-clamp:1;overflow:hidden}
+/* the buyer gives way to the winners: who won stays readable */
+.topic-answer-buyer{display:inline-block;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+/* the years: year, bar, value */
+.topic-answer-row.is-year{align-items:center;padding:5px 0}
+.is-year>.topic-answer-bar{margin:0}
+.topic-answer-year{font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.topic-answer-year>small{display:inline;margin:0 0 0 6px}
+.topic-answer-n{font-size:12px;color:var(--ink2);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* a comparison: one column per side, on one scale */
+.topic-answer-sides{list-style:none;margin:0 0 10px;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 48px}
+.topic-answer-sides>li{position:relative;min-width:0;display:flex;flex-direction:column;overflow-wrap:break-word}
+.topic-answer-sides>li>a,.topic-answer-sides>li>span:first-child{font-size:16px;font-weight:600;line-height:1.4}
+.topic-answer-side-value{margin-top:6px;font:600 26px/1.2 var(--display);letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:var(--ink)}
+.topic-answer-sides small{font-size:13px;color:var(--ink2)}
+.topic-answer-sides .topic-answer-bar{height:8px;margin-top:8px}
+/* nothing classified there */
+.topic-answer-empty{margin:0}
+.topic-answer-empty-line{margin:0 0 4px!important;max-width:65ch;font-size:16px;font-weight:600;color:var(--ink);line-height:1.45}
+.topic-answer-alternative{margin:0!important}
+.topic-answer-alternative>a{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-size:14px;font-weight:600}
+.topic-answer-alternative .topic-text-button{font-size:14px!important;text-align:left;font-weight:600}
+/* the closing row: how it was counted, folded, and the ways on */
+.topic-answer-foot{display:flex;align-items:flex-start;flex-wrap:wrap;gap:0 24px;margin-top:16px;padding-top:4px;border-top:1px solid var(--line2)}
+.topic-answer-how{flex:1 1 320px;min-width:0;font-size:13px;color:var(--ink2)}
+.topic-answer-how-summary{display:inline-flex;align-items:center;gap:6px;min-height:40px;margin:0!important;cursor:pointer;color:var(--ink);font-weight:500;list-style:none}
+.topic-answer-how-summary::-webkit-details-marker{display:none}
+.topic-answer-how-summary small{font-size:13px;font-weight:400;color:var(--ink2)}
+.topic-answer .topic-answer-how-summary>.d-icon{width:16px;height:16px;flex:none;transition:transform var(--fast) var(--ease)}
+.topic-answer-how[open]>.topic-answer-how-summary>.d-icon{transform:rotate(180deg)}
+.topic-answer-how-body{max-width:72ch;padding:0 0 10px 22px;line-height:1.6}
+.topic-answer-how-body>p{margin:4px 0!important}
+.topic-answer-how-body>.topic-answer-how-head{margin-top:12px!important;font-weight:600;color:var(--ink)}
+.topic-answer-how-body ul{margin:0;padding-left:18px}
+.topic-answer-how-body code{font:12px var(--mono);white-space:nowrap;color:var(--ink2)}
+.topic-answer-actions{display:flex;align-items:center;flex-wrap:wrap;gap:0 24px;margin-left:auto}
+.topic-answer-quiet,.topic-answer-go{display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:14px}
+.topic-answer-quiet{color:var(--ink2);text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);text-underline-offset:3px}
+.topic-answer .topic-answer-quiet>.d-icon{width:15px;height:15px;flex:none}
+.topic-answer-go{font-weight:600}
+.topic-subject-note{margin:8px 0 0!important;padding:8px 12px;border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:8px;font-size:13px;color:var(--ink);line-height:1.5}
+@media(prefers-reduced-motion:reduce){.topic-answer .topic-answer-how-summary>.d-icon{transition:none}}
+@media(max-width:900px){.topic-answer-body.has-list{grid-template-columns:minmax(0,1fr);gap:20px}.topic-answer-body.has-list>.topic-answer-main,.topic-answer-body.has-list>.topic-answer-rail{grid-column:auto;grid-row:auto}}
+@media(max-width:650px){
+ .topic-answer{padding:16px}
+ .topic-answer-value>strong{font-size:26px}
+ .is-led .topic-answer-value>strong{font-size:22px}
+ /* the total after the rows a question asked for: a rule above it */
+ .is-led>.topic-answer-rail{padding-top:14px;border-top:1px solid var(--line2)}
+ /* every row: its value first, then the name or title on the full width (no word broken beside a value column) */
+ .topic-answer-list:not(.is-years){grid-template-columns:1.5em minmax(0,1fr)}
+ .topic-answer-row:not(.is-year)>.topic-answer-rank{grid-column:1;grid-row:1}
+ .topic-answer-row:not(.is-year)>.topic-answer-what{grid-column:2;grid-row:2;overflow-wrap:break-word}
+ .topic-answer-row:not(.is-year)>.topic-answer-amount{grid-column:2;grid-row:1;text-align:left;white-space:normal}
+ .topic-answer-row:not(.is-year)>.topic-answer-amount>small{display:inline;margin-left:8px}
+ .topic-answer-title{-webkit-line-clamp:3;line-clamp:3}
+ .topic-answer-row.is-record>.topic-answer-what{min-height:calc(3 * 22.5px + 1px + 2 * 19.2px)}
+ .topic-answer-what>.topic-answer-parties{-webkit-line-clamp:2;line-clamp:2}
+ .topic-answer-buyer{max-width:100%}
+ .topic-answer-list.is-years{grid-template-columns:auto minmax(0,1fr) auto}
+ .topic-answer-year>small{display:block;margin:0}
+ .topic-answer-n{display:none}
+ .topic-answer-sides{grid-template-columns:minmax(0,1fr);gap:18px}
+ /* a side's name may take two lines: the side keeps their height, below it */
+ .topic-answer-sides>li{min-height:calc(2 * 22.4px + 6px + 31.2px + 20.8px + 16px)}
+ .topic-answer-foot{flex-direction:column;align-items:stretch;gap:0}
+ .topic-answer-how{flex:none}
+ .topic-answer-actions{flex-direction:column;align-items:flex-start;margin-left:0}
+ .topic-answer-count,.topic-answer-quiet,.topic-answer-go,.topic-answer-how-summary,.topic-answer-alternative>a,.topic-answer-alternative .topic-text-button{min-height:44px}
+}
 /* No records: wider selections */
 .topic-broader{padding:6px 0 0;font-size:14px}
 .topic-broader>p{margin:12px 0 6px;color:var(--ink)}
 .topic-broader ul{margin:0;padding:0 0 0 18px}
 .topic-broader li{padding:3px 0}
-@media(max-width:650px){.topic-understood{padding:12px}.topic-answer{padding:16px}.topic-answer-value>strong{font-size:26px}.topic-understood{position:relative}.topic-chip{position:static}.topic-chip-menu>div{left:0;right:0;min-width:0;max-width:none}}
+@media(max-width:650px){.topic-understood{padding:12px}.topic-understood{position:relative}.topic-chip{position:static}.topic-chip-menu>div{left:0;right:0;min-width:0;max-width:none}}
 .topic-chip-scope{font-size:11px;color:var(--topic-muted);margin-left:2px}
-.topic-answer-limits{margin:6px 0 4px;font-size:13px;color:var(--topic-muted)}.topic-answer-limits summary{cursor:pointer;color:var(--ink);min-height:32px;display:flex;align-items:center}.topic-answer-limits ul{margin:6px 0 0;padding-left:18px;line-height:1.6}
-.topic-subject-note{margin:8px 0 0!important;padding:8px 12px;border-left:3px solid var(--accent-line);background:var(--accent-soft);border-radius:0 6px 6px 0;font-size:13px;color:var(--ink);line-height:1.5}
 /* A whole question: the interpreter's sentence and its answer first; the words as written go below */
 .topic-question-line{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0!important;font-size:16px;line-height:1.45}
 .topic-question-line>strong{font-weight:600;color:var(--ink)}
-.topic-question-actions,.topic-answer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:12px}
-.topic-question-actions>a.topic-primary,.topic-answer-actions>a.topic-primary,.topic-question-actions>a.topic-control,.topic-answer-actions>a.topic-control{display:inline-flex;width:auto;margin:0;text-decoration:none}
-.topic-answer-records{margin:0 0 8px!important;font-size:14px}
-.topic-answer-records>a{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-weight:500}
-.topic-answer-empty{margin:8px 0 10px;padding:12px 14px;border-left:3px solid var(--accent-line);background:var(--surface);border-radius:0 8px 8px 0}
-.topic-answer-empty>p{margin:0 0 6px!important}
-.topic-answer-empty>p>strong{font-size:16px;font-weight:600;color:var(--ink);line-height:1.45}
-.topic-answer-alternative .topic-text-button{font-size:14px!important;text-align:left;font-weight:500}
+.topic-question-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin-top:12px}
+.topic-question-actions>a.topic-primary,.topic-question-actions>a.topic-control{display:inline-flex;width:auto;margin:0;text-decoration:none}
 .topic-literal-quiet{margin:4px 0 24px!important;font-size:14px;color:var(--topic-muted)}
 .topic-literal-quiet>.topic-text-button{font-size:14px!important;margin-left:4px}
 .topic-literal-head{font-size:17px!important;font-weight:600;margin:6px 0 12px!important;color:var(--ink2)}
 .topic-units{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:6px 0 10px!important;padding:10px 12px;border-radius:8px;background:var(--sunk);font-size:13px;color:var(--ink2)}
 .topic-units strong{color:var(--ink);font-weight:600}
 .topic-units>a{display:inline-flex;align-items:center;gap:6px;min-height:32px;font-weight:500}
-@media(max-width:650px){.topic-question-actions>a.topic-primary,.topic-answer-actions>a.topic-primary,.topic-question-actions>a.topic-control,.topic-answer-actions>a.topic-control{width:100%;justify-content:center}}
+@media(max-width:650px){.topic-question-actions>a.topic-primary,.topic-question-actions>a.topic-control{width:100%;justify-content:center}}
 /* „Am înțeles” already shows what is searched: the status line stays for screen readers only */
 .topic-status.is-quiet{position:absolute;width:1px;height:1px;min-height:0;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .topic-filter-surface:has(+.topic-answer-area>.topic-status.is-quiet){margin-bottom:20px}
-.topic-answer-domains{position:relative}
 /* After a search, phones show the words as the title: the answer fits in the first screen */
 .topic-h1-query{display:none}
 @media(max-width:650px){
@@ -121,8 +208,6 @@
  /* Long titles: three lines, so the amount and "instituție → firmă" stay in view; the link opens the full title */
  .topic-record:not(.topic-entity):not(.topic-document) h3{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 }
-.topic-answer-alternative{margin:4px 0 0!important}
-.topic-answer-alternative>a{display:inline-flex;align-items:center;gap:6px;min-height:36px;font-size:14px;font-weight:500}
 /* Results as panels in the order of the tabs: institutions and firms, acquisitions, documents
    (owner, 3 November 2026). Each panel has a head with its count and ends with a link to all of them. */
 .topic-tabbar{display:flex;align-items:flex-end;gap:16px;border-bottom:1px solid var(--line2);margin-bottom:28px}

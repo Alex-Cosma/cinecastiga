@@ -161,6 +161,8 @@ Corners are gently rounded. Compact fields/messages, controls, larger surfaces, 
 
 **Save to an investigation.** "Salvează în anchetă" opens a labelled dialog at the end of the page, never clipped by its container: under or above its button on a wide screen, over the page when neither side has room, a bottom sheet on phones (≤700px). It says what it saves, lists every dossier with its full title and marks the ones that already hold it; there the action becomes a new version of that evidence, never a duplicate (`components/clip-button.css`).
 
+**„Pe scurt” on /cauta (owner, 10 November 2026).** One line beside the title says what was counted, in the chips' words. The rows the question asked for share one grid (subgrid), each value on its row's first line; on phones every row puts its value first and its name or title on the full width. The rows lead after a question about them (largest purchases, „cine…”); the total sits on the right on wide screens. Bars only where magnitude is the answer (years, the two sides of a comparison), in `--bar` on `--line`, partial years hatched. Names and titles are ink with a soft underline. How it was counted folds into one disclosure; no filled button inside the card.
+
 **Status chips.** Small accent-soft labels communicate source-change or review state with text. Color is reinforcement, not the only cue.
 
 **Preserved evidence.** A sunk panel separates the frozen record action from live comparison links. Clear source counts and “before” / “after” wording identify what will open. This is a signature investigative component already present in the Batch 2 workspace and extended by monitoring.
