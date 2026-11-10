@@ -117,6 +117,12 @@ export function nameTerms(phrase:string):string[]{
  const kept=words.filter(w=>!NAME_NOISE.has(w));
  return kept.length?kept:words;
 }
+/** A word of one or two letters joined to the next one („dr max” → „drmax”, „e on energie” → „eon energie”). */
+export function glue(words:string[]):string[]{
+ const out:string[]=[];
+ for(let i=0;i<words.length;i++){const w=words[i]!;if(w.length<=2&&i+1<words.length){out.push(w+words[i+1]);i++;}else out.push(w);}
+ return out;
+}
 /**
  * One name word: at the start of a word of the name, never inside one („anaf” is not BANAFOREST), short words and small
  * numbers only whole („1” is not the „1” inside a CUI or „Sector 4”'s code), a CUI only from six digits.
@@ -143,6 +149,9 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
   if(s.match==='phrase')variant=q`(e.name_normalized like ${'%'+words.join(' ')+'%'} or e.cui_canonical like ${'%'+words.join(' ')+'%'})`;
   else for(const term of words)variant=q`${variant} and ${termSql(q,term)}`;
   name=q`${name} or (${variant})`;
+  // short words glued in the registry („Dr. Max” is stored as „drmax”, „E.ON” as „eon”)
+  const glued=glue(words);
+  if(s.match!=='phrase'&&glued.join(' ')!==words.join(' ')){let alt=q`true`;for(const term of glued)alt=q`${alt} and ${termSql(q,term)}`;name=q`${name} or (${alt})`;}
  }name=q`(${name})`;
  if(intent.cui)name=q`(${name} or e.cui_canonical=${intent.cui})`;
  const typed=typedNames[0]??intent.name;
@@ -154,8 +163,7 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  for(const candidate of intent.authorityNames)authorityName=q`${authorityName} or e.name_normalized=${candidate} or e.name_normalized like ${candidate+' %'}`;
  const rank=q`case when e.cui_canonical=${intent.cui} then 100
    when e.name_normalized=any(${asTyped}::text[]) then 90
-   when ep.role='authority' and (${authorityName}) then 80
-   when e.name_normalized like any(${asTyped.map(t=>t+' %')}::text[]) then 60 else 0 end`;
+   when ep.role='authority' and (${authorityName}) then 80 else 0 end`;
  const search=async(nameSql:typeof name,order:typeof name)=>{
  let activity=q`true`;
  if(s.place||s.from||s.type!=='all'){
@@ -179,7 +187,8 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  };
  let found=await search(name,q`max(${rank}) desc`),approximate=false;
  // Nothing by name: the closest names, said as such („Strabac” → Strabag; owner probe, 10 November 2026).
- if(!found.total&&s.match==='words'&&!intent.cui&&typed.length>=4){
+ // only for a short name: a whole sentence has no closest name, only noise
+ if(!found.total&&s.match==='words'&&!intent.cui&&typed.length>=4&&typed.split(' ').length<=3){
   found=await search(q`(e.name_normalized % ${typed})`,q`max(similarity(e.name_normalized,${typed})) desc`);
   approximate=found.total>0;
  }

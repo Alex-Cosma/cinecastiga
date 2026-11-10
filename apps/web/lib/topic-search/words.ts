@@ -98,7 +98,27 @@ export function titleTerms(q: string): { word: string; prefix: boolean }[][] {
     .filter((part) => part.length);
 }
 
+/** Romanian noun endings: a base and these are the forms a title may hold („laptop”, „laptopul”, „laptopuri”…). */
+const ENDINGS = ['', 'a', 'e', 'i', 'ul', 'ului', 'le', 'lor', 'ele', 'elor', 'ii', 'ilor', 'uri', 'urile', 'urilor', 'ea', 'ei', 'ile', 'iei', 'ie'];
+
+/**
+ * The forms of one typed word that a title may hold: its bases (with and without a final vowel) and their endings.
+ * Explicit forms, not a prefix: „artificii” must not find „artificiale” (owner probe re-judging, 10 November 2026).
+ */
+export function wordForms(word: string): string[] {
+  if (word.length < 5) return [word];
+  const bases = new Set<string>([word, ...stems(word)]);
+  for (const b of [...bases]) if (/[aeiu]$/.test(b) && b.length > 4) bases.add(b.slice(0, -1));
+  const out = new Set<string>();
+  for (const b of bases) for (const e of ENDINGS) if (b.length >= 4) out.add(b + e);
+  return [...out];
+}
+
 /** `titleTerms` as a Postgres tsquery for the 'simple' configuration ('' when there is nothing to search). */
 export function titleTsquery(q: string): string {
-  return titleTerms(q).map((part) => `(${part.map((t) => (t.prefix ? `${t.word}:*` : t.word)).join(' & ')})`).join(' | ');
+  return q.split(/\s+sau\s+/i)
+    .map((part) => fold(part).split(/[^a-z0-9]+/).filter(Boolean))
+    .filter((words) => words.length)
+    .map((words) => `(${words.map((w) => { const forms = wordForms(w); return forms.length === 1 ? forms[0] : `(${forms.join(' | ')})`; }).join(' & ')})`)
+    .join(' | ');
 }

@@ -214,9 +214,10 @@ const ADJECTIVE = new Set(["medical", "medicale", "medicala", "medicali", "scola
   "termice", "termica", "digital", "digitale", "digitala", "social", "sociale", "sociala", "national", "nationale", "nationala", "judetean",
   "judeteana", "judetene", "local", "locale", "locala", "nou", "noua", "noi", "vechi", "veche", "gratuit", "gratuite", "gratuita", "special",
   "speciale", "speciala", "divers", "diverse", "necesar", "necesare", "festiv", "festive", "festiva", "modern", "moderne", "moderna", "mare",
-  "mari", "mic", "mici", "scump", "scumpe", "scumpa", "ieftin", "ieftine", "noile", "noul"]);
+  "mari", "mic", "mici", "scump", "scumpe", "scumpa", "ieftin", "ieftine", "noile", "noul", "oncologic", "oncologice", "oncologica",
+  "pediatric", "pediatrice", "pediatrica", "stomatologic", "stomatologice", "stomatologica", "farmaceutic", "farmaceutice", "farmaceutica"]);
 /** Function, time, number and place words: never a subject alone („fără” is not „Benzină fără plumb”, „iarna” not ski gear). */
-const NEVER_SUBJECT = new Set(["fara", "afara", "exceptand", "inafara", "trecut", "trecuta", "trecute", "trecutul", "viitor", "viitoare", "iarna",
+export const NEVER_SUBJECT = new Set(["fara", "afara", "exceptand", "inafara", "trecut", "trecuta", "trecute", "trecutul", "viitor", "viitoare", "iarna",
   "vara", "toamna", "primavara", "iernii", "verii", "sector", "sectorul", "sectorului", "sectoare", "zona", "zonei", "oras", "orasul", "orasului",
   "copii", "copiii", "copiilor", "blocuri", "blocul", "bloc", "blocurilor", "unu", "doi", "doua", "trei", "patru", "cinci", "sase", "sapte", "opt",
   "noua", "zece", "suta", "mie", "mii", "milion", "milioane", "miliard", "miliarde", "romania", "tara", "tarii", "intreaga", "intreg"]);
@@ -1259,7 +1260,13 @@ export class RulesInterpreter implements QuestionInterpreter {
     // eight catalogue labels and never sees it (owner probe, 10 November 2026).
     const variants = words.length === 1 ? [...new Set([words[0]!, shortest(words[0]!)])] : [...new Set([words.join(" "), words.map(shortest).join(" ")])];
     const lists = await Promise.all(variants.map((v) => this.vocab.cpv(v)));
-    const hits = [...new Map(lists.flat().map((h) => [h.term, h])).values()];
+    // the curated phrases themselves too: the lookup keeps eight labels and lists synonyms after the catalogue, so a
+    // phrase like „echipament de protectie” never saw „echipamente de protectie” (owner probe re-judging, 10 November 2026)
+    const curated = words.length > 1 ? (await this.vocab.synonyms()).filter((t) => {
+      const tw = significant(fold(t));
+      return tw.length === words.length && words.every((w, k) => tw[k] === w || wordMatches(w, tw[k]!));
+    }).map((term) => ({ term, cpvName: null })) : [];
+    const hits = [...new Map([...lists.flat(), ...curated].map((h) => [h.term, h])).values()];
     const labelWords = (h: CpvHit) => significant(fold(/^\d/.test(h.term) ? h.cpvName ?? "" : h.term));
     const strictWord = (w: string, l: string) => l === w || stems(w).includes(l) || stems(l).includes(w);
     // Typos and inflections from what was typed towards the vocabulary only: read the other way, the vocabulary word

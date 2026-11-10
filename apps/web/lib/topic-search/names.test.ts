@@ -23,9 +23,14 @@ describe('/cauta names and title words', () => {
   });
 
   it('searches titles by the base of inflected words, with „sau” between alternatives', () => {
-    expect(titleTsquery('laptopul')).toBe('(laptop:*)');
-    expect(titleTsquery('medicamentelor')).toBe('(medicamente:*)');
-    expect(titleTsquery('apă sau canalizare')).toBe('(apa) | (canalizar:*)');
+    const forms = (q: string) => titleTsquery(q).replace(/[()]/g, '').split(/ [|&] /);
+    expect(forms('laptopul')).toEqual(expect.arrayContaining(['laptop', 'laptopul', 'laptopuri', 'laptopurile']));
+    expect(forms('medicamentelor')).toEqual(expect.arrayContaining(['medicamente', 'medicamentele', 'medicament', 'medicamentul']));
+    // explicit forms, never a prefix: „artificii” is not „artificiale”
+    expect(forms('artificii')).toContain('artificii');
+    expect(forms('artificii')).not.toContain('artificiale');
+    expect(titleTsquery('laptopul')).not.toMatch(/:\*/);
+    expect(titleTsquery('apă sau canalizare')).toMatch(/^\(apa\) \| \(\(canalizare/);
     // short words stay whole; only letters and digits reach the tsquery
     expect(titleTerms("pod & 'drop")).toEqual([[{ word: 'pod', prefix: false }, { word: 'drop', prefix: false }]]);
   });
