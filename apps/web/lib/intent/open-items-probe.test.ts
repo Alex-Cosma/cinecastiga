@@ -28,6 +28,7 @@ const fx: MemoryFixture = {
     ...FIXTURE.suppliers.filter((e) => e.id !== 9000007),
     { id: 9100001, name: "SIEPCOFAR", county: "Bucuresti", total: 700_000_000 },
     { id: 9100002, name: "STRABAG CONSTRUCT", county: "Bucuresti", total: 50_000_000 },
+    { id: 9100003, name: "E.ON ENERGIE ROMANIA", county: "Mures", total: 2_000_000_000 },
   ],
 };
 const interpreter = new RulesInterpreter(memoryVocabulary(fx));
@@ -65,7 +66,7 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
     const t = await page("cat a castigat Strabag in 2023");
     expect(t.answer?.total.spec.filters).toMatchObject({ supplierName: "STRABAG SRL", yearFrom: 2023, yearTo: 2023 });
     expect(t.answer?.top?.kind).toBe("authorities");
-    expect(t.notes.join(" ")).toMatch(/Am socotit doar „STRABAG SRL”/);
+    expect(t.notes.join(" ")).toMatch(/Am socotit doar „STRABAG SRL”.*„Strabag” în nume; cele cu achiziții în selecție sunt în lista de nume/);
     expect(t.applied).toMatchObject({ q: "Strabag", from: "2023", to: "2023" });
     // beside an institution, firms carrying the name are a choice, never dropped from the question
     const beside = resultFor(await read("ce a cumparat CNAIR de la Strabag"));
@@ -82,6 +83,12 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
     expect(t.answer?.total.spec).toMatchObject({ block: "compare", filters: { authorityId: 7000003, compareWithId: 7000005 } });
     expect(t.answer?.top).toBeNull();
     expect(t.notes.join(" ")).toMatch(/apare de 2 ori/);
+  });
+
+  it("keeps a firm's name whole when it holds a subject's word and capitals („E.ON Energie Romania”)", async () => {
+    const i = await read("E.ON Energie Romania");
+    expect(i.supplier?.name).toBe("E.ON ENERGIE ROMANIA");
+    expect(i.subjects).toEqual([]);
   });
 
   it("reads institutions by their abbreviation, in every shape the registry writes them", async () => {
@@ -107,8 +114,11 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
   it("asks which place when the words do not name it", async () => {
     const own = await page("cat cheltuie primaria la noi");
     expect(own.notes.join(" ")).toMatch(/„la noi”: nu știm ce localitate/);
-    // never answered for the whole country instead
+    // never answered for the whole country instead, with or without a subject
     expect((await page("care firma ia toate contractele in judetul meu")).question).toBeNull();
+    const mine = await page("iluminat in comuna mea");
+    expect(mine.answer).toBeNull();
+    expect(mine.notes.join(" ")).toMatch(/nu știm ce localitate/);
     // „mai puțin Bucureștiul” leaves a place out, which cannot be done: said, never applied
     const less = await read("medicamente mai putin Bucurestiul");
     expect(less.place).toBeNull();
@@ -133,7 +143,10 @@ describe("open items of the /cauta probe (re-judging, 10 November 2026)", () => 
     const t = await page("cel mai mare contract de iluminat");
     expect(t.answer?.top).toMatchObject({ kind: "records", spec: { block: "stat", filters: { cpvTerm: "iluminat" } } });
     expect(t.applied).toMatchObject({ q: "iluminat", order: "value", names: "exact" });
-    const direct = await page("cea mai mare achizitie directa");
+    // the whole country without a narrower selection is no short answer (every record sorted)
+    expect((await page("cele mai mari contracte")).answer?.top?.kind).not.toBe("records");
+    expect((await page("cea mai mare achizitie directa")).answer).toBeNull();
+    const direct = await page("cea mai mare achizitie directa in Buzau");
     expect(direct.answer?.top?.kind).toBe("records");
     expect(direct.question?.sentence).toMatch(/^Care sunt cele mai mari achiziții directe/);
     // a firm's name beside a subject keeps its closest names

@@ -73,7 +73,19 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
 type Side={entityId:string|null;name:string;value:number;count:number};
 type AskData={block:'stat';stat:{value:number;count:number}}|{block:'table';rows:Side[]}|{block:'timeseries';series:{year:number;value:number;count:number}[]}|{block:'compare';entities:Side[]};
 /** One record of /api/ask/rows: the largest records of the selection. */
-type RecordRow={title:string|null;cpvName:string|null;date:string|null;authority:string|null;supplier:string|null;value:number|null;src:'da'|'contracts';refId:string|null};
+type RecordRow={title:string|null;cpvName:string|null;date:string|null;authority:string|null;supplier:string|null;value:number|null;src:'da'|'contracts';refId:string|null;contractValueFull?:string|null;nWinners?:number};
+/**
+ * The largest records, one per contract: /api/ask/rows lists a contract once per winner with its equal share, so a
+ * contract of three winners would rank at a third of its value (re-judging, 10 November 2026). The rows of one page are
+ * grouped by record, valued whole and ranked again.
+ */
+function largestRecords(rows:RecordRow[]):{row:RecordRow;value:number|null;suppliers:string[]}[]{
+ const byRecord=new Map<string,{row:RecordRow;value:number|null;suppliers:string[]}>();
+ rows.forEach((r,n)=>{const key=r.refId?`${r.src}:${r.refId}`:`row:${n}`,whole=r.contractValueFull!=null?Number(r.contractValueFull):r.value;
+  const hit=byRecord.get(key);if(hit){if(r.supplier&&!hit.suppliers.includes(r.supplier))hit.suppliers.push(r.supplier);return;}
+  byRecord.set(key,{row:r,value:whole!=null&&Number.isFinite(whole)?whole:null,suppliers:r.supplier?[r.supplier]:[]});});
+ return [...byRecord.values()].sort((a,b)=>(b.value??-1)-(a.value??-1)).slice(0,3);
+}
 type AskOk={ok:true;data?:AskData;rows?:RecordRow[];caveats?:string[]};
 type AskReply=AskOk|{ok:false;error?:string};
 type Pair={total:AskReply|null;top:AskReply|null;failed:boolean};
@@ -81,10 +93,16 @@ async function ask(spec:AskSpec):Promise<AskReply>{
  const r=await fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spec})});
  return await r.json() as AskReply;
 }
-/** The largest records the total counts (the same list as „Vezi toate”, by value). */
+/**
+ * The largest records the total counts (the list of „Vezi toate”), by the whole purchase: a contract of several winners
+ * has one row per winner, so a second page is read when the first holds fewer than three purchases.
+ */
 async function largest(spec:AskSpec):Promise<AskReply>{
- const r=await fetch('/api/ask/rows',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spec,page:0,sort:'value',dir:'desc'})});
- return await r.json() as AskReply;
+ const page=async(n:number)=>await (await fetch('/api/ask/rows',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spec,page:n,sort:'whole',dir:'desc'})})).json() as AskReply;
+ const first=await page(0);
+ if(!first.ok||!first.rows||first.rows.length<10||largestRecords(first.rows).length>=3)return first;
+ const second=await page(1);
+ return second.ok&&second.rows?{...first,rows:[...first.rows,...second.rows]}:first;
 }
 type Answer=NonNullable<TopicInterpretation["answer"]>;
 export const answerKey=(answer:Answer)=>JSON.stringify([answer.total.spec,answer.top?.kind??null,answer.top?.spec??null]);
@@ -129,7 +147,7 @@ export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked:
  const kind=answer.top?.kind??null;
  const rows=topData?.block==='table'?topData.rows:null;
  const years=topData?.block==='timeseries'?topData.series.filter(y=>y.count>0):null;
- const records=kind==='records'&&ready?.top?.ok?ready.top.rows?.slice(0,3)??null:null;
+ const records=kind==='records'&&ready?.top?.ok&&ready.top.rows?largestRecords(ready.top.rows):null;
  const shape=sides?(sides.some(x=>x.count>0)?'value':'empty'):answerShape(total);
  // Reported once answered (null count: no total), so the page knows when to stop waiting for it.
  useEffect(()=>{onCount?.(ready?{key,count:total?.count??null}:null);
@@ -159,7 +177,7 @@ export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked:
     <p className="topic-answer-records"><Link prefetch={false} href={answer.evidenceHref}>Vezi {total.count===1?'înregistrarea':`toate cele ${recordsWord(total.count)}`} <DiscoveryIcon name="arrow"/></Link></p>
     {rows&&rows.length>0&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=${role}`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
     {years&&years.length>1&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top topic-answer-years">{years.map(y=><li key={y.year}><span>{y.year}</span><span>{formatRon(y.value)} <small>în {recordsWord(y.count)}</small></span></li>)}</ol></>}
-    {records&&records.length>0&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top topic-answer-records-top">{records.map((r,n)=><li key={`${r.src}:${r.refId??n}`}><span>{r.refId?<Link prefetch={false} href={r.src==='contracts'?`/contracte/i/${r.refId}`:`/achizitii/${r.refId}`}>{r.title||r.cpvName||'Titlu neprecizat în sursă'}</Link>:<span>{r.title||r.cpvName||'Titlu neprecizat în sursă'}</span>}<small>{[r.authority&&cleanName(r.authority),r.supplier&&`→ ${cleanName(r.supplier)}`,r.date?.slice(0,4)].filter(Boolean).join(' ')}</small></span><span>{r.value!=null?formatRon(r.value):'–'}</span></li>)}</ol></>}</>}
+    {records&&records.length>0&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top topic-answer-records-top">{records.map(({row:r,value,suppliers},n)=><li key={`${r.src}:${r.refId??n}`}><span>{r.refId?<Link prefetch={false} href={r.src==='contracts'?`/contracte/i/${r.refId}`:`/achizitii/${r.refId}`}>{r.title||r.cpvName||'Titlu neprecizat în sursă'}</Link>:<span>{r.title||r.cpvName||'Titlu neprecizat în sursă'}</span>}<small>{[r.authority&&cleanName(r.authority),suppliers.length&&`→ ${suppliers.map(cleanName).join(', ')}`,(r.nWinners??1)>1&&`(${r.nWinners} câștigători, valoarea întregului contract)`,r.date?.slice(0,4)].filter(Boolean).join(' ')}</small></span><span>{value!=null?formatRon(value):'–'}</span></li>)}</ol></>}</>}
   {(shape!=='empty'&&!ready.failed)&&caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include calculul · {caveats.length}</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}
   {domains(<Term tip title="Domenii" text="Numărăm după încadrarea oficială (CPV), nu după titlu."/>)}
   {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}

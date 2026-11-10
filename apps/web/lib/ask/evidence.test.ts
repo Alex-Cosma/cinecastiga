@@ -91,6 +91,8 @@ describe("source selection validation", () => {
     expect(validateEvidenceScope({ cpvPrefixes: ["12%"] })).toHaveProperty("error");
     expect(validateEvidenceScope({ unknown: true })).toHaveProperty("error");
     expect(evidenceOptions({ sort: "constructor" })).toHaveProperty("error");
+    // the whole purchase: a contract of several winners by its full value (/cauta „cele mai mari achiziții”)
+    expect(evidenceOptions({ sort: "whole", dir: "desc" })).toMatchObject({ sort: "whole", dir: "desc" });
   });
   it("accepts exact IDs, complements, county groups and endpoint years", () => {
     const scope = { role: "supplier", excludeEntityIds: ["9007199254740993"], excludeCpvPrefixes: ["45"], county: "Cluj", years: [2020, 2026] };
