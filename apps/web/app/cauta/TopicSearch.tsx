@@ -16,6 +16,8 @@ import {silentChoice} from '@/lib/topic-search/places';
 import {roCount} from '@/lib/ro-count';
 
 const defaults:TopicScope={q:'',place:'',from:'',to:'',type:'all',match:'words',tab:'all',page:1,role:''};
+/** A question about who („cine câștigă…”, „ce firme…”): „Pe scurt” puts the firms or institutions before the total. */
+const WHO_ASKED=/^\s*(cine\b|(ce|care)\s+(firme|firma|companii|instituții|institutii|instituţii)\b)/i;
 const TABS:{id:SearchTab;label:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme'},{id:'acquisitions',label:'Achiziții'},{id:'documents',label:'Documente'}];
 /** The closest name match, first among the institutions and firms: its profile and all its acquisitions. */
 function BestMatch({entity:e,unfiltered}:{entity:EntityHit;unfiltered:boolean}){
@@ -211,6 +213,9 @@ export default function TopicSearch(){
   const placeName=effective.place?(vPlace?.id===effective.place?vPlace.name:''):'';
   const where=effective.place?placeName||'locul ales':'toată țara';
   const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
+  // The place as its chip in „Am înțeles” names it („Municipiul Sibiu”, „Județul Cluj”), without the county after a locality.
+  const chipPlace=t?.fromWords.place??(t?.explicitPlace?.id===effective.place?t.explicitPlace:null);
+  const answerWhere=!effective.place?where:chipPlace?chipPlace.label.replace(/\s*\([^)]*\)$/,''):vPlace?.kind==='county'?(vPlace.name==='București'?'Municipiul București':`Județul ${vPlace.name}`):where;
   // A recognised subject or a whole question leads with its answer, above the results.
   const question=t?.question??null;
   // A question's words searched as written; a question about one subject searches that subject instead.
@@ -243,7 +248,7 @@ export default function TopicSearch(){
   {v.literal&&<p className="topic-help topic-literal">Cauți exact cuvintele scrise, fără interpretare. <Link prefetch={false} href={searchHref(scope,{})}>Interpretează căutarea</Link></p>}
   {t&&<Understood scope={scope} effective={effective} t={t} place={vPlace}/>}
   {/* The short answer comes from Ask and does not wait for the titles. */}
-  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined} onCount={setAnswerCount}/>}
+  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.subject?.label??effective.q,kind:t.kind?.label??null,where:answerWhere,period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined} onCount={setAnswerCount}/>}
   <div className={`topic-results${collapsed?' is-collapsed':''}`} style={{minHeight:collapsed||literalQ?0:400}}>
   {collapsed?(result?<p className="topic-literal-quiet">{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume. <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>Arată</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)

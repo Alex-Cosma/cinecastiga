@@ -1,8 +1,9 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {Fragment,useEffect,useId,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
+import EntityName from '@/components/EntityName';
 import {G,Ghost} from '@/components/ghost/Ghost';
 import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import type {AskSpec} from '@/lib/ask/spec';
@@ -73,20 +74,23 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
 type Side={entityId:string|null;name:string;value:number;count:number};
 type AskData={block:'stat';stat:{value:number;count:number}}|{block:'table';rows:Side[]}|{block:'timeseries';series:{year:number;value:number;count:number}[]}|{block:'compare';entities:Side[]};
 /** One record of /api/ask/rows: the largest records of the selection. */
-type RecordRow={title:string|null;cpvName:string|null;date:string|null;authority:string|null;supplier:string|null;value:number|null;src:'da'|'contracts';refId:string|null;contractValueFull?:string|null;nWinners?:number};
+type RecordRow={title:string|null;cpvName:string|null;date:string|null;authorityId?:string|null;authority:string|null;supplierId?:string|null;supplier:string|null;value:number|null;src:'da'|'contracts';refId:string|null;contractValueFull?:string|null;nWinners?:number|null};
+/** A party of a record: its name, linked to its page when the registry identifies it. */
+type Party={id:string|null;name:string};
 /**
  * The largest records, one per contract: /api/ask/rows lists a contract once per winner with its equal share, so a
  * contract of three winners would rank at a third of its value (re-judging, 10 November 2026). The rows of one page are
  * grouped by record, valued whole and ranked again.
  */
-function largestRecords(rows:RecordRow[]):{row:RecordRow;value:number|null;suppliers:string[]}[]{
- const byRecord=new Map<string,{row:RecordRow;value:number|null;suppliers:string[]}>();
+function largestRecords(rows:RecordRow[]):{row:RecordRow;value:number|null;suppliers:Party[]}[]{
+ const byRecord=new Map<string,{row:RecordRow;value:number|null;suppliers:Party[]}>();
+ const party=(r:RecordRow):Party[]=>r.supplier?[{id:r.supplierId??null,name:r.supplier}]:[];
  rows.forEach((r,n)=>{const key=r.refId?`${r.src}:${r.refId}`:`row:${n}`,whole=r.contractValueFull!=null?Number(r.contractValueFull):r.value;
-  const hit=byRecord.get(key);if(hit){if(r.supplier&&!hit.suppliers.includes(r.supplier))hit.suppliers.push(r.supplier);return;}
-  byRecord.set(key,{row:r,value:whole!=null&&Number.isFinite(whole)?whole:null,suppliers:r.supplier?[r.supplier]:[]});});
+  const hit=byRecord.get(key);if(hit){if(r.supplier&&!hit.suppliers.some(x=>x.name===r.supplier))hit.suppliers.push(...party(r));return;}
+  byRecord.set(key,{row:r,value:whole!=null&&Number.isFinite(whole)?whole:null,suppliers:party(r)});});
  return [...byRecord.values()].sort((a,b)=>(b.value??-1)-(a.value??-1)).slice(0,3);
 }
-type AskOk={ok:true;data?:AskData;rows?:RecordRow[];caveats?:string[]};
+type AskOk={ok:true;data?:AskData;rows?:RecordRow[];caveats?:string[];partialYears?:{year:number;note:string}[]};
 type AskReply=AskOk|{ok:false;error?:string};
 type Pair={total:AskReply|null;top:AskReply|null;failed:boolean};
 async function ask(spec:AskSpec):Promise<AskReply>{
@@ -127,13 +131,73 @@ export type TitleMatches={count:number|null;q:string;onShow:()=>void};
 export type AnswerCount={key:string;count:number|null}|null;
 
 
+/** Where and when „Pe scurt” counted, in the words of the chips of „Am înțeles”: one line beside its title. */
+export type AnswerScope={subject:string;kind:string|null;where:string;period:string;named?:boolean;who?:boolean};
+/** The label above the rows: what they are, never a question (the question is in „Am înțeles”). */
+const LIST_LABEL={records:'Cele mai mari achiziții',suppliers:'Cine a câștigat cel mai mult',authorities:'Cine a contractat cel mai mult',years:'Pe ani'} as const;
+type ListKind=keyof typeof LIST_LABEL;
 /**
- * Short answer through the Ask engine: total recorded value and the first
- * three winners. `literalHref` (a whole question) adds "Caută exact ce ai
- * scris"; `titles` is the alternative offered when nothing is classified there.
+ * Whether the rows are the answer and the total their context (owner, 10 November 2026: „Pe scurt” arăta foarte prost):
+ * the largest purchases, and a question that asked who or which years, whose sentence is the rows' own. A subject and a
+ * „cât” question lead with the total. The rows come first in the page's order too, so a phone reads them first.
  */
-export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked:question}:{answer:Answer;asked?:string|undefined;notes?:string[];literalHref?:string|undefined;titles?:TitleMatches|undefined;onCount?:(c:AnswerCount)=>void}){
+const rowsLead=(answer:Answer,question:string|undefined,who=false)=>Boolean(answer.top&&(answer.top.kind==='records'||(who&&(answer.top.kind==='suppliers'||answer.top.kind==='authorities'))||(question!==undefined&&answer.top.sentence===question)));
+/** The first year of the archive: an evolution over all the years has one row per year from it (its ghost too). */
+const FIRST_YEAR=2018;
+const yearRows=(answer:Answer)=>{const f=answer.top?.spec.filters;return Math.max(2,Math.min(12,(f?.yearTo??new Date().getFullYear())-(f?.yearFrom??FIRST_YEAR)+1));};
+/** The years an archive always holds in part: the first (direct acquisitions from 2 April 2018) and the current one. */
+const partialLikely=(answer:Answer,i:number)=>{const year=(answer.top?.spec.filters.yearFrom??FIRST_YEAR)+i;return year===FIRST_YEAR||year===new Date().getFullYear();};
+const shareText=(n:number)=>n<0.005?'sub 1%':`${Math.round(n*100)}%`;
+const recordsWord=(n:number)=>`${formatInt(n)} ${n===1?'înregistrare':'înregistrări'}`;
+/** „Iluminat exterior (31527200-8)”: the class, with its code kept on one line. */
+function CpvLine({label}:{label:string}){const m=/^(.*) \((\d{8}-\d)\)$/.exec(label);return m?<>{m[1]} <code>{m[2]}</code></>:<>{label}</>;}
+/** A „?” drawn inside a ghost: the same mark, nothing to focus. */
+const GhostTip=()=><span className="term term-tip" aria-hidden="true"><span className="term-trigger"><span className="term-mark">?</span></span></span>;
+
+/** „Pe scurt” and what it counted: the subject, the buyers, the place and the period, as one line. */
+function AnswerHead({scope,filters,compare,townHall,ghost=false}:{scope:AnswerScope|undefined;filters:Answer['total']['spec']['filters'];compare:boolean;townHall:boolean;ghost?:boolean}){
+ // The words are a firm or an institution („cine cumpără de la Siepcofar”): its name, linked, not a subject.
+ const party=scope?.named&&scope.subject?(filters.supplierId!==undefined?{id:filters.supplierId,role:'supplier' as const,before:'de la '}:filters.authorityId!==undefined?{id:filters.authorityId,role:'authority' as const,before:''}:null):null;
+ const name=scope&&capital(scope.subject);
+ const first=scope&&!compare&&name?(party?<>{party.before}{ghost?name:<EntityName id={party.id} role={party.role}>{name}</EntityName>}</>:name):null;
+ const rest=scope?(compare?['Comparație',scope.period,'valoare înregistrată, nu plăți']:[scope.kind,scope.where,scope.period]).filter((x):x is string=>Boolean(x)):[];
+ const line=[first,...rest].filter(Boolean);
+ return <div className="topic-answer-head"><h2>Pe scurt</h2>{(line.length>0||townHall)&&<p className="topic-answer-scope">{line.map((x,i)=><Fragment key={i}>{i>0&&' · '}{x}</Fragment>)}{townHall&&<>{line.length>0&&' · '}<span className="topic-answer-nowrap">doar primăria {ghost?<GhostTip/>:<Term tip title="Doar primăria" text="„Pe scurt” numără achizițiile primăriei. Titlurile de mai jos sunt de la toate instituțiile din localitate."/>}</span></>}</p>}</div>;
+}
+
+/**
+ * The closing row: how the answer was counted (the CPV classes, what is left out, the limits of the calculation),
+ * folded, and the ways on. The summary's words are known before the answer, so its ghost is the same line.
+ */
+function AnswerFoot({answer,caveats,literalHref,full,ghost=false}:{answer:Answer;caveats:string[];literalHref?:string|undefined;full:boolean;ghost?:boolean}){
+ const n=answer.cpv.length;
+ const summary=<><DiscoveryIcon name="chevronDown"/><span>Cum am numărat{n>0&&<small> · {n===1?'un domeniu CPV':`${n} domenii CPV`}</small>}</span></>;
+ return <div className="topic-answer-foot">
+  {ghost?<div className="topic-answer-how"><p className="topic-answer-how-summary">{summary}</p></div>
+  :<details className="topic-answer-how"><summary className="topic-answer-how-summary">{summary}</summary><div className="topic-answer-how-body">
+   {n>0?<><p>Numărăm achizițiile după încadrarea oficială (CPV), nu după titlu.</p>
+    <p className="topic-answer-how-head">Domenii incluse</p><ul>{answer.cpv.map(c=><li key={c}><CpvLine label={c}/></li>)}</ul>
+    {answer.cpvExcluded.length>0&&<><p className="topic-answer-how-head">Fără</p><ul>{answer.cpvExcluded.map(c=><li key={c}><CpvLine label={c}/></li>)}</ul></>}</>
+   :<p>Valoarea înregistrată a contractelor și a achizițiilor directe din selecție, nu plăți.</p>}
+   {caveats.length>0&&<><p className="topic-answer-how-head">Limitele calculului</p><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></>}
+  </div></details>}
+  <div className="topic-answer-actions">
+   {literalHref&&(ghost?<a className="topic-answer-quiet"><DiscoveryIcon name="search"/>Caută exact ce ai scris</a>:<Link prefetch={false} className="topic-answer-quiet" href={literalHref}><DiscoveryIcon name="search"/>Caută exact ce ai scris</Link>)}
+   {full&&(ghost?<a className="topic-answer-go">Răspunsul complet în Întreabă <DiscoveryIcon name="arrow"/></a>:<Link prefetch={false} className="topic-answer-go" href={answer.href}>Răspunsul complet în Întreabă <DiscoveryIcon name="arrow"/></Link>)}
+  </div>
+ </div>;
+}
+
+/**
+ * Short answer through the Ask engine (owner, 10 November 2026: „Pe scurt” arăta foarte prost uneori): what was
+ * counted, in one line beside the title; the rows the question asked for (the largest purchases, who won or bought
+ * most, the years, the two sides of a comparison), each on one grid row with its value on its first line; the total
+ * with its records; how it was counted, folded. `literalHref` (a whole question) adds "Caută exact ce ai scris";
+ * `titles` is the alternative offered when nothing is classified there.
+ */
+export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,asked:question}:{answer:Answer;scope?:AnswerScope|undefined;asked?:string|undefined;notes?:string[];literalHref?:string|undefined;titles?:TitleMatches|undefined;onCount?:(c:AnswerCount)=>void}){
  const key=answerKey(answer);
+ const labelId=useId();
  const [state,setState]=useState<{key:string}&Pair|null>(null);
  useEffect(()=>{let live=true;void prefetchAnswer(answer).then(pair=>{if(live)setState({key,...pair});});return()=>{live=false;};
  // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,7 +208,7 @@ export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked:
  const total=totalData?.block==='stat'?totalData.stat:null;
  // „compară X cu Y”: both sides are the answer, each with its records
  const sides=totalData?.block==='compare'?totalData.entities:null;
- const kind=answer.top?.kind??null;
+ const kind:ListKind|null=answer.top?.kind??null;
  const rows=topData?.block==='table'?topData.rows:null;
  const years=topData?.block==='timeseries'?topData.series.filter(y=>y.count>0):null;
  const records=kind==='records'&&ready?.top?.ok&&ready.top.rows?largestRecords(ready.top.rows):null;
@@ -153,68 +217,99 @@ export function SubjectAnswer({answer,notes=[],literalHref,titles,onCount,asked:
  useEffect(()=>{onCount?.(ready?{key,count:total?.count??null}:null);
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[key,Boolean(ready),total?.count]);
+ const filters=answer.total.spec.filters;
+ const compare=answer.total.spec.block==='compare';
+ const led=rowsLead(answer,question,scope?.who);
+ // The answer counts only a town hall, while the titles below cover every institution of the locality.
+ const townHall=filters.uatSiruta!==undefined;
+ const head=<AnswerHead scope={scope} filters={filters} compare={compare} townHall={townHall} ghost={!ready}/>;
+ if(!ready)return <AnswerGhost head={head} answer={answer} kind={kind} led={led} compare={compare} notes={notes} literal={Boolean(literalHref)}/>;
  // The same limits /intreaba shows for these specs.
- const caveats=[...new Set([...(ready?.total?.ok?ready.total.caveats??[]:[]),...(ready?.top?.ok?ready.top.caveats??[]:[])])];
- const recordsWord=(n:number)=>`${formatInt(n)} ${n===1?'înregistrare':'înregistrări'}`;
+ const caveats=[...new Set([...(ready.total?.ok?ready.total.caveats??[]:[]),...(ready.top?.ok?ready.top.caveats??[]:[])])];
  const titleCount=titles?.count??0;
- // The chips („Am înțeles”) already show the scope. The sentence stays for a whole question, and when
- // the answer counts only a town hall while the titles cover every institution of the locality.
- const sentence=(question!==undefined?answer.total.sentence!==question:answer.total.spec.filters.uatSiruta!==undefined)&&<p className="topic-answer-question">{answer.total.sentence}</p>;
- const topLine=topLineFor(answer,question);
- const domains=(term:React.ReactNode)=>answer.cpv.length>0&&<p className="topic-help topic-answer-domains">Domenii incluse ({answer.cpv.length}): {answer.cpv.join('; ')}{answer.cpvExcluded.length>0&&<>; fără: {answer.cpvExcluded.join('; ')}</>}. {term}</p>;
- if(!ready)return <AnswerGhost sentence={sentence} topLine={topLine} lines={kind==='years'?6:sides||!answer.top?0:3} sides={answer.total.spec.block==='compare'} domains={domains(<span className="term term-tip" aria-hidden="true"><span className="term-trigger"><span className="term-mark">?</span></span></span>)} notes={notes} literal={Boolean(literalHref)}/>;
- const role=kind==='authorities'?'autoritate':'furnizor';
+ const role=kind==='authorities'?'authority':'supplier';
+ // A period of one year needs no year on each purchase.
+ const oneYear=filters.yearFrom!==undefined&&filters.yearFrom===filters.yearTo;
+ const partial=new Map(((ready.top?.ok?ready.top.partialYears:undefined)??(ready.total?.ok?ready.total.partialYears:undefined)??[]).map(p=>[p.year,p.note]));
+ const noteList=notes.map(n=><p key={n} className="topic-subject-note">{n}</p>);
+ const bar=(fraction:number,i:number,extra='')=><span className="topic-answer-bar" aria-hidden="true"><span className={`cm-x${extra}`} style={{width:`${Math.max(0,Math.min(100,fraction*100))}%`,'--i':i} as React.CSSProperties}/></span>;
+ const items=kind==='records'?(records?.length?records.map(({row:r,value,suppliers},i)=>{
+   const title=r.title||r.cpvName||'Titlu neprecizat în sursă',winners=r.nWinners??1,shown=suppliers.slice(0,Math.max(winners,suppliers.length)>2?1:2),more=Math.max(winners,suppliers.length)-shown.length;
+   return <li key={`${r.src}:${r.refId??i}`} className="topic-answer-row is-record">
+    <span className="topic-answer-rank" aria-hidden="true">{i+1}</span>
+    <span className="topic-answer-what">
+     {r.refId?<Link prefetch={false} className="topic-answer-title" title={title} href={r.src==='contracts'?`/contracte/i/${r.refId}`:`/achizitii/${r.refId}`}>{title}</Link>:<span className="topic-answer-title">{title}</span>}
+     <small className="topic-answer-parties">{r.authority&&<span className="topic-answer-buyer"><EntityName id={r.authorityId} role="authority" title={cleanName(r.authority)}>{cleanName(r.authority)}</EntityName></span>}
+      {shown.length>0&&<> → {shown.map((x,k)=><Fragment key={x.name}>{k>0&&', '}<EntityName id={x.id} role="supplier">{cleanName(x.name)}</EntityName></Fragment>)}</>}
+      {more>0&&<> și încă {more}</>}{!oneYear&&r.date&&<> · {r.date.slice(0,4)}</>}</small>
+    </span>
+    <span className="topic-answer-amount">{value!=null?formatRon(value):'–'}{winners>1&&<small><Term tip title="Contract întreg" text={`${winners} câștigători. Arătăm valoarea întregului contract, o singură dată, nu partea fiecăruia.`}>contract întreg</Term></small>}</span>
+   </li>;}):null)
+  :kind==='years'?(years&&years.length>1?(()=>{const max=Math.max(0,...years.map(y=>y.value));return years.map((y,i)=>{const note=partial.get(y.year);
+   return <li key={y.year} className="topic-answer-row is-year">
+    <span className="topic-answer-year">{y.year}{note&&<small><Term tip title="An parțial" text={note}>parțial</Term></small>}</span>
+    {bar(max>0?y.value/max:0,i,note?' is-partial':'')}
+    <span className="topic-answer-amount">{formatRon(y.value)}</span><span className="topic-answer-n">{recordsWord(y.count)}</span>
+   </li>;});})():null)
+  :kind&&rows?.length?rows.map((r,i)=>{const part=total&&total.value>0?r.value/total.value:null;
+   return <li key={r.entityId??r.name} className="topic-answer-row">
+    <span className="topic-answer-rank" aria-hidden="true">{i+1}</span>
+    <span className="topic-answer-what"><EntityName id={r.entityId} role={role}>{cleanName(r.name)}</EntityName>
+     <small>{recordsWord(r.count)}{part!=null&&<> · {shareText(part)} din total</>}</small></span>
+    <span className="topic-answer-amount">{formatRon(r.value)}</span>
+   </li>;}):null;
+ const list=kind&&items?<div className="topic-answer-main"><p className="topic-answer-label" id={labelId}>{LIST_LABEL[kind]}</p><ol className={`topic-answer-list is-${kind}`} role="list" aria-labelledby={labelId} data-chart="">{items}</ol></div>:null;
+ const rail=total&&<div className="topic-answer-rail">
+  {led&&list&&<p className="topic-answer-label">Total</p>}
+  <p className="topic-answer-value">{shape==='value'?<strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong>:<strong>{recordsWord(total.count)}</strong>}</p>
+  <p className="topic-answer-count">{shape==='value'&&'în '}<Link prefetch={false} href={answer.evidenceHref}>{shape==='value'?recordsWord(total.count):total.count===1?'Vezi înregistrarea':'Vezi înregistrările'} <DiscoveryIcon name="arrow"/></Link></p>
+  <p className="topic-answer-sub">{shape==='value'?'valoare înregistrată, nu plăți':'fără valoare înregistrată'}</p>
+ </div>;
+ const failed=ready.failed||(!total&&!sides);
  return <section className="topic-answer g-content" aria-label="Răspuns pe scurt">
-  <h2>Pe scurt</h2>
-  {sentence}
-  {ready.failed||(!total&&!sides)?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
-   :shape==='empty'?<div className="topic-answer-empty" role="status"><p><strong>{answer.empty}</strong></p>
+  {head}
+  {failed?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
+   :shape==='empty'?<><div className="topic-answer-empty" role="status"><p className="topic-answer-empty-line">{answer.empty}</p>
      {titles&&titleCount>0&&<p className="topic-answer-alternative"><button type="button" className="topic-text-button" onClick={titles.onShow}>{titleCount===1?`Un titlu conține „${titles.q}”`:`${formatInt(titleCount)} titluri conțin „${titles.q}”`}: vezi {titleCount===1?'achiziția':'achizițiile'} <DiscoveryIcon name="arrow"/></button></p>}
-     {answer.domains&&<p className="topic-answer-alternative"><Link prefetch={false} href={answer.domains.href}>{answer.domains.label} <DiscoveryIcon name="arrow"/></Link></p>}</div>
-   :sides?<><ol className="topic-answer-top topic-answer-sides">{sides.map(x=><li key={x.entityId??x.name}>{x.entityId?<Link prefetch={false} href={`/entitati/${x.entityId}`}>{cleanName(x.name)}</Link>:<span>{cleanName(x.name)}</span>}<span>{x.count?<>{formatRon(x.value)} <small>în {recordsWord(x.count)}</small></>:'nicio achiziție'}</span></li>)}</ol>
-   <p className="topic-help">Valoare înregistrată, nu plăți.</p></>
-   :total&&<><p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><span>în {recordsWord(total.count)} · valoare înregistrată, nu plăți</span></>:<><strong>{recordsWord(total.count)}</strong><span>fără valoare înregistrată</span></>}</p>
-    <p className="topic-answer-records"><Link prefetch={false} href={answer.evidenceHref}>Vezi {total.count===1?'înregistrarea':`toate cele ${recordsWord(total.count)}`} <DiscoveryIcon name="arrow"/></Link></p>
-    {rows&&rows.length>0&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top">{rows.map(r=><li key={r.entityId??r.name}>{r.entityId?<Link prefetch={false} href={`/entitati/${r.entityId}?rol=${role}`}>{cleanName(r.name)}</Link>:<span>{cleanName(r.name)}</span>}<span>{formatRon(r.value)}</span></li>)}</ol></>}
-    {years&&years.length>1&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top topic-answer-years">{years.map(y=><li key={y.year}><span>{y.year}</span><span>{formatRon(y.value)} <small>în {recordsWord(y.count)}</small></span></li>)}</ol></>}
-    {records&&records.length>0&&<><p className="topic-answer-question">{topLine}</p><ol className="topic-answer-top topic-answer-records-top">{records.map(({row:r,value,suppliers},n)=><li key={`${r.src}:${r.refId??n}`}><span>{r.refId?<Link prefetch={false} href={r.src==='contracts'?`/contracte/i/${r.refId}`:`/achizitii/${r.refId}`}>{r.title||r.cpvName||'Titlu neprecizat în sursă'}</Link>:<span>{r.title||r.cpvName||'Titlu neprecizat în sursă'}</span>}<small>{[r.authority&&cleanName(r.authority),suppliers.length&&`→ ${suppliers.map(cleanName).join(', ')}`,(r.nWinners??1)>1&&`(${r.nWinners} câștigători, valoarea întregului contract)`,r.date?.slice(0,4)].filter(Boolean).join(' ')}</small></span><span>{value!=null?formatRon(value):'–'}</span></li>)}</ol></>}</>}
-  {(shape!=='empty'&&!ready.failed)&&caveats.length>0&&<details className="topic-answer-limits"><summary>Ce include calculul · {caveats.length}</summary><ul>{caveats.map(c=><li key={c}>{c}</li>)}</ul></details>}
-  {domains(<Term tip title="Domenii" text="Numărăm după încadrarea oficială (CPV), nu după titlu."/>)}
-  {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
-  <div className="topic-answer-actions">{shape!=='empty'&&<Link prefetch={false} className={literalHref?'topic-primary':'topic-answer-link'} href={answer.href}>{literalHref?'Vezi răspunsul complet':'Vezi răspunsul complet în Întreabă'} <DiscoveryIcon name="arrow"/></Link>}{literalHref&&<Link prefetch={false} className="topic-control" href={literalHref}>Caută exact ce ai scris</Link>}</div>
+     {answer.domains&&<p className="topic-answer-alternative"><Link prefetch={false} href={answer.domains.href}>{answer.domains.label} <DiscoveryIcon name="arrow"/></Link></p>}</div>{noteList}</>
+   :sides?(()=>{const max=Math.max(0,...sides.map(x=>x.value));return <><ol className="topic-answer-sides" role="list" data-chart="">{sides.map((x,i)=><li key={x.entityId??x.name}>
+     <EntityName id={x.entityId}>{cleanName(x.name)}</EntityName>
+     <strong className="topic-answer-side-value">{x.count?formatRon(x.value):'nicio achiziție'}</strong>
+     <small>{x.count?`în ${recordsWord(x.count)}`:' '}</small>
+     {bar(max>0?x.value/max:0,i)}
+    </li>)}</ol>{noteList}</>;})()
+   :<><div className={`topic-answer-body${list?' has-list':''}${led&&list?' is-led':''}`}>{led?<>{list}{rail}</>:<>{rail}{list}</>}</div>{noteList}</>}
+  <AnswerFoot answer={answer} caveats={caveats} literalHref={literalHref} full={!failed&&shape!=='empty'}/>
  </section>;
-}
-/** The line above what follows the total: the question's own sentence when it asked for that, else what the rows are. */
-function topLineFor(answer:Answer,question:string|undefined):string{
- const top=answer.top;
- if(!top)return '';
- if(top.kind==='years')return 'Pe ani:';
- if(top.kind==='records')return 'Cele mai mari achiziții:';
- if(question!==undefined&&top.sentence!==question)return top.sentence;
- if(top.kind==='authorities')return question===undefined?'Cine cumpără cel mai mult:':'Instituțiile cu cea mai mare valoare înregistrată:';
- return question===undefined?'Cine câștigă cel mai mult:':'Firmele cu cea mai mare valoare înregistrată:';
 }
 /*
  * "Pe scurt" while its two Ask answers load (owner, 6 November 2026: "ghost data loading"): the answer's own shape,
- * with what the words already tell real (the title, the question, the domains, the notes, the closing links) and
- * pulsing lines for the value, the records link and the three largest firms. It appears after 120 ms, so an answer
- * already asked never flashes it. Links are drawn as anchors without an address: nothing in a ghost takes focus.
+ * with what the words already tell real (the title and its line, the labels, the ranks, the notes, the closing row)
+ * and pulsing lines for the values, names and titles. The rows the answer will have are known from its kind: three,
+ * or one per year of the period; a purchase keeps its title's and parties' reserved lines. It appears after 120 ms,
+ * so an answer already asked never flashes it. Nothing in a ghost takes focus.
  */
-function AnswerGhost({sentence,topLine,lines,sides,domains,notes,literal}:{sentence:React.ReactNode;topLine:string;lines:number;sides:boolean;domains:React.ReactNode;notes:string[];literal:boolean}){
- const widths=[52,44,38,48,40,46];
+function AnswerGhost({head,answer,kind,led,compare,notes,literal}:{head:React.ReactNode;answer:Answer;kind:ListKind|null;led:boolean;compare:boolean;notes:string[];literal:boolean}){
+ const widths=[58,46,52,40,54,44,50,38,56,42,48,36];
+ const n=kind==='years'?yearRows(answer):3;
+ const list=kind&&<div className="topic-answer-main"><p className="topic-answer-label">{LIST_LABEL[kind]}</p>
+  <ol className={`topic-answer-list is-${kind}`} role="list" aria-hidden="true">{Array.from({length:n},(_,i)=>kind==='years'
+   ?<li key={i} className="topic-answer-row is-year"><span className="topic-answer-year"><G.Line inline w="2.4em"/>{partialLikely(answer,i)&&<small><G.Line inline w="4.5em"/></small>}</span><span className="topic-answer-bar"/><span className="topic-answer-amount"><G.Line inline w="5em"/></span><span className="topic-answer-n"><G.Line inline w="7em"/></span></li>
+   :<li key={i} className={`topic-answer-row${kind==='records'?' is-record':''}`}><span className="topic-answer-rank">{i+1}</span>
+    <span className="topic-answer-what">{kind==='records'
+     ?<><span className="topic-answer-title"><G.Line w="96%"/><G.Line w={`${widths[i]}%`}/><G.Line w="30%" only="phone"/></span><small className="topic-answer-parties"><G.Line w="64%"/><G.Line w="40%" only="phone"/></small></>
+     :<><span><G.Line w={`${widths[i]}%`}/></span><small><G.Line inline w="11em"/></small></>}</span>
+    <span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div>;
+ const notesList=notes.map(x=><p key={x} className="topic-subject-note">{x}</p>);
+ const rail=<div className="topic-answer-rail">{led&&list&&<p className="topic-answer-label">Total</p>}
+  <p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p>
+  <p className="topic-answer-count"><G.Line w="9em"/></p>
+  <p className="topic-answer-sub">valoare înregistrată, nu plăți</p></div>;
  return <Ghost as="section" className="topic-answer" name="topic-answer" wait="client" label="Se calculează răspunsul pe scurt…">
-  <h2>Pe scurt</h2>
-  {sentence}
-  {sides?<ol className="topic-answer-top topic-answer-sides" aria-hidden="true">{[52,44].map(w=><li key={w}><G.Line inline w={`${w}%`}/><G.Line inline w="9em"/></li>)}</ol>
-  :<><p className="topic-answer-value" aria-hidden="true"><strong><G.Line w="5.4em"/></strong><span><G.Line w="21em"/></span></p>
-  <p className="topic-answer-records" aria-hidden="true"><a><G.Line w="13em"/></a></p></>}
-  {lines>0&&<><p className="topic-answer-question">{topLine}</p>
-  <ol className="topic-answer-top" aria-hidden="true">{widths.slice(0,lines).map(w=><li key={w}><G.Line inline w={`${w}%`}/><G.Line inline w="5em"/></li>)}</ol></>}
-  <div className="topic-answer-limits" aria-hidden="true"><p className="topic-g-summary"><G.Line w="10em"/></p></div>
-  {domains}
-  {notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
-  <div className="topic-answer-actions" aria-hidden="true">{literal?<><a className="topic-primary">Vezi răspunsul complet <DiscoveryIcon name="arrow"/></a><a className="topic-control">Caută exact ce ai scris</a></>
-   :<a className="topic-answer-link">Vezi răspunsul complet în Întreabă <DiscoveryIcon name="arrow"/></a>}</div>
+  {head}
+  {compare?<><ol className="topic-answer-sides" role="list" aria-hidden="true">{[52,44].map(w=><li key={w}><span><G.Line w={`${w}%`}/></span><strong className="topic-answer-side-value"><G.Line inline w="5em"/></strong><small><G.Line inline w="9em"/></small><span className="topic-answer-bar"/></li>)}</ol>{notesList}</>
+  :<><div className={`topic-answer-body${list?' has-list':''}${led&&list?' is-led':''}`}>{led?<>{list}{rail}</>:<>{rail}{list}</>}</div>{notesList}</>}
+  <AnswerFoot answer={answer} caveats={[]} literalHref={literal?'#':undefined} full ghost/>
  </Ghost>;
 }
 
