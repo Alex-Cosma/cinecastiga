@@ -4,6 +4,7 @@ import { buildPlaces, type UatSource } from "./places";
 import { entitiesByCui, entityCandidates, personsByExactName, suggestCpv } from "./vocabulary-queries";
 import type { PlaceEntry, Vocabulary } from "./types";
 import { personPatterns } from "./text";
+import { buildSpelling } from "./spelling";
 
 /**
  * The SQL vocabulary: /api/suggest's CPV query, a non-collapsing entity
@@ -26,8 +27,9 @@ interface Slot<T> { at: number; value: Promise<T>; settled: boolean }
 const cache = globalThis as unknown as {
   __seapIntentPlaces?: Slot<PlaceEntry[]>;
   __seapIntentSynonyms?: Slot<string[]>;
+  __seapIntentSpelling?: Slot<Map<string, string>>;
 };
-type SlotName = "__seapIntentPlaces" | "__seapIntentSynonyms";
+type SlotName = "__seapIntentPlaces" | "__seapIntentSynonyms" | "__seapIntentSpelling";
 
 function bounded<T>(load: () => Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -53,6 +55,7 @@ function cached<T>(slot: SlotName, load: () => Promise<T>): Promise<T> {
 export function resetSharedLists() {
   delete cache.__seapIntentPlaces;
   delete cache.__seapIntentSynonyms;
+  delete cache.__seapIntentSpelling;
 }
 
 export async function loadPlaces(sql: DbSql): Promise<PlaceEntry[]> {
@@ -65,19 +68,27 @@ export async function loadSynonyms(sql: DbSql): Promise<string[]> {
   return rows.map((r) => r.term);
 }
 
-export interface SharedLists { places: PlaceEntry[]; synonyms: string[] }
+/** The spelling of folded words, from the CPV catalogue's labels (spelling.ts). */
+export async function loadSpelling(sql: DbSql): Promise<Map<string, string>> {
+  const rows = (await sql`select name_ro from core.cpv_codes where name_ro is not null`) as unknown as { name_ro: string }[];
+  return buildSpelling(rows.map((r) => r.name_ro));
+}
+
+export interface SharedLists { places: PlaceEntry[]; synonyms: string[]; spelling?: ReadonlyMap<string, string> }
 
 /** The gazetteer and synonyms, cached; call on the pool, outside any transaction. */
 export async function loadSharedLists(sql: DbSql, opts: { cache?: boolean } = {}): Promise<SharedLists> {
   const useCache = opts.cache ?? true;
   // allSettled: both loads finish (and a failed one is evicted) before the caller sees an error
-  const [places, synonyms] = await Promise.allSettled([
+  const [places, synonyms, spelling] = await Promise.allSettled([
     useCache ? cached("__seapIntentPlaces", () => loadPlaces(sql)) : bounded(() => loadPlaces(sql), LOAD_TIMEOUT_MS),
     useCache ? cached("__seapIntentSynonyms", () => loadSynonyms(sql)) : bounded(() => loadSynonyms(sql), LOAD_TIMEOUT_MS),
+    useCache ? cached("__seapIntentSpelling", () => loadSpelling(sql)) : bounded(() => loadSpelling(sql), LOAD_TIMEOUT_MS),
   ]);
   if (places.status === "rejected") throw places.reason;
   if (synonyms.status === "rejected") throw synonyms.reason;
-  return { places: places.value, synonyms: synonyms.value };
+  // spelling only dresses labels: without it they keep the stored form
+  return { places: places.value, synonyms: synonyms.value, ...(spelling.status === "fulfilled" ? { spelling: spelling.value } : {}) };
 }
 
 const LETTER = /\p{L}/u;
@@ -98,6 +109,7 @@ export function sqlVocabulary(sql: DbSql, shared: SharedLists, opts: { signal?: 
   return {
     places: async () => shared.places,
     synonyms: async () => shared.synonyms,
+    spelling: async () => shared.spelling ?? new Map<string, string>(),
     cpv: (q) => live(async () => (await suggestCpv(sql, q)).map((r) => ({ term: r.term, cpvName: r.cpv_name }))),
     entities: (role, q) => live(async () => {
       const rows = await entityCandidates(sql, role, q);
