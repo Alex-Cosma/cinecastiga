@@ -397,9 +397,6 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
     });
     const ignored = [...new Set(tokens.filter((t, k) => left.has(t.f) && !taken.has(k)).map((t) => t.raw))];
     const unknown = ignored.filter((w) => !NEVER_SUBJECT.has(foldText(w)));
-    // a name with no question, place or period around it, with words not understood, is a name: searched as typed
-    // („E.ON Energie Romania” is not „energie”)
-    if (unknown.length && !place && !i.period && i.intentSource !== 'cue') return null;
     const notes: string[] = [];
     if (narrowed.length) notes.push(`${quote(narrowed)} nu ${narrowed.length === 1 ? 'are' : 'au'} un domeniu: fără total, căutăm titlurile cu ${quote(parts)}.`);
     if (ignored.length) notes.push(`Nu am înțeles ${quote(ignored)}.`);
