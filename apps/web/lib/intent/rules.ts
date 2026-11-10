@@ -1224,7 +1224,10 @@ export class RulesInterpreter implements QuestionInterpreter {
     // Among catalogue labels, the broadest class first (more trailing zeros in the code): „radiologie” is „Aparate de
     // radiologie”, not „Radiologie cardiacă”; „contabilitate” the accounting services, not „Sistem de contabilitate”.
     const level = (h: CpvHit) => (isCode(h) ? /0*$/.exec(h.term.slice(0, 8))![0].length : 0);
-    const sorted = accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || level(b.h) - level(a.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx);
+    // the label holding the typed words as written comes before one holding them inflected („evenimente culturale”
+    // before „evenimentelor sportive”), then the broadest class
+    const verbatim = (h: CpvHit) => words.filter((w) => labelWords(h).includes(w)).length;
+    const sorted = accepted.map((h, idx) => ({ h, idx })).sort((a, b) => rank(a.h) - rank(b.h) || verbatim(b.h) - verbatim(a.h) || level(b.h) - level(a.h) || labelWords(a.h).length - labelWords(b.h).length || a.idx - b.idx);
     // A bare word that leads labels in three or more CPV divisions („camere”: gamma, video, air, water…) names no
     // domain: it is left unexplained rather than read as the shortest label.
     const loose = sorted.filter((x) => rank(x.h) === 3);
