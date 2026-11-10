@@ -204,6 +204,14 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     const counted = out.answer?.total.spec.filters.cpvTerm;
     if (s0 && (!out.subject || i.subjects.length > 1) && counted && counted === joinCpvTerms(i.subjects.map((s) => s.term)))
       out.subject = { term: counted, label: subjectsLabel(i.subjects) ?? s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] };
+    // A question about one subject searches the titles and names for that subject, with the place and period the
+    // sentence names (owner, 10 November 2026): the whole sentence as title words ("cine câștigă cel mai mult pe
+    // psihiatrie în 2026") finds nothing. A place without a /cauta filter (a București sector) is not applied, and
+    // the results line says so. "Caută exact ce ai scris" still searches the words as written.
+    if (subjectOk && i.subjects.length === 1 && reading.words) {
+      out.applied = { q: reading.words, place: interpretedChip?.id ?? '', from: wordsPeriod?.from ?? '', to: wordsPeriod?.to ?? '' };
+      out.fromWords = { place: interpretedChip, period: wordsPeriod };
+    }
   }
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies) { out.subject = null; out.otherSubjects = []; out.kind = null; }

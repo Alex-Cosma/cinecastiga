@@ -128,18 +128,39 @@ describe('interpretation → /cauta selection', () => {
       expect(isCleanQuestion(result), q).toBe(true);
       expect(t.question, q).toEqual({ sentence: result.sentence });
       expect(t.trusted, q).toBe(true);
-      // the words themselves are searched as written, below the answer
-      expect(t.applied.q, q).toBe(q);
       expect(t.answer?.total.spec.block, q).toBe('stat');
       expect(t.answer?.top.spec, q).toMatchObject({ block: 'table', dim: 'supplier', topN: 3 });
       expect(t.answer?.href, q).toBe(`/intreaba?q=${encodeURIComponent(q)}`);
       expect(t.answer?.evidenceHref, q).toMatch(/^\/intreaba\?spec=.+&drill=1$/);
     }
+    // without a subject, the words themselves are searched as written, below the answer
+    const bare = await read('cine ia banii buzau');
+    expect(applyInterpretation(bare.scope, bare.result).applied.q).toBe('cine ia banii buzau');
     const { scope, result } = await read('cat a cheltuit primaria buzau pe iluminat');
     const t = applyInterpretation(scope, result);
-    expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat' });
+    expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', uatSiruta: 44818 });
+    // with one subject, the lists search it in the place the sentence names
+    expect(t.applied).toEqual({ q: 'iluminat', place: 'uat:44818', from: '', to: '' });
     // the subject the answer counts is kept, so the route lists its CPV classes
     expect(t.subject?.term).toBe('iluminat');
+  });
+
+  it('searches a question about one subject for that subject, with the place and period of the sentence', async () => {
+    const asked = await read('cine castiga cel mai mult pe iluminat in toata tara in 2023');
+    const t = applyInterpretation(asked.scope, asked.result, null, NOW);
+    expect(t.question).toEqual({ sentence: asked.result.sentence });
+    expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', yearFrom: 2023, yearTo: 2023 });
+    // the lists search what the answer counts, not the sentence as title words
+    expect(t.applied).toEqual({ q: 'iluminat', place: '', from: '2023', to: '2023' });
+    expect(t.fromWords.period).toEqual({ from: '2023', to: '2023', label: '2023' });
+    // no place or period in the words: the subject alone
+    const plain = await read('cat s-a dat pe iluminat');
+    expect(applyInterpretation(plain.scope, plain.result, null, NOW).applied).toEqual({ q: 'iluminat', place: '', from: '', to: '' });
+    // a București sector has no /cauta filter: the subject is searched in the whole country
+    const sector = await read('cine ia banii pe iluminat in sectorul 3');
+    const s = applyInterpretation(sector.scope, sector.result, null, NOW);
+    expect(s.answer?.total.spec.filters).toMatchObject({ uatSiruta: 179169 });
+    expect(s.applied).toEqual({ q: 'iluminat', place: '', from: '', to: '' });
   });
 
   it('never answers a question with unexplained words, a choice to make, or a name search', async () => {
