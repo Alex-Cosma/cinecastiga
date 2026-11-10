@@ -1,6 +1,6 @@
 import { parseRoleParam } from '../role-param';
 export type SearchTab='all'|'acquisitions'|'documents'|'entities';
-export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier'};
+export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier';/** The acquisitions' order: the newest first unless asked („cel mai mare contract” or the panel's switch). */order?:'value'|'date'};
 /** How a suggestion matched the typed place name (/api/topic-search/places); absent on stored places. */
 export type PlaceMatchKind='exact'|'prefix'|'word'|'contains'|'county'|'fuzzy';
 export type Place={id:string;name:string;detail:string;kind:'county'|'locality';match?:PlaceMatchKind};
@@ -26,7 +26,8 @@ export function parseTopicScope(p:URLSearchParams):TopicScope {
  const rawPage=p.get('page')??'1';
  if(!/^\d{1,4}$/.test(rawPage)||Number(rawPage)<1||Number(rawPage)>1000)throw Error('Pagina nu este validă. Restrânge căutarea pentru rezultate mai precise.');
  const role=parseRoleParam(p.get('rol'))??'';
- return {q,place,from,to,type:type as TopicScope['type'],match:match as TopicScope['match'],tab:role?'entities':tab as SearchTab,page:Number(rawPage),role};
+ const ordine=p.get('ordine');
+ return {q,place,from,to,type:type as TopicScope['type'],match:match as TopicScope['match'],tab:role?'entities':tab as SearchTab,page:Number(rawPage),role,...(ordine==='valoare'?{order:'value' as const}:ordine==='data'?{order:'date' as const}:{})};
 }
 export function topicParams(s:TopicScope):URLSearchParams {
  const p=new URLSearchParams();
@@ -34,7 +35,7 @@ export function topicParams(s:TopicScope):URLSearchParams {
  if(s.from){p.set('from',s.from);p.set('to',s.to);}
  if(s.type!=='all')p.set('type',s.type);if(s.match!=='words')p.set('match',s.match);
  if(s.tab!=='all')p.set('tab',s.tab);if(s.page>1)p.set('page',String(s.page));
- if(s.role)p.set('rol',s.role==='supplier'?'furnizor':'autoritate');return p;
+ if(s.role)p.set('rol',s.role==='supplier'?'furnizor':'autoritate');if(s.order)p.set('ordine',s.order==='value'?'valoare':'data');return p;
 }
 export const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function excerpt(text:string,q:string){const needle=fold(q).split(/\s+/)[0]??'',pos=fold(text).indexOf(needle),start=Math.max(0,pos-100);return `${start?'…':''}${text.slice(start,start+380)}${text.length>start+380?'…':''}`;}

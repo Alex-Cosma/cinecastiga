@@ -55,7 +55,8 @@ async function acquisitions(s:TopicScope):Promise<TopicResult['acquisitions']>{r
  const where=q`${scopeSql(q,s)} and a.search @@ ${ts}`;
  const [count]=await q`select count(*)::int total from marts.topic_acquisitions a where ${where}`;
  const limit=s.tab==='all'?3:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;
- const rows=await q`with selected as (select a.* from marts.topic_acquisitions a where ${where} order by a.date desc nulls last,a.id limit ${limit} offset ${offset})
+ const order=s.order==='value'?q`a.value desc nulls last,a.date desc nulls last,a.id`:q`a.date desc nulls last,a.id`;
+ const rows=await q`with selected as (select a.* from marts.topic_acquisitions a where ${where} order by ${order} limit ${limit} offset ${offset})
  select a.*,e.name_display authority_name,
   array(select x.name_display from core.entities x where x.id=any(a.supplier_ids) order by x.name_display,x.id) suppliers,
   array(select x.id::text from core.entities x where x.id=any(a.supplier_ids) order by x.name_display,x.id) supplier_ids_named,
@@ -63,7 +64,7 @@ async function acquisitions(s:TopicScope):Promise<TopicResult['acquisitions']>{r
  from selected a left join core.entities e on e.id=a.authority_id
  left join core.contracts c on a.kind='contracts' and c.id=a.ref_id
  left join core.direct_acquisitions d on a.kind='da' and d.sicap_da_id=a.ref_id
- order by a.date desc nulls last,a.id`;
+ order by ${order}`;
  const hits:AcquisitionHit[]=rows.map(r=>{const sourceUrl=r.kind==='da'?daUrl(String(r.ref_id)):awardUrl(String(r.notice_id));
  return {id:r.id,kind:r.kind,title:r.title||'Titlu neprecizat în sursă',date:r.date,value:r.value,authorityId:r.authority_id?.toString()??null,authorityName:r.authority_name,suppliers:r.suppliers,supplierIds:r.supplier_ids_named,county:r.county,code:r.code,href:r.kind==='da'?`/achizitii/${r.ref_id}`:`/contracte/${r.nid}`,sourceUrl};});
  return {total:Number(count!.total),hits};

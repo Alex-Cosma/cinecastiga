@@ -42,7 +42,7 @@ export interface TopicInterpretation {
   /** The words exactly as interpreted (the URL's q). */
   q: string;
   /** The scope actually searched: the words left after the place/period, plus those filters. */
-  applied: { q: string; place: string; from: string; to: string };
+  applied: { q: string; place: string; from: string; to: string; order?: 'value' };
   /** Parts taken from the words (removable chips); explicit URL filters are not listed here. */
   fromWords: { place: ChipPlace | null; period: { from: string; to: string; label: string } | null };
   /** Buyers named in the words ("școlile"): a scope of the short answer only; titles cannot be filtered by it. */
@@ -262,9 +262,14 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   }
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies && !(loose?.kind === 'subjects' && !loose.narrowed.length)) { out.subject = null; out.otherSubjects = []; out.kind = null; }
+  // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the acquisitions largest first, said in a note
+  // (owner probe, 10 November 2026: the shape was dropped and the first three firms answered instead)
+  const largest = !scope.order && /\b(?:cel|cea|cele|cei)\s+mai\s+(?:mare|mari|scump\w*|valoros\w*)\s+(?:contract\w*|achizit\w*|licitati\w*|investiti\w*)\b/.test(foldText(i.text));
+  if (largest) out.applied = { ...out.applied, order: 'value' };
   // What the reading dropped or narrowed is said wherever the reading is used.
   if (out.answer || applies || out.question || loose)
     out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n)), ...(loose?.notes ?? [])])];
+  if (largest) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? typedHref() : null);
   return out;
