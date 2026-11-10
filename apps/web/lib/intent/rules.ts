@@ -870,7 +870,8 @@ export class RulesInterpreter implements QuestionInterpreter {
 
   /** A historical region is no place we can apply: said, never silently dropped or read as a town („Moldova Nouă” stays). */
   private regions(c: Cursor, out: Interpretation) {
-    for (const h of c.all(/\b(?:(?:in|din|zona|regiunea)\s+)?(moldova|ardeal|ardealul|ardealului|transilvania|banat|banatul|banatului|dobrogea|oltenia|muntenia|crisana|bucovina)\b(?!\s+(?:noua|veche|sulita))/)) {
+    // only said as a place („în Moldova”, „zona Banat”): „Enel Energie Muntenia” is a firm's name
+    for (const h of c.all(/\b(?:in|din|zona|regiunea)\s+(moldova|ardeal|ardealul|ardealului|transilvania|banat|banatul|banatului|dobrogea|oltenia|muntenia|crisana|bucovina)\b(?!\s+(?:noua|veche|sulita))/)) {
       if (!c.isFree(h.i, h.j)) continue;
       c.take(h.i, h.j, "modifier");
       out.notes.push(`„${c.span(h.i, h.j).text}”: o regiune nu se poate aplica; am căutat în toată țara. Alege un județ pentru a restrânge.`);
