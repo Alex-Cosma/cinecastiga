@@ -3499,7 +3499,19 @@ export async function runRows(
     )` : flagKeyed && (sortKey === "value" || sortKey === "date" || sortKey === "source") ? sql`(
       select * from ${daTx} d where d.ref_id in (
         select d.ref_id from ${flagKeyed} d where ${localWhere} order by ${sortFrag} ${dirFrag}, d.ref_id limit ${branchLimit})
+    )` : !profile && dataset === "all" && !keyHidden && (sortKey === "value" || sortKey === "whole") ? sql`(
+      (select * from ${daTx} d where d.ref_id in (
+        select d.ref_id from ${daTx} d where ${pageWhere} and ${localWhere}
+        order by d.closing_value ${dirFrag}, d.ref_id limit ${branchLimit}))
+      union all
+      (select * from ${contractTx} d where ${pageWhere} and ${localWhere}
+       order by ${sortFrag} ${dirFrag}, d.ref_id, d.supplier_id nulls first limit ${branchLimit})
     )` : txt;
+    // ↑ By value or by the whole purchase, each channel's first rows in that order, then the same order over both: the
+    // global sort of the union read every record of a broad subject („cele mai mari contracte de medicamente”, 1.43M
+    // records: 3.5 s warm, 10.8 s cold; /cauta re-judging, 10 November 2026). A direct acquisition's whole value is its
+    // value (contract_value_full is null there), so its branch keeps closing_value; its first keys come from a covering
+    // index and only those rows are read (a sequential scan of the 19.6M direct acquisitions otherwise: 1.6 s).
     if (firmsKeyed && !idIndex) await tx.unsafe("set local enable_seqscan = off");
     if (opts.capture) await opts.capture.persist(s, s`
       select d.da_code, d.finalization_date, d.authority_id, d.authority_name,

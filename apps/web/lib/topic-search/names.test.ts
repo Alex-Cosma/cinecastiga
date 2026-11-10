@@ -54,5 +54,12 @@ describe('/cauta names and title words', () => {
     expect(titleTsquery('apă sau canalizare')).toMatch(/^\(apa\) \| \(\(canalizare/);
     // short words stay whole; only letters and digits reach the tsquery
     expect(titleTerms("pod & 'drop")).toEqual([[{ word: 'pod', prefix: false }, { word: 'drop', prefix: false }]]);
+    // a title need not repeat the connectors („camere supraveghere video”), unless they are all the words
+    expect(titleTsquery('camere de supraveghere')).not.toMatch(/\bde\b/);
+    expect(titleTerms('lucrări de drumuri').flat().map((t) => t.word)).toEqual(['lucrari', 'drumuri']);
+    expect(titleTsquery('de')).toBe('(de)');
+    // a short plural in -i is its singular too („Pom de Crăciun”)
+    expect(forms('pomi')).toEqual(expect.arrayContaining(['pomi', 'pom', 'pomul', 'pomii']));
+    expect(forms('pod')).toEqual(['pod']);
   });
 });
