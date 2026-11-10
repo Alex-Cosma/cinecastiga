@@ -48,6 +48,11 @@ export interface TopicInterpretation {
   kind: { label: string; withoutQ: string } | null;
   /** Why a reading of the words was not applied ("the titles cannot be filtered by sector"). */
   note: string | null;
+  /**
+   * The interpreter's own notes on what it read and did not apply („„fără București”: nu putem scoate un loc…”,
+   * „Am folosit prima perioadă…”), shown with the reading so nothing it dropped is silent (owner probe, 10 November 2026).
+   */
+  notes: string[];
   /** The place chosen on the page (URL), named as the interpreter names places. */
   explicitPlace: ChipPlace | null;
   /** `notes`: curated notes for people on the synonym rows ("Include și semnalizarea…"), filled by the route. */
@@ -106,7 +111,7 @@ const thisYear = (now: Date) => Number(new Intl.DateTimeFormat('en', { timeZone:
 export function applyInterpretation(scope: TopicScope, result: IntentResult | null, explicitPlace: Place | null = null, now = new Date()): TopicInterpretation {
   const base: TopicInterpretation = {
     q: scope.q, applied: { q: scope.q, place: scope.place, from: scope.from, to: scope.to },
-    fromWords: { place: null, period: null }, kind: null, note: null, explicitPlace: null, subject: null, otherSubjects: [], placeChoices: [], placeAmbiguous: false,
+    fromWords: { place: null, period: null }, kind: null, note: null, notes: [], explicitPlace: null, subject: null, otherSubjects: [], placeChoices: [], placeAmbiguous: false,
     sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, question: null, askHref: null, trusted: false, entityChoice: false,
   };
   const named = explicitPlace ? placeMatchFor(explicitPlace) : null;
@@ -136,7 +141,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
 
   const interpretedPlace = i.place && !i.placeAmbiguous && i.place.matched ? i.place : null;
   const interpretedChip = interpretedPlace ? chip(interpretedPlace) : null;
-  const yf = i.period?.yearFrom, yt = i.period?.yearTo;
+  // „2024 față de 2023” is about 2024: the other year is said in a note, never added to it
+  const versus = i.period?.versus;
+  const yf = versus ? versus.main : i.period?.yearFrom, yt = versus ? versus.main : i.period?.yearTo;
   const wordsPeriod = !scope.from && i.period && (yf !== undefined || yt !== undefined)
     ? { from: String(yf ?? 2000), to: String(yt ?? thisYear(now)), label: yf !== undefined && yt !== undefined ? (yf === yt ? String(yf) : `${yf}–${yt}`) : yf !== undefined ? `din ${yf}` : `până în ${yt}` }
     : null;
@@ -182,7 +189,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     const years = scope.from ? { yearFrom: Number(scope.from), yearTo: Number(scope.to) } : period ? { yearFrom: yf, yearTo: yt } : null;
     const answerReading: Interpretation = {
       ...i, topN: 3, superlative: false,
-      period: years ? { ...(years.yearFrom !== undefined ? { yearFrom: years.yearFrom } : {}), ...(years.yearTo !== undefined ? { yearTo: years.yearTo } : {}), matched: i.period?.matched ?? { text: '', from: 0, to: 0 } } : null,
+      period: years ? { ...(years.yearFrom !== undefined ? { yearFrom: years.yearFrom } : {}), ...(years.yearTo !== undefined ? { yearTo: years.yearTo } : {}), ...(versus && !scope.from ? { versus } : {}), matched: i.period?.matched ?? { text: '', from: 0, to: 0 } } : null,
     };
     const choice = { place: answerPlace };
     const explicit = Boolean(scope.place || scope.from);
@@ -215,6 +222,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   }
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies) { out.subject = null; out.otherSubjects = []; out.kind = null; }
+  // What the reading dropped or narrowed is said wherever the reading is used.
+  if (out.answer || applies || out.question)
+    out.notes = [...new Set(result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n)))];
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? `/intreaba?q=${encodeURIComponent(scope.q)}` : null);
   return out;
