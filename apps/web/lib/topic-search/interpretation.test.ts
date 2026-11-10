@@ -18,7 +18,7 @@ describe('interpretation → /cauta selection', () => {
   it('searches the subject words with the place from the words as the filter', async () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);
-    expect(t.applied).toEqual({ q: 'iluminat', place: 'county:buzau', from: '', to: '' });
+    expect(t.applied).toEqual({ q: 'iluminat', place: 'county:buzau', from: '', to: '', names: 'exact' });
     expect(t.fromWords.place).toEqual({ id: 'county:buzau', label: 'Județul Buzău', kind: 'county' });
     expect(t.subject).toMatchObject({ label: 'iluminat', source: 'synonym' });
     // the city is offered, never applied silently
@@ -30,7 +30,7 @@ describe('interpretation → /cauta selection', () => {
     const { scope, result } = await read('iluminat buzau');
     const t = applyInterpretation(scope, result);
     expect(t.answer?.total.spec).toMatchObject({ block: 'stat', measure: 'value', filters: { cpvTerm: 'iluminat', county: 'Buzău' } });
-    expect(t.answer?.top.spec).toMatchObject({ block: 'table', dim: 'supplier', topN: 3, filters: { cpvTerm: 'iluminat', county: 'Buzău' } });
+    expect(t.answer?.top?.spec).toMatchObject({ block: 'table', dim: 'supplier', topN: 3, filters: { cpvTerm: 'iluminat', county: 'Buzău' } });
     expect(t.answer?.total.sentence).toBe('Cât valorează achizițiile pentru „iluminat” făcute de instituțiile publice din județul Buzău, în toți anii?');
     expect(t.answer?.href).toBe('/intreaba?q=iluminat%20buzau');
   });
@@ -38,7 +38,7 @@ describe('interpretation → /cauta selection', () => {
   it('drops the connector before a removed place and applies a named year', async () => {
     const { scope, result } = await read('iluminat in municipiul buzau 2023');
     const t = applyInterpretation(scope, result);
-    expect(t.applied).toEqual({ q: 'iluminat', place: 'uat:44818', from: '2023', to: '2023' });
+    expect(t.applied).toEqual({ q: 'iluminat', place: 'uat:44818', from: '2023', to: '2023', names: 'exact' });
     expect(t.fromWords.period).toEqual({ from: '2023', to: '2023', label: '2023' });
     expect(t.answer?.total.spec.filters).toMatchObject({ uatSiruta: 44818, yearFrom: 2023, yearTo: 2023 });
     // a locality can always widen to its county
@@ -69,7 +69,7 @@ describe('interpretation → /cauta selection', () => {
     const place = { id: 'uat:44818', name: 'MUNICIPIUL BUZAU', detail: 'Municipiu · buzau', kind: 'locality' as const };
     const { scope, result } = await read('asfalt', '&place=uat:44818');
     const t = applyInterpretation(scope, result, place);
-    expect(t.applied).toEqual({ q: 'asfalt', place: 'uat:44818', from: '', to: '' });
+    expect(t.applied).toEqual({ q: 'asfalt', place: 'uat:44818', from: '', to: '', names: 'exact' });
     expect(t.fromWords.place).toBeNull();
     expect(t.explicitPlace).toEqual({ id: 'uat:44818', label: 'Municipiul Buzău (Buzău)', kind: 'locality' });
     expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'asfalt', uatSiruta: 44818 });
@@ -96,7 +96,7 @@ describe('interpretation → /cauta selection', () => {
   it('shows in chips every scope of the short answer, or gives no answer', async () => {
     const after = await read('iluminat dupa 2020');
     const t1 = applyInterpretation(after.scope, after.result, null, new Date('2026-10-22T12:00:00Z'));
-    expect(t1.applied).toEqual({ q: 'iluminat', place: '', from: '2021', to: '2026' });
+    expect(t1.applied).toEqual({ q: 'iluminat', place: '', from: '2021', to: '2026', names: 'exact' });
     expect(t1.fromWords.period?.label).toBe('din 2021');
     expect(t1.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', yearFrom: 2021 });
     expect(t1.answer?.total.spec.filters.yearTo).toBeUndefined();
@@ -108,7 +108,7 @@ describe('interpretation → /cauta selection', () => {
     const t3 = applyInterpretation(schools.scope, schools.result);
     expect(t3.kind).toEqual({ label: 'școlile', withoutQ: 'laptopuri' });
     // the kind word is a chip, not a word the titles must contain
-    expect(t3.applied).toEqual({ q: 'laptopuri', place: '', from: '', to: '' });
+    expect(t3.applied).toEqual({ q: 'laptopuri', place: '', from: '', to: '', names: 'exact' });
     expect(t3.answer?.total.spec.filters).toMatchObject({ authorityKind: 'scoala' });
   });
 
@@ -129,7 +129,7 @@ describe('interpretation → /cauta selection', () => {
       expect(t.question, q).toEqual({ sentence: result.sentence });
       expect(t.trusted, q).toBe(true);
       expect(t.answer?.total.spec.block, q).toBe('stat');
-      expect(t.answer?.top.spec, q).toMatchObject({ block: 'table', dim: 'supplier', topN: 3 });
+      expect(t.answer?.top?.spec, q).toMatchObject({ block: 'table', dim: 'supplier', topN: 3 });
       expect(t.answer?.href, q).toBe(`/intreaba?q=${encodeURIComponent(q)}`);
       expect(t.answer?.evidenceHref, q).toMatch(/^\/intreaba\?spec=.+&drill=1$/);
     }
@@ -140,7 +140,7 @@ describe('interpretation → /cauta selection', () => {
     const t = applyInterpretation(scope, result);
     expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', uatSiruta: 44818 });
     // with one subject, the lists search it in the place the sentence names
-    expect(t.applied).toEqual({ q: 'iluminat', place: 'uat:44818', from: '', to: '' });
+    expect(t.applied).toEqual({ q: 'iluminat', place: 'uat:44818', from: '', to: '', names: 'exact' });
     // the subject the answer counts is kept, so the route lists its CPV classes
     expect(t.subject?.term).toBe('iluminat');
   });
@@ -151,23 +151,23 @@ describe('interpretation → /cauta selection', () => {
     expect(t.question).toEqual({ sentence: asked.result.sentence });
     expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', yearFrom: 2023, yearTo: 2023 });
     // the lists search what the answer counts, not the sentence as title words
-    expect(t.applied).toEqual({ q: 'iluminat', place: '', from: '2023', to: '2023' });
+    expect(t.applied).toEqual({ q: 'iluminat', place: '', from: '2023', to: '2023', names: 'exact' });
     expect(t.fromWords.period).toEqual({ from: '2023', to: '2023', label: '2023' });
     // no place or period in the words: the subject alone
     const plain = await read('cat s-a dat pe iluminat');
-    expect(applyInterpretation(plain.scope, plain.result, null, NOW).applied).toEqual({ q: 'iluminat', place: '', from: '', to: '' });
+    expect(applyInterpretation(plain.scope, plain.result, null, NOW).applied).toEqual({ q: 'iluminat', place: '', from: '', to: '', names: 'exact' });
     // a București sector has no /cauta filter: the subject is searched in the whole country
     const sector = await read('cine ia banii pe iluminat in sectorul 3');
     const s = applyInterpretation(sector.scope, sector.result, null, NOW);
     expect(s.answer?.total.spec.filters).toMatchObject({ uatSiruta: 179169 });
-    expect(s.applied).toEqual({ q: 'iluminat', place: '', from: '', to: '' });
+    expect(s.applied).toEqual({ q: 'iluminat', place: '', from: '', to: '', names: 'exact' });
   });
 
   it('searches what the words name when the reading is not clean, and says the words not understood', async () => {
     // a subject with a word around it not understood: the subject, the place said as one, the short answer
     const noise = await read('ce firme domina iluminatul in buzau');
     const n = applyInterpretation(noise.scope, noise.result, null, NOW);
-    expect(n.applied).toEqual({ q: 'iluminat', place: 'county:buzau', from: '', to: '' });
+    expect(n.applied).toEqual({ q: 'iluminat', place: 'county:buzau', from: '', to: '', names: 'exact' });
     expect(n.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', county: 'Buzău' });
     expect(n.subject?.term).toBe('iluminat');
     expect(n.notes.join(' ')).toMatch(/Nu am înțeles „domina”/);

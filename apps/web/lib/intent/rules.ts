@@ -3,6 +3,7 @@ import { valueWords, type Procedure } from "../ask/purchase";
 import { retiredTerm } from "../ask/retired-terms";
 import { lev } from "../ask/intent";
 import { countWords } from "../ask/answer-text";
+import { ABBREVIATIONS } from "../ask/entity-alias";
 import { placeKey } from "./places";
 import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
 import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
@@ -108,7 +109,7 @@ const INTENT_CUES: [IntentKind, RegExp][] = [
   // "față de" before a year is the period of a change ("în 2025 față de 2024"), not a comparison of two entities.
   ["compare", /\b(?:compara\w*|comparati[ea]|comparat\w*|fata de(?!\s+(?:anul\s+)?20[0-3]\d)|versus|vs)\b/],
   ["signals", /\b(?:ce merita verificat\w*|merita verificat\w*|ce merita|de verificat|semnal(?:e|ele|ul)?|suspect\w*|risc(?:ul|uri|ului)?|riscant\w*|neregul\w*|dubio\w*|coruptie|corupt\w*|frauda|fraude|ciudat\w*|anomali\w*|ies din tipar|iese din tipar|indice(?:le|lui)? de risc|scor(?:ul|ului)? de risc|fractionar\w*|varf(?:ul)? (?:de |in )?decembrie|aproape de prag|achizitii(?: directe)? repetate|(?:prea des )?(?:chiar|imediat) sub plafon\w*|peste plafon\w*(?: cumulat)?|dependen\w* (?:de|pe) (?:o (?:singura )?(?:autoritate|institutie)|un (?:singur )?client)|concentrar\w* pe un (?:singur )?furnizor|adunat\w*,? (?:cu altele,? )?trec\w* de plafon|desi trec\w* de plafon|multi bani (?:(?:cheltuit|contractat)\w* )?(?:in|la) (?:final de an|decembrie)|ia (?:o )?mare parte din bani|(?:un )?singur client public)\b/],
-  ["trend", new RegExp(String.raw`\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) disparut|(?:a|au) iesit din (?:piata|achizitii\w*)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b`)],
+  ["trend", new RegExp(String.raw`\b(?:cum (?:a|au|s a|s au) (?:evoluat|crescut|scazut|schimbat)|evolut\w*|evolueaza|in timp|pe ani|an de an|de la an la an|an cu an|an dupa an|(?:in|pe|pentru|din) fiecare an|de la un an la altul|(?:a|au) crescut|(?:a|au) scazut|crestere\w*|scadere\w*|tendint\w*|cum se schimba|istoricul|dinamica|cresc|scad|(?:a|au) aparut${NOT_MOST_OFTEN}|(?:a|au) disparut|(?:a|au) iesit din (?:piata|achizitii\w*)|nu mai (?:apar|apare|castiga|cumpara|lucreaza))\b`)],
   ["ranking_suppliers", /\b(?:de la cine(?: (?:cumpara\w*|a cumparat|au cumparat|ia|iau|achizitioneaza))?|cine (?:castiga|a castigat|au castigat|castigat|face|a facut|fac|au facut|livreaza|a livrat|furnizeaza|vinde|vand|ia|primeste|a primit|executa|a executat|lucreaza|repara|construieste|a construit|asfalteaza|presteaza|asigura|se ocupa)|(?:ce|care) (?:firm\w*|companii\w*|societati\w*|furnizori\w*)|firm(?:e|ele|elor)|furnizor(?:i|ii|ilor)|castigator(?:i|ii|ilor)|antreprenor(?:i|ii)|constructor(?:i|ii)|companii(?:le)?|societati(?:le)?)\b/],
   ["ranking_authorities", new RegExp(`\\b(?:cine (?:cumpara|cheltuie\\w*|plateste|comanda|a cumparat|au cumparat|achizitioneaza|a cheltuit|au cheltuit|da (?:bani|contracte))|(?:ce|care) (?:institutii|autoritati|cumparatori)|(?:ce|care)(?= (?:${KIND_NOUNS})\\b)|institutii(?:le|lor)?|autoritati(?:le|lor)?|autoritatile contractante|cumparator(?:i|ii|ilor))\\b`)],
   ["breakdown", /\b(?:pe ce(?: (?:se )?(?:cheltuie\w*|duc banii|merg banii|dau banii|da banii|au cheltuit|a cheltuit))?|la ce(?: (?:se )?(?:cheltuie\w*|folosesc|duc banii))?|unde se duc banii|unde merg banii|ce (?:cumpara|a cumparat|au cumparat|achizitioneaza|a achizitionat|cheltuie\w*)|pe ce domenii|categorii(?:le)?|domenii(?:le)?|structura)\b/],
@@ -127,8 +128,11 @@ const KIND_CUES: [AuthorityKind, RegExp][] = [
   ["oras_municipiu", /\b(?:orase(?:le|lor)?|municipii(?:le|lor)?|primari(?:i|ile|ilor) de oras\w*)\b/],
 ];
 
+/** Abbreviations that open an institution's name („ISJ Cluj”, „SUUB”); „caș” is cheese, not a health insurance house. */
+const OPENING_ABBREVIATIONS = Object.keys(ABBREVIATIONS).filter((k) => k !== "cas");
+const KIND_PLURAL: Record<AuthorityKind, string> = { consiliu_judetean: "consiliile județene", spital: "spitalele", scoala: "școlile", comuna: "comunele", oras_municipiu: "orașele și municipiile" };
 /** A singular institution noun opens a named authority ("Spitalul Județean…"). */
-const INSTITUTION_NOUN = /\b(?:consiliul|cj|spitalul|liceul|colegiul|scoala|universitatea|directia|compania|inspectoratul|agentia|administratia|regia|institutul|institutia|serviciul|politia|teatrul|muzeul|biblioteca|clubul|centrul|casa|ministerul|autoritatea|oficiul|camera|tribunalul|curtea|parchetul|cnair|anaf)\b/;
+const INSTITUTION_NOUN = new RegExp(`\\b(?:consiliul|cj|spitalul|liceul|colegiul|scoala|universitatea|directia|compania|inspectoratul|agentia|administratia|regia|institutul|institutia|serviciul|politia|teatrul|muzeul|biblioteca|clubul|centrul|casa|ministerul|autoritatea|oficiul|camera|tribunalul|curtea|parchetul|cnair|anaf|${OPENING_ABBREVIATIONS.join("|")})\\b`);
 /** Words of institution names: never a purchase subject, and they keep a following name from being read as a locality. */
 const INSTITUTION_WORD = /^(?:spital\w*|liceu\w*|licee\w*|colegi\w*|scoal\w*|scoli\w*|universitat\w*|directi\w*|inspectorat\w*|agenti\w*|administrati\w*|regia|institut\w*|teatr\w*|muze\w*|bibliotec\w*|club\w*|minister\w*|autoritat\w*|oficiu\w*|tribunal\w*|curte\w*|parchet\w*|primari\w*|consili\w*|judetean\w*|national\w*|gimnazial\w*|tehnolog\w*|teoretic\w*|clinic\w*|municipal\w*|orasenesc|asistenta|sociala|sociale|strada|strazi|strazii|strazile|strazilor|capital\w*|nr|numarul)$/;
 /** Words that open or qualify a singular institution name ("Colegiul Național Dimitrie Cantemir"): a name after them is not a locality. */
@@ -184,6 +188,13 @@ const ENGLISH_SUBJECTS: [RegExp, string][] = [
   [/\b(?:cctv|surveillance\s+cameras?|video\s+cameras?)\b/, "camere video"],
 ];
 /** How to narrow a partial list of choices: a locality for institutions and firms, birth data only for people. */
+/**
+ * „la noi”, „comuna mea”, „orașul nostru”: a place the words do not name. Understood, never a guess: the page asks which
+ * (owner probe, 10 November 2026).
+ */
+const OWN_PLACE = /\b(?:la noi|la mine|pe la noi|(?:in |din |la )?(?:orasul|comuna|satul|judetul|localitatea|municipiul|primaria|sectorul|zona) (?:meu|mea|nostru|noastra))\b/;
+export const OWN_PLACE_NOTE = (said: string) => `„${said}”: nu știm ce localitate este. Scrie numele ei, de exemplu „iluminat Buzău” sau „primăria Buzău”.`;
+
 export const ENTITY_HINT = "Scrie numele complet, cu localitatea.";
 export const PERSON_HINT = "Scrie numele complet, cu localitatea ori anul nașterii.";
 /** Where an institution's name gives way to its place ("… din județul Satu Mare"). */
@@ -317,7 +328,7 @@ type Resolution =
   | { kind: "many"; role: "authority" | "supplier"; hits: EntityHit[]; total: number }
   | { kind: "none" };
 
-const TOWN_HALL_UNKNOWN = "Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.";
+export const TOWN_HALL_UNKNOWN = "Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.";
 
 function confidenceLabel(c: number): Interpretation["confidenceLabel"] {
   return c >= 0.75 ? "high" : c >= 0.5 ? "medium" : c > 0 ? "low" : "none";
@@ -367,6 +378,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.compare(c, out, compareCue);
     await this.suppliersByMarker(c, out);
     this.monthsAlone(c, out);
+    this.ownPlace(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
     const marked = this.markedPlaces(c, out, byKey, localities);
     const unmarked = this.unmarkedPlaces(c, byKey);
@@ -379,6 +391,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       const a = c.f(from - 1), b = c.f(from - 2);
       if (["fara", "exceptand", "minus", "afara", "inafara"].includes(a)) return from - 1;
       if (a === "de" && ["afara", "fara"].includes(b)) return from - 2;
+      // „medicamente mai puțin Bucureștiul”
+      if (a === "putin" && b === "mai") return from - 2;
       return null;
     };
     const kept = placesFound.filter((p) => {
@@ -473,6 +487,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       [/\b(?:in timpul|pe timpul|in perioada|in|pe|din)?\s*(?:pandemiei|pandemia|pandemie)(?:\s+de\s+covid(?:\s+19)?)?\b/, () => [2020, 2021], undefined, () => () => "„pandemia”: am folosit anii 2020–2021."],
       // the winter before today: December of one year and the start of the next, both years whole
       [/\b(?:in\s+|pe\s+)?iarna\s+trecuta\b/, () => (monthNow >= 3 ? [year - 1, year] : [year - 2, year - 1]), undefined, () => whole("iarna trecută")],
+      // „iarna 2024”: the winter runs over two years; the year said, whole, and said so
+      [new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:iarna|vara|primavara|toamna)\\s+(?:lui\\s+|din\\s+|anului\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[1])], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
       // a month with its year is the whole year (months are not a filter of this search)
       [new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:luna\\s+)?(?:${month})\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[1])], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
       [/\b(?:in\s+|pe\s+|din\s+)?ultimii\s+(\d{1,2}|doi|trei|patru|cinci|sase|sapte|opt|noua|zece)\s+ani\b/, (m) => { const k = Math.max(1, Math.min(20, n(m[1]))); return [year - k + 1, year]; }],
@@ -489,6 +505,13 @@ export class RulesInterpreter implements QuestionInterpreter {
         set(h, from, to, versus?.(h.m));
         if (note && out.period?.matched.from === h.i) out.notes.push(note(h.m)(out.period.yearFrom, out.period.yearTo));
       }
+    }
+    // „catering '22”: a year written with an apostrophe (the tokens lost it; read on the text as typed)
+    for (const m of out.text.matchAll(/(?:^|[\s(])['’‘`](\d{2})\b/g)) {
+      const k = tokenize(out.text.slice(0, m.index! + m[0].length)).length - 1;
+      if (k < 0 || c.used[k] || c.f(k) !== m[1]) continue;
+      const y = 2000 + Number(m[1]);
+      set({ i: k, j: k + 1, m: m as unknown as RegExpExecArray }, y, y);
     }
   }
 
@@ -616,6 +639,11 @@ export class RulesInterpreter implements QuestionInterpreter {
         if (singular && h.j < c.tokens.length && c.isFree(h.j, h.j + 1) && !PREPOSITION.has(c.f(h.j)) && !STOPWORDS.has(c.f(h.j))) continue;
         c.take(h.i, h.j, "kind");
         if (!out.authorityKind) out.authorityKind = { kind, matched: c.span(h.i, h.j) };
+        // „spitale noi”, „școli noi”: the records do not say which institution is new; said, never silently dropped
+        if (/^(noi|nou|noua|noile)$/.test(c.f(h.j)) && c.isFree(h.j, h.j + 1)) {
+          c.take(h.j, h.j + 1, "modifier");
+          out.notes.push(`„${c.span(h.i, h.j + 1).text}”: nu putem deosebi instituțiile noi; arătăm toate ${KIND_PLURAL[kind]}.`);
+        }
       }
     }
   }
@@ -673,8 +701,13 @@ export class RulesInterpreter implements QuestionInterpreter {
   private async institutions(c: Cursor, out: Interpretation, comparing: boolean) {
     for (const h of c.all(INSTITUTION_NOUN)) {
       if (out.authority || out.entityAlternatives.length) break;
+      const head = c.f(h.i);
+      // „MAI” is the interior ministry only typed in capitals: „mai” is the month and „cel mai”
+      if (head === "mai" && c.tokens[h.i]!.raw !== "MAI") continue;
+      // „ISJ Cluj”, „IPJ Iași”, „SUUB”: an abbreviation is a name of its own (owner probe, 10 November 2026)
+      const abbreviated = OPENING_ABBREVIATIONS.includes(head) && !ACRONYMS[head];
       // "spitalul din Buzău": a kind and a place, not a name
-      if (h.j < c.tokens.length && /^(din|la|in|pentru)$/.test(c.f(h.j)) && !/^(cnair|anaf|cj)$/.test(c.f(h.i))) continue;
+      if (h.j < c.tokens.length && /^(din|la|in|pentru)$/.test(c.f(h.j)) && !/^(cnair|anaf|cj)$/.test(head) && !abbreviated) continue;
       // "consiliul local" is a town hall (a place marker), not a named institution
       if (c.f(h.i) === "consiliul" && c.f(h.j) !== "judetean") continue;
       let end = h.j;
@@ -682,7 +715,9 @@ export class RulesInterpreter implements QuestionInterpreter {
       const stop = comparing ? /^(si|sau|cu|vs)$/ : /^(sau|cu|vs)$/;
       while (end < c.tokens.length && end - h.i < 12 && !c.used[end] && !stop.test(c.f(end))) end++;
       while (end > h.j && NAME_STOP.has(c.f(end - 1))) end--;
-      const acronym = /^(cnair|anaf|cj)$/.test(c.f(h.i));
+      const acronym = /^(cnair|anaf|cj)$/.test(head) || abbreviated;
+      // the registry writes some institutions several ways („Inspectoratul Școlar Județean Cluj”, „… al Județului Iași”)
+      const heads = abbreviated ? ABBREVIATIONS[head]! : [ACRONYMS[head] ?? head];
       if (end - h.i < 2 && !acronym) continue;
       // the longest name first, then shorter ones ("Ministerul Sănătății medicamente" → "Ministerul Sănătății")
       let resolved = false;
@@ -697,21 +732,32 @@ export class RulesInterpreter implements QuestionInterpreter {
       for (let k = h.j; k < end && cut < 0; k++) if (PLACE_CUT.test(c.f(k)) && k - h.i >= 2) cut = k;
       if (cut > 0 && !ends.includes(cut)) ends.push(cut);
       for (const j of ends) {
-        const words = c.tokens.slice(h.i, j).flatMap((t) => (ACRONYMS[t.f] ?? t.f).split(" "));
-        const typed = significant(words.join(" "));
-        let resolution = await this.resolve("authority", typed);
-        // "Spitalul Județean de Urgență Satu Mare" is registered as "SPITALUL JUDETEAN SATU MARE"
-        const relaxed = typed.filter((w) => !OPTIONAL_NAME_WORD.test(w)).map((w) => (w === "judeteana" ? "judetean" : w));
-        const left = c.tokens.slice(h.i, j).filter((t) => OPTIONAL_NAME_WORD.test(t.f)).map((t) => t.raw);
+        let resolution: Resolution = { kind: "none" };
         let usedRelaxed = false;
-        if (resolution.kind === "none" && relaxed.length >= 2 && relaxed.join(" ") !== typed.join(" ")) {
-          resolution = await this.resolve("authority", relaxed);
-          usedRelaxed = resolution.kind !== "none";
+        const left = c.tokens.slice(h.i, j).filter((t) => OPTIONAL_NAME_WORD.test(t.f)).map((t) => t.raw);
+        for (const opening of heads) {
+          const words = [...opening.split(" "), ...c.tokens.slice(h.i + 1, j).flatMap((t) => (ACRONYMS[t.f] ?? t.f).split(" "))];
+          const typed = significant(words.join(" "));
+          let r = await this.resolve("authority", typed);
+          // "Spitalul Județean de Urgență Satu Mare" is registered as "SPITALUL JUDETEAN SATU MARE"
+          const relaxed = typed.filter((w) => !OPTIONAL_NAME_WORD.test(w)).map((w) => (w === "judeteana" ? "judetean" : w));
+          let relaxedHere = false;
+          if (r.kind === "none" && relaxed.length >= 2 && relaxed.join(" ") !== typed.join(" ")) {
+            r = await this.resolve("authority", relaxed);
+            relaxedHere = r.kind !== "none";
+          }
+          // one institution under any shape wins; else the first shape that several carry
+          if (r.kind === "one" || (r.kind === "many" && resolution.kind === "none")) { resolution = r; usedRelaxed = relaxedHere; }
+          if (r.kind === "one") break;
         }
         const result = this.applyResolution(resolution, out, c.span(h.i, j), rawSpan(c.tokens, h.i, j));
         if (result !== "none") {
           c.take(h.i, j, "entity");
           resolved = true;
+          // „DGASPC Sector 2 București”: the institution's own city after its name is part of what was typed, not a filter
+          const rest = c.tokens.slice(j, end).map((t) => t.f).filter((w) => !NAME_STOP.has(w)).join(" ");
+          const named = out.authority as EntityMatch | null;
+          if (result === "one" && rest && named?.county && placeKey(rest) === placeKey(named.county)) c.take(j, end, "entity");
           if (usedRelaxed && left.length) out.notes.push(`Niciun nume din SEAP nu are și ${left.length > 1 ? "cuvintele" : "cuvântul"} „${left.join(" ")}”; am căutat instituția fără ${left.length > 1 ? "ele" : "el"}.`);
           break;
         }
@@ -745,6 +791,8 @@ export class RulesInterpreter implements QuestionInterpreter {
       const key = placeKey((PLACE_ALIAS[joined] ?? joined).replace(/^rm\b/, "ramnicu").replace(/^tg\b/, "targu").replace(/^sf\b/, "sfantu").replace(/^cimpulung\b/, "campulung"));
       const exact = byKey.get(key);
       if (exact) return { j: i + len, entries: exact };
+      const inflected = inflectedPlace(key, byKey);
+      if (inflected) return { j: i + len, entries: inflected };
       if (fuzzy && key.length >= 6) {
         const near = [...byKey.entries()].filter(([k]) => Math.abs(k.length - key.length) <= 1 && k[0] === key[0] && k.slice(0, 3) === key.slice(0, 3) && lev(key, k, 1) <= 1);
         if (near.length === 1) return { j: i + len, entries: near[0]![1] };
@@ -853,6 +901,14 @@ export class RulesInterpreter implements QuestionInterpreter {
       if (!c.isFree(h.i, h.j)) continue;
       c.take(h.i, h.j, "modifier");
       out.notes.push(`„${c.span(h.i, h.j).text}”: lunile și trimestrele nu sunt încă un filtru al căutării; nu le-am aplicat.`);
+    }
+  }
+
+  /** „la noi”, „comuna mea”: understood as a place the words do not name, and said (never a guess, never a subject). */
+  private ownPlace(c: Cursor, out: Interpretation) {
+    for (const h of c.all(OWN_PLACE)) {
+      c.take(h.i, h.j, "modifier");
+      out.notes.push(OWN_PLACE_NOTE(c.span(h.i, h.j).text));
     }
   }
 
@@ -1349,7 +1405,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // two named institutions or firms first; two places only when no name resolves
     const placesInstead = async () => {
       if (out.supplier || out.authority) return;
-      const pairs = await this.comparePlaces(c, side(cueAt, connector.i), side(connector.j, c.tokens.length));
+      const pairs = await this.comparePlaces(c, side(cueAt, connector.i), side(connector.j, c.tokens.length), out.notes);
       if (!pairs.length) return;
       out.compareChoices = pairs;
       for (let k = cueAt; k < c.tokens.length; k++) if (!c.used[k] && !STOPWORDS.has(c.f(k))) c.take(k, k + 1, "entity");
@@ -1383,20 +1439,29 @@ export class RulesInterpreter implements QuestionInterpreter {
    * engine compares two institutions, so the honest readings are the two
    * town halls and the two county councils, offered as choices.
    */
-  private async comparePlaces(c: Cursor, left: number[], right: number[]): Promise<NonNullable<Interpretation["compareChoices"]>> {
+  private async comparePlaces(c: Cursor, left: number[], right: number[], said: string[]): Promise<NonNullable<Interpretation["compareChoices"]>> {
     const words = (ks: number[]) => significant(ks.map((k) => c.f(k)).filter((w) => !/^(primari\w*|judetul|judetului|municipiul|orasul)$/.test(w)).join(" "));
     const a = words(left), b = words(right);
     if (!a.length || !b.length || a.length > 3 || b.length > 3) return [];
     const one = async (typed: string[]) => {
       const r = await this.resolve("authority", typed);
-      return r.kind === "one" ? r.hit : null;
+      if (r.kind === "one") return r.hit;
+      // „Municipiul Cluj-Napoca” and „MUNICIPIUL CLUJ-NAPOCA”: the same name written twice in the registry is one town
+      // hall; the larger row is compared, and said (owner probe, 10 November 2026: the comparison failed)
+      if (r.kind === "many" && r.hits.length > 1 && r.hits.every((e) => sameName(typed, e.name) && fold(e.name) === fold(r.hits[0]!.name))) {
+        notes.push(`În registru, „${r.hits[0]!.name}” apare de ${r.hits.length} ori; am comparat rândul cu cele mai multe achiziții.`);
+        return r.hits[0]!;
+      }
+      return null;
     };
+    const notes: string[] = [];
     const span = (ks: number[]) => c.span(ks[0]!, ks[ks.length - 1]! + 1);
     const asMatch = (e: EntityHit, ks: number[]): EntityMatch => ({ role: "authority", id: e.id, name: e.name, county: e.county, matched: span(ks) });
     const out: NonNullable<Interpretation["compareChoices"]> = [];
     const [ha, hb, ca, cb] = await Promise.all([one(["primaria", ...a]), one(["primaria", ...b]), one(["consiliul", "judetean", ...a]), one(["consiliul", "judetean", ...b])]);
     if (ha && hb && ha.id !== hb.id) out.push({ label: `Primăriile: ${ha.name} și ${hb.name}`, focal: asMatch(ha, left), other: asMatch(hb, right) });
     if (ca && cb && ca.id !== cb.id) out.push({ label: `Consiliile județene: ${ca.name} și ${cb.name}`, focal: asMatch(ca, left), other: asMatch(cb, right) });
+    if (out.length) said.push(...new Set(notes));
     return out;
   }
 
@@ -1477,6 +1542,21 @@ export class RulesInterpreter implements QuestionInterpreter {
       const span = c.span(free[0]!, free[free.length - 1]! + 1);
       const s = await this.resolve("supplier", typed);
       if (s.kind === "one" && s.hit.id !== out.authority.id) { for (const k of free) c.take(k, k + 1, "entity"); this.applyResolution(s, out, span, span.text); }
+      // several firms carry the name („Strabag de la CNAIR”): the choices, never a guess
+      else if (s.kind === "many") { for (const k of free) c.take(k, k + 1, "entity"); this.applyResolution(s, out, span, span.text); }
+      return;
+    }
+    // A firm sold by „de la” beside a subject („cine cumpără medicamente de la Siepcofar”): that firm, when the words name
+    // exactly one (owner probe re-judging, 10 November 2026: the firm was dropped).
+    if (out.subjects.length && !out.authority && !out.supplier && !out.person && !out.entityAlternatives.length && free.length && free.length <= 4) {
+      const after = free[0]!;
+      const contiguous = free.every((k, n) => k === after + n);
+      if (!contiguous || c.f(after - 1) !== "la" || c.f(after - 2) !== "de") return;
+      const typed = significant(free.map((k) => c.f(k)).join(" "));
+      if (!typed.length || (typed.length === 1 && typed[0]!.length < 4)) return;
+      const span = c.span(after, free[free.length - 1]! + 1);
+      const s = await this.resolve("supplier", typed);
+      if (s.kind === "one") { for (const k of free) c.take(k, k + 1, "entity"); this.applyResolution(s, out, span, span.text); }
       return;
     }
     if (out.subjects.length || out.place || out.authority || out.supplier || out.person || out.personAlternatives.length || out.placeAmbiguous || out.entityAlternatives.length) return;
@@ -1484,7 +1564,12 @@ export class RulesInterpreter implements QuestionInterpreter {
     const typed = significant(free.map((k) => c.f(k)).join(" "));
     if (!typed.length || (typed.length === 1 && typed[0]!.length < 5)) return;
     const span = c.span(free[0]!, free[free.length - 1]! + 1);
-    const [s, a] = await Promise.all([this.resolve("supplier", typed), this.resolve("authority", typed)]);
+    let [s, a] = await Promise.all([this.resolve("supplier", typed), this.resolve("authority", typed)]);
+    // Words that are only part of one long name („promovare turistică” in „Direcția … de Administrare Monumente și
+    // Promovare Turistică a Județului Hunedoara”) are a choice, not that institution (owner probe, 10 November 2026).
+    // A single distinctive word („Electrica”) still names its firm.
+    const partOnly = (r: Resolution): Resolution => (r.kind === "one" && typed.length >= 2 && !strongNameMatch(typed, r.hit.name) ? { kind: "many", role: r.role, hits: [r.hit], total: 1 } : r);
+    s = partOnly(s); a = partOnly(a);
     const take = () => { for (const k of free) c.take(k, k + 1, "entity"); };
     if (s.kind === "one" && a.kind === "none") { take(); this.applyResolution(s, out, span, span.text); return; }
     if (a.kind === "one" && s.kind === "none") { take(); this.applyResolution(a, out, span, span.text); return; }
@@ -1600,6 +1685,25 @@ function fits(e: PlaceEntry, constraint: PlaceFound["constraint"]): boolean {
     case "comuna": return e.kind === "locality" && e.tip === "comună";
     default: return true;
   }
+}
+
+/** The endings of a place name with its article or in the genitive: „Clujul”, „Clujului”, „Sibiului”, „Iașului”, „Craiovei”. */
+const PLACE_ENDINGS: [RegExp, string][] = [[/ului$/, ""], [/lui$/, ""], [/ul$/, ""], [/l$/, ""], [/ului$/, "i"], [/ei$/, "a"]];
+
+/**
+ * A county or a municipality named with its article or in the genitive („în Clujul”, „achizițiile Clujului”,
+ * „Bucureștiului”; owner probe, 10 November 2026). Only counties and municipalities, whose names people inflect, and
+ * stems of four letters or more: „Oltul” stays a word.
+ */
+function inflectedPlace(key: string, byKey: Map<string, PlaceEntry[]>): PlaceEntry[] | null {
+  for (const [end, base] of PLACE_ENDINGS) {
+    if (!end.test(key)) continue;
+    const stem = key.replace(end, base);
+    if (stem.length < 4) continue;
+    const entries = (byKey.get(stem) ?? []).filter((e) => e.kind === "county" || e.tip === "municipiu");
+    if (entries.length) return entries;
+  }
+  return null;
 }
 
 /** "Municipiul Buzău" → "Municipiului Buzău" (for "primăria …"). */

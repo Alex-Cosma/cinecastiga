@@ -496,6 +496,15 @@ function specKey(spec: AskSpec): string {
 }
 
 /** Assemble the API answer: spec, sentence and ready alternatives. `context`: the archive's periods, for a trend's years and months. */
+/**
+ * Several firms or institutions carry the name and none of that role was chosen: a choice, never a spec that drops the
+ * name („ce a cumpărat CJ Cluj de la Strabag”: the county council is read, the firm has four identities).
+ */
+export function unchosen(i: Interpretation): boolean {
+  const role = i.entityAlternatives[0]?.role;
+  return Boolean(role) && !(role === "supplier" ? i.supplier : i.authority) && !(i.supplier && i.authority);
+}
+
 export function resultFor(i: Interpretation, context: SpecContext = {}): IntentResult {
   const labels: SentenceLabels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind && i.measure !== "value_per_capita" ? { allInstitutions: true } : {}),
     ...(context.periods !== undefined ? { periods: context.periods } : {}),
@@ -511,7 +520,7 @@ export function resultFor(i: Interpretation, context: SpecContext = {}): IntentR
   } else if (i.intent && i.placeAmbiguous) {
     // never guess between localities of the same name: each is an alternative
     problem = "Alege localitatea la care te gândești.";
-  } else if (i.intent && i.entityAlternatives.length && !i.supplier && !i.authority) {
+  } else if (i.intent && unchosen(i)) {
     problem = i.choicesPartial
       ? `${countWords(i.choicesPartial.total, "firmă sau instituție", "firme sau instituții")} se potrivesc. Alege una dintre primele ${i.choicesPartial.shown} sau scrie numele complet.`
       : "Mai multe firme sau instituții au acest nume. Alege-o pe cea la care te gândești.";
@@ -545,7 +554,7 @@ export function resultFor(i: Interpretation, context: SpecContext = {}): IntentR
     : i.intent === "compare" && i.compareChoices.length ? "pair"
     : i.subjectChoices ? "subject"
     : i.placeAmbiguous ? "place"
-    : i.entityAlternatives.length && !i.supplier && !i.authority ? "entity"
+    : unchosen(i) ? "entity"
     : i.personAlternatives.length && !i.person ? "person"
     : "none";
   for (const p of choosing === null || choosing === "place" ? i.placeAlternatives : []) {

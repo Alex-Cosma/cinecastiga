@@ -193,6 +193,14 @@ export function legacyCorpus(ids: CorpusIdentities): CorpusEntry[] {
     { block: "table", measure: "value", filters: { cpvTerm: cpv.word, county: ids.county, yearFrom: b, yearTo: b }, dim: "supplier", topN: 3 });
   site("topic-domains", "lib/topic-search/interpretation.ts domainsOf (specFor 'breakdown' without the subject)",
     { block: "breakdown", measure: "value", filters: { authorityName: authority.name, authorityId: authority.id } });
+  // after the total, by what was asked (owner probe re-judging, 10 November 2026): the buyers of one firm, the years of an
+  // evolution, the two sides of a comparison (the largest records reuse the total's spec through /api/ask/rows)
+  site("topic-buyers", "lib/topic-search/interpretation.ts shortAnswer top (specFor 'ranking_authorities' beside a firm, topN 3)",
+    { block: "table", measure: "value", filters: { supplierName: supplier.name, supplierId: supplier.id }, dim: "authority", topN: 3 });
+  site("topic-years", "lib/topic-search/interpretation.ts shortAnswer years (specFor 'trend': the value of each year)",
+    { block: "timeseries", measure: "value", filters: { cpvTerm: cpv.word, county: ids.county } });
+  site("topic-compare", "lib/topic-search/interpretation.ts compareAnswer (specFor 'compare': both sides)",
+    { block: "compare", measure: "value", comparisonMode: "transactions", filters: { authorityName: authority.name, authorityId: authority.id, compareWith: pair.authority.name, compareWithId: pair.authority.id } });
   // Derived links inside "Întreabă" (blocks.tsx, MapBlock.tsx, source-spec.ts): same spec, a narrower drawer, or one level deeper.
   const ranking = builderQuestion("table", yearsOf(b));
   site("source-entity-row", "source-spec.ts entitySourceScope (clasament row → its records)", ranking,

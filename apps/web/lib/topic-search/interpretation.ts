@@ -9,7 +9,7 @@ import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/t
 import type { Place, TopicScope } from './shared';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
 import { STOPWORDS, tokenize } from '../intent/text';
-import { NEVER_SUBJECT } from '../intent/rules';
+import { NEVER_SUBJECT, TOWN_HALL_UNKNOWN } from '../intent/rules';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -42,8 +42,11 @@ export interface ChipPlace { id: string; label: string; kind: 'county' | 'locali
 export interface TopicInterpretation {
   /** The words exactly as interpreted (the URL's q). */
   q: string;
-  /** The scope actually searched: the words left after the place/period, plus those filters. */
-  applied: { q: string; place: string; from: string; to: string; order?: 'value' };
+  /**
+   * The scope actually searched: the words left after the place/period, plus those filters. `names: 'exact'`: the words
+   * are a subject, so the names panel never offers „closest names” for them („MEV Software” for „mentenanță software”).
+   */
+  applied: { q: string; place: string; from: string; to: string; order?: 'value'; names?: 'exact' };
   /** Parts taken from the words (removable chips); explicit URL filters are not listed here. */
   fromWords: { place: ChipPlace | null; period: { from: string; to: string; label: string } | null };
   /** Buyers named in the words ("școlile"): a scope of the short answer only; titles cannot be filtered by it. */
@@ -73,7 +76,7 @@ export interface TopicInterpretation {
    * Subject answer through the Ask engine (/api/ask), only when the reading is unambiguous.
    * `evidenceHref` opens every record the total counts; `empty` is said instead of "0 lei".
    */
-  answer: { total: { spec: AskSpec; sentence: string }; top: { spec: AskSpec; sentence: string }; href: string; evidenceHref: string; empty: string; domains: { href: string; label: string } | null; cpv: string[]; cpvExcluded: string[] } | null;
+  answer: { total: { spec: AskSpec; sentence: string }; top: AnswerTop | null; href: string; evidenceHref: string; empty: string; domains: { href: string; label: string } | null; cpv: string[]; cpvExcluded: string[] } | null;
   /**
    * The words are a whole question the rules read cleanly ("cine ia banii
    * oradea"): the page answers it first and the words, searched as written,
@@ -88,6 +91,14 @@ export interface TopicInterpretation {
    * (owner, 3 November 2026: no separate line asking to choose). */
   entityChoice: boolean;
 }
+
+/**
+ * What „Pe scurt” shows under its total (owner probe re-judging, 10 November 2026): the first three firms; the
+ * institutions that buy („cine cumpără de la Siepcofar”); the value of each year (an evolution, or one firm at one
+ * institution); the largest records („cel mai mare contract de iluminat”, read by /api/ask/rows). A comparison's total
+ * is both sides (its spec is the compare block) and has none.
+ */
+export interface AnswerTop { spec: AskSpec; sentence: string; kind: 'suppliers' | 'authorities' | 'years' | 'records' }
 
 function chip(p: PlaceMatch): ChipPlace | null {
   const id = placeId(p);
@@ -128,6 +139,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const subjectOk = Boolean(s0 && !weakSubject(s0) && !hasEntity && !i.leftover.length);
   // Întreabă with the words as typed: the link of every answer that is not a chosen selection.
   const typedHref = () => `/intreaba?q=${encodeURIComponent(scope.q)}`;
+  // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the largest records (owner probe, 10 November 2026)
+  const largest = !scope.order && /\b(?:cel|cea|cele|cei)\s+mai\s+(?:mare|mari|scump\w*|valoros\w*)\s+(?:contract\w*|achizit\w*|licitati\w*|investiti\w*)\b/.test(foldText(i.text));
+  const then = thenFor(i, largest);
   const out: TopicInterpretation = {
     ...base,
     subject: subjectOk ? { term: s0!.term, label: s0!.label, cpvName: s0!.cpvName, source: s0!.source, notes: [] } : null,
@@ -198,7 +212,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     };
     const explicit = Boolean(scope.place || scope.from);
     // the spec counts every recognised subject ("parcuri + spatii verzi"): so does the sentence
-    return shortAnswer(answerReading, { place: answerPlace }, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : typedHref()));
+    return shortAnswer(answerReading, { place: answerPlace }, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : typedHref()), then);
   };
   if (subjectOk) out.answer = subjectAnswer(place, period);
   // Question first: the words are a question the rules read cleanly, not title words.
@@ -206,11 +220,12 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // filters chosen on the page (place, period, type) are not overridden by the words.
   if (!applies && !scope.place && !scope.from && scope.type === 'all' && isCleanQuestion(result)) {
     out.question = { sentence: result.sentence! };
-    // "Cine…" and "cât…" get the total and the first three winners; other questions open in Întreabă.
-    if (!out.answer && (i.intent === 'ranking_suppliers' || i.intent === 'total')) {
-      const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
-      out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, typedHref);
-    }
+    // "Cine…", "cât…" and an evolution get the total and what follows it (the first three winners or buyers, the years);
+    // two named institutions or firms are compared side by side; other questions open in Întreabă.
+    const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
+    if (!out.answer && i.intent && ANSWERED.includes(i.intent))
+      out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, labels, typedHref, then);
+    if (!out.answer && i.intent === 'compare' && i.compareWith) out.answer = compareAnswer(i, {}, labels, typedHref);
     // The subject the answer counts, so the route can list its CPV classes ("Domenii incluse");
     // several subjects are counted together ("parcuri + spatii verzi").
     const counted = out.answer?.total.spec.filters.cpvTerm;
@@ -230,9 +245,35 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (!out.question && !applies && !scope.place && !scope.from && scope.type === 'all' && i.authority && !i.supplier && i.subjects.length
     && !i.subjects.some(weakSubject) && !i.leftover.length && !i.entityAlternatives.length && !i.placeAmbiguous && result.spec && result.sentence && i.confidenceLabel === 'high') {
     out.question = { sentence: result.sentence };
-    out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, { subject: subjectsLabel(i.subjects) }, typedHref);
+    out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, { subject: subjectsLabel(i.subjects) }, typedHref, then);
     const counted = out.answer?.total.spec.filters.cpvTerm;
     if (counted && s0) out.subject = { term: counted, label: subjectsLabel(i.subjects) ?? s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] };
+  }
+  let exactNote: string | null = null;
+  const plain = !scope.place && !scope.from && scope.type === 'all';
+  const settled = !i.leftover.length && !i.placeAmbiguous && !i.subjectChoices && !(i.personAlternatives.length && !i.person);
+  // „compară primăria Cluj-Napoca cu primăria Timișoara”: the town halls are the one pair the words can mean
+  if (!out.question && !applies && plain && settled && i.intent === 'compare' && !i.compareWith && i.compareChoices.length === 1) {
+    out.answer = compareAnswer(i, { pair: i.compareChoices[0]! }, { subject: subjectsLabel(i.subjects) }, typedHref);
+    if (out.answer) out.question = { sentence: out.answer.total.sentence };
+  }
+  // „cât a câștigat Strabag în 2023”: several firms carry the name and one of them is exactly the name typed. „Pe scurt”
+  // counts that one and says so; the others are listed with the names below (owner probe re-judging, 10 November 2026).
+  const exact = !out.question && !applies && plain && settled && i.intentSource === 'cue' && i.intent && ANSWERED.includes(i.intent) ? exactAlternative(i) : null;
+  if (exact) {
+    const reading: Interpretation = { ...i, [exact.role]: exact, entityAlternatives: [], choicesPartial: null };
+    out.answer = shortAnswer({ ...reading, topN: 3, superlative: false, measure: null }, {}, { subject: subjectsLabel(i.subjects) }, typedHref, thenFor(reading, largest));
+    if (out.answer) {
+      out.question = { sentence: out.answer.total.sentence };
+      const others = (i.choicesPartial?.total ?? i.entityAlternatives.length) - 1;
+      exactNote = `Am socotit doar „${exact.name}”, singura cu exact acest nume; ${others === 1 ? 'încă una are' : `încă ${others} au`} „${exact.matched.text}” în nume (lista de mai jos).`;
+    }
+  }
+  // „cea mai mare achiziție directă”: the largest records of the selection the words name
+  if (!out.answer && !applies && plain && settled && largest && result.spec && !hasEntity && i.confidenceLabel !== 'low') {
+    out.answer = shortAnswer({ ...i, topN: 3, superlative: false, measure: null }, {}, { subject: subjectsLabel(i.subjects) }, typedHref, 'records');
+    // the question asked is the largest records, not the total („Care sunt cele mai mari achiziții directe…?”)
+    if (out.answer && !out.question) out.question = { sentence: out.answer.total.sentence.replace(/^Cât valorează (achizițiile|contractele)\b/, (_, w: string) => `Care sunt cele mai mari ${w === 'contractele' ? 'contracte' : 'achiziții'}`) };
   }
   // The lists search what the words name, never the sentence as title words (owner probe, 10 November 2026: 40–60% of
   // the questions not read cleanly ended on an empty page). A reading with words left over is still used, and the
@@ -271,14 +312,19 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     out.note = 'Nu am putut citi sigur toate cuvintele; căutăm exact ce ai scris.';
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies && !(loose?.kind === 'subjects' && !loose.narrowed.length)) { out.subject = null; out.otherSubjects = []; out.kind = null; }
-  // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the acquisitions largest first, said in a note
-  // (owner probe, 10 November 2026: the shape was dropped and the first three firms answered instead)
-  const largest = !scope.order && /\b(?:cel|cea|cele|cei)\s+mai\s+(?:mare|mari|scump\w*|valoros\w*)\s+(?:contract\w*|achizit\w*|licitati\w*|investiti\w*)\b/.test(foldText(i.text));
+  // the titles too are the largest first, said in a note (the shape was dropped and the first three firms answered instead)
   if (largest) out.applied = { ...out.applied, order: 'value' };
+  // A subject's words are searched as a subject: no „closest names” for them in the names panel („MEV Software” for
+  // „mentenanță software”). Words not understood beside a subject may be a firm's name („apa nova”): its closest names stay.
+  if (out.subject || applies || (loose?.kind === 'subjects' && loose.narrowed.every((w) => ACTION.has(foldText(w)))))
+    out.applied = { ...out.applied, names: 'exact' };
   // What the reading dropped or narrowed is said wherever the reading is used.
   if (out.answer || applies || out.question || loose)
-    out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n)), ...(loose?.notes ?? [])])];
-  if (largest) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
+    out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
+  // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
+  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi/.test(n))])];
+  if (exactNote) out.notes.push(exactNote);
+  if (largest && out.applied.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? typedHref() : null);
   return out;
@@ -294,9 +340,13 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
 export function isCleanQuestion(result: IntentResult): boolean {
   const i = result.interpretation;
   // several subjects ("parcuri și spații verzi") are counted together, never searched as title words
+  // „în județul meu”: the place is not named, so the question is not answered for the whole country
   return Boolean(result.spec && result.sentence) && (i.intentSource === 'cue' || i.subjects.length > 1) && i.confidenceLabel === 'high' && !i.leftover.length
-    && !i.placeAmbiguous && !i.subjectChoices && !(i.entityAlternatives.length && !i.authority && !i.supplier) && !(i.personAlternatives.length && !i.person);
+    && !i.placeAmbiguous && !i.subjectChoices && !(i.entityAlternatives.length && !i.authority && !i.supplier) && !(i.personAlternatives.length && !i.person)
+    && !i.notes.some((n) => OWN_PLACE_SAID.test(n));
 }
+
+const OWN_PLACE_SAID = /nu știm ce localitate/;
 
 /** "Niciun contract încadrat la „Pod” la primăria Oradea (Bihor), în toți anii." */
 export function emptyAnswerText(totalSentence: string, subject: string | null): string {
@@ -305,16 +355,38 @@ export function emptyAnswerText(totalSentence: string, subject: string | null): 
   return where ? `Nicio achiziție înregistrată la ${where}.` : 'Nicio achiziție înregistrată în această selecție.';
 }
 
-/** Total and the first three winners of one reading, as Ask specs. */
-function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | null }, labels: SentenceLabels, href: (top: AskSpec) => string): TopicInterpretation['answer'] {
+/** The questions „Pe scurt” answers itself: the others open in Întreabă. */
+const ANSWERED: Interpretation['intent'][] = ['ranking_suppliers', 'ranking_authorities', 'total', 'trend'];
+
+/** What follows the total: the years of an evolution or of one firm at one institution, the largest records, else the ranking. */
+function thenFor(i: Interpretation, largest: boolean): Then {
+  if (largest) return 'records';
+  return i.intent === 'trend' || (i.authority && i.supplier) ? 'years' : 'ranking';
+}
+type Then = 'ranking' | 'years' | 'records';
+
+/** Total and what follows it (AnswerTop) of one reading, as Ask specs. */
+function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | null }, labels: SentenceLabels, href: (top: AskSpec) => string, then: Then = 'ranking'): TopicInterpretation['answer'] {
   const total = specFor(reading, 'total', choice).spec;
-  const top = specFor(reading, 'ranking_suppliers', choice).spec;
-  if (!total || !top) return null;
+  if (!total) return null;
+  let top: AnswerTop | null = null;
+  // an evolution over the years the total counts: never all the years beside the total of one
+  const oneYear = total.filters.yearFrom !== undefined && total.filters.yearFrom === total.filters.yearTo;
+  if (then === 'years' && !oneYear) {
+    const years = specFor(reading, 'trend', choice).spec;
+    if (years?.block === 'timeseries') top = { spec: years, sentence: sentenceFor(years, labels), kind: 'years' };
+  }
+  if (then === 'records') top = { spec: total, sentence: sentenceFor(total, labels), kind: 'records' };
+  if (!top) {
+    // „cine cumpără de la X”: the institutions; a ranking of firms beside one named firm is its buyers too (to-spec)
+    const ranking = specFor(reading, reading.intent === 'ranking_authorities' ? 'ranking_authorities' : 'ranking_suppliers', choice).spec;
+    if (ranking?.block === 'table') top = { spec: ranking, sentence: sentenceFor(ranking, labels), kind: ranking.dim === 'authority' ? 'authorities' : 'suppliers' };
+  }
   const totalSentence = sentenceFor(total, labels);
   return {
     total: { spec: total, sentence: totalSentence },
-    top: { spec: top, sentence: sentenceFor(top, labels) },
-    href: href(top),
+    top,
+    href: href(top?.kind === 'records' || !top ? total : top.spec),
     // Ask runs the spec and opens the records behind the total.
     evidenceHref: `${askHref(total)}&drill=1`,
     empty: emptyAnswerText(totalSentence, labels.subject ?? null),
@@ -322,6 +394,26 @@ function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | nul
     cpv: [],
     cpvExcluded: [],
   };
+}
+
+/** „compară X cu Y”: both sides in one answer (the compare block counts each one's records). */
+function compareAnswer(reading: Interpretation, choice: { pair?: NonNullable<Interpretation['compareChoices']>[number] }, labels: SentenceLabels, href: (top: AskSpec) => string): TopicInterpretation['answer'] {
+  const spec = specFor(reading, 'compare', choice).spec;
+  if (!spec) return null;
+  const sentence = sentenceFor(spec, labels);
+  return { total: { spec, sentence }, top: null, href: href(spec), evidenceHref: askHref(spec), empty: 'Nicio achiziție înregistrată pentru cele două.', domains: null, cpv: [], cpvExcluded: [] };
+}
+
+/** A registry name without its legal form and punctuation („SC Strabag SRL” → „strabag”). */
+const bareName = (name: string) => foldText(name).split(/[^a-z0-9]+/).filter((w) => w && !LEGAL_FORMS.has(w)).join(' ');
+const LEGAL_FORMS = new Set(['sc', 'srl', 'sa', 's', 'r', 'l', 'srlv', 'pfa', 'ii', 'if', 'snc', 'scs', 'ra', 'ltd', 'gmbh', 'firma', 'firmei', 'societatea', 'compania']);
+
+/** The one alternative whose name is exactly the words typed (all of one role), or none. */
+function exactAlternative(i: Interpretation): Interpretation['entityAlternatives'][number] | null {
+  const alts = i.entityAlternatives;
+  if (alts.length < 2 || alts.some((e) => e.role !== alts[0]!.role) || (alts[0]!.role === 'supplier' ? i.supplier : i.authority)) return null;
+  const exact = alts.filter((e) => bareName(e.name) === bareName(e.matched.text));
+  return exact.length === 1 ? exact[0]! : null;
 }
 
 /**
@@ -351,6 +443,9 @@ interface LooseReading {
 
 /** Work done on a subject: beside it, it narrows it („mentenanță software”, „reparații acoperiș”). */
 const ACTION = new Set(['mentenanta', 'intretinere', 'reparatii', 'reparatie', 'repararea', 'modernizare', 'modernizarea', 'reabilitare', 'reabilitarea', 'renovare', 'service']);
+
+/** Words that mark a name as a firm's („firma Spedition UMB”), never part of the name searched. */
+const FIRM_WORD = new Set(['firma', 'firmei', 'societatea', 'societatii', 'compania', 'companiei', 'furnizorul', 'furnizorului', 'sc']);
 
 /** Words that mark a place as one ("în Cluj", "județul Iași"); an unmarked one may be a subject or a name ("poduri"). */
 const PLACE_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'sectorul', 'sectorului', 'localitatea']);
@@ -418,7 +513,10 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
     const ignored = [...new Set(tokens.filter((t) => left.has(t.f)).map((t) => t.raw))];
     // a place right next to the name is part of it („Apa Nova București”, „Spitalul Județean Buzău”): searched with it
     const adjacent = Boolean(place) && !marked && (place!.from === entity.matched.to || place!.to === entity.matched.from);
-    const from = adjacent ? Math.min(place!.from, entity.matched.from) : entity.matched.from, to = adjacent ? Math.max(place!.to, entity.matched.to) : entity.matched.to;
+    let from = adjacent ? Math.min(place!.from, entity.matched.from) : entity.matched.from;
+    const to = adjacent ? Math.max(place!.to, entity.matched.to) : entity.matched.to;
+    // „firma Spedition UMB”: the word that marks a firm is not part of its name
+    while (from < to - 1 && FIRM_WORD.has(tokens[from]!.f) && !foldText(entity.name).startsWith(tokens[from]!.f)) from++;
     return { kind: 'entity', words: spanOf(from, to), narrowed: [], notes: ignored.length ? [`Nu am înțeles ${quote(ignored)}.`] : [], placeApplies: Boolean(place) && !adjacent && !(place!.from < entity.matched.to && entity.matched.from < place!.to) };
   }
   // only a question or a reading with a place or period has words to drop: a name typed alone stays as typed

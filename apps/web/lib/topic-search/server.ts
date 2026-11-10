@@ -188,7 +188,7 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  let found=await search(name,q`max(${rank}) desc`),approximate=false;
  // Nothing by name: the closest names, said as such („Strabac” → Strabag; owner probe, 10 November 2026).
  // only for a short name: a whole sentence has no closest name, only noise
- if(!found.total&&s.match==='words'&&!intent.cui&&typed.length>=4&&typed.split(' ').length<=3){
+ if(!found.total&&s.match==='words'&&s.names!=='exact'&&!intent.cui&&typed.length>=4&&typed.split(' ').length<=3){
   found=await search(q`(e.name_normalized % ${typed})`,q`max(similarity(e.name_normalized,${typed})) desc`);
   approximate=found.total>0;
  }

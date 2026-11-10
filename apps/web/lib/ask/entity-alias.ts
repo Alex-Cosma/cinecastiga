@@ -10,15 +10,18 @@
  */
 
 /**
- * Institution abbreviations → the words of their registered names (folded; connectors are not required by the name
- * search). „mai” (the interior ministry) is left out: it is also the month.
+ * Institution abbreviations and nicknames → the words of their registered names (folded; connectors are not required
+ * by the name search). Several shapes when the registry writes the same institution several ways („Inspectoratul
+ * Școlar Județean Cluj”, „Inspectoratul Școlar al Județului Iași”), the shortest last. „mai” (the interior ministry)
+ * is also the month: the name search reads it only at the start of the words, the interpreter only typed „MAI”.
  */
-const ABBREVIATIONS: Record<string, string[]> = {
+export const ABBREVIATIONS: Record<string, string[]> = {
   sju: ["spitalul judetean de urgenta"], scju: ["spitalul clinic judetean de urgenta"], scu: ["spitalul clinic de urgenta"],
   dgaspc: ["directia generala de asistenta sociala si protectia copilului"], dgasmb: ["directia generala de asistenta sociala a municipiului bucuresti"],
   isu: ["inspectoratul pentru situatii de urgenta"], igsu: ["inspectoratul general pentru situatii de urgenta"],
-  ipj: ["inspectoratul de politie judetean"], igpr: ["inspectoratul general al politiei romane"],
-  dsp: ["directia de sanatate publica"], isj: ["inspectoratul scolar judetean"], cjas: ["casa judeteana de asigurari de sanatate"],
+  ipj: ["inspectoratul de politie judetean", "inspectoratul de politie al judetului", "inspectoratul de politie"], igpr: ["inspectoratul general al politiei romane"],
+  dsp: ["directia de sanatate publica"], isj: ["inspectoratul scolar judetean", "inspectoratul scolar al judetului", "inspectoratul scolar"],
+  cjas: ["casa judeteana de asigurari de sanatate", "casa de asigurari de sanatate"],
   cas: ["casa de asigurari de sanatate"], cnas: ["casa nationala de asigurari de sanatate"], ocpi: ["oficiul de cadastru si publicitate imobiliara"],
   ancpi: ["agentia nationala de cadastru si publicitate imobiliara"], anaf: ["agentia nationala de administrare fiscala"],
   cnair: ["compania nationala de administrare a infrastructurii rutiere"], apia: ["agentia de plati si interventie pentru agricultura"],
@@ -26,6 +29,9 @@ const ABBREVIATIONS: Record<string, string[]> = {
   umf: ["universitatea de medicina si farmacie"], ubb: ["universitatea babes bolyai"], upb: ["universitatea politehnica"],
   pmb: ["municipiul bucuresti"], ansvsa: ["autoritatea nationala sanitara veterinara si pentru siguranta alimentelor"],
   dsvsa: ["directia sanitara veterinara si pentru siguranta alimentelor"], ajofm: ["agentia judeteana pentru ocuparea fortei de munca"],
+  mai: ["ministerul afacerilor interne"], suub: ["spitalul universitar de urgenta bucuresti"],
+  // „Floreasca” is what people call the Bucharest emergency hospital on that street
+  floreasca: ["spitalul clinic de urgenta bucuresti"],
 };
 
 /** Expects an already-folded query (lowercase, no diacritics). */
@@ -35,9 +41,14 @@ export function aliasQueries(folded: string): string[] {
 
   // Abbreviations people use for institutions, alone or before a place („SJU Bacău”, „DGASPC Sector 2”, „ANAF”):
   // the registered name's words (owner probe, 10 November 2026: none of these found the institution).
-  const abbr = /^([a-z]{2,6})(?:\s+(.+))?$/.exec(q);
+  const abbr = /^([a-z]{2,9})(?:\s+(.+))?$/.exec(q);
   const expanded = abbr ? ABBREVIATIONS[abbr[1]!] : undefined;
-  if (expanded) for (const name of expanded) out.add(abbr![2] ? `${name} ${abbr![2]}` : name);
+  if (expanded) for (const name of expanded) {
+    out.add(abbr![2] ? `${name} ${abbr![2]}` : name);
+    // „DGASPC Sector 2 București”: a sector's institution is registered without the city
+    const sector = abbr![2]?.replace(/\s+(?:din\s+)?(?:municipiul\s+)?bucuresti$/, "");
+    if (sector && sector !== abbr![2] && /\bsector/.test(sector)) out.add(`${name} ${sector}`);
+  }
   // „Primăria Capitalei”, „Primăria Municipiului București”: the capital's own administration
   if (/^prim[aă]?ri[ae]?\s+(?:capitalei|generala|municipiului\s+bucuresti)$/.test(q)) out.add("municipiul bucuresti");
   const primMun = /^prim[aă]?ri[ae]?\s+municipiului\s+(.+)$/.exec(q);
@@ -52,10 +63,13 @@ export function aliasQueries(folded: string): string[] {
       out.add(`sectorul ${sec[1]}`);
       out.add(`sector ${sec[1]}`);
     } else {
-      out.add(`municipiul ${rest}`);
-      out.add(`orasul ${rest}`);
-      out.add(`oras ${rest}`);
-      out.add(`comuna ${rest}`);
+      // „primăria Cluj Napoca” is registered „MUNICIPIUL CLUJ-NAPOCA”: the hyphen as the registry writes it
+      for (const name of new Set([rest, rest.replace(/ /g, "-")])) {
+        out.add(`municipiul ${name}`);
+        out.add(`orasul ${name}`);
+        out.add(`oras ${name}`);
+        out.add(`comuna ${name}`);
+      }
     }
   }
 
