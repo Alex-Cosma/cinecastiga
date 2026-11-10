@@ -2,6 +2,7 @@ import {createDb,type DbSql} from '@seap/db';
 import {daUrl,awardUrl} from '../elicitatie';
 import {aliasQueries} from '../ask/entity-alias';
 import {entityIntent} from './entity-intent';
+import {titleTsquery} from './words';
 import {rankPlaces,type UatRow} from './places';
 import {COUNTIES} from '../counties';
 import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
@@ -41,11 +42,16 @@ function scopeSql(q:DbSql,s:TopicScope){
  if(s.type!=='all')where=q`${where} and a.kind=${s.type}`;
  return where;
 }
+/** Whole words by their base, alternatives with „sau” (words.ts titleTerms); the phrase mode keeps the order as typed. */
+function titleQuery(q:DbSql,s:TopicScope){
+ const terms=titleTsquery(s.q);
+ return s.match==='phrase'?q`phraseto_tsquery('simple',unaccent(${s.q}))`:terms?q`to_tsquery('simple',${terms})`:q`plainto_tsquery('simple',unaccent(${s.q}))`;
+}
 async function bounded<T>(fn:(q:DbSql)=>Promise<T>):Promise<T>{
  return await db().begin(async tx=>{const q=tx as unknown as DbSql;await q`set local statement_timeout='15000'`;return fn(q);}) as T;
 }
 async function acquisitions(s:TopicScope):Promise<TopicResult['acquisitions']>{return bounded(async q=>{
- const ts=s.match==='phrase'?q`phraseto_tsquery('simple',unaccent(${s.q}))`:q`plainto_tsquery('simple',unaccent(${s.q}))`;
+ const ts=titleQuery(q,s);
  const where=q`${scopeSql(q,s)} and a.search @@ ${ts}`;
  const [count]=await q`select count(*)::int total from marts.topic_acquisitions a where ${where}`;
  const limit=s.tab==='all'?3:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;
@@ -71,7 +77,7 @@ async function documentSearch(s:TopicScope):Promise<Omit<TopicDocumentsResult,'s
  // A procedure-document link is always to a contract; direct acquisitions have none.
  if(s.type==='da')return {documents:{total:0,hits:[]},coverage:{known:0,ready:0,pages:0}};
  return bounded(async q=>{
- const ts=s.match==='phrase'?q`phraseto_tsquery('simple',unaccent(${s.q}))`:q`plainto_tsquery('simple',unaccent(${s.q}))`;
+ const ts=titleQuery(q,s);
  const match=s.q?q`p.search @@ ${ts}`:q`false`;
  const limit=s.tab==='documents'?PAGE_SIZE:2,offset=s.tab==='documents'?(s.page-1)*PAGE_SIZE:0;
  const [r]=await q`with linked as materialized (
@@ -123,8 +129,18 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
    when e.name_normalized=${intent.name} then 90
    when ep.role='authority' and (${authorityName}) then 80 else 0 end`;
  let activity=q`true`;
- if(s.place||s.from||s.type!=='all')activity=q`exists(select 1 from marts.topic_acquisitions a where ${scopeSql(q,s)} and
- ((ep.role='authority' and a.authority_id=e.id) or (ep.role='supplier' and a.supplier_ids @> array[e.id])))`;
+ if(s.place||s.from||s.type!=='all'){
+  // Who has records in the selection: the name candidates first, then their records in one indexed pass each way.
+  // A correlated exists() per candidate made Postgres scan every record of the year for each firm („catering 2025”:
+  // 31 s, timeout; owner probe, 10 November 2026); this takes a quarter of a second.
+  const active=await q`with cand as materialized (select e.id,ep.role from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${name} and (${s.role}='' or ep.role=${s.role}))
+   select c.id::text id,c.role from cand c where c.role='authority' and exists(select 1 from marts.topic_acquisitions a where ${scopeSql(q,s)} and a.authority_id=c.id)
+   union
+   select c.id::text id,c.role from cand c join (select distinct unnest(a.supplier_ids) id from marts.topic_acquisitions a
+    where ${scopeSql(q,s)} and a.supplier_ids && (select coalesce(array_agg(id),'{}') from cand where role='supplier')) x on x.id=c.id where c.role='supplier'`;
+  const ids=(role:string)=>active.filter(r=>r.role===role).map(r=>String(r.id));
+  activity=q`((ep.role='authority' and e.id=any(${ids('authority')}::bigint[])) or (ep.role='supplier' and e.id=any(${ids('supplier')}::bigint[])))`;
+ }
  const where=q`${name} and ${activity} and (${s.role}='' or ep.role=${s.role})`;
  const [count]=await q`select count(distinct e.id)::int total from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${where}`;
  const limit=s.tab==='all'?3:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;

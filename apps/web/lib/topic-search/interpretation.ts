@@ -8,6 +8,7 @@ import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
+import { tokenize } from '../intent/text';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -182,20 +183,21 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     out.note = `Titlurile nu se pot restrânge la ${interpretedPlace.name}; răspunsul pentru acest loc este în Întreabă.`;
 
   // "Pe scurt": the same place and period as the chips, or none at all.
-  const answerPlace: PlaceMatch | null = place ?? (explicitPlace ? named : null);
-  const placeShown = !i.place || Boolean(place) || Boolean(scope.place);
-  const periodShown = !i.period || Boolean(period) || Boolean(scope.from);
-  if (subjectOk && result.spec && placeShown && periodShown && !(scope.place && !answerPlace)) {
-    const years = scope.from ? { yearFrom: Number(scope.from), yearTo: Number(scope.to) } : period ? { yearFrom: yf, yearTo: yt } : null;
+  const subjectAnswer = (applied: PlaceMatch | null, appliedPeriod: typeof wordsPeriod) => {
+    const answerPlace: PlaceMatch | null = applied ?? (explicitPlace ? named : null);
+    const placeShown = !i.place || Boolean(applied) || Boolean(scope.place);
+    const periodShown = !i.period || Boolean(appliedPeriod) || Boolean(scope.from);
+    if (!result.spec || !placeShown || !periodShown || (scope.place && !answerPlace)) return null;
+    const years = scope.from ? { yearFrom: Number(scope.from), yearTo: Number(scope.to) } : appliedPeriod ? { yearFrom: yf, yearTo: yt } : null;
     const answerReading: Interpretation = {
       ...i, topN: 3, superlative: false,
       period: years ? { ...(years.yearFrom !== undefined ? { yearFrom: years.yearFrom } : {}), ...(years.yearTo !== undefined ? { yearTo: years.yearTo } : {}), ...(versus && !scope.from ? { versus } : {}), matched: i.period?.matched ?? { text: '', from: 0, to: 0 } } : null,
     };
-    const choice = { place: answerPlace };
     const explicit = Boolean(scope.place || scope.from);
     // the spec counts every recognised subject ("parcuri + spatii verzi"): so does the sentence
-    out.answer = shortAnswer(answerReading, choice, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
-  }
+    return shortAnswer(answerReading, { place: answerPlace }, { subject: subjectsLabel(i.subjects) }, (top) => (explicit ? askHref(top) : `/intreaba?q=${encodeURIComponent(scope.q)}`));
+  };
+  if (subjectOk) out.answer = subjectAnswer(place, period);
   // Question first: the words are a question the rules read cleanly, not title words.
   // A subject applied to the titles ("iluminat buzau") stays a subject search, and
   // filters chosen on the page (place, period, type) are not overridden by the words.
@@ -220,11 +222,38 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       out.fromWords = { place: interpretedChip, period: wordsPeriod };
     }
   }
+  // The lists search what the words name, never the sentence as title words (owner probe, 10 November 2026: 40–60% of
+  // the questions not read cleanly ended on an empty page). A reading with words left over is still used, and the
+  // words not understood are said. Explicit filters chosen on the page are never overridden.
+  let loose: LooseReading | null = null;
+  if (out.applied.q === scope.q && !applies && !i.placeAmbiguous && !i.subjectChoices) {
+    loose = looseReading(i, hasEntity, interpretedPlace?.matched ?? null);
+    if (loose) {
+      const placeOk = Boolean(!scope.place && interpretedPlace && interpretedChip && loose.placeApplies);
+      const periodOk = !scope.from && Boolean(wordsPeriod);
+      out.applied = { q: loose.words, place: placeOk ? interpretedChip!.id : scope.place, from: periodOk ? wordsPeriod!.from : scope.from, to: periodOk ? wordsPeriod!.to : scope.to };
+      out.fromWords = { place: placeOk ? interpretedChip : null, period: periodOk ? wordsPeriod : null };
+      if (loose.kind === 'subjects' && !loose.narrowed.length) {
+        // a subject with words around it not understood ("ce firme domină salubrizarea"): its short answer, the words said
+        // several subjects counted together keep the subject the question set ("parcuri + spatii verzi")
+        if (!out.subject) {
+          out.subject = s0 ? { term: s0.term, label: s0.label, cpvName: s0.cpvName, source: s0.source, notes: [] } : null;
+          out.otherSubjects = i.subjects.slice(1).map((x) => ({ label: x.label, cpvName: x.cpvName }));
+        }
+        if (!out.answer) out.answer = subjectAnswer(placeOk ? interpretedPlace : null, periodOk ? wordsPeriod : null);
+        if (i.authorityKind) out.kind = { label: KIND_LABEL[i.authorityKind.kind], withoutQ: remainingWords(i.text, [i.authorityKind.matched]) };
+      } else if (loose.kind === 'subjects') {
+        // words that narrow the subject and have no domain ("uniforme școlare"): no total, which would count every uniform
+        out.subject = null;
+        if (!out.question) out.answer = null;
+      }
+    }
+  }
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
-  if (!out.answer && !applies) { out.subject = null; out.otherSubjects = []; out.kind = null; }
+  if (!out.answer && !applies && !(loose?.kind === 'subjects' && !loose.narrowed.length)) { out.subject = null; out.otherSubjects = []; out.kind = null; }
   // What the reading dropped or narrowed is said wherever the reading is used.
-  if (out.answer || applies || out.question)
-    out.notes = [...new Set(result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n)))];
+  if (out.answer || applies || out.question || loose)
+    out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n)), ...(loose?.notes ?? [])])];
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? `/intreaba?q=${encodeURIComponent(scope.q)}` : null);
   return out;
@@ -282,4 +311,82 @@ function domainsOf(reading: Interpretation, choice: { place?: PlaceMatch | null 
   if (!spec || spec.filters.cpvTerm) return null;
   const where = /făcute de (.+)\?$/.exec(totalSentence)?.[1];
   return { href: askHref(spec), label: where ? `Vezi la ce domenii sunt încadrate achizițiile făcute de ${where}` : 'Vezi la ce domenii sunt încadrate achizițiile din această selecție' };
+}
+
+interface LooseReading {
+  kind: 'subjects' | 'entity' | 'words';
+  /** What the lists search: subjects (alternatives with „sau”), the name as typed, or the words not understood. */
+  words: string;
+  /** Words right after a subject that narrow it and have no domain of their own ("școlare" in "uniforme școlare"). */
+  narrowed: string[];
+  notes: string[];
+  /** Whether the place read in the words is applied to the lists, or stays in the name searched. */
+  placeApplies: boolean;
+}
+
+/** Words that mark a place as one ("în Cluj", "județul Iași"); an unmarked one may be a subject or a name ("poduri"). */
+const PLACE_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'sectorul', 'sectorului', 'localitatea']);
+
+const quote = (words: string[]) => words.map((w) => `„${w}”`).join(', ');
+
+/**
+ * What the lists search when the words were not read cleanly (owner probe, 10 November 2026): the subjects, each with
+ * the words right after it that narrow it („uniforme școlare”, „iluminat de crăciun”); else one named firm or
+ * institution as typed („Siepcofar 2025” → „Siepcofar”); else the words not understood. Null when nothing is left
+ * to search but what was typed.
+ */
+export function looseReading(i: Interpretation, hasEntity: boolean, place: Span | null): LooseReading | null {
+  const tokens = tokenize(i.text);
+  const left = new Set(i.leftover.map((w) => foldText(w)));
+  const taken = new Set<number>();
+  const spanOf = (from: number, to: number) => tokens.slice(from, to).map((t) => t.raw).join(' ');
+  // the marker can lead the place's own span („in buzau”) or come right before it
+  const marked = place ? PLACE_MARK.has(tokens[place.from]?.f ?? '') || PLACE_MARK.has(tokens[place.from - 1]?.f ?? '') : false;
+  if (i.subjects.length && !hasEntity && !i.subjects.some(weakSubject)) {
+    const narrowed: string[] = [];
+    const parts = i.subjects.map((s) => {
+      const inflected = s.source === 'synonym' && !s.label.includes(' ') && foldText(s.label) !== foldText(s.matched.text);
+      const words = [inflected ? s.label : s.matched.text];
+      // the words right after the subject that were not understood narrow it ("iluminat de crăciun", "măști chirurgicale")
+      let k = s.matched.to;
+      while (k < tokens.length) {
+        const t = tokens[k]!;
+        const next = tokens[k + 1];
+        if (t.f === 'de' && next && left.has(next.f) && !taken.has(k + 1)) { words.push(t.raw, next.raw); narrowed.push(next.raw); taken.add(k + 1); k += 2; continue; }
+        if (left.has(t.f) && !taken.has(k)) { words.push(t.raw); narrowed.push(t.raw); taken.add(k); k++; continue; }
+        break;
+      }
+      return words.join(' ');
+    });
+    const ignored = [...new Set(tokens.filter((t, k) => left.has(t.f) && !taken.has(k)).map((t) => t.raw))];
+    const notes: string[] = [];
+    if (narrowed.length) notes.push(`${quote(narrowed)} nu ${narrowed.length === 1 ? 'are' : 'au'} un domeniu: fără total, căutăm titlurile cu ${quote(parts)}.`);
+    if (ignored.length) notes.push(`Nu am înțeles ${quote(ignored)}.`);
+    // A place said as one is applied; an unmarked one only when every other word is understood and it does not follow
+    // „și” like a second subject („drumuri și poduri buzău”: „Poduri” is a village, „buzău” left over; „apa nova
+    // bucuresti” is a firm's name).
+    const placeApplies = Boolean(place) && (marked || (!ignored.length && !narrowed.length && tokens[place!.from - 1]?.f !== 'si'));
+    // a place read but not trusted makes the whole reading doubtful: the words are searched as typed
+    if (place && !placeApplies) return null;
+    return { kind: 'subjects', words: parts.join(' sau '), narrowed, notes, placeApplies };
+  }
+  // one named firm or institution; or the words that several of them share („oncologie”: seven institutes), which list
+  // them to choose from and find the titles too
+  const alternatives = i.entityAlternatives.filter((e) => e.matched);
+  const shared = alternatives.length && alternatives.every((e) => e.matched.from === alternatives[0]!.matched.from && e.matched.to === alternatives[0]!.matched.to) ? alternatives[0] : null;
+  const entity = i.supplier ?? i.authority ?? (i.compareWith || i.person || i.personAlternatives.length ? null : shared);
+  if (entity?.matched) {
+    const ignored = [...new Set(tokens.filter((t) => left.has(t.f)).map((t) => t.raw))];
+    // a place right next to the name is part of it („Apa Nova București”, „Spitalul Județean Buzău”): searched with it
+    const adjacent = Boolean(place) && !marked && (place!.from === entity.matched.to || place!.to === entity.matched.from);
+    const from = adjacent ? Math.min(place!.from, entity.matched.from) : entity.matched.from, to = adjacent ? Math.max(place!.to, entity.matched.to) : entity.matched.to;
+    return { kind: 'entity', words: spanOf(from, to), narrowed: [], notes: ignored.length ? [`Nu am înțeles ${quote(ignored)}.`] : [], placeApplies: Boolean(place) && !adjacent && !(place!.from < entity.matched.to && entity.matched.from < place!.to) };
+  }
+  if (hasEntity || !i.leftover.length) return null;
+  // nothing read but a place or a period: the words not understood are what the person is looking for
+  const words = tokens.filter((t) => left.has(t.f)).map((t) => t.raw);
+  const typed = spanOf(0, tokens.length);
+  // an unmarked place beside unknown words may be part of a name („piata romana bucuresti”): searched as typed
+  if (!words.length || words.join(' ') === typed || (place && !marked)) return null;
+  return { kind: 'words', words: [...new Set(words)].join(' '), narrowed: [], notes: [], placeApplies: Boolean(place) && marked };
 }
