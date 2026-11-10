@@ -224,6 +224,14 @@ const NEVER_SUBJECT = new Set(["fara", "afara", "exceptand", "inafara", "trecut"
 const MODIFIER = /\b(?:(?:cel|cea|cele|cei) mai (?:mare|mari|mult|multe|multi|multa|bogat\w*|scump\w*|ridicat\w*|important\w*|mici|mic)|cel mai|cea mai|cele mai|cei mai|in romania|din romania|toata tara|din tara|la nivel national|in total)\b/;
 
 const PREPOSITION = new Set(["in", "din", "la", "pentru", "spre", "catre", "dinspre", "de"]);
+/** County plate codes, read only after the county word („jud. CJ”). */
+const COUNTY_PLATES: Record<string, string> = {
+  ab: "Alba", ar: "Arad", ag: "Arges", bc: "Bacau", bh: "Bihor", bn: "Bistrita-Nasaud", bt: "Botosani", bv: "Brasov", br: "Braila",
+  b: "Bucuresti", bz: "Buzau", cs: "Caras-Severin", cl: "Calarasi", cj: "Cluj", ct: "Constanta", cv: "Covasna", db: "Dambovita", dj: "Dolj",
+  gl: "Galati", gr: "Giurgiu", gj: "Gorj", hr: "Harghita", hd: "Hunedoara", il: "Ialomita", is: "Iasi", if: "Ilfov", mm: "Maramures",
+  mh: "Mehedinti", ms: "Mures", nt: "Neamt", ot: "Olt", ph: "Prahova", sm: "Satu Mare", sj: "Salaj", sb: "Sibiu", sv: "Suceava",
+  tr: "Teleorman", tm: "Timis", tl: "Tulcea", vs: "Vaslui", vl: "Valcea", vn: "Vrancea",
+};
 /** Place aliases people use for București. */
 const PLACE_ALIAS: Record<string, string> = {
   capitalei: "bucuresti", capitala: "bucuresti", "capitala tarii": "bucuresti",
@@ -343,7 +351,10 @@ export class RulesInterpreter implements QuestionInterpreter {
 
     // The size of a purchase before the periods and the fiscal codes: "peste 2000 de lei" is no year, "1000000 lei" no CUI.
     this.amounts(c, out);
-    this.periods(c, out, year);
+    this.periods(c, out, year, Number(new Intl.DateTimeFormat("en", { timeZone: "Europe/Bucharest", month: "numeric" }).format(context.now)));
+    // „jud. CJ”: a county by its plate code, before „CJ” is read as the county councils
+    const coded = this.countyCodes(c, byKey);
+    this.regions(c, out);
     this.modifiers(c, out);
     await this.fiscalCodes(c, out);
     await this.people(c, out);
@@ -354,6 +365,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.institutions(c, out, compareCue !== null);
     await this.compare(c, out, compareCue);
     await this.suppliersByMarker(c, out);
+    this.monthsAlone(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
     const marked = this.markedPlaces(c, out, byKey, localities);
     const unmarked = this.unmarkedPlaces(c, byKey);
@@ -361,7 +373,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     await this.subjects(c, out);
     // „fără București”, „în afara Bucureștiului”, „exceptând Clujul”: a place cannot be left out, so it is not applied
     // (owner probe, 10 November 2026: „medicamente fără București” applied București, the opposite of the question).
-    const placesFound = [...marked, ...unmarked].sort((a, b) => a.from - b.from);
+    const placesFound = [...coded, ...marked, ...unmarked].sort((a, b) => a.from - b.from);
     const negation = (from: number) => {
       const a = c.f(from - 1), b = c.f(from - 2);
       if (["fara", "exceptand", "minus", "afara", "inafara"].includes(a)) return from - 1;
@@ -417,7 +429,7 @@ export class RulesInterpreter implements QuestionInterpreter {
   }
 
   // --------------------------------------------------------------- periods
-  private periods(c: Cursor, out: Interpretation, year: number) {
+  private periods(c: Cursor, out: Interpretation, year: number, monthNow: number) {
     // future years have no data and are not a question about the past
     const ok = (y: number) => y >= 2000 && y <= year;
     const set = (h: Hit, from?: number, to?: number, versus?: { main: number; other: number }) => {
@@ -435,7 +447,11 @@ export class RulesInterpreter implements QuestionInterpreter {
       out.period = { ...(from !== undefined ? { yearFrom: from } : {}), ...(to !== undefined ? { yearTo: to } : {}), ...(versus ? { versus } : {}), matched: c.span(h.i, h.j) };
     };
     const n = (s: string | undefined) => (s === undefined ? NaN : /^\d+$/.test(s) ? Number(s) : NUMBER_WORDS[s] ?? NaN);
-    const rules: [RegExp, (m: RegExpExecArray) => [number | undefined, number | undefined], ((m: RegExpExecArray) => { main: number; other: number })?][] = [
+    // An approximate reading says what it used („iarna trecută”, „ultimul an”, „în martie 2025”: whole years).
+    const whole = (said: string) => (from: number | undefined, to: number | undefined) =>
+      `„${said}”: am folosit ${from === to ? `tot anul ${from}` : `anii ${from}–${to} întregi`}.`;
+    const month = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie";
+    const rules: [RegExp, (m: RegExpExecArray) => [number | undefined, number | undefined], (((m: RegExpExecArray) => { main: number; other: number }) | undefined)?, ((m: RegExpExecArray) => (from: number | undefined, to: number | undefined) => string)?][] = [
       [new RegExp(`\\b(?:(?:intre|din|de la|in perioada)\\s+)?(?:anii\\s+|anul\\s+)?${YR}\\s+(?:si|pana in|pana la|pina in|pina la|la|spre)\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
       [new RegExp(`\\b(?:(?:in|pe|din)\\s+)?(?:anii\\s+)?${YR}\\s+${YR}\\b`), (m) => [Number(m[1]), Number(m[2])]],
       // "în 2025 față de 2024": the two years of a change, the earlier first; to-spec keeps both only where
@@ -445,7 +461,19 @@ export class RulesInterpreter implements QuestionInterpreter {
       [new RegExp(`\\b(?:pana|pina)(?:\\s+(?:in|la))?\\s+(?:anul\\s+)?${YR}(?:\\s+inclusiv)?\\b`), (m) => [undefined, Number(m[1])]],
       [new RegExp(`\\binainte de\\s+(?:anul\\s+)?${YR}\\b`), (m) => [undefined, Number(m[1]) - 1]],
       [new RegExp(`\\bdupa\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]) + 1, undefined]],
-      [new RegExp(`\\b(?:din|incepand cu|incepand din|de la|de prin)\\s+(?:anul\\s+)?${YR}(?:\\s+(?:incoace|pana azi|pana acum|pana in prezent|pana astazi))?\\b`), (m) => [Number(m[1]), undefined]],
+      // „din 2024” alone is that year (the contracts of 2024); „din 2024 încoace”, „începând cu 2024” run to today
+      // (owner probe, 10 November 2026)
+      [new RegExp(`\\b(?:incepand cu|incepand din|de la|de prin)\\s+(?:anul\\s+)?${YR}(?:\\s+(?:incoace|pana azi|pana acum|pana in prezent|pana astazi))?\\b`), (m) => [Number(m[1]), undefined]],
+      [new RegExp(`\\bdin\\s+(?:anul\\s+)?${YR}\\s+(?:incoace|pana azi|pana acum|pana in prezent|pana astazi)\\b`), (m) => [Number(m[1]), undefined]],
+      [/\b(?:din|de la)\s+anul\s+trecut(?:\s+(?:incoace|pana azi|pana acum))?\b/, () => [year - 1, year]],
+      [/\bde\s+(\d{1,2}|doi|trei|patru|cinci|sase|sapte|opt|noua|zece)\s+ani\s+(?:incoace|incolo)\b/, (m) => { const k = Math.max(1, Math.min(20, n(m[1]))); return [year - k + 1, year]; }],
+      [/\b(?:in\s+|pe\s+|din\s+)?(?:ultimul an|ultimele 12 luni|ultimele douasprezece luni)\b/, () => [year - 1, year], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
+      [/\bde la inceputul anului\b/, () => [year, year]],
+      [/\b(?:in timpul|pe timpul|in perioada|in|pe|din)?\s*(?:pandemiei|pandemia|pandemie)(?:\s+de\s+covid(?:\s+19)?)?\b/, () => [2020, 2021], undefined, () => () => "„pandemia”: am folosit anii 2020–2021."],
+      // the winter before today: December of one year and the start of the next, both years whole
+      [/\b(?:in\s+|pe\s+)?iarna\s+trecuta\b/, () => (monthNow >= 3 ? [year - 1, year] : [year - 2, year - 1]), undefined, () => whole("iarna trecută")],
+      // a month with its year is the whole year (months are not a filter of this search)
+      [new RegExp(`\\b(?:in\\s+|pe\\s+|din\\s+)?(?:luna\\s+)?(?:${month})\\s+(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[1])], undefined, (m) => whole(m[0].replace(/^(?:in|pe|din)\s+/, ""))],
       [/\b(?:in\s+|pe\s+|din\s+)?ultimii\s+(\d{1,2}|doi|trei|patru|cinci|sase|sapte|opt|noua|zece)\s+ani\b/, (m) => { const k = Math.max(1, Math.min(20, n(m[1]))); return [year - k + 1, year]; }],
       [/\b(?:in\s+)?ultimii\s+ani\b/, () => [year - 2, year]],
       [/\b(?:in\s+|pe\s+|din\s+)?anul\s+(?:trecut|precedent)\b/, () => [year - 1, year - 1]],
@@ -453,11 +481,12 @@ export class RulesInterpreter implements QuestionInterpreter {
       [/\bacum\s+(\d|doi|trei|patru|cinci)\s+ani\b/, (m) => [year - n(m[1]), year - n(m[1])]],
       [new RegExp(`\\b(?:(?:in|pe|pentru|din)\\s+)?(?:anul\\s+)?${YR}\\b`), (m) => [Number(m[1]), Number(m[1])]],
     ];
-    for (const [re, toYears, versus] of rules) {
+    for (const [re, toYears, versus, note] of rules) {
       for (const h of c.all(re)) {
         const [from, to] = toYears(h.m);
         if ((from !== undefined && Number.isNaN(from)) || (to !== undefined && Number.isNaN(to))) continue;
         set(h, from, to, versus?.(h.m));
+        if (note && out.period?.matched.from === h.i) out.notes.push(note(h.m)(out.period.yearFrom, out.period.yearTo));
       }
     }
   }
@@ -735,8 +764,10 @@ export class RulesInterpreter implements QuestionInterpreter {
       [/\b(?:in|din|la|de la|pentru|spre)\b/, "any"],
     ];
     // "sectorul 3", "primăria sectorului 3"
-    for (const h of c.all(/\b(?:primari(?:a|ei)\s+)?sector(?:ul|ului)?\s+([1-6])\b/)) {
-      const entries = byKey.get(`sectorul ${h.m[1]}`) ?? [];
+    // „S3”, „sect. 3”, „sectorul trei” too (owner probe, 10 November 2026)
+    const sectorNumber: Record<string, string> = { unu: "1", doi: "2", trei: "3", patru: "4", cinci: "5", sase: "6" };
+    for (const h of c.all(/\b(?:(?:primari(?:a|ei)\s+)?(?:sector(?:ul|ului)?|sect)\s+([1-6]|unu|doi|trei|patru|cinci|sase)|s([1-6]))\b/)) {
+      const entries = byKey.get(`sectorul ${sectorNumber[h.m[1] ?? ""] ?? h.m[1] ?? h.m[2]}`) ?? [];
       if (!entries.length) continue;
       c.take(h.i, h.j, "place");
       found.push({ from: h.i, to: h.j, entries, constraint: "locality", span: c.span(h.i, h.j) });
@@ -812,6 +843,40 @@ export class RulesInterpreter implements QuestionInterpreter {
   }
 
   /** Choose the place; ambiguous names become alternatives, never a guess. */
+  /** A month without a year, a quarter: understood, not applied (after the cues: „vârf în decembrie” is a signal). */
+  private monthsAlone(c: Cursor, out: Interpretation) {
+    const month = "ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie";
+    // („mai” is the month only after „luna”: „cel mai mare” is no May)
+    const monthAlone = month.replace("|mai|", "|");
+    for (const h of c.all(new RegExp(`\\b(?:in\\s+|pe\\s+)?(?:(?:luna\\s+)?(?:${monthAlone})|luna\\s+mai|(?:primul|al doilea|al treilea|ultimul)\\s+trimestru|trimestrul\\s+(?:1|2|3|4|i|ii|iii|iv))\\b`))) {
+      if (!c.isFree(h.i, h.j)) continue;
+      c.take(h.i, h.j, "modifier");
+      out.notes.push(`„${c.span(h.i, h.j).text}”: lunile și trimestrele nu sunt încă un filtru al căutării; nu le-am aplicat.`);
+    }
+  }
+
+  /** „jud. CJ”, „județul IS”: a county by its plate code (only after the county word; „CJ” alone is the county councils). */
+  private countyCodes(c: Cursor, byKey: Map<string, PlaceEntry[]>): PlaceFound[] {
+    const found: PlaceFound[] = [];
+    for (const h of c.all(new RegExp(`\\b(?:jud|judet|judetul|judetului)\\s+(${Object.keys(COUNTY_PLATES).join("|")})\\b`))) {
+      if (!c.isFree(h.i, h.j)) continue;
+      const entries = (byKey.get(placeKey(COUNTY_PLATES[h.m[1]!]!)) ?? []).filter((e) => e.kind === "county");
+      if (!entries.length) continue;
+      c.take(h.i, h.j, "place");
+      found.push({ from: h.i, to: h.j, entries, constraint: "county", span: c.span(h.i, h.j) });
+    }
+    return found;
+  }
+
+  /** A historical region is no place we can apply: said, never silently dropped or read as a town („Moldova Nouă” stays). */
+  private regions(c: Cursor, out: Interpretation) {
+    for (const h of c.all(/\b(?:(?:in|din|zona|regiunea)\s+)?(moldova|ardeal|ardealul|ardealului|transilvania|banat|banatul|banatului|dobrogea|oltenia|muntenia|crisana|bucovina)\b(?!\s+(?:noua|veche|sulita))/)) {
+      if (!c.isFree(h.i, h.j)) continue;
+      c.take(h.i, h.j, "modifier");
+      out.notes.push(`„${c.span(h.i, h.j).text}”: o regiune nu se poate aplica; am căutat în toată țara. Alege un județ pentru a restrânge.`);
+    }
+  }
+
   private settlePlaces(found: PlaceFound[], out: Interpretation) {
     if (!found.length) return;
     const explicitLocality = (f: PlaceFound) => ["locality", "municipiu", "oras", "comuna"].includes(f.constraint);
