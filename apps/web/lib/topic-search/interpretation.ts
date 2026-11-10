@@ -9,6 +9,7 @@ import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/t
 import type { Place, TopicScope } from './shared';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
 import { STOPWORDS, tokenize } from '../intent/text';
+import { NEVER_SUBJECT } from '../intent/rules';
 export { placeId, remainingWords, subjectWords };
 
 /**
@@ -244,6 +245,9 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       const periodOk = !scope.from && Boolean(wordsPeriod);
       out.applied = { q: loose.words, place: placeOk ? interpretedChip!.id : scope.place, from: periodOk ? wordsPeriod!.from : scope.from, to: periodOk ? wordsPeriod!.to : scope.to };
       out.fromWords = { place: placeOk ? interpretedChip : null, period: periodOk ? wordsPeriod : null };
+      // a place the lists cannot take (a București sector): said
+      if (!placeOk && !scope.place && interpretedPlace && !interpretedChip && loose.placeApplies && !out.note)
+        out.note = `Titlurile nu se pot restrânge la ${interpretedPlace.name}; arătăm titlurile din toată țara.`;
       if (loose.kind === 'subjects' && !loose.narrowed.length) {
         // a subject with words around it not understood ("ce firme domină salubrizarea"): its short answer, the words said
         // several subjects counted together keep the subject the question set ("parcuri + spatii verzi")
@@ -260,6 +264,11 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       }
     }
   }
+  // A question or a scope read but not trusted: the words as typed are searched, and the page says so (owner probe
+  // re-judging, 10 November 2026: a silent dead end).
+  if (!loose && !applies && !out.question && !out.answer && out.applied.q === scope.q && !out.note && result.sentence
+    && (i.intentSource === 'cue' || i.period || i.place) && !i.placeAmbiguous && !i.entityAlternatives.length)
+    out.note = 'Nu am putut citi sigur toate cuvintele; căutăm exact ce ai scris.';
   // Chips say what is searched or answered: a subject reading used for neither is not shown.
   if (!out.answer && !applies && !(loose?.kind === 'subjects' && !loose.narrowed.length)) { out.subject = null; out.otherSubjects = []; out.kind = null; }
   // „cel mai mare contract de iluminat”, „cele mai scumpe achiziții”: the acquisitions largest first, said in a note
@@ -340,6 +349,9 @@ interface LooseReading {
   placeApplies: boolean;
 }
 
+/** Work done on a subject: beside it, it narrows it („mentenanță software”, „reparații acoperiș”). */
+const ACTION = new Set(['mentenanta', 'intretinere', 'reparatii', 'reparatie', 'repararea', 'modernizare', 'modernizarea', 'reabilitare', 'reabilitarea', 'renovare', 'service']);
+
 /** Words that mark a place as one ("în Cluj", "județul Iași"); an unmarked one may be a subject or a name ("poduri"). */
 const PLACE_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'sectorul', 'sectorului', 'localitatea']);
 
@@ -363,28 +375,38 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
     const inSubject = (k: number) => i.subjects.some((s) => k >= s.matched.from && k < s.matched.to);
     if (!place && !i.period && i.intentSource !== 'cue' && tokens.every((t, k) => inSubject(k) || STOPWORDS.has(t.f))) return null;
     const narrowed: string[] = [];
+    // A word that narrows: not understood and not a function, time or place word („blocuri”, „iarna” are not a narrower
+    // domain of „anvelopare”, „deszăpezire”; owner probe re-judging, 10 November 2026).
+    const narrows = (k: number) => left.has(tokens[k]!.f) && !NEVER_SUBJECT.has(tokens[k]!.f) && !taken.has(k);
     const parts = i.subjects.map((s) => {
       const inflected = s.source === 'synonym' && !s.label.includes(' ') && foldText(s.label) !== foldText(s.matched.text);
       const words = [inflected ? s.label : s.matched.text];
-      // the words right after the subject that were not understood narrow it ("iluminat de crăciun", "măști chirurgicale")
+      // the work done on the subject narrows it too („mentenanță software” is not all software)
+      const before = s.matched.from - 1;
+      if (before >= 0 && ACTION.has(tokens[before]!.f)) { words.unshift(tokens[before]!.raw); narrowed.push(tokens[before]!.raw); taken.add(before); }
+      // the words right after the subject that were not understood narrow it ("iluminat de crăciun", "măști chirurgicale",
+      // "hrană pentru pacienți")
       let k = s.matched.to;
       while (k < tokens.length) {
         const t = tokens[k]!;
-        const next = tokens[k + 1];
-        if (t.f === 'de' && next && left.has(next.f) && !taken.has(k + 1)) { words.push(t.raw, next.raw); narrowed.push(next.raw); taken.add(k + 1); k += 2; continue; }
-        if (left.has(t.f) && !taken.has(k)) { words.push(t.raw); narrowed.push(t.raw); taken.add(k); k++; continue; }
+        if ((t.f === 'de' || t.f === 'pentru') && k + 1 < tokens.length && narrows(k + 1)) { words.push(t.raw, tokens[k + 1]!.raw); narrowed.push(tokens[k + 1]!.raw); taken.add(k + 1); k += 2; continue; }
+        if (narrows(k)) { words.push(t.raw); narrowed.push(t.raw); taken.add(k); k++; continue; }
         break;
       }
       return words.join(' ');
     });
     const ignored = [...new Set(tokens.filter((t, k) => left.has(t.f) && !taken.has(k)).map((t) => t.raw))];
+    const unknown = ignored.filter((w) => !NEVER_SUBJECT.has(foldText(w)));
+    // a name with no question, place or period around it, with words not understood, is a name: searched as typed
+    // („E.ON Energie Romania” is not „energie”)
+    if (unknown.length && !place && !i.period && i.intentSource !== 'cue') return null;
     const notes: string[] = [];
     if (narrowed.length) notes.push(`${quote(narrowed)} nu ${narrowed.length === 1 ? 'are' : 'au'} un domeniu: fără total, căutăm titlurile cu ${quote(parts)}.`);
     if (ignored.length) notes.push(`Nu am înțeles ${quote(ignored)}.`);
     // A place said as one is applied; an unmarked one only when every other word is understood and it does not follow
     // „și” like a second subject („drumuri și poduri buzău”: „Poduri” is a village, „buzău” left over; „apa nova
     // bucuresti” is a firm's name).
-    const placeApplies = Boolean(place) && (marked || (!ignored.length && !narrowed.length && tokens[place!.from - 1]?.f !== 'si'));
+    const placeApplies = Boolean(place) && (marked || (!unknown.length && !narrowed.length && tokens[place!.from - 1]?.f !== 'si'));
     // a place read but not trusted makes the whole reading doubtful: the words are searched as typed
     if (place && !placeApplies) return null;
     return { kind: 'subjects', words: parts.join(' sau '), narrowed, notes, placeApplies };
@@ -404,6 +426,9 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
   }
   // only a question or a reading with a place or period has words to drop: a name typed alone stays as typed
   // („Euro Construct Trading 98” keeps „Euro”)
+  // „cine ia banii de la primăria Craiova”: the town hall read as a place is the institution the lists look for
+  if (!i.subjects.length && !hasEntity && i.place?.kind === 'locality' && /\bprimari/.test(foldText(i.text)) && (i.intentSource === 'cue' || i.period))
+    return { kind: 'entity', words: `primăria ${i.place.name.replace(/^(?:Municipiul|Orașul|Comuna) /, '')}`, narrowed: [], notes: [], placeApplies: false };
   if (hasEntity || !i.leftover.length || (i.intentSource !== 'cue' && !i.period && !i.place)) return null;
   // nothing read but a place or a period: the words not understood are what the person is looking for
   const words = tokens.filter((t) => left.has(t.f)).map((t) => t.raw);
