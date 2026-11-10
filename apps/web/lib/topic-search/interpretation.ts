@@ -90,6 +90,11 @@ export interface TopicInterpretation {
   /** Several firms or institutions fit the name and none was chosen: the page's own section lists them
    * (owner, 3 November 2026: no separate line asking to choose). */
   entityChoice: boolean;
+  /**
+   * A subject narrowed by words not understood („concerte de revelion”): each part alone, offered when the titles holding
+   * all of them are none (re-judging, 10 November 2026: 0 titles, while „revelion” alone has 16).
+   */
+  alsoTry: string[];
 }
 
 /**
@@ -126,6 +131,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
     q: scope.q, applied: { q: scope.q, place: scope.place, from: scope.from, to: scope.to },
     fromWords: { place: null, period: null }, kind: null, note: null, notes: [], explicitPlace: null, subject: null, otherSubjects: [], placeChoices: [], placeAmbiguous: false,
     sentence: null, problem: null, confidence: 'none', hasEntity: false, answer: null, question: null, askHref: null, trusted: false, entityChoice: false,
+    alsoTry: [],
   };
   const named = explicitPlace ? placeMatchFor(explicitPlace) : null;
   if (explicitPlace && named) base.explicitPlace = { id: explicitPlace.id, label: named.kind === 'county' ? named.name : named.label, kind: named.kind };
@@ -310,6 +316,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
         // words that narrow the subject and have no domain ("uniforme școlare"): no total, which would count every uniform
         out.subject = null;
         if (!out.question) out.answer = null;
+        out.alsoTry = [...new Set([loose.narrowed.join(' '), ...i.subjects.map((x) => x.matched.text)])].filter((w) => w && foldText(w) !== foldText(loose!.words));
       }
     }
   }
@@ -330,7 +337,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (out.answer || applies || out.question || loose)
     out.notes = [...new Set([...result.interpretation.notes.filter((n) => !/^Arătăm cel mult/.test(n) && !(exactNote && /se potrivesc cu/.test(n))), ...(loose?.notes ?? [])])];
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
-  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi/.test(n))])];
+  out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
   if (largest && out.applied.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
@@ -508,8 +515,8 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
     if (narrowed.length) notes.push(`${quote(narrowed)} nu ${narrowed.length === 1 ? 'are' : 'au'} un domeniu: fără total, căutăm titlurile cu ${quote(parts)}.`);
     if (ignored.length) notes.push(`Nu am înțeles ${quote(ignored)}.`);
     // A place said as one is applied; an unmarked one only when every other word is understood and it does not follow
-    // „și” like a second subject („drumuri și poduri buzău”: „Poduri” is a village, „buzău” left over; „apa nova
-    // bucuresti” is a firm's name).
+    // „și” like a second subject („drumuri și X” where X is only a village; „apa nova bucuresti” is a firm's name). A village
+    // that is also a curated subject beside another place is read as the subject (rules.ts: „drumuri și poduri buzău”).
     const placeApplies = Boolean(place) && (marked || (!unknown.length && !narrowed.length && tokens[place!.from - 1]?.f !== 'si'));
     // a place read but not trusted makes the whole reading doubtful: the words are searched as typed
     if (place && !placeApplies) return null;

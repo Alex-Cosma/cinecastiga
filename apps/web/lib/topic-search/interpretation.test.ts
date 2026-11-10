@@ -78,7 +78,10 @@ describe('interpretation → /cauta selection', () => {
   });
 
   it('applies no place when other words are left unexplained or name a firm or institution', async () => {
-    for (const q of ['drumuri si poduri buzau', 'drumuri si poduri', 'apa nova bucuresti', 'apa nova', 'spitalul judetean buzau', 'piata romana bucuresti']) {
+    // „drumuri și poduri buzău”: „poduri” is the subject beside another place, not the village (re-judging, 10 November 2026)
+    const roads = await read('drumuri si poduri buzau');
+    expect(applyInterpretation(roads.scope, roads.result).applied).toMatchObject({ q: 'drumuri sau poduri', place: 'county:buzau' });
+    for (const q of ['drumuri si poduri', 'apa nova bucuresti', 'apa nova', 'spitalul judetean buzau', 'piata romana bucuresti']) {
       const { scope, result } = await read(q);
       const t = applyInterpretation(scope, result);
       expect(t.applied, q).toEqual({ q, place: '', from: '', to: '' });
