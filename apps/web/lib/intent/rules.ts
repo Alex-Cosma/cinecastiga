@@ -1169,10 +1169,13 @@ export class RulesInterpreter implements QuestionInterpreter {
     if (out.supplier || out.authority || out.entityAlternatives.length) return;
     const synonyms = await this.vocab.synonyms();
     const known = (w: string) => STOPWORDS.has(w) || PREPOSITION.has(w) || synonyms.some((syn) => !syn.includes(" ") && wordMatches(w, syn));
+    // „E.ON Energie Romania”: a capital letter or two is part of a name, never the connector it spells („e”, „a”)
+    const capital = (k: number) => /^[A-Z]{1,2}$/.test(c.tokens[k]!.raw);
+    const connector = (k: number) => STOPWORDS.has(c.f(k)) && !capital(k);
     for (let i = 0; i < c.tokens.length; i++) {
-      if (c.used[i] || STOPWORDS.has(c.f(i))) continue;
+      if (c.used[i] || connector(i)) continue;
       let j = i;
-      while (j < c.tokens.length && j - i < 5 && !c.used[j] && !STOPWORDS.has(c.f(j)) && !PREPOSITION.has(c.f(j))) j++;
+      while (j < c.tokens.length && j - i < 5 && !c.used[j] && !connector(j) && !(PREPOSITION.has(c.f(j)) && !capital(j))) j++;
       const words = c.tokens.slice(i, j).map((t) => t.f);
       const candidates = words.filter((w) => !known(w) && !/^\d+$/.test(w) && w.length >= 4);
       // distinctive = not even a fragment of a catalogue label ("festiv" is in "festivaluri"; "erbasu" is nowhere)

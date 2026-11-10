@@ -2493,6 +2493,9 @@ export const DRILL_SORTS = {
   supplier: "supplier_name",
   county: "county",
   cpv: "cpv_name",
+  // The whole purchase: a contract of several winners by its full value, not each winner's equal share (/cauta „cele mai
+  // mari achiziții”, re-judging 10 November 2026); a direct acquisition by its value.
+  whole: "contract_value_full",
 } as const;
 export type DrillSort = keyof typeof DRILL_SORTS;
 
@@ -3137,8 +3140,11 @@ export async function runRows(
     : spec.block === "table" && spec.dim === "county" ? "county" as const : spec.block === "table" && spec.dim === "supplier" ? "firms" as const
     : spec.block === "table" && spec.dim === "authority" ? "authorities" as const : null;
   const defaultSort = !profile && !grounding.authority?.entityId && !grounding.supplier?.entityId ? "source" : "value";
-  const sortKey: DrillSort = opts.sort && Object.hasOwn(DRILL_SORTS, opts.sort) ? opts.sort : defaultSort;
-  const sortFrag = { source: sql`d.ref_id`, value: sql`d.closing_value`, date: sql`d.finalization_date`, authority: sql`d.authority_name`, supplier: sql`d.supplier_name`, county: sql`d.county`, cpv: sql`d.cpv_name` }[sortKey];
+  const asked: DrillSort = opts.sort && Object.hasOwn(DRILL_SORTS, opts.sort) ? opts.sort : defaultSort;
+  // A signal's keyed records are direct acquisitions only, without a contract's full value: by value there.
+  const sortKey: DrillSort = asked === "whole" && (flagKeyed || dataset === "da") ? "value" : asked;
+  const sortFrag = { source: sql`d.ref_id`, value: sql`d.closing_value`, date: sql`d.finalization_date`, authority: sql`d.authority_name`, supplier: sql`d.supplier_name`, county: sql`d.county`, cpv: sql`d.cpv_name`,
+    whole: sql`coalesce(d.contract_value_full, d.closing_value)` }[sortKey];
   const dirFrag = sortKey === "source" ? opts.dir === "asc" ? sql`asc` : sql`desc`
     : opts.dir === "asc" ? sql`asc nulls last` : sql`desc nulls last`;
   const requestedPage = Number.isFinite(page) ? Math.max(0, Math.floor(page)) : 0;
