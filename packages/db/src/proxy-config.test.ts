@@ -15,3 +15,21 @@ describe('proxy pool file',()=>{
   try{parseSeapProxies(JSON.stringify(same));throw Error('accepted');}catch(e){expect(String(e)).not.toContain('pass-fixture');expect(e).toBeInstanceOf(SeapProxyConfigurationError);}
  });
 });
+describe('loading the pool file',()=>{
+ it('parses a file once per version and reads a changed file again',async()=>{
+  const {mkdtemp,writeFile,rm}=await import('node:fs/promises');const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+  const {loadSeapProxies}=await import('./proxy-config.js');
+  const dir=await mkdtemp(join(tmpdir(),'seap-pool-')),file=join(dir,'pool.json');
+  try{
+   await writeFile(file,pool(3));
+   const first=await loadSeapProxies({SEAP_PROXY_FILE:file}),again=await loadSeapProxies({SEAP_PROXY_FILE:file});
+   expect(first).toHaveLength(3);expect(again).toEqual(first);
+   // Callers get their own array: changing it does not change what the next admission reads.
+   first.pop();expect(await loadSeapProxies({SEAP_PROXY_FILE:file})).toHaveLength(3);
+   await writeFile(file,pool(5));
+   expect(await loadSeapProxies({SEAP_PROXY_FILE:file})).toHaveLength(5);
+   await writeFile(file,'not json');
+   await expect(loadSeapProxies({SEAP_PROXY_FILE:file})).rejects.toBeInstanceOf(SeapProxyConfigurationError);
+  }finally{await rm(dir,{recursive:true,force:true});}
+ });
+});

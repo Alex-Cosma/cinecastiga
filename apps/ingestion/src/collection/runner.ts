@@ -117,7 +117,11 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
    const [t]=next?await tx`select * from app.collection_tasks where id=${next.id} and status='pending' for update`:[];
    if(t){await tx`update app.collection_tasks set status='running',started_at=clock_timestamp() where id=${t.id}`;return {t:t as unknown as Task,end:String(b.seed_end_day??b.end_day)};}
   }
-  const [left]=await tx`select count(*) filter(where status in ('pending','running'))::int pending,count(*) filter(where status in ('failed','deferred'))::int gaps from app.collection_tasks where batch_id=${b.id}`;
+  // Nothing to claim: close the batch only once nothing is pending or running. Existence checks on the queue index, not a
+  // count of the whole batch: idle lanes run this every second under the batch lock, and the count took seconds with a
+  // million tasks, stalling every lane behind it (11 November 2026).
+  const [left]=await tx`select exists(select 1 from app.collection_tasks where batch_id=${b.id} and status in ('pending','running')) pending,
+   exists(select 1 from app.collection_tasks where batch_id=${b.id} and status in ('failed','deferred')) gaps`;
   if(!left?.pending)await tx`update app.collection_batches set status=${left?.gaps?'incomplete':'collected'} where id=${b.id}`;
   return null;
  });
