@@ -69,7 +69,9 @@ export default function DocumentCollection(){
  const failed=Number(data.jobs.failed),held=Number(data.jobs.held),retries=Number(data.jobs.retries),k=data.classification;
  const streamPaused=data.source.paused_streams.includes('documents'),auto=autoDraft??c.automatic_downloads;
  const bars=[
-  {done:Number(data.inventory.checked),total:Number(data.coverage.eligible)},
+  // Checked against what the collector registered (participation and award notices), not against today's eligible
+  // participation notices: those are a different set and hid ~50 thousand notices still to list (11 November 2026).
+  {done:Number(data.inventory.checked),total:Number(data.inventory.registered)},
   {done:Number(k.classified),total:Number(k.total)},
   {done:Number(k.specifications_downloaded),total:Number(k.specifications)},
   {done:Number(k.specifications_ready),total:Number(k.specifications)},
