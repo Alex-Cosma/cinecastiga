@@ -32,6 +32,9 @@ _*.mjs
 # claude local session state
 .claude/
 
+# Side work of agents and the owner: scratch scripts, downloads, notes, clones, git worktrees. Never committed.
+/agents-work/
+
 # production dumps staged for upload (infra/prod/README.md)
 infra/prod/dumps/
 
