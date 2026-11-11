@@ -6,7 +6,8 @@ import { getAcquisitionContext, getAcquisitionDetail } from "@/lib/acquisition-d
 import { daUrl } from "@/lib/elicitatie";
 import { formatExactDecimal, formatCalendarDate, formatInt, formatRon, cleanName, countyLabel } from "@/lib/format";
 import { daState, durationLabel } from "@/lib/record-labels";
-import { getAwardItemPrices, productHref } from "@/lib/unit-prices";
+import { priceAdmin } from "@/lib/price-access";
+import { getAwardItemPrices, productHref, type ItemPrice } from "@/lib/unit-prices";
 import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shared";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
@@ -30,7 +31,9 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const d = await acquisitionDetail(id);
   if (!d) notFound();
-  const [x, prices] = await Promise.all([getAcquisitionContext(id, d), getAwardItemPrices(id)]);
+  // Unit prices are for administrators only until the data is complete (owner, 11 November 2026): nobody else's
+  // page reads or carries them. Without a session cookie nothing is looked up (lib/price-access.ts).
+  const [x, prices] = await Promise.all([getAcquisitionContext(id, d), priceAdmin().then((admin): Promise<Record<string, ItemPrice>> | Record<string, ItemPrice> => admin ? getAwardItemPrices(id) : {})]);
   const title = titleOf(d);
   const state = daState(d.state);
   // Only a refused or unaccepted offer is "not a purchase"; a state the source does not give stays a purchase in doubt.
@@ -95,10 +98,14 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
             const p = prices[it.itemId];
             if (!p) return null;
             const ratio = p.median ? p.pricePerUnit / p.median : null;
-            return <span className={`record-unit-price${ratio != null && ratio >= 2 ? " is-lead" : ""}`}>
+            // Marked only for the mart's lead (p.lead), never from the multiple alone.
+            return <span className={`record-unit-price${p.lead ? " is-lead" : ""}`}>
               {formatUnitPrice(p.pricePerUnit)} {p.per}
-              {p.median != null && <> · mediana {p.year}: {formatUnitPrice(p.median)}{ratio != null && ratio >= 1.25 && <b> · {ratio >= 2 ? ratioWords(ratio) : formatRatio(ratio)}</b>}</>}
-              {" · "}<Link href={productHref(p.family, p.pack, p.year)} prefetch={false}>{p.packLabel ? `${p.name}, ${p.packLabel}` : p.name}</Link>
+              {p.median != null && <> · mediana {p.year}: {formatUnitPrice(p.median)}{ratio != null && ratio >= 1.25 && <b> · {p.lead ? ratioWords(ratio) : formatRatio(ratio)}</b>}</>}
+              {" · "}<Link href={d.authorityId
+                // The way back opens this institution's row among the product's buyers (every buyer when it is not a lead).
+                ? `${productHref(p.family, p.pack, p.year, { ...(p.lead ? {} : { toate: "1" }), deschis: `${d.authorityId}-${p.year}` })}#institutie-${d.authorityId}-${p.year}`
+                : productHref(p.family, p.pack, p.year)} prefetch={false}>{p.packLabel ? `${p.name}, ${p.packLabel}` : p.name}</Link>
             </span>;
           })()}</td>
           <td className="record-num" data-label="Cantitate:">{it.quantity ?? "—"}</td>

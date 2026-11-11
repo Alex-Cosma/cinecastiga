@@ -81,16 +81,46 @@ export function leadsCount(n: number): string {
   return n === 0 ? "niciun preț peste dublu" : `${whole.format(n)} peste dublu`;
 }
 
+/** „Niciun preț peste dublu”: a sentence opens with a capital. */
+export const sentenceCase = (text: string) => text.charAt(0).toLocaleUpperCase("ro-RO") + text.slice(1);
+
+/**
+ * „cele mai mari 14 din 195”: the dots of a strip are the largest leads by lei above the median, not all of them
+ * (owner, 11 November 2026: the strip says so). Null when every lead has its dot.
+ */
+export function largestOf(shown: number, total: number): string | null {
+  return total > shown && shown > 0 ? `cele mai mari ${whole.format(shown)} din ${whole.format(total)}` : null;
+}
+
+/**
+ * Every lead of a strip as one path of ticks on the strip's axis (an SVG of viewBox "0 0 100 1", stretched): the
+ * place of each multiple to a quarter of a percent, drawn once, so a product with hundreds of leads is one node and
+ * the reader sees where they all sit, not only the named dots.
+ */
+export function leadTicksPath(ratios: readonly number[]): string {
+  const at = [...new Set(ratios.filter((r) => r > 0).map((r) => Math.round(axisPos(r) * 4) / 4))].sort((a, b) => a - b);
+  // The edges keep their tick inside the strip.
+  return at.map((x) => `M${Math.min(99.75, Math.max(0.25, x))} 0V1`).join("");
+}
+
 /** „442 de instituții”, „o instituție”. */
 export function buyersWord(n: number): string {
   return countWord(n, "o instituție", "instituții");
 }
 
-/** What a dot of a strip needs to say on hover: one lead, in the page's words. */
-export interface StripDot { id: string; year: number; name: string; county: string | null; price: number; median: number; ratio: number; quantity: number; excess: number; awards: number }
-/** A lead as the dots need it, from the server's shape. */
-export const dotOf = (l: { authorityId: string; year: number; name: string; county: string | null; price: number; median: number; ratio: number; quantity: number; excess: number; awards: number }): StripDot =>
-  ({ id: l.authorityId, year: l.year, name: l.name, county: l.county, price: l.price, median: l.median, ratio: l.ratio, quantity: l.quantity, excess: l.excess, awards: l.awards });
+/**
+ * A dot of a strip: one lead (an institution in one year). The list of every product sends the light form (the name,
+ * the price, the multiple and the lei above the median); the product page adds the rest for its hover card.
+ */
+export interface StripDot {
+  id: string; year: number; name: string; price: number; ratio: number; excess: number;
+  /** Always true on a dot today (only leads are drawn); carried so a mark never decides it from the multiple. */
+  lead: boolean;
+  county?: string | null; median?: number; quantity?: number; awards?: number;
+}
+/** A lead as the product page's dots need it (the full form), from the server's shape. */
+export const dotOf = (l: { authorityId: string; year: number; name: string; county: string | null; price: number; median: number; ratio: number; quantity: number; excess: number; awards: number; lead: boolean }): StripDot =>
+  ({ id: l.authorityId, year: l.year, name: l.name, county: l.county, price: l.price, median: l.median, ratio: l.ratio, quantity: l.quantity, excess: l.excess, awards: l.awards, lead: l.lead });
 
 /** „2019”, „2018 și 2019”, „2018, 2019, 2025 și 2026”: the years a view holds. */
 export function yearsWord(years: readonly number[]): string {
@@ -105,10 +135,12 @@ export function medianRange(lo: number, hi: number, per: string): string {
 
 // ── the address of a view ──────────────────────────────────────────────────
 export type PriceOrder = "dublu" | "multiplu" | "lei";
+/** The list opens by the lei above the median (owner, 11 November 2026). */
+export const DEFAULT_PRICE_ORDER: PriceOrder = "lei";
 export const PRICE_ORDERS: { value: PriceOrder; label: string }[] = [
+  { value: "lei", label: "Lei peste mediană" },
   { value: "dublu", label: "Cele mai multe peste dublu" },
   { value: "multiplu", label: "Cel mai mare multiplu" },
-  { value: "lei", label: "Lei peste mediană" },
 ];
 
 export interface PriceState { year: number | null; group: PriceGroup | null; product: string | null; county: string | null; order: PriceOrder }
@@ -121,7 +153,7 @@ export function priceHref(state: PriceState, patch: Partial<PriceState> = {}): s
   if (s.year) p.set("an", String(s.year));
   if (s.product) p.set("produs", s.product); else if (s.group) p.set("grupa", s.group);
   if (s.county) p.set("judet", s.county);
-  if (s.order !== "dublu") p.set("ordine", s.order);
+  if (s.order !== DEFAULT_PRICE_ORDER) p.set("ordine", s.order);
   const q = p.toString();
   return q ? `/preturi?${q}` : "/preturi";
 }
@@ -135,3 +167,8 @@ export function productHref(family: string, pack: string, year: number | null, e
   return `/preturi/${family}${q ? `?${q}` : ""}`;
 }
 
+
+/** The product page opened on one institution in one year: its row first, opened (`deschis`, unit-prices-params.ts). */
+export function leadHref(family: string, pack: string, year: number | null, lead: { authorityId: string; year: number }): string {
+  return `${productHref(family, pack, year, { deschis: `${lead.authorityId}-${lead.year}` })}#institutie-${lead.authorityId}-${lead.year}`;
+}

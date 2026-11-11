@@ -45,9 +45,11 @@ export default function PriceFilters({ state, years, counties, options }: {
     else if (e.key === "Enter") { e.preventDefault(); const o = active >= 0 ? hits[active] : text.trim() ? hits[0] : null; if (o || !text.trim()) pick(o ?? null); }
     else if (e.key === "Escape") { setOpen(false); setText(chosen?.label ?? ""); }
   };
-  return <div className="pr-filters">
+  // A real GET form: without JavaScript the selects and the button below still filter the list (the typeahead becomes
+  // two plain selects); with it every change replaces the list in place and the button is never rendered.
+  return <form className="pr-filters" method="get" action="/preturi" onSubmit={(e) => e.preventDefault()}>
     <label className="pr-field pr-year">An
-      <select value={state.year ?? ""} onChange={(e) => go({ year: e.target.value ? Number(e.target.value) : null })}>
+      <select name="an" value={state.year ?? ""} onChange={(e) => go({ year: e.target.value ? Number(e.target.value) : null })}>
         <option value="">Toți anii</option>
         {years.map((y) => <option key={y} value={y}>{y}</option>)}
       </select>
@@ -56,14 +58,14 @@ export default function PriceFilters({ state, years, counties, options }: {
       <label htmlFor={`${listId}-input`}>Grupă sau produs</label>
       <div className="pr-pick-box">
         <input id={`${listId}-input`} value={text} placeholder="Toate: scrie „legume”, „lapte”…" autoComplete="off" spellCheck={false}
-          role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list"
+          role="combobox" aria-expanded={open} aria-controls={open ? listId : undefined} aria-autocomplete="list"
           aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
           onChange={(e) => { setText(e.target.value); setOpen(true); setActive(-1); }}
-          onFocus={(e) => { e.currentTarget.select(); setOpen(true); }} onKeyDown={onKey} />
+          onFocus={(e) => e.currentTarget.select()} onClick={() => setOpen(true)} onKeyDown={onKey} />
         {chosen && <button type="button" className="pr-clear" onClick={() => pick(null)} aria-label={`Arată toate produsele, nu doar ${chosen.label}`}>
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>}
       </div>
-      {open && <ul className="pr-options" id={listId} role="listbox" aria-label="Grupe și produse">
+      {open && <ul className="pr-options" id={listId} role="listbox" aria-label="Grupe și produse" tabIndex={-1}>
         {hits.length === 0 && <li className="pr-option-none" role="presentation">Nicio grupă sau produs pentru „{text.trim()}”.</li>}
         {hits.map((o, i) => <li key={`${o.kind}-${o.value}`} id={`${listId}-${i}`} role="option" aria-selected={i === active}
           className={`pr-option pr-option-${o.kind}${i === active ? " is-active" : ""}`}
@@ -72,16 +74,32 @@ export default function PriceFilters({ state, years, counties, options }: {
         </li>)}
       </ul>}
     </div>
+    <noscript>
+      <style>{".pr-pick{display:none!important}"}</style>
+      <label className="pr-field pr-pick-plain">Grupă
+        <select name="grupa" defaultValue={state.group ?? ""}>
+          <option value="">Toate</option>
+          {options.filter((o) => o.kind === "group").map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </label>
+      <label className="pr-field pr-pick-plain">Produs
+        <select name="produs" defaultValue={state.product ?? ""}>
+          <option value="">Toate</option>
+          {options.filter((o) => o.kind === "product").map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </label>
+    </noscript>
     <label className="pr-field pr-county">Județ
-      <select value={state.county ?? ""} onChange={(e) => go({ county: e.target.value || null })}>
+      <select name="judet" value={state.county ?? ""} onChange={(e) => go({ county: e.target.value || null })}>
         <option value="">Toate</option>
         {counties.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
     </label>
     <label className="pr-field pr-order">Ordine
-      <select value={state.order} onChange={(e) => go({ order: e.target.value as PriceState["order"] })}>
+      <select name="ordine" value={state.order} onChange={(e) => go({ order: e.target.value as PriceState["order"] })}>
         {PRICE_ORDERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </label>
-  </div>;
+    <noscript><button type="submit" className="pr-submit">Arată</button></noscript>
+  </form>;
 }

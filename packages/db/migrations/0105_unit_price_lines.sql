@@ -3,6 +3,9 @@
 -- spread across buyers. Rebuilt (TRUNCATE + insert) by every processing run after the title search; listed in
 -- infra/prod/shadow-derived.txt so the shadow build creates them empty. seap_web reads them through the marts default
 -- privileges (infra/prod/app-grants.sql). Idempotent.
+-- A lead (owner, 11 November 2026): unit_price_buyers.lead = at least twice the median, in at least two awards, at least
+-- 500 lei above the median, in a group of at least twenty buyers; unit_price_groups.leads, excess and max_ratio count
+-- the lead rows only (excess_all: every buyer at twice the median or more).
 CREATE TABLE IF NOT EXISTS "marts"."unit_price_lines" (
 	"item_id" bigint PRIMARY KEY NOT NULL,
 	"family" text NOT NULL,
@@ -39,6 +42,7 @@ CREATE TABLE IF NOT EXISTS "marts"."unit_price_buyers" (
 	"median" numeric,
 	"ratio" numeric,
 	"excess" numeric,
+	"lead" boolean DEFAULT false NOT NULL,
 	"supplier_ids" bigint[] DEFAULT '{}' NOT NULL,
 	CONSTRAINT "unit_price_buyers_pkey" PRIMARY KEY("family","pack","year","authority_id")
 );--> statement-breakpoint
@@ -56,6 +60,7 @@ CREATE TABLE IF NOT EXISTS "marts"."unit_price_groups" (
 	"p90" numeric NOT NULL,
 	"leads" integer NOT NULL,
 	"excess" numeric NOT NULL,
+	"excess_all" numeric DEFAULT 0 NOT NULL,
 	"max_ratio" numeric,
 	CONSTRAINT "unit_price_groups_pkey" PRIMARY KEY("family","pack","year")
 );

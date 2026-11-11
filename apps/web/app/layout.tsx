@@ -13,6 +13,7 @@ import { Suspense } from "react";
 import { G } from "@/components/ghost/Ghost";
 import { NavPending } from "@/components/ghost/client";
 import ReportProblem from "@/components/feedback/ReportProblem";
+import FooterAdminLinks from "./FooterAdminLinks";
 import FooterAuthLink from "./FooterAuthLink";
 import HeaderUserNav from "./HeaderUserNav";
 import SiteNav from "./SiteNav";
@@ -88,7 +89,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
                 <li><Link href="/harta">Hartă</Link></li>
-                <li><Link href="/preturi">Prețuri pe unitate</Link></li>
+                <FooterAdminLinks />
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>

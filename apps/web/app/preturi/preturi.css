@@ -1,14 +1,23 @@
 /* Unit prices (owner, 10–11 November 2026): Banda prețurilor. One strip per product and pack on a shared "times the
    median" axis: the median a forest rule, twice the median a dashed risk rule, eight buyers in ten a pale band, the
-   middle half a dark band, the leads risk dots, the furthest named. Tokens only (DESIGN.md); light and dark follow. */
+   middle half a dark band, every lead a risk tick, the largest leads risk dots, the first named. Tokens only
+   (DESIGN.md); light and dark follow. Every mark reads at 3:1 or more against the row it sits on (paper, the hovered
+   row, the opened row): the marks are solid and outlined, never faded (audit, 11 November 2026). */
+.pr-page {
+  /* The outline of the pale band and of the histogram: between the accent and its line, 3:1 on paper and on a tinted row. */
+  --pr-edge: color-mix(in oklab, var(--accent) 62%, var(--accent-line));
+  /* What a mark's halo and a tag's backdrop match: the row's own background. */
+  --pr-bg: var(--paper);
+}
 .pr-sub { max-width: 72ch; }
 .pr-region { margin-top: 22px; }
+.pr-note { margin: 12px 0 0; max-width: 72ch; font-size: 13px; color: var(--ink2); }
 
 /* ── the bar: filters and the count ─────────────────────────────────────── */
 .pr-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px 28px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.pr-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.pr-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 0; }
 .pr-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--muted); }
-.pr-field select, .pr-pick-box input { font: 500 15px/1.3 var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line2); border-radius: 6px; padding: 9px 11px; min-height: 42px; }
+.pr-field select, .pr-pick-box input { font: 500 15px/1.3 var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line2); border-radius: 6px; padding: 9px 11px; min-height: 44px; }
 .pr-field select { min-width: 140px; padding-right: 30px; }
 .pr-year select { min-width: 96px; }
 .pr-field select:hover, .pr-pick-box input:hover { border-color: var(--accent-line); }
@@ -17,11 +26,11 @@
 .pr-pick-box { position: relative; }
 .pr-pick-box input { width: 280px; padding-right: 38px; }
 .pr-pick-box input::placeholder { color: var(--muted); }
-.pr-clear { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink2); cursor: pointer; }
+.pr-clear { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink2); cursor: pointer; }
 .pr-clear svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 .pr-clear:hover { background: var(--sunk); color: var(--ink); }
 .pr-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
-.pr-options { position: absolute; z-index: 30; left: 0; top: calc(100% + 6px); width: max(100%, 320px); max-height: min(360px, 60vh); overflow: auto; margin: 0; padding: 6px; list-style: none;
+.pr-options { position: absolute; z-index: 30; left: 0; top: calc(100% + 6px); width: min(max(100%, 320px), calc(100vw - 36px)); max-height: min(360px, 60vh); overflow: auto; margin: 0; padding: 6px; list-style: none;
   background: var(--surface); border: 1px solid var(--line2); border-radius: 10px; box-shadow: var(--shadow2); font-weight: 400; }
 .pr-option { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--ink); font-size: 15px; }
 .pr-option small { font-size: 12px; color: var(--muted); white-space: nowrap; }
@@ -29,8 +38,11 @@
 .pr-option-group + .pr-option-product { margin-top: 6px; border-top: 1px solid var(--line); padding-top: 11px; }
 .pr-option.is-active { background: var(--accent-soft); }
 .pr-option.is-active small { color: var(--ink2); }
-.pr-option-none { padding: 10px; color: var(--ink2); font-size: 14px; }
-.pr-total { margin: 0 0 0 auto; text-align: right; }
+.pr-option-none { padding: 10px; color: var(--ink2); font-size: 13px; }
+/* Without JavaScript: the form's own button (rendered only inside <noscript>). */
+.pr-submit { align-self: flex-end; min-height: 44px; padding: 0 18px; border: 1px solid var(--accent); border-radius: 7px; background: var(--accent); color: var(--on-accent); font: 600 15px/1 var(--body); cursor: pointer; }
+/* Three lines always, so the list under the bar starts at the same place for every answer. */
+.pr-total { margin: 0 0 0 auto; text-align: right; min-height: 68px; }
 .pr-total strong { display: block; font: 700 24px/1.1 var(--display); letter-spacing: -.02em; color: var(--ink); }
 .pr-total span { display: block; font-size: 13px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 .pr-empty, .pr-none { color: var(--ink2); padding: 18px 0; }
@@ -52,53 +64,58 @@
 .pr-sum { display: grid; grid-template-columns: var(--pr-cols); gap: 24px; align-items: center; padding: 9px 0; cursor: pointer; list-style: none;
   transition: background-color var(--fast) var(--ease); }
 .pr-sum::-webkit-details-marker { display: none; }
-.pr-sum:hover { background: var(--sunk); }
-.pr-sum:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 4px; }
-.pr-row[open] > .pr-sum { background: var(--accent-soft); }
+.pr-sum:hover { --pr-bg: var(--sunk); background: var(--sunk); }
+.pr-sum:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 6px; }
+.pr-row[open] > .pr-sum { --pr-bg: var(--accent-soft); background: var(--accent-soft); }
 .pr-label { min-width: 0; padding-left: 10px; }
 .pr-label b { display: block; font: 700 20px/1.15 var(--display); letter-spacing: -.015em; color: var(--ink); }
 .pr-pack { display: block; font-size: 13px; color: var(--ink2); margin-top: 2px; }
 .pr-label small { display: block; margin-top: 3px; font: 500 12px/1.4 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-.pr-row[open] .pr-label small { color: var(--ink2); }
+/* On a tinted row the small text takes the stronger ink: --muted is at the AA limit on paper and under it on a tint. */
+.pr-sum:hover .pr-label small, .pr-row[open] .pr-label small { color: var(--ink2); }
 .pr-strip { position: relative; display: block; height: 48px; }
 .pr-count { padding-right: 10px; text-align: right; }
 .pr-count b { display: block; font: 700 22px/1 var(--display); color: var(--risk); font-variant-numeric: tabular-nums; }
 .pr-count small { font-size: 12px; color: var(--ink2); }
 /* The column's header says what the number counts (owner, 11 November 2026); on phones, where the header is hidden, the number keeps its word. */
 .pr-count-word { display: none; }
-@media (max-width: 700px) { .pr-count-word { display: block; } }
 .pr-row-quiet .pr-count b { color: var(--muted); }
-.pr-mixed { display: inline-block; margin-top: 5px; padding: 1px 8px; border-radius: 999px; background: var(--amber-soft); color: var(--amber-pill); font-size: 12px; font-style: normal; font-weight: 600; white-space: nowrap; }
+.pr-sum:hover .pr-count b, .pr-row-quiet[open] .pr-count b { color: var(--ink2); }
+.pr-row:not(.pr-row-quiet) .pr-sum:hover .pr-count b, .pr-row[open]:not(.pr-row-quiet) .pr-count b { color: var(--risk); }
+.pr-thin { display: block; line-height: 1.35; }
+.pr-mixed { display: inline-block; margin: 5px 0 0 4px; padding: 1px 8px; border-radius: 999px; background: var(--amber-soft); color: var(--amber-pill); font-size: 12px; font-style: normal; font-weight: 600; white-space: nowrap; }
 
 /* the marks, shared by the strip and the product's big strip */
 .pr-marks { position: absolute; inset: 0; }
-.pr-band { position: absolute; top: 27px; height: 12px; border-radius: 6px; background: var(--accent-line); }
-.pr-core { background: var(--accent); opacity: .85; }
+.pr-band { position: absolute; top: 27px; height: 12px; border-radius: 6px; background: var(--accent-line); box-shadow: inset 0 0 0 1px var(--pr-edge); }
+.pr-core { background: var(--accent); box-shadow: none; }
 .pr-rule { position: absolute; top: 0; bottom: 0; width: 0; }
 .pr-median { border-left: 2px solid var(--accent); }
-.pr-double { border-left: 1.5px dashed var(--risk); opacity: .7; }
-.pr-dot { position: absolute; top: 28px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--risk); opacity: .5; box-shadow: 0 0 0 2px var(--paper); }
-.pr-dot-named { top: 27px; width: 12px; height: 12px; margin-left: -6px; opacity: 1; }
-.pr-row[open] .pr-dot, .pr-sum:hover .pr-dot { box-shadow: 0 0 0 2px var(--sunk); }
-.pr-row[open] .pr-dot { box-shadow: 0 0 0 2px var(--accent-soft); }
+.pr-double { border-left: 1.5px dashed var(--risk); }
+/* Every lead, as a tick under the dots: where they all sit, not only the largest. */
+.pr-ticks { position: absolute; left: 0; top: 42px; width: 100%; height: 5px; overflow: visible; pointer-events: none; }
+.pr-ticks path { fill: none; stroke: var(--risk); stroke-width: 1px; }
+/* A dot is solid risk with a halo of the row's own background, so neighbours stay apart without fading any of them. */
+.pr-dot { position: absolute; top: 28px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--risk); box-shadow: 0 0 0 1.5px var(--pr-bg); }
+.pr-dot-named { top: 27px; width: 12px; height: 12px; margin-left: -6px; box-shadow: 0 0 0 2px var(--pr-bg), 0 0 0 3.5px var(--risk); z-index: 2; }
 /* A named lead: the name may shorten, the multiple never; a backdrop keeps the rules from striking through it. */
-.pr-tag { position: absolute; top: 2px; transform: translateX(-50%); display: inline-flex; gap: .3em; align-items: baseline; white-space: nowrap; padding: 0 4px; border-radius: 3px;
-  background: var(--paper); font-size: 12px; font-weight: 600; color: var(--risk); line-height: 1.4; transition: background-color var(--fast) var(--ease); }
-.pr-tag-name { display: inline-block; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
-.pr-tag b, .pr-strip-lead b { font-weight: 700; flex: none; }
-.pr-sum:hover .pr-tag { background: var(--sunk); }
-.pr-row[open] .pr-tag { background: var(--accent-soft); }
-.pr-dot-over { background: var(--paper); border: 2px solid var(--risk); box-sizing: border-box; opacity: 1; }
+.pr-tag { position: absolute; top: 2px; transform: translateX(-50%); display: flex; align-items: baseline; box-sizing: border-box; white-space: nowrap; padding: 0 4px; border-radius: 6px;
+  background: var(--pr-bg); font-size: 12px; font-weight: 600; color: var(--risk); line-height: 1.4; transition: background-color var(--fast) var(--ease); }
+.pr-tag-name { flex: 0 1 auto; min-width: 0; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; }
+.pr-tag-x { flex: none; white-space: pre; }
+.pr-tag b, .pr-strip-lead b { font-weight: 700; }
+.pr-dot-over { background: var(--pr-bg); border: 2px solid var(--risk); box-sizing: border-box; }
 .pr-strip-lead { display: none; }
 .pr-tag-end { transform: translateX(-100%); margin-left: 8px; }
 
 /* ── a strip opened: its leads ─────────────────────────────────────────── */
 .pr-open { padding: 6px 10px 18px; }
-.pr-caution { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--amber-line); border-radius: 8px; background: var(--amber-soft); color: var(--amber-ink); font-size: 13px; max-width: 80ch; }
+.pr-open-head { margin: 10px 0 2px; font-size: 12px; color: var(--ink2); }
+.pr-caution { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--amber-line); border-radius: 8px; background: var(--amber-soft); color: var(--amber-ink); font-size: 13px; max-width: 72ch; }
 .pr-leads { list-style: none; margin: 0; padding: 0; }
-.pr-lead, .pr-buyer > summary, .pr-buyer-cols { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) 64px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 76px; gap: 14px; align-items: center; }
+.pr-lead { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) 64px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 76px; gap: 14px; align-items: center; }
 .pr-lead { padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink2); }
-.pr-lead small, .pr-buyer small { display: block; font-size: 12px; color: var(--muted); }
+.pr-lead small { display: block; font-size: 12px; color: var(--muted); }
 .pr-lead-who { font-weight: 600; color: var(--ink); min-width: 0; }
 .pr-lead-who small { font-weight: 400; }
 .pr-lead-price, .pr-lead-qty, .pr-lead-lei { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -107,133 +124,91 @@
 .pr-lead-lei { color: var(--ink); font-weight: 600; }
 .pr-lead-lei small { font-family: var(--body); font-weight: 400; }
 .pr-lead-sup { font-size: 12px; overflow-wrap: anywhere; }
-.pr-lead-open { justify-self: end; padding: 5px 11px; border: 1px solid var(--accent-line); border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--accent-ink); text-decoration: none; white-space: nowrap; }
+.pr-lead-open { justify-self: end; padding: 5px 11px; border: 1px solid var(--pr-edge); border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--accent-ink); text-decoration: none; white-space: nowrap; }
 .pr-lead-open:hover { background: var(--accent-soft); }
 .pr-lead-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.pr-more { margin: 12px 0 0; font-size: 14px; font-weight: 600; }
+.pr-lead-open-ghost { border-color: transparent; width: 60px; box-sizing: border-box; }
+.pr-load-error { margin: 12px 0; font-size: 13px; color: var(--ink2); }
+.pr-retry { margin-left: 6px; min-height: 32px; padding: 4px 11px; border: 1px solid var(--pr-edge); border-radius: 7px; background: var(--surface); color: var(--accent-ink); font: 600 13px/1.2 var(--body); cursor: pointer; }
+.pr-retry:hover { background: var(--accent-soft); }
+.pr-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pr-more { margin: 12px 0 0; font-size: 13px; font-weight: 600; }
+.pr-more a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+/* Products without a lead under a county or a year: one quiet line, opened on demand. */
+.pr-fold { border-bottom: 1px solid var(--line); }
+.pr-fold > summary { padding: 14px 10px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--ink2); width: fit-content; }
+.pr-fold > summary:hover { color: var(--ink); }
+.pr-fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.pr-fold[open] > summary { border-bottom: 1px solid var(--line); width: auto; }
+.pr-fold > .pr-row:last-child { border-bottom: 0; }
+.pr-none-all { padding: 22px 10px 6px; }
 
 /* ── the product page ─────────────────────────────────────────────────── */
-.pr-crumb { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-.pr-crumb a { color: var(--ink2); }
+.pr-crumb { margin: 0 0 6px; font-size: 13px; color: var(--ink2); }
+.pr-crumb a { color: var(--ink2); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .pr-switch { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 18px 0 6px; }
 .pr-tabs { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
-.pr-tabs a { display: inline-block; padding: 7px 14px; border: 1px solid var(--line2); border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--ink2); text-decoration: none; background: var(--surface); }
-.pr-tabs a:hover { border-color: var(--accent-line); color: var(--ink); }
+.pr-tabs a { display: inline-flex; align-items: center; padding: 7px 14px; border: 1px solid var(--line2); border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink2); text-decoration: none; background: var(--surface); }
+.pr-tabs a:hover { border-color: var(--pr-edge); color: var(--ink); }
 .pr-tabs a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .pr-tabs a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pr-hero { margin-top: 22px; }
 .pr-hero-line { margin: 0 0 12px; max-width: 46ch; font: 500 22px/1.3 var(--display); letter-spacing: -.012em; color: var(--ink); }
 .pr-hero-line b { font-weight: 700; }
 .pr-big { position: relative; margin: 18px 0 8px; padding: 0 2px; }
-.pr-big .pr-marks { position: relative; height: 190px; }
-.pr-big .pr-bins { position: absolute; left: 0; right: 0; top: 56px; bottom: 30px; }
-.pr-bins i { position: absolute; bottom: 0; background: var(--accent-soft); border-top: 2px solid var(--accent-line); box-sizing: border-box; }
-.pr-big .pr-band { top: auto; bottom: 10px; }
-.pr-big .pr-dot { top: auto; bottom: 11px; }
-.pr-big .pr-dot-named { bottom: 10px; }
-.pr-big .pr-tag { top: calc(var(--t, 0) * 17px); }
+.pr-big .pr-marks { position: relative; height: 190px; cursor: crosshair; touch-action: pan-y; }
+.pr-big .pr-bins { position: absolute; left: 0; right: 0; top: 62px; bottom: 30px; }
+/* The histogram's outline carries the shape (3:1); the fill only tints it. */
+.pr-bins i { position: absolute; bottom: 0; background: var(--accent-soft); border-top: 2px solid var(--pr-edge); box-sizing: border-box; }
+.pr-big .pr-band { top: auto; bottom: 12px; }
+.pr-big .pr-dot { top: auto; bottom: 13px; }
+.pr-big .pr-dot-named { bottom: 12px; }
+.pr-big .pr-ticks { top: auto; bottom: 1px; height: 6px; }
+.pr-big .pr-tag { top: calc(var(--t, 0) * 1.6em); }
 .pr-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; list-style: none; margin: 4px 0 0; padding: 0; font-size: 12px; color: var(--ink2); }
-.pr-legend i { display: inline-block; vertical-align: -1px; margin-right: 6px; width: 16px; height: 10px; }
-.pr-k-median { border-left: 2px solid var(--accent); width: 2px !important; height: 14px !important; vertical-align: -3px !important; }
-.pr-k-double { border-left: 1.5px dashed var(--risk); width: 2px !important; height: 14px !important; vertical-align: -3px !important; }
-.pr-k-core { background: var(--accent); border-radius: 5px; opacity: .85; }
-.pr-k-band { background: var(--accent-line); border-radius: 5px; }
-.pr-k-bins { background: var(--accent-soft); border-top: 2px solid var(--accent-line); }
-.pr-k-dot { width: 10px !important; height: 10px !important; border-radius: 50%; background: var(--risk); }
+.pr-legend i { display: inline-block; vertical-align: -1px; margin-right: 6px; width: 16px; height: 10px; box-sizing: border-box; }
+.pr-legend .pr-k-median { border-left: 2px solid var(--accent); width: 2px; height: 14px; vertical-align: -3px; }
+.pr-legend .pr-k-double { border-left: 1.5px dashed var(--risk); width: 2px; height: 14px; vertical-align: -3px; }
+.pr-k-core { background: var(--accent); border-radius: 6px; }
+.pr-k-band { background: var(--accent-line); border-radius: 6px; box-shadow: inset 0 0 0 1px var(--pr-edge); }
+.pr-k-bins { background: var(--accent-soft); border-top: 2px solid var(--pr-edge); }
+.pr-legend .pr-k-tick { width: 9px; height: 6px; vertical-align: 0; background: repeating-linear-gradient(to right, var(--risk) 0 1px, transparent 1px 4px); }
+.pr-legend .pr-k-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--risk); }
 
 .pr-buyers { margin-top: 34px; }
 .pr-buyers-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
 .pr-buyers-head h2 { margin: 0; font: 700 24px/1.15 var(--display); letter-spacing: -.02em; }
-.pr-buyers-head a { font-size: 14px; font-weight: 600; }
-.pr-buyer-cols { padding: 10px 10px 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
-.pr-buyer-cols span:nth-child(2), .pr-buyer-cols span:nth-child(3) { text-align: right; }
-.pr-buyer { border-top: 1px solid var(--line); }
-.pr-buyer > summary { padding: 10px; cursor: pointer; list-style: none; font-size: 13px; color: var(--ink2); transition: background-color var(--fast) var(--ease); }
-.pr-buyer > summary::-webkit-details-marker { display: none; }
-.pr-buyer > summary:hover { background: var(--sunk); }
-.pr-buyer > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.pr-buyer[open] > summary { background: var(--accent-soft); }
-.pr-buyer .pr-lead-price { text-align: right; }
-.pr-buyer:not(.is-lead) .pr-lead-x { color: var(--ink2); font-size: 17px; }
-.pr-lines-wrap { overflow-x: auto; padding: 4px 10px 16px; }
-.pr-lines-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pr-buyers-head h2 small { display: block; margin-top: 2px; font: 400 13px/1.4 var(--body); letter-spacing: 0; color: var(--ink2); }
+.pr-buyers-head a { font-size: 13px; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.pr-lines-wrap { padding: 4px 10px 16px; }
 .pr-lines { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pr-lines th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 8px 8px 6px; border-bottom: 1px solid var(--line2); white-space: nowrap; }
 .pr-lines td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink2); }
 .pr-lines td small { display: block; font-size: 12px; color: var(--muted); }
+.pr-lines .c-name, .pr-lines .c-unit { overflow-wrap: anywhere; }
 .pr-num { text-align: right !important; font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pr-lines td:last-child { white-space: nowrap; }
+.pr-lines .c-da a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .pr-lines-more { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
-.pr-pager { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 16px; font-size: 14px; color: var(--ink2); }
+.pr-pager { display: flex; justify-content: center; align-items: center; gap: 18px; margin-top: 16px; font-size: 13px; color: var(--ink2); }
+.pr-pager a { display: inline-flex; align-items: center; min-height: 32px; font-weight: 600; }
 
 /* ── how it was compared ──────────────────────────────────────────────── */
 .pr-method { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); }
 .pr-method summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); width: fit-content; }
 .pr-method summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.pr-method ul { margin: 12px 0 0; padding-left: 18px; max-width: 78ch; color: var(--ink2); font-size: 14px; }
+.pr-method ul { margin: 12px 0 0; padding-left: 18px; max-width: 72ch; color: var(--ink2); font-size: 13px; line-height: 1.6; }
 .pr-method li { margin-bottom: 8px; }
-.pr-method p { font-size: 14px; color: var(--ink2); }
+.pr-method p { font-size: 13px; color: var(--ink2); }
 
-/* ── phones and narrow windows ────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .pr-lead { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
-  .pr-lead-who { grid-column: 1 / -1; }
-  .pr-lead-price { grid-column: 1; }
-  .pr-lead-x { grid-column: 2; grid-row: 2; }
-  .pr-lead-qty, .pr-lead-lei, .pr-lead-sup { grid-column: 1 / -1; }
-  .pr-lead-open { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
-  .pr-buyer-cols { display: none; }
-  .pr-buyer > summary { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
-  .pr-buyer .pr-lead-who, .pr-buyer .pr-lead-qty, .pr-buyer .pr-lead-lei, .pr-buyer .pr-lead-sup { grid-column: 1 / -1; }
-  .pr-buyer .pr-lead-price { text-align: left; }
-}
-@media (max-width: 700px) {
-  .pr-bar { flex-direction: column; align-items: stretch; }
-  .pr-filters { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "pick pick" "year county" "order order"; }
-  .pr-pick { grid-area: pick; }
-  .pr-year { grid-area: year; }
-  .pr-county { grid-area: county; }
-  .pr-order { grid-area: order; }
-  .pr-pick-box input { width: 100%; font-size: 16px; }
-  .pr-field select { min-width: 0; width: 100%; font-size: 16px; }
-  .pr-total { margin: 0; text-align: left; }
-  .pr-head { grid-template-columns: 1fr; padding-top: 10px; }
-  .pr-head > span { display: none; }
-  .pr-wide { display: none; }
-  .pr-narrow { display: inline; }
-  .pr-sum { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label count" "strip strip" "lead lead"; gap: 6px 12px; padding: 12px 0 8px; }
-  .pr-strip-lead { grid-area: lead; display: flex; gap: .3em; min-width: 0; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--risk); white-space: nowrap; }
-  .pr-strip-lead .pr-tag-name { max-width: none; flex: 0 1 auto; min-width: 0; }
-  .pr-label { grid-area: label; }
-  .pr-count { grid-area: count; align-self: start; }
-  .pr-label { padding-left: 6px; }
-  .pr-label b { font-size: 18px; }
-  .pr-count { padding-right: 6px; }
-  .pr-strip { grid-area: strip; height: 30px; }
-  .pr-strip .pr-tag { display: none; }
-  .pr-strip .pr-band { top: 10px; }
-  .pr-strip .pr-dot { top: 11px; }
-  .pr-strip .pr-dot-named { top: 10px; }
-  .pr-open { padding: 4px 6px 16px; }
-  .pr-big .pr-marks { height: 150px; }
-  .pr-big .pr-tag { font-size: 12px; }
-  .pr-hero-line { font-size: 19px; }
-  .pr-lines thead { display: none; }
-  .pr-lines, .pr-lines tbody, .pr-lines tr, .pr-lines td { display: block; width: 100%; }
-  .pr-lines tr { padding: 8px 0; border-bottom: 1px solid var(--line); }
-  .pr-lines td { border: 0; padding: 2px 0; text-align: left !important; white-space: normal; }
-  .pr-lines td[data-label]::before { content: attr(data-label) ": "; color: var(--muted); font-family: var(--body); font-size: 12px; }
-}
-.pr-buyers-head h2 small { display: block; margin-top: 2px; font: 400 13px/1.4 var(--body); letter-spacing: 0; color: var(--ink2); }
-
-/* ── hover and click on the strips (owner, 11 November 2026) ───────────── */
+/* ── hover, focus and touch on the strips (owner, 11 November 2026) ────── */
 .pr-dot { display: block; cursor: pointer; z-index: 1; }
 .pr-dot::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
-.pr-dot:hover, .pr-dot.is-on { opacity: 1; z-index: 3; box-shadow: 0 0 0 2px var(--paper), 0 0 0 4px var(--risk); }
-.pr-dot:focus-visible { opacity: 1; z-index: 3; outline: 2px solid var(--accent); outline-offset: 3px; }
-.pr-ruler { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--ink2); opacity: .55; pointer-events: none; }
+.pr-dot:hover, .pr-dot.is-on { z-index: 3; box-shadow: 0 0 0 2px var(--pr-bg), 0 0 0 4px var(--risk); }
+.pr-dot:focus-visible { z-index: 3; outline: 2px solid var(--accent); outline-offset: 3px; }
+.pr-ruler { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--ink2); pointer-events: none; }
 .pr-tip { position: absolute; z-index: 20; bottom: calc(100% + 6px); transform: translateX(-50%); display: flex; flex-direction: column; gap: 2px; padding: 8px 11px;
-  min-width: 180px; max-width: 340px; background: var(--surface); color: var(--ink); border: 1px solid var(--line2); border-radius: 8px; box-shadow: var(--shadow2);
+  width: max-content; min-width: 180px; max-width: min(340px, calc(100vw - 48px)); background: var(--surface); color: var(--ink); border: 1px solid var(--line2); border-radius: 8px; box-shadow: var(--shadow2);
   font: 400 12px/1.45 var(--body); text-align: left; white-space: normal; pointer-events: none; }
 .pr-tip.pr-tip-end { transform: translateX(calc(-100% + 14px)); }
 .pr-tip.pr-tip-start { transform: translateX(-14px); }
@@ -244,34 +219,38 @@
 .pr-tip .pr-tip-hint { margin-top: 3px; color: var(--accent-ink); font-weight: 600; }
 .pr-read { min-width: 0; white-space: nowrap; padding: 4px 9px; }
 .pr-read b { font: 600 12px/1.4 var(--mono); }
-.pr-big .pr-marks { cursor: crosshair; }
 .pr-big .pr-tip { bottom: auto; top: calc(100% + 8px); }
+/* Where there is no hover, and on phones, a strip of the list is one target: the press opens it, its rows carry the links. */
+@media (hover: none), (max-width: 700px) { .pr-strip .pr-dot { pointer-events: none; } }
 
 /* ── a product's buyers as a table: sort in the header, funnels beside (the app's tables, 4 November 2026) ── */
 .pr-shown { margin: 10px 0 6px; font-size: 13px; color: var(--ink2); }
-.pr-table-wrap { overflow-x: auto; }
 .pr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .pr-table > thead th { padding: 8px 10px; border-bottom: 1px solid var(--line2); font-size: 12px; font-weight: 600; color: var(--muted); text-align: left; white-space: nowrap; vertical-align: bottom; }
 .pr-table > thead th.pr-num { text-align: right; }
-.pr-table .th-sort { color: var(--ink2); text-decoration: none; padding: 4px 2px; border-radius: 4px; }
+.pr-table .th-sort { color: var(--ink2); text-decoration: none; padding: 4px 2px; border-radius: 6px; }
 .pr-table .th-sort:hover { color: var(--accent-ink); }
 .pr-table .th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .pr-table th[aria-sort="ascending"] .th-sort, .pr-table th[aria-sort="descending"] .th-sort { color: var(--ink); }
 .pr-th-sep { margin: 0 6px 0 2px; color: var(--faint); }
+.pr-brow { scroll-margin-top: calc(var(--site-header-h, 64px) + 16px); }
 .pr-brow > td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink2); }
 .pr-brow:hover > td { background: var(--sunk); }
 .pr-brow.is-open > td { background: var(--accent-soft); border-bottom-color: transparent; }
 .pr-brow small { display: block; font-size: 12px; color: var(--muted); }
-.pr-brow .c-who { font-weight: 600; color: var(--ink); min-width: 200px; }
+.pr-brow:hover small, .pr-brow.is-open small { color: var(--ink2); }
+.pr-brow .c-who { font-weight: 600; color: var(--ink); min-width: 170px; }
 .pr-brow .c-who small { font-weight: 400; }
 .pr-brow .c-price b { color: var(--ink); font-weight: 600; font-size: 13px; }
 .pr-brow .c-x { font: 700 20px/1 var(--display); color: var(--risk); }
-.pr-brow:not(.is-lead) .c-x { color: var(--ink2); font-size: 17px; }
+.pr-brow:not(.is-lead) .c-x { color: var(--ink2); font-size: 15px; }
 .pr-brow .c-lei { color: var(--ink); font-weight: 600; }
 .pr-brow .c-sup { font-size: 12px; overflow-wrap: anywhere; max-width: 240px; }
 .pr-brow .c-open { text-align: right; }
-.pr-lines-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px solid var(--accent-line); border-radius: 7px; background: var(--surface);
-  color: var(--accent-ink); font: 600 13px/1.2 var(--body); cursor: pointer; white-space: nowrap; }
+.pr-table > thead th.c-year, .pr-brow .c-year { text-align: right; width: 60px; }
+.pr-brow .c-year { font-family: var(--mono); font-size: 12px; color: var(--ink2); }
+.pr-lines-btn { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border: 1px solid var(--pr-edge); border-radius: 7px; background: var(--surface);
+  color: var(--accent-ink); font: 600 13px/1.2 var(--body); cursor: pointer; white-space: nowrap; text-decoration: none; }
 .pr-lines-btn svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.6; transition: transform var(--fast) var(--ease); }
 .pr-lines-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
 .pr-lines-btn:hover { background: var(--accent-soft); }
@@ -280,25 +259,91 @@
 .pr-lines-row .pr-lines-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px 10px; }
 .pr-table td.pr-none { padding: 18px 10px; }
 
-@media (max-width: 900px) {
+/* ── narrow windows: the buyers as cards. From 1100 px down, so the eight-column table never needs a scrollbar
+      (measured: it needs up to ~985 px of room; the owner forbids horizontal scrollbars). ── */
+@media (max-width: 1100px) {
   .pr-table, .pr-table > tbody, .pr-table > thead, .pr-table > thead tr, .pr-brow, .pr-brow > td, .pr-lines-row, .pr-lines-row > td { display: block; }
   .pr-table > thead tr { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0 10px; border-bottom: 1px solid var(--line2); }
   .pr-table > thead th { display: none; }
   /* As cards, every sortable or filterable header stays as a pill: its sort and its funnel are still reachable. */
-  .pr-table > thead th.sortable, .pr-table > thead th.c-sup { display: inline-flex; align-items: center; padding: 2px 4px 2px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font: 500 13px/1.6 var(--body); color: var(--ink2); }
+  .pr-table > thead th.sortable, .pr-table > thead th.c-sup { display: inline-flex; align-items: center; width: auto; padding: 2px 4px 2px 10px; border: 1px solid var(--line2); border-radius: 999px; background: var(--surface); font: 500 13px/1.6 var(--body); color: var(--ink2); }
   .pr-brow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  .pr-brow > td { padding: 0; border: 0; background: none !important; text-align: left !important; }
-  .pr-brow .c-who, .pr-brow .c-qty, .pr-brow .c-lei, .pr-brow .c-sup { grid-column: 1 / -1; min-width: 0; max-width: none; }
+  .pr-brow > td { padding: 0; border: 0; background: none !important; text-align: left !important; width: auto; }
+  .pr-brow .c-who, .pr-brow .c-qty, .pr-brow .c-lei, .pr-brow .c-sup, .pr-brow .c-year { grid-column: 1 / -1; min-width: 0; max-width: none; }
   .pr-brow .c-price { grid-column: 1; }
-  .pr-brow .c-x { grid-column: 2; grid-row: 2; text-align: right !important; }
-  .pr-brow .c-open { grid-column: 1 / -1; }
+  .pr-brow .c-x { grid-column: 2; text-align: right !important; align-self: center; }
+  .pr-brow .c-open { grid-column: 1 / -1; margin-top: 4px; }
   .pr-brow.is-open { background: var(--accent-soft); padding-left: 8px; padding-right: 8px; }
-  .pr-brow .pr-num[data-label]::before, .pr-brow .c-sup::before { content: attr(data-label) ": "; color: var(--muted); font: 400 12px var(--body); }
+  .pr-brow .pr-num[data-label]::before, .pr-brow .c-sup::before { content: attr(data-label) ": "; color: var(--ink2); font: 400 12px var(--body); }
   .pr-brow .c-price::before, .pr-brow .c-x::before { content: none !important; }
+  .pr-brow .c-qty small, .pr-brow .c-lei small { display: inline; }
+  .pr-brow .c-qty small::before { content: " · "; }
   .pr-lines-row > td { padding: 0 0 14px; }
 }
-.pr-brow { scroll-margin-top: calc(var(--site-header-h, 64px) + 16px); }
-.pr-tip { width: max-content; }
-.pr-table > thead th.c-year, .pr-brow .c-year { text-align: right; width: 60px; }
-.pr-brow .c-year { font-family: var(--mono); font-size: 12px; color: var(--ink2); }
-.pr-label small.pr-label-n { margin-top: 0; }
+@media (max-width: 900px) {
+  .pr-wide { display: none; }
+  .pr-narrow { display: inline; }
+  .pr-lead { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .pr-lead-who { grid-column: 1 / -1; }
+  .pr-lead-price { grid-column: 1; }
+  .pr-lead-x { grid-column: 2; grid-row: 2; }
+  .pr-lead-qty, .pr-lead-lei, .pr-lead-sup { grid-column: 1 / -1; }
+  .pr-lead-open { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
+  .pr-lead-qty small, .pr-lead-lei small { display: inline; }
+  .pr-lead-qty small::before, .pr-lead-lei small::before { content: " · "; }
+}
+/* Fingers: every control of these pages is at least 44 px tall (and wide where it stands alone). */
+@media (max-width: 900px), (pointer: coarse) {
+  .pr-lead-open, .pr-lines-btn, .pr-retry { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 76px; padding: 0 14px; box-sizing: border-box; }
+  .pr-lead-open-ghost { min-width: 76px; }
+  .pr-tabs a { min-height: 44px; padding: 0 16px; }
+  .pr-table .th-sort { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 0 4px; box-sizing: border-box; }
+  .pr-table button.tf-fun.tf-fun { width: 44px; height: 44px; margin-left: 0; }
+  .pr-table > thead th.sortable, .pr-table > thead th.c-sup { padding: 0 2px 0 12px; }
+  .pr-pager a { min-height: 44px; padding: 0 10px; }
+  .pr-buyers-head a, .pr-more a { display: inline-flex; align-items: center; min-height: 44px; }
+  .pr-lines .c-da a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
+  .pr-method summary, .pr-fold > summary { padding-top: 12px; padding-bottom: 12px; }
+  .pr-clear { width: 44px; height: 44px; right: 0; }
+  .pr-pick-box input { padding-right: 46px; }
+  .pr-crumb a { display: inline-block; padding: 12px 0; }
+  .pr-crumb { margin: -8px 0 -2px; }
+  .pr-option { min-height: 44px; align-items: center; box-sizing: border-box; }
+}
+@media (max-width: 700px) {
+  .pr-bar { flex-direction: column; align-items: stretch; }
+  .pr-filters { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "pick pick" "year county" "order order"; }
+  .pr-pick { grid-area: pick; }
+  .pr-year { grid-area: year; }
+  .pr-county { grid-area: county; }
+  .pr-order { grid-area: order; }
+  .pr-pick-plain, .pr-submit { grid-column: 1 / -1; }
+  .pr-pick-box input { width: 100%; font-size: 16px; }
+  .pr-field select { min-width: 0; width: 100%; font-size: 16px; }
+  .pr-total { margin: 0; text-align: left; }
+  .pr-head { grid-template-columns: 1fr; padding-top: 10px; }
+  .pr-head > span { display: none; }
+  .pr-count-word { display: block; }
+  .pr-sum { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label count" "strip strip" "lead lead"; gap: 6px 12px; padding: 12px 0 8px; }
+  .pr-strip-lead { grid-area: lead; display: flex; align-items: baseline; min-width: 0; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--risk); white-space: nowrap; }
+  .pr-strip-lead .pr-tag-name { max-width: none; }
+  .pr-label { grid-area: label; padding-left: 6px; }
+  .pr-count { grid-area: count; align-self: start; padding-right: 6px; max-width: 132px; }
+  .pr-strip { grid-area: strip; height: 32px; }
+  .pr-strip .pr-tag { display: none; }
+  .pr-strip .pr-band { top: 8px; }
+  .pr-strip .pr-dot { top: 9px; }
+  .pr-strip .pr-dot-named { top: 8px; }
+  .pr-strip .pr-ticks { top: 24px; }
+  .pr-open { padding: 4px 6px 16px; }
+  .pr-big .pr-marks { height: 150px; }
+  .pr-hero-line { font-size: 20px; }
+  .pr-lines thead { display: none; }
+  .pr-lines, .pr-lines tbody, .pr-lines tr, .pr-lines td { display: block; width: 100%; box-sizing: border-box; }
+  .pr-lines tr { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .pr-lines td { border: 0; padding: 2px 0; text-align: left !important; white-space: normal; }
+  .pr-lines td[data-label]::before { content: attr(data-label) ": "; color: var(--ink2); font-family: var(--body); font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-sum, .pr-tag, .pr-lines-btn svg { transition: none; }
+}
