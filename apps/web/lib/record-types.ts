@@ -142,6 +142,8 @@ export interface AcquisitionContext {
   valueSuspect: boolean | null;
   /** core.da_items, raw (units are not standard). Only for acquisitions whose SICAP detail was collected. */
   items: {
+    /** core.da_items.id: the key of its compared price (marts.unit_price_lines.item_id). */
+    itemId: string;
     name: string | null;
     cpvCode: string | null;
     quantity: string | null;

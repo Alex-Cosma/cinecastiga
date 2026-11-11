@@ -26,6 +26,7 @@
     "import-old": "tsx src/scripts/import-old.ts",
     "index-search": "tsx src/scripts/index-search.ts",
     "import-das": "tsx src/scripts/import-das.ts",
+    "import-da-items": "tsx src/scripts/import-da-items.ts",
     "import-financials": "tsx src/scripts/import-financials.ts",
     "import-onrc": "tsx src/scripts/import-onrc.ts",
     "seed-thresholds": "tsx src/scripts/seed-thresholds.ts",
@@ -34,7 +35,8 @@
     "reset-derived": "tsx src/scripts/reset-derived.ts",
     "replay-ted": "tsx src/scripts/replay-ted.ts",
     "monitoring-refresh": "tsx src/scripts/monitoring-refresh.ts",
-    "index-topics": "tsx src/scripts/index-topics.ts"
+    "index-topics": "tsx src/scripts/index-topics.ts",
+    "unit-prices": "tsx src/scripts/unit-prices.ts"
   },
   "dependencies": {
     "@seap/db": "workspace:*",

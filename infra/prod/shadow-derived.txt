@@ -22,3 +22,6 @@ pattern_elsewhere
 topic_acquisitions
 source_search
 source_search_next
+unit_price_lines
+unit_price_buyers
+unit_price_groups

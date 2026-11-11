@@ -88,6 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
                 <li><Link href="/harta">Hartă</Link></li>
+                <li><Link href="/preturi">Prețuri pe unitate</Link></li>
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>
