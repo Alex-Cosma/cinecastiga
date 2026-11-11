@@ -1,6 +1,6 @@
 import {withProxyResponse} from './proxy-fetch.js';
 import { createElicitatieClient, type ElicitatieClient } from '@seap/scraper-clients';
-import { retryableProxyTransport,CollectionTransportError,responseDiagnosticBody,currentCollectionContext,currentCollectionStream,runCollectionRequest,collectionWorkerId } from '@seap/db';
+import { SEAP_MAX_IN_FLIGHT,retryableProxyTransport,CollectionTransportError,responseDiagnosticBody,currentCollectionContext,currentCollectionStream,runCollectionRequest,collectionWorkerId } from '@seap/db';
 import { getSharedSql } from '../../db.js';
 let singleton:ElicitatieClient|null=null,testOverride:ElicitatieClient|null=null;
 const worker=collectionWorkerId('ingestion-http');
@@ -9,7 +9,8 @@ export function getElicitatieClient():ElicitatieClient{
  if(testOverride)return testOverride;if(singleton)return singleton;
  singleton=createElicitatieClient({
   userAgent:process.env['SCRAPE_UA']??'seap-analytics/0.1 (contact: cineseuita@gmail.com)',
-  maxConcurrency:10,minDelayMs:0,maxRetries:0,circuitThreshold:0,
+  // The shared gate admits at most max_in_flight; the client must not queue below it.
+  maxConcurrency:SEAP_MAX_IN_FLIGHT,minDelayMs:0,maxRetries:0,circuitThreshold:0,
   transport:async(input,init)=>{
    const url=String(input),path=new URL(url).pathname;
    if(!['e-licitatie.ro','www.e-licitatie.ro'].includes(new URL(url).hostname))throw Error('Unexpected collection host');

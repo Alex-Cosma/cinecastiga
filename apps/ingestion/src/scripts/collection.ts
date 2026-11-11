@@ -5,11 +5,12 @@ import {enqueueDaDetailBackfill,pruneDaDetailTasks,refillDaDetailBackfill,retryF
 import {enableTedCollection} from '../collection/ted-activation.js';
 import {advertiseCollectorCapabilities,cancelContractsAudit,collectorCapability,enqueueContractsAudit,parseAuditNoticeIds,parseContractsAuditArgs} from '../collection/contracts-audit.js';
 import {setTimeout as sleep} from 'node:timers/promises';
-import type {DbSql} from '@seap/db';
+import {SEAP_MAX_IN_FLIGHT,type DbSql} from '@seap/db';
 import {getSharedSql,closeSharedDb} from '../db.js';
 import {getElicitatieClient} from '../scrape/elicitatie/client.js';
 import {fetchTask,recoverInterrupted,recoveryStep,recoveryWorker,RECOVERY_LOCK,seedRecovery} from '../collection/runner.js';
-const args=process.argv.slice(2),q=getSharedSql();
+// The collector: a lane per possible request, the lifetime lock and the refills; idle connections close after a minute.
+const args=process.argv.slice(2),q=getSharedSql(args[0]==='run'?{max:SEAP_MAX_IN_FLIGHT+4,idleTimeout:60}:undefined);
 let stopping=false;
 process.on('SIGTERM',()=>{stopping=true;});process.on('SIGINT',()=>{stopping=true;});
 try{
@@ -37,7 +38,7 @@ try{
   console.log(JSON.stringify({...await enqueueDaDetailBackfill(q,{limit:Number(limitArg.split('=')[1]),pilot:args.includes('--pilot'),restart:args.includes('--restart'),...(fromArg?{floor:fromArg.split('=')[1]!}:{})}),networkRequests:0}));
  }
  else if(args[0]==='background-lanes'){
-  if(args.length!==2||!/^(10|[0-9])$/.test(args[1]!))throw Error('Usage: collection background-lanes <0..10>');
+  if(args.length!==2||!/^\d{1,2}$/.test(args[1]!)||Number(args[1])>SEAP_MAX_IN_FLIGHT)throw Error(`Usage: collection background-lanes <0..${SEAP_MAX_IN_FLIGHT}>`);
   console.log(JSON.stringify({...await setBackgroundLanes(q,Number(args[1])),networkRequests:0}));
  }
  else if(args[0]==='contracts-audit'){
@@ -84,9 +85,9 @@ try{
     }
    };
    // Keep the lifetime lock until ALL lanes drain, including if one lane fails.
-   const results=await Promise.allSettled(Array.from({length:bound===Infinity?10:1},(_,i)=>lane(i).catch(error=>{stopping=true;throw error;})));
+   const results=await Promise.allSettled(Array.from({length:bound===Infinity?SEAP_MAX_IN_FLIGHT:1},(_,i)=>lane(i).catch(error=>{stopping=true;throw error;})));
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | retry-failed-award-details | backfill-da-details --limit=N [--pilot] [--from=YYYY-MM-DD] [--restart] | backfill-da-details --retry-failed | background-lanes <0..10> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | retry-failed-award-details | backfill-da-details --limit=N [--pilot] [--from=YYYY-MM-DD] [--restart] | backfill-da-details --retry-failed | background-lanes <0..30> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
 }finally{await closeSharedDb();}
