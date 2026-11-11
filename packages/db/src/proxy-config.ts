@@ -1,4 +1,4 @@
-import {readFile} from 'node:fs/promises';
+import {readFile,stat} from 'node:fs/promises';
 import {isIP} from 'node:net';
 export interface SeapProxy {
  id:string;
@@ -41,9 +41,20 @@ export function parseSeapProxies(text:string):SeapProxy[]{
 }
 
 
+/** Parsed once per version of the file (path, size, modification time). The gate calls this for every admission
+ * while it holds the control row; with 500 endpoints, reading and validating the file each time made that critical
+ * section the collector's bottleneck (11 November 2026). A changed file (a new pool) is read again. */
+let cachedPool:{path:string;size:number;mtimeMs:number;proxies:readonly SeapProxy[]}|null=null;
 export async function loadSeapProxies(env:Environment=process.env):Promise<SeapProxy[]>{
  if(!env.SEAP_PROXY_FILE)return [];
- try{return parseSeapProxies(await readFile(env.SEAP_PROXY_FILE,'utf8'));}catch{throw invalid();}
+ const path=env.SEAP_PROXY_FILE;
+ try{
+  const s=await stat(path);
+  if(cachedPool&&cachedPool.path===path&&cachedPool.size===s.size&&cachedPool.mtimeMs===s.mtimeMs)return [...cachedPool.proxies];
+  const proxies=parseSeapProxies(await readFile(path,'utf8'));
+  cachedPool={path,size:s.size,mtimeMs:s.mtimeMs,proxies:Object.freeze(proxies.map(p=>Object.freeze({...p})))};
+  return [...cachedPool.proxies];
+ }catch{cachedPool=null;throw invalid();}
 }
 export function proxyConnection(p:SeapProxy,env:Environment=process.env):SeapProxy{
  if(!env.SEAP_PROXY_RELAY_HOST)return p;
