@@ -12,12 +12,16 @@ export class SeapProxyConfigurationError extends Error {
 }
 const invalid=()=>new SeapProxyConfigurationError();
 
+/** The largest pool file: 600 endpoints (owner, 11 November 2026: a list of 500 beside the first 100). The relay
+ * (scripts/proxies/relay.mjs) holds the same two limits; ids stay proxy-1…proxy-999, one relay port each. */
+export const SEAP_PROXY_MAX=600,SEAP_PROXY_FILE_BYTES=512*1024;
+
 /** Only fixed IP endpoints, never a rotating gateway: one browser = one egress. */
 export function parseSeapProxies(text:string):SeapProxy[]{
  try{
-  if(Buffer.byteLength(text)>64*1024)throw invalid();
+  if(Buffer.byteLength(text)>SEAP_PROXY_FILE_BYTES)throw invalid();
   const data:unknown=JSON.parse(text);
-  if(!Array.isArray(data)||!data.length||data.length>100)throw invalid();
+  if(!Array.isArray(data)||!data.length||data.length>SEAP_PROXY_MAX)throw invalid();
   const ids=new Set<string>(), ips=new Set<string>();
   return data.map((item:unknown)=>{
    if(!item||typeof item!=='object'||Array.isArray(item))throw invalid();
