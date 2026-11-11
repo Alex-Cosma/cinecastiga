@@ -1,4 +1,4 @@
-import type {DbSql} from '@seap/db';
+import {SEAP_MAX_IN_FLIGHT,type DbSql} from '@seap/db';
 import {task,BACKGROUND_PRIORITY,type Task} from './plan.js';
 export const AWARD_BACKFILL_PRIORITY=BACKGROUND_PRIORITY+10;
 export const AWARD_BACKFILL_MAX=100000;
@@ -76,7 +76,7 @@ export async function refillAwardBackfill(q:DbSql){
 }
 /** Operator switch for background lanes; 0 disables background work. Lanes above the proxy concurrency never start. */
 export async function setBackgroundLanes(q:DbSql,lanes:number){
- if(!Number.isSafeInteger(lanes)||lanes<0||lanes>10)throw Error('Background lanes must be an integer between 0 and 10');
+ if(!Number.isSafeInteger(lanes)||lanes<0||lanes>SEAP_MAX_IN_FLIGHT)throw Error(`Background lanes must be an integer between 0 and ${SEAP_MAX_IN_FLIGHT}`);
  return q.begin(async tx=>{
   const [before]=await tx`select revision,background_lanes from app.collection_control where id=1 for update`;
   if(!before)throw Error('Collection control is missing.');

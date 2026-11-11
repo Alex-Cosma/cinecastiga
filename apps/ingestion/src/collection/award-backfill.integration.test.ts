@@ -93,7 +93,7 @@ describe.skipIf(!db)('background award detail backfill (isolated DB, no source t
  });
  it('refuses without a collecting batch or during processing, and validates operator input',async()=>{
   await expect(enqueueAwardDetailBackfill(q,{limit:0})).rejects.toThrow('--limit');
-  await expect(setBackgroundLanes(q,11)).rejects.toThrow('between 0 and 10');
+  await expect(setBackgroundLanes(q,31)).rejects.toThrow('between 0 and 30');
   const [control]=await q`select revision from app.collection_control`;
   await q`insert into app.processing_runs(scheduled_day,trigger,scope,control_revision,before_control) values('2026-10-16','manual','daily',1,'{}')`;
   await expect(enqueueAwardDetailBackfill(q,{limit:1})).rejects.toThrow('processing run');

@@ -158,9 +158,13 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
    expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
    await more(9300);await q`update app.collection_proxies set next_allowed_at=null where enabled`;expect(await recoveryStep(q,t=>transport(t,'ok'))).toBe(true);
   });
-  it('still stops the whole pool for a source refusal after a proxy timeout',async()=>{
+  // Owner, 11 November 2026: a 403 through a proxy restricts that IP only; the task keeps its retry and goes to another IP.
+  it('a source refusal after a proxy timeout disables only that proxy; the task returns to the queue',async()=>{
    await recoveryStep(q,t=>transport(t));await more(9400);await recoveryStep(q,t=>transport(t,'403'));
-   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toContain('403');
+   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+   expect((await q`select count(*)::int n from app.collection_proxies where not enabled and last_error like '%restricționat%'`)[0]!.n).toBe(1);
+   expect((await q`select status from app.collection_tasks`)[0]!.status).toBe('pending');
+   expect((await q`select status from app.collection_retries`)[0]!.status).toBe('pending');
   });
  });
 

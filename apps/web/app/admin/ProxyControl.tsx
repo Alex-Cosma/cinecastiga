@@ -3,6 +3,7 @@ import Link from 'next/link';
 import CollectionPace from './CollectionPace';
 import {useEffect, useState} from 'react';
 import type {CollectionStatus} from '@/lib/admin/collection';
+import {GATE_MAX_IN_FLIGHT, GATE_MAX_PER_MINUTE} from '@/lib/admin/gate-limits';
 import {PROXY_COLUMNS, PROXY_READERS} from '@/lib/admin/table-columns';
 import type {FilterState} from '@/lib/table-filters/types';
 import ColumnFilter from '@/components/table-filters/ColumnFilter';
@@ -33,7 +34,7 @@ export default function ProxyControl({data, now, stale, saving, change, onDirtyC
   const editable = !!data.control.paused && !data.control.maintenance && !Number(data.documents.running) && !data.requests.some(r => r.outcome === 'running') && !stale && !saving;
   const [startOpen] = useState(editable);
   const edit = (patch: Partial<Draft>) => setDraft({...form, ...patch});
-  const valid = Number.isInteger(Number(form.concurrency)) && Number(form.concurrency) >= 1 && Number(form.concurrency) <= 10 && Number.isInteger(Number(form.min)) && Number.isInteger(Number(form.max)) && Number(form.min) >= 1 && Number(form.max) >= Number(form.min) && Number(form.max) <= 3600 && Number.isInteger(Number(form.cap)) && Number(form.cap) >= 1 && Number(form.cap) <= 200 && (!form.enabled || form.ids.length > 0);
+  const valid = Number.isInteger(Number(form.concurrency)) && Number(form.concurrency) >= 1 && Number(form.concurrency) <= GATE_MAX_IN_FLIGHT && Number.isInteger(Number(form.min)) && Number.isInteger(Number(form.max)) && Number(form.min) >= 1 && Number(form.max) >= Number(form.min) && Number(form.max) <= 3600 && Number.isInteger(Number(form.cap)) && Number(form.cap) >= 1 && Number(form.cap) <= GATE_MAX_PER_MINUTE && (!form.enabled || form.ids.length > 0);
   const capacity = Math.min(Number(form.cap), form.ids.length * 120 / (Number(form.min) + Number(form.max)));
   const added = form.ids.filter(id => !saved.ids.includes(id)).length, removed = saved.ids.filter(id => !form.ids.includes(id)).length;
   const changes = draft ? [
@@ -79,8 +80,8 @@ export default function ProxyControl({data, now, stale, saving, change, onDirtyC
             <div className="proxy-fields">
               <label>Pauză minimă / IP <span>secunde</span><input type="number" min="1" max="3600" step="1" required value={form.min} onChange={e => edit({min: e.target.value})}/></label>
               <label>Pauză maximă / IP <span>secunde</span><input type="number" min={form.min || 1} max="3600" step="1" required value={form.max} onChange={e => edit({max: e.target.value})}/></label>
-              <label>Plafon total <span>1–200 cereri / minut</span><input type="number" min="1" max="200" step="1" required value={form.cap} onChange={e => edit({cap: e.target.value})}/></label>
-              <label>Cereri simultane <span>în total</span><select value={form.concurrency} onChange={e => edit({concurrency: e.target.value})}>{Array.from({length: 10}, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}{i === 0 ? ' · pe rând' : ' · pe IP-uri diferite'}</option>)}</select></label>
+              <label>Plafon total <span>1–{GATE_MAX_PER_MINUTE.toLocaleString('ro-RO')} cereri / minut</span><input type="number" min="1" max={GATE_MAX_PER_MINUTE} step="1" required value={form.cap} onChange={e => edit({cap: e.target.value})}/></label>
+              <label>Cereri simultane <span>în total</span><select value={form.concurrency} onChange={e => edit({concurrency: e.target.value})}>{Array.from({length: GATE_MAX_IN_FLIGHT}, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}{i === 0 ? ' · pe rând' : ' · pe IP-uri diferite'}</option>)}</select></label>
             </div>
             {current.length > 0 && <fieldset className="proxy-selection"><legend>Proxy-uri folosite · {form.ids.length} din {current.length}</legend>
               <div className="proxy-toolbar">

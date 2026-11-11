@@ -93,6 +93,7 @@ export function auditText(a: Record<string, any>): string {
     case 'recovery-scope': return `Colectare extinsă până la ${n.endDay}: ${fmt(n.added ?? 0)} cereri adăugate.`;
     case 'proxies': return proxyAuditText(n);
     case 'proxy-auto-disabled': return `${n.proxyId}: oprit după trei erori la rând. Celelalte continuă.`;
+    case 'proxy-restricted': return `${n.proxyId}: SEAP i-a restricționat IP-ul (403). Oprit; celelalte continuă.`;
     case 'settings': return `Interval ${b?.minSeconds}–${b?.maxSeconds} → ${n.minSeconds}–${n.maxSeconds} s; procesare ${n.processingTime}; ${n.dailyLimit ? `limită ${fmt(n.dailyLimit)}/zi` : 'fără limită zilnică'}.${typeof n.processingEnabled === 'boolean' ? ` Program ${n.processingEnabled ? 'pornit' : 'oprit'}, riscul ${WEEKDAYS[n.riskWeekday]?.toLowerCase()}.` : ''}`;
     case 'pause': return n.paused ? 'Colectarea pusă pe pauză.' : 'Colectarea reluată.';
     case 'unblock': return 'Refuzul SEAP verificat; reluare confirmată.';

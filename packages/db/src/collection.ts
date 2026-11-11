@@ -1,4 +1,4 @@
-import {proxyAdmission,recordProxyFailure} from './collection-proxies.js';
+import {PROXY_RESTRICTED,proxyAdmission,recordProxyFailure,restrictProxy} from './collection-proxies.js';
 import type {SeapProxy} from './proxy-config.js';
 import { CollectionTransportError, diagnosticError, sanitizeDiagnostics, seapSystemError, type CollectionDiagnostics } from './collection-diagnostics.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
@@ -143,10 +143,12 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   // only the 'ted' stream (audited, operator alert), never SEAP or the proxy circuit.
   const ted=info.stream==='ted';
   const tedReason=ted&&failure?tedFailureReason(result.status,result.retryAfter??null,!!result.challenge):null;
-  const reason=ted?null:result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
+  // A 403 through a proxy is that IP restricted (owner, 11 November 2026): it stops alone, see restrictProxy.
+  const ipRefused=!ted&&!!selectedProxy&&result.status===403&&!result.challenge;
+  const reason=ted||ipRefused?null:result.challenge?'SEAP solicită o verificare suplimentară.':result.status===429?'SEAP a răspuns cu 429. Verifică limita înainte de reluare.':result.status===403?'SEAP a refuzat accesul (403).':null;
   if(reason){const after=retryAfterSeconds(result.retryAfter??null);await q`update app.collection_control set blocked_reason=${reason},blocked_until=case when ${after}::int is null then null else clock_timestamp()+${after}::int*interval '1 second' end where id=1`;}
-  await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??tedReason??(failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
-  if(selectedProxy)await q`update app.collection_proxies set consecutive_failures=case when ${failure} then consecutive_failures else 0 end,last_error=${failure?(reason??`HTTP ${result.status}`):null} where id=${selectedProxy.id}`;
+  await q`update app.collection_requests set status=${result.status},outcome=${failure?'failed':'success'},bytes=${result.bytes??null},records=${result.records??null},error=${reason??tedReason??(ipRefused?PROXY_RESTRICTED:failure?`HTTP ${result.status}`:null)},diagnostics=${failure?diagnostics():JSON.stringify(sanitizeDiagnostics({...transportDiagnostics,response:transportDiagnostics?.response?{...(transportDiagnostics.response as object),body:undefined}:undefined,context:info.context}))}::jsonb,finished_at=clock_timestamp() where id=${id!}`;
+  if(selectedProxy)await q`update app.collection_proxies set consecutive_failures=case when ${failure} then consecutive_failures else 0 end,last_error=${failure?(reason??(ipRefused?PROXY_RESTRICTED:`HTTP ${result.status}`)):null} where id=${selectedProxy.id}`;
   finished=true;
   if(selectedProxy&&!ted&&!result.challenge&&[407,408,500,502,503,504].includes(result.status)){
    await recordProxyFailure(q,selectedProxy.id);
@@ -158,6 +160,8 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
   if(!ted&&result.status===400&&seapSystemError(transportDiagnostics)&&await scheduleCollectionTimeout(q,id!,taskId,'source'))throw new CollectionSuspendedError('Eroare de sistem SEAP; cererea va fi reîncercată.');
   // TED 5xx/408: the same 5/10-minute task retries as SEAP's proxy failures; the stream pauses only once they are exhausted.
   if(ted&&tedReason&&[408,500,502,503,504].includes(result.status)&&await scheduleCollectionTimeout(q,id!,taskId,true))throw new CollectionSuspendedError('TED indisponibil temporar; cererea va fi reîncercată.');
+  // The request goes to another IP: a pending retry stays pending, the task returns to the queue (CollectionSuspendedError).
+  if(ipRefused)throw new CollectionSuspendedError(await restrictProxy(q,selectedProxy!.id,id!,endpoint)??'SEAP a restricționat un IP (403); proxy-ul a fost oprit, cererea trece pe alt IP.');
   if(failure&&taskId!==null)await q`update app.collection_retries set status='stopped',retry_at=null,updated_at=clock_timestamp() where task_id=${taskId} and status='pending'`;
   if(reason)throw new CollectionSuspendedError(reason);
   if(tedReason){
