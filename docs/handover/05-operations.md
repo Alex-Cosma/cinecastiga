@@ -164,6 +164,22 @@ Anunțurile de atribuire arhivate doar ca rând de listă (`award-list:v1`, făr
   - pentru atribuirile SEAP: detaliul principal și părțile (loturi și eForms), eșecurile grupate pe cauză, anunțurile neprogramate, ritmul din ultima oră, ultima programare și o estimare (cereri rămase / ritmul ultimei ore);
   - pentru TED: ultimul număr OJ S arhivat și ziua lui, numerele rămase (estimate din zilele lucrătoare până azi), spațierea, următorul pachet, pachetele arhivate și verificările identice sau cu diferențe.
 
+
+### Liniile achizițiilor directe (descărcare în fundal)
+
+Lista SEAP dă doar antetul unei achiziții directe. Liniile ei (denumire, cantitate, unitate, preț unitar) vin dintr-un `getView/{id}` pe achiziție, arhivat ca `da-detail:v1` și normalizat noaptea în `core.da_items`. Proprietarul a cerut pe 11 noiembrie 2026 preluarea lor „pe tot parcursul zilei”, pentru prețurile pe unitate (`/preturi`). **Este oprită până o pornește un operator.** Codul: `apps/ingestion/src/collection/da-detail-backfill.ts`.
+
+- Sarcinile sunt `da`/`da-detail` cu `backfill:true` și prioritate 70–72 (fundal). Rulează ca descărcarea atribuirilor: numai pe benzile `0…background_lanes-1`, după tot lucrul obișnuit, prin aceeași poartă (interval pe IP, plafon pe minut, cereri simultane). Descărcarea atribuirilor (prioritate 60) trece înainte.
+- Doar achizițiile acceptate (`Oferta acceptata`) fără linii în `core.da_items` și fără `da-detail:v1` arhivat. Nimic nu se cere de două ori.
+- Ordinea: ultimele 7 zile (70; recitite la fiecare reîncărcare, pentru achizițiile intrate târziu în listă), apoi grupele de produse (71), apoi restul (72), de la ziua cea mai nouă spre `--from` (implicit 1 ianuarie 2020; 2018–2019 au liniile din arhiva din 2020, acolo unde a fost importată). Grupele de produse sunt prefixele CPV `03, 15, 091, 301, 398, 337, 243, 184`: pe 2018–2019 țin ~97% din liniile comparate, în ~32% din achiziții.
+- Pornire, fără trafic SEAP: `collection.js backfill-da-details --limit=N [--pilot] [--from=AAAA-LL-ZZ] [--restart]`, apoi `collection.js background-lanes <1..10>`. `--pilot` programează cel mult 20 de achiziții recente și nu mută parcurgerea. Prima rulare fără `--pilot` fixează ziua de jos și numără achizițiile. `--restart` reia parcurgerea de ieri cu altă zi de jos.
+- Colectorul continuă singur: la 5 minute, dacă așteaptă sub 10.000 de sarcini, programează următoarele 50.000 (audit `da-detail-backfill`, cu `cursor`, `universe`, `remaining`). Nu programează în timpul unei procesări sau cu fluxul `da` pe pauză. După ce ajunge la ziua de jos, preia doar zilele noi.
+- **Sarcinile încheiate se șterg.** La 26 de ore de la încheiere sunt numărate pe zile în `app.da_detail_backfill_days` (migrația 0106) și scoase din `app.collection_tasks`, câte 20.000 la 5 minute. Altfel tabelul ar ajunge la ~15 milioane de rânduri și interogările de stare din `/admin` ar depăși limita de 20 s. Rămân arhiva și registrul de cereri. Sarcinile eșuate rămân, cu eroarea lor.
+- Un detaliu respins (identitate diferită) sau lipsă (HTTP 400/404/410) e lipsa acelei achiziții, nu oprește colectarea. 403/429/challenge și erorile de transport opresc ca la orice flux. Reluare după o reparație: `collection.js backfill-da-details --retry-failed`.
+- Starea: `/admin/trafic`, secțiunea „Liniile achizițiilor directe” (progres, unde a ajuns, ritm, preluate pe zile, cauze). Oprire: `background-lanes 0` (oprește și descărcarea atribuirilor) sau pauza fluxului „Achiziții directe” (oprește și colectarea zilnică a lor).
+- **Volum (copia locală, 11 noiembrie 2026):** 15,1 milioane de achiziții acceptate din 2020 până azi. La 200 de cereri/min: ~52 de zile; la 50/min: ~210 zile. Plafonul de 200/min și cele 10 cereri simultane sunt limite din cod.
+- **De urmărit la pornire:** `app.collection_requests` crește cu un rând pe cerere, iar starea din `/admin` îl numără întreg la fiecare citire; durata procesării de noapte cu ~290 de mii de detalii noi pe zi; fluxul de documente ia cel mult jumătate din proxy-uri cât colectează fluxurile de date.
+
 ### Verificarea contractelor fără normalizare (F27, 21 octombrie 2026)
 
 Scop: verificare la nivel de înregistrare (F27). Pentru o listă de anunțuri de atribuire, colectorul cere din nou paginile de contracte (`CANoticeContracts`) și le arhivează **doar** pentru analiză: ce SICAP id și ce CUI poartă fiecare câștigător în sursă acum. Nimic din ce se descarcă nu intră în `core`, în identități sau în rapoarte.

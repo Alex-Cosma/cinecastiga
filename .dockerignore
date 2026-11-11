@@ -26,3 +26,6 @@ apps/web/public/pdfjs/
 
 **/.next-admin-test
 **/.next-admin-build
+
+# Proxy lists kept at the repository root (never in an image)
+/Webshare*.txt

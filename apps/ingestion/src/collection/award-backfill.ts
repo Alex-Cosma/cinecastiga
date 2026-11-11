@@ -70,7 +70,7 @@ export async function refillAwardBackfill(q:DbSql){
  const batches=await q`select id,status from app.collection_batches order by created_at`;
  if(batches.length!==1||batches[0]!.status!=='collecting')return {refilled:false,reason:'no-batch'} as const;
  if((await q`select id from app.processing_runs where status='running' limit 1`).length)return {refilled:false,reason:'processing'} as const;
- const [waiting]=await q`select count(*)::int n from app.collection_tasks where batch_id=${String(batches[0]!.id)} and priority>=${BACKGROUND_PRIORITY} and status in ('pending','running')`;
+ const [waiting]=await q`select count(*)::int n from app.collection_tasks where batch_id=${String(batches[0]!.id)} and stream='awards' and priority>=${BACKGROUND_PRIORITY} and status in ('pending','running')`;
  if(after.remaining!==undefined&&Number(waiting?.n)>=AWARD_BACKFILL_REFILL_BELOW)return {refilled:false,reason:'queue-full'} as const;
  return {refilled:true,...await enqueueAwardDetailBackfill(q,{limit:AWARD_BACKFILL_MAX,auto:true})} as const;
 }
@@ -106,7 +106,7 @@ export async function retryFailedAwardBackfill(q:DbSql){
  * stopped retry row, and a proxy failure leaves one stopped after its three attempts: such a task set back
  * to pending would never run and would hold the batch open. The row is removed (returned for the audit),
  * so the task also gets the gate's usual retry budget again. Failed requests stay in the ledger. */
-async function requeueFailedTasks(tx:DbSql,ids:string[]){
+export async function requeueFailedTasks(tx:DbSql,ids:string[]){
  if(!ids.length)return [];
  const budgets=await tx`delete from app.collection_retries where task_id=any(${ids}::bigint[])
   returning task_id::text,first_request_id::text,last_request_id::text,timeouts,status,retry_at,updated_at`;

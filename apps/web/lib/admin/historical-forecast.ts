@@ -2,6 +2,7 @@
 export interface BackfillPart {part:'root'|'lots'|'eform';pending:number;running:number;complete:number;failed:number;lastHour:number}
 export interface HistoricalStatus {
  awards:{parts:BackfillPart[];errors:{error:string;n:number}[];lastEnqueue:{at:string;auto:boolean;queued:number;remaining:number|null;pilot:boolean}|null;lanes:number};
+ daDetails:DaDetailStatus;
  ted:{latest:{ojs:string;day:string}|null;packages:number;notices:number;matched:number;gaps:number;behind:number|null;lastFinishedAt:string|null;inFlight:boolean;spacingMinutes:number;failedAttempt:string|null};
 }
 /** Remaining SEAP backfill work in requests: queued tasks, the parts still to come from queued roots,
@@ -16,4 +17,22 @@ export function backfillForecast(h:HistoricalStatus['awards']){
  const left=queued+Math.round(queuedRoots*(perNotice-1)+(unscheduled??0)*perNotice),done=sum('complete'),rate=sum('lastHour');
  const total=done+sum('failed')+left;
  return {queued,unscheduled,left,done,total,percent:total?Math.floor(done/total*100):null,rate,hours:rate>0?left/rate:null,perNotice};
+}
+/** The direct-award lines download (one detail per accepted award). `complete` counts the finished tasks, those
+ * already removed from the task table included; `walk` is where the schedule has reached. */
+export interface DaDetailStatus {
+ pending:number;running:number;complete:number;failed:number;lastHour:number;lastDay:number;
+ days:{day:string;complete:number}[];errors:{error:string;n:number}[];
+ lastEnqueue:{at:string;auto:boolean;queued:number}|null;
+ walk:{floor:string;start:string;forwardTo:string;cursor:{tier:1|2;day:string}|null;universe:number;remaining:number}|null;
+ lanes:number;
+}
+/** What is left, in requests (one per award): the queue plus the awards the walk has not reached. The share is of
+ * the accepted awards in scope, so awards that already had their lines count as done. The pace is the last day's
+ * (steadier than an hour's, which the daily collection interrupts); the last hour's until a day has passed. */
+export function daDetailForecast(h:DaDetailStatus){
+ const queued=h.pending+h.running,unscheduled=h.walk?.remaining??null,left=queued+(unscheduled??0);
+ const total=h.walk?Math.max(h.walk.universe,left):null;
+ const perHour=h.lastDay>h.lastHour*4?h.lastDay/24:h.lastHour;
+ return {queued,unscheduled,left,total,percent:total?Math.min(left>0?99:100,Math.floor((total-left)/total*100)):null,perHour,hours:left===0?0:perHour>0?left/perHour:null};
 }

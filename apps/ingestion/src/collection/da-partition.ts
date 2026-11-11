@@ -48,6 +48,14 @@ export function planDaVerification(t:Task,value:unknown):TaskPlan{
  return {status:'complete',result:{detail:true},children:[],docs:[{source:'elicitatie',externalId:`da:${p.noticeId}`,endpointVersion:'da-detail:v1',payload:d}]};
 }
 
+/** Historical download of one award's detail (its item lines). Only the identity is checked: the award was chosen
+ * from core, not from a day's list, so there is no window to prove. */
+export function planDaDetailBackfill(t:Task,value:unknown):TaskPlan{
+ const p=t.params,d=value as Record<string,unknown>;
+ if(!d||typeof d!=='object'||d.directAcquisitionID!==p.noticeId)throw Error('Identitatea detaliului DA nu corespunde cererii.');
+ return {status:'complete',result:{detail:true},children:[],docs:[{source:'elicitatie',externalId:`da:${p.noticeId}`,endpointVersion:'da-detail:v1',payload:d}]};
+}
+
 /** Weekly source-vocabulary check. A new/missing/repeated code requires review;
  * discovery must never silently keep using a stale CPV partition. */
 export function planCpvCatalogue(t:Task,value:unknown,previous:import('./plan.js').PageResult[]):TaskPlan{

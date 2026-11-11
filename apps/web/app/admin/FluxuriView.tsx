@@ -3,6 +3,7 @@ import type {CollectionStatus} from '@/lib/admin/collection';
 import type {Change} from './LiveBand';
 import RecoveryOverview from './RecoveryOverview';
 import HistoricalDownloads from './HistoricalDownloads';
+import DaDetailCollection from './DaDetailCollection';
 import {STREAM_LABELS, date, fmt} from './model';
 
 const dot = '\u00a0· ';
@@ -24,7 +25,8 @@ export function CollectionRules() {
   </details>;
 }
 
-/** Trafic SEAP · Fluxuri: how far the recovery is, each stream with its own pause, and the background downloads. */
+/** Trafic SEAP · Fluxuri: how far the recovery is, each stream with its own pause, the direct-award lines download
+ * and the other background downloads. */
 export default function FluxuriView({data, stale, saving, change}: {data: CollectionStatus; stale: boolean; saving: boolean; change: Change}) {
   const c = data.control!, pausedStreams = c.paused_streams as string[];
   return <>
@@ -64,6 +66,7 @@ export default function FluxuriView({data, stale, saving, change}: {data: Collec
       })}
       <p className="footnote">{data.recovery ? `Lot până la ${date(data.recovery.batch.end_day)}; coada crește prin paginare.` : 'Progresul apare după inventarierea lotului.'} Reluarea unui flux nu pornește o recuperare nouă.</p>
     </section>
+    <DaDetailCollection data={data} stale={stale}/>
     <HistoricalDownloads data={data} stale={stale}/>
   </>;
 }

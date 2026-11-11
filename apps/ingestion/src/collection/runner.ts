@@ -173,7 +173,9 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   // A contracts audit only verifies archived records: a rejected page or a missing notice is that task's gap.
   // 403/429/challenge already stopped the gate; transport, SQL and ownership errors still stop everything.
   const auditGap=t.kind==='contracts'&&!!t.params.audit&&(rejected||unavailable);
-  const isolatedDetailFailure=tedGap||auditGap||t.kind==='detail'&&(error instanceof NoticeDetailValidationError||unavailable);
+  // A historical direct-award detail is one award's lines: a rejected or missing one is that award's gap.
+  const daDetailGap=t.kind==='da-detail'&&t.params.backfill===true&&t.priority>=BACKGROUND_PRIORITY&&(rejected||unavailable);
+  const isolatedDetailFailure=tedGap||auditGap||daDetailGap||t.kind==='detail'&&(error instanceof NoticeDetailValidationError||unavailable);
   if(t.kind==='ted-package'&&response&&typeof response==='object'){const {candidates,...rest}=response as TedPackageFetch;response={...rest,candidates:candidates?.map(c=>c.name)};}
   const message=auditGap&&error instanceof ScrapeError?`SEAP: contractele anunțului nu sunt disponibile (HTTP ${error.status}); verificarea continuă.`:isolatedDetailFailure&&error instanceof ScrapeError?`Detaliu SEAP indisponibil (HTTP ${error.status}); celelalte anunțuri continuă.`:error instanceof Error?error.message:'Eroare de colectare';
   const safe=/^(Structur|Detaliu|Identitatea|O singură|Fereastra|Dimensiunea|Totalul|Lipsește|Lista|SEAP|TED|Numărul|Data|Filtrul|Tip de|Anunț)/.test(message)?message:'Cererea sau arhivarea nu a fost confirmată. Verifică jurnalul înainte de reluare.';

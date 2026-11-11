@@ -1,4 +1,4 @@
-import {DA_STRATEGY,validateDaScope,planNationalDa,planDaVerification,planCpvCatalogue} from './da-partition.js';
+import {DA_STRATEGY,validateDaScope,planNationalDa,planDaVerification,planDaDetailBackfill,planCpvCatalogue} from './da-partition.js';
 import {planNoticeDetail} from './notice-details.js';
 import {planTedTask,validateTedScope} from './ted.js';
 import {NOTICE_TYPE_IDS, noticeIdOf, participationKey,noticeArchiveKey, type NoticeDetailParams, type NoticeListItem} from '@seap/scraper-clients';
@@ -93,7 +93,7 @@ export function planResponse(t:Task,value:unknown,previous:PageResult[],batchEnd
  validateContractsAudit(t);
  if(t.stream==='ted')return planTedTask(t,value,previous);
  if(t.kind==='cpv-catalogue')return planCpvCatalogue(t,value,previous);
- if(t.kind==='da-detail')return planDaVerification(t,value);
+ if(t.kind==='da-detail')return t.params.backfill===true&&t.params.daStrategy===undefined?planDaDetailBackfill(t,value):planDaVerification(t,value);
  if(t.kind==='da'&&t.params.daStrategy===DA_STRATEGY)return planNationalDa(t,value);
  const prefix=t.stream==='tenders'?'tender':'award';
  if(t.kind==='detail'){
