@@ -6,6 +6,8 @@ import { getAcquisitionContext, getAcquisitionDetail } from "@/lib/acquisition-d
 import { daUrl } from "@/lib/elicitatie";
 import { formatExactDecimal, formatCalendarDate, formatInt, formatRon, cleanName, countyLabel } from "@/lib/format";
 import { daState, durationLabel } from "@/lib/record-labels";
+import { getAwardItemPrices, productHref } from "@/lib/unit-prices";
+import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shared";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
@@ -28,7 +30,7 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const d = await acquisitionDetail(id);
   if (!d) notFound();
-  const x = await getAcquisitionContext(id, d);
+  const [x, prices] = await Promise.all([getAcquisitionContext(id, d), getAwardItemPrices(id)]);
   const title = titleOf(d);
   const state = daState(d.state);
   // Only a refused or unaccepted offer is "not a purchase"; a state the source does not give stays a purchase in doubt.
@@ -88,7 +90,17 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
       <table className="record-items">
         <thead><tr><th scope="col">Produs sau serviciu</th><th scope="col" className="record-num">Cantitate</th><th scope="col">Unitate</th><th scope="col" className="record-num">Preț unitar</th></tr></thead>
         <tbody>{x.items.map((it, i) => <tr key={i}>
-          <td>{it.name ?? "Denumire neprecizată"}</td>
+          <td>{it.name ?? "Denumire neprecizată"}{(() => {
+            // The line's price per kilogram, litre or piece beside its product's median that year (unit prices, owner 11 November 2026).
+            const p = prices[it.itemId];
+            if (!p) return null;
+            const ratio = p.median ? p.pricePerUnit / p.median : null;
+            return <span className={`record-unit-price${ratio != null && ratio >= 2 ? " is-lead" : ""}`}>
+              {formatUnitPrice(p.pricePerUnit)} {p.per}
+              {p.median != null && <> · mediana {p.year}: {formatUnitPrice(p.median)}{ratio != null && ratio >= 1.25 && <b> · {ratio >= 2 ? ratioWords(ratio) : formatRatio(ratio)}</b>}</>}
+              {" · "}<Link href={productHref(p.family, p.pack, p.year)} prefetch={false}>{p.packLabel ? `${p.name}, ${p.packLabel}` : p.name}</Link>
+            </span>;
+          })()}</td>
           <td className="record-num" data-label="Cantitate:">{it.quantity ?? "—"}</td>
           <td data-label="Unitate:">{it.unit ?? "—"}</td>
           <td className="record-num" data-label="Preț unitar:">{it.unitPriceRon != null ? `${formatExactDecimal(it.unitPriceRon)} lei` : "—"}</td>

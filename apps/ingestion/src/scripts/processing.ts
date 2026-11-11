@@ -11,6 +11,7 @@ import {runAuthorityFragmentRepair} from '../reference/authority-fragment-repair
 import { runMonitoringRefresh, runShadowRefresh } from '../monitoring/refresh.js';
 import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
+import {buildUnitPrices} from '../aggregate/unit-prices.js';
 import { ENTITIES_INDEX, ENTITIES_NEXT_INDEX, indexEntities, meiliClient, swapEntityIndexes } from '../search/index-entities.js';
 import {deliverOperationalAlerts,smtpSender} from '../alerts/operational-alerts.js';
 
@@ -131,6 +132,8 @@ async function main() {
   await processingStage(sql,id!,'search');
   const since=new Date().toISOString();
   const topics=await indexTopics(sql,console.log);
+  // Unit prices read the accepted direct awards of this run (marts.da_transactions); offline, no source traffic.
+  const unitPrices=await buildUnitPrices(sql,console.log);
   // A shadow build fills the next index from the shadow schemas; the live `entities` keeps serving until the swap.
   const indexUid=shadow?ENTITIES_NEXT_INDEX:ENTITIES_INDEX;
   const report=await indexEntities(sql,{log:console.log,indexUid});
@@ -138,7 +141,7 @@ async function main() {
   const [expected]=await sql`select count(distinct entity_id)::int n from marts.entity_profile`;
   const failures=await client.tasks.getTasks({indexUids:[indexUid],statuses:['failed','canceled'],types:['documentAdditionOrUpdate','documentDeletion','settingsUpdate'],afterEnqueuedAt:since,limit:1});
   if(stats.isIndexing||stats.numberOfDocuments!==expected!.n||failures.results.length)throw Error('Search validation failed');
-  await sql`update app.processing_runs set search_verified=${JSON.stringify({...report,topics})}::jsonb where id=${id!}::uuid`;
+  await sql`update app.processing_runs set search_verified=${JSON.stringify({...report,topics,unitPrices})}::jsonb where id=${id!}::uuid`;
   await collectionHeartbeat(sql,`processor:${id}`,'processor','complete');
  } finally {clearInterval(heartbeat);await sql.end({timeout:10});}
 }

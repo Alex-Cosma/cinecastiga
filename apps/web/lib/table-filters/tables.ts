@@ -1,5 +1,6 @@
 import { ACCOUNT_COLUMNS } from "../admin/table-columns";
 import { LOT_COLUMNS } from "../notice-lots-columns";
+import { PRICE_BUYER_COLUMNS } from "../price-columns";
 import { TED_COLUMNS } from "../ted-columns";
 import type { TableColumns } from "./types";
 
@@ -19,6 +20,7 @@ export const URL_TABLES = {
   ted: { columns: TED_COLUMNS, endpoint: "/api/ted-awards", reset: ["p"] },
   loturi: { columns: LOT_COLUMNS, endpoint: "/api/anunturi/loturi", reset: ["p"] },
   conturi: { columns: ACCOUNT_COLUMNS, endpoint: "/api/admin/conturi", reset: ["page", "err"] },
+  preturi: { columns: PRICE_BUYER_COLUMNS, endpoint: "/api/preturi/cumparatori", reset: ["pagina", "deschis"] },
 } as const satisfies Record<string, UrlTable>;
 
 export type UrlTableName = keyof typeof URL_TABLES;

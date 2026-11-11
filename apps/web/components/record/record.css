@@ -64,6 +64,11 @@
 .record-items { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .record-items th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line2); }
 .record-items td { padding: 9px 10px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+/* A line's price per unit beside its product's median (unit prices, owner 11 November 2026); a lead (≥ 2×) in risk. */
+.record-unit-price { display: block; margin-top: 3px; font: 500 12px/1.5 var(--mono); color: var(--muted); }
+.record-unit-price b { font-weight: 600; color: var(--ink2); }
+.record-unit-price.is-lead b { color: var(--risk); }
+.record-unit-price a { font-family: var(--body); color: var(--accent-ink); }
 .record-items .record-num { text-align: right; white-space: nowrap; }
 
 /* Who holds how much of a total (ShareList): the name, the share and its amount, the bar under them. */

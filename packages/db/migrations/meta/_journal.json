@@ -736,6 +736,13 @@
       "when": 1794645931953,
       "tag": "0104_cpv_synonym_open_items",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1794649531953,
+      "tag": "0105_unit_price_lines",
+      "breakpoints": true
     }
   ]
 }

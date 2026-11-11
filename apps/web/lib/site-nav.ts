@@ -22,7 +22,7 @@ export interface NavContext {
  * linked from the home page and the record pages they lead to. Only the
  * question builder itself is "Întreabă".
  */
-const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/domenii", "/supra-prag", "/entitati", "/contracte", "/achizitii", "/anunturi"];
+const DISCOVER_PREFIXES = ["/cauta", "/semnale", "/domenii", "/supra-prag", "/preturi", "/entitati", "/contracte", "/achizitii", "/anunturi"];
 /** The guide is the methodology page (its "Pe scurt" lane) since 5 November 2026; /ghid redirects there. */
 const GUIDE_PREFIXES = ["/metodologie"];
 /** The private space's three tabs (components/private/PrivateTrail.tsx). */

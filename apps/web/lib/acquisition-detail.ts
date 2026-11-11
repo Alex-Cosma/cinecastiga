@@ -75,7 +75,7 @@ export async function getAcquisitionContext(id: string, detail: AcquisitionDetai
         dt.sicap_da_id is not null in_mart, dt.value_suspect, dt.closing_value::text mart_value,
         left(dt.finalization_date, 10) fin_day,
         coalesce((select json_agg(json_build_object(
-            'name', nullif(btrim(i.catalog_item_name), ''), 'cpvCode', i.cpv_code, 'quantity', i.quantity::text,
+            'itemId', i.id::text, 'name', nullif(btrim(i.catalog_item_name), ''), 'cpvCode', i.cpv_code, 'quantity', i.quantity::text,
             'unit', nullif(btrim(i.unit_raw), ''), 'unitPriceRon', i.closing_price::text, 'catalogPriceRon', i.unit_price::text)
             order by i.sicap_item_id)
           from core.da_items i where i.da_id = d.id), '[]'::json) items,
