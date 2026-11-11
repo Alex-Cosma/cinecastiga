@@ -133,7 +133,16 @@ async function main() {
   const since=new Date().toISOString();
   const topics=await indexTopics(sql,console.log);
   // Unit prices read the accepted direct awards of this run (marts.da_transactions); offline, no source traffic.
-  const unitPrices=await buildUnitPrices(sql,console.log);
+  // A section for administrators, not part of the publication: its failure must not stop the night's data
+  // (review, 11 November 2026). The builder is one transaction, so a failure leaves its three tables as they were
+  // before it: the previous ones in place, EMPTY in a shadow build (shadow-derived.txt creates them empty), and
+  // /preturi then shows its empty state until the next run. The error is kept in search_verified.unitPrices.
+  let unitPrices:unknown;
+  try{unitPrices=await buildUnitPrices(sql,console.log);}
+  catch(error){
+   unitPrices={error:diagnosticError(error)};
+   console.error(`Unit prices failed; the publication continues without them: ${JSON.stringify(unitPrices)}`);
+  }
   // A shadow build fills the next index from the shadow schemas; the live `entities` keeps serving until the swap.
   const indexUid=shadow?ENTITIES_NEXT_INDEX:ENTITIES_INDEX;
   const report=await indexEntities(sql,{log:console.log,indexUid});

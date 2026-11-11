@@ -32,6 +32,8 @@ export type DaItemsReport = {
   itemsRead: number;
   awardsInCore: number;
   awardsNotInCore: number;
+  /** Documents with item lines whose award id is not a number (no `directAcquisitionID`, an ObjectId `_id`): left out. */
+  awardsWithoutNumericId: number;
   itemsInserted: number;
   itemsAlreadyPresent: number;
 };
@@ -43,7 +45,7 @@ export async function loadDaItems(db: Db, sql: DbSql, file: string, log: (m: str
   const units = await loadUnitMap(db);
   const report: DaItemsReport = {
     documents: 0, documentsByYear: {}, withItems: 0, itemsRead: 0,
-    awardsInCore: 0, awardsNotInCore: 0, itemsInserted: 0, itemsAlreadyPresent: 0,
+    awardsInCore: 0, awardsNotInCore: 0, awardsWithoutNumericId: 0, itemsInserted: 0, itemsAlreadyPresent: 0,
   };
   let batch: { sicapDaId: string; items: Item[] }[] = [];
 
@@ -92,7 +94,10 @@ export async function loadDaItems(db: Db, sql: DbSql, file: string, log: (m: str
     report.documentsByYear[year] = (report.documentsByYear[year] ?? 0) + 1;
     const items = doc.directAcquisitionItems ?? [];
     const sicapDaId = doc.directAcquisitionID ?? doc._id;
-    if (items.length && sicapDaId != null) {
+    // Only a numeric award id can be looked up (the batch casts them to bigint): anything else is counted and left
+    // out instead of failing the batch and the import with it.
+    if (items.length && sicapDaId != null && !/^\d{1,18}$/.test(String(sicapDaId))) report.awardsWithoutNumericId++;
+    else if (items.length && sicapDaId != null) {
       report.withItems++;
       report.itemsRead += items.length;
       batch.push({ sicapDaId: String(sicapDaId), items });

@@ -1,4 +1,4 @@
-import {bigint,date,index,integer,numeric,primaryKey,smallint,text} from 'drizzle-orm/pg-core';
+import {bigint,boolean,date,index,integer,numeric,primaryKey,smallint,text} from 'drizzle-orm/pg-core';
 import {martsSchema} from './marts.js';
 /**
  * Item lines of direct awards placed in a product family and pack (src/unit-prices.ts), with the price per family
@@ -9,7 +9,8 @@ export const unitPriceLines=martsSchema.table('unit_price_lines',{
  family:text('family').notNull(),
  /** PricePack.slug; empty when the family does not split packs. */
  pack:text('pack').notNull().default(''),
- /** ok | out_of_range | no_pack | no_size | two_sizes | unit_kind */
+ /** ok | out_of_range | no_pack | no_size | two_sizes | unit_kind | ambiguous (two plausible readings) | budget (a blended
+  * price or a yearly ceiling contract, set by the builder) */
  status:text('status').notNull(),
  year:smallint('year').notNull(),
  finalizationDate:date('finalization_date'),
@@ -46,11 +47,13 @@ export const unitPriceBuyers=martsSchema.table('unit_price_buyers',{
  ratio:numeric('ratio'),
  /** Lei above the median: paid − median × quantity, never below zero. */
  excess:numeric('excess'),
+ /** A lead (LEAD_MIN_* in src/unit-prices.ts): ratio ≥ 2, at least two awards, excess ≥ 500 lei, group of ≥ 20 buyers. */
+ lead:boolean('lead').notNull().default(false),
  supplierIds:bigint('supplier_ids',{mode:'bigint'}).array().notNull().default([]),
 },t=>[primaryKey({columns:[t.family,t.pack,t.year,t.authorityId]}),index('unit_price_buyers_ratio_idx').on(t.year,t.family,t.pack,t.ratio),
  index('unit_price_buyers_authority_idx').on(t.authorityId)]);
 
-/** A product and pack in one year with at least five buyers: the spread of buyer prices and the leads (≥ 2× median). */
+/** A product and pack in one year with at least five buyers: the spread of buyer prices and the leads. */
 export const unitPriceGroups=martsSchema.table('unit_price_groups',{
  family:text('family').notNull(),
  pack:text('pack').notNull(),
@@ -61,7 +64,10 @@ export const unitPriceGroups=martsSchema.table('unit_price_groups',{
  p25:numeric('p25').notNull(),
  p75:numeric('p75').notNull(),
  p90:numeric('p90').notNull(),
+ /** Lead rows (unit_price_buyers.lead), the lei above the median of those rows, and their largest multiple. */
  leads:integer('leads').notNull(),
  excess:numeric('excess').notNull(),
+ /** Lei above the median of every buyer at twice the median or more, lead or not. */
+ excessAll:numeric('excess_all').notNull().default('0'),
  maxRatio:numeric('max_ratio'),
 },t=>[primaryKey({columns:[t.family,t.pack,t.year]})]);
