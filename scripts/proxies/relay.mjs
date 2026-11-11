@@ -6,9 +6,10 @@ if(!process.env.SEAP_PROXY_FILE)throw Error('SEAP_PROXY_FILE is required');
 let pool;
 try{
  const source=await readFile(process.env.SEAP_PROXY_FILE,'utf8');
- if(Buffer.byteLength(source)>65536)throw Error();
+ // Same limits as parseSeapProxies (packages/db/src/proxy-config.ts).
+ if(Buffer.byteLength(source)>512*1024)throw Error();
  pool=JSON.parse(source);
- if(!Array.isArray(pool)||!pool.length||pool.length>100)throw Error();
+ if(!Array.isArray(pool)||!pool.length||pool.length>600)throw Error();
  const ids=new Set(),ips=new Set();
  for(const p of pool){
   const u=new URL(p.server);
