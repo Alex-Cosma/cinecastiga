@@ -5,6 +5,7 @@ import type {CollectionStatus} from '@/lib/admin/collection';
 import {backfillForecast,type HistoricalStatus} from '../../lib/admin/historical-forecast';
 import HistoricalDownloads from './HistoricalDownloads';
 const historical=():HistoricalStatus=>({
+ daDetails:{pending:0,running:0,complete:0,failed:0,lastHour:0,lastDay:0,days:[],errors:[],lastEnqueue:null,walk:null,lanes:10},
  awards:{parts:[{part:'lots',pending:900,running:0,complete:100,failed:0,lastHour:50},{part:'root',pending:0,running:0,complete:1000,failed:10,lastHour:50}],
   errors:[{error:'Detaliu SEAP indisponibil (HTTP 400); celelalte anunțuri continuă.',n:10}],lastEnqueue:{at:'2026-10-17T07:00:00Z',auto:true,queued:1000,remaining:500,pilot:false},lanes:10},
  ted:{latest:{ojs:'202600131',day:'2026-07-10'},packages:9,notices:1008,matched:9,gaps:0,behind:70,lastFinishedAt:'2026-10-17T06:25:00Z',inFlight:false,spacingMinutes:30,failedAttempt:null},

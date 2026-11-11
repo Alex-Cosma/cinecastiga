@@ -1,6 +1,7 @@
 import {activateNationalDa} from '../collection/da-activation.js';
 import {advanceRecovery} from '../collection/advance.js';
 import {enqueueAwardDetailBackfill,refillAwardBackfill,retryFailedAwardBackfill,retryFailedOrdinaryAwardDetails,setBackgroundLanes} from '../collection/award-backfill.js';
+import {enqueueDaDetailBackfill,pruneDaDetailTasks,refillDaDetailBackfill,retryFailedDaDetails} from '../collection/da-detail-backfill.js';
 import {enableTedCollection} from '../collection/ted-activation.js';
 import {advertiseCollectorCapabilities,cancelContractsAudit,collectorCapability,enqueueContractsAudit,parseAuditNoticeIds,parseContractsAuditArgs} from '../collection/contracts-audit.js';
 import {setTimeout as sleep} from 'node:timers/promises';
@@ -27,6 +28,13 @@ try{
   if(args.slice(1).some(a=>!a.startsWith('--limit=')&&a!=='--pilot'))throw Error('Usage: collection backfill-award-details --limit=N [--pilot] | --retry-failed');
   const {queued,byTypeVersion,...rest}=await enqueueAwardDetailBackfill(q,{limit:Number(limitArg.split('=')[1]),pilot:args.includes('--pilot')});
   console.log(JSON.stringify({queued,byTypeVersion,...rest,networkRequests:0}));
+ }
+ else if(args[0]==='backfill-da-details'&&args[1]==='--retry-failed'&&args.length===2){console.log(JSON.stringify({...await retryFailedDaDetails(q),networkRequests:0}));}
+ else if(args[0]==='backfill-da-details'){
+  // Item lines of accepted direct awards (one detail per award), as background work. No source traffic here.
+  const limitArg=args.find(a=>a.startsWith('--limit=')),fromArg=args.find(a=>a.startsWith('--from='));if(!limitArg)throw Error('--limit=N is required');
+  if(args.slice(1).some(a=>!a.startsWith('--limit=')&&!a.startsWith('--from=')&&a!=='--pilot'&&a!=='--restart'))throw Error('Usage: collection backfill-da-details --limit=N [--pilot] [--from=YYYY-MM-DD] [--restart] | --retry-failed');
+  console.log(JSON.stringify({...await enqueueDaDetailBackfill(q,{limit:Number(limitArg.split('=')[1]),pilot:args.includes('--pilot'),restart:args.includes('--restart'),...(fromArg?{floor:fromArg.split('=')[1]!}:{})}),networkRequests:0}));
  }
  else if(args[0]==='background-lanes'){
   if(args.length!==2||!/^(10|[0-9])$/.test(args[1]!))throw Error('Usage: collection background-lanes <0..10>');
@@ -56,11 +64,18 @@ try{
    let nextAdvance=0,nextRefill=0,refilling=false;
    // Off the claim path: a refill scans the archived award list (seconds) and must not stall lane 0.
    const refill=()=>{refilling=true;nextRefill=Date.now()+600000;void refillAwardBackfill(q).then(r=>{if(r.refilled)console.log(JSON.stringify({event:'award-backfill-refill',queued:r.queued,remaining:r.remaining,networkRequests:0}));},error=>{console.error(JSON.stringify({event:'award-backfill-refill-failed',error:error instanceof Error?error.message.slice(0,300):String(error)}));}).finally(()=>{refilling=false;});};
+   // The direct-award lines download: refill and tidy every five minutes, also off the claim path.
+   let nextDaRefill=0,daRefilling=false;
+   const daRefill=()=>{daRefilling=true;nextDaRefill=Date.now()+300000;void (async()=>{
+     const r=await refillDaDetailBackfill(q);if(r.refilled)console.log(JSON.stringify({event:'da-detail-backfill-refill',queued:r.queued,remaining:r.remaining,cursor:r.cursor,networkRequests:0}));
+     const p=await pruneDaDetailTasks(q);if(p.removed)console.log(JSON.stringify({event:'da-detail-backfill-prune',removed:p.removed}));
+    })().catch(error=>{console.error(JSON.stringify({event:'da-detail-backfill-refill-failed',error:error instanceof Error?error.message.slice(0,300):String(error)}));}).finally(()=>{daRefilling=false;});};
    const lane=async(index:number)=>{
     while(!stopping&&attempts<bound){
      const [session]=await lock`select pg_backend_pid() pid`;if(session?.pid!==l.pid){stopping=true;throw Error('Recovery lock session lost');}
      if(index===0&&bound===Infinity&&Date.now()>=nextAdvance){await advanceRecovery(q);nextAdvance=Date.now()+60000;}
      if(index===0&&bound===Infinity&&!refilling&&!stopping&&Date.now()>=nextRefill)refill();
+     if(index===0&&bound===Infinity&&!daRefilling&&!stopping&&Date.now()>=nextDaRefill)daRefill();
      // Start work only in lanes enabled by the current operator setting.
      if(index>0){const [p]=await q`select enabled,max_in_flight from app.collection_proxy_control where id=1`;if(!p?.enabled||Number(p.max_in_flight)<=index){await sleep(1000);continue;}}
      if(await recoveryStep(q,t=>fetchTask(client,t),`${index}`))attempts++;
@@ -73,5 +88,5 @@ try{
    const failed=results.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
    console.log(JSON.stringify({event:'recovery-worker-exit',tasks:attempts,bounded:bound!==Infinity}));
   }finally{await lock`select pg_advisory_unlock(${RECOVERY_LOCK[0]},${RECOVERY_LOCK[1]})`.catch(()=>{});lock.release();}
- }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | retry-failed-award-details | background-lanes <0..10> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
+ }else throw Error('Usage: collection seed [closed-end-day] | follow-latest | national-da | ted-enable | backfill-award-details --limit=N [--pilot] | backfill-award-details --retry-failed | retry-failed-award-details | backfill-da-details --limit=N [--pilot] [--from=YYYY-MM-DD] [--restart] | backfill-da-details --retry-failed | background-lanes <0..10> | contracts-audit --tag=<tag> < ids | contracts-audit --cancel --tag=<tag> | contracts-audit --capability | run [--max-tasks=N]');
 }finally{await closeSharedDb();}
