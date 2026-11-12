@@ -78,6 +78,20 @@ export function contractDots(directShare: number): number {
   return Math.min(TOUR_DOTS - 1, Math.max(1, Math.round((1 - directShare) * TOUR_DOTS)));
 }
 
+/**
+ * The guessing game on the second idea (owner, 12 November 2026): before the figure, the visitor says how many of
+ * 100 acquisitions they think are direct. While they move the slider the dots show their own answer, so here a
+ * guess of 0 or 100 leaves one kind of dot only; the answer then moves the dots to the real split.
+ */
+export function guessContractDots(guess: number): number {
+  return TOUR_DOTS - Math.round(Math.min(100, Math.max(0, guess)) / 100 * TOUR_DOTS);
+}
+export function guessVerdict(guess: number, directShare: number): string {
+  const real = Math.round(directShare * 100), off = Math.abs(real - guess);
+  const lead = off <= 5 ? "Aproape exact:" : off <= 20 ? "Pe aproape:" : real > guess ? "Sunt mai multe:" : "Sunt mai puține:";
+  return `Ai spus ${guess} din 100. ${lead} ${tourPercent(directShare)} sunt directe.`;
+}
+
 /** The dots that stand out on the signal step. Spread out, so a finger can reach each. */
 export const TOUR_SIGNAL_DOTS: readonly number[] = [23, 47, 68, 112, 131, 155, 178];
 

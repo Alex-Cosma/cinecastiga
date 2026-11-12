@@ -78,6 +78,14 @@
 .tr-key i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
 .tr-key-direct{box-shadow:inset 0 0 0 1.5px var(--accent-line)}
 .tr-key-contract{background:var(--accent)}
+.tr-said{font-size:14px;color:var(--ink2)}
+.tr[data-step="2"][data-guess="wait"] .tr-dot{transition-delay:0s;transition-duration:.18s}
+.tr-guess{display:grid;gap:10px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.tr-guess label{font-size:15px;font-weight:600;color:var(--ink)}
+.tr-guess-row{display:flex;align-items:center;gap:14px}
+.tr-guess output{flex:none;min-width:5.6em;font:700 24px/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.tr-guess input[type=range]{flex:1;min-width:0;height:28px;margin:0;accent-color:var(--accent);cursor:pointer}
+.tr-guess-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
 .tr-paid{display:grid;gap:10px}
 .tr-paid div{border-radius:12px;padding:16px 18px}
 .tr-paid-yes{background:var(--accent);color:var(--on-accent)}
@@ -119,10 +127,10 @@
   .tr-paid{grid-template-columns:1fr 1fr}
   .tr-paid strong{font-size:30px}
 }
-@media (min-width:860px) and (min-height:700px){
+@media (min-width:860px) and (min-height:730px){
   .tr{grid-template-rows:auto 1fr auto auto 1fr}
   .tr-top{grid-row:1}
-  .tr-main{grid-row:3;min-height:540px;padding-bottom:10px}
+  .tr-main{grid-row:3;min-height:572px;padding-bottom:10px}
   .tr-nav{grid-row:4;position:static;padding-top:0;padding-bottom:28px;border-top:0;background:none}
 }
 

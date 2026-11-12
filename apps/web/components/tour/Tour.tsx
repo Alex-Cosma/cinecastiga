@@ -4,14 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { countyMap } from "@/lib/map";
 import { formatInt, formatRon } from "@/lib/format";
 import {
-  TOUR_DOTS, TOUR_LAST_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, contractDots, readFigures, tourPercent, tourPlace,
+  TOUR_DOTS, TOUR_LAST_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, tourPercent, tourPlace,
   tourQuery, tourQueryAlternatives, type TourData,
 } from "@/lib/tour";
 import "./tour.css";
 
 /**
  * The welcome tour (lib/tour.ts): a full-screen dialog over the page. Six steps: the visitor's county and subject,
- * then five ideas shown with that county's real figures. The map of the first step folds into a corner and the
+ * then five ideas shown with that county's real figures. On the second idea the visitor first guesses how many of
+ * 100 acquisitions are direct; the dots follow the slider, then move to the real split. The map of the first step folds into a corner and the
  * acquisitions become 200 dots that change with each idea. "Continuă" on the last step, the search, dissolves the
  * tour and leaves its question in the home page's search field. "Sari peste" and Escape close it at any step.
  */
@@ -56,6 +57,8 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
   const [step, setStep] = useState(0);
   const [county, setCounty] = useState(""), [topicKey, setTopicKey] = useState("");
   const [byValue, setByValue] = useState(false);
+  // The guess on the second idea: `guess` once answered, `live` while the slider moves. A new choice asks again.
+  const [guess, setGuess] = useState<number | null>(null), [live, setLive] = useState(50);
   const [data, setData] = useState<TourData | null>(null);
   const [asked, setAsked] = useState<string | null>(null), [understood, setUnderstood] = useState<{ query: string; sentence: string } | null>(null);
   const [tip, setTip] = useState<{ dot: number; left: number; top: number; arrow: number } | null>(null);
@@ -64,6 +67,8 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
 
   const shape = COUNTIES.find((c) => c.key === county), topic = TOUR_TOPICS.find((t) => t.key === topicKey);
   const chosen = shape !== undefined && topic !== undefined;
+  const chooseCounty = (key: string) => { setCounty(key); setGuess(null); setLive(50); };
+  const chooseTopic = (key: string) => { setTopicKey(key); setGuess(null); setLive(50); };
   const reading = useMemo(() => (chosen ? readFigures(data?.rows[shape.key]?.[topic.key]) : null), [chosen, data, shape, topic]);
   const year = data?.year ?? new Date().getFullYear() - 1;
   const place = shape ? tourPlace(shape.key, shape.label) : "";
@@ -132,12 +137,13 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
   }, [tip]);
 
   const share = reading ? (byValue ? reading.shareByValue : reading.shareByCount) : 0.9;
-  const firstContractDot = TOUR_DOTS - contractDots(share);
+  const guessing = step === 2 && guess === null && reading !== null;
+  const firstContractDot = TOUR_DOTS - (guessing ? guessContractDots(live) : contractDots(share));
   const perDot = reading ? Math.max(1, Math.round(reading.count / TOUR_DOTS)) : 0;
   const example = tip ? TOUR_SIGNAL_EXAMPLES[TOUR_SIGNAL_DOTS.indexOf(tip.dot) % TOUR_SIGNAL_EXAMPLES.length]! : null;
   const alternatives = chosen ? [tourQuery(topic, shape.label), ...tourQueryAlternatives(topic, shape.label, year)].filter((q) => q !== query) : [];
 
-  return <div className={`tr${leaving ? " tr-leave" : ""}`} ref={root} role="dialog" aria-modal="true" aria-label="Tur de bun venit" tabIndex={-1} data-step={step}>
+  return <div className={`tr${leaving ? " tr-leave" : ""}`} ref={root} role="dialog" aria-modal="true" aria-label="Tur de bun venit" tabIndex={-1} data-step={step} data-guess={guessing ? "wait" : undefined}>
     <header className="tr-top">
       <span className="tr-wm" aria-hidden="true">cinecâștigă<i>?</i></span>
       <ol className="tr-prog" aria-hidden="true">{Array.from({ length: TOUR_LAST_STEP + 1 }, (_, i) => <li key={i} className={i <= step ? "done" : undefined} />)}</ol>
@@ -153,13 +159,13 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
             <p>Turul durează un minut și folosește cifrele reale pentru alegerea ta.</p>
             <div className="tr-pick">
               <label>Județul
-                <select value={county} onChange={(event) => setCounty(event.target.value)}>
+                <select value={county} onChange={(event) => chooseCounty(event.target.value)}>
                   <option value="">Alege județul</option>
                   {COUNTIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </label>
               <div role="group" aria-labelledby="tr-topic-label"><span className="tr-label" id="tr-topic-label">Subiectul</span>
-                <div className="tr-chips">{TOUR_TOPICS.map((t) => <button type="button" key={t.key} className="tr-chip" aria-pressed={t.key === topicKey} onClick={() => setTopicKey(t.key)}>{t.label}</button>)}</div>
+                <div className="tr-chips">{TOUR_TOPICS.map((t) => <button type="button" key={t.key} className="tr-chip" aria-pressed={t.key === topicKey} onClick={() => chooseTopic(t.key)}>{t.label}</button>)}</div>
               </div>
             </div>
           </>}
@@ -194,7 +200,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
         <div className="tr-head">
           <div className="tr-map">
             <svg viewBox={`0 0 ${countyMap.width} ${countyMap.height}`} role="group" aria-label="Harta județelor. Aceleași opțiuni sunt în lista de județe.">
-              {countyMap.shapes.map((c) => <path key={c.key} d={c.d} className={c.key === county ? "on" : undefined} onClick={step === 0 ? () => setCounty(c.key) : undefined}><title>{c.label}</title></path>)}
+              {countyMap.shapes.map((c) => <path key={c.key} d={c.d} className={c.key === county ? "on" : undefined} onClick={step === 0 ? () => chooseCounty(c.key) : undefined}><title>{c.label}</title></path>)}
             </svg>
           </div>
           <div className="tr-where">{shape ? <>{shape.label}<small>{topic ? topic.label : "alege și un subiect"}</small></> : <small>Atinge un județ pe hartă sau alege-l din listă.</small>}</div>
@@ -221,7 +227,13 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
             <p className="tr-stat">În {year}, în {place}, la {topic!.inText}: <span className="tr-nw"><b><Count value={reading.count} /></b> achiziții,</span> <span className="tr-nw">publicate de <b><Count value={reading.authorities} /></b> instituții.</span></p>
             <p className="tr-cap">Un punct înseamnă cam {formatInt(perDot)} {perDot === 1 ? "achiziție" : "achiziții"}.</p>
           </>}
-          {step === 2 && <>
+          {step === 2 && guessing && <div className="tr-guess">
+            <label htmlFor="tr-guess-range">Din 100 de achiziții de aici, câte crezi că sunt directe, fără licitație?</label>
+            <div className="tr-guess-row"><output htmlFor="tr-guess-range">{live} din 100</output><input id="tr-guess-range" type="range" min={0} max={100} value={live} onChange={(event) => setLive(Number(event.target.value))} /></div>
+            <div className="tr-guess-foot"><button type="button" className="tr-btn tr-btn-primary" onClick={() => setGuess(live)}>Arată răspunsul</button><div className="tr-key"><span><i className="tr-key-direct" />directe</span><span><i className="tr-key-contract" />prin licitație</span></div></div>
+          </div>}
+          {step === 2 && !guessing && <>
+            {guess !== null && reading && <p className="tr-cap tr-said">{guessVerdict(guess, reading.shareByCount)}</p>}
             <div className="tr-toggle" role="group" aria-label="Cum împărțim achizițiile">
               <button type="button" aria-pressed={!byValue} onClick={() => setByValue(false)}>După număr</button>
               <button type="button" aria-pressed={byValue} onClick={() => setByValue(true)}>După bani</button>
