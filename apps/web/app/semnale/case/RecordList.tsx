@@ -4,58 +4,53 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
 import { formatCalendarDate, formatInt } from "@/lib/format";
+import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SHOWN, type RecordRow, type RecordSort, type RecordSortKey } from "@/lib/record-rows";
+
+export type { RecordRow } from "@/lib/record-rows";
 
 /**
  * A case's acquisitions (a group, a year's December, the records with a partner): code, date, title, sum and the source
  * links, sortable by date, title and sum (owner, 6 November 2026). Past 18, the first 15 show and the rest open on
- * request, in the chosen order.
+ * request, in the chosen order. A long list (`source`) arrives as its first rows only; its orders and further rows come
+ * from the server, 50 at a time (owner, 12 November 2026).
  */
-export interface RecordRow {
-  key: string;
-  code: string;
-  date: string | null;
-  title: string;
-  href: string;
-  /** Null: the sum is not published. */
-  value: number | null;
-  valueText: string;
-  seap: string | null;
-  ted: string | null;
-  /** The other patterns the same acquisition is in, named. */
-  also: string[];
-  /** The side the row names (the set-aside acquisitions are with other partners). */
-  party: { id: string | null; name: string; role: "authority" | "supplier" } | null;
-}
+const FIRST: Record<RecordSortKey, 1 | -1> = { date: -1, title: 1, value: -1 };
+const WORD: Record<RecordSortKey, string> = { date: "dată", title: "titlu", value: "sumă" };
 
-type Key = "date" | "title" | "value";
-type Sort = { key: Key; dir: 1 | -1 };
+type Paged = { rows: RecordRow[]; total: number; page: number; pages: number };
 
-const SHOWN = 15;
-/** A sum's first click puts the largest first; a date's, the latest; a title's, A to Z. */
-const FIRST: Record<Key, 1 | -1> = { date: -1, title: 1, value: -1 };
-const WORD: Record<Key, string> = { date: "dată", title: "titlu", value: "sumă" };
-
-function compare(a: RecordRow, b: RecordRow, { key, dir }: Sort): number {
-  if (key === "title") return dir * a.title.localeCompare(b.title, "ro", { sensitivity: "base" });
-  const x = key === "date" ? a.date : a.value, y = key === "date" ? b.date : b.value;
-  // Missing dates and unpublished sums stay at the end, whichever the direction.
-  if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
-  return dir * (x < y ? -1 : x > y ? 1 : 0);
-}
-
-export default function RecordList({ rows, empty }: { rows: readonly RecordRow[]; empty: string }) {
-  // The records come oldest first: that is the order until a column is chosen.
-  const [sort, setSort] = useState<Sort>({ key: "date", dir: 1 });
+export default function RecordList({ rows, empty, total, source }: {
+  rows: readonly RecordRow[]; empty: string;
+  /** A server-paged list: all its rows, and the address of its pages (without the order and page). */
+  total?: number; source?: string;
+}) {
+  const [sort, setSort] = useState<RecordSort>(RECORD_DEFAULT_SORT);
   const [all, setAll] = useState(false);
-  const sorted = useMemo(() => [...rows].sort((a, b) => compare(a, b, sort)), [rows, sort]);
+  const server = !!source && (total ?? rows.length) > rows.length;
+  const [paged, setPaged] = useState<Paged | null>(null);
+  const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  const sorted = useMemo(() => [...rows].sort((a, b) => compareRecordRows(a, b, sort)), [rows, sort]);
   if (!rows.length) return <p className="sgc-none">{empty}</p>;
-  const fold = rows.length > SHOWN + 3 && !all;
-  const shown = fold ? sorted.slice(0, SHOWN) : sorted;
-  const head = (key: Key, label: string) => {
+
+  async function load(next: RecordSort, page: number) {
+    setBusy(true); setError("");
+    try {
+      const r = await fetch(`${source}&ordine=${next.key}&sens=${next.dir}&pagina=${page}`, { cache: "no-store" });
+      const body = await r.json() as Paged & { error?: string };
+      if (!r.ok) throw new Error(body.error ?? "Nu am putut citi înregistrările. Încearcă din nou.");
+      setSort(next);
+      setPaged((prev) => page > 0 && prev ? { ...body, rows: [...prev.rows, ...body.rows] } : body);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  const count = server ? total! : rows.length;
+  const fold = !server && rows.length > RECORDS_SHOWN + 3 && !all;
+  const shown = server ? (paged?.rows ?? rows) : fold ? sorted.slice(0, RECORDS_SHOWN) : sorted;
+  const head = (key: RecordSortKey, label: string) => {
     const on = sort.key === key;
-    const next: Sort = on ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: FIRST[key] };
+    const next: RecordSort = on ? { key, dir: sort.dir === 1 ? -1 : 1 } : { key, dir: FIRST[key] };
     return (
-      <button type="button" className={`sgc-sort${on ? " on" : ""}`} onClick={() => setSort(next)}
+      <button type="button" className={`sgc-sort${on ? " on" : ""}`} disabled={busy} onClick={() => server ? void load(next, 0) : setSort(next)}
         aria-label={`Ordonează după ${WORD[key]}, ${next.dir === 1 ? (key === "title" ? "de la A la Z" : "crescător") : (key === "title" ? "de la Z la A" : "descrescător")}`}>
         {label}
         <svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true" className={on ? (sort.dir === 1 ? "up" : "down") : ""}>
@@ -65,8 +60,9 @@ export default function RecordList({ rows, empty }: { rows: readonly RecordRow[]
       </button>
     );
   };
+  const more = server && shown.length < count;
   return <>
-    <div className="sgc-rec sgc-rec-h">
+    <div className="sgc-rec sgc-rec-h" aria-busy={busy}>
       <span className="sgc-code">Cod</span>
       <span className="sgc-date">{head("date", "Data")}</span>
       <span className="sgc-what">{head("title", "Titlu")}</span>
@@ -91,6 +87,10 @@ export default function RecordList({ rows, empty }: { rows: readonly RecordRow[]
         </li>
       ))}
     </ul>
+    {error && <p className="sgc-none" role="alert">{error}</p>}
     {fold && <button type="button" className="sgc-more-btn" onClick={() => setAll(true)}>Arată toate cele {formatInt(rows.length)}</button>}
+    {more && <button type="button" className="sgc-more-btn" disabled={busy} onClick={() => void load(sort, paged ? paged.page + 1 : 0)}>
+      {busy ? "Se încarcă…" : `Arată mai multe · ${formatInt(shown.length)} din ${formatInt(count)}`}
+    </button>}
   </>;
 }

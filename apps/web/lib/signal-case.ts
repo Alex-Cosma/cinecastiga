@@ -5,6 +5,8 @@ import { readSignalEvidence, type AsideRecords } from "./signal-evidence";
 import { readDaEvidence, readRecordTitles, type SourceRecord } from "./source-evidence";
 import { riskNoScoreReason, riskPoints, type RiskCriterion, type ScoreParts } from "./risk-score";
 import { sharedSql } from "./shared-db";
+import { oldestFirst, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "./record-rows";
+import { decemberRecords } from "./signal-mirror";
 
 /**
  * One pattern of one entity (/entitati/{id}/semnale?tip=…; owner, 6 November 2026, "Oglinda"): the entity's score and every
@@ -78,8 +80,15 @@ export interface SignalCase {
   alsoIn: Record<string, string[]>;
 }
 
+/** The records of a case whose titles the page shows: all of a short list, the first rows of a long one (and of a year's December). */
+function titleRecords(inst: CaseInstance): CaseRecord[] {
+  const first = (rs: readonly CaseRecord[]) => (rs.length > RECORDS_SERVER_ABOVE ? oldestFirst(rs).slice(0, RECORDS_SHOWN) : [...rs]);
+  if (inst.records.length <= RECORDS_SERVER_ABOVE) return inst.records;
+  return inst.flagCode === "da_year_end" ? [...first(inst.records), ...first(decemberRecords(inst.records, String((inst.evidence as Record<string, unknown> | null)?.year ?? inst.period ?? "")))] : first(inst.records);
+}
+
 /** The entity's direct acquisitions flagged by the per-acquisition and per-group patterns, by sicap id. */
-async function readFlaggedDas(q: DbSql, state: SignalState & { entity: string }): Promise<Record<string, string[]>> {
+export async function readFlaggedDas(q: DbSql, state: Pick<SignalState, "role"> & { entity: string }): Promise<Record<string, string[]>> {
   const population = signalPopulation(q, { role: state.role, county: null, entity: state.entity });
   const rows = await q`select p.flag_code code, f.subject_type, f.evidence->'source_ids' ids, da.sicap_da_id::text da
     from ${population} p join core.flags f on f.id = p.id
@@ -130,7 +139,9 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
         financials: Array.isArray(source?.context.financials) ? source!.context.financials as CaseInstance["financials"] : [],
         warnings: source?.warnings ?? [] });
     }
-    const titles = await readRecordTitles(q, instances.flatMap((i) => [...i.records, ...(i.aside?.top ?? [])]));
+    // Titles for the rows that travel: a long list sends only its first rows (lib/record-rows.ts), the server pages
+    // read the others' titles; the largest case had 24,000.
+    const titles = await readRecordTitles(q, instances.flatMap((i) => [...titleRecords(i), ...(i.aside?.top ?? [])]));
     const titled = (r: SourceRecord): CaseRecord => ({ ...r, title: titles.get(`${r.src}:${r.refId}`) ?? null });
     for (const i of instances) {
       i.records = i.records.map(titled);

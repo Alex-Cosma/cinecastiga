@@ -22,6 +22,8 @@ import CaseTable, { type CaseRow } from "./CaseTable";
 import OpenFromHash from "./OpenFromHash";
 import OutsideMenu from "./OutsideMenu";
 import RecordList, { type RecordRow } from "./RecordList";
+import { caseRecordRows } from "@/lib/signal-case-rows";
+import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "@/lib/record-rows";
 import "./case.css";
 
 /*
@@ -107,26 +109,23 @@ function ShareBar({ share, ticks = [] }: { share: number; ticks?: { at: number; 
 }
 
 /**
- * A case's records as the sortable list's rows (RecordList). `counterparty`: the side each row names (the set-aside
- * acquisitions are with other partners).
+ * A case's records as the sortable list (RecordList). `counterparty`: the side each row names (the set-aside
+ * acquisitions are with other partners). `source`: the server pages of a long list (owner, 12 November 2026): past
+ * RECORDS_SERVER_ABOVE rows only the first ones travel, and the orders and further rows come from the server.
  */
-function Records({ records, alsoIn, code, empty, counterparty }: { records: readonly CaseRecord[]; alsoIn: Record<string, string[]>; code: string; empty?: string; counterparty?: "authority" | "supplier" }) {
-  const rows: RecordRow[] = records.map((r, i) => {
-    const links = evidenceLinks(r);
-    const party = counterparty === "authority" ? { id: r.authorityId, name: r.authority } : counterparty === "supplier" ? { id: r.supplierId, name: r.supplier } : null;
-    return {
-      key: `${r.src}:${r.refId}:${i}`, code: r.daCode ?? r.refId ?? "", date: r.date ?? null,
-      title: r.title ?? r.cpvName ?? (r.src === "contracts" ? "Contract" : "Achiziție directă"),
-      href: `/${r.src === "contracts" ? "contracte" : "achizitii"}/${r.refId}`,
-      value: r.originalValueExact === null ? null : Number(r.valueExact),
-      valueText: r.originalValueExact === null ? "valoare nepublicată" : lei(r.valueExact),
-      seap: links.seap, ted: links.ted,
-      also: (r.refId ? alsoIn[r.refId] ?? [] : []).filter((c) => c !== code).map((c) => flagLabel(c)),
-      party: party && counterparty ? { id: party.id ?? null, name: cleanName(party.name) || "—", role: counterparty } : null,
-    };
-  });
-  return <RecordList rows={rows} empty={empty ?? "Nu mai găsim înregistrările acestui caz în datele de acum."} />;
+function Records({ records, alsoIn, code, empty, counterparty, source }: { records: readonly CaseRecord[]; alsoIn: Record<string, string[]>; code: string; empty?: string; counterparty?: "authority" | "supplier"; source?: string }) {
+  const rows: RecordRow[] = caseRecordRows(records, alsoIn, code, counterparty);
+  const none = empty ?? "Nu mai găsim înregistrările acestui caz în datele de acum.";
+  if (source && rows.length > RECORDS_SERVER_ABOVE) {
+    const first = [...rows].sort((a, b) => compareRecordRows(a, b, RECORD_DEFAULT_SORT)).slice(0, RECORDS_SHOWN);
+    return <RecordList rows={first} total={rows.length} source={source} empty={none} />;
+  }
+  return <RecordList rows={rows} empty={none} />;
 }
+
+/** The address of a case list's server pages: the signal, the entity and its role, and which list. */
+const listSource = (data: SignalCase, signalId: string, list: "toate" | "decembrie" = "toate") =>
+  `/api/semnale/${signalId}/inregistrari?entitate=${data.entity.id}&rol=${data.entity.role === "supplier" ? "furnizor" : "autoritate"}&lista=${list}`;
 
 /** A case's own actions: its records as CSV, and saving it in an investigation (signed-in viewers). */
 function CaseActions({ inst, label }: { inst: CaseInstance; label: string }) {
@@ -212,7 +211,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
             </summary>
             <div className="sgc-body">
               <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA. Adunate, cele {formatInt(g.count)} achiziții trec de el de {ratioWords(g.ratio).replace("×", "")} ori.</p>
-              <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} />
+              <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(g.partnerName)} ${g.year}`} />
             </div>
@@ -338,7 +337,7 @@ function YearEndCase({ data }: { data: SignalCase }) {
               <span className="sgc-x">{pctWords(y.share)}</span>
             </summary>
             <div className="sgc-body">
-              <Records records={dec} alsoIn={data.alsoIn} code={data.code} empty="Nu găsim acum achizițiile din decembrie ale acestui an." />
+              <Records records={dec} alsoIn={data.alsoIn} code={data.code} empty="Nu găsim acum achizițiile din decembrie ale acestui an." source={listSource(data, inst.id, "decembrie")} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${y.year}`} />
             </div>
@@ -375,7 +374,7 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
     </div>
     <CasesHead title={<>{countWords(inst.records.length, "achiziție", "achiziții")} cu {partnerName}</>} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(code)} · ${partner}`} />} />
     <div id={`caz-${inst.id}`}>
-      <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} />
+      <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
       <Warnings inst={inst} />
       {inst.aside && inst.aside.count > 0 && (
         <details className="sgc-aside">
@@ -400,7 +399,7 @@ function CapacityCase({ data }: { data: SignalCase }) {
       </Side>
     </div>
     <CasesHead title={`Achizițiile din ${c.year}`} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(data.code)} · ${c.year}`} />} />
-    <div id={`caz-${inst.id}`}><Records records={inst.records} alsoIn={data.alsoIn} code={data.code} /><Warnings inst={inst} /></div>
+    <div id={`caz-${inst.id}`}><Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
   </>;
 }
 
