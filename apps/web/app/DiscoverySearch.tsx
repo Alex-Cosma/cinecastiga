@@ -7,6 +7,7 @@ import type { IntentResult } from "@/lib/intent/types";
 import type { EntityHit } from "@/lib/search";
 import { buildSuggestionGroups, flattenSuggestions } from "@/lib/search-suggestions";
 import DiscoveryIcon from "./DiscoveryIcon";
+import { namesQuery } from "@/lib/names-query";
 
 type Source<T> = { query: string; data: T | null; failed: boolean };
 const SOURCES = ["intent", "vocab", "last", "entities"] as const;
@@ -69,7 +70,10 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
       void settle("intent", getJson(`/api/intent?q=${encodeURIComponent(q)}`, signal));
       void settle("vocab", getJson(`/api/suggest?q=${encodeURIComponent(q)}`, signal));
       if (word) void settle("last", getJson(`/api/suggest?q=${encodeURIComponent(word)}`, signal));
-      void settle("entities", getJson(`/api/search?q=${encodeURIComponent(q)}`, signal));
+      // A question or a subject phrase searches names only by its name-like words, all of them (lib/names-query.ts).
+      const names = namesQuery(q);
+      if (names) void settle("entities", getJson(`/api/search?q=${encodeURIComponent(names.q)}${names.allWords ? "&all=1" : ""}`, signal));
+      else setSources((s) => ({ ...s, entities: { query: q, data: { hits: [], total: 0 }, failed: false } }));
     }, 180);
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [term]);

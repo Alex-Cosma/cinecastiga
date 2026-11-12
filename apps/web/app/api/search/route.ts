@@ -20,7 +20,7 @@ function db(): DbSql {
 
 export async function GET(req: NextRequest): Promise<Response> {
   const q = req.nextUrl.searchParams.get("q") ?? "";
-  const result = await searchEntities(q, { limit: 8 });
+  const result = await searchEntities(q, { limit: 8, allWords: req.nextUrl.searchParams.get("all") === "1" });
   if (req.nextUrl.searchParams.get("uat") === "1" && result.hits.length) {
     const ids = result.hits.filter((hit) => hit.roles.includes("authority")).map((hit) => String(hit.id));
     const units = await townHallUnits(db(), ids).catch(() => new Map());
