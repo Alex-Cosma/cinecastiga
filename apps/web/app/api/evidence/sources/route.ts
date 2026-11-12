@@ -4,6 +4,7 @@ import { readSignalEvidence } from "@/lib/signal-evidence";
 import { readRadiografieEvidence, validateRadiografieSelection } from "@/lib/radiografie-evidence";
 import { evidenceCsv } from "@/lib/ask/evidence";
 import { readRecordTitles } from "@/lib/source-evidence";
+import { EvidenceBusyError, withEvidenceSlot } from "@/lib/evidence-slots";
 
 /** Public procurement sources. This endpoint never reads private case tables. */
 export async function GET(request: Request) {
@@ -17,10 +18,11 @@ export async function GET(request: Request) {
   if (json && (!Number.isSafeInteger(page) || page < 0 || page > 4000)) return NextResponse.json({error:"Pagină invalidă."},{status:400});
   const sql = sharedSql();
   try {
-    const evidence = await sql.begin("isolation level repeatable read read only", async tx => {
+    // A few full source reads at once in the process (lib/evidence-slots.ts).
+    const evidence = await withEvidenceSlot(() => sql.begin("isolation level repeatable read read only", async tx => {
       await tx`set local statement_timeout = '30s'`;
       return kind === "signal" ? readSignalEvidence(tx as unknown as typeof sql, id) : readRadiografieEvidence(tx as unknown as typeof sql, id, selection);
-    });
+    }));
     if (!evidence) return NextResponse.json({ error: "Sursele nu mai sunt disponibile." }, { status: 404 });
     if (json) {
       const currentPage = Math.min(page, Math.max(0, Math.ceil(evidence.sourceCount / 50) - 1));
@@ -34,6 +36,7 @@ export async function GET(request: Request) {
       "x-source-methodology": evidence.methodology, "x-source-warnings": String(evidence.warnings.length),
       "x-source-missing-values": String(evidence.records.filter(row => row.originalValueExact === null).length) } });
   } catch (error) {
+    if (error instanceof EvidenceBusyError) return NextResponse.json({ error: error.message }, { status: 503, headers: { "retry-after": "60" } });
     const bounded = error instanceof Error && error.message.startsWith("Această selecție depășește");
     return NextResponse.json({ error: bounded ? error.message : "Exportul nu a putut fi generat. Încearcă din nou sau restrânge selecția." }, { status: bounded ? 413 : 503 });
   }

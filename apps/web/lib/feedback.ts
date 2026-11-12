@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { limitAddress } from "./client-address";
 import { createDb, type DbSql } from "@seap/db";
 import type { FeedbackInput, FeedbackPage } from "./feedback-shared";
 
@@ -8,9 +9,9 @@ export class FeedbackLimitError extends Error {}
 export class FeedbackConflictError extends Error {}
 
 export function feedbackClientKey(request:Request, secret:string, production:boolean, now = new Date()):string {
-  // Caddy overwrites this header using its trusted client address. Never use a caller's X-Forwarded-For.
-  const address = production ? request.headers.get("x-feedback-client-ip") || "unknown" : "local";
-  return createHmac("sha256",secret).update(`feedback:${now.toISOString().slice(0,13)}:${address.slice(0,128)}`).digest("hex");
+  // The address Caddy established, an IPv6 one by its /64 (lib/client-address.ts).
+  const address = limitAddress(request, production);
+  return createHmac("sha256",secret).update(`feedback:${now.toISOString().slice(0,13)}:${address}`).digest("hex");
 }
 
 export function feedbackStore(q:DbSql = feedbackDb()) {

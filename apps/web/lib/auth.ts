@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, twoFactor } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
-import { createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { createHmac } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import {
@@ -16,7 +16,8 @@ import {
 } from "@seap/db";
 import { sendAuthCode } from "./mail";
 import { localLoginTwoFactor } from "./local-auth";
-import { AUTH_IP_ADDRESS, adminHttpDisabledPaths } from "./auth-hardening";
+import { AUTH_IP_ADDRESS, adminHttpDisabledPaths, twoFactorHttpDisabledPaths } from "./auth-hardening";
+import { localPasswordOnlyLogin } from "./local-auth";
 
 /**
  * better-auth server instance. Accounts are admin-created only (signup
@@ -73,6 +74,17 @@ const createAuth = () => betterAuth({
     revokeSessionsOnPasswordReset: true,
   },
   hooks: {
+    // An account without the emailed code never signs in (launch audit M3, 12 November 2026): if forceTwoFactor and the
+    // ban that backs it both failed at creation, the account would otherwise log in with a password alone. Same answer
+    // as a wrong password, so the refusal tells nothing about the account. The loopback-only local login is exempt.
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email" || localPasswordOnlyLogin()) return;
+      const email = typeof ctx.body?.email === "string" ? ctx.body.email.trim().toLowerCase() : "";
+      if (!email) return;
+      const [user] = await authDb().select({ twoFactorEnabled: authUsers.twoFactorEnabled }).from(authUsers)
+        .where(eq(authUsers.email, email)).limit(1);
+      if (user && !user.twoFactorEnabled) throw new APIError("UNAUTHORIZED", { message: "Invalid email or password" });
+    }),
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/two-factor/verify-otp") return;
       const result = ctx.context.returned as {
@@ -99,33 +111,38 @@ const createAuth = () => betterAuth({
     }),
   },
   plugins: [
-    localLoginTwoFactor(twoFactor({
-      skipVerificationOnEnable: true,
-      otpOptions: {
-        digits: 6,
-        period: 3,
-        storeOTP: "hashed",
-        async sendOTP({ user, otp }, ctx) {
-          await sendAuthCode(user.email, otp);
-          // This callback is server-only. Never accept a recipient supplied by
-          // the browser, and never mark an admin-created address verified here.
-          const key = ctx ? await emailProofKey(user.id, otp, ctx) : null;
-          if (ctx && key) await ctx.context.internalAdapter.createVerificationValue({
-            identifier: key,
-            value: user.email,
-            expiresAt: new Date(Date.now() + 3 * 60 * 1000),
-          });
-        },
-      },
-    })),
+    localLoginTwoFactor(twoFactorPlugin()),
     admin(ADMIN_OPTIONS),
     nextCookies(),
   ],
   rateLimit: { enabled: true },
   advanced: { ipAddress: AUTH_IP_ADDRESS },
-  // HTTP only: the /admin server actions call auth.api.* directly (lib/auth-hardening.ts).
-  disabledPaths: adminHttpDisabledPaths(admin(ADMIN_OPTIONS)),
+  // HTTP only: the /admin server actions and forceTwoFactor call auth.api.* directly (lib/auth-hardening.ts).
+  disabledPaths: [...adminHttpDisabledPaths(admin(ADMIN_OPTIONS)), ...twoFactorHttpDisabledPaths(twoFactorPlugin())],
 });
+
+/** Password + emailed code for every login; one definition for the plugin list and its HTTP route filter. */
+function twoFactorPlugin() {
+  return twoFactor({
+    skipVerificationOnEnable: true,
+    otpOptions: {
+      digits: 6,
+      period: 3,
+      storeOTP: "hashed",
+      async sendOTP({ user, otp }, ctx) {
+        await sendAuthCode(user.email, otp);
+        // This callback is server-only. Never accept a recipient supplied by
+        // the browser, and never mark an admin-created address verified here.
+        const key = ctx ? await emailProofKey(user.id, otp, ctx) : null;
+        if (ctx && key) await ctx.context.internalAdapter.createVerificationValue({
+          identifier: key,
+          value: user.email,
+          expiresAt: new Date(Date.now() + 3 * 60 * 1000),
+        });
+      },
+    },
+  });
+}
 
 // Route discovery during a clean build must not initialize authentication with
 // absent runtime secrets. The first actual auth operation constructs it once.

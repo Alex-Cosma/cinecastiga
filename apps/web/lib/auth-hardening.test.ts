@@ -1,9 +1,9 @@
 import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { getIp } from "better-auth/api";
-import { admin } from "better-auth/plugins";
+import { admin, twoFactor } from "better-auth/plugins";
 import { describe, expect, it } from "vitest";
-import { ADMIN_HTTP_PATHS, AUTH_IP_ADDRESS, adminHttpDisabledPaths } from "./auth-hardening";
+import { ADMIN_HTTP_PATHS, AUTH_IP_ADDRESS, TWO_FACTOR_HTTP_PATHS, adminHttpDisabledPaths, twoFactorHttpDisabledPaths } from "./auth-hardening";
 
 const BASE = "http://localhost:3000";
 // Production's chain: Cloudflare, then Caddy, append one hop each; Caddy sets X-Feedback-Client-IP from CF-Connecting-IP.
@@ -95,5 +95,30 @@ describe("better-auth admin routes over HTTP (audit S1F2)", () => {
     // The rest of the router still answers.
     const session = await auth.handler(new Request(`${BASE}/api/auth/get-session`, { headers: { cookie } }));
     expect(session.status).toBe(200);
+  });
+});
+
+describe("two-factor routes over HTTP (launch audit M3, 12 November 2026)", () => {
+  it("keeps only the emailed code's two routes; disable, enable, TOTP and backup codes answer 404", async () => {
+    const plugin = twoFactor({ skipVerificationOnEnable: true, otpOptions: { sendOTP: async () => {} } });
+    const disabled = twoFactorHttpDisabledPaths(plugin);
+    expect(disabled).toEqual(expect.arrayContaining(["/two-factor/disable", "/two-factor/enable", "/two-factor/get-totp-uri",
+      "/two-factor/generate-backup-codes", "/two-factor/verify-backup-code", "/two-factor/verify-totp"]));
+    for (const kept of TWO_FACTOR_HTTP_PATHS) expect(disabled).not.toContain(kept);
+    const auth = betterAuth({
+      baseURL: BASE,
+      secret: "test-secret-for-auth-hardening-0123456789",
+      database: memoryAdapter({ user: [], session: [], account: [], verification: [], twoFactor: [] }),
+      emailAndPassword: { enabled: true, disableSignUp: true },
+      plugins: [plugin],
+      disabledPaths: disabled,
+    });
+    const post = (path: string) => auth.handler(new Request(`${BASE}/api/auth${path}`, {
+      method: "POST", headers: { "content-type": "application/json", origin: BASE }, body: JSON.stringify({ password: "x-password-1" }),
+    }));
+    expect((await post("/two-factor/disable")).status).toBe(404);
+    expect((await post("/two-factor/enable")).status).toBe(404);
+    // The login form's route still exists (401: no pending sign-in, not 404).
+    expect((await post("/two-factor/send-otp")).status).not.toBe(404);
   });
 });
