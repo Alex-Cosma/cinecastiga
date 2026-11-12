@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createDb, idleTimeoutFromEnv, sharedPoolMaxFromEnv } from "./client.js";
+import { createDb, idleTimeoutFromEnv, setDbDefaults, sharedPoolMaxFromEnv } from "./client.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -54,5 +54,24 @@ describe("one shared pool for the web server (launch audit, 12 November 2026)", 
     const w1 = createDb().sql, w2 = createDb().sql;
     expect(w1).not.toBe(w2);
     await Promise.all([own, url, w1, w2].map((s) => s.end({ timeout: 0 })));
+  });
+});
+
+describe("web defaults without the environment (12 November 2026: next dev reloaded on env changes)", () => {
+  const g = globalThis as unknown as { __seapDbDefaults?: unknown; __seapSharedDb?: { sql: { end: (o?: { timeout?: number }) => Promise<void> } } };
+  afterEach(async () => { await g.__seapSharedDb?.sql.end({ timeout: 0 }); delete g.__seapSharedDb; delete g.__seapDbDefaults; });
+
+  it("uses the process defaults when the environment sets nothing, and the environment when it does", async () => {
+    vi.stubEnv("SEAP_DB_SHARED_POOL_MAX", "");
+    vi.stubEnv("SEAP_DB_IDLE_TIMEOUT_SECONDS", "");
+    vi.stubEnv("DATABASE_URL", "postgres://u:p@127.0.0.1:1/seap_test_none");
+    setDbDefaults({ idleTimeout: 30, sharedPoolMax: 14 });
+    const shared = createDb().sql;
+    expect(shared).toBe(createDb().sql);
+    expect(shared.options.max).toBe(14);
+    expect(shared.options.idle_timeout).toBe(30);
+    await shared.end({ timeout: 0 }); delete g.__seapSharedDb;
+    vi.stubEnv("SEAP_DB_SHARED_POOL_MAX", "20");
+    expect(createDb().sql.options.max).toBe(20);
   });
 });
