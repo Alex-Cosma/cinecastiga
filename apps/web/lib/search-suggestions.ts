@@ -91,7 +91,8 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   const groups = new Map<SuggestionGroupId, Suggestion[]>();
   const push = (g: SuggestionGroupId, s: Suggestion) => {
     const list = groups.get(g) ?? [];
-    if (list.some((x) => x.href === s.href || fold(x.label) === fold(s.label))) return;
+    // One row per identity: a county the interpreter read and the last word names again is listed once, as read.
+    if (list.some((x) => x.id === s.id || x.href === s.href || fold(x.label) === fold(s.label))) return;
     if (g in MAX && list.length >= MAX[g as keyof typeof MAX]) return;
     list.push(s);
     groups.set(g, list);

@@ -77,6 +77,15 @@ describe("home search suggestions", () => {
     expect(ids(groups)).toEqual(["suppliers", "subjects", "words"]);
   });
 
+  it("lists a county once when a question ends with it (the welcome tour's question, 12 November 2026)", async () => {
+    // The interpreter reads the county and the last word names it too: one row, the interpreter's.
+    const text = "cine castiga cei mai multi bani din drumuri in Buzau";
+    const groups = buildSuggestionGroups({ text, intent: await intentFor(text), vocab: vocab(), lastWord: { word: "Buzau", vocab: vocab() }, entities: [] });
+    const rowIds = flattenSuggestions(groups).map((row) => row.id);
+    expect(new Set(rowIds).size).toBe(rowIds.length);
+    expect(rowIds.filter((id) => id === "place:county:buzau")).toHaveLength(1);
+  });
+
   it("works without the interpreter: entities still come, nothing is guessed", () => {
     const groups = buildSuggestionGroups({ text: "primaria buzau", intent: null, vocab: null, entities: [entity(2144364, "MUNICIPIUL BUZAU", ["authority"])] });
     expect(ids(groups)).toEqual(["authorities", "words"]);
