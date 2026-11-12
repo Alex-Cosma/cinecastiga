@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TOUR_DOTS, TOUR_TOPICS, contractDots, readFigures, splitLine, tourEntry, tourPercent, tourPlace, tourQuery, tourQueryAlternatives } from "./tour";
+import { TOUR_DOTS, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, splitLine, tourEntry, tourPercent, tourPlace, tourQuery, tourQueryAlternatives } from "./tour";
 
 const roads = TOUR_TOPICS.find((topic) => topic.key === "drumuri")!;
 
@@ -51,6 +51,20 @@ describe("the welcome tour (owner, 12 November 2026)", () => {
     expect(contractDots(0.75)).toBe(50);
     expect(contractDots(1)).toBe(1);
     expect(contractDots(0)).toBe(TOUR_DOTS - 1);
+  });
+
+  it("shows the visitor's own guess on the dots, from none direct to all direct", () => {
+    expect(guessContractDots(30)).toBe(140);
+    expect(guessContractDots(50)).toBe(100);
+    expect(guessContractDots(0)).toBe(TOUR_DOTS);
+    expect(guessContractDots(100)).toBe(0);
+  });
+
+  it("tells the visitor how close the guess was", () => {
+    expect(guessVerdict(73, 0.75)).toBe("Ai spus 73 din 100. Aproape exact: 75% sunt directe.");
+    expect(guessVerdict(60, 0.75)).toBe("Ai spus 60 din 100. Pe aproape: 75% sunt directe.");
+    expect(guessVerdict(30, 0.75)).toBe("Ai spus 30 din 100. Sunt mai multe: 75% sunt directe.");
+    expect(guessVerdict(90, 0.4)).toBe("Ai spus 90 din 100. Sunt mai puține: 40% sunt directe.");
   });
 
   it("names the place as people do", () => {
