@@ -352,6 +352,21 @@ type Resolution =
 
 export const TOWN_HALL_UNKNOWN = "Nu am recunoscut numele primăriei. Scrie localitatea, de exemplu „primăria din Râmnicu Sărat”.";
 
+/**
+ * The tokens of the curated phrases (two words or more) found in the text, optionally only those whose phrase passes
+ * `keep`. Search probe, 12 November 2026: „cămin de bătrâni” was the commune Cămin, „scaun cu rotile” broke at „cu”.
+ */
+function phraseTokens(c: Cursor, terms: readonly string[], keep: (words: string[]) => boolean = () => true): Set<number> {
+  const words = c.tokens.map((t) => t.f), out = new Set<number>();
+  for (const term of terms) {
+    const pw = term.split(" ");
+    if (pw.length < 2 || !keep(pw)) continue;
+    for (let s = 0; s + pw.length <= words.length; s++)
+      if (pw.every((w, k) => words[s + k] === w)) for (let k = s; k < s + pw.length; k++) out.add(k);
+  }
+  return out;
+}
+
 function confidenceLabel(c: number): Interpretation["confidenceLabel"] {
   return c >= 0.75 ? "high" : c >= 0.5 ? "medium" : c > 0 ? "low" : "none";
 }
@@ -403,8 +418,13 @@ export class RulesInterpreter implements QuestionInterpreter {
     this.ownPlace(c, out);
     this.noDomain(c, out);
     // Place names before subjects: "Alba Iulia", "Satu Mare", "Constanța" are places, not cabbage, sole or consultancy.
-    const marked = this.markedPlaces(c, out, byKey, localities);
-    let unmarked = this.unmarkedPlaces(c, byKey);
+    // A word of a curated phrase in the text is never a place („cămin de bătrâni” is no commune Cămin), and a curated
+    // single word after a bare preposition beats a commune or village of that name („bani din apă”: water, not Apa,
+    // Satu Mare); „comuna Apa” still names the commune (search probe, 12 November 2026).
+    const vocabulary = await this.vocab.synonyms();
+    const inPhrase = phraseTokens(c, vocabulary);
+    const marked = this.markedPlaces(c, out, byKey, localities, { inPhrase, words: new Set(vocabulary.filter((t) => !t.includes(" "))) });
+    let unmarked = this.unmarkedPlaces(c, byKey, inPhrase);
     // „poduri Argeș”, „drumuri și poduri Buzău”: a lone word that names a village and a curated subject is the subject when
     // another place is named (re-judging, 10 November 2026: Comuna Poduri, Bacău, was read and Argeș dropped)
     if (coded.length || marked.length || unmarked.length > 1) {
@@ -858,7 +878,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     return null;
   }
 
-  private markedPlaces(c: Cursor, out: Interpretation, byKey: Map<string, PlaceEntry[]>, localities: PlaceEntry[]): PlaceFound[] {
+  private markedPlaces(c: Cursor, out: Interpretation, byKey: Map<string, PlaceEntry[]>, localities: PlaceEntry[],
+    curated: { inPhrase: Set<number>; words: Set<string> } = { inPhrase: new Set(), words: new Set() }): PlaceFound[] {
     const found: PlaceFound[] = [];
     const markers: [RegExp, PlaceFound["constraint"]][] = [
       [/\bjud(?:etul|etului|et)?\b/, "county"],
@@ -904,6 +925,11 @@ export class RulesInterpreter implements QuestionInterpreter {
           continue;
         }
         const entries = at.entries.filter((e) => fits(e, constraint));
+        // the curated subject, not the village: inside a curated phrase, or one curated word after a bare preposition
+        // naming only communes and villages
+        if (Array.from({ length: at.j - h.j }, (_, d) => h.j + d).some((k) => curated.inPhrase.has(k))) continue;
+        if (constraint === "any" && at.j - h.j === 1 && curated.words.has(c.f(h.j))
+          && entries.every((e) => e.kind !== "county" && e.tip !== "municipiu" && e.tip !== "oraș")) continue;
         if (!entries.length) {
           // "primăria Dolj": a county has no town hall. Ask: one of its towns, or every institution in it.
           const county = at.entries.find((e) => e.kind === "county");
@@ -927,10 +953,10 @@ export class RulesInterpreter implements QuestionInterpreter {
     return found;
   }
 
-  private unmarkedPlaces(c: Cursor, byKey: Map<string, PlaceEntry[]>): PlaceFound[] {
+  private unmarkedPlaces(c: Cursor, byKey: Map<string, PlaceEntry[]>, inPhrase: Set<number> = new Set()): PlaceFound[] {
     const found: PlaceFound[] = [];
     for (let i = 0; i < c.tokens.length; i++) {
-      if (c.used[i]) continue;
+      if (c.used[i] || inPhrase.has(i)) continue;
       const at = this.placeAt(c, i, byKey, false);
       if (!at) continue;
       const single = at.j - i === 1;
@@ -1295,10 +1321,13 @@ export class RulesInterpreter implements QuestionInterpreter {
     const runs: [number, number][] = [];
     const curated = await this.curatedPhraseTokens(c);
     const usable = (k: number) => !c.used[k] && (!INSTITUTION_WORD.test(c.f(k)) || curated.has(k));
+    // a connector inside a curated phrase („scaun cu rotile”, „îngrijire la domiciliu”) keeps the phrase in one run
+    const joined = phraseTokens(c, await this.vocab.synonyms(), (pw) => pw.some((w, k) => k > 0 && k < pw.length - 1 && w !== "de" && STOPWORDS.has(w)));
+    const connector = (k: number) => STOPWORDS.has(c.f(k)) && c.f(k) !== "de" && !joined.has(k);
     for (let i = 0; i < c.tokens.length; i++) {
-      if (!usable(i) || (STOPWORDS.has(c.f(i)) && c.f(i) !== "de")) continue;
+      if (!usable(i) || connector(i)) continue;
       let j = i;
-      while (j < c.tokens.length && usable(j) && (!STOPWORDS.has(c.f(j)) || c.f(j) === "de")) j++;
+      while (j < c.tokens.length && usable(j) && !connector(j)) j++;
       const next = j;
       while (j > i && c.f(j - 1) === "de") j--;
       let k = i;
@@ -1311,7 +1340,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     // words that are not a subject on their own: never looked up, offered as choices below
     let retired: { k: number; entry: NonNullable<ReturnType<typeof retiredTerm>> } | null = null;
     for (const [i, j] of runs.slice(0, 4)) {
-      const content = c.tokens.slice(i, j).map((t) => t.f).filter((w) => w !== "de");
+      // „de” and a connector kept inside a curated phrase („cu”, „la”) are not words of the subject
+      const content = c.tokens.slice(i, j).map((t) => t.f).filter((w) => w !== "de" && !STOPWORDS.has(w));
       if (content.length >= 2) {
         const hit = await this.cpvFor(content);
         if (hit) { candidates.push({ i, j, hit, generic: false }); continue; }

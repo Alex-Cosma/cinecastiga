@@ -98,8 +98,17 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     expect(after.filter((r) => r.startsWith("parcuri|"))).toEqual(["parcuri|43325000||", "parcuri|45112711||", `parcuri|77310000|${PARCURI_NOTE}|`]);
     expect(after.filter((r) => /^(pod|lucrari de drumuri|lucrari drumuri)\|/.test(r))).toEqual(["lucrari de drumuri|45233000||", "lucrari drumuri|45233000||", "pod|45221000||"]);
     expect((await sql`select count(note)::int n from reference.cpv_synonym`)[0]!.n).toBe(19);
+    // The later lists (10 and 12 November 2026) on top; the seed holds the whole result.
+    // 0104 is a plain insert, run once as in production; 0108 twice, it is idempotent.
+    for (const name of ["0101_cpv_synonym_probe_vocabulary", "0102_cpv_synonym_probe_vocabulary_2", "0103_cpv_synonym_probe_vocabulary_3",
+      "0104_cpv_synonym_open_items"]) for (const statement of migration(name).split("--> statement-breakpoint")) await sql.unsafe(statement);
+    await apply("0108_cpv_synonym_lay_terms_4");
+    const latest = await rows();
+    expect(latest).toHaveLength(915);
+    expect(latest.filter((r) => r.startsWith("psihoterapie|"))).toEqual(["psihoterapie|85121270||"]);
+    expect(latest.filter((r) => r.startsWith("sare|")).map((r) => r.split("|")[1])).toEqual(["14400000", "34927100"]);
     await sql.unsafe(seed);
-    expect(await rows()).toEqual(after);
+    expect(await rows()).toEqual(latest);
   });
 
   it("grounds every term to its own rows minus its exclusions", async () => {
@@ -120,9 +129,9 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     expect(await grounded("medicamentele")).toMatchObject({ prefixes: ["336"], excludePrefixes: ["33682", "33683", "33696"] });
     // the retired words are offered as choices, never fuzzy-matched
     for (const term of ["lucrari", "mese", "programe"]) expect(await grounded(term), term).toMatchObject({ prefixes: [], retired: expect.anything() });
+    // „mese calde” is one thing since list 4 (12 November 2026): the hot meal, as „masa caldă”; „mese” alone stays a choice
     const mese = await interpretQuestion(connection!.sql, "mese calde scoala", { now: NOW });
-    expect(mese.spec).toBeNull();
-    expect(mese.alternatives.map((a) => a.spec.filters.cpvTerm)).toEqual(["catering", "39121200"]);
+    expect(mese.spec?.filters.cpvTerm).toBe("mese calde");
     // an exclusion never removes what another term of the same text includes
     expect((await grounded("medicamente reactivi"))?.excludePrefixes ?? []).toEqual(["33682", "33683"]);
     // 0082: green spaces, bridges and the whole road-works family
@@ -137,7 +146,7 @@ describe.runIf(Boolean(connection))("migrations 0080 and 0081: CPV vocabulary (d
     const notes = async (term: string) => (await grounded(term))?.notes;
     expect(await notes("iluminat")).toEqual([ILUMINAT_NOTE]);
     expect(await notes("iluminat public")).toEqual([ILUMINAT_NOTE]);
-    expect(await notes("iluminat festiv")).toEqual([]);
+    expect(await notes("iluminat festiv")).toEqual(["Include ornamentele în general, nu doar cele de sărbători."]);
     expect(await notes("masini")).toEqual(["Înseamnă autoturisme; utilajele și mașinile de birou sunt alte domenii."]);
     expect(await notes("scoala")).toHaveLength(1);
     expect(await notes("lemne")).toEqual([]);
