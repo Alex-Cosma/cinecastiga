@@ -9,6 +9,9 @@ import "./guide.css";
 import "@/components/ghost/ghost.css";
 import "@/components/motion/chart-motion.css";
 import "@/components/motion/page-transition.css";
+import "@/components/themed-select/themed-select.css";
+import ThemedSelect from "@/components/themed-select/ThemedSelect";
+import TourGate from "@/components/tour/TourGate";
 import { Suspense } from "react";
 import { G } from "@/components/ghost/Ghost";
 import { NavPending } from "@/components/ghost/client";
@@ -84,6 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <h4>Proiect</h4>
               <ul>
                 <li><Link href={GUIDE_HREF}>{GUIDE_LABEL}</Link></li>
+                <li><Link href="/?tur=1" prefetch={false}>Turul de bun venit</Link></li>
                 <li>
                   <Link href="/metodologie">Metodologie</Link>
                 </li>
@@ -101,6 +105,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </footer>
         <ReportProblem />
+        <ThemedSelect />
+        <Suspense><TourGate sessionHint={sessionHint} /></Suspense>
         <Suspense><Reveal /></Suspense>
         <Suspense><NavPending /></Suspense>
       </body>
