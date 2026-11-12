@@ -78,10 +78,15 @@ async function topEntities() {
   });
 }
 
+/** The longest text the typeahead reads; longer text is cut, not refused, so a pasted name still finds something. */
+const SUGGEST_Q_MAX = 80;
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const q = fold(url.searchParams.get("q") ?? "");
-  const county = fold(url.searchParams.get("county") ?? "");
+  // A typeahead needs a few words (launch audit, 12 November 2026): every word became a `like` pattern over the entity
+  // table, and the text had no length limit.
+  const q = fold((url.searchParams.get("q") ?? "").slice(0, SUGGEST_Q_MAX));
+  const county = fold((url.searchParams.get("county") ?? "").slice(0, SUGGEST_Q_MAX));
   if (q.length < 2) {
     // top=1 → starter suggestions for focal steps (network/sankey/…): the
     // biggest entities by contracted value, so the dropdown is never empty.

@@ -21,7 +21,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
   {params.grup&&<p><Link href="/metodologie/excluderi">Vezi toate grupurile excluse</Link></p>}
   {!data.groups.length&&<p className="note">{params.grup?'Acest grup nu mai este exclus temporar. Consultă paginile contractelor pentru starea actuală.':'Nu există grupuri excluse temporar în această versiune a datelor. Aceasta nu confirmă completitudinea colectării.'}</p>}
   {data.groups.map(g=><section className="section" key={g.id}>
-   <h2>{g.authorityId?<Link href={`/entitati/${g.authorityId}`}>{g.authority??'Instituție'}</Link>:g.authority??'Instituție neidentificată'}</h2>
+   <h2>{g.authorityId?<Link prefetch={false} href={`/entitati/${g.authorityId}`}>{g.authority??'Instituție'}</Link>:g.authority??'Instituție neidentificată'}</h2>
    <p><b>{g.members[0]?.noticeNo??'Anunț neidentificat'}</b> · {countWords(g.members.length,'publicație comparată','publicații comparate')} · reverificat la {coverageDate(g.reviewedAt)}</p>
    <ul className="prose">{g.reasons.map(reason=><li key={reason}>{EXCLUSION_REASONS[reason]??'Diferență între surse care necesită verificare.'}</li>)}</ul>
    <details className="data-context">
@@ -30,7 +30,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
     <div className="ask-tablewrap rank-stack excl-stack" role="region" aria-label={`Sursele pentru ${g.members[0]?.noticeNo??'acest grup'}`}>
      <table className="rank"><thead><tr><th scope="col">Contract / publicație</th><th scope="col">Data contractului</th><th scope="col" className="num">Valoarea sursă (lei)</th><th scope="col">Sursa oficială</th></tr></thead>
       <tbody>{g.members.map(m=><tr key={m.id}>
-       <td><Link href={`/contracte/${m.publicId}`}>{m.title??'Contract fără titlu'}</Link><div className="note">Nr. {m.number??'necunoscut'} · ID {m.publicId}</div></td>
+       <td><Link prefetch={false} href={`/contracte/${m.publicId}`}>{m.title??'Contract fără titlu'}</Link><div className="note">Nr. {m.number??'necunoscut'} · ID {m.publicId}</div></td>
        <td data-label="Data contractului">{coverageDate(m.date)}</td><td className="num" data-label="Valoarea sursă (lei)">{formatExactDecimal(m.value)}</td>
        <td data-label="Sursa oficială"><a href={`https://www.e-licitatie.ro/pub/notices/ca-notices/view-c/${m.noticeId}`} target="_blank" rel="noopener noreferrer">Vezi în SEAP <span aria-hidden="true">↗</span></a></td>
       </tr>)}</tbody>

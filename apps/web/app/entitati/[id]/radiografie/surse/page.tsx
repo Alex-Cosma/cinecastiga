@@ -121,7 +121,7 @@ export default async function RadiografieSourcesPage({ params, searchParams }: {
   const selection = selectionOf(search);
   const page = pageOf(search.p);
   const data = selection ? await load(id, JSON.stringify(selection), page) : null;
-  const back = <Link href={`/entitati/${id}/radiografie`} className="back">← Radiografia instituției</Link>;
+  const back = <Link prefetch={false} href={`/entitati/${id}/radiografie`} className="back">← Radiografia instituției</Link>;
   if (!data || (!data.pattern && !data.slice)) return <RecordPage className="rx-sources-record">{back}
     <header className="record-head"><div className="record-title"><h1>Tiparul nu mai corespunde selecției</h1>
       <p className="record-parties">Datele au fost recalculate sau sursele nu mai sunt disponibile. Deschide Radiografia de acum și alege din nou tiparul.</p></div></header>

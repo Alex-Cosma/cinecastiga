@@ -30,7 +30,7 @@ const scopeKey = (s: SignalState) => `${s.role}:${s.county ?? ""}:${s.entity ?? 
 /** One entity's page for a pattern (the case page). */
 const caseUrl = (code: string, role: SignalState["role"], entity: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: entity }));
 function Arrow({ back = false }: { back?: boolean }) { return <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d={back ? "m14 5-7 7 7 7" : "m10 5 7 7-7 7"} fill="none" stroke="currentColor" strokeWidth="1.7"/></svg>; }
-function Entity({ id, name }: { id: string | null; name: string | null }) { return id ? <Link href={`/entitati/${id}`}>{cleanName(name)}</Link> : <>{cleanName(name)}</>; }
+function Entity({ id, name }: { id: string | null; name: string | null }) { return id ? <Link prefetch={false} href={`/entitati/${id}`}>{cleanName(name)}</Link> : <>{cleanName(name)}</>; }
 function Pager({ page, total, navigate }: { page: number; total: number; navigate: (p: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / 10));
   const kept = [...new Set([0, Math.max(0, page - 1), page, Math.min(pages - 1, page + 1), pages - 1])].sort((a, b) => a - b);

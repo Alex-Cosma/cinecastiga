@@ -30,7 +30,7 @@ export default function ContractPublications({publications,currentId,countedOnce
    <p><strong>{revised?'Contract actualizat în SEAP.':`Același contract, ${publications.length} publicații SEAP.`}</strong>{' '}
      {countedOnce?'În statistici folosim o singură dată ultima versiune verificată.':'Ultima versiune verificată nu contribuie la totalurile statistice curente.'}
      {current?.valueRon!=null&&<> <strong>{formatExactDecimal(current.valueRon)} lei</strong>.</>}</p>
-   {older&&current&&<p className="contract-publication-previous">Privești o versiune anterioară. <Link href={`/contracte/${current.natId}`}>{countedOnce?'Deschide versiunea folosită în statistici':'Deschide ultima versiune verificată'}</Link>.</p>}
+   {older&&current&&<p className="contract-publication-previous">Privești o versiune anterioară. <Link prefetch={false} href={`/contracte/${current.natId}`}>{countedOnce?'Deschide versiunea folosită în statistici':'Deschide ultima versiune verificată'}</Link>.</p>}
    <details open={older||undefined}>
     <summary>Vezi istoricul și sursele ({publications.length})</summary>
     <ol>{publications.map((p,index)=>{
@@ -51,7 +51,7 @@ export default function ContractPublications({publications,currentId,countedOnce
        {p.unflaggedChange&&UNFLAGGED[p.unflaggedChange]&&<span className="note">{UNFLAGGED[p.unflaggedChange]}</span>}
       </div>
       <span className="contract-publication-links">
-       {p.natId===currentId?<span aria-current="page">Publicația deschisă</span>:<Link href={`/contracte/${p.natId}`}>Vezi publicația</Link>}
+       {p.natId===currentId?<span aria-current="page">Publicația deschisă</span>:<Link prefetch={false} href={`/contracte/${p.natId}`}>Vezi publicația</Link>}
        <a href={awardUrl(p.noticeId)} target="_blank" rel="noopener noreferrer" aria-label={`Verifică în SEAP anunțul ${p.noticeId} (filă nouă)`}>Verifică în SEAP ↗</a>
       </span>
      </li>;

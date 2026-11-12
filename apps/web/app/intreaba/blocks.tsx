@@ -639,7 +639,7 @@ export function ScatterBlock({
             {points.map((p) => (
               <tr key={p.entityId}>
                 <td>
-                  <Link href={`/entitati/${p.entityId}`}>
+                  <Link prefetch={false} href={`/entitati/${p.entityId}`}>
                     {cleanName(p.name)}
                   </Link>
                 </td>

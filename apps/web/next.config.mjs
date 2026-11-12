@@ -6,6 +6,9 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Caddy compresses every response (infra/prod/Caddyfile: encode zstd gzip) on its own cores; Next compressing too
+  // spent the single Node process's CPU on it (launch audit, 12 November 2026).
+  compress: false,
   // Keep local validation builds separate from a running preview.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   // postgres.js + the workspace db package are server-only; keep them out of the

@@ -2167,7 +2167,7 @@ function TableBlock({
               <td className="pos">{page * pageSize + i + 1}</td>
               <td>
                 {r.entityId ? (
-                  <Link href={`/entitati/${r.entityId}`}>
+                  <Link prefetch={false} href={`/entitati/${r.entityId}`}>
                     {cleanName(r.name)}
                   </Link>
                 ) : (

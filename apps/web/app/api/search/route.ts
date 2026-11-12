@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 // The Ask routes' pool: the town halls are read only for the builder's search.
 const g = globalThis as unknown as { __seapAskSql?: DbSql };
 function db(): DbSql {
-  if (!g.__seapAskSql) g.__seapAskSql = createDb().sql;
+  if (!g.__seapAskSql) g.__seapAskSql = createDb(undefined, { max: 6 }).sql;
   return g.__seapAskSql;
 }
 

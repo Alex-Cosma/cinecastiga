@@ -28,4 +28,12 @@ describe("short links (owner, 9 November 2026)", () => {
       expect(shortLinkTarget(raw)).toBeNull();
     }
   });
+
+  it("refuses an address that normalizes to another host (launch audit, 12 November 2026)", () => {
+    for (const raw of ["/.//evil.example/x", "/%2e//evil.example", "/intreaba/..//evil.example", "/././/evil.example?spec=a", "/entitati/../..//evil.example"]) {
+      expect(shortLinkTarget(raw)).toBeNull();
+    }
+    // A double slash inside a path of the site stays a path of the site.
+    expect(shortLinkTarget("/intreaba//x")).toBe("/intreaba//x");
+  });
 });

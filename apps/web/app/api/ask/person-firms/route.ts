@@ -15,7 +15,7 @@ import { personFirms } from "@/lib/ask/person-firms";
 
 const g = globalThis as unknown as { __seapAskSql?: DbSql };
 function db(): DbSql {
-  if (!g.__seapAskSql) g.__seapAskSql = createDb().sql;
+  if (!g.__seapAskSql) g.__seapAskSql = createDb(undefined, { max: 6 }).sql;
   return g.__seapAskSql;
 }
 

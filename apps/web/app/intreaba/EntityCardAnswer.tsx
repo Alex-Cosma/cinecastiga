@@ -54,7 +54,7 @@ export default function EntityCardAnswer({ data, spec, historical = true, condit
     return (
       <div className="qb qb-empty ask-alone">
         <p>{alone}</p>
-        <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
+        <h3><Link prefetch={false} href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
         <div className="qb-relax">
           <KitLink className="qb-relax-link" link={{ label: "Unde se situează față de celelalte", glyph: "›", href: askLink(peers) }} />
           <KitLink className="qb-relax-link" link={{ label: "Cât cumpără", glyph: "›", href: askLink(total) }} />
@@ -106,7 +106,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
         <span className="ec-medal" aria-hidden="true">1</span>
         <div className="ec-winner-body">
           <div className="ec-head" data-qb-arow="">
-            <h3 className="ec-name"><Link href={`/entitati/${first.entityId}`}>{cleanName(first.name)}</Link></h3>
+            <h3 className="ec-name"><Link prefetch={false} href={`/entitati/${first.entityId}`}>{cleanName(first.name)}</Link></h3>
             {actions.length > 0 && <span className="qb cq-rank-menu"><RowMenu name={cleanName(first.name)} actions={actions} /></span>}
           </div>
           <p className="ec-meta">{placeWords(first, spec)}</p>
@@ -262,7 +262,7 @@ function RiskRow({ place, row, facts, actions }: { place: number; row: RiskPlace
   const records = actions.find((action) => action.id === "records"), more = actions.filter((action) => action.id !== "records");
   return <div className="qb-arow ec-rrow" role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
-      <div className="qb-arow-name">{place}. <Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link><small>{profilePlace(row)}</small></div>
+      <div className="qb-arow-name">{place}. <Link prefetch={false} href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link><small>{profilePlace(row)}</small></div>
       <RowFacts facts={facts} />
     </div>
     <div className="qb-arow-val ec-rval">
@@ -366,10 +366,10 @@ function LegacyCard({ card, historical, spec }: { card: EntityCardData; historic
   return (
     <div className="ask-ecard">
       {actions.length ? <div className="ask-ecard-head" data-qb-arow="">
-        <h3><Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
+        <h3><Link prefetch={false} href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link></h3>
         <span className="qb cq-rank-menu"><RowMenu name={entity.name} actions={actions} /></span>
       </div> : <h3>
-        <Link href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link>
+        <Link prefetch={false} href={`/entitati/${card.entityId}`}>{cleanName(card.name)}</Link>
       </h3>}
       <div className="badges">
         <span className="badge">{card.role === "authority" ? "Autoritate" : "Furnizor"}</span>

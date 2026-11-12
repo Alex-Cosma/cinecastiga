@@ -8,7 +8,7 @@ import type { PublicCoverage } from "@/lib/coverage-summary";
 export const dynamic = "force-dynamic";
 
 const g = globalThis as unknown as { __seapAskSql?: DbSql };
-const db = (): DbSql => g.__seapAskSql ??= createDb().sql;
+const db = (): DbSql => g.__seapAskSql ??= createDb(undefined, { max: 6 }).sql;
 
 export async function GET() {
   try {

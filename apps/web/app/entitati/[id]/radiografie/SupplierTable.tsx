@@ -200,7 +200,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
             {!error && rows.map((r, i) => {
               const enter = enterOf(r.id, i);
               return <tr key={r.id} aria-selected={selectedId === r.id} onClick={() => onSelect(r)}>
-                <td className="c-name"><Link href={`/entitati/${r.id}`} onClick={(e) => e.stopPropagation()}>{shortName(r.name)}</Link></td>
+                <td className="c-name"><Link prefetch={false} href={`/entitati/${r.id}`} onClick={(e) => e.stopPropagation()}>{shortName(r.name)}</Link></td>
                 <td className="c-duel">
                   <button type="button" className="rv-pick" aria-label={`Arată în grafic: ${shortName(r.name)}, ${sharePct(r.shareHere)} din autoritate, ${sharePct(r.shareLife)} din câștigurile publice ale firmei`}
                     onClick={(e) => { e.stopPropagation(); onSelect(r); }}><Duel row={r} enter={enter} /></button>

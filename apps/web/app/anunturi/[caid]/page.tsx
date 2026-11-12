@@ -102,7 +102,7 @@ export default async function NoticePage({ params, searchParams }: {
           { label: "Primul contract din anunț", value: n.firstContractDate ? formatCalendarDate(n.firstContractDate) : <span className="record-quiet">Fără dată plauzibilă</span> },
           n.versions.length > 1 && { label: <Term tip id="versiuni-anunt">Versiuni SEAP</Term>, wide: true, value: n.versions.map((v, i) => <span key={v.caNoticeId}>{i > 0 && ", "}{v.caNoticeId === n.caNoticeId
             ? <span aria-current="page">{formatCalendarDate(v.versionDate)} (aceasta)</span>
-            : <Link href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>}</span>) },
+            : <Link prefetch={false} href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>}</span>) },
         ]} />
       </RecordSection>
 
@@ -129,7 +129,7 @@ export default async function NoticePage({ params, searchParams }: {
             {n.lots.map((l) => (
               <tr key={l.natId}>
                 <th scope="row" className="lot-object">
-                  <Link href={`/contracte/${l.natId}`}>{cleanName(isGenericTitle(l.title) ? meaningfulLot(l.lotsCaption, null) ?? l.title : l.title) || (l.contractNo ? `Contractul nr. ${l.contractNo}` : "Contractul")}</Link>
+                  <Link prefetch={false} href={`/contracte/${l.natId}`}>{cleanName(isGenericTitle(l.title) ? meaningfulLot(l.lotsCaption, null) ?? l.title : l.title) || (l.contractNo ? `Contractul nr. ${l.contractNo}` : "Contractul")}</Link>
                   <small>{[l.contractNo && `nr. ${l.contractNo}`, l.financialKind === "framework" && "plafon de acord-cadru", l.financialKind === "calloff" && "comandă subsecventă", l.financialKind === "amendment" && "act adițional, neadăugat", l.financialKind === "review" && "tip neclar, de verificat", l.temporarilyExcluded && "exclus temporar din totaluri"].filter(Boolean).join(" · ")}</small>
                 </th>
                 <td data-label="Câștigător">

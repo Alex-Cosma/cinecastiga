@@ -216,7 +216,7 @@ export default function TxTable({
                 </td>
                 <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>
                   {t.partnerId ? (
-                    <Link href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
+                    <Link prefetch={false} href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
                   ) : (
                     (t.partnerName ?? "—")
                   )}
@@ -281,7 +281,7 @@ export default function TxTable({
                   ) : null}
                   {t.src === "contract" ? (
                     t.natId ? (
-                      <Link href={`/contracte/${t.natId}`}>detalii →</Link>
+                      <Link prefetch={false} href={`/contracte/${t.natId}`}>detalii →</Link>
                     ) : t.caNoticeId ? (
                       <a href={awardUrl(t.caNoticeId)} target="_blank" rel="noopener noreferrer">
                         anunț ↗

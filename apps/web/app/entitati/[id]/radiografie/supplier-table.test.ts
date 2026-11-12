@@ -39,7 +39,7 @@ describe("the relation section", () => {
 
   it("selects a row's supplier in the chart and opens the firm from its name", () => {
     expect(table).toContain("onClick={() => onSelect(r)}");
-    expect(table).toContain("<Link href={`/entitati/${r.id}`} onClick={(e) => e.stopPropagation()}>");
+    expect(table).toContain("<Link prefetch={false} href={`/entitati/${r.id}`} onClick={(e) => e.stopPropagation()}>");
     expect(scatter).toContain("pairSpec({ id: authorityId, name: authorityName }, { id: p.id, name: p.name })");
   });
 

@@ -181,7 +181,7 @@ function BarMembers<M extends DistributionMember>({ bar, title, row, listRef, on
 /** A member's name, place and direct acquisitions (the list's left side). */
 function MemberName({ m }: { m: Pick<DistributionMember, "entityId" | "name" | "county" | "population" | "nDas"> }) {
   return <span className="dist-member-t">
-    <Link href={`/entitati/${m.entityId}`}>{cleanName(m.name)}</Link>
+    <Link prefetch={false} href={`/entitati/${m.entityId}`}>{cleanName(m.name)}</Link>
     {memberPlace(m) && <small>{memberPlace(m)}</small>}
     <small>{countWords(m.nDas, "achiziție directă", "achiziții directe")}</small>
   </span>;
