@@ -1,0 +1,13 @@
+/* The site's one dropdown list (components/themed-select/themed-list.ts). Colours come from the theme tokens. */
+.tl{position:fixed;z-index:1000;box-sizing:border-box;margin:0;padding:6px;max-width:min(360px,calc(100vw - 16px));overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow2);font-family:inherit;font-size:15px;font-weight:400;line-height:1.3;letter-spacing:0;text-transform:none;color:var(--ink);text-align:left;outline:0;scrollbar-width:thin;scrollbar-color:var(--line2) transparent;transform-origin:top left;animation:tl-in .32s cubic-bezier(.16,1,.3,1)}
+.tl[data-side="above"]{transform-origin:bottom left;animation-name:tl-in-up}
+@keyframes tl-in{from{opacity:0;transform:translateY(-8px) scale(.96)}}
+@keyframes tl-in-up{from{opacity:0;transform:translateY(8px) scale(.96)}}
+.tl-opt{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:10px 12px;border-radius:9px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tl-opt[data-active]{background:var(--accent-soft)}
+.tl-opt[data-empty]{color:var(--muted)}
+.tl-opt[aria-selected="true"]{font-weight:600;color:var(--accent)}
+.tl-opt[aria-selected="true"]::after{content:"";flex:none;width:6px;height:11px;margin:-3px 4px 0 0;border:solid var(--accent);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.tl-opt[aria-disabled="true"]{color:var(--faint);cursor:default}
+.tl-group{padding:10px 12px 4px;font-size:12px;font-weight:600;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.tl{animation:none}}

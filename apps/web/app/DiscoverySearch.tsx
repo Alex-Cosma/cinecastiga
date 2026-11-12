@@ -8,6 +8,7 @@ import type { EntityHit } from "@/lib/search";
 import { buildSuggestionGroups, flattenSuggestions } from "@/lib/search-suggestions";
 import DiscoveryIcon from "./DiscoveryIcon";
 import { namesQuery } from "@/lib/names-query";
+import { TOUR_QUERY_EVENT, TOUR_QUERY_KEY } from "@/lib/tour";
 
 type Source<T> = { query: string; data: T | null; failed: boolean };
 const SOURCES = ["intent", "vocab", "last", "entities"] as const;
@@ -38,6 +39,17 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
   const [query, setQuery] = useState("");
   const [sources, setSources] = useState<Partial<Record<SourceName, Source<unknown>>>>({});
   const [open, setOpen] = useState(false), [active, setActive] = useState(-1);
+  // The welcome tour ends by leaving its question here (home page only): written in the field, the list stays closed
+  // and the field is not focused, so a phone does not raise its keyboard over the page.
+  const [arrived, setArrived] = useState(false);
+  useEffect(() => {
+    if (!hero) return;
+    const fill = (text: string) => { setQuery(text); setOpen(false); setArrived(true); };
+    try { const kept = sessionStorage.getItem(TOUR_QUERY_KEY); if (kept) { sessionStorage.removeItem(TOUR_QUERY_KEY); fill(kept); } } catch { /* no storage: nothing was kept */ }
+    const onTour = (event: Event) => { const text = (event as CustomEvent<string>).detail; if (typeof text === "string" && text) fill(text); };
+    window.addEventListener(TOUR_QUERY_EVENT, onTour);
+    return () => window.removeEventListener(TOUR_QUERY_EVENT, onTour);
+  }, [hero]);
   const term = query.trim().replace(/\s+/g, " "), latestTerm = useRef(term);
   latestTerm.current = term;
   const lastWord = lastWordOf(term);
@@ -89,7 +101,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
   const navigate = (href: string) => { setOpen(false); onNavigate?.(); router.push(href); };
   const resultsHref = `/cauta?q=${encodeURIComponent(term)}`;
   let index = -1;
-  return <div className={`d-search${hero ? " d-search-hero" : ""}${modal ? " d-search-modal" : ""}`} ref={box}>
+  return <div className={`d-search${hero ? " d-search-hero" : ""}${modal ? " d-search-modal" : ""}${arrived ? " d-search-arrive" : ""}`} ref={box}>
     <form action="/cauta" method="get" role="search" autoComplete="off" onSubmit={(event) => {
       event.preventDefault();
       if (!term) { box.current?.querySelector("input")?.focus(); return; }
