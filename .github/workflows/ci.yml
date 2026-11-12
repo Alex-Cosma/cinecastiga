@@ -54,3 +54,18 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           ssh -i ~/.ssh/deploy -o BatchMode=yes "seap@$DEPLOY_HOST"
+      # Anonymous pages are cached at Cloudflare for 10 minutes (docs/handover/05-operations.md): cached HTML names the
+      # previous build's JavaScript files, so a deploy empties the cache. The token may only purge this zone's cache;
+      # until the owner adds it, the job warns and the cache is purged by hand (Caching → Configuration).
+      - name: Purge the Cloudflare cache
+        env:
+          CLOUDFLARE_PURGE_TOKEN: ${{ secrets.CLOUDFLARE_PURGE_TOKEN }}
+          CLOUDFLARE_ZONE_ID: f20aa2b73bef89aafa1eec34fe4cb5b9
+        run: |
+          if [ -z "$CLOUDFLARE_PURGE_TOKEN" ]; then
+            echo "::warning::CLOUDFLARE_PURGE_TOKEN is not set: purge the Cloudflare cache by hand (Caching → Configuration → Purge Everything)."
+            exit 0
+          fi
+          curl -fsS -X POST "https://api.cloudflare.com/client/v4/zones/$CLOUDFLARE_ZONE_ID/purge_cache" \
+            -H "Authorization: Bearer $CLOUDFLARE_PURGE_TOKEN" -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}' | grep -q '"success":true'

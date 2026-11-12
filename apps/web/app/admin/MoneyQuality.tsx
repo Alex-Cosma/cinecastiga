@@ -19,6 +19,6 @@ export default function MoneyQuality({ report }: { report: Report | null }) {
     {errors > 0 && <p role="alert">{number(report.structuralErrors)} erori de structură și {number(report.sourceErrors ?? 0)} neconcordanțe cu arhiva. Publicarea este blocată.</p>}
     <dl className="processing-stage-times">{report.counts.map(row => <div key={row.status}><dt>{labels[row.status] ?? row.status}</dt><dd>{number(row.count)}</dd></div>)}</dl>
     <p>{report.newIssues === null ? 'Primul inventar; nu există încă o comparație cu rularea anterioară.' : `${number(report.newIssues)} cazuri de clarificat din surse noi față de inventarul anterior.`}</p>
-    {report.examples.length > 0 && <><h3>Exemple de verificat</h3><ol>{report.examples.map(row => <li key={row.id}><Link href={`/contracte/${row.id}`} target="_blank" rel="noopener noreferrer">{row.title || `Contract ${row.id}`} · {row.id}</Link><p>{labels[row.status] ?? row.status}</p></li>)}</ol></>}
+    {report.examples.length > 0 && <><h3>Exemple de verificat</h3><ol>{report.examples.map(row => <li key={row.id}><Link prefetch={false} href={`/contracte/${row.id}`} target="_blank" rel="noopener noreferrer">{row.title || `Contract ${row.id}`} · {row.id}</Link><p>{labels[row.status] ?? row.status}</p></li>)}</ol></>}
   </details>;
 }

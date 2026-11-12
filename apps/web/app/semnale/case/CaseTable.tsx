@@ -129,7 +129,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
                 <td className="c-who">
                   <b><EntityName id={r.partnerId} role={partnerRole}>{cleanName(r.partnerName) || "—"}</EntityName></b>
                   {r.refId
-                    ? <Link className="c-title" href={`/achizitii/${r.refId}`}>{r.title ?? "Achiziție directă"}</Link>
+                    ? <Link prefetch={false} className="c-title" href={`/achizitii/${r.refId}`}>{r.title ?? "Achiziție directă"}</Link>
                     : <span className="c-title">{r.title ?? "Achiziție directă"}</span>}
                   {r.also.length > 0 && <span className="c-also">{r.also.map((c) => <span key={c} className="sgc-also">și la „{c}”</span>)}</span>}
                 </td>

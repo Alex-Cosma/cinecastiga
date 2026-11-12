@@ -37,7 +37,7 @@ export function TopTable({ title, rows }: { title: string; rows: TopEntity[] }) 
             <tr key={r.entityId}>
               <td className="pos">{r.rank}</td>
               <td>
-                <Link href={`/entitati/${r.entityId}`}>{r.name ?? "(fără nume)"}</Link>
+                <Link prefetch={false} href={`/entitati/${r.entityId}`}>{r.name ?? "(fără nume)"}</Link>
                 {r.county ? <div className="county">{r.county}</div> : null}
               </td>
               <td className="num">{formatRon(r.totalRon)}</td>

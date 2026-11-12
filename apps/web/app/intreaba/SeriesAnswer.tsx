@@ -207,7 +207,7 @@ function BarCard({ data, spec, point, partial, facts, onSources, onClose }: {
     onClose={onClose}
   >
     {above?.rows.length ? <ul className="ts-above">{above.rows.map((row) => <li key={row.natId}>
-      <Link href={`/contracte/${row.natId}`} title={row.title ? cleanName(row.title) : undefined}>{row.title ? cleanName(row.title) : `Contractul ${row.natId}`}</Link> <span className="qb-num">{formatRon(row.value)}</span>
+      <Link prefetch={false} href={`/contracte/${row.natId}`} title={row.title ? cleanName(row.title) : undefined}>{row.title ? cleanName(row.title) : `Contractul ${row.natId}`}</Link> <span className="qb-num">{formatRon(row.value)}</span>
     </li>)}</ul> : null}
   </DetailCard>;
 }

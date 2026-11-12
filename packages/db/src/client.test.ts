@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createDb, idleTimeoutFromEnv } from "./client.js";
+import { createDb, idleTimeoutFromEnv, sharedPoolMaxFromEnv } from "./client.js";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -24,5 +24,35 @@ describe("pool idle timeout (audit P1F1)", () => {
     expect(explicit.options.idle_timeout).toBe(5);
     expect(fromEnv.options.max).toBe(10);
     await Promise.all([fromEnv.end({ timeout: 0 }), explicit.end({ timeout: 0 })]);
+  });
+});
+
+describe("one shared pool for the web server (launch audit, 12 November 2026)", () => {
+  const g = globalThis as unknown as { __seapSharedDb?: { sql: { end: (o?: { timeout?: number }) => Promise<void> } } };
+  afterEach(async () => { await g.__seapSharedDb?.sql.end({ timeout: 0 }); delete g.__seapSharedDb; });
+
+  it("reads a positive whole size and nothing else", () => {
+    expect(sharedPoolMaxFromEnv({ SEAP_DB_SHARED_POOL_MAX: "14" })).toBe(14);
+    for (const value of [undefined, "", "0", "-1", "1.5", "14x", "1000"]) expect(sharedPoolMaxFromEnv({ SEAP_DB_SHARED_POOL_MAX: value })).toBeUndefined();
+  });
+
+  it("gives every call without arguments the same pool of that size", async () => {
+    vi.stubEnv("SEAP_DB_SHARED_POOL_MAX", "14");
+    vi.stubEnv("DATABASE_URL", "postgres://u:p@127.0.0.1:1/seap_test_none");
+    const a = createDb().sql, b = createDb().sql;
+    expect(a).toBe(b);
+    expect(a.options.max).toBe(14);
+  });
+
+  it("keeps a pool of its own for a caller with a URL or options, and shares nothing when unset (workers)", async () => {
+    vi.stubEnv("SEAP_DB_SHARED_POOL_MAX", "14");
+    vi.stubEnv("DATABASE_URL", "postgres://u:p@127.0.0.1:1/seap_test_none");
+    const shared = createDb().sql, own = createDb(undefined, { max: 2 }).sql, url = createDb("postgres://u:p@127.0.0.1:1/seap_test_none").sql;
+    expect(own).not.toBe(shared);expect(own.options.max).toBe(2);
+    expect(url).not.toBe(shared);expect(url.options.max).toBe(10);
+    vi.stubEnv("SEAP_DB_SHARED_POOL_MAX", "");
+    const w1 = createDb().sql, w2 = createDb().sql;
+    expect(w1).not.toBe(w2);
+    await Promise.all([own, url, w1, w2].map((s) => s.end({ timeout: 0 })));
   });
 });

@@ -27,6 +27,9 @@ export function shortLinkTarget(raw: unknown): string | null {
   let url: URL;
   try { url = new URL(raw, BASE); } catch { return null; }
   if (url.origin !== BASE || !PUBLIC_SECTIONS.has(url.pathname.split("/")[1] ?? "")) return null;
+  // The address is judged as it is stored and opened (launch audit, 12 November 2026): `/.//evil.example` passed the
+  // tests above and normalized to `//evil.example`, which a browser reads as another host.
+  if (url.pathname.startsWith("//")) return null;
   const query = url.searchParams.toString();
   const target = `${url.pathname}${query ? `?${query}` : ""}`;
   return target.length <= SHORT_TARGET_MAX ? target : null;

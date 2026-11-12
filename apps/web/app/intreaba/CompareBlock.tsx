@@ -74,7 +74,7 @@ export function CompareBlock({ data, partial = [], dataset = "all", shared = fal
             {data.joint.rows.map((row) => (
               <li key={row.nid}>
                 <EntityName id={row.authorityId} role="authority">{cleanName(row.authority ?? "Instituție neprecizată")}</EntityName>
-                <span>{row.date?.slice(0, 4)} · {formatRon(row.value)} · <Link href={`/contracte/${row.nid}`}>contractul →</Link></span>
+                <span>{row.date?.slice(0, 4)} · {formatRon(row.value)} · <Link prefetch={false} href={`/contracte/${row.nid}`}>contractul →</Link></span>
               </li>
             ))}
           </ul>
@@ -114,7 +114,7 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
   const empty = e.count === 0;
   return (
     <article className={`cmp-card cmp-${side}${empty ? " cmp-card-empty" : ""}`}>
-      <h3><Link href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link></h3>
+      <h3><Link prefetch={false} href={`/entitati/${e.entityId}`}>{cleanName(e.name)}</Link></h3>
       <p className="cmp-sub">{subtitle ?? <>
         {countyName(e.county) ?? (firms ? "sediu necunoscut" : "județ necunoscut")} · <RoleWord entity={e} />
         {span.years && ` · ${span.years}`}{span.older > 0 && ` · +${formatInt(span.older)} mai vechi`}
@@ -310,7 +310,7 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
         <p className="cmp-mirror-head"><span>{shortName(a.name)}</span><span>{firms ? "Instituția" : "Firma"}</span><span>{shortName(b.name)}</span></p>
         {rows.map((row, i) => (
           <div className="cmp-mirror-row" key={row.entityId} ref={motion.join}>
-            <Link className="cmp-mirror-name" href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>
+            <Link prefetch={false} className="cmp-mirror-name" href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>
             <div className="cmp-mirror-a"><span>{formatRon(row.a.value)} · {formatInt(row.a.count)}</span>{bar(row.a, "cm-xr", i)}</div>
             <div className="cmp-mirror-b">{bar(row.b, "cm-x", i)}<span>{formatRon(row.b.value)} · {formatInt(row.b.count)}</span></div>
           </div>
@@ -331,9 +331,9 @@ function TopPartners({ entity: e, side, firms, motion }: { entity: CompareEntity
     <div className={`cmp-panel cmp-${side}`}>
       <p className="cmp-panel-head"><EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName>{e.partners !== undefined && ` · ${countWords(e.partners, firms ? "instituție" : "firmă", firms ? "instituții" : "firme")}`}</p>
       {rows.length === 0 ? <p className="cmp-none">Niciunul în selecție.</p> : rows.map((row, i) => (
-        <ShareRow key={row.entityId} label={<Link href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} motion={motion} i={i} />
+        <ShareRow key={row.entityId} label={<Link prefetch={false} href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link>} value={row.value} total={e.value} detail={countWords(row.count, "înregistrare", "înregistrări")} motion={motion} i={i} />
       ))}
-      <Link className="cmp-all" href={`/entitati/${e.entityId}#parteneri`}>Toți {firms ? "clienții" : "furnizorii"} →</Link>
+      <Link prefetch={false} className="cmp-all" href={`/entitati/${e.entityId}#parteneri`}>Toți {firms ? "clienții" : "furnizorii"} →</Link>
     </div>
   );
 }

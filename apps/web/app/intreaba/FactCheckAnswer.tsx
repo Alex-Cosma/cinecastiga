@@ -81,7 +81,7 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
       <div className="fc-verdict-text">
         <VerdictText fact={f} spec={spec} />
       </div>
-      {state === "framework" && f.frameworks?.rows.length === 1 && f.frameworks.rows[0]!.nid && <Link className="fc-src" href={`/contracte/${f.frameworks.rows[0]!.nid}`}>Vezi acordul-cadru<span className="qb-glyph" aria-hidden="true">↗</span></Link>}
+      {state === "framework" && f.frameworks?.rows.length === 1 && f.frameworks.rows[0]!.nid && <Link prefetch={false} className="fc-src" href={`/contracte/${f.frameworks.rows[0]!.nid}`}>Vezi acordul-cadru<span className="qb-glyph" aria-hidden="true">↗</span></Link>}
     </div>
 
     {excludedOnly && <Outside rows={f.excluded?.rows ?? []} warm />}
@@ -95,8 +95,8 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
 
     <p className="fc-ident">
       {state === "no" && f.reason === "none" && <span>Ai ales:</span>}
-      <span><Link href={`/entitati/${f.authority.entityId}`}>{partyLine(f.authority)}</Link></span>
-      <span><Link href={`/entitati/${f.supplier.entityId}`}>{partyLine(f.supplier)}</Link></span>
+      <span><Link prefetch={false} href={`/entitati/${f.authority.entityId}`}>{partyLine(f.authority)}</Link></span>
+      <span><Link prefetch={false} href={`/entitati/${f.supplier.entityId}`}>{partyLine(f.supplier)}</Link></span>
     </p>
 
     {state === "no" && f.reason === "none" && <NoneContext fact={f} />}
@@ -284,7 +284,7 @@ function Frameworks({ rows, frameworks }: { rows: readonly FactOutsideRow[]; fra
     <span><b>{frameworkWords(frameworks.count)}</b> · {ceilingWords(frameworks)}, nu se adună</span> <HelpTip tip={{ title: "Acord-cadru", text: VERDICT_TIPS.framework }} />
     {rows.length > 0 && <button type="button" className="fc-textlink" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{open ? "Ascunde" : rows.length === 1 ? "Vezi-l" : "Vezi-le"}</button>}
     {open && <ul className="fc-outside">{rows.map((r) => <li key={r.refId}>
-      {r.nid ? <Link href={`/contracte/${r.nid}`}>{[roDay(r.date), r.what].filter(Boolean).join(" · ") || "Acord-cadru"}<span className="qb-glyph" aria-hidden="true">↗</span></Link> : [roDay(r.date), r.what].filter(Boolean).join(" · ")}
+      {r.nid ? <Link prefetch={false} href={`/contracte/${r.nid}`}>{[roDay(r.date), r.what].filter(Boolean).join(" · ") || "Acord-cadru"}<span className="qb-glyph" aria-hidden="true">↗</span></Link> : [roDay(r.date), r.what].filter(Boolean).join(" · ")}
       <span className="fc-n">{r.value !== null && r.value > 0 ? `plafon ${formatRonFull(r.value)}` : `plafon fără valoare în lei${r.currency ? ` (${r.currency})` : ""}`}</span>
     </li>)}</ul>}
   </div>;
@@ -313,7 +313,7 @@ function Outside({ rows, total, warm = false }: { rows: readonly FactOutsideRow[
         </span>{" "}
         <HelpTip tip={{ title: "În afara sumelor", text: FACT_TIPS.excluded }} />{" "}
         {r.src === "da" && /^\d+$/.test(r.refId) ? <a className="fc-textlink" href={`https://e-licitatie.ro/pub/direct-acquisition/view/${r.refId}`} target="_blank" rel="noreferrer">Vezi achiziția<span className="qb-glyph" aria-hidden="true">↗</span></a>
-          : r.nid ? <Link className="fc-textlink" href={`/contracte/${r.nid}`}>Vezi contractul<span className="qb-glyph" aria-hidden="true">↗</span></Link> : null}
+          : r.nid ? <Link prefetch={false} className="fc-textlink" href={`/contracte/${r.nid}`}>Vezi contractul<span className="qb-glyph" aria-hidden="true">↗</span></Link> : null}
       </li>;
     })}</ul>
     {hidden > 0 && !all && rows.length > shown.length && <button type="button" className="fc-textlink" onClick={more}>Arată încă {hidden.toLocaleString("ro-RO")}</button>}
@@ -329,7 +329,7 @@ function Samples({ samples, count }: { samples: readonly FactSample[]; count: nu
     <ul>{samples.map((s, i) => <li key={`${s.src}:${s.refId ?? i}`}>
       <span className="fc-d">{roDay(s.date) ?? "fără dată"}</span>
       <span className="fc-w">
-        {s.src === "contracts" && s.nid ? <Link href={`/contracte/${s.nid}`}>{s.cpvName ?? s.daCode ?? "Contract"}</Link> : <span>{s.cpvName ?? s.daCode ?? "Achiziție directă"}</span>}
+        {s.src === "contracts" && s.nid ? <Link prefetch={false} href={`/contracte/${s.nid}`}>{s.cpvName ?? s.daCode ?? "Contract"}</Link> : <span>{s.cpvName ?? s.daCode ?? "Achiziție directă"}</span>}
         <span className="fc-badges">{sampleBadges(s).map((b) => <span key={b} className="fc-badge">{b}</span>)}{s.recent && <span className="fc-badge is-recent">cea mai recentă</span>}</span>
       </span>
       <span className="fc-v">{formatRonFull(s.value)}</span>

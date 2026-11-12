@@ -44,7 +44,8 @@ export function monitoringDigestPeriod(value?: string, now = new Date()): { peri
 }
 
 async function usingDb<T>(database: DbSql | undefined, run: (sql: DbSql) => Promise<T>): Promise<T> {
-  const owned = database ? null : createDb();
+  // Its own small pool, ended below: never the web server's shared one (packages/db/src/client.ts).
+  const owned = database ? null : createDb(undefined, { max: 2 });
   try { return await run(database ?? owned!.sql); }
   finally { await owned?.sql.end(); }
 }

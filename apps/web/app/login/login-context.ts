@@ -16,7 +16,11 @@ export function contactHref(subject = "Acces la cont"): string {
  * are refused (a browser reads "/\host" or "//host" as another site).
  */
 export function safeReturnPath(next: string | null | undefined): string | null {
-  return next?.startsWith("/") && !next.startsWith("//") && !/[\\\u0000- \u007f]/.test(next) ? next : null;
+  if (!next?.startsWith("/") || next.startsWith("//") || /[\\\u0000- \u007f]/.test(next)) return null;
+  // Judged as the browser will read it (launch audit, 12 November 2026): "/.//host" normalizes to "//host".
+  let path: string;
+  try { path = new URL(next, "https://cinecastiga.invalid").pathname; } catch { return null; }
+  return path.startsWith("//") ? null : next;
 }
 
 export type LoginContext = "invitation" | "private" | null;

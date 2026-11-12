@@ -321,7 +321,7 @@ export default async function EntityPage({
           {successor.kind === "succesor"
             ? <>Activitatea continuă{successor.since ? ` din ${successor.since}` : ""} sub alt CUI: </>
             : <>Cont secundar al instituției </>}
-          <Link href={`/entitati/${continuedAt.id}`}>{continuedAt.name}</Link>
+          <Link prefetch={false} href={`/entitati/${continuedAt.id}`}>{continuedAt.name}</Link>
           {continuedAt.cui ? <span className="mono"> (CUI {continuedAt.cui})</span> : null}
           <span aria-hidden="true"> →</span>
         </p>
@@ -498,7 +498,7 @@ export default async function EntityPage({
             {role === "supplier" ? " Includ și cotele celorlalți membri ai consorțiului." : ""}</p>
           <div className="ask-tablewrap"><table className="rank"><thead><tr><th scope="col">Contract</th><th scope="col">Semnat</th><th scope="col" className="num">Valoare (lei)</th></tr></thead><tbody>
             {aboveCap.rows.map((c) => <tr key={c.natId}>
-              <td><Link href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
+              <td><Link prefetch={false} href={`/contracte/${c.natId}`}>{c.title?.trim() || c.contractNo || `Contract ${c.natId}`}</Link>{c.nWinners > 1 ? <span className="note"> · {formatInt(c.nWinners)} câștigători</span> : null}</td>
               <td>{c.contractDate ? formatCalendarDate(c.contractDate) : "—"}</td>
               <td className="num">{formatExactDecimal(c.valueRonExact)}</td>
             </tr>)}

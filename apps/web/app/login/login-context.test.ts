@@ -6,7 +6,7 @@ describe("login return path", () => {
     expect(safeReturnPath("/anchete/abc?tab=dovezi")).toBe("/anchete/abc?tab=dovezi");
     expect(safeReturnPath("/cont")).toBe("/cont");
   });
-  it.each([null, undefined, "", "anchete", "//evil.test", "/\\evil.test", "https://evil.test/", "/a b", "/a\u0000"])("refuses %j", (next) => {
+  it.each([null, undefined, "", "anchete", "//evil.test", "/\\evil.test", "https://evil.test/", "/a b", "/a\u0000", "/.//evil.test", "/%2e//evil.test", "/anchete/..//evil.test"])("refuses %j", (next) => {
     expect(safeReturnPath(next)).toBeNull();
   });
 });

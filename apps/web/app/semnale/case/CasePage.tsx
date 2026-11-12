@@ -414,7 +414,7 @@ function OutsideCase({ data }: { data: SignalCase }) {
           <span className="sgc-who"><b>{inst.partnerName ? <EntityName id={inst.partnerId} role={partnerRole(data.entity.role)}>{cleanName(inst.partnerName)}</EntityName> : riskEvidenceLine(inst.flagCode, inst.evidence) ?? FLAG_META[inst.flagCode]?.short}</b>
             <small>{inst.partnerName ? `${riskEvidenceLine(inst.flagCode, inst.evidence) ?? ""} · ` : ""}{signalPeriodLabel(inst.period, inst.evidence).replace(/^Perioada calculului: /, "")}</small></span>
           <span className="sgc-sum">{inst.totalExact === null ? "" : lei(inst.totalExact)}</span>
-          <span className="sgc-src"><Link href={`/semnale/${inst.id}`}>Sursele →</Link></span>
+          <span className="sgc-src"><Link prefetch={false} href={`/semnale/${inst.id}`}>Sursele →</Link></span>
         </article>
       ))}
     </div>

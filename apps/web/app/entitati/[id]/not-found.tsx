@@ -37,7 +37,7 @@ export default async function EntityNotFound() {
           <EntityName id={profile.entityId} role={role}>{name}</EntityName>{name.endsWith(".") ? "" : "."}
         </p>
         <div className="err-acts">
-          <Link href={`/entitati/${profile.entityId}`} className="btn pri">Pagina entității</Link>
+          <Link prefetch={false} href={`/entitati/${profile.entityId}`} className="btn pri">Pagina entității</Link>
           <Link href="/" className="btn">Prima pagină</Link>
         </div>
       </div>

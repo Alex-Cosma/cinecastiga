@@ -7,4 +7,8 @@
 export function register(): void {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   process.env.SEAP_DB_IDLE_TIMEOUT_SECONDS ??= "30";
+  // One pool for the pages and APIs (launch audit, 12 November 2026). The web's whole budget, with Ask (6), facets (3),
+  // intent (4), topic intent (2), the gate (2) and a digest (2): 33 connections; the documents worker holds 30 on the
+  // same role, whose limit is 64 (infra/prod/app-grants.sql), leaving the collector and the nightly run their room.
+  process.env.SEAP_DB_SHARED_POOL_MAX ??= "14";
 }
