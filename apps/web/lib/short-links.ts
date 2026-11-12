@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { limitAddress } from "./client-address";
 import { createDb, type DbSql } from "@seap/db";
 import { SHORT_CODE, shortLinkCodes } from "./short-links-shared";
 
@@ -12,9 +13,9 @@ export class ShortLinkCollisionError extends Error {}
 export const SHORT_LINK_LIMITS = [["client", 60, 600], ["global", 2000, 3600]] as const;
 
 export function shortLinkClientKey(request: Request, secret: string, production: boolean, now = new Date()): string {
-  // Caddy overwrites this header with the client address of the trusted proxy chain (Caddyfile). Never a caller's own.
-  const address = production ? request.headers.get("x-feedback-client-ip") || "unknown" : "local";
-  return createHmac("sha256", secret).update(`short-link:${now.toISOString().slice(0, 13)}:${address.slice(0, 128)}`).digest("hex");
+  // The address Caddy established, an IPv6 one by its /64 (lib/client-address.ts).
+  const address = limitAddress(request, production);
+  return createHmac("sha256", secret).update(`short-link:${now.toISOString().slice(0, 13)}:${address}`).digest("hex");
 }
 
 export function shortLinkStore(q: DbSql = db()) {

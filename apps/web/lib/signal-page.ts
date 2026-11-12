@@ -2,6 +2,7 @@ import { corroboratedCui, type DbSql } from "@seap/db";
 import { getCompanyReps, type CompanyRep } from "./marts";
 import { sharedSql } from "./shared-db";
 import { readSignalEvidence } from "./signal-evidence";
+import { withEvidenceSlot } from "./evidence-slots";
 import { getSignalSources } from "./signal-sources";
 import { readEntitySignalCounts } from "./signals";
 import { readRecordTitles, type SourceEvidence } from "./source-evidence";
@@ -87,7 +88,8 @@ export async function readFirmCard(entityId: string, database?: DbSql): Promise<
 export async function readSignalPageData(id: string, page: number): Promise<SignalPageData | null> {
   if (!ID.test(id)) return null;
   const sql = sharedSql();
-  const core = await sql.begin("isolation level repeatable read read only", async (tx) => {
+  // A few full source reads at once in the process (lib/evidence-slots.ts).
+  const core = await withEvidenceSlot(() => sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '30s'`;
     const [flag] = await q`select f.flag_code code, f.subject_type, f.subject_id::text subject, f.partner_id::text partner,
@@ -119,7 +121,7 @@ export async function readSignalPageData(id: string, page: number): Promise<Sign
       award: award ? { caNoticeId: String(award.caNoticeId), noticeNo: award.noticeNo ?? null, title: award.title ?? null, procedure: award.procedure ?? null, cpvCode: award.cpvCode ?? null, cpvName: award.cpvName ?? null } : null,
       related: related.map((s) => byId.get(s)).filter((p): p is SignalParty => !!p),
     };
-  });
+  }));
   if (!core) return null;
   const [tedLots, firm, counts] = await Promise.all([
     core.code === "award_single_bid"

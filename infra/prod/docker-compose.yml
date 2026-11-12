@@ -72,6 +72,8 @@ services:
     <<: *logging
     image: getmeili/meilisearch:v1.16
     restart: unless-stopped
+    # ~650 MB in use on 12 Nov 2026 (index ~0.9 GB); headroom for the nightly reindex.
+    mem_limit: 4g
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set in .env}
@@ -92,7 +94,11 @@ services:
       dockerfile: infra/prod/Dockerfile.web
     image: cinecastiga-web
     restart: unless-stopped
+    # Bounded memory (launch audit, 12 November 2026): a runaway web process is restarted by Docker instead of pushing
+    # the host's out-of-memory killer onto Postgres. ~360 MB in use on 12 Nov; the heap cap stays below the container's.
+    mem_limit: 4g
     environment:
+      NODE_OPTIONS: --max-old-space-size=3072
       DATABASE_URL: postgres://seap_web:${SEAP_WEB_PASSWORD:?set in .env}@postgres:5432/seap
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_KEY: ${MEILI_MASTER_KEY}
