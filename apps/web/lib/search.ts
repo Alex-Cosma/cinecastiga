@@ -61,7 +61,7 @@ export interface SearchResult {
 
 export async function searchEntities(
   q: string,
-  opts: { limit?: number; role?: "supplier" | "authority" } = {},
+  opts: { limit?: number; role?: "supplier" | "authority"; allWords?: boolean } = {},
 ): Promise<SearchResult> {
   const query = q.trim();
   if (!query) return { hits: [], total: 0 };
@@ -74,6 +74,8 @@ export async function searchEntities(
       // param that rule is skipped and tiny entities leapfrog big ones.
       sort: ["total:desc"],
       ...(filter ? { filter } : {}),
+      // Every word must match (the home box's names search of a question, lib/names-query.ts); default: drop from the end.
+      ...(opts.allWords ? { matchingStrategy: "all" as const } : {}),
       attributesToRetrieve: ["id", "name", "registryNames", "cui", "county", "roles", "total"],
     });
   const hits = (res.hits as unknown as (EntityHit & { registryNames?: string[] })[]).map(({ registryNames, ...hit }) => {

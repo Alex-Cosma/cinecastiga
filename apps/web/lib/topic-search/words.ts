@@ -79,8 +79,17 @@ export function weakSubject(s: Pick<SubjectMatch, 'source' | 'matched' | 'cpvNam
   if (s.source !== 'catalog') return false;
   // a CPV code typed as such ("45233140", "45233140-2") is the person's own choice of domain
   if (/^\d{8}(?:[\s-]\d)?$/.test(s.matched.text.trim())) return false;
-  const label = new Set(wordsOf(s.cpvName ?? s.label));
-  return wordsOf(s.matched.text).some((w) => !label.has(w) && !stems(w).some((b) => label.has(b)));
+  // Both directions (search probe, 12 November 2026): the label's own inflection counts too, so „gunoi” is a whole
+  // word of „colectarea gunoiului” and „pacienți” of „transportul pacienților”.
+  const label = new Set(wordsOf(s.cpvName ?? s.label).flatMap((w) => stems(w)));
+  return wordsOf(s.matched.text).some((w) => !typedForms(w).some((b) => label.has(b)));
+}
+
+/** A typed word and its bases, plus the singular of a plural in -i/-e („pacienti” → „pacient”), for weakSubject only. */
+function typedForms(w: string): string[] {
+  const out = stems(w);
+  if (w.length >= 6 && /[ie]$/.test(w)) out.push(w.slice(0, -1));
+  return out;
 }
 
 /**
