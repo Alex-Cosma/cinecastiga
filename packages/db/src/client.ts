@@ -30,10 +30,11 @@ export function shadowBuildFromEnv(env: Readonly<Record<string, string | undefin
 }
 
 /**
- * Size of the one pool a process shares, from SEAP_DB_SHARED_POOL_MAX (a positive integer); unset means no sharing.
+ * Size of the one pool a process shares, from SEAP_DB_SHARED_POOL_MAX (a positive integer), else the process's
+ * default (setDbDefaults); neither means no sharing.
  * Launch audit, 12 November 2026: the web server opened about thirty pools of 10, up to ~300 connections against
  * Postgres's 100 shared with the collector and the documents worker; in a spike Postgres refused connections and the
- * maintenance gate closed the whole site. apps/web/instrumentation.ts sets it; ingestion and the workers do not.
+ * maintenance gate closed the whole site. apps/web/instrumentation.ts sets the default; ingestion and the workers do not.
  */
 export function sharedPoolMaxFromEnv(env: Readonly<Record<string, string | undefined>> = process.env): number | undefined {
   const value = env["SEAP_DB_SHARED_POOL_MAX"];
@@ -41,10 +42,24 @@ export function sharedPoolMaxFromEnv(env: Readonly<Record<string, string | undef
   return Number(value);
 }
 
+/**
+ * The web server's pool settings, set once at its start (apps/web/instrumentation.ts) when the environment gives none.
+ * Kept on globalThis, not written into process.env: `next dev` treats a changed environment as a reason to reload the
+ * page, and reloaded every page in a loop (12 November 2026). An operator's environment value still wins.
+ */
+export type DbDefaults = { idleTimeout?: number; sharedPoolMax?: number };
+const defaults = globalThis as unknown as { __seapDbDefaults?: DbDefaults };
+export function setDbDefaults(next: DbDefaults): void {
+  defaults.__seapDbDefaults = { ...defaults.__seapDbDefaults, ...next };
+}
+export function dbDefaults(): DbDefaults {
+  return defaults.__seapDbDefaults ?? {};
+}
+
 function openDb(url: string | undefined, options: {max?:number; idleTimeout?:number; shadow?:boolean} | undefined) {
   const connectionString =
     url ?? process.env["DATABASE_URL"] ?? DEFAULT_DATABASE_URL;
-  const idleTimeout = options?.idleTimeout ?? idleTimeoutFromEnv();
+  const idleTimeout = options?.idleTimeout ?? idleTimeoutFromEnv() ?? dbDefaults().idleTimeout;
   const pool = postgres(connectionString, {max:options?.max??10, ...(idleTimeout ? {idle_timeout:idleTimeout} : {})});
   const sql: typeof pool = options?.shadow ?? shadowBuildFromEnv() ? shadowSql(pool) : pool;
   return { db: drizzle(sql, { schema }), sql };
@@ -59,7 +74,7 @@ const shared = globalThis as unknown as { __seapSharedDb?: ReturnType<typeof ope
  * ending the shared one would close it for the whole process.
  */
 export function createDb(url?: string, options?: {max?:number; idleTimeout?:number; shadow?:boolean}) {
-  const sharedMax = url === undefined && options === undefined ? sharedPoolMaxFromEnv() : undefined;
+  const sharedMax = url === undefined && options === undefined ? sharedPoolMaxFromEnv() ?? dbDefaults().sharedPoolMax : undefined;
   if (sharedMax !== undefined) return (shared.__seapSharedDb ??= openDb(undefined, { max: sharedMax }));
   return openDb(url, options);
 }
