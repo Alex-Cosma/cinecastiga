@@ -259,3 +259,53 @@ export function capacity(c: CaseInput): Capacity {
     implausible: e.implausible === true, zeroStaff: e.zero_staff === true, young: e.young === true,
   };
 }
+
+/**
+ * "Contracte în prima lună de la înființare" (rf-2026.24; owner, 13 November 2026), from the firm's side or, as its
+ * reverse, the institution's (one case per firm): the registration day, the firm's age at its first direct award, and
+ * what was contracted in the window. Two facts sharpen or explain a case: an award close to the ceiling, and an
+ * older firm of one of the firm's legal representatives.
+ */
+export interface FirstMonth {
+  id: string;
+  partnerId: string | null;
+  partnerName: string | null;
+  total: number;
+  count: number | null;
+  /** The institutions of the window (the firm's side only). */
+  buyers: number | null;
+  /** Every institution of the firm in the archive's direct awards. */
+  buyersAll: number | null;
+  registeredOn: string | null;
+  firstAwardOn: string | null;
+  lastAwardOn: string | null;
+  /** Days from the registration to the first award of the case. */
+  ageDays: number | null;
+  windowDays: number;
+  closestValue: number | null;
+  closestCeiling: number | null;
+  nearCeiling: boolean;
+  olderFirmId: string | null;
+  olderFirmName: string | null;
+  olderFirmSameBuyer: boolean;
+  /** The institution's side: what the firm contracted with every institution in the window, and with how many. */
+  firmTotal: number | null;
+  firmBuyers: number | null;
+}
+
+const optDay = (value: unknown): string | null => (typeof value === "string" && ISO_DAY.test(value) ? value.slice(0, 10) : null);
+
+export function firstMonth(c: CaseInput): FirstMonth {
+  const e = c.evidence ?? {};
+  const ceiling = optNum(e.closest_ceiling), closest = ceiling ? optNum(e.closest_value) : null;
+  return {
+    id: c.id, partnerId: c.partnerId, partnerName: c.partnerName, total: num(e.total), count: optNum(e.count),
+    buyers: optNum(e.buyers), buyersAll: optNum(e.buyers_all),
+    registeredOn: optDay(e.registered_on), firstAwardOn: optDay(e.first_award_on), lastAwardOn: optDay(e.last_award_on),
+    ageDays: optNum(e.age_days), windowDays: optNum(e.window_days) ?? 30,
+    closestValue: closest, closestCeiling: closest == null ? null : ceiling, nearCeiling: e.near_ceiling === true && closest != null,
+    olderFirmId: e.older_firm == null ? null : String(e.older_firm), olderFirmName: typeof e.older_firm_name === "string" && e.older_firm_name ? e.older_firm_name : null,
+    olderFirmSameBuyer: e.older_firm_same_buyer === true,
+    firmTotal: optNum(e.firm_total), firmBuyers: optNum(e.firm_buyers),
+  };
+}

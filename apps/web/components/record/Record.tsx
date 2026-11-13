@@ -77,9 +77,14 @@ export function MissingLine({ fields }: { fields: string[] }) {
   return <p className="record-missing">Lipsesc din sursă: {fields.join(", ")}.</p>;
 }
 
-/** The signals on this record: each with its name, what it means, one line of evidence and its case among the institution's. */
-export function SignalList({ flags, authorityId, fallbackEvidence }: {
-  flags: RecordFlag[]; authorityId: string | null; fallbackEvidence?: (flag: RecordFlag) => ReactNode;
+/**
+ * The signals on this record: each with its name, what it means, one line of evidence and its case among the
+ * institution's, or the firm's own case for a signal that is the firm's (`supplierId`). `note`: one more line about
+ * this very record under a signal's evidence.
+ */
+export function SignalList({ flags, authorityId, supplierId = null, fallbackEvidence, note }: {
+  flags: RecordFlag[]; authorityId: string | null; supplierId?: string | null;
+  fallbackEvidence?: (flag: RecordFlag) => ReactNode; note?: (flag: RecordFlag) => ReactNode;
 }) {
   if (!flags.length) return null;
   return <RecordSection id="semnale" title={flags.length === 1 ? "Semnal" : "Semnale"} className="record-signals">
@@ -88,13 +93,17 @@ export function SignalList({ flags, authorityId, fallbackEvidence }: {
       {flags.map((f) => {
         const meta = FLAG_META[f.code];
         const line = riskEvidenceLine(f.code, f.evidence) ?? fallbackEvidence?.(f) ?? null;
-        const href = authorityId ? signalUrl(parseSignalState({ tip: f.code, rol: "autoritate", ent: authorityId })) : null;
+        const firms = meta?.subject === "supplier";
+        const href = firms ? (supplierId ? signalUrl(parseSignalState({ tip: f.code, rol: "furnizor", ent: supplierId })) : null)
+          : authorityId ? signalUrl(parseSignalState({ tip: f.code, rol: "autoritate", ent: authorityId })) : null;
+        const extra = note?.(f) ?? null;
         return <li key={f.code}>
           <h3>{flagFindingLabel(f.code)}</h3>
           {meta?.short && <p>{meta.short}</p>}
           {line && <p className="record-evidence">{line}</p>}
+          {extra && <p className="record-evidence">{extra}</p>}
           <div className="record-signal-links">
-            {href && <Link href={href}>Toate cazurile instituției</Link>}
+            {href && <Link href={href}>{firms ? "Cazul firmei" : "Toate cazurile instituției"}</Link>}
             {meta?.caveat && <details><summary>De ce nu e o dovadă</summary><p>{meta.caveat}</p></details>}
           </div>
         </li>;

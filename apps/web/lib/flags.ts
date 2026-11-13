@@ -127,6 +127,30 @@ export const FLAG_META: Record<string, FlagMeta> = {
     rationale: "O firmă care vinde mult peste mărimea ei poate fi un intermediar; merită verificat cine a executat de fapt.",
     caveat: "Bilanțul e anual și poate lipsi; contractele multianuale și subcontractarea pot explica diferența. Singur, semnalul rămâne slab.",
   },
+  da_first_month: {
+    code: "da_first_month",
+    title: "Contracte în prima lună de la înființare",
+    subject: "supplier",
+    short: "Achizițiile directe din primele 30 de zile de la înmatricularea firmei însumează cel puțin 100.000 lei.",
+    description:
+      "Achizițiile directe acceptate ale firmei, publicate în primele 30 de zile de la înmatricularea ei la Registrul Comerțului, însumează cel puțin 100.000 lei. Vârsta firmei se numără de la cea mai veche înmatriculare a CUI-ului (o mutare de sediu dă un număr nou, nu o firmă nouă) până la ziua publicării achiziției. Se numără doar achizițiile instituțiilor pe care le obligă plafoanele achiziției directe, nu ale companiilor private sau ale asociațiilor. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
+    rationale:
+      "O firmă abia înființată nu are încă istoric de arătat. Merită verificat cum a fost aleasă, cine o conduce și cine a executat contractul.",
+    caveat:
+      "Firma nouă poate fi a unui furnizor cu experiență: dovezile arată când un reprezentant legal al ei are și o firmă mai veche, furnizoare a statului. Circa unu din zece furnizori noi are prima achiziție în prima lună; semnalul pornește de la sumă, nu de la vârstă. Achiziția directă sub plafon este legală. Data înmatriculării vine din ultimul import ONRC, deci o firmă înființată după el nu este încă evaluată. Semnalul nu intră în scor.",
+  },
+  da_first_month_buyer: {
+    code: "da_first_month_buyer",
+    title: "Contracte cu firme în prima lună de la înființare",
+    subject: "authority",
+    short: "Achiziții directe de cel puțin 100.000 lei cu o firmă aflată în primele 30 de zile de la înmatriculare.",
+    description:
+      "Instituția are, cu aceeași firmă, achiziții directe acceptate de cel puțin 100.000 lei, publicate în primele 30 de zile de la înmatricularea firmei la Registrul Comerțului. Fiecare firmă este un caz. Vârsta firmei se numără de la cea mai veche înmatriculare a CUI-ului până la ziua publicării achiziției. Este reversul semnalului „Contracte în prima lună de la înființare” al firmei.",
+    rationale:
+      "Merită verificat cum a fost aleasă o firmă fără istoric: ce oferte au mai fost cerute, cine o conduce și cine a executat contractul.",
+    caveat:
+      "Firma poate fi a unui furnizor mai vechi al instituției: dovezile arată când un reprezentant legal al ei are o firmă mai veche care a contractat cu aceeași instituție. Achiziția directă sub plafon este legală. Data înmatriculării vine din ultimul import ONRC, deci o firmă înființată după el nu este încă evaluată. Semnalul nu intră în scor.",
+  },
   award_no_competition: {
     code: "award_no_competition",
     title: "Negociere fără anunț prealabil",
@@ -243,6 +267,8 @@ export const FLAG_ORDER = [
   "da_year_end",
   "da_round",
   "da_above_ceiling",
+  "da_first_month",
+  "da_first_month_buyer",
   "award_no_competition",
   "award_single_bid",
   "award_calloffs_over_ceiling",

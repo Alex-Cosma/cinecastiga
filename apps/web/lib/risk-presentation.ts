@@ -1,4 +1,5 @@
-import { formatExactDecimal, formatInt, formatRon } from "./format";
+import { countWords } from "./ask/answer-text";
+import { formatCalendarDate, formatExactDecimal, formatInt, formatRon } from "./format";
 
 export function thresholdTypeLabel(type: unknown): string {
   return type === "da_ceiling_works" ? "lucrări"
@@ -109,6 +110,43 @@ export function calloffsOverCeilingLine(evidence: Record<string, unknown>): stri
   return `${head} Poate fi o depășire reală sau o eroare de completare în SEAP.`;
 }
 
+/**
+ * da_first_month and its reverse on the institution, da_first_month_buyer (rf-2026.24; owner, 13 November 2026): the
+ * registration day, the firm's age at its first award and what was contracted in the window, then the two facts that
+ * sharpen or explain a case: an award close to the ceiling, and an older firm of one of the firm's legal
+ * representatives (the usual explanation: the new firm of an existing supplier).
+ */
+export function firstMonthLine(code: string, evidence: Record<string, unknown>): string {
+  const num = (key: string) => { const v = Number(evidence[key]); return evidence[key] == null || evidence[key] === "" || !Number.isFinite(v) ? null : v; };
+  const text = (key: string) => (typeof evidence[key] === "string" && evidence[key] ? String(evidence[key]) : null);
+  const money = (key: string) => (num(key) === null ? "valoare necunoscută" : formatRon(num(key)));
+  const window = countWords(num("window_days") ?? 30, "zi", "zile");
+  const age = num("age_days"), count = num("count"), buyers = num("buyers"), everBuyers = num("buyers_all");
+  const registered = text("registered_on") ? `la ${formatCalendarDate(text("registered_on"))}` : "la o dată neprecizată";
+  const awards = count === null ? "" : `, ${countWords(count, "achiziție", "achiziții")}`;
+  const closest = num("closest_value"), ceiling = num("closest_ceiling");
+  const near = evidence.near_ceiling === true && closest !== null && ceiling
+    ? ` O achiziție de ${formatRon(closest)}: ${closest > ceiling ? "peste" : `${Math.floor((closest / ceiling) * 100)}% din`} plafonul de ${formatRon(ceiling)}.`
+    : "";
+  const older = text("older_firm_name");
+  if (code === "da_first_month_buyer") {
+    const first = age === null ? "" : age === 0 ? " Prima achiziție: chiar în ziua înmatriculării." : ` La prima achiziție avea ${countWords(age, "zi", "zile")}.`;
+    const firmBuyers = num("firm_buyers");
+    const context = firmBuyers !== null && firmBuyers > 1
+      ? ` În aceeași perioadă, firma a contractat în total ${money("firm_total")} cu ${countWords(firmBuyers, "instituție", "instituții")}.`
+      : everBuyers === 1 ? " Instituția este singurul ei cumpărător din achizițiile directe ale arhivei." : "";
+    const kin = older ? ` Un reprezentant legal al firmei are și o firmă mai veche, ${older}, care contractase cu instituția.` : "";
+    return `Firmă înmatriculată ${registered}.${first} În primele ei ${window}, instituția a contractat cu ea ${money("total")}${awards}.${context}${near}${kin}`;
+  }
+  const first = age === null ? "" : age === 0 ? "; prima achiziție directă, chiar în ziua înmatriculării" : `; prima achiziție directă, după ${countWords(age, "zi", "zile")}`;
+  const from = buyers === null ? ""
+    : buyers === 1 ? `, de la o singură instituție${everBuyers === 1 ? " (singura din achizițiile ei directe din arhivă)" : ""}`
+      : `, de la ${countWords(buyers, "instituție", "instituții")}`;
+  const kin = !older ? ""
+    : ` Un reprezentant legal are și o firmă mai veche, ${older}${evidence.older_firm_same_buyer === true ? (buyers === 1 ? ", care contractase cu aceeași instituție" : ", care contractase cu una dintre aceste instituții") : ""}.`;
+  return `Înmatriculată ${registered}${first}. În primele ${window}: ${money("total")}${awards}${from}.${near}${kin}`;
+}
+
 /** Display-only explanations shared by entity profiles and the signal explorer. */
 export function riskEvidenceLine(code: string, evidence: Record<string, unknown> | null): string | null {
   if (!evidence) return null;
@@ -146,6 +184,9 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
       const ratio = n("ratio") === null ? "" : ` · ${(Math.round(n("ratio")! * 10) / 10).toFixed(1).replace(".", ",")}× cifra de afaceri`;
       return `${s("year")}: ${money("da_value")} în ${s("da_count")} achiziții directe · ${n("turnover") === null ? "cifră de afaceri necunoscută" : `cifră de afaceri ${money("turnover")}`}${sheet}${ratio}${staff}${evidence.young === true ? " · firmă nouă" : ""}.`;
     }
+    case "da_first_month":
+    case "da_first_month_buyer":
+      return firstMonthLine(code, evidence);
     case "award_no_competition":
       return `${s("procedure")} · ${awardValueLabel(evidence)}: ${money("value")} · CPV ${s("cpv")}.${noticeContractsNote(evidence)}`;
     case "award_single_bid":

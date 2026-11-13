@@ -47,6 +47,14 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
       const r = num(e.ratio);
       return r > 0 ? { value: ratioWords(r), note: "cifra de afaceri", bar: null } : null;
     }
+    // A firm's first month (rf-2026.24): how soon after its registration the first direct award came, against the window.
+    case "da_first_month": case "da_first_month_buyer": {
+      if (e.age_days == null) return null;
+      const age = num(e.age_days), days = num(e.window_days) || 30;
+      return { value: `ziua ${formatInt(age)}`, note: "de la înmatriculare, la prima achiziție",
+        // The window as a line, the first award as a mark on it: an early day is the notable one, so nothing is filled.
+        bar: <span className="sg-meter"><b style={{ left: `${Math.max(0, Math.min(100, (age / days) * 100))}%` }} /></span> };
+    }
     default:
       return null;
   }

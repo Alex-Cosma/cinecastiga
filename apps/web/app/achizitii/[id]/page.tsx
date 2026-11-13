@@ -3,6 +3,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAcquisitionContext, getAcquisitionDetail } from "@/lib/acquisition-detail";
+import { countWords } from "@/lib/ask/answer-text";
 import { daUrl } from "@/lib/elicitatie";
 import { formatExactDecimal, formatCalendarDate, formatInt, formatRon, cleanName, countyLabel } from "@/lib/format";
 import { daState, durationLabel } from "@/lib/record-labels";
@@ -24,6 +25,20 @@ const titleOf = (d: { title: string | null; cpvName: string | null; code: string
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const d = await acquisitionDetail((await params).id);
   return d ? { title: `${titleOf(d).slice(0, 70)} · ${cleanName(d.authority) || "achiziție directă"}` } : {};
+}
+
+/**
+ * "La publicarea acestei achiziții, firma avea 6 zile de la înmatriculare." (owner, 13 November 2026): the firm's age
+ * on this very award, under its first-month signal. Calendar days between two already normalized days; null when
+ * either is missing or the award is dated before the registration.
+ */
+function firmAgeNote(registeredOn: unknown, awardDay: string | null): string | null {
+  const day = (value: unknown) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(typeof value === "string" ? value : ""); return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null; };
+  const from = day(registeredOn), to = day(awardDay);
+  if (from == null || to == null || to < from) return null;
+  const days = Math.round((to - from) / 86_400_000);
+  return days === 0 ? "Această achiziție a fost publicată chiar în ziua înmatriculării firmei."
+    : `La publicarea acestei achiziții, firma avea ${countWords(days, "zi", "zile")} de la înmatriculare.`;
 }
 
 /** A direct acquisition (owner, 7 November 2026: the record template, its signals, what it bought, the pair). */
@@ -79,7 +94,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
       </>}
       signals={x.flags.length}
     />
-    <SignalList flags={x.flags} authorityId={d.authorityId} />
+    <SignalList flags={x.flags} authorityId={d.authorityId} supplierId={d.supplierId}
+      note={(f) => f.code === "da_first_month" ? firmAgeNote(f.evidence?.registered_on, d.publishedAt ?? d.finalizedAt) : null} />
     <RecordSection id="date" title="Datele achiziției">
       <Facts facts={[
         d.estimate != null && { label: "Valoare estimată", value: amount(d.estimate) },

@@ -6,7 +6,7 @@
 import { countWords } from "./ask/answer-text";
 import { cleanName, formatInt, formatRon } from "./format";
 import type { RiskRole, ScorePart } from "./risk-score";
-import { datesWords, ratioWords, type AboveCeiling, type Capacity, type NearCeiling, type PartnerShare, type SplitSummary, type YearEnd } from "./signal-mirror";
+import { datesWords, dayWords, ratioWords, type AboveCeiling, type Capacity, type FirstMonth, type NearCeiling, type PartnerShare, type SplitSummary, type YearEnd } from "./signal-mirror";
 
 /** A share as a whole percentage ("96%"); a non-zero share under 0,5% says "sub 1%". */
 export const pctWords = (share: number): string => (share > 0 && share < 0.005 ? "sub 1%" : `${formatInt(Math.round(share * 100))}%`);
@@ -86,6 +86,43 @@ export function capacityWords(c: Capacity): CaseWords {
   return { title, lede: sheet };
 }
 
+/** "după 6 zile", "chiar în ziua înmatriculării": the firm's age at its first award. */
+export const firstMonthAge = (days: number | null): string | null =>
+  days == null ? null : days === 0 ? "chiar în ziua înmatriculării" : `după ${countWords(days, "zi", "zile")}`;
+
+/**
+ * "Contracte în prima lună de la înființare" (rf-2026.24): the firm's own case, or the institution's cases (one per
+ * firm; `total` is how many it has, the page may show the first ones). A direct award under the ceiling is legal and a
+ * new firm is often an existing supplier's: the sentence says what was contracted and when, nothing more.
+ */
+export function firstMonthWords(code: "da_first_month" | "da_first_month_buyer", cases: readonly FirstMonth[], total: number): CaseWords {
+  const first = cases[0];
+  if (!first) return { title: "", lede: null };
+  const window = countWords(first.windowDays, "zi", "zile");
+  if (code === "da_first_month") {
+    const registered = dayWords(first.registeredOn);
+    const age = firstMonthAge(first.ageDays);
+    const from = first.buyers == null ? "" : first.buyers === 1 ? " de la o singură instituție" : ` de la ${countWords(first.buyers, "instituție", "instituții")}`;
+    return {
+      title: `Firma a contractat ${formatRon(first.total)} în primele ${window} de la înființare.`,
+      lede: `${registered ? `Înmatriculată la ${registered}` : "Înmatriculată la o dată neprecizată"}${age ? `; prima achiziție directă, ${age}` : ""}.`
+        + (first.count != null ? ` ${countWords(first.count, "achiziție directă", "achiziții directe")}${from}.` : ""),
+    };
+  }
+  if (total === 1) {
+    const age = firstMonthAge(first.ageDays);
+    return {
+      title: `Instituția a contractat ${formatRon(first.total)} cu o firmă aflată în primele ${window} de la înființare.`,
+      lede: `${cleanName(first.partnerName) || "Firma"}${dayWords(first.registeredOn) ? `, înmatriculată la ${dayWords(first.registeredOn)}` : ""}${age ? `: prima achiziție, ${age}` : ""}.`,
+    };
+  }
+  const sum = cases.reduce((a, c) => a + c.total, 0);
+  return {
+    title: `Instituția a contractat cu ${countWords(total, "firmă aflată", "firme aflate")} în primele ${window} de la înființare.`,
+    lede: cases.length === total ? `În total ${formatRon(sum)}, în achiziții directe publicate în prima lună a fiecărei firme.` : null,
+  };
+}
+
 /** What one case of a pattern is called in its tab ("5 grupuri", "16 sume", "3 achiziții"). */
 export function caseUnitWords(code: string, count: number): string {
   switch (code) {
@@ -95,6 +132,7 @@ export function caseUnitWords(code: string, count: number): string {
     case "da_year_end": case "da_capacity": case "fin_tiny_staff": return countWords(count, "an", "ani");
     case "award_no_competition": case "award_single_bid": case "award_calloffs_over_ceiling": return countWords(count, "procedură", "proceduri");
     case "net_shared_admin": return countWords(count, "legătură", "legături");
+    case "da_first_month_buyer": return countWords(count, "firmă", "firme");
     default: return countWords(count, "caz", "cazuri");
   }
 }

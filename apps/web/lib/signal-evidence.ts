@@ -6,6 +6,12 @@ import { readDaEvidence, readContractEvidence, sourceEvidence, type SourceEviden
 import { sumDecimalStrings } from "./ask/evidence";
 import type { DrillRow } from "./ask/compile";
 
+/**
+ * The signals that record their own acquisitions (evidence.source_ids, evidence.count): a split group, and a firm's
+ * first month from either side (rf-2026.24). Their sources are exactly those records, never a reconstruction.
+ */
+export const RECORDED_ID_CODES: ReadonlySet<string> = new Set(["da_split", "da_first_month", "da_first_month_buyer"]);
+
 /** How many of a partner signal's other acquisitions travel with it, largest first. */
 export const ASIDE_SHOWN = 10;
 
@@ -44,7 +50,7 @@ export async function readSignalEvidence(sql: DbSql, id: string): Promise<Source
   if (flag.subject_type === "da") {
     records = await readDaEvidence(sql, sql`da.id = ${flag.subject}`);
     context.membership = "recorded_subject";
-  } else if (code === "da_split") {
+  } else if (RECORDED_ID_CODES.has(code)) {
     const ids = numericSourceIds(e.source_ids);
     context.sourceIds = ids;
     context.sourceUrls = ids.map(daUrl);
