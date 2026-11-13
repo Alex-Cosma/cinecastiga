@@ -5,6 +5,7 @@ import { assertCeilingEras, daThresholdDateSql, daThresholdKeySql } from "./thre
 import { calloffsOverCeilingSql, confirmedSingleBidAwardsSql, noCompetitionAwardsSql } from "./competition.js";
 import { annex2Sql, authorityDecemberSql } from "./score.js";
 import { buyerRegimeSql, entityNameSql, INHOUSE_SUPPLIER_NAME, UTILITY_SUPPLIER_NAME } from "./regime.js";
+import { firstMonthCasesSql } from "./first-month.js";
 
 /**
  * DA red-flag build (red-flags DEC-005). Truncate + recompute `core.flags` from
@@ -447,6 +448,18 @@ async function buildFlags(
         'zero_staff', zero_staff), ${V}
     from r
     where (ca > 0 and (implausible or ratio >= ${capMinRatio})) or zero_staff
+  `;
+
+  // ── da_first_month / da_first_month_buyer: direct awards in a firm's first 30 days (informative) ──
+  // rf-2026.24 (owner, 13 November 2026; first-month.ts): the firm's side, and its reverse on each institution
+  // that alone reaches the sum. Only the institutions the direct-award rules bind count. On a register imported
+  // before the registration day was kept (marts.entity_profile.registered_on all null) the rule finds nothing.
+  await sql`
+    insert into core.flags (subject_type, subject_id, partner_id, flag_code, period, triggered, severity, evidence, methodology_version)
+    select c.side, c.subject_id, c.partner_id,
+      case c.side when 'supplier' then 'da_first_month' else 'da_first_month_buyer' end,
+      c.period, true, c.severity, c.evidence, ${V}
+    from (${firstMonthCasesSql(sql, { maxPlausible, buyers: sql`select eid from buyer_regime where regime = 'classic'` })}) c
   `;
 
   // ══ Procedure flags ═══════════════════════════════════════════════════════

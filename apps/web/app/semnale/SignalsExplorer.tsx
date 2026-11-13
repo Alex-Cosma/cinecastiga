@@ -22,7 +22,7 @@ const groups: [string, string[]][] = [
   ["Praguri și calendar", ["da_split", "da_round", "da_above_ceiling", "da_year_end"]],
   ["Concentrarea achizițiilor", ["da_concentration", "da_dependence", "award_concentration", "award_dependence"]],
   ["Proceduri și oferte", ["award_no_competition", "award_single_bid", "award_calloffs_over_ceiling"]],
-  ["Firme și legături", ["da_capacity", "fin_tiny_staff", "fin_public_reliance", "net_shared_admin"]],
+  ["Firme și legături", ["da_capacity", "da_first_month", "da_first_month_buyer", "fin_tiny_staff", "fin_public_reliance", "net_shared_admin"]],
 ];
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const sorts: [RiskGroupSort, string][] = [["cri", "După risc"], ["flags", "După numărul de tipare"], ["das", "După achiziții directe"], ["total", "După valoare"], ["name", "După nume"]];
@@ -50,7 +50,7 @@ function TypeChooser({ code, role, counts, choose, close }: { code: string; role
       found += visible.length;
       return visible.length ? <section key={label}><h3>{label}</h3>{visible.map(c => {
         const m = FLAG_META[c]!, exclusive = m.subject === "authority" || m.subject === "supplier", compatible = !exclusive || m.subject === role;
-        return <button key={c} className="sg-type-option" aria-pressed={code === c} onClick={() => choose(c)}><span><strong>{flagLabel(c)}</strong><small>{exclusive ? (m.subject === "supplier" ? "Firme" : "Autorități") : "Autorități și firme"} · {c === "da_capacity" || c.startsWith("fin_") ? "achiziții și bilanțuri" : c.startsWith("da_") ? "achiziții directe" : c.startsWith("award_") ? "proceduri" : "achiziții și ONRC"}</small></span>{compatible && counts[c] !== undefined && <span className="sg-type-count">{formatInt(counts[c])}</span>}</button>;
+        return <button key={c} className="sg-type-option" aria-pressed={code === c} onClick={() => choose(c)}><span><strong>{flagLabel(c)}</strong><small>{exclusive ? (m.subject === "supplier" ? "Firme" : "Autorități") : "Autorități și firme"} · {c === "da_capacity" || c.startsWith("fin_") ? "achiziții și bilanțuri" : c.startsWith("da_first_month") ? "achiziții directe și ONRC" : c.startsWith("da_") ? "achiziții directe" : c.startsWith("award_") ? "proceduri" : "achiziții și ONRC"}</small></span>{compatible && counts[c] !== undefined && <span className="sg-type-count">{formatInt(counts[c])}</span>}</button>;
       })}</section> : null;
     })}{found === 0 && <p className="sg-no-types">Niciun tip găsit. Încearcă „prag” sau „oferte”.</p>}</div>
     <p className="sg-dialog-note">Apariții, nu entități unice.</p>

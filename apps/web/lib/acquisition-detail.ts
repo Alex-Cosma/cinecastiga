@@ -85,7 +85,11 @@ export async function getAcquisitionContext(id: string, detail: AcquisitionDetai
           where f.triggered and (
             (f.subject_type = 'da' and f.subject_id = d.id)
             or (f.subject_type = 'pair' and f.flag_code = 'da_split' and f.subject_id = d.authority_entity_id
-                and f.partner_id = d.supplier_entity_id and f.evidence->'source_ids' ? d.sicap_da_id::text))), '[]'::json) flags,
+                and f.partner_id = d.supplier_entity_id and f.evidence->'source_ids' ? d.sicap_da_id::text)
+            -- The firm's first month (rf-2026.24): one of the awards its case records. The institution's reverse of
+            -- the same fact is not repeated on the record.
+            or (f.subject_type = 'supplier' and f.flag_code = 'da_first_month' and f.subject_id = d.supplier_entity_id
+                and f.evidence->'source_ids' ? d.sicap_da_id::text))), '[]'::json) flags,
         s.n::int s_n, s.sum_window::text s_sum, s.ceiling::text s_ceiling, s.d0::text s_from, s.d1::text s_to,
         s.cpv_class s_class, s.cpv_name s_name, s.acquisition_type s_type
       from core.direct_acquisitions d

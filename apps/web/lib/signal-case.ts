@@ -39,7 +39,8 @@ async function readDaSubjects(q: DbSql, ids: readonly string[]): Promise<Map<str
 }
 
 /** The patterns whose records the page lists under each case; the others keep their own sources page. */
-export const CASE_RECORD_CODES: ReadonlySet<string> = new Set(["da_split", "da_round", "da_above_ceiling", "da_year_end", "da_concentration", "da_dependence", "da_capacity"]);
+export const CASE_RECORD_CODES: ReadonlySet<string> = new Set(["da_split", "da_round", "da_above_ceiling", "da_year_end", "da_concentration", "da_dependence", "da_capacity",
+  "da_first_month", "da_first_month_buyer"]);
 
 export type CaseRecord = SourceRecord & { title: string | null };
 

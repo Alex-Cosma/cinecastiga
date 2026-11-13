@@ -11,11 +11,11 @@ import { cleanName, countyLabel, formatCalendarDate, formatExactDecimal, formatI
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText, type RiskCriterion, type ScorePart } from "@/lib/risk-score";
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
-import { aboveWords, capacityWords, caseUnitWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
+import { aboveWords, capacityWords, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import {
-  aboveCeiling, capacity, decemberRecords, nearCeiling, partnerShare, ratioWords, repeatedAmounts, splitGroup, splitSummary, topPartners, yearEnd,
-  type AboveCeiling, type CaseInput, type NearCeiling, type SplitGroup,
+  aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, ratioWords, repeatedAmounts, splitGroup, splitSummary, topPartners, yearEnd,
+  type AboveCeiling, type CaseInput, type FirstMonth, type NearCeiling, type SplitGroup,
 } from "@/lib/signal-mirror";
 import { signalUrl, withoutRole, type SignalState } from "@/lib/signals-shared";
 import CaseTable, { type CaseRow } from "./CaseTable";
@@ -403,6 +403,74 @@ function CapacityCase({ data }: { data: SignalCase }) {
   </>;
 }
 
+/**
+ * "Contracte în prima lună de la înființare" (rf-2026.24; owner, 13 November 2026): the firm's own case, or its
+ * reverse, the institution's cases, one per firm. What happened beside its reference: the days from the registration
+ * to the first direct award against the window, and what was contracted in it. An award close to the ceiling and an
+ * older firm of the same legal representative are said where the build found them. Informative, outside the score.
+ */
+function FirstMonthCase({ data }: { data: SignalCase }) {
+  const buyer = data.code === "da_first_month_buyer";
+  const cases = data.instances.map((inst) => ({ inst, m: firstMonth(inputOf(inst)) }));
+  if (!cases.length) return null;
+  const near = (m: FirstMonth) => m.nearCeiling && m.closestValue != null && m.closestCeiling != null && (
+    <p className="sgc-cap">O achiziție de {lei(m.closestValue)}: {m.closestValue > m.closestCeiling ? "peste" : `${pctWords(Math.floor((m.closestValue / m.closestCeiling) * 100) / 100)} din`} plafonul de {lei(m.closestCeiling)}.</p>
+  );
+  const older = (m: FirstMonth) => m.olderFirmName && (
+    <p className="sgc-cap">Un reprezentant legal al firmei are și o firmă mai veche: <b><EntityName id={m.olderFirmId} role="supplier">{cleanName(m.olderFirmName)}</EntityName></b>
+      {buyer ? ", care contractase cu instituția" : !m.olderFirmSameBuyer ? "" : m.buyers === 1 ? ", care contractase cu aceeași instituție" : ", care contractase cu una dintre aceste instituții"}. Poate fi firma nouă a unui furnizor mai vechi.</p>
+  );
+  const day = (m: FirstMonth) => (m.ageDays == null ? null : Math.max(0, Math.min(1, m.ageDays / m.windowDays)));
+  if (!buyer) {
+    const { inst, m } = cases[0]!;
+    const from = m.buyers == null ? "" : m.buyers === 1 ? (m.buyersAll === 1 ? " · o singură instituție, singura din achizițiile ei directe" : " · o singură instituție") : ` · ${countWords(m.buyers, "instituție", "instituții")}`;
+    return <>
+      <div className="sgc-mirror">
+        <Side title="De la înmatriculare la prima achiziție directă" big={m.ageDays == null ? "—" : formatInt(m.ageDays)} unit={m.ageDays === 1 ? "zi" : "zile"}>
+          {day(m) != null && <ShareBar share={day(m)!} ticks={[{ at: 1, label: `ziua ${formatInt(m.windowDays)}`, left: true }]} />}
+          <p className="sgc-cap">{m.registeredOn ? `Înmatriculată la ${formatCalendarDate(m.registeredOn)}` : "Data înmatriculării lipsește"}{m.firstAwardOn ? `; prima achiziție directă, publicată la ${formatCalendarDate(m.firstAwardOn)}` : ""}. Numărăm de la cea mai veche înmatriculare a firmei: o mutare de sediu nu o face nouă.</p>
+        </Side>
+        <Side title={`În primele ${countWords(m.windowDays, "zi", "zile")}`} big={formatRon(m.total)} unit={`${m.count == null ? "contractați" : countWords(m.count, "achiziție directă", "achiziții directe")}${from}`}>
+          {near(m)}
+          {older(m)}
+        </Side>
+      </div>
+      <CasesHead title={`${countWords(inst.records.length, "achiziție", "achiziții")} din această perioadă`} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(data.entity.name)}`} />} />
+      <div id={`caz-${inst.id}`}><Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
+    </>;
+  }
+  return <>
+    <CasesHead title={countWords(data.total, "firmă", "firme")} total={data.total} shown={cases.length} />
+    <div className="sgc-cases" data-chart>
+      {cases.map(({ inst, m }, row) => {
+        const age = firstMonthAge(m.ageDays);
+        return (
+          <details key={inst.id} id={`caz-${inst.id}`} className="sgc-case" open={cases.length === 1} style={{ "--i": row } as CSSProperties}>
+            <summary>
+              <span className="sgc-who"><b><EntityName id={inst.partnerId} role="supplier">{cleanName(inst.partnerName) || "—"}</EntityName></b>
+                <small>{m.registeredOn ? `înmatriculată la ${formatCalendarDate(m.registeredOn)}` : "dată de înmatriculare lipsă"}{age ? ` · prima achiziție, ${age}` : ""}</small></span>
+              {/* The window as a line, the first award as a mark on it: an early day is the notable one, so nothing is filled. */}
+              <span className="sgc-mini" aria-hidden="true">{day(m) != null && <span className="t"><b style={{ left: `${day(m)! * 100}%` }} /></span>}</span>
+              <span className="sgc-sum">{lei(m.total)}</span>
+              <span className="sgc-x">{m.ageDays == null ? "" : `ziua ${formatInt(m.ageDays)}`}</span>
+            </summary>
+            <div className="sgc-body">
+              <p className="sgc-cap">{m.count == null ? "" : `${countWords(m.count, "achiziție directă", "achiziții directe")} în primele ${countWords(m.windowDays, "zi", "zile")} ale firmei. `}
+                {m.firmBuyers != null && m.firmBuyers > 1 ? `În aceeași perioadă, firma a contractat în total ${formatRon(m.firmTotal)} cu ${countWords(m.firmBuyers, "instituție", "instituții")}.`
+                  : m.buyersAll === 1 ? "Instituția este singurul ei cumpărător din achizițiile directe ale arhivei." : ""}</p>
+              {near(m)}
+              {older(m)}
+              <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
+              <Warnings inst={inst} />
+              <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(inst.partnerName)}`} />
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  </>;
+}
+
 /** The signals outside the score (procedures, balance sheets, shared administrators): their cases, each with its sources page. */
 function OutsideCase({ data }: { data: SignalCase }) {
   return <>
@@ -441,6 +509,9 @@ function headline(data: SignalCase, models: { split: SplitGroup[] | undefined; r
       return partnerWords(code, e.name, inst.partnerName, s, inst.records.reduce((a, r) => a + r.value, 0), inst.records.map((r) => r.date));
     }
     case "da_capacity": if (data.instances[0]) return capacityWords(capacity(inputOf(data.instances[0]))); break;
+    case "da_first_month": case "da_first_month_buyer":
+      if (data.instances[0]) return firstMonthWords(code, data.instances.map((i) => firstMonth(inputOf(i))), data.total);
+      break;
   }
   return { title: outsideTitle(code, data.total), lede: FLAG_META[code]?.short ?? null };
 }
@@ -496,6 +567,7 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
         : code === "da_year_end" ? <YearEndCase data={data} />
         : code === "da_concentration" || code === "da_dependence" ? <PartnerCase data={data} code={code} />
         : code === "da_capacity" ? <CapacityCase data={data} />
+        : code === "da_first_month" || code === "da_first_month_buyer" ? <FirstMonthCase data={data} />
         : <OutsideCase data={data} />}
 
       {data.total > data.pageSize && (

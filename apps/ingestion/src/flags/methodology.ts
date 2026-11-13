@@ -43,6 +43,10 @@ import { FLAGS_METHODOLOGY_VERSION } from "@seap/db";
 // rf-2026.23: award_calloffs_over_ceiling (owner, 8 November 2026): an award notice whose declared call-offs exceed the
 //   framework agreement they are ordered from (over 120% and by at least 50,000 lei), with the call-offs that repeat the
 //   whole ceiling (likely a data-entry error). Informative, not in the score; no other signal changes.
+// rf-2026.24: da_first_month and da_first_month_buyer (owner, 13 November 2026): a firm whose direct awards in the 30
+//   days after its ONRC registration reach 100,000 lei, and the same fact on each institution that alone reaches it
+//   (first-month.ts). The registration day comes from the ONRC import (migration 0109). Informative, not in the score;
+//   no other signal changes.
 // The version itself lives in @seap/db, where the nightly scheduler reads it.
 export const METHODOLOGY_VERSION = FLAGS_METHODOLOGY_VERSION;
 
@@ -134,6 +138,28 @@ export const FLAG_DEFS: FlagDef[] = [
       "O firmă care vinde mult peste mărimea ei poate fi un intermediar; merită verificat cine a executat de fapt.",
     caveat:
       "Bilanțul e anual și poate lipsi; contractele multianuale, avansurile și subcontractarea pot explica diferența. Singur, semnalul rămâne slab în risc.",
+  },
+  {
+    code: "da_first_month",
+    title: "Contracte în prima lună de la înființare",
+    subject: "supplier",
+    description:
+      "Achizițiile directe acceptate ale firmei, publicate în primele 30 de zile de la înmatricularea ei la Registrul Comerțului, însumează cel puțin 100.000 lei. Vârsta firmei se numără de la cea mai veche înmatriculare a CUI-ului (o mutare de sediu dă un număr nou, nu o firmă nouă) până la ziua publicării achiziției. Se numără doar achizițiile instituțiilor pe care le obligă plafoanele achiziției directe, nu ale companiilor private sau ale asociațiilor. Un CUI se leagă de ONRC doar când firma nu este indicată drept străină sau ONRC înregistrează numărul sub un nume asemănător.",
+    rationale:
+      "O firmă abia înființată nu are încă istoric de arătat. Merită verificat cum a fost aleasă, cine o conduce și cine a executat contractul.",
+    caveat:
+      "Firma nouă poate fi a unui furnizor cu experiență: dovezile arată când un reprezentant legal al ei are și o firmă mai veche, furnizoare a statului. Circa unu din zece furnizori noi are prima achiziție în prima lună; semnalul pornește de la sumă, nu de la vârstă. Achiziția directă sub plafon este legală. Data înmatriculării vine din ultimul import ONRC, deci o firmă înființată după el nu este încă evaluată. Semnalul nu intră în scor.",
+  },
+  {
+    code: "da_first_month_buyer",
+    title: "Contracte cu firme în prima lună de la înființare",
+    subject: "authority",
+    description:
+      "Instituția are, cu aceeași firmă, achiziții directe acceptate de cel puțin 100.000 lei, publicate în primele 30 de zile de la înmatricularea firmei la Registrul Comerțului. Fiecare firmă este un caz. Vârsta firmei se numără de la cea mai veche înmatriculare a CUI-ului până la ziua publicării achiziției. Este reversul semnalului „Contracte în prima lună de la înființare” al firmei.",
+    rationale:
+      "Merită verificat cum a fost aleasă o firmă fără istoric: ce oferte au mai fost cerute, cine o conduce și cine a executat contractul.",
+    caveat:
+      "Firma poate fi a unui furnizor mai vechi al instituției: dovezile arată când un reprezentant legal al ei are o firmă mai veche care a contractat cu aceeași instituție. Achiziția directă sub plafon este legală. Data înmatriculării vine din ultimul import ONRC, deci o firmă înființată după el nu este încă evaluată. Semnalul nu intră în scor.",
   },
   // ── Award (contract-award notice) flags ─────────────────────────────────────
   {
