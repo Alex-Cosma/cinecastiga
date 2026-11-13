@@ -169,7 +169,10 @@
 .follow-blocked{position:relative;display:inline-flex;align-items:center;gap:2px}.follow-blocked .follow-action{opacity:.55;cursor:not-allowed}.follow-blocked .follow-action:hover{background:var(--surface);border-color:var(--line2)}.follow-blocked-reason{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 /* „Ce a cumpărat primăria ta?” (owner, 13 November 2026): the global search's dialog, a town hall by its locality. */
 .d-question-button h3{font-family:var(--display)}
-.d-search-dialog.d-townhall-dialog{height:auto;max-height:calc(100dvh - 48px);overflow:auto;margin-top:min(12vh,96px)}
+/* As tall as its content, in the upper part of the screen (owner, 13 November 2026: smaller, not hanging to the bottom):
+   a modal dialog is anchored top and bottom, so a height of auto would stretch it. */
+.d-search-dialog.d-townhall-dialog{width:min(500px,calc(100vw - 32px));height:fit-content;max-height:calc(100dvh - 48px);overflow:auto;margin:min(14vh,120px) auto auto;padding:22px 24px 20px}
+.d-townhall-dialog .d-dialog-head h2{font-size:26px;letter-spacing:-.6px}
 .d-townhall-dialog .eyebrow{font-weight:600;font-size:11px}
 .d-townhall-dialog>.d-townhall-lead{margin:10px 0 0;max-width:none;color:var(--ink-secondary,var(--muted));font-size:14.5px;line-height:1.6}
 .d-townhall-field{position:relative;display:flex;align-items:center;gap:10px;margin-top:16px;padding:0 14px;min-height:52px;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}
@@ -192,5 +195,5 @@
 .d-townhall-try{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--muted)}
 .d-townhall-try button{min-height:36px;padding:0 12px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--accent);font:inherit;font-size:14px;cursor:pointer}
 .d-townhall-try button:hover{background:var(--accent-soft)}
-@media(max-width:700px){.d-search-dialog.d-townhall-dialog{margin-top:12px;max-height:calc(100dvh - 24px);padding:20px 16px}.d-townhall-dialog>.d-townhall-lead{font-size:14px}.d-townhall-try button{min-height:44px}.d-townhall-dialog>.d-dialog-hint{display:none}}
+@media(max-width:700px){.d-search-dialog.d-townhall-dialog{margin:12px auto auto;max-height:calc(100dvh - 24px);padding:18px 16px}.d-townhall-dialog .d-dialog-head h2{font-size:24px}.d-townhall-dialog>.d-townhall-lead{font-size:14px}.d-townhall-try button{min-height:44px}.d-townhall-dialog>.d-dialog-hint{display:none}}
 
