@@ -171,7 +171,7 @@
 .d-question-button h3{font-family:var(--display)}
 /* As tall as its content, in the upper part of the screen (owner, 13 November 2026: smaller, not hanging to the bottom):
    a modal dialog is anchored top and bottom, so a height of auto would stretch it. */
-.d-search-dialog.d-townhall-dialog{width:min(500px,calc(100vw - 32px));height:fit-content;max-height:calc(100dvh - 48px);overflow:auto;margin:min(14vh,120px) auto auto;padding:22px 24px 20px}
+.d-search-dialog.d-townhall-dialog{width:min(500px,calc(100vw - 32px));height:fit-content;max-height:none;overflow:visible;margin:min(14vh,120px) auto auto;padding:22px 24px 20px}
 .d-townhall-dialog .d-dialog-head h2{font-size:26px;letter-spacing:-.6px}
 .d-townhall-dialog .eyebrow{font-weight:600;font-size:11px}
 .d-townhall-dialog>.d-townhall-lead{margin:10px 0 0;max-width:none;color:var(--ink-secondary,var(--muted));font-size:14.5px;line-height:1.6}
@@ -179,21 +179,24 @@
 .d-townhall-field:focus-within{border-color:var(--accent);outline:2px solid var(--orange);outline-offset:2px}
 .d-townhall-field>.d-icon{width:18px;height:18px;flex:none;color:var(--muted)}
 .d-townhall-field input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font-size:17px;padding:12px 0;outline:none}
-.d-townhall-list{list-style:none;margin:10px 0 0;padding:0}
-.d-townhall-list li{border-bottom:1px solid var(--line)}
-.d-townhall-list li:first-child{border-top:1px solid var(--line)}
-.d-townhall-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;padding:10px;color:var(--ink);cursor:pointer}
+/* The results drop over the dialog under the field, so the dialog keeps its size (owner, 13 November 2026). */
+.d-townhall-combo{position:relative}
+.d-townhall-drop{position:absolute;z-index:5;top:calc(100% + 6px);left:0;right:0;max-height:min(340px,46vh);overflow:auto;overscroll-behavior:contain;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow2,0 12px 32px #204c3c22);padding:4px}
+.d-townhall-drop[hidden]{display:none}
+.d-townhall-drop[aria-busy=true] .d-townhall-list{opacity:.6}
+.d-townhall-list{list-style:none;margin:0;padding:0}
+.d-townhall-list li+li{border-top:1px solid var(--line)}
+.d-townhall-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;padding:8px 10px;border-radius:7px;color:var(--ink);cursor:pointer}
 .d-townhall-list li[aria-selected=true]{background:var(--sunk)}
 .d-townhall-list li[aria-disabled=true]{cursor:default;color:var(--muted)}
 .d-townhall-list li>span{display:flex;flex-direction:column;min-width:0}
 .d-townhall-list strong{font-weight:600;font-size:15px}
 .d-townhall-list small{color:var(--muted);font-size:13px}
 .d-townhall-list .d-icon{width:16px;height:16px;flex:none;color:var(--accent)}
-.d-townhall-dialog>.d-townhall-status{margin:8px 0 0;font-size:13px;color:var(--muted)}
-.d-townhall-dialog>.d-townhall-status:empty{display:none}
+.d-townhall-drop>.d-townhall-status{margin:0;padding:10px;font-size:13px;color:var(--muted)}
 .d-townhall-dialog>.d-dialog-hint{margin:16px 0 0;font-size:12px}
 .d-townhall-try{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--muted)}
 .d-townhall-try button{min-height:36px;padding:0 12px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--accent);font:inherit;font-size:14px;cursor:pointer}
 .d-townhall-try button:hover{background:var(--accent-soft)}
-@media(max-width:700px){.d-search-dialog.d-townhall-dialog{margin:12px auto auto;max-height:calc(100dvh - 24px);padding:18px 16px}.d-townhall-dialog .d-dialog-head h2{font-size:24px}.d-townhall-dialog>.d-townhall-lead{font-size:14px}.d-townhall-try button{min-height:44px}.d-townhall-dialog>.d-dialog-hint{display:none}}
+@media(max-width:700px){.d-search-dialog.d-townhall-dialog{margin:12px auto auto;padding:18px 16px}.d-townhall-drop{max-height:min(300px,38vh)}.d-townhall-dialog .d-dialog-head h2{font-size:24px}.d-townhall-dialog>.d-townhall-lead{font-size:14px}.d-townhall-try button{min-height:44px}.d-townhall-dialog>.d-dialog-hint{display:none}}
 

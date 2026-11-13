@@ -35,9 +35,8 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
 
   useEffect(() => {
     const q = term.trim();
-    // the list always belongs to the words on screen: Enter never opens a hit of the words before
-    setItems([]); setActive(0);
-    if (q.length < 2) { setError(""); setSearched(""); setLoading(false); return; }
+    // the last list stays under the field while the next one loads; Enter waits for the words on screen (`current`)
+    if (q.length < 2) { setItems([]); setActive(0); setError(""); setSearched(""); setLoading(false); return; }
     const controller = new AbortController();
     setLoading(true);
     const timer = setTimeout(() => {
@@ -52,7 +51,9 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
   const open = (hit: TownHallHit | undefined) => { if (!hit?.href) return; close(); router.push(hit.href); };
   const current = !loading && searched === term.trim();
   const listId = `${id}-list`;
-  const status = error || (loading ? "Se caută…" : term.trim().length >= 2 && searched === term.trim() && !items.length ? "Nicio localitate găsită. Încearcă alt nume." : "");
+  const status = error || (current && term.trim().length >= 2 && !items.length ? "Nicio localitate găsită. Încearcă alt nume." : "");
+  // a dropdown over the dialog, never a list that grows it (owner, 13 November 2026)
+  const dropped = term.trim().length >= 2 && (items.length > 0 || Boolean(status));
 
   return <>
     <button type="button" className="d-question-card d-question-button" aria-haspopup="dialog" onClick={show}>
@@ -68,11 +69,12 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
     }}>
       <div className="d-dialog-head"><div><p className="eyebrow">PRIMĂRIA TA</p><h2 id={`${id}-title`}>Ce a cumpărat primăria ta?</h2></div><button type="button" onClick={close} aria-label="Închide"><DiscoveryIcon name="close" /></button></div>
       <p className="d-townhall-lead">Scrie orașul sau comuna. Te ducem la pagina primăriei.</p>
+      <div className="d-townhall-combo">
       <div className="d-townhall-field">
         <DiscoveryIcon name="pin" />
         <label className="d-sr-only" htmlFor={`${id}-q`}>Orașul sau comuna</label>
         <input ref={input} id={`${id}-q`} value={term} placeholder="De exemplu: Cisnădie" autoComplete="off" spellCheck={false}
-          role="combobox" aria-autocomplete="list" aria-expanded={items.length > 0} aria-controls={listId} aria-activedescendant={items.length ? `${id}-${active}` : undefined}
+          role="combobox" aria-autocomplete="list" aria-expanded={dropped && items.length > 0} aria-controls={listId} aria-activedescendant={dropped && items.length ? `${id}-${active}` : undefined}
           onChange={(e) => setTerm(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" && items.length) { e.preventDefault(); setActive((a) => (a + 1) % items.length); }
@@ -80,15 +82,19 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
             else if (e.key === "Enter") { e.preventDefault(); if (current) open(items[active]); }
           }} />
       </div>
-      <ul id={listId} role="listbox" aria-label="Primării" className="d-townhall-list">
-        {/* the options answer the pointer; the keyboard stays in the field (aria-activedescendant) */}
-        {items.map((hit, i) => <li key={hit.id} id={`${id}-${i}`} role="option" aria-selected={i === active} aria-disabled={hit.href ? undefined : true}
-          onMouseEnter={() => setActive(i)} onClick={() => open(hit)}>
-          <span><strong>{hit.name}</strong><small>{hit.detail}</small></span>{hit.href && <DiscoveryIcon name="arrow" />}
-        </li>)}
-      </ul>
-      <p className="d-townhall-status" role="status" aria-live="polite">{status}</p>
-      {!term.trim() && <div className="d-townhall-try"><span>Încearcă:</span>{TRY.map((name) => <button type="button" key={name} onClick={() => { setTerm(name); input.current?.focus(); }}>{name}</button>)}</div>}
+      <div className="d-townhall-drop" hidden={!dropped} aria-busy={loading || undefined}>
+        <ul id={listId} role="listbox" aria-label="Primării" className="d-townhall-list">
+          {/* the options answer the pointer; the keyboard stays in the field (aria-activedescendant) */}
+          {items.map((hit, i) => <li key={hit.id} id={`${id}-${i}`} role="option" aria-selected={i === active} aria-disabled={hit.href ? undefined : true}
+            onMouseEnter={() => setActive(i)} onClick={() => open(hit)}>
+            <span><strong>{hit.name}</strong><small>{hit.detail}</small></span>{hit.href && <DiscoveryIcon name="arrow" />}
+          </li>)}
+        </ul>
+        {status && <p className="d-townhall-status">{status}</p>}
+      </div>
+      </div>
+      <p className="d-sr-only" role="status" aria-live="polite">{status || (current && items.length ? `${items.length} ${items.length === 1 ? "primărie găsită" : "primării găsite"}` : "")}</p>
+      {<div className="d-townhall-try"><span>Încearcă:</span>{TRY.map((name) => <button type="button" key={name} onClick={() => { setTerm(name); input.current?.focus(); }}>{name}</button>)}</div>}
       <p className="d-dialog-hint">↑ ↓ alegi · Enter deschizi · Esc închizi</p>
     </dialog>
   </>;

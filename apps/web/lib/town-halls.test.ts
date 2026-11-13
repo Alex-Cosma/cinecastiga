@@ -16,6 +16,7 @@ describe("town halls by their locality", () => {
     expect(matchUnits("ciresu").map(unitDetail)).toEqual(expect.arrayContaining(["Primăria Comunei Cireșu · județul Brăila", "Primăria Comunei Cireșu · județul Mehedinți"]));
     expect(matchUnits("sector 3").map(unitDetail)[0]).toBe("Primăria Sectorului 3 · București");
     expect(matchUnits("bucuresti").map(unitDetail)[0]).toBe("Primăria Municipiului București");
+    expect(matchUnits("sector").map(unitName)).toEqual(["Sectorul 1", "Sectorul 2", "Sectorul 3", "Sectorul 4", "Sectorul 5", "Sectorul 6"]);
     expect(matchUnits("c")).toEqual([]);
   });
 });

@@ -45,7 +45,7 @@ export function matchUnits(term: string, limit = 8): Unit[] {
   const words = (key: string) => { const own = key.split(" "); return typed.every((w) => own.some((k) => k.startsWith(w))); };
   const rank = (key: string) => key === q ? 0 : key.startsWith(q) ? 1 : words(key) ? 2 : key.includes(q) ? 3 : 9;
   return INDEX.map((x) => ({ ...x, r: rank(x.key) })).filter((x) => x.r < 9)
-    .sort((a, b) => a.r - b.r || b.unit.population - a.unit.population).slice(0, limit).map((x) => x.unit);
+    .sort((a, b) => a.r - b.r || (a.unit.kind === "sector" && b.unit.kind === "sector" ? a.unit.siruta - b.unit.siruta : b.unit.population - a.unit.population)).slice(0, limit).map((x) => x.unit);
 }
 
 export async function searchTownHalls(sql: DbSql, term: string): Promise<TownHallHit[]> {
