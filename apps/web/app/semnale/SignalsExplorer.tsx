@@ -74,16 +74,25 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   // the histogram's bars rise left to right. After a filter, a page or the sort (same tab) the new rows enter shorter and
   // together, the rows that stay keep their picture and the histogram's bars change height in place.
   const [update, setUpdate] = useState(false);
-  const memory = useRef<Partial<Record<SignalState["view"], SignalState>>>({}), resultsRef = useRef<HTMLElement>(null), focusResults = useRef(false);
+  const memory = useRef<Partial<Record<SignalState["view"], SignalState>>>({}), resultsRef = useRef<HTMLElement>(null), focusResults = useRef<false | "focus" | "scroll">(false);
   const active = pending ? requested : state, key = signalUrl(state), code = active.code, meta = FLAG_META[code]!;
   // A filter, a page or the sort keep the list in place, dimmed; only the other tab (another kind of row) is a ghost.
   const reshaping = pending && requested.view !== state.view;
   const total = signals?.total ?? risk?.total ?? 0, criteria = RISK_CRITERIA[active.role];
-  useEffect(() => { if (!pending && focusResults.current) { resultsRef.current?.scrollIntoView({ block: "start" }); resultsRef.current?.focus({ preventScroll: true }); focusResults.current = false; } }, [pending, key]);
+  // Another page of the list: back to its top only when that top was scrolled past at the click (the pager under the
+  // list); from the pager above it the page stays still (owner, 13 November 2026: it scrolled down on every page).
+  useEffect(() => {
+    if (pending || !focusResults.current) return;
+    if (focusResults.current === "scroll") resultsRef.current?.scrollIntoView({ block: "start" });
+    resultsRef.current?.focus({ preventScroll: true });
+    focusResults.current = false;
+  }, [pending, key]);
   function navigate(patch: Partial<SignalState>, scroll = false) {
     const href = signalUrl(active, patch), next = parseSignalState(Object.fromEntries(new URL(href, "http://local").searchParams));
     setNotice(next.role !== active.role && !patch.role ? `Acest semnal se calculează pentru ${next.role === "supplier" ? "firme" : "autorități"}. Selecția a fost actualizată.` : next.code !== active.code && patch.role ? "Tipul semnalului a fost schimbat pentru rolul ales." : "");
-    setRequested(next); setDialog(null); setUpdate(next.view === active.view); focusResults.current = scroll;
+    setRequested(next); setDialog(null); setUpdate(next.view === active.view);
+    const header = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
+    focusResults.current = !scroll ? false : (resultsRef.current?.getBoundingClientRect().top ?? 0) < header ? "scroll" : "focus";
     startTransition(() => router.push(href, { scroll: false }));
   }
   function switchView(view: SignalState["view"]) {
