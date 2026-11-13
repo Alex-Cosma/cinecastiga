@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TOUR_DOTS, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, splitLine, tourEntry, tourPercent, tourPlace, tourQuery, tourQueryAlternatives } from "./tour";
+import { TOUR_DOTS, TOUR_SEEN_SHARE, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, splitLine, tourEntry, tourPercent, tourPlace, tourQuery, tourQueryAlternatives, tourRestHidden } from "./tour";
 
 const roads = TOUR_TOPICS.find((topic) => topic.key === "drumuri")!;
 
@@ -65,6 +65,21 @@ describe("the welcome tour (owner, 12 November 2026)", () => {
     expect(guessVerdict(60, 0.75)).toBe("Ai spus 60 din 100. Pe aproape: 75% sunt directe.");
     expect(guessVerdict(30, 0.75)).toBe("Ai spus 30 din 100. Sunt mai multe: 75% sunt directe.");
     expect(guessVerdict(90, 0.4)).toBe("Ai spus 90 din 100. Sunt mai puține: 40% sunt directe.");
+  });
+
+  it("on a narrow screen shows the rest of a step before going on (owner, 13 November 2026)", () => {
+    // a step of 1,000 px in a screen of 700: 300 px to scroll
+    expect(tourRestHidden(0, 1000, 700)).toBe(true);
+    expect(tourRestHidden(284, 1000, 700)).toBe(true);
+    // 95% of the way down is enough, and so is the bounce past the end
+    expect(tourRestHidden(285, 1000, 700)).toBe(false);
+    expect(tourRestHidden(300, 1000, 700)).toBe(false);
+    expect(tourRestHidden(312, 1000, 700)).toBe(false);
+    // a step that fits, or overflows only by its bottom padding, hides nothing
+    expect(tourRestHidden(0, 700, 700)).toBe(false);
+    expect(tourRestHidden(0, 724, 700)).toBe(false);
+    expect(tourRestHidden(0, 725, 700)).toBe(true);
+    expect(TOUR_SEEN_SHARE).toBe(0.95);
   });
 
   it("names the place as people do", () => {
