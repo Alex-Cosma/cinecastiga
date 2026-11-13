@@ -70,7 +70,7 @@
 /* The national list and the ranking (owner, 6 November 2026, "Oglinda"): a row is a case or a profile, with its
    picture and number; the arrow's link covers the row and opens the case page, the names keep their own links. */
 .sg-case-row,.sg-rank-row{position:relative;display:grid;align-items:center;gap:18px;padding:14px 6px;border-bottom:1px solid var(--line)}
-.sg-case-row{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 170px 150px 76px 20px}
+.sg-case-row{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 170px 150px 122px 20px}
 .sg-rank-row{grid-template-columns:minmax(0,1fr) minmax(260px,1.15fr) 120px 20px}
 .sg-case-row:hover,.sg-rank-row:hover{background:color-mix(in srgb,var(--accent-soft) 70%,transparent);border-radius:8px}
 .sg-explorer .sg-open{color:var(--accent);font-weight:700;text-decoration:none;justify-self:end}
@@ -81,11 +81,21 @@
 .sg-partner-col{min-width:0}.sg-partner-col .sg-partner{margin-top:0;font-weight:500;color:var(--ink)}
 .sg-case-row .sg-amount strong{font-family:var(--mono);font-size:13.5px}
 .sg-x{font:700 19px/1 var(--display);color:var(--risk);text-align:right;white-space:nowrap}
+/* „+1.609.429 lei” fits its column beside the arrow (13 November 2026) */
+.sg-x.long{font-size:15px}
 .sg-meter{position:relative;display:flex;height:12px;border-radius:3px;background:var(--sunk)}
 .sg-meter i{display:block;height:100%;background:var(--risk);border-radius:3px}
 .sg-meter i.g{background:var(--accent)}.sg-meter i.r{background:var(--risk)}
 .sg-meter.over{gap:2px;background:none}
 .sg-meter b{position:absolute;top:-5px;bottom:-5px;border-left:2px solid var(--ink)}
+/* A list picture's figures on hover (owner, 13 November 2026), or while the row's link has the keyboard focus. */
+.sg-meter-hit{position:relative;z-index:1;display:block;padding:10px 0;margin:-10px 0;color:inherit;text-decoration:none}
+.sg-tip{display:none;position:absolute;left:50%;bottom:calc(100% - 2px);transform:translateX(-50%);z-index:30;width:max-content;max-width:290px;padding:10px 12px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);box-shadow:var(--shadow2,0 10px 28px #204c3c1a);font:13px/1.5 var(--body);color:var(--ink);text-align:left;white-space:normal;pointer-events:none}
+.sg-tip>span{display:block}
+.sg-tip>span:first-child{font-weight:600;margin-bottom:2px}
+.sg-meter-hit:hover .sg-tip,.sg-case-row:has(.sg-open:focus-visible) .sg-tip{display:block}
+.sg-meter-hit:hover .sg-meter{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+@media(hover:none){.sg-meter-hit:hover .sg-tip{display:none}}
 .sg-comp{display:flex;gap:2px;height:22px;border-radius:4px;overflow:hidden;background:var(--sunk)}
 .sg-comp i{display:flex;align-items:center;min-width:0;overflow:hidden;padding:0 6px;font:600 12px/1 var(--body);font-style:normal;background:var(--seg);color:var(--on-accent)}
 .sg-comp .c0{--seg:var(--choro-4)}.sg-comp .c1{--seg:var(--choro-3)}.sg-comp .c2{--seg:var(--choro-2)}.sg-comp .c3{--seg:var(--choro-1)}.sg-comp .c4{--seg:var(--choro-0)}
@@ -95,7 +105,7 @@
    and together. */
 .sg-upd{--cm-dur:var(--fast);--chart-step:0ms}
 .sg-score{text-align:right}.sg-score .cri-pill{font-size:13px}.sg-score small{display:block;font-size:12px;color:var(--muted);margin-top:4px}
-@media(max-width:1000px){.sg-case-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 130px 120px 64px 18px;gap:12px}}
+@media(max-width:1000px){.sg-case-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 130px 120px 104px 18px;gap:12px}.sg-x.long{font-size:13.5px}}
 @media(max-width:700px){
   .sg-case-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:14px 4px}
   .sg-case-row .sg-entity,.sg-case-row .sg-partner-col,.sg-case-row .sg-meter-col{grid-column:1/-1}

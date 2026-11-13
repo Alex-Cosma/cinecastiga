@@ -110,10 +110,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {fi.subjectType === "award" && <div className="sg-partner">{fi.winners.length ? fi.winners.slice(0, 2).map(w => <div key={w.entityId}><EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName></div>) : "Câștigător neidentificat în date."}{fi.winners.length > 2 && <small> și încă {fi.winners.length - 2}</small>}</div>}
         <p className="sg-meta">{meter ? meter.note : observation}</p>
       </div>
-      <div className="sg-meter-col">{meter?.bar}</div>
+      {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
+      <div className="sg-meter-col">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
       <div className="sg-amount"><strong>{fi.totalExact === null ? "Necunoscută" : `${formatExactDecimal(fi.totalExact)} lei`}</strong><small>{fi.subjectType !== "award" ? "valoare înregistrată" : awardValueLabel(fi.evidence)}</small></div>
-      <div className="sg-x">{meter?.value ?? ""}</div>
-      <Link href={href} className="sg-open" aria-label={`Deschide cazul: ${cleanName(fi.entityName)}${fi.partnerName ? `, ${cleanName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
+      <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}`}>{meter?.value ?? ""}</div>
+      <Link href={href} className="sg-open" aria-describedby={meter?.bar && meter.tip.length ? `sg-tip-${fi.id}` : undefined} aria-label={`Deschide cazul: ${cleanName(fi.entityName)}${fi.partnerName ? `, ${cleanName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
     </article>;
   }
   const distTotal = distribution.reduce((n, d) => n + d.n, 0), distNone = distribution.find(d => d.bin === 0)?.n ?? 0;
