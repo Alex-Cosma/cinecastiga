@@ -15,9 +15,10 @@ export interface Relaxation { id: string; label: string; onClick?: () => void }
 /** "Scoate „Furnizori noi”": the relaxation that drops a condition without a default row. */
 export const removeWords = (name: string) => `Scoate „${name}”`;
 
-export default function EmptyState({ message, relax = [], titleId }: { message: string; relax?: readonly Relaxation[]; titleId?: string }) {
+export default function EmptyState({ message, relax = [], titleId, children }: { message: string; relax?: readonly Relaxation[]; titleId?: string; children?: React.ReactNode }) {
   return <div className="qb-empty">
     <p>{message}</p>
+    {children}
     {relax.length > 0 && <div className="qb-relax" role="group" aria-label="Lărgește întrebarea">
       {relax.slice(0, MAX_RELAX).map(item => <button key={item.id} type="button" onClick={() => {
         item.onClick?.();

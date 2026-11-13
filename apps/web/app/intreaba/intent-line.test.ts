@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { IntentResult } from "../../lib/intent/types";
 import type { AskSpec } from "../../lib/ask/spec";
-import { noteClause, understoodLine } from "./intent-line";
+import { noteClause, titleSearch, understoodLine } from "./intent-line";
 
 /*
  * Enter → the answer, with how the question was understood as one line under
@@ -38,6 +38,14 @@ describe("the interpretation line", () => {
     expect(understoodLine(result({ leftover: ["frumos", "albastru"] }), { spec: ranking, sentence: "…" })!.ignored).toEqual(["frumos", "albastru"]);
     const plain = { ...result({ placeNote: null }), alternatives: [] } as IntentResult;
     expect(understoodLine(plain, { spec: ranking, sentence: "…" })).toBeNull();
+  });
+
+  it("searches the titles for the subject, never the verb, with the place and the years (Cisnădie feedback, 13 November 2026)", () => {
+    const asked = { ...result(), interpretation: { notes: [], placeNote: null, leftover: [], subjects: [{ matched: { text: "deszăpezire", from: 20, to: 31 } }] } } as unknown as IntentResult;
+    expect(titleSearch(asked, ranking)).toEqual({ href: "/cauta?q=desz%C4%83pezire&place=county%3Asuceava&from=2024&to=2024", words: "deszăpezire", where: "județul Suceava", period: "în 2024" });
+    expect(titleSearch(asked, hall)).toMatchObject({ href: "/cauta?q=desz%C4%83pezire&place=uat%3A146593&from=2024&to=2024", where: "Suceava" });
+    // a line with nothing else to say still offers the title search
+    expect(understoodLine({ ...asked, alternatives: [] } as IntentResult, { spec: ranking, sentence: "…" })?.titles?.words).toBe("deszăpezire");
   });
 
   it("writes the interpreter's notes as clauses after «Am înțeles:», names kept", () => {

@@ -155,14 +155,14 @@ function CpvLine({label}:{label:string}){const m=/^(.*) \((\d{8}-\d)\)$/.exec(la
 const GhostTip=()=><span className="term term-tip" aria-hidden="true"><span className="term-trigger"><span className="term-mark">?</span></span></span>;
 
 /** „Pe scurt” and what it counted: the subject, the buyers, the place and the period, as one line. */
-function AnswerHead({scope,filters,compare,townHall,ghost=false}:{scope:AnswerScope|undefined;filters:Answer['total']['spec']['filters'];compare:boolean;townHall:boolean;ghost?:boolean}){
+function AnswerHead({scope,filters,compare,townHall,institutions=false,ghost=false}:{scope:AnswerScope|undefined;filters:Answer['total']['spec']['filters'];compare:boolean;townHall:boolean;institutions?:boolean;ghost?:boolean}){
  // The words are a firm or an institution („cine cumpără de la Siepcofar”): its name, linked, not a subject.
  const party=scope?.named&&scope.subject?(filters.supplierId!==undefined?{id:filters.supplierId,role:'supplier' as const,before:'de la '}:filters.authorityId!==undefined?{id:filters.authorityId,role:'authority' as const,before:''}:null):null;
  const name=scope&&capital(scope.subject);
  const first=scope&&!compare&&name?(party?<>{party.before}{ghost?name:<EntityName id={party.id} role={party.role}>{name}</EntityName>}</>:name):null;
  const rest=scope?(compare?['Comparație',scope.period,'valoare înregistrată, nu plăți']:[scope.kind,scope.where,scope.period]).filter((x):x is string=>Boolean(x)):[];
- const line=[first,...rest].filter(Boolean);
- return <div className="topic-answer-head"><h2>Pe scurt</h2>{(line.length>0||townHall)&&<p className="topic-answer-scope">{line.map((x,i)=><Fragment key={i}>{i>0&&' · '}{x}</Fragment>)}{townHall&&<>{line.length>0&&' · '}<span className="topic-answer-nowrap">doar primăria {ghost?<GhostTip/>:<Term tip title="Doar primăria" text="„Pe scurt” numără achizițiile primăriei. Titlurile de mai jos sunt de la toate instituțiile din localitate."/>}</span></>}</p>}</div>;
+ const line=[first,...rest,...(institutions?['toate instituțiile']:[])].filter(Boolean);
+ return <div className="topic-answer-head"><h2>Pe scurt</h2>{(line.length>0||townHall)&&<p className="topic-answer-scope">{line.map((x,i)=><Fragment key={i}>{i>0&&' · '}{x}</Fragment>)}{townHall&&<>{line.length>0&&' · '}<span className="topic-answer-nowrap">doar primăria {ghost?<GhostTip/>:<Term tip title="Doar primăria" text="„Pe scurt” numără doar achizițiile primăriei, fără celelalte instituții din localitate."/>}</span></>}</p>}</div>;
 }
 
 /**
@@ -222,7 +222,9 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  const led=rowsLead(answer,question,scope?.who);
  // The answer counts only a town hall, while the titles below cover every institution of the locality.
  const townHall=filters.uatSiruta!==undefined;
- const head=<AnswerHead scope={scope} filters={filters} compare={compare} townHall={townHall} ghost={!ready}/>;
+ // a locality's institutions, as a precise selection (lib/topic-search/interpretation.ts withLocalityInstitutions)
+ const institutions=Boolean(answer.total.spec.population)&&Boolean(scope?.where);
+ const head=<AnswerHead scope={scope} filters={filters} compare={compare} townHall={townHall} institutions={institutions} ghost={!ready}/>;
  if(!ready)return <AnswerGhost head={head} answer={answer} kind={kind} led={led} compare={compare} notes={notes} literal={Boolean(literalHref)}/>;
  // The same limits /intreaba shows for these specs.
  const caveats=[...new Set([...(ready.total?.ok?ready.total.caveats??[]:[]),...(ready.top?.ok?ready.top.caveats??[]:[])])];

@@ -3,7 +3,8 @@ import {devlog} from '@/lib/devlog';
 import {ground} from '@/lib/ask/ground';
 import {intentCacheKey,intentPeriods,interpretQuestion} from '@/lib/intent/server';
 import type {IntentResult} from '@/lib/intent/types';
-import {applyInterpretation} from '@/lib/topic-search/interpretation';
+import {applyInterpretation,withLocalityInstitutions} from '@/lib/topic-search/interpretation';
+import {localityInstitutions} from '@/lib/locality-institutions';
 import {resolvePlace} from '@/lib/topic-search/server';
 import {parseTopicScope} from '@/lib/topic-search/shared';
 export const dynamic='force-dynamic';
@@ -41,7 +42,12 @@ export async function GET(req:Request){
  try{
   const now=new Date(),result=await interpret(scope.q,now);
   const place=scope.place?await resolvePlace(scope.place):null;
-  const t=applyInterpretation(scope,result,place,now);
+  let t=applyInterpretation(scope,result,place,now);
+  // a locality means all of its institutions unless „Doar primăria” is chosen (owner, 13 November 2026)
+  if(t.answer&&t.applied.place.startsWith('uat:')&&!scope.hall){
+   const siruta=Number(t.applied.place.slice(4)),l=await localityInstitutions(db(),siruta);
+   t=withLocalityInstitutions(t,siruta,l.ids);
+  }
   // The subject as the engine grounds it: every CPV class counted ("Domenii incluse")
   // and the curated notes meant for people (e.g. "iluminat" includes traffic signalling).
   if(t.subject){

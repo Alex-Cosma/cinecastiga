@@ -138,7 +138,7 @@ export default function TopicSearch(){
  const parsed=useMemo(()=>{try{return {scope:parseTopicScope(new URLSearchParams(url)),error:''};}catch(e){return {scope:defaults,error:(e as Error).message};}},[url]);
  const scope=parsed.scope,literal=new URLSearchParams(url).get('literal')==='1';
  // The words are read by the rules interpreter first: "iluminat buzau" searches "iluminat" in Buzău.
- const interpKey=!parsed.error&&scope.q&&!literal?new URLSearchParams({q:scope.q,...(scope.place?{place:scope.place}:{}),...(scope.from?{from:scope.from,to:scope.to}:{})}).toString():'';
+ const interpKey=!parsed.error&&scope.q&&!literal?new URLSearchParams({q:scope.q,...(scope.place?{place:scope.place}:{}),...(scope.from?{from:scope.from,to:scope.to}:{}),...(scope.hall&&scope.place.startsWith('uat:')?{doar:'primaria'}:{})}).toString():'';
  const [interp,setInterp]=useState<{key:string;data:TopicInterpretation|null}|null>(null);
  useEffect(()=>{if(!interpKey)return;let slow=false;const abort=new AbortController(),timer=setTimeout(()=>{slow=true;abort.abort();},3500);
   // A failed or slow interpretation never blocks the search: the words are then searched as written.
@@ -266,7 +266,7 @@ export default function TopicSearch(){
   {units&&counted===undefined&&result.acquisitions.total>0&&<UnitsGhost/>}
   {t?.answer&&!literalQ&&counted!=null&&counted>0&&counted!==result.acquisitions.total&&<p className="topic-units"><span><strong>{formatInt(counted)}</strong> după domeniu în „Pe scurt” · {result.acquisitions.total===0?<>niciunul cu „{effective.q}” în titlu</>:<><strong>{formatInt(result.acquisitions.total)}</strong> cu „{effective.q}” în titlu</>} <Term tip title="De ce diferă" text={`„Pe scurt” numără achizițiile încadrate la domeniu (CPV), oricare le-ar fi titlul. Lista de aici are doar titlurile care conțin cuvintele căutate, de la toate instituțiile${t.kind&&result.acquisitions.total>0?`, nu doar ${t.kind.label}`:''}.`}/></span> <Link prefetch={false} href={t.answer.evidenceHref}>Vezi {counted===1?'înregistrarea':`toate cele ${formatInt(counted)}`} <DiscoveryIcon name="arrow"/></Link></p>}
   {result.acquisitions.hits.map(a=><article key={a.id} className="topic-record topic-acquisition"><div className="topic-record-main"><div className="topic-record-meta"><span>{a.kind==='da'?'Achiziție directă':'Contract din procedură'}</span>{a.date&&<span>{a.kind==='da'?'Finalizată':'Semnat'} {a.date.slice(0,10).split('-').reverse().join('.')}</span>}{a.county&&<span>{a.county}</span>}</div><h3><a href={a.href} target="_blank" rel="noopener noreferrer"><Highlight text={a.title} query={effective.q}/></a></h3><div className="topic-parties">{a.authorityId?<Link prefetch={false} href={`/entitati/${a.authorityId}`}>{cleanName(a.authorityName)}</Link>:<span>{a.authorityName??'Instituție neprecizată'}</span>}<span aria-hidden="true"> → </span><span>{a.suppliers.length?a.suppliers.map((s,i)=><Fragment key={a.supplierIds?.[i]??i}>{i>0&&', '}<EntityName id={a.supplierIds?.[i]} role="supplier">{cleanName(s)}</EntityName></Fragment>):'Furnizor neprecizat'}</span></div></div><div className="topic-record-side"><strong>{formatExactDecimal(a.value)}{a.value!=null?' lei':''}</strong><small>valoare înregistrată · nu plăți</small><a href={a.sourceUrl} target="_blank" rel="noopener noreferrer">Verifică în SEAP <DiscoveryIcon name="arrow"/></a></div></article>)}
-  {!result.acquisitions.total&&<div className="topic-panel-empty"><p className="topic-empty">Niciun titlu potrivit. <Term id="lista-titluri" tip/></p><Broader scope={scope} effective={effective} t={t} place={vPlace} onDocuments={()=>tab('documents')}/></div>}
+  {!result.acquisitions.total&&<div className="topic-panel-empty"><p className="topic-empty">Niciun titlu potrivit. <Term id="lista-titluri" tip/></p>{result.elsewhere?<p className="topic-help topic-elsewhere">{roCount(result.elsewhere,'un titlu','titluri')} la celelalte instituții din localitate. <button type="button" className="topic-text-button" onClick={()=>refine({hall:false})}>Caută la toate instituțiile <DiscoveryIcon name="arrow"/></button></p>:null}<TitleCoverage coverage={result.titleCoverage}/><Broader scope={scope} effective={effective} t={t} place={vPlace} onDocuments={()=>tab('documents')}/></div>}
   {panelFoot('acquisitions',result.acquisitions.total,result.acquisitions.hits.length,roCount(result.acquisitions.total,'o achiziție','achiziții'))}
   </section>}
   {isShown('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul extras din PDF-uri',<Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
@@ -282,7 +282,7 @@ export default function TopicSearch(){
   {/* A tab opened by its link: the count is not known yet, and a tab's list usually has more than one page. */}
   {!result&&total==null&&scope.tab!=='all'&&<Ghost className="topic-pagination" name="topic-pages" wait="client"><span className="topic-control g-quiet" aria-hidden="true">Înapoi</span><span aria-hidden="true"><G.Line inline w="7.5em"/></span><span className="topic-control g-quiet" aria-hidden="true">Înainte</span></Ghost>}
   {total!=null&&total>PAGE_SIZE&&<nav className="topic-pagination" aria-label="Paginarea rezultatelor"><button type="button" className="topic-control" disabled={!result||scope.page<=1} onClick={()=>update({page:scope.page-1})}>Înapoi</button><span>Pagina {scope.page} din {formatInt(Math.ceil(total/PAGE_SIZE))}</span><button type="button" className="topic-control" disabled={!result||scope.page*PAGE_SIZE>=total||scope.page>=1000} onClick={()=>update({page:scope.page+1})}>Înainte</button></nav>}
-  <details className="topic-how"><summary>Cum funcționează căutarea</summary>{result&&<p>În arhivă, {formatInt(result.titleCoverage.searchable)} din {formatInt(result.titleCoverage.total)} de achiziții au titlu căutabil. Unele importuri istorice nu păstrează titlul; achizițiile lor rămân accesibile din profilurile instituțiilor și firmelor.</p>}<p>În titluri și documente căutăm cuvintele și formele lor („laptopul” găsește și „laptopuri”), fără diferențe între litere mari, mici sau diacritice; „sau” caută oricare dintre variante. „Expresia în ordine” păstrează ordinea cuvintelor; punctuația nu schimbă potrivirea. În nume și CUI sunt acceptate și fragmente.</p><p>Perioada folosește data achiziției sau contractului, inclusiv ambii ani. Geografia folosește instituțiile asociate localității în catalog; instituțiile fără asociere pot lipsi.</p><p>Documentele sunt căutate doar când există o legătură verificată cu o procedură din selecție. Textul OCR poate avea erori. Rezultatele din documente sosesc separat, după titluri, instituții și firme.</p>{result?.builtAt&&<p>Index de titluri actualizat la {new Date(result.builtAt).toLocaleString('ro-RO')}.</p>}</details>
+  <details className="topic-how"><summary>Cum funcționează căutarea</summary>{result&&<p>În arhivă, {formatInt(result.titleCoverage.searchable)} din {formatInt(result.titleCoverage.total)} de achiziții au titlu căutabil. Unele importuri istorice nu păstrează titlul; achizițiile lor rămân accesibile din profilurile instituțiilor și firmelor.</p>}<p>În titluri și documente căutăm cuvintele și formele lor („laptopul” găsește și „laptopuri”), fără diferențe între litere mari, mici sau diacritice; „sau” caută oricare dintre variante. „Expresia în ordine” păstrează ordinea cuvintelor; punctuația nu schimbă potrivirea. În nume și CUI sunt acceptate și fragmente.</p><p>Perioada folosește data achiziției sau contractului, inclusiv ambii ani. O localitate înseamnă primăria, instituțiile și firmele ei, spitalele și școlile din localitate („Doar primăria” le restrânge); instituțiile județului sau ale statului care au doar sediul acolo nu intră. Un județ înseamnă instituțiile cu sediul în județ.</p><p>Documentele sunt căutate doar când există o legătură verificată cu o procedură din selecție. Textul OCR poate avea erori. Rezultatele din documente sosesc separat, după titluri, instituții și firme.</p>{result?.builtAt&&<p>Index de titluri actualizat la {new Date(result.builtAt).toLocaleString('ro-RO')}.</p>}</details>
   </>}
   </div></div>;
  };
@@ -293,6 +293,7 @@ export default function TopicSearch(){
  <div className="topic-filter-surface"><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button></form>
  <button type="button" className="topic-filter-toggle" aria-expanded={filtersExpanded} aria-controls="topic-filters" onClick={()=>setFiltersExpanded(v=>!v)}><span>Loc, perioadă și alte filtre{filterSummary&&<small>{filterSummary}</small>}</span><DiscoveryIcon name="chevronDown"/></button>
  <div id="topic-filters" className={`topic-filters${filtersExpanded?' is-expanded':''}`}><PlacePicker value={effective.place} selected={place?.id===effective.place?place:null} onChange={p=>{setPlace(p);refine({place:p?.id??''});}}/><PeriodPicker scope={effective} onChange={refine}/><label>Tipul achiziției<select value={scope.type} onChange={e=>keepReading({type:e.target.value as TopicScope['type']})}><option value="all">Toate tipurile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte din proceduri</option></select></label><label>Potrivirea<select value={scope.match} onChange={e=>keepReading({match:e.target.value as TopicScope['match']})}><option value="words">Toate cuvintele</option><option value="phrase">Expresia în ordine</option></select></label></div>
+ {effective.place.startsWith('uat:')&&<LocalityScope locality={(result??main?.result)?.locality??null} hall={Boolean(effective.hall)} onChange={hall=>refine({hall})}/>}
  </div>
  {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
   :!scope.q?<div className="topic-results" style={{minHeight:400}}><div className="topic-start"><p>Exemple:</p><div>{['locuri de joacă','iluminat','Municipiul Buzău'].map(q=><button type="button" className="topic-control" key={q} onClick={()=>update({q})}>{q}<DiscoveryIcon name="arrow"/></button>)}</div></div></div>
@@ -301,5 +302,35 @@ export default function TopicSearch(){
  {/* Present before documents load, so their arrival is announced. */}
  <p className="d-sr-only" role="status" aria-live="polite">{!docsKey||error||loading?'':currentDocs.loading?'Căutăm și în documentele procedurilor.':currentDocs.failure?'Căutarea în documente nu s-a încheiat.':currentDocs.result?(currentDocs.result.documents.total===1?'Un document găsit.':`Documente găsite: ${formatInt(currentDocs.result.documents.total)}.`):''}</p>
  {pending&&<FloatStatus>{interpReady?<>Căutăm „{effective.q}” · {where} · {period}…</>:<>Citim căutarea „{scope.q}”…</>}</FloatStatus>}
+ </div>;
+}
+
+/**
+ * Why a title search finds nothing where a record exists (Cisnădie feedback, 13 November 2026): most records carry no
+ * original title, only their category's name, so a title copied from SEAP rarely finds a direct acquisition.
+ */
+function TitleCoverage({coverage}:{coverage:TopicResult['titleCoverage']}){
+ if(!coverage.total||coverage.searchable>=coverage.total)return null;
+ const pct=Math.max(1,Math.round(coverage.searchable/coverage.total*100)),mil=(n:number)=>`${(n/1e6).toLocaleString('ro-RO',{maximumFractionDigits:2})} mil.`;
+ return <p className="topic-help topic-title-coverage">Doar {pct}% din înregistrări au titlul original ({mil(coverage.searchable)} din {mil(coverage.total)}). La celelalte afișăm numele categoriei, așa că nu apar la o căutare după titlu.</p>;
+}
+
+/**
+ * A locality is all of its institutions; „Doar primăria” narrows it (owner, 13 November 2026; mockup C). The list of who
+ * belongs comes with the results, so it is said once they are in.
+ */
+function LocalityScope({locality,hall,onChange}:{locality:TopicResult['locality'];hall:boolean;onChange:(hall:boolean)=>void}){
+ const n=locality?.groups.length??0;
+ const kindLabel={primarie:'primăria',spital:'spital din localitate',scoala:'școală din localitate',institutie:'instituție a primăriei',firma:'firmă a primăriei'} as const;
+ return <div className="topic-locality">
+  <div className="topic-locality-row"><span className="topic-locality-label" id="topic-locality-label">În localitate, caut la:</span>
+   <div className="topic-seg" role="group" aria-labelledby="topic-locality-label">
+    <button type="button" aria-pressed={!hall} onClick={()=>hall&&onChange(false)}>Toate instituțiile{n?` (${n})`:''}</button>
+    <button type="button" aria-pressed={hall} onClick={()=>!hall&&onChange(true)}>Doar primăria</button>
+   </div></div>
+  {locality&&n>1&&<details className="topic-locality-list"><summary>Ce instituții intră</summary>
+   <ul>{locality.groups.map((g,i)=><li key={i}><span>{g.kind==='primarie'?'Primăria':g.name}</span><small>{kindLabel[g.kind]}</small></li>)}</ul>
+   <p className="topic-help">Nu intră încă instituțiile județului sau ale statului care au doar sediul aici, nici firmele primăriei pe care nu le-am verificat.</p>
+  </details>}
  </div>;
 }

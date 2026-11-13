@@ -5,7 +5,8 @@ import {entityIntent} from './entity-intent';
 import {titleTsquery,trailingCounty,wordForms} from './words';
 import {rankPlaces,type UatRow} from './places';
 import {COUNTIES} from '../counties';
-import {fold,PAGE_SIZE,excerpt,type TopicScope,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
+import {localityInstitutions} from '../locality-institutions';
+import {fold,PAGE_SIZE,excerpt,type TopicScope,type TopicLocality,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
 export function topicFailure(e:unknown,slow:string){
  if(e instanceof TopicInputError)return Response.json({error:e.message},{status:400});
@@ -34,10 +35,21 @@ export async function resolvePlace(id:string):Promise<Place|null>{
  if(!id)return null;if(id.startsWith('county:'))return countyPlaces.find(p=>p.id===id)??null;
  const rows=await db()`select siruta,name,county,tip from reference.uat where siruta=${Number(id.slice(4))}`;return rows[0]?local(rows[0]):null;
 }
-function scopeSql(q:DbSql,s:TopicScope){
+/**
+ * A locality's institutions (owner, 13 November 2026), or only its town hall („Doar primăria”): the identities beside the
+ * index's own uat_siruta (which holds the town hall's strictly associated identities). Null when the place is no locality.
+ */
+type Others=string[]|null;
+async function placeOthers(s:TopicScope):Promise<{others:Others;locality:TopicLocality|null}>{
+ if(!s.place.startsWith('uat:'))return {others:null,locality:null};
+ const l=await localityInstitutions(db(),Number(s.place.slice(4)));
+ const locality={townHall:l.townHall.length,groups:[{kind:'primarie' as const,name:'Primăria'},...l.groups.map(g=>({kind:g.kind,name:g.name}))]};
+ return {others:s.hall?l.townHall:[...l.townHall,...l.groups.flatMap(g=>g.ids)],locality};
+}
+function scopeSql(q:DbSql,s:TopicScope,others:Others=null){
  let where=q`true`;
  if(s.place.startsWith('county:'))where=q`${where} and a.county=${s.place.slice(7)}`;
- if(s.place.startsWith('uat:'))where=q`${where} and a.uat_siruta=${Number(s.place.slice(4))}`;
+ if(s.place.startsWith('uat:'))where=others?.length?q`${where} and (a.uat_siruta=${Number(s.place.slice(4))} or a.authority_id=any(${others}::bigint[]))`:q`${where} and a.uat_siruta=${Number(s.place.slice(4))}`;
  if(s.from)where=q`${where} and a.year between ${Number(s.from)} and ${Number(s.to)}`;
  if(s.type!=='all')where=q`${where} and a.kind=${s.type}`;
  return where;
@@ -50,9 +62,9 @@ function titleQuery(q:DbSql,s:TopicScope){
 async function bounded<T>(fn:(q:DbSql)=>Promise<T>):Promise<T>{
  return await db().begin(async tx=>{const q=tx as unknown as DbSql;await q`set local statement_timeout='15000'`;return fn(q);}) as T;
 }
-async function acquisitions(s:TopicScope):Promise<TopicResult['acquisitions']>{return bounded(async q=>{
+async function acquisitions(s:TopicScope,others:Others=null):Promise<TopicResult['acquisitions']>{return bounded(async q=>{
  const ts=titleQuery(q,s);
- const where=q`${scopeSql(q,s)} and a.search @@ ${ts}`;
+ const where=q`${scopeSql(q,s,others)} and a.search @@ ${ts}`;
  const [count]=await q`select count(*)::int total from marts.topic_acquisitions a where ${where}`;
  const limit=s.tab==='all'?3:PAGE_SIZE,offset=s.tab==='all'?0:(s.page-1)*PAGE_SIZE;
  const order=s.order==='value'?q`a.value desc nulls last,a.date desc nulls last,a.id`:q`a.date desc nulls last,a.id`;
@@ -74,7 +86,7 @@ async function acquisitions(s:TopicScope):Promise<TopicResult['acquisitions']>{r
 // One statement per request: the notice→procedure link is computed once per
 // notice (not per file, not once per count/rows/coverage), and the text match
 // uses the GIN index on app.document_page_search (migration 0079).
-async function documentSearch(s:TopicScope):Promise<Omit<TopicDocumentsResult,'scope'>>{
+async function documentSearch(s:TopicScope,others:Others=null):Promise<Omit<TopicDocumentsResult,'scope'>>{
  // A procedure-document link is always to a contract; direct acquisitions have none.
  if(s.type==='da')return {documents:{total:0,hits:[]},coverage:{known:0,ready:0,pages:0}};
  return bounded(async q=>{
@@ -87,7 +99,7 @@ async function documentSearch(s:TopicScope):Promise<Omit<TopicDocumentsResult,'s
   join raw.raw_documents nr on nr.id=cn.raw_id
   join lateral (select a.ref_id from marts.topic_acquisitions a where a.kind='contracts'
    and a.authority_id=cn.authority_entity_id and a.procedure_id=nr.payload->>'procedureId'
-   and ${scopeSql(q,s)} order by a.ref_id limit 1) l on true
+   and ${scopeSql(q,s,others)} order by a.ref_id limit 1) l on true
   where exists(select 1 from app.procurement_documents d where d.notice_key=n.key)
  ),sources as materialized (
   select d.id,d.filename,d.processed_at is not null and d.pdf_hash is not null ready,l.notice_no,l.notice_title,l.url,l.ref_id
@@ -135,7 +147,7 @@ function termSql(q:DbSql,t:string,exact=false){
  if(exact)return q`(e.name_normalized ~ ${`(^| )(${wordForms(t).join('|')})( |$)`})`;
  return q`(e.name_normalized like ${t+'%'} or e.name_normalized like ${'% '+t+'%'})`;
 }
-async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bounded(async q=>{
+async function entities(s:TopicScope,others:Others=null):Promise<TopicResult['entities']>{return bounded(async q=>{
  // Existing trigram index on canonical normalized names; all query terms required.
  const terms=fold(s.q).split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0,30);
  if(!terms.length)return {total:0,hits:[],suggestions:[]};
@@ -176,10 +188,10 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
   // A correlated exists() per candidate made Postgres scan every record of the year for each firm („catering 2025”:
   // 31 s, timeout; owner probe, 10 November 2026); this takes a quarter of a second.
   const active=await q`with cand as materialized (select e.id,ep.role from core.entities e join marts.entity_profile ep on ep.entity_id=e.id where ${nameSql} and (${s.role}='' or ep.role=${s.role}))
-   select c.id::text id,c.role from cand c where c.role='authority' and exists(select 1 from marts.topic_acquisitions a where ${scopeSql(q,s)} and a.authority_id=c.id)
+   select c.id::text id,c.role from cand c where c.role='authority' and exists(select 1 from marts.topic_acquisitions a where ${scopeSql(q,s,others)} and a.authority_id=c.id)
    union
    select c.id::text id,c.role from cand c join (select distinct unnest(a.supplier_ids) id from marts.topic_acquisitions a
-    where ${scopeSql(q,s)} and a.supplier_ids && (select coalesce(array_agg(id),'{}') from cand where role='supplier')) x on x.id=c.id where c.role='supplier'`;
+    where ${scopeSql(q,s,others)} and a.supplier_ids && (select coalesce(array_agg(id),'{}') from cand where role='supplier')) x on x.id=c.id where c.role='supplier'`;
   const ids=(role:string)=>active.filter(r=>r.role===role).map(r=>String(r.id));
   activity=q`((ep.role='authority' and e.id=any(${ids('authority')}::bigint[])) or (ep.role='supplier' and e.id=any(${ids('supplier')}::bigint[])))`;
  }
@@ -200,6 +212,16 @@ async function entities(s:TopicScope):Promise<TopicResult['entities']>{return bo
  const hits=found.rows.map(({match_rank,...entity})=>entity) as unknown as EntityHit[];
  return {total:found.total,hits,suggestions:s.tab==='all'&&!approximate?hits.filter((_,i)=>Number(found.rows[i]!.match_rank)>0):[],...(approximate?{approximate:true as const}:{})};
  });}
+/** The titles at a locality's institutions other than its town hall. */
+async function otherTitles(s:TopicScope):Promise<number>{
+ const {others}=await placeOthers({...s,hall:false});
+ if(!others?.length)return 0;
+ return bounded(async q=>{
+  const where=q`a.authority_id=any(${others}::bigint[]) and a.search @@ ${titleQuery(q,s)}${s.from?q` and a.year between ${Number(s.from)} and ${Number(s.to)}`:q``}${s.type!=='all'?q` and a.kind=${s.type}`:q``}`;
+  const [row]=await q`select count(*)::int n from marts.topic_acquisitions a where ${where}`;
+  return Number(row!.n);
+ });
+}
 async function checkedPlace(s:TopicScope){
  const place=await resolvePlace(s.place);if(s.place&&!place)throw new TopicInputError('Localitatea sau județul ales nu există în catalog. Alege din sugestii.');return place;
 }
@@ -209,11 +231,14 @@ export async function searchTopics(s:TopicScope):Promise<TopicResult>{
  const [state]=await db()`select built_at,records,titled_records from marts.topic_search_state where id=1`;
  if(!state)throw Error('Indexul de achiziții este în curs de pregătire. Încearcă din nou după finalizarea indexării.');
  const empty={total:0,hits:[]};
- const [a,e]=await Promise.all([s.q?acquisitions(s):empty,s.q?entities(s):empty]);
- return {scope:s,place,acquisitions:a,entities:e,builtAt:new Date(state.built_at).toISOString(),titleCoverage:{total:Number(state.records),searchable:Number(state.titled_records)}};
+ const {others,locality}=await placeOthers(s);
+ const [a,e]=await Promise.all([s.q?acquisitions(s,others):empty,s.q?entities(s,others):empty]);
+ // „Doar primăria” with no title: how many the locality's other institutions have (mockup C, owner 13 November 2026)
+ const elsewhere=s.q&&s.hall&&locality&&!a.total?await otherTitles(s):undefined;
+ return {scope:s,place,acquisitions:a,entities:e,builtAt:new Date(state.built_at).toISOString(),titleCoverage:{total:Number(state.records),searchable:Number(state.titled_records)},locality,...(elsewhere?{elsewhere}:{})};
 }
 /** Prepared document pages linked to the selection; requested separately by the page. */
 export async function searchTopicDocuments(s:TopicScope):Promise<TopicDocumentsResult>{
  await checkedPlace(s);
- return {scope:s,...await documentSearch(s)};
+ return {scope:s,...await documentSearch(s,(await placeOthers(s)).others)};
 }

@@ -1,6 +1,6 @@
 import { parseRoleParam } from '../role-param';
 export type SearchTab='all'|'acquisitions'|'documents'|'entities';
-export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier';/** The acquisitions' order: the newest first unless asked („cel mai mare contract” or the panel's switch). */order?:'value'|'date';/** The words are a subject: the names panel lists only names that carry them, never the closest names. */names?:'exact'};
+export type TopicScope={q:string;place:string;from:string;to:string;type:'all'|'da'|'contracts';match:'words'|'phrase';tab:SearchTab;page:number;role:''|'authority'|'supplier';/** The acquisitions' order: the newest first unless asked („cel mai mare contract” or the panel's switch). */order?:'value'|'date';/** The words are a subject: the names panel lists only names that carry them, never the closest names. */names?:'exact';/** A locality: only its town hall („Doar primăria”), not all of its institutions (owner, 13 November 2026). */hall?:boolean};
 /** How a suggestion matched the typed place name (/api/topic-search/places); absent on stored places. */
 export type PlaceMatchKind='exact'|'prefix'|'word'|'contains'|'county'|'fuzzy';
 export type Place={id:string;name:string;detail:string;kind:'county'|'locality';match?:PlaceMatchKind};
@@ -8,7 +8,8 @@ export type AcquisitionHit={id:string;kind:'da'|'contracts';title:string;date:st
 export type DocumentHit={id:string;filename:string;page:number;pages:number[];text:string;method:string;noticeNo:string;noticeTitle:string;sourceUrl:string;contractId:string|null};
 export type EntityHit={id:string;name:string;cui:string|null;roles:string[];county:string|null};
 /** Titles, institutions and firms: the fast part of a search. */
-export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[];/** No name contains the words: the closest names instead. */approximate?:true};builtAt:string|null;titleCoverage:{total:number;searchable:number}};
+export type TopicResult={scope:TopicScope;place:Place|null;acquisitions:{total:number;hits:AcquisitionHit[]};entities:{total:number;hits:EntityHit[];suggestions?:EntityHit[];/** No name contains the words: the closest names instead. */approximate?:true};builtAt:string|null;titleCoverage:{total:number;searchable:number};/** A locality chosen: who „toate instituțiile” holds (lib/locality-institutions.ts). */locality?:TopicLocality|null;/** „Doar primăria” found no title: the titles at the locality's other institutions. */elsewhere?:number};
+export type TopicLocality={townHall:number;groups:{kind:'primarie'|'institutie'|'firma'|'spital'|'scoala';name:string}[]};
 /** Prepared document pages for the same selection, from /api/topic-search/documents. */
 export type TopicDocumentsResult={scope:TopicScope;documents:{total:number;hits:DocumentHit[]};coverage:{known:number;ready:number;pages:number}};
 export const PAGE_SIZE=10;
@@ -27,7 +28,7 @@ export function parseTopicScope(p:URLSearchParams):TopicScope {
  if(!/^\d{1,4}$/.test(rawPage)||Number(rawPage)<1||Number(rawPage)>1000)throw Error('Pagina nu este validă. Restrânge căutarea pentru rezultate mai precise.');
  const role=parseRoleParam(p.get('rol'))??'';
  const ordine=p.get('ordine');
- return {q,place,from,to,type:type as TopicScope['type'],match:match as TopicScope['match'],tab:role?'entities':tab as SearchTab,page:Number(rawPage),role,...(ordine==='valoare'?{order:'value' as const}:ordine==='data'?{order:'date' as const}:{}),...(p.get('nume')==='exacte'?{names:'exact' as const}:{})};
+ return {q,place,from,to,type:type as TopicScope['type'],match:match as TopicScope['match'],tab:role?'entities':tab as SearchTab,page:Number(rawPage),role,...(ordine==='valoare'?{order:'value' as const}:ordine==='data'?{order:'date' as const}:{}),...(p.get('nume')==='exacte'?{names:'exact' as const}:{}),...(p.get('doar')==='primaria'&&place.startsWith('uat:')?{hall:true as const}:{})};
 }
 export function topicParams(s:TopicScope):URLSearchParams {
  const p=new URLSearchParams();
@@ -35,7 +36,7 @@ export function topicParams(s:TopicScope):URLSearchParams {
  if(s.from){p.set('from',s.from);p.set('to',s.to);}
  if(s.type!=='all')p.set('type',s.type);if(s.match!=='words')p.set('match',s.match);
  if(s.tab!=='all')p.set('tab',s.tab);if(s.page>1)p.set('page',String(s.page));
- if(s.role)p.set('rol',s.role==='supplier'?'furnizor':'autoritate');if(s.order)p.set('ordine',s.order==='value'?'valoare':'data');if(s.names)p.set('nume','exacte');return p;
+ if(s.role)p.set('rol',s.role==='supplier'?'furnizor':'autoritate');if(s.order)p.set('ordine',s.order==='value'?'valoare':'data');if(s.names)p.set('nume','exacte');if(s.hall&&s.place.startsWith('uat:'))p.set('doar','primaria');return p;
 }
 export const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 export function excerpt(text:string,q:string){const needle=fold(q).split(/\s+/)[0]??'',pos=fold(text).indexOf(needle),start=Math.max(0,pos-100);return `${start?'…':''}${text.slice(start,start+380)}${text.length>start+380?'…':''}`;}

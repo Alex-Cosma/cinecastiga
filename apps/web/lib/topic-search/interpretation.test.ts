@@ -3,7 +3,8 @@ import { memoryVocabulary } from '../intent/memory-vocabulary';
 import { RulesInterpreter } from '../intent/rules';
 import { FIXTURE } from '../intent/rules.fixture';
 import { resultFor } from '../intent/to-spec';
-import { applyInterpretation, emptyAnswerText, isCleanQuestion, placeId, placeMatchFor, remainingWords } from './interpretation';
+import { applyInterpretation, emptyAnswerText, institutionsPopulation, isCleanQuestion, placeId, placeMatchFor, remainingWords, withLocalityInstitutions } from './interpretation';
+import type { Place } from './shared';
 import { parseTopicScope } from './shared';
 
 const NOW = new Date('2026-10-22T12:00:00Z');
@@ -260,5 +261,38 @@ describe('word plumbing', () => {
   it('names a picker place as the interpreter does', () => {
     expect(placeMatchFor({ id: 'county:bucuresti', name: 'București', detail: 'Municipiul București', kind: 'county' })).toMatchObject({ county: 'București', name: 'Municipiul București' });
     expect(placeMatchFor({ id: 'uat:94330', name: 'SALCIOARA', detail: 'Comună · ialomita', kind: 'locality' })).toMatchObject({ siruta: 94330, county: 'Ialomița', name: 'Comuna Sălcioara', label: 'Comuna Sălcioara (Ialomița)' });
+  });
+
+  it('answers a whole question within the place and the years chosen on the page (Cisnădie feedback, 13 November 2026)', async () => {
+    const buzau: Place = { id: 'uat:44818', name: 'MUNICIPIUL BUZAU', detail: 'Municipiu · buzau', kind: 'locality' };
+    const { scope, result } = await read('cine ia banii pe iluminat', '&place=uat%3A44818&from=2024&to=2024');
+    const t = applyInterpretation(scope, result, buzau);
+    // the chips keep the page's filters: no question line, the answer within them
+    expect(t.question).toBeNull();
+    expect(t.answer?.total.spec.filters).toMatchObject({ cpvTerm: 'iluminat', uatSiruta: 44818, yearFrom: 2024, yearTo: 2024 });
+    expect(t.answer?.href).toMatch(/^\/intreaba\?spec=/);
+  });
+
+  it('counts a locality\'s institutions as a precise selection, unless the words ask about the town hall', async () => {
+    const buzau: Place = { id: 'uat:44818', name: 'MUNICIPIUL BUZAU', detail: 'Municipiu · buzau', kind: 'locality' };
+    const { scope, result } = await read('iluminat', '&place=uat%3A44818');
+    const t = withLocalityInstitutions(applyInterpretation(scope, result, buzau), 44818, ['1', '2', '3']);
+    expect(t.answer?.total.spec.filters.uatSiruta).toBeUndefined();
+    expect(t.answer?.total.spec.population).toEqual({ operator: 'and', groups: [{ operator: 'or', conditions: [{ field: 'authority', op: 'in', values: ['1', '2', '3'] }] }] });
+    expect(t.answer?.total.sentence).toContain('instituțiile din');
+    expect(t.answer?.evidenceHref).toMatch(/&drill=1$/);
+    const asked = await read('primaria iluminat', '&place=uat%3A44818');
+    const kept = applyInterpretation(asked.scope, asked.result, buzau);
+    expect(withLocalityInstitutions(kept, 44818, ['1', '2'])).toBe(kept);
+  });
+
+  it('splits a long institution list into the precise selection\'s bounds', () => {
+    const ids = Array.from({ length: 950 }, (_, k) => String(k + 1));
+    const p = institutionsPopulation(ids)!;
+    expect(p.operator).toBe('or');
+    expect(p.groups).toHaveLength(2);
+    expect(p.groups[0]!.conditions).toHaveLength(8);
+    expect(p.groups.flatMap((g) => g.conditions.flatMap((c) => 'values' in c ? c.values : []))).toHaveLength(950);
+    expect(institutionsPopulation([])).toBeNull();
   });
 });

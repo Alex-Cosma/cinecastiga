@@ -72,6 +72,7 @@ import { useRowFacts } from "./answer/use-row-facts";
 import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
 import type { WinnerFacts } from "@/lib/ask/winners";
 import EmptyState from "./answer/EmptyState";
+import EmptyHints from "./answer/EmptyHints";
 import { emptyAnswer, emptyMessage, relaxations } from "./answer-empty";
 import { countyName } from "../../lib/counties";
 import KitLink from "./answer/KitLink";
@@ -1357,7 +1358,10 @@ export default function AskPanel({
                 message={emptyMessage(data, isProfile)}
                 relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
-              />
+              >
+                {applied.filters.cpvTerm && <EmptyHints spec={applied} title={title} subject={/\d{8}/.test(String(applied.filters.cpvTerm)) ? null : String(applied.filters.cpvTerm)}
+                  onRun={(next) => { runWider(next); requestAnimationFrame(() => document.getElementById("raspuns-titlu")?.focus()); }} />}
+              </EmptyState>
             </div>
               // Keyed by its subject (chart-motion.ts): another block, unit or entity enters anew; a filter, a measure or
               // a group changes the same charts in place, so their marks tween.

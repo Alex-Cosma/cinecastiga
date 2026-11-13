@@ -56,6 +56,16 @@ export const STOPWORDS = new Set([
   "primit", "livreaza", "vinde", "vand", "face", "fac", "ia", "iau", "lucreaza", "lucreza", "achizitioneaza", "plateste", "platit",
 ]);
 
+/**
+ * The amount verbs of a „cât…” question, understood with its cue (Cisnădie feedback, 13 November 2026: „Cât a
+ * contractat Primăria Cisnădie…” said „Am ignorat „contractat””). Only the words left out skip them (rules.ts
+ * leftover); the subject words of /cauta keep their own reading.
+ */
+export const AMOUNT_VERBS = new Set([
+  "contractat", "contractate", "contractata", "contractati", "contracteaza", "contractam", "cheltuit", "cheltuite", "cheltuita",
+  "cheltuiti", "platite", "platita", "platiti", "achizitionat", "achizitionate", "achizitionata", "achizitionati",
+]);
+
 /** Ordinal/cardinal words a person may spell out ("primele cinci", "ultimii trei ani"). */
 export const NUMBER_WORDS: Record<string, number> = {
   unu: 1, unul: 1, una: 1, doi: 2, doua: 2, trei: 3, patru: 4, cinci: 5, sase: 6, sapte: 7, opt: 8, noua: 9, zece: 10,
