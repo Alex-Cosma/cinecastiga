@@ -136,7 +136,8 @@ export function IntentLine({ line, onAdopt }: { line: UnderstoodLine; onAdopt: (
   const clause = (note: string) => note.startsWith("am ales ") ? <><span className="cq-understood-verb">am ales </span>{note.slice(8)}</> : note;
   const parts = [
     ...(line.notes.length ? [<>Am înțeles: {line.notes.map((note, i) => <Fragment key={i}>{i > 0 && " · "}{clause(note)}</Fragment>)}</>] : []),
-    ...(line.ignored.length ? [<>Am ignorat {line.ignored.map((word) => `„${word}”`).join(", ")} · <a href={`/cauta?q=${encodeURIComponent(line.ignored.join(" "))}`}>caută în titluri</a></>] : []),
+    ...(line.ignored.length ? [<>Am ignorat {line.ignored.map((word) => `„${word}”`).join(", ")}</>] : []),
+    ...(line.titles ? [<a href={line.titles.href}>caută „{line.titles.words}” în titluri{line.titles.where ? `, la ${line.titles.where}` : ""}{line.titles.period ? `, ${line.titles.period}` : ""}</a>] : []),
     ...(line.options.length ? [<span className="cq-understood-more"><RowMenu
       name="Alte lecturi ale întrebării"
       trigger={{ text: <>Altfel ({line.options.length})<span aria-hidden="true">›</span></>, className: "cq-understood-alt", label: `Altfel: ${countWords(line.options.length, "altă lectură", "alte lecturi")} ale întrebării` }}

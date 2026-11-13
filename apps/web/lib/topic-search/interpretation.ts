@@ -227,6 +227,15 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // Question first: the words are a question the rules read cleanly, not title words.
   // A subject applied to the titles ("iluminat buzau") stays a subject search, and
   // filters chosen on the page (place, period, type) are not overridden by the words.
+  // A place or period chosen on the page and none in the words: the same question is answered within them, its chips
+  // kept (Cisnădie feedback, 13 November 2026: „Pe scurt” vanished as soon as the place and the year were chosen).
+  const pageScope = Boolean(scope.place || scope.from) && !i.place && !i.period && !(scope.place && !named);
+  if (pageScope && !applies && !out.answer && scope.type === 'all' && isCleanQuestion(result) && i.intent && ANSWERED.includes(i.intent)) {
+    const labels = { subject: subjectsLabel(i.subjects), ...(i.askedTownHalls && !i.authorityKind ? { allInstitutions: true } : {}) };
+    const scoped: Interpretation = scope.from ? { ...i, period: { yearFrom: Number(scope.from), yearTo: Number(scope.to || scope.from), matched: { text: '', from: 0, to: 0 } } } : i;
+    out.answer = shortAnswer({ ...scoped, topN: 3, superlative: false, measure: null }, named ? { place: named } : {}, labels, askHref, then);
+  }
+  const scopedAnswer = Boolean(pageScope && out.answer);
   if (!applies && !scope.place && !scope.from && scope.type === 'all' && isCleanQuestion(result)) {
     out.question = { sentence: result.sentence! };
     // "Cine…", "cât…" and an evolution get the total and what follows it (the first three winners or buyers, the years);
@@ -315,7 +324,7 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       } else if (loose.kind === 'subjects') {
         // words that narrow the subject and have no domain ("uniforme școlare"): no total, which would count every uniform
         out.subject = null;
-        if (!out.question) out.answer = null;
+        if (!out.question && !scopedAnswer) out.answer = null;
         out.alsoTry = [...new Set([loose.narrowed.join(' '), ...i.subjects.map((x) => x.matched.text)])].filter((w) => w && foldText(w) !== foldText(loose!.words));
       }
     }
@@ -340,6 +349,8 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   // A place the words do not name („la noi”, „primăria” alone) is asked about wherever the words lead (owner probe).
   out.notes = [...new Set([...out.notes, ...result.interpretation.notes.filter((n) => n === TOWN_HALL_UNKNOWN || /nu știm ce localitate|nu putem deosebi|CPV nu are o clasă pentru|nu avem un domeniu pentru această expresie|Toate consiliile județene; pentru unul/.test(n))])];
   if (exactNote) out.notes.push(exactNote);
+  // a total is shown after all (a question, or one within the page's place and period): the note says what it counts
+  if (out.answer) out.notes = out.notes.map((n) => n.replace(/ un domeniu: fără total, /, ' un domeniu: totalul numără tot domeniul; '));
   // said only where the lists search what was read (a question's own words are searched as typed, usually nothing)
   if (largest && out.applied.q && out.applied.q !== scope.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
@@ -554,4 +565,39 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
   // an unmarked place beside unknown words may be part of a name („piata romana bucuresti”): searched as typed
   if (!words.length || words.join(' ') === typed || (place && !marked)) return null;
   return { kind: 'words', words: [...new Set(words)].join(' '), narrowed: [], notes: [], placeApplies: Boolean(place) && marked };
+}
+
+/** An institution list as a precise selection (lib/ask/population.ts): at most 100 ids a condition, 8 a group, 8 groups. */
+export function institutionsPopulation(ids: readonly string[]): NonNullable<AskSpec['population']> | null {
+  const unique = [...new Set(ids)];
+  if (!unique.length || unique.length > 6400) return null;
+  const conditions = Array.from({ length: Math.ceil(unique.length / 100) }, (_, k) => ({ field: 'authority' as const, op: 'in' as const, values: unique.slice(k * 100, k * 100 + 100) }));
+  const groups = Array.from({ length: Math.ceil(conditions.length / 8) }, (_, k) => ({ operator: 'or' as const, conditions: conditions.slice(k * 8, k * 8 + 8) }));
+  return { operator: groups.length > 1 ? 'or' : 'and', groups };
+}
+
+/**
+ * „Pe scurt” for a locality's institutions (owner, 13 November 2026): the answer's town hall (uatSiruta) becomes the
+ * list of the locality's institutions, so it counts what the lists below show. Words that ask about the town hall
+ * („primăria”) keep it, as „Doar primăria” does. Pure: the route reads the institutions.
+ */
+export function withLocalityInstitutions(t: TopicInterpretation, siruta: number, ids: readonly string[]): TopicInterpretation {
+  const a = t.answer;
+  if (!a || a.total.spec.filters.uatSiruta !== siruta || /\bprimari/.test(foldText(t.q))) return t;
+  const population = institutionsPopulation(ids);
+  if (!population || a.total.spec.population) return t;
+  const swap = (spec: AskSpec): AskSpec => {
+    if (spec.filters.uatSiruta !== siruta) return spec;
+    const filters = { ...spec.filters };
+    delete filters.uatSiruta;
+    delete filters.uatName;
+    return { ...spec, filters, population };
+  };
+  const said = (text: string) => text.replace(/\bprimăria /, 'instituțiile din ');
+  const total = { spec: swap(a.total.spec), sentence: said(a.total.sentence) };
+  const top = a.top ? { ...a.top, spec: swap(a.top.spec), sentence: said(a.top.sentence) } : null;
+  return {
+    ...t,
+    answer: { ...a, total, top, href: askHref(top?.kind === 'records' || !top ? total.spec : top.spec), evidenceHref: `${askHref(total.spec)}&drill=1`, empty: said(a.empty), domains: null },
+  };
 }

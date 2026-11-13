@@ -125,16 +125,18 @@
   min-width: 0;
 }
 .cq-answer-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 28px;
   margin-bottom: 27px;
 }
-.cq-answer-head > div:first-child {
-  min-width: 0;
-  flex: 1;
-}
+/* The title and the actions share the first row; the line under the title and the chips take the whole width below
+   them (owner, 13 November 2026: the line broke at „Altfel” inside the title's column). */
+.cq-answer-head > div:first-child { display: contents; }
+.cq-answer-head > div:first-child > h2 { grid-column: 1; grid-row: 1; min-width: 0; }
+.cq-answer-head > div:first-child > :not(h2) { grid-column: 1 / -1; min-width: 0; }
+.cq-answer-head > .cq-answer-actions{grid-column:2;grid-row:1}
 .cq-answer-head h2 {
   font: 700 clamp(25px, 2.6vw, 36px) / 1.18 var(--display);
   letter-spacing: -0.035em;
@@ -146,7 +148,6 @@
    inline buttons that answer at once. Inline targets in a line of text (WCAG 2.5.8). */
 .cq-understood {
   margin: -6px 0 12px;
-  max-width: 780px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.65;

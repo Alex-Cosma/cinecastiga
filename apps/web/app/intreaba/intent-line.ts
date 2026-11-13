@@ -1,5 +1,6 @@
 import type { AskSpec } from "../../lib/ask/spec";
 import type { IntentResult } from "../../lib/intent/types";
+import { fold } from "../../lib/topic-search/shared";
 
 /*
  * How a typed question was understood, as one line under the answer's title
@@ -21,8 +22,42 @@ export interface UnderstoodLine {
   notes: string[];
   /** Other readings, each a whole question (the "Altfel (N) ›" menu). */
   options: IntentChoice[];
-  /** Words it did not use ("Am ignorat „x” · caută în titluri"). */
+  /** Words it did not use ("Am ignorat „x”"). */
   ignored: string[];
+  /** The question's words searched in the titles, with its place and years (/cauta). */
+  titles: TitleSearch | null;
+}
+
+/** „caută „iluminat public” în titluri, la Cisnădie, în 2026”. */
+export interface TitleSearch { href: string; words: string; where: string | null; period: string | null }
+
+/**
+ * The title search for a question (Cisnădie feedback, 13 November 2026): its subject and unread words, never its verb
+ * („contractat”), with the place and the years of the reading on screen as /cauta filters, so the link keeps them.
+ */
+export function titleSearch(result: IntentResult, spec: AskSpec): TitleSearch | null {
+  const i = result.interpretation;
+  const subjects = [...(i.subjects ?? [])].sort((a, b) => a.matched.from - b.matched.from).map((s) => s.matched.text);
+  const words = [...new Map([...subjects, ...(i.leftover ?? [])].map((w) => [fold(w), w])).values()].join(" ").trim();
+  if (!words) return null;
+  const params = new URLSearchParams({ q: words });
+  const f = spec.filters;
+  let where: string | null = null;
+  if (f.uatSiruta) {
+    params.set("place", `uat:${f.uatSiruta}`);
+    where = (f.uatName ?? "").replace(/\s*\([^)]*\)$/, "").replace(/^(?:Orașul|Comuna|Municipiul)\s+/, "") || null;
+  } else if (f.county) {
+    params.set("place", `county:${fold(f.county)}`);
+    where = f.county === "București" ? "București" : `județul ${f.county}`;
+  }
+  let period: string | null = null;
+  if (f.yearFrom !== undefined || f.yearTo !== undefined) {
+    const from = f.yearFrom ?? 2018, to = f.yearTo ?? new Date().getFullYear();
+    params.set("from", String(from));
+    params.set("to", String(to));
+    period = from === to ? `în ${from}` : `în ${from}–${to}`;
+  }
+  return { href: `/cauta?${params.toString()}`, words, where, period };
 }
 
 /** First words of the interpreter's notes that are not names: lower case after "Am înțeles:". */
@@ -49,5 +84,6 @@ export function understoodLine(result: IntentResult, chosen: IntentChoice): Unde
   ];
   const notes = [...(isMain && result.interpretation.placeNote ? [result.interpretation.placeNote] : []), ...result.interpretation.notes].map(noteClause);
   const ignored = result.interpretation.leftover;
-  return notes.length || options.length || ignored.length ? { notes, options, ignored } : null;
+  const titles = titleSearch(result, chosen.spec);
+  return notes.length || options.length || ignored.length || titles ? { notes, options, ignored, titles } : null;
 }

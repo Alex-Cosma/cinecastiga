@@ -1004,3 +1004,30 @@ export function facetRequest(body: { part?: unknown; q?: unknown; ids?: unknown 
   if (fold(q).length < 2) return { error: "Scrie cel puțin două litere." };
   return { part: "locate", q };
 }
+
+/**
+ * The records of a selection by their exact CPV code, its domain left out: what an
+ * empty answer's hints group (lib/ask/empty-hints.ts; Cisnădie feedback, 13 November 2026). Read live, since the
+ * rollups keep coarser codes; the caller asks only for a narrow selection (one buyer, one place, one firm).
+ */
+export async function codeTotals(sql: DbSql, spec: AskSpec, opts: { signal?: AbortSignal } = {}): Promise<{ code: string; n: number; v: number }[] | FacetFailure> {
+  const stat = retarget(spec, "stat");
+  const filters = { ...stat.filters } as Record<string, unknown>;
+  delete filters.cpvTerm;
+  delete filters.cpvExclude;
+  const base = { ...stat, filters } as AskSpec;
+  try {
+    const grounding = await ground(sql, base.filters, base.population);
+    await martColumns(sql);
+    return await inFacetTransaction(sql, async (tx) => {
+      const p = await prepare(tx, base, grounding);
+      if ("error" in p) return p;
+      const r = await rowsOf(tx, p, null, NO_ROLLUPS);
+      const rows = await runner(opts.signal)<{ k: string | null; v: string; n: string }>(tx`select ${r.cpv!} k, ${r.v} v, ${r.n} n from ${r.from} where ${r.where} group by 1`);
+      return rows.filter((row) => row.k).map((row) => ({ code: row.k!, n: Number(row.n), v: Number(row.v) }));
+    });
+  } catch (e) {
+    if (timedOut(e)) return { timeout: true };
+    throw e;
+  }
+}

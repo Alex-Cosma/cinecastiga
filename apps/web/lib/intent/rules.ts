@@ -6,7 +6,7 @@ import { countWords } from "../ask/answer-text";
 import { ABBREVIATIONS } from "../ask/entity-alias";
 import { placeKey } from "./places";
 import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
-import { NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
+import { AMOUNT_VERBS, NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import { spell } from "./spelling";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
@@ -1765,7 +1765,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (let k = 0; k < c.tokens.length; k++) {
       if (c.used[k] && c.used[k] !== "blocked") continue;
       const f = c.f(k);
-      if (STOPWORDS.has(f) || PREPOSITION.has(f) || /^\d{1,2}$/.test(f)) continue;
+      if (STOPWORDS.has(f) || PREPOSITION.has(f) || AMOUNT_VERBS.has(f) || /^\d{1,2}$/.test(f)) continue;
       words.push(c.tokens[k]!.raw);
     }
     out.leftover = [...new Map(words.map((w) => [fold(w), w])).values()];
@@ -1775,7 +1775,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     let content = 0, understood = 0;
     for (let k = 0; k < c.tokens.length; k++) {
       const f = c.f(k);
-      const meaningful = !STOPWORDS.has(f) && !PREPOSITION.has(f);
+      const meaningful = !STOPWORDS.has(f) && !PREPOSITION.has(f) && !AMOUNT_VERBS.has(f);
       if (c.used[k] && c.used[k] !== "blocked") { understood++; content++; }
       else if (meaningful) content++;
     }
