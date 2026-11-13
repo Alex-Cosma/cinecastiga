@@ -92,6 +92,22 @@ export function guessVerdict(guess: number, directShare: number): string {
   return `Ai spus ${guess} din 100. ${lead} ${tourPercent(directShare)} sunt directe.`;
 }
 
+/**
+ * On a narrow screen the picture sits under the text and the buttons stay at the bottom of the screen, so a visitor
+ * can go on without having seen the lower part of a step (owner, 13 November 2026). There „Continuă” first brings
+ * the rest of the step into view, and goes on only when the step is scrolled at least this far down.
+ */
+export const TOUR_SEEN_SHARE = 0.95;
+/** A step that overflows by no more than its own bottom padding (tour.css) hides nothing. */
+const TOUR_SCROLL_SLACK = 24;
+/** The wide layout of tour.css, text and picture side by side; the rule above applies under it. */
+export const TOUR_WIDE_QUERY = "(min-width:860px)";
+/** Whether the lower part of a step is still to be shown, from the measures of the box that scrolls. */
+export function tourRestHidden(scrollTop: number, scrollHeight: number, clientHeight: number): boolean {
+  const room = scrollHeight - clientHeight;
+  return room > TOUR_SCROLL_SLACK && scrollTop < room * TOUR_SEEN_SHARE;
+}
+
 /** The dots that stand out on the signal step. Spread out, so a finger can reach each. */
 export const TOUR_SIGNAL_DOTS: readonly number[] = [23, 47, 68, 112, 131, 155, 178];
 

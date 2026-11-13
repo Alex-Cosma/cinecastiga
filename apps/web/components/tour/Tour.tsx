@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { countyMap } from "@/lib/map";
 import { formatInt, formatRon } from "@/lib/format";
 import {
-  TOUR_DOTS, TOUR_LAST_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, contractDots, guessContractDots, guessVerdict, readFigures, tourPercent, tourPlace,
-  tourQuery, tourQueryAlternatives, type TourData,
+  TOUR_DOTS, TOUR_LAST_STEP, TOUR_SIGNAL_DOTS, TOUR_SIGNAL_EXAMPLES, TOUR_TOPICS, TOUR_WIDE_QUERY, contractDots, guessContractDots, guessVerdict, readFigures, tourPercent,
+  tourPlace, tourQuery, tourQueryAlternatives, tourRestHidden, type TourData,
 } from "@/lib/tour";
 import "./tour.css";
 
@@ -19,6 +19,8 @@ import "./tour.css";
 const COUNTIES = [...countyMap.shapes].sort((a, b) => a.label.localeCompare(b.label, "ro"));
 const SIGNAL_DOT = new Set(TOUR_SIGNAL_DOTS);
 const calm = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+/** The narrow layout: the picture under the text, the buttons at the bottom of the screen. */
+const narrow = () => typeof matchMedia === "function" && !matchMedia(TOUR_WIDE_QUERY).matches;
 
 /** A number that counts up to its value when it appears or changes. */
 function Count({ value }: { value: number }) {
@@ -99,6 +101,14 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
     window.setTimeout(() => onFinish(query), 620);
   }, [onFinish, query]);
   const forward = useCallback(() => { if (step === 0 && !chosen) return; if (step === TOUR_LAST_STEP) finish(); else go(step + 1); }, [chosen, finish, go, step]);
+  // „Continuă” on a narrow screen: a press first shows the rest of the step, the next one goes on (lib/tour.ts,
+  // tourRestHidden). A press without a pointer, from the keyboard or an assistive technology, goes on at once:
+  // nothing on the step is hidden from it. The arrow keys go on at once too.
+  const press = useCallback((event: React.MouseEvent) => {
+    const box = root.current;
+    if (box && event.detail > 0 && narrow() && tourRestHidden(box.scrollTop, box.scrollHeight, box.clientHeight)) box.scrollTo({ top: box.scrollHeight, behavior: calm() ? "auto" : "smooth" });
+    else forward();
+  }, [forward]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -190,7 +200,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
             <p>Un semnal spune <em>„uită-te aici”</em>. Nu spune că cineva a greșit. Scorul de risc, de la 0 la 100, arată câte tipare apar la o instituție sau firmă.</p>
           </>}
           {step === 5 && <>
-            <h1>Caută cu vorbele tale.</h1>
+            <h1>Caută cu cuvintele tale.</h1>
             <p>Scrie un subiect, un loc, o instituție sau o firmă. Îți arătăm cum am înțeles întrebarea, ca să o poți corecta.</p>
           </>}
         </div>
@@ -263,7 +273,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
     <footer className="tr-nav">
       <button type="button" className="tr-btn" onClick={() => go(step - 1)} style={step === 0 ? { visibility: "hidden" } : undefined}>Înapoi</button>
       <span className="tr-count">{step + 1} din {TOUR_LAST_STEP + 1}</span>
-      <button type="button" className="tr-btn tr-btn-primary" onClick={forward} disabled={step === 0 && !chosen}>Continuă</button>
+      <button type="button" className="tr-btn tr-btn-primary" onClick={press} disabled={step === 0 && !chosen}>Continuă</button>
     </footer>
   </div>;
 }
