@@ -26,7 +26,6 @@ import Reveal from "./Reveal";
 import { CoverageSummary } from "@/components/DataCoverage";
 import Term from "@/components/Term";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
-import { GUIDE_HREF, GUIDE_LABEL } from "@/lib/site-nav";
 
 // Coverage and account state are runtime data; builds have no database.
 export const dynamic = "force-dynamic";
@@ -86,13 +85,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <div>
               <h4>Proiect</h4>
               <ul>
-                <li><Link href={GUIDE_HREF}>{GUIDE_LABEL}</Link></li>
+                {/* Ghid, Metodologie (the same page) and Hartă are in the header (owner, 13 November 2026). */}
                 <li><Link href="/?tur=1" prefetch={false}>Turul de bun venit</Link></li>
-                <li>
-                  <Link href="/metodologie">Metodologie</Link>
-                </li>
                 <li><Link href="/semnale">Semnale de risc</Link></li>
-                <li><Link href="/harta">Hartă</Link></li>
                 <FooterAdminLinks />
                 <li>
                   <Link href="/metodologie#citare">Cum citez</Link>
