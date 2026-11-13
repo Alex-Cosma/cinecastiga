@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
 import type { Metadata } from "next";
@@ -61,8 +62,20 @@ function amountCell(a: TedAward) {
   return <>
     <div className="tp-amount">{main}</div>
     <div className="county tp-amount-kind">{label}</div>
-    {details?.amounts.length ? <details className="tp-src">
+    {details?.missingTenderIds.length ? <div className="county tp-amount-kind">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
+  </>;
+}
+
+/**
+ * The amounts and references behind a value, on a row of their own across the table (a friend's remark, 13 November
+ * 2026: opened in the value column, they left the rest of the row empty), each amount a card side by side.
+ */
+function sourceValues(a: TedAward) {
+  const details = a.amountDetails;
+  if (!details?.amounts.length) return null;
+  return <details className="tp-src">
       <summary>Valorile și referințele din sursă</summary>
+      <div className="tp-src-grid">
       {details.amounts.map((v, i) => {
         const tender = details.tenders.find((t) => t.id === v.tenderId);
         return <div key={`${v.tenderId ?? v.resultId}-${v.kind}-${i}`} className="county tp-src-row">
@@ -73,13 +86,12 @@ function amountCell(a: TedAward) {
           })}</> : null}</div> : null}
           {v.resultId ? <div>{v.resultId}</div> : null}
           {tender?.sharedAcrossLots ? <div>Aceeași ofertă este referită de mai multe loturi; nu o însumăm.</div> : null}
-          <div>Câmp TED: {v.source}</div>
+          <div className="tp-src-field">Câmp TED: {v.source}</div>
         </div>;
       })}
+      </div>
       <p className="county">Valorile ofertelor, intervalele și plafoanele sunt păstrate separat. Nu reprezintă plăți verificate.</p>
-    </details> : null}
-    {details?.missingTenderIds.length ? <div className="county tp-amount-kind">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
-  </>;
+    </details>;
 }
 
 export default async function SupraPragPage({
@@ -206,8 +218,9 @@ export default async function SupraPragPage({
             </tr>
           </thead>
           <tbody>
-            {awards.rows.map((a) => (
-              <tr key={a.tedLotResultId}>
+            {awards.rows.map((a) => { const source = sourceValues(a); return (
+              <Fragment key={a.tedLotResultId}>
+              <tr className={source ? "tp-has-src" : undefined}>
                 <td>
                   <EntityName id={a.buyerEntityId} role="authority">{cleanName(a.buyerName)}</EntityName>
                   <div className="arrow-to tp-winners">→ {winnerCell(a)}</div>
@@ -238,7 +251,9 @@ export default async function SupraPragPage({
                   ) : null}
                 </td>
               </tr>
-            ))}
+              {source ? <tr className="tp-src-tr"><td colSpan={4}>{source}</td></tr> : null}
+              </Fragment>
+            ); })}
           </tbody>
         </table>
         </div>

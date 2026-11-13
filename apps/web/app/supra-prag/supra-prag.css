@@ -20,7 +20,18 @@ h2.ted-tip-line .term-tip{font-size:15px;font-weight:400;letter-spacing:0}
 table.rank td.tp-value{white-space:normal}
 .tp-value .tp-amount{font-size:14px}
 .tp-value .tp-amount-kind,.tp-value .tp-src{font-family:var(--body)}
-.tp-src{text-align:left;margin-top:8px;max-width:24rem;font-size:13px}
+.tp-src{text-align:left;font-size:13px}
+/* The source values on a row of their own across the table (13 November 2026): the summary under the value column, the
+   amounts side by side when open; the row above loses its line so the two read as one result. */
+table.rank tr.tp-has-src td{border-bottom:0;padding-bottom:2px}
+table.rank tr.tp-src-tr td{padding-top:0;padding-bottom:12px}
+table.rank tbody tr.tp-has-src:hover+tr.tp-src-tr td,table.rank tbody tr.tp-has-src:has(+tr.tp-src-tr:hover) td{background:var(--sunk)}
+.tp-src-tr .tp-src>summary{text-align:right;width:fit-content;margin-left:auto}
+.tp-src-tr .tp-src[open]>summary{margin-bottom:6px}
+.tp-src-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px 28px;padding:12px 14px;background:var(--sunk);border-radius:8px}
+.tp-src-grid .tp-src-row{margin-top:0}
+.tp-src-field{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:2px}
+.tp-src-tr .tp-src>p{margin:8px 0 0}
 .tp-src>summary{cursor:pointer;color:var(--accent);font-size:13px;line-height:1.4}
 .tp-src .tp-src-row{margin-top:8px;overflow-wrap:anywhere}
 /* Labels: the warning badge in the darker amber (≥ 4.5:1), "și în SEAP" in secondary ink; "Fără potrivire SEAP" is an
@@ -41,5 +52,9 @@ table.rank td.tp-value .src a{font-size:12px;color:var(--ink2);text-underline-of
   .tp-stack .ted-label{font-size:12px}
   .tp-stack .arrow-to,.tp-stack .obj-title{font-size:14px}
   .tp-src{margin-top:6px}
+  .ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-has-src{border-bottom:0;padding-bottom:0}
+  .ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-src-tr{grid-template-columns:minmax(0,1fr);padding-top:4px}
+  .tp-src-tr .tp-src>summary{text-align:left;margin-left:0;min-height:44px;display:flex;align-items:center}
+  .tp-src-grid{grid-template-columns:minmax(0,1fr);padding:10px 12px}
   table.rank td.tp-value .src a{display:inline-flex;align-items:center;min-height:44px;font-size:14px}
 }
