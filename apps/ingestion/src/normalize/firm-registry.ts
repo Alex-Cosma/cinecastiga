@@ -13,6 +13,10 @@ import { RO_NUTS3_COUNTY } from "./nuts-county.js";
  *   (PFA, II, IF) or C (cooperative). A seat move registers the firm again in
  *   the new county under that year, so the oldest year is the registration
  *   and the newest one the current seat (5,959 suppliers on the local copy).
+ * - `registered_on` (migration 0109, owner 13 November 2026): the oldest day among the same registrations
+ *   (DATA_INMATRICULARE, kept by the ONRC import since then), for the signal "Contracte în prima lună de la
+ *   înființare". A day before 1990 or after the snapshot is not read. Null on a register imported before the day
+ *   was kept, so nothing reads as "new" by mistake.
  * - `seat_county` / `seat_source` (rule in packages/db/src/firm-seat.ts): the
  *   ONRC seat is the county of the latest registration: the newest year, then
  *   a new-format number before an old one (the new format replaced the old
@@ -36,6 +40,8 @@ import { RO_NUTS3_COUNTY } from "./nuts-county.js";
 export const ONRC_NUMBER_OLD = "^[JFC][0-9]{1,2}/[0-9]+/[0-9]{4}$";
 export const ONRC_NUMBER_NEW = "^[JFC][0-9]{13}$";
 export const ONRC_FIRST_YEAR = 1990;
+/** The first day a registration can carry (the register's start). */
+export const ONRC_FIRST_DAY = "1990-01-01";
 
 /** Year and sequence of an ONRC registration number, as the SQL below reads them. */
 export function onrcRegistration(jNumber: string): { year: number; sequence: number } | null {
@@ -53,11 +59,13 @@ type TransactionSql = Parameters<Parameters<DbSql["begin"]>[1]>[0];
 export interface FirmRegistryReport {
   /** Supplier profiles with a registration year. */
   registeredYear: number;
+  /** Supplier profiles with a registration day (0 on a register imported before the day was kept). */
+  registeredOn: number;
   /** Supplier profiles per seat_source ('onrc' | 'seap' | 'foreign'), and without a seat. */
   seat: Record<string, number>;
 }
 
-/** Fill registered_year, seat_county and seat_source of the supplier profiles, in the caller's transaction. */
+/** Fill registered_year, registered_on, seat_county and seat_source of the supplier profiles, in the caller's transaction. */
 export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistryReport> {
   // The profiles were just written in this transaction. Without statistics (a
   // new or restored database before its first ANALYZE) the planner expects a
@@ -66,12 +74,15 @@ export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistry
   // already have them; the sample costs ~0.3 s.
   await q`analyze marts.entity_profile`;
   const counties = [...new Set(Object.values(RO_NUTS3_COUNTY))];
-  const [present] = await q`select to_regclass('reference.onrc_firm') is not null onrc`;
+  // The day column exists only on a register created or migrated since 0109 (a fixture's own table may lack it).
+  const [present] = await q`select to_regclass('reference.onrc_firm') is not null onrc,
+    exists (select 1 from pg_attribute where attrelid = to_regclass('reference.onrc_firm') and attname = 'registered_on' and not attisdropped) has_day`;
+  const day = present?.has_day ? q`o.registered_on` : q`null::date`;
   // A reference import, absent from a fresh database: the SEAP county still applies.
   const registrations = present?.onrc
-    ? q`select o.cui, o.county, o.j_number, extract(year from o.snapshot_date)::int snapshot_year
+    ? q`select o.cui, o.county, o.j_number, extract(year from o.snapshot_date)::int snapshot_year, o.snapshot_date, ${day} registered_on
         from reference.onrc_firm o where o.cui in (select cui from sup where cui is not null)`
-    : q`select null::text cui, null::text county, null::text j_number, null::int snapshot_year where false`;
+    : q`select null::text cui, null::text county, null::text j_number, null::int snapshot_year, null::date snapshot_date, null::date registered_on where false`;
   await q`
     with k(county) as (select unnest(${q.array(counties)}::text[])),
     sup as (
@@ -88,13 +99,14 @@ export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistry
     reg as (
       select * from (
         select o.cui, o.county, o.j_number, o.snapshot_year,
+          case when o.registered_on between ${ONRC_FIRST_DAY}::date and o.snapshot_date then o.registered_on end registered_on,
           case when o.j_number ~ ${ONRC_NUMBER_NEW} then substr(o.j_number, 2, 4)::int
                when o.j_number ~ ${ONRC_NUMBER_OLD} then split_part(o.j_number, '/', 3)::int end y,
           case when o.j_number ~ ${ONRC_NUMBER_NEW} then substr(o.j_number, 6, 6)::bigint
                when o.j_number ~ ${ONRC_NUMBER_OLD} then split_part(o.j_number, '/', 2)::bigint end seq
         from onrc o) r
       where r.y between ${ONRC_FIRST_YEAR}::int and r.snapshot_year),
-    first_reg as (select cui, min(y) y from reg group by cui),
+    first_reg as (select cui, min(y) y, min(registered_on) registered_on from reg group by cui),
     newest as (
       select r.cui, ko.county, r.seq, r.j_number, r.j_number ~ ${ONRC_NUMBER_NEW} is_new
       from reg r
@@ -109,7 +121,7 @@ export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistry
       join sup s on s.cui = n.cui
       order by n.cui, n.is_new desc, (n.county = s.seap_county) desc nulls last, n.seq desc, n.j_number desc),
     seat as (
-      select s.entity_id, f.y registered_year,
+      select s.entity_id, f.y registered_year, f.registered_on,
         case when not s.is_foreign then coalesce(l.county, s.seap_county) end seat_county,
         case when s.is_foreign then 'foreign' when l.county is not null then 'onrc'
              when s.seap_county is not null then 'seap' when s.non_ro then 'foreign' end seat_source
@@ -118,15 +130,17 @@ export async function applyFirmRegistry(q: TransactionSql): Promise<FirmRegistry
       left join last_reg l on l.cui = s.cui)
     update marts.entity_profile ep
     set registered_year = case when seat.seat_source is distinct from 'foreign' then seat.registered_year end,
+        registered_on = case when seat.seat_source is distinct from 'foreign' then seat.registered_on end,
         seat_county = seat.seat_county, seat_source = seat.seat_source
     from seat
     where ep.entity_id = seat.entity_id and ep.role = 'supplier'
   `;
   const rows = await q`
-    select coalesce(seat_source, 'unknown') source, count(*)::int n, count(registered_year)::int registered
+    select coalesce(seat_source, 'unknown') source, count(*)::int n, count(registered_year)::int registered, count(registered_on)::int registered_on
     from marts.entity_profile where role = 'supplier' group by 1`;
   return {
     registeredYear: rows.reduce((sum, row) => sum + Number(row.registered), 0),
+    registeredOn: rows.reduce((sum, row) => sum + Number(row.registered_on), 0),
     seat: Object.fromEntries(rows.map((row) => [String(row.source), Number(row.n)])),
   };
 }

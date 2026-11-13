@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
+  date,
   jsonb,
   index,
   integer,
@@ -192,6 +193,10 @@ export const entityProfile = martsSchema.table(
      *  A seat move gives a new number, hence the oldest. Null = no ONRC
      *  number (foreign, not corroborated, no CUI) or a foreign seat. */
     registeredYear: integer("registered_year"),
+    /** Suppliers only (0109): the oldest ONRC registration day of the same
+     *  CUI (DATA_INMATRICULARE), under the rules of `registeredYear`. Null
+     *  until an ONRC import that keeps the day, and where the year is null. */
+    registeredOn: date("registered_on"),
     /** Suppliers only (F5, 0086): the firm's seat, in the county spelling of
      *  `county` (the buyer county of the transaction rows). The latest ONRC
      *  registration of a corroborated CUI first, else the SEAP county; null

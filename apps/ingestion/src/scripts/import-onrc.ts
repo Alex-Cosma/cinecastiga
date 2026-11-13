@@ -12,12 +12,16 @@ import { createDb, personKeySql, type DbSql } from "@seap/db";
  *
  * Source: data.gov.ro, organization ONRC, dataset "Firme înregistrate la
  * Registrul Comerțului până la data de <DD.MM.YYYY>" (refreshed ~monthly):
- *   OD_FIRME.CSV               (~690MB) — J-number ↔ CUI + firm identity
+ *   OD_FIRME.CSV               (~690MB) — J-number ↔ CUI + firm identity and the day of each registration
  *   OD_REPREZENTANTI_LEGALI.CSV (~335MB) — person, CALITATE (administrator…),
  *     birth date + birthplace (the homonym disambiguator; no CNP is ever public)
  *
- * Loads reference.onrc_firm + reference.company_reps as a SNAPSHOT (truncate +
- * reload — the dump is current-state, not history). person_key = folded name +
+ * Loads reference.onrc_firm + reference.company_reps as a SNAPSHOT (the dump is
+ * current-state, not history). The new snapshot is built in tables of its own
+ * and takes the live names in the same transaction, just before it commits
+ * (owner, 13 November 2026: the site is open while an import runs): readers
+ * keep the previous snapshot for the whole load and wait only for the swap,
+ * and a failure leaves the previous snapshot untouched. person_key = folded name +
  * birth date + folded birth locality; ~99% of natural-person administrators
  * carry a birth date, juridical-person administrators legitimately don't.
  *
@@ -91,7 +95,7 @@ async function loadFile(
       header = false;
       const labels = raw.replace(/^\ufeff/, "").trim().split("^");
       if (labels.length !== expectCols ||
-          (expectCols === 20 && labels.slice(0, 3).join("^") !== "DENUMIRE^CUI^COD_INMATRICULARE") ||
+          (expectCols === 20 && labels.slice(0, 4).join("^") !== "DENUMIRE^CUI^COD_INMATRICULARE^DATA_INMATRICULARE") ||
           (expectCols === 10 && labels.join("^") !== "COD_INMATRICULARE^PERSOANA_IMPUTERNICITA^CALITATE^DATA_NASTERE^LOCALITATE_NASTERE^JUDET_NASTERE^TARA_NASTERE^LOCALITATE^JUDET^TARA")) {
         throw new Error("Unexpected ONRC header; snapshot rolled back");
       }
@@ -146,20 +150,32 @@ async function main(): Promise<void> {
         if (parsed.format === "invalid") throw new Error("Invalid ONRC birth date; snapshot rolled back");
         return parsed.value;
       };
+      // DATA_INMATRICULARE has the same two formats: "13/02/1991" and, for registrations from mid-2024 on,
+      // "14/08/2026 09:23:04". A reader of the first one alone loses every firm registered since then.
+      const registrationFormats: Record<string, number> = {};
+      const parseRegistration = (s: string | undefined) => {
+        const parsed = onrcDate(s);
+        registrationFormats[parsed.format] = (registrationFormats[parsed.format] ?? 0) + 1;
+        if (parsed.format === "invalid") throw new Error("Invalid ONRC registration date; snapshot rolled back");
+        return parsed.value;
+      };
       await sql`create schema if not exists reference`;
+      // The snapshot loads beside the live tables (no index until it is whole) and replaces them at the end.
+      await sql`drop table if exists reference.onrc_firm_load, reference.company_reps_load`;
       await sql`
-        create table if not exists reference.onrc_firm (
-          j_number text primary key,
+        create table reference.onrc_firm_load (
+          j_number text not null,
           cui text,
           name text not null,
           legal_form text,
           county text,
           locality text,
-          snapshot_date date not null
+          snapshot_date date not null,
+          registered_on date
         )
       `;
       await sql`
-        create table if not exists reference.company_reps (
+        create table reference.company_reps_load (
           j_number text not null,
           cui text,
           person_name text not null,
@@ -175,15 +191,8 @@ async function main(): Promise<void> {
           snapshot_date date not null
         )
       `;
-      // snapshot semantics: the dump is current-state; drop indexes for load speed
-      await sql`drop index if exists reference.company_reps_cui_idx`;
-      await sql`drop index if exists reference.company_reps_person_key_idx`;
-      await sql`drop index if exists reference.company_reps_name_trgm_idx`;
-      await sql`drop index if exists reference.company_reps_person_name_key_idx`;
-      await sql`drop index if exists reference.onrc_firm_cui_idx`;
-      await sql`truncate reference.onrc_firm, reference.company_reps`;
 
-      // ── OD_FIRME: DENUMIRE^CUI^COD_INMATRICULARE^…^FORMA_JURIDICA^ADR_TARA^ADR_JUDET^ADR_LOCALITATE^… (20 cols)
+      // ── OD_FIRME: DENUMIRE^CUI^COD_INMATRICULARE^DATA_INMATRICULARE^EUID^FORMA_JURIDICA^ADR_TARA^ADR_JUDET^ADR_LOCALITATE^… (20 cols)
       const seenJ = new Set<string>();
       const [nFirms, skFirms] = await loadFile(firmsPath, 20, async (rows) => {
         const vals = [];
@@ -200,10 +209,11 @@ async function main(): Promise<void> {
             county: nn(c[7]),
             locality: nn(c[8]),
             snapshot_date: snapshot,
+            registered_on: parseRegistration(c[3]),
           });
         }
         if (vals.length)
-          await sql`insert into reference.onrc_firm ${sql(vals, "j_number", "cui", "name", "legal_form", "county", "locality", "snapshot_date")}`;
+          await sql`insert into reference.onrc_firm_load ${sql(vals, "j_number", "cui", "name", "legal_form", "county", "locality", "snapshot_date", "registered_on")}`;
       });
       console.log(`onrc_firm: ${nFirms} rows (${skFirms} malformed lines skipped)`);
 
@@ -224,7 +234,7 @@ async function main(): Promise<void> {
           person_key: null,
           snapshot_date: snapshot,
         }));
-        await sql`insert into reference.company_reps ${sql(
+        await sql`insert into reference.company_reps_load ${sql(
           vals,
           "j_number",
           "cui",
@@ -245,42 +255,70 @@ async function main(): Promise<void> {
       console.log(`company_reps: ${nReps} rows (${skReps} malformed lines skipped)`);
 
       console.log("resolving CUI + person_key…");
+      await sql`alter table reference.onrc_firm_load add constraint onrc_firm_load_pkey primary key (j_number)`;
       await sql`
-        update reference.company_reps r
+        update reference.company_reps_load r
         set cui = f.cui
-        from reference.onrc_firm f
+        from reference.onrc_firm_load f
         where f.j_number = r.j_number and f.cui is not null
       `;
       // homonym disambiguator: folded name + birth date + folded birth locality (personKeySql, @seap/db)
       await sql`
-        update reference.company_reps
+        update reference.company_reps_load
         set person_key = ${personKeySql(sql, sql`person_name`, sql`birth_date`, sql`birth_locality`)}
       `;
       console.log("indexes…");
-      await sql`create index company_reps_cui_idx on reference.company_reps (cui)`;
-      await sql`create index company_reps_person_key_idx on reference.company_reps (person_key)`;
+      await sql`create index company_reps_load_cui_idx on reference.company_reps_load (cui)`;
+      await sql`create index company_reps_load_person_key_idx on reference.company_reps_load (person_key)`;
       // The name part alone: an individual practice's holder is found by name (entity page, "același nume").
-      await sql`create index company_reps_person_name_key_idx on reference.company_reps (split_part(person_key, '|', 1))`;
-      await sql`create index company_reps_name_trgm_idx on reference.company_reps using gin (person_name gin_trgm_ops)`;
+      await sql`create index company_reps_load_person_name_key_idx on reference.company_reps_load (split_part(person_key, '|', 1))`;
+      await sql`create index company_reps_load_name_trgm_idx on reference.company_reps_load using gin (person_name gin_trgm_ops)`;
       // ONRC's names for a CUI (a renamed firm): the entity page reads them by CUI.
-      await sql`create index onrc_firm_cui_idx on reference.onrc_firm (cui)`;
-      await sql`analyze reference.onrc_firm`;
-      await sql`analyze reference.company_reps`;
+      await sql`create index onrc_firm_load_cui_idx on reference.onrc_firm_load (cui)`;
+      await sql`analyze reference.onrc_firm_load`;
+      await sql`analyze reference.company_reps_load`;
 
       const [cov] = (await sql`
         select
-          (select count(*)::int from reference.company_reps) reps,
-          (select count(distinct person_key)::int from reference.company_reps where birth_date is not null) persons,
+          (select count(*)::int from reference.company_reps_load) reps,
+          (select count(distinct person_key)::int from reference.company_reps_load where birth_date is not null) persons,
           (select count(*)::int from marts.entity_profile ep
             join core.entities e on e.id = ep.entity_id
             where ep.role = 'supplier'
-              and exists (select 1 from reference.company_reps r where r.cui = e.cui_canonical)) suppliers_covered
+              and exists (select 1 from reference.company_reps_load r where r.cui = e.cui_canonical)) suppliers_covered
       `) as unknown as { reps: number; persons: number; suppliers_covered: number }[];
+
+      // ── The swap. Whoever could read the previous tables can read the new ones (the default privileges of the
+      // schema already say so; the explicit grants hold where they are not set). From the first DROP to the commit,
+      // a few statements later, readers wait; a reader still inside a long statement makes the swap give up after
+      // lock_timeout, and the whole import rolls back with the previous snapshot in place.
+      console.log("swap…");
+      for (const table of ["onrc_firm", "company_reps"]) {
+        const grants = (await sql`
+          select grantee, privilege_type from information_schema.role_table_grants
+          where table_schema = 'reference' and table_name = ${table} and grantee <> current_user
+        `) as unknown as { grantee: string; privilege_type: string }[];
+        for (const g of grants) {
+          if (!/^(SELECT|INSERT|UPDATE|DELETE|TRUNCATE|REFERENCES|TRIGGER)$/.test(g.privilege_type)) continue;
+          await sql.unsafe(`grant ${g.privilege_type} on reference.${table}_load to "${g.grantee.replace(/"/g, '""')}"`);
+        }
+      }
+      await sql`set local lock_timeout = '20s'`;
+      await sql`drop table if exists reference.onrc_firm, reference.company_reps`;
+      await sql`alter table reference.onrc_firm_load rename to onrc_firm`;
+      await sql`alter table reference.company_reps_load rename to company_reps`;
+      await sql`alter table reference.onrc_firm rename constraint onrc_firm_load_pkey to onrc_firm_pkey`;
+      await sql`alter index reference.onrc_firm_load_cui_idx rename to onrc_firm_cui_idx`;
+      await sql`alter index reference.company_reps_load_cui_idx rename to company_reps_cui_idx`;
+      await sql`alter index reference.company_reps_load_person_key_idx rename to company_reps_person_key_idx`;
+      await sql`alter index reference.company_reps_load_person_name_key_idx rename to company_reps_person_name_key_idx`;
+      await sql`alter index reference.company_reps_load_name_trgm_idx rename to company_reps_name_trgm_idx`;
       console.log(
         JSON.stringify(
           {
             snapshot,
             dateFormats,
+            registrationFormats,
             firms: nFirms,
             reps: cov!.reps,
             distinctPersons: cov!.persons,

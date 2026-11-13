@@ -815,26 +815,29 @@ describe("registration year, seat and main CPV division of the firms", () => {
       // 19: the latest number names no county; 21: two old 2015 numbers, neither in the
       // SEAP county (undecided); 22: an old and a new 2024 number (the new one is later).
       const registry = [
-        ["J12/345/2004", "10", "FIRMA VECHE SRL", "Cluj"],
-        ["J2024000123408", "11", "FIRMA NOUA SRL", "Bucureşti"],
-        ["J40/1000/2010", "12", "FIRMA MUTATA SRL", "Bucureşti"],
-        ["J2023000555123", "12", "FIRMA MUTATA SRL", "Ilfov"],
+        // The fifth value is the registration day (migration 0109), where the fixture gives one.
+        ["J12/345/2004", "10", "FIRMA VECHE SRL", "Cluj", "2004-03-15"],
+        ["J2024000123408", "11", "FIRMA NOUA SRL", "Bucureşti", "2024-08-14"],
+        // A seat move registers the firm again: the oldest day is the registration.
+        ["J40/1000/2010", "12", "FIRMA MUTATA SRL", "Bucureşti", "2010-05-20"],
+        ["J2023000555123", "12", "FIRMA MUTATA SRL", "Ilfov", "2023-02-01"],
         ["J12/99/2015", "13", "FIRMA EGALA SRL", "Cluj"],
         ["J05/100/2015", "13", "FIRMA EGALA SRL", "Bihor"],
         ["J40/16/2016", "16", "EXEMPLU BAU SRL", "Bucureşti"],
-        ["F12/661/2014", "18", "POPESCU ION PERSOANA FIZICA AUTORIZATA", "Cluj"],
-        ["J35/5/2001", "19", "FIRMA FARA JUDET NOU SRL", "Timiş"],
-        ["J2025000001001", "19", "FIRMA FARA JUDET NOU SRL", ""],
+        ["F12/661/2014", "18", "POPESCU ION PERSOANA FIZICA AUTORIZATA", "Cluj", "2014-06-01"],
+        // A day after the snapshot, or before the register's start, is not read.
+        ["J35/5/2001", "19", "FIRMA FARA JUDET NOU SRL", "Timiş", "2001-01-10"],
+        ["J2025000001001", "19", "FIRMA FARA JUDET NOU SRL", "", "2026-12-01"],
         ["J12/7/2019", "20", "FIRMA MARE SRL", "Cluj"],
-        ["J05/7/2015", "21", "FIRMA NEHOTARATA SRL", "Bihor"],
-        ["J02/8/2015", "21", "FIRMA NEHOTARATA SRL", "Arad"],
-        ["J40/50000/2024", "22", "FIRMA RENUMEROTATA SRL", "Bucureşti"],
-        ["J2024000001123", "22", "FIRMA RENUMEROTATA SRL", "Ilfov"],
+        ["J05/7/2015", "21", "FIRMA NEHOTARATA SRL", "Bihor", "1989-12-31"],
+        ["J02/8/2015", "21", "FIRMA NEHOTARATA SRL", "Arad", "2015-04-04"],
+        ["J40/50000/2024", "22", "FIRMA RENUMEROTATA SRL", "Bucureşti", "2024-11-02"],
+        ["J2024000001123", "22", "FIRMA RENUMEROTATA SRL", "Ilfov", "2024-11-20"],
       ] as const;
-      const loadRegistry = async (rows: readonly (readonly [string, string, string, string])[]) => {
+      const loadRegistry = async (rows: readonly (readonly [string, string, string, string, string?])[]) => {
         await q`delete from reference.onrc_firm`;
-        for (const [j, cui, name, county] of rows)
-          await q`insert into reference.onrc_firm (j_number,cui,name,county,snapshot_date) values (${j},${cui},${name},${county},'2026-07-08')`;
+        for (const [j, cui, name, county, day] of rows)
+          await q`insert into reference.onrc_firm (j_number,cui,name,county,snapshot_date,registered_on) values (${j},${cui},${name},${county},'2026-07-08',${day ?? null})`;
       };
       await loadRegistry(registry);
       await q`insert into core.cpv_codes (code,name_ro) values ('45000000-7','Lucrări'),('44000000-0','Materiale'),('33600000-6','Medicamente'),('33100000-1','Echipamente'),('09100000-0','Combustibili')`;
@@ -874,7 +877,10 @@ describe("registration year, seat and main CPV division of the firms", () => {
         [21, "supplier", 2015, "Cluj", "seap"], [22, "supplier", 2024, "Ilfov", "onrc"],
       ];
       expect(await seats()).toEqual(expected);
-      expect(report.firmRegistry).toEqual({ registeredYear: 8, seat: { onrc: 6, seap: 3, foreign: 2, unknown: 1 } });
+      expect(report.firmRegistry).toEqual({ registeredYear: 8, registeredOn: 7, seat: { onrc: 6, seap: 3, foreign: 2, unknown: 1 } });
+      // The registration day (0109): the oldest readable one of the CUI; 13 has none in the register.
+      expect((await q`select entity_id::int id, registered_on::text registered from marts.entity_profile where role = 'supplier' and registered_on is not null order by 1`)
+        .map(r => [r["id"], r["registered"]])).toEqual([[10, "2004-03-15"], [11, "2024-08-14"], [12, "2010-05-20"], [18, "2014-06-01"], [19, "2001-01-10"], [21, "2015-04-04"], [22, "2024-11-02"]]);
       // The processing run keeps what the seat steps cost (stages.marts in the refresh's validation).
       expect(report.firmRegistryMs).toBeGreaterThanOrEqual(0);
       expect(report.spendByCountyMs).toBeGreaterThanOrEqual(0);
