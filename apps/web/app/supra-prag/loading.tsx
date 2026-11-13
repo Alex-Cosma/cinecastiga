@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import FunnelGhost from "@/components/table-filters/FunnelGhost";
@@ -57,7 +58,7 @@ export default function SupraPragLoading() {
             </tr>
           </thead>
           <tbody inert>
-            <G.Rows n={10} as="tr" cells={(i) => <>
+            {Array.from({ length: 10 }, (_, i) => <Fragment key={i}><tr className="tp-has-src" aria-hidden="true">
               <td><G.Line w={rankWidth(i, 74, 4, 46)} /><div className="arrow-to tp-winners"><G.Line w="52%" /></div><div className="county"><G.Line w="28%" /></div></td>
               <td className="county" data-label="Obiect">
                 <div className="obj-title"><G.Line w="88%" /></div><G.Line w="72%" /><div><G.Line w="7rem" /></div>
@@ -67,10 +68,9 @@ export default function SupraPragLoading() {
               <td className="num tp-value" data-label="Valoare">
                 <div className="tp-amount"><G.Line inline w="9ch" /></div>
                 <div className="county tp-amount-kind"><G.Line w="92%" /><G.Line w="70%" /></div>
-                <details className="tp-src"><summary>Valorile și referințele din sursă</summary></details>
                 <div className="src"><a>TED <G.Line inline w="11ch" /> ↗</a></div>
               </td>
-            </>} />
+            </tr><tr className="tp-src-tr" aria-hidden="true"><td colSpan={4}><details className="tp-src"><summary>Valorile și referințele din sursă</summary></details></td></tr></Fragment>)}
           </tbody>
         </table>
         </div>
