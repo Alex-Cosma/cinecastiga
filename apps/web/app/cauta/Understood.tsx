@@ -223,7 +223,7 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  // The answer counts only a town hall, while the titles below cover every institution of the locality.
  const townHall=filters.uatSiruta!==undefined;
  // a locality's institutions, as a precise selection (lib/topic-search/interpretation.ts withLocalityInstitutions)
- const institutions=Boolean(answer.total.spec.population)&&Boolean(scope?.where);
+ const institutions=answer.institutions===true;
  const head=<AnswerHead scope={scope} filters={filters} compare={compare} townHall={townHall} institutions={institutions} ghost={!ready}/>;
  if(!ready)return <AnswerGhost head={head} answer={answer} kind={kind} led={led} compare={compare} notes={notes} literal={Boolean(literalHref)}/>;
  // The same limits /intreaba shows for these specs.

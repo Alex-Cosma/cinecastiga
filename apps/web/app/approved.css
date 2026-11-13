@@ -179,9 +179,10 @@
 .d-townhall-list{list-style:none;margin:10px 0 0;padding:0}
 .d-townhall-list li{border-bottom:1px solid var(--line)}
 .d-townhall-list li:first-child{border-top:1px solid var(--line)}
-.d-townhall-list button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:52px;padding:10px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
-.d-townhall-list li[aria-selected=true]>button{background:var(--sunk)}
-.d-townhall-list button>span{display:flex;flex-direction:column;min-width:0}
+.d-townhall-list li{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;padding:10px;color:var(--ink);cursor:pointer}
+.d-townhall-list li[aria-selected=true]{background:var(--sunk)}
+.d-townhall-list li[aria-disabled=true]{cursor:default;color:var(--muted)}
+.d-townhall-list li>span{display:flex;flex-direction:column;min-width:0}
 .d-townhall-list strong{font-weight:600;font-size:15px}
 .d-townhall-list small{color:var(--muted);font-size:13px}
 .d-townhall-list .d-icon{width:16px;height:16px;flex:none;color:var(--accent)}

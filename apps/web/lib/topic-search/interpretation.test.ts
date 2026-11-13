@@ -281,6 +281,7 @@ describe('word plumbing', () => {
     expect(t.answer?.total.spec.population).toEqual({ operator: 'and', groups: [{ operator: 'or', conditions: [{ field: 'authority', op: 'in', values: ['1', '2', '3'] }] }] });
     expect(t.answer?.total.sentence).toContain('instituțiile din');
     expect(t.answer?.evidenceHref).toMatch(/&drill=1$/);
+    expect(t.answer?.institutions).toBe(true);
     const asked = await read('primaria iluminat', '&place=uat%3A44818');
     const kept = applyInterpretation(asked.scope, asked.result, buzau);
     expect(withLocalityInstitutions(kept, 44818, ['1', '2'])).toBe(kept);
@@ -293,6 +294,8 @@ describe('word plumbing', () => {
     expect(p.groups).toHaveLength(2);
     expect(p.groups[0]!.conditions).toHaveLength(8);
     expect(p.groups.flatMap((g) => g.conditions.flatMap((c) => 'values' in c ? c.values : []))).toHaveLength(950);
+    expect(institutionsPopulation(Array.from({ length: 3200 }, (_, k) => String(k + 1)))?.groups.flatMap((g) => g.conditions)).toHaveLength(32);
+    expect(institutionsPopulation(Array.from({ length: 3201 }, (_, k) => String(k + 1)))).toBeNull();
     expect(institutionsPopulation([])).toBeNull();
   });
 });

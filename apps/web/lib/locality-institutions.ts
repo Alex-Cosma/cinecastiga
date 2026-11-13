@@ -35,7 +35,7 @@ export function displayName(name: string): string {
   const trimmed = name.replace(/\s+/g, " ").trim();
   if (trimmed !== trimmed.toLocaleUpperCase("ro-RO")) return trimmed;
   const lower = new Set(["de", "din", "cu", "si", "și", "a", "al", "pentru", "la", "nr.", "nr"]);
-  return trimmed.toLocaleLowerCase("ro-RO").split(" ").map((w, i) => i > 0 && lower.has(w) ? w : w.replace(/^(["„(]?)(\p{L})/u, (_, q: string, c: string) => q + c.toLocaleUpperCase("ro-RO"))).join(" ");
+  return trimmed.toLocaleLowerCase("ro-RO").split(" ").map((w, i) => i > 0 && lower.has(w) ? w : w.replace(/(^["„(]?|-)(\p{L})/gu, (_, q: string, c: string) => q + c.toLocaleUpperCase("ro-RO"))).join(" ");
 }
 
 const ORDER: Record<LocalityKind, number> = { primarie: 0, spital: 1, scoala: 2, institutie: 3, firma: 4 };
@@ -62,9 +62,19 @@ export function townHallRows(sql: DbSql): Promise<PopulationMappingRow[]> {
   return rows;
 }
 
+let idsOf: { rows: PopulationMappingRow[]; bySiruta: Map<number, string[]> } | null = null;
+/** „primăria X”'s identities, worked out once per UAT for the registry kept (localAuthorityIdentities scans it whole). */
+export async function townHallIds(sql: DbSql, siruta: number): Promise<string[]> {
+  const rows = await townHallRows(sql);
+  if (idsOf?.rows !== rows) idsOf = { rows, bySiruta: new Map() };
+  let ids = idsOf.bySiruta.get(siruta);
+  if (!ids) { ids = localAuthorityIdentities(rows, siruta).ids; idsOf.bySiruta.set(siruta, ids); }
+  return ids;
+}
+
 async function readLocality(sql: DbSql, siruta: number): Promise<LocalityInstitutions> {
   const mapped = await townHallRows(sql);
-  const townHall = localAuthorityIdentities(mapped, siruta).ids;
+  const townHall = await townHallIds(sql, siruta);
   const hallSet = new Set(townHall);
   const hallCuis = new Set(mapped.filter((r) => hallSet.has(r.id)).map((r) => r.cui).filter((c): c is string => Boolean(c)));
   const listed: { kind: LocalityKind; name: string; cuis: string[] }[] = [

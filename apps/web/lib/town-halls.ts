@@ -1,7 +1,6 @@
 import type { DbSql } from "@seap/db";
 import population from "./reference/population-rpl2021.json" with { type: "json" };
-import { localAuthorityIdentities } from "./peer-population";
-import { townHallRows } from "./locality-institutions";
+import { townHallIds } from "./locality-institutions";
 import { entityHref } from "./entity-href";
 
 /*
@@ -13,7 +12,8 @@ import { entityHref } from "./entity-href";
 interface Unit { siruta: number; name: string; county: string; countyKey: string; kind: "commune" | "city" | "municipality" | "sector"; population: number }
 const UNITS = (population as unknown as { units: Unit[] }).units;
 
-export interface TownHallHit { id: string; href: string; name: string; detail: string }
+/** `href` null: the town hall has no record in the data (its locality is still named, never „not found”). */
+export interface TownHallHit { id: string; href: string | null; name: string; detail: string }
 
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const title = (s: string) => s.toLocaleLowerCase("ro-RO").replace(/(^|[\s-])(\p{L})/gu, (_, sep: string, c: string) => sep + c.toLocaleUpperCase("ro-RO"));
@@ -51,8 +51,7 @@ export function matchUnits(term: string, limit = 8): Unit[] {
 export async function searchTownHalls(sql: DbSql, term: string): Promise<TownHallHit[]> {
   const units = matchUnits(term);
   if (!units.length) return [];
-  const rows = await townHallRows(sql);
-  const ids = new Map(units.map((u) => [u.siruta, localAuthorityIdentities(rows, u.siruta).ids]));
+  const ids = new Map(await Promise.all(units.map(async (u) => [u.siruta, await townHallIds(sql, u.siruta)] as const)));
   const all = [...new Set([...ids.values()].flat())];
   const totals = all.length ? (await sql`
     select entity_id::text id, coalesce(total_ron_full, 0)::float8 v from marts.entity_profile where role = 'authority' and entity_id = any(${sql.array(all)}::bigint[])
@@ -61,7 +60,9 @@ export async function searchTownHalls(sql: DbSql, term: string): Promise<TownHal
   const out: TownHallHit[] = [];
   for (const u of units) {
     const best = (ids.get(u.siruta) ?? []).filter((id) => value.has(id)).sort((a, b) => (value.get(b) ?? 0) - (value.get(a) ?? 0))[0];
-    if (best) out.push({ id: best, href: entityHref(best, "authority"), name: unitName(u), detail: unitDetail(u) });
+    out.push(best
+      ? { id: best, href: entityHref(best, "authority"), name: unitName(u), detail: unitDetail(u) }
+      : { id: `uat:${u.siruta}`, href: null, name: unitName(u), detail: `${unitDetail(u)} · fără achiziții în date` });
   }
   return out;
 }

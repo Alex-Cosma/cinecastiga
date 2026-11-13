@@ -30,9 +30,14 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
     dialog.current.showModal(); document.body.style.overflow = "hidden"; input.current?.focus();
   };
 
+  // a client navigation while the dialog is open unmounts it: the page's scroll comes back
+  useEffect(() => () => { if (dialog.current?.open) { dialog.current.close(); document.body.style.overflow = overflow.current; } }, []);
+
   useEffect(() => {
     const q = term.trim();
-    if (q.length < 2) { setItems([]); setError(""); setSearched(""); setLoading(false); return; }
+    // the list always belongs to the words on screen: Enter never opens a hit of the words before
+    setItems([]); setActive(0);
+    if (q.length < 2) { setError(""); setSearched(""); setLoading(false); return; }
     const controller = new AbortController();
     setLoading(true);
     const timer = setTimeout(() => {
@@ -44,7 +49,8 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
     return () => { clearTimeout(timer); controller.abort(); };
   }, [term]);
 
-  const open = (hit: TownHallHit | undefined) => { if (!hit) return; close(); router.push(hit.href); };
+  const open = (hit: TownHallHit | undefined) => { if (!hit?.href) return; close(); router.push(hit.href); };
+  const current = !loading && searched === term.trim();
   const listId = `${id}-list`;
   const status = error || (loading ? "Se caută…" : term.trim().length >= 2 && searched === term.trim() && !items.length ? "Nicio localitate găsită. Încearcă alt nume." : "");
 
@@ -71,12 +77,14 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" && items.length) { e.preventDefault(); setActive((a) => (a + 1) % items.length); }
             else if (e.key === "ArrowUp" && items.length) { e.preventDefault(); setActive((a) => (a - 1 + items.length) % items.length); }
-            else if (e.key === "Enter") { e.preventDefault(); open(items[active]); }
+            else if (e.key === "Enter") { e.preventDefault(); if (current) open(items[active]); }
           }} />
       </div>
       <ul id={listId} role="listbox" aria-label="Primării" className="d-townhall-list">
-        {items.map((hit, i) => <li key={hit.id} id={`${id}-${i}`} role="option" aria-selected={i === active}>
-          <button type="button" tabIndex={-1} onMouseEnter={() => setActive(i)} onClick={() => open(hit)}><span><strong>{hit.name}</strong><small>{hit.detail}</small></span><DiscoveryIcon name="arrow" /></button>
+        {/* the options answer the pointer; the keyboard stays in the field (aria-activedescendant) */}
+        {items.map((hit, i) => <li key={hit.id} id={`${id}-${i}`} role="option" aria-selected={i === active} aria-disabled={hit.href ? undefined : true}
+          onMouseEnter={() => setActive(i)} onClick={() => open(hit)}>
+          <span><strong>{hit.name}</strong><small>{hit.detail}</small></span>{hit.href && <DiscoveryIcon name="arrow" />}
         </li>)}
       </ul>
       <p className="d-townhall-status" role="status" aria-live="polite">{status}</p>
