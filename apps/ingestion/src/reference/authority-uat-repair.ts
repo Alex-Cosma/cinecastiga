@@ -63,7 +63,7 @@ export function planAuthorityUatCorrection(c:AuthorityUatCorrection,o:AuthorityU
  return {...base,outcome:'corrected',after:{siruta:c.to,population:o.target.population}};
 }
 
-const PRE_REFRESH=new Set(['backup-verified','shadow-prepare','currency-repair','reference-repair','authority-uat-repair','authority-fragment-repair']);
+const PRE_REFRESH=new Set(['backup-verified','shadow-prepare','currency-repair','reference-repair','authority-uat-repair','authority-fragment-repair','onrc-import']);
 
 /** Called by the processing runner after the verified backup, before the refresh. */
 export async function runAuthorityUatRepair(q:DbSql,runId:string,log:(message:string)=>void=()=>{}) {
