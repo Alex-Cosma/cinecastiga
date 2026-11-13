@@ -43,7 +43,7 @@ type Others=string[]|null;
 async function placeOthers(s:TopicScope):Promise<{others:Others;locality:TopicLocality|null}>{
  if(!s.place.startsWith('uat:'))return {others:null,locality:null};
  const l=await localityInstitutions(db(),Number(s.place.slice(4)));
- const locality={townHall:l.townHall.length,groups:[{kind:'primarie' as const,name:'Primăria'},...l.groups.map(g=>({kind:g.kind,name:g.name}))]};
+ const locality={townHall:l.townHall.length,groups:[...(l.townHall.length?[{kind:'primarie' as const,name:'Primăria'}]:[]),...l.groups.map(g=>({kind:g.kind,name:g.name}))]};
  return {others:s.hall?l.townHall:[...l.townHall,...l.groups.flatMap(g=>g.ids)],locality};
 }
 function scopeSql(q:DbSql,s:TopicScope,others:Others=null){

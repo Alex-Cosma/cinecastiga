@@ -76,7 +76,7 @@ export interface TopicInterpretation {
    * Subject answer through the Ask engine (/api/ask), only when the reading is unambiguous.
    * `evidenceHref` opens every record the total counts; `empty` is said instead of "0 lei".
    */
-  answer: { total: { spec: AskSpec; sentence: string }; top: AnswerTop | null; href: string; evidenceHref: string; empty: string; domains: { href: string; label: string } | null; cpv: string[]; cpvExcluded: string[] } | null;
+  answer: { total: { spec: AskSpec; sentence: string }; top: AnswerTop | null; href: string; evidenceHref: string; empty: string; domains: { href: string; label: string } | null; cpv: string[]; cpvExcluded: string[]; /** It counts a locality's institutions (withLocalityInstitutions). */ institutions?: true } | null;
   /**
    * The words are a whole question the rules read cleanly ("cine ia banii
    * oradea"): the page answers it first and the words, searched as written,
@@ -567,10 +567,10 @@ export function looseReading(i: Interpretation, hasEntity: boolean, place: Span 
   return { kind: 'words', words: [...new Set(words)].join(' '), narrowed: [], notes: [], placeApplies: Boolean(place) && marked };
 }
 
-/** An institution list as a precise selection (lib/ask/population.ts): at most 100 ids a condition, 8 a group, 8 groups. */
+/** An institution list as a precise selection (lib/ask/population.ts): at most 100 ids a condition, 8 a group, 32 conditions. */
 export function institutionsPopulation(ids: readonly string[]): NonNullable<AskSpec['population']> | null {
   const unique = [...new Set(ids)];
-  if (!unique.length || unique.length > 6400) return null;
+  if (!unique.length || unique.length > 3200) return null;
   const conditions = Array.from({ length: Math.ceil(unique.length / 100) }, (_, k) => ({ field: 'authority' as const, op: 'in' as const, values: unique.slice(k * 100, k * 100 + 100) }));
   const groups = Array.from({ length: Math.ceil(conditions.length / 8) }, (_, k) => ({ operator: 'or' as const, conditions: conditions.slice(k * 8, k * 8 + 8) }));
   return { operator: groups.length > 1 ? 'or' : 'and', groups };
@@ -598,6 +598,6 @@ export function withLocalityInstitutions(t: TopicInterpretation, siruta: number,
   const top = a.top ? { ...a.top, spec: swap(a.top.spec), sentence: said(a.top.sentence) } : null;
   return {
     ...t,
-    answer: { ...a, total, top, href: askHref(top?.kind === 'records' || !top ? total.spec : top.spec), evidenceHref: `${askHref(total.spec)}&drill=1`, empty: said(a.empty), domains: null },
+    answer: { ...a, total, top, href: askHref(top?.kind === 'records' || !top ? total.spec : top.spec), evidenceHref: `${askHref(total.spec)}&drill=1`, empty: said(a.empty), domains: null, institutions: true },
   };
 }

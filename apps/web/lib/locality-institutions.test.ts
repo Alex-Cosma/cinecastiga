@@ -6,5 +6,6 @@ describe("a locality's institutions", () => {
     expect(displayName("LICEUL TEHNOLOGIC CISNĂDIE")).toBe("Liceul Tehnologic Cisnădie");
     expect(displayName("CASA DE CULTURA A ORASULUI CISNADIE")).toBe("Casa de Cultura a Orasului Cisnadie");
     expect(displayName("Spitalul Orășenesc Cisnădie")).toBe("Spitalul Orășenesc Cisnădie");
+    expect(displayName("SPITALUL MUNICIPAL CLUJ-NAPOCA")).toBe("Spitalul Municipal Cluj-Napoca");
   });
 });
