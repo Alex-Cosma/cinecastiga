@@ -12,7 +12,7 @@ describe('public site during processing (owner decision, 23 October 2026)',()=>{
  it.each(['drain','backup'])('stays open while the claimed run is in %s',stage=>{
   expect(publicSiteOpen(state(true,[run(stage)]))).toBe(true);
  });
- it.each(['backup-verified','reference-repair','currency-repair','authority-uat-repair','normalize','marts','flags','search','restart','reopen','complete','unknown-stage'])
+ it.each(['backup-verified','reference-repair','currency-repair','authority-uat-repair','authority-fragment-repair','onrc-import','normalize','marts','flags','search','restart','reopen','complete','unknown-stage'])
  ('closes from %s on, when data may change',stage=>{
   expect(publicSiteOpen(state(true,[run(stage)]))).toBe(false);
  });

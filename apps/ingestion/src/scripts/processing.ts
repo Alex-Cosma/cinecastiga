@@ -8,6 +8,7 @@ import { diagnosticError, createDb, createSnapshotHashCache, claimProcessing, cl
 import {runScheduledReferenceRepair} from '../reference/scheduled-repair.js';
 import {runAuthorityUatRepair} from '../reference/authority-uat-repair.js';
 import {runAuthorityFragmentRepair} from '../reference/authority-fragment-repair.js';
+import {runScheduledOnrcImport} from '../reference/onrc-import.js';
 import { runMonitoringRefresh, runShadowRefresh } from '../monitoring/refresh.js';
 import { MAX_QUARANTINED_RECORDS } from '../monitoring/pipeline.js';
 import {indexTopics} from '../search/index-topics.js';
@@ -106,6 +107,9 @@ async function main() {
   await runAuthorityUatRepair(sql,id!,console.log);
   // Full runs only: the merged authorities' signals are recalculated in the same run.
   await runAuthorityFragmentRepair(sql,id!,console.log);
+  // Full runs only (weekly; owner, 13 November 2026): a newer ONRC snapshot becomes the register this run publishes.
+  // A failure is logged and audited, never thrown: the run continues with the register in place.
+  await runScheduledOnrcImport(sql,id!,console.log);
   // Current snapshot hashes of approved identities, computed once and reused by
   // the identity gates of this run while nothing they read changes (source
   // version, migration 0083). In memory only: a new command starts empty.
