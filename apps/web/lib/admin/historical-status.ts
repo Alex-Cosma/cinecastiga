@@ -3,7 +3,9 @@ import type {BackfillPart,DaDetailStatus,HistoricalStatus} from './historical-fo
 /** Historical downloads, from task metadata and the audit only (no result bodies, no source traffic):
  * the background SEAP award-detail backfill and the TED daily-package catch-up. */
 const n=(v:unknown)=>Number(v??0);
-export async function historicalStatus(q:DbSql,batchId:string,lanes:number):Promise<HistoricalStatus>{
+/** The slow reads of the award-detail backfill and the TED catch-up (~0.4 s on production, 14 November 2026). The
+ * administration keeps them for a few minutes (status-cache.ts). */
+export async function historicalInputs(q:DbSql,batchId:string){
  const parts=await q`select coalesce(params->>'part','root') part,count(*) filter(where status='pending')::int pending,count(*) filter(where status='running')::int running,
    count(*) filter(where status='complete')::int complete,count(*) filter(where status in ('failed','deferred'))::int failed,
    count(*) filter(where status='complete' and finished_at>now()-interval '1 hour')::int last_hour
@@ -12,7 +14,6 @@ export async function historicalStatus(q:DbSql,batchId:string,lanes:number):Prom
  const errors=await q`select left(regexp_replace(error,'[0-9]{4,}','…','g'),160) error,count(*)::int n from app.collection_tasks
   where batch_id=${batchId} and stream='awards' and priority>=50 and params->>'backfill'='true' and status='failed' group by 1 order by 2 desc,1 limit 4`;
  const [enqueue]=await q`select created_at,actor_id,after from app.collection_audit where action='award-detail-backfill' order by id desc limit 1`;
- const after=(enqueue?.after??{}) as {queued?:number;remaining?:number;pilot?:boolean};
  const [ted]=await q`with packages as (select params->>'ojs' ojs,status,result->>'published' published,result->>'publicationDate' pub_day,(result->>'total')::int total,finished_at
    from app.collection_tasks where batch_id=${batchId} and stream='ted' and kind='ted-package'),
   latest as (select distinct on (ojs) ojs,pub_day,total from packages where status='complete' and published='true' order by ojs,finished_at desc),
@@ -24,6 +25,12 @@ export async function historicalStatus(q:DbSql,batchId:string,lanes:number):Prom
    (select count(*)::int from generate_series((select pub_day from frontier)::date+1,(now() at time zone 'Europe/Bucharest')::date,interval '1 day') d where extract(isodow from d)<6) behind,
    (select max(finished_at) from packages) last_finished,(select bool_or(status in ('pending','running')) from packages) in_flight,
    (select ojs from packages where status='failed' order by finished_at desc nulls last limit 1) failed_attempt`;
+ return {parts,errors,enqueue,ted};
+}
+export type HistoricalInputs=Awaited<ReturnType<typeof historicalInputs>>;
+export async function historicalStatus(q:DbSql,batchId:string,lanes:number,inputs?:HistoricalInputs):Promise<HistoricalStatus>{
+ const {parts,errors,enqueue,ted}=inputs??await historicalInputs(q,batchId);
+ const after=(enqueue?.after??{}) as {queued?:number;remaining?:number;pilot?:boolean};
  const order={root:0,lots:1,eform:2} as Record<string,number>;
  return {
   daDetails:await daDetailStatus(q,batchId,lanes),

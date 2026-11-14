@@ -1,8 +1,8 @@
 import type {DbSql} from '@seap/db';
 import {recoveryForecast,type RecoveryCounts,type RecoverySample} from './recovery-forecast';
-/** Only aggregate task metadata. Never fetch result bodies/ids into the web process.
- * Background tasks (priority>=50, historical backfill) are excluded: they are reported separately. */
-export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCounts[],control:Record<string,any>){
+/** The two slow reads of the forecast (about 11 s on production, 14 November 2026: every ordinary task of the batch).
+ * The administration keeps them for a few minutes (status-cache.ts); `at` is when they were read. */
+export async function recoveryInputs(q:DbSql,batchId:string){
  const samples=await q`
   with strategy as (select da_strategy from app.collection_batches where id=${batchId}), tasks as materialized (
    select stream,kind,params,status,partition,
@@ -35,6 +35,20 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   select stream,count(*)::int units,count(work)::int sampled,coalesce(avg(work),0)::float8 mean_work,
     coalesce(stddev_samp(work),0)::float8 sd_work,count(distinct left(unit_day,7)) filter(where work is not null)::int months,
     count(distinct left(unit_day,7))::int total_months,0::int base_work from day_work group by stream`;
+ const layers=await q`with notices as (select stream,kind,(case when stream='tenders' then case (params->>'noticeType')::int when 2 then 'cn' when 6 then 'dc' when 7 then 'pc' else 'rfq' end else 'award' end)||':'||(params->>'noticeId') notice,
+    bool_and(status='complete') complete,bool_or(status in ('failed','deferred')) gap,
+    bool_or(kind='detail' and coalesce(params->>'part','root') in ('root','general','lots') and status<>'complete') discovering
+   from app.collection_tasks where batch_id=${batchId} and priority<50 and kind in ('detail','contracts') group by stream,kind,notice)
+   select stream,kind,count(*)::int total,count(*) filter(where complete)::int complete,count(*) filter(where gap)::int gaps,
+   count(*) filter(where not complete and not gap)::int pending,bool_or(discovering) discovering from notices group by stream,kind order by stream,kind`;
+ return {samples,layers,at:Date.now()};
+}
+export type RecoveryInputs=Awaited<ReturnType<typeof recoveryInputs>>;
+/** Only aggregate task metadata. Never fetch result bodies/ids into the web process.
+ * Background tasks (priority>=50, historical backfill) are excluded: they are reported separately. */
+export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCounts[],control:Record<string,any>,inputs?:RecoveryInputs){
+ const {samples,layers,at}=inputs??await recoveryInputs(q,batchId);
+
  // Use the current operating regime, not the old single-IP recovery average.
  const [pace]=await q`with boundary as (
    select greatest(b.created_at,now()-interval '10 minutes',coalesce((select max(created_at) from app.collection_audit
@@ -45,13 +59,8 @@ export async function recoveryStatus(q:DbSql,batchId:string,progress:RecoveryCou
   from boundary`;
  const catalogue=progress.find(s=>s.stream==='catalogue');
  const catalogueReady=!!catalogue&&Number(catalogue.complete)>0&&!['pending','running','failed','deferred'].some(k=>Number(catalogue[k as keyof RecoveryCounts])>0);
- const layers=await q`with notices as (select stream,kind,(case when stream='tenders' then case (params->>'noticeType')::int when 2 then 'cn' when 6 then 'dc' when 7 then 'pc' else 'rfq' end else 'award' end)||':'||(params->>'noticeId') notice,
-    bool_and(status='complete') complete,bool_or(status in ('failed','deferred')) gap,
-    bool_or(kind='detail' and coalesce(params->>'part','root') in ('root','general','lots') and status<>'complete') discovering
-   from app.collection_tasks where batch_id=${batchId} and priority<50 and kind in ('detail','contracts') group by stream,kind,notice)
-   select stream,kind,count(*)::int total,count(*) filter(where complete)::int complete,count(*) filter(where gap)::int gaps,
-   count(*) filter(where not complete and not gap)::int pending,bool_or(discovering) discovering from notices group by stream,kind order by stream,kind`;
+
  const forecast=recoveryForecast({samples:samples as unknown as RecoverySample[],progress,catalogueReady,detailDiscoveryPending:layers.some(r=>r.discovering),
   elapsedDays:Number(pace?.elapsed_days??0),recentCompleted:Number(pace?.recent_completed??0),minSeconds:control.min_seconds,maxSeconds:control.max_seconds,dailyLimit:control.daily_limit});
- return {...forecast,layers,calculatedAt:new Date().toISOString()};
+ return {...forecast,layers,calculatedAt:new Date(at).toISOString()};
 }

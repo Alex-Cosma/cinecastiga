@@ -1,7 +1,7 @@
 'use client';
 import {usePathname} from 'next/navigation';
 import {useCallback, useEffect, useRef, useState} from 'react';
-import type {CollectionStatus} from '@/lib/admin/collection';
+import type {CollectionStatus, CollectionStatusPart} from '@/lib/admin/collection';
 import {Ghost, G} from '@/components/ghost/Ghost';
 import AdminNavigation from './AdminNavigation';
 import AcumView from './AcumView';
@@ -13,21 +13,26 @@ import ProcessingOverview from './ProcessingOverview';
 import ScheduleForm, {type Schedule, scheduleOf} from './ScheduleForm';
 import DocumentCollection from './DocumentCollection';
 import DocumentQueue from './DocumentQueue';
-import {collectionState, viewOf} from './model';
+import {collectionState, viewOf, type AdminView} from './model';
 
 /**
- * The administration's one client shell: it reads the collection status once for every page, keeps each page mounted
- * (hidden when another is shown) so drafts and filters survive a change of tab, and runs every command.
+ * The administration's one client shell: it keeps each page mounted (hidden when another is shown) so drafts and
+ * filters survive a change of tab, and runs every command. Each page reads only its part of the status (owner,
+ * 14 November 2026: every tab read everything, ~17 s): the base comes with every part, the parts are merged, and a page
+ * whose part has not arrived yet shows its skeleton. The open page is read again every minute and when it is opened.
  */
 export default function CollectionDashboard({children}: {children: React.ReactNode}) {
   const path = usePathname(), view = viewOf(path);
   const [data, setData] = useState<CollectionStatus | null>(null), [stale, setStale] = useState(false);
+  const [loaded, setLoaded] = useState<ReadonlySet<AdminView>>(new Set());
+  const current = useRef(view);
+  current.current = view;
   const [pace, setPace] = useState<Pace | null>(null), [schedule, setSchedule] = useState<Schedule | null>(null);
   const [proxyDirty, setProxyDirty] = useState(false);
   const [saving, setSaving] = useState(false), [flash, setFlash] = useState<{text: string; error: boolean} | null>(null);
   const [now, setNow] = useState(Date.now());
   const dirty = useRef({pace: false, schedule: false}), refreshing = useRef(false), controller = useRef<AbortController | null>(null);
-  const offset = useRef(0), mounted = useRef(true);
+  const offset = useRef(0), mounted = useRef(true), dataRef = useRef<CollectionStatus | null>(null);
 
   const refresh = useCallback(async (force = false, reset: 'pace' | 'schedule' | 'all' | null = null) => {
     if (refreshing.current) { if (!force) return; controller.current?.abort(); }
@@ -35,10 +40,15 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
     const ac = new AbortController(); controller.current = ac;
     const timeout = setTimeout(() => ac.abort(), 30000);
     try {
-      const res = await fetch('/api/admin/collection', {cache: 'no-store', signal: ac.signal});
+      const page = current.current;
+      const res = await fetch(`/api/admin/collection?view=${page}`, {cache: 'no-store', signal: ac.signal});
       if (!res.ok) throw Error();
-      const next: CollectionStatus = await res.json();
+      const part: CollectionStatusPart = await res.json();
       if (!mounted.current || controller.current !== ac) return;
+      // A part carries the base and its page's sections; what another page read stays until that page reads again.
+      const next = {...(dataRef.current ?? {}), ...part} as CollectionStatus;
+      dataRef.current = next;
+      setLoaded(prev => prev.has(page) ? prev : new Set(prev).add(page));
       offset.current = new Date(next.control!.server_now).getTime() - Date.now();
       setNow(Date.now() + offset.current);
       setData(next); setStale(false);
@@ -67,6 +77,13 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
       clearInterval(id); clearInterval(clock); window.removeEventListener('focus', focus);
     };
   }, [refresh]);
+
+  // Another page opened: read its part now (its last values, if any, show meanwhile).
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    void refresh(true);
+  }, [view, refresh]);
 
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty.current.pace || dirty.current.schedule) { event.preventDefault(); event.returnValue = ''; } };
@@ -124,34 +141,44 @@ export default function CollectionDashboard({children}: {children: React.ReactNo
   </div>;
 
   const state = collectionState(data, stale, now);
+  // Fișiere and Oameni read their own lists: the base is enough.
+  const ready = (page: AdminView) => page === 'fisiere' || page === 'oameni' || loaded.has(page);
+  const waiting = <Ghost name="admin" label="Se citește statusul…" wait="client" className="admin-ghost">
+    <G.Lines w={['38%', '92%', '86%']}/>
+    <G.Block h="160px" r="10px"/>
+    <G.Lines w={['70%', '64%', '58%']}/>
+  </Ghost>;
+  const page = (name: AdminView, body: () => React.ReactNode) => ready(name) ? body() : view === name ? waiting : null;
   return <div className="collection-admin">
     <AdminNavigation data={data} stale={stale} drafts={drafts}/>
     {status}
     <div id="admin-content" className={stale ? 'g-stale' : undefined}>
       {stale && <p className="admin-notice warn" role="status">Conexiunea de raportare e întreruptă: valorile sunt ultima stare cunoscută, comenzile așteaptă. Reîncercăm automat.</p>}
       <div className="admin-view" hidden={view !== 'acum'}>
-        <AcumView data={data} state={state} stale={stale} saving={saving} change={change} now={now} active={view === 'acum'}/>
+        {page('acum', () => <AcumView data={data} state={state} stale={stale} saving={saving} change={change} now={now} active={view === 'acum'}/>)}
       </div>
       <div className="admin-view" hidden={view !== 'trafic'}>
-        <FluxuriView data={data} stale={stale} saving={saving} change={change}/>
+        {page('trafic', () => <FluxuriView data={data} stale={stale} saving={saving} change={change}/>)}
       </div>
       <div className="admin-view" hidden={view !== 'conexiune'}>
+        {page('conexiune', () => <>
         <ProxyControl data={data} now={now} stale={stale} saving={saving} change={change} onDirtyChange={setProxyDirty}/>
         <LimitsForm data={data} form={pace} setForm={next => { dirty.current.pace = true; setPace(next); }} dirty={paceDirty} stale={stale} saving={saving}
           reset={() => { dirty.current.pace = false; setPace(paceOf(c)); }}
           submit={() => change({action: 'settings', part: 'pace', revision: pace.revision, minSeconds: Number(pace.min), maxSeconds: Number(pace.max), dailyLimit: pace.daily ? Number(pace.limit) : null, processingTime: c.processing_time, processingEnabled: c.processing_enabled, riskWeekday: c.risk_weekday}, 'Limitele au fost salvate. Se aplică cererilor următoare.')}/>
         <CollectionRules/>
+        </>)}
       </div>
       <div className="admin-view" hidden={view !== 'jurnal'}>
-        <Journal data={data} stale={stale}/>
+        {page('jurnal', () => <Journal data={data} stale={stale}/>)}
       </div>
       <div className="admin-view" hidden={view !== 'procesare'}>
-        <div className="processing-layout">
+        {page('procesare', () => <div className="processing-layout">
           <ProcessingOverview data={data}/>
           <ScheduleForm data={data} form={schedule} setForm={next => { dirty.current.schedule = true; setSchedule(next); }} dirty={scheduleDirty} stale={stale} saving={saving}
             reset={() => { dirty.current.schedule = false; setSchedule(scheduleOf(c)); }}
             submit={() => change({action: 'settings', part: 'schedule', revision: schedule.revision, minSeconds: c.min_seconds, maxSeconds: c.max_seconds, dailyLimit: c.daily_limit, processingTime: schedule.at, processingEnabled: schedule.enabled, riskWeekday: schedule.riskDay}, 'Programul a fost salvat.')}/>
-        </div>
+        </div>)}
       </div>
       <div className="admin-view" hidden={view !== 'fisiere'}>
         {view === 'fisiere' && <DocumentCollection/>}

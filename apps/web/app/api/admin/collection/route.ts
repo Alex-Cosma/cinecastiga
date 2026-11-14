@@ -2,7 +2,7 @@ import {documentQueueStatus,DOCUMENT_QUEUE_FILTERS,type DocumentQueueFilter} fro
 import {validCollectionOrigin} from '@/lib/admin/collection-origin';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { changeCollection,collectionDb,collectionStatus,CollectionConflict } from '@/lib/admin/collection';
+import { ADMIN_STATUS_VIEWS,changeCollection,collectionDb,collectionStatus,CollectionConflict,type AdminStatusView } from '@/lib/admin/collection';
 export const dynamic='force-dynamic';
 export const runtime='nodejs';
 const headers={'Cache-Control':'private, no-store'};
@@ -26,6 +26,12 @@ export async function GET(req:Request){
   if(new URL(req.url).searchParams.get('export')==='1'){
    const rows=await collectionDb()`select id::text,proxy_id,stream,method,endpoint,parameters,status,outcome,error,records,bytes::text,started_at,finished_at from app.collection_requests order by app.collection_requests.id desc limit 5000`;
    return NextResponse.json({scope:'Ultimele maximum 5.000 de încercări SEAP',exportedAt:new Date().toISOString(),requests:rows},{headers:{...headers,'Content-Disposition':'attachment; filename="jurnal-colectare.json"'}});
+  }
+  // One page's part (owner, 14 November 2026); without `view`, the whole status as before.
+  const view=params.get('view');
+  if(view!==null){
+   if(!(ADMIN_STATUS_VIEWS as readonly string[]).includes(view))return NextResponse.json({error:'Pagină nevalidă.'},{status:400,headers});
+   return NextResponse.json(await collectionStatus(collectionDb(),view as AdminStatusView),{headers});
   }
   return NextResponse.json(await collectionStatus(),{headers});
  }catch{return NextResponse.json({error:'Statusul colectării nu poate fi citit acum. Valorile anterioare pot fi neactualizate.'},{status:503,headers});}
