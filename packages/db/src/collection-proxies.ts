@@ -22,15 +22,18 @@ export async function registerSeapProxies(q:DbSql,proxies:SeapProxy[]){
 /** Called under collection_control FOR UPDATE and a shared HTTP drain lock. */
 export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allowBusy=false){
  if(process.env.SEAP_PROXY_REQUIRED!==undefined&&!['true','false'].includes(process.env.SEAP_PROXY_REQUIRED))throw new SeapProxyConfigurationError();
- const [settings]=await q`select * from app.collection_proxy_control where id=1`;
+ // The settings and the release of reservations left by terminal jobs (only those: never a running job's) in one
+ // statement, one round trip less per admission (14 November 2026). The release now runs with the pool off too:
+ // harmless, it frees only what a finished job left.
+ const [settings]=await q`with released as (update app.collection_proxies p set reserved_job=null where reserved_job is not null
+   and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running') returning 1)
+  select * from app.collection_proxy_control where id=1`;
  if(!settings?.enabled){
   if(pinnedId||process.env.SEAP_PROXY_REQUIRED==='true')throw Error('Modul proxy este oprit. Conexiunea directă nu este permisă.');
   return null;
  }
  const pool=await loadSeapProxies();
  if(!pool.length)throw Error('Lipsește configurația proxy. Conexiunea directă nu este permisă.');
- await q`update app.collection_proxies p set reserved_job=null where reserved_job is not null
-   and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running')`;
  const rows=await q`select *,greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000) delay_ms
    from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null})
    and (reserved_job is null or reserved_job=${jobId??null})

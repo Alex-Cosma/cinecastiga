@@ -180,7 +180,7 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:40,maxSeconds:60,requestsPerMinute:rate,activeIds:['proxy-1','proxy-2']};
   await changeCollection(actor,body,q);
   await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:2501},q)).rejects.toThrow('1 și 2.500');
-  await expect(q`update app.collection_proxy_control set requests_per_minute=1001`).rejects.toThrow();
+  await expect(q`update app.collection_proxy_control set requests_per_minute=2501`).rejects.toThrow();
   expect((await q`select requests_per_minute from app.collection_proxy_control`)[0]!.requests_per_minute).toBe(rate);
   expect(await q`select id from app.collection_audit`).toHaveLength(1);
   await q`update app.collection_control set paused=false,next_allowed_at=null`;

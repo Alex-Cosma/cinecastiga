@@ -6,7 +6,6 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { DbSql } from './client.js';
 import { collectionTaskId, scheduleCollectionTimeout } from './collection-retry.js';
-import { collectionQuietWindow } from './collection-quiet-window.js';
 import { safeCollectionEndpoint, safeCollectionParameters, retryAfterSeconds, type CollectionStream } from './collection-policy.js';
 export const COLLECTION_LOCK=[729114,4] as const;
 const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>();
@@ -72,7 +71,11 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    try{
     // Stable result shape across additive migrations while an old worker drains.
     const [c]=await q`select paused,maintenance,collection_during_maintenance,paused_streams,blocked_reason,daily_limit,min_seconds,max_seconds,
-      extract(epoch from clock_timestamp())*1000 now_ms,extract(epoch from next_allowed_at)*1000 next_ms,extract(epoch from last_file_at)*1000 file_ms from app.collection_control where id=1 for update`;
+      extract(epoch from clock_timestamp())*1000 now_ms,extract(epoch from next_allowed_at)*1000 next_ms,extract(epoch from last_file_at)*1000 file_ms,
+      -- the daily quiet window, as collectionQuietWindow (collection-quiet-window.ts) computes it, in the same statement
+      (select t>=((t at time zone 'Europe/Bucharest')::date+time '02:59') at time zone 'Europe/Bucharest'
+        and t<((t at time zone 'Europe/Bucharest')::date+time '03:30') at time zone 'Europe/Bucharest' from (select clock_timestamp() t) i) quiet
+      from app.collection_control where id=1 for update`;
     if(!c)throw new CollectionSuspendedError('Configurația colectării lipsește. Aplică migrațiile.');
     if(c.paused||(c.maintenance&&(!c.collection_during_maintenance||info.stream==='documents'))||(c.paused_streams as string[]).includes(info.stream))throw new CollectionSuspendedError();
     if(c.maintenance&&(await q`select id from app.processing_runs where status='running' limit 1`).length)throw new CollectionSuspendedError();
@@ -83,9 +86,15 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
      const [same]=await q`select ${JSON.stringify(parameters)}::jsonb=${JSON.stringify(retry.parameters)}::jsonb matched`;
      if(retry.endpoint!==endpoint||retry.method!==info.method||!same?.matched)throw Error('Retry request identity differs from the timed-out query');
     }
+    // The held request locks are read once (pg_lock_status per running row was the old plan) and give both the
+    // orphan check and the requests in flight. Under the control row nothing is admitted meanwhile, so the count can
+    // only fall before the admission below: it is never too low.
+    let inFlight=0;
     for(;;){
-     const [orphan]=await q`select r.id from app.collection_requests r where outcome='running'
-      and not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729119::oid and l.objid=r.id::oid and l.objsubid=2 and l.granted) limit 1`;
+     const [held]=await q`with held as materialized (select objid from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted)
+      select (select r.id from app.collection_requests r where outcome='running' and not exists(select 1 from held h where h.objid=r.id::oid) limit 1) id,(select count(*)::int from held) n`;
+     inFlight=Number(held?.n??0);
+     const orphan=held?.id==null?null:{id:held.id};
      if(!orphan)break;
      // pg_locks is live, but the ledger scan uses a statement snapshot. A peer can
      // finish and unlock during that scan. Lock/re-read the candidate before
@@ -103,25 +112,25 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     const [automatic]=info.documentJobId?await q`select j.automatic,j.status,c.enabled,c.paused from app.document_jobs j cross join app.document_collection_control c where j.id=${info.documentJobId} and c.id=1`:[];
     if(automatic?.automatic&&(automatic.status!=='running'||!automatic.enabled||automatic.paused))throw new CollectionSuspendedError('Colectarea automată a documentelor este oprită.');
     if((documentBatch||automatic?.automatic)&&!admission)throw new CollectionSuspendedError('Lotul de documente necesită poolul proxy activ.');
-    const [inFlight]=await q`select count(*)::int n from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted`;
     const concurrency=admission?Number(admission.settings.max_in_flight):1;
     // Files people request: a minute apart only in direct mode; through the proxy pool they keep its pace (owner, 3 Nov 2026).
-    delay=Math.max(Number(inFlight!.n)>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch&&!automatic?.automatic&&!admission?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    delay=Math.max(inFlight>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch&&!automatic?.automatic&&!admission?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
-     if((await collectionQuietWindow(q)).active)throw new CollectionSuspendedError('Pauză SEAP programată: 02:59–03:30, ora României. Reluare automată după încheierea pauzei.');
+     if(c.quiet)throw new CollectionSuspendedError('Pauză SEAP programată: 02:59–03:30, ora României. Reluare automată după încheierea pauzei.');
      if(documentBatch)await q`update app.document_batches set requests_started=requests_started+1 where id=${documentBatch.id}`;
      const policy=admission?.settings??c;
      const jitter=Math.floor(Number(policy.min_seconds)+Math.random()*(Number(policy.max_seconds)-Number(policy.min_seconds)+1));
      const globalDelay=admission?60/Number(policy.requests_per_minute):jitter;
-     const [request]=await q`insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id,started_at) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${selectedProxy?.id??null},clock_timestamp()) returning id`;
-     id=Number(request!.id);
-     // A unique session lock proves ownership; elapsed time alone never frees a live request.
-     await q`select pg_advisory_lock(729119,${id}::int)`;requestLocked=true;
-     if(selectedProxy){await q`select pg_advisory_lock(729120,${Number(selectedProxy.id.slice(6))})`;proxyLocked=true;}
-     await q`update app.collection_control set next_allowed_at=clock_timestamp()+${globalDelay}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1`;
-     if(selectedProxy)await q`update app.collection_proxies set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second' where id=${selectedProxy.id}`;
+     // A unique session lock proves ownership; elapsed time alone never frees a live request. The row, its lock and
+     // the proxy's lock come in one statement (the proxy's is null without one).
+     const proxyKey=selectedProxy?Number(selectedProxy.id.slice(6)):null;
+     const [request]=await q`with r as (insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id,started_at) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${selectedProxy?.id??null},clock_timestamp()) returning id)
+      select id,pg_advisory_lock(729119,id::int) request_lock,case when ${proxyKey}::int is not null then pg_advisory_lock(729120,${proxyKey}::int) end proxy_lock from r`;
+     id=Number(request!.id);requestLocked=true;if(selectedProxy)proxyLocked=true;
+     await q`with control as (update app.collection_control set next_allowed_at=clock_timestamp()+${globalDelay}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1 returning 1)
+      update app.collection_proxies set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second' where id=${selectedProxy?.id??null}::text`;
     }
     await q`commit`;transaction=false;
    }catch(e){if(transaction)await q`rollback`.catch(()=>{});throw e;}
