@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { DbSql } from './client.js';
 import { collectionTaskId, scheduleCollectionTimeout } from './collection-retry.js';
+import { loadSeapProxies } from './proxy-config.js';
 import { safeCollectionEndpoint, safeCollectionParameters, retryAfterSeconds, type CollectionStream } from './collection-policy.js';
 export const COLLECTION_LOCK=[729114,4] as const;
 const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>();
@@ -50,6 +51,93 @@ export const collectionWorkerId=(kind:string)=>`${kind}:${process.pid}:${randomU
 export interface CollectionRequestInfo {stream:CollectionStream;worker:string;method:string;url:string;parameters?:unknown;fileDownload?:boolean;context?:unknown;proxyId?:string;documentJobId?:string}
 export interface CollectionResult<T>{value:T;status:number;bytes?:number;records?:number;retryAfter?:string|null;challenge?:boolean;diagnostics?:CollectionDiagnostics}
 
+/** The SEAP streams that may take the gate's fast admission. Documents (sessions, batches, reservations, files), TED and
+ * any pinned request keep the full gate below. */
+const FAST_STREAMS=new Set<CollectionStream>(['da','tenders','awards','catalogue']);
+type FastAdmission={kind:'admitted';id:number;proxy:SeapProxy}|{kind:'wait';delay:number}|{kind:'full'};
+/** The day's quiet window, as collectionQuietWindow (collection-quiet-window.ts) computes it, for `t`. */
+const QUIET=(t:string)=>`(${t}>=((${t} at time zone 'Europe/Bucharest')::date+time '02:59') at time zone 'Europe/Bucharest' and ${t}<((${t} at time zone 'Europe/Bucharest')::date+time '03:30') at time zone 'Europe/Bucharest')`;
+
+/**
+ * The gate's fast admission (owner, 14 November 2026: with 1,000 proxies and 50 lanes the full gate admitted ~32
+ * requests a second, every lane queueing on the collection_control row for the whole admission). Same rules, other
+ * order: everything is read without the control row; a lane claims a free proxy with FOR UPDATE SKIP LOCKED (two lanes
+ * never take the same IP), writes its request and takes its locks, and only the last statement locks the control row:
+ * a conditional UPDATE, run under that lock, that takes the global slot when the collection is still running, outside
+ * the quiet window, the pace allows it and the requests in flight stay within the ceiling (the running requests with
+ * their lock held, committed or this lane's own: another lane's request counts once that lane is admitted).
+ * Anything unusual (a pause, a block, maintenance, a daily limit, a paused stream, the quiet window, a pending
+ * retry, a request without owner, the pool off) answers 'full': the full gate decides, as before.
+ */
+async function fastAdmission(q:DbSql,info:CollectionRequestInfo,endpoint:string,parameters:unknown,taskId:number|null):Promise<FastAdmission>{
+ const stream=JSON.stringify([info.stream]);
+ await q`begin`;
+ let transaction=true,requestId:number|null=null,proxyKey:number|null=null;
+ const undo=async()=>{
+  if(transaction){transaction=false;await q`rollback`.catch(()=>{});}
+  // Session locks outlive the rollback.
+  if(requestId!==null){await q`select pg_advisory_unlock(729119,${requestId}::int)`.catch(()=>{});requestId=null;}
+  if(proxyKey!==null){await q`select pg_advisory_unlock(729120,${proxyKey}::int)`.catch(()=>{});proxyKey=null;}
+ };
+ try{
+  // The state, read without locking the control row; reservations left by finished jobs are released as before.
+  const [state]=await q`with released as (update app.collection_proxies p set reserved_job=null where reserved_job is not null
+     and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running') returning 1)
+   select c.paused,c.maintenance,c.blocked_reason,c.daily_limit,c.paused_streams @> ${stream}::jsonb stream_paused,
+    ${q.unsafe(QUIET('clock_timestamp()'))} quiet,greatest(0,extract(epoch from(c.next_allowed_at-clock_timestamp()))*1000) wait_ms,
+    p.enabled pool,p.max_in_flight,p.requests_per_minute,p.min_seconds,p.max_seconds
+   from app.collection_control c cross join app.collection_proxy_control p where c.id=1 and p.id=1`;
+  if(!state||state.paused||state.maintenance||state.blocked_reason||state.daily_limit!==null||state.stream_paused||state.quiet||!state.pool){await undo();return {kind:'full'};}
+  const [retry]=await q`select x.task_id from app.collection_retries x join app.collection_requests r on r.id=x.last_request_id where x.status='pending' and (r.proxy_id is null or x.task_id=${taskId}) limit 1`;
+  if(retry){await undo();return {kind:'full'};}
+  const [held]=await q`with held as materialized (select objid from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted)
+   select (select r.id from app.collection_requests r where outcome='running' and not exists(select 1 from held h where h.objid=r.id::oid) limit 1) id,
+    (select count(*)::int from app.collection_requests r where r.outcome='running' and exists(select 1 from held h where h.objid=r.id::oid)) n`;
+  if(held?.id!=null){await undo();return {kind:'full'};}
+  // The full gate's order: a request without owner stops everything before any pacing wait.
+  if(Number(held?.n??0)>=Number(state.max_in_flight)||Number(state.wait_ms)>0){await undo();return {kind:'wait',delay:Math.max(Number(held?.n??0)>=Number(state.max_in_flight)?1000:0,Number(state.wait_ms))};}
+  const pool=await loadSeapProxies();
+  if(!pool.length){await undo();return {kind:'full'};}
+  const [row]=await q`select p.id,p.server from app.collection_proxies p where p.configured and p.enabled
+    and (p.next_allowed_at is null or p.next_allowed_at<=clock_timestamp()) and p.reserved_job is null
+    and not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729120::oid and l.objid=substring(p.id from 7)::int::oid and l.objsubid=2 and l.granted)
+   order by p.next_allowed_at nulls first,p.id limit 1 for update of p skip locked`;
+  if(!row){
+   const [next]=await q`select count(*) filter(where next_allowed_at is null or next_allowed_at<=clock_timestamp())::int ready,
+     greatest(0,extract(epoch from(min(next_allowed_at)-clock_timestamp()))*1000) ms from app.collection_proxies where configured and enabled and reserved_job is null`;
+   // Ready IPs another lane is claiming at this instant (or holding for a request): try again shortly.
+   await undo();return {kind:'wait',delay:Number(next?.ready??0)>0?25:Math.max(50,Number(next?.ms??1000))};
+  }
+  const proxy=pool.find(p=>p.id===row.id&&p.server===row.server);
+  if(!proxy){await undo();return {kind:'full'};}
+  const key=Number(proxy.id.slice(6));
+  const jitter=Math.floor(Number(state.min_seconds)+Math.random()*(Number(state.max_seconds)-Number(state.min_seconds)+1));
+  const [request]=await q`with r as (insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id,started_at) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${proxy.id},clock_timestamp()) returning id)
+   select id,pg_advisory_lock(729119,id::int) request_lock,pg_try_advisory_lock(729120,${key}::int) proxy_lock from r`;
+  requestId=Number(request!.id);
+  if(request!.proxy_lock!==true){await undo();return {kind:'wait',delay:20};}
+  proxyKey=key;
+  await q`update app.collection_proxies set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second' where id=${proxy.id}`;
+  // The control row last, and only for the slot: lock it, then (a statement with a snapshot taken under the lock, so
+  // every lane admitted before is committed and seen) take the global slot when the collection still runs, outside
+  // the quiet window, the pace allows it and the requests in flight, this one included, fit.
+  await q`select 1 from app.collection_control where id=1 for update`;
+  const [slot]=await q`with held as materialized (select objid from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted)
+   update app.collection_control c set next_allowed_at=clock_timestamp()+${60/Number(state.requests_per_minute)}*interval '1 second'
+   where c.id=1 and not c.paused and not c.maintenance and c.blocked_reason is null and c.daily_limit is null and not (c.paused_streams @> ${stream}::jsonb)
+    and (c.next_allowed_at is null or c.next_allowed_at<=clock_timestamp()) and not ${q.unsafe(QUIET('clock_timestamp()'))}
+    and (select count(*) from app.collection_requests r where r.outcome='running' and exists(select 1 from held h where h.objid=r.id::oid))<=${Number(state.max_in_flight)}
+   returning 1 admitted`;
+  if(!slot){
+   const [next]=await q`select greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000) ms from app.collection_control where id=1`;
+   await undo();return {kind:'wait',delay:Math.max(5,Number(next?.ms??25))};
+  }
+  await q`commit`;transaction=false;
+  const admitted={kind:'admitted' as const,id:requestId,proxy};
+  requestId=null;proxyKey=null;
+  return admitted;
+ }catch(error){await undo();throw error;}
+}
 /** Caller supplies a RESERVED physical DB session. Shared drain lock and exclusive request/IP locks span the full response body.
  * No lease expiry can admit a second live request. A broken session aborts transport;
  * an unfinished ledger entry stops future traffic until manually acknowledged. */
@@ -66,8 +154,13 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
    await collectionHeartbeat(q,info.worker,info.stream==='documents'?'documents':'ingestion','waiting');
    const [lock]=await q`select pg_try_advisory_lock_shared(${COLLECTION_LOCK[0]},${COLLECTION_LOCK[1]}) acquired,pg_backend_pid() pid`;
    if(!lock?.acquired){await sleep(2000,undefined,{signal:parentSignal});continue;}locked=true;
+   let delay=0;
+   const fast=FAST_STREAMS.has(info.stream)&&!info.documentJobId&&!info.fileDownload&&!info.proxyId?await fastAdmission(q,info,endpoint,parameters,taskId):{kind:'full' as const};
+   if(fast.kind==='admitted'){id=fast.id;selectedProxy=fast.proxy;requestLocked=true;proxyLocked=true;}
+   else if(fast.kind==='wait')delay=fast.delay;
+   else{
    await q`begin`;
-   let delay=0,transaction=true;
+   let transaction=true;
    try{
     // Stable result shape across additive migrations while an old worker drains.
     const [c]=await q`select paused,maintenance,collection_during_maintenance,paused_streams,blocked_reason,daily_limit,min_seconds,max_seconds,
@@ -134,6 +227,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     }
     await q`commit`;transaction=false;
    }catch(e){if(transaction)await q`rollback`.catch(()=>{});throw e;}
+   }
    if(id!==undefined){
     const pid=lock.pid;
     // Protect against postgres.js reconnecting onto a session without our lock.
