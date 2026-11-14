@@ -63,14 +63,61 @@ export async function latestOnrcDataset(timeoutMs = 60_000): Promise<OnrcDataset
   return { name: best.pkg.name, snapshot: best.snapshot, firmsUrl: url(FIRMS_FILE), repsUrl: url(REPS_FILE) };
 }
 
-/** Streams a file to `dest` (through `dest.part`); an existing `dest` is kept (the operator's cache). */
-export async function downloadFile(url: string, dest: string, timeoutMs = 30 * 60_000): Promise<void> {
+export interface DownloadOptions {
+  /** The whole download, every attempt and wait included. */
+  timeoutMs?: number;
+  attempts?: number;
+  /** The wait before attempt `n + 1`, after `n` failed. */
+  backoffMs?: (failed: number) => number;
+  log?: (message: string) => void;
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/** An answer that another attempt will not change (a missing or refused file). */
+class PermanentDownloadError extends Error {}
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Streams a file to `dest` (through `dest.part`); an existing `dest` is kept (the operator's cache).
+ *
+ * data.gov.ro sometimes closes a download midway (14 November 2026, 05:30: "other side closed" ~40 s into the run's
+ * download; the same file came whole in 43 s minutes later), so a failed attempt starts over after a pause, up to
+ * `attempts`, inside one deadline: the run waits at most as long as before the retries. It starts over from the first
+ * byte: the portal answers a Range request with the whole file. A 4xx other than 408/429 is not retried, and a body
+ * shorter than its Content-Length is a failed attempt, never a file.
+ */
+export async function downloadFile(url: string, dest: string, options: DownloadOptions = {}): Promise<void> {
   if (existsSync(dest)) return;
-  const response = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
-  if (!response.ok || !response.body) throw new Error(`download ${url}: HTTP ${response.status}`);
+  const { timeoutMs = 30 * 60_000, attempts = 4, backoffMs = (failed: number) => 30_000 * 2 ** (failed - 1), log = () => {}, sleep = wait } = options;
+  const deadline = Date.now() + timeoutMs;
   const part = `${dest}.part`;
-  await pipeline(Readable.fromWeb(response.body as never), createWriteStream(part));
-  await rename(part, dest);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await rm(part, { force: true });
+      const response = await fetch(url, { signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())) });
+      if (!response.ok || !response.body) {
+        const message = `download ${url}: HTTP ${response.status}`;
+        throw response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429
+          ? new PermanentDownloadError(message) : new Error(message);
+      }
+      const expected = Number(response.headers.get("content-length") ?? NaN);
+      const out = createWriteStream(part);
+      await pipeline(Readable.fromWeb(response.body as never), out);
+      if (Number.isFinite(expected) && out.bytesWritten !== expected)
+        throw new Error(`download ${url}: ${out.bytesWritten} of ${expected} bytes`);
+      await rename(part, dest);
+      return;
+    } catch (error) {
+      const pause = backoffMs(attempt);
+      if (error instanceof PermanentDownloadError || attempt >= attempts || Date.now() + pause >= deadline) {
+        await rm(part, { force: true });
+        throw error;
+      }
+      log(`ONRC: attempt ${attempt} of ${attempts} failed (${(error as Error).message}${(error as Error).cause ? `: ${((error as Error).cause as Error).message}` : ""}); again in ${Math.round(pause / 1000)} s`);
+      await sleep(pause);
+    }
+  }
 }
 
 const nn = (s: string | undefined): string | null => {
@@ -302,6 +349,20 @@ export async function importOnrcSnapshot(connection: DbSql, input: { snapshot: s
   }) as Promise<OnrcImportReport>;
 }
 
+/** The portal's answer about the newest snapshot, asked up to three times (30 s, then 60 s apart). */
+export async function latestWithRetries(log: (message: string) => void = () => {}, attempts = 3, sleep = wait,
+  latest: () => Promise<OnrcDataset> = latestOnrcDataset): Promise<OnrcDataset> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await latest();
+    } catch (error) {
+      if (attempt >= attempts) throw error;
+      log(`ONRC: the dataset lookup failed (attempt ${attempt} of ${attempts}: ${(error as Error).message}); again in ${30 * attempt} s`);
+      await sleep(30_000 * attempt);
+    }
+  }
+}
+
 /** The snapshot day of the register in the database; null when there is none. */
 export async function currentOnrcSnapshot(sql: DbSql): Promise<string | null> {
   const [present] = await sql`select to_regclass('reference.onrc_firm') is not null onrc`;
@@ -327,14 +388,14 @@ export type OnrcRefresh =
 export async function refreshOnrcRegistry(sql: DbSql, options: { dir: string; keepFiles?: boolean; force?: boolean; log?: (message: string) => void },
   deps: OnrcRefreshDeps = {}): Promise<OnrcRefresh> {
   const log = options.log ?? (() => {});
-  const dataset = await (deps.latest ?? latestOnrcDataset)();
+  const dataset = await (deps.latest ?? (() => latestWithRetries(log)))();
   const previous = await currentOnrcSnapshot(sql);
   if (!options.force && previous !== null && previous >= dataset.snapshot) return { imported: false, previous, latest: dataset.snapshot, reason: "current" };
   mkdirSync(options.dir, { recursive: true });
   const firmsPath = join(options.dir, `${dataset.snapshot}-od_firme.csv`), repsPath = join(options.dir, `${dataset.snapshot}-od_reprezentanti_legali.csv`);
   try {
     log(`ONRC: ${dataset.name} (snapshot ${dataset.snapshot}; the register has ${previous ?? "none"}); downloading…`);
-    const download = deps.download ?? downloadFile;
+    const download = deps.download ?? ((url: string, dest: string) => downloadFile(url, dest, { log }));
     await download(dataset.firmsUrl, firmsPath);
     await download(dataset.repsUrl, repsPath);
     return { imported: true, previous, report: await importOnrcSnapshot(sql, { snapshot: dataset.snapshot, firmsPath, repsPath }, log) };
