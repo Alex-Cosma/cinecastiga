@@ -33,7 +33,8 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: { default: pageTitle(), template: `%s — ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
-  icons: { icon: "/icon.svg" },
+  // The icons are the file conventions next to this layout (owner, 14 November 2026: variant A, the ivory question
+  // mark on the forest green with the orange dot): icon.svg, favicon.ico (16/32/48) and apple-icon.png (180, full square).
 };
 
 // Stamp the saved theme before first paint so there is no flash; "system"

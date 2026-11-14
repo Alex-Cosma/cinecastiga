@@ -37,4 +37,4 @@ export async function proxy(request:NextRequest){
  return new NextResponse(`<!doctype html><html lang="ro"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Actualizăm datele · cinecâștigă?</title><style>body{margin:0;background:#f7f8f2;color:#243a30;font:17px/1.7 system-ui,sans-serif}main{max-width:620px;margin:16vh auto;padding:28px}h1{font-size:36px;line-height:1.2;letter-spacing:-.025em}a{color:#204c3c;text-underline-offset:4px}small{color:#3f5043}</style><main><b>cinecâștigă?</b><h1>Actualizăm datele.</h1><p>Revino puțin mai târziu.</p><small><a href="/admin">Acces administrator</a></small></main></html>`,{status:503,headers:{...headers,'Content-Type':'text/html; charset=utf-8'}});
 }
 // The map's outlines under /geo are static files with no data of the archive: they skip the gate.
-export const config={matcher:['/((?!_next/static|_next/image|favicon.ico|icon.svg|pdfjs/|fonts/|geo/).*)']};
+export const config={matcher:['/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|pdfjs/|fonts/|geo/).*)']};
