@@ -70,10 +70,10 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   expect(old).toMatchObject({configured:false,enabled:false,attempts:1});expect(state.retiredPerMinute).toBe(.1);
   const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:35,maxSeconds:45,requestsPerMinute:50,maxInFlight:10,activeIds:['proxy-2','proxy-3']};
   await expect(changeCollection(actor,{...body,activeIds:['proxy-1']},q)).rejects.toThrow('lista curentă');
-  await expect(changeCollection(actor,{...body,maxInFlight:31},q)).rejects.toThrow('1 și 30');
+  await expect(changeCollection(actor,{...body,maxInFlight:51},q)).rejects.toThrow('1 și 50');
   await changeCollection(actor,body,q);
   expect((await q`select * from app.collection_proxy_control`)[0]).toMatchObject({max_in_flight:10,requests_per_minute:50});
-  await q`update app.collection_proxy_control set max_in_flight=30`;await expect(q`update app.collection_proxy_control set max_in_flight=31`).rejects.toThrow();await q`update app.collection_proxy_control set max_in_flight=10`;
+  await q`update app.collection_proxy_control set max_in_flight=50`;await expect(q`update app.collection_proxy_control set max_in_flight=51`).rejects.toThrow();await q`update app.collection_proxy_control set max_in_flight=10`;
   await q`update app.collection_control set paused=false,next_allowed_at=null`;
   expect(await request()).toBe('proxy-2');
   const [timing]=await q`select extract(epoch from(c.next_allowed_at-r.started_at)) global_wait,extract(epoch from(p.next_allowed_at-r.started_at)) ip_wait from app.collection_requests r cross join app.collection_control c join app.collection_proxies p on p.id=r.proxy_id order by r.id desc limit 1`;
