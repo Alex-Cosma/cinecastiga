@@ -12,9 +12,10 @@ export class SeapProxyConfigurationError extends Error {
 }
 const invalid=()=>new SeapProxyConfigurationError();
 
-/** The largest pool file: 600 endpoints (owner, 11 November 2026: a list of 500 beside the first 100). The relay
- * (scripts/proxies/relay.mjs) holds the same two limits; ids stay proxy-1…proxy-999, one relay port each. */
-export const SEAP_PROXY_MAX=600,SEAP_PROXY_FILE_BYTES=512*1024;
+/** The largest pool file: 1,200 endpoints (owner, 11 November 2026: a list of 500 beside the first 100; 14 November:
+ * a list of 1,000). The relay (scripts/proxies/relay.mjs) holds the same limits; ids go from proxy-1 to proxy-9999
+ * (an id is never given to another address, so new ones climb past 999), one relay port each (18000 + id). */
+export const SEAP_PROXY_MAX=1200,SEAP_PROXY_FILE_BYTES=512*1024;
 
 /** Only fixed IP endpoints, never a rotating gateway: one browser = one egress. */
 export function parseSeapProxies(text:string):SeapProxy[]{
@@ -27,7 +28,7 @@ export function parseSeapProxies(text:string):SeapProxy[]{
    if(!item||typeof item!=='object'||Array.isArray(item))throw invalid();
    const p=item as Record<string,unknown>;
    if(Object.keys(p).some(k=>!['id','server','username','password'].includes(k)))throw invalid();
-   if(typeof p.id!=='string'||!/^proxy-[1-9]\d{0,2}$/.test(p.id)||ids.has(p.id))throw invalid();
+   if(typeof p.id!=='string'||!/^proxy-[1-9]\d{0,3}$/.test(p.id)||ids.has(p.id))throw invalid();
    ids.add(p.id);
    if(typeof p.server!=='string')throw invalid();
    const url=new URL(p.server);

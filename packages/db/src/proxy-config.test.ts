@@ -1,12 +1,17 @@
 import {describe,expect,it} from 'vitest';
 import {parseSeapProxies,SEAP_PROXY_MAX,SeapProxyConfigurationError} from './proxy-config.js';
-const pool=(n:number)=>JSON.stringify(Array.from({length:n},(_,i)=>({id:`proxy-${i+1}`,server:`http://198.51.${Math.floor(i/250)}.${i%250+1}:8080`,username:'user-fixture',password:'pass-fixture'})));
+const pool=(n:number,first=1)=>JSON.stringify(Array.from({length:n},(_,i)=>({id:`proxy-${i+first}`,server:`http://198.51.${Math.floor(i/250)}.${i%250+1}:8080`,username:'user-fixture',password:'pass-fixture'})));
 describe('proxy pool file',()=>{
- it('accepts a pool of 600 fixed endpoints and refuses a larger one',()=>{
-  expect(SEAP_PROXY_MAX).toBe(600);
-  const parsed=parseSeapProxies(pool(600));
-  expect(parsed).toHaveLength(600);expect(parsed[599]).toMatchObject({id:'proxy-600',server:'http://198.51.2.100:8080'});
-  expect(()=>parseSeapProxies(pool(601))).toThrow(SeapProxyConfigurationError);
+ it('accepts a pool of 1,200 fixed endpoints and refuses a larger one',()=>{
+  expect(SEAP_PROXY_MAX).toBe(1200);
+  const parsed=parseSeapProxies(pool(1200));
+  expect(parsed).toHaveLength(1200);expect(parsed[1199]).toMatchObject({id:'proxy-1200',server:'http://198.51.4.200:8080'});
+  expect(()=>parseSeapProxies(pool(1201))).toThrow(SeapProxyConfigurationError);
+ });
+ it('accepts ids up to proxy-9999 (new addresses climb past 999) and nothing longer',()=>{
+  expect(parseSeapProxies(pool(1,9999))[0]).toMatchObject({id:'proxy-9999'});
+  expect(()=>parseSeapProxies(pool(1,10000))).toThrow(SeapProxyConfigurationError);
+  expect(()=>parseSeapProxies(pool(1,0))).toThrow(SeapProxyConfigurationError);
  });
  it('refuses a repeated address or id, and never echoes the file in the error',()=>{
   const two=JSON.parse(pool(2));two[1].server=two[0].server;

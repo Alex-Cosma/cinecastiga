@@ -34,7 +34,7 @@ export async function proxyAdmission(q:DbSql,pinnedId?:string,jobId?:string,allo
  const rows=await q`select *,greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000) delay_ms
    from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null})
    and (reserved_job is null or reserved_job=${jobId??null})
-   and (${allowBusy} or not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729120::oid and l.objid=substring(id from 7)::int::oid and l.objsubid=2 and l.granted)) order by next_allowed_at nulls first,id`;
+   and (${allowBusy} or not exists(select 1 from pg_locks l where l.database=(select oid from pg_database where datname=current_database()) and l.locktype='advisory' and l.classid=729120::oid and l.objid=substring(id from 7)::int::oid and l.objsubid=2 and l.granted)) order by next_allowed_at nulls first,id limit 1`;
  const row=rows[0];
  if(!row){
   const [enabled]=await q`select id from app.collection_proxies where configured and enabled and (${pinnedId??null}::text is null or id=${pinnedId??null}) limit 1`;
