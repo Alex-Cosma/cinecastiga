@@ -119,7 +119,7 @@ Sources: [approved.css](apps/web/app/approved.css), [globals.css](apps/web/app/g
 
 ## Colors
 
-The palette uses one primary forest accent and neutral paper/surface layers. Orange is an incumbent identity/detail accent, not a second monitoring action color. Risk text and amber cautions convey exceptional conditions together with explicit wording.
+The palette uses one primary forest accent and neutral paper/surface layers. Orange is an incumbent identity/detail accent, not a second monitoring action color. The favicon (owner, 14 November 2026, variant A of six) carries the identity in the browser tab: an ivory (`on-accent`) question mark on the forest `accent` square, its dot in `dark-orange` so it reads on the green, as the orange "?" of the wordmark does on paper (`apps/web/app/icon.svg`; `favicon.ico` at 16/32/48 and the 180 px `apple-icon.png`, a full square that iOS rounds, are drawn from it). Risk text and amber cautions convey exceptional conditions together with explicit wording.
 
 Paper supplies the page ground; surface supplies form and control backgrounds; sunk separates scope summaries and preserved evidence. Ink and ink-secondary handle reading text, while muted is reserved for supporting labels and dates. Line and line-strong separate sections and controls. Accent-soft supports quiet state and after-version surfaces without overpowering source content.
 
