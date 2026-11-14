@@ -12,7 +12,7 @@ import {
   loadUnitMap,
   type NormalizeCtx,
 } from "./context.js";
-import { PARSERS } from "./parsers.js";
+import { PARSERS, loadDaDetailBatch } from "./parsers.js";
 import { applyReviewedEntityNames, applyReviewedTownHallNames } from "./reviewed-entity-names.js";
 import { applyNutsCounties } from "./nuts-county.js";
 import { applyRegistryCounties } from "./registry-county.js";
@@ -179,6 +179,27 @@ export async function runNormalize(
         .orderBy(asc(rawDocuments.id))
         .limit(BATCH);
       if (rows.length === 0) break;
+
+      // Direct-award details in one transaction per batch, cursor included (14 November 2026). A batch that is not
+      // the simple case (a document that does not parse, the same acquisition or line twice, a quarantined document
+      // retried) or that fails goes document by document below, exactly as before.
+      if (transform === "da-detail:v1" && !rows.some((row) => pendingIds.has(String(row.id)))) {
+        const last = rows[rows.length - 1]!.id;
+        try {
+          const loaded = await db.transaction(async (tx) => {
+            if (!(await loadDaDetailBatch({ tx, cpvCatalog, cpvByPrefix, units }, rows))) return false;
+            await setCursor(tx as unknown as Db, transform, last);
+            return true;
+          });
+          if (loaded) {
+            processed += rows.length;
+            cursor = last;
+            continue;
+          }
+        } catch (err) {
+          log(`${transform}: batch ${rows[0]!.id}-${last} goes one by one (${errMessage(err)})`);
+        }
+      }
 
       for (const row of rows) {
         const ctx: NormalizeCtx = { tx: db, cpvCatalog, cpvByPrefix, units };
