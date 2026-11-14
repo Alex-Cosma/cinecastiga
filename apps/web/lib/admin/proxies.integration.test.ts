@@ -147,6 +147,25 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
    expect(intercepted).toBe(true);
   }finally{await finisher`rollback`;finisher.release();checker.release();}
  });
+ it('fast admission: racing lanes never share an IP and stay within the requests in flight',async()=>{
+  // Owner, 14 November 2026: the fast admission claims a proxy with SKIP LOCKED and the global slot last.
+  await q`update app.collection_proxy_control set max_in_flight=2,requests_per_minute=2500 where id=1`;
+  const holds:(()=>void)[]=[];let started=0;
+  const work=vi.fn(async(_signal:AbortSignal,p:any)=>{started++;await new Promise<void>(r=>holds.push(r));return {value:p?.id,status:200};});
+  const runs=[0,1,2,3].map(()=>request(work,{},AbortSignal.timeout(1500)).catch(e=>e));
+  await new Promise(r=>setTimeout(r,800));
+  expect(started).toBe(2);
+  const running=await q`select proxy_id from app.collection_requests where outcome='running'`;
+  expect(running).toHaveLength(2);expect(new Set(running.map(r=>r.proxy_id)).size).toBe(2);
+  holds.forEach(r=>r());
+  await new Promise(r=>setTimeout(r,500));holds.forEach(r=>r());
+  const results=await Promise.all(runs);
+  const ids=results.filter(r=>typeof r==='string');
+  // three IPs, each once (50-70 s per IP): the fourth lane waits until its signal ends, without a request
+  expect(new Set(ids).size).toBe(ids.length);expect(ids.length).toBe(3);
+  expect(await q`select * from app.collection_requests`).toHaveLength(3);
+  expect((await q`select count(*)::int n from pg_locks where locktype='advisory' and classid in (729119,729120) and granted`)[0]!.n).toBe(0);
+ });
  it('recognizes a real orphan while another request legitimately owns a live slot',async()=>{
   await q`update app.collection_proxy_control set max_in_flight=2`;
   let release!:()=>void,started!:()=>void;const held=new Promise<void>(r=>release=r),ready=new Promise<void>(r=>started=r);
