@@ -9,11 +9,11 @@ try{
  // Same limits as parseSeapProxies (packages/db/src/proxy-config.ts).
  if(Buffer.byteLength(source)>512*1024)throw Error();
  pool=JSON.parse(source);
- if(!Array.isArray(pool)||!pool.length||pool.length>600)throw Error();
+ if(!Array.isArray(pool)||!pool.length||pool.length>1200)throw Error();
  const ids=new Set(),ips=new Set();
  for(const p of pool){
   const u=new URL(p.server);
-  if(!/^proxy-[1-9]\d{0,2}$/.test(p.id)||ids.has(p.id)||u.protocol!=='http:'||!isIP(u.hostname)||ips.has(u.hostname)||u.username||u.password||u.pathname!=='/'||u.search||u.hash)throw Error();
+  if(!/^proxy-[1-9]\d{0,3}$/.test(p.id)||ids.has(p.id)||u.protocol!=='http:'||!isIP(u.hostname)||ips.has(u.hostname)||u.username||u.password||u.pathname!=='/'||u.search||u.hash)throw Error();
   ids.add(p.id);ips.add(u.hostname);
  }
 }catch{throw Error('Invalid fixed proxy configuration');}

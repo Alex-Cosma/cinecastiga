@@ -31,7 +31,7 @@ export async function changeProxySettings(q:DbSql,body:Record<string,unknown>){
  if(!Number.isInteger(maxInFlight)||Number(maxInFlight)<1||Number(maxInFlight)>SEAP_MAX_IN_FLIGHT)throw Error(`Limita trebuie să fie între 1 și ${SEAP_MAX_IN_FLIGHT} de cereri simultane.`);
  if(typeof enabled!=='boolean'||!Number.isInteger(minSeconds)||!Number.isInteger(maxSeconds)||Number(minSeconds)<1||Number(maxSeconds)>3600||Number(maxSeconds)<Number(minSeconds))throw Error('Intervalul proxy trebuie să fie între 1 și 3.600 de secunde.');
  if(!Number.isInteger(requestsPerMinute)||Number(requestsPerMinute)<1||Number(requestsPerMinute)>SEAP_MAX_REQUESTS_PER_MINUTE)throw Error(`Limita totală trebuie să fie între 1 și ${SEAP_MAX_REQUESTS_PER_MINUTE.toLocaleString('ro-RO')} de cereri pe minut.`);
- if(!Array.isArray(activeIds)||activeIds.some(id=>typeof id!=='string'||!/^proxy-[1-9]\d{0,2}$/.test(id))||new Set(activeIds).size!==activeIds.length||(enabled&&!activeIds.length))throw Error('Selectează cel puțin un proxy pentru activare.');
+ if(!Array.isArray(activeIds)||activeIds.some(id=>typeof id!=='string'||!/^proxy-[1-9]\d{0,3}$/.test(id))||new Set(activeIds).size!==activeIds.length||(enabled&&!activeIds.length))throw Error('Selectează cel puțin un proxy pentru activare.');
  if(!enabled&&process.env.SEAP_PROXY_REQUIRED==='true')throw Error('Selectează conexiunea prin proxy: conexiunea directă este blocată pe acest server.');
  const endpoints=await q`select id from app.collection_proxies where configured`;
  if(activeIds.some(id=>!endpoints.some(p=>p.id===id)))throw Error('Selectează numai proxy-uri înregistrate în lista curentă de pe server.');
