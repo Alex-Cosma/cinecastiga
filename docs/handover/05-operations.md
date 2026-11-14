@@ -741,6 +741,13 @@ Adăugat pe 16 octombrie 2026 și trecut în aceeași zi pe pachetul zilnic OJ S
 - Rularea întreagă a etapelor de marts (31 octombrie 2026, local, marts audit 2, `/dev/shm` 2 GB, load 3–5): `marts` 2,7 min, `transactions` 22,4 min (încărcarea 13,4 min, `da_split` 1,6 min, indexurile de build 1,7 min, rollup-urile 4,2 min, VACUUM 1,0 min), textul căutării 8,9 min (umplerea 2,0 min, GIN-ul 6,9 min); vârful de disc ~26,3 GB. Ce adaugă ramura: ~7,0 min în fereastra 503, 8,9 min după redeschidere.
 - Durata unei nopți viitoare depinde de volume și resurse; vezi `app.processing_runs`, nu extrapola un cron 05:00 în „gata la 05:01”.
 
+## Starea din administrare: pe pagini și cu părțile lente păstrate (14 noiembrie 2026)
+
+Proprietarul, 14 noiembrie 2026: taburile din `/admin` se încărcau în ~17 s, pentru că fiecare citea toată starea. Pe producție, prognoza recuperării (toate cele ~523.000 de sarcini obișnuite ale lotului) dura 10,7 s, totalurile pe flux din tot jurnalul 1,6 s, cererile de azi 1,6 s, arhiva de azi 0,8 s. Acum:
+
+- `GET /api/admin/collection?view=<pagină>` (`acum`, `trafic`, `conexiune`, `jurnal`, `procesare`, `fisiere`, `oameni`) întoarce baza (starea colectorului, ultimele 100 de cereri, worker-ii, programul, cifrele de azi, documentele) plus secțiunile paginii (`VIEW_SECTIONS` în `apps/web/lib/admin/collection.ts`). Fără `view`, toată starea, ca înainte. Pagina (`CollectionDashboard.tsx`) unește părțile; o pagină a cărei parte n-a venit arată scheletul, iar pagina deschisă se recitește la deschidere și la fiecare minut.
+- Părțile lente se păstrează în procesul web (`apps/web/lib/admin/status-cache.ts`, stale-while-revalidate, fiecare în propria tranzacție read-only de cel mult 120 s): cifrele de azi, arhiva de azi și progresul lotului 1 minut; totalurile pe flux, citirile prognozei (`recoveryInputs`) și descărcările istorice (`historicalInputs`) 5 minute. O valoare veche se servește imediat, iar o singură citire o înlocuiește în fundal; peste 6 TTL-uri, cititorul așteaptă una nouă. Prima citire după o repornire a web-ului așteaptă (~15 s pe producție). Ora prognozei (`calculatedAt`) e ora citirii. Doar pool-ul serverului folosește cache-ul; testele, cu baza lor, citesc mereu live.
+
 ## Inspecție read-only
 
 Într-o sesiune `psql` autentificată local pe server:
