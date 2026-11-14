@@ -9,6 +9,7 @@ import {
   contractWinners,
   daItems,
   directAcquisitions,
+  entitySicapIds,
   notices,
 } from "@seap/db";
 import type { NormalizeCtx } from "./context.js";
@@ -453,6 +454,127 @@ async function loadDaDetail(
       .values({ ...itemRow, sicapItemId: BigInt(it.directAcquisitionItemID) })
       .onConflictDoUpdate({ target: daItems.sicapItemId, set: itemRow });
   }
+}
+
+/** Rows per multi-row insert of lines: far below PostgreSQL's 65,535 parameters at 10 columns a row. */
+const DA_ITEM_CHUNK = 1000;
+
+/**
+ * Loads a batch of da-detail documents in the caller's transaction with one statement per table (owner, 14 November
+ * 2026: one document at a time took ~3.9 ms, 54 minutes a night for ~830,000 documents during the lines download).
+ * The same rows as loadDaDetail document by document: the headers' detail fields, the SICAP ids of the entities the
+ * list resolved (first one wins, as before) and the lines. Returns false, having written nothing, when the batch is
+ * not the simple case (a document that does not parse, or the same acquisition or line twice): the caller then loads
+ * it document by document, as before.
+ */
+export async function loadDaDetailBatch(
+  ctx: NormalizeCtx,
+  rows: { id: bigint; payload: unknown }[],
+): Promise<boolean> {
+  const parsed: { rawId: bigint; p: z.infer<typeof daDetailSchema> }[] = [];
+  for (const row of rows) {
+    const result = daDetailSchema.safeParse(row.payload);
+    if (!result.success) return false;
+    parsed.push({ rawId: row.id, p: result.data });
+  }
+  const daKeys = parsed.map(({ p }) => String(p.directAcquisitionID));
+  if (new Set(daKeys).size !== daKeys.length) return false;
+  const itemKeys = parsed.flatMap(({ p }) => (p.directAcquisitionItems ?? []).map((it) => String(it.directAcquisitionItemID)));
+  if (new Set(itemKeys).size !== itemKeys.length) return false;
+  if (!parsed.length) return true;
+
+  const headers = parsed.map(({ rawId, p }) => {
+    const cpv = resolveCpv(parseCpvObject(p.cpvCode), ctx.cpvCatalog);
+    return {
+      sicapDaId: BigInt(p.directAcquisitionID),
+      rawId,
+      daCode: p.uniqueIdentificationCode ?? null,
+      cpvCode: cpv.cpvCode,
+      cpvValid: cpv.cpvValid,
+      cpvRaw: cpv.cpvRaw,
+      estimatedValueRon: dec(p.estimatedValue),
+      closingValue: dec(p.closingValue),
+      acquisitionType: labelText(p.sysAcquisitionContractType),
+      publicationDate: toDate(p.publicationDate),
+      finalizationDate: toDate(p.finalizationDate),
+      state: labelText(p.sysDirectAcquisitionState),
+    };
+  });
+  // The detail's fields only, as loadDaDetail: never the authority or supplier (only the list resolves them).
+  const upserted = await ctx.tx
+    .insert(directAcquisitions)
+    .values(headers)
+    .onConflictDoUpdate({
+      target: directAcquisitions.sicapDaId,
+      set: {
+        rawId: sql`excluded.raw_id`,
+        daCode: sql`excluded.da_code`,
+        cpvCode: sql`excluded.cpv_code`,
+        cpvValid: sql`excluded.cpv_valid`,
+        cpvRaw: sql`excluded.cpv_raw`,
+        estimatedValueRon: sql`excluded.estimated_value_ron`,
+        closingValue: sql`excluded.closing_value`,
+        acquisitionType: sql`excluded.acquisition_type`,
+        publicationDate: sql`excluded.publication_date`,
+        finalizationDate: sql`excluded.finalization_date`,
+        state: sql`excluded.state`,
+      },
+    })
+    .returning({
+      id: directAcquisitions.id,
+      sicapDaId: directAcquisitions.sicapDaId,
+      authorityEntityId: directAcquisitions.authorityEntityId,
+      supplierEntityId: directAcquisitions.supplierEntityId,
+    });
+  const bySicap = new Map(upserted.map((da) => [String(da.sicapDaId), da]));
+
+  // Document order, authority before supplier: with ON CONFLICT DO NOTHING the first claim wins, as one by one.
+  const links: { entityId: bigint; namespace: string; sicapId: number }[] = [];
+  const items: (typeof daItems.$inferInsert)[] = [];
+  for (const { p } of parsed) {
+    const da = bySicap.get(String(p.directAcquisitionID))!;
+    if (p.contractingAuthorityID != null && da.authorityEntityId != null)
+      links.push({ entityId: da.authorityEntityId, namespace: "authority", sicapId: p.contractingAuthorityID });
+    if (p.supplierId != null && da.supplierEntityId != null)
+      links.push({ entityId: da.supplierEntityId, namespace: "supplier", sicapId: p.supplierId });
+    for (const it of p.directAcquisitionItems ?? []) {
+      const itemCpv = resolveCpv(parseCpvObject(it.cpvCode), ctx.cpvCatalog);
+      const unit = resolveUnit(it.itemMeasureUnit, ctx.units);
+      items.push({
+        sicapItemId: BigInt(it.directAcquisitionItemID),
+        daId: da.id,
+        cpvCode: itemCpv.cpvCode,
+        catalogItemName: it.catalogItemName ?? null,
+        quantity: dec(it.itemQuantity),
+        unitRaw: unit.unitRaw,
+        unitCanonical: unit.unitCanonical,
+        unitFactor: unit.unitFactor,
+        unitPrice: dec(it.catalogItemPrice),
+        closingPrice: dec(it.itemClosingPrice),
+      });
+    }
+  }
+  if (links.length) await ctx.tx.insert(entitySicapIds).values(links).onConflictDoNothing();
+  for (let i = 0; i < items.length; i += DA_ITEM_CHUNK) {
+    await ctx.tx
+      .insert(daItems)
+      .values(items.slice(i, i + DA_ITEM_CHUNK))
+      .onConflictDoUpdate({
+        target: daItems.sicapItemId,
+        set: {
+          daId: sql`excluded.da_id`,
+          cpvCode: sql`excluded.cpv_code`,
+          catalogItemName: sql`excluded.catalog_item_name`,
+          quantity: sql`excluded.quantity`,
+          unitRaw: sql`excluded.unit_raw`,
+          unitCanonical: sql`excluded.unit_canonical`,
+          unitFactor: sql`excluded.unit_factor`,
+          unitPrice: sql`excluded.unit_price`,
+          closingPrice: sql`excluded.closing_price`,
+        },
+      });
+  }
+  return true;
 }
 
 // ── registry ────────────────────────────────────────────────────────────────
