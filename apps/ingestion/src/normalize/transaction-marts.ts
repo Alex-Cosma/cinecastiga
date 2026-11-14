@@ -9,6 +9,13 @@ export async function buildTransactionMarts(q:TransactionSql){
     // ── da_transactions (per-DA investigative read model) ───────────────────
     // The covering twins are built after the load, not maintained row by row.
     await dropTransactionMartBuildIndexes(q);
+    // Every other secondary index too (14 November 2026: on the local copy the 20.3M-row insert took 617 s with ~10
+    // indexes kept row by row, while its SELECT reads everything in 24 s): each is rebuilt after the load and the
+    // da_split stamp from its own definition (pg_get_indexdef), so nothing changes but the time. The primary key stays.
+    const secondary=await q`select c.relname::text name,pg_get_indexdef(i.indexrelid) definition from pg_index i join pg_class c on c.oid=i.indexrelid
+      where i.indrelid=to_regclass('marts.da_transactions') and not i.indisprimary
+        and not exists(select 1 from pg_constraint k where k.conindid=i.indexrelid) order by c.relname`;
+    for(const index of secondary)await q.unsafe(`drop index marts.${String(index.name)}`);
     await q`truncate marts.da_transactions`;
     await q`
       insert into marts.da_transactions
@@ -58,6 +65,9 @@ export async function buildTransactionMarts(q:TransactionSql){
         and f.evidence->'source_ids' ? dt.sicap_da_id::text
         and not ('da_split' = any(coalesce(dt.da_flags, '{}')))
     `;
+    const rebuildStarted=Date.now();
+    for(const index of secondary)await q.unsafe(String(index.definition));
+    const rebuildIndexesMs=Date.now()-rebuildStarted;
     // Ask's county/CPV answers read these index-only; recreated here if lost.
     const createdIndexes=await ensureTransactionMartIndexes(q,'da_transactions');
     // Timed: the CPV twin (S5 PRE-trend) is a third sorted build of the 19.6M rows each night.
@@ -159,11 +169,11 @@ export async function buildTransactionMarts(q:TransactionSql){
     await q`refresh materialized view marts.signal_lookup`;
     await q`analyze marts.signal_lookup`;
     const [row]=await q`select count(*)::int n from marts.da_transactions`;
-    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,buildIndexesMs,rollups:rollups.rows,mapCountyMs,mapYearMs:rollups.mapYearMs,yearKeysMs:rollups.yearKeysMs,kindYearMs:rollups.kindYearMs,kindMonthMs:rollups.kindMonthMs,mapCpvRows,mapCpvMs};
+    return {daTransactions:Number(row!.n),createdIndexes,buildIndexes,buildIndexesMs,rebuildIndexes:secondary.length,rebuildIndexesMs,rollups:rollups.rows,mapCountyMs,mapYearMs:rollups.mapYearMs,yearKeysMs:rollups.yearKeysMs,kindYearMs:rollups.kindYearMs,kindMonthMs:rollups.kindMonthMs,mapCpvRows,mapCpvMs};
 }
 export async function runTransactionMarts(sql:DbSql,opts:{log?:(message:string)=>void}={}){
  const report=await sql.begin(q=>buildTransactionMarts(q));
- opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_months=${report.rollups.agg_months} agg_national_mix=${report.rollups.agg_national_mix} agg_map_year=${report.rollups.agg_map_year} agg_da_year_keys=${report.rollups.agg_da_year_keys} agg_entity_kind_year=${report.rollups.agg_entity_kind_year} agg_entity_kind_month=${report.rollups.agg_entity_kind_month} agg_pair_kind_year=${report.rollups.agg_pair_kind_year} agg_mix_employees=${report.rollups.agg_mix_employees} build indexes ${report.buildIndexesMs} ms, agg_map_county ${report.mapCountyMs} ms, agg_map_year ${report.mapYearMs} ms, agg_da_year_keys ${report.yearKeysMs} ms, agg_entity_kind_year ${report.kindYearMs} ms, agg_entity_kind_month + agg_pair_kind_year ${report.kindMonthMs} ms, agg_authority_cpv_year=${report.mapCpvRows} ${report.mapCpvMs} ms`);
+ opts.log?.(`transaction marts: da_transactions=${report.daTransactions} agg_entity_year=${report.rollups.agg_entity_year} agg_pair_year=${report.rollups.agg_pair_year} agg_cpv_year=${report.rollups.agg_cpv_year} agg_entity_month=${report.rollups.agg_entity_month} agg_county_month=${report.rollups.agg_county_month} agg_months=${report.rollups.agg_months} agg_national_mix=${report.rollups.agg_national_mix} agg_map_year=${report.rollups.agg_map_year} agg_da_year_keys=${report.rollups.agg_da_year_keys} agg_entity_kind_year=${report.rollups.agg_entity_kind_year} agg_entity_kind_month=${report.rollups.agg_entity_kind_month} agg_pair_kind_year=${report.rollups.agg_pair_kind_year} agg_mix_employees=${report.rollups.agg_mix_employees} build indexes ${report.buildIndexesMs} ms, rebuilt ${report.rebuildIndexes} indexes ${report.rebuildIndexesMs} ms, agg_map_county ${report.mapCountyMs} ms, agg_map_year ${report.mapYearMs} ms, agg_da_year_keys ${report.yearKeysMs} ms, agg_entity_kind_year ${report.kindYearMs} ms, agg_entity_kind_month + agg_pair_kind_year ${report.kindMonthMs} ms, agg_authority_cpv_year=${report.mapCpvRows} ${report.mapCpvMs} ms`);
  if(report.createdIndexes.length)opts.log?.(`transaction marts: recreated missing indexes ${report.createdIndexes.join(', ')}`);
  // After the commit (VACUUM cannot run in a transaction), before the site
  // reopens: the reload leaves no page all-visible, so until autovacuum (cost
