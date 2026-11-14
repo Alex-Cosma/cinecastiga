@@ -19,7 +19,7 @@ export const collectionControl = appSchema.table('collection_control', {
  backgroundLanes: integer('background_lanes').notNull().default(0),
  createdAt: timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
  updatedAt: timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[check('collection_singleton',sql`${t.id}=1`),check('collection_risk_weekday',sql`${t.riskWeekday} between 0 and 6`),check('collection_processing_activation',sql`not ${t.processingEnabled} or ${t.processingEnabledAt} is not null`),check('collection_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`),check('collection_daily_limit',sql`${t.dailyLimit} is null or ${t.dailyLimit}>0`),check('collection_processing_time',sql`${t.processingTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`),check('collection_background_lanes',sql`${t.backgroundLanes} between 0 and 30`)]);
+},t=>[check('collection_singleton',sql`${t.id}=1`),check('collection_risk_weekday',sql`${t.riskWeekday} between 0 and 6`),check('collection_processing_activation',sql`not ${t.processingEnabled} or ${t.processingEnabledAt} is not null`),check('collection_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`),check('collection_daily_limit',sql`${t.dailyLimit} is null or ${t.dailyLimit}>0`),check('collection_processing_time',sql`${t.processingTime} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`),check('collection_background_lanes',sql`${t.backgroundLanes} between 0 and 50`)]);
 export const collectionRequests = appSchema.table('collection_requests', {
  id: bigserial('id',{mode:'number'}).primaryKey(), stream: text('stream').notNull(), worker: text('worker').notNull(),
  method: text('method').notNull(), endpoint: text('endpoint').notNull(), parameters: jsonb('parameters').notNull().default({}),
@@ -89,7 +89,7 @@ export const collectionProxyControl = appSchema.table('collection_proxy_control'
  requestsPerMinute:integer('requests_per_minute').notNull().default(3),
  maxInFlight:integer('max_in_flight').notNull().default(1),
  minSeconds:integer('min_seconds').notNull().default(50), maxSeconds:integer('max_seconds').notNull().default(70),
-},t=>[check('proxy_control_singleton',sql`${t.id}=1`),check('proxy_concurrency_bounds',sql`${t.maxInFlight} between 1 and 30`),check('proxy_rate_bounds',sql`${t.requestsPerMinute} between 1 and 2500`),check('proxy_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`)]);
+},t=>[check('proxy_control_singleton',sql`${t.id}=1`),check('proxy_concurrency_bounds',sql`${t.maxInFlight} between 1 and 50`),check('proxy_rate_bounds',sql`${t.requestsPerMinute} between 1 and 2500`),check('proxy_delay_bounds',sql`${t.minSeconds} between 1 and 3600 and ${t.maxSeconds} between ${t.minSeconds} and 3600`)]);
 export const collectionProxies = appSchema.table('collection_proxies', {
  id:text('id').primaryKey(), server:text('server').notNull(), exitIp:text('exit_ip').notNull(),
  configured:boolean('configured').notNull().default(true), enabled:boolean('enabled').notNull().default(false), nextAllowedAt:timestamp('next_allowed_at',{withTimezone:true}),

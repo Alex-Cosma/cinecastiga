@@ -51,7 +51,7 @@ services:
       - -c
       - max_parallel_workers_per_gather=4
       - -c
-      - max_connections=100
+      - max_connections=150
       - -c
       - log_min_duration_statement=2000
       - -c
