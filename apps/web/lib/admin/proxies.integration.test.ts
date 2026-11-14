@@ -175,11 +175,11 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
   expect(await request()).toBe('proxy-2');
   const state=await proxyStatus(q);expect(JSON.stringify(state)).not.toContain('never-expose');expect(state.endpoints.find(p=>p.id==='proxy-1')!.attempts).toBe(1);
  });
- it.each([15,200,1000])('accepts a %s/minute ceiling across API, database and scheduler without weakening per-IP pacing',async rate=>{
+ it.each([15,200,1000,2500])('accepts a %s/minute ceiling across API, database and scheduler without weakening per-IP pacing',async rate=>{
   await q`update app.collection_control set paused=true`;
   const actor={id:'fixture-admin',name:'Admin'},body={action:'proxies',revision:1,enabled:true,minSeconds:40,maxSeconds:60,requestsPerMinute:rate,activeIds:['proxy-1','proxy-2']};
   await changeCollection(actor,body,q);
-  await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:1001},q)).rejects.toThrow('1 și 1.000');
+  await expect(changeCollection(actor,{...body,revision:2,requestsPerMinute:2501},q)).rejects.toThrow('1 și 2.500');
   await expect(q`update app.collection_proxy_control set requests_per_minute=1001`).rejects.toThrow();
   expect((await q`select requests_per_minute from app.collection_proxy_control`)[0]!.requests_per_minute).toBe(rate);
   expect(await q`select id from app.collection_audit`).toHaveLength(1);
