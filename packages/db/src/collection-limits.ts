@@ -15,6 +15,12 @@
  */
 export const SEAP_MAX_IN_FLIGHT=50;
 export const SEAP_MAX_REQUESTS_PER_MINUTE=2500;
+/** Through the proxy pool the total ceiling is a rate, not a fixed gap (14 November 2026): next_allowed_at is the
+ * theoretical time of the next request (a GCRA), a request is admitted while it is at most this far ahead, and each
+ * admission moves it by 60/ceiling seconds from itself or now, whichever is later. On average never more than the
+ * ceiling; in any minute at most the ceiling plus the burst (at 2,500/minute, 0.5 s = ~21 requests). A fixed gap of 24 ms
+ * blocked 71% of arrivals and kept the pace at ~1,850 a minute. Direct mode keeps its fixed pause. */
+export const SEAP_PACE_BURST_SECONDS=0.5;
 /** A proxied 403 stops only that IP. Several IPs that were working refused within this window point at our traffic,
  * and the same address refused on several IPs points at the request: both stop everything, as every 403 did before. */
 export const RESTRICTED_PROXY_LIMIT=5,RESTRICTED_PROXY_WINDOW_MINUTES=30,REFUSED_ENDPOINT_LIMIT=3;
