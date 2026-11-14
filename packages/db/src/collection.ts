@@ -7,6 +7,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import type { DbSql } from './client.js';
 import { collectionTaskId, scheduleCollectionTimeout } from './collection-retry.js';
 import { loadSeapProxies } from './proxy-config.js';
+import { SEAP_PACE_BURST_SECONDS } from './collection-limits.js';
 import { safeCollectionEndpoint, safeCollectionParameters, retryAfterSeconds, type CollectionStream } from './collection-policy.js';
 export const COLLECTION_LOCK=[729114,4] as const;
 const context=new AsyncLocalStorage<{stream:CollectionStream;context?:unknown}>();
@@ -84,7 +85,7 @@ async function fastAdmission(q:DbSql,info:CollectionRequestInfo,endpoint:string,
   const [state]=await q`with released as (update app.collection_proxies p set reserved_job=null where reserved_job is not null
      and not exists(select 1 from app.document_jobs j where j.id::text=p.reserved_job and j.status='running') returning 1)
    select c.paused,c.maintenance,c.blocked_reason,c.daily_limit,c.paused_streams @> ${stream}::jsonb stream_paused,
-    ${q.unsafe(QUIET('clock_timestamp()'))} quiet,greatest(0,extract(epoch from(c.next_allowed_at-clock_timestamp()))*1000) wait_ms,
+    ${q.unsafe(QUIET('clock_timestamp()'))} quiet,greatest(0,extract(epoch from(c.next_allowed_at-clock_timestamp()))*1000-${SEAP_PACE_BURST_SECONDS*1000}) wait_ms,
     p.enabled pool,p.max_in_flight,p.requests_per_minute,p.min_seconds,p.max_seconds
    from app.collection_control c cross join app.collection_proxy_control p where c.id=1 and p.id=1`;
   if(!state||state.paused||state.maintenance||state.blocked_reason||state.daily_limit!==null||state.stream_paused||state.quiet||!state.pool){await undo();return {kind:'full'};}
@@ -123,13 +124,13 @@ async function fastAdmission(q:DbSql,info:CollectionRequestInfo,endpoint:string,
   // the quiet window, the pace allows it and the requests in flight, this one included, fit.
   await q`select 1 from app.collection_control where id=1 for update`;
   const [slot]=await q`with held as materialized (select objid from pg_locks where database=(select oid from pg_database where datname=current_database()) and locktype='advisory' and classid=729119::oid and objsubid=2 and granted)
-   update app.collection_control c set next_allowed_at=clock_timestamp()+${60/Number(state.requests_per_minute)}*interval '1 second'
+   update app.collection_control c set next_allowed_at=greatest(coalesce(c.next_allowed_at,clock_timestamp()),clock_timestamp())+${60/Number(state.requests_per_minute)}*interval '1 second'
    where c.id=1 and not c.paused and not c.maintenance and c.blocked_reason is null and c.daily_limit is null and not (c.paused_streams @> ${stream}::jsonb)
-    and (c.next_allowed_at is null or c.next_allowed_at<=clock_timestamp()) and not ${q.unsafe(QUIET('clock_timestamp()'))}
+    and (c.next_allowed_at is null or c.next_allowed_at<=clock_timestamp()+${SEAP_PACE_BURST_SECONDS}*interval '1 second') and not ${q.unsafe(QUIET('clock_timestamp()'))}
     and (select count(*) from app.collection_requests r where r.outcome='running' and exists(select 1 from held h where h.objid=r.id::oid))<=${Number(state.max_in_flight)}
    returning 1 admitted`;
   if(!slot){
-   const [next]=await q`select greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000) ms from app.collection_control where id=1`;
+   const [next]=await q`select greatest(0,extract(epoch from(next_allowed_at-clock_timestamp()))*1000-${SEAP_PACE_BURST_SECONDS*1000}) ms from app.collection_control where id=1`;
    await undo();return {kind:'wait',delay:Math.max(5,Number(next?.ms??25))};
   }
   await q`commit`;transaction=false;
@@ -207,7 +208,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
     if((documentBatch||automatic?.automatic)&&!admission)throw new CollectionSuspendedError('Lotul de documente necesită poolul proxy activ.');
     const concurrency=admission?Number(admission.settings.max_in_flight):1;
     // Files people request: a minute apart only in direct mode; through the proxy pool they keep its pace (owner, 3 Nov 2026).
-    delay=Math.max(inFlight>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms),info.fileDownload&&!documentBatch&&!automatic?.automatic&&!admission?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
+    delay=Math.max(inFlight>=concurrency?1000:0,admission?.delay??0,Number(c.next_ms??0)-Number(c.now_ms)-(admission?SEAP_PACE_BURST_SECONDS*1000:0),info.fileDownload&&!documentBatch&&!automatic?.automatic&&!admission?Number(c.file_ms??0)+60000-Number(c.now_ms):0);
     if(delay<=0){
      // Recheck after taking the control-row lock and on every rate-limit retry.
      // Suspension precedes the ledger: no HTTP attempt, error or manual-pause mutation.
@@ -222,7 +223,7 @@ export async function runCollectionRequest<T>(q:DbSql,info:CollectionRequestInfo
      const [request]=await q`with r as (insert into app.collection_requests(stream,worker,method,endpoint,parameters,proxy_id,started_at) values(${info.stream},${info.worker},${info.method},${endpoint},${JSON.stringify(parameters)}::jsonb,${selectedProxy?.id??null},clock_timestamp()) returning id)
       select id,pg_advisory_lock(729119,id::int) request_lock,case when ${proxyKey}::int is not null then pg_advisory_lock(729120,${proxyKey}::int) end proxy_lock from r`;
      id=Number(request!.id);requestLocked=true;if(selectedProxy)proxyLocked=true;
-     await q`with control as (update app.collection_control set next_allowed_at=clock_timestamp()+${globalDelay}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1 returning 1)
+     await q`with control as (update app.collection_control set next_allowed_at=(case when ${!!admission} then greatest(coalesce(next_allowed_at,clock_timestamp()),clock_timestamp()) else clock_timestamp() end)+${globalDelay}*interval '1 second',last_file_at=case when ${!!info.fileDownload} then clock_timestamp() else last_file_at end where id=1 returning 1)
       update app.collection_proxies set next_allowed_at=clock_timestamp()+${jitter}*interval '1 second' where id=${selectedProxy?.id??null}::text`;
     }
     await q`commit`;transaction=false;

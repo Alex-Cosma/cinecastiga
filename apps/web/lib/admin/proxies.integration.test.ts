@@ -91,7 +91,8 @@ describe.skipIf(!connection)('shared proxy scheduling (PostgreSQL, NO network)',
    await secondReady;
    const running=await q`select proxy_id,started_at from app.collection_requests where outcome='running' order by started_at`;
    expect(running).toHaveLength(2);expect(new Set(running.map(r=>r.proxy_id)).size).toBe(2);
-   expect(new Date(running[1]!.started_at).getTime()-new Date(running[0]!.started_at).getTime()).toBeGreaterThanOrEqual(3900);
+   // 15/minute = 4 s apart on average; a request may start up to SEAP_PACE_BURST_SECONDS (0.5 s) early (14 November 2026).
+   expect(new Date(running[1]!.started_at).getTime()-new Date(running[0]!.started_at).getTime()).toBeGreaterThanOrEqual(3400);
    await q`update app.collection_control set next_allowed_at=null`;
    await q`update app.collection_proxies set next_allowed_at=null`;
    const never=vi.fn(async()=>({value:'unexpected',status:200}));
