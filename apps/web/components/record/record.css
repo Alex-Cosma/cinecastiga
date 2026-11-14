@@ -124,9 +124,4 @@
   .record-items td[data-label]::before { content: attr(data-label) " "; color: var(--muted); font-size: 13px; }
 }
 
-/* A (?) explanation opens under the line that holds it, left-aligned and never wider than it, so a 390 px page never
-   scrolls sideways (the rule of the old contract page, for every block of the template). */
 .record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status, .record-meta, .record-sources > p) { position: relative; }
-.record :is(.record-title, .record-value, .record-facts dt, .record-facts dd, .record-party-line, .record-lead, .record-status, .record-meta, .record-sources > p) .term-tip > .term-def {
-  top: calc(100% + 6px); bottom: auto; left: 0; right: auto; width: max-content; max-width: min(46ch, 100%);
-}

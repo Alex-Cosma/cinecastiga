@@ -5,17 +5,11 @@
 @media(max-width:1000px){.rv-split{grid-template-columns:minmax(0,1fr) 270px}.rv-selection{padding:20px}.rv-period label{min-width:120px}}
 @media(max-width:760px){.radiografie-view h1{font-size:34px}.radiografie-view h2{font-size:24px}.rv-header{display:block}.rv-header .rv-authority{font-size:17px}.rv-context{gap:12px 18px;font-size:12px}.rv-context>span:last-child{margin-left:0}.rv-tabs{gap:22px;margin-top:20px}.rv-tabs button{font-size:13px}.rv-tabs button span{margin-left:6px}.rv-toolbar{display:block}.rv-toolbar>label{width:100%;margin-bottom:12px}.rv-period label{flex:1;min-width:0}.rv-split{display:block}.rv-dependency-chart{display:none}.rv-selection{border-left:0;border-top:1px solid var(--line);padding:22px}.rv-selection dl{display:grid;grid-template-columns:1fr 1fr;gap:0 15px}.rv-selection dd{font-size:19px}.rv-workspace-heading{padding:20px 18px 0}.rv-workspace-heading h2{font-size:23px}.rv-matrix-wrap{padding:18px 14px 0}.rv-matrix-scroll{max-height:420px}.radiografie-view .rv-matrix th,.radiografie-view .rv-matrix td{min-width:96px;width:96px;max-width:96px}.radiografie-view .rv-matrix th:first-child{min-width:145px;width:145px;max-width:145px;font-size:12px}.rv-matrix-selection{display:block;margin:12px 14px 18px;padding:17px}.rv-matrix-selection h3{font-size:18px}.rv-matrix-selection button{width:100%;margin-top:15px}.rv-pager{font-size:12px;gap:6px}.rv-pager button{font-size:12px;padding:8px 10px}.rv-direct-toolbar{display:block}.rv-direct-toolbar label{width:100%;margin-top:15px}.rv-direct .rv-workspace-heading{display:block}.rv-direct .rv-workspace-heading h2{font-size:22px}.rv-direct .rv-quiet{margin-top:7px}.rv-direct-facts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 18px 0}.rv-direct-facts>div:last-child{grid-column:1/-1}.rv-direct-facts dd{font-size:16px}.rv-direct-chart{margin:12px 18px 0}.rv-source-bar,.rv-point-detail{display:block;padding:16px 18px}.rv-source-bar button,.rv-point-detail a{margin-top:14px;width:100%}.rv-footer{display:block;font-size:11px}.rv-footer a{display:block;margin-top:16px}.rv-drawer>header,.rv-drawer-body{padding:20px}.rv-drawer h2{font-size:23px}}
 /* (?) explanations: the "?" keeps its own small look inside this page's large
-   buttons and headings, and each explanation opens under the line that holds
-   it (above it in the bar that closes a panel), never wider than that line */
+   buttons and headings; each explanation is placed from its own "?"
+   (components/Term.tsx) */
 .radiografie-view .term-trigger,.radiografie-view .term-trigger:hover{padding:0;border:0;border-radius:0;background:none}
 .radiografie-view h2 .term-tip{font-size:15px;vertical-align:.3em}
-.rv-tip{position:relative}
-.rv-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%);z-index:4}
-.rv-source-bar.rv-tip .term-tip>.term-def{top:auto;bottom:calc(100% + 6px)}
-/* in the selected supplier's figures (two columns on phones) it opens right
-   under its "?", across the whole list */
-.rv-selection dl{position:relative}
-.rv-selection dl .term-tip>.term-def{top:auto;bottom:auto;left:0;right:auto;margin-top:28px;width:max-content;max-width:min(46ch,100%)}
+.rv-tip,.rv-selection dl{position:relative}
 .rv-label-row{display:flex;align-items:center;gap:2px}
 
 /* ---- the relation table (owner, 2 November 2026, mockup B „Față în față”): every supplier, sorted on any column;

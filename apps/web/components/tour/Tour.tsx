@@ -66,6 +66,9 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
   const [tip, setTip] = useState<{ dot: number; left: number; top: number; arrow: number } | null>(null);
   const [leaving, setLeaving] = useState(false);
   const root = useRef<HTMLDivElement>(null), dots = useRef<HTMLDivElement>(null);
+  // The press on a signal dot under way: a tap focuses the dot before its click, and the focus must not open the
+  // example the click then toggles shut (14 November 2026: on a phone only a long press, with no click, showed it).
+  const pressing = useRef<{ dot: number; at: number; open: boolean; mouse: boolean } | null>(null);
 
   const shape = COUNTIES.find((c) => c.key === county), topic = TOUR_TOPICS.find((t) => t.key === topicKey);
   const chosen = shape !== undefined && topic !== undefined;
@@ -224,8 +227,15 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
             return <i key={i} className={className} style={{ "--i": i } as React.CSSProperties} role="button" tabIndex={0} aria-label="Exemplu de semnal"
               onPointerEnter={(event) => { if (event.pointerType !== "touch") showTip(i, event.currentTarget); }}
               onPointerLeave={(event) => { if (event.pointerType !== "touch") setTip(null); }}
-              onFocus={(event) => showTip(i, event.currentTarget)} onBlur={() => setTip(null)}
-              onClick={(event) => { if (tip?.dot === i) setTip(null); else showTip(i, event.currentTarget); }} />;
+              onPointerDown={(event) => { pressing.current = { dot: i, at: event.timeStamp, open: tip?.dot === i, mouse: event.pointerType === "mouse" }; }}
+              onFocus={(event) => { const press = pressing.current; if (!press || press.dot !== i || event.timeStamp - press.at > 1000) showTip(i, event.currentTarget); }}
+              onBlur={() => setTip(null)}
+              onClick={(event) => {
+                // A mouse keeps the example its hover opened; a tap shows it, and a second tap on the same dot hides it.
+                const press = pressing.current?.dot === i ? pressing.current : null;
+                pressing.current = null;
+                if (press?.mouse || !(press ? press.open : tip?.dot === i)) showTip(i, event.currentTarget); else setTip(null);
+              }} />;
           })}
           {tip && example && <div className="tr-tip" role="tooltip" style={{ left: tip.left, top: tip.top, "--ox": `${tip.arrow}px` } as React.CSSProperties}>
             <b>{example[0]}</b>{example[1]}<small>Exemplu ilustrativ. Pe site, fiecare semnal duce la achizițiile lui.</small>

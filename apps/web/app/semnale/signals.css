@@ -11,9 +11,7 @@
 .sg-title{display:flex;align-items:center;gap:6px;position:relative;margin-bottom:7px}.sg-heading h1{font-size:38px;margin:0}
 .sg-method-link{font-size:13px;white-space:nowrap;text-decoration:none}
 .sg-freshness .note{position:relative;font-size:12px;margin:12px 0;color:var(--muted);max-width:none}
-/* (?) tips on this page open below their line, never under the sticky header. */
 .sg-tip-line{position:relative}
-.sg-title .term-tip>.term-def,.sg-freshness .term-tip>.term-def,.sg-toolbar .term-tip>.term-def,.sg-tip-line .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:min(420px,calc(100vw - 32px))}
 .sg-tabs{display:flex;gap:28px;border-bottom:1px solid var(--line);margin-top:12px}
 .sg-tabs button{border-radius:0;padding:14px 0 12px;border-bottom:3px solid transparent;color:var(--muted);font-size:15px}
 .sg-tabs button[aria-current=page]{border-color:var(--accent);font-weight:600;color:var(--ink)}

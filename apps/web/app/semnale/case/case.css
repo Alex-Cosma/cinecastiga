@@ -64,7 +64,6 @@
 .sgc-under>.term-trigger{display:inline-flex;align-items:center;min-height:24px;padding:2px 10px;border:1px dashed var(--line2);border-radius:999px;background:var(--sunk);color:var(--ink2);font:600 12.5px/1.2 var(--body);text-decoration:none;cursor:help}
 .sgc-under>.term-trigger:hover,.sgc-under.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
 .sgc-under>.term-trigger>.term-mark,.sgc-unit-tip>.term-trigger>.term-mark{display:none}
-.sgc-under>.term-def,.sgc-unit-tip>.term-def{right:auto;width:min(340px,100%)}
 
 /* the mirror: two faces of one comparison, split by a hairline */
 .sgc-mirror{display:grid;grid-template-columns:1fr 1fr;margin-top:24px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}

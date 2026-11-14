@@ -55,9 +55,9 @@ describe("filter kit styles", () => {
     expect(phone).toMatch(/dialog\.qb-pop\{inset:auto 0 0 0;max-width:100%/); // the bottom sheet
   });
 
-  it("opens a (?) where it can be seen: down inside a window, over its own chip on a phone", () => {
-    // Above, a window's overflow:auto would hide it; the title's (?) anchors on the head, under the title.
-    expect(css).toContain(".qb-pop .term-tip>.term-def{top:calc(100% + 6px);bottom:auto}");
+  it("opens a (?) where it can be seen: Term places it from its own \"?\", over a window's overflow (14 November 2026)", () => {
+    // In the top layer, a window's overflow:auto cannot hide it: no window rule moves it any more.
+    expect(css).not.toMatch(/\.qb-pop \.term-tip>\.term-def\{/);
     expect(css).toMatch(/\.qb-pop-head\{position:relative;/);
     const phone = css.slice(css.indexOf("@media (max-width:600px){"));
     expect(phone).toContain(".qb-tipwrap-sm{position:relative}");

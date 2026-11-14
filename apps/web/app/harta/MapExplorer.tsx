@@ -375,7 +375,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           onChange={(v) => { if (v === "local_admin" || v === "hospitals" || v === "schools") { setKind(v); setUat(null); setHover(null); } }}
           under={kind !== "local_admin" ? undefined : { after: "local_admin", node: <label className="mx-check">
             <input type="checkbox" checked={withInst} onChange={(e) => setWithInst(e.target.checked)} />
-            <span>cu instituțiile lor</span><Term id="institutiile-lor" tip float />
+            <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
           </label> }} />
       </Pick>
       <Pick label="Perioada" text={years === "all" ? "Toată perioada" : yearsWords(years, allYears)} title="Ce ani?">

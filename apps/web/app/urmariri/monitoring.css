@@ -6,10 +6,9 @@
 
 .mon-selection{font-size:13px;border-top:1px solid var(--line2);padding-top:14px;margin-top:20px}.mon-selection>p{margin:0}.mon-selection strong{font-weight:500}
 
-/* (?) tips: anchored to their line; they open below it, except in a form field (above, over the legend).
-   The trigger stays a bare "?", not one of this surface's bordered buttons. */
+/* (?) tips: the trigger stays a bare "?", not one of this surface's bordered buttons. */
 .mon-shell .term-tip>.term-trigger{border:0;border-radius:0;background:none;padding:0;min-height:24px;font-size:inherit;transition:none}
-.mon-tip-line{position:relative}.mon-tip-line .term-tip>.term-def{right:auto;width:min(380px,calc(100vw - 32px))}.mon-tip-line:not(.mon-field) .term-tip>.term-def{top:calc(100% + 6px);bottom:auto}
+.mon-tip-line{position:relative}
 .mon-form .mon-field{display:flex;flex-wrap:wrap;align-items:center;gap:7px 2px;margin:16px 0;font-size:13px;font-weight:600}.mon-form .mon-field>label{display:inline;margin:0}.mon-form .mon-field>input{flex:1 0 100%}
 
 /* Comparison and source tables fit a phone: each row stacks as labelled values, no sideways scroll. */

@@ -28,9 +28,7 @@
 
 .df-signature-warning{padding:10px 12px;margin:10px 0;background:var(--amber-soft);color:var(--ink);font-size:13px;line-height:1.6;max-width:75ch;border-radius:6px}
 
-/* (?) explanations open under the line that holds them, never wider than it */
 .df-tip{position:relative}
-.df-tip .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
 .df-heading .term-tip{font-size:15px}
 
 .df-contents { max-height: 24rem; overflow: auto; padding-inline-start: 1.25rem; }

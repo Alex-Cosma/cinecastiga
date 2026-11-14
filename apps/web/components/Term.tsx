@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { GLOSSARY, type GlossaryId } from "../lib/glossary";
 
 /**
@@ -15,11 +15,6 @@ import { GLOSSARY, type GlossaryId } from "../lib/glossary";
  */
 type TermProps = {
   children?: ReactNode; className?: string; tip?: boolean;
-  /**
-   * With `tip`: the explanation floats over everything, next to its "?" (fixed to the screen), instead of anchoring to
-   * the nearest positioned box: for a "?" inside a window that scrolls or clips (the map's "Instituții" window).
-   */
-  float?: boolean;
 } & (
   | { id: GlossaryId; title?: never; text?: never }
   // A caveat built from page data (one signal, one contract) that has no
@@ -37,8 +32,14 @@ function closeOnly(event: KeyboardEvent) {
   event.stopPropagation();
 }
 
-/** The gap between a floating definition and its anchor (guide.css `calc(100% + 6px)`). */
+/** The gap between a floating definition and its "?". */
 const TIP_GAP = 6;
+/** How far a floating definition keeps inside the screen's sides and bottom. */
+const TIP_EDGE = 16;
+/** The widest a floating definition grows (guide.css has the same cap for its first frame). */
+const TIP_WIDTH = 360;
+/** How long a definition stays after the mouse leaves its "?", so it can move onto the box (to scroll a long one). */
+const TIP_LEAVE_MS = 150;
 
 /**
  * Whether a floating definition opened above its anchor would pass the top
@@ -50,53 +51,107 @@ export function tipOpensBelow(anchorTop: number, height: number, ceiling: number
   return height > 0 && anchorTop - TIP_GAP - height < Math.max(0, ceiling);
 }
 
-export default function Term({ children, className, tip = false, float = false, ...source }: TermProps) {
+type Box = { left: number; top: number; bottom: number };
+/**
+ * Where a floating definition goes on the screen (14 November 2026: every (?) is placed from its own "?", not from the
+ * nearest positioned box, which had sent some to the top of a whole section at its full width). Above the "?" when it
+ * fits under the screen's top or the sticky header, else below; when neither side holds it, the side with more room,
+ * with the box cut to that room (it scrolls). Its left edge starts a little before the "?" and stays 16 px inside the
+ * screen's sides.
+ */
+export function tipPlace(trigger: Box, box: { width: number; height: number }, screen: { width: number; height: number }, ceiling: number): { left: number; top: number; maxHeight: number | null } {
+  const left = Math.max(TIP_EDGE, Math.min(trigger.left - 12, screen.width - box.width - TIP_EDGE));
+  const roof = Math.max(0, ceiling);
+  const roomAbove = trigger.top - TIP_GAP - roof, roomBelow = screen.height - TIP_EDGE - trigger.bottom - TIP_GAP;
+  if (!tipOpensBelow(trigger.top, box.height, ceiling)) return { left, top: trigger.top - TIP_GAP - box.height, maxHeight: null };
+  if (box.height <= roomBelow || roomBelow >= roomAbove) return { left, top: trigger.bottom + TIP_GAP, maxHeight: box.height <= roomBelow ? null : Math.max(0, roomBelow) };
+  return { left, top: roof, maxHeight: roomAbove };
+}
+
+/** Whether the browser puts a popover in the top layer (over every window, transform and clipping box). */
+const topLayer = (element: HTMLElement) => typeof element.showPopover === "function";
+
+export default function Term({ children, className, tip = false, ...source }: TermProps) {
   const entry = source.id !== undefined ? GLOSSARY[source.id] : { title: source.title, text: source.text };
   const [open, setOpen] = useState(false);
-  const [below, setBelow] = useState(false);
-  const [at, setAt] = useState<{ left: number; top: number } | null>(null);
+  // A floating (?) shows while it is pressed open (a tap or a click), while a mouse is over it or its box, or while
+  // the keyboard is on it; Escape hides it until the next of these.
+  const [hover, setHover] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const root = useRef<HTMLSpanElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const definition = useRef<HTMLSpanElement>(null);
+  const leaving = useRef<number | undefined>(undefined);
   const definitionId = useId();
-  // Measured once it shows (hover, focus or tap): its anchor's top against the screen's and the header's.
-  const place = () => requestAnimationFrame(() => {
-    if (float) {
-      // Above the "?" when it fits on the screen, else below; kept 16 px inside the screen's sides.
-      const def = definition.current, trigger = def?.previousElementSibling?.getBoundingClientRect();
-      if (!def || !trigger || !def.offsetHeight) return;
-      const width = def.offsetWidth, height = def.offsetHeight, screen = document.documentElement.clientWidth;
-      const left = Math.max(16, Math.min(trigger.left - 12, screen - width - 16));
-      setAt({ left, top: trigger.top - TIP_GAP - height < 8 ? trigger.bottom + TIP_GAP : trigger.top - TIP_GAP - height });
-      return;
-    }
-    const def = definition.current, anchor = def?.offsetParent?.getBoundingClientRect();
-    if (!def || !anchor || !def.offsetHeight) return;
+  const shown = tip && !dismissed && (open || hover || focused);
+
+  // Measured on the screen each time it shows, and again while the page or a window around it scrolls.
+  const place = useCallback(() => {
+    const def = definition.current, anchor = trigger.current;
+    if (!def || !anchor) return;
+    const at = anchor.getBoundingClientRect(), height = document.documentElement.clientHeight;
+    if (at.bottom < 0 || at.top > height) { def.style.visibility = "hidden"; return; }
+    // The page's own width, without a classic scrollbar (which `100vw` in the CSS would count).
+    const width = document.documentElement.clientWidth;
+    Object.assign(def.style, { maxHeight: "", maxWidth: `${Math.min(TIP_WIDTH, width - 2 * TIP_EDGE)}px` });
     const header = document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0;
-    setBelow(tipOpensBelow(anchor.top, def.offsetHeight, header));
-  });
-  // The explanation floats on hover, focus or tap instead of opening in the
-  // page flow, for tight spots (home map, number strip) where an in-flow
-  // definition would push the layout. The nearest positioned ancestor anchors it.
-  if (tip) return <span className={`term term-tip${children ? " term-tip-text" : ""}${open ? " term-open" : ""}${below ? " term-below" : ""}${className ? ` ${className}` : ""}`}
-    onMouseEnter={place} onFocus={place}>
-    <button
-      type="button"
-      className="term-trigger"
-      aria-expanded={open}
-      aria-describedby={definitionId}
-      aria-label={children ? undefined : `${entry.title}: ce înseamnă`}
-      onClick={() => { setOpen(value => !value); place(); }}
-      onBlur={() => setOpen(false)}
-      onKeyDown={event => { if (event.key === "Escape" && open) { closeOnly(event); setOpen(false); } }}
-    >
-      {children}
-      <span className="term-mark" aria-hidden="true">?</span>
-    </button>
-    {/* Out of the tab order: shown on focus, its scrollable box would otherwise take a second stop (critique 2 November 2026). */}
-    <span id={definitionId} ref={definition} className="term-def" role="tooltip" tabIndex={-1}
-      style={float ? { position: "fixed", left: at?.left ?? 0, top: at?.top ?? 0, right: "auto", bottom: "auto", width: "min(340px, calc(100vw - 32px))", zIndex: 70, visibility: at ? undefined : "hidden" } : undefined}>
-      <b>{entry.title}.</b> {entry.text}
-    </span>
-  </span>;
+    const size = def.getBoundingClientRect();
+    const spot = tipPlace(at, { width: size.width, height: size.height }, { width, height }, header);
+    Object.assign(def.style, { left: `${spot.left}px`, top: `${spot.top}px`, right: "auto", bottom: "auto", margin: "0", visibility: "", maxHeight: spot.maxHeight === null ? "" : `${spot.maxHeight}px` });
+  }, []);
+
+  useLayoutEffect(() => {
+    const def = definition.current;
+    if (!tip || !def) return;
+    if (!shown) { if (topLayer(def) && def.matches(":popover-open")) def.hidePopover(); return; }
+    if (topLayer(def) && !def.matches(":popover-open")) def.showPopover();
+    place();
+    let frame = 0;
+    const follow = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(place); };
+    window.addEventListener("scroll", follow, { capture: true, passive: true });
+    window.addEventListener("resize", follow);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", follow, { capture: true }); window.removeEventListener("resize", follow); };
+  }, [place, shown, tip]);
+
+  // A tap elsewhere closes a (?) opened by a tap (a phone does not move the focus to a pressed button, so no blur).
+  useEffect(() => {
+    if (!tip || !open) return;
+    const away = (event: globalThis.PointerEvent) => { if (!(event.target instanceof Node) || !root.current?.contains(event.target)) setOpen(false); };
+    document.addEventListener("pointerdown", away, true);
+    return () => document.removeEventListener("pointerdown", away, true);
+  }, [open, tip]);
+  useEffect(() => () => window.clearTimeout(leaving.current), []);
+
+  // The explanation floats on hover, focus or tap instead of opening in the page flow, for tight spots (home map,
+  // number strip, headings) where an in-flow definition would push the layout.
+  if (tip) {
+    const enter = (event: PointerEvent) => { if (event.pointerType === "touch") return; window.clearTimeout(leaving.current); setDismissed(false); setHover(true); };
+    const leave = (event: PointerEvent) => { if (event.pointerType === "touch") return; window.clearTimeout(leaving.current); leaving.current = window.setTimeout(() => setHover(false), TIP_LEAVE_MS); };
+    const blur = (event: FocusEvent) => { if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return; setFocused(false); setOpen(false); };
+    return <span ref={root} className={`term term-tip${children ? " term-tip-text" : ""}${open ? " term-open" : ""}${shown ? " term-shown" : ""}${className ? ` ${className}` : ""}`}
+      onPointerEnter={enter} onPointerLeave={leave} onBlur={blur}
+      onKeyDown={event => { if (event.key === "Escape" && shown) { closeOnly(event); setOpen(false); setDismissed(true); } }}>
+      <button
+        ref={trigger}
+        type="button"
+        className="term-trigger"
+        aria-expanded={open}
+        aria-describedby={definitionId}
+        aria-label={children ? undefined : `${entry.title}: ce înseamnă`}
+        onClick={() => { setDismissed(false); setOpen(value => !value); }}
+        onFocus={event => { if (event.currentTarget.matches(":focus-visible")) { setDismissed(false); setFocused(true); } }}
+      >
+        {children}
+        <span className="term-mark" aria-hidden="true">?</span>
+      </button>
+      {/* Out of the tab order: shown on focus, its scrollable box would otherwise take a second stop (critique 2 November 2026).
+          A manual popover: in the top layer, over windows, sticky bars and boxes that clip, and placed from the "?" itself. */}
+      <span id={definitionId} ref={definition} className="term-def" role="tooltip" tabIndex={-1} popover="manual">
+        <b>{entry.title}.</b> {entry.text}
+      </span>
+    </span>;
+  }
   return <span className={`term${open ? " term-open" : ""}${className ? ` ${className}` : ""}`}>
     <button
       type="button"

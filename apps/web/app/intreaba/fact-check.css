@@ -102,6 +102,3 @@ button.fc-yb:hover i{background:var(--accent)}
   .fc-v{grid-column:2;grid-row:1 / span 2}
 }
 .fc-comp{font-size:13px;color:var(--ink2);display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
-
-/* A (?) opens on its row's width (.qb-tipwrap), at most a readable measure on a wide screen. */
-.fc .term-tip>.term-def{right:auto;width:min(560px,100%)}

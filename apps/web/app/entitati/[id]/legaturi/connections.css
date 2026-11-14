@@ -138,7 +138,6 @@ span.cx-search{display:block}
 .cx-method p{max-width:80ch}
 /* (?) explanations keep their small look inside this page */
 .cx-shell .term-trigger,.cx-shell .term-trigger:hover{gap:0;padding:0;border:0;border-radius:0;background:none;font:inherit}
-.cx-dock-note .term-tip>.term-def{top:calc(100% + 6px);bottom:auto;right:auto;width:max-content;max-width:min(46ch,100%)}
 
 @media (prefers-reduced-motion:reduce){.cx-band,.cx-band2{transition:none;animation:none}}
 /* Back/forward and print: the fan is drawn finished, like every chart (components/motion/chart-motion.css). */

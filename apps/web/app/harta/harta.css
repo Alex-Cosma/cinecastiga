@@ -135,7 +135,6 @@
 .mx-city em{grid-column:2;grid-row:1/3;align-self:center;font:600 14px var(--mono);font-style:normal}
 .mx-city.is-hover{border-color:var(--accent-line)}
 .mx-note{position:relative;margin:10px 0 0;font-size:12.5px;color:var(--muted)}
-.mx-note .term-tip>.term-def{right:auto;width:min(360px,calc(100vw - 32px))}
 .mx-error{padding:30px 0}
 .mx-btn{min-height:36px;padding:6px 13px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-weight:600}
 

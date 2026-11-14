@@ -8,9 +8,7 @@
 .source-evidence-count strong { color: var(--ink); }
 .source-evidence-csv { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; margin-top: 4px; font-size: 15px; text-underline-offset: 4px; }
 .source-evidence-save { position: relative; display: flex; align-items: center; gap: .25rem; }
-.source-evidence-save .term-tip > .term-def { top: calc(100% + 6px); bottom: auto; left: auto; right: 0; width: min(340px, calc(100vw - 32px)); }
 .source-evidence-basis { position: relative; margin: 14px 0 12px; font-size: 14px; color: var(--ink2); }
-.source-evidence-basis .term-tip > .term-def { top: calc(100% + 6px); bottom: auto; right: auto; width: max-content; max-width: min(46ch, 100%); }
 .source-evidence-notes { margin-block: 1rem 1.25rem; border-block: 1px solid var(--line); padding-block: .9rem; }
 .source-evidence-notes summary { font-weight: 600; cursor: pointer; }
 .source-evidence-notes ul { margin-block: .8rem 0; padding-left: 1.25rem; max-width: 75ch; font-size: 14px; line-height: 1.55; color: var(--ink2); }
