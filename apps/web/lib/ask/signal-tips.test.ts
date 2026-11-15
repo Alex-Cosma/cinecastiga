@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { flagLabel } from "../flags";
 import { RISK_CRITERIA } from "../risk-score";
@@ -46,5 +47,12 @@ describe("a signal tag's explanation", () => {
       text: expect.stringContaining("a ieșit din scor la 1 noiembrie 2026"),
     });
     expect(signalTip({ code: "nu_exista" }, "supplier")).toBeNull();
+  });
+});
+
+describe("a signal tag that explains itself", () => {
+  it("shows no \"?\" on the tag: the whole tag is the button (owner, 15 November 2026)", () => {
+    const css = readFileSync(new URL("../../app/intreaba/builder/filters-kit.css", import.meta.url), "utf8");
+    expect(css).toContain(".qb .qb-tag.qb-tag-tip>.term-trigger>.term-mark{display:none}");
   });
 });
