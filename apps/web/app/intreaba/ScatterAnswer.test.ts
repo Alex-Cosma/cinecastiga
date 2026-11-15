@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { BUZAU_CLOUD, BUZAU_CLOUD_V2, BUZAU_SPLIT, NATIONAL_BANDS, SPITALE_SMALL } from "../../lib/ask/fixtures/scatter-screen";
+import { BUZAU_CLOUD, BUZAU_CLOUD_V2, BUZAU_SPLIT, NATIONAL_BANDS, NATIONAL_FINE, SPITALE_SMALL } from "../../lib/ask/fixtures/scatter-screen";
 import type { AskSpec } from "../../lib/ask/spec";
 import { AnswerEvidence } from "./AnswerEvidence";
 import { decodeSpec } from "../../lib/ask/permalink";
@@ -9,16 +9,16 @@ import { answerCsv } from "./answer-csv";
 import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
-  SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip, listHeadWords,
-  nearest, p90Label, pointPlace, rowMeta, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
+  SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, density, densitySteps, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip,
+  listHeadWords, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
 } from "./scatter-answer";
 import type { ScatterData } from "../../lib/ask/scatter-shared";
 
 /*
  * scatter-3 as markup and as pure words (rf-2026.18; final scatter §3.3–§3.6, §4.4, §4.6): the strip's two rows
- * with the numbers (the risk score's criteria), the chart on the risk score (0–100, the bands' lines at 20, 40 and
- * 68), the list with each row's score and its patterns' years, the small group without a chart, the cells of a
- * national cloud by tenths of the score, the CSV equal to the list; and a stored scatter-2 drawn as it was. The card,
+ * with the numbers (the risk score's criteria), the chart on the risk score (10–100, the bands' lines at 40 and 68,
+ * the strip under 10), the list with each row's score and its patterns' years, the small group without a chart, the
+ * cells of a national cloud (fine since 15 November 2026, by tenths before), the CSV equal to the list; and a stored scatter-2 drawn as it was. The card,
  * the search, the strip's new query and the records are checked in the browser (par-f6b).
  */
 
@@ -61,12 +61,17 @@ describe("the risk cloud's answer", () => {
     expect(words).not.toContain("Finalizare rapidă");
   });
 
-  it("draws the risk score upwards, 0–100, with the bands tinted and their lines at 20, 40 and 68, and the top 10% line", () => {
+  it("draws the risk score upwards, 10–100 with the bands tinted and named, lines at 40 and 68, the strip of the scores under 10, and the top 10% line", () => {
     const markup = render();
     expect(markup.match(/class="sc-idx"/g)).toHaveLength(5);
-    for (const label of ["0", "20", "40", "68", "100"]) expect(markup).toContain(`>${label}</text>`);
+    // The bands' edges (owner's variant 1, 15 November 2026): no line at 20; „0” beside the strip.
+    for (const label of ["0", "10", "40", "68", "100"]) expect(markup).toContain(`>${label}</text>`);
+    expect(markup).not.toContain(">20</text>");
     expect(markup.match(/class="sc-zone [^"]+"/g)).toEqual(['class="sc-zone risk-slab"', 'class="sc-zone risk-mid"', 'class="sc-zone risk-high"']);
-    expect(markup.match(/class="sc-grid sc-grid-y"/g)).toHaveLength(3);
+    expect(markup.match(/class="sc-grid sc-grid-y"/g)).toHaveLength(2);
+    // The bands' words in the margin, beside a rail, with their ranges; the strip's words and count.
+    for (const words of ["slab", "moderat", "pronunțat", "10–39", "40–67", "68–100", "fără semnal"]) expect(markup).toContain(`>${words}</text>`);
+    expect(markup).toContain('class="sc-strip-bg"');
     expect(markup).toContain("cele mai mari 10%");
     expect(markup.match(/class="sc-dot[^"]*"/g)).toHaveLength(4);
     // No band per number of criteria, no index.
@@ -74,7 +79,9 @@ describe("the risk cloud's answer", () => {
     expect(markup).not.toContain(">3/5</text>");
     // The names of the first rows sit on the chart, without the parenthesis of the registry's name.
     expect(markup).toContain(">Comuna Sageata</text>");
-    expect(markup).not.toMatch(/class="sc-name"[^>]*>[^<]*\(/);
+    expect(markup).not.toMatch(/class="sc-label[^"]*"[^>]*>[^<]*\(/);
+    // The chart's names have their own class, not the list's link's (critique 15 November 2026: its 13.5 px won).
+    expect(markup).toMatch(/class="sc-label cm-fade cm-late"[^>]*>Comuna Sageata<\/text>/);
     // The score is not a probability of corruption: the legend's (?) is the glossary's.
     expect(text(markup)).toContain("riscul, din 100");
     expect(markup).toContain("Riscul, din 100");
@@ -142,11 +149,28 @@ describe("the risk cloud's answer", () => {
     expect(stripStatusWords(BUZAU_CLOUD)).toBe("82 în listă, după risc");
   });
 
-  it("draws a national cloud from cells by tenths of the score, the named profiles exact", () => {
+  it("draws a national cloud stored by tenths as it can: the tenths 1–9 as cells, the first (0–9) as the strip, the named profiles exact", () => {
     const markup = render(NATIONAL_BANDS, spec({ filters: {} }));
-    expect(markup.match(/class="sc-cell"/g)).toHaveLength(4);
+    expect(markup.match(/class="sc-cell s\d"/g)).toHaveLength(3);
+    expect(markup.match(/class="sc-bar"/g)).toHaveLength(1);
     expect(markup.match(/class="sc-dot[^"]*"/g)).toHaveLength(3);
     expect(text(markup)).toContain("Tot grupul 15.729");
+  });
+
+  it("draws today's national cloud as green cells of its width, the strip's histogram, and says its ramp and what is left of the axis", () => {
+    const markup = render(NATIONAL_FINE, spec({ filters: {} }));
+    // 8 fine cells joined at 720 px into fewer, wider ones; 3 columns of the strip.
+    const cells = markup.match(/class="sc-cell s\d"/g) ?? [];
+    expect(cells.length).toBeGreaterThan(0);
+    expect(cells.length).toBeLessThanOrEqual(8);
+    expect(markup.match(/class="sc-bar"/g)).toHaveLength(3);
+    const words = text(markup);
+    expect(words).toMatch(/instituții pe pătrățel: 1 · /);
+    expect(words).toContain("fără semnal în scor, după valoare");
+    expect(words).toContain("3 instituții la stânga axei, sub 3 mii lei");
+    // The strip's count, beside it.
+    expect(markup).toContain(">14.100</text>");
+    expect(markup).not.toContain(">grupul<");
   });
 
   it("is empty when its group is, and the old answer's sample says so too", () => {
@@ -230,16 +254,53 @@ describe("a stored scatter-2, drawn as it was", () => {
 });
 
 describe("the chart's geometry and words", () => {
-  it("is 400 px tall from 600 px of width and 300 under it, the score from 0 at the bottom to 100% at the top", () => {
+  it("is 420 px tall from 600 px of width and 340 under it, the score from 10 at the bottom of the field to 100 at the top, the scores under 10 in the strip below", () => {
     const wide = geometry(BUZAU_CLOUD, 1000), narrow = geometry(BUZAU_CLOUD, 390);
-    expect([wide.box.height, narrow.box.height]).toEqual([400, 300]);
+    expect([wide.box.height, narrow.box.height]).toEqual([420, 340]);
     expect([wide.legacy, wide.bandH]).toEqual([false, 0]);
-    expect(wide.yAt(0)).toBeGreaterThan(wide.yAt(20));
+    expect(wide.yAt(10)).toBeGreaterThan(wide.yAt(20));
     expect(wide.yAt(40)).toBeGreaterThan(wide.yAt(68));
     expect(wide.yAt(100)).toBeGreaterThan(wide.pad.t);
-    expect(wide.yAt(0)).toBeLessThan(wide.box.height - wide.pad.b);
-    // Even steps: the axis is continuous.
-    expect(wide.yAt(0) - wide.yAt(50)).toBeCloseTo(wide.yAt(50) - wide.yAt(100), 6);
+    // Even steps from 10 to 100: the field is continuous.
+    expect(wide.yAt(10) - wide.yAt(55)).toBeCloseTo(wide.yAt(55) - wide.yAt(100), 6);
+    // Under 10: the strip, under the field, inside the chart.
+    const strip = wide.strip!;
+    expect(wide.yAt(0)).toBe(strip.y + strip.h / 2);
+    expect(wide.yAt(9)).toBe(wide.yAt(0));
+    expect(strip.y).toBeGreaterThan(wide.yAt(10));
+    expect(strip.y + strip.h).toBeLessThanOrEqual(wide.box.height - wide.pad.b);
+    // The bands' words have the desktop's right margin; a phone keeps them in the plot.
+    expect(wide.pad.l + wide.plotW).toBeLessThanOrEqual(wide.box.width - 90);
+    expect(narrow.pad.l + narrow.plotW).toBe(narrow.box.width - 14);
+  });
+
+  it("joins the fine columns into cells about 6 px wide, sets the ramp from the counts, and draws the strip as a histogram", () => {
+    if (!("bands" in NATIONAL_FINE.cloud)) throw new Error("bands");
+    const wide = geometry(NATIONAL_FINE, 1200), narrow = geometry(NATIONAL_FINE, 390);
+    const a = density(NATIONAL_FINE.cloud.bands, wide), b = density(NATIONAL_FINE.cloud.bands, narrow);
+    for (const d of [a, b]) {
+      expect(d.cells.reduce((t, c) => t + c.n, 0)).toBe(63);
+      expect([d.none, d.below]).toEqual([14_100, 3]);
+      for (const c of d.cells) { expect(c.w).toBeGreaterThan(2); expect(c.w).toBeLessThanOrEqual(9); expect(c.h).toBeGreaterThan(2); }
+    }
+    // A phone joins more columns: fewer, wider cells; the rows stay 2 points (aligned with 40 and 68).
+    expect(b.cells.length).toBeLessThanOrEqual(a.cells.length);
+    const row = a.cells.find((c) => c.n === 30)!;
+    expect(row.y + row.h).toBeCloseTo(wide.yAt(30) - 0.5, 0);
+    // The strip: the tallest column fills it, the others by the square root of their share.
+    const tallest = Math.max(...a.bars.map((x) => x.h));
+    expect(tallest).toBeCloseTo(wide.strip!.h, 6);
+    expect(a.bars.find((x) => x.n === 900)!.h).toBeCloseTo(Math.sqrt(900 / 13_000) * wide.strip!.h, 6);
+  });
+
+  it("steps the green ramp at 1 and the cells' quantiles, says the steps, and drops the steps the counts never reach", () => {
+    expect(densitySteps([1, 1, 2, 2, 3, 4, 5, 8, 9, 12, 20, 40])).toEqual([1, 4, 9, 12, 20]);
+    expect(stepWords([1, 4, 9, 12, 20])).toEqual(["1–3", "4–8", "9–11", "12–19", "20+"]);
+    expect(stepWords([1, 2, 3])).toEqual(["1", "2", "3+"]);
+    // A small cloud: one or two counts, no step above the largest.
+    expect(densitySteps([1, 1, 1])).toEqual([1]);
+    expect(densitySteps([1, 2])).toEqual([1, 2]);
+    expect([0, 1, 3, 4, 8, 9, 40, 400].map((n) => stepOf([1, 4, 9, 12, 20], n))).toEqual([0, 0, 0, 1, 1, 2, 4, 4]);
   });
 
   it("spreads points around their score by a stable hash, never by more than a few pixels, always inside the plot", () => {
@@ -247,11 +308,14 @@ describe("the chart's geometry and words", () => {
     const g = geometry(BUZAU_CLOUD, 800);
     for (const id of ["1", "22", "2144803", "999999999"]) {
       expect(Math.abs(jitter(id))).toBeLessThanOrEqual(0.5);
-      for (const score of [0, 20, 73, 100]) {
+      for (const score of [10, 20, 73, 100]) {
         expect(Math.abs(g.y(score, id) - g.yAt(score))).toBeLessThanOrEqual(SCORE_SPREAD / 2);
         expect(g.y(score, id)).toBeGreaterThanOrEqual(g.pad.t);
         expect(g.y(score, id)).toBeLessThanOrEqual(g.box.height - g.pad.b);
       }
+      // Under 10, spread inside the strip.
+      expect(g.y(0, id)).toBeGreaterThan(g.strip!.y);
+      expect(g.y(0, id)).toBeLessThan(g.strip!.y + g.strip!.h);
     }
   });
 

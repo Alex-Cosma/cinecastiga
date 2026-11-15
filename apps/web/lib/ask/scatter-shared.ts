@@ -85,10 +85,24 @@ export interface ScatterCloudPoint extends CloudPointBase { score: number; score
 export type ScatterCloudPointV2 = CloudPointBase;
 
 /**
- * Cells of the grey layer: [x bucket (1-based), y, profiles]. y is the tenth of the score (0 for 0–9 … 9 for 90–100) on
- * scatter-3, the number of criteria met (the band) on a stored scatter-2.
+ * Cells of the cloud's density layer: [x bucket (1-based), y, profiles]. Since 15 November 2026 (`fine`, owner's pick of
+ * variant 1): y is a row of SCATTER_FINE_ROW points of the score above SCATTER_FIELD_MIN (0 for 10–11 … 44 for 98–100),
+ * the profiles under 10 are counted apart by column in `none` (the strip "fără semnal în scor" under the chart), and
+ * the few far left of the group (under the 0.2nd percentile of the value) are `below`, out of the chart. Before it, y
+ * was the tenth of the score (0 for 0–9 … 9 for 90–100) on scatter-3, and the number of criteria met (the band) on a
+ * stored scatter-2: such stored answers are drawn as they were stored (scatter-answer.ts).
  */
-export interface ScatterBands { minLog: number; maxLog: number; nx: number; total: number; cells: [number, number, number][] }
+export interface ScatterBands {
+  minLog: number; maxLog: number; nx: number; total: number; cells: [number, number, number][];
+  fine?: true; none?: [number, number][]; below?: number;
+}
+/** The fine grid's columns over the value range (the screen joins them to its width) and the score's rows, in points. */
+export const SCATTER_FINE_NX = 160;
+export const SCATTER_FINE_ROW = 2;
+/** The lowest score drawn in the field: under it (band „fără semnal în scor”), a profile is in the strip under the chart. */
+export const SCATTER_FIELD_MIN = 10;
+/** The share of the group left of the value axis's start: a few outliers would otherwise stretch the axis by decades. */
+export const SCATTER_VALUE_FLOOR_PCT = 0.002;
 
 /** What a signal says of a profile: its years (repetate, decembrie) or its share (the others), and the records behind it. */
 export interface ScatterFlagFact<C extends string = ScatterFlag> {

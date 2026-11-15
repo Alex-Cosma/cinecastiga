@@ -1,5 +1,5 @@
 /* "Ce instituții / firme ies din tipar?" (scatter-3, rf-2026.18; final scatter §3.3–§3.6, §4.6): the strip, the
-   chart on the risk score (the bands of lib/risk-score.ts tinted, lines at 20, 40 and 68%; a stored scatter-2 keeps its
+   chart on the risk score (the bands of lib/risk-score.ts tinted, lines at 40 and 68, the strip under 10; a stored scatter-2 keeps its
    bands by criteria), the search, the card and the list. Tokens only (approved.css, filters-kit.css), both themes;
    orange is the official signals' mark (kit R7), green what is in the list or chosen. No horizontal scroll at any
    width; under 600 px every control is 44 px tall. */
@@ -36,7 +36,9 @@
 .sc-cells.is-flag .sc-cell{fill:var(--orange)}
 .sc-ring{fill:none;stroke:var(--ink);stroke-width:2}
 .sc-ring.is-find{stroke-dasharray:3 3}
-.sc-name{font-size:11.5px;fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+/* The names on the chart: their own class (critique 15 November 2026: they shared .sc-name with the list's links, whose
+   13.5 px won, and ran out of the chart); measured in this font by ScatterAnswer before they are placed. */
+.sc-label{font-size:11.5px;font-weight:600;fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
 .sc-hover{position:absolute;z-index:3;display:grid;gap:2px;max-width:200px;padding:6px 9px;border-radius:8px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--fk-pop-shadow,0 6px 20px #0003);font-size:12px;color:var(--ink2);pointer-events:none}
 .sc-hover b{color:var(--ink);font-size:12.5px;overflow-wrap:anywhere}
 
@@ -58,7 +60,6 @@
 /* A row opens its entity's page: its name's link covers the row, the records button stays above it (owner, 6 November 2026). */
 .sc-row{position:relative;display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0}
 .sc-row:hover,.sc-row:has(.sc-name:focus-visible){background:color-mix(in srgb,var(--fk-sel) 55%,transparent);border-radius:8px}
-/* The chart's labels share .sc-name and let the pointer through (pointer-events:none above); the list's link takes it. */
 .sc-row .sc-name{pointer-events:auto}
 .sc-row .sc-name::after{content:"";position:absolute;inset:0;border-radius:8px}
 .sc-row:hover .sc-name{text-decoration:underline;text-underline-offset:3px}
@@ -80,7 +81,7 @@
 .sc-foot{margin:0;font-size:11.5px;color:var(--muted)}
 
 @media (max-width:640px){
-  .sc-chart{max-height:300px}
+  .sc-chart{max-height:340px}
   .sc-row{grid-template-columns:24px minmax(0,1fr);grid-template-areas:"rank who" ". val" ". cri" ". rec"}
   .sc-rank{grid-area:rank}
   .sc-who{grid-area:who}
@@ -93,9 +94,58 @@
   .sc-legend{gap:6px 12px}
 }
 .cq-oldnote{margin:0 0 8px;font-size:12.5px;color:var(--muted)}
-/* The cloud's ghost (ScatterGhost): the chart's real height, 400 px, 300 px on a phone (chartBox, the max-height above). */
-.sc-chart.sc-chart-ghost{height:400px;cursor:default}
-@media (max-width:640px){.sc-chart.sc-chart-ghost{height:300px}}
+/* The cloud's ghost (ScatterGhost): the chart's real height, 420 px, 340 px on a phone (chartBox, the max-height above). */
+.sc-chart.sc-chart-ghost{height:420px;cursor:default}
+@media (max-width:640px){.sc-chart.sc-chart-ghost{height:340px}}
 
 /* In motion (ScatterAnswer): another order or signal re-colours the listed points briefly. */
 .sc-chart{--chart-tw:var(--fast)}
+
+/* Variant 1 (owner, 15 November 2026): the scored profiles (10–100) as a field of small cells in one green ramp, more is
+   darker (lighter in the dark theme, where the paper is dark); the profiles without a signal in the score (under 10) in
+   a strip under it, a histogram by value; the bands' words beside a rail in the margin (inside the plot on a phone);
+   the chosen signal's cells the same ramp in orange. The steps' bounds come from the cells' counts (scatter-answer.ts
+   densitySteps) and the legend says them. */
+.sc-cell.s0{fill:color-mix(in srgb,var(--accent) 26%,var(--paper))}
+.sc-cell.s1{fill:color-mix(in srgb,var(--accent) 42%,var(--paper))}
+.sc-cell.s2{fill:color-mix(in srgb,var(--accent) 58%,var(--paper))}
+.sc-cell.s3{fill:color-mix(in srgb,var(--accent) 76%,var(--paper))}
+.sc-cell.s4{fill:var(--accent)}
+.sc-cells.is-flag .sc-cell.s0{fill:color-mix(in srgb,var(--orange) 40%,var(--paper))}
+.sc-cells.is-flag .sc-cell.s1{fill:color-mix(in srgb,var(--orange) 55%,var(--paper))}
+.sc-cells.is-flag .sc-cell.s2{fill:color-mix(in srgb,var(--orange) 70%,var(--paper))}
+.sc-cells.is-flag .sc-cell.s3{fill:color-mix(in srgb,var(--orange) 85%,var(--paper))}
+.sc-cells.is-flag .sc-cell.s4{fill:var(--orange)}
+.sc-bar{fill:var(--accent-line)}
+.sc-cells.is-flag .sc-bar{fill:var(--orange);opacity:.85}
+.sc-strip-bg{fill:var(--sunk);opacity:.45}
+.sc-floor{stroke:var(--line-strong);stroke-width:1}
+.sc-zone-word{font-size:12px;font-weight:600;fill:currentColor}
+.sc-rail{color:var(--ink2)}
+.sc-rail rect{fill:currentColor;opacity:.75}
+.sc-rail .sc-tick{fill:var(--muted)}
+.sc-rail.risk-mid,.sc-zone-word.risk-mid{color:var(--amber-pill)}
+.sc-rail .sc-zone-word{fill:currentColor}
+.sc-strip .sc-zone-word{fill:var(--ink2)}
+.sc-strip-word{font-size:12px;fill:var(--ink2);paint-order:stroke;stroke:var(--paper);stroke-width:3px;stroke-linejoin:round}
+.sc-ramp{display:inline-flex;gap:2px}
+.sc-ramp i{width:12px;height:10px;border-radius:2px;display:inline-block}
+.sc-ramp i.s0{background:color-mix(in srgb,var(--accent) 26%,var(--paper))}
+.sc-ramp i.s1{background:color-mix(in srgb,var(--accent) 42%,var(--paper))}
+.sc-ramp i.s2{background:color-mix(in srgb,var(--accent) 58%,var(--paper))}
+.sc-ramp i.s3{background:color-mix(in srgb,var(--accent) 76%,var(--paper))}
+.sc-ramp i.s4{background:var(--accent)}
+.sc-key.is-bars{width:12px;height:10px;border-radius:1px;opacity:1;background:linear-gradient(90deg,var(--accent-line) 0 3px,transparent 3px 4.5px,var(--accent-line) 4.5px 7.5px,transparent 7.5px 9px,var(--accent-line) 9px 12px);clip-path:polygon(0 55%,25% 55%,25% 0,62% 0,62% 30%,100% 30%,100% 100%,0 100%)}
+/* The signal: pills on a wide screen, one menu on a phone (the same choice, the same counts). */
+.sc-signal-pills{display:contents}
+.qb-field.sc-signal-select{display:none}
+@media (max-width:600px){
+  .sc-signal-pills{display:none}
+  /* The strip's row is a column here: the menu goes under its label, the row's whole width (a basis of 100% would wrap it into a second column). */
+  .qb-field.sc-signal-select{display:flex;flex:0 0 auto;width:100%}
+}
+/* Phones: no text under 12 px (owner, 1 November 2026), the chart's included. */
+@media (max-width:700px){
+  .sc-tick,.sc-axis,.sc-p90 text{font-size:12px}
+  .sc-who small,.sc-risk small,.sc-foot{font-size:12px}
+}

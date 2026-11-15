@@ -40,10 +40,24 @@ export const SPITALE_SMALL: ScatterDataV3 = {
   list: [row("2145984", "SPITALUL JUDETEAN DE URGENTA BUZAU", 25_622, 60_000_000, 20, 20, [{ code: "da_split", years: [2018] }])],
 };
 
-/** The national cloud: cells of the grey layer by tenths of the score, the named profiles exact. */
+/** A national cloud stored before 15 November 2026: cells by tenths of the score, the named profiles exact. */
 export const NATIONAL_BANDS: ScatterDataV3 = {
   ...BUZAU_CLOUD, group: { n: 15_729, nList: 14_972 },
   cloud: { bands: { minLog: 3, maxLog: 9.2, nx: 80, total: 15_729, cells: [[10, 0, 40], [20, 2, 300], [30, 4, 120], [40, 7, 8]] }, named: points },
+};
+
+/**
+ * The national cloud since 15 November 2026 (variant 1): 160 fine columns by rows of 2 points from 10, the profiles
+ * under 10 apart by column (the strip), 3 left of the axis's start.
+ */
+export const NATIONAL_FINE: ScatterDataV3 = {
+  ...BUZAU_CLOUD, group: { n: 15_600, nList: 14_866 },
+  cloud: {
+    bands: { minLog: 3.5, maxLog: 8.72, nx: 160, total: 15_597, fine: true, below: 3,
+      cells: [[60, 0, 1], [61, 0, 2], [90, 5, 9], [91, 5, 14], [100, 10, 30], [101, 10, 4], [120, 20, 2], [140, 30, 1]],
+      none: [[40, 900], [80, 13_000], [120, 200]] },
+    named: points,
+  },
 };
 
 // --- a stored scatter-2 (before rf-2026.18), drawn as it was

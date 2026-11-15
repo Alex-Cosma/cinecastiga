@@ -3,7 +3,8 @@ import { KIND_ONE, questionKey, type QuestionSpec } from "../../lib/ask/question
 import type { ProfileFactsResult } from "../../lib/ask/facet-parts";
 import type { AskSpec, RankBy } from "../../lib/ask/spec";
 import {
-  RANK_WORDS, RANK_WORDS_V2, SCATTER_CLOUD_MIN_DAS, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, codeBit, flagDetail, isScatterFlag, scatterCodes, scatterFlagLabel, scatterFlagsOf, withScatterChoice,
+  RANK_WORDS, RANK_WORDS_V2, SCATTER_CLOUD_MIN_DAS, SCATTER_FIELD_MIN, SCATTER_FINE_ROW, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, codeBit, flagDetail, isScatterFlag, scatterCodes,
+  scatterFlagLabel, scatterFlagsOf, withScatterChoice,
   type ScatterBands, type ScatterCloudPoint, type ScatterCloudPointV2, type ScatterData, type ScatterDataV2, type ScatterDataV3, type ScatterFlag, type ScatterFlagFact,
   type ScatterListRow, type ScatterListRowV2, type ScatterRole,
 } from "../../lib/ask/scatter-shared";
@@ -29,17 +30,27 @@ export type AnyCloudPoint = ScatterCloudPoint | ScatterCloudPointV2;
 /** A row of either version. */
 export type AnyListRow = ScatterListRow | ScatterListRowV2;
 
-/** The chart's size in px: 400 tall on a desktop, 300 on a phone (final §3.6). */
+/** The chart's size in px: 420 tall on a desktop, 340 on a phone, the strip of the profiles without a signal included (final §3.6; 15 November 2026). */
 export interface ChartBox { width: number; height: number; compact: boolean }
 export const chartBox = (width: number): ChartBox => {
   const compact = width < 600;
-  return { width: Math.max(260, Math.round(width)), height: compact ? 300 : 400, compact };
+  return { width: Math.max(260, Math.round(width)), height: compact ? 340 : 420, compact };
 };
 
-/** Room around the plot: the risk's labels on the left, the decades under it, the words of the top 10% over it. */
+/**
+ * Room around the plot: the risk's labels on the left, the decades under it, the words of the top 10% over it, and on a
+ * desktop the bands' words on the right (on a phone they sit inside the plot).
+ */
 export function plotPad(box: ChartBox) {
-  return { l: box.compact ? 44 : 58, r: 14, t: 24, b: box.compact ? 40 : 46 };
+  return { l: box.compact ? 44 : 58, r: box.compact ? 14 : 100, t: 24, b: box.compact ? 40 : 46 };
 }
+
+/**
+ * The strip under the plot (owner, 15 November 2026, variant 1): the profiles without a signal in the score (under 10;
+ * 85% of the institutions), apart from the field of the scored ones, so the least telling group is no longer the
+ * heaviest mark of the chart.
+ */
+export const stripBox = (box: ChartBox): { gap: number; h: number } => (box.compact ? { gap: 10, h: 22 } : { gap: 12, h: 26 });
 
 /** A stable spread: -0.5…0.5 from the id, so a point does not move between runs (no Math.random). */
 export function jitter(id: string): number {
@@ -79,12 +90,13 @@ export function axisTicks(x0: number, x1: number, compact: boolean): { lg: numbe
 }
 
 /**
- * The risk axis (scatter-3): a line at 20 (one criterion at level 1) and at the first score of each stronger band
- * (moderat 40, puternic 68), the bands of lib/risk-score.ts. The score is out of 100, not a percentage (rf-2026.20).
+ * The risk axis (scatter-3): a line at the first score of each stronger band (moderat 40, puternic 68), the bands of
+ * lib/risk-score.ts; the field starts where slab does (10), the strip under it holds the rest. The score is out of 100,
+ * not a percentage (rf-2026.20). Since 15 November 2026 the labels are the bands' edges (the line at 20 matched none).
  */
-export const RISK_GRID: readonly number[] = [20, RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic];
-/** The labels beside the risk axis, out of 100. */
-export const RISK_AXIS: readonly number[] = [0, ...RISK_GRID, 100];
+export const RISK_GRID: readonly number[] = [RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic];
+/** The labels beside the risk axis, out of 100 (the strip's „0” is drawn apart, beside it). */
+export const RISK_AXIS: readonly number[] = [SCATTER_FIELD_MIN, ...RISK_GRID, 100];
 /** The tinted zones of the bands: slab 10–39, moderat 40–67, puternic 68–100 (under 10 none; rf-2026.22, S9b). */
 export const RISK_ZONES: readonly { from: number; to: number; band: "slab" | "moderat" | "puternic" }[] = [
   { from: RISK_BAND_MIN.slab, to: RISK_BAND_MIN.moderat, band: "slab" },
@@ -103,6 +115,8 @@ export interface Geometry {
   plotW: number; plotH: number;
   /** A stored scatter-2: one band per number of criteria met, this tall. 0 on scatter-3's continuous risk axis. */
   bandH: number;
+  /** scatter-3: the strip of the profiles under 10, under the plot (its top and height); none on a stored scatter-2. */
+  strip: { y: number; h: number } | null;
   /** Pixels of a value; of a level (scatter-3: the score 0–100; scatter-2: the middle of the band of k criteria). */
   x(value: number): number;
   yAt(level: number): number;
@@ -131,18 +145,23 @@ export function geometry(data: ScatterData, width: number): Geometry {
   if (data.version === 2) {
     const bandH = plotH / (data.levels + 1);
     const yAt = (k: number) => bottom - (k + 0.5) * bandH;
-    return { box, pad, x0, x1, plotW, plotH, bandH, x, yAt, y: (k, id) => yAt(k) + jitter(id) * bandH * 0.62, ticks, legacy: true };
+    return { box, pad, x0, x1, plotW, plotH, bandH, strip: null, x, yAt, y: (k, id) => yAt(k) + jitter(id) * bandH * 0.62, ticks, legacy: true };
   }
-  const yAt = (score: number) => bottom - SCORE_INSET - (Math.min(100, Math.max(0, score)) / 100) * (plotH - 2 * SCORE_INSET);
-  return { box, pad, x0, x1, plotW, plotH, bandH: 0, x, yAt, y: (score, id) => yAt(score) + jitter(id) * SCORE_SPREAD, ticks, legacy: false };
+  // scatter-3: the field from 10 to 100, the strip of the profiles under 10 below it.
+  const band = stripBox(box), field = plotH - band.gap - band.h, floor = pad.t + field;
+  const strip = { y: floor + band.gap, h: band.h };
+  const yAt = (score: number) => score < SCATTER_FIELD_MIN ? strip.y + strip.h / 2
+    : floor - SCORE_INSET - ((Math.min(100, score) - SCATTER_FIELD_MIN) / (100 - SCATTER_FIELD_MIN)) * (field - 2 * SCORE_INSET);
+  const y = (score: number, id: string) => score < SCATTER_FIELD_MIN ? yAt(score) + jitter(id) * (strip.h - 8) : yAt(score) + jitter(id) * SCORE_SPREAD;
+  return { box, pad, x0, x1, plotW, plotH: field, bandH: 0, strip, x, yAt, y, ticks, legacy: false };
 }
 
 /** The index beside a band of a stored scatter-2: "0,6" with "3/5" under it (the index was shown unchanged, decision 22.10). */
 export const bandIndex = (k: number, levels: number): { index: string; ratio: string } => ({ index: formatDecimal(k / levels, levels === 4 ? 2 : 1), ratio: `${k}/${levels}` });
 
 /**
- * The cells of the grey layer as rectangles, with an opacity that follows the square root of the count: a tenth of the
- * score each (scatter-3), or a band of criteria (scatter-2).
+ * A stored scatter-2's cells (a band of criteria each) as rectangles, with an opacity that follows the square root of
+ * the count, as they were drawn.
  */
 export function cellRects(bands: ScatterBands, g: Geometry): { x: number; y: number; w: number; h: number; o: number; n: number }[] {
   const peak = Math.max(1, ...bands.cells.map((c) => c[2]));
@@ -151,11 +170,82 @@ export function cellRects(bands: ScatterBands, g: Geometry): { x: number; y: num
     const lg0 = bands.minLog + (bx - 1) * cw;
     const left = g.pad.l + ((lg0 - g.x0) / (g.x1 - g.x0)) * g.plotW, right = g.pad.l + ((lg0 + cw - g.x0) / (g.x1 - g.x0)) * g.plotW;
     const o = 0.12 + 0.78 * Math.sqrt(n / peak), w = Math.max(2, right - left);
-    if (g.legacy) return { x: left, y: g.yAt(k) - g.bandH * 0.36, w, h: g.bandH * 0.72, o, n };
-    // A tenth: from its lowest score to the next tenth's (90–100 the last), a pixel apart from its neighbours.
-    const top = g.yAt(Math.min(100, (k + 1) * 10)), low = g.yAt(k * 10);
-    return { x: left, y: top + 0.5, w, h: Math.max(1, low - top - 1), o, n };
+    return { x: left, y: g.yAt(k) - g.bandH * 0.36, w, h: g.bandH * 0.72, o, n };
   });
+}
+
+/** A cell of the density field: its box, its profiles and its step of the colour ramp (0 the palest … 4). */
+export interface DensityCell { x: number; y: number; w: number; h: number; n: number; step: number }
+/** A column of the strip's histogram (the profiles under 10 at that value). */
+export interface DensityBar { x: number; y: number; w: number; h: number; n: number }
+export interface Density {
+  cells: DensityCell[]; bars: DensityBar[];
+  /** The ramp's lower bounds (1, then the quantiles of the cells' counts), strictly increasing: the legend's words. */
+  steps: number[];
+  /** The profiles in the strip, and those left of the axis's start (out of the chart). */
+  none: number; below: number;
+}
+
+/** A cell this wide, at most, on a phone and on a desktop: the fine columns are joined up to it. */
+const CELL_PX = { compact: 5.5, wide: 6.5 };
+
+/**
+ * The ramp's steps from the cells' counts (owner, 15 November 2026: one green ramp, more is darker; darker is lighter in
+ * the dark theme): 1, then the median, the 75th, 90th and 97th percentiles, each above the one before, so a cloud of
+ * any size uses the whole ramp. Steps above the largest count are left out.
+ */
+export function densitySteps(counts: readonly number[]): number[] {
+  const sorted = [...counts].sort((a, b) => a - b), max = sorted[sorted.length - 1] ?? 1;
+  const q = (p: number) => sorted[Math.floor(p * (sorted.length - 1))] ?? 1;
+  const steps = [1];
+  for (const p of [0.5, 0.75, 0.9, 0.97]) steps.push(Math.max(steps[steps.length - 1]! + 1, q(p)));
+  return steps.filter((t, i) => i === 0 || t <= max);
+}
+/** A count's step: the last bound it reaches. */
+export const stepOf = (steps: readonly number[], n: number): number => { let i = 0; while (i + 1 < steps.length && n >= steps[i + 1]!) i++; return i; };
+/** The legend's words of the steps: "1 · 2 · 3–4 · 5–8 · 9+". */
+export function stepWords(steps: readonly number[]): string[] {
+  return steps.map((t, i) => { const next = steps[i + 1]; return next === undefined ? `${formatInt(t)}+` : next - 1 > t ? `${formatInt(t)}–${formatInt(next - 1)}` : formatInt(t); });
+}
+
+/**
+ * The density field and the strip of a scatter-3 cloud of cells. A cloud stored since 15 November 2026 (`fine`) joins
+ * its fine columns into cells about CELL_PX wide, its rows of 2 points aligned with the bands' edges; an older stored
+ * cloud keeps its tenths (the first, 0–9, becomes the strip). The strip is a histogram: the square root of each
+ * column's profiles over the tallest. `steps` reuses another layer's ramp; by default the cells' own.
+ */
+export function density(bands: ScatterBands, g: Geometry, steps?: readonly number[]): Density {
+  const strip = g.strip ?? { y: g.box.height - g.pad.b, h: 0 };
+  const cw = (bands.maxLog - bands.minLog) / Math.max(1, bands.nx);
+  const px = (lg: number) => g.pad.l + ((lg - g.x0) / (g.x1 - g.x0)) * g.plotW;
+  const fx = bands.fine ? Math.max(1, Math.round((g.box.compact ? CELL_PX.compact : CELL_PX.wide) / Math.max(0.01, px(bands.minLog + cw) - px(bands.minLog)))) : 1;
+  const column = (bx: number) => Math.floor((bx - 1) / fx);
+  const span = (m: number) => { const lg0 = bands.minLog + m * fx * cw; return { x0: px(lg0), x1: px(Math.min(bands.maxLog, lg0 + fx * cw)) }; };
+  const field = new Map<string, { m: number; s0: number; s1: number; n: number }>(), floor = new Map<number, number>();
+  if (bands.fine) {
+    for (const [bx, k, n] of bands.cells) {
+      const m = column(bx), s0 = SCATTER_FIELD_MIN + k * SCATTER_FINE_ROW, key = `${m}:${k}`;
+      const cell = field.get(key) ?? { m, s0, s1: Math.min(100, s0 + SCATTER_FINE_ROW), n: 0 };
+      cell.n += n; field.set(key, cell);
+    }
+    for (const [bx, n] of bands.none ?? []) floor.set(column(bx), (floor.get(column(bx)) ?? 0) + n);
+  } else {
+    for (const [bx, k, n] of bands.cells) {
+      if (k === 0) { floor.set(column(bx), (floor.get(column(bx)) ?? 0) + n); continue; }
+      field.set(`${bx}:${k}`, { m: column(bx), s0: k * 10, s1: Math.min(100, k * 10 + 10), n });
+    }
+  }
+  const ramp = steps ? [...steps] : densitySteps([...field.values()].map((c) => c.n));
+  const cells = [...field.values()].map((c): DensityCell => {
+    const { x0, x1 } = span(c.m), top = g.yAt(c.s1), low = g.yAt(c.s0);
+    return { x: x0 + 0.5, y: top + 0.5, w: Math.max(1, x1 - x0 - 1), h: Math.max(1, low - top - 1), n: c.n, step: stepOf(ramp, c.n) };
+  });
+  const peak = Math.max(1, ...floor.values());
+  const bars = [...floor.entries()].map(([m, n]): DensityBar => {
+    const { x0, x1 } = span(m), h = Math.max(1.5, Math.sqrt(n / peak) * strip.h);
+    return { x: x0 + 0.5, y: strip.y + strip.h - h, w: Math.max(1, x1 - x0 - 1), h, n };
+  });
+  return { cells, bars, steps: ramp, none: [...floor.values()].reduce((a, b) => a + b, 0), below: bands.below ?? 0 };
 }
 
 /** The line at the top 10%: the value above which a profile is among the group's largest tenth. */
@@ -163,15 +253,17 @@ export const p90Words = "cele mai mari 10%";
 
 /** A box on the chart, in px. */
 export interface LabelBox { x0: number; x1: number; y0: number; y1: number }
-/** Approximate width of a chart text in px (11–11.5 px type). */
+/** Approximate width of a chart text in px (11–11.5 px type); the screen measures the real one (chartLabels' `measure`). */
 const textWidth = (text: string): number => text.length * 6.3;
+/** How a chart text's width is known: estimated, or measured by the screen in its own font. */
+export type MeasureText = (text: string) => number;
 
 /**
  * The words of the top 10% over the plot, beside the line (before it when they would leave the chart): above the
  * plot, so they never sit on its points (F6b review: on a phone they covered a point of the top band).
  */
-export function p90Label(g: Geometry, p90: number): { x: number; y: number; anchor: "start" | "end"; box: LabelBox } {
-  const line = g.x(p90), w = textWidth(p90Words), end = line + 4 + w > g.box.width;
+export function p90Label(g: Geometry, p90: number, measure: MeasureText = textWidth): { x: number; y: number; anchor: "start" | "end"; box: LabelBox } {
+  const line = g.x(p90), w = measure(p90Words), end = line + 4 + w > g.box.width;
   const x = end ? line - 4 : line + 4, y = g.pad.t - 8;
   return { x, y, anchor: end ? "end" : "start", box: { x0: end ? x - w : x, x1: end ? x : x + w, y0: y - 10, y1: y + 3 } };
 }
@@ -194,25 +286,25 @@ export interface ChartLabel { id: string; x: number; y: number; anchor: "start" 
  * shortened to it, over whatever lies there. The list's names then keep off it.
  */
 export function chartLabels(names: readonly { id: string; text: string }[], all: readonly Dot[], g: Geometry, p90: number,
-  focus: readonly { id: string; text: string }[] = []): ChartLabel[] {
+  focus: readonly { id: string; text: string }[] = [], measure: MeasureText = textWidth): ChartLabel[] {
   const line = p90 > 0 ? g.x(p90) : null;
-  const placed: LabelBox[] = line === null ? [] : [p90Label(g, p90).box], out: ChartLabel[] = [];
+  const placed: LabelBox[] = line === null ? [] : [p90Label(g, p90, measure).box], out: ChartLabel[] = [];
   for (const { id, text } of focus) {
     const d = all.find((x) => x.point.id === id);
     if (!d || out.some((l) => l.id === id)) continue;
-    const fit = fitLabel(d, text, all, g, line, placed);
-    const right = fit ? fit.right : g.box.width - d.x >= d.x - g.pad.l;
-    const room = right ? g.box.width - (d.x + 8) : d.x - 8 - g.pad.l;
-    const shown = fit ? text : shorten(text, room);
+    const fit = fitLabel(d, text, all, g, line, placed, measure);
+    const right = fit ? fit.right : g.pad.l + g.plotW - d.x >= d.x - g.pad.l;
+    const room = right ? g.pad.l + g.plotW - (d.x + 8) : d.x - 8 - g.pad.l;
+    const shown = fit ? text : shorten(text, room, measure);
     if (!shown) continue;
-    const x = d.x + (right ? 8 : -8), w = textWidth(shown);
+    const x = d.x + (right ? 8 : -8), w = measure(shown);
     placed.push({ x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 });
     out.push({ id, x, y: d.y + 3, anchor: right ? "start" : "end", text: shown });
   }
   for (const { id, text } of names) {
     const d = all.find((x) => x.point.id === id);
     if (!d || out.some((l) => l.id === id)) continue;
-    const side = fitLabel(d, text, all, g, line, placed);
+    const side = fitLabel(d, text, all, g, line, placed, measure);
     if (!side) continue;
     placed.push(side.box);
     out.push({ id, x: side.x, y: d.y + 3, anchor: side.right ? "start" : "end", text });
@@ -221,19 +313,22 @@ export function chartLabels(names: readonly { id: string; text: string }[], all:
 }
 
 /** A name shortened to `room` px with „…”, or null when not even a few letters fit. */
-function shorten(text: string, room: number): string | null {
-  if (textWidth(text) <= room) return text;
-  const n = Math.floor(room / 6.3) - 1;
-  return n >= 4 ? `${text.slice(0, n).trimEnd()}…` : null;
+function shorten(text: string, room: number, measure: MeasureText = textWidth): string | null {
+  if (measure(text) <= room) return text;
+  for (let n = Math.min(text.length - 1, Math.floor(room / 5)); n >= 4; n--) {
+    const short = `${text.slice(0, n).trimEnd()}…`;
+    if (measure(short) <= room) return short;
+  }
+  return null;
 }
 
 /** The first side of a dot where its name fits: inside the chart, off the line, the other labels and every other point. */
-function fitLabel(d: Dot, text: string, all: readonly Dot[], g: Geometry, line: number | null, placed: readonly LabelBox[]):
+function fitLabel(d: Dot, text: string, all: readonly Dot[], g: Geometry, line: number | null, placed: readonly LabelBox[], measure: MeasureText = textWidth):
   { right: boolean; x: number; box: LabelBox } | null {
-  const w = textWidth(text);
+  const w = measure(text);
   const sides = (d.x < g.box.width * 0.62 ? [true, false] : [false, true]).map((right) => {
     const x = d.x + (right ? 8 : -8), box = { x0: right ? x : x - w, x1: right ? x + w : x, y0: d.y - 8, y1: d.y + 6 };
-    const fits = box.x0 >= g.pad.l && box.x1 <= g.box.width && (line === null || line <= box.x0 || line >= box.x1)
+    const fits = box.x0 >= g.pad.l && box.x1 <= g.pad.l + g.plotW && (line === null || line <= box.x0 || line >= box.x1)
       && !placed.some((p) => p.x0 < box.x1 && box.x0 < p.x1 && p.y0 < box.y1 && box.y0 < p.y1);
     const covers = all.some((o) => o !== d && o.x + LABEL_DOT_R > box.x0 && o.x - LABEL_DOT_R < box.x1 && o.y + LABEL_DOT_R > box.y0 && o.y - LABEL_DOT_R < box.y1);
     return { right, x, box, fits: fits && !covers };

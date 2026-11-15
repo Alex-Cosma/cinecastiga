@@ -15,7 +15,7 @@ import { namedKind, SCATTER_FLAGS_BY_ROLE, type AskSpec } from "../../lib/ask/sp
 import { flagEntityRule, flagLabel } from "../../lib/flags";
 import { G } from "../../components/ghost/Ghost";
 import { useChartMotion } from "./answer/chart-motion";
-import { RISK_BAND_CLASS, riskBand, riskScoreText } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import EntityName from "../../components/EntityName";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -30,9 +30,9 @@ import HelpTip from "./builder/HelpTip";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
-  RISK_AXIS, RISK_GRID, RISK_ZONES, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
+  RISK_AXIS, RISK_GRID, RISK_ZONES, axisWords, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, density, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
   keptScatterFacts, kindWords, listHeadTip, listHeadWords, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, scatterFactsKey, scoreBandWord, scoreWords,
-  signalsPageLink, stripStatusWords, withFacts, type AnyListRow, type Dot,
+  signalsPageLink, stepWords, stripStatusWords, withFacts, type AnyListRow, type Dot, type MeasureText,
 } from "./scatter-answer";
 import "./scatter.css";
 
@@ -41,9 +41,10 @@ import "./scatter.css";
  * final scatter §3.3–§3.6, §4.3, §4.6): the strip beside the chart chooses who
  * is named ("Primele după" Risc | Valoare, "Semnal" with the number of
  * profiles that have each of the risk score's criteria), the chart puts each
- * profile at its risk score (0–100%, the bands' lines at 20, 40 and 68) and its
- * value, the group stays the whole cloud and the chosen signal colours its
- * points; "Unde e o instituție?" finds a profile in the group, a point, a row or
+ * profile at its risk score (10–100, the bands' lines at 40 and 68; under 10 in
+ * the strip below, owner's variant 1, 15 November 2026) and its value, the
+ * group stays the whole cloud (green cells, more is darker) and the chosen
+ * signal colours its points or cells orange; "Unde e o instituție?" finds a profile in the group, a point, a row or
  * a hit opens its card, and the list below names the first 50 in the strip's
  * order, each with its score. A change of order or signal is a short new query
  * (AskPanel.applyStripChange), never a reload. The signals' shares and records
@@ -172,8 +173,11 @@ export function ScatterGhost({ spec }: { spec: AskSpec }) {
         <Segmented label="Primele după" value={spec.scatter?.rankBy === "value" ? "value" : "risk"} options={[{ value: "risk", label: "Risc" }, { value: "value", label: "Valoare" }]} />
       </StripRow>
       <StripRow label="Semnal" tip={{ title: "Semnal", text: "" }}>
-        <Pills label="Semnal" value={flag ?? ""} options={[{ value: "", label: "Tot grupul", count: room },
-          ...SCATTER_FLAGS_BY_ROLE[role].map((code): PillOption => ({ value: code, label: scatterFlagLabel(code), count: room, signal: true }))]} onChange={() => undefined} />
+        <div className="sc-signal-pills">
+          <Pills label="Semnal" value={flag ?? ""} options={[{ value: "", label: "Tot grupul", count: room },
+            ...SCATTER_FLAGS_BY_ROLE[role].map((code): PillOption => ({ value: code, label: scatterFlagLabel(code), count: room, signal: true }))]} onChange={() => undefined} />
+        </div>
+        <label className="qb-field sc-signal-select"><span className="d-sr-only">Semnal</span><select value="" disabled><option value="">{flag ? scatterFlagLabel(flag) : "Tot grupul"}</option></select></label>
       </StripRow>
     </AnswerStrip></div>
     <figure className="sc-figure" aria-hidden="true">
@@ -219,6 +223,20 @@ export function ScatterGhost({ spec }: { spec: AskSpec }) {
     <p className="sc-foot qb-tipwrap">Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți. <span inert><HelpTip tip={{ title: "Valori înregistrate", text: "" }} /></span></p>
   </div>;
 }
+
+/**
+ * The chart's names measured in their own font (.sc-label: 11.5 px, 600, the body face), so a name is placed by its real
+ * width (critique 15 November 2026: an estimate a quarter short let „TERMICA DISTRIBUTIE NAV…” run out of the chart).
+ * Without a canvas (the server), the estimate.
+ */
+let labelCanvas: CanvasRenderingContext2D | null | undefined;
+const measureLabel: MeasureText = (text) => {
+  if (labelCanvas === undefined) labelCanvas = typeof document === "undefined" ? null : document.createElement("canvas").getContext("2d");
+  if (!labelCanvas) return text.length * 6.6;
+  const face = getComputedStyle(document.body).getPropertyValue("--body").trim() || "IBM Plex Sans, system-ui, sans-serif";
+  labelCanvas.font = `600 11.5px ${face}`;
+  return Math.ceil(labelCanvas.measureText(text).width) + 2;
+};
 
 /** A mark that answers a click (a ring) or a name: in over --fast. */
 const FAST = { "--cm-dur": "var(--fast)" } as CSSProperties;
@@ -302,9 +320,14 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   // The first names of the list on the chart, each where it fits; the chosen and the found points' always (chartLabels).
   const focus = useMemo(() => [...(picked ? [{ id: picked.id, text: chartName(picked.name) }] : []),
     ...(found?.results ?? []).slice(0, 3).map((m) => ({ id: m.id, text: chartName(m.name) }))], [picked, found]);
-  const labels = useMemo(() => chartLabels(rows.slice(0, g.box.compact ? 3 : 6).map((row) => ({ id: row.entityId, text: chartName(row.name) })), drawn, g, data.p90, focus),
+  const labels = useMemo(() => chartLabels(rows.slice(0, g.box.compact ? 3 : 6).map((row) => ({ id: row.entityId, text: chartName(row.name) })), drawn, g, data.p90, focus, measureLabel),
     [rows, drawn, g, data.p90, focus]);
-  const p90At = data.p90 > 0 ? p90Label(g, data.p90) : null;
+  const p90At = data.p90 > 0 ? p90Label(g, data.p90, measureLabel) : null;
+  // The density field and the strip (a cloud of cells), the chosen signal's cells on the same grid with their own ramp.
+  const field = useMemo(() => !legacy && "bands" in data.cloud ? density(data.cloud.bands, g) : null, [data, g, legacy]);
+  const flaggedField = useMemo(() => !legacy && "bands" in data.cloud && data.cloud.flagged ? density(data.cloud.flagged, g) : null, [data, g, legacy]);
+  // The profiles without a signal in the score: the strip's count (cells), or the points drawn in it.
+  const noneCount = field ? field.none : "points" in data.cloud ? data.cloud.points.filter((p) => pointLevel(data, p) < 10).length : 0;
 
   // The legend, the cloud and the list speak of the same profiles with the same classes.
   const total = data.chosen ? data.chosen.nList : data.group.nList;
@@ -324,6 +347,12 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const dropped = !flag && !retired && droppedSignal?.key === baseKey ? droppedSignal : null;
   const stripChange = (value: string) => { droppedSignal = null; onStrip(value); };
   const criteriaOf = (code: string) => (data.criteria as Partial<Record<string, number>>)[code] ?? 0;
+  const signalOptions: PillOption[] = [{ value: "", label: "Tot grupul", count: formatInt(data.group.n) },
+    ...codes.filter((code) => criteriaOf(code) > 0 || code === flag).map((code): PillOption => ({
+      value: code, label: scatterFlagLabel(code), count: formatInt(criteriaOf(code)), signal: true,
+      ...(criteriaOf(code) === 0 ? { disabled: "Niciun profil din grup nu are acest semnal." } : {}),
+    }))];
+  const chooseSignal = (value: string) => { if (value !== (chosen.flag ?? flag ?? "")) { setChosen((c) => ({ ...c, flag: value })); stripChange(`flag:${value}`); } };
 
   const strip = <AnswerStrip rows label="Ajustează lista și semnalul">
     {/* One listed profile has no order to choose (final: no control that changes nothing). */}
@@ -336,13 +365,16 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         onChange={(value) => { if (value !== (chosen.rank ?? rank)) { setChosen((c) => ({ ...c, rank: value })); stripChange(`rankBy:${value}`); } }} />
     </StripRow>}
     <StripRow label="Semnal" tip={{ title: "Semnal", text: flagHelp(role) }}>
-      <Pills label="Semnal" value={chosen.flag ?? flag ?? ""}
-        options={[{ value: "", label: "Tot grupul", count: formatInt(data.group.n) } as PillOption,
-          ...codes.filter((code) => criteriaOf(code) > 0 || code === flag).map((code): PillOption => ({
-            value: code, label: scatterFlagLabel(code), count: formatInt(criteriaOf(code)), signal: true,
-            ...(criteriaOf(code) === 0 ? { disabled: "Niciun profil din grup nu are acest semnal." } : {}),
-          }))]}
-        onChange={(value) => { if (value !== (chosen.flag ?? flag ?? "")) { setChosen((c) => ({ ...c, flag: value })); stripChange(`flag:${value}`); } }} />
+      {/* On a phone one menu, not six full-width pills before the chart (critique 15 November 2026): the same choice. */}
+      <div className="sc-signal-pills">
+        <Pills label="Semnal" value={chosen.flag ?? flag ?? ""} options={signalOptions} onChange={(value) => chooseSignal(value)} />
+      </div>
+      <label className="qb-field sc-signal-select">
+        <span className="d-sr-only">Semnal</span>
+        <select value={chosen.flag ?? flag ?? ""} onChange={(event) => chooseSignal(event.currentTarget.value)}>
+          {signalOptions.map((o) => <option key={o.value} value={o.value} disabled={Boolean(o.disabled)}>{o.label} · {o.count}</option>)}
+        </select>
+      </label>
     </StripRow>
   </AnswerStrip>;
 
@@ -480,7 +512,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       <svg className="sc-chart" role="img" width={g.box.width} height={g.box.height} viewBox={`0 0 ${g.box.width} ${g.box.height}`}
         aria-label={legacy
           ? `Norul de risc: ${countWords(data.group.n, "profil", "profiluri")}, pe ${levels + 1} benzi după numărul de semnale și pe scara valorii achizițiilor directe. Lista de mai jos are aceleași profiluri, cu cele numite.`
-          : `Norul de risc: ${countWords(data.group.n, "profil", "profiluri")}, după risc, de la 0 la 100%, și pe scara valorii achizițiilor directe. Lista de mai jos are aceleași profiluri, cu cele numite.`}
+          : `Norul de risc: ${countWords(data.group.n, "profil", "profiluri")}, după riscul din 100 și pe scara valorii achizițiilor directe; ${formatInt(noneCount)} fără semnal în scor, în fâșia de jos. Lista de mai jos are aceleași profiluri, cu cele numite.`}
         onPointerMove={onMove} onPointerLeave={() => setHover(null)} onClick={onClick}>
         {legacy ? Array.from({ length: levels + 1 }, (_, k) => {
           const label = bandIndex(k, levels);
@@ -490,32 +522,61 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             <text x={g.pad.l - 8} y={g.yAt(k) + 11} textAnchor="end" className="sc-ratio">{label.ratio}</text>
           </g>;
         }) : <g className="sc-risk-axis">
-          {/* The bands of the score, tinted (slab, moderat, puternic), with a line where each starts. */}
+          {/* The bands of the score, faintly tinted (slab, moderat, pronunțat), a line where each stronger one starts, and
+              their words: in the margin on a desktop, beside a coloured rail; inside the plot on a phone. */}
           {RISK_ZONES.map((z) => <rect key={z.band} x={g.pad.l} y={g.yAt(z.to)} width={g.plotW} height={g.yAt(z.from) - g.yAt(z.to)}
             className={`sc-zone ${RISK_BAND_CLASS[z.band]}`} />)}
           {RISK_GRID.map((s) => <line key={s} x1={g.pad.l} x2={g.pad.l + g.plotW} y1={g.yAt(s)} y2={g.yAt(s)} className="sc-grid sc-grid-y" />)}
+          <line x1={g.pad.l} x2={g.pad.l + g.plotW} y1={g.yAt(10)} y2={g.yAt(10)} className="sc-floor" />
           {RISK_AXIS.map((s) => <text key={s} x={g.pad.l - 6} y={g.yAt(s) + 4} textAnchor="end" className="sc-idx">{s}</text>)}
           <text x={4} y={g.pad.t - 8} className="sc-axis">risc</text>
+          {RISK_ZONES.map((z) => g.box.compact
+            ? <text key={z.band} x={g.pad.l + 5} y={g.yAt(z.to) + 14} className={`sc-zone-word ${RISK_BAND_CLASS[z.band]}`}>{RISK_BAND_WORD[z.band]}</text>
+            : <g key={z.band} className={`sc-rail ${RISK_BAND_CLASS[z.band]}`}>
+              <rect x={g.pad.l + g.plotW + 8} y={g.yAt(z.to) + 1} width={3} height={g.yAt(z.from) - g.yAt(z.to) - 2} rx={1.5} />
+              <text x={g.pad.l + g.plotW + 18} y={(g.yAt(z.to) + g.yAt(z.from)) / 2 - 2} className="sc-zone-word">{RISK_BAND_WORD[z.band]}</text>
+              <text x={g.pad.l + g.plotW + 18} y={(g.yAt(z.to) + g.yAt(z.from)) / 2 + 13} className="sc-tick">{z.from}–{z.to === 100 ? 100 : z.to - 1}</text>
+            </g>)}
+          {/* The strip of the profiles without a signal in the score, under the field: its own band, its „0”. */}
+          {g.strip && <g className="sc-strip">
+            <rect x={g.pad.l} y={g.strip.y} width={g.plotW} height={g.strip.h} className="sc-strip-bg" />
+            <line x1={g.pad.l} x2={g.pad.l + g.plotW} y1={g.strip.y + g.strip.h} y2={g.strip.y + g.strip.h} className="sc-floor" />
+            <text x={g.pad.l - 6} y={g.strip.y + g.strip.h / 2 + 4} textAnchor="end" className="sc-idx">0</text>
+            {g.box.compact ? null : <>
+              <text x={g.pad.l + g.plotW + 18} y={g.strip.y + 8} className="sc-zone-word">fără semnal</text>
+              <text x={g.pad.l + g.plotW + 18} y={g.strip.y + 23} className="sc-tick">{formatInt(noneCount)}</text>
+            </>}
+          </g>}
         </g>}
         {g.ticks.map((t) => <g key={t.lg}>
           <line x1={t.x} x2={t.x} y1={g.pad.t} y2={g.box.height - g.pad.b} className="sc-grid" />
           <text x={t.x} y={g.box.height - g.pad.b + 16} textAnchor="middle" className="sc-tick">{t.text}{g.box.compact ? "" : " lei"}</text>
         </g>)}
-        <text x={g.pad.l + g.plotW / 2} y={g.box.height - 6} textAnchor="middle" className="sc-axis">achiziții directe (scară logaritmică)</text>
+        <text x={g.pad.l + g.plotW / 2} y={g.box.height - 6} textAnchor="middle" className="sc-axis">achiziții directe, lei (scară logaritmică)</text>
         {p90At && <g className={`sc-p90${rank === "value" ? " is-on" : ""}`}>
           <line x1={g.x(data.p90)} x2={g.x(data.p90)} y1={g.pad.t - 4} y2={g.box.height - g.pad.b} />
           <text x={p90At.x} y={p90At.y} textAnchor={p90At.anchor}>{p90Words}</text>
         </g>}
         {/* Up to 2000 points or about 300 cells: each layer fades as a group, never point by point. A signal's layer is
             its own (keyed by it): another signal fades its points in. */}
-        {"bands" in data.cloud && <g className={`sc-cells ${motion.enter("cm-fade")}`}>{cellRects(data.cloud.bands, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o} className="sc-cell" />)}</g>}
-        {"bands" in data.cloud && data.cloud.flagged && <g key={`cells:${flag ?? ""}`} ref={motion.join} className={`sc-cells is-flag ${motion.enter("cm-fade")}`}>{cellRects(data.cloud.flagged, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={Math.min(1, c.o + 0.15)} className="sc-cell" />)}</g>}
+        {legacy && "bands" in data.cloud && <g className={`sc-cells ${motion.enter("cm-fade")}`}>{cellRects(data.cloud.bands, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={c.o} className="sc-cell" />)}</g>}
+        {legacy && "bands" in data.cloud && data.cloud.flagged && <g key={`cells:${flag ?? ""}`} ref={motion.join} className={`sc-cells is-flag ${motion.enter("cm-fade")}`}>{cellRects(data.cloud.flagged, g).map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} opacity={Math.min(1, c.o + 0.15)} className="sc-cell" />)}</g>}
+        {/* The density field (green, more is darker; one group of marks, faded in as one) and the strip's histogram. */}
+        {field && <g className={`sc-cells ${motion.enter("cm-fade")}`}>
+          {field.cells.map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} rx={1.2} className={`sc-cell s${c.step}`} />)}
+          {field.bars.map((b, i) => <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={1} className="sc-bar" />)}
+        </g>}
+        {flaggedField && <g key={`cells:${flag ?? ""}`} ref={motion.join} className={`sc-cells is-flag ${motion.enter("cm-fade")}`}>
+          {flaggedField.cells.map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} rx={1.2} className={`sc-cell s${c.step}`} />)}
+          {flaggedField.bars.map((b, i) => <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={1} className="sc-bar" />)}
+        </g>}
+        {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         <g className={motion.enter("cm-fade")}>{all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}</g>
         <g key={`points:${flag ?? ""}`} ref={motion.join} className={motion.enter("cm-fade")}>{all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}</g>
         {/* The list's points (at most 50): each fades in at its place, together; one the list gains fades in. */}
         {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""} cm-tw ${motion.enter("cm-pt")}`} />)}
         {extra.map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4} className={`sc-dot${d.flagged ? " is-flag" : ""}`} />)}
-        {labels.map((l) => <text key={l.id} ref={motion.join} x={l.x} y={l.y} textAnchor={l.anchor} className={`sc-name ${motion.enter("cm-fade cm-late")}`} style={FAST}>{l.text}</text>)}
+        {labels.map((l) => <text key={l.id} ref={motion.join} x={l.x} y={l.y} textAnchor={l.anchor} className={`sc-label ${motion.enter("cm-fade cm-late")}`} style={FAST}>{l.text}</text>)}
         {picked && (() => {
           const d = drawn.find((x) => x.point.id === picked.id);
           return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring cm-pt" style={FAST} /> : null;
@@ -527,8 +588,12 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         <span>{formatRon(hover.dot.point.value)} · {pointRisk(hover.dot)}</span>
       </div>}
       <figcaption className={`sc-legend${legacy ? "" : " qb-tipwrap"}`}>
-        <span><i className="sc-key" aria-hidden="true" /> grupul</span>
+        {field ? <span><span className="sc-ramp" aria-hidden="true">{field.steps.map((_, i) => <i key={i} className={`s${i}`} />)}</span>
+          {firm ? "firme" : "instituții"} pe pătrățel: {stepWords(field.steps).join(" · ")}</span>
+          : <span><i className="sc-key" aria-hidden="true" /> grupul</span>}
         {flag && <span><i className="sc-key is-flag" aria-hidden="true" /> cu „{lower(flag)}”</span>}
+        {g.strip && field && <span><i className="sc-key is-bars" aria-hidden="true" /> fără semnal în scor, după valoare</span>}
+        {field && field.below > 0 && <span>{countWords(field.below, firm ? "firmă" : "instituție", firm ? "firme" : "instituții")} la stânga axei, sub {"bands" in data.cloud ? axisWords(10 ** data.cloud.bands.minLog) : ""} lei</span>}
         <span><i className="sc-key is-list" aria-hidden="true" /> în listă</span>
         <span><i className="sc-key is-ring" aria-hidden="true" /> ales sau căutat</span>
         <span><i className="sc-key is-line" aria-hidden="true" /> {p90Words}</span>

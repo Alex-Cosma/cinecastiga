@@ -4,7 +4,8 @@ import { fold } from "./predicates";
 import { countyDisplay } from "./resolved-spec";
 import { instanceFacts, recordFacts } from "./scatter-records";
 import {
-  SCATTER_CLOUD_MIN_DAS, SCATTER_CLOUD_MIN_PROFILES, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, SCATTER_POINTS_MAX, activeScatterFlag, flagBit, scatterFlagsOf, scatterRank,
+  SCATTER_CLOUD_MIN_DAS, SCATTER_CLOUD_MIN_PROFILES, SCATTER_FIELD_MIN, SCATTER_FINE_NX, SCATTER_FINE_ROW, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, SCATTER_POINTS_MAX,
+  SCATTER_VALUE_FLOOR_PCT, activeScatterFlag, flagBit, scatterFlagsOf, scatterRank,
   type ScatterBands, type ScatterCloudPoint, type ScatterData, type ScatterDataV3, type ScatterFlag, type ScatterFlagFact, type ScatterListRow, type ScatterRole,
 } from "./scatter-shared";
 import type { AskSpec, RankBy } from "./spec";
@@ -60,14 +61,28 @@ const bit = (role: ScatterRole, flags: unknown): number => {
   return mask;
 };
 
-const BAND_CELLS = 80;
-/** The grey layer above 2,000 profiles: 80 cells of value by the tenth of the score (0 for 0–9 … 9 for 90–100). */
+/**
+ * The density layer above 2,000 profiles (owner, 15 November 2026, variant 1): SCATTER_FINE_NX columns of value by rows
+ * of SCATTER_FINE_ROW points of the score from SCATTER_FIELD_MIN (aligned with the bands' edges, 10, 40 and 68), which
+ * the screen joins into cells of its width. The profiles under 10 (85% of the institutions on 15 November) are counted
+ * apart by column, for the strip under the chart; the few left of `minLog` are only counted (`below`).
+ */
 async function bands(s: DbSql, where: Fragment, x: Fragment, minLog: number, maxLog: number): Promise<ScatterBands> {
-  const cells = (await s`
-    select width_bucket(${x}, ${minLog}, ${maxLog + 1e-9}, ${BAND_CELLS}) bx, least(coalesce(ef.score, 0) / 10, 9)::int k, count(*)::int n
-    from marts.entity_flags ef where ${where} group by 1, 2
+  const score = frag(s`coalesce(ef.score, 0)`);
+  const rows = (await s`
+    select width_bucket(${x}, ${minLog}, ${maxLog + 1e-9}, ${SCATTER_FINE_NX}) bx,
+           case when ${score} < ${SCATTER_FIELD_MIN} then -1 else (least(${score}, 99) - ${SCATTER_FIELD_MIN}) / ${SCATTER_FINE_ROW} end::int k, count(*)::int n
+    from marts.entity_flags ef where ${where} and ${x} >= ${minLog} group by 1, 2
   `) as unknown as { bx: number; k: number; n: number }[];
-  return { minLog, maxLog, nx: BAND_CELLS, total: cells.reduce((t, c) => t + c.n, 0), cells: cells.map((c) => [Number(c.bx), Number(c.k), Number(c.n)]) };
+  const [left] = (await s`select count(*)::int n from marts.entity_flags ef where ${where} and ${x} < ${minLog}`) as unknown as { n: number }[];
+  // In a stable order (a stored answer, a golden run): by column, then row.
+  const ordered = [...rows].sort((a, b) => Number(a.bx) - Number(b.bx) || Number(a.k) - Number(b.k));
+  const cells = ordered.filter((r) => Number(r.k) >= 0), none = ordered.filter((r) => Number(r.k) < 0);
+  const below = Number(left?.n ?? 0);
+  return {
+    minLog, maxLog, nx: SCATTER_FINE_NX, total: rows.reduce((t, c) => t + Number(c.n), 0), fine: true,
+    cells: cells.map((c) => [Number(c.bx), Number(c.k), Number(c.n)]), none: none.map((c) => [Number(c.bx), Number(c.n)]), ...(below ? { below } : {}),
+  };
 }
 
 export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<ScatterDataV3> {
@@ -80,9 +95,10 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
   const chosenList = flag ? s`, count(*) filter (where ef.flags ? ${flag} and ef.n_das >= ${SCATTER_LIST_MIN_DAS})::int chosen_list` : s``;
   const [count] = (await s`
     select count(*)::int n, count(*) filter (where ef.n_das >= ${SCATTER_LIST_MIN_DAS})::int n_list,
-           percentile_cont(0.9) within group (order by ef.total_ron) p90, min(${x}) mn, max(${x}) mx, ${per.reduce((a, b) => s`${a}, ${b}`)}${chosenList}
+           percentile_cont(0.9) within group (order by ef.total_ron) p90, min(${x}) mn, max(${x}) mx,
+           percentile_cont(${SCATTER_VALUE_FLOOR_PCT}) within group (order by ${x}) lo, ${per.reduce((a, b) => s`${a}, ${b}`)}${chosenList}
     from marts.entity_flags ef where ${group}
-  `) as unknown as ({ n: number; n_list: number; p90: string | null; mn: string | null; mx: string | null; chosen_list?: number } & Record<string, number>)[];
+  `) as unknown as ({ n: number; n_list: number; p90: string | null; mn: string | null; mx: string | null; lo: string | null; chosen_list?: number } & Record<string, number>)[];
   const n = Number(count?.n ?? 0);
   const criteria: ScatterData["criteria"] = {};
   flags.forEach((code, i) => { criteria[code] = Number(count?.[`c${i}`] ?? 0); });
@@ -150,7 +166,10 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
     })) };
     return data;
   }
-  const minLog = Number(count!.mn), maxLog = Math.max(Number(count!.mx), minLog + 0.01);
+  // The value axis starts at the half decade under the group's 0.2nd percentile (never under its least value): one
+  // stray 100-lei profile no longer stretches it by two decades (critique 15 November 2026).
+  const least = Number(count!.mn), lo = Number(count!.lo ?? count!.mn);
+  const minLog = Math.max(least, Math.floor(lo * 2) / 2), maxLog = Math.max(Number(count!.mx), minLog + 0.01);
   const all = await bands(s, group, x, minLog, maxLog);
   data.cloud = {
     bands: all, named: named(),
