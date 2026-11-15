@@ -2,7 +2,7 @@ import {beforeAll,afterAll,beforeEach,describe,it,expect} from 'vitest';
 import {createDb,CollectionProxyFailureError} from '@seap/db';
 import {createHttpClient,ScrapeError} from '@seap/scraper-clients';
 import {insertTasks,recoveryStep,recoverInterrupted,seedRecovery} from './runner.js';
-import {task} from './plan.js';
+import {task,BACKGROUND_PRIORITY} from './plan.js';
 const url=process.env['TEST_DATABASE_URL'];
 if(url&&!/^seap_test_/.test(new URL(url).pathname.slice(1)))throw Error('Isolated test DB required');
 const {sql:q}=createDb(url);
@@ -77,6 +77,20 @@ describe.skipIf(!url)('recovery manifest (isolated DB, no source traffic)',()=>{
   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
   expect((await q`select status from app.collection_tasks where kind='detail'`)[0]!.status).toBe('failed');
   expect(await recoveryStep(q,async()=>({total:0,items:[]}))).toBe(true);
+ });
+ it('turns an exhausted redirect to SEAP\'s error page into one award\'s gap, and any other redirect into a stop (15 November 2026)',async()=>{
+  const internal='/assets/errors/internal-error.htm?aspxerrorpath=/api-pub/PublicDirectAcquisition/getView/99123470';
+  // The historical lines download runs in the background lanes only.
+  const [lanes]=await q`select background_lanes from app.collection_control where id=1`;await q`update app.collection_control set background_lanes=1`;
+  try{
+  await insertTasks(q,[task('fixture','da','da-detail',{noticeId:99123470,page:0,backfill:true},BACKGROUND_PRIORITY+1)]);
+  expect(await recoveryStep(q,async()=>{throw new ScrapeError('Non-retryable HTTP 302','https://e-licitatie.ro/api-pub/fixture',302,1,internal);})).toBe(true);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select status,error from app.collection_tasks where kind='da-detail'`)[0]).toMatchObject({status:'failed',error:'Detaliu SEAP indisponibil (HTTP 302); celelalte anunțuri continuă.'});
+  await insertTasks(q,[task('fixture','da','da-detail',{noticeId:99123471,page:0,backfill:true},BACKGROUND_PRIORITY+1)]);
+  expect(await recoveryStep(q,async()=>{throw new ScrapeError('Non-retryable HTTP 302','https://e-licitatie.ro/api-pub/fixture',302,1,'/pub/login');})).toBe(true);
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toContain('Cererea sau arhivarea nu a fost confirmată');
+  }finally{await q`update app.collection_control set background_lanes=${lanes!.background_lanes}`;}
  });
  it('commits detail children with the root archive and keeps the batch open until they complete',async()=>{
   await insertTasks(q,[task('fixture','awards','detail',{noticeId:99123461,internalNoticeId:99123462,noticeType:3,noticeVersion:2,noticeNo:'CAN-test',page:0})]);

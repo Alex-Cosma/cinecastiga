@@ -43,6 +43,19 @@ export function seapSystemError(diagnostics: CollectionDiagnostics|undefined): b
  const first=Array.isArray(body)?body[0]:body;
  return typeof first==='string'&&/^Eroare de sistem\b/.test(first.trim());
 }
+/** SEAP's API also answers some internal failures with a redirect to its error page (HTTP 302 to
+ * /assets/errors/internal-error.htm: 18 October and 15 November 2026, a few awards in one second while the
+ * rest answered). Like "Eroare de sistem" they pass on a later attempt: never a reason to stop collection. */
+export function seapInternalErrorLocation(location: unknown): boolean {
+ return typeof location==='string'&&/^(?:https?:\/\/(?:www\.)?e-licitatie\.ro)?\/assets\/errors\/internal-error\.htm(?:[?#]|$)/i.test(location.trim());
+}
+export function seapInternalErrorRedirect(status: number, diagnostics: CollectionDiagnostics|undefined): boolean {
+ if(!(status>=300&&status<400))return false;
+ const headers=(diagnostics?.response as {headers?:unknown}|undefined)?.headers;
+ if(!headers||typeof headers!=='object')return false;
+ const location=Object.entries(headers as Record<string,unknown>).find(([name])=>name.toLowerCase()==='location')?.[1];
+ return seapInternalErrorLocation(location);
+}
 export function responseDiagnosticBody(bytes: Uint8Array, complete: boolean) {
  const text=Buffer.from(bytes).toString('utf8');
  let body:unknown=text;try{body=JSON.parse(text);}catch{}

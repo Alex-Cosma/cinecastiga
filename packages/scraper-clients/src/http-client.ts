@@ -46,6 +46,8 @@ export class ScrapeError extends Error {
     public readonly url: string,
     public readonly status: number | null,
     public readonly attempts: number,
+    /** A redirect's target (3xx): SEAP sends some internal failures to its error page this way. */
+    public readonly location: string | null = null,
   ) {
     super(message);
     this.name = "ScrapeError";
@@ -234,6 +236,7 @@ export function createHttpClient(opts: HttpClientOptions): HttpClient {
             url,
             response.status,
             attempt,
+            response.status >= 300 && response.status < 400 ? response.headers.get("location") : null,
           );
         }
         if (isServerFailure(response.status)) {

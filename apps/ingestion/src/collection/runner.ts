@@ -1,6 +1,6 @@
 import {DA_STRATEGY} from './da-partition.js';
 import {NoticeDetailValidationError} from './notice-details.js';
-import {CollectionProxyFailureError,collectionQuietWindow,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,pauseCollectionStreamInTransaction,withCollectionStream,type DbSql} from '@seap/db';
+import {CollectionProxyFailureError,collectionQuietWindow,seapInternalErrorLocation,diagnosticError,sanitizeDiagnostics,CollectionSuspendedError,collectionHeartbeat,collectionWorkerId,pauseCollectionStreamInTransaction,withCollectionStream,type DbSql} from '@seap/db';
 import {searchTedNotices,tedCountryWindowQuery,type TedClient} from '@seap/scraper-clients';
 import {fetchTedDailyPackage,getTedCollectionClient,type TedPackageResponse} from '../scrape/ted/collection-client.js';
 import {readTedDailyPackage} from '../scrape/ted/package.js';
@@ -173,7 +173,9 @@ export async function recoveryStep(q:DbSql,fetcher:(t:Task)=>Promise<unknown>,la
   // the exact task identity and stop admission until an operator inspects it.
   // A package/search difference is a visible gap for that issue only; the next issues continue.
   const tedGap=error instanceof TedVerificationError;
-  const unavailable=error instanceof ScrapeError&&[400,404,410].includes(error.status??0);
+  // A redirect to SEAP's error page is its internal failure, like the 400 "Eroare de sistem" (the gate has already
+  // retried both twice): an award's gap for a detail, never a global stop (15 November 2026).
+  const unavailable=error instanceof ScrapeError&&([400,404,410].includes(error.status??0)||seapInternalErrorLocation(error.location));
   // A contracts audit only verifies archived records: a rejected page or a missing notice is that task's gap.
   // 403/429/challenge already stopped the gate; transport, SQL and ownership errors still stop everything.
   const auditGap=t.kind==='contracts'&&!!t.params.audit&&(rejected||unavailable);

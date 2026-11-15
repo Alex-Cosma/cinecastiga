@@ -1,11 +1,23 @@
 import {describe,it,expect} from 'vitest';
-import {diagnosticError,sanitizeDiagnostics,responseDiagnosticBody,retryableProxyTransport,seapSystemError} from './collection-diagnostics.js';
+import {diagnosticError,sanitizeDiagnostics,responseDiagnosticBody,retryableProxyTransport,seapInternalErrorLocation,seapInternalErrorRedirect,seapSystemError} from './collection-diagnostics.js';
 describe('failure diagnostic preservation',()=>{
  it('recognizes SEAP system errors answered as HTTP 400, nothing else',()=>{
   expect(seapSystemError({response:{body:['Eroare de sistem 261019-49','\r\nThe underlying provider failed on EnlistTransaction.']}})).toBe(true);
   expect(seapSystemError({response:{body:' Eroare de sistem 261017-24'}})).toBe(true);
   for(const body of ['Cerere invalidă',['Missing Authorization header'],{message:'Eroare de sistem'},undefined])expect(seapSystemError({response:{body}})).toBe(false);
   expect(seapSystemError(undefined)).toBe(false);
+ });
+ it('recognizes a redirect to SEAP\'s internal error page (15 November 2026), nothing else',()=>{
+  const at='/assets/errors/internal-error.htm?aspxerrorpath=/api-pub/PublicDirectAcquisition/getView/123334025';
+  expect(seapInternalErrorRedirect(302,{response:{status:302,headers:{date:'Sun, 15 Nov 2026 09:17:51 GMT',server:'SICAP',location:at}}})).toBe(true);
+  expect(seapInternalErrorRedirect(302,{response:{headers:{Location:'https://e-licitatie.ro/assets/errors/internal-error.htm'}}})).toBe(true);
+  expect(seapInternalErrorLocation('https://www.e-licitatie.ro/assets/errors/internal-error.htm#x')).toBe(true);
+  // A login, a challenge or another site is not SEAP's error page; a 200 or a 500 is not a redirect.
+  for(const location of ['/pub/login','/assets/errors/forbidden.htm','https://evil.example/assets/errors/internal-error.htm','/assets/errors/internal-error.html',null,undefined])
+   expect(seapInternalErrorRedirect(302,{response:{headers:{location}}})).toBe(false);
+  expect(seapInternalErrorRedirect(200,{response:{headers:{location:at}}})).toBe(false);
+  expect(seapInternalErrorRedirect(500,{response:{headers:{location:at}}})).toBe(false);
+  expect(seapInternalErrorRedirect(302,undefined)).toBe(false);
  });
  it('distinguishes network failures from invalid data and unexpected errors',()=>{
   const socket=Object.assign(new Error('private proxy endpoint'),{code:'ECONNRESET'});

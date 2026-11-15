@@ -18,7 +18,7 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
   await q`insert into app.collection_batches(id,end_day,next_stream) values('fixture','2026-09-25',0)`;
   await insertTasks(q,[task('fixture','da','da',{authorityId:7848,from:'2026-07-01',to:'2026-09-25',page:0})]);
  });
- async function transport(t:Task,kind:'timeout'|'ok'|'error'|'403'|'timeout403'|'proxy-error'|'503'|'400'|'400-system'='timeout',patch:Record<string,unknown>={}){
+ async function transport(t:Task,kind:'timeout'|'ok'|'error'|'403'|'timeout403'|'proxy-error'|'503'|'400'|'400-system'|'302-internal'|'302-other'='timeout',patch:Record<string,unknown>={}){
   const c=await q.reserve();
   const original=setTimeout;
   const timer=vi.spyOn(globalThis,'setTimeout').mockImplementation(((fn:any,ms:any,...args:any[])=>original(fn,ms===45000?20:ms,...args)) as typeof setTimeout);
@@ -27,6 +27,7 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
    if(kind==='proxy-error')throw new CollectionTransportError(Error('fixture socket closed'),{retryableProxyTransport:true});
    if(kind==='error')throw Error('non-timeout transport failure');
    if(kind==='400'||kind==='400-system')return {status:400,value:null,diagnostics:{response:{body:kind==='400'?'Cerere invalidă':['Eroare de sistem 261019-49','The underlying provider failed on EnlistTransaction.']}}};
+   if(kind==='302-internal'||kind==='302-other')return {status:302,value:null,diagnostics:{response:{status:302,headers:{server:'SICAP',location:kind==='302-internal'?'/assets/errors/internal-error.htm?aspxerrorpath=/api-pub/PublicDirectAcquisition/getView/123334025':'/pub/login'}}}};
    return {status:kind==='403'?403:kind==='503'?503:200,value:{total:0,items:[]}};
   });}finally{timer.mockRestore();c.release();}
  }
@@ -62,6 +63,23 @@ describe.skipIf(!url)('durable timeout retries (real PG, no network)',()=>{
   expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
   expect((await q`select error from app.collection_requests order by id`).map(r=>r.error)).toEqual([
    'Eroare de sistem SEAP (HTTP 400). Reîncercare automată 1/2 după 5 minute.','Eroare de sistem SEAP (HTTP 400). Reîncercare automată 2/2 după 10 minute.','Eroare de sistem SEAP (HTTP 400). Limita reîncercărilor automate a fost atinsă.']);
+ });
+ it('retries a redirect to SEAP\'s error page twice without ever blocking collection (15 November 2026)',async()=>{
+  const step=()=>recoveryStep(q,t=>transport(t,'302-internal').then(()=>({total:0,items:[]})));
+  expect(await step()).toBe(false);
+  expect((await q`select timeouts,status from app.collection_retries`)[0]).toMatchObject({timeouts:1,status:'pending'});
+  expect((await q`select status from app.collection_tasks`)[0]!.status).toBe('pending');
+  await due();expect(await step()).toBe(false);
+  await due();expect(await step()).toBe(true);
+  expect((await q`select timeouts,status from app.collection_retries`)[0]).toMatchObject({timeouts:3,status:'stopped'});
+  expect((await q`select blocked_reason from app.collection_control`)[0]!.blocked_reason).toBeNull();
+  expect((await q`select error from app.collection_requests order by id`).map(r=>r.error)).toEqual([
+   'Eroare internă SEAP (HTTP 302). Reîncercare automată 1/2 după 5 minute.','Eroare internă SEAP (HTTP 302). Reîncercare automată 2/2 după 10 minute.','Eroare internă SEAP (HTTP 302). Limita reîncercărilor automate a fost atinsă.']);
+ });
+ it('does not retry a redirect anywhere else',async()=>{
+  expect(await recoveryStep(q,t=>transport(t,'302-other').then(()=>({total:0,items:[]})))).toBe(true);
+  expect(await q`select 1 from app.collection_retries`).toHaveLength(0);
+  expect((await q`select error from app.collection_requests`)[0]!.error).toBe('HTTP 302');
  });
  it('does not retry an ordinary 400',async()=>{
   expect(await recoveryStep(q,t=>transport(t,'400').then(()=>({total:0,items:[]})))).toBe(true);
