@@ -41,8 +41,8 @@ afterEach(() => {
 
 describe("the key versions of this release", () => {
   it("tell a watch on the risk cloud in the order of risk, once, that its list leaves out the historic profiles (S8, 15 November 2026)", () => {
-    expect(DECLARED["scatter:historic"]).toMatchObject({ version: "scatter:historic-2", label: "Profilurile istorice", paths: ["block"], blocks: ["scatter"] });
-    expect(KEY_VERSION_NOTES["scatter:historic-2"]).toBe("Lista de lângă norul de risc, în ordinea riscului, nu mai arată implicit profilurile istorice (fără înregistrări în ultimele 24 de luni); „Include-le” le aduce înapoi.");
+    expect(DECLARED["scatter:historic"]).toMatchObject({ version: "scatter:historic-2", label: "Profilurile inactive", paths: ["block"], blocks: ["scatter"] });
+    expect(KEY_VERSION_NOTES["scatter:historic-2"]).toBe("Lista de lângă norul de risc, în ordinea riscului, nu mai arată implicit profilurile inactive (fără înregistrări în ultimele 24 de luni); „Include-le” le aduce înapoi.");
     Object.assign(KEY_VERSIONS, DECLARED);
     const cloud: AskSpec = { block: "scatter", dim: "authority", measure: "value", filters: {} };
     expect(answerVersion(cloud).conditions).toEqual({ "scatter:historic": "scatter:historic-2" });

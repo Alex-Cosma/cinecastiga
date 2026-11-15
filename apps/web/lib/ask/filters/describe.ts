@@ -595,12 +595,12 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
     scope: [{ label: DOMINANT_LABEL, value: "Cea mai mare firmă are cel puțin jumătate din valoarea instituției în selecție, din cel puțin 3 înregistrări" }],
     summary: DOMINANT_LABEL,
   } : null,
-  // rf-2026.22 (S8): the risk ranking with the historic profiles too.
+  // rf-2026.22 (S8): the risk ranking with the inactive profiles too („Inactiv”, the entity page's word; 15 November 2026).
   includeHistoric: (spec) => spec.filters.includeHistoric ? {
-    words: "inclusiv profilurile istorice", tail: "inclusiv profilurile fără înregistrări în ultimele 24 de luni",
-    chip: "Și istoricele", pills: ["și istoricele"],
-    scope: [{ label: "Istorice", value: "Inclusiv profilurile fără nicio achiziție sau contract în ultimele 24 de luni" }],
-    summary: "Și istoricele",
+    words: "inclusiv profilurile inactive", tail: "inclusiv profilurile fără înregistrări în ultimele 24 de luni",
+    chip: "Și cele inactive", pills: ["și cele inactive"],
+    scope: [{ label: "Inactive", value: "Inclusiv profilurile fără nicio achiziție sau contract în ultimele 24 de luni" }],
+    summary: "Și cele inactive",
   } : null,
   networkSignals: (spec) => spec.network?.signals ? {
     words: "doar partenerii cu semnale", chip: "Cu semnale", pills: ["cu semnale"],

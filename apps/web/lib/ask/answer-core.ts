@@ -103,7 +103,7 @@ export const KEY_VERSIONS: Record<string, KeyVersion> = {
   // profiles (no record in 24 months) unless asked for, as "Cine conduce?"; the chart and the counts of the signals
   // keep the whole group. By value, or with them asked for, the list holds what it did.
   "scatter:historic": {
-    version: "scatter:historic-2", label: "Profilurile istorice", paths: ["block"], blocks: ["scatter"],
+    version: "scatter:historic-2", label: "Profilurile inactive", paths: ["block"], blocks: ["scatter"],
     when: (spec) => leavesHistoric(spec),
   },
 };
@@ -116,7 +116,7 @@ export const KEY_VERSION_NOTES: Record<string, string> = {
   "table:per-capita-2": "Lista pe locuitor are acum toate cele 41 de consilii județene.",
   "table:employees-2": "Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.",
   "seat-2": "Județul firmei e acum sediul ei: ultima înmatriculare la Registrul Comerțului, apoi SEAP; firmele străine apar separat.",
-  "scatter:historic-2": "Lista de lângă norul de risc, în ordinea riscului, nu mai arată implicit profilurile istorice (fără înregistrări în ultimele 24 de luni); „Include-le” le aduce înapoi.",
+  "scatter:historic-2": "Lista de lângă norul de risc, în ordinea riscului, nu mai arată implicit profilurile inactive (fără înregistrări în ultimele 24 de luni); „Include-le” le aduce înapoi.",
 };
 
 /**

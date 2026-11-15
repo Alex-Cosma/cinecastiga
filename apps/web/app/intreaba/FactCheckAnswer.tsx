@@ -170,7 +170,10 @@ function RelationBand({ relation, onWhole }: { relation: NonNullable<FactCheckDa
   </div>;
 }
 
-/** "Nu" in the whole archive (final §5.4): an entity of the same name with records, and each side's partners (›). */
+/**
+ * "Nu" in the whole archive (final §5.4): an entity of the same name with records, and each side's partners (›). Each
+ * is another question on this page: a plain <a> (a full load), since a client navigation kept this answer (15 November 2026).
+ */
 function NoneContext({ fact: f }: { fact: FactCheckData }) {
   const network = (p: FactParty, role: "authority" | "supplier"): QuestionSpec => ({ block: "network", measure: "value", filters: role === "authority"
     ? { authorityId: Number(p.entityId), authorityName: p.name } : { supplierId: Number(p.entityId), supplierName: p.name } });
@@ -182,11 +185,11 @@ function NoneContext({ fact: f }: { fact: FactCheckData }) {
       Același nume, alt CUI: <b><EntityName id={t.entityId} role={t.role}>{[t.cui ? `CUI ${t.cui}` : cleanName(t.name), county(t.county)].filter(Boolean).join(" · ")}</EntityName></b> are <b>{recordWords(t.count)}</b> cu{" "}
       <EntityName id={(t.role === "authority" ? f.supplier : f.authority).entityId} role={t.role === "authority" ? "supplier" : "authority"}>{shortName(t.role === "authority" ? f.supplier : f.authority)}</EntityName>
       {t.yearFirst ? `, ${t.yearFirst === t.yearLast ? t.yearFirst : `${t.yearFirst}–${t.yearLast}`}` : ""}.{" "}
-      <Link className="fc-textlink" href={askLink(pairWith(t))}>Verifică<span className="qb-glyph" aria-hidden="true">›</span></Link>
+      <a className="fc-textlink" href={askLink(pairWith(t))}>Verifică<span className="qb-glyph" aria-hidden="true">›</span></a>
     </div>)}
     {f.partners && <div className="fc-ctx">
-      {f.partners.authoritySuppliers > 0 && <Link className="fc-textlink" href={askLink(network(f.authority, "authority"))}>Instituția a cumpărat de la {countWords(f.partners.authoritySuppliers, "firmă", "firme")}<span className="qb-glyph" aria-hidden="true">›</span></Link>}
-      {f.partners.supplierAuthorities > 0 && <Link className="fc-textlink" href={askLink(network(f.supplier, "supplier"))}>Firma a vândut către {countWords(f.partners.supplierAuthorities, "instituție", "instituții")}<span className="qb-glyph" aria-hidden="true">›</span></Link>}
+      {f.partners.authoritySuppliers > 0 && <a className="fc-textlink" href={askLink(network(f.authority, "authority"))}>Instituția a cumpărat de la {countWords(f.partners.authoritySuppliers, "firmă", "firme")}<span className="qb-glyph" aria-hidden="true">›</span></a>}
+      {f.partners.supplierAuthorities > 0 && <a className="fc-textlink" href={askLink(network(f.supplier, "supplier"))}>Firma a vândut către {countWords(f.partners.supplierAuthorities, "instituție", "instituții")}<span className="qb-glyph" aria-hidden="true">›</span></a>}
     </div>}
   </>;
 }

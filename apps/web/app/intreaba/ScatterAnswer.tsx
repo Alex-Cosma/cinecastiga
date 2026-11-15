@@ -491,6 +491,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     delete next.filters.county; delete next.filters.seatCounty; delete next.filters.uatSiruta; delete next.filters.uatName;
     return next;
   })();
+  // Another question on the same page: a plain <a> (a full load, as KitLink's), since a client navigation changed the
+  // address and kept the answer on screen (AskPanel reads the address on load and on «Înapoi»; 15 November 2026).
   const widenHref = askLink(widen as unknown as QuestionSpec);
   const widenLabel = data.wider !== undefined ? `Toate ${plural} din țară · ${formatInt(data.wider)}` : "Toată țara";
   const groupIn = `${plural}${county ? ` ${countyWords(county)}` : ""}`;
@@ -517,7 +519,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
 
     {data.group.small ? <p className="sc-small" role="note">
       {countWords(data.group.n, "profil", "profiluri")} în grup: prea puține pentru un nor. Le arătăm ca listă.
-      {hasPlace && <>{" "}<Link className="qb-relax-link" href={widenHref}>{widenLabel}<span className="qb-glyph" aria-hidden="true">›</span></Link></>}
+      {hasPlace && <>{" "}<a className="qb-relax-link" href={widenHref}>{widenLabel}<span className="qb-glyph" aria-hidden="true">›</span></a></>}
     </p> : <figure className="sc-figure" {...motion.root}>
       <svg className="sc-chart" role="img" width={g.box.width} height={g.box.height} viewBox={`0 0 ${g.box.width} ${g.box.height}`}
         aria-label={legacy
@@ -617,7 +619,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         onPick={(result) => { const m = found?.results.find((x) => x.id === result.id); if (m) openMatch(m, total); }}
         found={found && found.name ? { name: cleanName(found.name), place: found.place } : null} />
       {found && !searching && found.results.length === 0 && hasPlace
-        && <Link className="qb-relax-link sc-wide" href={widenHref}>Caută în toată țara<span className="qb-glyph" aria-hidden="true">›</span></Link>}
+        && <a className="qb-relax-link sc-wide" href={widenHref}>Caută în toată țara<span className="qb-glyph" aria-hidden="true">›</span></a>}
     </div>
 
     {picked && <DetailCard

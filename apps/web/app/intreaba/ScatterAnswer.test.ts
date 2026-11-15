@@ -462,15 +462,15 @@ describe("the chart's geometry and words", () => {
     expect(listHeadWords(out, 10)).toBe("Primele 10 din 81");
     expect([pointPlace(out, "2144803"), pointPlace(out, "2146202"), pointPlace(out, "2144792")]).toEqual([1, 2, null]);
     const markup = render(out);
-    expect(text(markup)).toContain("Primele 2 din 81 1 profil istoric, fără înregistrări în ultimele 24 de luni, nu e în listă. Include-le");
+    expect(text(markup)).toContain("Primele 2 din 81 1 profil inactiv, fără înregistrări în ultimele 24 de luni, nu e în listă. Include-le");
     // A full page load (a client navigation to the same page kept the answer), to the same question with them.
     const link = /<a class="qb-link" href="([^"]+)">Include-le<\/a>/.exec(markup);
     expect(decodeSpec(decodeURIComponent(link![1]!.split("spec=")[1]!.replace(/&amp;/g, "&")))).toMatchObject({ block: "scatter", filters: { includeHistoric: true } });
     // Listed (asked for, or by value), a historic row says so first, with its last month and an explanation; nothing is left out.
     const asked: ScatterData = { ...BUZAU_CLOUD, list: [BUZAU_ROWS[0]!, { ...BUZAU_ROWS[1]!, historic: "2019-02-01" }, BUZAU_ROWS[2]!] };
     const listed = render(asked, spec({ filters: { authorityKind: "comuna", county: "Buzău", includeHistoric: true } }));
-    expect(text(listed)).toMatch(/Comuna Pardosi .*? istoric · ultima 02\.2019 Adunate, trec de plafon/);
-    expect(listed).toContain("Profil istoric");
+    expect(text(listed)).toMatch(/Comuna Pardosi .*? Inactiv · ultima 02\.2019 Adunate, trec de plafon/);
+    expect(listed).toContain("ultima înregistrare: 01.02.2019");
     expect(listed).not.toContain("sc-hist");
   });
 

@@ -14,20 +14,20 @@ import type { AskSpec } from "./spec";
 const cloud = (scatter: AskSpec["scatter"], filters: AskSpec["filters"] = {}): AskSpec => ({ block: "scatter", dim: "authority", measure: "value", filters, ...(scatter ? { scatter } : {}) });
 
 describe("the historic profiles", () => {
-  it("are said in the words of „Cine conduce?”: how many are left out, the tag with the last month, why a found one has no place", () => {
-    expect(historicLeftOutWords(770)).toBe("770 de profiluri istorice, fără înregistrări în ultimele 24 de luni, nu sunt în listă.");
-    expect(historicLeftOutWords(1)).toBe("1 profil istoric, fără înregistrări în ultimele 24 de luni, nu e în listă.");
+  it("are said „inactive”, the entity page's word (not „istorice”, the whole archive's): how many are left out, the tag with the last month, why a found one has no place", () => {
+    expect(historicLeftOutWords(770)).toBe("770 de profiluri inactive, fără înregistrări în ultimele 24 de luni, nu sunt în listă.");
+    expect(historicLeftOutWords(1)).toBe("1 profil inactiv, fără înregistrări în ultimele 24 de luni, nu e în listă.");
     // last_activity as the mart writes it, or its day.
     expect(lastMonthWords("2023-09-12 00:00:00+03")).toBe("09.2023");
     expect(lastMonthWords("2019-02-01")).toBe("02.2019");
     expect(historicFact("2019-02-01")).toEqual({
-      text: "istoric · ultima 02.2019",
-      tip: { title: "Profil istoric", text: "Nicio achiziție sau contract în ultimele 24 de luni; ultima înregistrare: 01.02.2019. Clasamentele după risc nu îl arată implicit; scorul lui rămâne cel calculat." },
+      text: "Inactiv · ultima 02.2019",
+      tip: { title: "Inactiv", text: "Nicio achiziție sau contract în ultimele 24 de luni; ultima înregistrare: 01.02.2019. Scorul și dovezile rămân; clasamentele după risc nu-l arată implicit." },
     });
     // Without its profile row (none expected): historic, the day unknown.
-    expect(historicFact("").text).toBe("istoric");
-    expect(historicPlaceWords("2019-02-01 09:55:53+02")).toBe("nu intră în listă: istoric, ultima în 02.2019");
-    expect(historicPlaceWords("")).toBe("nu intră în listă: istoric");
+    expect(historicFact("").text).toBe("Inactiv");
+    expect(historicPlaceWords("2019-02-01 09:55:53+02")).toBe("nu intră în listă: inactiv, ultima în 02.2019");
+    expect(historicPlaceWords("")).toBe("nu intră în listă: inactiv");
   });
 
   it("leave the cloud's list in the order of risk unless asked for; by value they stay", () => {

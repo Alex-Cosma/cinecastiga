@@ -358,7 +358,7 @@ export const SPEC_JSON_SCHEMA = {
         },
         includeHistoric: {
           type: "boolean",
-          description: "Doar pentru clasamentul după scorul de risc (block=entity_card): true = include și profilurile fără nicio înregistrare în ultimele 24 de luni („istorice”, „inactive”). Implicit sunt lăsate deoparte.",
+          description: "Doar pentru clasamentul după scorul de risc (block=entity_card): true = include și profilurile fără nicio înregistrare în ultimele 24 de luni („inactive”, „istorice”). Implicit sunt lăsate deoparte.",
         },
       },
     },

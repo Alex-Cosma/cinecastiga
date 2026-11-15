@@ -175,7 +175,7 @@ function patternTags(flags: readonly string[], title: string, role: "authority" 
 }
 
 /**
- * The tags of a ranked profile (P8, at most three): „istoric · ultima 09.2023” first on a historic one (listed with
+ * The tags of a ranked profile (P8, at most three): „Inactiv · ultima 09.2023” first on a historic one (listed with
  * includeHistoric; owner, 15 November 2026), its patterns (patternTags), then „societate” / „asociație” for a buyer
  * whose name shows a legal form that is no institution's, where a place is left (final §3.10).
  */

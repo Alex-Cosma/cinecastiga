@@ -5,13 +5,17 @@ import { countWords } from "./answer-text";
  * (marts.entity_profile.last_activity). The rankings by the risk score leave them out unless the question asks for them
  * (filters.includeHistoric): "Cine conduce?" since rf-2026.22, the risk cloud's list in the order of risk since
  * 15 November 2026 (owner: one pattern in both places). Listed, a historic row says so with a tag.
+ *
+ * The site calls them „inactive”, as the entity page's tag „Inactiv” (owner, 15 November 2026: one word): „profil
+ * istoric” already names a profile built on the whole archive (the pills, the notes), so „profiluri istorice” read as
+ * every profile.
  */
 
 export const HISTORIC_MONTHS = 24;
 
-/** „770 de profiluri istorice, fără înregistrări în ultimele 24 de luni, nu sunt în listă.” */
+/** „770 de profiluri inactive, fără înregistrări în ultimele 24 de luni, nu sunt în listă.” */
 export const historicLeftOutWords = (n: number): string =>
-  `${countWords(n, "profil istoric", "profiluri istorice")}, fără înregistrări în ultimele ${HISTORIC_MONTHS} de luni, nu ${n === 1 ? "e" : "sunt"} în listă.`;
+  `${countWords(n, "profil inactiv", "profiluri inactive")}, fără înregistrări în ultimele ${HISTORIC_MONTHS} de luni, nu ${n === 1 ? "e" : "sunt"} în listă.`;
 
 /** The day of a last record ("2023-09-12 00:00:00+03" or "2023-09-12"), or null when there is none. */
 const dayOf = (last: string): { y: string; m: string; d: string } | null => {
@@ -26,23 +30,24 @@ export const lastMonthWords = (last: string): string | null => {
 };
 
 /**
- * The tag of a historic row: „istoric · ultima 09.2023”, neutral (no signal), its explanation on hover or a tap like
- * every tag of a list (owner, 15 November 2026). Structurally a RowFact (app/intreaba/answer/RowFacts.tsx).
+ * The tag of a historic row: „Inactiv · ultima 09.2023”, neutral (no signal), its explanation on hover or a tap like
+ * every tag of a list (owner, 15 November 2026), in the words of the entity page's „Inactiv”. Structurally a RowFact
+ * (app/intreaba/answer/RowFacts.tsx).
  */
 export function historicFact(last: string): { text: string; tip: { title: string; text: string } } {
   const month = lastMonthWords(last), day = dayOf(last);
   return {
-    text: month ? `istoric · ultima ${month}` : "istoric",
+    text: month ? `Inactiv · ultima ${month}` : "Inactiv",
     tip: {
-      title: "Profil istoric",
+      title: "Inactiv",
       text: `Nicio achiziție sau contract în ultimele ${HISTORIC_MONTHS} de luni${day ? `; ultima înregistrare: ${day.d}.${day.m}.${day.y}` : ""}. `
-        + "Clasamentele după risc nu îl arată implicit; scorul lui rămâne cel calculat.",
+        + "Scorul și dovezile rămân; clasamentele după risc nu-l arată implicit.",
     },
   };
 }
 
-/** Why a found profile has no place in the list: „nu intră în listă: istoric, ultima în 02.2019”. */
+/** Why a found profile has no place in the list: „nu intră în listă: inactiv, ultima în 02.2019”. */
 export const historicPlaceWords = (last: string): string => {
   const month = lastMonthWords(last);
-  return `nu intră în listă: istoric${month ? `, ultima în ${month}` : ""}`;
+  return `nu intră în listă: inactiv${month ? `, ultima în ${month}` : ""}`;
 };

@@ -3677,7 +3677,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       // The statement's end stays out of a condition's trailing comment.
       return `-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere ${group.join("\n  and ")}${group.at(-1)!.includes("--") ? "\n" : ""};` +
         `\n-- lista: primele ${SCATTER_LIST_MAX}\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= ${ENTITY_CARD_MIN_DAS}  -- un grup sub 10 profiluri: toate, de la ${RISK_MIN_DAS}` +
-        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}${leavesHistoric(spec) ? "\n  and <activ în ultimele 24 de luni>  -- fără profilurile istorice" : ""}\norder by ${scatterRank(spec) === "risk" ? "score desc, total_ron desc, entity_id  -- la același procent, după valoare" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
+        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}${leavesHistoric(spec) ? "\n  and <activ în ultimele 24 de luni>  -- fără profilurile inactive" : ""}\norder by ${scatterRank(spec) === "risk" ? "score desc, total_ron desc, entity_id  -- la același procent, după valoare" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
     }
     case "sankey":
       return `select partener, categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by partener, categoria_cpv;`;
@@ -3686,7 +3686,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
     case "entity_card":
       // entity_card-3: the risk axis lists the first profiles by the risk score; the podium is the ranking's first three.
       return (spec.rankBy ?? "risk") === "risk"
-        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and score > 0  -- fără niciun profil cu scor: primii după valoare${spec.filters.includeHistoric === true ? "" : "\n  and <activ în ultimele 24 de luni>  -- fără profilurile istorice"}\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit ${RISK_LISTED};\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare`
+        ? `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\n  and score > 0  -- fără niciun profil cu scor: primii după valoare${spec.filters.includeHistoric === true ? "" : "\n  and <activ în ultimele 24 de luni>  -- fără profilurile inactive"}\norder by score desc, score_raw desc, total_ron desc, entity_id\nlimit ${RISK_LISTED};\n-- scorul de risc 0–100 (afișat rotunjit); la același scor, după valoare`
         : `select *\nfrom marts.entity_flags\nwhere n_das >= ${ENTITY_CARD_MIN_DAS} ${w.kind ? `-- doar ${KIND_LABEL[w.kind]}` : ""}\norder by total_ron desc\nlimit ${PODIUM_PLACES};`;
     case "fact_check":
       // fact_check-2: the verdict counts these records, then what the sums leave out of the pair (lib/ask/fact-check.ts).

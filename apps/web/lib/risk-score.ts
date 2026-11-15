@@ -101,7 +101,7 @@ export function riskSplitRecurring(g: { total: number; n: number; ceiling: numbe
 }
 
 /**
- * A profile without any record in the last 24 months is "istoric" (rf-2026.22,
+ * A profile without any record in the last 24 months is "inactiv" (rf-2026.22,
  * owner decision S8): its score and evidence stay, the rankings leave it out
  * by default. `last` is its latest dated record (YYYY-MM-DD…), `today` the
  * day of the reading.

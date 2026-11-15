@@ -847,7 +847,7 @@ export interface EntityRole {
   nContracts: number;
   nDas: number;
   rank: number | null;
-  /** The latest dated record in this role, direct or by procedure (YYYY-MM-DD…); "istoric" after 24 months (S8). */
+  /** The latest dated record in this role, direct or by procedure (YYYY-MM-DD…); "inactiv" after 24 months (S8). */
   lastActivity: string | null;
 }
 

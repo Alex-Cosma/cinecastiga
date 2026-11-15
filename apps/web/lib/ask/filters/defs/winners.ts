@@ -87,11 +87,11 @@ export const dominantSupplier: FilterDef<true> = {
 };
 
 /**
- * „Și profilurile istorice” (rf-2026.22, owner decision S8): the ranking by the risk score leaves out the profiles
+ * „Și profilurile inactive” (rf-2026.22, owner decision S8; „istorice” until 15 November 2026, the entity page's word since): the ranking by the risk score leaves out the profiles
  * without any record in the last 24 months; the answer offers them back (EntityCardAnswer, „Include-le”). Since
  * 15 November 2026 the risk cloud's list in the order of risk too (owner: one pattern; ScatterAnswer, scatter.ts).
  */
-export const HISTORIC_LABEL = "Și profilurile istorice";
+export const HISTORIC_LABEL = "Și profilurile inactive";
 export const includeHistoric: FilterDef<true> = {
   id: "includeHistoric", keys: ["filters.includeHistoric"], placement: "row", control: "toggle",
   label: HISTORIC_LABEL, windowTitle: HISTORIC_LABEL,

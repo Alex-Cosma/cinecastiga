@@ -108,7 +108,8 @@ function groupEmpty({ distribution: d, spec, onChangeGroup }: VersionProps<AnyDi
     const stat = { block: "stat", measure: "value", dataset: "da", filters: Object.fromEntries(Object.entries(applied.filters).filter(([key]) => /^(authority|supplier)(Id|Name)$/.test(key))) };
     return <div className="dist">
       <EmptyState message={`${name} are ${countWords(focal.nDas, "achiziție directă acceptată", "achiziții directe acceptate")}. Comparația începe de la ${PROFILE_MIN_DAS}.`} />
-      <p className="dist-links"><Link className="qb-relax-link" href={askLink(stat as QuestionSpec)}>Vezi achizițiile<span className="qb-glyph" aria-hidden="true">›</span></Link></p>
+      {/* Another question on this page: a plain <a> (a full load), since a client navigation kept this answer (15 November 2026). */}
+      <p className="dist-links"><a className="qb-relax-link" href={askLink(stat as QuestionSpec)}>Vezi achizițiile<span className="qb-glyph" aria-hidden="true">›</span></a></p>
     </div>;
   }
   if (d.status !== "small") return null;
