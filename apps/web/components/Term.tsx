@@ -15,6 +15,11 @@ import { GLOSSARY, type GlossaryId } from "../lib/glossary";
  */
 type TermProps = {
   children?: ReactNode; className?: string; tip?: boolean;
+  /**
+   * A floating (?) that a mouse must rest on this long before it shows (ms); the root carries `term-holding` while it
+   * waits, for a progress drawing (a signal tag's trace, RowFacts). A tap, a click or the keyboard show it at once.
+   */
+  hold?: number;
 } & (
   | { id: GlossaryId; title?: never; text?: never }
   // A caveat built from page data (one signal, one contract) that has no
@@ -71,7 +76,7 @@ export function tipPlace(trigger: Box, box: { width: number; height: number }, s
 /** Whether the browser puts a popover in the top layer (over every window, transform and clipping box). */
 const topLayer = (element: HTMLElement) => typeof element.showPopover === "function";
 
-export default function Term({ children, className, tip = false, ...source }: TermProps) {
+export default function Term({ children, className, tip = false, hold = 0, ...source }: TermProps) {
   const entry = source.id !== undefined ? GLOSSARY[source.id] : { title: source.title, text: source.text };
   const [open, setOpen] = useState(false);
   // A floating (?) shows while it is pressed open (a tap or a click), while a mouse is over it or its box, or while
@@ -79,6 +84,9 @@ export default function Term({ children, className, tip = false, ...source }: Te
   const [hover, setHover] = useState(false);
   const [focused, setFocused] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  // A mouse resting on a (?) with a `hold`: the wait before it shows.
+  const [holding, setHolding] = useState(false);
+  const holdTimer = useRef<number | undefined>(undefined);
   const root = useRef<HTMLSpanElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const definition = useRef<HTMLSpanElement>(null);
@@ -121,15 +129,30 @@ export default function Term({ children, className, tip = false, ...source }: Te
     document.addEventListener("pointerdown", away, true);
     return () => document.removeEventListener("pointerdown", away, true);
   }, [open, tip]);
-  useEffect(() => () => window.clearTimeout(leaving.current), []);
+  useEffect(() => () => { window.clearTimeout(leaving.current); window.clearTimeout(holdTimer.current); }, []);
 
   // The explanation floats on hover, focus or tap instead of opening in the page flow, for tight spots (home map,
   // number strip, headings) where an in-flow definition would push the layout.
   if (tip) {
-    const enter = (event: PointerEvent) => { if (event.pointerType === "touch") return; window.clearTimeout(leaving.current); setDismissed(false); setHover(true); };
-    const leave = (event: PointerEvent) => { if (event.pointerType === "touch") return; window.clearTimeout(leaving.current); leaving.current = window.setTimeout(() => setHover(false), TIP_LEAVE_MS); };
+    const enter = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      window.clearTimeout(leaving.current);
+      setDismissed(false);
+      // Already showing (back from its box within the grace), or no wait: at once.
+      if (!hold || hover) { setHover(true); return; }
+      setHolding(true);
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = window.setTimeout(() => setHover(true), hold);
+    };
+    const leave = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      window.clearTimeout(holdTimer.current);
+      setHolding(false);
+      window.clearTimeout(leaving.current);
+      leaving.current = window.setTimeout(() => setHover(false), TIP_LEAVE_MS);
+    };
     const blur = (event: FocusEvent) => { if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return; setFocused(false); setOpen(false); };
-    return <span ref={root} className={`term term-tip${children ? " term-tip-text" : ""}${open ? " term-open" : ""}${shown ? " term-shown" : ""}${className ? ` ${className}` : ""}`}
+    return <span ref={root} className={`term term-tip${children ? " term-tip-text" : ""}${open ? " term-open" : ""}${shown ? " term-shown" : ""}${holding ? " term-holding" : ""}${className ? ` ${className}` : ""}`}
       onPointerEnter={enter} onPointerLeave={leave} onBlur={blur}
       onKeyDown={event => { if (event.key === "Escape" && shown) { closeOnly(event); setOpen(false); setDismissed(true); } }}>
       <button

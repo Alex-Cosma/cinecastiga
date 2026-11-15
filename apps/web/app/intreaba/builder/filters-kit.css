@@ -364,16 +364,23 @@ dialog.qb-pop::backdrop{background:var(--fk-scrim)}
 .qb-tag--accent{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
 .qb-tag--caveat{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
 .qb-tag--signal{background:transparent;border-color:color-mix(in srgb,var(--orange) 55%,transparent);color:var(--fk-signal-ink);font-weight:500}
-/* A tag that is its own (?) (RowFacts FactTag; owner, 15 November 2026): hover anywhere on it, a tap or the keyboard
+/* A tag that is its own (?) (RowFacts FactTag; owner, 15 November 2026): a mouse resting on it, a tap or the keyboard
    opens the explanation. It keeps the tag's look and size at every width (no 44 px growth: its hit area reaches past
-   its edges instead), and sits over a row whose name link covers it (the risk cloud's list). */
+   its edges instead), and sits over a row whose name link covers it (the risk cloud's list). No "?" on it. */
 .qb-tag-tip{position:relative;z-index:1;cursor:help}
-.qb .qb-tag.qb-tag-tip>.term-trigger{display:inline-flex;align-items:center;gap:4px;min-width:0;min-height:0;margin:0;color:inherit;text-decoration:none;text-align:left;cursor:help}
+.qb .qb-tag.qb-tag-tip>.term-trigger{position:static;display:inline-flex;align-items:center;gap:4px;min-width:0;min-height:0;margin:0;color:inherit;text-decoration:none;text-align:left;cursor:help}
 .qb .qb-tag.qb-tag-tip>.term-trigger:after{top:-6px;bottom:-6px;left:-8px;right:-8px;height:auto;min-height:0}
-/* No "?" on the tag itself (owner, 15 November 2026): the tag is the button; hover shows the border and the help cursor. */
 .qb .qb-tag.qb-tag-tip>.term-trigger>.term-mark{display:none}
-.qb-tag-tip:hover,.qb-tag-tip.term-shown{border-color:currentColor}
 .qb .qb-tag.qb-tag-tip>.term-trigger:focus-visible{outline-offset:2px}
+/* Its trace (TagTrace): from the middle of the top and bottom edges out to the sides, over the border, in the tag's
+   own colour. Resting the mouse draws it in exactly TAG_HOLD_MS (1 s), slow at first, and the explanation opens as it
+   closes; leaving early runs it back to the middle; a tap or the keyboard draw it quickly. Without motion it is whole
+   at once and the explanation still waits the second. */
+.tag-trace{position:absolute;top:-1px;left:-1px;overflow:visible;pointer-events:none}
+.tag-trace path{fill:none;stroke:currentColor;stroke-width:1;stroke-dasharray:1 2;stroke-dashoffset:1;transition:stroke-dashoffset .2s cubic-bezier(.3,0,.2,1)}
+.term-shown .tag-trace path{stroke-dashoffset:0;transition-duration:.25s}
+.term-holding .tag-trace path{stroke-dashoffset:0;transition:stroke-dashoffset 1s cubic-bezier(.45,0,.55,1)}
+@media (prefers-reduced-motion:reduce){.tag-trace path{transition:none!important}}
 .qb-arow-val{text-align:right}
 .qb-arow-val .qb-num{display:block;font-size:14px;font-weight:500}
 .qb-arow-val small{color:var(--muted);font-size:11.5px}
