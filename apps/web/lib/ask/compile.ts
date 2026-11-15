@@ -33,7 +33,7 @@ import {
 } from "./rollups";
 import { hasFlag, scatterAnswer } from "./scatter";
 import { builtFlagTotals, FLAG_INDEX_PENDING, flagRecordsNote, flagSourcesWait, flaggedRecordKeys, RECONCILE_MAX, ROW_FLAGS } from "./scatter-records";
-import { SCATTER_LIST_MAX, activeScatterFlag, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
+import { SCATTER_LIST_MAX, activeScatterFlag, leavesHistoric, scatterFlagsOf, scatterRank, type ScatterData } from "./scatter-shared";
 import { flagLabel } from "../flags";
 import {
   factsOfRow, factsSource, factsYears, liveTrendChannels, trendFactsRows, trendListOf, trendMembersFigures, trendNoun, trendPartition, trendProfiles,
@@ -3677,7 +3677,7 @@ function buildDisplaySql(spec: AskSpec, w: PredicateCtx): string {
       // The statement's end stays out of a condition's trailing comment.
       return `-- norul: grupul, la scorul de risc (0–100)\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere ${group.join("\n  and ")}${group.at(-1)!.includes("--") ? "\n" : ""};` +
         `\n-- lista: primele ${SCATTER_LIST_MAX}\nselect name_display, total_ron, score, n_flags, flags\nfrom marts.entity_flags\nwhere <grupul> and n_das >= ${ENTITY_CARD_MIN_DAS}  -- un grup sub 10 profiluri: toate, de la ${RISK_MIN_DAS}` +
-        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}\norder by ${scatterRank(spec) === "risk" ? "score desc, total_ron desc, entity_id  -- la același procent, după valoare" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
+        `${flag ? `\n  and flags ? '${flag}'  -- ${flagLabel(flag)}` : ""}${leavesHistoric(spec) ? "\n  and <activ în ultimele 24 de luni>  -- fără profilurile istorice" : ""}\norder by ${scatterRank(spec) === "risk" ? "score desc, total_ron desc, entity_id  -- la același procent, după valoare" : "total_ron desc, entity_id"}\nlimit ${SCATTER_LIST_MAX};`;
     }
     case "sankey":
       return `select partener, categoria_cpv, sum(closing_value)\nfrom ${dtable}\nwhere ${where}\ngroup by partener, categoria_cpv;`;

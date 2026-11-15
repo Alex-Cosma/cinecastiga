@@ -66,6 +66,8 @@ export interface RiskPlace {
   /** The criteria met (x ≥ 1) and their codes. */
   nFlags: number;
   flags: string[];
+  /** A historic profile, listed with filters.includeHistoric: the day of its last record (historic.ts). */
+  historic?: string;
 }
 /** The risk axis of "Cine conduce?" (entity_card-3): the first profiles of the question's group by the risk score. */
 export interface RiskRanking {

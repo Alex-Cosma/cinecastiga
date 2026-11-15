@@ -66,8 +66,9 @@ export interface LocateMatch {
   /**
    * The risk cloud (F6b): the signals the profile has, the criteria it meets, its risk and why it has no place in the
    * list. `cri` is the risk score over one since rf-2026.18 (entity_flags.cri = score / 100; the cloud shows ×100).
+   * `historic`: left out of the list in the order of risk (no record in 24 months), `last` the day of its last record.
    */
-  profile?: { flags: string[]; nFlags: number; cri: number; why: "below" | "signal" | null };
+  profile?: { flags: string[]; nFlags: number; cri: number; why: "below" | "signal" | "historic" | null; last?: string };
 }
 export interface LocateResult {
   part: "locate";

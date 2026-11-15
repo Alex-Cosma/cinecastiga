@@ -1,6 +1,7 @@
 import { NEW_ARCHIVE_FROM, NEW_SCOPES, WINNERS_RULES, namedBuyer, type NewScope } from "../../spec";
 import type { AnswerForm, FilterCtx, FilterDef, FilterSpec } from "../types";
 import { alwaysScope, edited, setFilters } from "./shared";
+import { scatterRank } from "../../scatter-shared";
 import { DOMINANT_LABEL, MAIN_CLIENT_LABEL } from "../words";
 
 /*
@@ -87,17 +88,19 @@ export const dominantSupplier: FilterDef<true> = {
 
 /**
  * „Și profilurile istorice” (rf-2026.22, owner decision S8): the ranking by the risk score leaves out the profiles
- * without any record in the last 24 months; the answer offers them back (EntityCardAnswer, „Include-le”).
+ * without any record in the last 24 months; the answer offers them back (EntityCardAnswer, „Include-le”). Since
+ * 15 November 2026 the risk cloud's list in the order of risk too (owner: one pattern; ScatterAnswer, scatter.ts).
  */
 export const HISTORIC_LABEL = "Și profilurile istorice";
 export const includeHistoric: FilterDef<true> = {
   id: "includeHistoric", keys: ["filters.includeHistoric"], placement: "row", control: "toggle",
   label: HISTORIC_LABEL, windowTitle: HISTORIC_LABEL,
   windowNote: "Profilurile fără nicio achiziție sau contract în ultimele 24 de luni. Clasamentul după risc nu le arată implicit; scorul lor rămâne.",
-  engine: { "entity_card:risk": "profile" }, scope: alwaysScope("group"), since: "rf-2026.22",
+  engine: { "entity_card:risk": "profile", scatter: "profile" }, scope: alwaysScope("group"), since: "rf-2026.22",
   read: (spec) => spec.filters.includeHistoric === true ? true : undefined,
   write: (spec, value) => setFilters(spec, { includeHistoric: value }),
-  choices: (spec) => spec.block === "entity_card" && (spec.rankBy ?? "risk") === "risk" ? [undefined, true] : [undefined],
+  choices: (spec) => spec.block === "entity_card" && (spec.rankBy ?? "risk") === "risk" || spec.block === "scatter" && scatterRank(spec) === "risk"
+    ? [undefined, true] : [undefined],
 };
 
 export const WINNERS_DEFS: readonly FilterDef[] = [newSince, mainClient, dominantSupplier, includeHistoric];

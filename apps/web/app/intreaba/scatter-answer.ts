@@ -382,7 +382,8 @@ export function pointPlace(data: ScatterData, id: string): number | null {
   const floor = data.group.small ? SCATTER_CLOUD_MIN_DAS : SCATTER_LIST_MIN_DAS;
   const mask = chosenMask(data);
   const points: readonly AnyCloudPoint[] = data.cloud.points;
-  const listed = points.filter((p) => p.nDas >= floor && (mask === 0 || (p.flags & mask) !== 0));
+  // A historic point has no place when the list leaves them out (data.historic; its points carry their last record).
+  const listed = points.filter((p) => p.nDas >= floor && (mask === 0 || (p.flags & mask) !== 0) && !(data.historic && p.historic !== undefined));
   const me = listed.find((p) => p.id === id);
   if (!me) return null;
   const mine = pointLevel(data, me);
@@ -440,9 +441,15 @@ export function withFacts<C extends string>(flags: readonly ScatterFlagFact<C>[]
   return flags.map((flag) => ({ ...flag, ...facts.find((f) => f.code === flag.code), code: flag.code }));
 }
 
-/** "Primele 10 din 82": the list head — the shown rows of the signal's list (all of the group's without one). */
+/**
+ * The profiles the list holds: the signal's list (all of the group's without one), less the historic it leaves out in
+ * the order of risk (data.historic; owner, 15 November 2026). Their places count among these.
+ */
+export const listTotal = (data: ScatterData): number => (data.chosen ? data.chosen.nList : data.group.nList) - (data.historic ?? 0);
+
+/** "Primele 10 din 82": the list head — the shown rows of the list (listTotal). */
 export function listHeadWords(data: ScatterData, shown: number): string {
-  const total = data.chosen ? data.chosen.nList : data.group.nList;
+  const total = listTotal(data);
   return `Primele ${formatInt(Math.min(shown, total))} din ${formatInt(total)}`;
 }
 

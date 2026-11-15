@@ -74,7 +74,11 @@ export const codeBit = (codes: readonly string[], code: string): number => 1 << 
 /** The bit of a signal on today's points (scatter-3). */
 export const flagBit = (role: ScatterRole, flag: ScatterFlag): number => codeBit(scatterFlagsOf(role), flag);
 
-interface CloudPointBase { id: string; name: string; value: number; nFlags: number; flags: number; nDas: number; county?: string | null }
+interface CloudPointBase {
+  id: string; name: string; value: number; nFlags: number; flags: number; nDas: number; county?: string | null;
+  /** A historic profile's last record (its day), when the list leaves the historic out (leavesHistoric): its place is none. */
+  historic?: string;
+}
 /**
  * A point of the cloud: its risk score (displayed, 0–100) and the unrounded one (the list's order), the number of
  * criteria it meets, its signals as bits of scatterFlagsOf(role), so the chart marks the chosen one with no request.
@@ -130,6 +134,8 @@ interface ListRowBase {
   /** A firm's employees and the year of the balance sheet; null: no filing. */
   employees?: number | null;
   employeesYear?: number | null;
+  /** A historic profile (no record in the last 24 months, historic.ts): the day of its last record; absent on the others. */
+  historic?: string;
 }
 export interface ScatterListRow extends ListRowBase {
   /** The risk score as displayed (0–100) and unrounded (the order). */
@@ -163,6 +169,11 @@ interface ScatterDataBase<P, R, F extends string> {
   list: R[];
   /** A group under 10 with a place: the profiles of the same kind in the whole country (the way out's number). */
   wider?: number;
+  /**
+   * The list's profiles (with the strip's signal) left out as historic (leavesHistoric; owner, 15 November 2026), so
+   * the list holds group.nList (or chosen.nList) minus these; absent when they are listed, none are, and stored before.
+   */
+  historic?: number;
 }
 /** scatter-3 (rf-2026.18): the cloud on the risk score. */
 export interface ScatterDataV3 extends ScatterDataBase<ScatterCloudPoint, ScatterListRow, ScatterFlag> { version: 3 }
@@ -207,6 +218,12 @@ export function scatterSignalWords(flag: string | undefined | null): string | nu
 
 /** A missing order is risk (final §4.2: a new question writes it explicitly). */
 export const scatterRank = (spec: Pick<AskSpec, "scatter">): RankBy => spec.scatter?.rankBy ?? "risk";
+/**
+ * The list in the order of risk leaves out the historic profiles (rf-2026.22 S8; owner, 15 November 2026: the same
+ * pattern as "Cine conduce?" by the risk score), unless the question asks for them (filters.includeHistoric). By value
+ * they stay, marked. The chart keeps the whole group.
+ */
+export const leavesHistoric = (spec: Pick<AskSpec, "scatter" | "filters">): boolean => scatterRank(spec) === "risk" && spec.filters.includeHistoric !== true;
 
 /** "locul 20 din 82, după risc": the search's and the card's place (a stored scatter-2 says "după semnale"). */
 export const listPlace = (rank: number, total: number, by: RankBy, words: Readonly<Record<RankBy, string>> = RANK_WORDS): string =>

@@ -1,11 +1,12 @@
 import type { DbSql } from "@seap/db";
 import { readAuthorityKinds } from "./authority-kind";
+import { riskActive } from "./entity-card";
 import { fold } from "./predicates";
 import { countyDisplay } from "./resolved-spec";
 import { instanceFacts, recordFacts } from "./scatter-records";
 import {
   SCATTER_CLOUD_MIN_DAS, SCATTER_CLOUD_MIN_PROFILES, SCATTER_FIELD_MIN, SCATTER_FINE_NX, SCATTER_FINE_ROW, SCATTER_LIST_MAX, SCATTER_LIST_MIN_DAS, SCATTER_POINTS_MAX,
-  SCATTER_VALUE_FLOOR_PCT, activeScatterFlag, flagBit, scatterFlagsOf, scatterRank,
+  SCATTER_VALUE_FLOOR_PCT, activeScatterFlag, flagBit, leavesHistoric, scatterFlagsOf, scatterRank,
   type ScatterBands, type ScatterCloudPoint, type ScatterData, type ScatterDataV3, type ScatterFlag, type ScatterFlagFact, type ScatterListRow, type ScatterRole,
 } from "./scatter-shared";
 import type { AskSpec, RankBy } from "./spec";
@@ -30,7 +31,7 @@ type Fragment = ReturnType<DbSql>;
 /** A fragment is a query nobody has awaited: the tagged template types it by its rows. */
 const frag = (query: unknown): Fragment => query as Fragment;
 /** A profile as the answer reads it: the score as displayed (0–100) and unrounded (real, the order). */
-interface ScoredRow { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; score: number; score_raw: number; n_flags: number; flags: string[] | null }
+interface ScoredRow { id: string; name: string | null; county: string | null; total_ron: string | null; n_das: number; score: number; score_raw: number; n_flags: number; flags: string[] | null; historic?: string | null }
 
 export interface ScatterInput {
   spec: AskSpec;
@@ -50,6 +51,13 @@ export function scatterOrder(s: DbSql, rank: RankBy): Fragment {
   // The same percentage reads as a tie: by value (as „Cine conduce?” and /semnale), not by the unrounded score.
   return frag(rank === "risk" ? s`coalesce(ef.score, 0) desc, ef.total_ron desc nulls last, ef.entity_id` : s`ef.total_ron desc nulls last, ef.entity_id`);
 }
+
+/**
+ * A historic profile's last record (its day), null for an active one (riskActive: a record in the last 24 months;
+ * historic.ts); '' for a profile without its profile row (none expected): historic, the day unknown.
+ */
+const historicDay = (s: DbSql): Fragment => frag(s`case when ${riskActive(s, "ef")} then null else coalesce((
+  select left(ep.last_activity, 10) from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = ef.role), '') end`);
 
 /** The profiles of a group that have the signal: the cloud's group, narrowed by the strip's choice. */
 export const hasFlag = (s: DbSql, flag: ScatterFlag | null | undefined): Fragment => frag(flag ? s`ef.flags ? ${flag}` : s`true`);
@@ -118,12 +126,19 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
   }
   if (n === 0) return data;
 
-  // The list: the strip's order and signal, at least 20 acquisitions, the first 50.
+  // The list: the strip's order and signal, at least 20 acquisitions, the first 50; in the order of risk without the
+  // historic profiles, counted for the way back (owner, 15 November 2026, as "Cine conduce?"). The chart keeps them.
+  const out = leavesHistoric(spec);
+  const listCond = frag(s`${group} and ef.n_das >= ${listMin} and ${hasFlag(s, flag)}`);
+  if (out) {
+    const [old] = (await s`select count(*)::int n from marts.entity_flags ef where ${listCond} and not ${riskActive(s, "ef")}`) as unknown as { n: number }[];
+    if (Number(old?.n ?? 0) > 0) data.historic = Number(old!.n);
+  }
   const listed = (await s`
     select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_das,
-           coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
+           coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags, ${historicDay(s)} historic
     from marts.entity_flags ef
-    where ${group} and ef.n_das >= ${listMin} and ${hasFlag(s, flag)}
+    where ${listCond}${out ? s` and ${riskActive(s, "ef")}` : s``}
     order by ${scatterOrder(s, rank)} limit ${SCATTER_LIST_MAX}
   `) as unknown as ScoredRow[];
   const ids = listed.map((r) => r.id);
@@ -144,6 +159,7 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
       score: Number(r.score), scoreRaw: Number(r.score_raw), nFlags: Number(r.n_flags), flags: facts,
     };
     if (kinds) row.kind = kinds.get(r.id) ?? null;
+    if (typeof r.historic === "string") row.historic = r.historic;
     if (role === "supplier") { const f = filed.get(r.id); row.employees = f?.employees ?? null; row.employeesYear = f?.employees_year ?? null; }
     return row;
   });
@@ -154,15 +170,16 @@ export async function scatterAnswer(s: DbSql, input: ScatterInput): Promise<Scat
   // The cloud: every point up to 2,000; above, the grey cells of the group with the named points exact.
   if (small) return data;
   if (n <= SCATTER_POINTS_MAX) {
-    // Each point with its county, so a point past the list's 50 still says where it is and its place (ScatterAnswer).
+    // Each point with its county, so a point past the list's 50 still says where it is and its place (ScatterAnswer);
+    // a historic one, when the list leaves them out, its last record (no place, said why).
     const rows = (await s`
       select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw,
-             ef.n_flags, ef.n_das, ef.flags
+             ef.n_flags, ef.n_das, ef.flags${out ? s`, ${historicDay(s)} historic` : s``}
       from marts.entity_flags ef where ${group} order by ef.entity_id
     `) as unknown as ScoredRow[];
     data.cloud = { points: rows.map((r) => ({
       id: r.id, name: r.name ?? "?", value: Number(r.total_ron ?? 0), score: Number(r.score), scoreRaw: Number(r.score_raw), nFlags: Number(r.n_flags), nDas: Number(r.n_das),
-      flags: bit(role, r.flags), county: r.county ? countyDisplay(r.county) : null,
+      flags: bit(role, r.flags), county: r.county ? countyDisplay(r.county) : null, ...(typeof r.historic === "string" ? { historic: r.historic } : {}),
     })) };
     return data;
   }
@@ -238,18 +255,20 @@ export async function scatterLocate(s: DbSql, input: ScatterInput, q: string, li
   const group = frag(s`${input.where} and ef.cri is not null`);
   const [size] = (await s`select count(*)::int n from marts.entity_flags ef where ${group}`) as unknown as { n: number }[];
   const listMin = Number(size?.n ?? 0) < SCATTER_CLOUD_MIN_PROFILES ? SCATTER_CLOUD_MIN_DAS : SCATTER_LIST_MIN_DAS;
-  const listCond = frag(s`${group} and ef.n_das >= ${listMin} and ${hasFlag(s, flag)}`);
+  // The list's profiles, as the answer lists them: in the order of risk without the historic (leavesHistoric).
+  const out = leavesHistoric(spec);
+  const listCond = frag(s`${group} and ef.n_das >= ${listMin} and ${hasFlag(s, flag)}${out ? s` and ${riskActive(s, "ef")}` : s``}`);
   const [total] = (await s`select count(*)::int n from marts.entity_flags ef where ${listCond}`) as unknown as { n: number }[];
   const found = (await s`
     select ef.entity_id::text id, ef.name_display name, ${input.county} county, ef.total_ron, ef.n_das,
-           coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
+           coalesce(ef.score, 0)::int score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags, ${historicDay(s)} historic
     from marts.entity_flags ef
     where ${group} and lower(unaccent(ef.name_display)) like ${namePattern(q)}
     order by ${scatterOrder(s, rank)}
     limit ${limit * 5}
   `) as unknown as ScoredRow[];
   // The place of each: the profiles of the list before it in the order (value ties by id).
-  const eligible = found.filter((r) => Number(r.n_das) >= listMin && (!flag || (r.flags ?? []).includes(flag)));
+  const eligible = found.filter((r) => Number(r.n_das) >= listMin && (!flag || (r.flags ?? []).includes(flag)) && !(out && typeof r.historic === "string"));
   const placed = new Map<string, number>();
   if (eligible.length) {
     const places = (await s`
@@ -264,10 +283,10 @@ export async function scatterLocate(s: DbSql, input: ScatterInput, q: string, li
   const matches: LocateMatch[] = found.map((r) => {
     const rankIn = placed.get(r.id) ?? null;
     const have = Array.isArray(r.flags) ? r.flags : [];
-    const why = rankIn !== null ? null : Number(r.n_das) < listMin ? "below" as const : "signal" as const;
+    const why = rankIn !== null ? null : Number(r.n_das) < listMin ? "below" as const : flag && !have.includes(flag) ? "signal" as const : "historic" as const;
     return {
       id: r.id, name: r.name ?? "?", county: r.county ? countyDisplay(r.county) : null, rank: rankIn, value: Number(r.total_ron ?? 0), n: Number(r.n_das),
-      profile: { flags: have, nFlags: Number(r.n_flags), cri: Number(r.score) / 100, why },
+      profile: { flags: have, nFlags: Number(r.n_flags), cri: Number(r.score) / 100, why, ...(why === "historic" ? { last: r.historic ?? "" } : {}) },
     };
   });
   // The ones with a place first, by place; the rest in the order of the list.

@@ -56,6 +56,12 @@
 .sc-wide{margin-top:8px}
 .sc-list-wrap{display:grid;gap:8px;min-width:0}
 .sc-list-head{margin:0;font-size:14px;font-weight:600;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+/* The historic profiles the list leaves out in the order of risk, with the way back in (owner, 15 November 2026):
+   quiet, one line under the head, as „Cine conduce?” says it under its list (entity-card.css .ec-rest). */
+.sc-hist{margin:-2px 0 0;font-size:12.5px;line-height:1.5;color:var(--muted)}
+/* Inside the sentence the link keeps the line's height; its 44 px target on a phone reaches past it instead. */
+.sc-hist .qb-link{display:inline;min-height:0;min-width:0;position:relative;font-size:inherit}
+.sc-hist .qb-link::after{content:"";position:absolute;left:-6px;right:-6px;top:50%;height:44px;transform:translateY(-50%)}
 .sc-list{list-style:none;margin:0;padding:0;display:grid}
 /* A row opens its entity's page: its name's link covers the row, the records button stays above it (owner, 6 November 2026). */
 .sc-row{position:relative;display:grid;grid-template-columns:28px minmax(0,1fr) 104px 124px 168px;align-items:start;gap:4px 12px;padding:10px 6px;border-bottom:1px solid var(--line);min-width:0}

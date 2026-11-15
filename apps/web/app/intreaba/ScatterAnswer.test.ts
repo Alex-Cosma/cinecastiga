@@ -1,7 +1,7 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { BUZAU_CLOUD, BUZAU_CLOUD_V2, BUZAU_SPLIT, NATIONAL_BANDS, NATIONAL_FINE, SPITALE_SMALL } from "../../lib/ask/fixtures/scatter-screen";
+import { BUZAU_CLOUD, BUZAU_CLOUD_V2, BUZAU_ROWS, BUZAU_SPLIT, NATIONAL_BANDS, NATIONAL_FINE, SPITALE_SMALL } from "../../lib/ask/fixtures/scatter-screen";
 import type { AskSpec } from "../../lib/ask/spec";
 import { AnswerEvidence } from "./AnswerEvidence";
 import { decodeSpec } from "../../lib/ask/permalink";
@@ -10,7 +10,7 @@ import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
   SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, density, densitySteps, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip,
-  listHeadWords, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
+  listHeadWords, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
 } from "./scatter-answer";
 import type { ScatterData } from "../../lib/ask/scatter-shared";
 
@@ -451,6 +451,27 @@ describe("the chart's geometry and words", () => {
     expect(cardFacts(21_000_000, 73, 3)).toEqual([{ label: "Achiziții directe:", value: "21 mil. lei" }, { label: "Risc", value: "73 din 100 · pronunțat" }, { label: "", value: "3 tipare" }]);
     expect(cardFacts(900_000, 0, 0)).toEqual([{ label: "Achiziții directe:", value: "900.000 lei" }, { label: "Risc", value: "0 din 100 · fără semnal în scor" }]);
     expect([scoreWords(73), scoreWords(47), scoreWords(20), scoreWords(0)]).toEqual(["73 din 100 · risc pronunțat", "47 din 100 · risc moderat", "20 din 100 · risc slab", "0 din 100 · fără semnal în scor"]);
+  });
+
+  it("leaves the historic profiles out of the list in the order of risk: the head counts the rest, a line offers them back, a listed one is tagged (S8)", () => {
+    // Pardosi is historic: its point carries its last record, the list holds the other two, the way back counts one.
+    const points = "points" in BUZAU_CLOUD.cloud ? BUZAU_CLOUD.cloud.points : [];
+    const out: ScatterData = { ...BUZAU_CLOUD, historic: 1, list: [BUZAU_ROWS[0]!, BUZAU_ROWS[2]!],
+      cloud: { points: points.map((p) => p.id === "2144792" ? { ...p, historic: "2019-02-01" } : p) } };
+    expect(listTotal(out)).toBe(81);
+    expect(listHeadWords(out, 10)).toBe("Primele 10 din 81");
+    expect([pointPlace(out, "2144803"), pointPlace(out, "2146202"), pointPlace(out, "2144792")]).toEqual([1, 2, null]);
+    const markup = render(out);
+    expect(text(markup)).toContain("Primele 2 din 81 1 profil istoric, fără înregistrări în ultimele 24 de luni, nu e în listă. Include-le");
+    // A full page load (a client navigation to the same page kept the answer), to the same question with them.
+    const link = /<a class="qb-link" href="([^"]+)">Include-le<\/a>/.exec(markup);
+    expect(decodeSpec(decodeURIComponent(link![1]!.split("spec=")[1]!.replace(/&amp;/g, "&")))).toMatchObject({ block: "scatter", filters: { includeHistoric: true } });
+    // Listed (asked for, or by value), a historic row says so first, with its last month and an explanation; nothing is left out.
+    const asked: ScatterData = { ...BUZAU_CLOUD, list: [BUZAU_ROWS[0]!, { ...BUZAU_ROWS[1]!, historic: "2019-02-01" }, BUZAU_ROWS[2]!] };
+    const listed = render(asked, spec({ filters: { authorityKind: "comuna", county: "Buzău", includeHistoric: true } }));
+    expect(text(listed)).toMatch(/Comuna Pardosi .*? istoric · ultima 02\.2019 Adunate, trec de plafon/);
+    expect(listed).toContain("Profil istoric");
+    expect(listed).not.toContain("sc-hist");
   });
 
   it("words the list's head and its (?): the order, the floor of 20 and how many are in the cloud alone", () => {

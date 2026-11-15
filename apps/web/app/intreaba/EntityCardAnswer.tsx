@@ -2,6 +2,7 @@
 
 import { countyName } from "../../lib/counties";
 import Link from "next/link";
+import { historicLeftOutWords } from "../../lib/ask/historic";
 import { useId, useRef, useState } from "react";
 import type { EntityCardData } from "../../lib/ask/compile";
 import { countWords, formatDecimal, formatShare } from "../../lib/ask/answer-text";
@@ -229,11 +230,12 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
             })}
           </AnswerList>
           {rest && <p className="ec-rest">{rest}</p>}
-          {/* rf-2026.22 (S8): the historic profiles are left out by default, said with the way back in. */}
+          {/* rf-2026.22 (S8): the historic profiles are left out by default, said with the way back in (historic.ts). A plain
+              <a>, as KitLink's: a client navigation to the same page changed the address and kept the answer. */}
           {(ranking.historic ?? 0) > 0 && (
             <p className="ec-rest">
-              {countWords(ranking.historic!, "profil istoric", "profiluri istorice")}, fără înregistrări în ultimele 24 de luni, nu {ranking.historic === 1 ? "e" : "sunt"} în listă.{" "}
-              <Link href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as QuestionSpec)}>Include-le</Link>
+              {historicLeftOutWords(ranking.historic!)}{" "}
+              <a href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as QuestionSpec)}>Include-le</a>
             </p>
           )}
         </>

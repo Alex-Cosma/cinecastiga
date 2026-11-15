@@ -1,3 +1,4 @@
+import { leavesHistoric } from "./scatter-shared";
 import { seatSwitched } from "./seat";
 import { namedKind, type AskSpec, type AuthorityKind, type Block } from "./spec";
 
@@ -98,6 +99,13 @@ export const KEY_VERSIONS: Record<string, KeyVersion> = {
     version: "table:per-capita-2", label: "Lista pe locuitor", paths: ["measure"], blocks: ["table"],
     when: (spec) => spec.measure === "value_per_capita",
   },
+  // rf-2026.22 S8 on the risk cloud (owner, 15 November 2026): its list in the order of risk leaves out the historic
+  // profiles (no record in 24 months) unless asked for, as "Cine conduce?"; the chart and the counts of the signals
+  // keep the whole group. By value, or with them asked for, the list holds what it did.
+  "scatter:historic": {
+    version: "scatter:historic-2", label: "Profilurile istorice", paths: ["block"], blocks: ["scatter"],
+    when: (spec) => leavesHistoric(spec),
+  },
 };
 const KIND_2: ReadonlySet<string> = new Set<AuthorityKind>(["comuna", "oras_municipiu", "spital", "consiliu_judetean"]);
 
@@ -108,6 +116,7 @@ export const KEY_VERSION_NOTES: Record<string, string> = {
   "table:per-capita-2": "Lista pe locuitor are acum toate cele 41 de consilii județene.",
   "table:employees-2": "Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.",
   "seat-2": "Județul firmei e acum sediul ei: ultima înmatriculare la Registrul Comerțului, apoi SEAP; firmele străine apar separat.",
+  "scatter:historic-2": "Lista de lângă norul de risc, în ordinea riscului, nu mai arată implicit profilurile istorice (fără înregistrări în ultimele 24 de luni); „Include-le” le aduce înapoi.",
 };
 
 /**

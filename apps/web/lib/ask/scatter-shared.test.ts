@@ -165,8 +165,9 @@ describe("the cloud's keys in a spec", () => {
     expect(buildPills(validateSpec(cloud({}, "supplier")) as AskSpec, {}, { scatterGroup: 72_655 })[0]).toBe("72.655 de firme");
   });
 
-  it("is the version scatter-3, once, for the watches on it", () => {
-    expect(answerVersion(cloud())).toEqual({ question: "scatter-3", conditions: {} });
+  it("is the version scatter-3, once, for the watches on it; in the order of risk the historic profiles' key too (S8, 15 November 2026)", () => {
+    expect(answerVersion(cloud())).toEqual({ question: "scatter-3", conditions: { "scatter:historic": "scatter:historic-2" } });
+    expect(answerVersion({ ...cloud(), scatter: { rankBy: "value" } })).toEqual({ question: "scatter-3", conditions: {} });
   });
 
   it("is compared by a watch as the named list's places and scores (scatter-3); a stored scatter-2 keeps its core", () => {

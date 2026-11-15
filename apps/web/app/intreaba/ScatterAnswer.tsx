@@ -26,12 +26,13 @@ import ListFoot from "./answer/ListFoot";
 import KitLink from "./answer/KitLink";
 import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn } from "./answer/list-return";
 import { FactTag } from "./answer/RowFacts";
+import { historicFact, historicLeftOutWords, historicPlaceWords } from "../../lib/ask/historic";
 import HelpTip from "./builder/HelpTip";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
   RISK_AXIS, RISK_GRID, RISK_ZONES, axisWords, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, density, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
-  keptScatterFacts, kindWords, listHeadTip, listHeadWords, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, scatterFactsKey, scoreBandWord, scoreWords,
+  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, scatterFactsKey, scoreBandWord, scoreWords,
   signalsPageLink, stepWords, stripStatusWords, withFacts, type AnyListRow, type Dot, type MeasureText,
 } from "./scatter-answer";
 import "./scatter.css";
@@ -330,7 +331,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const noneCount = field ? field.none : "points" in data.cloud ? data.cloud.points.filter((p) => pointLevel(data, p) < 10).length : 0;
 
   // The legend, the cloud and the list speak of the same profiles with the same classes.
-  const total = data.chosen ? data.chosen.nList : data.group.nList;
+  const total = listTotal(data);
 
   // A signal the group does not have (after a change of Cine/Unde, or a link), or a retired one an older link carries:
   // back to the whole group, with a note.
@@ -412,7 +413,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       id: point.id, name: point.name, value: point.value, nDas: point.nDas, nFlags: point.nFlags, county: point.county ?? null, flags: own, from,
       ...(legacy ? { cri: point.nFlags / levels } : { score: "score" in point ? point.score : Math.round(pointLevel(data, point)) }),
       ...(place !== null ? { place: listPlace(place, total, rank, words) } : point.nDas < floor ? { place: belowListWords(point.nDas) }
-        : flag && !own.includes(flag) ? { place: `nu are semnalul „${lower(flag)}”` } : {}),
+        : flag && !own.includes(flag) ? { place: `nu are semnalul „${lower(flag)}”` }
+        : data.historic && point.historic !== undefined ? { place: historicPlaceWords(point.historic) } : {}),
     });
   };
 
@@ -443,9 +445,11 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       if (body?.ok && body.matches.length === 1) openMatch(body.matches[0]!, body.total);
     } finally { if (seq === searchSeq.current) setSearching(false); }
   };
+  /** Why a found profile has no place: too few acquisitions, not the chosen signal, or historic (left out in the order of risk). */
+  const outWords = (m: LocateMatch, signal: string): string => m.profile?.why === "below" ? belowListWords(m.n ?? 0)
+    : m.profile?.why === "historic" ? historicPlaceWords(m.profile.last ?? "") : signal;
   const matchPlace = (m: LocateMatch, totalList: number): string =>
-    m.rank !== null ? placeWords(m.rank, totalList, words[rank])
-      : m.profile?.why === "below" ? belowListWords(m.n ?? 0) : `nu are semnalul „${flag ? lower(flag) : ""}”`;
+    m.rank !== null ? placeWords(m.rank, totalList, words[rank]) : outWords(m, `nu are semnalul „${flag ? lower(flag) : ""}”`);
   const openMatch = (m: LocateMatch, totalList: number) => {
     const place = matchPlace(m, totalList);
     setFound((current) => ({ results: current?.results ?? [m], name: m.name, place }));
@@ -456,8 +460,14 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     });
   };
 
+  // In the order of risk the list leaves out the historic profiles, said under its head with the way back in (owner,
+  // 15 November 2026: the pattern of "Cine conduce?"; the filter's pill takes them out again). A plain <a>, as KitLink's:
+  // a client navigation to the same page would change the address and keep the answer (AskPanel reads it on load).
+  const historicLine = data.historic ? <p className="sc-hist">{historicLeftOutWords(data.historic)}{" "}
+    <a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a></p> : null;
+
   const results = (found?.results ?? []).map((m) => ({
-    id: m.id, name: cleanName(m.name), detail: m.rank !== null ? `locul ${formatInt(m.rank)} din ${formatInt(total)}` : m.profile?.why === "below" ? belowListWords(m.n ?? 0) : "nu are semnalul ales",
+    id: m.id, name: cleanName(m.name), detail: m.rank !== null ? `locul ${formatInt(m.rank)} din ${formatInt(total)}` : outWords(m, "nu are semnalul ales"),
     ...(m.county ? { side: m.county } : {}),
   }));
 
@@ -627,6 +637,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
 
     {rows.length > 0 ? <section className="sc-list-wrap" aria-label="Lista profilurilor">
       <h3 className="qb-tipwrap sc-list-head">{listHeadWords(data, shown)} <HelpTip tip={{ title: listHeadWords(data, shown), text: listHeadTip(data) }} /></h3>
+      {historicLine}
       <ol className="sc-list" ref={listRef}>
         {visible.map((row, index) => {
           const own = withFacts<string>(row.flags, legacy ? undefined : facts.get(row.entityId));
@@ -638,7 +649,10 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             <span className="sc-who">
               <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
               <small>{rowMeta(row, role)}</small>
-              {own.length > 0 && <span className="qb-tags">{own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}</span>}
+              {(own.length > 0 || row.historic !== undefined) && <span className="qb-tags">
+                {row.historic !== undefined && <FactTag fact={historicFact(row.historic)} />}
+                {own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
+              </span>}
             </span>
             <span className="sc-val qb-num">{formatRon(row.value)}</span>
             <RowRisk row={row} levels={levels} />
@@ -652,7 +666,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         records={{ label: live ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : "Vezi înregistrările celor din listă", glyph: "→",
           onClick: () => records({ entityIds: visible.map((r) => r.entityId), ...(live ? { flag: live } : {}) }, live ? `semnalul „${lower(live)}” · profilurile din listă` : "profilurile din listă", !live) }} />
       <p className="sc-more"><Link className="qb-link" href={signals.href}>{signals.label}<span className="qb-glyph" aria-hidden="true">↗</span></Link></p>
-    </section> : <p className="qb-empty-note sc-none">{flag ? `Niciun profil din grup cu 20 de achiziții directe nu are semnalul „${lower(flag)}”.` : "Niciun profil din grup nu are destule achiziții directe pentru listă."}</p>}
+    </section> : data.historic ? historicLine
+      : <p className="qb-empty-note sc-none">{flag ? `Niciun profil din grup cu 20 de achiziții directe nu are semnalul „${lower(flag)}”.` : "Niciun profil din grup nu are destule achiziții directe pentru listă."}</p>}
 
     <p className="sc-foot qb-tipwrap">{legacy ? "Semnalele" : "Tiparele"} sunt piste, nu dovezi. Valori înregistrate, nu plăți.{" "}
       <HelpTip tip={{ title: "Valori înregistrate", text: "Suma achizițiilor directe acceptate, fiecare de cel mult 2 mil. lei. Contractele din proceduri nu intră în profil." }} /></p>

@@ -69,11 +69,13 @@ async function seed(q: DbSql): Promise<void> {
   ];
   await q`insert into core.entities (id, name_display, name_normalized, cui_canonical, cui_valid, county, country_code, is_foreign)
     select (r->>'id')::bigint, r->>'name', lower(r->>'name'), r->>'id', true, r->>'county', 'RO', false from jsonb_array_elements(${JSON.stringify(ents)}::jsonb) r`;
-  await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign, employees, employees_year, seat_county, seat_source, first_activity)
-    select (r->>'id')::bigint, 'supplier', r->>'name', r->>'county', 5, 1, 1000, (r->>'value')::numeric, false, (r->>'emp')::int, (r->>'year')::int, r->>'seat', 'onrc', '2019-05-02'
+  // Every profile active (a record a month ago): the ranking by risk leaves out the historic ones (rf-2026.22 S8).
+  await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign, employees, employees_year, seat_county, seat_source, first_activity, last_activity)
+    select (r->>'id')::bigint, 'supplier', r->>'name', r->>'county', 5, 1, 1000, (r->>'value')::numeric, false, (r->>'emp')::int, (r->>'year')::int, r->>'seat', 'onrc', '2019-05-02',
+           to_char(current_date - 30, 'YYYY-MM-DD') || ' 10:00:00+02'
     from jsonb_array_elements(${JSON.stringify(FIRMS.map(([n, name, county, seat, emp, year]) => ({ id: id(n), name, county, seat, emp, year, value: 1000 })))}::jsonb) r`;
-  await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign)
-    select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'n')::int, 0, 1000, 1000, false from jsonb_array_elements(${JSON.stringify(AUTHORITIES.map(([n, name, county, nDas]) => ({ id: id(n), name, county, n: nDas })))}::jsonb) r`;
+  await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign, last_activity)
+    select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'n')::int, 0, 1000, 1000, false, to_char(current_date - 30, 'YYYY-MM-DD') || ' 10:00:00+02' from jsonb_array_elements(${JSON.stringify(AUTHORITIES.map(([n, name, county, nDas]) => ({ id: id(n), name, county, n: nDas })))}::jsonb) r`;
   // The profiles with enough acquisitions, with their score as the build writes it (score.ts): the unrounded score, the
   // displayed one rounded, cri = score / 100 (old links), the patterns met.
   await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, score_raw, score, cri, n_flags, flags)
@@ -266,6 +268,22 @@ describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolate
     expect(out.band.data.card.name).toBe("Delta Mica SRL");
   }, 60000);
 
+  it("on the risk axis leaves the historic profiles out, counted, and lists them with their last record when asked (S8)", async () => {
+    const out = await withAskFixture(connection!.sql, "ec_historic", seed, async (q) => {
+      // Beta's last record is of October 2023: historic (no record in the last 24 months).
+      await q`update marts.entity_profile set last_activity = '2023-10-04 09:30:19+03' where name_display = 'Beta Asociere SRL' and role = 'supplier'`;
+      return {
+        active: (await answer(q, { dim: "supplier", rankBy: "risk", filters: {} })).data.ranking!,
+        all: (await answer(q, { dim: "supplier", rankBy: "risk", filters: { includeHistoric: true } })).data.ranking!,
+      };
+    });
+    expect(out.active.historic).toBe(1);
+    expect(out.active.rows.map((r) => r.name)).not.toContain("Beta Asociere SRL");
+    expect(out.active.rows.some((r) => r.historic !== undefined)).toBe(false);
+    expect(out.all.historic).toBeUndefined();
+    expect(out.all.rows.filter((r) => r.historic !== undefined).map((r) => [r.name, r.historic])).toEqual([["Beta Asociere SRL", "2023-10-04"]]);
+  }, 60000);
+
   it("refuses a firm's size on the institutions' index, and on the risk cloud", () => {
     const authority = { block: "entity_card", dim: "authority", rankBy: "risk", measure: "value", filters: { maxEmployees: 0 } };
     const firms = { block: "entity_card", dim: "supplier", rankBy: "risk", measure: "value", filters: { maxEmployees: 0 } };
@@ -379,6 +397,10 @@ describe.runIf(Boolean(connection))("entity_card-3: „Cine conduce?” (isolate
     const out = await withAskFixture(connection!.sql, "ec_watch", seed, async (q) => {
       const raw = { dim: "supplier", rankBy: "risk", filters: {} };
       const before = (await answer(q, raw)).data;
+      // The two profiles this test adds are active (a record a month ago; the ranking leaves the historic out, S8).
+      await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign, last_activity)
+        values (${id(70)}, 'supplier', 'Mica SRL', 'Cluj', 21, 0, 5, 5, false, to_char(current_date - 30, 'YYYY-MM-DD') || ' 10:00:00+02'),
+               (${id(71)}, 'supplier', 'Noua SRL', 'Cluj', 30, 0, 70, 70, false, to_char(current_date - 30, 'YYYY-MM-DD') || ' 10:00:00+02')`;
       // A profile without a score: the pool grows, the list is the same.
       await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags, score, score_raw) values (${id(70)}, 'supplier', 'Mica SRL', 'Cluj', 21, 5, 0, 0, '[]', 0, 0)`;
       // A listed profile's value grows past another's with the same score: the screen's order moves, the answer does not.

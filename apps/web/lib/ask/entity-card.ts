@@ -89,6 +89,8 @@ interface RankingRow {
   pool: string; scored: string; top: number | null; top_count: string;
   entity_id: string | null; name_display: string | null; county: string | null; n_das: number | null; total_ron: string | null;
   score: number | null; n_flags: number | null; flags: string[] | null;
+  /** A historic profile's last record (its day), null for an active one; '' without its profile row. */
+  historic: string | null;
 }
 
 /**
@@ -114,7 +116,7 @@ export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fr
   const where = o.includeHistoric ? o.where : sql`${o.where} and ${riskActive(sql, "ef")}`;
   const rows = (await sql`
     with p as materialized (
-      select ef.entity_id, ef.name_display, ${o.county} county, ef.n_das, ef.total_ron,
+      select ef.entity_id, ef.role, ef.name_display, ${o.county} county, ef.n_das, ef.total_ron,
              coalesce(ef.score, 0) score, coalesce(ef.score_raw, 0) score_raw, ef.n_flags, ef.flags
       from marts.entity_flags ef
       where ${where}
@@ -123,7 +125,10 @@ export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fr
     )
     select tp.pool::text pool, tp.scored::text scored, tp.top::int top,
            (select count(*) from p where p.score = tp.top)::text top_count,
-           t.entity_id::text entity_id, t.name_display, t.county, t.n_das, t.total_ron::text total_ron, t.score::int score, t.n_flags, t.flags
+           t.entity_id::text entity_id, t.name_display, t.county, t.n_das, t.total_ron::text total_ron, t.score::int score, t.n_flags, t.flags,
+           -- with the historic listed (includeHistoric), each one's last record, for its tag (historic.ts)
+           case when t.entity_id is null or ${riskActive(sql, "t")} then null else coalesce((
+             select left(ep.last_activity, 10) from marts.entity_profile ep where ep.entity_id = t.entity_id and ep.role = t.role), '') end historic
     from tp
     left join lateral (
       select * from p where p.score > 0 or tp.top = 0 order by ${riskRankingOrder(sql, "p")} limit ${RISK_LISTED}
@@ -148,6 +153,7 @@ export async function riskRankingOf(sql: DbSql, o: { where: Fragment; county: Fr
       score: Number(row.score ?? 0),
       nFlags: Number(row.n_flags ?? 0),
       flags: row.flags ?? [],
+      ...(typeof row.historic === "string" ? { historic: row.historic } : {}),
     })),
   };
 }

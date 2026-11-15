@@ -70,8 +70,12 @@ async function seed(q: DbSql): Promise<void> {
   const list = AUTHORITIES.map(([n, name, county, nDas, total, flags, raw]) => ({ id: id(n), name, county, nDas, total, flags, n: flags.length, raw, score: Math.round(raw) }));
   await q`insert into core.entities (id, name_display, name_normalized, cui_canonical, cui_valid, county, country_code, is_foreign)
     select (r->>'id')::bigint, r->>'name', lower(r->>'name'), r->>'id', true, r->>'county', 'RO', false from jsonb_array_elements(${JSON.stringify(list)}::jsonb) r`;
-  await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign)
-    select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'nDas')::int, 0, (r->>'total')::numeric, (r->>'total')::numeric, false from jsonb_array_elements(${JSON.stringify(list)}::jsonb) r`;
+  // Every profile active (a record a month ago, as last_activity is written): the list in the order of risk leaves out
+  // the historic ones (rf-2026.22 S8), which a test makes of one.
+  await q`insert into marts.entity_profile (entity_id, role, name_display, county, n_das, n_contracts, total_ron_full, total_ron_split, is_foreign, last_activity)
+    select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'nDas')::int, 0, (r->>'total')::numeric, (r->>'total')::numeric, false,
+           to_char(current_date - 30, 'YYYY-MM-DD') || ' 10:00:00+02'
+    from jsonb_array_elements(${JSON.stringify(list)}::jsonb) r`;
   // rf-2026.18: the score (0–100), its unrounded value (the order) and cri = score / 100, as the build writes them.
   await q`insert into marts.entity_flags (entity_id, role, name_display, county, n_das, total_ron, cri, n_flags, flags, score, score_raw)
     select (r->>'id')::bigint, 'authority', r->>'name', r->>'county', (r->>'nDas')::int, (r->>'total')::numeric, round((r->>'score')::numeric / 100, 4), (r->>'n')::int, r->'flags',
@@ -313,6 +317,39 @@ describe.runIf(Boolean(connection))("the risk cloud (scatter-3, isolated Postgre
     // The group is Buzau's: a hospital of Cluj is not found.
     expect(out.outside).toEqual({ total: 4, by: "risk", matches: [] });
     expect(out.score).toBe(0.52);
+  });
+
+  it("leaves the historic profiles out of the list in the order of risk, counted, and lists them marked when asked or by value (S8)", async () => {
+    const out = await withAskFixture(connection!.sql, "scatter_historic", seed, async (q) => {
+      // Delta's last record is of February 2019: historic (no record in the last 24 months).
+      await q`update marts.entity_profile set last_activity = '2019-02-01 09:55:53+02' where entity_id = ${id(4)} and role = 'authority'`;
+      const risk = await answer(q, cloud());
+      const asked = await answer(q, cloud({}, { county: "Buzau", includeHistoric: true }));
+      const byValue = await answer(q, cloud({ scatter: { rankBy: "value" } }));
+      const signal = await answer(q, cloud({ scatter: { rankBy: "risk", flag: "da_year_end" } }));
+      const found = await locate(q, cloud(), "delta");
+      const marked = (d: ScatterDataV3) => d.list.filter((r) => r.historic !== undefined).map((r) => [r.entityId.slice(-1), r.historic]);
+      const delta = "points" in risk.cloud ? risk.cloud.points.find((p) => p.id === id(4)) : undefined;
+      return {
+        risk: { list: ids(risk), group: risk.group, historic: risk.historic, marked: marked(risk), placed: risk.list.map((r) => pointPlace(risk, r.entityId)), delta: delta?.historic, deltaPlace: pointPlace(risk, id(4)) },
+        asked: { list: ids(asked), historic: asked.historic, marked: marked(asked) },
+        byValue: { list: ids(byValue), historic: byValue.historic, marked: marked(byValue) },
+        signal: { list: ids(signal), chosen: signal.chosen, historic: signal.historic },
+        found: "matches" in found ? { total: found.total, matches: found.matches.map((m) => [m.name, m.rank, m.profile?.why, m.profile?.last]) } : found,
+      };
+    });
+    // The list without Delta; the group keeps it (the chart, the counts of the signals); the way back counts one.
+    expect(out.risk).toEqual({ list: ["1", "3", "2"], group: { n: 12, nList: 4 }, historic: 1, marked: [], placed: [1, 2, 3], delta: "2019-02-01", deltaPlace: null });
+    // Asked for, it is back in its place, marked with its last record; nothing is left out.
+    expect(out.asked).toEqual({ list: ["1", "3", "2", "4"], historic: undefined, marked: [["4", "2019-02-01"]] });
+    // By value the list keeps it, marked (the rule is the ranking by risk's).
+    expect(out.byValue.historic).toBeUndefined();
+    expect(out.byValue.list).toContain("4");
+    expect(out.byValue.marked).toEqual([["4", "2019-02-01"]]);
+    // With a signal, the historic of that signal's list: Delta and Alfa have December, Alfa alone is listed.
+    expect(out.signal).toEqual({ list: ["1"], chosen: { n: 2, nList: 2 }, historic: 1 });
+    // Found, with why it has no place; the places count the active ones.
+    expect(out.found).toEqual({ total: 3, matches: [["Comuna Delta", null, "historic", "2019-02-01"]] });
   });
 
   it("reconciles a signal's sources with what the build itself flagged, for a few profiles, and says when they differ", async () => {

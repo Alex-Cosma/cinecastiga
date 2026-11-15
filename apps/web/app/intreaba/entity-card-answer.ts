@@ -13,6 +13,7 @@ import { cleanName, formatInt, formatRon } from "../../lib/format";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { newFirmTag, rankedGroupLead } from "../../lib/ask/winner-words";
 import { signalTip } from "../../lib/ask/signal-tips";
+import { historicFact } from "../../lib/ask/historic";
 import type { RowFact } from "./answer/RowFacts";
 
 /*
@@ -162,23 +163,25 @@ export const patternWord = (code: string): string => {
  * the first two and „+N” with the rest listed in its (?). Owner, 2 November 2026: a „+1” hid a pattern that fits in its
  * place, and the (?) only lists (the answer's own line under the list already says signals are no proof).
  */
-function patternTags(flags: readonly string[], title: string, role: "authority" | "supplier"): RowFact[] {
-  const folded = flags.length > 3;
+function patternTags(flags: readonly string[], title: string, role: "authority" | "supplier", room = 3): RowFact[] {
+  const folded = flags.length > room;
   // Each tag explains itself on hover or a tap (owner, 15 November 2026: signal-tips.ts).
-  const tags: RowFact[] = (folded ? flags.slice(0, 2) : flags).map((code) => {
+  const tags: RowFact[] = (folded ? flags.slice(0, room - 1) : flags).map((code) => {
     const tip = signalTip({ code }, role);
     return { text: patternWord(code), tone: "signal" as const, ...(tip ? { tip } : {}) };
   });
-  if (folded) tags.push({ text: `+${flags.length - 2}`, tip: { title, text: `${flags.slice(2).map(patternWord).join("; ")}.` } });
+  if (folded) tags.push({ text: `+${flags.length - room + 1}`, tip: { title, text: `${flags.slice(room - 1).map(patternWord).join("; ")}.` } });
   return tags;
 }
 
 /**
- * The tags of a ranked profile (P8, at most three): its patterns (patternTags), then „societate” / „asociație” for a
- * buyer whose name shows a legal form that is no institution's, where a place is left (final §3.10).
+ * The tags of a ranked profile (P8, at most three): „istoric · ultima 09.2023” first on a historic one (listed with
+ * includeHistoric; owner, 15 November 2026), its patterns (patternTags), then „societate” / „asociație” for a buyer
+ * whose name shows a legal form that is no institution's, where a place is left (final §3.10).
  */
-export function riskFacts(row: Pick<RiskPlace, "name" | "flags">, spec: Spec): RowFact[] {
-  const tags = patternTags(row.flags, "Alte tipare", spec.dim === "supplier" ? "supplier" : "authority");
+export function riskFacts(row: Pick<RiskPlace, "name" | "flags" | "historic">, spec: Spec): RowFact[] {
+  const lead: RowFact[] = row.historic !== undefined ? [historicFact(row.historic)] : [];
+  const tags = [...lead, ...patternTags(row.flags, "Alte tipare", spec.dim === "supplier" ? "supplier" : "authority", 3 - lead.length)];
   const form = spec.dim === "supplier" ? null : buyerForm(row.name);
   if (form && tags.length < 3) tags.push({ text: form, tip: { id: "cumparator-societate" } });
   return tags.slice(0, 3);

@@ -189,6 +189,12 @@ describe("the ranking by the risk score (entity_card-3)", () => {
     expect(riskFacts(ranked(2, 40, { name: "Eco Rural Consulting SRL-D", flags: ["da_split"] }), { dim: "authority", filters: {} }).map((t) => t.text))
       .toEqual(["adunate, trec de plafon", "societate"]);
     expect(riskFacts(ranked(3, 40, { name: "Eco Rural Consulting SRL", flags: [] }), firm)).toEqual([]);
+    // A historic profile, listed with „Include-le” (S8; owner, 15 November 2026): its tag first, then two places for the patterns.
+    const old = riskFacts(ranked(1, 82, { flags, nFlags: 4, historic: "2023-09-12" }), hospitals);
+    expect(old.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["istoric · ultima 09.2023", "neutral"], ["adunate, trec de plafon", "signal"], ["+3", "neutral"]]);
+    expect(old[0]!.tip).toMatchObject({ title: "Profil istoric" });
+    expect(riskFacts(ranked(1, 82, { flags: ["da_split", "da_round"], nFlags: 2, historic: "2019-02-01" }), hospitals).map((t) => t.text))
+      .toEqual(["istoric · ultima 02.2019", "adunate, trec de plafon", "multe sume imediat sub plafon"]);
     expect(profilePlace(ranked(1, 40, { county: "Bucuresti", count: 1 }))).toBe("București · 1 achiziție directă");
   });
 });

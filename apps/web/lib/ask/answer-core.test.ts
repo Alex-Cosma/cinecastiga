@@ -40,8 +40,18 @@ afterEach(() => {
 });
 
 describe("the key versions of this release", () => {
+  it("tell a watch on the risk cloud in the order of risk, once, that its list leaves out the historic profiles (S8, 15 November 2026)", () => {
+    expect(DECLARED["scatter:historic"]).toMatchObject({ version: "scatter:historic-2", label: "Profilurile istorice", paths: ["block"], blocks: ["scatter"] });
+    expect(KEY_VERSION_NOTES["scatter:historic-2"]).toBe("Lista de lângă norul de risc, în ordinea riscului, nu mai arată implicit profilurile istorice (fără înregistrări în ultimele 24 de luni); „Include-le” le aduce înapoi.");
+    Object.assign(KEY_VERSIONS, DECLARED);
+    const cloud: AskSpec = { block: "scatter", dim: "authority", measure: "value", filters: {} };
+    expect(answerVersion(cloud).conditions).toEqual({ "scatter:historic": "scatter:historic-2" });
+    expect(answerVersion({ ...cloud, scatter: { rankBy: "value" } }).conditions).toEqual({});
+    expect(answerVersion({ ...cloud, filters: { includeHistoric: true } }).conditions).toEqual({});
+  });
+
   it("are D1's kind and F3's employees on a ranking of firms: one alert each, with its note", () => {
-    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees", "seat", "uat", "table:per-capita"]);
+    expect(Object.keys(DECLARED)).toEqual(["kind", "table:employees", "seat", "uat", "table:per-capita", "scatter:historic"]);
     // F3 (plan §4.2, DECISIONS F1b-s-employees): the employees of a ranking of firms are a group (CÂȘTIGĂTORII); only „% din total” changes.
     expect(DECLARED["table:employees"]).toMatchObject({ version: "table:employees-2", label: "Angajații firmelor", paths: ["filters.minEmployees", "filters.maxEmployees"], blocks: ["table"] });
     expect(KEY_VERSION_NOTES["table:employees-2"]).toBe("Angajații restrâng acum doar lista firmelor; totalul și „% din total” sunt ale întregii selecții.");
