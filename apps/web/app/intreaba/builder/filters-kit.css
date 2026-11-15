@@ -364,6 +364,15 @@ dialog.qb-pop::backdrop{background:var(--fk-scrim)}
 .qb-tag--accent{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
 .qb-tag--caveat{background:var(--fk-warm-bg);border-color:var(--fk-warm-line);color:var(--fk-warm-ink)}
 .qb-tag--signal{background:transparent;border-color:color-mix(in srgb,var(--orange) 55%,transparent);color:var(--fk-signal-ink);font-weight:500}
+/* A tag that is its own (?) (RowFacts FactTag; owner, 15 November 2026): hover anywhere on it, a tap or the keyboard
+   opens the explanation. It keeps the tag's look and size at every width (no 44 px growth: its hit area reaches past
+   its edges instead), and sits over a row whose name link covers it (the risk cloud's list). */
+.qb-tag-tip{position:relative;z-index:1;cursor:help}
+.qb .qb-tag.qb-tag-tip>.term-trigger{display:inline-flex;align-items:center;gap:4px;min-width:0;min-height:0;margin:0;color:inherit;text-decoration:none;text-align:left;cursor:help}
+.qb .qb-tag.qb-tag-tip>.term-trigger:after{top:-6px;bottom:-6px;left:-8px;right:-8px;height:auto;min-height:0}
+.qb .qb-tag.qb-tag-tip>.term-trigger>.term-mark{margin-left:0;width:1.25em;height:1.25em;font-size:.8em}
+.qb-tag-tip:hover,.qb-tag-tip.term-shown{border-color:currentColor}
+.qb .qb-tag.qb-tag-tip>.term-trigger:focus-visible{outline-offset:2px}
 .qb-arow-val{text-align:right}
 .qb-arow-val .qb-num{display:block;font-size:14px;font-weight:500}
 .qb-arow-val small{color:var(--muted);font-size:11.5px}

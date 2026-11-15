@@ -373,13 +373,15 @@ describe("the chart's geometry and words", () => {
     expect(employeesWords(3, 2025)).toBe("3 angajați · bilanț 2025");
     expect(employeesWords(null, null)).toBe("fără bilanț");
     expect(rowMeta({ ...BUZAU_CLOUD.list[0]!, employees: 3, employeesYear: 2025 }, "supplier")).toBe("3 angajați · bilanț 2025 · Buzău · 2.567 de achiziții directe");
-    expect(flagTag({ code: "da_split", years: [2018, 2019] })).toEqual({ text: `${SPLIT} · 2018–2019`, tone: "signal" });
-    expect(flagTag({ code: "da_round", share: 0.252 }).text).toBe("Multe sume imediat sub plafon · 25,2%");
-    expect(flagTag({ code: "da_above_ceiling", share: 0.004 }).text).toBe("Declarate directe, peste plafon · 0,4%");
-    expect(flagTag({ code: "da_dependence", share: 1, single: true }).text).toBe("Un singur client public mare · un singur client");
-    expect(flagTag({ code: "da_concentration", share: 0.91 }).text).toBe("O firmă are mare parte din valoare · 91%");
+    expect(flagTag({ code: "da_split", years: [2018, 2019] }, "authority")).toMatchObject({ text: `${SPLIT} · 2018–2019`, tone: "signal" });
+    // Each tag explains itself and its number (owner, 15 November 2026: signal-tips.ts).
+    expect(flagTag({ code: "da_split", years: [2018, 2019] }, "authority").tip).toEqual({ title: SPLIT, text: expect.stringMatching(/2018–2019: anii în care apare\.$/) });
+    expect(flagTag({ code: "da_round", share: 0.252 }, "supplier").text).toBe("Multe sume imediat sub plafon · 25,2%");
+    expect(flagTag({ code: "da_above_ceiling", share: 0.004 }, "authority").text).toBe("Declarate directe, peste plafon · 0,4%");
+    expect(flagTag({ code: "da_dependence", share: 1, single: true }, "supplier").text).toBe("Un singur client public mare · un singur client");
+    expect(flagTag({ code: "da_concentration", share: 0.91 }, "authority").text).toBe("O firmă are mare parte din valoare · 91%");
     // A stored answer's retired signal keeps its label.
-    expect(flagTag({ code: "da_rapid", share: 0.252 }).text).toBe("Finalizare rapidă · 25,2%");
+    expect(flagTag({ code: "da_rapid", share: 0.252 }, "supplier").text).toBe("Finalizare rapidă · 25,2%");
     expect(withFacts([{ code: "da_round" }, { code: "da_split", years: [2019] }], [{ code: "da_round", share: 0.25, rows: 647 }]))
       .toEqual([{ code: "da_round", share: 0.25, rows: 647 }, { code: "da_split", years: [2019] }]);
     expect(cardFacts(21_000_000, 73, 3)).toEqual([{ label: "Achiziții directe:", value: "21 mil. lei" }, { label: "Risc", value: "73 din 100 · pronunțat" }, { label: "", value: "3 tipare" }]);

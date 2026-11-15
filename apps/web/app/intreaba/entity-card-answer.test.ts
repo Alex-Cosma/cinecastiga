@@ -177,6 +177,9 @@ describe("the ranking by the risk score (entity_card-3)", () => {
     expect(tags.map((t) => [t.text, t.tone ?? "neutral"])).toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["+2", "neutral"]]);
     // The (?) lists the rest; the answer's line under the list says signals are no proof (owner, 2 November 2026).
     expect(tags[2]!.tip).toEqual({ title: "Alte tipare", text: "multe sume imediat sub plafon; declarate directe, peste plafon." });
+    // Each pattern's tag explains itself on hover or a tap, in the words for an institution (owner, 15 November 2026).
+    expect(tags[0]!.tip).toEqual({ title: "Adunate, trec de plafon", text: expect.stringContaining("Instituția a cumpărat de la aceeași firmă") });
+    expect(tags[1]!.tip).toMatchObject({ title: "Mulți bani contractați în decembrie" });
     // Three patterns fit: no „+1” in the third one's place.
     expect(riskFacts(ranked(1, 88, { flags: flags.slice(0, 3), nFlags: 3 }), hospitals).map((t) => [t.text, t.tone ?? "neutral"]))
       .toEqual([["adunate, trec de plafon", "signal"], ["mulți bani contractați în decembrie", "signal"], ["multe sume imediat sub plafon", "signal"]]);

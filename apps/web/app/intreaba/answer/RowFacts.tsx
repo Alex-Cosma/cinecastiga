@@ -1,4 +1,5 @@
 import { linkNames } from "../../../components/EntityName";
+import Term from "../../../components/Term";
 import HelpTip from "../builder/HelpTip";
 import type { KitTip } from "../builder/kit-types";
 
@@ -19,6 +20,15 @@ export const MAX_FACTS = 3;
 
 export function FactTag({ fact }: { fact: RowFact }) {
   const tone = fact.tone && fact.tone !== "neutral" ? ` qb-tag--${fact.tone}` : "";
+  // A tag with a (?) and no link inside is itself the (?)'s button: the explanation shows on hover anywhere on the tag,
+  // on keyboard focus or a tap (owner, 15 November 2026: the signal tags of the risk cloud). A tag that links a name
+  // keeps its separate "?", since a button cannot hold a link.
+  if (fact.tip && !fact.entity) {
+    const className = `qb-tag qb-tag-tip${tone}`;
+    return "id" in fact.tip
+      ? <Term tip id={fact.tip.id} className={className}>{fact.text}</Term>
+      : <Term tip title={fact.tip.title} text={fact.tip.text} className={className}>{fact.text}</Term>;
+  }
   return <span className={`qb-tag${tone}`}>{fact.entity ? linkNames(fact.text, [fact.entity]) : fact.text}{fact.tip && <HelpTip tip={fact.tip} />}</span>;
 }
 

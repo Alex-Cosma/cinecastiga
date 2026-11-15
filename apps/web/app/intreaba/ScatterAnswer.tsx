@@ -433,7 +433,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const storedFlags = (id: string) => rows.find((r) => r.entityId === id)?.flags;
   const pickedFacts = picked ? withFacts<string>(storedFlags(picked.id) ?? picked.flags.map((code) => ({ code })), legacy ? undefined : facts.get(picked.id)) : [];
   const cardLines = (): CardLine[] => pickedFacts.map((fact) => ({
-    tag: flagTag(fact),
+    tag: flagTag(fact, role),
     ...(fact.rows !== undefined && picked && isScatterFlag(fact.code) ? {
       records: { label: countWords(fact.rows, "înregistrare", "înregistrări"),
         onClick: () => records({ entityIds: [picked.id], flag: fact.code as ScatterFlag }, `${picked.name} · ${lower(fact.code)}`) },
@@ -573,7 +573,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             <span className="sc-who">
               <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
               <small>{rowMeta(row, role)}</small>
-              {own.length > 0 && <span className="qb-tags">{own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact)} />)}</span>}
+              {own.length > 0 && <span className="qb-tags">{own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}</span>}
             </span>
             <span className="sc-val qb-num">{formatRon(row.value)}</span>
             <RowRisk row={row} levels={levels} />

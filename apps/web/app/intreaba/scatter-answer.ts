@@ -9,6 +9,7 @@ import {
 } from "../../lib/ask/scatter-shared";
 import { RISK_BAND_MIN, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { formatInt, formatRon } from "../../lib/format";
+import { signalTip } from "../../lib/ask/signal-tips";
 import type { RowFact } from "./answer/RowFacts";
 
 /*
@@ -330,10 +331,12 @@ export function rowMeta(row: AnyListRow, role: ScatterRole): string {
 }
 
 /** A signal's tag in the list and the card: the label with its years or share, orange (the official signals only). */
-export function flagTag(fact: ScatterFlagFact<string>): RowFact {
+export function flagTag(fact: ScatterFlagFact<string>, role: ScatterRole): RowFact {
   const detail = flagDetail(fact);
   const label = scatterFlagLabel(fact.code);
-  return { text: detail ? `${label} · ${detail}` : label, tone: "signal" };
+  // The whole tag explains the signal and its number on hover or a tap (owner, 15 November 2026).
+  const tip = signalTip(fact, role);
+  return { text: detail ? `${label} · ${detail}` : label, tone: "signal", ...(tip ? { tip } : {}) };
 }
 
 /** A row's signals with the facts that came after the answer (shares of the per-acquisition signals, the records behind each). */
@@ -393,12 +396,12 @@ export function scatterCsv(data: ScatterData, csv: (value: unknown) => string, f
   const who = firm ? "loc,nume,angajati,an_bilant,sediu" : "loc,nume,tip,judet";
   if (data.version === 2) {
     return [`${who},valoare_lei,achizitii_directe,indice_de_risc,nr_semnale,semnale,detalii_semnale`, ...data.list.map((r, i) => {
-      const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f).text);
+      const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f, data.role).text);
       return [i + 1, csv(r.name), ...own(r), r.value, r.nDas, r.cri, r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
     })];
   }
   return [`${who},valoare_lei,achizitii_directe,risc_din_100,banda,nr_tipare,tipare,detalii_tipare`, ...data.list.map((r, i) => {
-    const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f).text);
+    const tags = withFacts(r.flags, facts?.get(r.entityId)).map((f) => flagTag(f, data.role).text);
     return [i + 1, csv(r.name), ...own(r), r.value, r.nDas, r.score, csv(scoreBandWord(r.score)), r.nFlags, csv(r.flags.map((f) => f.code).join("|")), csv(tags.join("; "))].join(",");
   })];
 }

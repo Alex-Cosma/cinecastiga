@@ -128,7 +128,8 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     expect(words).toContain("5. Spital 5 Cluj");
     expect(markup).toContain('class="cri-pill risk-high">71 din 100');
     expect(markup).toContain('class="cri-pill risk-mid">60 din 100');
-    expect(markup).toContain('class="qb-tag qb-tag--signal"');
+    // A pattern's tag is its own (?): the explanation shows on hover or a tap (owner, 15 November 2026).
+    expect(markup).toContain('class="term term-tip term-tip-text qb-tag qb-tag-tip qb-tag--signal"');
     // No dots of the old index.
     expect(markup).not.toContain("ec-level");
     expect(words).toContain("Arată toate cele 14");
@@ -195,7 +196,8 @@ describe("an answer stored as entity_card-2: the group at the top of the old ind
     expect(words).toContain("În ordinea valorii, nu a riscului");
     expect(markup.match(/class="qb-arow"/g)).toHaveLength(5);
     expect(words).toContain("Spital 1 Cluj · 1.000 de achiziții directe adunate, trec de plafon 190 mil. lei");
-    expect(markup).toContain('class="qb-tag qb-tag--signal"');
+    // A pattern's tag is its own (?): the explanation shows on hover or a tap (owner, 15 November 2026).
+    expect(markup).toContain('class="term term-tip term-tip-text qb-tag qb-tag-tip qb-tag--signal"');
     expect(words).toContain("+ încă 9 cu același indice · 5 fără semnale");
     expect(words).toContain("Arată toate cele 14");
     expect(words).toContain("Pe harta riscului ›");

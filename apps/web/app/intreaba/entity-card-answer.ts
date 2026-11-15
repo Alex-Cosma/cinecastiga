@@ -12,6 +12,7 @@ import { SEAT_ABROAD } from "../../lib/ask/seat";
 import { cleanName, formatInt, formatRon } from "../../lib/format";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, riskBand, riskScoreText } from "../../lib/risk-score";
 import { newFirmTag, rankedGroupLead } from "../../lib/ask/winner-words";
+import { signalTip } from "../../lib/ask/signal-tips";
 import type { RowFact } from "./answer/RowFacts";
 
 /*
@@ -161,9 +162,13 @@ export const patternWord = (code: string): string => {
  * the first two and „+N” with the rest listed in its (?). Owner, 2 November 2026: a „+1” hid a pattern that fits in its
  * place, and the (?) only lists (the answer's own line under the list already says signals are no proof).
  */
-function patternTags(flags: readonly string[], title: string): RowFact[] {
+function patternTags(flags: readonly string[], title: string, role: "authority" | "supplier"): RowFact[] {
   const folded = flags.length > 3;
-  const tags: RowFact[] = (folded ? flags.slice(0, 2) : flags).map((code) => ({ text: patternWord(code), tone: "signal" as const }));
+  // Each tag explains itself on hover or a tap (owner, 15 November 2026: signal-tips.ts).
+  const tags: RowFact[] = (folded ? flags.slice(0, 2) : flags).map((code) => {
+    const tip = signalTip({ code }, role);
+    return { text: patternWord(code), tone: "signal" as const, ...(tip ? { tip } : {}) };
+  });
   if (folded) tags.push({ text: `+${flags.length - 2}`, tip: { title, text: `${flags.slice(2).map(patternWord).join("; ")}.` } });
   return tags;
 }
@@ -173,7 +178,7 @@ function patternTags(flags: readonly string[], title: string): RowFact[] {
  * buyer whose name shows a legal form that is no institution's, where a place is left (final §3.10).
  */
 export function riskFacts(row: Pick<RiskPlace, "name" | "flags">, spec: Spec): RowFact[] {
-  const tags = patternTags(row.flags, "Alte tipare");
+  const tags = patternTags(row.flags, "Alte tipare", spec.dim === "supplier" ? "supplier" : "authority");
   const form = spec.dim === "supplier" ? null : buyerForm(row.name);
   if (form && tags.length < 3) tags.push({ text: form, tip: { id: "cumparator-societate" } });
   return tags.slice(0, 3);
@@ -242,7 +247,7 @@ export function legacyTiesHeadline(ties: LegacyTies, spec: Spec): LegacyTiesHead
 
 /** The tags of a profile at the top of the old index: as riskFacts, with that answer's words for the rest („Alte semnale”). */
 export function legacyTieFacts(row: LegacyTiePlace, spec: Spec): RowFact[] {
-  const tags = patternTags(row.flags, "Alte semnale");
+  const tags = patternTags(row.flags, "Alte semnale", spec.dim === "supplier" ? "supplier" : "authority");
   const form = spec.dim === "supplier" ? null : buyerForm(row.name);
   if (form && tags.length < 3) tags.push({ text: form, tip: { id: "cumparator-societate" } });
   return tags.slice(0, 3);
