@@ -10,7 +10,7 @@ import {
   CRITERION_LABEL, CRITERION_RULE, PEER_MEMBERS_PAGE, PEER_MINIMUM, PROFILE_MIN_DAS, barMembersQuery, coverageWords, peerCountWords, peerGroupValue, peerWindowTip,
   scoreBandOf, scoreBandWords, similarRuleName, writePeerTicks, type PeerRowId, type ScoreBand,
 } from "../../lib/ask/peer-groups-shared";
-import { RISK_BAND_CLASS, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_MIN, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { cleanName, formatInt } from "../../lib/format";
 import { parseSignalState, signalUrl } from "../../lib/signals-shared";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -218,8 +218,8 @@ export function splitLowBands<H extends { from: number; to: number; n: number }>
   return { field, lowN: low.reduce((n, h) => n + h.n, 0), all: hist.reduce((n, h) => n + h.n, 0) };
 }
 
-/** The ticks of the strip: the bands' lower bounds (slab 20, moderat 40, puternic 68). */
-const STRIP_TICKS = [0, 20, 40, 68, 100];
+/** The ticks of the strip: the bands' lower bounds (lib/risk-score.ts RISK_BAND_MIN: slab 10, moderat 40, puternic 68), as the cloud's axis. */
+const STRIP_TICKS = [0, RISK_BAND_MIN.slab, RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic, 100];
 /** Dots closer than this many points stack; above this many levels the rest are counted ("+12"). */
 const STRIP_GAP = 2, STRIP_LEVELS = 6;
 

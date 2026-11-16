@@ -43,7 +43,7 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
   it("draws the group on 0–100 up to 50 members, the entity named and every member placed or counted", () => {
     const markup = render(VASLUI_LIST);
     expect(markup).toContain('role="img" aria-label="Scorurile celor 38 de primării pe axa 0–100; MUNICIPIUL VASLUI: 54 din 100."');
-    expect([...markup.matchAll(/class="dist-strip-tick[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual(["0", "20", "40", "68", "100"]);
+    expect([...markup.matchAll(/class="dist-strip-tick[^"]*"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual(["0", "10", "40", "68", "100"]);
     expect(markup).toContain('<i class="dist-dot is-focal cm-tw cm-fade cm-late" style="--x:54;--l:0"');
     const { dots, over } = stripLayout({ id: "f", name: "F", score: 54 }, VASLUI_LIST.members!);
     expect(dots.length - 1 + over.reduce((sum, o) => sum + o.n, 0)).toBe(38);
