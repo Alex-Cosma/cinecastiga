@@ -380,3 +380,7 @@
 @media(max-width:360px){.topic-tabs>button{font-size:12px;padding:8px 1px 6px}}
 /* „Nu plăți” once per list, beside its order (UX audit Z1-15): the rows keep the amount alone. */
 .topic-not-paid{white-space:nowrap}
+/* A tab chosen (UX audit Z1-32): the panel's head is only the list's order line and its (?), the tab names the rest. */
+.topic-panel-head.topic-panel-bar{min-height:44px;padding:6px 24px;gap:4px 10px}
+.topic-panel-bar>.topic-panel-sub{margin-left:0}
+@media(max-width:650px){.topic-panel-head.topic-panel-bar{padding:4px 16px}.topic-panel-bar>.topic-panel-sub{flex-basis:auto;flex:1;min-width:0}}

@@ -120,7 +120,8 @@ function DocumentGhost(){
 }
 /** The documents' own wait: they come from a separate request, after the titles. */
 const DocumentsGhost=({rows}:{rows:number})=><Ghost className="topic-docs-ghost" name="topic-documents" wait="client"><DocumentsGhostBody rows={rows}/></Ghost>;
-function PanelHeadGhost({id,icon,title,q,n}:{id:SearchTab;icon:'building'|'list'|'document';title:string;q:string;n:number|null}){
+function PanelHeadGhost({id,icon,title,q,n,bar}:{id:SearchTab;icon:'building'|'list'|'document';title:string;q:string;n:number|null;bar:boolean}){
+ if(bar)return <div className="topic-panel-head topic-panel-bar"><span className="topic-panel-sub">{panelSub(id)}</span></div>;
  return <div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2>{id==='acquisitions'?titlesTitle(q):title}</h2><span className="topic-panel-count">{n!=null?formatInt(n):<G.Line inline w="2.2em"/>}</span><span className="topic-panel-sub">{panelSub(id)}</span></div>;
 }
 const FootGhost=()=><div className="topic-panel-foot" aria-hidden="true"><span className="topic-text-button"><G.Line w="14em"/></span></div>;
@@ -129,7 +130,7 @@ function PanelsGhost({tab,page,q,counts}:{tab:SearchTab;page:number;q:string;cou
  const rows=(id:SearchTab)=>{const n=counts(id);return tab==='all'?Math.min(3,n??3):Math.max(1,Math.min(PAGE_SIZE,n==null?PAGE_SIZE:n-(page-1)*PAGE_SIZE));};
  const shown=TAB_PANELS.filter(p=>tab==='all'||tab===p.id);
  return <Ghost className="topic-panels" name="topic-panels" wait="client">
-  {shown.map(p=><section className="topic-panel" key={p.id}><PanelHeadGhost id={p.id} icon={p.icon} title={p.title} q={q} n={counts(p.id)}/>
+  {shown.map(p=><section className="topic-panel" key={p.id}><PanelHeadGhost id={p.id} icon={p.icon} title={p.title} q={q} n={counts(p.id)} bar={tab!=='all'}/>
    {p.id==='entities'?<>{tab==='entities'&&<p className="topic-role" aria-hidden="true">Arată<G.Block w="11em" h="44px" r="7px" className="g-quiet"/></p>}<div className="topic-entities">{Array.from({length:rows('entities')},(_,i)=><EntityRowGhost key={i} i={i}/>)}</div></>
     :p.id==='acquisitions'?<>{Array.from({length:rows('acquisitions')},(_,i)=><AcquisitionGhost key={i} i={i}/>)}</>
     :<DocumentsGhostBody rows={tab==='all'?2:rows('documents')}/>}
@@ -199,6 +200,16 @@ export default function TopicSearch(){
  const refine=(patch:Partial<TopicScope>)=>update({...(t&&(t.fromWords.place||t.fromWords.period||t.applied.q!==scope.q)?{q:t.applied.q,place:effective.place,from:effective.from,to:effective.to,...(effective.order?{order:effective.order}:{})}:{}),...patch});
  // A question about one subject keeps the subject, place and period it was read as when a filter changes.
  const keepReading=(patch:Partial<TopicScope>)=>t?.question&&t.applied.q!==scope.q?refine(patch):update(patch);
+ // Another page of a list (UX audit Z1-11): once it is shown, the tabs come up under the header (unless the list's
+ // start is already in view) and the list's title takes the focus, so a screen reader hears „pagina 2 din 10”.
+ const pageTurn=useRef(false);
+ const turnPage=(page:number)=>{pageTurn.current=true;update({page});};
+ useEffect(()=>{if(!pageTurn.current||!result)return;pageTurn.current=false;
+  const bar=document.querySelector<HTMLElement>('.topic-tabbar');if(!bar)return;
+  const header=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--site-header-h'))||64,top=bar.getBoundingClientRect().top;
+  if(top<header||top>innerHeight*.5)window.scrollTo({top:Math.max(0,top+scrollY-header-8),behavior:'instant'});
+  document.getElementById(`topic-panel-${scope.tab}`)?.focus({preventScroll:true});
+ },[result,scope.tab]);
  const retryDocs=()=>{setDocsError(null);setDocsRetry(n=>n+1);};
  const tab=(id:SearchTab)=>update({tab:id,role:''});
  const placeName=effective.place?(place?.id===effective.place?place.name:''):'';
@@ -240,7 +251,10 @@ export default function TopicSearch(){
   const isShown=(id:SearchTab)=>scope.tab==='all'||scope.tab===id;
   const total=scope.tab==='all'?null:count(scope.tab);
   // Each kind of result is its own panel: a head with its count, and a closing link to all of them.
-  const panelHead=(icon:'building'|'list'|'document',id:SearchTab,title:React.ReactNode,n:number|null,sub:React.ReactNode,tip?:React.ReactNode)=><div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2 id={`topic-panel-${id}`}>{title}{tip&&<> {tip}</>}</h2>{n!=null&&<span className="topic-panel-count">{formatInt(n)}</span>}<span className="topic-panel-sub">{sub}</span></div>;
+  // A tab chosen: the tab already names the list and its count, so the head is only its order line and its (?) (UX
+  // audit Z1-32); the title stays for screen readers.
+  const pages=total!=null&&total>PAGE_SIZE?Math.ceil(total/PAGE_SIZE):0;
+  const panelHead=(icon:'building'|'list'|'document',id:SearchTab,title:React.ReactNode,n:number|null,sub:React.ReactNode,tip?:React.ReactNode)=>scope.tab!=='all'?<div className="topic-panel-head topic-panel-bar"><h2 id={`topic-panel-${id}`} className="d-sr-only" tabIndex={-1}>{title}{pages>1&&<>, pagina {scope.page} din {formatInt(pages)}</>}</h2>{tip}<span className="topic-panel-sub">{sub}</span></div>:<div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2 id={`topic-panel-${id}`}>{title}{tip&&<> {tip}</>}</h2>{n!=null&&<span className="topic-panel-count">{formatInt(n)}</span>}<span className="topic-panel-sub">{sub}</span></div>;
   const panelFoot=(id:SearchTab,n:number,shown:number,what:string)=>scope.tab==='all'&&n>shown?<div className="topic-panel-foot"><button type="button" className="topic-text-button" onClick={()=>tab(id)}>Vezi toate cele {what} <DiscoveryIcon name="arrow"/></button></div>:null;
   // The words, the place and the period are already in the chips of „Am înțeles”: the line stays for screen readers only.
   const quietStatus=reading||Boolean(question||t?.answer||t?.subject);
@@ -288,7 +302,7 @@ export default function TopicSearch(){
   {result&&total!=null&&scope.page>Math.max(1,Math.ceil(total/PAGE_SIZE))&&<p className="topic-empty">Această pagină nu mai are rezultate. <button type="button" className="topic-text-button" onClick={()=>update({page:1})}>Înapoi la prima pagină</button></p>}
   {/* A tab opened by its link: the count is not known yet, and a tab's list usually has more than one page. */}
   {!result&&total==null&&scope.tab!=='all'&&<Ghost className="topic-pagination" name="topic-pages" wait="client"><span className="topic-control g-quiet" aria-hidden="true">Înapoi</span><span aria-hidden="true"><G.Line inline w="7.5em"/></span><span className="topic-control g-quiet" aria-hidden="true">Înainte</span></Ghost>}
-  {total!=null&&total>PAGE_SIZE&&<nav className="topic-pagination" aria-label="Paginarea rezultatelor"><button type="button" className="topic-control" disabled={!result||scope.page<=1} onClick={()=>update({page:scope.page-1})}>Înapoi</button><span>Pagina {scope.page} din {formatInt(Math.ceil(total/PAGE_SIZE))}</span><button type="button" className="topic-control" disabled={!result||scope.page*PAGE_SIZE>=total||scope.page>=1000} onClick={()=>update({page:scope.page+1})}>Înainte</button></nav>}
+  {total!=null&&total>PAGE_SIZE&&<nav className="topic-pagination" aria-label="Paginarea rezultatelor"><button type="button" className="topic-control" disabled={!result||scope.page<=1} onClick={()=>turnPage(scope.page-1)}>Înapoi</button><span>Pagina {scope.page} din {formatInt(Math.ceil(total/PAGE_SIZE))}</span><button type="button" className="topic-control" disabled={!result||scope.page*PAGE_SIZE>=total||scope.page>=1000} onClick={()=>turnPage(scope.page+1)}>Înainte</button></nav>}
   <details className="topic-how"><summary>Cum funcționează căutarea</summary>{result&&<p>În arhivă, {formatInt(result.titleCoverage.searchable)} din {formatInt(result.titleCoverage.total)} de achiziții au titlu căutabil. Unele importuri istorice nu păstrează titlul; achizițiile lor rămân accesibile din profilurile instituțiilor și firmelor.</p>}<p>În titluri și documente căutăm cuvintele și formele lor („laptopul” găsește și „laptopuri”), fără diferențe între litere mari, mici sau diacritice; „sau” caută oricare dintre variante. „Expresia în ordine” păstrează ordinea cuvintelor; punctuația nu schimbă potrivirea. În nume și CUI sunt acceptate și fragmente.</p><p>Perioada folosește data achiziției sau contractului, inclusiv ambii ani. O localitate înseamnă primăria, instituțiile și firmele ei, spitalele și școlile din localitate („Doar primăria” le restrânge); instituțiile județului sau ale statului care au doar sediul acolo nu intră. Un județ înseamnă instituțiile cu sediul în județ.</p><p>Documentele sunt căutate doar când există o legătură verificată cu o procedură din selecție. Textul OCR poate avea erori. Rezultatele din documente sosesc separat, după titluri, instituții și firme.</p>{result?.builtAt&&<p>Index de titluri actualizat la {new Date(result.builtAt).toLocaleString('ro-RO')}.</p>}</details>
   </>}
   </div></div>;
