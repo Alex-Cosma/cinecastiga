@@ -153,6 +153,16 @@ function mount(root: HTMLElement): () => void {
   on(window, "scroll", onScroll, { passive: true });
   onScroll();
 
+  // „Scorul unei instituții: caut-o” opens the site's search dialog (the header's own button), Z7-32.
+  qa<HTMLAnchorElement>("a[data-open-search]").forEach((a) =>
+    on(a, "click", (e) => {
+      const button = document.querySelector<HTMLButtonElement>(".d-global-search");
+      if (!button || (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey) return;
+      e.preventDefault();
+      button.click();
+    }),
+  );
+
   // The story's chapter rail (wide screens) and chapter row (narrower), UX audit Z7-33: the chapter under the header is
   // marked; the row gives way while chapter 4's score card is stuck under the header, so what sticks stays ≤ 108 px.
   const chRow = q<HTMLDetailsElement>(".mt-chrow");

@@ -345,6 +345,9 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
           <p className="mt-meta">Comuna Exemplara, Mobilier Exemplara SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
           <div className="mt-go-row mt-top">
             <a className="mt-go2" href="/semnale">Vezi semnalele</a>
+            {/* The most asked question, „de ce are primăria mea scorul X?”, in one step (UX audit Z7-32): the site's search
+                opens here (MethodologyBehavior); without JavaScript the link goes to /cauta. */}
+            <a className="mt-go2" href="/cauta" data-open-search="">Scorul unei instituții: caut-o</a>
           </div>
           <p className="mt-also">Sau vezi <a href={countyBreakdownHref("Buzău")}>pe ce se duc banii într-un județ</a> ori pornește de la o întrebare: <a href={askHref(ROADS_RANKING_SPEC)}>cine repară drumurile?</a></p>
           <section className="mt-brief" aria-labelledby="pe-scurt">
