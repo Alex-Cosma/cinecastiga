@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 type Mode = "light" | "dark" | "system";
 
 /**
- * Three-state theme: system (no stamp), light, dark. The chosen value is
- * stamped on <html data-theme> before paint by the inline script in
- * layout.tsx; this control just cycles it and animates the swap.
+ * Theme: the system's until the first click, then light or dark (UX audit Z1-26, 16 November 2026: on a light system
+ * the old cycle light → system → dark changed only the glyph at its first click). A click always switches between
+ * light and dark, from the theme on screen. The chosen value is stamped on <html data-theme> before paint by the inline
+ * script in layout.tsx; this control switches it and animates the swap.
  */
 export default function ThemeToggle() {
   const [mode, setMode] = useState<Mode>("system");
@@ -37,11 +38,12 @@ export default function ThemeToggle() {
     setMode(m);
   };
 
-  const next: Record<Mode, Mode> = { system: "dark", dark: "light", light: "system" };
+  // What the screen shows now: the chosen theme, or the system's.
+  const shown = (): "light" | "dark" => (mode !== "system" ? mode : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
   const label = mode === "dark" ? "temă: întunecată" : mode === "light" ? "temă: luminoasă" : "temă: ca sistemul";
   const glyph = mode === "dark" ? "☾" : mode === "light" ? "☀" : "◐";
   return (
-    <button type="button" className="theme-btn" onClick={() => apply(next[mode])} title={label} aria-label={label}>
+    <button type="button" className="theme-btn" onClick={() => apply(shown() === "dark" ? "light" : "dark")} title={label} aria-label={label}>
       <span aria-hidden>{glyph}</span>
     </button>
   );
