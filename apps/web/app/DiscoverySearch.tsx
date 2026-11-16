@@ -9,6 +9,20 @@ import { buildSuggestionGroups, flattenSuggestions } from "@/lib/search-suggesti
 import DiscoveryIcon from "./DiscoveryIcon";
 import { namesQuery } from "@/lib/names-query";
 import { TOUR_QUERY_EVENT, TOUR_QUERY_KEY } from "@/lib/tour";
+import { askHref } from "@/lib/discovery-links";
+import { AUTHORITY_CLOUD_SPEC, FIRM_DEPENDENCE_CLOUD_SPEC, HOSPITALS_BREAKDOWN_SPEC } from "@/lib/ask/site-links";
+import type { Suggestion } from "@/lib/search-suggestions";
+
+/*
+ * The search dialog opened empty (UX audit Z1-17, 16 November 2026): words to try, three of the home page's starting
+ * questions (as suggestion rows, reached with the arrows too) and the keys, in the same frame as the suggestions.
+ */
+const TRY = ["iluminat", "Cluj", "STRABAG", "asfaltare în Iași"];
+const STARTERS: Suggestion[] = [
+  { id: "start:hospitals", label: "Ce cumpără spitalele?", detail: "în Întreabă", href: askHref(HOSPITALS_BREAKDOWN_SPEC), icon: "question" },
+  { id: "start:outliers", label: "Cine iese din tipar?", detail: "Instituțiile după risc · un semnal e o pistă, nu o dovadă", href: askHref(AUTHORITY_CLOUD_SPEC), icon: "question" },
+  { id: "start:dependence", label: "Ce firme depind de un singur client?", detail: "în Întreabă", href: askHref(FIRM_DEPENDENCE_CLOUD_SPEC), icon: "question" },
+];
 
 type Source<T> = { query: string; data: T | null; failed: boolean };
 const SOURCES = ["intent", "vocab", "last", "entities"] as const;
@@ -34,7 +48,7 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
  * the results page, which shows the same interpretation on top (owner
  * decision 2). The GET form keeps working if every suggestion source fails.
  */
-export default function DiscoverySearch({ hero = false, modal = false, onNavigate }: { hero?: boolean; modal?: boolean; onNavigate?: () => void }) {
+export default function DiscoverySearch({ hero = false, modal = false, onNavigate, onClose }: { hero?: boolean; modal?: boolean; onNavigate?: () => void; onClose?: () => void }) {
   const router = useRouter(), id = useId(), box = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [sources, setSources] = useState<Partial<Record<SourceName, Source<unknown>>>>({});
@@ -64,8 +78,10 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     lastWord: lastWord && last ? { word: lastWord, vocab: last } : null,
     entities: Array.isArray(entities?.hits) ? entities.hits : null,
   }), [term, intent, vocab, last, lastWord, entities]);
-  const options = useMemo(() => flattenSuggestions(groups), [groups]);
-  const expanded = term.length >= 2 && (modal || open);
+  // Opened empty, the dialog's starting questions are the rows the arrows go through.
+  const starting = modal && term.length < 2;
+  const options = useMemo(() => starting ? STARTERS : flattenSuggestions(groups), [groups, starting]);
+  const expanded = (term.length >= 2 || starting) && (modal || open);
 
   useEffect(() => {
     const q = term;
@@ -95,6 +111,12 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     const dismiss = (event: PointerEvent) => { if (!box.current?.contains(event.target as Node)) setOpen(false); };
     document.addEventListener("pointerdown", dismiss); return () => document.removeEventListener("pointerdown", dismiss);
   }, []);
+  // The home page's list closes once its field scrolls up under the sticky header, instead of floating over the page.
+  useEffect(() => {
+    if (modal || !open) return;
+    const away = () => { const top = box.current?.getBoundingClientRect().top ?? 0, header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--site-header-h")) || 64; if (top < header) setOpen(false); };
+    window.addEventListener("scroll", away, { passive: true }); return () => window.removeEventListener("scroll", away);
+  }, [modal, open]);
   useEffect(() => {
     if (expanded && active >= 0) document.getElementById(`${id}-option-${active}`)?.scrollIntoView({ block: "nearest" });
   }, [active, expanded, id]);
@@ -121,7 +143,10 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
         }} onFocus={() => { if (term.length >= 2) setOpen(true); }}
         onKeyDown={(event) => {
           if (event.key === "Escape" && open && !modal) { event.preventDefault(); event.stopPropagation(); setOpen(false); setActive(-1); return; }
-          if (!["ArrowDown", "ArrowUp"].includes(event.key) || term.length < 2 || !options.length) return;
+          // In the dialog Escape closes it at once (UX audit Z1-34): the search field would only clear its words first.
+          // The words stay for the next opening; the field's own × clears them.
+          if (event.key === "Escape" && modal) { event.preventDefault(); onClose?.(); return; }
+          if (!["ArrowDown", "ArrowUp"].includes(event.key) || (term.length < 2 && !starting) || !options.length) return;
           event.preventDefault(); setOpen(true);
           setActive((current) => event.key === "ArrowDown" ? Math.min(current + 1, options.length - 1) : Math.max(current - 1, -1));
         }} />
@@ -129,11 +154,21 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     </form>
     <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : `${options.length === 1 ? "O sugestie" : `${options.length} sugestii`}. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.`}</span>
     <div className="d-search-results" hidden={!modal && !open}>
-      {term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><p>De ex.: iluminat, Buzău, o firmă sau un CUI</p></div>
+      {starting ? <div className="d-search-start"><div className="d-townhall-try"><span>Încearcă:</span>{TRY.map((t) => <button type="button" key={t} onClick={() => { setQuery(t); latestTerm.current = t; setOpen(true); box.current?.querySelector("input")?.focus(); }}>{t}</button>)}</div></div>
+        : term.length < 2 ? <div className="d-search-state"><DiscoveryIcon name="search" /><p>De ex.: iluminat, Buzău, o firmă sau un CUI</p></div>
         : failedAll ? <div className="d-search-state"><DiscoveryIcon name="search" /><b>Sugestiile nu sunt disponibile momentan.</b><p>Apasă Enter pentru a căuta „{term}” în achiziții și documente.</p></div>
         : null}
       {term.length >= 2 && !loading && !failedAll && groups.length === 1 && groups[0]!.id === "words" && <p className="d-search-none">Nu am recunoscut un subiect, un loc sau un nume în „{term}”.</p>}
       <div id={`${id}-results`} role="listbox" aria-label="Sugestii" aria-busy={loading}>
+        {starting && <ul role="group" aria-labelledby={`${id}-group-start`} className="d-search-group d-search-group-start">
+          <li role="presentation" id={`${id}-group-start`} className="d-search-group-title">Întrebări de început</li>
+          {STARTERS.map((item, at) => <li key={item.id} id={`${id}-option-${at}`} role="option" aria-selected={active === at}>
+            <a href={item.href} tabIndex={-1} className={active === at ? "active" : ""} onClick={(event) => { event.preventDefault(); navigate(item.href); }}>
+              <span className="d-search-symbol"><DiscoveryIcon name={item.icon} /></span>
+              <span><b>{item.label}</b>{item.detail && <small>{item.detail}</small>}</span><DiscoveryIcon name="arrow" />
+            </a>
+          </li>)}
+        </ul>}
         {term.length >= 2 && groups.map((group) => <ul role="group" key={group.id} aria-labelledby={`${id}-group-${group.id}`} className={`d-search-group d-search-group-${group.id}`}>
           <li role="presentation" id={`${id}-group-${group.id}`} className="d-search-group-title">{group.title}</li>
           {group.items.map((item) => {
@@ -146,8 +181,10 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
             </li>;
           })}
         </ul>)}
+        {modal && <ul role="group" aria-label="Mai multe condiții" className="d-search-group d-search-more"><li role="presentation"><a href="/intreaba" onClick={() => onClose?.()}>Mai multe condiții? <b>Construiește o întrebare <span aria-hidden="true">→</span></b></a></li></ul>}
         {loading && term.length >= 2 && <div role="presentation" className="d-search-pending"><span className="d-search-progress" aria-hidden="true" />Căutăm sugestii pentru „{term}”… Enter deschide rezultatele.</div>}
       </div>
+      {starting && <p className="d-search-keys" aria-hidden="true">↑ ↓ alegi · Enter caută · Esc închizi</p>}
     </div>
   </div>;
 }

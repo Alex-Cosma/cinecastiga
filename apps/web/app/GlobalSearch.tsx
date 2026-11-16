@@ -34,8 +34,11 @@ export default function GlobalSearch() {
       if (event.target !== dialog.current) return;
       const rect = dialog.current.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
     }}>
-      <div className="d-dialog-head"><div><h2 id="d-search-title">Ce ai vrea să afli?</h2></div><button type="button" onClick={close} aria-label="Închide căutarea"><DiscoveryIcon name="close" /></button></div>
-      <DiscoverySearch modal onNavigate={close} />
+      {/* Named as the button that opens it (UX audit Z1-09); „Ce vrei să afli…” is Întreabă's. On phones the dialog is the
+          whole screen with „Anulează” beside the field, and the title is for screen readers only (Z1-18). */}
+      <div className="d-dialog-head"><div><h2 id="d-search-title">Caută un nume, un loc sau un subiect</h2></div><button type="button" onClick={close} aria-label="Închide căutarea"><DiscoveryIcon name="close" /></button></div>
+      <DiscoverySearch modal onNavigate={close} onClose={close} />
+      <button type="button" className="d-search-cancel" onClick={close}>Anulează</button>
       <p className="d-dialog-hint">Mai multe condiții? <a href="/intreaba" onClick={close}>Construiește o întrebare <span aria-hidden>→</span></a></p>
     </dialog>
   </>;

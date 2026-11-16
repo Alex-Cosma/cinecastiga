@@ -100,7 +100,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
 
   // 1. The interpreter's reading, verbatim. An ambiguous reading is offered as a choice, never picked.
   if (intent && i && understood && (i.confidenceLabel === "high" || i.confidenceLabel === "medium")) {
-    if (intent.sentence) push("likely", { id: "likely", label: intent.sentence, detail: "Deschide întrebarea în Întreabă", href: `/intreaba?q=${encodeURIComponent(text)}`, icon: "question" });
+    if (intent.sentence) push("likely", { id: "likely", label: intent.sentence, detail: "în Întreabă", href: `/intreaba?q=${encodeURIComponent(text)}`, icon: "question" });
     else if (intent.problem && intent.alternatives.length) push("likely", { id: "likely", label: intent.problem, detail: `${intent.alternatives.length} variante de ales în Întreabă`, href: `/intreaba?q=${encodeURIComponent(text)}`, icon: "question" });
   }
 
@@ -109,19 +109,19 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   const subjectRest = place?.matched ? remainingWords(text, [place.matched]) : text;
   for (const s of subjects) {
     const label = s.source === "catalog" ? s.cpvName ?? s.label : s.label;
-    push("subjects", { id: `subject:${s.term}`, label: capital(label), detail: s.source === "synonym" && s.cpvName ? `Subiect · de exemplu ${s.cpvName}` : "Subiect din catalogul CPV", href: cauta(label), icon: "layers" });
+    push("subjects", { id: `subject:${s.term}`, label: capital(label), detail: s.source === "synonym" && s.cpvName ? `în rezultate · de exemplu ${s.cpvName}` : "în rezultate · din catalogul CPV", href: cauta(label), icon: "layers" });
   }
   for (const c of input.vocab?.cpv ?? []) {
     const synonym = !/^\d/.test(c.term);
     const label = synonym ? c.term : c.cpvName ?? c.term;
-    push("subjects", { id: `cpv:${c.term}`, label: capital(label), detail: synonym ? `Subiect${c.cpvName ? ` · de exemplu ${c.cpvName}` : ""}` : `Subiect din catalogul CPV · ${c.term}`, href: cauta(label), icon: "layers" });
+    push("subjects", { id: `cpv:${c.term}`, label: capital(label), detail: synonym ? `în rezultate${c.cpvName ? ` · de exemplu ${c.cpvName}` : ""}` : `în rezultate · CPV ${c.term}`, href: cauta(label), icon: "layers" });
   }
 
   // 3. Places. With other words ("iluminat buzau"), the place narrows the search for them.
   const placeRow = (id: string | null, label: string, detail: string, rest: string, askAbout: string) => {
     if (!id) return;
-    if (rest.length >= 2) push("places", { id: `place:${id}`, label: `${rest} · ${label}`, href: cauta(rest, id), icon: "pin" });
-    else push("places", { id: `place:${id}`, label, detail, href: `/intreaba?q=${encodeURIComponent(askAbout)}`, icon: "pin" });
+    if (rest.length >= 2) push("places", { id: `place:${id}`, label: `${rest} · ${label}`, detail: "în rezultate", href: cauta(rest, id), icon: "pin" });
+    else push("places", { id: `place:${id}`, label, detail: `${detail} · în Întreabă`, href: `/intreaba?q=${encodeURIComponent(askAbout)}`, icon: "pin" });
   };
   const placeMatches: PlaceMatch[] = i ? [...(i.place ? [i.place] : []), ...i.placeAlternatives] : [];
   for (const p of placeMatches) {
@@ -159,7 +159,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     push(authority ? "authorities" : "suppliers", {
       id: `entity:${e.id}`,
       label: cleanName(e.name),
-      detail: [authority ? "Instituție publică" : "Firmă", e.county, e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
+      detail: [authority ? "pagina instituției" : "pagina firmei", e.county, e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
       href: `/entitati/${e.id}`,
       icon: authority ? "building" : "network",
     });
@@ -171,10 +171,10 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     for (const p of input.vocab?.person ?? []) {
       const name = cleanName(p.name);
       const who = `${name}${p.birthYear ? ` (n. ${p.birthYear}${p.birthLocality ? `, ${p.birthLocality}` : ""})` : ""}`;
-      push("persons", { id: `person:${p.key}`, label: name, detail: [p.birthYear ? `n. ${p.birthYear}` : null, p.birthLocality, `${p.nFirms} ${p.nFirms === 1 ? "firmă condusă" : "firme conduse"}`].filter(Boolean).join(" · "), href: askHref({ block: "table", measure: "value", dim: "supplier", filters: { adminPersonKey: p.key, adminName: who } }), icon: "network" });
+      push("persons", { id: `person:${p.key}`, label: name, detail: [p.birthYear ? `n. ${p.birthYear}` : null, p.birthLocality, `${p.nFirms} ${p.nFirms === 1 ? "firmă condusă" : "firme conduse"}`, "în Întreabă"].filter(Boolean).join(" · "), href: askHref({ block: "table", measure: "value", dim: "supplier", filters: { adminPersonKey: p.key, adminName: who } }), icon: "network" });
     }
 
-  push("words", { id: "words", label: `Caută „${text}” în titluri și documente`, detail: "Exact cuvintele scrise, fără interpretare", href: `/cauta?${new URLSearchParams({ q: text, literal: "1" })}`, icon: "search" });
+  push("words", { id: "words", label: `Caută „${text}” în titluri și documente`, detail: "în rezultate · exact cuvintele scrise", href: `/cauta?${new URLSearchParams({ q: text, literal: "1" })}`, icon: "search" });
 
   // Subjects and places lead when the words read as a subject or a place; names lead otherwise.
   const order: SuggestionGroupId[] = strongSubject || place

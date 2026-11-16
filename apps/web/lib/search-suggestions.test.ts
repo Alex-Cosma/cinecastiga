@@ -89,7 +89,7 @@ describe("home search suggestions", () => {
   it("works without the interpreter: entities still come, nothing is guessed", () => {
     const groups = buildSuggestionGroups({ text: "primaria buzau", intent: null, vocab: null, entities: [entity(2144364, "MUNICIPIUL BUZAU", ["authority"])] });
     expect(ids(groups)).toEqual(["authorities", "words"]);
-    expect(groups[0]!.items[0]).toMatchObject({ href: "/entitati/2144364", detail: "Instituție publică · Buzau · CUI 2144364" });
+    expect(groups[0]!.items[0]).toMatchObject({ href: "/entitati/2144364", detail: "pagina instituției · Buzau · CUI 2144364" });
   });
 
   it("offers an ambiguous reading as a choice, never as an answer", async () => {

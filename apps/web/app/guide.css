@@ -154,3 +154,34 @@
   .d-card-go .d-icon{width:16px;height:16px}
   .d-paths{gap:10px}
 }
+
+/* Search dialog (UX audit, 16 November 2026).
+   Z1-02: the likely reading leads as a card (a thin border), never shaded as if chosen: only the row chosen with the
+   arrows (or pointed at) is shaded, so Enter's two meanings never show at once.
+   Z1-17: opened empty, it offers words to try, three starting questions and the keys, in the same frame.
+   Z1-18: on phones it is the whole screen; the title is for screen readers, „Anulează” sits beside the field and
+   „Construiește o întrebare” is the list's last row. */
+.d-search-results .d-search-group-likely li>a{background:transparent;border:1px solid var(--line);margin:2px 0}
+.d-search-results .d-search-group-likely li>a:hover,.d-search-results .d-search-group-likely li>a.active{background:var(--accent-soft);border-color:var(--accent-line)}
+.d-search-start{padding:12px 10px 2px}
+.d-search-start .d-townhall-try{margin-top:0}
+.d-search-group-start{margin-top:8px}
+.d-search-keys{margin:auto 0 0;padding:10px 10px 6px;font-size:12px;color:var(--muted)}
+.d-search-cancel,.d-search-more{display:none}
+@media(max-width:700px){
+  .d-search-dialog:not(.d-townhall-dialog){margin:0;inset:0;width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border:0;border-radius:0;padding:10px 12px 0}
+  .d-search-dialog:not(.d-townhall-dialog)>.d-dialog-head{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .d-search-dialog:not(.d-townhall-dialog) .d-search-modal{margin-top:0}
+  .d-search-dialog .d-search-modal>form{margin-right:88px}
+  .d-search-cancel{display:flex;position:absolute;top:15px;right:6px;align-items:center;min-height:52px;padding:0 8px;border:0;background:none;font:inherit;font-size:15px;font-weight:600;color:var(--accent);cursor:pointer}
+  .d-search-dialog .d-search-results{margin-top:8px;border-bottom:0;border-radius:10px 10px 0 0}
+  .d-search-dialog:not(.d-townhall-dialog)>.d-dialog-hint{display:none}
+  .d-search-more{display:block}
+  .d-search-more a{display:flex;align-items:center;gap:4px;min-height:48px;padding:0 10px;font-size:13px;color:var(--muted);text-decoration:none}
+  .d-search-more a b{color:var(--accent);font-weight:600}
+  .d-search-keys{display:none}
+  .d-search-start .d-townhall-try button{min-height:44px}
+}
+/* The dialog's title names the tool (Z1-09) on one line. */
+.d-search-dialog:not(.d-townhall-dialog) .d-dialog-head>div{flex:1;min-width:0}
+.d-search-dialog:not(.d-townhall-dialog) .d-dialog-head h2{font-size:27px;letter-spacing:-.7px}
