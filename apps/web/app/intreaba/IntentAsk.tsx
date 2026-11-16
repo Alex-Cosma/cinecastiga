@@ -17,8 +17,10 @@ export const MAX_QUESTION_CHARS = 300;
 /** From here the box counts its characters (UX audit Z2-32). */
 const COUNT_FROM = 250;
 
-export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild }: {
+export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild, placeholder }: {
   value: string;
+  /** Beside an answer, „Întreabă altceva…” (Z2-13); otherwise the example question. */
+  placeholder?: string | undefined;
   onChange: (value: string) => void;
   /** `pin`: the firm or institution picked from the suggestions, while its exact name is in the words (Z2-08). */
   onSubmit: (value: string, pin: SuggestPin | null) => void;
@@ -45,7 +47,7 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
               onChange(input.value);
               suggest.onInput(input.value, input.selectionEnd === input.value.length);
             }}
-            placeholder="de exemplu: cine face iluminatul în Buzău și cât costă"
+            placeholder={placeholder ?? "de exemplu: cine face iluminatul în Buzău și cât costă"}
             autoComplete="off"
             enterKeyHint="search"
             maxLength={MAX_QUESTION_CHARS}

@@ -758,6 +758,15 @@ export default function AskPanel({
     streamsMemo.current = { key: streamsKey(answered.block, applied), streams: answered.streams };
   const keptStreams = (block: string, spec: AskSpec) => streamsMemo.current?.key === streamsKey(block, spec) ? streamsMemo.current.streams : undefined;
   useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
+  // The box holds the typed words only while the answer on screen is one of their readings (UX audit Z2-13): a pill, the
+  // builder or the strip made another question, so it empties (placeholder „Întreabă altceva…”); «Înapoi» to a reading
+  // brings the words back.
+  const readingsKey = Object.keys(understood).join("|");
+  useEffect(() => {
+    if (!applied || !intent || !readingsKey) return;
+    setAskText(understood[encodeSpec(applied)] ? intent.interpretation.text : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedKey, readingsKey]);
   /**
    * The strip changed one key of the applied question (plan §2.3): the data
    * stream is a new query (sources, caveats and SQL change); the map's lens
@@ -1087,7 +1096,7 @@ export default function AskPanel({
       <header className="cq-workspace-header ia-head" hidden={askFolded}>
         <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
-      <AskBox value={askText} onChange={setAskText} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
+      <AskBox value={askText} onChange={setAskText} placeholder={resp?.ok ? "Întreabă altceva…" : undefined} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
       {/* A link that could not be opened (nothing was asked): said right under the box (UX audit Z2-31). */}
       {error && !lastBody.current && <div className="cq-error ia-link-error" role="alert" id="raspuns-eroare"><strong>{error}</strong></div>}
