@@ -798,6 +798,19 @@ function newFirmsYear(draft: QuestionSpec, years: readonly number[]): number | n
   return years.includes(complete) ? complete : years.at(-1) ?? null;
 }
 
+/** The period row that stands for the draft's own period when no preset is it (Z2-24). */
+const CURRENT_PERIOD = "chosen-now";
+const MONTH_SHORT = ["ian.", "feb.", "mar.", "apr.", "mai", "iun.", "iul.", "aug.", "sept.", "oct.", "nov.", "dec."];
+/** „2024”, „2019–2024”, „din 2020”, „până în 2022”, „mar.–iun. 2024”, „mar. 2023 – iun. 2024”. */
+export function currentPeriodWords(f: { yearFrom?: unknown; yearTo?: unknown; monthFrom?: unknown; monthTo?: unknown }): string {
+  const from = f.yearFrom !== undefined ? Number(f.yearFrom) : null, to = f.yearTo !== undefined ? Number(f.yearTo) : null;
+  const mf = f.monthFrom !== undefined ? MONTH_SHORT[Number(f.monthFrom) - 1] : null, mt = f.monthTo !== undefined ? MONTH_SHORT[Number(f.monthTo) - 1] : null;
+  if (from !== null && to !== null && from === to) return mf || mt ? `${mf ?? "ian."}–${mt ?? "dec."} ${from}` : String(from);
+  if (from !== null && to !== null) return mf || mt ? `${mf ?? "ian."} ${from} – ${mt ?? "dec."} ${to}` : `${from}–${to}`;
+  if (from !== null) return `din ${mf ? `${mf} ` : ""}${from}`;
+  return `până în ${mt ? `${mt} ` : ""}${to}`;
+}
+
 /** The years of the free range, oldest first, up to the last year of data. */
 const rangeYears = (from: number, to: number) => Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => String(from + i));
 
@@ -816,9 +829,13 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
     : draft.block === "compare" ? comparePeriodPresets(draft, span, year, coverage?.periods ?? null, pair) : periodPresets(draft, span, year, coverage?.periods ?? null);
   // Each preset's records (the years it holds, R5); a trend's two years are compared, not counted; the months' presets are not years.
   const counts = useFacet(draft, trend || monthly ? null : "years");
-  const presets = presetCounts(plain, counts);
   const f = draft.filters;
-  const [open, setOpen] = useState(value === null && Boolean(f.yearFrom || f.yearTo));
+  // The period on screen when no preset is it (UX audit Z2-24): the first row, ticked („2024 · ales acum”), so the
+  // window says what is chosen; the free range waits folded under its link, and its months under „Alege și lunile”.
+  const current = value === null && (f.yearFrom !== undefined || f.yearTo !== undefined) ? currentPeriodWords(f) : null;
+  const presets = [...(current ? [{ value: CURRENT_PERIOD, label: current, detail: "ales acum" }] : []), ...presetCounts(plain, counts)];
+  const [open, setOpen] = useState(false);
+  const [withMonths, setWithMonths] = useState(Boolean(f.monthFrom || f.monthTo));
   const [range, setRange] = useState<PeriodRangeValue>({ ...EMPTY_RANGE, yearFrom: String(f.yearFrom ?? ""), yearTo: String(f.yearTo ?? ""), monthFrom: String(f.monthFrom ?? ""), monthTo: String(f.monthTo ?? "") });
   const [error, setError] = useState<string | null>(null);
   const last = span?.to ? Number(span.to.slice(0, 4)) : year;
@@ -837,17 +854,25 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   return <>
     {series && <Segmented label="Ritmul" full value={pace} options={[{ value: "year", label: "An de an" }, { value: "month", label: "Lună de lună" }]}
       onChange={(next) => { setPace(next as "year" | "month"); setOpen(false); setError(null); }} />}
-    <PeriodPicker label="Perioada" presets={presets} value={value} onPreset={(next, source) => {
+    <PeriodPicker label="Perioada" presets={presets} value={value ?? (current ? CURRENT_PERIOD : null)} onPreset={(next, source) => {
       if (source !== "activate") return;
-      const preset = presets.find((p) => p.value === next);
+      // The period already chosen: nothing changes, the window closes.
+      if (next === CURRENT_PERIOD) { onPick([]); return; }
+      const preset = plain.find((p) => p.value === next);
       if (preset) onPick(choose(preset.period, monthly));
     }} custom={{
       open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : monthly ? "Alege lunile…" : series ? "Alege anii…" : "Alege anii sau lunile…",
       value: range, onChange: (next) => { setRange(next); setError(null); },
       // 2018 leaves the trend only (trend final §3.2): its direct acquisitions start in April.
-      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && (!series || monthly),
+      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && (monthly || !series && withMonths),
       ...(trend ? { labels: ["Primul an", "Al doilea an"] as const } : {}), error,
     }} />
+    {open && !trend && !series && !withMonths && <button type="button" className="qb-link qb-range-months" onClick={(event) => {
+      // The button gives way to the month fields: the focus goes to the first of them, never to the page.
+      const dialog = event.currentTarget.closest("dialog");
+      setWithMonths(true);
+      requestAnimationFrame(() => dialog?.querySelectorAll<HTMLSelectElement>(".qb-range select")[2]?.focus());
+    }}>Alege și lunile</button>}
     {series && !monthly && open && <p className="qb-pop-note">Un singur an: îl arăt lună de lună.</p>}
     {open && <div className="qb-pop-foot"><span /><button type="button" className="qb-primary" onClick={use}>Folosește</button></div>}
   </>;
