@@ -132,6 +132,12 @@ export interface MapResponse {
    * sector of its own; it is apart, divided by the city's population. Null elsewhere.
    */
   city: MapArea | null;
+  /**
+   * A county's UAT level (UX audit Z4-11, 16 November 2026): the county council apart from the UATs, over the county's
+   * population (with its institutions when the selection has them), as the city hall is in București; its `entityId` is
+   * the council's own identity. Null elsewhere, and when the list does not hold the council.
+   */
+  council?: MapArea | null;
   totals: { value: number; records: number; buyers: number };
   /** Where the rows came from: the nightly table, or the transaction marts when it is not built yet. */
   source: "rollup" | "live";
@@ -149,6 +155,9 @@ export interface MapOptions {
   cpv: { code: string; name: string; official: string | null; value: number; records: number }[];
   datasets: MapDataset[];
 }
+
+/** How many institutions each layer of the map holds (/api/map/counts; UX audit Z4-30). */
+export interface MapCounts { local_admin: number; institutions: number; companies: number; hospitals: number; schools: number }
 
 export class MapError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
@@ -339,7 +348,12 @@ export function schoolCountyArea(key: string, name: string, schools: readonly { 
  */
 export interface MapUatResponse {
   selection: MapSelection;
-  county: { key: string; name: string; perCapita: number | null };
+  /**
+   * The county's figure (`perCapita`: town halls and council, as on the map) and the town halls' own average
+   * (`hallsPerCapita`, without the council; București: the sectors, without the city hall), which the panel sets the
+   * UAT against (UX audit Z4-09, owner 16 November 2026).
+   */
+  county: { key: string; name: string; perCapita: number | null; hallsPerCapita?: number | null };
   uat: MapArea & { kind: string };
   /** The UAT's own administration(s), the largest first: the name links to its page. */
   townHalls: { id: string; name: string; value: number }[];
@@ -348,7 +362,7 @@ export interface MapUatResponse {
   /** 1-based place by lei per inhabitant among the county's UATs with a figure; null with a gap. */
   place: number | null;
   ranked: number;
-  years: { year: string; value: number; records: number; perCapita: number | null; countyPerCapita: number | null; selected: boolean }[];
+  years: { year: string; value: number; records: number; perCapita: number | null; countyPerCapita: number | null; hallsPerCapita?: number | null; selected: boolean }[];
   cpv: { code: string | null; name: string; value: number; records: number }[];
   channels: { da: number; contracts: number };
   suppliers: { id: string; name: string; value: number; records: number }[];

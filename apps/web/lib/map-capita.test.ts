@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countyAreas, uatAreas, BUCHAREST_SIRUTA } from "./map-capita";
+import { countyAreas, townHallsPerCapita, uatAreas, BUCHAREST_SIRUTA } from "./map-capita";
 import type { MapSelection } from "./map-capita-shared";
 import catalog from "./reference/population-rpl2021.json";
 
@@ -87,5 +87,20 @@ describe("/harta with the institutions (owner, 8 November 2026)", () => {
     const only2025 = uatAreas(subs, { ...withInst, level: "uat", county: "bucuresti", years: ["2025"] }, "bucuresti").areas;
     expect(only2025.find((a) => a.key === String(sector1.siruta))).toMatchObject({ value: 2_000_000, subValue: 0 });
     expect(areas.filter((a) => a.gap === "no_admin")).toHaveLength(5);
+  });
+});
+
+describe("/harta the panel's town halls and the county council (UX audit Z4-09, Z4-11, 16 November 2026)", () => {
+  it("averages a county's town halls without its council, and București's sectors without the city hall", () => {
+    expect(townHallsPerCapita(data, all, "covasna")).toBeCloseTo(1_000_000 / sfantu.population);
+    expect(townHallsPerCapita(data, all, "bucuresti")).toBeCloseTo(2_000_000 / sector1.population);
+    expect(townHallsPerCapita(data, all, "nicaieri")).toBeNull();
+  });
+
+  it("puts the council apart on its county's UATs, over the county's population, with its own identity", () => {
+    const { council } = uatAreas(data, { ...all, level: "uat", county: "covasna" }, "covasna");
+    expect(council).toMatchObject({ name: "Consiliul Județean Covasna", value: 3_000_000, denominator: covasna.population, entityId: "2" });
+    expect(council!.perCapita).toBeCloseTo(3_000_000 / covasna.population);
+    expect(uatAreas(data, { ...all, level: "uat", county: "bucuresti" }, "bucuresti")).toMatchObject({ council: null, city: { entityId: "3" } });
   });
 });

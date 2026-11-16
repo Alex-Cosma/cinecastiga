@@ -17,9 +17,16 @@ import { countWords } from "@/lib/ask/answer-text";
 import { formatEvidenceAmount } from "@/lib/ask/evidence";
 import type { ConnectionRole } from "@/lib/connections-shared";
 import { entityHref } from "@/lib/entity-href";
+import { writeAddress } from "@/lib/address";
 import { cleanName, countyLabel } from "@/lib/format";
 import { peerEvidenceSpec, type PeerEvidenceSelection } from "@/lib/peers-evidence-shared";
 import { peerDomainLabel, peerPeriodLabel } from "@/lib/peers-shared";
+import { domainName } from "@/lib/cpv-aliases";
+import { readableCpvName } from "@/lib/entity-summary";
+import { countyKey } from "@/lib/map-capita-shared";
+import { askHref } from "@/lib/discovery-links";
+import { domainContextSpec } from "@/lib/ask/site-links";
+import { softName } from "@/lib/soft-name";
 import type { PeerMember, PeerMethod, PeerPoint, PeerSelectionMember, PeersResponse } from "@/lib/peers-shared";
 
 /*
@@ -40,6 +47,11 @@ type Row = { id: string; name: string; value: number; exact: string; records: nu
 type Axis = { lo: number; hi: number };
 
 const LIST_PAGE = 20;
+/** A group this small is drawn low and ranked whole, once (UX audit Z4-31: an 11-member group showed 17 rows). */
+const SMALL_GROUP = 15;
+/** The member whose page was opened from here (sessionStorage), so Back brings its row into view. */
+const VISIT_KEY = "pxs-visit";
+const rememberVisit = (id: string) => { try { sessionStorage.setItem(VISIT_KEY, id); } catch { /* storage off */ } };
 const count = (value: number) => value.toLocaleString("ro-RO");
 const query = (values: Record<string, string | number | PeerSelectionMember[] | undefined>) => new URLSearchParams(Object.entries(values).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => [key, Array.isArray(value) ? JSON.stringify(value) : String(value)])).toString();
 function initialMembers(value?: string): PeerSelectionMember[] | undefined {
@@ -51,7 +63,37 @@ const DATASETS = [{ value: "all", label: "Toate" }, { value: "da", label: "Direc
 /** Romanian "de" after a number: 19 înregistrări, 20 de înregistrări, 101 înregistrări, 120 de înregistrări. */
 const de = (n: number) => { const last = Math.abs(Math.trunc(n)) % 100; return n !== 0 && (last === 0 || last >= 20) ? " de" : ""; };
 const recordsWords = (n: number) => countWords(n, "înregistrare", "înregistrări");
-const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+const lowerFirst = (text: string) => (text ? text.charAt(0).toLocaleLowerCase("ro-RO") + text.slice(1) : text);
+/** The kind's institutions, for the group's sentence (UX audit Z4-35: „Spitalele cu activitate asemănătoare…”). */
+const KIND_PLURAL: Record<string, string> = { spital: "Spitalele", scoala: "Școlile", universitate: "Universitățile", minister: "Ministerele", comuna: "Comunele", oras_municipiu: "Orașele și municipiile", consiliu_judetean: "Consiliile județene" };
+/** A long name in the title: two lines, the whole of it on hover, focus or a tap (UX audit Z4-27). */
+function Named({ name }: { name: string }) {
+  const long = name.length > 70;
+  return <span className={long ? "pxs-h1-name is-long" : "pxs-h1-name"} tabIndex={long ? 0 : undefined}>{name}</span>;
+}
+
+/**
+ * An institution of no known kind (UX audit Z4-36): no automatic group, so a short answer and two ways on, instead of
+ * filters that cannot build one and facts about an empty group: who buys the same in its county (Întreabă's ranking of
+ * the buyers of its main domain), its page, and its sources.
+ */
+function UnknownType({ focal, division, county, year, pageHref, onSources, busy }: {
+  focal: PeerMember | null; division: { code: string; name: string } | null; county: string | null; year: number | null; pageHref: string; onSources: (() => void) | null; busy: boolean;
+}) {
+  const where = countyLabel(county);
+  // The domains page's ranking of the division's buyers in the year (domainContextSpec), narrowed to its county.
+  const ranking = division ? domainContextSpec("table", division.code, year ?? new Date().getFullYear() - 1, "authority") : null;
+  const ask = ranking ? askHref(where ? { ...ranking, filters: { ...ranking.filters, county: where } } : ranking) : null;
+  return <section className="px-empty px-empty--short">
+    <h2>Nu știm sigur ce fel de instituție e, deci n-o putem compara automat. <Term tip id="tip-institutie" /></h2>
+    <p>Comparația pune laolaltă instituții de același tip (spitale, școli, primării).{ask ? <> Pentru ea, poți vedea cine cumpără același lucru {where ? "în județ" : "în țară"}.</> : null}</p>
+    <div className="pxs-acts pxs-acts--out">
+      {ask && division && <Link className="pxs-btn p" href={ask} prefetch={false}>Cine cumpără {lowerFirst(division.name)} {where ? `în județul ${where}` : "în țară"} ›</Link>}
+      <Link className={ask ? "pxs-btn" : "pxs-btn p"} href={pageHref}>Pagina instituției →</Link>
+      {onSources && focal && <button type="button" className="pxs-btn" disabled={busy || focal.recordCount === 0} onClick={onSources}>Sursele ei · {count(focal.recordCount)}</button>}
+    </div>
+  </section>;
+}
 
 /** "1,89 mld." · "1,5 mil." · "23 mii": an amount at the size of the eye, the exact one stays on hover. */
 function short(value: number): string {
@@ -114,14 +156,16 @@ function Choice({ label, text, title, options, value, onPick, disabled }: {
  *  answer (`enter` = the row's index); a row an update or a page adds fades in at once (`enter` = -1); a row that
  *  stays slides its dot and the median's tick to their new places (`.cm-tw`). Rows take a new order at once, which
  *  moves them in the document; the entrance class goes once it has played, so a moved row does not replay it. */
-function RankRow({ row, axis, median, role, busy, opening, onSources, enter }: {
-  row: Row; axis: Axis | null; median: number | null; role: ConnectionRole; busy: boolean; opening: string | null; onSources: (row: Row) => void; enter: number;
+function RankRow({ row, place = null, axis, median, role, busy, opening, onSources, enter }: {
+  row: Row; place?: { name: string; county: string | null } | null; axis: Axis | null; median: number | null; role: ConnectionRole; busy: boolean; opening: string | null; onSources: (row: Row) => void; enter: number;
 }) {
   const [born, setBorn] = useState(enter);
   const played = born === -2;
-  return <li className={row.focal ? "pxs-row is-focal" : "pxs-row"}>
+  return <li className={row.focal ? "pxs-row is-focal" : "pxs-row"} data-member={row.id}>
     <span className="pxs-n">{row.rank === null ? "" : count(row.rank)}</span>
-    <span className="pxs-name">{row.focal ? <b>{row.name}</b> : <EntityName id={row.id} role={role}>{cleanName(row.name) || "—"}</EntityName>}
+    {/* A town hall by its place, as on the map, with its county (UX audit Z4-34); the link still opens its page. */}
+    <span className="pxs-name">{row.focal ? <b>{place ? <>{place.name}{place.county && <span className="pxs-county"> · {place.county}</span>}</> : row.name}</b>
+      : <EntityName id={row.id} role={role}>{place ? <>{place.name}{place.county && <span className="pxs-county"> · {place.county}</span>}</> : cleanName(row.name) || "—"}</EntityName>}
       <small>{row.records > 0 ? recordsWords(row.records) : "fără înregistrări în selecție"}{row.extra ? ` · ${row.extra}` : ""}</small></span>
     <span className="pxs-track" aria-hidden="true">{median !== null && median > 0 && <b className="cm-tw" style={{ left: `${along(axis, median) * 100}%` }} />}{row.records > 0 && <i className={played ? "cm-tw" : born >= 0 ? "cm-tw cm-pt" : "cm-tw cm-in"} onAnimationEnd={() => setBorn(-2)} style={{ left: `${along(axis, row.value) * 100}%`, ...(born >= 0 ? { "--i": born } as CSSProperties : {}) }} />}</span>
     <span className="pxs-v" title={row.records > 0 ? formatEvidenceAmount(row.exact, true) : undefined}>{row.records > 0 ? `${short(row.value)} lei` : "—"}</span>
@@ -172,7 +216,6 @@ function PeersGhost({ name }: { name: string }) {
       </section>
       <section className="pxs-who" aria-hidden="true"><h2>Cine e în grup <span className="term term-tip"><span className="term-trigger"><span className="term-mark">?</span></span></span></h2>
         <p><G.Line w="100%" /><G.Line w="56%" /><G.Line w="88%" only="phone" /><G.Line w="38%" only="phone" /></p>
-        <dl className="pxs-facts">{["64%", "80%", "72%"].map((w) => <div key={w}><dt><G.Line w={w} /><G.Line w="46%" only="phone" /></dt><dd><G.Line w="5ch" /></dd></div>)}</dl>
         <div className="pxs-acts"><G.Block w="7.8em" h="36px" /><G.Block w="10.2em" h="36px" /><G.Block w="7.75em" h="36px" /></div>
       </section>
     </div>
@@ -202,14 +245,27 @@ function SwarmDots({ born, many, children }: { born: string; many: boolean; chil
  * nearest dot answers the pointer with its name, place and exact value and opens its page; the lists under the
  * stage hold the same members for the keyboard. Switching the measure slides every dot to its new place.
  */
-function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf }: {
+function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf, compact = false, nameOf = (_id, name) => cleanName(name) }: {
   points: readonly PeerPoint[]; focal: { name: string; value: number }; median: number | null; metric: Metric; role: ConnectionRole;
   rank: number; total: number; axis: Axis; rankOf: ReadonlyMap<string, number>;
+  /** A small group (UX audit Z4-31): the drawing only as tall as its tallest column of dots. */
+  compact?: boolean;
+  /** A member's name in the tip (a town hall's place, as on the map). */
+  nameOf?: (id: string, name: string) => string;
 }) {
   const router = useRouter();
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null);
+  // A touch (UX audit Z4-38): the first shows the nearest dot's tip with „Deschide ›”, a second on it opens its page.
+  const [pinned, setPinned] = useState<number | null>(null);
+  const touch = useRef(false);
+  useEffect(() => {
+    if (pinned === null) return;
+    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setPinned(null); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [pinned]);
   // Charts in motion (owner, 6 November 2026): the band and the median first, the dots next, the entity's ring last; a
   // new measure or filter slides the dots that stay (up to SWARM_TWEEN), and a larger group is redrawn as one fade.
   const [drawn, setDrawn] = useState(false);
@@ -223,8 +279,7 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
     return () => observer.disconnect();
   }, []);
   const phone = width > 0 && width < 640;
-  const H = phone ? 220 : 290, TOP = 40, AXIS = 30;
-  const mid = TOP + (H - TOP - AXIS) / 2;
+  const TOP = 40, AXIS = 30;
   const layout = useMemo(() => {
     if (width === 0) return null;
     const value = (p: PeerPoint) => (metric === "total" ? p.total : p.mean);
@@ -233,7 +288,7 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
     // Dots as big as the group allows: a small group (population, a hand-picked one) gets dots to point at, a
     // middling one fills the stage's height, only the largest groups go down to the smallest dot.
     const n = points.length;
-    const r = n <= 60 ? (phone ? 4.5 : 5.5) : n <= 800 ? (phone ? 3 : 4.2) : phone ? 2.4 : 3, step = 2 * r + 1, half = (H - TOP - AXIS) / 2 - r - 2;
+    const r = n <= 60 ? (phone ? 4.5 : 5.5) : n <= 800 ? (phone ? 3 : 4.2) : phone ? 2.4 : 3, step = 2 * r + 1;
     const sorted = [...points].sort((a, b) => value(a) - value(b));
     const cols = new Map<number, number>();
     const raw = sorted.map((p) => {
@@ -242,21 +297,28 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
       return { p, x: col * step, off: k === 0 ? 0 : Math.ceil(k / 2) * step * (k % 2 ? -1 : 1) };
     });
     const widest = Math.max(1, ...raw.map((d) => Math.abs(d.off)));
+    // A small group is only as tall as its tallest column needs (with room for the labels above); the others keep the stage.
+    const H = compact ? Math.max(phone ? 124 : 136, Math.ceil(TOP + AXIS + 2 * (widest + r + 4))) : phone ? 220 : 290;
+    const mid = TOP + (H - TOP - AXIS) / 2, half = (H - TOP - AXIS) / 2 - r - 2;
     const squeeze = widest > half ? half / widest : 1;
     const dots = raw.map((d) => ({ ...d, y: mid + d.off * squeeze, v: value(d.p) }));
     const values = sorted.map(value);
     const ticks = Array.from({ length: axis.hi - axis.lo + 1 }, (_, i) => 10 ** (axis.lo + i));
-    return { x, r, dots, q1: quantile(values, 0.25), q3: quantile(values, 0.75), ticks };
-  }, [points, metric, width, phone, H, mid, axis]);
+    return { x, r, dots, q1: quantile(values, 0.25), q3: quantile(values, 0.75), ticks, H, mid };
+  }, [points, metric, width, phone, axis, compact]);
+  const H = layout?.H ?? (compact ? (phone ? 124 : 136) : phone ? 220 : 290), mid = layout?.mid ?? TOP + (H - TOP - AXIS) / 2;
 
-  function nearest(event: ReactPointerEvent<SVGSVGElement>) {
-    if (!layout) return;
+  function nearestIndex(event: { currentTarget: Element; clientX: number; clientY: number }): number | null {
+    if (!layout) return null;
     const rect = event.currentTarget.getBoundingClientRect(), px = event.clientX - rect.left, py = event.clientY - rect.top;
     let best = -1, distance = 22 * 22;
     layout.dots.forEach((d, i) => { const dd = (d.x - px) ** 2 + (d.y - py) ** 2; if (dd < distance) { distance = dd; best = i; } });
-    setHover(best < 0 ? null : best);
+    return best < 0 ? null : best;
   }
-  const shown = hover === null || !layout ? null : layout.dots[hover];
+  function nearest(event: ReactPointerEvent<SVGSVGElement>) { setHover(nearestIndex(event)); }
+  const at = hover ?? pinned;
+  const shown = at === null || !layout ? null : layout.dots[at];
+  const open = (id: string) => { rememberVisit(id); router.push(entityHref(id, role)); };
   const fx = layout ? layout.x(focal.value) : 0;
   const right = width > 0 && fx > width * 0.6;
   // The two labels share the line above the dots; when the entity's would run into the median's, it climbs one line.
@@ -274,9 +336,16 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
   const drawOrder = useMemo(() => (layout?.dots ?? []).map((d, i) => [d, i] as const).sort(([a], [b]) => (a.p.id < b.p.id ? -1 : a.p.id > b.p.id ? 1 : 0)), [layout]);
   // Its height comes from peers.css (290, or 220 when the stage is under 640 px wide: the same test as `phone`), so it is
   // right before the first measure and in the ghost.
-  return <div className="pxs-swarm" ref={box} data-chart="">
+  return <div className="pxs-swarm" ref={box} data-chart="" style={compact ? { height: H } : undefined}>
     {layout && <svg width={width} height={H} role="img" aria-label={`${focal.name}: locul ${count(rank)} din ${count(total)}, ${short(focal.value)} ${unit}${median ? `; mediana grupului ${short(median)}` : ""}.`}
-      onPointerMove={nearest} onPointerLeave={() => setHover(null)} onClick={() => { if (shown) router.push(entityHref(shown.p.id, role)); }} className={shown ? "is-pointing" : undefined}>
+      onPointerDown={(e) => { touch.current = e.pointerType !== "mouse"; }}
+      onPointerMove={(e) => { if (!touch.current) nearest(e); }} onPointerLeave={() => setHover(null)}
+      onClick={(e) => {
+        if (!touch.current) { if (shown) open(shown.p.id); return; }
+        const i = nearestIndex(e);
+        if (i === null) { setPinned(null); return; }
+        if (pinned === i) open(layout.dots[i]!.p.id); else { setHover(null); setPinned(i); }
+      }} className={shown ? "is-pointing" : undefined}>
       {layout.dots.length >= 4 && <rect className="pxs-band cm-fade" x={layout.x(layout.q1)} y={TOP - 6} width={Math.max(2, layout.x(layout.q3) - layout.x(layout.q1))} height={H - TOP - AXIS + 6} />}
       <line className="pxs-axis" x1={0} x2={width} y1={H - AXIS + 2} y2={H - AXIS + 2} />
       {layout.ticks.map((t, i) => {
@@ -295,17 +364,26 @@ function Swarm({ points, focal, median, metric, role, rank, total, axis, rankOf 
       <circle className="pxs-focal cm-pt cm-late" cx={fx} cy={mid} r={ring} />
       <text className="pxs-focal-t cm-fade cm-late" x={right ? fx + 4 : fx - 4} y={clash ? TOP - 28 : TOP - 12} textAnchor={right ? "end" : "start"}>{focalWords}</text>
     </svg>}
-    {shown && <div className={`pxs-tip${shown.x > width * 0.7 ? " r" : shown.x < width * 0.3 ? " l" : ""}`} style={{ left: shown.x, top: shown.y }} aria-hidden="true">
-      <b>{cleanName(shown.p.name) || "—"}</b>
+    {shown && <div className={`pxs-tip${shown.x > width * 0.7 ? " r" : shown.x < width * 0.3 ? " l" : ""}${hover === null && pinned !== null ? " is-pinned" : ""}`} style={{ left: shown.x, top: shown.y }} aria-hidden={hover !== null || pinned === null ? true : undefined}>
+      <b>{nameOf(shown.p.id, shown.p.name) || "—"}</b>
       <span className="pxs-tip-v">{formatEvidenceAmount(metric === "total" ? shown.p.totalExact : shown.p.meanExact, true)}{metric === "mean" ? " pe înregistrare" : ""}</span>
       <span>{rankOf.has(shown.p.id) ? `locul ${count(rankOf.get(shown.p.id)!)} · ` : ""}{recordsWords(shown.p.records)}</span>
+      {hover === null && pinned !== null
+        ? <Link className="pxs-tip-go" href={entityHref(shown.p.id, role)} onClick={() => rememberVisit(shown.p.id)}>Deschide ›</Link>
+        : <span className="pxs-tip-go">Apasă: pagina ei →</span>}
     </div>}
   </div>;
 }
 
-export default function PeersExplorer({ entityId, entityName, county = null, role, initial }: {
+export default function PeersExplorer({ entityId, entityName, county = null, role, initial: fromServer, place = null }: {
   entityId: string; entityName: string; county?: string | null; role: ConnectionRole; initial: Record<string, string>;
+  /** A town hall's place on the map (page.tsx townHallPlace), for the way there. */
+  place?: { county: string; siruta: number | null } | null;
 }) {
+  // The address is the view (UX audit Z4-33): Back from a member's page remounts this page from the router's cache, whose
+  // props are the first visit's, while the address holds the filters, the open ranking and its page: read the address.
+  const [initial] = useState<Record<string, string>>(() => (typeof window === "undefined" ? fromServer
+    : Object.fromEntries([...new URLSearchParams(window.location.search)].filter(([key], i, all) => all.findIndex(([k]) => k === key) === i))));
   const first: Criteria = { dataset: initial.dataset ?? "all", year: initial.year ?? "", cpv: initial.cpv ?? "", county: initial.county ?? "" };
   const [request, setRequest] = useState<Request>({ ...first, page: Number(initial.page ?? 1), ...(initial.identity ? { identity: initial.identity } : {}), ...(initial.checkpointId ? { checkpointId: initial.checkpointId } : {}), ...(initial.method ? { method: initial.method as PeerMethod } : {}), ...(initial.populationVersion ? { populationVersion: initial.populationVersion } : {}), ...(initial.members ? { members: initialMembers(initial.members) } : {}) });
   const [state, setState] = useState<{ key: string; data: PeersResponse | null; error: string; status: number }>({ key: "", data: null, error: "", status: 0 });
@@ -314,8 +392,10 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   const [sources, setSources] = useState<Source | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
   const [copied, setCopied] = useState("");
-  const [listOpen, setListOpen] = useState(Number(initial.page ?? 1) > 1);
-  const [listPage, setListPage] = useState(0);
+  const [listOpen, setListOpen] = useState(Number(initial.page ?? 1) > 1 || initial.lista === "1");
+  const [listPage, setListPage] = useState(Math.max(0, Number(initial.pagina ?? 1) - 1) || 0);
+  /** The ranking's page from the address, kept once over the first answer's own place. */
+  const askedPage = useRef(initial.pagina ? Math.max(0, Number(initial.pagina) - 1) || 0 : null);
   /** The first answer's rows have been drawn: rows mounted after that (an update, the whole list, a page) fade in at once. */
   const [rowsDrawn, setRowsDrawn] = useState(false);
   const pinned = useRef({ identity: initial.identity, checkpointId: initial.checkpointId });
@@ -344,7 +424,6 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
         const next = body as PeersResponse;
         pinned.current = { identity: next.entity.identity, checkpointId: next.checkpoint.id };
         setState({ key, data: next, error: "", status: response.status });
-        window.history.replaceState(null, "", `${window.location.pathname}?${query({ rol, ...next.filters, year: next.filters.year ?? undefined, cpv: next.filters.cpv ?? undefined, ...pinned.current })}`);
       } catch { if (!controller.signal.aborted) setState({ key, data: null, error: "Conexiunea a fost întreruptă. Reîncearcă încărcarea.", status: 0 }); }
       finally { if (!controller.signal.aborted) setPending(false); }
     })();
@@ -443,119 +522,194 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   const rankOf = useMemo(() => new Map(data?.pointsSampled ? [] : ranked.filter((r) => r.rank !== null).map((r) => [r.id, r.rank!])), [ranked, data?.pointsSampled]);
   const axis = useMemo(() => logAxis([...points.map((p) => (metric === "total" ? p.total : p.mean)), focalValue, median ?? 0]), [points, metric, focalValue, median]);
   const pages = Math.max(1, Math.ceil(ranked.length / LIST_PAGE));
+  const small = ranked.length > 0 && ranked.length <= SMALL_GROUP && !data?.pointsSampled;
   const focalPage = at < 0 ? 0 : Math.floor(at / LIST_PAGE);
-  useEffect(() => { setListPage(focalPage); }, [focalPage, key]);
+  useEffect(() => {
+    if (askedPage.current !== null && data) { setListPage(Math.min(askedPage.current, pages - 1)); askedPage.current = null; return; }
+    setListPage(focalPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focalPage, key]);
+  // The address keeps the view (UX audit Z4-33), through the router (lib/address.ts), as /harta does: the applied
+  // filters, the pinned identity and data version, and the open ranking with its page.
+  useEffect(() => {
+    if (!data) return;
+    const view = query({ rol, ...data.filters, year: data.filters.year ?? undefined, cpv: data.filters.cpv ?? undefined, ...pinned.current,
+      lista: listOpen && !small ? "1" : undefined, pagina: listOpen && !small && pages > 1 && !data.pointsSampled ? listPage + 1 : undefined });
+    writeAddress(`${window.location.pathname}?${view}`, "replace");
+  }, [data, listOpen, listPage, rol, pages, small]);
+  // Back from a member's page: that member's row comes back into view, once the answer is drawn.
+  useEffect(() => {
+    if (!data) return;
+    let id: string | null = null;
+    try { id = sessionStorage.getItem(VISIT_KEY); sessionStorage.removeItem(VISIT_KEY); } catch { /* storage off: the page opens at its top */ }
+    if (!id) return;
+    const frame = window.requestAnimationFrame(() => document.querySelector(`.pxs [data-member="${CSS.escape(id!)}"]`)?.scrollIntoView({ block: "center" }));
+    return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(data)]);
   useEffect(() => { if (data && !rowsDrawn) setRowsDrawn(true); }, [data, rowsDrawn]);
   const rowEnter = (i: number) => (rowsDrawn ? -1 : i);
 
   const division = data?.options.divisions.find((item) => item.code === data.filters.cpv);
   const versus = focal ? versusMedian(focalValue, median) : null;
-  const domain = data ? data.filters.cpv === "all" ? "toate domeniile" : `${division?.label ?? peerDomainLabel(data.filters.cpv)} (CPV ${data.filters.cpv})` : "";
-  const period = data ? data.filters.year === "all" ? "toți anii" : String(data.filters.year ?? "") : "";
-  const channel = data?.filters.dataset === "da" ? "achiziții directe" : data?.filters.dataset === "contracts" ? "proceduri" : "";
+  const cpvCode = data?.filters.cpv ?? null, yearValue = data?.filters.year ?? null;
+  /** A division's name from the catalog: the group's own, else the site's short names (never „CPV 03 (CPV 03)”). */
+  const domainOf = (code: string) => (division && division.code === code ? readableCpvName(division.label) : domainName(code, null));
+  const domainWords = cpvCode && cpvCode !== "all" ? lowerFirst(domainOf(cpvCode)) : null;
+  const periodWords = yearValue === "all" ? "în toți anii" : yearValue !== null ? `în ${yearValue}` : "";
+  const channel = data?.filters.dataset === "da" ? ", prin achiziții directe" : data?.filters.dataset === "contracts" ? ", prin proceduri" : "";
   const band = data ? `${count(data.cohort.minimumRecords)}–${count(data.cohort.maximumRecords)}${de(data.cohort.maximumRecords)} înregistrări` : "";
+  // Its name (UX audit Z4-27, Z4-34): a town hall's place as the map writes it („Cisnădie”), else its name without the
+  // capitals of the source; the breadcrumb and its page keep the page's name.
+  const shownName = focal?.population?.placeName ?? softName(currentName);
+  const unknownType = data?.cohort.status === "unknown_authority_type";
+  // The group drawn and ranked: a place among members with records (UX audit Z4-37: never „locul 1 între 0”).
+  const ranking = !!focal && comparisonAvailable && observedCount > 0 && focal.recordCount > 0;
+  // The town hall's place on the map (UX audit Z4-26, Z4-39): from its population's SIRUTA, else from its name.
+  const fromPopulation = focal?.population && focal.population.level !== "county" && focal.population.siruta ? { county: countyKey(focal.population.county), siruta: focal.population.siruta } : null;
+  const onMap = role === "authority" ? fromPopulation ?? place : null;
+  const mapHref = onMap ? `/harta?ani=${yearValue === null || yearValue === "all" ? "toti" : yearValue}&judet=${onMap.county}${onMap.siruta && onMap.siruta !== 179132 ? `&uat=${onMap.siruta}` : ""}` : null;
+  const widen = (yearValue !== null && yearValue !== "all") || (cpvCode !== null && cpvCode !== "all");
+  const widenButtons = (className: string) => <>
+    {cpvCode !== null && cpvCode !== "all" && <button type="button" className={className} disabled={busy} onClick={() => change({ cpv: "all" })}>Toate domeniile</button>}
+    {yearValue !== null && yearValue !== "all" && <button type="button" className={className} disabled={busy} onClick={() => change({ year: "all" })}>Toți anii</button>}
+  </>;
 
   const yearOptions: KitOption[] = [{ value: "all", label: "Toți anii", detail: "cumulat, cu înregistrările fără dată" }, ...(options?.years ?? []).map((y) => ({ value: String(y), label: String(y), ...(y >= new Date().getFullYear() ? { detail: "an în curs, incomplet" } : {}) }))];
   const divisionTotal = (options?.divisions ?? []).reduce((a, d) => a + Number(d.totalExact), 0) || 1;
   const cpvOptions: KitOption[] = [{ value: "all", label: "Toate domeniile", detail: "cu înregistrările fără cod CPV" }, ...(options?.divisions ?? []).map((d) => ({ value: d.code, label: `${d.code} · ${d.label}`, count: `${short(Number(d.totalExact))} lei`, share: Number(d.totalExact) / divisionTotal }))];
-  const countyOptions: KitOption[] = [{ value: "", label: "Toată țara" }, ...(options?.counties ?? []).map((c) => ({ value: c, label: countyLabel(c) ?? c }))];
+  // Its own county first (UX audit Z4-41: „în județul meu” is the comparison most asked for).
+  const ownCounty = (options?.counties ?? []).find((c) => countyLabel(c) === countyLabel(data ? data.entity.county : county));
+  const countyOptions: KitOption[] = [{ value: "", label: "Toată țara" }, ...(ownCounty ? [{ value: ownCounty, label: `${countyLabel(ownCounty) ?? ownCounty} · județul ${role === "supplier" ? "firmei" : "ei"}` }] : []),
+    ...(options?.counties ?? []).filter((c) => c !== ownCounty).map((c) => ({ value: c, label: countyLabel(c) ?? c }))];
   const rowSources = (row: Row) => (row.focal ? showSources(focal!) : void showPointSources(row.id, row.name));
   function openList() { setListOpen(true); setListPage(focalPage); requestAnimationFrame(() => listHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" })); }
+  // A member's row, named as the map names a town hall's place, with its county (UX audit Z4-34).
+  const membersById = useMemo(() => new Map((data?.members ?? []).map((m) => [m.entity.id, m])), [data?.members]);
+  const placeOf = (id: string): { name: string; county: string | null } | null => {
+    const p = id === entityId ? focal?.population : membersById.get(id)?.population;
+    return p?.placeName ? { name: p.placeName, county: p.level === "sector" ? null : countyLabel(p.county) } : null;
+  };
+  const showFilters = !unknownType && !(error && !data);
 
-  return <div className="pxs">
-    <p className="pxs-crumb"><Link href={entityHref(entityId, role)}>← {currentName}</Link> · {role === "authority" ? "instituție" : "firmă"}{countyLabel(data ? data.entity.county : county) ? `, ${countyLabel(data ? data.entity.county : county)}` : ""} · Comparații</p>
+  return <div className="pxs" onClickCapture={(e) => {
+    // A member's page opened from a row: Back brings its row into view (UX audit Z4-33).
+    const a = (e.target as Element).closest?.(".pxs-rows a.entity-name");
+    const id = a?.getAttribute("href")?.match(/\/entitati\/(\d+)/)?.[1];
+    if (id) rememberVisit(id);
+  }}>
+    <p className="pxs-crumb"><Link href={entityHref(entityId, role)}>← Pagina {role === "supplier" ? "firmei" : "instituției"}</Link> · Comparații</p>
     <header className="pxs-head">
-      <h1>{focal && comparisonAvailable ? <>Unde stă {currentName} între {countWords(total, noun[0], noun[1])}</>
-        : firstLoad ? <>Unde stă {currentName} între <Ghost as="span" name="pxs-h1" wait="client"><G.Line inline w="11ch" /></Ghost></> : <>Cu cine se compară {currentName}</>}</h1>
+      <h1><span className="pxs-h1-name-wrap">{ranking ? <>Unde stă <Named name={shownName} />{domainWords ? ` la ${domainWords},` : ""} {periodWords}</>
+        : firstLoad ? <>Unde stă <Named name={shownName} /> <Ghost as="span" name="pxs-h1" wait="client"><G.Line inline w="11ch" /></Ghost></> : <>Cu cine se compară <Named name={shownName} /></>}</span></h1>
       {firstLoad && <Ghost as="p" className="pxs-lede" name="pxs-lede" wait="client"><G.Line w="76%" /><G.Line w="100%" only="phone" /><G.Line w="52%" only="phone" /></Ghost>}
-      {data && focal && comparisonAvailable && <p className={busy ? "pxs-lede g-stale" : "pxs-lede"}>
-        {capital(domain)}, {period}{channel ? `, ${channel}` : ""}.{" "}
-        {method === "population" ? <>Administrațiile cu populația cea mai apropiată{data.filters.county ? `, din județul ${data.filters.county}` : ""}.</> : method === "manual" ? <>Grupul ales de tine.</> : <>{role === "supplier" ? "Firmele" : `Instituțiile de același tip (${kinds[data.cohort.authorityKind ?? ""] ?? "nestabilit"})`} cu {band}, ca ea.</>}{" "}
+      {firstLoad && (!request.year || !request.cpv || request.year !== "all" || request.cpv !== "all") && <Ghost as="p" className="pxs-widen" name="pxs-widen" wait="client"><G.Line inline w="17em" /></Ghost>}
+      {data && focal && ranking && <p className={busy ? "pxs-lede g-stale" : "pxs-lede"}>
+        {method === "population" ? <>Între {countWords(total, noun[0], noun[1])} cu populația cea mai apropiată{data.filters.county ? `, din județul ${countyLabel(data.filters.county) ?? data.filters.county}` : ""}</>
+          : method === "manual" ? <>Grupul ales de tine, {countWords(total, noun[0], noun[1])}</>
+          : <>Între {countWords(total, noun[0], noun[1])} {role === "supplier" ? "" : `de același tip (${kinds[data.cohort.authorityKind ?? ""] ?? "nestabilit"}) `}cu {band}, ca ea</>}{channel}.{" "}
         E pe locul <b>{count(rank)}</b>{versus ? <>: <b>{versus}</b></> : ""}{metric === "mean" ? ", după valoarea pe înregistrare" : ""}.
       </p>}
+      {/* The comparison names its domain and year in the title (UX audit Z4-32); one click widens either, at once. */}
+      {data && ranking && widen && <p className="pxs-widen"><span>Lărgește:</span>{widenButtons("pxs-chip")}</p>}
     </header>
 
-    <div className="pxs-filters" role="group" aria-label="Ce se compară">
-      <Choice label="Perioada" text={data ? peerPeriodLabel(data.filters.year) : request.year || <PickGhost w="5ch" />} title="Ce an?" options={yearOptions} value={data ? String(data.filters.year ?? "") : request.year} onPick={(year) => change({ year })} disabled={!options} />
-      <Choice label="Domeniul" text={data ? data.filters.cpv === "all" ? "Toate" : `CPV ${data.filters.cpv}${division ? ` · ${division.label}` : ""}` : <PickGhost w="22ch" />} title="Ce domeniu CPV?" options={cpvOptions} value={data?.filters.cpv ?? request.cpv} onPick={(cpv) => change({ cpv })} disabled={!options} />
+    {showFilters && <div className="pxs-filters" role="group" aria-label="Ce se compară">
+      <Choice label="Perioada" text={data ? (yearValue === null ? "—" : peerPeriodLabel(yearValue)) : request.year || <PickGhost w="5ch" />} title="Ce an?" options={yearOptions} value={data ? String(data.filters.year ?? "") : request.year} onPick={(year) => change({ year })} disabled={!options} />
+      <Choice label="Domenii" text={data ? cpvCode === "all" ? "Toate" : cpvCode === null ? "—" : `${cpvCode} · ${domainOf(cpvCode)}` : <PickGhost w="22ch" />} title="Ce domeniu?" options={cpvOptions} value={data?.filters.cpv ?? request.cpv} onPick={(cpv) => change({ cpv })} disabled={!options} />
       <div className="pxs-seg" role="group" aria-label="Achizițiile comparate">{DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={(data?.filters.dataset ?? request.dataset) === d.value} disabled={!data} onClick={() => change({ dataset: d.value })}>{d.label}</button>)}</div>
       {method !== "manual" && (countyOptions.length > 1 || !options) && <Choice label="Județul" text={data?.filters.county ? countyLabel(data.filters.county) ?? data.filters.county : options ? "Toată țara" : <PickGhost w="9ch" />} title="Membrii din ce județ?" options={countyOptions} value={data?.filters.county ?? ""} onPick={(county) => change({ county })} disabled={!options} />}
-    </div>
-    {firstLoad && (!request.year || !request.cpv) && <Ghost as="p" className="pxs-note" name="pxs-note" wait="client"><G.Line w="31em" /><G.Line w="24%" only="phone" /></Ghost>}
-    {data && (data.suggested.year || data.suggested.cpv) && <p className="pxs-note">Sugerat: {data.suggested.year ? "ultimul an încheiat" : "anul ales"} și {data.suggested.cpv ? "domeniul cu cea mai mare valoare" : "domeniul ales"}.</p>}
-    {data && typeof data.filters.year === "number" && data.filters.year >= new Date().getFullYear() && <p className="px-notice">Anul ales e în curs: valorile nu acoperă un an întreg.</p>}
+    </div>}
+    {data && !unknownType && typeof data.filters.year === "number" && data.filters.year >= new Date().getFullYear() && <p className="px-notice">Anul ales e în curs: valorile nu acoperă un an întreg.</p>}
 
-    {firstLoad ? <PeersGhost name={currentName} />
-      : error ? <div className="px-error" role="alert"><h2>Comparația nu este disponibilă.</h2><p>{error}</p>{(state.status === 400 || state.status === 409) ? <a className="pxs-btn" href={`/entitati/${entityId}/comparatii?rol=${rol}`}>Reia comparația pe datele actuale</a> : <button className="pxs-btn" onClick={() => setRetry((value) => value + 1)}>Reîncearcă</button>}</div>
+    {firstLoad ? <PeersGhost name={shownName} />
+      // Unavailable (UX audit Z4-26): no filters that look as if they were loading, when it comes back, and ways out.
+      : error ? <div className="px-error" role="alert"><h2>Comparația nu este disponibilă acum.</h2>
+        <p>{state.status === 503 ? "Comparația revine după actualizarea datelor, de obicei peste noapte." : error}</p>
+        <div className="pxs-acts pxs-acts--out">
+          <Link className="pxs-btn p" href={entityHref(entityId, role)}>Pagina {role === "supplier" ? "firmei" : "instituției"} →</Link>
+          {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Vezi-o pe hartă →</Link>}
+          {(state.status === 400 || state.status === 409) ? <a className="pxs-btn" href={`/entitati/${entityId}/comparatii?rol=${rol}`}>Reia comparația pe datele actuale</a> : <button type="button" className="pxs-btn" onClick={() => setRetry((value) => value + 1)}>Reîncearcă</button>}
+        </div></div>
       : data && <>
         {/* Another period, domain or channel: the answer stays in place, dimmed, and the status floats (DESIGN.md). */}
         {busy && <FloatStatus>Se actualizează comparația…</FloatStatus>}
         <div className={busy ? "g-stale" : undefined} aria-busy={busy || undefined}>
-        {!focal ? <section className="px-empty"><h2>Nu avem înregistrări eligibile în această selecție.</h2><p>Schimbă perioada, domeniul sau canalul. {data.filters.year !== "all" && " Înregistrările fără an utilizabil sunt excluse."}{data.filters.cpv !== "all" && " Înregistrările fără cod CPV utilizabil sunt excluse."}</p></section> : <>
-          {comparisonAvailable && observedCount > 0 && axis ? <section className="pxs-stage" aria-label="Locul în grup">
+        {unknownType ? <UnknownType focal={focal ?? null} division={cpvCode && cpvCode !== "all" ? { code: cpvCode, name: domainName(cpvCode, division?.label) } : null} county={data.entity.county} year={typeof yearValue === "number" ? yearValue : null}
+            pageHref={entityHref(entityId, role)} onSources={focal ? () => showSources(focal) : null} busy={busy} />
+        : !focal ? <section className="px-empty"><h2>Nu avem înregistrări eligibile în această selecție.</h2><p>Schimbă perioada, domeniul sau canalul. {data.filters.year !== "all" && " Înregistrările fără an utilizabil sunt excluse."}{data.filters.cpv !== "all" && " Înregistrările fără cod CPV utilizabil sunt excluse."}</p>
+            {widen && <div className="pxs-acts pxs-acts--out">{widenButtons("pxs-btn")}</div>}</section> : <>
+          {ranking && axis ? <section className="pxs-stage" aria-label="Locul în grup">
             <div className="pxs-stage-top">
               <p className="pxs-key"><span>Fiecare punct e {noun[0] === "firmă" ? "o firmă" : noun[0] === "administrație" ? "o administrație" : "o instituție"} din grup, după {metric === "total" ? "valoarea înregistrată" : "valoarea pe înregistrare"}, pe o scară logaritmică{data.pointsSampled ? ` (un eșantion de ${count(points.length)} din ${count(observedCount)})` : ""}.</span>
-                <span className="pxs-legend" aria-hidden="true"><span><i className="sw band" />jumătatea din mijloc</span><span><i className="sw med" />mediana</span><span><i className="sw me" />{currentName}</span></span></p>
+                <span className="pxs-legend" aria-hidden="true"><span><i className="sw band" />jumătatea din mijloc</span><span><i className="sw med" />mediana</span><span className="pxs-legend-me"><i className="sw me" />{shownName}</span></span></p>
               <div className="pxs-seg" role="group" aria-label="Măsura"><button type="button" aria-pressed={metric === "total"} onClick={() => setMetric("total")}>Total</button><button type="button" aria-pressed={metric === "mean"} onClick={() => setMetric("mean")}>Pe înregistrare</button></div></div>
-            <Swarm points={points} focal={{ name: currentName, value: focalValue }} median={median} metric={metric} role={role} rank={rank} total={total} axis={axis} rankOf={rankOf} />
+            <Swarm points={points} focal={{ name: shownName, value: focalValue }} median={median} metric={metric} role={role} rank={rank} total={total} axis={axis} rankOf={rankOf}
+              compact={small} nameOf={(id: string, name: string) => placeOf(id)?.name ?? cleanName(name)} />
             {metric === "mean" && <p className="pxs-note">Valoarea totală împărțită la numărul de înregistrări. Nu e un preț unitar: un domeniu CPV adună achiziții foarte diferite.</p>}
-          </section> : <section className="px-empty"><h2>{data.cohort.status === "unknown_authority_type" ? "Nu putem stabili tipul acestei instituții." : "Grupul nu are încă membri cu înregistrări."}</h2>
-            <p>{data.cohort.status === "unknown_authority_type" ? <>Fără tip nu există un grup automat. <Term tip id="tip-institutie" /></> : data.filters.county ? "Încearcă toată țara, alt an sau alt domeniu." : method === "manual" ? "Grupul ales e gol: revino la grupul automat." : "Încearcă alt an sau alt domeniu."}</p></section>}
+          </section> : <section className="px-empty px-empty--short"><h2>{comparisonAvailable && focal.recordCount === 0 ? "Nu are înregistrări în această selecție." : "Grupul nu are încă membri cu înregistrări."}</h2>
+            <p>{data.filters.county ? "Încearcă toată țara, alt an sau alt domeniu." : method === "manual" ? "Grupul ales e gol: revino la grupul automat." : widen ? "Lărgește selecția:" : "Încearcă alt canal."}</p>
+            {widen && <div className="pxs-acts pxs-acts--out">{widenButtons("pxs-btn")}</div>}</section>}
 
           <div className="pxs-cols">
-            {comparisonAvailable && observedCount > 0 && <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">În jurul ei</h2>
-              <ol className="pxs-rows" data-chart="">{neighbours.map((r, i) => <RankRow key={r.id} row={r} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
-              {data.cohort.count > 5 && <button type="button" className="pxs-more" aria-expanded={listOpen} aria-controls="peer-members" onClick={openList}>Tot clasamentul · {countWords(total, noun[0], noun[1])}
-                <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
-            </section>}
-            <section className="pxs-who" aria-labelledby="pxs-who-h"><h2 id="pxs-who-h">Cine e în grup{method === "activity" && data.cohort.status !== "unknown_authority_type" ? <> <Term tip id="grup-activitate" /></> : method === "population" ? <> <Term tip id="grup-populatie" /></> : null}</h2>
-              {method === "population" ? <p>{focal.population ? <>Cele {count(data.cohort.count)} administrații cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : "Nu am putut identifica sigur populația acestei administrații, deci nici grupul după populație."}</p>
+            {ranking && (small
+              // A small group (UX audit Z4-31): its whole ranking once, with her row marked, in place of „În jurul ei”.
+              ? <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">Clasamentul</h2>
+                <ol className="pxs-rows" data-chart="">{shownRows.map((r, i) => <RankRow key={r.id} row={r} place={placeOf(r.id)} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol></section>
+              : <section className="pxs-near" aria-labelledby="pxs-near-h"><h2 id="pxs-near-h">În jurul ei</h2>
+                <ol className="pxs-rows" data-chart="">{neighbours.map((r, i) => <RankRow key={r.id} row={r} place={placeOf(r.id)} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
+                {data.cohort.count > 5 && <button type="button" className="pxs-more" aria-expanded={listOpen} aria-controls="peer-members" onClick={openList}>Tot clasamentul · {countWords(total, noun[0], noun[1])}
+                  <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
+              </section>)}
+            <section className="pxs-who" aria-labelledby="pxs-who-h"><h2 id="pxs-who-h">Cine e în grup{method === "activity" ? <> <Term tip id="grup-activitate" /></> : method === "population" ? <> <Term tip id="grup-populatie" /></> : null}</h2>
+              {/* Said once (UX audit Z4-35): the rule and its source; the number is in the title, the median on the drawing. */}
+              {method === "population" ? <p>{focal.population ? <>Cele {count(data.cohort.count)} administrații din țară cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : "Nu am putut identifica sigur populația acestei administrații, deci nici grupul după populație."}</p>
                 : method === "manual" ? <p>Grupul ales de tine: {countWords(data.cohort.count, noun[0], noun[1])}, din orice județ (cel mult 50). Rămâne când schimbi anul sau domeniul.</p>
-                : data.cohort.status === "unknown_authority_type" ? <p>Nu putem stabili tipul instituției, deci nici un grup automat.</p>
-                : <p>{role === "supplier" ? "Firmele" : "Instituțiile de același tip"} care au {role === "supplier" ? "vândut" : "cumpărat"} în {domain}, {period}, cu activitate asemănătoare: între jumătate și dublul celor {recordsWords(focal.recordCount)} ale ei. Un reper, nu o listă de concurenți.</p>}
-              <dl className="pxs-facts">
-                <div><dt>{method === "manual" ? "alese de tine" : `alte ${noun[1]}`}</dt><dd>{count(data.cohort.count)}</dd></div>
-                {method === "activity" ? <div><dt>înregistrări fiecare</dt><dd>{count(data.cohort.minimumRecords)}–{count(data.cohort.maximumRecords)}</dd></div>
-                  : focal.population ? <div><dt>locuitori, la recensământ</dt><dd>{short(focal.population.value)}</dd></div> : <div><dt>cu înregistrări</dt><dd>{count(observedCount)}</dd></div>}
-                <div><dt>{metric === "total" ? "mediana valorii" : "mediana pe înregistrare"}</dt><dd>{median === null ? "—" : short(median)}</dd></div>
-              </dl>
+                : <p>{role === "supplier" ? "Firmele" : KIND_PLURAL[data.cohort.authorityKind ?? ""] ?? "Instituțiile de același tip"} cu activitate asemănătoare {cpvCode === "all" ? (yearValue === "all" ? "în toți anii" : "în același an") : yearValue === "all" ? "în același domeniu, în toți anii" : "în același domeniu și an"}: între jumătate și dublul celor {recordsWords(focal.recordCount)} ale ei. Un reper, nu o listă de concurenți.</p>}
               {observedCount < data.cohort.count && <p className="pxs-note">{countWords(data.cohort.count - observedCount, "membru fără înregistrări rămâne", "membri fără înregistrări rămân")} în grup, dar nu în desen și nici în mediană: lipsa înregistrărilor nu înseamnă zero lei.</p>}
               {median === null && comparisonAvailable && <p className="pxs-note">Mediana cere cel puțin 5 alți membri cu înregistrări.</p>}
               {/* One row, one size (owner, 6 November 2026: the buttons looked thrown at random): her sources first, the
                   whole comparison's sources, then keeping it (investigation, link); a copied hand-picked group adds the way back. */}
               <div className="pxs-acts">
-                <button type="button" className="pxs-btn p" disabled={busy} onClick={() => showSources(focal)}>Sursele ei · {count(focal.recordCount)}</button>
+                <button type="button" className="pxs-btn p" disabled={busy || focal.recordCount === 0} onClick={() => showSources(focal)}>Sursele ei · {count(focal.recordCount)}</button>
                 {canCapture && <button type="button" className="pxs-btn" disabled={busy} onClick={() => showSources()}>Sursele comparației</button>}
                 {comparison && !busy && <ClipButton kind="query" spec={peerEvidenceSpec(comparison)} label={`Comparație în context · ${currentName}`} snapshot={{ peer: comparison, sourceUrl: typeof window === "undefined" ? "" : window.location.pathname + window.location.search }} />}
                 <button type="button" className="pxs-btn" onClick={() => void copyLink()}>Copiază linkul</button>
+                {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
                 {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
               </div>
               {!canCapture && comparisonAvailable && <p className="pxs-note">Grupul are peste 499 de membri: restrânge județul ca să salvezi întreaga comparație. Sursele fiecărui membru rămân la un clic.</p>}
               {copied && <p className="pxs-note" role="status">{copied}</p>}
             </section>
           </div>
-          <p className="pxs-caveat">Valori înregistrate, nu plăți. O diferență față de mediană e o pistă, nu o dovadă.</p>
 
-          {listOpen && data.cohort.count > 0 && <section id="peer-members" className="pxs-list">
+          {listOpen && !small && data.cohort.count > 0 && <section id="peer-members" className="pxs-list">
             <div className="pxs-list-h"><h2 ref={listHeading} tabIndex={-1}>Tot clasamentul{metric === "mean" ? ", după valoarea pe înregistrare" : ""}</h2><span>{countWords(ranked.length, noun[0], noun[1])}, inclusiv ea</span></div>
             {data.pointsSampled ? <>
               {/* Over 3.000 members the swarm is a sample, so the list stays the server's: pages of 20 by value. */}
-              <ol className="pxs-rows" data-chart="">{data.members.map((m, i) => <RankRow key={m.entity.id} row={{ id: m.entity.id, name: m.entity.name, value: Number(m.totalExact), exact: m.totalExact, records: m.recordCount, focal: false, rank: null }} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={() => showSources(m)} enter={rowEnter(i)} />)}</ol>
+              <ol className="pxs-rows" data-chart="">{data.members.map((m, i) => <RankRow key={m.entity.id} row={{ id: m.entity.id, name: m.entity.name, value: Number(m.totalExact), exact: m.totalExact, records: m.recordCount, focal: false, rank: null }} place={placeOf(m.entity.id)} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={() => showSources(m)} enter={rowEnter(i)} />)}</ol>
               {data.pagination.totalPages > 1 && <nav className="pxs-pager" aria-label="Paginile grupului"><button type="button" className="pxs-btn" disabled={busy || data.pagination.page <= 1} onClick={() => turnPage(data.pagination.page - 1)}>← Înapoi</button><span>{count(data.pagination.page)} / {count(data.pagination.totalPages)}</span><button type="button" className="pxs-btn" disabled={busy || !data.pagination.hasNext} onClick={() => turnPage(data.pagination.page + 1)}>Înainte →</button></nav>}
             </> : <>
-              <ol className="pxs-rows" data-chart="">{ranked.slice(listPage * LIST_PAGE, listPage * LIST_PAGE + LIST_PAGE).map((r, i) => <RankRow key={r.id} row={r} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
+              <ol className="pxs-rows" data-chart="">{ranked.slice(listPage * LIST_PAGE, listPage * LIST_PAGE + LIST_PAGE).map((r, i) => <RankRow key={r.id} row={r} place={placeOf(r.id)} axis={axis} median={median} role={role} busy={busy} opening={opening} onSources={rowSources} enter={rowEnter(i)} />)}</ol>
               {pages > 1 && <nav className="pxs-pager" aria-label="Paginile grupului"><button type="button" className="pxs-btn" disabled={listPage <= 0} onClick={() => { setListPage((p) => p - 1); requestAnimationFrame(() => listHeading.current?.focus()); }}>← Înapoi</button>
                 <span>{count(listPage + 1)} / {count(pages)}{listPage !== focalPage && <> · <button type="button" className="pxs-link" onClick={() => setListPage(focalPage)}>la locul ei</button></>}</span>
                 <button type="button" className="pxs-btn" disabled={listPage >= pages - 1} onClick={() => { setListPage((p) => p + 1); requestAnimationFrame(() => listHeading.current?.focus()); }}>Înainte →</button></nav>}
             </>}
           </section>}
         </>}
+        <p className="pxs-caveat">Valori înregistrate, nu plăți. O diferență față de mediană e o pistă, nu o dovadă.</p>
         </div>
-        <details className="pxs-method"><summary><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</summary>{data.methodology.descriptions.map((text) => <p key={text}>{text}</p>)}
-          {(data.filters.year === "all" || data.filters.cpv === "all") && <p>{data.filters.year === "all" && "Valorile cumulează toți anii disponibili. "}Intră și înregistrările {data.filters.year === "all" && data.filters.cpv === "all" ? "fără dată sau fără cod CPV" : data.filters.year === "all" ? "fără dată" : "fără cod CPV"} care respectă celelalte filtre.</p>}
-          <p>În sursele entității: {recordsWords(data.coverage.focalUndatedRows)} fără an utilizabil; {recordsWords(data.coverage.focalYearMissingCpvRows)} fără CPV utilizabil în perioada aleasă. {recordsWords(data.coverage.unresolvedEntityRows)} din populația selectată nu au identități rezolvate.</p>
-          {(data.cohort.excludedUnknownType > 0 || data.cohort.excludedUnknownCounty > 0) && <p>Excluderi din grup: {countWords(data.cohort.excludedUnknownType, "entitate", "entități")} cu tip necunoscut sau ambiguu; {countWords(data.cohort.excludedUnknownCounty, "entitate", "entități")} fără județ cunoscut atunci când restrângi geografia.</p>}
-          <p>Versiunea datelor: {data.checkpoint.version}. Validarea acestei versiuni nu reprezintă data colectării surselor. Un an încheiat nu garantează colectare completă.</p>
+        <details className="pxs-method"><summary><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</summary>
+          {/* Three plain sentences first (UX audit Z4-42), the technical text behind its own fold. */}
+          <p>{method === "population" ? "Intră administrațiile din țară cu populația cea mai apropiată (recensământul 2021), oricât au cumpărat." : method === "manual" ? "Intră administrațiile alese de tine." : `Intră ${role === "supplier" ? "firmele" : "instituțiile de același tip"} cu un număr asemănător de înregistrări în aceeași selecție.`}
+            {" "}Se compară valoarea înregistrată în perioada, domeniul și canalul alese. O diferență față de mediană e o pistă de verificat, nu o neregulă; valorile nu sunt plăți.</p>
+          <details className="pxs-method-more"><summary>Detalii tehnice ›</summary>
+            {data.methodology.descriptions.map((text) => <p key={text}>{text}</p>)}
+            {(data.filters.year === "all" || data.filters.cpv === "all") && <p>{data.filters.year === "all" && "Valorile cumulează toți anii disponibili. "}Intră și înregistrările {data.filters.year === "all" && data.filters.cpv === "all" ? "fără dată sau fără cod CPV" : data.filters.year === "all" ? "fără dată" : "fără cod CPV"} care respectă celelalte filtre.</p>}
+            <p>În sursele entității: {recordsWords(data.coverage.focalUndatedRows)} fără an utilizabil; {recordsWords(data.coverage.focalYearMissingCpvRows)} fără CPV utilizabil în perioada aleasă. {recordsWords(data.coverage.unresolvedEntityRows)} din populația selectată nu au identități rezolvate.</p>
+            {(data.cohort.excludedUnknownType > 0 || data.cohort.excludedUnknownCounty > 0) && <p>Excluderi din grup: {countWords(data.cohort.excludedUnknownType, "entitate", "entități")} cu tip necunoscut sau ambiguu; {countWords(data.cohort.excludedUnknownCounty, "entitate", "entități")} fără județ cunoscut atunci când restrângi geografia.</p>}
+            <p>Versiunea datelor: {data.checkpoint.version}. Validarea acestei versiuni nu reprezintă data colectării surselor. Un an încheiat nu garantează colectare completă.</p>
+          </details>
         </details>
       </>}
     {sources && <EvidenceDrawer spec={peerEvidenceSpec(sources.receipt)} peer={sources.receipt} title={sources.title} onClose={() => setSources(null)} />}

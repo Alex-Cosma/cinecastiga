@@ -268,3 +268,141 @@ span.mx-p-yr{cursor:default}
   .mx-p-close{min-width:44px;min-height:44px}
 }
 @media (prefers-reduced-motion:reduce){.mx-body,.mx-p-bar,.mx-p-dot,.mx-p-me,.mx-p-yr{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
+
+/* ---- UX audit, 16 November 2026 ---- */
+/* Z4-04: on phones the domains and the channel share one „Filtre” button and its sheet (the real domains window with
+   the channel above it); wider screens keep both in the row. A button with filters on is lit like an open one. */
+.mx-pick--more{display:none}
+.mx-pick--more.is-on{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-pop-h{margin:2px 0 8px;font:600 13.5px/1.3 var(--body);color:var(--ink)}
+.mx-pop-h+.mx-search{margin-top:0}
+.mx-seg.mx-seg--sheet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;margin:0 0 14px}
+.mx-seg--sheet button{min-height:44px}
+@media (max-width:640px){
+  .mx-filters>.mx-pick--cpv,.mx-filters>.mx-seg{display:none}
+  .mx-filters>.mx-pick--more{display:grid}
+  .mx-stage{padding:8px 4px}
+  .mx-foot{padding:0 4px}
+}
+/* Z4-01: the search, the first control of the row (its own row on phones), its list dropping over the map. */
+.mx-find{position:relative;flex:0 1 300px;min-width:min(100%,240px)}
+.mx-find input{display:block;width:100%;min-height:36px;padding:6px 11px 6px 33px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--ink);font:14px var(--body);caret-color:var(--accent)}
+.mx-find input::placeholder{color:var(--muted);opacity:1}
+.mx-find input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mx-find-pin{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.mx-find-drop{position:absolute;z-index:20;top:calc(100% + 6px);left:0;width:max(100%,360px);max-width:calc(100vw - 32px);max-height:min(420px,60vh);overflow-y:auto;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.mx-find-drop[hidden]{display:none}
+.mx-find-drop ul{margin:0;padding:0;list-style:none}
+.mx-find-g{display:block;padding:8px 8px 4px;font-size:12px;font-weight:600;color:var(--muted)}
+.mx-find-o{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-height:44px;padding:7px 10px;border-radius:8px;cursor:pointer;color:var(--accent)}
+.mx-find-o[aria-selected="true"]{background:var(--accent-soft)}
+.mx-find-o b{display:block;font-weight:600;font-size:14px;color:var(--ink)}
+.mx-find-o small{display:block;font-size:12.5px;color:var(--muted)}
+.mx-find-status{margin:0;padding:8px 10px;font-size:13px;color:var(--muted)}
+@media (max-width:640px){
+  .mx-filters>.mx-find{grid-column:1/-1}
+  .mx-find input{min-height:44px;font-size:16px}
+  .mx-find-drop{width:100%}
+}
+/* Z4-02/03 (owner, 16 November 2026: „Foaia de jos”): on phones a touch first chooses a county, a hospital or a school
+   (outlined, its card under the map with „Deschide ›”); București has its own chip. A UAT's panel is a sheet rising
+   from the bottom under the map moved up to the header: a grip, „Toată fișa ↑”, its content scrolling inside once whole. */
+.mx-chosen{stroke-linejoin:round}
+.mx-chip{display:none;position:absolute;top:4px;left:4px;z-index:2;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--accent);font:600 14px var(--body);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.mx-tap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;margin:8px 0 2px;padding:10px 12px;border:1px solid var(--accent-line);border-radius:10px;background:var(--surface);font-size:13px;line-height:1.4}
+.mx-tap-t{display:grid;gap:2px;min-width:0}
+.mx-tap-t b{font:600 15px var(--body);color:var(--ink)}
+.mx-tap-t em{font:600 14px var(--mono);font-style:normal;color:var(--ink)}
+.mx-tap-go{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border:0;border-radius:8px;background:var(--accent);color:var(--on-accent);font:600 14px var(--body);text-decoration:none;white-space:nowrap}
+.mx-p-grip,.mx-sheet-more{display:none}
+.mx-panel:focus{outline:none}
+@media (max-width:640px),(hover:none){.mx-chip{display:inline-flex}}
+@media (max-width:640px){
+  .mx-panel{position:fixed;left:0;right:0;bottom:0;z-index:30;height:var(--mx-peek,50vh);max-height:calc(100dvh - var(--site-header-h,53px) - 8px);margin:0;padding:24px 16px 0;overflow:hidden;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);overscroll-behavior:contain;animation:mx-sheet-in var(--slow) var(--ease) both;transition:height var(--med) var(--ease)}
+  .mx-panel.is-full{height:calc(100dvh - var(--site-header-h,53px) - 8px);overflow-y:auto;padding-bottom:20px}
+  .mx-p-grip{display:block;position:absolute;z-index:3;top:0;left:0;right:60px;height:28px;touch-action:none;cursor:grab}
+  .mx-p-grip::before{content:"";position:absolute;top:9px;left:calc(50% + 30px);width:40px;height:4px;margin-left:-20px;border-radius:2px;background:var(--line2)}
+  .mx-sheet-more{display:block;position:absolute;z-index:4;left:0;right:0;bottom:0;padding:26px 16px 14px;background:linear-gradient(to bottom,transparent,var(--surface) 34%)}
+  .mx-sheet-more button{width:100%;min-height:44px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 15px var(--body)}
+  .mx-body.has-panel{padding-bottom:var(--mx-peek,50vh)}
+  .mx-p-close{top:12px;right:12px}
+}
+@keyframes mx-sheet-in{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){.mx-panel{transition:none}}
+/* Z4-14: the open UAT's row stays marked in the ranking, in the panel's orange. */
+.mx-row[aria-pressed="true"]{background:color-mix(in srgb,var(--orange) 9%,var(--surface));border-radius:6px;border-bottom-color:transparent}
+/* Z4-07: on the hospitals' and schools' total, the comparable figure (lei per bed or per pupil, 2025 alone) one click away. */
+.mx-lede-go{display:inline-flex;align-items:center;min-height:30px;margin-left:2px;padding:2px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent);font:600 13.5px/1.3 var(--body);vertical-align:1px}
+.mx-lede-go:hover{border-color:var(--accent);color:var(--accent-ink)}
+@media (max-width:640px){.mx-lede-go{display:flex;min-height:44px;margin:8px 0 0;padding:0 16px}}
+/* Z4-10: the panel leads to the town hall's records (its table, the map's period and channel) and to its comparison;
+   the name, a link to the town hall, looks like one. */
+.mx-panel h2 a{text-decoration:underline;text-decoration-color:var(--accent-line);text-decoration-thickness:2px;text-underline-offset:6px}
+.mx-p-acts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.mx-p-act{display:inline-flex;align-items:center;min-height:36px;padding:6px 13px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13.5px/1.3 var(--body);text-decoration:none}
+.mx-p-act:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-p-act.is-main{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
+.mx-p-act.is-main:hover{filter:brightness(1.08)}
+/* Z4-13: „Cât?” takes the panel's width (its sentence left, the years' chart right and larger); „Pe ce?” and „Cui?”
+   share the row under it, so their names are read whole. One column on phones. */
+.mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px}
+.mx-p-cols>.mx-p-sec:first-child{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);grid-template-rows:auto 1fr;column-gap:28px;align-items:start}
+/* The panel spans the stage's row and the ranking's: its extra height goes to the ranking's row, so the ranking stays
+   right under the map. */
+.mx-body.has-panel{grid-template-rows:auto 1fr}
+.mx-p-cols>.mx-p-sec:first-child>:is(h3,p){grid-column:1}
+.mx-p-cols>.mx-p-sec:first-child>:is(.mx-p-yrs,.mx-p-years){grid-column:2;grid-row:1/span 2}
+.mx-p-cols>.mx-p-sec:first-child>p{min-height:0}
+/* Z4-12: the neighbours' strip in the panel's pixels; on phones its subtitle under its title and the nearest UATs as rows. */
+.mx-p-near-box{width:100%;min-height:96px;margin-top:6px}
+.mx-p-nrows,.mx-phone-only{display:none}
+.mx-p-nrows{margin:10px 0 0;padding:0;list-style:none}
+.mx-p-nrow{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 2px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);text-align:left;font-size:15px}
+.mx-p-nrow>span{font:500 12.5px var(--mono);color:var(--muted)}
+.mx-p-nrow>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.mx-p-nrow>em{font:600 14px var(--mono);font-style:normal}
+.mx-p-nrow.is-me>b,.mx-p-nrow.is-me>em{color:var(--orange);font-weight:600}
+@media (max-width:1180px){.mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr))}.mx-p-sec>p{min-height:3.9em}}
+@media (max-width:640px){
+  .mx-p-cols{grid-template-columns:1fr}
+  .mx-p-cols>.mx-p-sec:first-child{display:block}
+  .mx-p-sec>p{min-height:0}
+  .mx-p-acts .mx-p-act{min-height:44px}
+  .mx-p-wide h3{display:block}
+  .mx-p-wide h3 small{display:block;margin-top:2px}
+  .mx-p-nrows{display:block}
+  .mx-wide-only{display:none}
+  .mx-phone-only{display:inline}
+}
+/* Z4-11: the city hall's and the county council's boxes are links to their pages (the name's link stretched over the box). */
+.mx-city.is-link{position:relative;cursor:pointer}
+.mx-city.is-link:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-city .entity-name{color:var(--accent);text-decoration:none}
+.mx-city.is-link .entity-name::after{content:"";position:absolute;inset:0;border-radius:10px}
+.mx-city.is-link:hover .entity-name{text-decoration:underline;text-underline-offset:3px}
+.mx-city.is-link:has(.entity-name:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.mx-city .entity-name:focus-visible{outline:none}
+/* Z4-30: the kind's window says how many institutions each layer holds (the checkbox: its institutions and companies). */
+.mx-check small{margin-left:auto;padding-left:10px;font:12px var(--mono);color:var(--muted);white-space:nowrap}
+/* Z4-17: lei per bed (or pupil) and the total, each named over its column. */
+.mx-h-cols{display:inline-flex;gap:8px;padding-right:10px}
+.mx-h-cols>span:last-child{width:66px;text-align:right}
+@media (max-width:640px){.mx-h-cols>span:last-child{width:62px}}
+/* Z4-19: the segment clips its corners (overflow:hidden), so its buttons draw their focus inside. */
+.mx-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:5px}
+.mx-seg button[aria-pressed="true"]:focus-visible{outline-color:var(--on-accent)}
+/* Z4-22: the sources' line. */
+.mx-attr{max-width:none}
+.mx-attr .term-trigger{color:var(--muted);font:inherit}
+/* Z4-28: on the map the round feedback button (721–1359 px) covered the ranking's figures and the panel's strip; here it
+   becomes the row after the footer, as on phones. */
+@media (min-width:721px) and (max-width:1359px){
+  body:has(.mx) .feedback-dock{background:var(--surface);border-top:1px solid var(--line);padding:12px 16px}
+  body:has(.mx) .feedback-fab{position:static;width:auto;height:auto;min-height:44px;margin:0 auto;padding:10px 14px;gap:10px;border:1px solid var(--accent-line);border-radius:8px;box-shadow:none}
+  body:has(.mx) .feedback-fab span{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
+  body:has(.mx) .site-footer{padding-bottom:0}
+}
+/* Phones: the sources' line keeps 44 px targets without growing the line. */
+@media (max-width:640px){
+  .mx-attr .term-trigger,.mx-attr a{display:inline-flex;align-items:center;min-height:44px;margin-block:-14px}
+}
