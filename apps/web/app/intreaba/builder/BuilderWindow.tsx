@@ -747,8 +747,17 @@ function NewFirmsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choic
   const [scope, setScope] = useState<NewScope | null>(own);
   const years = scope ? newYearsOf(draft as FilterSpec, ctx, scope) : [];
   const [year, setYear] = useState<number | null>(draft.filters.newSince !== undefined ? Number(draft.filters.newSince) : null);
-  const chosen = year !== null && years.includes(year) ? year : newFirmsYear(draft, years);
   const counts = useFacet(draft, "winners");
+  // The firms each year keeps, once read: a year with none is dimmed (its „0” stays), and the window never opens on it
+  // (UX audit Z2-23: „Înmatriculate din 2024” gave an empty answer). It opens on the usual year when it has firms, else
+  // on the most recent year that has some, else on none, with the button waiting for a choice.
+  const firmsIn = (y: number): number | null => {
+    if (!scope || counts.status !== "ready") return null;
+    return counts.counts.options.find((o) => o.value === winnerOption(scope, y))?.n ?? 0;
+  };
+  const usual = newFirmsYear(draft, years);
+  const opening = usual === null || firmsIn(usual) !== 0 ? usual : [...years].reverse().find((y) => (firmsIn(y) ?? 0) > 0) ?? null;
+  const chosen = year !== null && years.includes(year) ? year : opening;
   const set = draft.filters.newSince !== undefined || draft.filters.newScope !== undefined;
   const slot = { id: "newSince" as const };
   // A sense the draft cannot take beside its other conditions (registered beside a foreign seat): shown with the reason.
@@ -765,7 +774,7 @@ function NewFirmsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choic
       <p className="qb-opt-group">Din</p>
       <Pills label="Din anul" options={years.map((y) => {
         const count = winnerCount(counts, winnerOption(scope, y));
-        return { value: String(y), label: String(y), ...(count ? { count } : {}) };
+        return { value: String(y), label: String(y), ...(count ? { count } : {}), ...(firmsIn(y) === 0 ? { className: "is-zero" } : {}) };
       })} value={chosen === null ? null : String(chosen)} onChange={(value) => setYear(Number(value))} />
     </>}
     <div className="qb-pop-foot">

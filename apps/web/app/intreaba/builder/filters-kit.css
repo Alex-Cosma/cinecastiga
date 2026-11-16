@@ -612,3 +612,6 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 /* Z2-31 (UX audit, 16 November 2026): a link's county the data do not know is marked as wrong in the sentence (its
    window opens to choose another; the error under the builder says it in words). */
 .qb-phrase.qb-phrase--invalid { background: var(--fk-warm-bg); border-bottom: 2px solid var(--fk-warm-ink); color: var(--fk-warm-ink); }
+
+/* Z2-23 (UX audit, 16 November 2026): a year of „Firme noi” with no firm is dimmed, its „0” still read. */
+.qb-pill.is-zero:not([aria-checked="true"]) { opacity: .55; }
