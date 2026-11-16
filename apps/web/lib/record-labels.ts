@@ -1,3 +1,6 @@
+import { AWARD_COUNTING_CAVEAT, FLAG_META } from "./flags";
+import { formatExactDecimal } from "./format";
+
 /*
  * The words of a record page (owner, 7 November 2026: one template for contracts, direct acquisitions and notices).
  * SEAP writes procedures and states without diacritics and calls thousands of contracts "Contract subsecvent";
@@ -69,12 +72,37 @@ export function isGenericTitle(title: string | null | undefined, noticeNo?: stri
   return s.length < 12 || /^(contract(ul)?|acord[- ]cadru)( (subsecvent|de (furnizare|servicii|lucrari|achizitie( publica)?)))?[\s\d./-]*(nr\.?[\s\d./-]*)?$/i.test(fold(s));
 }
 
-/** The lot line is worth showing unless it repeats the title or is SEAP's placeholder ("Default lot", "Lot 1"). */
+/** Compared without case, diacritics, punctuation or spacing: "1. Elaborarea hărților…" repeats "Elaborarea hartilor…". */
+const bare = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * The lot line is worth showing unless it repeats the title or is SEAP's placeholder ("Default lot", "Lot 1"). The
+ * lot's number does not make it new: "Lot 1. Elaborarea…" under the title "Elaborarea…" says nothing (UX audit bug 5).
+ */
 export function meaningfulLot(lot: string | null | undefined, title: string | null | undefined): string | null {
   const s = lot?.trim();
   if (!s || /^(default lot|lot( unic| \d+)?|lotul? \d+)\.?$/i.test(fold(unnumbered(s)))) return null;
-  if (title && fold(s) === fold(title)) return null;
+  if (title && (bare(s) === bare(title) || bare(unnumbered(s)) === bare(title))) return null;
   return s;
+}
+
+/** A lot caption's number and object: "123. DOPAMINUM clorhidrat" → { no: "123", object: "DOPAMINUM clorhidrat" }. */
+export function lotParts(lot: string | null | undefined): { no: string | null; object: string } | null {
+  const s = lot?.trim();
+  if (!s) return null;
+  const m = /^(\d{1,4})\s*[.)-]\s*(\S[\s\S]*)$/.exec(s);
+  return m ? { no: m[1]!, object: m[2]!.trim() } : { no: null, object: s };
+}
+
+/**
+ * The lot's object as a page's title, when the record's own title is the one every lot of its notice shares (UX audit
+ * Z7-03): only a lot that names something (not SEAP's placeholder, not a short code), else null and the title stays.
+ */
+export function lotTitle(lot: string | null | undefined): { no: string | null; object: string } | null {
+  if (!meaningfulLot(lot, null)) return null;
+  const parts = lotParts(lot);
+  if (!parts || (parts.object.match(/\p{L}/gu)?.length ?? 0) < 4) return null;
+  return parts;
 }
 
 /**
@@ -97,4 +125,44 @@ export function durationLabel(from: string | null | undefined, to: string | null
   if (hours < 48) return hours === 1 ? "o oră" : `${hours} ${hours < 20 ? "ore" : "de ore"}`;
   const days = Math.round(hours / 24);
   return `${days} ${days < 20 ? "zile" : "de zile"}`;
+}
+
+/**
+ * What a contract's head can say about its value: the amount, a value published in another currency without a
+ * confirmed rate (never converted: contract-money), or nothing published (UX audit Z7-valuta, Z7-10).
+ */
+export function contractValueState(c: { contractValueExact: string | null; legacyForeignValue: boolean; currency: string | null }): "amount" | "foreign" | "missing" {
+  if (c.contractValueExact != null) return "amount";
+  return c.legacyForeignValue && c.currency && c.currency.toUpperCase() !== "RON" ? "foreign" : "missing";
+}
+
+/**
+ * The contracts found on a notice against the value it declares (UX audit Z7-09): said only when the two count the same
+ * things (no framework ceiling on the notice, nothing kept out of the totals) and differ by at least 1%; the reason is
+ * not in the source, so the sentence says so instead of guessing one.
+ */
+export function noticeGapNote(e: { total: string | null; award: string | null; frameworks: string | null; everyValue: string | null }): string | null {
+  if (e.total == null || e.award == null || !(Number(e.award) > 0) || e.frameworks != null || e.everyValue !== e.total) return null;
+  const gap = Math.round((Number(e.total) - Number(e.award)) * 100) / 100;
+  if (Math.abs(gap) < Math.max(1, 0.01 * Number(e.award))) return null;
+  const lei = (value: string) => `${formatExactDecimal(value)} lei`;
+  return `Contractele găsite însumează ${lei(e.total)}, cu ${lei(Math.abs(gap).toFixed(2).replace(/\.00$/, ""))} ${gap > 0 ? "mai mult" : "mai puțin"}. Diferența nu e explicată în sursă.`;
+}
+
+/** Which two sentences of a signal's caveat say why it is not proof, where the first two are technical. */
+const CAVEAT_PICK: Record<string, [number, number]> = {
+  da_split: [3, 4], da_dependence: [3, 2], da_above_ceiling: [0, 2], da_first_month: [0, 2], award_single_bid: [4, 1],
+};
+
+/**
+ * „De ce nu e o dovadă” on a record (UX audit Z7-06): two sentences, the usual explanations, in the signal's own words;
+ * how a signal is counted and its technical limits stay in its rule on /metodologie, one click away („Regula →”).
+ */
+export function recordCaveat(code: string): string | null {
+  const caveat = FLAG_META[code]?.caveat;
+  if (!caveat) return null;
+  const text = caveat.endsWith(AWARD_COUNTING_CAVEAT) ? caveat.slice(0, -AWARD_COUNTING_CAVEAT.length).trim() : caveat.trim();
+  const sentences = text.split(/(?<=[.!?])\s+(?=[A-ZĂÂÎȘȚ„])/u);
+  const [a, b] = CAVEAT_PICK[code] ?? [0, 1];
+  return [sentences[a], sentences[b]].filter((x): x is string => !!x).join(" ");
 }

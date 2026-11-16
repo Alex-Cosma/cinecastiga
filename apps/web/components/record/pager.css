@@ -1,0 +1,8 @@
+/* One pager on the record pages and the guide (UX audit Z7-23, owner 16 November 2026): „← Anterior · Pagina N din M ·
+   Următor →”, the same gesture on a notice's records, a contract's documents and the exclusions; 44 px on a phone. */
+.record-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 4px 16px; margin-top: 14px; font-size: 14px; }
+.record-pager > :is(a, button) { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 8px; border: 0; border-radius: 6px; background: none; color: var(--accent); font: 600 14px/1.2 var(--body); text-decoration: none; cursor: pointer; }
+.record-pager > :is(a, button):hover:not(:disabled) { background: var(--sunk); }
+.record-pager > button:disabled { color: var(--muted); opacity: .6; cursor: default; }
+.record-pager > span { color: var(--ink2); font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .record-pager > :is(a, button) { min-height: 44px; } }

@@ -792,3 +792,60 @@
 .mt .mt-k-keyword{font-weight:600}
 .mt .mt-code-wait{display:block;padding-left:12px;color:var(--muted);font-family:var(--body)}
 .mt .mt-ref .mt-code .mt-code-raw{margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:14px}
+
+/* UX audit Z7-31 (owner, 16 November 2026): „Regulile” opens with an index of the signals, grouped by who they are
+   about; each name opens its rule. */
+.mt .mt-sigindex{margin:22px 0 18px;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.mt .mt-sigindex h3{margin:0 0 6px;font-size:17px}
+.mt .mt-sigindex-g{display:grid;row-gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+.mt .mt-sigindex-g:first-of-type{border-top:0}
+.mt .mt-sigindex-g>span{font-size:13px;font-weight:600;color:var(--muted)}
+.mt .mt-sigindex ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px}
+.mt .mt-sigindex li{line-height:1.35;margin:0}
+.mt .mt-sigindex a{font-size:15px;line-height:1.35;text-underline-offset:4px}
+.mt .mt-sigindex>p{margin:10px 0 0;font-size:13px;color:var(--muted)}
+@media(max-width:700px){
+ .mt .mt-sigindex{padding:12px 14px}
+ .mt .mt-sigindex ul{grid-template-columns:minmax(0,1fr);gap:0}
+ .mt .mt-sigindex a{display:inline-flex;align-items:center;min-height:44px}
+}
+
+/* UX audit Z7-33 (owner, 16 November 2026): the story's chapters within reach all along. From 1180 px a list in the
+   right margin, sticky under the header; narrower, one 44 px row under the header that opens the list. The current
+   chapter is marked (MethodologyBehavior). While chapter 4's score card is stuck there, the row gives way. */
+.mt .mt-chrail{display:none}
+.mt .mt-chrow{position:sticky;top:var(--site-header-h,53px);z-index:6;margin:0 calc(-1 * var(--mt-gutter,16px));background:var(--paper);border-bottom:1px solid var(--line)}
+.mt .mt-chrow>summary{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 var(--mt-gutter,16px);list-style:none;cursor:pointer;font:600 14px/1.25 var(--body);color:var(--ink)}
+.mt .mt-chrow>summary::-webkit-details-marker{display:none}
+.mt .mt-chrow>summary>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt .mt-chrow>summary b{font-weight:500;color:var(--muted);margin-right:6px}
+.mt .mt-chrow>summary b:empty{display:none}
+.mt .mt-chrow>summary>i{font-style:normal;color:var(--accent)}
+.mt .mt-chrow[open]>summary>i{transform:rotate(180deg)}
+.mt .mt-chrow-list{position:absolute;left:0;right:0;top:100%;max-height:min(60vh,520px);overflow:auto;margin:0;padding:6px var(--mt-gutter,16px) 10px;list-style:none;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 8px 20px -14px rgba(0,0,0,.3)}
+.mt .mt-chrow-list a{display:flex;align-items:center;min-height:44px;font-size:15px;color:var(--ink2);text-decoration:none}
+.mt .mt-chrow-list a[aria-current]{color:var(--accent);font-weight:600}
+.mt .mt-chrow.mt-under-ledger{visibility:hidden;pointer-events:none}
+@media(max-width:1179px){.mt #lane-poveste [id]{scroll-margin-top:calc(var(--mt-hdr,0px) + 56px)}}
+@media(min-width:1180px){
+ .mt #lane-poveste{position:relative}
+ .mt .mt-chrail{display:block;position:absolute;top:0;bottom:0;left:calc(50% + 360px);width:220px}
+ .mt .mt-chrail>nav{position:sticky;top:calc(var(--site-header-h,91px) + 16px)}
+ .mt .mt-chrail p{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+ .mt .mt-chrail ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+ .mt .mt-chrail a{display:block;padding:5px 0 5px 12px;font-size:13px;line-height:1.35;color:var(--ink2);text-decoration:none;border-left:1px solid var(--line)}
+ .mt .mt-chrail a:hover{color:var(--accent)}
+ .mt .mt-chrail a[aria-current]{color:var(--accent);font-weight:600;border-left:2px solid var(--accent);padding-left:11px}
+ .mt .mt-chrow{display:none}
+}
+@media(prefers-reduced-motion:no-preference){.mt .mt-chrow>summary>i{transition:transform .16s}}
+
+/* UX audit Z7-38: the four parts of a rule (în scorul de risc, ce măsoară, ce merită verificat, limită) have one size
+   and colour; the labels stay bold. Z7-34: in the dark theme the selected lane is marked by more than a shade (accent
+   soft fill, a 2 px accent rule under its name), so the state reads without colour contrast alone. */
+.mt .mt-sig>p,.mt .mt-sig>p.mt-how{font-size:16px;color:var(--ink2);line-height:1.6}
+.mt .mt-sig>p b{color:var(--ink)}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]) .mt .mt-lanes button[aria-selected="true"]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+}
+:root[data-theme="dark"] .mt .mt-lanes button[aria-selected="true"]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}

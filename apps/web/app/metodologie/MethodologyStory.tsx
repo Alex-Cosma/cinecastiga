@@ -103,6 +103,30 @@ function ScoreHistogram({ kinds }: { kinds: MethodologyFigures["kinds"] }) {
   );
 }
 
+/** The story's parts, in order (the chapter list, the rail and the phone's chapter row, Z7-33). */
+const CHAPTERS: { id: string; n: number | null; label: string }[] = [
+  { id: "urma", n: 1, label: "O achiziție" },
+  { id: "plafon", n: 2, label: "Plafonul" },
+  { id: "adunam", n: 3, label: "Cum adunăm" },
+  { id: "anul", n: 4, label: "Tiparele Comunei Exemplara" },
+  { id: "scorul", n: 5, label: "Cum se face scorul" },
+  { id: "fata", n: 6, label: "Cu cine comparăm" },
+  { id: "marime", n: null, label: "Ramură: firme mari, firme mici" },
+  { id: "pista", n: 7, label: "Ce faci cu un semnal" },
+  { id: "epilog", n: null, label: "Epilog" },
+  { id: "cuvinte", n: null, label: "Cuvintele din pagină" },
+];
+const chapterLabel = (c: { n: number | null; label: string }) => (c.n ? `${c.n}. ${c.label}` : c.label);
+/** The phone row's lead: "Capitolul 2 din 7", or nothing for the branch, the epilogue and the words. */
+const chapterLead = (c: { n: number | null }) => (c.n ? `Capitolul ${c.n} din 7` : "");
+
+/** The rules' index (Z7-31): procedures (award signals), firms (supplier signals), institutions (the rest). */
+const SIGNAL_GROUPS: [string, string[]][] = [
+  ["Instituții", FLAG_ORDER.filter((c) => !["award", "supplier"].includes(FLAG_META[c]!.subject))],
+  ["Firme", FLAG_ORDER.filter((c) => FLAG_META[c]!.subject === "supplier")],
+  ["Proceduri", FLAG_ORDER.filter((c) => FLAG_META[c]!.subject === "award")],
+];
+
 function PatternList({ codes }: { codes: readonly string[] }) {
   return <>{codes.map((c, i) => <span key={c}>{i ? ", " : ""}<a href={`#${c}`}>{flagLabel(c)}</a></span>)}</>;
 }
@@ -121,6 +145,15 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
         <header className="mt-col">
           <h1>Cum citim banii publici</h1>
           <p className="mt-lede">Ce face o primărie cu banii publici și cum îți dai seama ce merită întrebat? Urmărim o comună inventată, Comuna Exemplara, mai ales în 2024.</p>
+          {/* The three lanes right under the introduction (UX audit Z7-30, variant A): a reader looking for a rule sees
+              „Regulile” on the first screen; the four-step story opens the „Pe scurt” lane, nothing removed. */}
+          <nav className="mt-lanes" role="tablist" aria-label="Cum vrei să citești">
+            <button type="button" role="tab" id="tab-scurt" aria-selected="true" aria-controls="lane-scurt" data-lane="scurt">Pe scurt<small>2 minute</small></button>
+            <button type="button" role="tab" id="tab-poveste" aria-selected="false" aria-controls="lane-poveste" data-lane="poveste" tabIndex={-1}>Povestea<small>cam 20 de minute</small></button>
+            <button type="button" role="tab" id="tab-reguli" aria-selected="false" aria-controls="lane-reguli" data-lane="reguli" tabIndex={-1}>Regulile<small>toate, cu formula</small></button>
+          </nav>
+        </header>
+        <div className="mt-lane mt-col" id="lane-scurt" role="tabpanel" aria-labelledby="tab-scurt">
           <section className="mt-stage" aria-labelledby="stage-t" data-fr="1">
             <h2 id="stage-t" className="mt-sr">Scorul, în patru pași</h2>
             <div className="mt-frames">
@@ -310,15 +343,11 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <p className="mt-sr mt-st-live" aria-live="polite" />
           </section>
           <p className="mt-meta">Comuna Exemplara, Mobilier Exemplara SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
-          <nav className="mt-lanes" role="tablist" aria-label="Cum vrei să citești">
-            <button type="button" role="tab" id="tab-scurt" aria-selected="true" aria-controls="lane-scurt" data-lane="scurt">Pe scurt<small>2 minute</small></button>
-            <button type="button" role="tab" id="tab-poveste" aria-selected="false" aria-controls="lane-poveste" data-lane="poveste" tabIndex={-1}>Povestea<small>cam 20 de minute</small></button>
-            <button type="button" role="tab" id="tab-reguli" aria-selected="false" aria-controls="lane-reguli" data-lane="reguli" tabIndex={-1}>Regulile<small>toate, cu formula</small></button>
-          </nav>
-        </header>
-        <div className="mt-lane mt-col" id="lane-scurt" role="tabpanel" aria-labelledby="tab-scurt">
           <div className="mt-go-row mt-top">
             <a className="mt-go2" href="/semnale">Vezi semnalele</a>
+            {/* The most asked question, „de ce are primăria mea scorul X?”, in one step (UX audit Z7-32): the site's search
+                opens here (MethodologyBehavior); without JavaScript the link goes to /cauta. */}
+            <a className="mt-go2" href="/cauta" data-open-search="">Scorul unei instituții: caut-o</a>
           </div>
           <p className="mt-also">Sau vezi <a href={countyBreakdownHref("Buzău")}>pe ce se duc banii într-un județ</a> ori pornește de la o întrebare: <a href={askHref(ROADS_RANKING_SPEC)}>cine repară drumurile?</a></p>
           <section className="mt-brief" aria-labelledby="pe-scurt">
@@ -432,21 +461,23 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <summary>Sari la un capitol</summary>
               <nav aria-label="Capitole">
                 <ul className="mt-toc">
-                  <li><a href="#urma">1. O achiziție</a></li>
-                  <li><a href="#plafon">2. Plafonul</a></li>
-                  <li><a href="#adunam">3. Cum adunăm</a></li>
-                  <li><a href="#anul">4. Tiparele Comunei Exemplara</a></li>
-                  <li><a href="#scorul">5. Cum se face scorul</a></li>
-                  <li><a href="#fata">6. Cu cine comparăm</a></li>
-                  <li><a href="#marime">Ramură: firme mari, firme mici</a></li>
-                  <li><a href="#pista">7. Ce faci cu un semnal</a></li>
-                  <li><a href="#epilog">Epilog</a></li>
-                  <li><a href="#cuvinte">Cuvintele din pagină</a></li>
+                  {CHAPTERS.map((c) => <li key={c.id}><a href={`#${c.id}`}>{chapterLabel(c)}</a></li>)}
                   <li><a href="#detalii">Toate regulile</a></li>
                 </ul>
               </nav>
             </details>
           </div>
+          {/* „Sari la un capitol” within reach all along the story (UX audit Z7-33): on a wide screen a list in the right
+              margin, under the header; narrower, one row under the header that opens the list. The current chapter is
+              marked by MethodologyBehavior as the story scrolls. */}
+          <div className="mt-chrail"><nav aria-label="Capitolele poveștii">
+            <p>Povestea</p>
+            <ol>{CHAPTERS.map((c) => <li key={c.id}><a href={`#${c.id}`} data-ch={c.id}>{chapterLabel(c)}</a></li>)}</ol>
+          </nav></div>
+          <details suppressHydrationWarning className="mt-chrow">
+            <summary aria-label="Sari la un capitol"><span><b>{chapterLead(CHAPTERS[0]!)}</b>{CHAPTERS[0]!.label}</span><i aria-hidden="true">▾</i></summary>
+            <ol className="mt-chrow-list">{CHAPTERS.map((c) => <li key={c.id}><a href={`#${c.id}`} data-ch={c.id}>{chapterLabel(c)}</a></li>)}</ol>
+          </details>
           <section className="mt-ch mt-col mt-stack" id="urma" aria-labelledby="h-urma">
             <h2 id="h-urma"><span className="mt-ch-n">Capitolul 1</span>Fiecare achiziție are o fișă</h2>
             <svg className="mt-scene mt-sm" viewBox="0 0 680 120" role="img" aria-label="Desen: Ioana, reportera, la birou, cu laptopul deschis pe SEAP și un carnet">
@@ -1455,7 +1486,19 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <a className="mt-btn-l" href="#cod-formula">Codul scorului, la {VERSION}</a>
               <a className="mt-btn-l" href="/metodologie/constants.json">Constantele, ca JSON</a>
             </div>
-            <details suppressHydrationWarning open id="constante">
+            {/* Every signal one click away (UX audit Z7-31): the anchors open the lane and the rule; grouped by who the
+                signal is about. The constants table below starts folded, like the other rules. */}
+            <nav className="mt-sigindex" aria-labelledby="sigindex-t">
+              <h3 id="sigindex-t">Semnalele, fiecare cu regula lui</h3>
+              {SIGNAL_GROUPS.map(([label, codes]) => (
+                <div className="mt-sigindex-g" key={label}>
+                  <span>{label}</span>
+                  <ul>{codes.map((c) => <li key={c}><a href={`#${c}`}>{FLAG_META[c]!.title}</a></li>)}</ul>
+                </div>
+              ))}
+              <p>Un clic deschide regula: ce măsoară, ce merită verificat, limita ei.</p>
+            </nav>
+            <details suppressHydrationWarning id="constante">
               <summary>Constantele, într-un tabel</summary>
               <div className="mt-body">
                 <p>Toate numerele din calcul, la un loc. Constantele formulei sunt și în <a href="/metodologie/constants.json">constants.json</a>. Fiecare număr e explicat în secțiunile de mai jos și în „De ce aceste numere”.</p>

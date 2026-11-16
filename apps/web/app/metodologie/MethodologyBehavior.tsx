@@ -93,6 +93,15 @@ function mount(root: HTMLElement): () => void {
   }
   measure();
   on(window, "resize", measure, { passive: true });
+  // The header condenses on a phone while the page is scrolled down (SiteNav): the stuck card follows its height.
+  if (header && typeof ResizeObserver === "function") {
+    let ready = false;
+    // After the header settles, the stuck card has moved: the chapter row checks again (chapters is set up below).
+    const watch = new ResizeObserver(() => { measure(); if (ready) chapters(); });
+    queueMicrotask(() => (ready = true));
+    watch.observe(header);
+    cleanups.push(() => watch.disconnect());
+  }
 
   // The "Ce crezi?" questions: one answer shows its reveal and everything marked data-after.
   qa(".mt-ask").forEach((box) => {
@@ -143,6 +152,57 @@ function mount(root: HTMLElement): () => void {
   }
   on(window, "scroll", onScroll, { passive: true });
   onScroll();
+
+  // „Scorul unei instituții: caut-o” opens the site's search dialog (the header's own button), Z7-32.
+  qa<HTMLAnchorElement>("a[data-open-search]").forEach((a) =>
+    on(a, "click", (e) => {
+      const button = document.querySelector<HTMLButtonElement>(".d-global-search");
+      if (!button || (e as MouseEvent).metaKey || (e as MouseEvent).ctrlKey) return;
+      e.preventDefault();
+      button.click();
+    }),
+  );
+
+  // The story's chapter rail (wide screens) and chapter row (narrower), UX audit Z7-33: the chapter under the header is
+  // marked; the row gives way while chapter 4's score card is stuck under the header, so what sticks stays ≤ 108 px.
+  const chRow = q<HTMLDetailsElement>(".mt-chrow");
+  const chLinks = qa<HTMLAnchorElement>("a[data-ch]");
+  const chSecs = qa<HTMLElement>("#lane-poveste > .mt-ch");
+  const chName = (id: string) => q<HTMLAnchorElement>(`.mt-chrail a[data-ch="${id}"]`)?.textContent ?? "";
+  let chCur = "";
+  function chapters() {
+    const lane = q("#lane-poveste");
+    if (!lane || lane.hidden || !chSecs.length) return;
+    const line = hdr() + 104;
+    let cur = chSecs[0]!.id;
+    chSecs.forEach((sec) => {
+      if (sec.getBoundingClientRect().top <= line) cur = sec.id;
+    });
+    if (cur !== chCur) {
+      chCur = cur;
+      chLinks.forEach((a) => (a.dataset.ch === cur ? a.setAttribute("aria-current", "location") : a.removeAttribute("aria-current")));
+      const label = chRow ? q("summary > span", chRow) : null;
+      if (label) {
+        const m = /^(\d+)\. (.*)$/.exec(chName(cur));
+        const lead = document.createElement("b");
+        lead.textContent = m ? `Capitolul ${m[1]} din 7` : "";
+        label.replaceChildren(lead, m ? m[2]! : chName(cur));
+      }
+    }
+    const lg = q(".mt-ledger");
+    if (chRow && lg) {
+      const r = lg.getBoundingClientRect();
+      const stuck = !lg.classList.contains("mt-done") && r.top <= hdr() + 20 && r.bottom > hdr() && getComputedStyle(lg).position === "sticky";
+      chRow.classList.toggle("mt-under-ledger", stuck);
+      if (stuck) chRow.open = false;
+    }
+  }
+  on(window, "scroll", chapters, { passive: true });
+  qa<HTMLAnchorElement>(".mt-chrow a").forEach((a) => on(a, "click", () => { if (chRow) chRow.open = false; }));
+  // A lane opened by its tab or a button shows the story: mark its chapter at once.
+  // (registered after the lanes' own handlers below run first: a microtask lets the lane show before measuring)
+  qa(".mt-lanes [role=tab], [data-go]").forEach((t) => on(t, "click", () => queueMicrotask(chapters)));
+  chapters();
 
   // Chapter 5: the mixer, patterns on and off.
   const mixOn: On = { split: true, round: true, above: true, dec: true, rel: false };

@@ -156,7 +156,7 @@ export const GLOSSARY = {
   },
   "plafon-acord-cadru": {
     title: "Plafon de acord-cadru",
-    text: "Totalurile includ doar contractele și comenzile identificate. Dacă lipsesc subsecventele, acoperirea e incompletă; nu înseamnă că nu s-au cheltuit bani.",
+    text: "Totalurile includ doar contractele și comenzile identificate. Dacă lipsesc subsecventele, acoperirea e incompletă; nu înseamnă că nu s-a contractat nimic.",
   },
   "valoare-atribuita": {
     title: "Valoare atribuită",
@@ -164,7 +164,7 @@ export const GLOSSARY = {
   },
   "comenzi-identificate": {
     title: "Contracte și comenzi identificate",
-    text: "Contractele și subsecventele acestei publicații. Plafoanele, actele adiționale și tipurile neclare sunt separate. Lipsa comenzilor nu înseamnă cheltuieli zero.",
+    text: "Contractele și subsecventele acestei publicații. Plafoanele, actele adiționale și tipurile neclare sunt separate. Lipsa comenzilor nu înseamnă zero lei contractați.",
   },
   "dependenta-firma": {
     title: "Partea instituției",
@@ -188,7 +188,7 @@ export const GLOSSARY = {
   },
   "descarcare-automata": {
     title: "Fișierele din SEAP",
-    text: "Listăm toate fișierele procedurii, pe categorii. Oricine le poate descărca, la cerere; cererile așteaptă la rând.",
+    text: "Fișierele din SEAP, pe categorii. Cele pregătite se citesc fără cont; ca să ceri altele, intră în cont.",
   },
   "titlu-cpv": {
     title: "Titlu din categoria CPV",

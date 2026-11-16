@@ -1043,6 +1043,12 @@ export interface ContractDetail {
   awardValueRon: number | null;
   lowestOfferRon: number | null;
   highestOfferRon: number | null;
+  /** The same three as stored, for exact display (UX audit Z7-09, Z7-11). */
+  awardValueExact: string | null;
+  lowestOfferExact: string | null;
+  highestOfferExact: string | null;
+  /** A historic record with a value in another currency than lei and no confirmed rate: published, never converted. */
+  legacyForeignValue: boolean;
   procedureType: string | null;
   acquisitionType: string | null;
   stateDate: string | null;
@@ -1058,6 +1064,9 @@ export interface ContractDetail {
   flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
   /** how many contracts (lots) the same award notice produced */
   noticeLotCount: number;
+  /** Other records of the notice carry this same title, so it does not tell them apart: the lot names what was bought
+   * (UX audit Z7-03). */
+  noticeSameTitle: boolean;
   publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;publishedOn:string|null;valueRon:string|null;title:string|null;supplierIds:string[];supplierNames:string[];unflaggedChange:string|null}[];
   countedOnce: boolean;
   financialKind: string;
@@ -1081,6 +1090,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
            (select x.candidate_id from marts.contract_identity_exclusions x where x.contract_id=c.id) excluded_identity,
            to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
            ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
+           (c.amount_status is null and c.contract_value is not null and upper(trim(c.currency)) <> 'RON') legacy_foreign_value,
            c.cpv_code is null and a.cpv_code is not null cpv_from_notice,
            (select name_ro from core.cpv_codes k where k.code = coalesce(c.cpv_code, a.cpv_code)) cpv_name,
            a.id award_id, a.ca_notice_id, a.notice_no,
@@ -1141,9 +1151,11 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       : Promise.resolve([] as Record<string, unknown>[]),
     caId
       ? (sql`
-          select count(*)::int c from core.contracts where ca_notice_id = ${caId}
-        ` as unknown as Promise<{ c: number }[]>)
-      : Promise.resolve([{ c: 1 }]),
+          select count(*)::int c, count(*) filter (where lower(regexp_replace(btrim(x.title), '[[:space:]]+', ' ', 'g')) =
+              (select lower(regexp_replace(btrim(t.title), '[[:space:]]+', ' ', 'g')) from core.contracts t where t.id = ${contractId}))::int same_title
+          from core.contracts x where x.ca_notice_id = ${caId}
+        ` as unknown as Promise<{ c: number; same_title?: number }[]>)
+      : Promise.resolve([{ c: 1, same_title: 1 }]),
   ]);
 
   const openedPublication=publications.find(p=>String(p.nat_id)===nid);
@@ -1217,6 +1229,10 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     awardValueRon: r["ron_contract_value"] != null ? Number(r["ron_contract_value"]) : null,
     lowestOfferRon: r["lowest_offer_value"] != null ? Number(r["lowest_offer_value"]) : null,
     highestOfferRon: r["highest_offer_value"] != null ? Number(r["highest_offer_value"]) : null,
+    awardValueExact: r["ron_contract_value"] != null ? String(r["ron_contract_value"]) : null,
+    lowestOfferExact: r["lowest_offer_value"] != null ? String(r["lowest_offer_value"]) : null,
+    highestOfferExact: r["highest_offer_value"] != null ? String(r["highest_offer_value"]) : null,
+    legacyForeignValue: r["legacy_foreign_value"] === true,
     procedureType: (r["procedure_type"] as string | null) ?? null,
     acquisitionType: (r["acquisition_type"] as string | null) ?? null,
     stateDate: (r["state_date"] as string | null) ?? null,
@@ -1252,6 +1268,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       evidence: (f["evidence"] as Record<string, unknown> | null) ?? null,
     })),
     noticeLotCount: Number(lotCount[0]?.c ?? 1),
+    noticeSameTitle: Number(lotCount[0]?.same_title ?? 0) > 1,
   };
 }
 
@@ -1297,6 +1314,16 @@ export interface AwardNoticeDetail {
   nShown: number;
   totalContractValue: number | null;
   frameworkValue: number | null;
+  /** The figures above as stored, for exact display (UX audit Z7-11). */
+  /** The notice's own title in SEAP (rarely given). */
+  awardTitle: string | null;
+  /** The title most records of the notice carry, and how many carry it. */
+  commonTitle: { title: string; n: number } | null;
+  /** The award's signals (award_*), as on its contracts' pages. */
+  flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
+  exact: { total: string | null; frameworks: string | null; award: string | null; lowestOffer: string | null; highestOffer: string | null;
+    /** Every record's lei value, counted or not: equal to `total` when nothing of the notice stays out of the totals. */
+    everyValue: string | null };
   lots: NoticeLot[];
   page: number;
   pageSize: number;
@@ -1311,7 +1338,7 @@ export async function getAwardNoticeDetail(
   const sql = db();
   const cid = /^\d+$/.test(caNoticeId) ? caNoticeId : "0";
   const head = (await sql`
-    select a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type,
+    select a.id award_id, a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type, nullif(btrim(a.title), '') award_title,
            to_char(a.state_date at time zone 'Europe/Bucharest','YYYY-MM-DD') version_date, a.ron_contract_value,
            a.lowest_offer_value, a.highest_offer_value, a.cpv_code,
            (select name_ro from core.cpv_codes k where k.code = a.cpv_code) cpv_name,
@@ -1342,12 +1369,28 @@ export async function getAwardNoticeDetail(
         order by state_date nulls first, ca_notice_id) from versions) versions
   `) as unknown as { first_contract_date: string | null; versions: { caNoticeId: string; versionDate: string | null }[] | null }[];
 
+  // The title most of the notice's records carry (UX audit Z7-19, Z7-22): the notice's own name when SEAP gives it
+  // none, and the line the record rows need not repeat. Compared without case or spacing.
+  const common = (await sql`
+    select min(btrim(title)) title, count(*)::int n from core.contracts
+    where ca_notice_id = ${cid} and nullif(btrim(title), '') is not null
+    group by lower(regexp_replace(btrim(title), '[[:space:]]+', ' ', 'g')) order by 2 desc, 1 limit 1
+  `) as unknown as { title: string; n: number }[];
+  // The award's signals, as on its contracts' pages: once per notice, on its latest version that meets the rule (Z7-18).
+  const flags = (await sql`
+    select distinct on (f.flag_code) f.flag_code, f.severity, f.evidence
+    from core.awards v join core.flags f on f.subject_type = 'award' and f.subject_id = v.id
+    where v.id = ${String(h["award_id"])} ${h["authority_entity_id"] != null && h["notice_no"] ? sql`or (v.authority_entity_id = ${String(h["authority_entity_id"])} and v.notice_no = ${String(h["notice_no"])})` : sql``}
+    order by f.flag_code, v.state_date desc nulls last, v.ca_notice_id desc
+  `) as unknown as Record<string, unknown>[];
+
   const agg = (await sql`
     select count(*)::int n,
       sum(${contractRonValue(sql)}) filter(where (${contractReportable(sql)}) and not ${contractTemporarilyExcluded(sql)}) total,
-      sum(${contractRonValue(sql)}) filter(where ${contractKind(sql)}='framework') frameworks
+      sum(${contractRonValue(sql)}) filter(where ${contractKind(sql)}='framework') frameworks,
+      sum(${contractRonValue(sql)}) every_value
     from core.contracts c where ca_notice_id = ${cid}
-  `) as unknown as { n: number; total: string | null; frameworks: string | null }[];
+  `) as unknown as { n: number; total: string | null; frameworks: string | null; every_value: string | null }[];
   const nLots = Number(agg[0]?.n ?? 0);
   const offset = (Math.max(1, page) - 1) * pageSize;
   // The records under the table's column funnels (owner, 4 November 2026); the notice's totals above stay whole.
@@ -1416,6 +1459,17 @@ export async function getAwardNoticeDetail(
     nShown,
     totalContractValue: agg[0]?.total != null ? Number(agg[0].total) : null,
     frameworkValue: agg[0]?.frameworks != null ? Number(agg[0].frameworks) : null,
+    awardTitle: (h["award_title"] as string | null) ?? null,
+    commonTitle: common[0] ? { title: common[0].title, n: Number(common[0].n) } : null,
+    flags: flags.map((f) => ({ code: String(f["flag_code"]), severity: f["severity"] != null ? Number(f["severity"]) : null, evidence: (f["evidence"] as Record<string, unknown> | null) ?? null })),
+    exact: {
+      total: agg[0]?.total != null ? String(agg[0].total) : null,
+      frameworks: agg[0]?.frameworks != null ? String(agg[0].frameworks) : null,
+      award: h["ron_contract_value"] != null ? String(h["ron_contract_value"]) : null,
+      lowestOffer: h["lowest_offer_value"] != null ? String(h["lowest_offer_value"]) : null,
+      highestOffer: h["highest_offer_value"] != null ? String(h["highest_offer_value"]) : null,
+      everyValue: agg[0]?.every_value != null ? String(agg[0].every_value) : null,
+    },
     lots: lots.map((l) => ({
       natId: String(l["nat_id"]),
       contractNo: (l["contract_no"] as string | null) ?? null,

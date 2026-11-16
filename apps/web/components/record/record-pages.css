@@ -1,0 +1,113 @@
+/* The three record pages (a contract, a direct acquisition, an award notice: `.record-entry`), UX audit of 15–16
+   November 2026, zone 7. The shared template (record.css) stays as it is for the signal and evidence pages; these
+   rules only tighten what the owner approved for the record pages themselves. */
+
+/* Z7-02: a title longer than three lines is cut, with „Tot titlul” under it (RecordTitle.tsx), at every width. */
+.record-entry .record-h1.is-cut { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.record-entry .record-h1:has(+ .record-title-more) { margin-bottom: 0; }
+.record-title-more { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin-top: 2px; padding: 0; border: 0; background: none; color: var(--accent); font: 600 14px/1.2 var(--body); cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.record-title-more:hover { text-decoration-thickness: 2px; }
+@media print { .record-entry .record-h1.is-cut { display: block; -webkit-line-clamp: unset; overflow: visible; } .record-title-more { display: none; } }
+
+/* Z7-03, Z7-04: where the record belongs (its notice, its framework agreement), one row above the title. */
+.record-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; margin: 0 0 8px; font-size: 14px; line-height: 1.5; color: var(--ink2); }
+.record-context > * + *::before { content: "·"; margin: 0 8px; color: var(--muted); }
+.record-context a { font-weight: 600; text-underline-offset: 4px; }
+
+
+/* The value said in words (no published amount, a foreign currency not converted, no contract found): body type, not
+   the figure's 30 px display (Z7-10, Z7-valuta, Z7-21). */
+.record-entry .record-amount .record-amount-words { display: block; font: 600 20px/1.3 var(--body); letter-spacing: 0; color: var(--ink); }
+.record-entry .record-amount .record-amount-words.is-quiet { color: var(--ink2); }
+/* Z7-09: „nu e plată” once, in the label of the head's figure. */
+.record-amount-label .record-not-paid { font-weight: 600; color: var(--ink2); white-space: nowrap; }
+
+@media (max-width: 760px) {
+  /* Z7-01: on a phone the head tightens: the figure and its label are one row, without a card; the note under them. */
+  .record-entry .record-head { gap: 12px; padding-bottom: 20px; }
+  .record-entry .record-value { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; padding: 0; border-radius: 0; background: none; }
+  .record-entry .record-amount, .record-entry .record-amount-label { margin: 0; }
+  .record-entry .record-value-note, .record-entry .record-value-note:first-of-type { flex-basis: 100%; margin: 4px 0 0; padding-top: 0; border-top: 0; }
+  .record-entry .record-parties { margin: 10px 0 0; }
+  /* The identity line keeps three parts, so it mostly fits one row; it still wraps rather than hide a part. The notice's
+     number gives way on a phone (it is in Sources and in „Verifică în SEAP”). */
+  .record-entry .record-meta > span:has(> .record-meta-wide) { display: none; }
+  .record-title-more { min-height: 44px; }
+  .record-context { flex-direction: column; align-items: flex-start; margin-bottom: 4px; }
+  .record-context > * + *::before { content: none; }
+  .record-context a { display: inline-flex; align-items: center; gap: .3em; min-height: 44px; }
+}
+
+/* Z7-09: a record's sums in order (RecordSums.tsx), each with what it covers; the head's figure in bold. */
+.record-sums { max-width: 720px; margin: 0 0 8px; }
+.record-sums h3 { margin: 0 0 4px; font-size: 15px; }
+.record-sums ol { list-style: none; margin: 0; padding: 0; }
+.record-sums li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.record-sum-label { grid-column: 1; font-size: 15px; line-height: 1.4; }
+.record-sum-scope { grid-column: 1; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.record-sum-scope a { color: inherit; }
+.record-sum-value { grid-column: 2; grid-row: 1 / span 2; text-align: right; font-size: 16px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.record-sum-value > span { white-space: nowrap; }
+.record-sum-value small { display: block; font-size: 13px; color: var(--ink2); }
+.record-sum-value small.is-warn { color: var(--amber-ink); font-weight: 600; }
+.record-sums li.is-main :is(.record-sum-label, .record-sum-value) { font-weight: 650; }
+.record-sums-note { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink2); max-width: 72ch; }
+.record-sums + .record-facts { margin-top: 10px; }
+@media (max-width: 700px) {
+  /* A range of offers wraps at its dash instead of squeezing the label. */
+  .record-sums li { grid-template-columns: minmax(0, 1fr) fit-content(52%); column-gap: 12px; }
+  .record-sum-value { font-size: 15px; }
+}
+
+/* Z7-12: the parties. The institution is one plain row; each firm a row (who on the left, the pair's facts on the
+   right), separated by a thin line instead of a card. */
+.record-entry .record-institution { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0; padding: 0 0 12px; border-bottom: 1px solid var(--line2); }
+.record-entry .record-institution .record-party-name { margin: 0; }
+.record-entry .record-parties-list { display: block; }
+.record-entry .record-parties-list li { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); column-gap: 32px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+.record-entry .record-party-who > *, .record-entry .record-party-what > * { margin: 0; }
+.record-entry .record-party-who .record-party-name { margin-top: 2px; }
+.record-entry .record-party-who .record-party-line { margin-top: 2px; }
+.record-entry .record-party-what .record-party-line + .record-party-line { margin-top: 4px; }
+@media (max-width: 760px) {
+  .record-entry .record-parties-list li { grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+}
+
+/* Z7-16: a direct acquisition's products, each line's total and their sum; on a phone one short row per product
+   („15 kg × 2,30 lei = 34,50 lei”), the first ten, then „Arată toate” (ItemsMore.tsx). */
+.record-item-line, .record-items-more { display: none; }
+.record-entry .record-items tfoot td { padding-top: 12px; border-bottom: 0; font-weight: 600; }
+.record-items-note { margin-top: 6px; font-size: 13px; color: var(--ink2); }
+@media (max-width: 700px) {
+  .record-entry .record-items tbody tr { padding: 8px 0; }
+  .record-entry .record-items tbody td:not(:first-child):not(.record-item-line) { display: none; }
+  .record-entry .record-items .record-item-line { display: block; margin-top: 2px; font-size: 14px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .record-item-line b { font-weight: 600; color: var(--ink); }
+  .record-items-wrap:not([data-all]) .record-item-later { display: none; }
+  .record-entry .record-items tfoot { display: block; }
+  .record-entry .record-items tfoot tr { display: flex; justify-content: space-between; gap: 12px; border-bottom: 0; }
+  .record-entry .record-items tfoot td { display: block; padding-top: 10px; }
+  .record-entry .record-items tfoot td.record-num { text-align: right; }
+  .record-items-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0 16px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 15px/1.2 var(--body); cursor: pointer; }
+}
+
+/* Z7-05: a signal's links (its cases, its rule, why it is not proof) are 44 px targets on a phone. */
+@media (max-width: 700px) {
+  .record-entry .record-signal-links { row-gap: 0; }
+  .record-entry .record-signal-links > a, .record-entry .record-signal-links summary { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* Z7-29: facts for completeness (a version's date, codes, ids) folded at the end of a section. */
+.record-seap-details { margin-top: 12px; }
+.record-seap-details > summary { display: inline-flex; align-items: center; min-height: 36px; list-style: none; color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; }
+.record-seap-details > summary::-webkit-details-marker { display: none; }
+.record-seap-details > summary::before { content: "▸"; margin-right: 6px; font-size: 11px; }
+.record-seap-details[open] > summary::before { content: "▾"; }
+.record-seap-details[open] > summary { margin-bottom: 2px; }
+.record-seap-details .record-facts dd { font-size: 15px; }
+@media (max-width: 700px) { .record-seap-details > summary { min-height: 44px; } }
+
+/* Z7-28: a missing record's page: an empty search field under the explanation. */
+.record-not-found-search { display: flex; gap: 10px; margin: 22px auto 14px; max-width: 460px; }
+.record-not-found-search input { flex: 1; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line-strong, var(--line2)); border-radius: 6px; background: var(--surface); color: var(--ink); font: 16px/1.3 var(--body); }
+.record-not-found-search .btn { min-height: 44px; }

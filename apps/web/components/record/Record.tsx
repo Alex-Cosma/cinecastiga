@@ -5,6 +5,7 @@ import { FLAG_META, flagFindingLabel } from "@/lib/flags";
 import { riskEvidenceLine } from "@/lib/risk-presentation";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { formatExactDecimal, formatInt } from "@/lib/format";
+import { recordCaveat } from "@/lib/record-labels";
 import type { PairContext, RecordFlag } from "@/lib/record-types";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { pairSpec } from "@/lib/ask/site-links";
@@ -28,8 +29,12 @@ export interface RecordValue {
 }
 
 /** The head: title, lot, who from whom, the value and its notes, the record's identity line and its actions. */
-export function RecordHead({ title, lot, lotLabel = "Lot", status, parties, value, meta, actions, signals }: {
+export function RecordHead({ title, heading, context, lot, lotLabel = "Lot", status, parties, value, meta, actions, signals }: {
   title: ReactNode; lot?: string | null;
+  /** The page's own title element in place of `<h1>{title}</h1>` (a record page's RecordTitle, cut at three lines). */
+  heading?: ReactNode;
+  /** One row above the title: where the record belongs (its notice, its framework agreement). */
+  context?: ReactNode;
   /** The word before `lot` ("Obiect" on a signal's page, where the line is the notice's object). */
   lotLabel?: string;
   status?: ReactNode; parties?: ReactNode; value?: RecordValue | null;
@@ -38,7 +43,8 @@ export function RecordHead({ title, lot, lotLabel = "Lot", status, parties, valu
   const items = meta.filter(Boolean);
   return <header className="record-head">
     <div className="record-title">
-      <h1>{title}</h1>
+      {context && <p className="record-context">{context}</p>}
+      {heading ?? <h1>{title}</h1>}
       {lot && <p className="record-lot"><span>{lotLabel}</span> {lot}</p>}
       {status && <p className="record-status" role="note">{status}</p>}
       {parties && <p className="record-parties">{parties}</p>}
@@ -97,6 +103,8 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
         const href = firms ? (supplierId ? signalUrl(parseSignalState({ tip: f.code, rol: "furnizor", ent: supplierId })) : null)
           : authorityId ? signalUrl(parseSignalState({ tip: f.code, rol: "autoritate", ent: authorityId })) : null;
         const extra = note?.(f) ?? null;
+        // Two sentences of why it is not proof; how it is counted is in its rule (Z7-06).
+        const caveat = recordCaveat(f.code);
         return <li key={f.code}>
           <h3>{flagFindingLabel(f.code)}</h3>
           {meta?.short && <p>{meta.short}</p>}
@@ -104,7 +112,9 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
           {extra && <p className="record-evidence">{extra}</p>}
           <div className="record-signal-links">
             {href && <Link href={href}>{firms ? "Cazul firmei" : "Toate cazurile instituției"}</Link>}
-            {meta?.caveat && <details><summary>De ce nu e o dovadă</summary><p>{meta.caveat}</p></details>}
+            {/* One click from a signal to its rule (UX audit Z7-05); the anchors open the rule in the guide. */}
+            {meta && <Link href={`/metodologie#${f.code}`} prefetch={false}>Regula <span aria-hidden="true">→</span></Link>}
+            {caveat && <details><summary>De ce nu e o dovadă</summary><p>{caveat}</p></details>}
           </div>
         </li>;
       })}
@@ -116,17 +126,33 @@ export interface Party {
   key: string;
   role: string;
   name: ReactNode;
-  /** One short line each: county, share, history, dependence, size, anomaly. */
+  /** Under the name: where the firm is (its county). */
+  place?: ReactNode;
+  /** What the data says about the pair, one short line each, in the same order on every record: this record's share,
+   * the history with the institution, the institution's part of the firm's contracts, its size, an anomaly. */
   lines: ReactNode[];
 }
-export function PartyList({ parties }: { parties: Party[] }) {
-  return <ul className="record-parties-list">
-    {parties.map((p) => <li key={p.key}>
-      <p className="record-party-role">{p.role}</p>
-      <p className="record-party-name">{p.name}</p>
-      {p.lines.filter(Boolean).map((line, i) => <p className="record-party-line" key={i}>{line}</p>)}
-    </li>)}
-  </ul>;
+/**
+ * The parties (UX audit Z7-12, owner 16 November 2026): the institution one plain row (role · name · county), then each
+ * firm a row, who on the left and what the data says about the pair on the right; the rows stack on a phone.
+ */
+export function PartyList({ institution, parties }: { institution: { name: ReactNode; place?: ReactNode }; parties: Party[] }) {
+  return <>
+    <p className="record-institution"><span className="record-party-role">Instituția</span> <span className="record-party-name">{institution.name}</span>{institution.place && <span className="record-quiet"> {institution.place}</span>}</p>
+    <ul className="record-parties-list">
+      {parties.map((p) => {
+        const lines = p.lines.filter(Boolean);
+        return <li key={p.key}>
+          <div className="record-party-who">
+            <p className="record-party-role">{p.role}</p>
+            <p className="record-party-name">{p.name}</p>
+            {p.place && <p className="record-party-line">{p.place}</p>}
+          </div>
+          {lines.length > 0 && <div className="record-party-what">{lines.map((line, i) => <p className="record-party-line" key={i}>{line}</p>)}</div>}
+        </li>;
+      })}
+    </ul>
+  </>;
 }
 
 const pct = (share: number) => share >= 0.995 ? "Toate" : share < 0.01 ? "Sub 1%" : `${Math.round(share * 100)}%`;
