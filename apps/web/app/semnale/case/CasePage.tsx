@@ -13,6 +13,8 @@ import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
 import { aboveWords, capacityWords, caseUnitNouns, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
+import { DOMAIN_ALIASES } from "@/lib/cpv-aliases";
+import { readableCpvName } from "@/lib/entity-summary";
 import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
 import { signalLei } from "@/lib/signal-money";
 import { groupSharedAdmin, peopleByFirms, peopleKey, sharedPeopleWords, type SharedAdminPerson } from "@/lib/signal-shared-admin";
@@ -112,10 +114,10 @@ function Side({ title, big, unit, children }: { title: string; big: string; unit
 }
 
 /** The share bar of a partner signal, with the rule's thresholds. */
-function ShareBar({ share, ticks = [] }: { share: number; ticks?: { at: number; label: string; left?: boolean }[] }) {
+function ShareBar({ share, ticks = [] }: { share: number; ticks?: { at: number; label: string; left?: boolean; low?: boolean }[] }) {
   return <>
     <div className="sgc-share" aria-hidden="true" data-chart suppressHydrationWarning><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, share * 100))}%` }} /></div>
-    {ticks.length > 0 && <div className="sgc-ticks" aria-hidden="true">{ticks.map((t) => <span key={t.at} className={t.left ? "l" : ""} style={{ left: `${t.at * 100}%` }}><em>{t.label}</em></span>)}</div>}
+    {ticks.length > 0 && <div className="sgc-ticks" aria-hidden="true">{ticks.map((t) => <span key={t.at} className={`${t.left ? "l" : ""}${t.low ? " low" : ""}`} style={{ left: `${t.at * 100}%` }}><em>{t.label}</em></span>)}</div>}
   </>;
 }
 
@@ -214,7 +216,10 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
         return (
           <details key={g.id} id={`caz-${g.id}`} className={`sgc-case${g.counted ? "" : " out"}`} style={{ "--i": row } as CSSProperties}>
             <summary>
-              <span className="sgc-who"><b><EntityName id={g.partnerId} role={partnerRole(role)}>{cleanName(g.partnerName) || "—"}</EntityName></b> · {g.year} · {g.works ? "lucrări" : "produse și servicii"}{g.cpvClass ? ` (CPV ${g.cpvClass})` : ""}
+              <span className="sgc-who"><b><EntityName id={g.partnerId} role={partnerRole(role)}>{cleanName(g.partnerName) || "—"}</EntityName></b> · {g.year} · {/* the kind of work by its name, the code on hover (Z6-38) */}
+                {g.cpvClass && (DOMAIN_ALIASES[g.cpvClass] ?? data.cpvClassNames?.[g.cpvClass])
+                  ? <span title={`CPV ${g.cpvClass}${g.works ? " · lucrări" : " · produse și servicii"}`}>{classWords(g.cpvClass, data.cpvClassNames?.[g.cpvClass])}</span>
+                  : <>{g.works ? "lucrări" : "produse și servicii"}{g.cpvClass ? ` (CPV ${g.cpvClass})` : ""}</>}
                 <small>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}{g.recurring ? " · aprovizionare recurentă, nu intră în scor" : g.counted ? "" : " · sub 1,2×, nu intră în scor"}</small></span>
               <span className="sgc-mini" aria-hidden="true">
                 <span className="p"><span className="pc cm-y">{g.items.slice(0, 24).map((it, k) => <i key={k} style={{ height: `${Math.min(100, it.ofCeiling * 100)}%` }} />)}</span></span>
@@ -376,8 +381,8 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
   const partnerName = <EntityName id={inst.partnerId} role={partnerRole(data.entity.role)}>{partner}</EntityName>;
   return <>
     <div className="sgc-mirror">
-      <Side title={dep ? "Pentru firmă · de la cine vinde" : "Pentru instituție · de la cine cumpără"} big={pctWords(s.share)} unit={<>{dep ? "de la " : "la "}{partnerName}</>}>
-        <ShareBar share={s.share} ticks={dep ? [{ at: 0.7, label: "semnal de la 70%", left: true }, { at: 0.85, label: "85% nivelul 1" }] : []} />
+      <Side title={dep ? "Pentru firmă · cui vinde" : "Pentru instituție · de la cine cumpără"} big={pctWords(s.share)} unit={<>{dep ? "de la " : "la "}{partnerName}</>}>
+        <ShareBar share={s.share} ticks={dep ? [{ at: 0.7, label: "semnal de la 70%", left: true }, { at: 0.85, label: "85%: punctaj mai mare", left: true, low: true }] : []} />
         <p className="sgc-cap"><b>{partnerName}</b> {formatRon(mineTotal)}{inst.aside && inst.aside.count > 0 && <> · <b>{dep ? "celelalte instituții" : "ceilalți furnizori"}</b> {formatRon(inst.aside.totalExact)}</>}</p>
       </Side>
       {dep
@@ -446,7 +451,8 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
       <div className="sgc-mirror">
         <Side title="De la înmatriculare la prima achiziție directă" big={m.ageDays == null ? "—" : formatInt(m.ageDays)} unit={m.ageDays === 1 ? "zi" : "zile"}>
           {day(m) != null && <ShareBar share={day(m)!} ticks={[{ at: 1, label: `ziua ${formatInt(m.windowDays)}`, left: true }]} />}
-          <p className="sgc-cap">{m.registeredOn ? `Înmatriculată la ${formatCalendarDate(m.registeredOn)}` : "Data înmatriculării lipsește"}{m.firstAwardOn ? `; prima achiziție directă, publicată la ${formatCalendarDate(m.firstAwardOn)}` : ""}. Numărăm de la cea mai veche înmatriculare a firmei: o mutare de sediu nu o face nouă.</p>
+          {/* The dates are the lede's; the mirror keeps only how the days are counted (UX audit Z6-38). */}
+          <p className="sgc-cap">Numărăm de la cea mai veche înmatriculare a firmei: o mutare de sediu nu o face nouă.</p>
         </Side>
         <Side title={`În primele ${countWords(m.windowDays, "zi", "zile")}`} big={formatRon(m.total)} unit={`${m.count == null ? "contractați" : countWords(m.count, "achiziție directă", "achiziții directe")}${from}`}>
           {near(m)}
@@ -515,6 +521,13 @@ function AwardRow({ data, inst }: { data: SignalCase; inst: CaseInstance }) {
 }
 
 const SHARED_PAGE = 50;
+
+/** A CPV class said as the kind of work (UX audit Z6-38: „lucrări (CPV 4523)” → its name): the site's short name, else the official one, shortened. */
+function classWords(code: string, official: string | undefined): string {
+  const name = DOMAIN_ALIASES[code] ?? (official ? readableCpvName(official) : `CPV ${code}`);
+  const short = name.length > 60 ? `${name.slice(0, 58).replace(/[\s,;]+\S*$/, "")}…` : name;
+  return short.charAt(0).toLowerCase() + short.slice(1);
+}
 
 /** A person of a shared representatives' row: the name, its ONRC role on hover or a tap. */
 function Person({ p }: { p: SharedAdminPerson }) {
@@ -670,7 +683,8 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
         href={(p) => roleless(data, signalUrl(state, { page: p }))} link={Link} label="Paginile cazurilor" bottom className="sgc-dsc-pager" />}
 
       {guide && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{guide.check}</p></div><div><h2>Explicații posibile</h2><p>{guide.explain}</p></div></div>}
-      {!guide && FLAG_META[code] && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{FLAG_META[code]!.rationale}</p></div><div><h2>Limitele semnalului</h2><p>{firstSentence(FLAG_META[code]!.caveat)} <Link href={`/metodologie#${code}`}>Toate limitele →</Link></p></div></div>}
+      {/* „Explicații posibile” on every pattern (UX audit Z6-38), the limits one link away. */}
+      {!guide && FLAG_META[code] && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{FLAG_META[code]!.rationale}</p></div><div><h2>Explicații posibile</h2><p>{firstSentence(FLAG_META[code]!.caveat)} <Link href={`/metodologie#${code}`}>Toate limitele →</Link></p></div></div>}
 
       <p className="sgc-foot">Un tipar e o pistă de verificat, nu o dovadă. Valori înregistrate, nu plăți. <Link href={`/metodologie#${code}`}>Cum se calculează →</Link></p>
     </div>

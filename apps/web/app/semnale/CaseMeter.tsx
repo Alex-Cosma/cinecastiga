@@ -1,3 +1,4 @@
+import { DOMAIN_ALIASES } from "@/lib/cpv-aliases";
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
 import { pctWords } from "@/lib/signal-case-words";
 import { ratioWords, SPLIT_COUNTS_ABOVE, splitRatioWords } from "@/lib/signal-mirror";
@@ -24,7 +25,7 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
       // At 1,2× or under a group adds nothing to the score: listed only on request, its multiple says so (UX audit Z6-04).
       const under = r <= SPLIT_COUNTS_ABOVE;
       return { value: splitRatioWords(r), under, note: `${formatInt(num(e.count))} achiziții adunate față de plafon${under ? " · nu intră în scor" : ""}`,
-        tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, clasa CPV ${e.cpv_class}` : ""}`, `Adunate: ${formatRonFull(total)}`,
+        tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, ${DOMAIN_ALIASES[String(e.cpv_class)] ? `${DOMAIN_ALIASES[String(e.cpv_class)]} (CPV ${e.cpv_class})` : `clasa CPV ${e.cpv_class}`}` : ""}`, `Adunate: ${formatRonFull(total)}`,
           `Verde: plafonul de ${formatRonFull(ceiling)}`, ...(r > 1 ? [`Roșu: ${formatRonFull(Math.round((total - ceiling) * 100) / 100)} peste plafon`] : []), `De ${splitRatioWords(r)} plafonul`],
         // Red only past the ceiling (UX audit Z6-16): up to it green, as „Declarate directe”, so 1,2× has a short red
         // tail and 15,8× a long one; the bar is the group's own sum, no common scale.

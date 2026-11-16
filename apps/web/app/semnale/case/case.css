@@ -345,3 +345,7 @@ a.dot{cursor:pointer}
 .sgc-yband .tk span.l{transform:none}.sgc-yband .tk span.r{transform:translateX(-100%)}
 .sgc-one>summary .sgc-mini,.sgc-one>summary .sgc-x,.sgc-one>summary .sgc-who small{display:none}
 @media (max-width:760px){.sgc-yband{padding:16px}.sgc-yband .lg b{font-size:26px}.sgc-yband .tk{height:auto}.sgc-yband .tk span{position:static;transform:none;white-space:normal}}
+/* A second threshold close to the first takes the line under it, ending at its tick (Z6-38: „85%: punctaj mai mare”). */
+.sgc-ticks:has(.low){height:46px}
+.sgc-ticks span.low{height:28px}
+.sgc-ticks span.low em{top:29px}

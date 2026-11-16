@@ -91,6 +91,8 @@ export interface SignalCase {
   alsoIn: Record<string, string[]>;
   /** „Adunate, trec de plafon”: all of the entity's groups counted, beyond the page (UX audit Z6-21). */
   split?: SplitTotals;
+  /** The groups' CPV classes by name (4 digits → the class's official name): the page names the kind of work (Z6-38). */
+  cpvClassNames?: Record<string, string>;
 }
 
 /** The records of a case whose titles the page shows: all of a short list, the first rows of a long one (and of a year's December). */
@@ -132,7 +134,7 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
   const row = pickRow(flags, state.role);
   const [named] = row ? [{ name_display: row.name, county: row.county }] : await sql`select name_display, county from core.entities where id = ${state.entity}`;
   if (!named) return null;
-  const { instances, alsoIn, split } = await sql.begin("isolation level repeatable read read only", async (tx) => {
+  const { instances, alsoIn, split, cpvClassNames } = await sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '30s'`;
     const alsoIn = CASE_RECORD_CODES.has(state.code) ? await readFlaggedDas(q, state) : {};
@@ -183,7 +185,10 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
     // The words over the page count every group, not the page's (UX audit Z6-21): their evidence only, one read.
     const split = state.code === "da_split" ? splitTotals((await q`select f.evidence from ${signalPopulation(q, { role: state.role, county: null, entity: state.entity }, "da_split")} p
       join core.flags f on f.id = p.id`).map((r) => (r.evidence ?? null) as Record<string, unknown> | null)) : undefined;
-    return { instances, alsoIn, split };
+    const classes = state.code === "da_split" ? [...new Set(instances.map((i) => (i.evidence as Record<string, unknown> | null)?.cpv_class).filter((c): c is string => typeof c === "string" && /^\d{4}$/.test(c)))] : [];
+    const cpvClassNames = classes.length ? Object.fromEntries((await q`select left(code, 4) cls, name_ro from core.cpv_codes
+      where left(code, 4) = any(${classes}) and substr(code, 5, 4) = '0000'`).map((r) => [String(r.cls), String(r.name_ro)])) : undefined;
+    return { instances, alsoIn, split, cpvClassNames };
   });
   const score = row?.score ?? 0, parts = row?.scoreParts ?? {};
   return {
@@ -195,7 +200,7 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
       noScoreReason: row ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score }) : null,
       otherRole: flags.find((r) => r.role !== state.role)?.role ?? null,
     },
-    counts, code: state.code, instances, total: page.total, page: page.page, pageSize: page.pageSize, alsoIn, ...(split ? { split } : {}),
+    counts, code: state.code, instances, total: page.total, page: page.page, pageSize: page.pageSize, alsoIn, ...(split ? { split } : {}), ...(cpvClassNames ? { cpvClassNames } : {}),
   };
 }
 
