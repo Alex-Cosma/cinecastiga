@@ -585,9 +585,8 @@ export default async function EntityPage({
           : <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
             iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
             reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
-        {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
-          integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
-          {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}
+        {/* Said once, plainly (UX audit Z5-04): the line under the top and the list under the table say the rest. */}
+        {aboveCap.count > 0 && <p>Contractele peste 1 mld. lei nu intră în totaluri și nici în lista partenerilor (filtru al aplicației, nu dovada unei erori).</p>}
         <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
           Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
           Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>

@@ -48,29 +48,18 @@ export function shortTitle(title: string, max = 70): string {
 }
 
 /**
- * "Separat, 2 contracte de peste 1 mld. lei (13,8 mld. lei) nu intră în aceste
- * cifre: „…” (9,1 mld. lei) și „…” (4,7 mld. lei). Vezi lista." Null without such contracts.
+ * One short line under the top (UX audit Z5-04, 16 November 2026): „2 contracte peste 1 mld. lei (13,8 mld.) sunt în
+ * afara totalului · Vezi lista ↓”. The titles stay in the list under the table, the one place that lists them. Null
+ * without such contracts.
  */
 export function aboveCapSentence(aboveCap: SummaryInput["aboveCap"]): Segment[] | null {
   if (!aboveCap || aboveCap.count <= 0) return null;
   const n = aboveCap.count;
-  const named = aboveCap.rows
-    .map((r) => ({ title: r.title?.trim() ? shortTitle(r.title) : r.contractNo?.trim() ? `contractul ${r.contractNo.trim()}` : null, value: r.valueRonExact }))
-    .filter((r): r is { title: string; value: string } => r.title !== null)
-    .slice(0, 2);
-  const out: Segment[] = [
-    n === 1 ? "Separat, un contract de peste 1 mld. lei " : `Separat, ${roCount(n, "un contract", "contracte")} de peste 1 mld. lei `,
-    `(${formatRon(aboveCap.totalExact)}) nu intră în cifrele de mai sus`,
+  const value = formatRon(aboveCap.totalExact).replace(/ lei$/, "");
+  return [
+    n === 1 ? `Un contract peste 1 mld. lei (${value}) e în afara totalului · ` : `${roCount(n, "un contract", "contracte")} peste 1 mld. lei (${value}) sunt în afara totalului · `,
+    { text: "Vezi lista ↓", href: ABOVE_CAP_ANCHOR },
   ];
-  if (named.length > 0) {
-    const listed = n === 1 ? [`: „${named[0]!.title}”`] : named.map((r, i) => `${i === 0 ? ": " : " și "}„${r.title}” (${formatRon(r.value)})`);
-    out.push(...listed);
-    if (n > named.length && n > 1) out.push(`, plus încă ${roCount(n - named.length, "un contract", "contracte")}`);
-    out.push(". ", { text: "Vezi lista", href: ABOVE_CAP_ANCHOR }, ".");
-  } else {
-    out.push(": ", { text: "vezi lista", href: ABOVE_CAP_ANCHOR }, ".");
-  }
-  return out;
 }
 
 /** `tip`: the words open that glossary explanation (a "(?)" on the page). */
