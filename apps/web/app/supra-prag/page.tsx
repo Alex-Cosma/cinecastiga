@@ -13,6 +13,7 @@ import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmoun
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
 import Term from "@/components/Term";
+import { countWords } from "@/lib/ask/answer-text";
 import { GLOSSARY } from "@/lib/glossary";
 import { FOREIGN } from "@/lib/ted-columns";
 import OpenFunnel from "./OpenFunnel";
@@ -138,6 +139,14 @@ export default async function SupraPragPage({
   };
   // The pager sits below the table: the next page opens at the start of the list.
   const pageUrl = (n: number) => `${qstr({ p: n > 1 ? String(n) : undefined })}#atribuiri-lista`;
+  // No result (UX audit Z6-37): a step back, the last filter the address applied, besides „Scoate toate”; the band's
+  // chips stay the main way out. Its label is the chip's words where the server knows them (options), else the column's.
+  const filterParams = TED_COLUMNS.flatMap((c) => [c.param, ...(c.legacy?.params ?? [])]);
+  const lastKey = Object.keys(sp).filter((k) => filterParams.includes(k) && sp[k]).at(-1);
+  const lastColumn = lastKey ? TED_COLUMNS.find((c) => c.param === lastKey || c.legacy?.params.includes(lastKey)) : undefined;
+  const lastValue = lastKey ? String(sp[lastKey]) : "";
+  const lastLabel = lastColumn ? (lastColumn.kind === "options" && !lastValue.includes(",") ? lastColumn.labels?.[lastValue] ?? lastValue : lastColumn.label) : null;
+  const withoutFilters = qstr(Object.fromEntries(filterParams.map((k) => [k, undefined])));
   // Three figures are the table's own filters (UX audit Z6-10): a click applies it (or takes it off) and opens the list.
   const has = (key: string, value: string) => filters[key]?.kind === "options" && filters[key].values.includes(value);
   const toggle = (key: string, value: string) => `${qstr({ [key]: has(key, value) ? undefined : value, ...(key === "tara" ? { extern: undefined } : key === "oferte" ? { unic: undefined } : { "etichetă": undefined }) })}#atribuiri-lista`;
@@ -202,13 +211,16 @@ export default async function SupraPragPage({
       <section className="section">
         <h2>Explorează atribuirile</h2>
         <UrlFilterBand table="ted" />
-        <p className="hint">{formatInt(awards.total)} rezultate · {sort === "value" ? "după valoarea în lei; la final, cele fără o valoare de contract în lei" : "cele mai noi întâi"}</p>
+        <p className="hint" hidden={awards.total === 0}>{countWords(awards.total, "rezultat", "rezultate")} · {sort === "value" ? "după valoarea în lei; la final, cele fără o valoare de contract în lei" : "cele mai noi întâi"}</p>
         {countries.includes(TED_COUNTRY_UNRESOLVED) ? <p className="hint">
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
         </p> : null}
+        {awards.rows.length === 0 ? <p className="note tp-none">Niciun rezultat.{" "}
+          {lastKey && lastLabel ? <><RegionLink href={qstr({ [lastKey]: undefined })} scroll={false}>Scoate „{lastLabel}”</RegionLink>{" · "}</> : null}
+          <RegionLink href={withoutFilters} scroll={false}>Scoate toate</RegionLink></p> : null}
         {/* On a phone each result is a card (rank-stack) and the header's funnels wrap above the cards as a filter bar. */}
-        <div className="ask-tablewrap rank-stack tp-stack">
+        <div className="ask-tablewrap rank-stack tp-stack" hidden={awards.rows.length === 0}>
         <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
@@ -276,7 +288,6 @@ export default async function SupraPragPage({
         </table>
         </div>
 
-        {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <RegionLink href="/supra-prag" scroll>Vezi toate rezultatele TED</RegionLink>.</p> : null}
 
         {/* The pager of the „Descoperă” pages (UX audit Z6-14); the last page is read from the end, as quick as the first. */}
         {totalPages > 1 ? <DiscoverPager page={page - 1} pageSize={PAGE_SIZE} total={awards.total} unit={["rezultat", "rezultate"]} href={(p) => pageUrl(p + 1)} link={RegionLink} scroll bottom className="tp-pager" /> : null}
