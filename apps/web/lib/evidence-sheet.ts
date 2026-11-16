@@ -83,7 +83,8 @@ export function sheetCitation(clip: ClipLike, capture: CaptureSummary, fingerpri
     title: clipTitle(clip), kind: capture.summary?.monitoringSide === "before" ? "Sursele înainte de modificare" : capture.summary?.monitoringSide === "after" ? "Sursele după modificare" : clipKindLabel[clip.kind] ?? "Dovadă",
     value: clipValue({ ...clip, capture }), rowCount: capture.rowCount, totalExact: capture.totalExact,
     capturedAt: typeof capture.summary?.capturedAt === "string" ? capture.summary.capturedAt : capture.completedAt, version: capture.version,
-    fingerprint, publicUrl: href && href.startsWith("/") && !href.startsWith("/intreaba") ? `${base}${href}` : null, sourceUrl: clipSourceUrl(clip),
+    // A question's answer is public too (Z8-41): its link, without the records drawer, is said to show today's data.
+    fingerprint, publicUrl: href && href.startsWith("/") ? `${base}${href.replace("&drill=1", "")}` : null, publicIsAnswer: Boolean(href?.startsWith("/intreaba")), sourceUrl: clipSourceUrl(clip),
     sheetUrl: `${base}/anchete/${investigationId}/dovezi/${capture.id}`,
   });
 }

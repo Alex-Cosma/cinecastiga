@@ -67,11 +67,16 @@ describe("the citation", () => {
       capturedAt: "2026-11-07 10:16:23.15+00", version: 1, fingerprint: "ab".repeat(32), publicUrl: "https://x/achizitii/1", sourceUrl: "https://e-licitatie.ro/1", sheetUrl: "https://x/anchete/i/dovezi/c" });
     expect(text.split("\n")).toEqual([
       "„DA41271870” (achiziție directă)",
+      // The public links first, so a reader of the article can open something (Z8-41); the private sheet last.
+      "Pagina: https://x/achizitii/1", "Sursa SEAP: https://e-licitatie.ro/1",
       "Valoarea achiziției: 80.000 lei (valoare înregistrată, nu plată).",
       "Păstrat: 1 înregistrare · 80.000 lei · 07.11.2026, 12:16 (ora României) · versiunea 1.",
       "Valori înregistrate în SEAP/SICAP, nu plăți. Prelucrare: cinecâștigă?.",
       `Amprentă SHA-256 (rows.csv din export): ${"ab".repeat(32)}`,
-      "Pagina: https://x/achizitii/1", "Sursa SEAP: https://e-licitatie.ro/1", "Fișa de probă (privată): https://x/anchete/i/dovezi/c"]);
+      "Fișa de probă (privată, doar pentru tine și colaboratori): https://x/anchete/i/dovezi/c"]);
+    // A saved question's answer on the site shows today's data: the citation says so.
+    expect(citationText({ title: "Cum evoluează…?", kind: "Întrebare salvată", rowCount: 2, totalExact: "1", capturedAt: null, version: 1, fingerprint: null, publicUrl: "https://x/intreaba?spec=a", publicIsAnswer: true, sheetUrl: "u" }).split("\n")[1])
+      .toBe("Răspunsul pe site (datele de azi, nu versiunea păstrată): https://x/intreaba?spec=a");
     const selection = citationText({ title: "X", kind: "Entitate", value: { exact: "10", label: "totalul înregistrărilor păstrate", unit: "lei" }, rowCount: 20, totalExact: "10", capturedAt: null, version: 2, fingerprint: null, sheetUrl: "u" });
     expect(selection).not.toContain("Totalul");
     expect(selection).toContain("20 de înregistrări · 10 lei · moment necunoscut");
