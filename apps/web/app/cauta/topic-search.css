@@ -378,3 +378,5 @@
  .topic-copy>p{position:absolute;right:0;top:calc(100% + 4px);z-index:5;white-space:nowrap;padding:4px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--line2)}
 }
 @media(max-width:360px){.topic-tabs>button{font-size:12px;padding:8px 1px 6px}}
+/* „Nu plăți” once per list, beside its order (UX audit Z1-15): the rows keep the amount alone. */
+.topic-not-paid{white-space:nowrap}
