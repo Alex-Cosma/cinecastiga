@@ -81,6 +81,13 @@ export default function TxTable({
     return { filters: readFilters(columns, (key) => address.get(key)), page: /^[1-9]\d{0,5}$/.test(p) ? Number(p) : 1 };
   });
   const [page, setPage] = useState(start.page);
+  // An address that filters the table (or asks for one of its pages) opens on it (UX audit Z5-28, 16 November 2026), as
+  // the map's links do with #achizitii: the reader sees at once why the table shows what it shows. Only a fresh open at
+  // the page's top; Back keeps the reader's place.
+  useEffect(() => {
+    if (window.location.hash || window.scrollY > 0 || (Object.keys(start.filters).length === 0 && start.page === 1)) return;
+    document.getElementById("achizitii")?.scrollIntoView({ block: "start" });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, at the first paint
   // The page is in the address (UX audit Z5-29, 16 November 2026), without a history entry per page: Back after a
   // record's „detalii →” returns to the same page of the table.
   useEffect(() => {
