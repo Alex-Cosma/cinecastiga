@@ -48,6 +48,6 @@ export default async function DosarPage({ params, searchParams }: { params: Prom
     <Workspace investigationId={id} initial={workspace} initialTab={tab} sourceEvents={dosar.sourceEvents}
       clips={dosar.clips.map(clip => { const value = clipValue(clip); return { id: clip.id, title: clipTitle(clip), kind: clip.kind, createdAt: clip.createdAt, refId: clip.refId,
         valueExact: value?.exact ?? null, valueUnit: value?.unit ?? "lei", valueLabel: value?.label ?? null, date: clipDate(clip), registry: clip.kind === "entity" }; })}
-      evidence={dossierEvidenceParts({ id, clips: dosar.clips, canEdit: workspace.access.canEdit })} />
+      evidence={dossierEvidenceParts({ clips: dosar.clips })} />
   </div>;
 }

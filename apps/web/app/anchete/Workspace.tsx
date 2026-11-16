@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { EntryKind, InvestigationWorkspace, WorkspaceEntry } from "@/lib/investigation-workspace";
 import type { SourceEvent } from "@/lib/anchete";
+import type { CaptureSummary } from "@/lib/evidence-captures-shared";
 import { formatExactDecimal } from "@/lib/format";
 import { privateDay, privateMoment } from "@/lib/private-format";
 import { clipKindGroup } from "@/lib/evidence-clip";
 import Term from "@/components/Term";
 import RegistryFacts from "./RegistryFacts";
+import EvidenceCard, { type EvidenceItem } from "./EvidenceCard";
+import CardMenu from "./CardMenu";
 
 export interface WorkspaceClip {
   id: string; title: string; kind: string; createdAt: string; refId: string | null;
@@ -17,7 +20,9 @@ export interface WorkspaceClip {
   /** An institution or firm: its card offers "Din registre". */
   registry: boolean;
 }
-export interface WorkspaceEvidence { id: string; head: ReactNode; body: ReactNode }
+/** The kind filter's groups, in the order a reader scans them (Z8-06); the editorial notes are "Note". */
+const FILTER_ORDER = ["Note", "Întrebări salvate", "Semnale", "Contracte", "Anunțuri", "Achiziții directe", "Instituții și firme", "Persoane", "Radiografii", "Modificări urmărite", "Pasaje din documente", "Alte dovezi"];
+const filterName: Record<string, string> = { "Întrebări salvate": "Întrebări" };
 export type WorkspaceTab = "questions" | "evidence" | "timeline" | "tasks";
 const tabs: { id: WorkspaceTab; label: string }[] = [{ id: "questions", label: "Întrebări" }, { id: "evidence", label: "Dovezi" }, { id: "timeline", label: "Cronologie" }, { id: "tasks", label: "De verificat" }];
 const stanceLabels = { supports: "Susține", contradicts: "Contrazice", check: "De verificat" } as const;
@@ -28,7 +33,7 @@ const blank = (kind: EntryKind) => ({ kind, title: "", body: "", alternative: ""
 const clipOption = (clip: WorkspaceClip) => [clip.title.length > 90 ? `${clip.title.slice(0, 88)}…` : clip.title, clip.valueExact ? `${formatExactDecimal(clip.valueExact)} ${clip.valueUnit}` : null, clip.date ? privateDay(clip.date) : null].filter(Boolean).join(" · ");
 
 export default function Workspace({ investigationId, initial, clips, evidence, sourceEvents, initialTab = "questions" }: {
-  investigationId: string; initial: InvestigationWorkspace; clips: WorkspaceClip[]; evidence: WorkspaceEvidence[]; sourceEvents: SourceEvent[]; initialTab?: WorkspaceTab;
+  investigationId: string; initial: InvestigationWorkspace; clips: WorkspaceClip[]; evidence: EvidenceItem[]; sourceEvents: SourceEvent[]; initialTab?: WorkspaceTab;
 }) {
   const [workspace, setWorkspace] = useState(initial);
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
@@ -37,8 +42,38 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [focus, setFocus] = useState<string | null>(null);
+  const [show, setShow] = useState("all");
+  const [captures, setCaptures] = useState<Record<string, CaptureSummary | null>>(() => Object.fromEntries(evidence.map(item => [item.id, item.capture])));
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   useEffect(() => setWorkspace(initial), [initial]);
+  useEffect(() => setCaptures(Object.fromEntries(evidence.map(item => [item.id, item.capture]))), [evidence]);
+  // A kept version in preparation is polled until it ends (every card at once, one request each).
+  const pendingKey = Object.entries(captures).filter(([, capture]) => capture && ["queued", "running"].includes(capture.status)).map(([clip, capture]) => `${clip}:${capture!.id}`).join(",");
+  useEffect(() => {
+    if (!pendingKey) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      for (const pair of pendingKey.split(",")) {
+        const [clip, id] = pair.split(":");
+        try {
+          const response = await fetch(`/api/anchete/${investigationId}/captures/${id}`, { signal: controller.signal, cache: "no-store" });
+          if (!response.ok) { setError("Nu putem verifica starea capturii. Reîncarcă dosarul."); continue; }
+          const result = await response.json(); if (result.capture) setCaptures(current => ({ ...current, [clip!]: result.capture }));
+        } catch { if (!controller.signal.aborted) setError("Conexiunea s-a întrerupt. Reîncarcă dosarul pentru a verifica starea capturii."); }
+      }
+    }, 2000);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [pendingKey, investigationId]);
+  async function capture(clipId: string, newVersion: boolean) {
+    const current = captures[clipId];
+    setError("");
+    try {
+      const path = newVersion || !current ? `/api/anchete/${investigationId}/clips/${clipId}/captures` : `/api/anchete/${investigationId}/captures/${current.id}`;
+      const response = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); const result = await response.json();
+      if (!response.ok) throw new Error(result.error ?? "Captura nu a putut fi pornită.");
+      if (result.capture) setCaptures(state => ({ ...state, [clipId]: result.capture }));
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Încearcă din nou."); }
+  }
   useEffect(() => {
     if (!focus) return;
     const element = document.getElementById(focus);
@@ -103,23 +138,24 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       {canEdit && clips.length === 0 && <p className="iw-muted">Salvează întâi un contract, o achiziție sau o entitate în acest dosar.</p>}
     </div>;
   }
-  /** The questions an item supports or contradicts, on its card; it can be linked from there too. */
-  function clipQuestions(clipId: string) {
+  /** The questions an item supports or contradicts, as chips on its card. */
+  function clipChips(clipId: string) {
+    const links = workspace.links.filter(link => link.clipId === clipId);
+    if (!links.length) return null;
+    return <div className="iw-clip-questions"><ul aria-label="Întrebările legate">{links.map(link => { const question = questions.find(q => q.id === link.questionId); return question ? <li key={link.questionId}>
+      <button type="button" className={`iw-stance-chip iw-stance-${link.stance}`} onClick={() => openQuestion(link.questionId)}><span className="iw-stance">{stanceLabels[link.stance]}</span> {question.title}</button>
+    </li> : null; })}</ul></div>;
+  }
+  /** "Leagă de o întrebare" from the card's "⋯": the questions it is not linked to yet. */
+  function clipLinkForm(clipId: string) {
     const links = workspace.links.filter(link => link.clipId === clipId);
     const free = questions.filter(question => !links.some(link => link.questionId === question.id));
-    if (!links.length && !canEdit) return null;
-    return <div className="iw-clip-questions">
-      {links.length > 0 && <ul aria-label="Întrebările legate">{links.map(link => { const question = questions.find(q => q.id === link.questionId); return question ? <li key={link.questionId}>
-        <button type="button" className={`iw-stance-chip iw-stance-${link.stance}`} onClick={() => openQuestion(link.questionId)}><span className="iw-stance">{stanceLabels[link.stance]}</span> {question.title}</button>
-      </li> : null; })}</ul>}
-      {canEdit && (questions.length === 0 ? <button type="button" className="iw-text-button" onClick={() => { changeTab("questions"); setEditing("question"); }}>Formulează o întrebare pentru această dovadă</button>
-        : free.length > 0 && <details className="iw-connect"><summary>{links.length ? "Leagă și de altă întrebare" : "Leagă de o întrebare"}</summary>
-          <LinkForm busy={busy} onSave={async (choice, stance, note) => mutate({ action: "link", questionId: choice, clipId, stance, note }, "Dovada a fost legată de întrebare.")}
-            label="Întrebarea" options={[{ group: null, items: free.map(question => ({ value: question.id, label: question.title })) }]} />
-        </details>)}
-    </div>;
+    if (!canEdit || !free.length) return null;
+    return <LinkForm busy={busy} onSave={async (choice, stance, note) => mutate({ action: "link", questionId: choice, clipId, stance, note }, "Dovada a fost legată de întrebare.")}
+      label="Întrebarea" options={[{ group: null, items: free.map(question => ({ value: question.id, label: question.title })) }]} />;
   }
   const addNote = (title: string, body: string) => mutate({ action: "create", entry: { kind: "note", title, body, alternative: "", status: "open", occurredOn: null } }, "Nota a fost adăugată în Dovezi.");
+  const groups = FILTER_ORDER.map(name => ({ name, label: filterName[name] ?? name, n: name === "Note" ? notes.length : evidence.filter(item => item.group === name).length })).filter(group => group.n > 0);
   const counts: Record<WorkspaceTab, number> = { questions: questions.length, evidence: clips.length + notes.length, timeline: timeline.length, tasks: tasks.filter(task => task.status !== "done").length };
 
   return <div className="iw-workspace">
@@ -143,13 +179,20 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       </>}
       {tab === "evidence" && <>
         <div className="iw-section-head"><h2>Dovezi</h2>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
-        {notes.map(note => <article className="iw-editorial-note" key={note.id}><div className="iw-entry-meta"><span>Notă editorială</span><span>{privateDay(note.updatedAt)}</span></div><h3>{note.title}</h3>{note.body && <p className="iw-prose">{note.body}</p>}{note.alternative && <div className="iw-alternative"><h4>Explicație alternativă</h4><p>{note.alternative}</p></div>}{entryActions(note)}</article>)}
+        {groups.length > 1 && <div className="iw-filter">
+          <div className="iw-filter-pills" role="group" aria-label="Arată dovezile">{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <button key={group.name} type="button" aria-pressed={show === group.name} onClick={() => setShow(group.name)}>{group.label}<span className="iw-count">{group.n}</span></button>)}</div>
+          <label className="iw-filter-select">Arată<select value={show} onChange={event => setShow(event.target.value)}>{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <option key={group.name} value={group.name}>{group.label} ({group.n})</option>)}</select></label>
+        </div>}
+        {(show === "all" || show === "Note") && notes.map(note => <article className="iw-editorial-note" key={note.id}>
+          <NoteCard note={note} revisions={workspace.revisions.filter(revision => revision.entryId === note.id)} canEdit={canEdit} busy={busy} onEdit={() => setEditing(note)}
+            onRemove={() => mutate({ action: "archive", entryId: note.id, revision: note.revision }, "Nota a fost scoasă din dosar; istoricul rămâne.")} />
+        </article>)}
         {evidence.length === 0 && notes.length === 0 ? <div className="iw-empty"><h3>Păstrează prima dovadă</h3><p>Folosește „Salvează în anchetă” pe pagina unei instituții, a unei firme, a unui contract sau lângă o întrebare. Vei regăsi aici selecția, sursele și momentul salvării.</p><Link href="/intreaba">Deschide o întrebare →</Link></div>
-          : <div className="iw-evidence-list">{evidence.map(part => { const clip = clipById.get(part.id); return <article id={`clip-${part.id}`} className="iw-evidence" tabIndex={-1} key={part.id}>
-            {part.head}
-            {clipQuestions(part.id)}
-            {clip?.registry && clip.refId && <RegistryFacts investigationId={investigationId} entityId={clip.refId} name={clip.title} canEdit={canEdit} busy={busy} onAddNote={addNote} />}
-            {part.body}
+          : <div className="iw-evidence-list">{evidence.filter(item => show === "all" || item.group === show).map(item => { const clip = clipById.get(item.id); return <article id={`clip-${item.id}`} className="iw-evidence" tabIndex={-1} key={item.id}>
+            <EvidenceCard item={item} capture={captures[item.id] ?? null} canEdit={canEdit} busy={busy} investigationId={investigationId}
+              questions={clipChips(item.id)} linkForm={clipLinkForm(item.id)} onCapture={capture}
+              onAskQuestion={canEdit && questions.length === 0 ? () => { changeTab("questions"); setEditing("question"); } : null}
+              registry={clip?.registry && clip.refId ? <RegistryFacts open investigationId={investigationId} entityId={clip.refId} name={clip.title} canEdit={canEdit} busy={busy} onAddNote={addNote} /> : null} />
           </article>; })}</div>}
       </>}
       {tab === "timeline" && <>
@@ -178,6 +221,29 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       </>}
     </section>
   </div>;
+}
+
+/** An editorial note in Dovezi: its title and text, with "⋯" (Schimbă nota, Istoricul, Scoate din dosar) like the evidence cards. */
+function NoteCard({ note, revisions, canEdit, busy, onEdit, onRemove }: {
+  note: WorkspaceEntry; revisions: InvestigationWorkspace["revisions"]; canEdit: boolean; busy: boolean; onEdit: () => void; onRemove: () => Promise<boolean>;
+}) {
+  const [panel, setPanel] = useState<"history" | "remove" | null>(null);
+  const area = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (panel) { (area.current?.querySelector<HTMLElement>("button") ?? area.current)?.focus({ preventScroll: true }); area.current?.scrollIntoView({ block: "nearest" }); } }, [panel]);
+  return <>
+    <div className="iw-card-top"><div className="iw-entry-meta"><span className="iw-card-kind">Notă editorială</span><span className="iw-card-saved">{privateDay(note.updatedAt)}</span></div>
+      <CardMenu name={note.title} actions={[...(canEdit ? [{ id: "edit", label: "Schimbă nota", onSelect: onEdit }] : []), { id: "history", label: `Istoricul · v${note.revision}`, onSelect: () => setPanel(p => p === "history" ? null : "history") },
+        ...(canEdit ? [{ id: "remove", label: "Scoate din dosar", danger: true, onSelect: () => setPanel(p => p === "remove" ? null : "remove") }] : [])]} /></div>
+    <h3>{note.title}</h3>{note.body && <p className="iw-prose">{note.body}</p>}{note.alternative && <div className="iw-alternative"><h4>Explicație alternativă</h4><p>{note.alternative}</p></div>}
+    <div ref={area} className={panel ? "iw-card-panel" : undefined} tabIndex={-1} hidden={!panel}>
+      {panel === "history" && <ul className="iw-revisions">{revisions.map(revision => <li key={revision.revision}>
+        <span>Versiunea {revision.revision} · {privateMoment(revision.createdAt)}{revision.author ? ` · ${revision.author}` : ""}</span>
+        <strong>{String(revision.content.title ?? "")}</strong>{revision.content.body ? <p>{String(revision.content.body)}</p> : null}
+        {revision.content.alternative ? <p>Explicație alternativă: {String(revision.content.alternative)}</p> : null}
+      </li>)}</ul>}
+      {panel === "remove" && <><p>Nota iese din dosar; textul rămâne în istoricul dosarului.</p><div className="iw-form-actions"><button type="button" className="iw-danger" disabled={busy} onClick={() => void onRemove()}>Confirmă: scoate din dosar</button><button type="button" onClick={() => setPanel(null)}>Renunță</button></div></>}
+    </div>
+  </>;
 }
 
 type OptionGroup = { group: string | null; items: { value: string; label: string }[] };
