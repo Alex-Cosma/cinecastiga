@@ -36,6 +36,9 @@ export function loginContext(next: string | null | undefined): LoginContext {
   return null;
 }
 
+/** Opened from the header, with nowhere to return to (audit Z8-15): what an account is for and how one is had. */
+export const LOGIN_DEFAULT_TEXT = "Pentru dosare și urmăriri private. Conturile se dau la cerere.";
+
 export const LOGIN_CONTEXT_TEXT: Record<Exclude<LoginContext, null>, string> = {
   invitation: "Ai primit o invitație la un dosar privat. Intră cu adresa la care ai primit-o.",
   private: "Anchetele și urmăririle sunt private.",

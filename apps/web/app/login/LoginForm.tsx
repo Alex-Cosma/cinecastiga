@@ -16,7 +16,7 @@ const clock = new Intl.DateTimeFormat("ro-RO", { hour: "2-digit", minute: "2-dig
 function credsProblem(error: AuthError): Problem {
   if (error.status === 429) return { text: TOO_MANY };
   if (error.status === 403) return { text: "Cont dezactivat. Scrie la", contact: true };
-  return { text: "Email sau parolă greșite.", fields: ["email", "password"] };
+  return { text: "E-mail sau parolă greșite.", fields: ["email", "password"] };
 }
 
 function codeProblem(error: AuthError): Problem {
@@ -43,6 +43,13 @@ export default function LoginForm({ twoFactorRequired, context }: { twoFactorReq
   const [cooldown, setCooldown] = useState(0);
   const [busy, setBusy] = useState(false);
   const codeRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null), passwordRef = useRef<HTMLInputElement>(null);
+  // After an error the focus goes to the first field it concerns (audit Z8-16), so a keyboard reader corrects it at once.
+  useEffect(() => {
+    const first = problem?.fields?.[0];
+    if (!first) return;
+    ({ email: emailRef, password: passwordRef, code: codeRef })[first].current?.focus();
+  }, [problem]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -80,6 +87,7 @@ export default function LoginForm({ twoFactorRequired, context }: { twoFactorReq
 
   async function submitCreds(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setProblem(null);
     if (!email.trim()) return setProblem({ text: "Scrie adresa de e-mail.", fields: ["email"] });
     if (!/^[^\s@]+@[^\s@]+$/.test(email.trim())) return setProblem({ text: "Adresa de e-mail nu pare completă.", fields: ["email"] });
@@ -103,6 +111,7 @@ export default function LoginForm({ twoFactorRequired, context }: { twoFactorReq
 
   async function submitOtp(e: FormEvent) {
     e.preventDefault();
+    if (busy) return;
     setProblem(null);
     if (code.length !== 6) return setProblem({ text: "Codul are 6 cifre.", fields: ["code"] });
     setBusy(true);
@@ -159,17 +168,18 @@ export default function LoginForm({ twoFactorRequired, context }: { twoFactorReq
           {context && <p className="login-context">{context}</p>}
           <form className="login-form" onSubmit={submitCreds} noValidate>
             <label className="login-field">
-              Email
-              <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              E-mail
+              <input ref={emailRef} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 required autoFocus {...fieldProps("email")} />
             </label>
             <label className="login-field">
               Parolă
-              <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
+              <input ref={passwordRef} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)}
                 required {...fieldProps("password")} />
             </label>
             {alert}
-            <button type="submit" className="login-submit" disabled={busy}>
+            {/* Busy, the button keeps the focus (aria-disabled, not disabled): a disabled one drops it to the page (Z8-16). */}
+            <button type="submit" className="login-submit" aria-disabled={busy || undefined}>
               {busy ? "Se verifică…" : twoFactorRequired ? "Continuă" : "Autentifică-te"}
             </button>
           </form>
@@ -188,7 +198,7 @@ export default function LoginForm({ twoFactorRequired, context }: { twoFactorReq
               onChange={(e) => setCode(codeDigits(e.target.value))} required autoFocus {...fieldProps("code", sentId)} />
           </label>
           {alert}
-          <button type="submit" className="login-submit" disabled={busy}>
+          <button type="submit" className="login-submit" aria-disabled={busy || undefined}>
             {busy ? "Se verifică…" : "Autentifică-te"}
           </button>
           <p className="login-status" role="status">

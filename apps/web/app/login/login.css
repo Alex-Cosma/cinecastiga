@@ -31,3 +31,6 @@
   .login-field input{font-size:16px}
   .login-field .login-code{font-size:22px}
 }
+/* Busy, the button keeps the focus and looks as a disabled one did (audit Z8-16). */
+.login-submit[aria-disabled=true]{opacity:.6;cursor:wait}
+.login-submit[aria-disabled=true]:hover{background:var(--accent);border-color:var(--accent)}
