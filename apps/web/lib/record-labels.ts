@@ -1,3 +1,5 @@
+import { formatExactDecimal } from "./format";
+
 /*
  * The words of a record page (owner, 7 November 2026: one template for contracts, direct acquisitions and notices).
  * SEAP writes procedures and states without diacritics and calls thousands of contracts "Contract subsecvent";
@@ -122,4 +124,26 @@ export function durationLabel(from: string | null | undefined, to: string | null
   if (hours < 48) return hours === 1 ? "o oră" : `${hours} ${hours < 20 ? "ore" : "de ore"}`;
   const days = Math.round(hours / 24);
   return `${days} ${days < 20 ? "zile" : "de zile"}`;
+}
+
+/**
+ * What a contract's head can say about its value: the amount, a value published in another currency without a
+ * confirmed rate (never converted: contract-money), or nothing published (UX audit Z7-valuta, Z7-10).
+ */
+export function contractValueState(c: { contractValueExact: string | null; legacyForeignValue: boolean; currency: string | null }): "amount" | "foreign" | "missing" {
+  if (c.contractValueExact != null) return "amount";
+  return c.legacyForeignValue && c.currency && c.currency.toUpperCase() !== "RON" ? "foreign" : "missing";
+}
+
+/**
+ * The contracts found on a notice against the value it declares (UX audit Z7-09): said only when the two count the same
+ * things (no framework ceiling on the notice, nothing kept out of the totals) and differ by at least 1%; the reason is
+ * not in the source, so the sentence says so instead of guessing one.
+ */
+export function noticeGapNote(e: { total: string | null; award: string | null; frameworks: string | null; everyValue: string | null }): string | null {
+  if (e.total == null || e.award == null || !(Number(e.award) > 0) || e.frameworks != null || e.everyValue !== e.total) return null;
+  const gap = Math.round((Number(e.total) - Number(e.award)) * 100) / 100;
+  if (Math.abs(gap) < Math.max(1, 0.01 * Number(e.award))) return null;
+  const lei = (value: string) => `${formatExactDecimal(value)} lei`;
+  return `Contractele găsite însumează ${lei(e.total)}, cu ${lei(Math.abs(gap).toFixed(2).replace(/\.00$/, ""))} ${gap > 0 ? "mai mult" : "mai puțin"}. Diferența nu e explicată în sursă.`;
 }

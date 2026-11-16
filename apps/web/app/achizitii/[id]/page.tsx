@@ -86,7 +86,9 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
       heading={<RecordTitle>{title}</RecordTitle>}
       status={!purchase ? <>{state.label} · nu e o achiziție, nu intră în totaluri <Term tip id="oferta-refuzata" /></> : null}
       parties={<>{authority} {purchase ? "a cumpărat direct de la" : "· ofertă de la"} {supplier}</>}
-      value={{ amount: amount(d.value), label: purchase ? <Term tip id="valoare-inregistrata">Valoare de închidere</Term> : "Valoarea ofertei", notes }}
+      value={{ amount: d.value == null ? <span className="record-amount-words is-quiet">Valoare neprecizată</span> : amount(d.value),
+        // "nu e plată" once on the page, beside the figure (UX audit Z7-08, Z7-09).
+        label: purchase ? <>Valoare de închidere{d.value != null && <> <span className="record-not-paid">· nu e plată</span></>} <Term tip id="valoare-inregistrata" /></> : "Valoarea ofertei", notes }}
       meta={[<span className="record-kind" key="k">Achiziție directă</span>,
         !d.title && d.cpvName && <span key="t">titlu din categoria CPV <Term tip id="titlu-cpv" /></span>,
         // An accepted offer is the default state (a refused one has its own row); the code is in Sources (Z7-07, Z7-29).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daState, durationLabel, isGenericTitle, kindLabel, lotParts, lotTitle, meaningfulLot, procedureLabel, recordHeadline } from "./record-labels";
+import { contractValueState, daState, durationLabel, isGenericTitle, kindLabel, lotParts, lotTitle, meaningfulLot, noticeGapNote, procedureLabel, recordHeadline } from "./record-labels";
 
 describe("record labels", () => {
   it("writes procedures in Romanian", () => {
@@ -55,5 +55,20 @@ describe("record labels", () => {
     expect(durationLabel("2026-03-01 10:00", "2026-03-01 13:00")).toBe("3 ore");
     expect(durationLabel("2026-03-01 10:00", "2026-03-11 10:00")).toBe("10 zile");
     expect(durationLabel(null, "2026-03-01 10:00")).toBeNull();
+  });
+  it("names a value in another currency as published but not converted", () => {
+    expect(contractValueState({ contractValueExact: "10.5", legacyForeignValue: false, currency: "RON" })).toBe("amount");
+    expect(contractValueState({ contractValueExact: null, legacyForeignValue: true, currency: "EUR" })).toBe("foreign");
+    expect(contractValueState({ contractValueExact: null, legacyForeignValue: false, currency: "EUR" })).toBe("missing");
+    expect(contractValueState({ contractValueExact: null, legacyForeignValue: false, currency: null })).toBe("missing");
+  });
+  it("says the gap between the contracts found and the notice's value only when both count the same things", () => {
+    const e = { total: "568985433.5", award: "502664194.82", frameworks: null, everyValue: "568985433.5" };
+    expect(noticeGapNote(e)).toBe("Contractele găsite însumează 568.985.433,50 lei, cu 66.321.238,68 lei mai mult. Diferența nu e explicată în sursă.");
+    expect(noticeGapNote({ ...e, total: "400000000", everyValue: "400000000" })).toBe("Contractele găsite însumează 400.000.000 lei, cu 102.664.194,82 lei mai puțin. Diferența nu e explicată în sursă.");
+    expect(noticeGapNote({ ...e, frameworks: "1000" })).toBeNull();
+    expect(noticeGapNote({ ...e, everyValue: "600000000" })).toBeNull();
+    expect(noticeGapNote({ ...e, total: "503000000", everyValue: "503000000" })).toBeNull();
+    expect(noticeGapNote({ ...e, award: null })).toBeNull();
   });
 });

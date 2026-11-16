@@ -1043,6 +1043,12 @@ export interface ContractDetail {
   awardValueRon: number | null;
   lowestOfferRon: number | null;
   highestOfferRon: number | null;
+  /** The same three as stored, for exact display (UX audit Z7-09, Z7-11). */
+  awardValueExact: string | null;
+  lowestOfferExact: string | null;
+  highestOfferExact: string | null;
+  /** A historic record with a value in another currency than lei and no confirmed rate: published, never converted. */
+  legacyForeignValue: boolean;
   procedureType: string | null;
   acquisitionType: string | null;
   stateDate: string | null;
@@ -1084,6 +1090,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
            (select x.candidate_id from marts.contract_identity_exclusions x where x.contract_id=c.id) excluded_identity,
            to_char(c.contract_date at time zone 'Europe/Bucharest', 'YYYY-MM-DD') contract_date, ${contractOriginalValue(sql)}::text contract_value, ${contractOriginalCurrency(sql)} currency,
            ${contractRonValue(sql)}::text value_ron, ${contractAmountStatus(sql)} amount_status, c.currency_rate::text, coalesce(c.cpv_code, a.cpv_code) cpv_code,
+           (c.amount_status is null and c.contract_value is not null and upper(trim(c.currency)) <> 'RON') legacy_foreign_value,
            c.cpv_code is null and a.cpv_code is not null cpv_from_notice,
            (select name_ro from core.cpv_codes k where k.code = coalesce(c.cpv_code, a.cpv_code)) cpv_name,
            a.id award_id, a.ca_notice_id, a.notice_no,
@@ -1222,6 +1229,10 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
     awardValueRon: r["ron_contract_value"] != null ? Number(r["ron_contract_value"]) : null,
     lowestOfferRon: r["lowest_offer_value"] != null ? Number(r["lowest_offer_value"]) : null,
     highestOfferRon: r["highest_offer_value"] != null ? Number(r["highest_offer_value"]) : null,
+    awardValueExact: r["ron_contract_value"] != null ? String(r["ron_contract_value"]) : null,
+    lowestOfferExact: r["lowest_offer_value"] != null ? String(r["lowest_offer_value"]) : null,
+    highestOfferExact: r["highest_offer_value"] != null ? String(r["highest_offer_value"]) : null,
+    legacyForeignValue: r["legacy_foreign_value"] === true,
     procedureType: (r["procedure_type"] as string | null) ?? null,
     acquisitionType: (r["acquisition_type"] as string | null) ?? null,
     stateDate: (r["state_date"] as string | null) ?? null,
@@ -1303,6 +1314,10 @@ export interface AwardNoticeDetail {
   nShown: number;
   totalContractValue: number | null;
   frameworkValue: number | null;
+  /** The figures above as stored, for exact display (UX audit Z7-11). */
+  exact: { total: string | null; frameworks: string | null; award: string | null; lowestOffer: string | null; highestOffer: string | null;
+    /** Every record's lei value, counted or not: equal to `total` when nothing of the notice stays out of the totals. */
+    everyValue: string | null };
   lots: NoticeLot[];
   page: number;
   pageSize: number;
@@ -1351,9 +1366,10 @@ export async function getAwardNoticeDetail(
   const agg = (await sql`
     select count(*)::int n,
       sum(${contractRonValue(sql)}) filter(where (${contractReportable(sql)}) and not ${contractTemporarilyExcluded(sql)}) total,
-      sum(${contractRonValue(sql)}) filter(where ${contractKind(sql)}='framework') frameworks
+      sum(${contractRonValue(sql)}) filter(where ${contractKind(sql)}='framework') frameworks,
+      sum(${contractRonValue(sql)}) every_value
     from core.contracts c where ca_notice_id = ${cid}
-  `) as unknown as { n: number; total: string | null; frameworks: string | null }[];
+  `) as unknown as { n: number; total: string | null; frameworks: string | null; every_value: string | null }[];
   const nLots = Number(agg[0]?.n ?? 0);
   const offset = (Math.max(1, page) - 1) * pageSize;
   // The records under the table's column funnels (owner, 4 November 2026); the notice's totals above stay whole.
@@ -1422,6 +1438,14 @@ export async function getAwardNoticeDetail(
     nShown,
     totalContractValue: agg[0]?.total != null ? Number(agg[0].total) : null,
     frameworkValue: agg[0]?.frameworks != null ? Number(agg[0].frameworks) : null,
+    exact: {
+      total: agg[0]?.total != null ? String(agg[0].total) : null,
+      frameworks: agg[0]?.frameworks != null ? String(agg[0].frameworks) : null,
+      award: h["ron_contract_value"] != null ? String(h["ron_contract_value"]) : null,
+      lowestOffer: h["lowest_offer_value"] != null ? String(h["lowest_offer_value"]) : null,
+      highestOffer: h["highest_offer_value"] != null ? String(h["highest_offer_value"]) : null,
+      everyValue: agg[0]?.every_value != null ? String(agg[0].every_value) : null,
+    },
     lots: lots.map((l) => ({
       natId: String(l["nat_id"]),
       contractNo: (l["contract_no"] as string | null) ?? null,

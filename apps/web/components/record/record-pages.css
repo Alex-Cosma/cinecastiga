@@ -31,9 +31,30 @@
   .record-entry .record-parties { margin: 10px 0 0; }
   /* The identity line keeps three parts, so it mostly fits one row; it still wraps rather than hide a part. The notice's
      number gives way on a phone (it is in Sources and in „Verifică în SEAP”). */
-  .record-entry .record-meta > .record-meta-wide { display: none; }
+  .record-entry .record-meta > span:has(> .record-meta-wide) { display: none; }
   .record-title-more { min-height: 44px; }
   .record-context { flex-direction: column; align-items: flex-start; margin-bottom: 4px; }
   .record-context > * + *::before { content: none; }
   .record-context a { display: inline-flex; align-items: center; gap: .3em; min-height: 44px; }
+}
+
+/* Z7-09: a record's sums in order (RecordSums.tsx), each with what it covers; the head's figure in bold. */
+.record-sums { max-width: 720px; margin: 0 0 8px; }
+.record-sums h3 { margin: 0 0 4px; font-size: 15px; }
+.record-sums ol { list-style: none; margin: 0; padding: 0; }
+.record-sums li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.record-sum-label { grid-column: 1; font-size: 15px; line-height: 1.4; }
+.record-sum-scope { grid-column: 1; font-size: 13px; line-height: 1.45; color: var(--muted); }
+.record-sum-scope a { color: inherit; }
+.record-sum-value { grid-column: 2; grid-row: 1 / span 2; text-align: right; font-size: 16px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.record-sum-value > span { white-space: nowrap; }
+.record-sum-value small { display: block; font-size: 13px; color: var(--ink2); }
+.record-sum-value small.is-warn { color: var(--amber-ink); font-weight: 600; }
+.record-sums li.is-main :is(.record-sum-label, .record-sum-value) { font-weight: 650; }
+.record-sums-note { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink2); max-width: 72ch; }
+.record-sums + .record-facts { margin-top: 10px; }
+@media (max-width: 700px) {
+  /* A range of offers wraps at its dash instead of squeezing the label. */
+  .record-sums li { grid-template-columns: minmax(0, 1fr) fit-content(52%); column-gap: 12px; }
+  .record-sum-value { font-size: 15px; }
 }

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAwardNoticeDetail, type AwardNoticeDetail } from "@/lib/marts";
 import { CONTRACT_DATE_FLOOR } from "@seap/db";
-import { formatRon, formatRonFull, formatInt, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
+import { formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
 import { awardUrl } from "@/lib/elicitatie";
-import { isGenericTitle, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
+import { isGenericTitle, meaningfulLot, noticeGapNote, procedureLabel, recordHeadline } from "@/lib/record-labels";
 import { tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
@@ -63,8 +63,14 @@ export default async function NoticePage({ params, searchParams }: {
   };
   const headline = cleanName(headlineOf(n));
   const procedure = procedureLabel(n.procedureType);
-  const offers = n.lowestOfferRon != null && n.highestOfferRon != null && n.highestOfferRon > 0
-    ? (n.lowestOfferRon === n.highestOfferRon ? formatRon(n.lowestOfferRon) : `${formatRon(n.lowestOfferRon)} – ${formatRon(n.highestOfferRon)}`) : null;
+  // Exact sums on a record's page (UX audit Z7-11), as on the contract and the acquisition.
+  const lei = (value: string) => `${formatExactDecimal(value)} lei`;
+  const e = n.exact;
+  const offers = e.lowestOffer != null && e.highestOffer != null && Number(e.highestOffer) > 0
+    ? (Number(e.lowestOffer) === Number(e.highestOffer) ? lei(e.lowestOffer) : `${lei(e.lowestOffer)} – ${lei(e.highestOffer)}`) : null;
+  const awarded = e.award != null && Number(e.award) > 0 ? e.award : null;
+  // The contracts found against the value the notice declares, when both count the same things (Z7-09).
+  const gapNote = noticeGapNote(e);
   const sources: Source[] = [
     { href: awardUrl(n.caNoticeId), label: `Anunțul de atribuire${n.noticeNo ? ` ${n.noticeNo}` : ""} în SEAP`, external: true },
     ...(ted ? [{ href: tedNoticeUrl(ted)!, label: `Publicarea în TED ${ted}`, external: true }] : []),
@@ -77,10 +83,11 @@ export default async function NoticePage({ params, searchParams }: {
         heading={<RecordTitle>{headline}</RecordTitle>}
         parties={n.authority ? <><EntityName id={n.authority.entityId} role="authority">{cleanName(n.authority.name)}</EntityName>{countyLabel(n.authority.county) && <span className="record-quiet"> · {countyLabel(n.authority.county)}</span>} a atribuit {n.nLots === 1 ? "o înregistrare" : `${formatInt(n.nLots)} înregistrări`}</> : null}
         value={{
-          amount: n.totalContractValue != null ? formatRon(n.totalContractValue) : "Nicio valoare identificată",
-          label: <Term tip id="comenzi-identificate">Contracte și comenzi identificate</Term>,
+          amount: e.total != null ? lei(e.total) : <span className="record-amount-words is-quiet">Nicio valoare identificată</span>,
+          // "nu e plată" once on the page, beside the figure (Z7-08, Z7-09).
+          label: <>Contracte și comenzi identificate{e.total != null && <> <span className="record-not-paid">· nu e plată</span></>} <Term tip id="comenzi-identificate" /></>,
           notes: [
-            n.frameworkValue != null && <>Plafoane de acord-cadru publicate: {formatRonFull(n.frameworkValue)}, separate de totaluri.</>,
+            e.frameworks != null && <>Plafoane de acord-cadru publicate: {lei(e.frameworks)}, separate de totaluri.</>,
             n.versions.length > 1 && "Republicările aceluiași anunț nu se adună.",
           ],
         }}
@@ -98,7 +105,7 @@ export default async function NoticePage({ params, searchParams }: {
 
       <RecordSection id="atribuire" title="Atribuirea">
         <Facts facts={[
-          n.awardValueRon != null && n.awardValueRon > 0 && { label: <Term tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: formatRon(n.awardValueRon) },
+          awarded && { label: <Term tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: <>{lei(awarded)}{gapNote && <small>{gapNote}</small>}</>, wide: !!gapNote },
           offers && { label: "Oferte, de la cea mai mică la cea mai mare", value: offers },
           procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
           (n.cpvName || n.cpvCode) && { label: "Domeniu CPV", value: <>{n.cpvName ?? "Denumire neprecizată"}{n.cpvCode && <small>{n.cpvCode}</small>}</> },
@@ -156,7 +163,7 @@ export default async function NoticePage({ params, searchParams }: {
         )}
       </PendingRegion>
 
-      <Sources sources={sources}><p>Valori contractate, nu plăți.</p></Sources>
+      <Sources sources={sources} />
     </RecordPage>
   );
 }
