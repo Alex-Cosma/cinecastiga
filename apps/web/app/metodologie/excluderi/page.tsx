@@ -4,6 +4,7 @@ import {EXCLUSION_REASONS,getContractExclusions,getExclusionInstitutions,type Ex
 import {coverageDate} from '@/lib/coverage';
 import {formatExactDecimal,formatInt} from '@/lib/format';
 import {countWords} from '@/lib/ask/answer-text';
+import EntityName from '@/components/EntityName';
 import '@/components/record/pager.css';
 import './excluderi.css';
 export const dynamic='force-dynamic';
@@ -44,7 +45,7 @@ export default async function ExcluderiPage({searchParams}:{searchParams:Promise
    {words&&<p className="excl-shown">{data.shown.length?`${countWords(data.shown.length,'instituție','instituții')} cu „${words}” în nume`:`Nicio instituție cu „${words}” în nume.`} · <Link href="/metodologie/excluderi">Toate</Link></p>}
    {!data.total&&<p className="note">Nu există grupuri excluse temporar în această versiune a datelor. Aceasta nu confirmă completitudinea colectării.</p>}
    <ul className="excl-institutions">{data.shown.map(i=><li key={i.authorityId??'none'}>
-    <p className="excl-name">{i.authorityId?<Link prefetch={false} href={`/entitati/${i.authorityId}`}>{i.authority??'Instituție'}</Link>:'Instituție neidentificată'}</p>
+    <p className="excl-name">{i.authorityId?<EntityName id={i.authorityId} role="authority">{i.authority??'Instituție'}</EntityName>:'Instituție neidentificată'}</p>
     <p className="excl-meta">{countWords(i.groups,'grup','grupuri')} · {countWords(i.reasons,'motiv','motive')}</p>
     <Link prefetch={false} className="excl-open" href={`/metodologie/excluderi?institutie=${i.authorityId??'none'}`}>Vezi grupurile <span aria-hidden="true">→</span></Link>
    </li>)}</ul>
