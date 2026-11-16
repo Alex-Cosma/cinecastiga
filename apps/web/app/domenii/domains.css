@@ -141,3 +141,15 @@
   .dm-atlas-list,.domains-page .dm-atlas-list{max-height:none;overflow:visible}
   .dm-atlas-stage{position:sticky;top:calc(var(--site-header-h, 91px) + 12px)}
 }
+
+/* Phones: a bar of the shares in place of the treemap (UX audit Z6-32), where 6 of 9 zones had no name; the list is the
+   control. Wide screens keep the atlas and never draw the bar. */
+.dm-sharebar{display:none;margin:0}
+@media(max-width:760px){
+  .dm-sharebar{display:block}
+  .dm-sharebar-bar{display:flex;gap:2px;height:28px;border-radius:7px;overflow:hidden;background:var(--line)}
+  .dm-sharebar-bar i{display:block;min-width:3px;height:100%}
+  .dm-sharebar-bar i.rest{background:var(--line2)}
+  .dm-sharebar figcaption{margin-top:8px;font-size:13px;line-height:1.45;color:var(--muted)}
+  .dm-atlas-stage{display:none}
+}

@@ -252,7 +252,7 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
       <div className="dm-section-heading"><div className="dm-section-title"><h2>{route.query ? "Categorii fără suprapunere" : selected ? selected.isLeaf ? "Ultimul nivel al clasificării" : "Intră într-un subdomeniu" : "Domenii"}</h2><span className="dm-count">{nodes.length}</span></div>{!selected?.isLeaf && <label className="dm-sort-control"><span>Ordonează</span><select aria-label="Ordonează domeniile" disabled={blocked} value={route.sort} onChange={event => { const next = { ...route, sort: event.target.value as Route["sort"] }; setRoute(next); writeHistory(next, data.year, true); }}><option value="value">După valoare</option><option value="name">Alfabetic</option></select></label>}</div>
       <div className="dm-content-frame">
         <div className={`dm-frame-content${error ? " dm-frame-off" : ""}`} inert={blocked} aria-hidden={error ? true : undefined}>
-          {selected?.isLeaf && details ? <div className="dm-leaf-note"><button type="button" className="dm-button dm-secondary" onClick={() => sources(selected)}>Deschide sursele <Icon name="up" size={15} /></button></div> : <div className="dm-atlas-layout" ref={canvas}><div className="dm-atlas-stage"><DomainAtlas nodes={atlasNodes} onExplore={browse} onDetails={openDetails} shareLabel={route.query ? "din rezultatele căutării" : "din selecție"}
+          {selected?.isLeaf && details ? <div className="dm-leaf-note"><button type="button" className="dm-button dm-secondary" onClick={() => sources(selected)}>Deschide sursele <Icon name="up" size={15} /></button></div> : <div className="dm-atlas-layout" ref={canvas}>{nodes.length > 0 && <SharesBar nodes={nodes} total={shownTotal} color={(code) => index.colors.get(code) ?? "var(--line2)"} />}<div className="dm-atlas-stage"><DomainAtlas nodes={atlasNodes} onExplore={browse} onDetails={openDetails} shareLabel={route.query ? "din rezultatele căutării" : "din selecție"}
             scope={`${route.code}|${route.all ? "all" : ""}|${route.query.trim() ? "search" : ""}`} memory={atlasMemory} />{!nodes.length && <div className="dm-empty"><h3>Niciun domeniu găsit</h3><p>Încearcă un cuvânt mai simplu sau un cod CPV.</p>{route.query && <button type="button" className="dm-button dm-secondary" onClick={() => updateSearch("")}>Resetează căutarea</button>}</div>}</div><aside className="dm-atlas-side"><p className="dm-eyebrow dm-side-head">DOMENIILE DIN ACEASTĂ VEDERE<Term id="atlas-navigare" tip /></p><div className="dm-atlas-list">{nodes.map(node => <div className="dm-atlas-list-row" key={node.code}><button type="button" onClick={() => browse(node.code)} aria-label={`${node.isLeaf ? "Vezi detaliile" : "Explorează subdomeniile"}: ${label(node)}`}><i style={{ background: index.colors.get(node.code) }} /><span className="dm-list-name">{label(node)}</span><span className="dm-list-percent">{percentage(node.value, shownTotal)}%</span><span className="dm-list-go" aria-hidden="true">›</span></button></div>)}</div></aside></div>}
         </div>
         {error && <div className="dm-error-cover" role="alert"><Icon name="search" size={28} /><h3>Datele pentru {requestedYear} nu au putut fi încărcate.</h3><p>{error}</p><button type="button" className="dm-button" onClick={() => { const retry = failedLoad.current; if (retry) void loadYear(retry.year, retry.restore, retry.target, retry.scrollY); else void loadYear(requestedYear); }}>Încearcă din nou <Icon name="arrow" size={15} /></button><button type="button" className="dm-text-link" onClick={() => { request.current?.abort(); setError(""); setRequestedYear(data.year); writeHistory(route, data.year, true); }}>Revino la {data.year}</button></div>}
@@ -264,6 +264,24 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     <details className="dm-method" ref={method}><summary>Despre datele și clasificarea din acest atlas</summary><p>{data.scopeNote}</p><p>{data.hierarchyNote}</p><p>Denumirile scurte sunt etichete de navigare; denumirile CPV din catalog apar în informațiile fiecărei zone și în detalii. Valorile reprezintă înregistrări, nu plăți confirmate.</p>{data.year === currentYear && <p>Anul {data.year} este în curs. Datele acoperă înregistrările disponibile, nu un an calendaristic încheiat.</p>}<p>Agregare generată la {new Date(data.generatedAt).toLocaleString("ro-RO", { timeZone: "Europe/Bucharest" })}, ora României.</p><Link href="/metodologie">Citește metodologia <Icon name="up" size={13} /></Link></details>
     {evidence && <EvidenceDrawer key={JSON.stringify({ spec: evidence.spec, scope: evidence.scope })} spec={evidence.spec} scope={evidence.scope} title={evidence.title} onClose={() => setEvidence(null)} />}
   </div>;
+}
+
+/**
+ * On a phone, in place of the atlas (UX audit Z6-32): one bar of the shares, the five largest domains in their colours
+ * (the list's dots) and the rest in one grey piece; the list under it is the control. A picture, its shares in words.
+ */
+function SharesBar({ nodes, total, color }: { nodes: readonly DomainNode[]; total: number; color: (code: string) => string }) {
+  // „Celelalte domenii” (the grouped remainder) is part of the grey piece, as the rest.
+  const sorted = [...nodes].sort((a, b) => b.value - a.value), named = sorted.filter((n) => n.nodeKind !== "remainder");
+  const top = named.slice(0, 5), rest = sorted.filter((n) => !top.includes(n)).reduce((sum, n) => sum + n.value, 0);
+  const whole = total > 0 ? total : sorted.reduce((sum, n) => sum + n.value, 0) || 1;
+  const words = [...top.map((n) => `${label(n)} ${percentage(n.value, whole)}%`), ...(rest > 0 ? [`celelalte ${percentage(rest, whole)}%`] : [])].join(", ");
+  return <figure className="dm-sharebar">
+    <div className="dm-sharebar-bar" role="img" aria-label={`Ponderea domeniilor: ${words}`}>
+      {top.map((n) => <i key={n.code} style={{ flexGrow: n.value, background: color(n.code) }} />)}{rest > 0 && <i className="rest" style={{ flexGrow: rest }} />}
+    </div>
+    <figcaption>Ponderea fiecărui domeniu din valoarea înregistrată.</figcaption>
+  </figure>;
 }
 
 /* The atlas's ghost: nine tiles of a fixed decorative treemap in the real atlas box (not data), 4 px gutters. */
@@ -288,6 +306,7 @@ export function DomainsGhost() {
           <div className="dm-atlas-summary"><div><h2>Toate domeniile</h2></div></div></div>
         <div className="dm-section-heading"><div className="dm-section-title"><h2>Domenii</h2><span className="dm-count"><G.Line inline w="1.2ch" /></span></div><label className="dm-sort-control"><span>Ordonează</span><select aria-label="Ordonează domeniile" defaultValue="value"><option value="value">După valoare</option><option value="name">Alfabetic</option></select></label></div>
         <div className="dm-content-frame"><div className="dm-frame-content"><div className="dm-atlas-layout">
+          <figure className="dm-sharebar"><div className="dm-sharebar-bar" /><figcaption>Ponderea fiecărui domeniu din valoarea înregistrată.</figcaption></figure>
           <div className="dm-atlas-stage"><div className="domain-atlas"><svg className="dm-atlas-ghost" viewBox="0 0 960 475" preserveAspectRatio="none" aria-hidden="true">{ATLAS_GHOST.map(([x, y, w, h], i) => <rect key={i} className="g-svg" x={x + 2} y={y + 2} width={w - 4} height={h - 4} rx="5" />)}</svg></div></div>
           <aside className="dm-atlas-side"><p className="dm-eyebrow dm-side-head">DOMENIILE DIN ACEASTĂ VEDERE<Term id="atlas-navigare" tip /></p>
             <div className="dm-atlas-list">{Array.from({ length: 9 }, (_, i) => <div className="dm-atlas-list-row" key={i}><button type="button"><i style={{ background: "var(--line)" }} /><span className="dm-list-name"><G.Line w={rankWidth(i, 86, 6, 44)} /></span><span className="dm-list-percent"><G.Line inline w="3.4ch" /></span><span className="dm-list-go" aria-hidden="true">›</span></button></div>)}</div></aside>
