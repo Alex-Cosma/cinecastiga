@@ -421,12 +421,22 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
         </div>
         <div className="qb-actions qb-bottom-end">
           {dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}
-          <SaveQuestionButton spec={draft} unapplied={dirty && Boolean(applied)} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || blocked} />
-          <button type="button" className="qb-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>
+          {/* One „Păstrează”, the answer's (UX audit Z2-20): the builder saves only a draft that differs from the answer
+              („Salvează ciorna”), or the question before any answer. */}
+          {(!applied || dirty) && <SaveQuestionButton spec={draft} unapplied={dirty && Boolean(applied)} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || blocked} />}
+          {/* Applied and unchanged, there is nothing to apply: a link to the answer, not a filled button (UX audit Z2-19). */}
+          {applied && !dirty && !running
+            ? <a className="qb-go-answer" href="#raspuns" onClick={(event) => {
+              const answer = document.getElementById("raspuns");
+              if (!answer) return;
+              event.preventDefault();
+              answer.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+              document.getElementById("raspuns-titlu")?.focus({ preventScroll: true });
+            }}>Mergi la răspuns <span aria-hidden="true">↓</span></a>
+            : <button type="button" className="qb-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>}
         </div>
       </div>
       {errors.length > 0 && <div className="qb-validation" aria-live="polite">{errors.map((error) => <p key={error}>{error}</p>)}</div>}
-      {dirty && <p className="qb-pending-line" role="status"><span />Modificări neaplicate</p>}
     </section>
     <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
       onClose={closeWindow} onChoose={(choices, opts) => { if (win) choose(win, choices, opts); }} onReplace={replace} onRemoveExclusions={removeExclusions} peers={peerState}

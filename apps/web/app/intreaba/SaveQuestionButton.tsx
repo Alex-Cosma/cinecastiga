@@ -125,7 +125,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
 
   const next = `/intreaba?spec=${encodeURIComponent(encodeSpec(snapshot))}&mode=builder`;
   const words = compact ? saved ? "Întrebare păstrată" : active ? "Păstrează modificările" : "Păstrează întrebarea"
-    : saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează · neaplicată" : "Salvează întrebarea";
+    : saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează ciorna" : "Salvează întrebarea";
   return <>
     <span className="cq-save-wrap">
     <button ref={trigger} type="button" className="cq-save-question" disabled={disabled} aria-disabled={saved || undefined} aria-haspopup="dialog" {...(compact ? { "aria-label": words } : {})} onClick={() => { if (!saved) open(); }}>
@@ -134,7 +134,6 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
       </svg>
       <span aria-live="polite">{compact ? (saved ? "Păstrată" : "Păstrează") : words}</span>
     </button>
-    {unapplied && !saved && <Term tip title="Salvează · neaplicată" text="Salvezi întrebarea din propoziție, nu răspunsul afișat." />}
     </span>
     <dialog ref={dialog} className="cq-save-dialog" aria-labelledby={headingId} aria-describedby={descriptionId} onCancel={event => { event.preventDefault(); close(); }} onClick={event => {
       if (event.target !== event.currentTarget) return;
