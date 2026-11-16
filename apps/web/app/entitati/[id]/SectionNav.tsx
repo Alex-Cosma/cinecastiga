@@ -56,7 +56,13 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
     if (!name) return;
     const title = document.querySelector<HTMLElement>("#top h1, h1.page-title");
     if (!title) return;
-    const onScroll = () => setAway(title.getBoundingClientRect().bottom < coveredTop());
+    const onScroll = () => {
+      const gone = coveredTop() - title.getBoundingClientRect().bottom;
+      setAway(gone > 0);
+      // UX audit M-18: the name comes into the bar with the scroll itself, over the first 48 px after the title has gone
+      // under it, and leaves the same way: it follows the finger, never a timer.
+      ref.current?.style.setProperty("--name-in", String(Math.min(1, Math.max(0, gone / 48))));
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);

@@ -258,12 +258,14 @@ function mount(root: HTMLElement): () => void {
   mix();
   mixReady = true;
 
-  // The reading progress bar.
+  // The reading progress bar (UX audit M-18): where the browser links an animation to the scroll itself
+  // (animation-timeline, metodologie-v24.css) it follows the finger with no script; elsewhere the same fraction is set
+  // here on every scroll, as a scale, with no transition behind it.
   const pr = q("#prog-i");
   function prog() {
     if (!pr) return;
     const h = document.documentElement.scrollHeight - window.innerHeight;
-    pr.style.width = (h > 0 ? Math.min(100, (100 * window.scrollY) / h) : 0) + "%";
+    pr.style.setProperty("--mt-prog", String(h > 0 ? Math.min(1, window.scrollY / h) : 0));
   }
   on(window, "scroll", prog, { passive: true });
   prog();

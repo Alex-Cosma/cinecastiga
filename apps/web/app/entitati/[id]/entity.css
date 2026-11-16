@@ -498,3 +498,5 @@
 .ehead-roles a{position:relative;isolation:isolate}
 .ehead-roles a[aria-current]{background:none}
 .ehead-roles a[aria-current]::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--accent);transform-origin:0 0;pointer-events:none}
+/* UX audit M-18: the name in the sticky bar follows the scroll (SectionNav sets --name-in), no fade on a timer. */
+.subnav-in a.subnav-name{animation:none;opacity:var(--name-in,1)}
