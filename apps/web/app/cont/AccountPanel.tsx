@@ -37,11 +37,13 @@ function passwordProblem(error: AuthError): Problem {
 
 const time = (value: Date | string | null | undefined) => (value ? new Date(value).getTime() : 0);
 
-export default function AccountPanel({ name, email, admin, codeByEmail }: {
+export default function AccountPanel({ name, email, admin, codeByEmail, sessionId }: {
   name: string | null;
   email: string;
   admin: boolean;
   codeByEmail: boolean;
+  /** This device's session, known to the server that drew the page (a refused client check no longer loses it). */
+  sessionId: string;
 }) {
   const router = useRouter();
   const ids = useId();
@@ -52,14 +54,14 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentId] = useState<string>(sessionId);
   const [sessionsProblem, setSessionsProblem] = useState<string | null>(null);
   const [sessionsDone, setSessionsDone] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
 
   const loadSessions = useCallback(async () => {
-    const [list, mine] = await Promise.all([authClient.listSessions(), authClient.getSession()]);
+    const list = await authClient.listSessions();
     if (list.error) {
       setSessionsProblem(list.error.code === "SESSION_NOT_FRESH"
         ? "Lista sesiunilor cere o autentificare recentă: deconectează-te și intră din nou."
@@ -67,12 +69,11 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
       return;
     }
     setSessionsProblem(null);
-    const id = mine.data?.session.id ?? null;
-    setCurrentId(id);
+    const id = currentId;
     // This device first, then the most recently used.
     setSessions([...(list.data as SessionRow[])].sort((a, b) =>
       Number(b.id === id) - Number(a.id === id) || time(b.updatedAt ?? b.createdAt) - time(a.updatedAt ?? a.createdAt)));
-  }, []);
+  }, [currentId]);
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);

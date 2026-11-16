@@ -18,7 +18,7 @@ const CONDENSE_AFTER = 24;
  */
 export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean }) {
   const pathname = usePathname() ?? "/";
-  const { data, isPending } = authClient.useSession();
+  const { data, isPending, error } = authClient.useSession();
   const [hydrated, setHydrated] = useState(false);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => setHydrated(true), []);
@@ -72,7 +72,8 @@ export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean
     return () => { window.removeEventListener("scroll", onScroll); phone.removeEventListener("change", onWidth); set(false); };
   }, []);
   const known = hydrated && !isPending;
-  const signedIn = known ? Boolean(data) : sessionHint;
+  // A refused session check (a 429 under load) is not "signed out": with the cookie hint "Anchete" stays (audit bug).
+  const signedIn = known ? Boolean(data) || (Boolean(error) && sessionHint) : sessionHint;
   const items = navItems({ pathname, signedIn });
   // The page already open with a question in its address (Întreabă with ?spec=…): a Link to the same route keeps the
   // answer on screen, so the item loads the bare page instead (owner, 1 November 2026). A new tab keeps the browser's way.
