@@ -129,7 +129,8 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
           {page.rest && <span className="qb-rest">{page.rest}</span>}
         </span>}
         {evidence && <button type="button" className="qb-secondary" onClick={() => evidence.open()}>
-          {list === "all" ? "Înregistrările partenerilor" : "Înregistrările grupei"}<span className="qb-glyph" aria-hidden="true">→</span>
+          {/* Z3-08: how many, as the head says it. */}
+          {own.count === 1 ? "Vezi înregistrarea" : `Vezi cele ${countWords(own.count, "înregistrare", "înregistrări")}`}<span className="qb-glyph" aria-hidden="true">→</span>
         </button>}
       </div>
       <TotalLine conditions={conditions}>

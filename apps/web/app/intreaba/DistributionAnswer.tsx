@@ -191,7 +191,8 @@ function MemberName({ m }: { m: Pick<DistributionMember, "entityId" | "name" | "
 function SourcesFoot({ d, name }: { d: AnyDistribution; name: string }) {
   const evidence = useAnswerEvidence();
   return <div className="dist-foot">
-    {evidence && <button type="button" className="cq-record-link" onClick={() => evidence.open(undefined, { entityIds: [d.focal.entityId], role: d.role }, `${name} · sursele profilului`)}>Verifică profilul ales →</button>}
+    {/* Z3-08: the profile's records say how many they are (its direct acquisitions), as everywhere. */}
+    {evidence && <button type="button" className="cq-record-link" onClick={() => evidence.open(undefined, { entityIds: [d.focal.entityId], role: d.role }, `${name} · sursele profilului`)}>{d.focal.nDas === 1 ? "Vezi achiziția" : `Vezi cele ${countWords(d.focal.nDas, "achiziție", "achiziții")}`} →</button>}
     <p className="dist-caveat">Semnal, nu dovadă. Valori înregistrate, nu plăți.</p>
   </div>;
 }

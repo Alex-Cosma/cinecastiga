@@ -632,7 +632,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       actions={[
         ...(live && picked.flags.includes(live) ? [{ label: signalRecords(picked.id), glyph: "→" as const,
           onClick: () => records({ entityIds: [picked.id], flag: live }, `${picked.name} · ${lower(live)}`) }] : []),
-        { label: "Vezi înregistrările", glyph: "→" as const, onClick: () => records({ entityIds: [picked.id] }, `${picked.name} · înregistrările profilului`, true) },
+        { label: countWords(picked.nDas, "înregistrare", "înregistrări"), glyph: "→" as const, onClick: () => records({ entityIds: [picked.id] }, `${picked.name} · înregistrările profilului`, true) },
         { label: "Unde se situează?", glyph: "›" as const, href: askLink({ block: "distribution", measure: "value", dim: role, filters: { [`${role}Id`]: Number(picked.id), [`${role}Name`]: picked.name } } as unknown as QuestionSpec) },
       ]}
     />}
@@ -666,7 +666,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         })}
       </ol>
       <ListFoot shown={shown} total={rows.length} noun={["profil", "profiluri", "n"]} list={listRef} onMore={() => setMore((m) => Math.min(m + SCATTER_LIST_PAGE, rows.length))}
-        records={{ label: live ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : "Vezi înregistrările celor din listă", glyph: "→",
+        records={{ label: live ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : `Vezi cele ${countWords(visible.reduce((n, r) => n + r.nDas, 0), "înregistrare", "înregistrări")}`, glyph: "→",
           onClick: () => records({ entityIds: visible.map((r) => r.entityId), ...(live ? { flag: live } : {}) }, live ? `semnalul „${lower(live)}” · profilurile din listă` : "profilurile din listă", !live) }} />
       <p className="sc-more"><Link className="qb-link" href={signals.href}>{signals.label}<span className="qb-glyph" aria-hidden="true">↗</span></Link></p>
     </section> : data.historic ? historicLine

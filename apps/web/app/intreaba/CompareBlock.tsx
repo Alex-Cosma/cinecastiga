@@ -200,7 +200,7 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
           className="cq-record-link"
           onClick={() => evidence.open(undefined, { entityIds: [e.entityId], role: firms ? "supplier" : "authority" }, `${cleanName(e.name)} · sursele selecției`)}
         >
-          Vezi cele {countWords(e.count, "înregistrare", "înregistrări")} →
+          {countWords(e.count, "înregistrare", "înregistrări")} →
         </button>
       )}
     </article>
@@ -252,7 +252,7 @@ function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b
           {sides.map(({ e, key }) => e.count > 0
             ? <button key={key} type="button" className="cq-record-link"
               onClick={() => evidence.open(undefined, { entityIds: [e.entityId], role: firms ? "supplier" : "authority" }, `${cleanName(e.name)} · sursele selecției`)}>
-              Vezi cele {countWords(e.count, "înregistrare", "înregistrări")} →
+              {countWords(e.count, "înregistrare", "înregistrări")} →
             </button>
             : <span key={key} />)}
         </div>

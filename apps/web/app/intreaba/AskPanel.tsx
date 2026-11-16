@@ -192,6 +192,11 @@ function sourceCount(data: BlockData, applied?: AskSpec): number | null {
       return data.counties.reduce((n, r) => n + r.count, 0);
     case "breakdown":
       return data.slices.reduce((n, r) => n + r.count, 0) + data.other.count;
+    // Z3-08: a ranking's whole selection (its band's, when it lists one), and both sides of a comparison.
+    case "table":
+      return data.group?.count ?? data.totals?.count ?? null;
+    case "compare":
+      return data.entities.reduce((n, e) => n + e.count, 0);
     // entity_card-2 (F6c): the sources are place 1's records by value, the tied profiles' on the index (runRows).
     case "entity_card":
       return data.ranking ? data.ranking.rows.reduce((n, r) => n + r.count, 0)
@@ -1253,9 +1258,10 @@ export default function AskPanel({
                   onClick={() => openEvidence()}
                 >
                   <DiscoveryIcon name="database"/>
-                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
+                  {/* Z3-08: „Vezi cele N înregistrări”, N where the answer knows it; „achiziții” only for direct acquisitions. */}
+                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările':isProfile||applied.dataset==='da'
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
-                    :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
+                    :count===1?'Vezi înregistrarea':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>}
                 {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”. */}
                 <div className="cq-answer-more">
@@ -1633,9 +1639,9 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
   const profile = Boolean(spec && isHistoricalProfile(spec));
   const n = <G.Line inline w="9ch" />;
   // The records' button says its count where the answer has one (sourceCount): its width sets the title's.
-  const counted = block !== undefined && ["network", "sankey", "stat", "fact_check", "timeseries", "map", "breakdown", "entity_card"].includes(block);
+  const counted = block !== undefined && ["network", "sankey", "stat", "fact_check", "timeseries", "map", "breakdown", "entity_card", "table", "compare"].includes(block);
   const source = block === "scatter" && spec?.scatter?.flag ? "Vezi înregistrările semnalului"
-    : !counted ? "Vezi înregistrările sursă"
+    : !counted ? "Vezi înregistrările"
       : <span>Vezi cele {n} {profile || spec?.dataset === "da" ? "de achiziții" : "de înregistrări"}</span>;
   const totalWords = spec && block !== "table" && block !== "network" && block !== "entity_card" && !profile ? totalConditionWords(spec) : [];
   return <Ghost as="section" className="cq-answer" name="ask-answer" wait="client">
@@ -2024,7 +2030,7 @@ function ExactSeries({
             {!monthly && <td>{change}</td>}
             <td>
               <button type="button" onClick={() => onSources(sources.spec, sources.scope, `${barName(r)} · înregistrările ${monthly ? "lunii" : "anului"}`)}>
-                Vezi înregistrările →
+                {countWords(r.count, "înregistrare", "înregistrări")} →
               </button>
             </td>
           </tr>
@@ -2089,7 +2095,7 @@ function CountyValues({
                     onSources(spec, { county:r.county }, `${countyName(r.county)} · înregistrările județului`)
                   }
                 >
-                  Vezi înregistrările →
+                  {countWords(r.count, "înregistrare", "înregistrări")} →
                 </button>
               </td>
             </tr>

@@ -100,7 +100,8 @@ describe("the risk cloud's answer", () => {
     expect(markup).toContain('<span class="cri-pill risk-high">73 din 100</span><small>pronunțat</small>');
     expect(markup).toContain('<span class="cri-pill risk-mid">64 din 100</span><small>moderat</small>');
     expect(words).toContain("2.567 de înregistrări");
-    expect(words).toContain("Vezi înregistrările celor din listă");
+    // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
+    expect(words).toContain("Vezi cele 4.827 de înregistrări →");
     expect(words).toContain("Toată lista pe /semnale");
     expect(words).toContain("Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți.");
   });

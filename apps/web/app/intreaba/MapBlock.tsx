@@ -218,7 +218,8 @@ export default function MapBlock({
         ? { text: words, records: sources(recordsWords(part.count), { ...asked, filters: { ...asked.filters, firmSeat: r.seat } }) }
         : { text: words });
     }
-    const actions: KitLink[] = count > 0 ? [{ ...sources(count === 1 ? "Vezi înregistrarea" : `Vezi cele ${recordsWords(count)}`), glyph: "→" }] : [];
+    // Z3-08: a card's records as a row's: „N înregistrări →”.
+    const actions: KitLink[] = count > 0 ? [{ ...sources(recordsWords(count)), glyph: "→" }] : [];
     // „Scoate din calcul” (map final §3.6, kit §5.13): the county's largest buyer, out of every county; not beside a firm.
     const excludable = !firm && f?.buyer && evidence?.exclude && !blocked;
     if (excludable) actions.push({ label: "Scoate cumpărătorul din calcul", onClick: () => evidence!.exclude!({ id: f!.buyer!.id, name: f!.buyer!.name, field: "authority" }, 0) });

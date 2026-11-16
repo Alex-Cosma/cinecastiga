@@ -161,9 +161,7 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
         </TotalLine></div>
       )}
       <div className="ec-actions">
-        {evidence && <button type="button" className="qb-secondary" onClick={open(first)}>
-          {first.count === 1 ? "Vezi înregistrarea" : `Vezi cele ${recordsWords(first.count)}`}<span className="qb-glyph" aria-hidden="true">→</span>
-        </button>}
+        {/* Z3-08: place 1's records are the head's „Vezi cele N înregistrări”: not a second button here. */}
         <KitLink className="qb-secondary" link={{ label: "Tot clasamentul", glyph: "›", href: askLink(ranking) }} />
       </div>
     </div>
@@ -329,7 +327,7 @@ function LegacyTiesAnswer({ ties, spec }: { ties: LegacyTies; spec: QuestionSpec
                 place={profilePlace(row)}
                 facts={legacyTieFacts(row, spec)}
                 value={formatRon(row.value)}
-                {...(records ? { records: { label: "Înregistrări", onClick: records } } : {})}
+                {...(records ? { records: { label: recordsWords(row.count), onClick: records } } : {})}
               />;
             })}
           </AnswerList>

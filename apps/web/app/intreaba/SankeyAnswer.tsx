@@ -2,6 +2,7 @@
 
 import EntityName from "../../components/EntityName";
 import { formatRon } from "@/lib/format";
+import { countWords } from "@/lib/ask/answer-text";
 import type { SankeyData } from "@/lib/ask/sankey-shared";
 import type { AskSpec } from "@/lib/ask/spec";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -69,7 +70,7 @@ export default function SankeyAnswer({ data, spec, layout = "visual", deeperHref
             <span className="qb-num">{formatRon(node.value)}</span>
             <small>{node.share} · {node.facts}</small>
             {evidence && <button type="button" className="qb-rec qb-flow-rec" aria-label={`Înregistrările: ${node.full}`}
-              onClick={() => evidence.open(undefined, node.scope, node.scopeLabel)}>Înregistrări<span className="qb-glyph" aria-hidden="true">→</span></button>}
+              onClick={() => evidence.open(undefined, node.scope, node.scopeLabel)}>{countWords(node.count, "înregistrare", "înregistrări")}<span className="qb-glyph" aria-hidden="true">→</span></button>}
           </div>
           {actions.length > 0 && <RowMenu name={node.full} actions={actions} />}
         </div>;
