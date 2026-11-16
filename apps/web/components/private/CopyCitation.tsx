@@ -1,5 +1,6 @@
 "use client";
 
+import { DoneCheck, useFlag } from "../motion/Done";
 import { useRef, useState } from "react";
 import "./private.css";
 
@@ -42,16 +43,18 @@ export default function CopyCitation({ text, href, label = "Copiază citarea", c
   const [state, setState] = useState<"idle" | "busy" | "done" | "manual" | "error">("idle");
   const [manual, setManual] = useState("");
   const field = useRef<HTMLTextAreaElement>(null);
+  // „Copiat” on the button for 1.6 s with its check (M-08); the live region keeps saying it is in the clipboard.
+  const [copied, raiseCopied] = useFlag();
   async function copy() {
     setState("busy");
     const result = await copyCitation(() => loadCitation(href!), text);
-    if ("done" in result) setState("done");
+    if ("done" in result) { setState("done"); raiseCopied(); }
     else if ("error" in result) { setManual(result.error); setState("error"); }
     else { setManual(result.manual); setState("manual"); requestAnimationFrame(() => { field.current?.focus(); field.current?.select(); }); }
   }
   return <span className={className ? `cite ${className}` : "cite"}>
     <button type="button" className="cite-button" onClick={() => void copy()} disabled={state === "busy"}>
-      {state === "busy" ? "Se pregătește…" : state === "done" ? "Citarea a fost copiată" : label}
+      {state === "busy" ? "Se pregătește…" : state === "done" && copied ? <><DoneCheck />Copiat</> : label}
     </button>
     <span className="d-sr-only" role="status">{state === "done" ? "Citarea este în clipboard." : ""}</span>
     {state === "error" && <span className="cite-error" role="alert">{manual || "Citarea nu a putut fi pregătită. Încearcă din nou."}</span>}

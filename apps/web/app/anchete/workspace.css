@@ -261,3 +261,6 @@
    (components/motion/disclosures.css), without animating its height; reduced motion: at once. */
 .iw-head-panel{animation:disclose-in 180ms var(--ease) both}
 @media(prefers-reduced-motion:reduce){.iw-head-panel{animation:none}}
+/* A stance pill holds its explanation (UX audit M-01): a little room inside the outline that draws round it. */
+.iw-shell .iw-stance.term-hold-box{padding:1px 6px;border-radius:5px}
+.iw-shell .iw-stance.term-hold-box>.term-trigger{border:0;background:transparent;padding:0;min-height:0;font:inherit;color:inherit}

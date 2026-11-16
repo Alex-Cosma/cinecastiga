@@ -100,7 +100,7 @@ function periodOf(a: CompareEntity, b: CompareEntity): string | null {
 function RoleWord({ entity: e }: { entity: CompareEntity }) {
   if (e.role === "supplier") return <>furnizor</>;
   if (e.populationLevel === "county") return <>consiliu județean</>;
-  if (e.populationLevel === "local") return <Term id="doar-primaria" tip>primărie</Term>;
+  if (e.populationLevel === "local") return <Term hold="line" id="doar-primaria" tip>primărie</Term>;
   return <>autoritate</>;
 }
 

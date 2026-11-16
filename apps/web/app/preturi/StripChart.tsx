@@ -32,6 +32,8 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
   const product = mode === "product";
   const box = useRef<HTMLDivElement>(null);
   const [tip, setTip] = useState<StripDot | null>(null);
+  /** The dot a touch chose (its card up, a second touch opens it): its ring draws once (M-03). Hover draws nothing. */
+  const [touched, setTouched] = useState<string | null>(null);
   const [ruler, setRuler] = useState<number | null>(null);
   const keyOf = (d: StripDot) => `${d.id}-${d.year}`;
   /** The dot Tab lands on: the named one first, then the last one visited. */
@@ -128,8 +130,9 @@ export default function StripChart({ band, median, per, dots, named = 1, index =
         onClick={(e) => {
           e.stopPropagation();
           // A touch shows the lead first; the second touch on the same dot opens its lines.
-          if (press.current.type !== "mouse" && press.current.shown !== k) { e.preventDefault(); setRuler(null); setTip(d); }
-        }} />;
+          if (press.current.type !== "mouse" && press.current.shown !== k) { e.preventDefault(); setRuler(null); setTip(d); setTouched(k); }
+        }}>{touched === k && tip && keyOf(tip) === k && <svg className="pr-dot-ring" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <circle className="mo-ring" cx={10} cy={10} r={9} pathLength={1} transform="rotate(-90 10 10)" /></svg>}</a>;
     })}
     {tagged.map((d, t) => {
       // The tag stays inside the strip: anchored by its end past the middle, never wider than the room on that side.

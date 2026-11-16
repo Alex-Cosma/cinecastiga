@@ -1,5 +1,6 @@
 "use client";
-import { useState, type CSSProperties } from "react";
+import { useSortedColumn } from "../../../../components/motion/rows";
+import { useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { RADIOGRAFIE_COLUMNS } from "@/lib/radiografie-columns";
@@ -150,6 +151,9 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
     else { setSort(key); setDir(key === "name" ? "asc" : "desc"); }
     setPage(1);
   };
+  // A new order is seen in its column once its rows are here (M-16): the duel column holds both shares.
+  const table = useRef<HTMLTableElement>(null);
+  useSortedColumn(table, `${sort}:${dir}`, `tbody td.${sort === "name" ? "c-name" : sort === "value" ? "c-val" : sort === "recs" ? "c-recs" : "c-duel"}`, !loading && rows.length > 0);
   const ariaSort = (key: DepSort) => (sort === key ? (dir === "asc" ? "ascending" : "descending") : "none");
   const head = (key: DepSort, label: string) => (
     <button type="button" className="rv-th" data-on={sort === key || undefined} data-dir={sort === key ? dir : undefined} onClick={() => sortBy(key)}>{label}<Chevron /></button>
@@ -180,7 +184,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
         {RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}{funnel(c.key)}</span>)}
       </div>
       <div className="rv-rank-wrap" aria-busy={loading} data-chart="">
-        <table className={`rv-rank${stale ? " is-stale" : ""}`} aria-label="Furnizorii autorității">
+        <table ref={table} className={`rv-rank${stale ? " is-stale" : ""}`} aria-label="Furnizorii autorității">
           <thead>
             <tr>
               <th scope="col" className="c-name" aria-sort={ariaSort("name")}><span className="th-filter">{head("name", "Furnizor")}{funnel("furnizor")}</span></th>

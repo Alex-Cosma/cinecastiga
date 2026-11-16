@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { SelectPath } from "../components/motion/Selection";
+import { EASE_CAMERA } from "../components/motion/outline";
+import { chartPace } from "../components/motion/pace";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoveryCounty } from "@/lib/discovery";
 import { countyMap, foldCounty } from "@/lib/map";
@@ -59,6 +62,9 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
         const data = values.get(shape.key), bucket = data ? thresholds.filter((threshold) => data.amount > threshold).length : -1;
         return <Link key={shape.key} href={countyHref(shape.label)} prefetch={false} tabIndex={-1} onClick={(event) => { if (pointer.current === "touch" && selected !== shape.key) { event.preventDefault(); setSelected(shape.key); setHovered(""); } }} aria-label={`${shape.label}: ${data ? `${formatRon(data.amount)}. Vezi pe ce se duc banii.` : "Fără valoare localizată în arhivă. Vezi pe ce se duc banii."}`} onFocus={() => setHovered(shape.key)} onBlur={() => setHovered("")} onMouseEnter={() => setHovered(shape.key)}><path d={shape.d} className={`d-county d-county-${bucket}${focusKey === shape.key ? " selected" : ""}`}><title>{`${shape.label}${data ? ` · ${formatRon(data.amount)}` : " · date indisponibile"}`}</title></path></Link>;
       })}
+      {/* The chosen county (a first tap on a phone, the selector, the tour's end) draws its outline once, from its top both
+          ways (M-03); hover stays instant and draws nothing. */}
+      {selected && (() => { const shape = countyMap.shapes.find((s) => s.key === selected); return shape ? <SelectPath key={selected} id={selected} d={shape.d} className="d-county-chosen" duration={600 * chartPace()} easing={EASE_CAMERA} /> : null; })()}
     </svg>
     <div className="d-map-legend"><span>Valoare înregistrată</span><div aria-label="De la valoare mai mică la valoare mai mare">{[0, 1, 2, 3, 4].map((n) => <i key={n} className={`d-map-swatch-${n}`} />)}</div><span>mai mare</span></div>
     <div className="d-map-choice"><div className="d-map-select"><DiscoveryIcon name="pin" /><label className="d-sr-only" htmlFor="discovery-county">Alege județul</label><select id="discovery-county" value={selected} onChange={(event) => { setSelected(event.target.value); setHovered(""); }}><option value="">Alege județul tău</option>{[...countyMap.shapes].sort((a, b) => a.label.localeCompare(b.label, "ro")).map((shape) => <option key={shape.key} value={shape.key}>{shape.label}</option>)}</select></div><Link href={selected ? countyHref(countyMap.shapes.find((shape) => shape.key === selected)!.label) : mapHref} aria-label={selected ? "Vezi pe ce se duc banii în județul selectat" : "Deschide harta tuturor județelor"}><DiscoveryIcon name="arrow" /></Link></div>

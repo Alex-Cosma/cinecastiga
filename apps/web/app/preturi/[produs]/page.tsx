@@ -33,7 +33,7 @@ function SortHead({ label, sortKey, data, href, children }: { label: string; sor
   const next: "asc" | "desc" = on ? (data.dir === "desc" ? "asc" : "desc") : sortKey === "institutie" ? "asc" : "desc";
   return <span className="th-filter">
     <RegionLink className="th-sort" href={href(sortKey, next)} scroll={false} aria-label={`Ordonează după ${label.toLowerCase()}`}>
-      {label}{on ? (data.dir === "desc" ? " ▾" : " ▴") : ""}
+      {label}{on && <> <span className={`mo-sort-arrow${data.dir === "asc" ? " is-up" : ""}`} aria-hidden="true">▾</span></>}
     </RegionLink>
     {children}
   </span>;
@@ -139,7 +139,7 @@ export default async function ProdusPage({ params, searchParams }: {
               <th role="columnheader" scope="col" className="c-sup"><span className="th-filter">Furnizori<UrlFunnel table="preturi" column="furnizor" scope={scope} align="end" /></span></th>
               <th role="columnheader" scope="col" className="c-open"><span className="sr-only">Liniile</span></th>
             </tr></thead>
-            {rows.length ? <BuyerRows rows={rows} per={g.per} showYear={!data.year} hrefBase={here({ deschis: null })} /> : <tbody role="rowgroup"><tr role="row"><td role="cell" colSpan={data.year ? 7 : 8} className="pr-none">
+            {rows.length ? <BuyerRows rows={rows} per={g.per} showYear={!data.year} hrefBase={here({ deschis: null })} sort={`${data.sort}:${data.dir}`} /> : <tbody role="rowgroup"><tr role="row"><td role="cell" colSpan={data.year ? 7 : 8} className="pr-none">
               {data.filtered ? <>Niciun rând cu filtrele alese. <RegionLink href={here(Object.fromEntries([...["institutia", "anii", "judet", "pret", "multiplu", "cantitate", "peste", "furnizor", "pagina", "deschis"].map((k) => [k, null])]))} scroll={false}>Scoate filtrele</RegionLink></>
                 : "Nicio instituție de arătat."}</td></tr></tbody>}
           </table>

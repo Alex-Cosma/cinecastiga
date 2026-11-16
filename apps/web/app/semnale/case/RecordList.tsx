@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRiseOnMore } from "../../../components/motion/rows";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
 import AlsoTag from "./AlsoTag";
@@ -31,6 +32,9 @@ export default function RecordList({ rows, empty, total, source }: {
   const [paged, setPaged] = useState<Paged | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const sorted = useMemo(() => [...rows].sort((a, b) => compareRecordRows(a, b, sort)), [rows, sort]);
+  // Rows added by „Arată toate” or „Arată mai multe” rise in, the first marked (M-04); a sort replaces them at once.
+  const list = useRef<HTMLUListElement>(null);
+  const grow = useRiseOnMore(list, server ? (paged?.rows ?? rows).length : rows.length > RECORDS_SHOWN + 3 && !all ? RECORDS_SHOWN : rows.length);
   if (!rows.length) return <p className="sgc-none">{empty}</p>;
 
   async function load(next: RecordSort, page: number) {
@@ -70,7 +74,7 @@ export default function RecordList({ rows, empty, total, source }: {
       <span className="sgc-val">{head("value", "Sumă")}</span>
       <span className="sgc-src" />
     </div>
-    <ul className="sgc-recs">
+    <ul className="sgc-recs" ref={list}>
       {shown.map((r) => (
         <li key={r.key} className="sgc-rec">
           <span className="sgc-code">{r.code}</span>
@@ -89,8 +93,8 @@ export default function RecordList({ rows, empty, total, source }: {
       ))}
     </ul>
     {error && <p className="sgc-none" role="alert">{error}</p>}
-    {fold && <button type="button" className="sgc-more-btn" onClick={() => setAll(true)}>Arată toate cele {formatInt(rows.length)}</button>}
-    {more && <button type="button" className="sgc-more-btn" disabled={busy} onClick={() => void load(sort, paged ? paged.page + 1 : 0)}>
+    {fold && <button type="button" className="sgc-more-btn" onClick={() => { grow(RECORDS_SHOWN); setAll(true); }}>Arată toate cele {formatInt(rows.length)}</button>}
+    {more && <button type="button" className="sgc-more-btn" disabled={busy} onClick={() => { grow(shown.length); void load(sort, paged ? paged.page + 1 : 0); }}>
       {busy ? "Se încarcă…" : `Arată mai multe · ${formatInt(shown.length)} din ${formatInt(count)}`}
     </button>}
   </>;

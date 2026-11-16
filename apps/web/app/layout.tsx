@@ -11,6 +11,7 @@ import "@/components/motion/chart-motion.css";
 import "@/components/motion/page-transition.css";
 import "@/components/motion/windows.css";
 import "@/components/motion/disclosures.css";
+import "@/components/motion/outline.css";
 import "@/components/themed-select/themed-select.css";
 import ThemedSelect from "@/components/themed-select/ThemedSelect";
 import InlineScript from "@/components/InlineScript";

@@ -418,3 +418,5 @@ span.mx-p-yr{cursor:default}
   .mx-body>.mx-rank{position:relative;z-index:0}
   .mx-body>.mx-panel{z-index:2}
 }
+/* The institution the map search chose: its ring, drawn once (UX audit M-03, components/motion/Selection.tsx). */
+.mx-dot-ring{fill:none;stroke:var(--orange);pointer-events:none}

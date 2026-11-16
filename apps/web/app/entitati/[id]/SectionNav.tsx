@@ -1,5 +1,6 @@
 "use client";
 
+import { arrive } from "../../../components/motion/outline";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
@@ -132,6 +133,8 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
                 const target = document.getElementById(it.id!);
                 if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - coveredTop() - 12, behavior: scrollMotion() });
                 history.replaceState(null, "", `#${it.id}`);
+                // Where the tab landed: the section's title draws its outline once the scroll stops (M-09).
+                if (target && it.id !== "top") arrive(target.querySelector<HTMLElement>("h2") ?? target);
               }}
             >
               {it.id === "top" && name && away ? name : it.label}

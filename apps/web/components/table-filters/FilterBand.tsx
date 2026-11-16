@@ -3,6 +3,8 @@
 import { chipsOf, type Labels } from "@/lib/table-filters/describe";
 import type { FilterState, TableColumns } from "@/lib/table-filters/types";
 import "./table-filters.css";
+import { useRef } from "react";
+import { useChipMotion } from "../motion/chips";
 
 /**
  * What is left above a table once its filters live in its column funnels (owner, 4 November 2026): the applied
@@ -20,12 +22,15 @@ export default function FilterBand({
   onChange: (state: FilterState) => void;
 }) {
   const chips = chipsOf(columns, state, labels);
+  // The chips enter and leave; their neighbours make room (M-10).
+  const box = useRef<HTMLDivElement>(null);
+  useChipMotion(box);
   if (chips.length === 0) return null;
   return (
-    <div className="tf-band" role="group" aria-label="Filtre aplicate">
+    <div ref={box} className="tf-band" role="group" aria-label="Filtre aplicate">
       <span className="tf-band-lab">Filtrat:</span>
       {chips.map((chip) => (
-        <span key={chip.id} className="tf-chip">
+        <span key={chip.id} className="tf-chip" data-chip={chip.id}>
           {chip.lead && <>{chip.lead} </>}<b>{chip.value}</b>
           <button type="button" aria-label={`Scoate ${chip.lead ? `${chip.lead} ` : ""}${chip.value}`} onClick={() => onChange(chip.without)}>✕</button>
         </span>

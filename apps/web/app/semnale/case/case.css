@@ -329,12 +329,9 @@ a.dot{cursor:pointer}
 .sgc-person>.term-trigger>.term-mark{display:none}
 .sgc-shared .sgc-sum small{display:block;font:400 12px/1.4 var(--body);color:var(--muted)}
 
-/* A link to one case (#caz-…, UX audit Z6-26): the case stops whole under the sticky header and is marked for a moment,
-   a soft fill that fades; with reduced motion, nothing moves or fades. */
+/* A link to one case (#caz-…, UX audit Z6-26): the case stops whole under the sticky header and its outline draws once
+   (M-09, components/motion/outline.ts arrive; it replaced a soft fill that faded). */
 .sgc [id^="caz-"]{scroll-margin-top:calc(var(--site-header-h, 91px) + 16px)}
-.sgc-hit{animation:sgc-hit 1.2s var(--ease, ease-out) both}
-@keyframes sgc-hit{from{background-color:var(--accent-soft)}to{background-color:transparent}}
-@media (prefers-reduced-motion:reduce){.sgc-hit{animation:none}}
 
 /* „Mulți bani contractați în decembrie”: December and the rest of the year in one bar (UX audit Z6-27). */
 .sgc-yband{margin:24px 0;padding:20px 22px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}

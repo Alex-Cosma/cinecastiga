@@ -51,7 +51,7 @@ export function removeAndRefocus(event: MouseEvent<HTMLElement>, remove: () => v
 export default function Chip({ id, label, name = label, active = false, count, open = false, availability, onOpen, onRemove, className }: ChipProps) {
   const reasonId = useId();
   const disabled = availability?.state === "disabled" ? availability : null;
-  const chip = <span className={`qb-chip${active ? " is-active" : ""}${disabled ? " is-dim" : ""}`}>
+  const chip = <span className={`qb-chip${active ? " is-active" : ""}${disabled ? " is-dim" : ""}`} data-chip={id}>
     <button
       type="button"
       className={`qb-chip-main${className ? ` ${className}` : ""}`}

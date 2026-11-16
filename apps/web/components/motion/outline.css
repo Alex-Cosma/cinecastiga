@@ -1,0 +1,120 @@
+/* The outline family and feedback (UX audit, motion pass, 16 November 2026; components/motion/outline.ts).
+   One thin line that closes when something is ready. Tokens: globals.css (--fast, --med, --hold, --ease, --ease-exit,
+   --ease-hold). The gesture-specific timings of the audit's spec are named once here. Print and reduced motion show
+   the final state. */
+:root {
+  --mo-retreat: 200ms;          /* M-01: a trace left early runs back */
+  --mo-retreat-ease: cubic-bezier(.3,0,.2,1);
+  --mo-tap: 250ms;              /* M-01: a tap or the keyboard draw it quickly */
+  --mo-pick: 300ms;             /* M-03: a selection without a camera */
+  --mo-flash: 900ms;            /* M-05: a changed number is marked, then the mark fades */
+  --mo-new: 220ms;              /* M-04: new rows rise into place */
+  --mo-new-mark: 1400ms;        /* M-04: the first new row's background fades */
+  --mo-sorted: 700ms;           /* M-16: the sorted column's cells */
+  --mo-chip-out: 120ms;         /* M-10: a chip leaves */
+  --mo-slide: 200ms;            /* M-10: its neighbours take its place */
+}
+
+/* M-01 — the trace that holds while an explanation waits (Term `hold`, components/motion/HoldTrace.tsx). A box (a tag,
+   a pill): from the middle of the top and bottom edges out to the sides, over the border, in the target's own colour.
+   A word or a column header: its dotted line becomes solid from the middle out. Resting the mouse draws it in --hold
+   (slow at first) and the explanation opens as it closes; leaving early runs it back; a tap or the keyboard draw it in
+   --mo-tap. Without motion it is whole at once and the explanation still waits. */
+.tag-trace { position: absolute; top: -1px; left: -1px; overflow: visible; pointer-events: none; }
+.tag-trace path { fill: none; stroke: currentColor; stroke-width: 1; stroke-dasharray: 1 2; stroke-dashoffset: 1; transition: stroke-dashoffset var(--mo-retreat) var(--mo-retreat-ease); }
+.term-shown .tag-trace path { stroke-dashoffset: 0; transition-duration: var(--mo-tap); }
+.term-holding .tag-trace path { stroke-dashoffset: 0; transition: stroke-dashoffset var(--hold) var(--ease-hold); }
+/* A box that holds: its own (?) without a "?" and without the hover colour change (the trace is the hover). */
+.term-hold-box { position: relative; z-index: 1; cursor: help; }
+.term-hold-box > .term-trigger { position: static; color: inherit; text-decoration: none; cursor: help; }
+.term-hold-box > .term-trigger > .term-mark { display: none; }
+.term-hold-box[data-trace-on="trigger"] > .term-trigger { position: relative; }
+.term-hold-box > .term-trigger { display: inline-flex; align-items: center; gap: 4px; min-width: 0; min-height: 0; margin: 0; text-align: left; text-transform: inherit; letter-spacing: inherit; font: inherit; line-height: inherit; }
+/* A word or a header: its words carry the dotted line as a border, so the solid line can lie exactly over it (and not
+   run under the "?"). */
+.term-hold-line > .term-trigger { text-decoration: none; }
+.term-hold-line .term-words { position: relative; border-bottom: 1px dotted var(--faint); }
+.term-hold-line .term-words::before { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--accent); transform: scaleX(0); transform-origin: 50% 50%; pointer-events: none; transition: transform var(--mo-retreat) var(--mo-retreat-ease); }
+.term-hold-line.term-shown .term-words::before { transform: none; transition-duration: var(--mo-tap); }
+.term-hold-line.term-holding .term-words::before { transform: none; transition: transform var(--hold) var(--ease-hold); }
+
+/* M-09 — the arrival outline (outline.ts `arrive`): drawn by the Web Animations API over the element's border. */
+.mo-arrive { position: absolute; overflow: visible; pointer-events: none; z-index: 2; }
+.mo-arrive path { fill: none; stroke: currentColor; stroke-dasharray: 1 2; stroke-dashoffset: 1; }
+
+/* M-03 — a selection draws once: two copies of the chosen outline (pathLength 1) from its start, one each way; they
+   meet at the far side. --mo-sel-dur and --mo-sel-ease are set by the place (the map follows its camera). */
+.mo-sel-a, .mo-sel-b { stroke-dasharray: 1 1; animation: mo-sel-a var(--mo-sel-dur, var(--mo-pick)) var(--mo-sel-ease, var(--ease)) both; }
+.mo-sel-b { animation-name: mo-sel-b; }
+@keyframes mo-sel-a { from { stroke-dashoffset: 1; } to { stroke-dashoffset: .5; } }
+@keyframes mo-sel-b { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 1.5; } }
+/* A ring round a chosen dot (pathLength 1, started at its top). */
+.mo-ring { stroke-dasharray: 1 1; animation: mo-ring var(--mo-sel-dur, var(--mo-pick)) var(--mo-sel-ease, var(--ease)) both; }
+@keyframes mo-ring { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+/* Leaving (← România, Escape): the outline runs back in 200 ms (Selection.tsx useLeaving). */
+.mo-sel-a.mo-sel-leave { animation: mo-sel-a-out var(--mo-retreat) var(--ease-exit) both; }
+.mo-sel-b.mo-sel-leave { animation: mo-sel-b-out var(--mo-retreat) var(--ease-exit) both; }
+@keyframes mo-sel-a-out { from { stroke-dashoffset: .5; } to { stroke-dashoffset: 1; } }
+@keyframes mo-sel-b-out { from { stroke-dashoffset: 1.5; } to { stroke-dashoffset: 1; } }
+/* A chosen row's outline (SelectTrace), over its border, kept while it stays chosen. */
+.mo-select-trace { position: absolute; overflow: visible; pointer-events: none; z-index: 1; }
+.mo-select-trace path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 1 2; animation: mo-ring var(--mo-sel-dur, var(--mo-pick)) var(--mo-sel-ease, var(--ease)) var(--mo-sel-delay, 0ms) both; }
+
+/* M-08 — a save at work: a piece of outline turns round the button after a short wait, and closes when it is done. */
+.mo-perim { position: absolute; overflow: visible; pointer-events: none; }
+.mo-perim path { fill: none; stroke: var(--accent); stroke-width: 1.5; }
+.mo-done-check { display: inline-block; width: 1em; height: 1em; margin-right: .3em; vertical-align: -.12em; flex: none; }
+.mo-done-check path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 2; stroke-dashoffset: 1; animation: mo-ring var(--mo-new) var(--ease) forwards; }
+/* A check already in a button's icon, drawn once after a save (SaveQuestionButton). */
+.mo-draw-check { stroke-dasharray: 1 2; animation: mo-ring var(--mo-new) var(--ease) both; }
+
+/* M-15 — the work sign: one line under the question that runs while a request is open and fills when it ends. */
+.mo-hair { position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; overflow: hidden; pointer-events: none; border-radius: 2px; z-index: 1; }
+.mo-hair::before { content: ""; position: absolute; left: 0; top: 0; width: 30%; height: 100%; border-radius: 2px; background: var(--accent); opacity: 0; transform: translateX(-100%); }
+.mo-hair[data-state="run"]::before { opacity: 1; animation: mo-hair 1100ms var(--ease-hold) 150ms infinite backwards; }
+.mo-hair[data-state="end"]::before { width: 100%; transform-origin: 0 50%; animation: mo-hair-end 500ms var(--ease) forwards; }
+@keyframes mo-hair { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@keyframes mo-hair-end { from { opacity: 1; transform: scaleX(.3); } 40% { opacity: 1; transform: none; } to { opacity: 0; transform: none; } }
+
+/* M-05 — a number that changed for the same subject is marked, not counted: its background holds, then fades. */
+.mo-changed { border-radius: 4px; animation: mo-changed var(--mo-flash) ease-out; }
+@keyframes mo-changed { from, 30% { background-color: var(--accent-soft); } to { background-color: transparent; } }
+
+/* M-04 — rows added under a list rise into place, a little apart; the first new one is marked and the mark fades. */
+.mo-new { animation: mo-new var(--mo-new) var(--ease) backwards; animation-delay: min(calc(var(--mo-i, 0) * 30ms), 150ms); }
+.mo-new-first { animation: mo-new var(--mo-new) var(--ease) backwards, mo-new-mark var(--mo-new-mark) ease-out; }
+.mo-new-group { animation: mo-new var(--mo-new) var(--ease) backwards; }
+@keyframes mo-new { from { opacity: 0; transform: translateY(6px); } }
+@keyframes mo-new-mark { from, 35% { background-color: var(--accent-soft); } to { background-color: transparent; } }
+
+/* M-16 — sorting is seen in the column: its cells are marked once; rows never slide. The arrow turns. */
+.mo-sorted { animation: mo-sorted var(--mo-sorted) ease-out; }
+@keyframes mo-sorted { from { background-color: var(--accent-soft); } to { background-color: transparent; } }
+
+/* M-16 — the sort arrow turns (▾ pointing down for „descrescător”, turned for „crescător”). */
+.mo-sort-arrow { display: inline-block; transition: transform var(--fast) var(--ease); }
+.mo-sort-arrow.is-up { transform: rotate(180deg); }
+
+/* M-10 — a filter chip enters and leaves; its neighbours make room (outline.ts / chip-motion.ts). */
+.mo-chip-in { animation: mo-chip-in var(--fast) var(--ease) backwards; }
+@keyframes mo-chip-in { from { opacity: 0; transform: scale(.92); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tag-trace path, .term-hold-line .term-words::before { transition: none !important; }
+  .mo-sel-a, .mo-sel-b, .mo-ring, .mo-done-check path, .mo-select-trace path, .mo-draw-check { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  .mo-sel-leave { animation: none !important; opacity: 0; }
+  .mo-sort-arrow { transition: none; }
+  .mo-hair { display: none; }
+  .mo-new, .mo-new-group { animation: none; }
+  .mo-new-first { animation: mo-new-mark var(--mo-new-mark) ease-out; }
+  .mo-chip-in { animation: mo-chip-fade var(--fast) linear backwards; }
+  @keyframes mo-chip-fade { from { opacity: 0; } }
+}
+@media print {
+  .mo-arrive, .mo-perim, .mo-hair { display: none !important; }
+  .mo-sel-a, .mo-sel-b, .mo-ring, .mo-select-trace path, .mo-new, .mo-new-first, .mo-new-group, .mo-chip-in, .mo-changed, .mo-sorted { animation: none !important; stroke-dasharray: none; }
+  .mo-sel-leave { display: none; }
+}
+
+/* M-15: a ghost beside an error stops pulsing (it would say "loading" and "failed" at once; Legături, Z5). */
+.g-still .g-line, .g-still .g-block, .g-still .g-svg, .g-still.g-line { animation: none; }

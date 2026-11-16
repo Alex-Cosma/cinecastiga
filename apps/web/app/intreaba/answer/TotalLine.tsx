@@ -1,4 +1,5 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, type ReactNode } from "react";
+import { markChanged } from "../../../components/motion/changed";
 import HelpTip from "../builder/HelpTip";
 import type { KitTip } from "../builder/kit-types";
 
@@ -32,8 +33,15 @@ export default function TotalLine({ children, conditions = [], note = RECORDED_V
   const split = note ? /^(.*?)(\S+\s+\S+|\S+)$/s.exec(note.text) : null;
   const last = split?.[2] ?? (note ? note.text : "");
   const tip = note && note.tip ? note.tip : null;
+  // The total changed by a filter for the same answer is marked once (M-05); another subject draws a new line.
+  const live = useRef<HTMLSpanElement>(null), shown = useRef<string | null>(null);
+  useEffect(() => {
+    const figure = live.current?.querySelector(".qb-num") ?? null, text = figure?.textContent ?? null;
+    if (text !== null && shown.current !== null && text !== shown.current) markChanged(figure);
+    if (text !== null) shown.current = text;
+  });
   return <p className="qb-total qb-tipwrap">
-    <span aria-live="polite" aria-atomic="true">
+    <span aria-live="polite" aria-atomic="true" ref={live}>
       {children}
       {conditions.map(condition => <Fragment key={condition}>{sep}<span className="qb-total-cond">{condition}</span></Fragment>)}
       {note && <>{sep}{split?.[1]}<span className={tip ? "qb-sr" : "qb-nowrap"}>{last}</span></>}

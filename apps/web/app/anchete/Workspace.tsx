@@ -10,6 +10,8 @@ import { countWords } from "@/lib/ask/answer-text";
 import { formatExactDecimal } from "@/lib/format";
 import { privateDay, privateMoment } from "@/lib/private-format";
 import { clipKindGroup, mergeSourceEvents, type MergedSourceEvent } from "@/lib/evidence-clip";
+import { DoneCheck, useProgress } from "../../components/motion/Done";
+import { OUTLINE_MS } from "../../components/motion/outline";
 import Term from "@/components/Term";
 import RegistryFacts from "./RegistryFacts";
 import EvidenceCard, { type EvidenceItem } from "./EvidenceCard";
@@ -30,6 +32,8 @@ export type WorkspaceTab = "questions" | "evidence" | "timeline" | "tasks";
 const tabs: { id: WorkspaceTab; label: string }[] = [{ id: "questions", label: "Întrebări" }, { id: "evidence", label: "Dovezi" }, { id: "timeline", label: "Cronologie" }, { id: "tasks", label: "Verificări" }];
 const stanceLabels = { supports: "Susține", contradicts: "Contrazice", check: "De verificat" } as const;
 const stanceOptions = { supports: "Susține ipoteza", contradicts: "Contrazice ipoteza", check: "De verificat" } as const;
+/** What a stance says about the link, in its pill's explanation (M-01). */
+const stanceTips = { supports: "Dovada e legată de întrebare ca sprijin pentru ipoteza ei.", contradicts: "Dovada e legată de întrebare ca argument împotriva ipotezei ei.", check: "Legătura dintre dovadă și ipoteză nu e încă stabilită." } as const;
 const kindLabels = { question: "întrebare", note: "notă", task: "verificare", event: "eveniment" };
 /** The header's search ("Caută", "/"); a page without it goes to /cauta. */
 function openSearch() {
@@ -49,6 +53,8 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
   const [editing, setEditing] = useState<WorkspaceEntry | EntryKind | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  // An editor's save is said on its button („Salvat”, M-08); its message is then only read out, not shown.
+  const [noticeQuiet, setNoticeQuiet] = useState(false);
   const [error, setError] = useState("");
   const [focus, setFocus] = useState<string | null>(null);
   const [show, setShow] = useState("all");
@@ -58,6 +64,9 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
   useEffect(() => setCaptures(Object.fromEntries(evidence.map(item => [item.id, item.capture]))), [evidence]);
   // A kept version in preparation is polled until it ends (every card at once, one request each).
   const pendingKey = Object.entries(captures).filter(([, capture]) => capture && ["queued", "running"].includes(capture.status)).map(([clip, capture]) => `${clip}:${capture!.id}`).join(",");
+  // Each round of polling asks again while a capture is still at work (before, a capture that outlived the first check
+  // stayed „Se păstrează sursele…” until a reload; M-08 shows the pill closing when it ends).
+  const [pollRound, setPollRound] = useState(0);
   useEffect(() => {
     if (!pendingKey) return;
     const controller = new AbortController();
@@ -70,9 +79,10 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
           const result = await response.json(); if (result.capture) setCaptures(current => ({ ...current, [clip!]: result.capture }));
         } catch { if (!controller.signal.aborted) setError("Conexiunea s-a întrerupt. Reîncarcă dosarul pentru a verifica starea capturii."); }
       }
+      if (!controller.signal.aborted) setPollRound(round => round + 1);
     }, 2000);
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [pendingKey, investigationId]);
+  }, [pendingKey, investigationId, pollRound]);
   const [retrying, setRetrying] = useState(false);
   async function retryAll() {
     setRetrying(true);
@@ -93,8 +103,8 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
     const element = document.getElementById(focus);
     element?.scrollIntoView({ block: "center", behavior: "instant" }); element?.focus({ preventScroll: true }); setFocus(null);
   }, [tab, focus]);
-  async function mutate(body: unknown, done = "Modificarea a fost salvată.") {
-    setBusy(true); setError(""); setNotice("");
+  async function mutate(body: unknown, done = "Modificarea a fost salvată.", quiet = false) {
+    setBusy(true); setError(""); setNotice(""); setNoticeQuiet(quiet);
     try {
       const response = await fetch(`/api/anchete/${investigationId}/workspace`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "Modificarea nu a fost salvată.");
@@ -141,7 +151,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
     return <div className="iw-question-evidence">
       <h4>Dovezi legate {links.length > 0 && <span className="iw-count">{links.length}</span>}</h4>
       {links.length > 0 ? <ul>{links.map(link => { const clip = clipById.get(link.clipId); return <li key={link.clipId}>
-        <span className={`iw-stance iw-stance-${link.stance}`}>{stanceLabels[link.stance]}</span>
+        <Term tip hold="box" className={`iw-stance iw-stance-${link.stance}`} title={stanceOptions[link.stance]} text={stanceTips[link.stance]}>{stanceLabels[link.stance]}</Term>
         <button className="iw-evidence-link" type="button" onClick={() => openEvidence(link.clipId)}>{clip ? clipOption(clip) : "Dovadă salvată"}</button>
         {link.note && <p>{link.note}</p>}
         {canEdit && <button className="iw-unlink" type="button" disabled={busy} onClick={() => void mutate({ action: "unlink", questionId: question.id, clipId: link.clipId }, "Dovada a fost desprinsă de întrebare.")}>Desprinde</button>}
@@ -182,9 +192,14 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       onKeyDown={event => { const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1; if (next >= 0) { event.preventDefault(); changeTab(tabs[next]!.id); tabRefs.current[next]?.focus(); } }}>
       {item.label}<span className="iw-count">{counts[item.id]}</span>
     </button>)}</div>
-    <div className="iw-feedback" aria-live="polite">{notice && <p>{notice}</p>}{error && <p role="alert" className="iw-error">{error}</p>}</div>
+    <div className="iw-feedback" aria-live="polite">{notice && <p className={noticeQuiet ? "d-sr-only" : undefined}>{notice}</p>}{error && <p role="alert" className="iw-error">{error}</p>}</div>
     {editing && <EntryEditor key={typeof editing === "string" ? editing : `${editing.id}-${editing.revision}`} entry={typeof editing === "string" ? null : editing} kind={typeof editing === "string" ? editing : editing.kind} busy={busy}
-      onCancel={() => setEditing(null)} onSave={async body => { if (await mutate(body)) setEditing(null); }} />}
+      onCancel={() => setEditing(null)} onSave={async body => {
+        // Saved: its button says „Salvat” for 1.6 s, then the editor closes (M-08; the message is read out only).
+        const ok = await mutate(body, "Modificarea a fost salvată.", true);
+        if (ok) window.setTimeout(() => setEditing(null), OUTLINE_MS.label);
+        return ok;
+      }} />}
     <section id="iw-panel" role="tabpanel" aria-labelledby={`iw-tab-${tab}`} tabIndex={0}>
       {tab === "questions" && <>
         <div className="iw-section-head"><h2 className="d-sr-only">Întrebări</h2>{canEdit && <button className="iw-primary" type="button" onClick={() => setEditing("question")}>Adaugă întrebare</button>}</div>
@@ -303,15 +318,21 @@ function LinkForm({ label, options, busy, onSave }: { label: string; options: Op
   </fieldset></form>;
 }
 
-function EntryEditor({ entry, kind, busy, onCancel, onSave }: { entry: WorkspaceEntry | null; kind: EntryKind; busy: boolean; onCancel: () => void; onSave: (body: unknown) => Promise<void> }) {
+function EntryEditor({ entry, kind, busy, onCancel, onSave }: { entry: WorkspaceEntry | null; kind: EntryKind; busy: boolean; onCancel: () => void; onSave: (body: unknown) => Promise<boolean> }) {
   const form = useRef<HTMLFormElement>(null);
+  // A save at work turns a piece of outline round its button after 300 ms; done, the button says „Salvat” (M-08).
+  const work = useProgress<HTMLButtonElement>();
+  const [saved, setSaved] = useState(false);
   useEffect(() => { const field = form.current?.querySelector<HTMLInputElement>('input[name="title"]'); field?.focus({ preventScroll: true }); form.current?.scrollIntoView({ block: "nearest" }); }, []);
   const value = entry ?? blank(kind);
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const data = new FormData(event.currentTarget);
-    await onSave({ action: entry ? "update" : "create", ...(entry ? { entryId: entry.id, revision: entry.revision } : {}), entry: {
+    event.preventDefault(); if (saved) return; const data = new FormData(event.currentTarget);
+    work.start();
+    const ok = await onSave({ action: entry ? "update" : "create", ...(entry ? { entryId: entry.id, revision: entry.revision } : {}), entry: {
       kind, title: String(data.get("title") ?? ""), body: String(data.get("body") ?? ""), alternative: String(data.get("alternative") ?? ""), status: String(data.get("status") ?? "open"), occurredOn: String(data.get("occurredOn") ?? "") || null,
     } });
+    work.done(ok);
+    setSaved(ok);
   }
   return <form ref={form} className="iw-editor" onSubmit={submit} aria-busy={busy} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onCancel(); } }}>
     <h3>{kind === "note" ? (entry ? "Schimbă nota" : "Notă editorială") : `${entry ? "Editează" : "Adaugă"} ${kindLabels[kind]}`}</h3><fieldset disabled={busy}>
@@ -320,7 +341,7 @@ function EntryEditor({ entry, kind, busy, onCancel, onSave }: { entry: Workspace
       {(kind === "question" || kind === "note") && <label>Explicații alternative<textarea name="alternative" rows={2} maxLength={12000} defaultValue={value.alternative} placeholder="Ce explicație legitimă ar putea exista? Ce informație ne-ar schimba concluzia?" /></label>}
       <div className="iw-form-row">{(kind === "question" || kind === "task") && <label>Stare<select name="status" defaultValue={value.status}><option value="open">{kind === "task" ? "De verificat" : "Deschisă"}</option><option value="checking">În verificare</option><option value="done">{kind === "task" ? "Verificată" : "Documentată"}</option></select></label>}
         {(kind === "event" || kind === "task") && <label>{kind === "event" ? "Data evenimentului" : "Termen opțional"}<input type="date" name="occurredOn" required={kind === "event"} defaultValue={value.occurredOn ?? ""} /></label>}</div>
-      <div className="iw-form-actions"><button className="iw-primary" type="submit">{busy ? "Se salvează…" : kind === "note" ? "Salvează nota" : "Salvează"}</button><button type="button" onClick={onCancel}>Renunță</button></div>
+      <div className="iw-form-actions"><button className="iw-primary" type="submit" ref={work.ref}>{saved ? <><DoneCheck />Salvat</> : busy ? "Se salvează…" : kind === "note" ? "Salvează nota" : "Salvează"}</button><button type="button" onClick={onCancel}>Renunță</button></div>
     </fieldset>
   </form>;
 }

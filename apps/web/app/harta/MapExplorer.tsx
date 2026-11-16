@@ -20,6 +20,11 @@ import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide, usePanelShift } from "./motion";
 import { useLastOpen, useLeaving } from "../../components/motion/leave";
+import { SelectPath, useLeaving as useLeft } from "../../components/motion/Selection";
+import WorkLine from "../../components/motion/WorkLine";
+import { useChangedMark } from "../../components/motion/changed";
+import { EASE_CAMERA } from "../../components/motion/outline";
+import { chartPace } from "../../components/motion/pace";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
 /*
@@ -397,6 +402,17 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const busy = !level || (county !== null && !countyGeo[county]);
   const uatGeo = county ? countyGeo[county] : undefined;
   const chosen = uat && uatGeo && !dots ? uatGeo.uats.find((u) => String(u.siruta) === uat)?.d ?? null : null;
+  // A selection draws once (M-03): the county one enters while the camera moves, in the camera's time; a UAT or a tapped
+  // county without the camera in 600 ms × pace; leaving („← România”, Escape) runs it back in 200 ms.
+  const camAt = useRef(0);
+  useEffect(() => { camAt.current = performance.now(); }, [county]);
+  const drawTime = () => { const glide = 560 * chartPace(), since = performance.now() - camAt.current; return since < glide ? Math.max(300, glide - since) : 600 * chartPace(); };
+  const openSel = useLeft(useMemo(() => (county && shape ? { id: `c:${county}`, d: shape.d } : null), [county, shape]), 200);
+  const pickSel = useLeft(useMemo(() => (chosen ? { id: `u:${uat}`, d: chosen } : tappedShape ? { id: `t:${tapped}`, d: tappedShape } : null), [chosen, uat, tappedShape, tapped]), 200);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the time is taken when a new selection appears
+  const openDur = useMemo(drawTime, [openSel.shown?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pickDur = useMemo(drawTime, [pickSel.shown?.id]);
   const outline = !hover || !geo ? null : county ? uatGeo?.uats.find((u) => String(u.siruta) === hover)?.d ?? null : geo.counties.find((c) => c.key === hover)?.d ?? null;
   // The open county's hospitals (owner, 8 November 2026): the map's units per pixel at the county's view, so a circle keeps its size.
   const [stageWidth, setStageWidth] = useState(0);
@@ -449,6 +465,11 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // A hospital or a school chosen in the search: its row comes into view (unfolded on phones) once the list is in.
   const choice = found && found.county === county && found.kind === kind && (found.uat === null || found.uat === uat) ? found : null;
   const lit = choice?.key ?? null;
+  // The lede's figure changed by the institutions, the period or the domains, for the same place: marked once (M-05).
+  const averageRef = useRef<HTMLElement>(null);
+  useChangedMark(averageRef, average === null ? null : say(average), county ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the time is taken when the search chooses
+  const litDur = useMemo(drawTime, [lit]);
   useEffect(() => {
     if (!lit || !level) return;
     if (ranked.findIndex((a) => a.key === lit) >= 15) setUnfolded(county ?? "");
@@ -517,7 +538,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           sit behind „Filtre” on phones. The whole sentence (who, period, domains) stays in the map's label. */}
       <p className="mx-lede">{average !== null || !nat ? <span className={natStale ? "g-stale" : undefined}>{dots
           ? (county ? countyName : metric === "perBed" || metric === "perPupil" ? "Media țării" : "În total")
-          : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}, {periodWords}{narrowWords}.</span>
+          : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b ref={averageRef}>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}, {periodWords}{narrowWords}.</span>
         : <>{whoWords}, {periodWords}{narrowWords}.</>}
         {/* The comparable figure one click away (UX audit Z4-07): lei per bed or per pupil exist for 2025 alone; the period stays the reader's. */}
         {dots && metric === "value" && <> <button type="button" className="mx-lede-go" onClick={() => setYears([hospitals ? BEDS_YEAR : PUPILS_YEAR])}>{hospitals ? `Lei pe pat, ${BEDS_YEAR}` : `Lei pe elev, ${PUPILS_YEAR}`} ›</button></>}</p>
@@ -575,14 +596,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
               {uatGeo.uats.map((u) => <path key={u.siruta} d={u.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" className="mx-area" onPointerEnter={() => setHover(null)} />)}
             </g>}
             {/* Drawn last so their ink closes on every edge: the open county's border, the hovered area's outline. */}
-            {county && shape && <path className="mx-open-edge" d={shape.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
+            {openSel.shown && <SelectPath key={openSel.shown.id} id={openSel.shown.id} className="mx-open-edge" d={openSel.shown.d} duration={openDur} easing={EASE_CAMERA} leaving={openSel.leaving} />}
             {outline && <path className="mx-outline" d={outline} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
-            {chosen && <path className="mx-chosen" d={chosen} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
-            {tappedShape && <path className="mx-chosen" d={tappedShape} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
+            {pickSel.shown && <SelectPath key={pickSel.shown.id} id={pickSel.shown.id} className="mx-chosen" d={pickSel.shown.d} duration={pickDur} easing={EASE_CAMERA} leaving={pickSel.leaving} />}
             {county && uatGeo && dots && unit > 0 && <HospitalLayer key={`${kind}:${county}`} uats={uatGeo.uats} hospitals={loc?.areas ?? []} city={cityCentre} unit={unit}
               radius={schools ? byPupils : undefined}
               // A circle never fades into the backdrop: its ramp starts at 22% (the counties' at 7%).
-              ready={loc !== null} hover={hover ?? tapped ?? lit} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
+              ready={loc !== null} hover={hover ?? tapped ?? lit} chosen={lit} chosenMs={litDur} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
             </g>
           </svg>}
@@ -598,6 +618,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {county && dots && shown.entityId && <span className="mx-card-go">Apasă: pagina {schools ? (/^gr[aă]din/i.test(shown.name) ? "grădiniței" : "școlii") : "spitalului"} <Arrow /></span>}
           </div>}
           {busy && <p className="mx-busy g-float" role="status">Se încarcă…</p>}
+          {/* The work sign along the bottom of the map while a county or the country loads (M-15). */}
+          <WorkLine busy={busy} />
           {/* The smallest area and the most looked for, one touch away on phones (Z4-03). */}
           {!county && geo && <button type="button" className="mx-chip" onClick={() => openCounty("bucuresti")}>București ›</button>}
         </div>
@@ -617,7 +639,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {areas.some((a) => fig(a) === null) && <span className="mx-legend-g">{county && dots ? <b className="mx-legend-ring" /> : <b className="mx-legend-gap" />}<span>{hospitals ? "fără paturi în lista CNAS" : schools ? "fără elevi în lista ministerului" : county ? "primărie neidentificată" : "fără cifră"}</span></span>}</div>
           {/* The sources in one line (UX audit Z4-22): their names and the licence stay on the page, the whole attribution
               with its links in the (?). */}
-          <p className="mx-attr"><Term tip title="Surse" text={<>Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
+          <p className="mx-attr"><Term hold="line" tip title="Surse" text={<>Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
               : schools ? <>Școli, grădinițe și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>).</> : "Populația: INS, RPL 2021."} Licența: CC BY 4.0.</>}>
             Surse: ANCPI, INS{hospitals ? ", CNAS" : schools ? ", Ministerul Educației" : ""}</Term> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)</p>
         </div>

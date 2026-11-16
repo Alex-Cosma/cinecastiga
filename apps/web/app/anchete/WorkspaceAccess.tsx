@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { WorkspaceMembers } from "@/lib/investigation-workspace";
 import { Ghost } from "@/components/ghost/Ghost";
 import { privateDay } from "@/lib/private-format";
+import { arrive, prefersReducedMotion } from "../../components/motion/outline";
 
 /** "Colaboratori": who has access, the open invitations and the form to invite (the dossier head's panel, Z8-27). */
 export default function WorkspaceAccess({ id, initial = null }: { id: string; initial?: WorkspaceMembers | null }) {
@@ -13,7 +14,14 @@ export default function WorkspaceAccess({ id, initial = null }: { id: string; in
   // The link just created (Z8-28): it replaces the form in place, so it cannot be missed.
   const [invite, setInvite] = useState<{ url: string; email: string; expiresAt: string | null } | null>(null);
   const copyButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => { if (invite) copyButton.current?.focus(); }, [invite]);
+  // The link created: its box comes into view and draws its arrival outline (M-09), the focus on „Copiază linkul”.
+  useEffect(() => {
+    if (!invite) return;
+    const box = copyButton.current?.closest<HTMLElement>(".iw-invite-copy");
+    box?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    copyButton.current?.focus({ preventScroll: true });
+    arrive(box);
+  }, [invite]);
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState("");
   const base = `/api/anchete/${id}`;

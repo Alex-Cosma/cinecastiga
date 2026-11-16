@@ -13,5 +13,5 @@ const codeOf = (label: string) => Object.keys(FLAG_META).find((c) => flagLabel(c
 export default function AlsoTag({ label }: { label: string }) {
   const code = codeOf(label);
   const short = (code && SHORT[code]) ?? label;
-  return <Term tip className="sgc-also" title="Și în alt tipar" text={`Aceeași achiziție apare și la „${label}”; tiparul are tabul lui mai sus.`}>+ {short}</Term>;
+  return <Term tip hold="box" className="sgc-also" title="Și în alt tipar" text={`Aceeași achiziție apare și la „${label}”; tiparul are tabul lui mai sus.`}>+ {short}</Term>;
 }

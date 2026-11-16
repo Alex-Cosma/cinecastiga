@@ -1,6 +1,10 @@
 "use client";
 
+import { OUTLINE_MS, arrive } from "../../components/motion/outline";
+import { markChanged } from "../../components/motion/changed";
 import { useEffect } from "react";
+/** The check drawn on a button that copied (outline.css .mo-done-check, M-08). */
+const CHECK = '<svg class="mo-done-check" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 8.5l3.2 3L13 4.5" pathLength="1"/></svg>';
 
 // The behaviour of the /metodologie page (MethodologyStory's static markup): the three lanes, the four-step stage,
 // the chapter 4 ledger, the score mixer, the folded rules and the copy buttons. Every query is scoped to the page
@@ -127,6 +131,9 @@ function mount(root: HTMLElement): () => void {
     const s = n ? score(st) : 0;
     const tot = q("#lg-tot");
     if (!tot) return;
+    // The score changed by the next pattern is marked once (M-05): the number is never counted up.
+    if (tot.textContent !== String(s) && tot.dataset.shown) markChanged(tot);
+    tot.dataset.shown = "1";
     tot.textContent = String(s);
     const g = q("#lg-g");
     if (g) g.style.width = s + "%";
@@ -393,6 +400,11 @@ function mount(root: HTMLElement): () => void {
       const timers = (initial ? [60, 250, 700] : [0]).map((ms, i) => window.setTimeout(() => go(i === 0), ms));
       cleanups.push(() => timers.forEach((t) => window.clearTimeout(t)));
     }
+    // Where the link landed draws its arrival outline once the page has stopped (M-09): a chapter by its title, a
+    // folded section by its summary, anything else itself.
+    const mark = el.matches("section") ? q("h2", el) ?? el : el instanceof HTMLDetailsElement ? q("summary", el) ?? el : el;
+    const landing = window.setTimeout(() => arrive(mark), initial ? 760 : switched ? 30 : 0);
+    cleanups.push(() => window.clearTimeout(landing));
   }
   on(window, "hashchange", () => openTarget(location.hash.slice(1)));
   on(root, "click", (e) => {
@@ -531,7 +543,16 @@ function mount(root: HTMLElement): () => void {
         else
           try {
             navigator.clipboard.writeText(data.url).then(
-              () => flash("Link copiat"),
+              () => {
+                // Said on the button (M-08): its icon becomes a drawn check for 1.6 s; the live region reads it. A
+                // failure keeps its words in the floating note.
+                if (live) live.textContent = "Link copiat";
+                const icon = sh.dataset.icon ?? (sh.dataset.icon = sh.innerHTML);
+                sh.innerHTML = CHECK;
+                sh.setAttribute("aria-label", "Link copiat");
+                window.clearTimeout(tt);
+                tt = window.setTimeout(() => { sh.innerHTML = icon; sh.setAttribute("aria-label", "Trimite linkul"); }, OUTLINE_MS.label);
+              },
               () => flash("Copiază adresa din bara browserului"),
             );
           } catch {
@@ -592,8 +613,12 @@ function mount(root: HTMLElement): () => void {
       try {
         navigator.clipboard.writeText(src.textContent ?? "").then(
           () => {
-            b.textContent = "Copiat";
+            // „Copiat” on the button for 1.6 s, its check drawn, then its own words again (M-08).
+            const label = b.dataset.label ?? (b.dataset.label = b.textContent ?? "");
+            b.innerHTML = `${CHECK}Copiat`;
             say("Copiat");
+            window.clearTimeout(Number(b.dataset.back ?? 0));
+            b.dataset.back = String(window.setTimeout(() => { b.textContent = label; }, OUTLINE_MS.label));
           },
           () => {},
         );

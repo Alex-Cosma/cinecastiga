@@ -4,9 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { createContext, use, useCallback, useEffect, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 
-/** The floating status under the sticky header: it never moves the page and shows only once a wait passes 150 ms. */
+/**
+ * The floating status under the sticky header: it never moves the page and shows only once a wait passes 150 ms. Words
+ * only: the one sign of work is the line under the question or the field at work (UX audit M-15, WorkLine), not bars.
+ */
 export function FloatStatus({ children }: { children: ReactNode }) {
-  return <p className="ask-loader g-float" role="status"><span className="bars" aria-hidden="true"><i /><i /><i /></span>{children}</p>;
+  return <p className="ask-loader g-float" role="status">{children}</p>;
 }
 
 type Region = { pending: boolean; go: (href: string, o?: { replace?: boolean; scroll?: boolean }) => void };

@@ -1,5 +1,6 @@
 "use client";
 
+import { useFlag, useProgress } from "../../components/motion/Done";
 import { useEffect, useId, useRef, useState } from "react";
 import { cloneQuestion, questionKey, type QuestionSpec } from "@/lib/ask/question-ui";
 import { questionTitle } from "@/lib/ask/filters/title";
@@ -35,6 +36,9 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
   const [snapshot, setSnapshot] = useState(spec);
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
+  // A save that takes a while turns a piece of outline round „Salvează” (M-08); once saved, the button's check draws.
+  const work = useProgress<HTMLButtonElement>();
+  const [justSaved, raiseSaved] = useFlag();
   const [error, setError] = useState("");
   const [login, setLogin] = useState(false);
   const [copyMode, setCopyMode] = useState(false);
@@ -92,10 +96,13 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
     setError("");
     const current = new AbortController();
     controller.current = current;
+    let ok = false;
+    work.start();
     try {
       if (local) {
         const question = await saveLocalQuestion({ title:title.trim(), spec:validated, ...(revising ? { expectedVersion:revising.version } : {}) }, revising ? revising.id : undefined);
         if (current.signal.aborted) return;
+        ok = true; raiseSaved();
         onSaved(question); dialog.current?.close(); trigger.current?.focus(); return;
       }
       const response = await fetch(revising ? `/api/recipes/${revising.id}` : "/api/recipes", {
@@ -111,6 +118,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
       if (response.status === 409) throw new Error("Întrebarea a fost modificată între timp. Salvează o copie pentru a păstra modificările tale sau redeschide întrebarea din „Salvate”.");
       if (!response.ok) throw new Error(data.error || "Nu am putut salva întrebarea. Încearcă din nou.");
       if (current.signal.aborted) return;
+      ok = true; raiseSaved();
       onSaved({ id: data.id, title: data.title ?? title.trim(), version: data.version, spec: cloneQuestion(snapshot), ownerId:userId });
       dialog.current?.close();
       trigger.current?.focus();
@@ -119,6 +127,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
       if (!current.signal.aborted) setError(e instanceof Error ? e.message : "Nu am putut salva întrebarea. Încearcă din nou.");
     } finally {
       pending.current = false;
+      work.done(ok);
       if (!current.signal.aborted) setBusy(false);
     }
   }
@@ -130,7 +139,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
     <span className="cq-save-wrap">
     <button ref={trigger} type="button" className="cq-save-question" disabled={disabled} aria-disabled={saved || undefined} aria-haspopup="dialog" {...(compact ? { "aria-label": words } : {})} onClick={() => { if (!saved) open(); }}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {saved ? <path d="m5 12 4 4L19 6" /> : <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />}
+        {saved ? <path d="m5 12 4 4L19 6" pathLength={1} className={justSaved ? "mo-draw-check" : undefined} /> : <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />}
       </svg>
       <span aria-live="polite">{compact ? (saved ? "Păstrată" : "Păstrează") : words}</span>
     </button>
@@ -147,7 +156,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
         {login ? <div role="status" className="cq-save-login"><p>Autentifică-te pentru a salva. Întrebarea și filtrele te așteaptă la întoarcere.</p><a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te și revino</a></div> : <label>Numele întrebării<input autoFocus required maxLength={160} value={title} disabled={busy} aria-invalid={titleTaken || undefined} onChange={event => { setTitle(event.target.value); setTitleTaken(false); setError(""); }} onFocus={event => event.currentTarget.select()} /></label>}
         {copyMode && !login && <p className="cq-copy-note">Nume propus pentru copie. Îl poți modifica înainte de salvare.</p>}
         {error && <p role="alert" className="cq-save-error">{error}</p>}
-        <div className="cq-save-dialog-actions"><button type="button" disabled={busy} onClick={close}>{login ? "Închide" : "Renunță"}</button>{!login && snapshotActive && !copyMode && <button type="button" onClick={() => void prepareCopy()} disabled={busy || !title.trim()}>Salvează o copie</button>}{!login && <button type="submit" className="cq-save-confirm" disabled={busy || !title.trim()}>{preparing ? "Pregătesc copia…" : busy ? "Se salvează…" : copyMode ? "Salvează copia" : snapshotActive ? "Actualizează întrebarea" : "Salvează"}</button>}</div>
+        <div className="cq-save-dialog-actions"><button type="button" disabled={busy} onClick={close}>{login ? "Închide" : "Renunță"}</button>{!login && snapshotActive && !copyMode && <button type="button" onClick={() => void prepareCopy()} disabled={busy || !title.trim()}>Salvează o copie</button>}{!login && <button type="submit" ref={work.ref} className="cq-save-confirm" disabled={busy || !title.trim()}>{preparing ? "Pregătesc copia…" : busy ? "Se salvează…" : copyMode ? "Salvează copia" : snapshotActive ? "Actualizează întrebarea" : "Salvează"}</button>}</div>
       </form>
     </dialog>
   </>;

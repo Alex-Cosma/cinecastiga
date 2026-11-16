@@ -19,7 +19,7 @@ export default function FirmCard({ firm, years = [], title = "Firma" }: { firm: 
   return <RecordSection id="firma" title={title}>
     <Facts facts={[
       { label: "Numele", value: <><EntityName id={firm.id} role="supplier">{cleanName(firm.name)}</EntityName>{(firm.cui || firm.county) && <small>{[firm.cui && `CUI ${firm.cui}`, countyLabel(firm.county)].filter(Boolean).join(" · ")}</small>}</> },
-      { label: <Term tip id="conducere-onrc">Conducere (ONRC)</Term>, value: reps.length
+      { label: <Term hold="line" tip id="conducere-onrc">Conducere (ONRC)</Term>, value: reps.length
         ? <ul className="record-reps">{reps.slice(0, 6).map((r, i) => <li key={`${r.personName}:${i}`}>{cleanName(r.personName)}{r.calitate && <span className="record-quiet"> · {r.calitate.toLowerCase()}</span>}</li>)}
           {reps.length > 6 && <li className="record-quiet">și încă {formatInt(reps.length - 6)}, pe pagina firmei</li>}</ul>
         : <span className="record-quiet">{firm.cui ? "Nicio persoană în registrul disponibil" : "CUI neconfirmat: fără date ONRC"}</span> },

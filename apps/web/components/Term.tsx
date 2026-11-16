@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { GLOSSARY, type GlossaryId } from "../lib/glossary";
+import HoldTrace from "./motion/HoldTrace";
+import { EASE, cssMs, prefersReducedMotion } from "./motion/outline";
 
 /**
  * A word with a one-tap explanation from the shared glossary.
@@ -16,10 +18,13 @@ import { GLOSSARY, type GlossaryId } from "../lib/glossary";
 type TermProps = {
   children?: ReactNode; className?: string; tip?: boolean;
   /**
-   * A floating (?) that a mouse must rest on this long before it shows (ms); the root carries `term-holding` while it
-   * waits, for a progress drawing (a signal tag's trace, RowFacts). A tap, a click or the keyboard show it at once.
+   * A large target (a tag, a pill, a dotted word, a column header) whose floating explanation waits for a resting
+   * mouse (M-01, UX audit 16 November 2026): the root carries `term-holding` for the wait (--hold, 1 s) while an
+   * outline closes round it ("box": over its border, components/motion/HoldTrace.tsx) or its dotted line turns solid
+   * from the middle out ("line"); the explanation opens as it closes. A tap, a click or the keyboard show it at once.
+   * Never on the small "?", which opens at once.
    */
-  hold?: number;
+  hold?: "box" | "line";
 } & (
   | { id: GlossaryId; title?: never; text?: never }
   // A caveat built from page data (one signal, one contract) that has no
@@ -76,7 +81,7 @@ export function tipPlace(trigger: Box, box: { width: number; height: number }, s
 /** Whether the browser puts a popover in the top layer (over every window, transform and clipping box). */
 const topLayer = (element: HTMLElement) => typeof element.showPopover === "function";
 
-export default function Term({ children, className, tip = false, hold = 0, ...source }: TermProps) {
+export default function Term({ children, className, tip = false, hold, ...source }: TermProps) {
   const entry = source.id !== undefined ? GLOSSARY[source.id] : { title: source.title, text: source.text };
   const [open, setOpen] = useState(false);
   // A floating (?) shows while it is pressed open (a tap or a click), while a mouse is over it or its box, or while
@@ -107,6 +112,8 @@ export default function Term({ children, className, tip = false, hold = 0, ...so
     const size = def.getBoundingClientRect();
     const spot = tipPlace(at, { width: size.width, height: size.height }, { width, height }, header);
     Object.assign(def.style, { left: `${spot.left}px`, top: `${spot.top}px`, right: "auto", bottom: "auto", margin: "0", visibility: "", maxHeight: spot.maxHeight === null ? "" : `${spot.maxHeight}px` });
+    // Which side of its "?" it opened on: it comes from the "?" and leaves toward it (M-02, guide.css).
+    def.dataset.side = spot.top >= at.bottom ? "below" : "above";
   }, []);
 
   useLayoutEffect(() => {
@@ -115,11 +122,14 @@ export default function Term({ children, className, tip = false, hold = 0, ...so
     if (!shown) { if (topLayer(def) && def.matches(":popover-open")) def.hidePopover(); return; }
     if (topLayer(def) && !def.matches(":popover-open")) def.showPopover();
     place();
+    // It comes out of its "?" (M-02): 140 ms from 4 px on the "?"'s side; with reduced motion, opacity only.
+    const still = prefersReducedMotion(), from = def.dataset.side === "below" ? -4 : 4;
+    const entry = typeof def.animate === "function" ? def.animate(still ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateY(${from}px)` }, { opacity: 1, transform: "none" }], { duration: still ? 100 : 140, easing: EASE }) : null;
     let frame = 0;
     const follow = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(place); };
     window.addEventListener("scroll", follow, { capture: true, passive: true });
     window.addEventListener("resize", follow);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", follow, { capture: true }); window.removeEventListener("resize", follow); };
+    return () => { entry?.cancel(); cancelAnimationFrame(frame); window.removeEventListener("scroll", follow, { capture: true }); window.removeEventListener("resize", follow); };
   }, [place, shown, tip]);
 
   // A tap elsewhere closes a (?) opened by a tap (a phone does not move the focus to a pressed button, so no blur).
@@ -142,7 +152,7 @@ export default function Term({ children, className, tip = false, hold = 0, ...so
       if (!hold || hover) { setHover(true); return; }
       setHolding(true);
       window.clearTimeout(holdTimer.current);
-      holdTimer.current = window.setTimeout(() => setHover(true), hold);
+      holdTimer.current = window.setTimeout(() => setHover(true), cssMs("--hold", 1000));
     };
     const leave = (event: PointerEvent) => {
       if (event.pointerType === "touch") return;
@@ -151,8 +161,14 @@ export default function Term({ children, className, tip = false, hold = 0, ...so
       window.clearTimeout(leaving.current);
       leaving.current = window.setTimeout(() => setHover(false), TIP_LEAVE_MS);
     };
+    const quick = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+      window.clearTimeout(holdTimer.current);
+      setHolding(false);
+      setHover(true);
+    };
     const blur = (event: FocusEvent) => { if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return; setFocused(false); setOpen(false); };
-    return <span ref={root} className={`term term-tip${children ? " term-tip-text" : ""}${open ? " term-open" : ""}${shown ? " term-shown" : ""}${holding ? " term-holding" : ""}${className ? ` ${className}` : ""}`}
+    return <span ref={root} className={`term term-tip${children ? " term-tip-text" : ""}${hold ? ` term-hold-${hold}` : ""}${open ? " term-open" : ""}${shown ? " term-shown" : ""}${holding ? " term-holding" : ""}${className ? ` ${className}` : ""}`}
       onPointerEnter={enter} onPointerLeave={leave} onBlur={blur}
       onKeyDown={event => { if (event.key === "Escape" && shown) { closeOnly(event); setOpen(false); setDismissed(true); } }}>
       <button
@@ -162,11 +178,14 @@ export default function Term({ children, className, tip = false, hold = 0, ...so
         aria-expanded={open}
         aria-describedby={definitionId}
         aria-label={children ? undefined : `${entry.title}: ce înseamnă`}
-        onClick={() => { setDismissed(false); setOpen(value => !value); }}
+        // Inside a row's <summary> (a /preturi strip's chips), a tap opens the explanation, not the row.
+        onClick={event => { if (event.currentTarget.closest("summary")) event.preventDefault(); setDismissed(false); setOpen(value => !value); }}
         onFocus={event => { if (event.currentTarget.matches(":focus-visible")) { setDismissed(false); setFocused(true); } }}
       >
-        {children}
-        <span className="term-mark" aria-hidden="true">?</span>
+        {hold === "line" ? <span className="term-words">{children}</span> : children}
+        {/* The small "?" opens at once, even on a target that holds (M-01). */}
+        <span className="term-mark" aria-hidden="true" onPointerEnter={hold ? quick : undefined}>?</span>
+        {hold === "box" && <HoldTrace />}
       </button>
       {/* Out of the tab order: shown on focus, its scrollable box would otherwise take a second stop (critique 2 November 2026).
           A manual popover: in the top layer, over windows, sticky bars and boxes that clip, and placed from the "?" itself. */}

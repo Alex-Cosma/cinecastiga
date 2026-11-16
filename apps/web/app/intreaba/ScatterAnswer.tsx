@@ -28,6 +28,8 @@ import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn }
 import { FactTag } from "./answer/RowFacts";
 import { historicFact, historicLeftOutWords, historicPlaceWords } from "../../lib/ask/historic";
 import HelpTip from "./builder/HelpTip";
+import { SelectRing } from "../../components/motion/Selection";
+import { arrive } from "../../components/motion/outline";
 import Term from "../../components/Term";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
@@ -148,7 +150,8 @@ const chartName = (name: string): string => { const short = cleanName(name).repl
 function RowRisk({ row, levels }: { row: AnyListRow; levels: number }) {
   if ("cri" in row) return <span className="sc-cri qb-num">{formatDecimal(row.cri, levels === 4 ? 2 : 1)} · {row.nFlags} din {levels}</span>;
   return <span className="sc-cri sc-risk">
-    <span className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</span>
+    {/* The pill holds the score's explanation (M-01): a resting mouse draws the outline, a tap opens it. */}
+    <Term tip hold="box" id="scor-risc" className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</Term>
     <small>{scoreBandWord(row.score)}</small>
   </span>;
 }
@@ -312,6 +315,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       if (row) {
         window.scrollBy({ top: row.getBoundingClientRect().top - back.top, behavior: "instant" });
         row.querySelector<HTMLElement>("a.sc-name")?.focus({ preventScroll: true });
+        // The row Back brought back draws its outline once (M-09).
+        arrive(row);
       }
       forgetListReturn();
       setBack(null);
@@ -470,7 +475,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const sum = listSumParts(data);
   const historicLine = sum ? <p className="sc-hist qb-tipwrap">
     {formatInt(sum.inList)} în listă
-    {sum.historic > 0 && <>{" · "}<Term tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
+    {sum.historic > 0 && <>{" · "}<Term hold="line" tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
       (<a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a>)</>}
     {sum.cloudOnly > 0 && <>{" · "}{formatInt(sum.cloudOnly)} doar în nor ({sum.from}–{sum.to} achiziții)</>}
   </p> : null;
@@ -601,7 +606,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         {picked && (() => {
           const d = drawn.find((x) => x.point.id === picked.id);
-          return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring cm-pt" style={FAST} /> : null;
+          // Chosen or found alone, its ring draws once from the top in 300 ms (M-03); a new choice draws anew.
+          return d ? <SelectRing key={picked.id} cx={d.x} cy={d.y} r={9} className="sc-ring" /> : null;
         })()}
         {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find cm-pt" style={FAST} /> : null; })}
       </svg>

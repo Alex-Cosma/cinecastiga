@@ -12,7 +12,7 @@ import type { EntitySummary, Segment, SummaryBar } from "@/lib/entity-summary";
 /** A sentence's pieces: words, a (?) on a term, a link. */
 function renderSegment(s: Segment, i: number) {
   if (typeof s === "string") return <span key={i}>{s}</span>;
-  if (s.tip) return <Term key={i} tip id={s.tip}>{s.strong ? <strong>{s.text}</strong> : s.text}</Term>;
+  if (s.tip) return <Term key={i} tip hold="line" id={s.tip}>{s.strong ? <strong>{s.text}</strong> : s.text}</Term>;
   // A list further down this page ("#peste-plafon") is a plain anchor.
   if (s.href?.startsWith("#")) return <a key={i} href={s.href}>{s.text}</a>;
   if (s.href) return <Link key={i} href={s.href}>{s.text}</Link>;
@@ -30,7 +30,7 @@ function Bars({ bars }: { bars: SummaryBar[] }) {
             <div className="ent-brief-label">
               {/* The full name stays in the text (screen readers, wrapping on phones); the title shows it where it is clipped. */}
               {b.href ? <Link href={b.href} title={b.label}>{b.label}</Link> : <span title={b.label}>{b.label}</span>}
-              {b.consortium && <Term tip title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term>}
+              {b.consortium && <Term tip hold="box" title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term>}
             </div>
             <div className="ent-brief-track" aria-hidden="true"><i className="cm-x" style={{ width: `${Math.min(100, Math.max(0, b.share * 100))}%`, "--i": i } as CSSProperties} /></div>
             <div className="ent-brief-val"><span>{b.valueLabel}</span> · {b.shareLabel}</div>
@@ -49,7 +49,7 @@ export default function EntityBrief({ summary }: { summary: EntitySummary }) {
     return (
       <p className="ent-brief-line ent-tip">
         {summary.subjectsTitle}: {b.href ? <Link href={b.href}><b>{b.label}</b></Link> : <b>{b.label}</b>}
-        {b.consortium && <> <Term tip title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term></>}
+        {b.consortium && <> <Term tip hold="box" title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term></>}
         {" · "}{b.valueLabel} · {b.shareLabel} <Term tip id="cpv" />
       </p>
     );

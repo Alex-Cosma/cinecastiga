@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useRef, useState } from "react";
 import EntityName from "@/components/EntityName";
+import { useSortedColumn } from "../../../components/motion/rows";
 import { formatLei, formatQuantity, formatRatio, formatUnitPrice, perWord, ratioWords } from "@/lib/unit-prices-shared";
 
 export interface BuyerRowLine { daId: string; date: string | null; name: string | null; unit: string | null; quantity: string; unitPrice: string; perUnit: string; note: string }
@@ -18,8 +19,13 @@ export interface BuyerRowData {
  * „Liniile” is a link to the same page with the row opened (`deschis`), so it works without JavaScript; with it the
  * link is a toggle in place. The rows keep their table roles when the table is drawn as cards on narrow windows.
  */
-export default function BuyerRows({ rows, per, showYear = false, hrefBase }: {
+/** The cell of each sort's column (M-16). */
+const SORTED_CELL: Record<string, string> = { lei: "c-lei", multiplu: "c-x", pret: "c-price", cantitate: "c-qty", institutie: "c-who", an: "c-year" };
+
+export default function BuyerRows({ rows, per, showYear = false, hrefBase, sort }: {
   rows: BuyerRowData[]; per: string; showYear?: boolean;
+  /** The order shown („lei:desc”): a new one is seen in its column (M-16). */
+  sort?: string;
   /** This page's address without `deschis`: a row's link adds its own. */
   hrefBase: string;
 }) {
@@ -28,6 +34,7 @@ export default function BuyerRows({ rows, per, showYear = false, hrefBase }: {
   const pinnedKey = pinned.join(",");
   const [open, setOpen] = useState<Set<string>>(() => new Set(pinned));
   const body = useRef<HTMLTableSectionElement>(null);
+  useSortedColumn(body, sort ?? "", `td.${SORTED_CELL[(sort ?? "").split(":")[0] ?? ""] ?? "c-lei"}`, rows.length > 0);
   // A dot or a lead brought the reader here: its row is open and the keyboard continues from its „Liniile”.
   useEffect(() => {
     if (!pinnedKey) return;

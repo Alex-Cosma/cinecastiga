@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { tipPlace } from "@/components/Term";
 import { cancelNavPending } from "@/components/ghost/client";
+import { EASE, cssMs, prefersReducedMotion } from "../../../components/motion/outline";
 
 /**
  * An analysis button that says what is behind it (UX audit Z5-21, 16 November 2026): its explanation floats from it,
- * in the top layer like the site's (?) explanations, after a short rest of the mouse (no one-second trace: these are
- * navigation, and the verifier found the trace too slow there), at once on keyboard focus, and on a phone after a long
- * press, which then does not open the page. A tap opens the page.
+ * in the top layer like the site's (?) explanations, after the mouse rests on it for --hold, the one wait the site
+ * gives a hover explanation (M-01, motion pass 16 November 2026; it was 350 ms), at once on keyboard focus, and on a
+ * phone after a long press, which then does not open the page. A tap opens the page. No outline draws the wait here:
+ * a button one means to press never "loads" under the mouse (the audit's rule; the verifier found the trace too slow
+ * for navigation). It comes out of the button and goes back like every explanation (M-02).
  */
-const HOLD_MS = 350;
 const LONG_PRESS_MS = 500;
 const TIP_LEAVE_MS = 150;
 
@@ -34,6 +36,7 @@ export default function HintLink({ href, hint, className, ariaLabel, dataBand, c
     const size = def.getBoundingClientRect();
     const spot = tipPlace(at, { width: size.width, height: size.height }, { width, height }, header);
     Object.assign(def.style, { left: `${spot.left}px`, top: `${spot.top}px`, right: "auto", bottom: "auto", margin: "0" });
+    def.dataset.side = spot.top >= at.bottom ? "below" : "above";
   }, []);
   useLayoutEffect(() => {
     const def = tip.current;
@@ -41,9 +44,11 @@ export default function HintLink({ href, hint, className, ariaLabel, dataBand, c
     if (!shown) { if (def.matches(":popover-open")) def.hidePopover(); return; }
     if (!def.matches(":popover-open")) def.showPopover();
     place();
+    const still = prefersReducedMotion(), from = def.dataset.side === "below" ? -4 : 4;
+    const entry = def.animate(still ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: `translateY(${from}px)` }, { opacity: 1, transform: "none" }], { duration: still ? 100 : 140, easing: EASE });
     const follow = () => place();
     window.addEventListener("scroll", follow, { capture: true, passive: true });
-    return () => window.removeEventListener("scroll", follow, { capture: true });
+    return () => { entry.cancel(); window.removeEventListener("scroll", follow, { capture: true }); };
   }, [shown, place]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
   // A long press showed it: a tap elsewhere closes it.
@@ -58,7 +63,7 @@ export default function HintLink({ href, hint, className, ariaLabel, dataBand, c
   return (
     <span className={`term-tip hint-link${shown ? " term-shown" : ""}`}>
       <Link ref={link} href={href} className={className} data-band={dataBand} aria-label={ariaLabel} aria-describedby={id}
-        onPointerEnter={(e) => { if (e.pointerType !== "touch") later(HOLD_MS, () => setShown(true)); }}
+        onPointerEnter={(e) => { if (e.pointerType !== "touch") later(cssMs("--hold", 1000), () => setShown(true)); }}
         onPointerLeave={(e) => { if (e.pointerType !== "touch") later(TIP_LEAVE_MS, () => setShown(false)); }}
         onPointerDown={(e) => { pressed.current = false; if (e.pointerType === "touch") later(LONG_PRESS_MS, () => { pressed.current = true; setShown(true); }); }}
         onPointerUp={() => window.clearTimeout(timer.current)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { arrive } from "../../../components/motion/outline";
 
 /**
  * A link to one case (`#caz-<id>`, from the national list or an old sources link) opens that case's details and
@@ -24,14 +25,11 @@ export default function OpenFromHash() {
         return;
       }
       if (el instanceof HTMLDetailsElement) el.open = true;
-      // Whole under the sticky header (case.css scroll-margin-top), and marked for a moment (UX audit Z6-26).
+      // Whole under the sticky header (case.css scroll-margin-top), and its outline drawn once where it stopped (UX audit
+      // Z6-26; M-09: the arrival outline replaces the background flash).
       el.scrollIntoView({ block: "start" });
       el.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
-      const mark = el.closest<HTMLElement>(".sgc-case, .sgc-row, tr") ?? el;
-      mark.classList.remove("sgc-hit");
-      void mark.offsetWidth;
-      mark.classList.add("sgc-hit");
-      window.setTimeout(() => mark.classList.remove("sgc-hit"), 1400);
+      arrive(el.closest<HTMLElement>(".sgc-case, .sgc-row, tr") ?? el);
     };
     open();
     window.addEventListener("hashchange", open);

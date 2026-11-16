@@ -104,6 +104,10 @@ import type { MapFacts } from "@/lib/ask/map-facts";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
+import { SelectTrace } from "../../components/motion/Selection";
+import { useFlag } from "../../components/motion/Done";
+import WorkLine from "../../components/motion/WorkLine";
+import { useChangedMark } from "../../components/motion/changed";
 import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
@@ -259,6 +263,8 @@ export default function AskPanel({
   const [askUnfolded, setAskUnfolded] = useState(false);
   // Where the builder draws its editor beside an answer: the answer's head (UX audit Z2-03 B).
   const [liveHost, setLiveHost] = useState<HTMLElement | null>(null);
+  // „Copiat” on the „Trimite” button after a copy (M-08).
+  const [linkCopied, raiseLinkCopied] = useFlag();
   const [toast, setToast] = useState<string | null>(null);
   /** A toast's one action („Vezi salvatele” after saving, UX audit Z2-27); it then stays a little longer. */
   const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
@@ -945,7 +951,8 @@ export default function AskPanel({
   const copyLink = async (path: string) => {
     try {
       await copyShortLink(path);
-      showToast("Link copiat. Îl poți lipi în WhatsApp.");
+      // Said on the „Trimite” button (M-08): „Copiat” for 1.6 s, read out by its live region.
+      raiseLinkCopied();
     } catch {
       showToast(
         "Copierea nu este disponibilă. Poți copia adresa din bara browserului.",
@@ -1365,7 +1372,7 @@ export default function AskPanel({
                 </button>}
                 {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”. */}
                 <div className="cq-answer-more">
-                  <ShareMenu onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
+                  <ShareMenu copied={linkCopied} onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
                     onShare={() => void share(answerPath(applied, thread), title)} />
                   <SaveQuestionButton spec={applied} active={answerSaved} onSaved={(question) => {
                     setAnswerSaved(question);
@@ -1398,6 +1405,8 @@ export default function AskPanel({
                   label={title}
                 />
               </div>
+              {/* The work sign: a line under the question while its new answer is on the way (M-15). */}
+              <WorkLine busy={loading} failed={!!error} />
             </div>
             {/* A profile's kind is in the line under the sentence („achiziții directe”); „Ce include calculul” adds the
                 archive, the ceiling and „valori înregistrate, nu plăți”. No banner (owner, 2 November 2026). */}
@@ -2021,11 +2030,14 @@ function RankingBars({
                 {" →"}
               </button>
             </span>
+            {/* The row found draws its outline once (M-03). */}
+            {marked && !actions.length && <SelectTrace key={`found:${foundId}`} />}
           </div>
           );
           // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
           return actions.length ? <div className={`cq-rank-row${marked ? " is-found" : ""}`} key={r.entityId ?? r.name} data-qb-arow="" data-rank-id={r.entityId ?? undefined} ref={motion.join}>
             {row}
+            {marked && <SelectTrace key={`found:${foundId}`} />}
             <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
           </div> : row;
         })}
@@ -2046,6 +2058,7 @@ function RankingBars({
           const row = { entityId: pinned.id, name: pinned.name };
           const value = pinned.value ?? 0, count = pinned.n ?? 0, share = rankingShare(value, shareTotals);
           return <div className="cq-rank-row is-found cq-rank-pinned" data-rank-id={pinned.id}>
+            <SelectTrace key={`found:${pinned.id}`} />
             <div className="cq-rank-main">
               <span className="cq-rank-number">{String(pinned.rank).padStart(2, "0")}</span>
               <span className="cq-rank-name">
@@ -2236,10 +2249,13 @@ function StatBlock({
     byStream?: { src: "da" | "contracts"; value: number; count: number }[];
   };
 }) {
+  // The figure changed by a filter for the same question is marked once (M-05); another subject remounts it.
+  const figure = useRef<HTMLDivElement>(null), shown = measure === "count" ? formatInt(stat.count) : formatRon(stat.value);
+  useChangedMark(figure, shown);
   return (
     <div className="ask-bigstat">
-      <div className="v">
-        {measure === "count" ? formatInt(stat.count) : formatRon(stat.value)}
+      <div className="v" ref={figure}>
+        {shown}
       </div>
       {/* Z3-27: one line under the figure, the caveat beside it; the channels are „Din care”'s first rows (StatMix). */}
       <div className="d">
@@ -2408,9 +2424,9 @@ function TableBlock({
 }
 
 /**
- * Animated loading indicator: three pulsing bars + elapsed seconds once the
- * query stops being instant, so long queries (up to the 20s cap) read as
- * "working", not "stuck". It floats under the header (the kit's FloatStatus place) and shows only once the wait
+ * Loading status: its words + elapsed seconds once the query stops being
+ * instant, so long queries (up to the 20s cap) read as "working", not "stuck";
+ * the line under the question is the sign of work (M-15, WorkLine), no bars. It floats under the header (the kit's FloatStatus place) and shows only once the wait
  * passes 150 ms (`g-float`), so a quick answer never flashes it.
  */
 function Loader({ label }: { label: string }) {
@@ -2421,11 +2437,6 @@ function Loader({ label }: { label: string }) {
   }, []);
   return (
     <div className="ask-loader g-float" role="status" aria-live="polite">
-      <span className="bars" aria-hidden>
-        <i />
-        <i />
-        <i />
-      </span>
       <span>
         {label}…{secs >= 3 && ` ${secs}s`}
         {secs >= 8 && " — interogare mare, poate dura până la 20s"}

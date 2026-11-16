@@ -1,4 +1,5 @@
 "use client";
+import { useRiseOnMore } from "../../components/motion/rows";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MonitoringPage, MonitoringRun, MonitoringWatch } from "@/lib/monitoring-shared";
@@ -36,6 +37,9 @@ export default function MonitoringInbox({ view }: { view: "updates" | "watches" 
   const [more, setMore] = useState(false);
   const [health, setHealth] = useState<{ failed: number; pending: number; paused: number }>();
   const controller = useRef<AbortController | null>(null);
+  // The cards „Arată mai multe” adds rise in, the first marked (M-04).
+  const listRef = useRef<HTMLElement>(null);
+  const grow = useRiseOnMore(listRef, items.length, (l) => Array.from(l.children).filter((c) => !c.hasAttribute("data-ghost") && !c.classList.contains("mon-empty")));
   // Nothing to review but watches exist: they are shown here, so an empty list does not read as a failure.
   const [watches, setWatches] = useState<MonitoringWatch[] | null>(null);
   const [watchesMore, setWatchesMore] = useState(false);
@@ -70,7 +74,7 @@ export default function MonitoringInbox({ view }: { view: "updates" | "watches" 
     {!none && <nav className="mon-seg" aria-label="Ce arată lista"><Link href="/urmariri" aria-current={view === "updates" ? "page" : undefined}>Modificări{count(toReview, knownMore)}</Link><Link href="/urmariri?view=watches" aria-current={view === "watches" ? "page" : undefined}>Urmăririle mele{count(known?.length ?? null, knownMore)}</Link></nav>}
     {view === "updates" && !none && <div className="mon-list-controls"><label className="mon-check"><input type="checkbox" checked={unread} onChange={e => setUnread(e.target.checked)} />Doar cele de verificat</label><button type="button" disabled={busy} onClick={() => void load()}>Reîncarcă lista</button></div>}
     <ErrorNotice error={error} retry={() => void load()} />
-    <section className={`mon-list${loaded && busy && !more ? " g-stale" : ""}`} aria-busy={busy} aria-label={view === "updates" ? "Actualizările urmăririlor" : "Urmăririle mele"}>
+    <section ref={listRef} className={`mon-list${loaded && busy && !more ? " g-stale" : ""}`} aria-busy={busy} aria-label={view === "updates" ? "Actualizările urmăririlor" : "Urmăririle mele"}>
       {!loaded && busy && <Ghost name="mon-list" wait="client" label={view === "updates" ? "Se încarcă actualizările…" : "Se încarcă urmăririle…"}>{cardsGhost(view, 3)}</Ghost>}
       {none && loaded && !items.length ? <div className="mon-empty"><h2>Un subiect merită urmărit în timp.</h2><p>Pornește de la o instituție, o firmă sau o întrebare. Alege „Urmărește modificările” lângă rezultatul care te interesează.</p>
         <div className="mon-empty-actions"><Link className="mon-primary" href="/intreaba?mode=builder">Alege ce urmărești</Link><Link href="/">sau pornește de la o instituție →</Link></div></div>
@@ -80,7 +84,7 @@ export default function MonitoringInbox({ view }: { view: "updates" | "watches" 
       {loaded && busy && more && <Ghost name="mon-more" wait="client" label="Se încarcă mai multe…">{cardsGhost(view, 2)}</Ghost>}
     </section>
     {loaded && busy && !more && <FloatStatus>Se reîncarcă lista…</FloatStatus>}
-    {cursor && <button className="mon-more" type="button" disabled={busy} onClick={() => void load(cursor)}>{busy ? "Se încarcă…" : "Arată mai multe"}</button>}
+    {cursor && <button className="mon-more" type="button" disabled={busy} onClick={() => { grow(items.length); void load(cursor); }}>{busy ? "Se încarcă…" : "Arată mai multe"}</button>}
     <p className="mon-footnote">Actualizările sunt indicii de verificat. Valorile înregistrate nu reprezintă automat plăți, iar un semnal statistic nu dovedește o neregulă.</p>
   </>;
 }

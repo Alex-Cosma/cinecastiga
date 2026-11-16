@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useChipMotion } from "../../../components/motion/chips";
 import HelpTip from "./HelpTip";
 import type { KitTip } from "./kit-types";
 
@@ -26,7 +27,10 @@ export function selectionTip(label: string): KitTip {
 
 export default function ConditionRow({ label, kind, tip, children }: { label: string; kind: "group" | "selection"; tip?: KitTip; children: ReactNode }) {
   const help = tip ?? (kind === "selection" ? selectionTip(label) : undefined);
-  return <div className={`qb-row${kind === "selection" ? " qb-row--select" : ""} qb-tipwrap`} role="group" aria-label={label} data-qb-row="">
+  // Its chips enter and leave; their neighbours make room (M-10).
+  const box = useRef<HTMLDivElement>(null);
+  useChipMotion(box);
+  return <div ref={box} className={`qb-row${kind === "selection" ? " qb-row--select" : ""} qb-tipwrap`} role="group" aria-label={label} data-qb-row="">
     <span className="qb-row-label" aria-hidden={help ? undefined : true}>{label}{help && <HelpTip tip={help} />}</span>
     {children}
   </div>;

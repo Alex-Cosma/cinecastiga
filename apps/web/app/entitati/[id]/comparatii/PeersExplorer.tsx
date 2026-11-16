@@ -1,5 +1,7 @@
 "use client";
 
+import { DoneCheck, useFlag } from "../../../../components/motion/Done";
+import { useChangedMark } from "../../../../components/motion/changed";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
@@ -478,8 +480,12 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
     } catch { setCopied(`Nu am putut deschide sursele: ${cleanName(name)}. Reîncearcă.`); }
     finally { setOpening(null); }
   }
+  // The place and the comparison changed by a control, for the same entity, are marked once (M-05).
+  const rankRef = useRef<HTMLElement>(null), versusRef = useRef<HTMLElement>(null);
+  // A copy is said on its button (M-08: „Copiat” for 1.6 s, read out by a live region); a failure stays in words below.
+  const [linkCopied, raiseLinkCopied] = useFlag();
   async function copyLink() {
-    try { await navigator.clipboard.writeText(window.location.href); setCopied("Link copiat. Păstrează criteriile și versiunea datelor."); }
+    try { await navigator.clipboard.writeText(window.location.href); setCopied(""); raiseLinkCopied(); }
     catch { setCopied("Copiază adresa din bara browserului; ea conține criteriile comparației."); }
   }
 
@@ -553,6 +559,8 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
 
   const division = data?.options.divisions.find((item) => item.code === data.filters.cpv);
   const versus = focal ? versusMedian(focalValue, median) : null;
+  useChangedMark(rankRef, busy || !focal ? null : rank, entityId);
+  useChangedMark(versusRef, busy || !focal ? null : versus, entityId);
   const cpvCode = data?.filters.cpv ?? null, yearValue = data?.filters.year ?? null;
   /** A division's name from the catalog: the group's own, else the site's short names (never „CPV 03 (CPV 03)”). */
   const domainOf = (code: string) => (division && division.code === code ? readableCpvName(division.label) : domainName(code, null));
@@ -609,7 +617,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
         {method === "population" ? <>Între {countWords(total, noun[0], noun[1])} cu populația cea mai apropiată{data.filters.county ? `, din județul ${countyLabel(data.filters.county) ?? data.filters.county}` : ""}</>
           : method === "manual" ? <>Grupul ales de tine, {countWords(total, noun[0], noun[1])}</>
           : <>Între {countWords(total, noun[0], noun[1])} {role === "supplier" ? "" : `de același tip (${kinds[data.cohort.authorityKind ?? ""] ?? "nestabilit"}) `}cu {band}, ca ea</>}{channel}.{" "}
-        E pe locul <b>{count(rank)}</b>{versus ? <>: <b>{versus}</b></> : ""}{metric === "mean" ? ", după valoarea pe înregistrare" : ""}.
+        E pe locul <b ref={rankRef}>{count(rank)}</b>{versus ? <>: <b ref={versusRef}>{versus}</b></> : ""}{metric === "mean" ? ", după valoarea pe înregistrare" : ""}.
       </p>}
       {/* The comparison names its domain and year in the title (UX audit Z4-32); one click widens either, at once. */}
       {data && ranking && widen && <p className="pxs-widen"><span>Lărgește:</span>{widenButtons("pxs-chip")}</p>}
@@ -675,7 +683,8 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
                 <button type="button" className="pxs-btn p" disabled={busy || focal.recordCount === 0} onClick={() => showSources(focal)}>Sursele ei · {count(focal.recordCount)}</button>
                 {canCapture && <button type="button" className="pxs-btn" disabled={busy} onClick={() => showSources()}>Sursele comparației</button>}
                 {comparison && !busy && <ClipButton kind="query" spec={peerEvidenceSpec(comparison)} label={`Comparație în context · ${currentName}`} snapshot={{ peer: comparison, sourceUrl: typeof window === "undefined" ? "" : window.location.pathname + window.location.search }} />}
-                <button type="button" className="pxs-btn" onClick={() => void copyLink()}>Copiază linkul</button>
+                <button type="button" className="pxs-btn" onClick={() => void copyLink()}>{linkCopied ? <><DoneCheck />Copiat</> : "Copiază linkul"}</button>
+                <span className="d-sr-only" role="status">{linkCopied ? "Link copiat. Păstrează criteriile și versiunea datelor." : ""}</span>
                 {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
                 {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
               </div>
