@@ -27,3 +27,10 @@ html[data-vt="theme"]::view-transition-old(root) { animation: none; }
 html[data-vt="theme"]::view-transition-new(root) { animation: theme-in 220ms var(--ease) both; }
 @keyframes theme-in { from { opacity: 0; } }
 html[data-vt="theme"] :is(.site-header, .d-nav-ind, .private-ind) { view-transition-name: none !important; }
+
+/* A name clicked in a list travels into its page's title (UX audit M-14, name-travel.ts): 300 ms with --ease, over the
+   page's cross-fade; the list's words fade out as the title's fade in. Forward by that click only (Back has no
+   transition); reduced motion: no name is given. */
+::view-transition-group(ent-name) { animation-duration: 300ms; animation-timing-function: var(--ease); z-index: 101; }
+::view-transition-old(ent-name) { animation-duration: 150ms; animation-timing-function: var(--ease); }
+::view-transition-new(ent-name) { animation-duration: 300ms; animation-timing-function: var(--ease); }
