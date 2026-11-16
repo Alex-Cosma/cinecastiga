@@ -1225,3 +1225,31 @@
   .cq-rank-row.is-found { padding-left: 8px; }
   .cq-rank-rest { padding: 12px 0; }
 }
+
+/* UX audit Z3-14 (owner, 16 November 2026): „Ce se cumpără” reads along each row, no jump across the page: swatch ·
+   name · a thin bar of the row's share in its own colour · value and share · „N înregistrări →” as a quiet link, no box.
+   The rows share one grid (subgrid), so values and links line up; a row pointed at lights its segment in the bar. On a
+   phone the swatch sits on the name's line, the bar under it, the value and the link (44 px) share the last line. */
+.cq-result .ask-complegend { display: grid; grid-template-columns: 12px minmax(180px, 470px) minmax(60px, 1fr) max-content minmax(150px, max-content); gap: 0 14px; }
+.cq-result .ask-complegend .li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 44px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.cq-result .ask-complegend .nm { font-size: 13px; }
+.cq-result .ask-complegend .vv { display: contents; }
+.cq-result .ask-complegend .vv > span { text-align: right; }
+.ask-compbar { display: block; height: 6px; overflow: hidden; border-radius: 3px; background: var(--sunk); }
+.ask-compbar > i { display: block; height: 100%; border-radius: 3px; }
+.cq-result .ask-complegend .vv .cq-record-link { justify-self: end; min-height: 36px; margin: 0; padding: 0; border: 0; background: none; color: var(--accent); font-size: 13px;
+  text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; cursor: pointer; }
+.cq-result .ask-complegend .vv .cq-record-link:hover { background: none; text-decoration-color: currentColor; }
+.cq-result .ask-comp.has-hot > .seg:not(.is-hot) { opacity: .45; }
+.cq-result .ask-comp > .seg { transition: opacity var(--fast) var(--ease); }
+@media (max-width: 720px) {
+  .cq-result .ask-complegend { display: flex; }
+  .cq-result .ask-complegend .li { grid-template-columns: 12px minmax(0, 1fr); grid-template-areas: "sw nm" ". bar" ". vv"; gap: 2px 10px; align-items: center; min-height: 0; padding: 6px 0; }
+  .cq-result .ask-complegend .sw { grid-area: sw; margin-top: 0; }
+  .cq-result .ask-complegend .nm { grid-area: nm; }
+  .cq-result .ask-complegend .ask-compbar { grid-area: bar; }
+  .cq-result .ask-complegend .vv { grid-area: vv; display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
+  .cq-result .ask-complegend .vv > span { text-align: left; }
+  .cq-result .ask-complegend .vv .cq-record-link { min-height: 44px; white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) { .cq-result .ask-comp > .seg { transition: none; } }

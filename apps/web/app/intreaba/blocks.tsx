@@ -78,6 +78,8 @@ export function BreakdownBlock({
   const t = useTip();
   const evidence = useAnswerEvidence();
   const [all, setAll] = useState(false);
+  // A legend row pointed at or focused lights its segment in the bar (UX audit Z3-14); the others stay, quieter.
+  const [hot, setHot] = useState<number | null>(null);
   // The bar is revealed left to right as one piece when it first shows. Value ↔ records, another channel or „Arată
   // toate” tween its segments' widths: a segment is its place in the order (its colour), so the same elements stay;
   // one the order adds grows from nothing while „alte domenii” shrinks (question-results.css).
@@ -130,7 +132,7 @@ export function BreakdownBlock({
         </button>)}
         <HelpTip tip={{ id: "tip-achizitie" }} />
       </div>}
-      <div className={`ask-comp ${motion.entering ? "cm-x" : "is-shown"}`} {...motion.root}>
+      <div className={`ask-comp ${motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root}>
         {items.map((s, i) => {
           const bind = t.bind(
             s.name,
@@ -140,7 +142,7 @@ export function BreakdownBlock({
           return s.code ? (
             <a
               key={i}
-              className="seg cm-tw"
+              className={`seg cm-tw${hot === i ? " is-hot" : ""}`}
               href={sliceUrl(s.code, s.name)}
               style={{
                 width: `${(amount(s) / measureTotal) * 100}%`,
@@ -151,7 +153,7 @@ export function BreakdownBlock({
           ) : (
             <div
               key="rest"
-              className="seg cm-tw"
+              className={`seg cm-tw${hot === i ? " is-hot" : ""}`}
               style={{
                 width: `${(amount(s) / measureTotal) * 100}%`,
                 background: s.color,
@@ -168,9 +170,11 @@ export function BreakdownBlock({
         <button type="button" className="qb-sort" aria-pressed={byCount} onClick={() => onMeasure("count")}>Înreg.{byCount && <span aria-hidden="true"> ▾</span>}</button>
         <HelpTip tip={{ title: "Înregistrări", text: "Un contract cu mai mulți câștigători apare o dată pentru fiecare, mai des la lucrări." }} />
       </div>}
+      {/* Z3-14: each row reads in one line: swatch · name · a thin bar of its share in its colour · value · its records. */}
       <div className="ask-complegend">
-        {items.map((s) => (
-          <div key={s.name} className="li qb-tipwrap">
+        {items.map((s, i) => (
+          <div key={s.name} className="li qb-tipwrap" onPointerEnter={() => setHot(i)} onPointerLeave={() => setHot(null)}
+            onFocus={() => setHot(i)} onBlur={() => setHot(null)}>
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (
@@ -182,6 +186,7 @@ export function BreakdownBlock({
               )}
               {s.tags.map((tag) => <FactTag key={tag.text} fact={tag} />)}
             </span>
+            <span className="ask-compbar" aria-hidden="true"><i style={{ width: `${Math.min(100, (amount(s) / measureTotal) * 100)}%`, background: s.color }} /></span>
             <span className="vv num">
               <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)} · {formatShare(amount(s) / measureTotal)}</span>
               {evidence && (
@@ -239,6 +244,7 @@ export function BreakdownGhost({ spec }: { spec: AskSpec }) {
         <span className="nm">{i < BREAKDOWN_GHOST_NAMES.length - 1
           ? <a><span><G.Line inline w={`${BREAKDOWN_GHOST_NAMES[i]}ch`} /><G.Line w="30%" only="phone" /></span></a>
           : <G.Line inline w={`${BREAKDOWN_GHOST_NAMES[i]}ch`} />}</span>
+        <span className="ask-compbar"><i className="g-block" style={{ width: BREAKDOWN_GHOST_SEGS[i] ?? "3%" }} /></span>
         <span className="vv num"><span><G.Line inline w="24ch" /></span><button type="button" className="cq-record-link g-quiet"><G.Line inline w="18ch" /></button></span>
       </>} />
     </div>
