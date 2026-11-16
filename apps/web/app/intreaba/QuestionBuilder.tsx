@@ -23,7 +23,12 @@ import { useCoverage } from "./builder/coverage";
 import Chip from "./builder/Chip";
 import ConditionRow from "./builder/ConditionRow";
 import Toggle, { type ToggleProps } from "./builder/Toggle";
-import Invitations from "./builder/Invitations";
+import Invitations, { Invite } from "./builder/Invitations";
+
+/** The ranked firms' row of the registry (blocks.ts) and the invitations that belong in it or in „Achiziția” (Z2-17). */
+const WINNERS_ROW = "Câștigătorii";
+const FIRM_INVITES = new Set(["firmSeat", "seatCounty", "admin"]);
+const PURCHASE_INVITES = new Set(["purchaseValue", "purchaseKind", "procedure", "singleBidder"]);
 import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
 import Sentence, { Presentation } from "./builder/Sentence";
@@ -154,6 +159,17 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     () => builderView(draft, { cpvName, entities, peerGroup: peerData?.facts }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})),
     [draft, cpvName, entities, coverage, peerData],
   );
+  // Under a ranking of firms the invitations are grouped by what they narrow (UX audit Z2-17): the firms in their row
+  // („Câștigătorii”), the purchase in its own („Achiziția”); the rest stay under the sentence.
+  const grouped = useMemo(() => {
+    const winners = view.rows.some((row) => row.label === WINNERS_ROW && row.kind === "group");
+    const of = (item: { id: string }) => item.id.replace(/^i:/, "");
+    return {
+      firms: winners ? view.invites.filter((item) => FIRM_INVITES.has(of(item))) : [],
+      purchase: winners ? view.invites.filter((item) => PURCHASE_INVITES.has(of(item))) : [],
+      rest: winners ? view.invites.filter((item) => !FIRM_INVITES.has(of(item)) && !PURCHASE_INVITES.has(of(item))) : view.invites,
+    };
+  }, [view]);
   // A link's county the data do not know (UX audit Z2-31): its phrase is marked, its window opens to choose another,
   // and the error under the builder holds „Vezi răspunsul”.
   const badCounty = unknownCounty(draft);
@@ -399,8 +415,14 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
             onToggle={(_id, pressed) => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: pressed ? true : undefined }]); }} />
           : <Chip key={chip.key} id={chip.key} label={chip.label} name={chip.name} active={chip.active} open={open?.key === chip.key} onOpen={openWindow}
             onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
+        {/* The winners' own invitations join their row (UX audit Z2-17): the firms' seat and administrator are about the firms. */}
+        {row.label === WINNERS_ROW && grouped.firms.map((item) => <Invite key={item.id} {...item} open={open?.key === item.id} onOpen={openWindow} />)}
       </ConditionRow>)}
-      <Invitations items={view.invites} openId={open?.key ?? null} onOpen={openWindow} />
+      {/* The purchase's own size is no condition of the firms: its own row (UX audit Z2-17). */}
+      {grouped.purchase.length > 0 && <ConditionRow label="Achiziția" kind="group">
+        {grouped.purchase.map((item) => <Invite key={item.id} {...item} open={open?.key === item.id} onOpen={openWindow} />)}
+      </ConditionRow>}
+      <Invitations items={grouped.rest} openId={open?.key ?? null} onOpen={openWindow} />
       <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} onToggle={removeUnder} />
       <ParkedRow label={parked?.label ?? ""} {...(parked ? { tip: { title: parked.label, text: parked.tip } } : {})} items={parked?.items.map((item) => ({ id: item.id, label: item.label })) ?? []} onRestore={bringBackParked} />
       {view.refused.length > 0 && <div className="qb-refused" role="alert">
