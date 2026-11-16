@@ -174,3 +174,8 @@ button.cmp-year[aria-pressed="true"] { background: var(--sunk); }
   .cmp-mirror-a .cmp-mirror-track { justify-content: flex-start; }
   .cmp-mirror-a > span:not(.cmp-mirror-track), .cmp-mirror-b > span:not(.cmp-mirror-track) { flex: none; text-align: left; }
 }
+
+/* UX audit Z3-26 (owner, 16 November 2026): the second side was orange-red, the colour of risk (DESIGN.md), on a side
+   that may have no signal at all. It is the palette's green-grey (--slate), apart from A's forest by lightness in both
+   themes; the names beside every swatch keep A and B apart without colour. */
+.cmp { --cmp-b: var(--slate); }
