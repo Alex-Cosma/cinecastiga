@@ -604,9 +604,15 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : NB("UAT-urile")) : "Județele"} {/* The hovered area's place is not repeated here: its row is lit (owner, 8 November 2026). */}<span>lei {UNIT[metric]}{metric === "perBed" ? ` · ${BEDS_YEAR}` : metric === "perPupil" ? ` · ${PUPILS_YEAR}` : ""}</span></h2>
         {!level ? <RankGhost names={county ? (dots ? null : uatGeo?.uats.map((u) => u.name) ?? null) : geo?.counties.map((c) => c.name) ?? null} rows={county ? null : 42}
           city={county === "bucuresti"} folded={unfolded !== (county ?? "")} key={county ?? ""} /> : <>
-        {county && loc?.city && <div className={`mx-city${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
-          <b>{loc.city.name}</b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}{sub && loc.city.subValue ? `; instituțiile ei: ${short(loc.city.subValue)} lei` : ""}</span>
+        {/* București's city hall and a county's council (UX audit Z4-11): apart from the areas, over the whole city or
+            county; the whole box is the link to its page (its name, an EntityName, stretched over it). */}
+        {county && loc?.city && <div className={`mx-city${loc.city.entityId ? " is-link" : ""}${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
+          <b><EntityName id={loc.city.entityId} role="authority">{loc.city.name}</EntityName></b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}{sub && loc.city.subValue ? `; instituțiile ei: ${short(loc.city.subValue)} lei` : ""}</span>
           <em>{loc.city.perCapita === null ? "—" : `${int(loc.city.perCapita)} lei`}</em>
+        </div>}
+        {county && !dots && loc?.council && <div className={`mx-city${loc.council.entityId ? " is-link" : ""}${stale ? " g-stale" : ""}`}>
+          <b><EntityName id={loc.council.entityId} role="authority">{loc.council.name}</EntityName></b><span>pentru tot județul, pe {withDe(loc.council.denominator ?? 0, "locuitor", "locuitori")}{sub && loc.council.subValue ? `; instituțiile lui: ${short(loc.council.subValue)} lei` : ""}</span>
+          <em>{loc.council.perCapita === null ? "—" : `${int(loc.council.perCapita)} lei`}</em>
         </div>}
         <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}${metric === "perBed" || metric === "perPupil" ? " has-total" : metric === "value" ? " is-lei" : ""}`} ref={listRef} key={rankLevel}
           data-chart="" onAnimationEnd={rankMotion.onAnimationEnd} onScroll={(e) => { const el = e.currentTarget; setAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4); }}>

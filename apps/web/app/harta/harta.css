@@ -374,3 +374,11 @@ span.mx-p-yr{cursor:default}
   .mx-wide-only{display:none}
   .mx-phone-only{display:inline}
 }
+/* Z4-11: the city hall's and the county council's boxes are links to their pages (the name's link stretched over the box). */
+.mx-city.is-link{position:relative;cursor:pointer}
+.mx-city.is-link:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-city .entity-name{color:var(--accent);text-decoration:none}
+.mx-city.is-link .entity-name::after{content:"";position:absolute;inset:0;border-radius:10px}
+.mx-city.is-link:hover .entity-name{text-decoration:underline;text-underline-offset:3px}
+.mx-city.is-link:has(.entity-name:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.mx-city .entity-name:focus-visible{outline:none}
