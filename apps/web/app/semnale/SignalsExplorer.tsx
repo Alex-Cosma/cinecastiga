@@ -142,6 +142,22 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       <span className="c r">{col("cri", "Scor", true)}</span><span />
     </div>;
   }
+  /**
+   * No result (UX audit Z6-19): no count of 0 and no pager; one sentence of what was asked, then a way out of each
+   * condition that narrowed it (the risk band or the patterns, the county), one click each.
+   */
+  function emptyState() {
+    const where = active.county ? ` din ${active.county}` : "";
+    const band = active.band ? `${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : null;
+    const what = active.view === "cri"
+      ? `${active.role === "authority" ? "Nicio instituție" : "Nicio firmă"}${where}${band ? ` cu risc ${band}` : active.criteria !== null ? ` cu ${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : ""}.`
+      : `Niciun caz de „${flagLabel(code)}” la ${active.role === "authority" ? "instituții" : "firme"}${where}.`;
+    return <div className="sg-empty"><h3>{what}</h3><div className="sg-empty-acts">
+      {active.view === "cri" && (band || active.criteria !== null) && <button className="sg-primary" onClick={() => navigate({ criteria: null, band: null })}>{band ? `Scoate intervalul ${band}` : "Scoate filtrul de tipare"}</button>}
+      {active.county && <button className={active.view === "cri" && (band || active.criteria !== null) ? "sg-secondary" : "sg-primary"} onClick={() => navigate({ county: null })}>Toate județele</button>}
+      {active.view === "signals" && <button className={active.county ? "sg-secondary" : "sg-primary"} onClick={() => setDialog("type")}>Alege alt tip de semnal</button>}
+    </div></div>;
+  }
   /** A case of the list (owner, 6 November 2026): its picture and number; the whole row opens the case page. */
   function signalRow(fi: SignalInstance, i: number) {
     const meter = caseMeter(fi.flagCode, fi.evidence);
@@ -167,7 +183,8 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   }
   const distTotal = distribution.reduce((n, d) => n + d.n, 0), distNone = distribution.find(d => d.bin === 0)?.n ?? 0;
   // The risk score's tenths with patterns (1–9, 10–19 … 90–100; 0 is "fără niciun tipar"); a bar selects its band.
-  const bins = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90].map(bin => ({ bin, n: distribution.find(d => d.bin === bin)?.n ?? 0 }));
+  // The scores with patterns start at 10, so there is no 1–9 column (UX audit Z6-19); an empty column cannot be pressed.
+  const bins = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(bin => ({ bin, n: distribution.find(d => d.bin === bin)?.n ?? 0 }));
   const distMax = Math.max(1, ...bins.map(b => b.n));
   const binTo = (bin: number) => bin === 90 ? 100 : bin === 1 ? 10 : bin + 10;
   const binLabel = (bin: number) => `${bin}–${bin === 90 ? 100 : binTo(bin) - 1}`;
@@ -189,10 +206,10 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
     <section ref={resultsRef} className={`sg-results${update ? " sg-upd" : ""}${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined} data-chart>
       {reshaping ? <ResultsGhost state={requested}/> : error ? <div className="sg-empty" role="alert"><h3>Rezultatele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setRequested(state); startTransition(() => router.refresh()); }}>Reîncearcă</button></div> : <>
-        {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "autorități" : "firme"} cu tipare</h3><p>din {formatInt(distTotal)} cu minimum 10 achiziții directe · {formatInt(distNone)} fără niciun tipar</p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls"><span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : "Toate valorile riscului"}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span>{/* On a phone the cards have no head: one select, the direction in its words (UX audit Z6-20). */}
+        {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "autorități" : "firme"} cu tipare</h3><p>din {formatInt(distTotal)} cu minimum 10 achiziții directe · {formatInt(distNone)} fără niciun tipar</p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} disabled={n === 0 && !binOn(bin)} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls"><span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : "Toate valorile riscului"}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span>{/* On a phone the cards have no head: one select, the direction in its words (UX audit Z6-20). */}
           <label className="sg-sort-phone">Ordonează <select value={`${active.sort}:${active.dir}`} onChange={e => { const [sort, dir] = e.target.value.split(":") as [RiskGroupSort, "asc" | "desc"]; navigate({ sort, dir }); }}>
             {sortOptions(active.sort, active.dir).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></>}
-        {toolbar()}
+        {total > 0 && toolbar()}
         {leftOutLine()}
         {active.view === "cri" && total > 0 && rankHead()}
         {total > 0 ? <>
@@ -218,7 +235,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
               <Link href={href} className="sg-open" aria-label={`Deschide tiparele: ${cleanName(r.name)}`}><span aria-hidden="true">→</span></Link>
             </article>;
           })}
-          {toolbar(true)}</> : <div className="sg-empty"><h3>Niciun rezultat pentru această selecție</h3><p>Nu există {active.view === "signals" ? "apariții calculate" : "entități eligibile"} pentru {active.role === "authority" ? "autorități" : "firme"}{active.county ? ` din ${active.county}` : " în selecția curentă"}.</p>{active.county ? <button className="sg-primary" onClick={() => navigate({ county: null })}>Caută în toate județele</button> : active.view === "cri" ? <button className="sg-primary" onClick={() => navigate({ criteria: null, band: null })}>Arată toate valorile riscului</button> : <button className="sg-primary" onClick={() => setDialog("type")}>Alege alt tip de semnal</button>}</div>}
+          {toolbar(true)}</> : emptyState()}
       </>}
     </section>
     {pending && !reshaping && <FloatStatus>Se încarcă rezultatele…</FloatStatus>}

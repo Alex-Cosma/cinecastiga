@@ -156,7 +156,7 @@
 .sg-explorer .sg-rank-head .sg-sort:hover:not(:disabled){background:none;color:var(--ink)}
 .sg-explorer .sg-rank-head .sg-sort.on{color:var(--accent)}
 .sg-rank-head .sg-sort span{font-size:10px;opacity:.75}
-.sg-sort-phone{display:none}
+.sg-cri-controls .sg-sort-phone{display:none}
 @media(max-width:700px){
   .sg-rank-head{display:none}
   .sg-cri-controls .sg-sort-phone{display:flex;flex:1 1 100%;align-items:center;gap:10px;font-size:14px;color:var(--ink2)}
@@ -182,3 +182,9 @@
   .sg-filters select{min-height:48px;font-size:16px}
 }
 @media(max-width:700px) and (prefers-reduced-motion:reduce){dialog.sg-sheet[open]{transition:none}}
+
+/* No result (UX audit Z6-19): the sentence and one button per condition to take off; an empty histogram column is grey
+   and cannot be pressed. */
+.sg-empty-acts{display:flex;flex-wrap:wrap;gap:10px}
+.sg-explorer .sg-histogram button:disabled{opacity:.5;cursor:default}
+.sg-explorer .sg-histogram button:disabled:hover{background:none}
