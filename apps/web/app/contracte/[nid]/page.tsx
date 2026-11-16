@@ -19,6 +19,8 @@ import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party, type Source } from "@/components/record/Record";
 import { consortiumShareLabel } from "@/lib/consortium";
+import RecordTitle from "@/components/record/RecordTitle";
+import "@/components/record/record-pages.css";
 import { ghostHold } from "@/lib/ghost-hold";
 
 /**
@@ -104,6 +106,9 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
     ? (c.lowestOfferRon === c.highestOfferRon ? formatRon(c.lowestOfferRon) : `${formatRon(c.lowestOfferRon)} – ${formatRon(c.highestOfferRon)}`) : null;
   // The mart's count holds only when every confirmed TED link agrees; one TED lot's count is the fallback.
   const tenders = c.tendersReceived ?? x.ted?.tendersReceived ?? null;
+  const singleBidSignal = c.flags.some((f) => f.code === "award_single_bid");
+  // What can explain call-offs over the ceiling is the signal's to say when the page shows it (Z7-07).
+  const overCeilingWhy = c.flags.some((f) => f.code === "award_calloffs_over_ceiling") ? " Vezi semnalul de mai sus." : " Poate fi o depășire reală sau o eroare de completare în SEAP.";
 
   const parties: Party[] = [
     { key: "a", role: "Instituția", name: authority, lines: [countyLabel(c.authority?.county)] },
@@ -134,9 +139,10 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
   ];
 
   return (
-    <RecordPage className="contract-record">
+    <RecordPage className="record-entry contract-record">
       <RecordHead
         title={headline}
+        heading={<RecordTitle>{headline}</RecordTitle>}
         lot={lot}
         parties={<>{authority} a contractat cu {winnerNames.length ? winnerNames : "un câștigător neprecizat"}</>}
         value={{
@@ -147,15 +153,13 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         meta={[
           <span className="record-kind" key="k">{kind}</span>,
           c.contractDate && <span key="d">Semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span className="record-quiet" title="Data din sursă e anterioară arhivei (2018): valoarea rămâne în totaluri, fără an."> · dată improbabilă</span>}</span>,
-          procedure && <span key="p">{procedure}</span>,
-          c.isSingleBidder === true && <span key="o">un singur ofertant</span>,
+          // The procedure and the single offer are said in Atribuirea, the lead in the signal (Z7-07): once each.
           c.contractNo && <span key="n">nr. {c.contractNo}</span>,
         ]}
         actions={<>
           {c.caNoticeId && <a className="record-seap" href={awardUrl(c.caNoticeId)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (anunțul de atribuire, filă nouă)</span></a>}
           <ClipButton kind="contract" refId={String(nid)} label={headline} />
         </>}
-        signals={c.flags.length}
       />
 
       <ContractPublications publications={c.publications} currentId={nid} countedOnce={c.countedOnce} />
@@ -166,7 +170,9 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
       <RecordSection id="atribuire" title="Atribuirea">
         <Facts facts={[
           award != null && { label: "Valoarea anunțului (toate contractele)", value: <>{formatRon(award)}<small>{formatInt(c.noticeLotCount)} înregistrări în anunț</small></> },
-          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 ? " · un singur ofertant" : ""}</> : <span className="record-quiet">Număr nepublicat</span> },
+          // A single offer is said where the lead is (Z7-07): by the signal when the page has it, here otherwise.
+          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? " · un singur ofertant" : ""}</>
+            : c.isSingleBidder === true && !singleBidSignal ? "Un singur ofertant" : <span className="record-quiet">Număr nepublicat</span> },
           offers && { label: c.noticeLotCount > 1 ? "Oferte, de la cea mai mică la cea mai mare (tot anunțul)" : "Oferte, de la cea mai mică la cea mai mare", value: offers },
           x.ted?.estimateRon != null && { label: <Term tip id="estimare-ted">Estimarea din TED, fără TVA</Term>, value: <>{formatExactDecimal(x.ted.estimateRon)} lei{x.ted.lotTitle && <small>{x.ted.lotTitle}</small>}</> },
           x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED" },
@@ -174,9 +180,9 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
           (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: <>{c.cpvName ?? "Denumire neprecizată"}{c.cpvCode && <small>{c.cpvCode}</small>}</> },
           c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
           x.framework?.role === "framework" && { label: <Term tip id="comenzi-identificate">Comenzi subsecvente identificate</Term>, value: x.framework.calloffs > 0 ? <>{formatInt(x.framework.calloffs)}{x.framework.calloffsRon != null && ` · ${formatExactDecimal(x.framework.calloffsRon)} lei`}
-            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon, f.topRon); return times && <small className="record-warn">Comenzile declarate în SEAP însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul acordului-cadru.{f.repeats >= 2 ? ` ${formatInt(f.repeats)} comenzi au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP.` : " Poate fi o depășire reală sau o eroare de completare în SEAP."}{countedBelow(f.calloffsRon, f.declaredRon) ? " În totaluri se numără cel mult plafonul: comenzile sunt reduse proporțional." : ""}</small>; })()}</> : <span className="record-quiet">Niciuna găsită (nu înseamnă zero)</span>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon, x.framework.topRon) !== null },
+            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon, f.topRon); return times && <small className="record-warn">Comenzile declarate în SEAP însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul acordului-cadru.{f.repeats >= 2 ? ` ${formatInt(f.repeats)} comenzi au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP.` : overCeilingWhy}{countedBelow(f.calloffsRon, f.declaredRon) ? " În totaluri se numără cel mult plafonul: comenzile sunt reduse proporțional." : ""}</small>; })()}</> : <span className="record-quiet">Niciuna găsită (nu înseamnă zero)</span>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon, x.framework.topRon) !== null },
           x.framework?.role === "calloff" && { label: "Acordul-cadru", value: <><Link prefetch={false} href={`/contracte/${x.framework.frameworkNatId}`}>{cleanName(x.framework.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
-            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon, f.topRon); return times && <small className="record-warn">Comenzile lui declarate în SEAP ({formatInt(f.calloffs)}) însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul de {formatExactDecimal(f.ceilingRon!)} lei.{f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : " Poate fi o depășire reală sau o eroare de completare în SEAP."}{countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : ""}</small>; })()}</>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon, x.framework.topRon) !== null },
+            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon, f.topRon); return times && <small className="record-warn">Comenzile lui declarate în SEAP ({formatInt(f.calloffs)}) însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul de {formatExactDecimal(f.ceilingRon!)} lei.{f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : overCeilingWhy}{countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : ""}</small>; })()}</>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon, x.framework.topRon) !== null },
           x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a><small>Recunoscute după numele fișierului: pot fi greșit clasificate.</small></>, wide: true },
         ]} />
       </RecordSection>

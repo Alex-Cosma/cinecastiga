@@ -13,6 +13,8 @@ import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shar
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import RecordTitle from "@/components/record/RecordTitle";
+import "@/components/record/record-pages.css";
 import { Facts, MissingLine, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party } from "@/components/record/Record";
 
 export const dynamic = "force-dynamic";
@@ -78,21 +80,22 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
     { key: "s", role: purchase ? "Furnizorul" : "Ofertantul", name: supplier, lines: supplierLines },
   ];
 
-  return <RecordPage className="acquisition-detail">
+  return <RecordPage className="record-entry acquisition-detail">
     <RecordHead
       title={title}
+      heading={<RecordTitle>{title}</RecordTitle>}
       status={!purchase ? <>{state.label} · nu e o achiziție, nu intră în totaluri <Term tip id="oferta-refuzata" /></> : null}
       parties={<>{authority} {purchase ? "a cumpărat direct de la" : "· ofertă de la"} {supplier}</>}
       value={{ amount: amount(d.value), label: purchase ? <Term tip id="valoare-inregistrata">Valoare de închidere</Term> : "Valoarea ofertei", notes }}
       meta={[<span className="record-kind" key="k">Achiziție directă</span>,
         !d.title && d.cpvName && <span key="t">titlu din categoria CPV <Term tip id="titlu-cpv" /></span>,
+        // An accepted offer is the default state (a refused one has its own row); the code is in Sources (Z7-07, Z7-29).
         d.finalizedAt ? `Finalizată ${formatCalendarDate(d.finalizedAt)}` : d.publishedAt ? `Publicată ${formatCalendarDate(d.publishedAt)}` : null,
-        purchase ? state.label : null, d.code ?? `ID SEAP ${id}`]}
+        purchase && state.kind !== "accepted" ? state.label : null]}
       actions={<>
         <a className="record-seap" href={daUrl(id)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (filă nouă)</span></a>
         <ClipButton kind="da" refId={id} label={title} />
       </>}
-      signals={x.flags.length}
     />
     <SignalList flags={x.flags} authorityId={d.authorityId} supplierId={d.supplierId}
       note={(f) => f.code === "da_first_month" ? firmAgeNote(f.evidence?.registered_on, d.publishedAt ?? d.finalizedAt) : null} />

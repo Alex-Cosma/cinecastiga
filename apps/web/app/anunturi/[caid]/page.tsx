@@ -16,6 +16,8 @@ import { readFilters } from "@/lib/table-filters/codec";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
 import { PendingRegion, RegionLink } from "@/components/ghost/client";
 import { Facts, RecordHead, RecordPage, RecordSection, Sources, type Source } from "@/components/record/Record";
+import RecordTitle from "@/components/record/RecordTitle";
+import "@/components/record/record-pages.css";
 import "./notice.css";
 
 /**
@@ -69,9 +71,10 @@ export default async function NoticePage({ params, searchParams }: {
   ];
 
   return (
-    <RecordPage className="notice-record">
+    <RecordPage className="record-entry notice-record">
       <RecordHead
         title={headline}
+        heading={<RecordTitle>{headline}</RecordTitle>}
         parties={n.authority ? <><EntityName id={n.authority.entityId} role="authority">{cleanName(n.authority.name)}</EntityName>{countyLabel(n.authority.county) && <span className="record-quiet"> · {countyLabel(n.authority.county)}</span>} a atribuit {n.nLots === 1 ? "o înregistrare" : `${formatInt(n.nLots)} înregistrări`}</> : null}
         value={{
           amount: n.totalContractValue != null ? formatRon(n.totalContractValue) : "Nicio valoare identificată",
@@ -83,8 +86,8 @@ export default async function NoticePage({ params, searchParams }: {
         }}
         meta={[
           <span className="record-kind" key="k">Anunț de atribuire</span>,
-          procedure && <span key="p">{procedure}</span>,
-          n.noticeNo && <span key="n">{n.noticeNo}</span>,
+          // The procedure is in Atribuirea (Z7-07); on a phone the number gives way (it is in Sources).
+          n.noticeNo && <span key="n" className={n.versionDate ? "record-meta-wide" : undefined}>{n.noticeNo}</span>,
           n.versionDate && <span key="v">Versiunea din {formatCalendarDate(n.versionDate)}</span>,
         ]}
         actions={<>

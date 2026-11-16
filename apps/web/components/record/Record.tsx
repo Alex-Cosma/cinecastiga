@@ -28,8 +28,12 @@ export interface RecordValue {
 }
 
 /** The head: title, lot, who from whom, the value and its notes, the record's identity line and its actions. */
-export function RecordHead({ title, lot, lotLabel = "Lot", status, parties, value, meta, actions, signals }: {
+export function RecordHead({ title, heading, context, lot, lotLabel = "Lot", status, parties, value, meta, actions, signals }: {
   title: ReactNode; lot?: string | null;
+  /** The page's own title element in place of `<h1>{title}</h1>` (a record page's RecordTitle, cut at three lines). */
+  heading?: ReactNode;
+  /** One row above the title: where the record belongs (its notice, its framework agreement). */
+  context?: ReactNode;
   /** The word before `lot` ("Obiect" on a signal's page, where the line is the notice's object). */
   lotLabel?: string;
   status?: ReactNode; parties?: ReactNode; value?: RecordValue | null;
@@ -38,7 +42,8 @@ export function RecordHead({ title, lot, lotLabel = "Lot", status, parties, valu
   const items = meta.filter(Boolean);
   return <header className="record-head">
     <div className="record-title">
-      <h1>{title}</h1>
+      {context && <p className="record-context">{context}</p>}
+      {heading ?? <h1>{title}</h1>}
       {lot && <p className="record-lot"><span>{lotLabel}</span> {lot}</p>}
       {status && <p className="record-status" role="note">{status}</p>}
       {parties && <p className="record-parties">{parties}</p>}
