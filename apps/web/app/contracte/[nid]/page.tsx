@@ -160,7 +160,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         lines: [
           multiWinner && w.shareRonExact != null && <><Term tip id="consortiu">Cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</>,
           c.authority && others > 0 && <a href={pairHref({ id: c.authority.entityId, name: cleanName(c.authority.name) }, { id: w.entityId, name: cleanName(w.name) })}>
-            Încă {others === 1 ? "o înregistrare" : `${formatInt(others)} înregistrări`} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
+            Încă {others === 1 ? "o înregistrare" : countWords(others, "înregistrare", "înregistrări")} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
           ...pairLines(pair),
           c.winnerIsAuthority && <span className="warn">E chiar instituția: neconcordanță în sursă. Verifică furnizorul real în SEAP.</span>,
         ],

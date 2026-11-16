@@ -104,8 +104,8 @@ export function calloffsOverCeilingLine(evidence: Record<string, unknown>): stri
   const num = (key: string) => { const v = Number(evidence[key]); return evidence[key] == null || !Number.isFinite(v) ? null : v; };
   const value = num("value"), ceiling = num("ceiling"), calloffs = num("calloffs"), repeats = num("calloffs_repeating_ceiling") ?? 0;
   const times = value !== null && ceiling ? (Math.round((value / ceiling) * 10) / 10).toFixed(1).replace(".", ",") : null;
-  const head = `Comenzile subsecvente declarate în SEAP: ${value === null ? "valoare necunoscută" : formatRon(value)}${calloffs ? ` (${calloffs === 1 ? "1 comandă" : `${calloffs} comenzi`})` : ""}, față de un plafon al acordului-cadru de ${ceiling === null ? "valoare necunoscută" : formatRon(ceiling)}${times ? `: de ${times} ori plafonul` : ""}.`;
-  if (repeats >= 2) return `${head} ${repeats} comenzi au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP. Valorile reale sunt în documentele contractelor.`;
+  const head = `Comenzile subsecvente declarate în SEAP: ${value === null ? "valoare necunoscută" : formatRon(value)}${calloffs ? ` (${countWords(calloffs, "comandă", "comenzi")})` : ""}, față de un plafon al acordului-cadru de ${ceiling === null ? "valoare necunoscută" : formatRon(ceiling)}${times ? `: de ${times} ori plafonul` : ""}.`;
+  if (repeats >= 2) return `${head} ${countWords(repeats, "comandă", "comenzi")} au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP. Valorile reale sunt în documentele contractelor.`;
   if (repeats === 1) return `${head} O comandă are exact suma plafonului. Poate fi și o eroare de completare în SEAP.`;
   return `${head} Poate fi o depășire reală sau o eroare de completare în SEAP.`;
 }

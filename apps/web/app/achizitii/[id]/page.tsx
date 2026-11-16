@@ -91,9 +91,9 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   // The same order as on a contract (Z7-12): the history with the institution, then its share of the firm, its size.
   const supplierLines = [
     h && d.authorityId && d.supplierId && (h.nDa > 0 || h.nCt > 0) && <a href={pairHref({ id: d.authorityId, name: cleanName(d.authority) }, { id: d.supplierId, name: cleanName(d.supplier) })}>
-      Alte {[h.nDa > 0 && `${formatInt(h.nDa)} ${h.nDa === 1 ? "achiziție directă" : "achiziții directe"}`, h.nCt > 0 && `${formatInt(h.nCt)} ${h.nCt === 1 ? "contract" : "contracte"}`].filter(Boolean).join(" și ")} cu instituția · {formatRon(h.totalRon)}</a>,
+      {(h.nDa > 0 ? h.nDa : h.nCt) === 1 ? "Încă" : "Alte"} {[h.nDa > 0 && (h.nDa === 1 ? "o achiziție directă" : countWords(h.nDa, "achiziție directă", "achiziții directe")), h.nCt > 0 && (h.nCt === 1 ? "un contract" : countWords(h.nCt, "contract", "contracte"))].filter(Boolean).join(" și ")} cu instituția · {formatRon(h.totalRon)}</a>,
     ...pairLines(x.pair),
-    s && <span className="warn">În aceeași fereastră de 60 de zile{s.cpvName ? `, ${s.cpvName.toLowerCase()}` : ", aceeași categorie"}: {formatInt(s.n)} achiziții · {formatExactDecimal(s.sumRon)} lei{s.ceilingRon ? ` față de plafonul de ${formatExactDecimal(s.ceilingRon)} lei` : ""}{s.from && s.to ? ` (${formatCalendarDate(s.from)} – ${formatCalendarDate(s.to)})` : ""}</span>,
+    s && <span className="warn">În aceeași fereastră de 60 de zile{s.cpvName ? `, ${s.cpvName.toLowerCase()}` : ", aceeași categorie"}: {countWords(s.n, "achiziție", "achiziții")} · {formatExactDecimal(s.sumRon)} lei{s.ceilingRon ? ` față de plafonul de ${formatExactDecimal(s.ceilingRon)} lei` : ""}{s.from && s.to ? ` (${formatCalendarDate(s.from)} – ${formatCalendarDate(s.to)})` : ""}</span>,
   ];
   const parties: Party[] = [
     { key: "s", role: purchase ? "Furnizorul" : "Ofertantul", name: supplier, lines: supplierLines },
