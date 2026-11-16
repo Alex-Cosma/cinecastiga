@@ -106,6 +106,7 @@ import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentU
 import { understoodLine } from "./intent-line";
 import { pinnedChoice, type SuggestPin } from "./ask-suggest";
 import { learnTermSpelling } from "../../lib/ask/term-spelling";
+import QuestionBand from "./QuestionBand";
 import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
@@ -1220,6 +1221,7 @@ export default function AskPanel({
           )}
         </div>
       )}
+      {resp?.ok && data && applied && <QuestionBand spec={applied} cpvName={cpvName} title={title} onChange={() => setBuilderCollapsed(false)} />}
       {resp?.ok && data && applied && (
         <AnswerEvidence.Provider value={{ open: openEvidence, exclude: excludeRow }}>
           <section
