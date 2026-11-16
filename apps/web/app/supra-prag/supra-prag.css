@@ -80,3 +80,24 @@ table.rank tr.tp-sep-row td{padding:14px 14px 8px;background:var(--sunk);font-si
 .tp-sep-row .term-tip{margin-left:4px}
 .dsc-pg.tp-pager{margin-top:8px}
 @media (max-width:720px){.ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-sep-row{display:block;padding:12px 14px}.ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-sep-row td{display:block;padding:0;background:none}}
+
+/* A row without the source's noise (UX audit Z6-28): an amount and its „lei” stay on one line on a wide screen. */
+@media (min-width:721px){table.rank td.tp-value .tp-amount{white-space:nowrap}.tp-stack .tp-proc-pill{display:none}}
+/* On a phone a result's card is shorter (UX audit Z6-29): no field labels, the procedure a pill beside the others, the
+   value (16 px) with its kind under it and the TED link on its right, the object's title cut at two lines (a tap shows it
+   whole), the source's TED fields at 12 px. */
+@media (max-width:720px){
+  .ask-tablewrap.rank-stack.tp-stack table.rank tbody tr:not(.tp-src-tr):not(.tp-sep-row){row-gap:6px}
+  .ask-tablewrap.rank-stack.tp-stack table.rank td[data-label]::before{display:none}
+  .ask-tablewrap.rank-stack.tp-stack table.rank td[data-label="Procedură"]{display:none}
+  .ask-tablewrap.rank-stack.tp-stack table.rank td.tp-value{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;text-align:left}
+  .tp-stack .tp-value .tp-amount{grid-column:1;font-size:16px;font-weight:600}
+  .tp-stack .tp-value .tp-amount-kind{grid-column:1;font-size:12px;margin-top:0}
+  .tp-stack table.rank td.tp-value .src{grid-column:2;grid-row:1/span 2;margin:0}
+  .ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-src-tr{padding-top:0;margin-top:-6px}
+  .ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-src-tr td{padding-top:0}
+  .tp-src-field{font-size:12px}
+  .tp-stack .obj-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tp-stack .obj-title:focus{display:block;-webkit-line-clamp:unset;outline:none}
+  .tp-stack .badges{margin-top:6px}
+}

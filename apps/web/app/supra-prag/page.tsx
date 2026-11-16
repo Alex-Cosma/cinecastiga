@@ -59,6 +59,12 @@ function winnerCell(a: TedAward) {
   });
 }
 
+/** The usual kind of a TED value (an offer or a result): said once, in the (?) of the column, not under every sum (Z6-28). */
+const USUAL_AMOUNT = "payable";
+/** TED's name for a lot without one, and its implicit lot: the source's noise, not the reader's (UX audit Z6-28). */
+const defaultLotTitle = (title: string | null) => !title || /^default lot$/i.test(title.trim());
+const defaultLotId = (lot: string | null) => !lot || /^LOT-0+$/i.test(lot.trim());
+
 function amountCell(a: TedAward) {
   const kind = a.amountKind ?? "legacy_unknown";
   const details = a.amountDetails;
@@ -66,7 +72,7 @@ function amountCell(a: TedAward) {
   const main = tedAmountHeadline(a);
   return <>
     <div className="tp-amount">{main}</div>
-    <div className="county tp-amount-kind">{label}</div>
+    {kind !== USUAL_AMOUNT && <div className="county tp-amount-kind">{label}</div>}
     {details?.missingTenderIds.length ? <div className="county tp-amount-kind">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
   </>;
 }
@@ -215,7 +221,7 @@ export default async function SupraPragPage({
                   <RegionLink scroll={false} href={qstr({ sort: sort === "value" ? undefined : "value" })} title={sort === "value" ? "Înapoi la cele mai noi" : "Ordonează după valoarea în lei"}>
                     Valoare{sort === "value" ? " ▾" : ""}
                   </RegionLink>
-                  <UrlFunnel table="ted" column="valoare" align="end" /><Term id="ted-valori" tip />
+                  <UrlFunnel table="ted" column="valoare" align="end" /><Term tip title={GLOSSARY["ted-valori"].title} text={`${GLOSSARY["ted-valori"].text} O sumă fără etichetă e valoarea ofertei sau a rezultatului.`} />
                 </span>
               </th>
             </tr>
@@ -235,15 +241,20 @@ export default async function SupraPragPage({
                   {tedCountryNeedsReview(a.isForeign, a.winnerCountries) ? <div className="county">{TED_COUNTRY_REVIEW_LABEL}</div> : null}
                 </td>
                 <td className="county" data-label="Obiect">
-                  {a.title ? <div className="obj-title">{a.title}</div> : null}
-                  {a.cpvName ?? a.cpvCode ?? "—"}
-                  {a.lotId ? <div>Lot: {a.lotId}</div> : null}
+                  {/* The object's own title, else its CPV name as the title; TED's „Default lot” and „LOT-0000” say nothing (Z6-28).
+                      On a phone the title is cut at two lines and a tap shows it whole (Z6-29). */}
+                  {defaultLotTitle(a.title)
+                    ? <div className="obj-title" tabIndex={0} title={a.cpvName ?? undefined}>{a.cpvName ?? a.cpvCode ?? "—"}</div>
+                    : <><div className="obj-title" tabIndex={0} title={a.title ?? undefined}>{a.title}</div>{a.cpvName ?? a.cpvCode ?? "—"}</>}
+                  {!defaultLotId(a.lotId) ? <div>Lot: {a.lotId}</div> : null}
                   <div className="badges">
                     <span className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`} title={TED_LABEL[a.label]?.hint}>
                       {TED_LABEL[a.label]?.title ?? a.label}
                     </span>
                     <span className={`badge ${a.tendersReceived === 1 ? "warn" : ""}`}>{competitionLabel(a.tendersReceived)}</span>
                     {a.euFunded ? <span className="badge">fonduri UE</span> : null}
+                    {/* On a phone the procedure is one more pill here, its column hidden (Z6-29). */}
+                    <span className="badge tp-proc-pill">{procedureName(a.procedureType)}</span>
                   </div>
                 </td>
                 <td className="county" data-label="Procedură">{procedureName(a.procedureType)}</td>
