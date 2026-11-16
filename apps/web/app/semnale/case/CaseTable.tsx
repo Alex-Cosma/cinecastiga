@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
 import { useMemoryFilters } from "@/components/table-filters/useMemoryFilters";
@@ -154,11 +155,9 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
           })}
         </tbody>
       </table>
-      {pages > 1 && <nav className="sgc-pager" aria-label="Paginile cazurilor">
-        <button type="button" disabled={at <= 1} onClick={() => turn(at - 1)}>← Anterior</button>
-        <span>Pagina {formatInt(at)} din {formatInt(pages)}</span>
-        <button type="button" disabled={at >= pages} onClick={() => turn(at + 1)}>Următor →</button>
-      </nav>}
+      {/* The pager of the „Descoperă” pages (UX audit Z6-14), its buttons turning the table's pages here. */}
+      {pages > 1 && <DiscoverPager page={at - 1} pageSize={CASE_TABLE_PAGE} total={kept.length} unit={["caz", "cazuri"]} onPage={(p) => turn(p + 1)}
+        label="Paginile cazurilor" bottom className="sgc-dsc-pager" />}
     </div>
   );
 }

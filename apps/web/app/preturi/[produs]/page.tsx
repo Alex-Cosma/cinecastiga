@@ -14,6 +14,7 @@ import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } fro
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
 import PriceMethod from "../PriceMethod";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import "../preturi.css";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +78,8 @@ export default async function ProdusPage({ params, searchParams }: {
   const seasonal = isSeasonal(family.group);
   const sortOf = (k: PriceBuyerSort) => data.sort === k ? (data.dir === "asc" ? "ascending" as const : "descending" as const) : "none" as const;
   const first = data.page * BUYERS_PAGE + 1, last = Math.min(data.total, (data.page + 1) * BUYERS_PAGE);
+  // What the pager counts (UX audit Z6-14): the leads, or every institution's row.
+  const rowsUnit = data.onlyLeads ? ["preț peste dublu", "prețuri peste dublu"] as const : ["rând", "rânduri"] as const;
   return <div className="pr-page pr-product">
     <p className="pr-crumb"><Link href={priceHref({ year: data.year, group: null, product: null, county: null, order: DEFAULT_PRICE_ORDER })}>Prețuri</Link>
       <span aria-hidden="true"> / </span><Link href={priceHref({ year: data.year, group: family.group, product: null, county: null, order: DEFAULT_PRICE_ORDER })}>{PRICE_GROUP_LABEL[family.group]}</Link></p>
@@ -141,11 +144,9 @@ export default async function ProdusPage({ params, searchParams }: {
                 : "Nicio instituție de arătat."}</td></tr></tbody>}
           </table>
         </div>
-        {pages > 1 && <nav className="pr-pager" aria-label="Paginile listei">
-          {data.page > 0 && <RegionLink href={here({ pagina: data.page > 1 ? String(data.page) : null, deschis: null })}>← Înapoi</RegionLink>}
-          <span>Pagina {data.page + 1} din {pages}</span>
-          {data.page + 1 < pages && <RegionLink href={here({ pagina: String(data.page + 2), deschis: null })}>Înainte →</RegionLink>}
-        </nav>}
+        {/* The pager of the „Descoperă” pages (UX audit Z6-14). */}
+        {pages > 1 && <DiscoverPager page={data.page} pageSize={BUYERS_PAGE} total={data.total} unit={rowsUnit} label="Paginile listei"
+          href={(p) => here({ pagina: p > 0 ? String(p + 1) : null, deschis: null })} link={RegionLink} bottom className="pr-dsc-pager" />}
       </PendingRegion>
     </>}
     <PriceMethod />

@@ -123,16 +123,22 @@ export function firstMonthWords(code: "da_first_month" | "da_first_month_buyer",
   };
 }
 
+/** What one case of a pattern is called, one and many („grup”, „grupuri”). */
+export function caseUnitNouns(code: string): readonly [string, string] {
+  switch (code) {
+    case "da_split": return ["grup", "grupuri"];
+    case "da_round": return ["sumă", "sume"];
+    case "da_above_ceiling": return ["achiziție", "achiziții"];
+    case "da_year_end": case "da_capacity": case "fin_tiny_staff": return ["an", "ani"];
+    case "award_no_competition": case "award_single_bid": case "award_calloffs_over_ceiling": return ["procedură", "proceduri"];
+    case "net_shared_admin": return ["legătură", "legături"];
+    case "da_first_month_buyer": return ["firmă", "firme"];
+    default: return ["caz", "cazuri"];
+  }
+}
+
 /** What one case of a pattern is called in its tab ("5 grupuri", "16 sume", "3 achiziții"). */
 export function caseUnitWords(code: string, count: number): string {
-  switch (code) {
-    case "da_split": return countWords(count, "grup", "grupuri");
-    case "da_round": return countWords(count, "sumă", "sume");
-    case "da_above_ceiling": return countWords(count, "achiziție", "achiziții");
-    case "da_year_end": case "da_capacity": case "fin_tiny_staff": return countWords(count, "an", "ani");
-    case "award_no_competition": case "award_single_bid": case "award_calloffs_over_ceiling": return countWords(count, "procedură", "proceduri");
-    case "net_shared_admin": return countWords(count, "legătură", "legături");
-    case "da_first_month_buyer": return countWords(count, "firmă", "firme");
-    default: return countWords(count, "caz", "cazuri");
-  }
+  const [one, many] = caseUnitNouns(code);
+  return countWords(count, one, many);
 }

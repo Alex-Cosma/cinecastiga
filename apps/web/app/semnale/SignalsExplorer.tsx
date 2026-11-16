@@ -18,6 +18,7 @@ import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import DiscoverNav from "@/components/discover/DiscoverNav";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import SignalDialog from "./SignalDialog";
 import { caseMeter } from "./CaseMeter";
 
@@ -32,17 +33,7 @@ const sorts: [RiskGroupSort, string][] = [["cri", "După risc"], ["flags", "Dup�
 const scopeKey = (s: SignalState) => `${s.role}:${s.county ?? ""}:${s.entity ?? ""}`;
 /** One entity's page for a pattern (the case page). */
 const caseUrl = (code: string, role: SignalState["role"], entity: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: entity }));
-function Arrow({ back = false }: { back?: boolean }) { return <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d={back ? "m14 5-7 7 7 7" : "m10 5 7 7-7 7"} fill="none" stroke="currentColor" strokeWidth="1.7"/></svg>; }
 function Entity({ id, name }: { id: string | null; name: string | null }) { return id ? <Link prefetch={false} href={`/entitati/${id}`}>{cleanName(name)}</Link> : <>{cleanName(name)}</>; }
-function Pager({ page, total, navigate }: { page: number; total: number; navigate: (p: number) => void }) {
-  const pages = Math.max(1, Math.ceil(total / 10));
-  const kept = [...new Set([0, Math.max(0, page - 1), page, Math.min(pages - 1, page + 1), pages - 1])].sort((a, b) => a - b);
-  return <nav className="sg-pager" aria-label="Pagini de rezultate">
-    <button disabled={page === 0} aria-label="Pagina anterioară" onClick={() => navigate(page - 1)}><Arrow back/></button>
-    {kept.map((p, i) => <span className="sg-page-slot" key={p}>{i > 0 && p - kept[i - 1]! > 1 && <span className="sg-gap">…</span>}<button aria-label={`Pagina ${p + 1}`} aria-current={p === page ? "page" : undefined} className={p === page ? "selected" : ""} onClick={() => navigate(p)}>{formatInt(p + 1)}</button></span>)}
-    <button disabled={page + 1 === pages} aria-label="Pagina următoare" onClick={() => navigate(page + 1)}><Arrow/></button>
-  </nav>;
-}
 function TypeChooser({ code, role, counts, choose, close }: { code: string; role: SignalState["role"]; counts: Record<string, number>; choose: (c: string) => void; close: () => void }) {
   const [search, setSearch] = useState("");
   let found = 0;
@@ -105,7 +96,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     navigate({ view, page: same ? previous.page : 0, criteria: view === "cri" && same ? previous.criteria : null,
       band: view === "cri" && same ? previous.band : null, ...(view === "cri" && same ? { sort: previous.sort, dir: previous.dir, inactive: previous.inactive } : {}) });
   }
-  function toolbar(bottom = false) { return <div className={`sg-toolbar${bottom ? " sg-bottom-toolbar" : ""}`}><p className="sg-result-total"><strong>{formatInt(total ? state.page * 10 + 1 : 0)}–{formatInt(Math.min(total, (state.page + 1) * 10))}</strong> din {formatInt(total)} {active.view === "cri" ? "entități" : "cazuri"}{!bottom && active.view === "signals" && meta.subject === "award" && <Term id="aparitie-anunt" tip />}{active.view === "signals" && <span className="sg-result-sort">După valoare</span>}</p><Pager page={state.page} total={total} navigate={page => navigate({ page }, true)}/></div>; }
+  // The count and the pages, above and under the rows: the pager of every „Descoperă” page (UX audit Z6-14).
+  function toolbar(bottom = false) {
+    return <DiscoverPager page={state.page} pageSize={10} total={total} unit={active.view === "cri" ? ["entitate", "entități"] : ["caz", "cazuri"]} onPage={page => navigate({ page }, true)} always bottom={bottom} className="sg-toolbar"
+      extra={<>{!bottom && active.view === "signals" && meta.subject === "award" && <Term id="aparitie-anunt" tip />}{active.view === "signals" && <span className="sg-result-sort">După valoare</span>}</>} />;
+  }
   /**
    * What the list leaves out by default, with the way back in, under its count (owner, 16 November 2026): in the ranking
    * the inactive profiles, as Întreabă's rankings by risk (lib/ask/historic.ts). A real link; the click stays in the page.
@@ -199,7 +194,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
 }
 /** The bar above and under the rows: the count and the pager (min-height keeps it as tall as the real one). */
 function ToolbarGhost({ bottom = false }: { bottom?: boolean }) {
-  return <div className={`sg-toolbar${bottom ? " sg-bottom-toolbar" : ""}`} aria-hidden="true"><p className="sg-result-total"><G.Line inline w="16ch"/></p><G.Line inline w="11rem"/></div>;
+  return <div className={`dsc-pg sg-toolbar${bottom ? " dsc-pg-bottom" : ""}`} aria-hidden="true"><p className="dsc-pg-count"><G.Line inline w="16ch"/></p><span className="dsc-pg-pages dsc-pg-ghost"><G.Line inline w="11rem"/></span></div>;
 }
 /**
  * The results of a tab that is not on screen yet ("Cazuri, pe tipar" ↔ "Clasament după risc"): that view's real rows and

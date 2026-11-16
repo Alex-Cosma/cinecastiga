@@ -11,7 +11,7 @@ import { cleanName, countyLabel, formatCalendarDate, formatExactDecimal, formatI
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText, type RiskCriterion, type ScorePart } from "@/lib/risk-score";
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
-import { aboveWords, capacityWords, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
+import { aboveWords, capacityWords, caseUnitNouns, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/lib/signal-mirror";
 import { signalUrl, withoutRole, type SignalState } from "@/lib/signals-shared";
 import CaseTable, { type CaseRow } from "./CaseTable";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import OpenFromHash from "./OpenFromHash";
 import OutsideMenu from "./OutsideMenu";
 import RecordList, { type RecordRow } from "./RecordList";
@@ -607,13 +608,9 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
         : code === "da_first_month" || code === "da_first_month_buyer" ? <FirstMonthCase data={data} />
         : <OutsideCase data={data} />}
 
-      {data.total > data.pageSize && (
-        <nav className="sgc-pager" aria-label="Paginile cazurilor">
-          {data.page > 0 && <Link href={roleless(data, signalUrl(state, { page: data.page - 1 }))}>← Anterioarele</Link>}
-          <span>Pagina {formatInt(data.page + 1)} din {formatInt(Math.ceil(data.total / data.pageSize))}</span>
-          {(data.page + 1) * data.pageSize < data.total && <Link href={roleless(data, signalUrl(state, { page: data.page + 1 }))}>Următoarele →</Link>}
-        </nav>
-      )}
+      {/* The pager of the „Descoperă” pages (UX audit Z6-14): links to this page's other pages (CaseRegion keeps the case in place). */}
+      {data.total > data.pageSize && <DiscoverPager page={data.page} pageSize={data.pageSize} total={data.total} unit={caseUnitNouns(code)}
+        href={(p) => roleless(data, signalUrl(state, { page: p }))} link={Link} label="Paginile cazurilor" bottom className="sgc-dsc-pager" />}
 
       {guide && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{guide.check}</p></div><div><h2>Explicații posibile</h2><p>{guide.explain}</p></div></div>}
       {!guide && FLAG_META[code] && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{FLAG_META[code]!.rationale}</p></div><div><h2>Limitele semnalului</h2><p>{firstSentence(FLAG_META[code]!.caveat)} <Link href={`/metodologie#${code}`}>Toate limitele →</Link></p></div></div>}
