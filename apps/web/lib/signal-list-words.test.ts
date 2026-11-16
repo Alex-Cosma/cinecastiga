@@ -15,3 +15,14 @@ describe("the lines of /semnale's lists (UX audit Z6-01)", () => {
     expect(underIncludedWords(5848)).toBe("Sunt incluse și cele 5.848 de cazuri sub 1,2× plafonul, care nu intră în scor.");
   });
 });
+
+describe("the national list's column heads (Z6-17)", () => {
+  it("names each column from the pattern and the role, as the rows fill them", async () => {
+    const { signalListHeads } = await import("./signal-list-words");
+    expect(signalListHeads("da_dependence", "supplier")).toEqual({ entity: "Firma", partner: "Clientul public principal", meter: "Ponderea lui", amount: "Valoare înregistrată" });
+    expect(signalListHeads("da_split", "authority")).toMatchObject({ entity: "Instituția", partner: "Firma", meter: "Față de plafon" });
+    expect(signalListHeads("da_split", "supplier")).toMatchObject({ entity: "Firma", partner: "Instituția" });
+    expect(signalListHeads("award_single_bid", "supplier")).toEqual({ entity: "Instituția", partner: "Câștigătorii", meter: "", amount: "Valoare" });
+    expect(signalListHeads("fin_tiny_staff", "supplier")).toMatchObject({ partner: "", meter: "" });
+  });
+});

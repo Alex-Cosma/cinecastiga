@@ -24,3 +24,27 @@ export const underLeftOutWords = (n: number): string =>
 export const underIncludedWords = (n: number): string =>
   n === 1 ? "Este inclus și cazul sub 1,2× plafonul, care nu intră în scor."
     : `Sunt incluse și cele ${countWords(n, "caz", "cazuri")} sub 1,2× plafonul, care nu intră în scor.`;
+
+/**
+ * The national list's column heads, said once above the rows instead of on each (UX audit Z6-17): who the row is, its
+ * partner, what the picture shows and the value. Empty where a pattern has no such column. From the same pattern
+ * and role as the rows (lib/signals.ts signalPopulation: a pair or an acquisition names the other side).
+ */
+export function signalListHeads(code: string, role: "authority" | "supplier"): { entity: string; partner: string; meter: string; amount: string } {
+  const award = code.startsWith("award_");
+  const other = role === "authority" ? "Firma" : "Instituția";
+  const partner: Record<string, string> = {
+    da_split: other, da_round: other, da_above_ceiling: other, da_concentration: "Firma principală", da_dependence: "Clientul public principal",
+    da_first_month: "Instituția", da_first_month_buyer: "Firma", net_shared_admin: "Instituția",
+  };
+  const meter: Record<string, string> = {
+    da_split: "Față de plafon", da_above_ceiling: "Peste plafon", da_year_end: "Decembrie", da_concentration: "Ponderea ei",
+    da_dependence: "Ponderea lui", da_first_month: "Prima achiziție", da_first_month_buyer: "Prima achiziție",
+  };
+  return {
+    entity: award ? "Instituția" : role === "authority" ? "Instituția" : "Firma",
+    partner: award ? "Câștigătorii" : partner[code] ?? "",
+    meter: meter[code] ?? "",
+    amount: award ? "Valoare" : "Valoare înregistrată",
+  };
+}

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { SignalInstance, SignalPage, SignalRiskGroup } from "@/lib/signals";
 import type { RiskGroupSort } from "@/lib/marts";
 import { historicFact } from "@/lib/ask/historic";
-import { inactiveIncludedWords, inactiveLeftOutWords, underIncludedWords, underLeftOutWords } from "@/lib/signal-list-words";
+import { inactiveIncludedWords, inactiveLeftOutWords, signalListHeads, underIncludedWords, underLeftOutWords } from "@/lib/signal-list-words";
 import { parseSignalState, signalUrl, type SignalState } from "@/lib/signals-shared";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { COUNTIES } from "@/lib/counties";
@@ -114,6 +114,13 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     return <p className="sg-left-out">{words}{" "}
       <a href={signalUrl(active, patch)} onClick={e => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate(patch); }}>{included ? "Scoate-le" : "Include-le"}</a></p>;
   }
+  // What every row of the page would repeat is said once (UX audit Z6-17): the whole period, under the description; the
+  // value's kind and the partner's role in a head over the columns (a line on a phone); a note that is the same on every row.
+  const listRows = signals?.rows ?? [];
+  const allPeriod = listRows.length > 0 && listRows.every(r => r.period === "all");
+  const noteOf = (fi: SignalInstance) => caseMeter(fi.flagCode, fi.evidence)?.note ?? riskEvidenceLine(fi.flagCode, fi.evidence) ?? "";
+  const sameNote = listRows.length > 1 && listRows.every(r => noteOf(r) === noteOf(listRows[0]!));
+  const heads = signalListHeads(code, active.role);
   /** A case of the list (owner, 6 November 2026): its picture and number; the whole row opens the case page. */
   function signalRow(fi: SignalInstance, i: number) {
     const meter = caseMeter(fi.flagCode, fi.evidence);
@@ -123,16 +130,16 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     return <article className="sg-result sg-case-row" key={fi.id} style={{ "--i": i } as CSSProperties}>
       <div className="sg-entity">
         <div className="sg-entity-name"><EntityName id={fi.entityId} role={state.role}>{cleanName(fi.entityName)}</EntityName></div>
-        <p className="sg-meta">{[fi.subjectType === "award" ? "autoritate" : null, countyLabel(fi.entityCounty), signalPeriodLabel(fi.period, fi.evidence).replace(/^Perioada calculului: /, "")].filter(Boolean).join(" · ")}</p>
+        <p className="sg-meta">{[countyLabel(fi.entityCounty), allPeriod ? null : signalPeriodLabel(fi.period, fi.evidence).replace(/^Perioada calculului: /, "")].filter(Boolean).join(" · ")}</p>
       </div>
       <div className="sg-partner-col">
         {fi.partnerName && <div className="sg-partner"><EntityName id={fi.partnerId} role={partnerIsSupplier ? "supplier" : "authority"}>{cleanName(fi.partnerName)}</EntityName></div>}
         {fi.subjectType === "award" && <div className="sg-partner">{fi.winners.length ? fi.winners.slice(0, 2).map(w => <div key={w.entityId}><EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName></div>) : "Câștigător neidentificat în date."}{fi.winners.length > 2 && <small> și încă {fi.winners.length - 2}</small>}</div>}
-        <p className="sg-meta">{meter ? meter.note : observation}</p>
+        {!sameNote && <p className="sg-meta">{meter ? meter.note : observation}</p>}
       </div>
       {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
       <div className="sg-meter-col">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
-      <div className="sg-amount"><strong>{fi.totalExact === null ? "Necunoscută" : `${formatExactDecimal(fi.totalExact)} lei`}</strong><small>{fi.subjectType !== "award" ? "valoare înregistrată" : awardValueLabel(fi.evidence)}</small></div>
+      <div className="sg-amount"><strong>{fi.totalExact === null ? "Necunoscută" : `${formatExactDecimal(fi.totalExact)} lei`}</strong>{fi.subjectType === "award" && <small>{awardValueLabel(fi.evidence)}</small>}</div>
       <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}${meter?.under ? " under" : ""}`}>{meter?.value ?? ""}</div>
       <Link href={href} className="sg-open" aria-describedby={meter?.bar && meter.tip.length ? `sg-tip-${fi.id}` : undefined} aria-label={`Deschide cazul: ${cleanName(fi.entityName)}${fi.partnerName ? `, ${cleanName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
     </article>;
@@ -158,7 +165,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     </section>
     {notice && <p className="sg-notice" role="status">{notice}</p>}
     {/* The pattern's name is said once, by the field above, written as the section's title; its h2 stays for the outline (UX audit Z6-15). */}
-    <div className="sg-context"><div><h2 className={active.view === "signals" ? "sr-only" : undefined}>{active.view === "signals" ? flagLabel(code) : active.role === "authority" ? "Instituțiile după risc" : "Firmele după risc"}</h2><p>{active.view === "cri" ? `Riscul adună ${criteria.length} tipare din achizițiile directe, de la 0 la 100. Nu este o probabilitate de corupție.` : meta.short}</p></div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`}>Criterii și limite →</Link></div>
+    <div className="sg-context"><div><h2 className={active.view === "signals" ? "sr-only" : undefined}>{active.view === "signals" ? flagLabel(code) : active.role === "authority" ? "Instituțiile după risc" : "Firmele după risc"}</h2><p>{active.view === "cri" ? `Riscul adună ${criteria.length} tipare din achizițiile directe, de la 0 la 100. Nu este o probabilitate de corupție.` : `${meta.short}${allPeriod ? " Pe toată perioada disponibilă la calcul." : ""}`}</p></div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`}>Criterii și limite →</Link></div>
     {/* While a change is on its way the status is the floating one (same view) or the ghost's (another view). */}
     <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
     <section ref={resultsRef} className={`sg-results${update ? " sg-upd" : ""}${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined} data-chart>
@@ -167,6 +174,11 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
         {toolbar()}
         {leftOutLine()}
         {total > 0 ? <>
+          {signals && <>
+            <div className="sg-case-head" aria-hidden="true"><span>{heads.entity}</span><span>{heads.partner}</span><span>{heads.meter}</span><span className="r">{heads.amount}</span><span /><span /></div>
+            {/* On a phone, in place of the head: once, beside the figures (the period is in the description above). */}
+            {!code.startsWith("award_") && <p className="sg-list-line">Valori înregistrate, nu plăți.</p>}
+          </>}
           {signals?.rows.map(signalRow)}
           {risk?.rows.map((r, row) => {
             const points = riskPoints(r.parts ?? {}, r.score);
