@@ -143,7 +143,8 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
     }}>
       <form onSubmit={event => void save(event)} aria-busy={busy}>
         <h2 id={headingId}>{copyMode ? "Salvează o copie" : snapshotActive ? "Salvează modificările" : compact ? "Păstrează întrebarea" : "Salvează întrebarea"}</h2>
-        <p id={descriptionId}>{local ? "Doar în acest browser: se pierde dacă ștergi datele site-ului și o vede oricine folosește același profil. Se salvează întrebarea, nu rezultatele." : "Păstrezi întrebarea și filtrele, privat în contul tău. Rezultatele nu sunt salvate."}</p>
+        {/* The visitor's honesty note, once and short; its reasons behind the (?) (UX audit Z2-20, Z2-27). */}
+        <p id={descriptionId}>{local ? <>Se păstrează doar în acest browser. <Term tip title="Doar în acest browser" text="Se pierde dacă ștergi datele site-ului și o vede oricine folosește același profil. Se păstrează întrebarea, nu rezultatele." /></> : "Păstrezi întrebarea și filtrele, privat în contul tău. Rezultatele nu sunt salvate."}</p>
         {login ? <div role="status" className="cq-save-login"><p>Autentifică-te pentru a salva. Întrebarea și filtrele te așteaptă la întoarcere.</p><a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te și revino</a></div> : <label>Numele întrebării<input autoFocus required maxLength={160} value={title} disabled={busy} aria-invalid={titleTaken || undefined} onChange={event => { setTitle(event.target.value); setTitleTaken(false); setError(""); }} onFocus={event => event.currentTarget.select()} /></label>}
         {copyMode && !login && <p className="cq-copy-note">Nume propus pentru copie. Îl poți modifica înainte de salvare.</p>}
         {error && <p role="alert" className="cq-save-error">{error}</p>}

@@ -107,6 +107,7 @@ import { understoodLine } from "./intent-line";
 import { pinnedChoice, type SuggestPin } from "./ask-suggest";
 import { learnTermSpelling } from "../../lib/ask/term-spelling";
 import QuestionBand from "./QuestionBand";
+import { SavedEntry, useSavedCount } from "./SavedEntry";
 import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
@@ -246,6 +247,10 @@ export default function AskPanel({
    */
   const [askUnfolded, setAskUnfolded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** A toast's one action („Vezi salvatele” after saving, UX audit Z2-27); it then stays a little longer. */
+  const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
+  /** The saved questions asked for: the builder opens „Toate întrebările” on „Salvate” (Z2-27). */
+  const [wantSaved, setWantSaved] = useState(false);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
   /**
    * The question the answer on screen answers (plan §2.3): the server's resolved
@@ -311,10 +316,11 @@ export default function AskPanel({
   const [builderOpen, setBuilderOpen] = useState(Boolean(linked));
   const askRef = useRef<HTMLInputElement>(null);
   const intentRequest = useRef<AbortController | null>(null);
-  const showToast = useCallback((text: string) => {
+  const showToast = useCallback((text: string, action: { label: string; run: () => void } | null = null) => {
     setToast(text);
+    setToastAction(action);
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    toastTimer.current = setTimeout(() => { setToast(null); setToastAction(null); }, action ? 6000 : 2600);
   }, []);
   /** The error appears where the person is looking (on a phone it would otherwise sit under the fold). */
   const revealError = useCallback(() => {
@@ -1077,6 +1083,10 @@ export default function AskPanel({
       heading.focus({ preventScroll: true });
     }));
   };
+  /** „Întrebările tale salvate”, „Vezi salvatele”: the builder opens (unfolded beside an answer) on its saved list (Z2-27). */
+  const openSavedList = () => { setBuilderOpen(true); setBuilderCollapsed(false); setWantSaved(true); };
+  const savedOpened = useCallback(() => setWantSaved(false), []);
+  const savedCount = useSavedCount(!intent && !builderInit && !resp);
   const askAgain = () => {
     setAskUnfolded(true);
     requestAnimationFrame(() => {
@@ -1094,6 +1104,7 @@ export default function AskPanel({
       {toast && (
         <div className="ask-toast" role="status">
           {toast}
+          {toastAction && <> · <button type="button" className="ask-toast-action" onClick={() => { const run = toastAction.run; setToast(null); setToastAction(null); run(); }}>{toastAction.label}</button></>}
         </div>
       )}
       {/* The page title is the question box's label: one line says what this page does. */}
@@ -1104,6 +1115,7 @@ export default function AskPanel({
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
       {/* A link that could not be opened (nothing was asked): said right under the box (UX audit Z2-31). */}
       {error && !lastBody.current && <div className="cq-error ia-link-error" role="alert" id="raspuns-eroare"><strong>{error}</strong></div>}
+      {!intent && !builderInit && !resp && savedCount ? <SavedEntry count={savedCount} onOpen={openSavedList} /> : null}
       <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
       {intent && !intent.spec && !intent.alternatives.some((alt) => alt.kind !== "intent") && <IntentUnknown result={intent} onPick={pickExample} />}
@@ -1232,6 +1244,8 @@ export default function AskPanel({
             {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
             stripPatch={stripPatch}
             onTrendList={trendListFromBuilder}
+            openSaved={wantSaved}
+            onSavedOpened={savedOpened}
           />
         </div>
       ) : null}
@@ -1299,7 +1313,10 @@ export default function AskPanel({
                   <ShareIcon />
                   <span>Trimite</span>
                 </button>
-                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
+                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={(question) => {
+                  setAnswerSaved(question);
+                  showToast(question.storage === "local" ? "Păstrată în acest browser" : "Păstrată în cont", { label: "Vezi salvatele", run: openSavedList });
+                }} disabled={loading} compact />
                 {/* A trend's or a network's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title}
                   {...(watchedGroup ? { label: watchedGroup.label, blocked: watchedGroup.blocked } : {})} />

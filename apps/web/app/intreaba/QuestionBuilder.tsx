@@ -70,6 +70,9 @@ export interface QuestionBuilderProps {
   initialApplied?: boolean;
   /** What opening a link changed (restoreLink's notes, e.g. a measure only rankings of institutions have): said with the builder's own notes. */
   initialNotes?: readonly string[];
+  /** Opens „Toate întrebările” on „Salvate” (UX audit Z2-27: the empty page's entry, „Vezi salvatele” after saving); then onSavedOpened. */
+  openSaved?: boolean;
+  onSavedOpened?: () => void;
   /** A key the strip beside the answer changed (plan §2.3): the builder writes it into its applied question and its draft. */
   stripPatch?: StripPatch | null;
   /**
@@ -112,7 +115,7 @@ const WINNER_TOGGLES: Partial<Record<string, string>> = { mainClient: "main", do
 /** Their (?) (final table §3.6, §3.7): the glossary's words. */
 const WINNER_TIPS: Partial<Record<string, GlossaryId>> = { mainClient: "client-principal", dominantSupplier: "o-firma-ia-jumatate" };
 
-export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, initialApplied = true, initialNotes, stripPatch = null, onTrendList }: QuestionBuilderProps) {
+export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, initialApplied = true, initialNotes, stripPatch = null, onTrendList, openSaved = false, onSavedOpened }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
@@ -343,6 +346,15 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     setSearch("");
     setCatalogue(true);
   }
+  // The empty page's „Întrebările tale salvate ›”: the catalogue on its saved tab, focus back to that entry on close.
+  useEffect(() => {
+    if (!openSaved) return;
+    catalogueTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCatalogueTab("saved");
+    setSearch("");
+    setCatalogue(true);
+    onSavedOpened?.();
+  }, [openSaved, onSavedOpened]);
   function closeCatalogue() {
     dialogRef.current?.close();
     setCatalogue(false);
