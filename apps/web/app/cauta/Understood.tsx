@@ -9,7 +9,7 @@ import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {answerShape,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
+import {answerShape,fold,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
 import {relatedSubjects,relatedWord} from '@/lib/topic-search/related';
 import {markParts,placeSentence,placeTexts} from '@/lib/topic-search/sentence';
 import {TownHallPicker} from '../TownHallTile';
@@ -365,7 +365,7 @@ export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;
  const county=place?.kind==='locality'?place.detail.split(' · ')[1]:null;
  const subjects=[...(t?.otherSubjects.map(s=>s.label)??[]),...(related?.q===first?related.items:[])].filter((s,i,a)=>a.findIndex(x=>x.toLowerCase()===s.toLowerCase())===i&&s.toLowerCase()!==effective.q.toLowerCase()).slice(0,4);
  return <div className="topic-broader"><p>Încearcă mai larg:</p><ul>
-  {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${county}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
+  {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${fold(county)}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
   {effective.place&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:'',from:effective.from,to:effective.to})}>„{effective.q}” în toată țara</Link></li>}
   {effective.from&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:effective.place,from:'',to:''})}>„{effective.q}” în toți anii</Link></li>}
   {t?.alsoTry.map(w=><li key={w}><Link prefetch={false} href={searchHref(scope,{q:w,place:effective.place,from:effective.from,to:effective.to})}>Doar „{w}”</Link></li>)}
