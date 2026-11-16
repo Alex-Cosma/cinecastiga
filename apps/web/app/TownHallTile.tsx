@@ -59,7 +59,7 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
     <button type="button" className="d-question-card d-question-button" aria-haspopup="dialog" onClick={show}>
       <div className="d-question-top"><span>PRIMĂRIA TA</span><span>{number}</span></div>
       {art}
-      <h3>Ce a cumpărat primăria ta?</h3>
+      <h3>Ce a cumpărat primăria ta?<span className="d-card-go" aria-hidden="true"><DiscoveryIcon name="arrow" /></span></h3>
       <p>Alegi localitatea și ajungi la pagina primăriei: ce a cumpărat, de la cine, cu ce semnale.</p>
       <div className="d-question-bottom"><span>Alege primăria</span><span><DiscoveryIcon name="arrow" /></span></div>
     </button>

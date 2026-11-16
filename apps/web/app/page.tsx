@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { getDiscoverySummary } from "@/lib/discovery";
 import { formatRon, formatInt } from "@/lib/format";
@@ -35,21 +36,38 @@ const PATHS = [
 // Twelve stars of the European flag, rounded so server and client agree.
 const EU_RING = Array.from({ length: 12 }, (_, k) => [Math.round((104 + 36 * Math.cos(k * Math.PI / 6)) * 10) / 10, Math.round((52 + 36 * Math.sin(k * Math.PI / 6)) * 10) / 10]);
 
+/*
+ * On phones each card is a row with its drawing at 104×70 (UX audit Z1-04, 16 November 2026): the same drawing, its
+ * empty margins cropped, so it stays legible at that size. A second copy of the drawing carries the phone's frame.
+ */
+const PHONE_CROP: Record<string, string> = {
+  network: "52 4 206 98", outlier: "40 8 236 94", townhall: "76 0 170 100", village: "44 14 214 90", dependence: "26 8 254 98", hospital: "40 20 236 86",
+  signals: "52 20 198 84", domains: "58 20 184 84", ted: "62 12 196 80",
+};
+function Framed({ className, viewBox, kind, children }: { className: string; viewBox: string; kind: string; children: ReactNode }) {
+  return <>
+    <svg className={`${className} d-art-${kind} d-art-wide`} viewBox={viewBox} aria-hidden="true">{children}</svg>
+    <svg className={`${className} d-art-${kind} d-art-narrow`} viewBox={PHONE_CROP[kind] ?? viewBox} aria-hidden="true">{children}</svg>
+  </>;
+}
+/** The small arrow after a card's title on phones, where the card's action row is left out. */
+const CardGo = () => <span className="d-card-go" aria-hidden="true"><DiscoveryIcon name="arrow" /></span>;
+
 function PathArt({ kind }: { kind: string }) {
-  return <svg className={`d-path-art d-question-art d-art-${kind}`} viewBox="20 0 270 105" aria-hidden="true">
+  return <Framed className="d-path-art d-question-art" viewBox="20 0 270 105" kind={kind}>
     {kind === "signals" ? <><path className="d-art-stroke" d="M40 100h230" /><rect className="d-art-land" x="58" y="62" width="26" height="38" rx="3" /><rect className="d-art-land" x="98" y="44" width="26" height="56" rx="3" /><rect className="d-art-land" x="138" y="70" width="26" height="30" rx="3" /><rect className="d-art-highlight" x="178" y="28" width="26" height="72" rx="3" /><rect className="d-art-land" x="218" y="56" width="26" height="44" rx="3" /><circle className="d-art-stroke" cx="191" cy="40" r="27" /><path className="d-art-highlight-stroke" d="M211 60l22 22" /></>
       : kind === "domains" ? <><path className="d-art-stroke" d="M40 100h230" /><rect className="d-art-land" x="64" y="58" width="58" height="42" rx="3" /><rect className="d-art-building" x="122" y="34" width="70" height="66" rx="3" /><path className="d-art-stroke" d="M157 34v24m-35 0h70" /><rect className="d-art-land" x="192" y="70" width="44" height="30" rx="3" /><rect className="d-art-land" x="80" y="26" width="34" height="32" rx="3" /><path className="d-art-stroke" d="M97 26v12" /><circle className="d-art-highlight" cx="214" cy="56" r="8" /></>
       : <>{EU_RING.map(([cx, cy], k) => <circle className="d-art-node" cx={cx} cy={cy} r="4.5" key={k} />)}<rect className="d-art-building" x="88" y="34" width="32" height="38" rx="3" /><path className="d-art-stroke" d="M95 45h18m-18 8h18m-18 8h11" /><path className="d-art-stroke" d="M150 53h50" strokeDasharray="5 6" /><rect className="d-art-building" x="214" y="34" width="32" height="38" rx="3" /><path className="d-art-stroke" d="M221 45h18m-18 8h18m-18 8h11" /><circle className="d-art-highlight" cx="246" cy="34" r="9" /><path className="d-art-check" d="M242 34l3 3 5-6" /></>}
-  </svg>;
+  </Framed>;
 }
 
 function QuestionArt({ kind }: { kind: string }) {
-  return <svg className={`d-question-art d-art-${kind}`} viewBox="0 0 310 105" aria-hidden="true">
+  return <Framed className="d-question-art" viewBox="0 0 310 105" kind={kind}>
     {kind === "townhall" ? <><path className="d-art-land" d="M0 84c52-12 110-10 160-12s104-6 150 2v31H0Z" /><path className="d-art-building" d="M92 98V52h126v46" /><path className="d-art-building" d="M84 52l71-28 71 28Z" /><path className="d-art-stroke" d="M155 24V6m0 0h18l-4 5 4 5h-18" /><circle className="d-art-stroke" cx="155" cy="40" r="6" /><path className="d-art-stroke" d="M108 62v28m22-28v28m50-28v28m22-28v28" /><path className="d-art-building" d="M144 98V72h22v26" /><path className="d-art-stroke" d="M40 98h230" /><circle className="d-art-node" cx="44" cy="80" r="12" /><path className="d-art-stroke" d="M44 92v6" /><circle className="d-art-node" cx="262" cy="78" r="14" /><path className="d-art-stroke" d="M262 92v6" /><circle className="d-art-highlight" cx="236" cy="30" r="7" /></>
       : kind === "road" ? <><path className="d-art-land" d="M0 78c43-43 93-21 139-43s114-20 171 2v67H0Z" /><path className="d-art-road" d="M-10 100C43 85 70 23 127 36s37 59 83 52 63-59 113-64" /><path className="d-art-road-line" d="M-10 100C43 85 70 23 127 36s37 59 83 52 63-59 113-64" /><path className="d-art-stroke" d="M57 30v23m-8-15 8-10 8 10M251 63v22m-8-14 8-10 8 10" /><circle className="d-art-highlight" cx="205" cy="87" r="7" /></> : kind === "village" ? <><path className="d-art-land" d="M0 86c58-15 116-9 168-13s100-7 142 1v31H0Z" /><path className="d-art-building" d="M52 88V60l22-18 22 18v28" /><path className="d-art-stroke" d="M67 88V72h14v16M58 64h8" /><path className="d-art-building" d="M112 88V68l16-13 16 13v20" /><path className="d-art-stroke" d="M123 88V77h10v11" /><path className="d-art-building" d="M178 88V46h22v42M178 46l11-17 11 17" /><path className="d-art-stroke" d="M189 18v11m-4-7h8M184 88V74h10v14" /><path className="d-art-stroke" d="M246 88V68" /><circle className="d-art-node" cx="246" cy="60" r="13" /><circle className="d-art-highlight" cx="134" cy="36" r="7" /><path className="d-art-stroke" d="M30 98h250" /></>
       : kind === "outlier" ? <><path className="d-art-stroke" d="M44 98h232M44 98V14" />{[[64,88],[76,80],[88,90],[97,74],[110,84],[120,68],[132,79],[144,64],[152,87],[164,72],[176,58],[188,77],[200,63],[122,92],[82,70],[104,62],[140,90],[170,85]].map(([cx, cy], k) => <circle className="d-art-node" cx={cx} cy={cy} r="4.5" key={k} />)}<circle className="d-art-stroke" cx="244" cy="28" r="17" /><circle className="d-art-highlight" cx="244" cy="28" r="7" /><path className="d-art-stroke" d="M210 54l18-14" strokeDasharray="4 5" /></>
       : kind === "dependence" ? <><path className="d-art-land" d="M30 104V66h96v38" /><path className="d-art-building" d="M48 104V40l30-16 30 16v64" /><path className="d-art-stroke" d="M60 54h36M60 66h36M60 78h36M70 104V90h16v14" /><path className="d-art-highlight-stroke" d="M112 62c38-4 62-6 92-6" /><path className="d-art-connections" d="M226 52l34-28M228 66l40 24M220 46l-6-30" strokeDasharray="4 5" /><circle className="d-art-node" cx="262" cy="22" r="6" /><circle className="d-art-node" cx="270" cy="92" r="7" /><circle className="d-art-node" cx="213" cy="14" r="5" /><circle className="d-art-highlight" cx="218" cy="56" r="13" /><path className="d-art-stroke" d="M20 104h270" /></> : kind === "hospital" ? <><rect className="d-art-land" x="51" y="62" width="207" height="42" rx="4" /><path className="d-art-building" d="M116 103V28h80v75M73 103V58h43m80 0h42v45" /><path className="d-art-stroke" d="M138 100V81h36v19M131 63h9m31 0h9M88 75h9m-9 13h9m113-13h9m-9 13h9" /><path className="d-art-highlight-stroke" d="M156 36v19m-10-10h20" /><path className="d-art-stroke" d="M44 103h224" /></> : <><path className="d-art-connections" d="M72 32 152 65 234 29M73 89l79-24 83 24M152 65V14" /><circle className="d-art-land" cx="152" cy="65" r="23" /><circle className="d-art-node" cx="72" cy="32" r="14" /><circle className="d-art-node" cx="73" cy="89" r="10" /><circle className="d-art-node" cx="234" cy="29" r="16" /><circle className="d-art-highlight" cx="235" cy="89" r="12" /><circle className="d-art-node" cx="152" cy="14" r="8" /><path className="d-art-stroke" d="M143 72V56h18v16m-21 0h24m-16-12h8m-8 5h8" /></>}
-  </svg>;
+  </Framed>;
 }
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -97,12 +115,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <section className="d-starts" aria-labelledby="d-starts-title">
       <div className="d-section-heading"><div><h2 id="d-starts-title">O întrebare bună e un început.</h2></div><Link className="d-text-link" href="/intreaba">Construiește întrebarea ta <DiscoveryIcon name="arrow" /></Link></div>
       <div className="d-question-grid"><TownHallTile number="01" art={<QuestionArt kind="townhall" />} />{QUESTIONS.map((question, index) => <Link className="d-question-card" href={questionHref(question.spec)} key={question.kind}>
-        <div className="d-question-top"><span>{question.label}</span><span>0{index + 2}</span></div><QuestionArt kind={question.kind} /><h3>{question.title}</h3><p>{question.description}</p><div className="d-question-bottom"><span>{question.action}</span><span><DiscoveryIcon name="arrow" /></span></div>
+        <div className="d-question-top"><span>{question.label}</span><span>0{index + 2}</span></div><QuestionArt kind={question.kind} /><h3>{question.title}<CardGo /></h3><p>{question.description}</p><div className="d-question-bottom"><span>{question.action}</span><span><DiscoveryIcon name="arrow" /></span></div>
       </Link>)}</div>
     </section>
 
     <section className="d-paths" aria-label="Alte direcții">{PATHS.map((item) => <Link className="d-path-card" href={item.href} key={item.href}>
-      <PathArt kind={item.kind} /><div className="d-path-head"><h3>{item.title}</h3><span><DiscoveryIcon name="arrow" /></span></div><p>{item.description}</p>
+      <PathArt kind={item.kind} /><div className="d-path-head"><h3>{item.title}<CardGo /></h3><span><DiscoveryIcon name="arrow" /></span></div><p>{item.description}</p>
     </Link>)}</section>
 
     {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
