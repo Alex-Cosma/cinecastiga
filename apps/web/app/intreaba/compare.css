@@ -138,3 +138,25 @@ button.cmp-year[aria-pressed="true"] { background: var(--sunk); }
   .cmp-joint li { padding: 0 0 6px; }
   .cmp-all { margin-top: 0; }
 }
+
+/* UX audit Z3-05 (owner, 16 November 2026): on a phone the two face each other in one table, A and B on every row,
+   instead of card A then card B (the same measure 757 px apart). The wide screen keeps the cards. */
+.cmp-ab { display: none; }
+@media (max-width: 760px) {
+  .cmp-cards { display: none; }
+  .cmp-ab { display: block; padding: 4px 14px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
+  .cmp-ab-head, .cmp-ab-row > .cmp-ab-val:first-of-type, .cmp-ab-actions { min-width: 0; }
+  .cmp-ab-head { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+  .cmp-ab-name { min-width: 0; padding-top: 6px; border-top: 3px solid var(--cmp-a); }
+  .cmp-ab-name.cmp-ab-b { border-top-color: var(--cmp-b); }
+  .cmp-ab-name > a { display: flex; align-items: center; min-height: 44px; font: 650 16px/1.2 var(--display); color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+  .cmp-ab-name .cmp-sub { display: block; margin: 0; font-size: 12px; line-height: 1.45; }
+  .cmp-ab-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .cmp-ab-label { position: relative; grid-column: 1 / -1; margin-bottom: 2px; font-size: 12px; color: var(--muted); }
+  .cmp-ab-val { min-width: 0; font-size: 14px; line-height: 1.35; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .cmp-ab-big .cmp-ab-val { font: 650 20px/1.2 var(--display); }
+  .cmp-ab-big .cmp-ab-val small { position: relative; display: block; font: 400 13px/1.4 var(--font-body); color: var(--muted); }
+  .cmp-ab-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+  .cmp-ab-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .cmp-ab-actions .cq-record-link { width: 100%; min-height: 44px; margin: 0; justify-content: center; text-align: center; }
+}

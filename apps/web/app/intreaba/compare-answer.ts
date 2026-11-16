@@ -1,5 +1,8 @@
 import type { CompareEntity } from "../../lib/ask/compile";
-import { countWords } from "../../lib/ask/answer-text";
+import { countWords, formatDecimal } from "../../lib/ask/answer-text";
+import { flagLabel } from "../../lib/flags";
+import type { GlossaryId } from "../../lib/glossary";
+import { riskLabel, riskScoreText } from "../../lib/risk-score";
 import { COMPARE_FIRST_YEAR } from "../../lib/ask/compare-shared";
 import { formatInt, formatRon } from "../../lib/format";
 
@@ -132,3 +135,67 @@ export function consortiumWords(e: CompareEntity): string | null {
 /** "+ 483,3 mil. lei pe coduri mai generale" (final §3.2): with a CPV domain, what is coded above it. */
 export const generalRow = (e: CompareEntity): string | null =>
   e.general !== undefined && e.general > 0 ? `+ ${formatRon(e.general)} pe coduri mai generale` : null;
+
+/** A row of the comparison as one table on a phone (UX audit Z3-05): its label, the (?) beside it and the two values. */
+export interface FacingRow {
+  key: string;
+  label: string;
+  /** A glossary entry's id, or an explanation of its own, for the (?) beside the label. */
+  tip?: { id: GlossaryId } | { title: string; text: string };
+  a: string | null;
+  b: string | null;
+}
+
+/** The card's risk line as words: „48 din 100 · moderat · 2 tipare” (RiskProfile), null without a profile field. */
+export function riskWords(e: Pick<CompareEntity, "hasProfile" | "score" | "cri" | "nFlags">): string | null {
+  if (e.hasProfile === undefined) return null;
+  if (!e.hasProfile) return "fără profil: prea puține achiziții directe";
+  const score = e.score ?? null;
+  if (score !== null) return `${riskScoreText(score)} · ${riskLabel(score).replace(/^risc · /, "")}${score > 0 ? ` · ${countWords(e.nFlags, "tipar", "tipare")}` : ""}`;
+  return `indice ${formatDecimal(e.cri ?? 0, 2)} · ${countWords(e.nFlags, "semnal", "semnale")}`;
+}
+
+/**
+ * The two cards as one table on a phone (Z3-05): a row per measure, A and B side by side, with the cards' own words
+ * and figures; a measure only one side has shows „–” on the other; one neither has is left out. The seat bar becomes
+ * its three (four) percents. The value, the risk note and the records' buttons are drawn around these rows.
+ */
+export function facingRows(a: CompareEntity, b: CompareEntity, opts: { dataset: string; perCapita: boolean; period: string | null }): FacingRow[] {
+  const rows: FacingRow[] = [];
+  const add = (key: string, label: string, pick: (e: CompareEntity) => string | null, tip?: FacingRow["tip"]) => {
+    const va = pick(a), vb = pick(b);
+    if (va !== null || vb !== null) rows.push({ key, label, a: va, b: vb, ...(tip ? { tip } : {}) });
+  };
+  const stream = (e: CompareEntity, src: "contracts" | "da") => {
+    const s = e.streams?.[src], total = (e.streams?.da.value ?? 0) + (e.streams?.contracts.value ?? 0);
+    return s && opts.dataset === "all" && total > 0 ? `${formatRon(s.value)} · ${formatInt(s.count)}` : null;
+  };
+  add("contracts", "Proceduri", (e) => stream(e, "contracts"));
+  add("da", "Directe", (e) => stream(e, "da"));
+  add("single", "O singură ofertă", (e) => {
+    const c = e.streams?.contracts;
+    if (opts.dataset === "da" || !c || c.count === 0 || c.singleBid === null) return null;
+    return c.bidsKnown > 0 ? `${formatInt(c.singleBid)} din ${formatInt(c.bidsKnown)} (${Math.round((c.singleBid / c.bidsKnown) * 100)}%)` : "necunoscut";
+  }, { id: "oferte-cunoscute" });
+  add("partners", a.role === "supplier" ? "Instituții client" : "Firme furnizoare", (e) => e.partners === undefined ? null : partnersOfWhole(e) ?? formatInt(e.partners));
+  add("joint", "Din care câștigate împreună", jointRow, { id: "clienti-comuni" });
+  const seats = { a: seatRow(a), b: seatRow(b) };
+  const seatNone = (side: "a" | "b") => { const s = seats[side]; return s && "none" in s ? s.none : null; };
+  const seatPart = (side: "a" | "b", part: "same" | "other" | "abroad" | "unknown") => { const s = seats[side]; return s && "parts" in s ? percent(s.parts[part]) : null; };
+  if ([seats.a, seats.b].some((s) => s && "parts" in s)) {
+    const pick = (part: "same" | "other" | "abroad" | "unknown") => (e: CompareEntity) => seatPart(e === a ? "a" : "b", part) ?? seatNone(e === a ? "a" : "b");
+    add("seat-same", "Furnizori din același județ", pick("same"), { id: "sediu-furnizori" });
+    add("seat-other", "Din alt județ", pick("other"));
+    add("seat-abroad", "Din străinătate", pick("abroad"));
+    if ([seats.a, seats.b].some((s) => s && "parts" in s && s.parts.unknown > 0)) add("seat-unknown", "Sediu necunoscut", pick("unknown"));
+  } else if (seatNone("a") || seatNone("b")) add("seat", "Sediul furnizorilor", (e) => seatNone(e === a ? "a" : "b"), { id: "sediu-furnizori" });
+  add("firm", "Firmă (bilanț MF)", (e) => e.firm
+    ? [e.firm.employees !== null ? countWords(e.firm.employees, "angajat", "angajați") : null, e.firm.turnover !== null ? `CA ${formatRon(e.firm.turnover)}` : null].filter(Boolean).join(" · ") + (e.firm.year ? ` (${e.firm.year})` : "")
+    : null);
+  if (opts.perCapita) add("percap", `Pe locuitor${opts.period ? `, cumulat ${opts.period}` : ""}`, (e) => e.population !== null && e.population > 0 ? `${formatInt(Math.round(e.value / e.population))} lei/locuitor` : null,
+    { title: "Pe locuitor", text: "Suma pe toată perioada, nu pe an. Populația RPL 2021; asocierea primărie–UAT e o inferență a aplicației." });
+  add("general", "Pe coduri mai generale", generalRow, { id: "coduri-generale" });
+  add("risk", "Risc", riskWords, { id: "profil-risc" });
+  add("flags", "Tipare", (e) => e.flags.length ? e.flags.map(flagLabel).join(", ") : null);
+  return rows;
+}
