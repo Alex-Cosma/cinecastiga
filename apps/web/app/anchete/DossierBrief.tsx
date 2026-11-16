@@ -23,6 +23,8 @@ export default function DossierBrief({ id, dosar, entries }: { id: string; dosar
   const { records, cast, clips } = dosar;
   const open = entries.filter(e => e.kind === "task" && e.status !== "done").length;
   const changed = clips.filter(c => c.drift?.length);
+  // Only an item with a kept version can differ from it (Z8-04): an item whose sources are not kept is not counted.
+  const comparable = clips.filter(c => ["entity", "contract", "notice", "person"].includes(c.kind) && (!c.captures?.length || c.captures.some(x => x.status === "complete")));
   const period = privatePeriod(records.dateFrom, records.dateTo);
   const nameOf = (ref: string) => { const m = cast.members.find(x => x.refId === ref); const name = cleanName(m?.name ?? ref);
     return m?.kind === "entity" ? <EntityName id={ref}>{name}</EntityName> : <strong>{name}</strong>; };
@@ -39,8 +41,8 @@ export default function DossierBrief({ id, dosar, entries }: { id: string; dosar
         <dd>{records.capped ? <>{countWords(records.savedRows, "înregistrare salvată", "înregistrări salvate")}<small>prea multe pentru un total fără repetări aici; fiecare dovadă își are totalul</small></> : records.count ? <>{countWords(records.count, "înregistrare", "înregistrări")}{records.totalExact !== null && <> · <strong>{formatExactDecimal(records.totalExact)} lei</strong></>}{records.unknownValues > 0 && <small>{countWords(records.unknownValues, "fără valoare publicată", "fără valoare publicată")}</small>}</> : "Niciuna încă"}</dd></div>
       <div><dt>Perioada</dt><dd>{period ?? "Fără date"}</dd></div>
       <div><dt>De verificat</dt><dd>{open ? <Link href={`/anchete/${id}?sectiune=tasks`}>{countWords(open, "verificare deschisă", "verificări deschise")}</Link> : "Nimic deschis"}</dd></div>
-      <div><dt>Diferă azi <Term tip title="Diferă azi" text={changed.length ? `Datele de azi diferă de salvare la: ${changed.map(c => `${clipTitle(c)} (${(c.drift ?? []).map(d => driftWords[d] ?? d).join(", ")})`).join("; ")}. Versiunile păstrate rămân neschimbate.` : "Comparăm valorile salvate ale contractelor, anunțurilor și entităților cu datele de azi. Versiunile păstrate rămân neschimbate."} /></dt>
-        <dd>{changed.length ? `${formatInt(changed.length)} din ${countWords(clips.filter(c => ["entity", "contract", "notice", "person"].includes(c.kind)).length, "dovadă", "dovezi")}` : "Nicio diferență"}</dd></div>
+      <div><dt>Diferă azi <Term tip title="Diferă azi" text={!comparable.length ? "Nu avem încă o versiune păstrată cu care să comparăm." : changed.length ? `Datele de azi diferă de salvare la: ${changed.map(c => `${clipTitle(c)} (${(c.drift ?? []).map(d => driftWords[d] ?? d).join(", ")})`).join("; ")}. Versiunile păstrate rămân neschimbate.` : "Comparăm valorile salvate ale contractelor, anunțurilor și entităților cu datele de azi. Versiunile păstrate rămân neschimbate."} /></dt>
+        <dd>{!comparable.length ? "—" : changed.length ? `${formatInt(changed.length)} din ${countWords(comparable.length, "dovadă", "dovezi")}` : "Nicio diferență"}</dd></div>
       {actors.length > 0 && <div className="iw-brief-actors"><dt>Actori</dt><dd><ul>{actors.map(m => <li key={`${m.kind}-${m.refId}`}>{m.kind === "entity" ? <EntityName id={m.refId}>{cleanName(m.name)}</EntityName> : <span>{cleanName(m.name)}</span>}</li>)}</ul>
         {cast.relations.length > 0 ? <details className="iw-brief-relations"><summary>{countWords(cast.relations.length, "legătură în date", "legături în date")}</summary><ul>{cast.relations.map((r, i) => <li key={i}>{nameOf(r.a)} și {nameOf(r.b)}: {r.label}{r.valueExact !== undefined ? ` · ${formatExactDecimal(r.valueExact)} lei în ${countWords(r.count ?? 0, "înregistrare", "înregistrări")}` : ""}</li>)}</ul>
           <p className="iw-muted">Din datele de azi. O relație comercială sau un administrator comun nu dovedește o neregulă.</p></details>

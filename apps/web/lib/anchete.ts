@@ -843,6 +843,8 @@ export async function getDosar(
   for (const c of clips) {
     if (!c.refId || !c.snapshot) continue;
     if (!["entity", "contract", "notice", "person"].includes(c.kind)) continue;
+    // Nothing was kept yet (its captures failed or wait): there is no saved version to compare today's data with (Z8-04).
+    if (c.captures?.length && !c.captures.some((x) => x.status === "complete")) continue;
     const live = await buildSnapshot(c.kind, c.refId, c.spec, null);
     c.live = live;
     if (!live) {
