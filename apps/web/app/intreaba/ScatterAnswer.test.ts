@@ -10,7 +10,7 @@ import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
   SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, density, densitySteps, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip,
-  listHeadWords, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, rowPlace, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
+  listHeadWords, listSumParts, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, rowPlace, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
 } from "./scatter-answer";
 import type { ScatterData } from "../../lib/ask/scatter-shared";
 
@@ -465,7 +465,11 @@ describe("the chart's geometry and words", () => {
     expect(listHeadWords(out, 10)).toBe("Primele 10 din 81");
     expect([pointPlace(out, "2144803"), pointPlace(out, "2146202"), pointPlace(out, "2144792")]).toEqual([1, 2, null]);
     const markup = render(out);
-    expect(text(markup)).toContain("Primele 2 din 81 1 profil inactiv, fără înregistrări în ultimele 24 de luni, nu e în listă. Include-le");
+    expect(text(markup)).toContain("Primele 2 din 81 81 în listă · 1 inactiv ( Include-le )");
+    // UX audit Z3-20: the line adds up to the group (81 listed + 1 inactive = 82, the pill); the cloud-only ones join it.
+    expect(listSumParts(out)).toMatchObject({ inList: 81, historic: 1 });
+    expect(listSumParts({ ...out, group: { ...out.group, n: out.group.nList + 8, small: false } })).toMatchObject({ inList: 81, historic: 1, cloudOnly: 8, from: 10, to: 19 });
+    expect(listSumParts({ ...BUZAU_CLOUD, historic: 0, group: { ...BUZAU_CLOUD.group, n: BUZAU_CLOUD.group.nList } })).toBeNull();
     // A full page load (a client navigation to the same page kept the answer), to the same question with them.
     const link = /<a class="qb-link" href="([^"]+)">Include-le<\/a>/.exec(markup);
     expect(decodeSpec(decodeURIComponent(link![1]!.split("spec=")[1]!.replace(/&amp;/g, "&")))).toMatchObject({ block: "scatter", filters: { includeHistoric: true } });

@@ -28,11 +28,12 @@ import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn }
 import { FactTag } from "./answer/RowFacts";
 import { historicFact, historicLeftOutWords, historicPlaceWords } from "../../lib/ask/historic";
 import HelpTip from "./builder/HelpTip";
+import Term from "../../components/Term";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
   RISK_AXIS, RISK_GRID, RISK_ZONES, axisWords, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, density, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
-  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, rowPlace, scatterFactsKey, scoreBandWord, scoreWords,
+  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listSumParts, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, rowPlace, scatterFactsKey, scoreBandWord, scoreWords,
   signalsPageLink, stepWords, stripStatusWords, withFacts, type AnyListRow, type Dot, type MeasureText,
 } from "./scatter-answer";
 import "./scatter.css";
@@ -463,8 +464,15 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   // In the order of risk the list leaves out the historic profiles, said under its head with the way back in (owner,
   // 15 November 2026: the pattern of "Cine conduce?"; the filter's pill takes them out again). A plain <a>, as KitLink's:
   // a client navigation to the same page would change the address and keep the answer (AskPanel reads it on load).
-  const historicLine = data.historic ? <p className="sc-hist">{historicLeftOutWords(data.historic)}{" "}
-    <a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a></p> : null;
+  // UX audit Z3-20: one line that adds up to the group's pill: who is in the list, who is inactive (with the way back
+  // in), who is in the cloud only; the words of each are in its (?).
+  const sum = listSumParts(data);
+  const historicLine = sum ? <p className="sc-hist qb-tipwrap">
+    {formatInt(sum.inList)} în listă
+    {sum.historic > 0 && <>{" · "}<Term tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
+      (<a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a>)</>}
+    {sum.cloudOnly > 0 && <>{" · "}{formatInt(sum.cloudOnly)} doar în nor ({sum.from}–{sum.to} achiziții)</>}
+  </p> : null;
 
   const results = (found?.results ?? []).map((m) => ({
     id: m.id, name: cleanName(m.name), detail: m.rank !== null ? `locul ${formatInt(m.rank)} din ${formatInt(total)}` : outWords(m, "nu are semnalul ales"),
