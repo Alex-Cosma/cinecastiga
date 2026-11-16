@@ -160,7 +160,8 @@ export default async function EntityPage({
   // A reviewed older or secondary identity of an institution (owner, 4 November 2026): where its activity is now.
   const successor = successorOf(id);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
-  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst] =
+  const otherRole: Role = role === "authority" ? "supplier" : "authority";
+  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst, otherCounts] =
     await Promise.all([
       registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
       getEntityTxCounts(id, role),
@@ -182,6 +183,8 @@ export default async function EntityPage({
       // the first paint instead of growing the page after it (owner, 6 November 2026). On a failure the table asks itself.
       getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: 1, pageSize: 10, wholeConsortia: true })
         .catch((e: unknown) => { console.error("entity-tx first page", { id, role }, e); return null; }),
+      // The other role's records, on its tab above the name (UX audit Z5-13), only for an entity that both buys and sells.
+      bothRoles ? getEntityTxCounts(id, otherRole).catch(() => null) : null,
     ]);
   const continuedAt = await successorTarget;
   const cuiUncorroborated = cui !== null && registryCui === null;
@@ -255,24 +258,32 @@ export default async function EntityPage({
           {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.title}</Term>)}
         </div>}
         <div className="ehead-main">
-          <p className="eyebrow">
-            {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
-            {profile?.isForeign ? ` · ${entityCountryLabel(true, profile.countryCode)}` : ""}
-          </p>
+          {/* An entity that both buys and sells: its two roles are tabs in the role line's place, each with its records
+              (UX audit Z5-13, 16 November 2026); a public company or a foreign firm keeps those words in the line under the name. */}
+          {bothRoles ? (
+            <nav className="ehead-roles" aria-label="Rolul">
+              {(["authority", "supplier"] as const).map((r) => {
+                const counts = r === role ? txCounts : otherCounts;
+                return (
+                  <Link key={r} href={q(base, { rol: r === "supplier" ? "furnizor" : "autoritate", p: undefined })}
+                    aria-current={r === role ? "page" : undefined}
+                    title={counts ? `${ROLE_LABEL[r]}: ${formatInt(counts.nDa + counts.nCt)} înregistrări` : ROLE_LABEL[r]}>
+                    <span>{r === "authority" ? "Cumpără · autoritate" : "Vinde · furnizor"}</span>
+                    {counts && <span className="n">{formatInt(counts.nDa + counts.nCt)}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : (
+            <p className="eyebrow">
+              {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
+              {profile?.isForeign ? ` · ${entityCountryLabel(true, profile.countryCode)}` : ""}
+            </p>
+          )}
           <h1 className="page-title">{cleanName(row.name)}</h1>
           <div className="id-meta">
-            {flagRows.length > 1 ? (
-              <span className="roles">
-                {flagRows.map((r) => (
-                  <Link
-                    key={r.role}
-                    href={q(base, { rol: r.role === "supplier" ? "furnizor" : "autoritate", p: undefined })}
-                    className={r.role === role ? "on" : undefined}
-                  >
-                    {ROLE_LABEL[r.role]}
-                  </Link>
-                ))}
-              </span>
+            {bothRoles && (profile?.isPublicCompany || profile?.isForeign) ? (
+              <span>{[profile.isPublicCompany ? "companie publică" : null, profile.isForeign ? entityCountryLabel(true, profile.countryCode) : null].filter(Boolean).join(" · ")}</span>
             ) : null}
             {county && !(profile?.isForeign && isAbroadCounty(county)) ? <span>{countyLabel(county)}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}

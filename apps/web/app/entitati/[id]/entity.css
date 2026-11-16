@@ -368,3 +368,18 @@
 /* ---- UX audit Z5-11 (16 November 2026): a consortium contract's member records on one row, every member named ---- */
 .ent-tx .tx-members{display:flex;flex-wrap:wrap;gap:2px 0}
 .ent-tx .tx-members>span:not(:last-child)::after{content:"·";display:inline-block;margin:0 7px;color:var(--muted)}
+
+/* ---- UX audit Z5-13 (16 November 2026): an entity that both buys and sells shows its two roles as tabs in the role
+   line's place, each with its records; full width and 44 px on a phone. ---- */
+.ehead-roles{display:inline-flex;margin:0 0 10px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);overflow:hidden}
+.ehead-roles a{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:6px 14px;color:var(--ink2);font-size:13.5px;font-weight:500;text-decoration:none;white-space:nowrap;transition:background var(--fast),color var(--fast)}
+.ehead-roles a+a{border-left:1px solid var(--line)}
+.ehead-roles a .n{font:12.5px/1 var(--mono);color:var(--muted)}
+.ehead-roles a[aria-current]{background:var(--accent);color:var(--on-accent)}
+.ehead-roles a[aria-current] .n{color:var(--on-accent);opacity:.85}
+.ehead-roles a:not([aria-current]):hover{background:var(--accent-soft);color:var(--accent);text-decoration:none}
+.ehead-roles+.page-title{margin-top:0}
+@media (max-width:700px){
+  .ehead-roles{display:flex}
+  .ehead-roles a{flex:1;justify-content:center;min-height:44px;padding:6px 10px}
+}
