@@ -11,6 +11,7 @@ import "@/components/motion/chart-motion.css";
 import "@/components/motion/page-transition.css";
 import "@/components/themed-select/themed-select.css";
 import ThemedSelect from "@/components/themed-select/ThemedSelect";
+import InlineScript from "@/components/InlineScript";
 import TourGate from "@/components/tour/TourGate";
 import { Suspense } from "react";
 import { G } from "@/components/ghost/Ghost";
@@ -48,7 +49,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="ro" suppressHydrationWarning>
       <body>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <InlineScript html={themeScript} />
         <a className="d-skip-link" href="#main-content">Mergi la conținut</a>
         <header className="site-header" style={{ viewTransitionName: "site-header" }}>
           <div className="wrap">

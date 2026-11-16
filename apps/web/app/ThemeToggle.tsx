@@ -14,7 +14,12 @@ export default function ThemeToggle() {
   useEffect(() => {
     try {
       const v = localStorage.getItem("theme");
-      if (v === "light" || v === "dark") setMode(v);
+      if (v === "light" || v === "dark") {
+        setMode(v);
+        // A page React had to render in the browser (a 404 a page threw) drew <html> again without the stamp, and the
+        // inline script does not run a second time: the saved theme is stamped again here.
+        document.documentElement.setAttribute("data-theme", v);
+      }
     } catch {}
   }, []);
 
