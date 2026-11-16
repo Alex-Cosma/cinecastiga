@@ -437,7 +437,7 @@ describe("the sentences of the legacy corpus (plan §2.6, §6.2)", () => {
       "site:entity-month-supplier": "Cât valorează achizițiile directe de la Fixture Construct SRL, în iul. 2025?",
       "site:pair": "Cât valorează achizițiile făcute de Comuna Fixture Vest de la Fixture Construct SRL, în toți anii?",
       "site:domain-ranking": "Ce firme câștigă achizițiile pentru CPV 45 făcute de instituțiile publice din toată țara, în 2025?",
-      "site:domain-evolution": "Cum evoluează valoarea tuturor achizițiilor pentru CPV 45 făcute de instituțiile publice din toată țara, an de an, 2025?",
+      "site:domain-evolution": "Cum evoluează valoarea tuturor achizițiilor pentru CPV 45 făcute de instituțiile publice din toată țara, în 2025?",
       "site:domain-sources-all": "Ce cumpără instituțiile publice din toată țara, în 2025?",
       "site:domain-sources-division": "Ce cumpără instituțiile publice din toată țara în domeniul CPV 45, în 2025?",
       "site:domain-sources-other": "Ce cumpără instituțiile publice din toată țara, în 2025?",

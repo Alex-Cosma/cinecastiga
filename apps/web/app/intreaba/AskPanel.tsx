@@ -73,7 +73,7 @@ import { FactTag } from "./answer/RowFacts";
 import { useRowFacts } from "./answer/use-row-facts";
 import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
 import type { WinnerFacts } from "@/lib/ask/winners";
-import EmptyState from "./answer/EmptyState";
+import CountedEmptyState from "./answer/CountedEmptyState";
 import EmptyHints from "./answer/EmptyHints";
 import { emptyAnswer, emptyMessage, relaxations } from "./answer-empty";
 import { countyName } from "../../lib/counties";
@@ -1300,7 +1300,8 @@ export default function AskPanel({
                 archive, the ceiling and „valori înregistrate, nu plăți”. No banner (owner, 2 November 2026). */}
             {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. A ranking's
                 strip would hold only „Vizual | Tabel” (owner, 1 November 2026): it ends the row of „Unde e o firmă?” instead. */}
-            {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
+            {/* Z3-29: an empty answer has nothing for its strip to act on. */}
+            {!empty && (stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
               <div className="qb cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (() => {
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
@@ -1404,14 +1405,15 @@ export default function AskPanel({
             )}
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
-              <EmptyState
+              {/* Z3-29: each wider question says how many records it would bring (counted lazily). */}
+              <CountedEmptyState
                 message={emptyMessage(data, isProfile)}
-                relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
+                relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, spec: r.spec, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               >
                 {applied.filters.cpvTerm && <EmptyHints spec={applied} title={title} subject={/\d{8}/.test(String(applied.filters.cpvTerm)) ? null : String(applied.filters.cpvTerm)}
                   onRun={(next) => { runWider(next); requestAnimationFrame(() => document.getElementById("raspuns-titlu")?.focus()); }} />}
-              </EmptyState>
+              </CountedEmptyState>
             </div>
               // Keyed by its subject (chart-motion.ts): another block, unit or entity enters anew; a filter, a measure or
               // a group changes the same charts in place, so their marks tween.
