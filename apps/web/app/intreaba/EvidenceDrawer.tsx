@@ -22,7 +22,7 @@ import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} fro
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
 import { listGroupHeader, type DrawerListGroup } from "./drawer-group";
 import { ProfileSourceNote } from "./ProfileNotes";
-import { drawerDate as date, kindCounts, recordExactValue, records, savedKind, splitScopeLabel, stateNote, summaryParts } from "./drawer-text";
+import { countyFixed, cpvRepeatsTitle, drawerDate as date, kindCounts, recordExactValue, records, savedKind, splitScopeLabel, stateNote, summaryParts } from "./drawer-text";
 
 export interface EvidenceDrawerProps {
   spec: AskSpec;
@@ -79,12 +79,9 @@ const GHOST_TITLES = ["86%", "64%", "92%", "58%", "78%", "70%", "88%", "54%", "7
  */
 function SourcesGhost({ listGroup, streams, toolsOpen }: { listGroup: boolean; streams: boolean; toolsOpen: boolean }) {
   return <Ghost name="ask-sources" wait="client">
-    <div className="ev-source-summary" aria-hidden="true">
-      <div><span>{listGroup ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong><G.Line inline w="6ch" /></strong></div>
-      <div><span>Valoare înregistrată</span><strong className="ev-money"><G.Line inline w="11ch" /></strong></div>
-      <p><G.Line inline w="22ch" /></p>
-      {/* The phone's card line ("N înregistrări · X lei · from — to"), two lines there. */}
-      <p className="ev-summary-line"><G.Line w="92%" /><G.Line w="50%" /></p>
+    {/* The selection's one line ("N înregistrări · X lei · from–to", Z3-03). */}
+    <div className={`ev-source-summary${listGroup ? " is-group" : ""}`} aria-hidden="true">
+      <p className="ev-summary-line"><G.Line inline w="44ch" /></p>
     </div>
     <div className="g-quiet" inert>
       <details className="ev-calculation"><summary>Cum ajungem la acest rezultat <span aria-hidden="true">+</span></summary></details>
@@ -93,18 +90,15 @@ function SourcesGhost({ listGroup, streams, toolsOpen }: { listGroup: boolean; s
         <div className="ev-filters">
           <label className="ev-search"><span>Caută în această listă</span><input type="search" placeholder="Firmă, instituție, cod sau obiect…" /></label>
           {streams && <label><span>Ce fel de achiziții</span><select><option>Toate achizițiile</option></select></label>}
-        </div>
-        <div className="ev-list-toolbar">
-          <div className="ev-filtered-summary"><G.Line inline w="26ch" /></div>
-          <label className="ev-sort"><select><option>Ordinea sursei</option></select></label>
+          <label className="ev-sort"><span>Ordonează</span><select><option>Ordinea sursei</option></select></label>
         </div>
       </div>
     </div>
     <div className="ev-records" inert>
       <table className="ev-table"><thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Sursă</th></tr></thead>
         <tbody><G.Rows n={SOURCES_PAGE} as="tr" cells={(i) => <>
-          <td><span className="ev-contract-title"><G.Line w={GHOST_TITLES[i]!} /><G.Line w="40%" /></span><strong><G.Line inline w="12ch" /></strong><span className="ev-muted"><G.Line inline w="20ch" /></span><span><G.Line w="70%" /></span></td>
-          <td><div className="ev-party"><a><G.Line inline w="24ch" /></a></div><small className="ev-muted"><G.Line inline w="18ch" /></small><span className="ev-party-arrow">↓</span><div className="ev-party"><a><G.Line inline w="20ch" /></a></div></td>
+          <td><span className="ev-contract-title"><G.Line w={GHOST_TITLES[i]!} /></span><span className="ev-muted"><G.Line inline w="30ch" /></span></td>
+          <td><div className="ev-party ev-party-buyer"><a><G.Line inline w="24ch" /></a></div><div className="ev-party ev-party-supplier"><span className="ev-party-arrow">→</span><a><G.Line inline w="20ch" /></a></div></td>
           <td><strong className="ev-row-value"><G.Line inline w="11ch" /></strong><details className="ev-record-details g-quiet"><summary>Detalii importate</summary></details></td>
           <td><span className="ev-seap g-quiet">SEAP ↗</span></td>
         </>} /></tbody>
@@ -154,6 +148,8 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   // A phone's title is the part opened with its records counted (the question one line under it); the desktop's is the question.
   const [scopeName, scopeTail] = scopeLabel ? splitScopeLabel(scopeLabel) : ["", ""];
   // While the list loads, the phone's count keeps its place in the title (a line), so the header does not grow after.
+  // The question fixes the buyers' county (a county, a locality, one institution): the rows leave it out (Z3-03).
+  const sameCounty = countyFixed(spec, scope);
   const titleCount = (result || busy) && <span className="ev-title-count"> · <span>{result ? records(result.sourceTotal) : <G.Line inline w="19ch" />}</span></span>;
 
   useEffect(() => {
@@ -250,11 +246,11 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       {peer?.selection.kind === "comparison" && <p className="ev-exact-total">La salvare se păstrează grupul complet; filtrele listei nu schimbă comparația salvată.</p>}
       {busy && !result && !error && <SourcesGhost listGroup={Boolean(listGroup)} streams={(spec.dataset ?? "all") === "all"} toolsOpen={toolsOpen} />}
       {result && <>
+      {/* The selection in one line at every width (UX audit Z3-03): the count (a phone's title says it), the value, the dates. */}
       <div className="ev-source-summary" aria-live="polite">
-        <div><span>{result?.group || listGroup ? "Înregistrările grupei" : "Înregistrări în această selecție"}</span><strong>{result ? count(result.sourceTotal) : "—"}</strong></div>
-        <div><span>{result?.profile ? "Valoare înregistrată în profil" : "Valoare înregistrată"}</span><strong className="ev-money">{result ? formatEvidenceAmount(result.sourceValue) : "—"}</strong></div>
-        <p>{result?.dateFrom ? `${date(result.dateFrom)} — ${date(result.dateTo)}` : result ? "Nicio dată de finalizare disponibilă în selecție." : "Acoperirea înregistrărilor se afișează după încărcare."}</p>
-        <p className="ev-summary-line">{summaryParts(result.sourceTotal, result.sourceValue, result.dateFrom, result.dateTo).map((part, i) => <span key={i}>{i ? " · " : ""}<span>{part}</span></span>)}</p>
+        <p className="ev-summary-line">{summaryParts(result.sourceTotal, result.sourceValue, result.dateFrom, result.dateTo).map((part, i) => i === 0
+          ? <strong key={i} className="ev-summary-count">{part}</strong>
+          : <span key={i}><span className={i === 1 ? "ev-summary-sep" : undefined}>{" · "}</span>{i === 1 ? <strong className="ev-money">{part}{result.profile ? " în profil" : ""}</strong> : <span>{part}</span>}</span>)}</p>
       </div>
       {result?.profile && <ProfileSourceNote reconciled={result.profileReconciled} profileCount={result.profileCount} />}
       {result && <details className="ev-calculation">
@@ -285,12 +281,13 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
       <div className="ev-filters" id="ev-filters">
         <label className="ev-search"><span>Caută în această listă</span><input type="search" value={search} maxLength={200} placeholder="Firmă, instituție, cod sau obiect…" onChange={(e) => { setSearch(e.target.value); setPage(0); }} /></label>
         {!result?.profile && (spec.dataset ?? "all") === "all" && <label><span>Ce fel de achiziții</span><select value={stream} onChange={(e) => { setStream(e.target.value); setPage(0); }}><option value="">Toate achizițiile</option><option value="da">Achizițiile directe{kinds && ` · ${count(kinds.da)}`}</option><option value="contracts">Contractele din proceduri{kinds && ` · ${count(kinds.contracts)}`}</option></select></label>}
+        {/* The order beside the search and the kind, one row (Z3-03); the list's own line is only for a filtered list. */}
+        <label className="ev-sort" id="ev-sort"><span>Ordonează</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
+          <option value="source:desc">Ordinea sursei</option><option value="value:desc">Valoare ↓</option><option value="value:asc">Valoare ↑</option><option value="date:desc">Cele mai recente</option><option value="date:asc">Cele mai vechi</option><option value="supplier:asc">Furnizor A–Z</option><option value="authority:asc">Instituție A–Z</option>
+        </select></label>
       </div>
       <div className={`ev-list-toolbar${filtered ? " is-filtered" : ""}`}>
         <div className="ev-filtered-summary" aria-live="polite">{busy ? "Se actualizează rezultatele…" : result && !error ? <><strong>{filtered ? countWords(result.total, "potrivire", "potriviri") : records(result.total)}</strong> · {formatEvidenceAmount(result.value)}</> : ""}{filtered && <button type="button" onClick={reset}>Șterge filtrele listei</button>}</div>
-        <label className="ev-sort" id="ev-sort"><span className="ev-sr-only">Ordonează sursele</span><select value={`${sort}:${dir}`} onChange={(e) => { const [key, direction] = e.target.value.split(":"); setSort(key as DrillSort); setDir(direction as "asc" | "desc"); setPage(0); }}>
-          <option value="source:desc">Ordinea sursei</option><option value="value:desc">Valoare ↓</option><option value="value:asc">Valoare ↑</option><option value="date:desc">Cele mai recente</option><option value="date:asc">Cele mai vechi</option><option value="supplier:asc">Furnizor A–Z</option><option value="authority:asc">Instituție A–Z</option>
-        </select></label>
       </div>
       </div>
       </>}
@@ -302,9 +299,12 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
           <thead><tr><th>Înregistrare</th><th>Instituție → furnizor</th><th>Valoare (lei)</th><th>Sursă</th></tr></thead>
           <tbody>{result.rows.map((r) => {
             const links = evidenceLinks(r), exact = recordExactValue(r), note = stateNote(r), cpv = r.cpvName ?? "Categorie CPV neprecizată";
+            const heading = r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`;
             return <tr key={`${r.src}:${r.refId}:${r.supplierId}`}>
-              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`}>{r.title || r.cpvName || r.daCode || `Înregistrarea ${r.refId}`}</Link> : null}<strong>{r.daCode ?? `#${r.refId ?? "?"}`}</strong><span className="ev-muted">{r.src === "contracts" && !r.date ? "Dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span><span>{r.cpvCode ? <span className="ev-hint" data-hint={`CPV ${r.cpvCode}`}>{cpv}</span> : cpv}</span></td>
-              <td data-label="Instituție și furnizor"><div className="ev-party">{r.authorityId ? <Link prefetch={false} href={`/entitati/${r.authorityId}`}>{r.authority ?? `Instituție #${r.authorityId}`}</Link> : r.authority ?? "Instituție neprecizată"}</div>{r.county && <small className="ev-muted">Județul instituției: {countyName(r.county)}</small>}<span className="ev-party-arrow" aria-hidden="true">↓</span><div className="ev-party">{r.supplierId ? <Link prefetch={false} href={`/entitati/${r.supplierId}`}>{r.supplier ?? `Furnizor #${r.supplierId}`}</Link> : r.supplier ?? "Furnizor neprecizat"}</div></td>
+              {/* Z3-03: the code joins the date line; the domain line goes when it repeats the title. */}
+              <td data-label="Înregistrare">{r.refId ? <Link className="ev-contract-title" href={r.src === "contracts" ? `/contracte/i/${r.refId}` : `/achizitii/${r.refId}`}>{heading}</Link> : null}<span className="ev-muted ev-record-line">{r.daCode ?? `#${r.refId ?? "?"}`} · {r.src === "contracts" && !r.date ? "Dată sursă improbabilă" : date(r.date)} · {r.src === "da" ? "Achiziție directă" : "Contract"}</span>{!cpvRepeatsTitle(r.refId ? heading : null, cpv) && <span>{r.cpvCode ? <span className="ev-hint" data-hint={`CPV ${r.cpvCode}`}>{cpv}</span> : cpv}</span>}</td>
+              {/* Z3-03: the buyer one quiet line, „→” the firm under it; the county only when the question leaves it open. */}
+              <td data-label="Instituție și furnizor"><div className="ev-party ev-party-buyer"><EntityName id={r.authorityId} role="authority">{r.authorityId ? r.authority ?? `Instituție #${r.authorityId}` : r.authority ?? "Instituție neprecizată"}</EntityName></div>{r.county && !sameCounty && <small className="ev-muted">Județul instituției: {countyName(r.county)}</small>}<div className="ev-party ev-party-supplier"><span className="ev-party-arrow" aria-hidden="true">→</span><EntityName id={r.supplierId} role="supplier">{r.supplierId ? r.supplier ?? `Furnizor #${r.supplierId}` : r.supplier ?? "Furnizor neprecizat"}</EntityName></div></td>
               <td data-label="Valoare"><strong className="ev-row-value">{formatEvidenceAmount(r.valueExact)}</strong>{r.valueSuspect && <span className="ev-warning">Valoare posibil introdusă eronat</span>}{r.nWinners && r.nWinners > 1 ? <span className="ev-muted">Cotă 1/{r.nWinners} din contract</span> : null}
                 <details className="ev-record-details"><summary>Detalii importate</summary><dl><dt>ID SEAP</dt><dd>{r.src === "da" ? r.refId : r.caNoticeId ?? "Lipsește"}</dd>{r.cpvCode && <><dt>Cod CPV</dt><dd>{r.cpvCode}</dd></>}{r.src !== "da" && <><dt>ID rând</dt><dd>{r.refId}</dd></>}{exact && <><dt>Valoare exactă</dt><dd>{exact}</dd></>}{r.contractValueFull !== null && <><dt>Contract integral</dt><dd>{formatEvidenceAmount(r.contractValueFull)}</dd><dt>Câștigători</dt><dd>{r.nWinners}</dd></>}{r.estimatedValueRon !== null && <><dt>Valoare estimată</dt><dd>{r.estimatedValueRon.toLocaleString("ro-RO")} lei</dd></>}</dl></details>
               </td>

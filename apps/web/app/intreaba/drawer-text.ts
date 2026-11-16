@@ -1,6 +1,7 @@
 import { countWords } from "../../lib/ask/answer-text";
 import type { DrillRow } from "../../lib/ask/compile";
-import { formatEvidenceAmount, type EvidenceFilters, type EvidenceStatus } from "../../lib/ask/evidence";
+import { formatEvidenceAmount, type EvidenceFilters, type EvidenceScope, type EvidenceStatus } from "../../lib/ask/evidence";
+import type { AskSpec } from "../../lib/ask/spec";
 
 /*
  * The records drawer's words that depend on its figures (owner, 2 November 2026): on a phone the record comes
@@ -29,10 +30,30 @@ export function dateSpan(from: string | null, to: string | null): string | null 
   return `${drawerDate(from)}–${drawerDate(to)}`;
 }
 
-/** The phone's one-line card: „28”, „235.150,00 lei”, „05.01–30.12.2024”, shown joined by „ · ”. */
+/**
+ * The selection's one-line card at every width (UX audit Z3-03): „28 de înregistrări”, „235.150,00 lei”,
+ * „05.01–30.12.2024”, shown joined by „ · ”. A phone leaves the count out: its title already says it.
+ */
 export function summaryParts(total: number, value: string, from: string | null, to: string | null): string[] {
   const dates = dateSpan(from, to);
-  return [total.toLocaleString("ro-RO"), formatEvidenceAmount(value), ...(dates ? [dates] : [])];
+  return [records(total), formatEvidenceAmount(value), ...(dates ? [dates] : [])];
+}
+
+/** A record's domain line only says something when it is not its title again (Z3-03: „Servicii de cadastru” twice). */
+export function cpvRepeatsTitle(title: string | null | undefined, cpv: string | null | undefined): boolean {
+  const norm = (text: string | null | undefined) => (text ?? "").trim().toLocaleLowerCase("ro-RO");
+  return Boolean(norm(cpv)) && norm(title) === norm(cpv);
+}
+
+/**
+ * The question (or the part opened) fixes the buyers' county: a county, a locality, one institution. Its rows then
+ * leave „Județul instituției” out, the same on every one (Z3-03). Two institutions compared may be in two counties.
+ */
+export function countyFixed(spec: Pick<AskSpec, "filters">, scope?: Pick<EvidenceScope, "county" | "counties" | "entityIds" | "role"> | undefined): boolean {
+  const f = spec.filters;
+  if (f.compareWithId || f.compareWith) return Boolean(scope?.county || (scope?.role === "authority" && scope.entityIds?.length === 1));
+  return Boolean(f.county || f.uatSiruta || f.authorityId || scope?.county || scope?.counties?.length === 1
+    || (scope?.role === "authority" && scope.entityIds?.length === 1));
 }
 
 /**
