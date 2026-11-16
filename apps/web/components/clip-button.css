@@ -71,3 +71,11 @@
    state (accent-soft), not a call to action; the click opens the same dialog. */
 .clipbtn .clipbtn-t.saved,.clipbtn .clipbtn-t.pri.saved{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
 .clipbtn .clipbtn-t.saved:hover,.clipbtn .clipbtn-t.pri.saved:hover,.clipbtn .clipbtn-t.saved[aria-expanded=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+
+/* The dialog's words (UX audit Z8-03, Z8-24, Z8-25 and the overflow bug): where it was saved, two lines at most; the
+   kind line wraps inside its box; a capture without sources is an amber pill; "Ce păstrăm" behind a "?". */
+.save-head h2{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.save-subject{min-width:0}.save-subject .save-detail{white-space:normal;overflow-wrap:anywhere}
+.save-pill{display:inline-flex;padding:1px 9px;border-radius:999px;background:var(--amber-soft);color:var(--ink);font-size:12px;font-weight:600}
+.save-done p{overflow-wrap:anywhere}
+.save-actions .term-tip{margin-left:auto}

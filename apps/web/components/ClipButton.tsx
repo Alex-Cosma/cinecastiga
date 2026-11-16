@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { useViewer } from "@/lib/use-viewer";
 import { cleanName, formatExactDecimal } from "@/lib/format";
 import { clipKindLabel } from "@/lib/evidence-clip";
+import { captureFailureWords } from "@/lib/evidence-captures-shared";
+import Term from "@/components/Term";
 import "./clip-button.css";
 
 /**
@@ -16,7 +18,7 @@ import "./clip-button.css";
  * button, or above it, always inside the window. Rendered at the end of the page, so no scrolling list clips it.
  */
 interface Inv { id: string; title: string; access?: { canEdit?: boolean } }
-interface Subject { name: string | null; valueExact: string | null; detail: string | null }
+interface Subject { name: string | null; valueExact: string | null; detail: string | null; code?: string | null; kindLabel?: string | null }
 type Kind = "entity" | "contract" | "notice" | "person" | "query" | "flag" | "signal" | "da" | "radiografie";
 
 export default function ClipButton(props: React.ComponentProps<typeof AuthenticatedClipButton>) {
@@ -51,7 +53,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ investigationId: string; clipId: string | null; again: boolean } | null>(null);
-  const [capture, setCapture] = useState<{ id: string; status: string } | null>(null);
+  const [capture, setCapture] = useState<{ id: string; status: string; error?: string | null } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [place, setPlace] = useState<{ top: number; left: number; width: number; above: boolean; maxHeight: number | null } | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null), dialog = useRef<HTMLDivElement | null>(null);
@@ -83,7 +85,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
         if (!response.ok) throw new Error("Starea capturii nu poate fi verificată acum. Deschide dosarul pentru a reîncerca.");
         const data = await response.json();
         const current = data.capture ?? data;
-        if (typeof current.status === "string") setCapture({ id: capture.id, status: current.status });
+        if (typeof current.status === "string") setCapture({ id: capture.id, status: current.status, error: typeof current.error === "string" ? current.error : null });
       } catch (error) {
         if (!controller.signal.aborted) setErr(error instanceof Error ? error.message : "Starea capturii nu este disponibilă.");
       }
@@ -154,8 +156,14 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
 
   const snap = snapshot ?? {};
   const name = cleanName(label ?? (typeof snap.title === "string" ? snap.title : null) ?? subject?.name ?? null) || null;
-  const detail = subject?.valueExact ? `${formatExactDecimal(subject.valueExact)} lei` : typeof snap.headline === "string" ? snap.headline : kind === "entity" && subject?.detail ? subject.detail : null;
-  const kindName = clipKindLabel[kind] ?? "Dovadă";
+  // The kind line says what the name does not (Z8-25, bug: the answer's title was said twice and ran out of its box):
+  // "Anunț · SCNA1112626 · 3.012.522,74 lei", "Instituție · Sibiu"; a headline equal to the name is not repeated.
+  const headline = typeof snap.headline === "string" && cleanName(snap.headline) !== name ? snap.headline : null;
+  const detail = [subject?.code ?? null, subject?.valueExact ? `${formatExactDecimal(subject.valueExact)} lei` : headline ?? (kind === "entity" && subject?.detail ? subject.detail : null)].filter(Boolean).join(" · ") || null;
+  const kindName = (kind === "entity" ? subject?.kindLabel : null) ?? clipKindLabel[kind] ?? "Dovadă";
+  // The first dossier is named after the item, a real value to keep or change (Z8-24).
+  useEffect(() => { if (list && !list.length && name) setNewTitle((current) => current || name.slice(0, 120)); }, [list, name]);
+  const doneTitle = done ? list?.find((inv) => inv.id === done.investigationId)?.title ?? null : null;
   const dossierHref = (d: { investigationId: string; clipId: string | null }) => `/anchete/${d.investigationId}?sectiune=evidence${d.clipId ? `#clip-${d.clipId}` : ""}`;
   const pending = capture && ["queued", "running"].includes(capture.status);
   const existing = sel ? savedIn[sel] ?? null : null;
@@ -216,35 +224,39 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
       className={`save-dialog${phone ? " save-sheet" : ""}${place?.above ? " save-above" : ""}`}
       style={phone ? undefined : place ? { top: place.top, left: place.left, width: place.width, ...(place.maxHeight ? { maxHeight: place.maxHeight } : {}) } : { visibility: "hidden" }}>
       <div className="save-head">
-        <h2 id={titleId}>{done ? done.again ? "Versiune nouă cerută" : "Salvată în anchetă" : "Salvează în anchetă"}</h2>
+        {/* After saving, the title says where it went (Z8-03): the dossier's own title, two lines at most. */}
+        <h2 id={titleId} title={doneTitle ?? undefined}>{done ? <>{done.again ? "Versiune nouă în" : "Salvată în"} {doneTitle ? <span className="save-where">„{doneTitle}”</span> : "anchetă"}</> : "Salvează în anchetă"}</h2>
         <button type="button" className="save-close" aria-label="Închide" onClick={() => close()}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
       </div>
       <p className="save-subject"><span className="save-kind">{kindName}{detail && <> · <span className="save-detail">{detail}</span></>}</span>{name && <strong title={name}>{name}</strong>}</p>
       {done ? <div className="save-done" role="status">
-        <p><strong>{capture?.status === "failed" ? "Captura nu s-a încheiat." : pending ? "Păstrăm înregistrările și sursele…" : "Versiune păstrată."}</strong></p>
-        {pending && <p className="save-hint">Poți continua. Versiunea apare în dosar când e completă.</p>}
-        {capture?.status === "failed" && <p className="save-hint">Nu am marcat o selecție incompletă drept probă. Deschide dosarul pentru detalii și reîncercare.</p>}
+        {capture?.status === "failed" ? <><p><span className="save-pill">fără surse păstrate</span></p><p>Salvată, dar fără surse păstrate: {captureFailureWords(capture.error).reason}. O reîncercăm din dosar.</p></>
+          : pending ? <p><strong>Păstrăm sursele…</strong> Poți continua.</p>
+            : <p><strong>{capture ? "Sursele sunt păstrate." : "Versiune păstrată."}</strong></p>}
         {err && <p className="save-error" role="alert">{err}</p>}
         <div className="save-actions"><a className="save-primary" href={dossierHref(done)}>Deschide dosarul</a><button type="button" className="save-secondary" onClick={() => close()}>Închide</button></div>
       </div> : list === null ? <p className="save-hint" role="status">Se încarcă dosarele…</p> : <>
-        <fieldset className="save-dossiers">
+        {list.length > 0 ? <fieldset className="save-dossiers">
           <legend>În ce dosar?</legend>
           <div className="save-options">
             {list.map((inv) => <label key={inv.id} className="save-option"><input type="radio" name={`${dialogId}-dosar`} value={inv.id} checked={sel === inv.id} onChange={() => setSel(inv.id)} />
               <span>{inv.title}{savedIn[inv.id] && <span className="save-here"> · conține deja</span>}</span></label>)}
             <label className="save-option"><input type="radio" name={`${dialogId}-dosar`} value="" checked={sel === ""} onChange={() => setSel("")} /><span>Dosar nou</span></label>
           </div>
-        </fieldset>
-        {!sel && <label className="save-field">Titlul dosarului nou<input type="text" value={newTitle} maxLength={200} onChange={(e) => setNewTitle(e.target.value)} placeholder={name?.slice(0, 60) ?? "ex.: Lemne de foc Topalu"} /></label>}
+        </fieldset> : null}
+        {/* No dossier yet (Z8-24): no choice of one; the first dossier's title is already written (the item's name), selected to change. */}
+        {!sel && <label className="save-field">{list.length ? "Titlul dosarului nou" : "Primul tău dosar"}<input type="text" value={newTitle} maxLength={200}
+          onChange={(e) => setNewTitle(e.target.value)} onFocus={(e) => { if (!list.length) e.currentTarget.select(); }} placeholder={list.length ? name?.slice(0, 60) ?? "ex.: Lemne de foc Topalu" : "Un titlu scurt pentru dosar"} /></label>}
         {existing ? <p className="save-existing">Deja în acest dosar · <a href={dossierHref({ investigationId: sel, clipId: existing })}>deschide</a></p>
           : <label className="save-field"><span>De ce contează? <span className="save-optional">Opțional</span></span><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={2000} /></label>}
-        <p className="save-hint">Păstrăm o versiune verificată pe server; actualizările datelor nu o schimbă.</p>
         {err && <p className="save-error" role="alert">{err}</p>}
         <div className="save-actions">
           <button type="button" className="save-primary" disabled={busy} onClick={() => void save()}>
             {busy ? "Se pregătește…" : existing ? "Păstrează o versiune nouă" : sel ? "Păstrează în dosar" : "Creează dosarul și păstrează"}
           </button>
           <button type="button" className="save-secondary" onClick={() => close()}>Renunță</button>
+          {/* What "păstrează" means, behind its "?" (Z8-03), instead of a line that promises it before it happens. */}
+          <Term tip title="Ce păstrăm" text="Înregistrările și sursele de azi, verificate pe server; actualizările datelor nu le schimbă. Dacă datele de azi nu sunt validate, dovada intră în dosar fără surse păstrate și o poți relua de acolo." />
         </div>
       </>}
     </div>
