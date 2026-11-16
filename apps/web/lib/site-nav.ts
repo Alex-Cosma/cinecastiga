@@ -5,7 +5,7 @@
 export interface NavItem {
   href: string;
   label: string;
-  /** The red dot marks the private investigations workspace. */
+  /** The red dot says something waits in the private space (an invitation, an update to review): never permanent (Z8-33). */
   dot?: boolean;
   active: boolean;
 }
@@ -14,6 +14,8 @@ export interface NavContext {
   pathname: string;
   /** Viewer is signed in, or the request carried a session cookie before the client confirmed it. */
   signedIn: boolean;
+  /** How many things wait in the private space (lib/use-private-news.ts); the dot appears only above zero (audit Z8-33). */
+  news?: number;
 }
 
 /**
@@ -33,7 +35,7 @@ export const GUIDE_HREF = "/metodologie";
 /** The guide has one name everywhere it is linked (navigation, footer). */
 export const GUIDE_LABEL = "Ghid";
 
-export function navItems({ pathname, signedIn }: NavContext): NavItem[] {
+export function navItems({ pathname, signedIn, news = 0 }: NavContext): NavItem[] {
   const path = pathname || "/";
   const items: (NavItem | null)[] = [
     { href: "/", label: "Descoperă", active: path === "/" || DISCOVER_PREFIXES.some(prefix => under(path, prefix)) },
@@ -44,7 +46,7 @@ export function navItems({ pathname, signedIn }: NavContext): NavItem[] {
     // would only reach a login wall, so the item (and its dot) is hidden. It is
     // the private space: its tabs are the investigations, the follows and the
     // account (owner, 7 November 2026).
-    signedIn ? { href: "/anchete", label: "Anchete", dot: true, active: PRIVATE_PREFIXES.some(prefix => under(path, prefix)) } : null,
+    signedIn ? { href: "/anchete", label: "Anchete", dot: news > 0, active: PRIVATE_PREFIXES.some(prefix => under(path, prefix)) } : null,
     { href: GUIDE_HREF, label: GUIDE_LABEL, active: GUIDE_PREFIXES.some(prefix => under(path, prefix)) },
   ];
   return items.filter((item): item is NavItem => item !== null);

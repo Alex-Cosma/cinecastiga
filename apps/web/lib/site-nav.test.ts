@@ -21,7 +21,9 @@ describe("main navigation", () => {
     expect(labels({})).toEqual(["Descoperă", "Întreabă", "Hartă", "Ghid"]);
     const signedIn = navItems({ ...base, signedIn: true });
     expect(signedIn.map(item => item.label)).toEqual(["Descoperă", "Întreabă", "Hartă", "Anchete", "Ghid"]);
-    expect(signedIn.find(item => item.href === "/anchete")?.dot).toBe(true);
+    // The dot says something waits (an invitation, an update to review), never permanently (audit Z8-33).
+    expect(signedIn.find(item => item.href === "/anchete")?.dot).toBe(false);
+    expect(navItems({ ...base, signedIn: true, news: 2 }).find(item => item.href === "/anchete")?.dot).toBe(true);
   });
 
   it("lists the map for everyone, in the place of the removed stories (owner, 6 November 2026)", () => {

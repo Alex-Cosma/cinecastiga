@@ -107,6 +107,12 @@ export async function listMonitoringWatches(userId:string,after?:string,sql=moni
   const page=items.slice(0,50);
   return {items:page.map(watchSummary),nextCursor:items.length>50?String(page.at(-1)!.id):null,refresh:await getMonitoringRefreshStatus(sql),health:await monitoringHealth(userId,sql)};
 }
+/** Updates of the reader's watches still to review (the private space's "noutăți", audit Z8-33). */
+export async function monitoringUnreadCount(userId:string,sql=monitoringDatabase()):Promise<number>{
+  const [row]=await sql`select count(*)::int n from app.monitoring_runs r join app.monitoring_watches w on w.id=r.watch_id
+    left join app.monitoring_reviews v on v.run_id=r.id where w.owner_user_id=${userId} and r.has_alert and v.run_id is null`;
+  return Number(row?.n??0);
+}
 export async function monitoringHealth(userId:string,sql=monitoringDatabase()){
   const [row]=await sql`with current_refresh as (select id,status from app.monitoring_refreshes order by version desc limit 1)
     select count(*) filter(where w.last_error is not null)::int failed,count(*) filter(where w.paused)::int paused,
