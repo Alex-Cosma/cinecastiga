@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import type { AskSpec } from "@/lib/ask/spec";
 import type { EvidenceScope } from "@/lib/ask/evidence";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { formatRon, formatRonFull, cleanName } from "@/lib/format";
 import { readableCpvName } from "@/lib/entity-summary";
 import { countWords, formatDecimal, formatShare } from "@/lib/ask/answer-text";
@@ -18,6 +18,7 @@ import HelpTip from "./builder/HelpTip";
 import { PURCHASE_KIND_WORDS, type PurchaseKind } from "../../lib/ask/purchase";
 import { G } from "../../components/ghost/Ghost";
 import { useChartMotion } from "./answer/chart-motion";
+import { arrive, arriving } from "./answer/drill-camera";
 
 import { useTip } from "./use-tip";
 export { useTip, type TipBind } from "./use-tip";
@@ -84,6 +85,10 @@ export function BreakdownBlock({
   // toate” tween its segments' widths: a segment is its place in the order (its colour), so the same elements stay;
   // one the order adds grows from nothing while „alte domenii” shrinks (question-results.css).
   const motion = useChartMotion();
+  // UX audit M-20: a level reached by a click on a domain (or back up) appears after the camera instead of its entrance.
+  const [drilled] = useState(() => typeof window !== "undefined" && arriving());
+  const barRef = useRef<HTMLDivElement>(null), legendRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => { if (drilled) arrive(barRef.current, legendRef.current); }, [drilled]);
   const byCount = spec.measure === "count" && Boolean(base);
   // slice click: while the stem can go deeper, open the same breakdown one
   // CPV level down; at a full 8-digit code, open the transactions instead.
@@ -134,7 +139,7 @@ export function BreakdownBlock({
         </button>)}
         <HelpTip tip={{ id: "tip-achizitie" }} />
       </div>}
-      {!single && <div className={`ask-comp ${motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root}>
+      {!single && <div ref={barRef} className={`ask-comp ${drilled ? "is-drilled" : motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root}>
         {items.map((s, i) => {
           const bind = t.bind(
             s.name,
@@ -146,6 +151,8 @@ export function BreakdownBlock({
               key={i}
               className={`seg cm-tw${hot === i ? " is-hot" : ""}`}
               href={sliceUrl(s.code, s.name)}
+              data-code={s.code}
+              data-drill={canDeepen(s.code) ? "down" : undefined}
               style={{
                 width: `${(amount(s) / measureTotal) * 100}%`,
                 background: s.color,
@@ -173,14 +180,14 @@ export function BreakdownBlock({
         <HelpTip tip={{ title: "Înregistrări", text: "Un contract cu mai mulți câștigători apare o dată pentru fiecare, mai des la lucrări." }} />
       </div>}
       {/* Z3-14: each row reads in one line: swatch · name · a thin bar of its share in its colour · value · its records. */}
-      <div className="ask-complegend">
+      <div className="ask-complegend" ref={legendRef}>
         {items.map((s, i) => (
           <div key={s.name} className="li qb-tipwrap" onPointerEnter={() => setHot(i)} onPointerLeave={() => setHot(null)}
             onFocus={() => setHot(i)} onBlur={() => setHot(null)}>
             <span className="sw" style={{ background: s.color }} />
             <span className="nm">
               {s.code ? (
-                <a href={sliceUrl(s.code, s.name)}>
+                <a href={sliceUrl(s.code, s.name)} data-code={s.code} data-drill={canDeepen(s.code) ? "down" : undefined}>
                   {s.name}
                 </a>
               ) : (

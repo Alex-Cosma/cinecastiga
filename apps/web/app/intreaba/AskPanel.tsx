@@ -93,6 +93,7 @@ import {
   shownWords, streamOptions, threadCrumbs, threadWords, totalConditionWords, writeThread, type AnswerVariants, type Thread,
 } from "./answer-state";
 import EntityTypeahead from "./EntityTypeahead";
+import { cancelDrill, drillDown, drillUp } from "./answer/drill-camera";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence, type EvidenceOpenOpts } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
@@ -701,7 +702,7 @@ export default function AskPanel({
       }
     };
     restore(true);
-    const back = () => restore();
+    const back = () => { cancelDrill(); restore(); };
     window.addEventListener("popstate", back);
     return () => {
       window.removeEventListener("popstate", back);
@@ -978,6 +979,21 @@ export default function AskPanel({
     const href = anchor.getAttribute("href");
     if (!href) return;
     const url = new URL(href, window.location.origin);
+    // A level of „Ce se cumpără” (UX audit M-20): opened in place, with the camera, instead of loading the page again.
+    // The address and the thread are the link's („Înapoi” brings the level before back).
+    const level = anchor.dataset.drill;
+    if ((level === "down" || level === "up") && url.origin === window.location.origin && url.pathname === window.location.pathname && applied) {
+      const next = validateSpec(decodeSpec(url.searchParams.get("spec") ?? ""), { refuseNewer: NEWER_VERSION_LINK });
+      if ("error" in next) return;
+      event.preventDefault();
+      cancelNavPending();
+      if (level === "down") drillDown(anchor, anchor.dataset.code ?? "");
+      else drillUp(anchor, String(applied.filters.cpvTerm ?? ""));
+      setBuilderInit(next as unknown as QuestionSpec);
+      setLinkRuns(true);
+      void execute({ spec: next as unknown as AskSpec }, false, undefined, undefined, false, { thread: readThread(url.searchParams.get("fir"), next as unknown as AskSpec), history: "push" });
+      return;
+    }
     if (
       url.origin !== window.location.origin ||
       url.searchParams.get("drill") !== "1"
@@ -1484,7 +1500,7 @@ export default function AskPanel({
                     )}
                   </span>
                 )}
-                {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
+                {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} drill={data.block === "breakdown"} />}
                 {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd wideOnly={data.block === "sankey"}>{layoutToggle}</StripEnd>}
               </AnswerStrip></div>
             )}

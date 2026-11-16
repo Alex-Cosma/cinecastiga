@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useId, useRef } from "react";
 import { squarify } from "@/lib/treemap";
 import { formatEvidenceAmount } from "@/lib/ask/evidence";
+import { chartPace } from "@/components/motion/pace";
 import "./domain-atlas.css";
 
 export interface AtlasNode {
@@ -76,6 +77,91 @@ function el<K extends keyof SVGElementTagNameMap>(name: K, attributes: Record<st
   const node = document.createElementNS(NS, name);
   for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value));
   return node;
+}
+
+/*
+ * Going down into a zone (UX audit M-20, owner, 16 November 2026): the chosen part becomes the whole. The zone clicked
+ * grows on both axes until it fills the atlas (a copy of the drawing laid over it, its words hidden: they would
+ * stretch), then its subdomains appear (opacity, 210 ms); going back up, the atlas comes out of the zone it was in, its
+ * neighbours and words coming in during the second part. 260 ms × --chart-pace (1.5), --ease; transform and opacity
+ * only. Reduced motion: the new level at once.
+ */
+const CAMERA_MS = 260, APPEAR_MS = 210;
+interface AtlasDrill { dir: "down" | "up"; code: string; until: number; copy: SVGSVGElement | null; timer: number }
+let drill: AtlasDrill | null = null;
+const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const easeOf = (token: string, fallback: string) => getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+const dropDrill = () => { if (!drill) return; window.clearTimeout(drill.timer); drill.copy?.remove(); drill = null; };
+
+/** The transform (user units, origin 0 0) that makes the box x, y, w, h fill a drawing of width × height. */
+export function fillBox(box: { x: number; y: number; w: number; h: number }, width: number, height: number): string {
+  const sx = box.w > 0 ? width / box.w : 1, sy = box.h > 0 ? height / box.h : 1;
+  return `matrix(${sx.toFixed(4)}, 0, 0, ${sy.toFixed(4)}, ${(-box.x * sx).toFixed(2)}, ${(-box.y * sy).toFixed(2)})`;
+}
+const tileBox = (group: Element) => {
+  const r = group.querySelector("[data-atlas-action] > rect");
+  return r ? { x: +r.getAttribute("x")!, y: +r.getAttribute("y")!, w: +r.getAttribute("width")!, h: +r.getAttribute("height")! } : null;
+};
+
+function atlasDown(svg: SVGSVGElement, code: string) {
+  dropDrill();
+  if (reducedMotion()) return;
+  const group = svg.querySelector(`[data-atlas-tile="${CSS.escape(code)}"]`), box = group && tileBox(group);
+  if (!box) return;
+  const width = svg.clientWidth, height = svg.clientHeight, rect = svg.getBoundingClientRect();
+  const copy = svg.cloneNode(true) as SVGSVGElement;
+  // The page's palette variables live under .domains-page; the copy is laid over it from <body>: its colours, resolved.
+  const faces = svg.querySelectorAll<SVGRectElement>("rect");
+  copy.querySelectorAll<SVGRectElement>("rect").forEach((r, i) => {
+    const style = faces[i] ? getComputedStyle(faces[i]!) : null;
+    if (style) { r.style.fill = style.fill; r.style.stroke = style.stroke; }
+  });
+  // The hover's outline would stretch with the zone: the copy has none.
+  copy.querySelectorAll('rect[fill="none"]').forEach((r) => r.setAttribute("opacity", "0"));
+  copy.setAttribute("aria-hidden", "true");
+  copy.removeAttribute("role");
+  copy.style.cssText += `;position:absolute;left:${rect.left + scrollX}px;top:${rect.top + scrollY}px;width:${rect.width}px;height:${rect.height}px;margin:0;z-index:5;pointer-events:none;overflow:hidden`;
+  document.body.append(copy);
+  const duration = CAMERA_MS * chartPace(), ease = easeOf("--ease", "ease-out"), exit = easeOf("--ease-exit", "ease-in");
+  const to = fillBox(box, width, height);
+  for (const tile of copy.querySelectorAll<SVGGElement>("[data-atlas-tile]")) {
+    tile.animate([{ transform: "none" }, { transform: to }], { duration, easing: ease, fill: "forwards" });
+    if (tile.getAttribute("data-atlas-tile") !== code) tile.animate([{ opacity: 1 }, { opacity: 0 }], { duration: duration * 0.6, easing: exit, fill: "forwards" });
+  }
+  for (const words of copy.querySelectorAll("foreignObject")) words.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 90, easing: exit, fill: "forwards" });
+  drill = { dir: "down", code, until: performance.now() + duration, copy, timer: window.setTimeout(dropDrill, 10000) };
+}
+
+/** A level up (the atlas's crumbs): the atlas will come out of `code`, the zone it was. */
+export function atlasUp(code: string): void {
+  dropDrill();
+  if (!code || reducedMotion()) return;
+  drill = { dir: "up", code, until: performance.now(), copy: null, timer: window.setTimeout(dropDrill, 10000) };
+}
+
+/** The new level is drawn (no frame painted yet): it appears after the camera, or the camera runs back out of it. */
+function atlasArrive(svg: SVGSVGElement, isAncestor: (code: string, of: string) => boolean) {
+  const d = drill;
+  if (!d) return false;
+  drill = null; window.clearTimeout(d.timer);
+  const duration = CAMERA_MS * chartPace(), ease = easeOf("--ease", "ease-out");
+  if (d.dir === "down") {
+    const wait = Math.max(0, d.until - performance.now()), copy = d.copy;
+    svg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: APPEAR_MS, delay: wait, easing: ease, fill: "backwards" });
+    copy?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: APPEAR_MS, delay: wait, easing: ease, fill: "forwards" }).addEventListener("finish", () => copy.remove());
+    return true;
+  }
+  const tiles = [...svg.querySelectorAll<SVGGElement>("[data-atlas-tile]")];
+  const home = tiles.find((t) => { const c = t.getAttribute("data-atlas-tile")!; return c === d.code || isAncestor(c, d.code); });
+  const box = home && tileBox(home);
+  if (!home || !box) { svg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: APPEAR_MS, easing: ease }); return true; }
+  const from = fillBox(box, svg.clientWidth, svg.clientHeight);
+  for (const tile of tiles) {
+    tile.animate([{ transform: from }, { transform: "none" }], { duration, easing: ease, fill: "backwards" });
+    if (tile !== home) tile.animate([{ opacity: 0 }, { opacity: 1 }], { duration: duration * 0.6, delay: duration * 0.4, easing: ease, fill: "backwards" });
+  }
+  for (const words of svg.querySelectorAll("foreignObject")) words.animate([{ opacity: 0 }, { opacity: 1 }], { duration: APPEAR_MS, delay: duration, easing: ease, fill: "backwards" });
+  return true;
 }
 
 function compactMoney(value: number): string {
@@ -200,6 +286,8 @@ function mountAtlas(
   let observer: ResizeObserver | undefined;
   let frame = 0;
   let firstDraw = true;
+  /** Whether zone `code` holds the deeper `of` (CPV codes: a parent's digits begin its children's). */
+  const isAncestor = (code: string, of: string) => /^\d+$/.test(code) && of.startsWith(code) && of !== code;
   let widthBefore = 0;
   let heightBefore = 0;
 
@@ -234,13 +322,15 @@ function mountAtlas(
       : before.scope !== scope || kept < shapes.size / 2 ? "enter" : "place";
     const changed = (code: string) => mode === "first" || mode === "enter" || (mode === "place" && before?.tiles.get(code) !== shapes.get(code));
     const fading = mode === "none" ? 0 : tiles.filter((tile) => changed(String(tile.node.code))).length;
-    const entrance = mode === "first" ? "cm-fade" : fading ? "cm-in" : "";
+    // A level reached by going down or up (M-20) appears with its camera, not with an entrance of its own.
+    const drilled = firstDraw && drill !== null;
+    const entrance = drilled ? "" : mode === "first" ? "cm-fade" : fading ? "cm-in" : "";
     const whole = fading > 300;
     const plain = (target: Element, name: string) => target.addEventListener("animationend", () => target.classList.remove(name), { once: true });
     svg.style.removeProperty("--chart-cap");
     if (mode === "enter") svg.style.setProperty("--chart-cap", "120ms");
     if (whole) { svg.classList.add(entrance); plain(svg, entrance); }
-    const record: AtlasMemory = { scope, tiles: shapes, played: mode !== "first" };
+    const record: AtlasMemory = { scope, tiles: shapes, played: drilled || mode !== "first" };
     memory.current = record;
     if (!record.played) svg.addEventListener("animationend", () => { record.played = true; }, { once: true });
     for (const [index, tile] of tiles.entries()) {
@@ -316,6 +406,7 @@ function mountAtlas(
       const item: AtlasItem = { group, body, outline, node, share, arrow: null, arrowFace: null };
       const activate = (event: Event, callback: (code: string) => void) => {
         event.preventDefault(); event.stopPropagation(); hideTooltip();
+        if (actionFor(node) === "Explorează subdomeniile") atlasDown(svg, String(node.code));
         callback(String(node.code));
       };
       body.addEventListener("click", (event) => activate(event, onSelect));
@@ -363,6 +454,7 @@ function mountAtlas(
       const item = groups.find((item) => String(item.node.code) === focusedCode);
       (focusedAction === "details" && item?.arrow ? item.arrow : item?.body)?.focus();
     }
+    if (drilled) atlasArrive(svg, isAncestor);
     firstDraw = false;
   }
   const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(draw); };

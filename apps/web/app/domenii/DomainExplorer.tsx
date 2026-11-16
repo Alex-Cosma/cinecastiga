@@ -10,7 +10,7 @@ import EvidenceDrawer from "../intreaba/EvidenceDrawer";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
-import DomainAtlas, { type AtlasMemory } from "./DomainAtlas";
+import DomainAtlas, { atlasUp, type AtlasMemory } from "./DomainAtlas";
 import DiscoverNav, { DiscoverNavGhost } from "@/components/discover/DiscoverNav";
 import { DOMAIN_ALIASES as aliases } from "@/lib/cpv-aliases";
 import "./domains.css";
@@ -132,7 +132,14 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     position.current = { kind: focus, ...(focus === "atlas" && !details && canvas.current ? { canvasTop: canvas.current.getBoundingClientRect().top } : {}), ...(restoreY !== undefined ? { scrollY: restoreY } : {}) };
     setEvidence(null); setNotice(""); writeHistory(next, data.year); setRoute(next);
   }
-  function browse(code: string) { const node = index.nodes.get(code); if (node?.isLeaf) { openDetails(code); return; } navigate({ code, view: "browse", query: "", all: false }); }
+  function browse(code: string) {
+    const node = index.nodes.get(code); if (node?.isLeaf) { openDetails(code); return; }
+    // Up the atlas's path (UX audit M-20): the atlas comes back out of the zone it was showing.
+    if (!details && route.code && code !== route.code && ancestorsOf(route.code).includes(code)) atlasUp(route.code);
+    navigate({ code, view: "browse", query: "", all: false });
+  }
+  /** The zones above `code`, the atlas's root ("") first. */
+  function ancestorsOf(code: string): string[] { const up: string[] = [""]; for (let c = index.parents.get(code); c; c = index.parents.get(c)) up.push(c); return up; }
   function openDetails(code: string) {
     if (blocked || !index.nodes.has(code)) return;
     if (!details) lastBrowse.current = { route: { ...route }, scrollY: window.scrollY, year: data.year };

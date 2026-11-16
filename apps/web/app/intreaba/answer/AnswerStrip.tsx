@@ -54,11 +54,11 @@ export function Suggest({ text, action = "Detaliază", onClick, href }: { text: 
 }
 
 /** The thread of a drill-down ("Domenii: toate › Construcții"): each step goes back; the current one is text. */
-export function Crumbs({ label, items, current }: { label: string; items: readonly { label: string; onClick?: () => void; href?: string }[]; current: string }) {
+export function Crumbs({ label, items, current, drill = false }: { label: string; items: readonly { label: string; onClick?: () => void; href?: string }[]; current: string; drill?: boolean }) {
   return <nav className="qb-crumbs" aria-label={label}>
     <span>{label}:</span>
     {items.map((item, index) => <span className="qb-crumb" key={`${index}:${item.label}`}>
-      {item.href ? <a href={item.href}>{item.label}</a> : <button type="button" onClick={item.onClick}>{item.label}</button>}
+      {item.href ? <a href={item.href} data-drill={drill ? "up" : undefined}>{item.label}</a> : <button type="button" onClick={item.onClick}>{item.label}</button>}
       <span aria-hidden="true">›</span>
     </span>)}
     <b aria-current="location">{current}</b>
