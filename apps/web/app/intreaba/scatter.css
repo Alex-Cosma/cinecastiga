@@ -171,3 +171,6 @@
   .sc-row .sc-rec{grid-area:rec;justify-self:end}
   .sc-who-n{display:none}
 }
+
+/* UX audit Z3-32: the phone's strip word sits over the strip's dots with a wider halo of paper, as the points' names. */
+.sc-strip-word{stroke-width:4px;font-weight:600}

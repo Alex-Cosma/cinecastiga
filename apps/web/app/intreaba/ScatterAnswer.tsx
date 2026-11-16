@@ -590,13 +590,14 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           {flaggedField.cells.map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} rx={1.2} className={`sc-cell s${c.step}`} />)}
           {flaggedField.bars.map((b, i) => <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={1} className="sc-bar" />)}
         </g>}
-        {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         <g className={motion.enter("cm-fade")}>{all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}</g>
         <g key={`points:${flag ?? ""}`} ref={motion.join} className={motion.enter("cm-fade")}>{all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}</g>
         {/* The list's points (at most 50): each fades in at its place, together; one the list gains fades in. */}
         {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""} cm-tw ${motion.enter("cm-pt")}`} />)}
         {extra.map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4} className={`sc-dot${d.flagged ? " is-flag" : ""}`} />)}
         {labels.map((l) => <text key={l.id} ref={motion.join} x={l.x} y={l.y} textAnchor={l.anchor} className={`sc-label ${motion.enter("cm-fade cm-late")}`} style={FAST}>{l.text}</text>)}
+        {/* UX audit Z3-32: a phone's strip word is drawn over its dots (after them), in its halo of paper, so it reads. */}
+        {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         {picked && (() => {
           const d = drawn.find((x) => x.point.id === picked.id);
           return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring cm-pt" style={FAST} /> : null;
