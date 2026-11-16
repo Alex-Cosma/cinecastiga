@@ -203,7 +203,7 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
           <p className="ec-ties-text">{head.lead}.</p>
           {/* The sources and the CSV still hold the first profiles by value (runRows): said, never silent. */}
           {ranking.rows.length > 0 && <p className="ec-rest">{noneSources(ranking.rows)}</p>}
-        </> : (
+        </> : head.kind === "tied" && (
           <p className="ec-ties-text qb-tipwrap" id={headId}>
             <b>{head.lead}</b>{head.kind === "tied" && <> <HelpTip tip={{ id: "indice-egalitate" }} /></>}, <b className="num">{head.score}</b> · {head.band}.{" "}
             {/* The score is no probability of corruption (rf-2026.18): its (?) beside it. */}
@@ -214,12 +214,14 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
       {head.kind !== "none" && (
         <>
           {shownTied(rows) && <p className="ec-order qb-tipwrap">În ordinea valorii, nu a riscului <HelpTip tip={{ id: "ordinea-valorii" }} /></p>}
-          <AnswerList label="Primii după scorul de risc" listRef={list} describedBy={headId}>
+          {/* UX audit Z3-19: one place names the first: its row (marked), not a line above it saying it again. */}
+          <AnswerList label="Primii după scorul de risc" listRef={list} {...(head.kind === "tied" ? { describedBy: headId } : {})}>
             {rows.map((row, i) => {
               const records = open(row);
               const entity = { id: row.entityId, name: cleanName(row.name) };
               return <RiskRow
                 key={row.entityId}
+                first={head.kind === "first" && i === 0}
                 place={places[i]!}
                 row={row}
                 facts={riskFacts(row, spec)}
@@ -256,20 +258,20 @@ function RankingAnswer({ ranking, spec }: { ranking: RiskRanking; spec: Question
  * its county and direct acquisitions, its patterns, the score pill with the band's word (never colour alone), the value
  * and the "⋯" menu. On a phone the score and the value go under the name.
  */
-function RiskRow({ place, row, facts, actions }: { place: number; row: RiskPlace; facts: readonly RowFact[]; actions: readonly RowAction[] }) {
+function RiskRow({ place, row, facts, actions, first = false }: { place: number; row: RiskPlace; facts: readonly RowFact[]; actions: readonly RowAction[]; first?: boolean }) {
   const name = `${place}. ${cleanName(row.name)}`, pill = scorePill(row.score);
   // Its records beside the value (owner, 2 November 2026: never only behind "⋯"); the menu keeps what is left.
   const records = actions.find((action) => action.id === "records"), more = actions.filter((action) => action.id !== "records");
-  return <div className="qb-arow ec-rrow" role="listitem" tabIndex={-1} data-qb-arow="">
+  return <div className={`qb-arow ec-rrow${first ? " is-first" : ""}`} role="listitem" tabIndex={-1} data-qb-arow="">
     <div>
-      <div className="qb-arow-name">{place}. <Link prefetch={false} href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link><small>{profilePlace(row)}</small></div>
+      <div className="qb-arow-name">{first ? <><span className="ec-first-n" aria-hidden="true">1</span><span className="qb-sr">1. </span></> : `${place}. `}<Link prefetch={false} href={`/entitati/${row.entityId}`}>{cleanName(row.name)}</Link><small>{profilePlace(row)}</small></div>
       <RowFacts facts={facts} />
     </div>
     <div className="qb-arow-val ec-rval">
-      <span className="ec-score"><b className={`cri-pill ${pill.className}`}>{pill.text}</b>{pill.band}</span>
+      <span className="ec-score qb-tipwrap"><b className={`cri-pill ${pill.className}`}>{pill.text}</b>{pill.band}{first && <HelpTip tip={{ id: "scor-risc" }} />}</span>
       <span className="qb-num">{formatRon(row.value)}</span>
       {records?.onSelect && <button type="button" className="qb-rec ec-rrec" aria-label={`Înregistrările: ${cleanName(row.name)}`} onClick={records.onSelect}>
-        Înregistrări<span className="qb-glyph" aria-hidden="true">→</span></button>}
+        {countWords(row.count, "înregistrare", "înregistrări")}<span className="qb-glyph" aria-hidden="true">→</span></button>}
     </div>
     {more.length > 0 && <RowMenu name={name} actions={more} />}
   </div>;
