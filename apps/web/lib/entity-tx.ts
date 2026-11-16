@@ -203,6 +203,19 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
       members.set(m.cid, list);
     }
   }
+  // The published title of each direct acquisition on this page (one indexed lookup; UX audit Z5-06): what was bought,
+  // beside its CPV category.
+  const daIds = rows.filter((r) => r["src"] === "da").map((r) => String(r["rid"]));
+  const titles = new Map<string, string>();
+  if (daIds.length > 0) {
+    const titleRows = (await sql`
+      select d.sicap_da_id::text id, nullif(btrim(r.payload->>'directAcquisitionName'), '') title
+      from core.direct_acquisitions d
+      left join raw.raw_documents r on r.id = d.raw_id
+      where d.sicap_da_id = any(${sql.array(daIds)}::bigint[])
+    `) as unknown as { id: string; title: string | null }[];
+    for (const t of titleRows) if (t.title) titles.set(t.id, t.title);
+  }
   const winnerOf = (r: Record<string, unknown>) => (role === "authority" ? String(r["cp_id"]) : String(id));
   const othersOf = (r: Record<string, unknown>) => (members.get(String(r["rid"])) ?? [])
     .filter((m) => m.supplierId !== winnerOf(r))
@@ -235,6 +248,7 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
       financialKind: (r["financial_kind"] as string | null) ?? null,
       consortiumOthers: othersOf(r).map((m) => m.name),
       consortiumMembers: othersOf(r),
+      title: r["src"] === "da" ? titles.get(String(r["rid"])) ?? null : null,
     })),
   };
 }

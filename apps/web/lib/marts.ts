@@ -325,6 +325,8 @@ export interface DaTx {
   consortiumMembers?: { id: string; name: string }[];
   /** Contract rows: contractKind (contract, calloff, framework, amendment, review); null for DAs. */
   financialKind?: string | null;
+  /** Direct acquisitions: the title published in SICAP, when there is one (the entity page's table, UX audit Z5-06). */
+  title?: string | null;
 }
 
 export interface CompanyRep {

@@ -245,6 +245,8 @@ export default function TxTable({
                 )}
                 <td className="clip c-cpv" {...tip.bindClip(t.cpvName ?? t.cpvCode)}>
                   {t.cpvName ?? t.cpvCode ?? "—"}
+                  {/* What was bought, as SICAP publishes it (UX audit Z5-06): one line, whole on hover. */}
+                  {t.src === "da" && t.title && <span className="tx-title" title={t.title}>{t.title}</span>}
                 </td>
                 <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}`}>
                   {/* The value and its warning together: on a phone's card they sit at the right of its first line (Z5-24). */}
@@ -296,9 +298,13 @@ export default function TxTable({
                       apare și sub alt anunț
                     </span>
                   ) : null}
+                  {/* Every row leads to its page on the site, its SEAP source smaller beside it (UX audit Z5-06). */}
                   {t.src === "contract" ? (
                     t.natId ? (
-                      <Link prefetch={false} href={`/contracte/${t.natId}`}>detalii →</Link>
+                      <>
+                        <Link prefetch={false} href={`/contracte/${t.natId}`}>detalii →</Link>
+                        {t.caNoticeId && <a className="tx-seap" href={awardUrl(t.caNoticeId)} target="_blank" rel="noopener noreferrer">SEAP ↗</a>}
+                      </>
                     ) : t.caNoticeId ? (
                       <a href={awardUrl(t.caNoticeId)} target="_blank" rel="noopener noreferrer">
                         anunț ↗
@@ -307,9 +313,10 @@ export default function TxTable({
                       "—"
                     )
                   ) : (
-                    <a href={daUrl(t.sicapDaId)} target="_blank" rel="noopener noreferrer">
-                      sursa ↗
-                    </a>
+                    <>
+                      <Link prefetch={false} href={`/achizitii/${t.sicapDaId}`}>detalii →</Link>
+                      <a className="tx-seap" href={daUrl(t.sicapDaId)} target="_blank" rel="noopener noreferrer">SEAP ↗</a>
+                    </>
                   )}
                 </td>
               </tr>

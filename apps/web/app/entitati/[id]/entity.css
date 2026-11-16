@@ -450,3 +450,13 @@
 @container (max-width:300px){
   .ent-years[data-many] .ent-years-x>span:nth-last-child(even){visibility:hidden}
 }
+
+/* ---- UX audit Z5-06 (16 November 2026): a direct acquisition's published title under its category, one line; every row
+   leads to its page on the site („detalii →”), its SEAP source smaller ---- */
+.ent-tx .tx-title{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--ink2)}
+.ent-tx td.c-links .tx-seap{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.ent-tx td.c-links .tx-seap:hover{color:var(--accent)}
+@media (max-width:1000px){
+  .ent-tx .tx-title{font-size:13px}
+  .ent-tx td.c-links .tx-seap{display:inline-flex;margin:-10px 0}
+}
