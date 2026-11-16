@@ -1058,23 +1058,6 @@ a { transition: color var(--fast) var(--ease); }
 }
 .main-nav > a:hover, .main-nav .nav-dd > a:hover { color: var(--ink); text-decoration: none; }
 .main-nav a.on { color: var(--accent); }
-.nav-ind {
-  position: absolute; top: 2px; bottom: 2px; background: var(--accent-soft); border-radius: 999px; z-index: 0;
-  transition: left var(--med) var(--ease), width var(--med) var(--ease);
-}
-.nav-dd { position: relative; }
-.nav-dd > a::after { content: " ▾"; font-size: .72em; color: var(--faint); }
-.nav-menu {
-  position: absolute; top: calc(100% + 6px); left: 0; min-width: 280px; z-index: 40;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow2); padding: 6px;
-  display: grid; gap: 2px; opacity: 0; transform: translateY(-4px); pointer-events: none;
-  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
-}
-.nav-dd:hover .nav-menu, .nav-dd:focus-within .nav-menu { opacity: 1; transform: none; pointer-events: auto; }
-.nav-menu a { display: grid; gap: 1px; padding: 8px 10px; border-radius: 8px; color: var(--ink); }
-.nav-menu a:hover { background: var(--sunk); text-decoration: none; }
-.nav-menu a b { font-weight: 600; font-size: 14px; }
-.nav-menu a small { color: var(--muted); font-size: 12px; }
 .nav-burger { display: none; }
 .hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .datachip {
@@ -1113,8 +1096,6 @@ main { padding: 30px 0 56px; }
   .main-nav { display: none; position: absolute; left: 0; right: 0; top: 100%; background: var(--surface); border-bottom: 1px solid var(--line); padding: 8px; flex-direction: column; align-items: stretch; box-shadow: var(--shadow2); }
   .main-nav.open { display: flex; }
   .main-nav > a, .main-nav .nav-dd > a { padding: 10px 12px; border-radius: 8px; }
-  .nav-ind { display: none; }
-  .nav-menu { position: static; opacity: 1; transform: none; pointer-events: auto; box-shadow: none; border: 0; padding: 0 0 0 12px; }
   .nav-burger { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); cursor: pointer; }
   .nav-burger span, .nav-burger span::before, .nav-burger span::after { display: block; width: 16px; height: 2px; background: var(--ink2); border-radius: 2px; position: relative; content: ""; }
   .nav-burger span::before { position: absolute; top: -5px; } .nav-burger span::after { position: absolute; top: 5px; }
@@ -1163,15 +1144,7 @@ main { padding: 30px 0 56px; }
 .tag.acc { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r2); }
 .card.pad { padding: 18px 20px; }
-.card.lift { transition: transform var(--med) var(--ease), box-shadow var(--med) var(--ease), border-color var(--med); }
-.card.lift:hover { transform: translateY(-3px); box-shadow: var(--shadow2); border-color: var(--line2); text-decoration: none; }
 kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line2); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--muted); }
-.toast-v2 {
-  position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); opacity: 0; background: var(--ink); color: var(--paper);
-  padding: 10px 16px; border-radius: 999px; font-size: 13.5px; box-shadow: var(--shadow2); z-index: 60; pointer-events: none;
-  transition: transform var(--med) var(--ease), opacity var(--med);
-}
-.toast-v2.on { transform: translate(-50%, 0); opacity: 1; }
 
 /* reveal */
 .rv { opacity: 0; transform: translateY(10px); transition: opacity var(--slow) var(--ease), transform var(--slow) var(--ease); }
@@ -1598,3 +1571,19 @@ table.rank td { padding: 13px 14px; }
 
 /* M-07: the chosen tab's fill slides from the tab left (components/motion/slide.ts); its words change colour with it. */
 .slide-to, .slide-to * { transition: color var(--med) var(--ease) !important; }
+
+/* M-12 press, not lift: hover changes colour only (nothing moves under the mouse: no lift, no turn, no growth); a press
+   scales to .97 over --t-press and comes back over --fast with --ease. With reduced motion only the colour (M-19).
+   On a phone the press shows on the tap (MotionKit adds the passive touchstart iOS needs for :active). */
+.btn:hover, .chip:hover, .brand:hover, .theme-btn:hover, .ask-modes button:hover, .ask-box:focus-within, .ask-box button:hover, .ask-chip:hover, .rx-head:hover,
+.avatar-link:hover .avatar, .tile:hover .g, tr:hover .cri-pill { transform: none; }
+.btn:hover { box-shadow: none; }
+.btn, .chip, .brand, .theme-btn, .avatar, .ask-box button, .ask-modes button, .ask-chip {
+  transition: transform var(--fast) var(--ease), background-color var(--fast) var(--ease), border-color var(--fast) var(--ease), color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+.rx-head { transition: box-shadow var(--med) var(--ease), border-color var(--fast) var(--ease); }
+:is(.btn, .chip, .brand, .theme-btn, .ask-box button, .ask-modes button, .ask-chip):active:not([disabled], [aria-disabled="true"]),
+.avatar-link:active .avatar { transform: scale(.97); transition-duration: var(--t-press); }
+@media (prefers-reduced-motion: reduce) {
+  :is(.btn, .chip, .brand, .theme-btn, .ask-box button, .ask-modes button, .ask-chip):active, .avatar-link:active .avatar { transform: none; }
+}

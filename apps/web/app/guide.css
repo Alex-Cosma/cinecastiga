@@ -198,3 +198,8 @@
    section's arrow. */
 .d-national-strip>.coverage-disclosure>summary>span{transition:transform var(--fast) var(--ease)}
 @media(prefers-reduced-motion:reduce){.d-national-strip>.coverage-disclosure>summary>span{transition:none}}
+
+/* UX audit M-12: the methodology's path cards no longer rise under the mouse; shadow and border still answer. */
+.d-path-card:hover{transform:none}
+.d-path-card{transition:box-shadow var(--fast) var(--ease),border-color var(--fast) var(--ease)}
+@media(prefers-reduced-motion:reduce){.d-path-card{transition:none}}

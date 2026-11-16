@@ -222,3 +222,9 @@
 .d-main-nav>a.on:after{content:none}
 .d-nav-ind{position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--accent);view-transition-name:nav-ind;pointer-events:none}
 @media(max-width:700px){.d-nav-ind{height:2px}}
+
+/* UX audit M-12 (16 November 2026): the home's question cards no longer rise under the mouse; their shadow and border
+   still answer the hover. */
+.d-question-card:hover{transform:none}
+.d-question-card{transition:box-shadow var(--fast) var(--ease),border-color var(--fast) var(--ease)}
+@media(prefers-reduced-motion:reduce){.d-question-card{transition:none}}
