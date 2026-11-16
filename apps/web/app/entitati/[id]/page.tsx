@@ -53,6 +53,7 @@ import TableLink from "./TableLink";
 import { isFillerRep, REPS_SHOWN } from "./reps";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
+import { countWords } from "@/lib/ask/answer-text";
 import "./entity.css";
 import { parseRoleParam } from "@/lib/role-param";
 
@@ -368,7 +369,7 @@ export default async function EntityPage({
           // Then the partners and the acquisitions (owner, 4 November 2026); the signals are their own page, "Semnale →"
           // among the analyses, and the score's parts are in the top (owner, 6 November 2026).
           ...(partnersRepeatTable ? [] : [{ id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" }]),
-          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
+          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt), countWords: countWords(txCounts.nDa + txCounts.nCt, "înregistrare", "înregistrări") },
           ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
           ...views,
         ]}
@@ -526,7 +527,7 @@ export default async function EntityPage({
 
       {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload; page 1 from the server */}
       <section className="section" id="achizitii">
-        <h2>Toate achizițiile și contractele</h2>
+        <h2>Toate înregistrările</h2>
         <TxTable
           key={`${id}:${rolParam}:${writeFilters(txColumns(isAuth), "", txFilters)}`}
           entityId={id}

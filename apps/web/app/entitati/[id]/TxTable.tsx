@@ -193,7 +193,7 @@ export default function TxTable({
         </div>
       </div>
       <div className={`ask-tablewrap${stale ? " g-stale" : ""}`} aria-busy={loading}>
-        <table className="ask-table ask-drill ent-tx" aria-label="Toate achizițiile și contractele">
+        <table className="ask-table ask-drill ent-tx" aria-label="Toate înregistrările">
           <thead>
             <tr>
               {/* Sorting and filtering are buttons in the header, their state on it (keyboard and screen readers). */}

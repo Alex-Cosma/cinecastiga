@@ -9,6 +9,8 @@ export interface SectionItem {
   href?: string; // or a real link
   label: string;
   count?: string;
+  /** The count in words, on hover and for screen readers: „6.582 de înregistrări” (UX audit Z5-07). */
+  countWords?: string;
   /** An analysis page's icon. */
   icon?: AnalysisKey;
   /** A small number after an analysis page's name (the signal types found), in its risk band's color. */
@@ -111,7 +113,7 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
               data-on={active === it.id ? "1" : undefined}
               className={[active === it.id ? "on" : "", it.id === "top" && name && away ? "subnav-name" : ""].filter(Boolean).join(" ") || undefined}
               title={it.id === "top" && name && away ? name : undefined}
-              aria-label={it.id === "top" && name && away ? `${name}, începutul paginii` : undefined}
+              aria-label={it.id === "top" && name && away ? `${name}, începutul paginii` : it.countWords ? `${it.label}, ${it.countWords}` : undefined}
               aria-current={active === it.id ? "location" : undefined}
               onClick={(e) => {
                 e.preventDefault();
@@ -121,7 +123,7 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
               }}
             >
               {it.id === "top" && name && away ? name : it.label}
-              {it.count ? <span className="c">{it.count}</span> : null}
+              {it.count ? <span className="c" title={it.countWords}>{it.count}</span> : null}
             </a>
           ) : null,
         )}
