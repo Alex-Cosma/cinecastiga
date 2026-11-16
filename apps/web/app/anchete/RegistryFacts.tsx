@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { RegistryFacts as Facts } from "@/lib/dossier-registry";
 import { formatExactDecimal } from "@/lib/format";
 import { privateDay, yearRuns as years } from "@/lib/private-format";
@@ -15,8 +15,10 @@ const employeesWords = (n: number) => countWords(n, "angajat", "angajați");
  * ca notă" writes the fact into the dossier as an editorial note that names its source. Today's registries, not the
  * frozen capture: the card says so.
  */
-export default function RegistryFacts({ investigationId, entityId, name, canEdit, busy, onAddNote }: {
+export default function RegistryFacts({ investigationId, entityId, name, canEdit, busy, onAddNote, open = false }: {
   investigationId: string; entityId: string; name: string; canEdit: boolean; busy: boolean; onAddNote: (title: string, body: string) => Promise<boolean>;
+  /** Opened from the card's "⋯" (Z8-05): drawn open and read at once. */
+  open?: boolean;
 }) {
   const [facts, setFacts] = useState<Facts | null>(null), [error, setError] = useState(""), [loading, setLoading] = useState(false);
   async function load() {
@@ -30,10 +32,12 @@ export default function RegistryFacts({ investigationId, entityId, name, canEdit
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Registrele nu au putut fi citite."); }
     finally { setLoading(false); }
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) void load(); }, [open]);
   const today = privateDay(new Date());
   const add = (title: string, body: string) => canEdit ? <button type="button" className="iw-text-button" disabled={busy} onClick={() => void onAddNote(title, `${body} Preluat din registre la ${today}.`)}>Adaugă ca notă</button> : null;
   const empty = facts && !facts.financials.length && !facts.administrators.people.length && !facts.signals.length;
-  return <details className="iw-registry" onToggle={event => { if (event.currentTarget.open) void load(); }}>
+  return <details className="iw-registry" open={open || undefined} onToggle={event => { if (event.currentTarget.open) void load(); }}>
     <summary>Din registre</summary>
     <div className="iw-registry-body">
       {loading && <div className="g-ghost" role="status" aria-label="Se citesc registrele…"><p><G.Line w="60%" /></p><p><G.Line w="45%" /></p><p><G.Line w="52%" /></p></div>}

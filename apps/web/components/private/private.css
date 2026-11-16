@@ -15,3 +15,7 @@
 .cite-manual textarea{font:13px/1.6 var(--mono);width:100%;min-width:0;box-sizing:border-box;padding:10px 12px;border:1px solid var(--line2);border-radius:7px;background:var(--surface);color:var(--ink)}
 @media(max-width:700px){.cite .cite-button{min-height:44px}.cite-manual textarea{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.cite .cite-button{transition:none}}
+
+/* A missing private page (Z8-22): in the private space, one sentence and the way back to the list. */
+.private-missing{padding:8px 0 48px;max-width:640px}.private-missing h1{font:600 30px/1.2 var(--display);letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+.private-missing p{color:var(--ink2);margin:0 0 16px}.private-missing-back{display:inline-flex;align-items:center;min-height:44px;font-weight:600}

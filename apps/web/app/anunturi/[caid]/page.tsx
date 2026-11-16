@@ -119,7 +119,7 @@ export default async function NoticePage({ params, searchParams }: {
         ]}
         actions={<>
           <a className="record-seap" href={awardUrl(n.caNoticeId)} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="sr-only"> (anunțul de atribuire, filă nouă)</span></a>
-          <ClipButton kind="notice" refId={String(caid)} label={n.noticeNo ?? String(caid)} />
+          <ClipButton kind="notice" refId={String(caid)} label={headline} />
         </>}
       />
 

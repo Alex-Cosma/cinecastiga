@@ -49,6 +49,8 @@ export interface MonitoringWatch extends MonitoringScope {
   lastAttemptAt: string | null; lastError: string | null;
   unreadCount: number;
   scopeNotes: string[];
+  /** The last complete check's exact total and records (the list's "Acum: …"; absent where a read does not ask). */
+  lastTotalExact?: string | null; lastRowCount?: number | null;
 }
 export interface MonitoringCounts { added: number; removed: number; changed: number }
 export interface MonitoringRun {

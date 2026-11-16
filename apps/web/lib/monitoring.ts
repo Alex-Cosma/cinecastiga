@@ -29,7 +29,8 @@ function watchSummary(row:Record<string,unknown>):MonitoringWatch {
     paused:!!row.paused,preferences:row.preferences as MonitoringWatch["preferences"],createdAt:date(row.created_at)!,updatedAt:date(row.updated_at)!,pinnedAt:date(row.pinned_at)!,
     recipeId:decimal(row.recipe_id),recipeVersion:row.recipe_version==null?null:Number(row.recipe_version),
     lastSuccessRunId:decimal(row.last_success_run_id),lastSuccessAt:date(row.last_success_at),lastAttemptAt:date(row.last_attempt_at),lastError:decimal(row.last_error),
-    unreadCount:Number(row.unread_count??0),scopeNotes:(row.scope_notes??[]) as string[]};
+    unreadCount:Number(row.unread_count??0),scopeNotes:(row.scope_notes??[]) as string[],
+    lastTotalExact:decimal(row.last_total_exact),lastRowCount:row.last_row_count==null?null:Number(row.last_row_count)};
 }
 export function monitoringRunSummary(row:Record<string,unknown>):MonitoringRun {
   return {id:String(row.id),watchId:String(row.watch_id),watchTitle:String(row.watch_title??""),checkpointId:String(row.checkpoint_id),previousRunId:decimal(row.previous_run_id),previousCheckedAt:date(row.previous_checked_at),
@@ -96,12 +97,21 @@ export async function getMonitoringWatch(userId:string,id:string,sql=monitoringD
 }
 export async function listMonitoringWatches(userId:string,after?:string,sql=monitoringDatabase()){
   if(after&&!isWorkspaceId(after))throw new MonitoringError("Poziție invalidă.");
-  const items=await sql`select w.*,(select count(*) from app.monitoring_runs r left join app.monitoring_reviews v on v.run_id=r.id where r.watch_id=w.id and r.has_alert and v.run_id is null) unread_count
-    from app.monitoring_watches w where w.owner_user_id=${userId}
+  // What each watch holds now (audit Z8-39): its last complete check's total and records, with the list.
+  const items=await sql`select w.*,(select count(*) from app.monitoring_runs r left join app.monitoring_reviews v on v.run_id=r.id where r.watch_id=w.id and r.has_alert and v.run_id is null) unread_count,
+      last.total_exact::text last_total_exact,last.row_count last_row_count
+    from app.monitoring_watches w left join lateral (select r.total_exact,r.row_count from app.monitoring_runs r where r.id=w.last_success_run_id) last on true
+    where w.owner_user_id=${userId}
       and ${after?sql`(w.created_at,w.id)<(select created_at,id from app.monitoring_watches where id=${after} and owner_user_id=${userId})`:sql`true`}
     order by w.created_at desc,w.id desc limit 51`;
   const page=items.slice(0,50);
   return {items:page.map(watchSummary),nextCursor:items.length>50?String(page.at(-1)!.id):null,refresh:await getMonitoringRefreshStatus(sql),health:await monitoringHealth(userId,sql)};
+}
+/** Updates of the reader's watches still to review (the private space's "noutăți", audit Z8-33). */
+export async function monitoringUnreadCount(userId:string,sql=monitoringDatabase()):Promise<number>{
+  const [row]=await sql`select count(*)::int n from app.monitoring_runs r join app.monitoring_watches w on w.id=r.watch_id
+    left join app.monitoring_reviews v on v.run_id=r.id where w.owner_user_id=${userId} and r.has_alert and v.run_id is null`;
+  return Number(row?.n??0);
 }
 export async function monitoringHealth(userId:string,sql=monitoringDatabase()){
   const [row]=await sql`with current_refresh as (select id,status from app.monitoring_refreshes order by version desc limit 1)
@@ -132,6 +142,12 @@ export async function listMonitoringRuns(userId:string,opts:{watchId?:string;aft
     order by r.checked_at desc,r.id desc limit 51`;
   const items=rows.slice(0,50);
   return {items:items.map(monitoringRunSummary),nextCursor:rows.length>50?String(items.at(-1)!.id):null};
+}
+/** Whether a check of the reader's own watch exists (a page answers 404 before its client reads it: audit Z8-22). */
+export async function monitoringRunExists(userId:string,watchId:string,runId:string,sql=monitoringDatabase()):Promise<boolean>{
+  if(!isWorkspaceId(watchId)||!isWorkspaceId(runId))return false;
+  const [row]=await sql`select 1 from app.monitoring_runs r join app.monitoring_watches w on w.id=r.watch_id where r.id=${runId} and r.watch_id=${watchId} and w.owner_user_id=${userId}`;
+  return Boolean(row);
 }
 export async function getMonitoringRun(userId:string,watchId:string,runId:string,sql=monitoringDatabase()):Promise<MonitoringRunDetail|null>{
   if(!isWorkspaceId(watchId)||!isWorkspaceId(runId))return null;

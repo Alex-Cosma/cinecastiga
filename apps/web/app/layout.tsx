@@ -97,7 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/metodologie#citare">Cum citez</Link>
                 </li>
                 <li>
-                  <FooterAuthLink />
+                  <FooterAuthLink sessionHint={sessionHint} />
                 </li>
               </ul>
             </div>

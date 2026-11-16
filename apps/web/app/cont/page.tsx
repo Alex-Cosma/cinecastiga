@@ -26,6 +26,7 @@ export default async function ContPage() {
         email={user.email}
         admin={admin}
         codeByEmail={Boolean(user.twoFactorEnabled) && !localPasswordOnlyLogin()}
+        sessionId={String(session.session.id)}
       />
     </div>
   );

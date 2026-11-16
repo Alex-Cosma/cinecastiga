@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { navItems } from "@/lib/site-nav";
+import { newsWords, usePrivateNews } from "@/lib/use-private-news";
 
 /** The phone's header stays whole this near the top of the page (px). */
 const CONDENSE_BELOW = 240;
@@ -18,7 +19,7 @@ const CONDENSE_AFTER = 24;
  */
 export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean }) {
   const pathname = usePathname() ?? "/";
-  const { data, isPending } = authClient.useSession();
+  const { data, isPending, error } = authClient.useSession();
   const [hydrated, setHydrated] = useState(false);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => setHydrated(true), []);
@@ -72,8 +73,13 @@ export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean
     return () => { window.removeEventListener("scroll", onScroll); phone.removeEventListener("change", onWidth); set(false); };
   }, []);
   const known = hydrated && !isPending;
-  const signedIn = known ? Boolean(data) : sessionHint;
-  const items = navItems({ pathname, signedIn });
+  // A refused session check (a 429 under load) is not "signed out": with the cookie hint "Anchete" stays (audit bug).
+  const signedIn = known ? Boolean(data) || (Boolean(error) && sessionHint) : sessionHint;
+  // Something waits in the private space (an invitation, an update to review): the dot by „Anchete”, never permanent
+  // (UX audit Z8-33 and Z1-28, 16 November 2026). The same count names the avatar's menu (HeaderUserNav).
+  const news = usePrivateNews(signedIn);
+  const waiting = (news?.invites ?? 0) + (news?.updates ?? 0);
+  const items = navItems({ pathname, signedIn, news: waiting });
   // The page already open with a question in its address (Întreabă with ?spec=…): a Link to the same route keeps the
   // answer on screen, so the item loads the bare page instead (owner, 1 November 2026). A new tab keeps the browser's way.
   const toBarePage = (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
@@ -83,6 +89,6 @@ export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean
     window.location.assign(href);
   };
   return <nav ref={ref} className="main-nav d-main-nav" aria-label="Navigare principală">
-    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}</Link>)}
+    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}{item.dot ? <><span className="d-nav-dot" aria-hidden="true" /><span className="sr-only">, {newsWords(waiting)}</span></> : null}</Link>)}
   </nav>;
 }

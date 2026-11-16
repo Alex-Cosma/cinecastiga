@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { authClient } from "@/lib/auth-client";
 import { privateMoment } from "@/lib/private-format";
@@ -37,11 +37,13 @@ function passwordProblem(error: AuthError): Problem {
 
 const time = (value: Date | string | null | undefined) => (value ? new Date(value).getTime() : 0);
 
-export default function AccountPanel({ name, email, admin, codeByEmail }: {
+export default function AccountPanel({ name, email, admin, codeByEmail, sessionId }: {
   name: string | null;
   email: string;
   admin: boolean;
   codeByEmail: boolean;
+  /** This device's session, known to the server that drew the page (a refused client check no longer loses it). */
+  sessionId: string;
 }) {
   const router = useRouter();
   const ids = useId();
@@ -52,14 +54,18 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentId] = useState<string>(sessionId);
   const [sessionsProblem, setSessionsProblem] = useState<string | null>(null);
   const [sessionsDone, setSessionsDone] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  // The password form is a rare task: one row that opens it in place (audit Z8-32); the rule and "Arată" stay in it.
+  const [passOpen, setPassOpen] = useState(false);
+  const currentRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (passOpen) currentRef.current?.focus(); }, [passOpen]);
 
   const loadSessions = useCallback(async () => {
-    const [list, mine] = await Promise.all([authClient.listSessions(), authClient.getSession()]);
+    const list = await authClient.listSessions();
     if (list.error) {
       setSessionsProblem(list.error.code === "SESSION_NOT_FRESH"
         ? "Lista sesiunilor cere o autentificare recentă: deconectează-te și intră din nou."
@@ -67,12 +73,11 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
       return;
     }
     setSessionsProblem(null);
-    const id = mine.data?.session.id ?? null;
-    setCurrentId(id);
+    const id = currentId;
     // This device first, then the most recently used.
     setSessions([...(list.data as SessionRow[])].sort((a, b) =>
       Number(b.id === id) - Number(a.id === id) || time(b.updatedAt ?? b.createdAt) - time(a.updatedAt ?? a.createdAt)));
-  }, []);
+  }, [currentId]);
   useEffect(() => {
     void loadSessions();
   }, [loadSessions]);
@@ -92,6 +97,7 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
       setCurrent("");
       setNext("");
       setShow(false);
+      setPassOpen(false);
       void loadSessions();
     } finally {
       setBusy(false);
@@ -147,12 +153,15 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
         </button>
       </section>
 
-      <section className="cont-section" aria-labelledby={`${ids}-pass`}>
-        <h2 id={`${ids}-pass`}>Schimbă parola</h2>
-        <form className="cont-form" onSubmit={changePassword} noValidate>
+      <section className="cont-section cont-pass-section" aria-labelledby={`${ids}-pass`}>
+        <h2 id={`${ids}-pass`}>Parola</h2>
+        <div className="cont-pass-body"><button type="button" className="cont-button" aria-expanded={passOpen} aria-controls={`${ids}-passform`} onClick={() => { setDone(null); setPassOpen((v) => !v); }}>
+            Schimbă parola <span aria-hidden="true">{passOpen ? "▾" : "›"}</span></button>
+        <p className="cont-done" role="status">{done}</p>
+        {passOpen && <form id={`${ids}-passform`} className="cont-form" onSubmit={changePassword} noValidate>
           <label className="cont-field">
             Parola actuală
-            <input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)}
+            <input ref={currentRef} type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)}
               required aria-invalid={invalid("current") || undefined} aria-describedby={describe("current")} />
           </label>
           <div className="cont-field">
@@ -176,9 +185,9 @@ export default function AccountPanel({ name, email, admin, codeByEmail }: {
             <button type="submit" className="cont-primary" disabled={busy} aria-describedby={noteId}>
               {busy ? "Se salvează…" : "Schimbă parola"}
             </button>
+            <button type="button" className="cont-button" onClick={() => { setPassOpen(false); setProblem(null); }}>Renunță</button>
           </div>
-          <p className="cont-done" role="status">{done}</p>
-        </form>
+        </form>}</div>
       </section>
 
       <section className="cont-section" aria-labelledby={`${ids}-sessions`}>

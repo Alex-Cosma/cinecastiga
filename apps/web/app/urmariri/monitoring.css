@@ -42,3 +42,26 @@
   .mon-record-fields>div{grid-template-columns:1fr;gap:2px}
   .mon-stack-coverage th{grid-column:1/-1}
 }
+
+/* /urmariri (UX audit Z8-18, Z8-19, Z8-20, Z8-39): the tab's name as the title; its two views as a segmented switch
+   with counts; a data update that did not finish as one line; each watch's card says what it holds now. */
+.mon-seg{display:inline-flex;flex-wrap:wrap;gap:4px;margin-top:20px;padding:4px;border:1px solid var(--line2);border-radius:10px;background:var(--sunk)}
+.mon-seg a{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:6px 14px;border-radius:7px;color:var(--ink2);font-size:14px;font-weight:500;text-decoration:none}
+.mon-seg a:hover{color:var(--ink)}.mon-seg a[aria-current=page]{background:var(--surface);color:var(--accent-ink);font-weight:600;box-shadow:0 1px 2px rgba(20,40,30,.08)}
+.mon-seg-count{font-size:12px;font-variant-numeric:tabular-nums;padding:0 7px;border-radius:4px;background:var(--line);color:var(--ink2)}.mon-seg a[aria-current=page] .mon-seg-count{background:var(--accent-soft);color:var(--accent-ink)}
+.mon-fresh-warn{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;color:var(--ink2)}
+.mon-dot{width:8px;height:8px;border-radius:50%;background:var(--amber-pill);flex:none}
+.mon-now-line{margin:4px 0 0;font-size:14px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.mon-watch{padding:22px 0}.mon-watch h2{margin:6px 0 4px}.mon-watch-compact h3{margin:4px 0 2px}
+.mon-empty-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-top:20px}.mon-empty-actions>a:not(.mon-primary){display:inline-flex;align-items:center;min-height:44px;font-size:14px}
+@media(max-width:700px){.mon-seg{display:flex}.mon-seg a{flex:1;justify-content:center;min-height:44px;padding:6px 8px}}
+
+/* Setting up a watch on a phone (audit Z8-31): the name and "Începe urmărirea" first, what is followed folded under. */
+.mon-what-toggle{display:none!important}
+@media(max-width:700px){
+  .mon-setup-form{order:-1}
+  .mon-what>h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .mon-shell .mon-what-toggle{display:flex!important;justify-content:space-between;width:100%;min-height:48px;font-weight:600}
+  .mon-what[data-open=false] .mon-what-body{display:none}
+  .mon-what-body{margin-top:12px}
+}

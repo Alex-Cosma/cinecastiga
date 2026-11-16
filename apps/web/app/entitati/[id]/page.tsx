@@ -357,7 +357,7 @@ export default async function EntityPage({
         <div className="ehead-acts">
           <FollowButton
             spec={{ block: "stat", measure: "value", filters: isAuth ? { authorityId: Number(id), authorityName: cleanName(row.name) } : { supplierId: Number(id), supplierName: cleanName(row.name) } }}
-            title={cleanName(row.name)} label="Urmărește" hint="Urmărește modificările" arrow={false}
+            title={`${cleanName(row.name)} — valoarea achizițiilor`} back={{ href: `/entitati/${id}`, label: cleanName(row.name) }} label="Urmărește" hint="Urmărește modificările" arrow={false}
           />
           <ClipButton kind="entity" refId={id} label={cleanName(row.name)} primary />
         </div>

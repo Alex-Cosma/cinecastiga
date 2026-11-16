@@ -26,8 +26,17 @@ export function ErrorNotice({ error, retry }: { error: string; retry?: () => voi
   return error ? <div className="mon-error" role="alert"><p>{error}</p>{retry && <button type="button" onClick={retry}>Încearcă din nou</button>}{error.startsWith("Sesiunea") && <Link href={`/login?next=${encodeURIComponent(typeof window === "undefined" ? "/urmariri" : window.location.pathname + window.location.search)}`}>Autentifică-te →</Link>}</div> : null;
 }
 export type RefreshState = { current: MonitoringCheckpoint | null; lastReady: MonitoringCheckpoint | null; available: boolean };
-export function RefreshNotice({ refresh }: { refresh?: RefreshState | undefined }) {
+/**
+ * How recent the validated data is. `compact` (the lists, audit Z8-20): an update that did not finish is one line with
+ * an amber dot, the rest behind its "?", as the good state is one line; the box stays where a check is affected.
+ */
+export function RefreshNotice({ refresh, compact = false }: { refresh?: RefreshState | undefined; compact?: boolean }) {
   if (!refresh) return null;
+  if (compact && !refresh.available) {
+    const what = refresh.current?.status === "running" ? `actualizarea din ${privateDay(refresh.current.startedAt)} e în curs` : refresh.current?.status === "failed" ? `actualizarea din ${privateDay(refresh.current.startedAt)} nu s-a încheiat` : "așteptăm prima actualizare validată";
+    return <div className="mon-freshness"><p className="mon-tip-line mon-fresh-warn"><span className="mon-dot" aria-hidden="true" />{refresh.lastReady ? `Datele validate: ${privateDay(refresh.lastReady.completedAt)} · ${what}` : what.charAt(0).toUpperCase() + what.slice(1)} <Term tip title="Actualizarea datelor" text="Urmăririle și versiunile păstrate rămân disponibile. O verificare nereușită nu înseamnă că nu există modificări; verificările reiau cu următoarea actualizare validată." /></p>
+      {refresh.lastReady && <details className="mon-small-details"><summary>Cât de recente sunt sursele?</summary><RefreshCoverage checkpoint={{ ...refresh.lastReady }} /></details>}</div>;
+  }
   return <div className={`mon-freshness ${refresh.available ? "" : "mon-caution"}`}>{refresh.available ? <p className="mon-tip-line">Date validate la {moment(refresh.current?.completedAt)} <Term id="data-validarii" tip /></p> : <><strong>{refresh.current?.status === "running" ? "Actualizarea datelor este în curs" : refresh.current?.status === "failed" ? "Ultima actualizare a datelor nu s-a încheiat" : "Așteptăm prima actualizare validată"}</strong><p>Urmăririle și versiunile păstrate rămân disponibile. O verificare nereușită nu înseamnă că nu există modificări.</p></>}{refresh.lastReady && !refresh.available && <p>Ultima validare reușită: {moment(refresh.lastReady.completedAt)}.</p>}{refresh.lastReady && <details className="mon-small-details"><summary>Cât de recente sunt sursele?</summary><RefreshCoverage checkpoint={{ ...refresh.lastReady }} /></details>}</div>;
 }
 export { selectionHref };

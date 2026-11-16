@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 import { captureRequestError, processCapture } from "@/lib/evidence-captures";
 import { sessionUserId } from "@/lib/session";
 import { addClip, CLIP_KINDS, type ClipKind } from "@/lib/anchete";
+import { readClipSubject } from "@/lib/clip-subject";
 
 export const runtime="nodejs";
 export const maxDuration=900;
@@ -15,11 +16,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     spec?: unknown;
     note?: string | null;
     snapshot?: Record<string, unknown> | null;
+    label?: string | null;
   } | null;
   if (!body || !CLIP_KINDS.includes(body.kind as ClipKind) || (body.note !== undefined && body.note !== null && typeof body.note !== "string"))
     return NextResponse.json({ error: "tip invalid" }, { status: 400 });
   try {
+  // What the item is called when it is saved (audit Z8-01/Z8-35): the dialog's name, else the source's; the SEAP code
+  // apart. Kept with the item, so the dossier, its pickers and its export name it before (or without) its sources.
+  const subject = body.refId && typeof body.refId === "string" ? await readClipSubject(String(body.kind), body.refId).catch(() => null) : null;
+  const label = typeof body.label === "string" && body.label.trim() ? body.label.trim().slice(0, 300) : subject?.name ?? null;
   const res = await addClip(uid, id, {
+    saved: label || subject?.code ? { name: label, code: subject?.code ?? null, kind: subject?.kindLabel ?? null } : null,
     kind: body.kind as ClipKind,
     refId: body.refId ?? null,
     spec: body.spec ?? null,

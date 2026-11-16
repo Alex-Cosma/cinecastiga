@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipHref, clipTitle, clipValue, radiografieHref, type ClipLike } from "./evidence-clip";
+import { clipCode, clipHref, clipTitle, clipValue, entityKindLabel, mergeSourceEvents, radiografieHref, savedName, type ClipLike } from "./evidence-clip";
 import { citationText } from "./evidence-citation";
 import { recordParties, sourceEventsFrom } from "./anchete";
 
@@ -28,17 +28,55 @@ describe("a dossier's saved item (owner, 7 November 2026)", () => {
   });
 });
 
+describe("names, not codes (UX audit Z8-01, Z8-35)", () => {
+  it("names a question by its sentence, never by its pills or its kind", () => {
+    const spec = { block: "timeseries", measure: "value", filters: { authorityId: 2144659, authorityName: "Orasul Cisnadie" } };
+    expect(clipTitle(clip({ kind: "query", refId: null, spec, snapshot: { pills: ["evoluție pe ani", "Orasul Cisnadie"] } }))).toBe("Cum evoluează valoarea tuturor achizițiilor făcute de Orasul Cisnadie, an de an?");
+    expect(clipTitle(clip({ kind: "query", refId: null, spec, snapshot: { verification: "queued" } }))).not.toBe("Întrebare salvată");
+    // The title the answer showed when it was saved wins over the sentence rebuilt without its labels.
+    expect(clipTitle(clip({ kind: "query", refId: null, spec, snapshot: {}, label: "Titlul răspunsului" }))).toBe("Titlul răspunsului");
+  });
+  it("names an acquisition and a notice by their object, the code apart", () => {
+    const da = clip({ kind: "da", refId: "119998450", snapshot: { title: "DA38378700" }, label: "Lucrări de construcţii de linii electrice" });
+    expect(clipTitle(da)).toBe("Lucrări de construcţii de linii electrice");
+    expect(clipCode(da)).toBe("DA38378700");
+    const notice = clip({ kind: "notice", refId: "100114992", snapshot: { title: "SCNA1031122", noticeNo: "SCNA1031122" }, label: "Lucrări de construcţii" });
+    expect([clipTitle(notice), clipCode(notice)]).toEqual(["Lucrări de construcţii", "SCNA1031122"]);
+    // Without a kept name (an old save), the code is still a name rather than an id.
+    expect(clipTitle(clip({ kind: "da", refId: "1", snapshot: { title: "DA1" } }))).toBe("DA1");
+  });
+  it("uses the name saved with the item while its sources are not kept, the id only when nothing is known", () => {
+    expect(clipTitle(clip({ kind: "entity", refId: "2144659", snapshot: { verification: "queued" }, label: "Orasul Cisnadie" }))).toBe("Orasul Cisnadie");
+    expect(clipTitle(clip({ kind: "signal", refId: "1", snapshot: { title: "Adunate, trec de plafon" }, label: "Adunate, trec de plafon · TOPO CAD · 2021" }))).toBe("Adunate, trec de plafon · TOPO CAD · 2021");
+    expect(clipTitle(clip({ kind: "contract", refId: "107371750", snapshot: { verification: "queued" } }))).toBe("Contract · 107371750");
+  });
+  it("reads the saved name and code from the item's own row", () => {
+    expect(savedName({ verification: "queued", saved: { name: " Orasul Cisnadie ", code: null, kind: "Instituție" } })).toEqual({ label: "Orasul Cisnadie", code: null, kindLabel: "Instituție" });
+    expect(savedName({ verification: "queued" })).toEqual({ label: null, code: null, kindLabel: null });
+  });
+  it("says an entity's kind as a reader does", () => {
+    expect(entityKindLabel({ roles: { authority: {} } })).toBe("Instituție");
+    expect(entityKindLabel({ roles: { supplier: {} } })).toBe("Firmă");
+    expect(entityKindLabel({}, "Firmă")).toBe("Firmă");
+  });
+});
+
 describe("the citation", () => {
   it("names the item, its exact value, the capture and the links, the total once for a selection", () => {
     const text = citationText({ title: "DA41271870", kind: "Achiziție directă", value: { exact: "80000", label: "valoarea achiziției", unit: "lei" }, rowCount: 1, totalExact: "80000",
       capturedAt: "2026-11-07 10:16:23.15+00", version: 1, fingerprint: "ab".repeat(32), publicUrl: "https://x/achizitii/1", sourceUrl: "https://e-licitatie.ro/1", sheetUrl: "https://x/anchete/i/dovezi/c" });
     expect(text.split("\n")).toEqual([
       "„DA41271870” (achiziție directă)",
+      // The public links first, so a reader of the article can open something (Z8-41); the private sheet last.
+      "Pagina: https://x/achizitii/1", "Sursa SEAP: https://e-licitatie.ro/1",
       "Valoarea achiziției: 80.000 lei (valoare înregistrată, nu plată).",
       "Păstrat: 1 înregistrare · 80.000 lei · 07.11.2026, 12:16 (ora României) · versiunea 1.",
       "Valori înregistrate în SEAP/SICAP, nu plăți. Prelucrare: cinecâștigă?.",
       `Amprentă SHA-256 (rows.csv din export): ${"ab".repeat(32)}`,
-      "Pagina: https://x/achizitii/1", "Sursa SEAP: https://e-licitatie.ro/1", "Fișa de probă (privată): https://x/anchete/i/dovezi/c"]);
+      "Fișa de probă (privată, doar pentru tine și colaboratori): https://x/anchete/i/dovezi/c"]);
+    // A saved question's answer on the site shows today's data: the citation says so.
+    expect(citationText({ title: "Cum evoluează…?", kind: "Întrebare salvată", rowCount: 2, totalExact: "1", capturedAt: null, version: 1, fingerprint: null, publicUrl: "https://x/intreaba?spec=a", publicIsAnswer: true, sheetUrl: "u" }).split("\n")[1])
+      .toBe("Răspunsul pe site (datele de azi, nu versiunea păstrată): https://x/intreaba?spec=a");
     const selection = citationText({ title: "X", kind: "Entitate", value: { exact: "10", label: "totalul înregistrărilor păstrate", unit: "lei" }, rowCount: 20, totalExact: "10", capturedAt: null, version: 2, fingerprint: null, sheetUrl: "u" });
     expect(selection).not.toContain("Totalul");
     expect(selection).toContain("20 de înregistrări · 10 lei · moment necunoscut");
@@ -69,5 +107,25 @@ describe("dates and parties read from the saved records", () => {
   it("names who bought from whom, each supplier once", () => {
     expect(recordParties(records.get("k1")!)).toEqual({ authorityId: "2139059", authority: "COMUNA FELNAC", suppliers: [{ id: "1", name: "A" }, { id: "2", name: "B" }] });
     expect(recordParties([])).toBeNull();
+  });
+});
+
+describe("the timeline from the sources (Z8-42)", () => {
+  const base = { date: "2020-01-15", unit: "lei", sourceUrl: null } as const;
+  it("says a contract once when its contract and its notice are both saved", () => {
+    const merged = mergeSourceEvents([
+      { ...base, clipId: "n", kind: "contract", label: "Contract din anunțul SCNA1031122", title: "SCNA1031122", valueExact: "4930170", href: "/contracte/100427344" },
+      { ...base, clipId: "c", kind: "contract", label: "Data contractului", title: "Contract de lucrări", valueExact: "4930170", href: "/contracte/100427344" },
+      { ...base, clipId: "d", kind: "da", label: "Achiziție directă finalizată", title: "DA1", valueExact: "10", href: "/achizitii/1" },
+    ]);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toMatchObject({ label: "Contract semnat", title: "Contract de lucrări", noticeNo: "SCNA1031122", clips: [{ clipId: "n", kind: "notice" }, { clipId: "c", kind: "contract" }] });
+    expect(merged[1]).toMatchObject({ label: "Achiziție directă finalizată", clips: [{ clipId: "d", kind: "da" }] });
+  });
+  it("keeps different contracts and days apart", () => {
+    expect(mergeSourceEvents([
+      { ...base, clipId: "a", kind: "contract", label: "Data contractului", title: "A", valueExact: "1", href: "/contracte/1" },
+      { ...base, clipId: "b", kind: "contract", label: "Data contractului", title: "B", valueExact: "1", href: "/contracte/2" },
+    ])).toHaveLength(2);
   });
 });

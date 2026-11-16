@@ -17,10 +17,13 @@ describe("main navigation", () => {
     expect(labels({})).not.toContain("Explorează");
   });
 
-  it("hides the private investigations item from anonymous visitors", () => {
+  it("hides the private investigations item and its dot from anonymous visitors", () => {
     expect(labels({})).toEqual(["Descoperă", "Întreabă", "Hartă", "Ghid"]);
     const signedIn = navItems({ ...base, signedIn: true });
     expect(signedIn.map(item => item.label)).toEqual(["Descoperă", "Întreabă", "Hartă", "Anchete", "Ghid"]);
+    // The dot says something waits (an invitation, an update to review), never permanently (audit Z8-33).
+    expect(signedIn.find(item => item.href === "/anchete")?.dot).toBe(false);
+    expect(navItems({ ...base, signedIn: true, news: 2 }).find(item => item.href === "/anchete")?.dot).toBe(true);
   });
 
   it("lists the map for everyone, in the place of the removed stories (owner, 6 November 2026)", () => {
@@ -85,8 +88,6 @@ describe("<SiteNav> server snapshot", () => {
     expect(anonymous).toContain(">Întreabă<");
     const hinted = renderToStaticMarkup(createElement(SiteNav, { sessionHint: true }));
     expect(hinted).toContain("href=\"/anchete\"");
-    // UX audit Z1-28: no red dot by „Anchete”, which read as an unread notification
-    expect(hinted).not.toContain("d-nav-dot");
     expect(hinted).not.toContain("fixture@example.invalid");
   });
 });

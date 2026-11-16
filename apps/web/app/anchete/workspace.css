@@ -125,3 +125,134 @@
 
 /* The list page's header stacks on a phone like the rest of the page: from the left. */
 @media(max-width:760px){.iw-list-header{align-items:flex-start}}
+
+/* A compact evidence card (UX audit Z8-05, owner 16 November 2026): kind, state pill and day with "⋯" on one row;
+   the name; one line; the note on two lines; "Fișa de probă →". The rarer actions open in place under the card. */
+.iw-evidence,.iw-editorial-note{padding:20px 0}
+.iw-card-top{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:6px}
+.iw-card-top .iw-entry-meta{flex:1;min-width:0;justify-content:flex-start;flex-wrap:wrap;gap:4px 10px;margin:0;min-height:40px;align-content:center}
+.iw-card-saved{margin-left:auto;white-space:nowrap}
+.iw-pill{display:inline-flex;align-items:center;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.6}
+.iw-pill-kept{background:var(--accent-soft);color:var(--accent-ink)}.iw-pill-amber{background:var(--amber-soft);color:var(--ink)}.iw-pill-quiet,.iw-pill-pin{background:var(--sunk);color:var(--ink2)}
+.iw-evidence h3,.iw-editorial-note h3{margin:0 0 6px}
+.iw-evidence-line{margin:0 0 4px;font-size:14px;color:var(--ink2);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.iw-evidence-line .iw-evidence-parties{font-size:14px;margin:0}.iw-evidence-line .iw-evidence-value{margin:0}.iw-evidence-line .iw-evidence-value strong{font:600 14px/1.5 var(--body);letter-spacing:0;color:var(--ink)}.iw-evidence-line .iw-evidence-value span{font-size:14px;margin-left:2px}
+.iw-card-note{margin:6px 0 0;max-width:75ch;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-wrap}
+.iw-card-sheet{margin:10px 0 0}.iw-card-sheet .iw-frozen-source{display:inline-flex;align-items:center;min-height:36px}
+.iw-card-status{margin:0;font-size:13px;color:var(--accent)}.iw-card-status:empty{display:none}
+.iw-card-panel{margin-top:12px;padding:14px 16px;border:1px solid var(--line2);border-radius:10px;background:var(--surface)}.iw-card-panel:focus{outline:none}.iw-card-panel>form{display:grid;gap:12px;padding:0}.iw-card-panel>form>p{margin:0}
+.iw-card-panel .iw-registry{border:0;margin:0}.iw-card-panel .iw-registry>summary{padding-top:0}.iw-card-panel .iw-link-form{padding:0}
+.iw-versions{list-style:none;margin:0;padding:0;font-size:14px}.iw-versions li{padding:6px 0;border-top:1px solid var(--line)}.iw-versions li:first-child{border-top:0}
+/* The "⋯" button and its menu (a WAI menu button, CardMenu.tsx). */
+.iw-card-menu{position:relative;flex:none}
+.iw-shell .iw-more{display:inline-flex;align-items:center;justify-content:center;width:40px;min-height:40px;padding:0;font-size:18px;line-height:1;color:var(--ink2)}
+.iw-shell .iw-more[aria-expanded=true]{background:var(--sunk);border-color:var(--accent-line)}
+.iw-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:30;min-width:260px;max-width:min(320px,calc(100vw - 32px));padding:6px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);box-shadow:0 10px 28px rgba(20,40,30,.14)}
+.iw-menu-up{top:auto;bottom:calc(100% + 6px)}
+.iw-shell .iw-menu-item{display:flex;align-items:center;width:100%;min-height:40px;padding:8px 12px;border:0;border-radius:6px;background:transparent;color:var(--ink);font:500 14px/1.35 var(--body);text-align:left;text-decoration:none;cursor:pointer}
+.iw-shell .iw-menu-item:hover,.iw-shell .iw-menu-item:focus{background:var(--sunk);outline:none}.iw-shell .iw-menu-item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.iw-menu-danger{margin-top:6px;position:relative}.iw-menu-danger::before{content:"";position:absolute;left:6px;right:6px;top:-4px;border-top:1px solid var(--line)}.iw-shell .iw-menu-danger{color:var(--risk)}
+/* The kind filter over the list (Z8-06): pills on a wide screen, a native menu on a phone. */
+.iw-filter{margin:-10px 0 6px}.iw-filter-pills{display:flex;flex-wrap:wrap;gap:8px}
+.iw-shell .iw-filter-pills button{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:5px 12px;border-radius:999px;font-weight:500;color:var(--ink2)}
+.iw-shell .iw-filter-pills button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink);font-weight:600}
+.iw-filter-pills .iw-count{font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.iw-filter-select{display:none!important}
+@media(max-width:700px){
+  .iw-filter-pills{display:none}.iw-filter-select{display:grid!important}
+  .iw-shell .iw-more{width:44px;min-height:44px}.iw-shell .iw-menu-item{min-height:44px}
+  .iw-card-sheet .iw-frozen-source{min-height:44px}
+  .iw-card-saved{margin-left:0}
+}
+@media(prefers-reduced-motion:reduce){.iw-menu{transition:none}}
+:root[data-theme=dark] .iw-menu{box-shadow:0 10px 28px rgba(0,0,0,.45)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .iw-menu{box-shadow:0 10px 28px rgba(0,0,0,.45)}}
+
+/* "Pe scurt" (Z8-07): one row on a phone, which opens into the band; the band as before on a wide screen. */
+.iw-brief-toggle{display:none!important}
+@media(max-width:700px){
+  .iw-brief-title{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .iw-shell .iw-brief-toggle{display:flex!important;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:12px 14px;border:0;border-radius:10px;background:var(--sunk);color:var(--ink);font-size:14px;font-weight:400;text-align:left;font-variant-numeric:tabular-nums}
+  .iw-shell .iw-brief-toggle:hover{background:var(--sunk)}
+  .iw-brief-chevron{flex:none;width:8px;height:8px;border-right:1.5px solid var(--accent);border-bottom:1.5px solid var(--accent);transform:rotate(45deg) translateY(-2px);transition:transform .16s ease}
+  .iw-brief-toggle[aria-expanded=true] .iw-brief-chevron{transform:rotate(-135deg) translate(-2px,0)}
+  .iw-brief-toggle[aria-expanded=true]{border-radius:10px 10px 0 0}
+  .iw-brief-body[data-open=false]{display:none}
+  .iw-brief-body[data-open=true] .iw-brief-facts{border-radius:0 0 10px 10px;padding-top:4px}
+}
+@media(prefers-reduced-motion:reduce){.iw-brief-chevron{transition:none}}
+
+/* An empty dossier's way to its first evidence (Z8-08): search filled, a question and a note beside it. */
+.iw-empty-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.iw-empty-actions .iw-primary{gap:8px}.iw-empty-actions .d-icon{flex:none}
+.iw-shell .iw-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-size:13px;font-weight:600;text-decoration:none}
+.iw-shell .iw-secondary:hover{background:var(--sunk);border-color:var(--accent-line)}
+.iw-empty-actions>button:not(.iw-primary){min-height:44px;font-weight:600}
+
+/* /anchete's head (Z8-11, Z8-12): the count beside the title, one "Dosar nou", the form under the head when asked for. */
+.iw-list-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;min-width:0}
+.iw-list-count{font:500 14px/1.2 var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.iw-new-panel{margin:-6px 0 28px;padding:20px 22px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);max-width:760px}
+.iw-new-panel h2{font:600 20px/1.3 var(--display);margin:0 0 2px}.iw-new-panel>p{margin:0 0 14px}.iw-new-panel form{display:grid;gap:16px}.iw-new-panel>p:last-child{margin:14px 0 0}
+.iw-dossiers{margin:8px 0 44px}
+@media(max-width:700px){.iw-new-panel{padding:16px}}
+
+/* A dossier's row (Z8-13): title, description, then one meta line with the saved institutions and firms. */
+.iw-dossiers>ul>li{display:block}
+.iw-dossier-line{display:flex;flex-wrap:wrap;align-items:center;gap:2px 0;margin:8px 0 0!important;font-size:14px;color:var(--muted)!important;max-width:none!important}
+.iw-dossier-line>span:not(.iw-pill)+span::before{content:"·";margin:0 8px;color:var(--muted)}
+.iw-dossier-line>.iw-pill{margin-right:10px}
+.iw-dossier-actors{color:var(--ink2)}.iw-dossier-actors a{color:var(--ink2)}
+
+/* The dossier's head (Z8-27): its tools beside the title; a tool's panel opens framed under the head, nothing moves. */
+.iw-head-tools{display:flex;flex-wrap:wrap;gap:8px;flex:none;padding-top:6px}
+.iw-shell .iw-head-tools>button,.iw-head-tool{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.iw-head-tool:hover{background:var(--sunk);border-color:var(--accent-line)}
+.iw-shell .iw-head-tools>button[aria-expanded=true]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
+.iw-head-note{font-weight:400;color:var(--muted);font-size:12px}
+.iw-head-panel{margin:0 0 24px;padding:20px 22px;border:1px solid var(--line2);border-radius:12px;background:var(--surface)}.iw-head-panel:focus{outline:none}
+.iw-settings-form{display:grid;gap:14px;max-width:720px}.iw-settings-form>p{margin:0}
+.iw-head-panel .iw-delete{margin-top:18px;padding:14px 0 0;border-top:1px solid var(--line)}.iw-head-panel .iw-delete>summary{color:var(--risk);font-size:13px;font-weight:600;cursor:pointer;min-height:32px;display:inline-flex;align-items:center}
+.iw-head-panel .iw-access-content{padding:0}
+.iw-saved{display:inline-flex;margin:0 0 18px;padding:4px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600}
+@media(max-width:700px){.iw-head-note{display:none}.iw-head-tools{padding-top:0}.iw-shell .iw-head-tools>button,.iw-head-tool{min-height:44px}.iw-head-panel{padding:16px}.iw-head-panel .iw-delete>summary{min-height:44px}}
+.iw-card-pills{margin:-2px 0 4px;font-size:13px;color:var(--muted)}
+
+/* The evidence sheet's rows on a phone (Z8-37): the value first with its date, who bought from whom, the CPV, then
+   the code and its SEAP link on a 44px line; 25 rows at a time; a constant pair said once above the rows. */
+.iw-sheet-pair,.iw-sheet-more,.iw-sheet-unit{display:none}
+@media(max-width:700px){
+  .iw-sheet-pair{display:block;margin:4px 0 8px;font-size:14px;color:var(--ink2)}
+  .iw-sheet-same-pair .iw-sheet-pair-cell{display:none!important}
+  .iw-sheet-rows tbody tr{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"value date" "pair pair" "cpv cpv" "code code";gap:2px 12px;padding:12px 0}
+  .iw-sheet-rows td::before{content:none!important}
+  .iw-sheet-rows .iw-sheet-value{grid-area:value;font-weight:600;font-size:16px;color:var(--ink)}.iw-sheet-unit{display:inline;font-weight:600}
+  .iw-sheet-rows .iw-sheet-date{grid-area:date;align-self:center;font-size:14px;color:var(--ink2)}
+  .iw-sheet-rows .iw-sheet-pair-cell{grid-area:pair;font-size:14px}
+  .iw-sheet-rows .iw-sheet-cpv{grid-area:cpv;font-size:13px;color:var(--muted)}.iw-sheet-rows .iw-sheet-cpv .iw-code{font-weight:400}
+  .iw-sheet-rows .iw-sheet-code{grid-area:code;display:flex!important;align-items:center;gap:4px 14px;flex-wrap:wrap}
+  .iw-sheet-rows .iw-sheet-code>a{display:inline-flex;align-items:center;min-height:44px}
+  .iw-sheet-rows .iw-ext{margin-left:0}
+  .iw-sheet-rows[data-shown="25"] tbody tr:nth-child(n+26),.iw-sheet-rows[data-shown="50"] tbody tr:nth-child(n+51),.iw-sheet-rows[data-shown="75"] tbody tr:nth-child(n+76){display:none!important}
+  .iw-shell .iw-sheet-more{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:12px;font-weight:600}
+}
+
+/* Failed captures said once over the list (Z8-02). */
+.iw-failed-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin:0 0 4px;padding:10px 14px;border-radius:8px;background:var(--amber-soft);color:var(--ink2);font-size:14px}
+.iw-failed-line>span{position:relative}.iw-shell .iw-failed-line>button{min-height:36px;font-weight:600}
+.iw-pill .term-tip{margin-left:4px}
+@media(max-width:700px){.iw-shell .iw-failed-line>button{min-height:44px}}
+
+/* A tab's heading is the tab itself (Z8-09): read by screen readers, its action alone on the right. */
+.iw-section-head{margin:14px 0 8px;justify-content:flex-end;min-height:0}
+.iw-section-head:has(> h2.d-sr-only:only-child){margin:6px 0 0}
+@media(max-width:760px){.iw-section-head{flex-direction:row;justify-content:flex-start}}
+/* Pinned items (Z8-30): a pill with a pin, the group named over it and its end marked. */
+.iw-pill-pin{display:inline-flex;align-items:center;gap:4px}
+.iw-group-label{margin:14px 0 0;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.iw-filter{margin:10px 0 6px}
+.iw-section-head .iw-filter{flex:1;margin:0;min-width:0}.iw-section-head:has(.iw-filter){align-items:center;margin-top:16px}
+@media(max-width:700px){.iw-section-head:has(.iw-filter){flex-direction:column-reverse;align-items:stretch;gap:12px}.iw-section-head:has(.iw-filter)>button{align-self:flex-start}}
+/* The invitation link replaces the form where it was asked for (Z8-28). */
+.iw-invite-copy{grid-template-columns:1fr auto auto}.iw-invite-copy>.iw-text-button{align-self:center}
+@media(max-width:760px){.iw-invite-copy{grid-template-columns:1fr}}
