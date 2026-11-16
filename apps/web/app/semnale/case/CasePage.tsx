@@ -135,6 +135,14 @@ function CaseActions({ inst, label }: { inst: CaseInstance; label: string }) {
   </div>;
 }
 
+/**
+ * A case row's own save, on its closed row (audit bug: the save was only inside the opened case): the bookmark alone,
+ * for signed-in readers; its click opens the dialog without opening or closing the row.
+ */
+function RowSave({ inst, label }: { inst: CaseInstance; label: string }) {
+  return <span className="sgc-save"><ClipButton kind="signal" refId={inst.id} label={label} compact /></span>;
+}
+
 function Warnings({ inst }: { inst: CaseInstance }) {
   const shown = inst.warnings.filter((w) => !w.startsWith("Selecția este reconstituită"));
   return shown.length ? <ul className="sgc-warn">{shown.map((w, i) => <li key={i}>{w}</li>)}</ul> : null;
@@ -208,6 +216,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               </span>
               <span className="sgc-sum">{lei(g.total)}</span>
               <span className="sgc-x">{ratioWords(g.ratio)}</span>
+              <RowSave inst={inst} label={`${flagLabel(data.code)} · ${cleanName(g.partnerName)} ${g.year}`} />
             </summary>
             <div className="sgc-body">
               <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA. Adunate, cele {formatInt(g.count)} achiziții trec de el de {ratioWords(g.ratio).replace("×", "")} ori.</p>
@@ -335,6 +344,7 @@ function YearEndCase({ data }: { data: SignalCase }) {
               <span className="sgc-mini" aria-hidden="true"><span className="t"><i className="cm-x" style={{ width: `${y.share * 100}%` }} />{y.reference != null && <b style={{ left: `${y.reference * 100}%` }} />}</span></span>
               <span className="sgc-sumw">{countWords(dec.length, "achiziție", "achiziții")} în decembrie</span>
               <span className="sgc-x">{pctWords(y.share)}</span>
+              <RowSave inst={inst} label={`${flagLabel(data.code)} · ${y.year}`} />
             </summary>
             <div className="sgc-body">
               <Records records={dec} alsoIn={data.alsoIn} code={data.code} empty="Nu găsim acum achizițiile din decembrie ale acestui an." source={listSource(data, inst.id, "decembrie")} />
@@ -453,6 +463,7 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
               <span className="sgc-mini" aria-hidden="true">{day(m) != null && <span className="t"><b style={{ left: `${day(m)! * 100}%` }} /></span>}</span>
               <span className="sgc-sum">{lei(m.total)}</span>
               <span className="sgc-x">{m.ageDays == null ? "" : `ziua ${formatInt(m.ageDays)}`}</span>
+              <RowSave inst={inst} label={`${flagLabel(data.code)} · ${cleanName(inst.partnerName)}`} />
             </summary>
             <div className="sgc-body">
               <p className="sgc-cap">{m.count == null ? "" : `${countWords(m.count, "achiziție directă", "achiziții directe")} în primele ${countWords(m.windowDays, "zi", "zile")} ale firmei. `}

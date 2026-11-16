@@ -292,3 +292,9 @@ a.dot{cursor:pointer}
   .sgc-case>summary .sgc-sumw{grid-column:1;grid-row:3;text-align:left}
   .sgc-noscore{text-align:left}
 }
+
+/* A case row's save (audit bug, zone 8): the bookmark at the row's end, for signed-in readers only (ClipButton draws
+   nothing for others, so the row keeps its four columns). */
+.sgc-save:empty{display:none}
+@media(min-width:761px){.sgc-case>summary:has(.sgc-save .clipbtn){grid-template-columns:minmax(0,1fr) 220px 150px 64px 40px}}
+@media(max-width:760px){.sgc-case>summary .sgc-save{grid-column:2;grid-row:3;justify-self:end}}
