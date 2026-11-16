@@ -411,3 +411,7 @@
   .ent-tx td.c-links a{display:inline-flex;align-items:center;min-height:44px;margin:-10px 0 -10px auto}
   .ent-tx td.c-links a+a{margin-left:0}
 }
+
+/* ---- UX audit Z5-25 (16 November 2026): a turnover too large for the bars' axis is said under the chart ---- */
+.ent-years-apart{margin:2px 0 0;font-size:12.5px;line-height:1.5;color:var(--ink2)}
+@media (max-width:700px){.ent-years-apart{font-size:13px}}

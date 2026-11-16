@@ -155,6 +155,7 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
           ))}
         </div>
       </div>
+      {model.turnoverApart && <p className="ent-years-apart">{model.turnoverApart}</p>}
     </figure>
   );
 }

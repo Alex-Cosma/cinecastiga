@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { entityYearsFrom, type EntityYear } from "../../../lib/marts";
-import { axisLabel, bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, niceTop, tipLeft, yearsModel, yearWords } from "./entity-top";
+import { axisLabel, bucharestYear, entityTitle, evidenceWithPeriod, ledgerTotals, niceTop, tipLeft, turnoverApartWords, yearsModel, yearWords } from "./entity-top";
 
 // The entity page's top (owner, 2 November 2026): the risk on its bands, a ledger per channel, the value per year.
 const AGNITA: EntityYear[] = [
@@ -39,6 +39,23 @@ describe("the entity's years", () => {
     expect(firm.bars.map((b) => b.turnover)).toEqual([null, null, null, 10_537_507, null, null, null, null, null]);
     expect(firm.turnover).toBe(true);
     expect(yearsModel([{ year: 2020, nDa: 0, valueDa: "0", nCt: 0, valueCt: "0" }], null, 2026)).toBeNull();
+  });
+
+  it("draws what a firm won on its own axis when its turnover is thousands of times larger (UX audit Z5-25)", () => {
+    const won: EntityYear[] = [
+      { year: 2024, nDa: 4, valueDa: "36091", nCt: 0, valueCt: "0" },
+      { year: 2025, nDa: 3, valueDa: "4590", nCt: 0, valueCt: "0" },
+    ];
+    const model = yearsModel(won, [{ year: 2024, value: 56_400_000 }, { year: 2025, value: 35_300_000 }], 2025)!;
+    expect(model.turnover).toBe(false);
+    expect(model.bars.map((b) => b.turnoverPct)).toEqual([null, null]);
+    expect(model.ticks.at(-1)!.label).toBe("40 mii");
+    expect(model.turnoverApart).toBe("Cifra de afaceri (bilanț): 35,3–56,4 mil. lei pe an, de 1.560–7.690 de ori cât a câștigat; prea mare ca să încapă pe aceeași axă.");
+    // At or above the threshold, the line stays on the same axis.
+    const near = yearsModel(won, [{ year: 2024, value: 600_000 }], 2025)!;
+    expect(near.turnover).toBe(true);
+    expect(near.turnoverApart).toBeNull();
+    expect(turnoverApartWords([{ total: 1000, turnover: 25_000 }])).toBe("Cifra de afaceri (bilanț): 25 mii lei pe an, de 25 de ori cât a câștigat; prea mare ca să încapă pe aceeași axă.");
   });
 
   it("runs to the current year, the years after the last record silent (UX audit Z5-15)", () => {

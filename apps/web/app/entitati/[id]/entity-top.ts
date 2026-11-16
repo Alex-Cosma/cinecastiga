@@ -1,6 +1,6 @@
 import { countWords } from "../../../lib/ask/answer-text";
 import { sumDecimalStrings } from "../../../lib/ask/evidence";
-import { formatRon } from "../../../lib/format";
+import { formatInt, formatRon } from "../../../lib/format";
 import type { EntityYear } from "../../../lib/marts";
 
 /*
@@ -24,7 +24,35 @@ export interface YearBar {
   /** A year after the last one with records, up to the current one (UX audit Z5-15): drawn empty and named. */
   silent: boolean;
 }
-export interface YearsModel { bars: YearBar[]; ticks: { label: string; pct: number }[]; turnover: boolean }
+export interface YearsModel {
+  bars: YearBar[]; ticks: { label: string; pct: number }[]; turnover: boolean;
+  /**
+   * The turnover said in a line under the chart instead of drawn (UX audit Z5-25, 16 November 2026): when the most the
+   * firm won in a year is under TURNOVER_APART of its largest turnover, one axis would leave its bars invisible.
+   */
+  turnoverApart: string | null;
+}
+
+/** Below this share of the largest turnover, the most won in a year is drawn on its own axis and the turnover is said. */
+export const TURNOVER_APART = 0.05;
+
+/** A multiple in the chart's words: whole under 100, then to the tens („7.820”). */
+const roundTimes = (x: number): number => (x < 100 ? Math.round(x) : Math.round(x / 10) * 10);
+
+/** „Cifra de afaceri (bilanț): 35,3–56,4 mil. lei pe an, de 1.430–7.820 de ori cât a câștigat; prea mare ca să încapă pe aceeași axă.” */
+export function turnoverApartWords(rows: readonly { total: number; turnover: number | null }[]): string {
+  const values = rows.flatMap((r) => (r.turnover !== null && r.turnover > 0 ? [r.turnover] : []));
+  const lo = Math.min(...values), hi = Math.max(...values);
+  // „35,3–56,4 mil. lei”: the unit once when both ends share it.
+  const unit = (label: string) => / (mii|mil\.|mld\.)$/.exec(label)?.[0] ?? "";
+  const loLabel = unit(axisLabel(lo)) === unit(axisLabel(hi)) ? axisLabel(lo).slice(0, axisLabel(lo).length - unit(axisLabel(lo)).length) : axisLabel(lo);
+  const range = lo === hi ? `${axisLabel(hi)} lei` : `${loLabel}–${axisLabel(hi)} lei`;
+  const times = rows.flatMap((r) => (r.turnover !== null && r.turnover > 0 && r.total > 0 ? [roundTimes(r.turnover / r.total)] : []));
+  const tLo = Math.min(...times), tHi = Math.max(...times);
+  // „de 1.430–7.820 de ori”: the range's last number decides the „de” before „ori”.
+  const multiple = times.length === 0 ? "" : `, de ${tLo === tHi ? "" : `${formatInt(tLo)}–`}${countWords(tHi, "dată", "ori")} cât a câștigat`;
+  return `Cifra de afaceri (bilanț): ${range} pe an${multiple}; prea mare ca să încapă pe aceeași axă.`;
+}
 
 /** The scale's top: the first of 1, 1.5, 2, 2.5, 3, 4, 5, 6, 8 × 10ᵏ at or above the largest value. */
 export function niceTop(max: number): number {
@@ -58,13 +86,17 @@ export function yearsModel(years: readonly EntityYear[], turnover: readonly { ye
     const valueDa = Number(y?.valueDa ?? 0), valueCt = Number(y?.valueCt ?? 0);
     return { year, nDa: y?.nDa ?? 0, valueDa, nCt: y?.nCt ?? 0, valueCt, total: valueDa + valueCt, turnover: turnoverByYear.get(year) ?? null };
   });
-  const top = niceTop(Math.max(...rows.map((r) => Math.max(r.total, r.turnover ?? 0))));
+  const maxWon = Math.max(...rows.map((r) => r.total)), maxTurnover = Math.max(0, ...rows.map((r) => r.turnover ?? 0));
+  // A turnover thousands of times larger than what was won would flatten the bars: drawn apart, said in words.
+  const apart = maxTurnover > 0 && maxWon < TURNOVER_APART * maxTurnover;
+  const top = niceTop(apart ? maxWon : Math.max(maxWon, maxTurnover));
   const pct = (v: number) => Math.round((v / top) * 1000) / 10;
   return {
-    bars: rows.map((r) => ({ ...r, daPct: pct(r.valueDa), ctPct: pct(r.valueCt), turnoverPct: r.turnover === null ? null : pct(r.turnover),
+    bars: rows.map((r) => ({ ...r, daPct: pct(r.valueDa), ctPct: pct(r.valueCt), turnoverPct: apart || r.turnover === null ? null : pct(r.turnover),
       partial: r.year === currentYear, silent: r.year > lastRecord })),
     ticks: [0, top / 2, top].map((v) => ({ label: axisLabel(v), pct: pct(v) })),
-    turnover: rows.some((r) => r.turnover !== null),
+    turnover: !apart && rows.some((r) => r.turnover !== null),
+    turnoverApart: apart ? turnoverApartWords(rows) : null,
   };
 }
 
