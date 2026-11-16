@@ -14,7 +14,7 @@ import type { Choice } from "@/lib/ask/filters/pickers";
 import { splitExcluded, type Excluded } from "@/lib/ask/filters/origin";
 import {
   QUESTION_GROUPS, QUESTION_TYPES, cloneQuestion, defaultQuestion, foldQuestion,
-  questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec,
+  questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, unknownCounty, type QuestionSpec,
 } from "@/lib/ask/question-ui";
 import "./question-builder.css";
 import "./builder/filters-kit.css";
@@ -23,7 +23,12 @@ import { useCoverage } from "./builder/coverage";
 import Chip from "./builder/Chip";
 import ConditionRow from "./builder/ConditionRow";
 import Toggle, { type ToggleProps } from "./builder/Toggle";
-import Invitations from "./builder/Invitations";
+import Invitations, { Invite } from "./builder/Invitations";
+
+/** The ranked firms' row of the registry (blocks.ts) and the invitations that belong in it or in „Achiziția” (Z2-17). */
+const WINNERS_ROW = "Câștigătorii";
+const FIRM_INVITES = new Set(["firmSeat", "seatCounty", "admin"]);
+const PURCHASE_INVITES = new Set(["purchaseValue", "purchaseKind", "procedure", "singleBidder"]);
 import ParkedRow from "./builder/ParkedRow";
 import ScopeLine from "./builder/ScopeLine";
 import Sentence, { Presentation } from "./builder/Sentence";
@@ -36,7 +41,6 @@ import { usePeerDialog } from "./builder/use-peer-dialog";
 import { peerDataFor } from "./builder/PeersWindow";
 import { peerFollowUp } from "../../lib/ask/peer-groups-shared";
 import KitLink from "./answer/KitLink";
-import RowMenu from "./answer/RowMenu";
 import { builderView, onlyExclusions, patchDraft, trendListSwitch, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import type { TrendList } from "@/lib/ask/trend-shared";
 import SaveQuestionButton from "./SaveQuestionButton";
@@ -70,6 +74,9 @@ export interface QuestionBuilderProps {
   initialApplied?: boolean;
   /** What opening a link changed (restoreLink's notes, e.g. a measure only rankings of institutions have): said with the builder's own notes. */
   initialNotes?: readonly string[];
+  /** Opens „Toate întrebările” on „Salvate” (UX audit Z2-27: the empty page's entry, „Vezi salvatele” after saving); then onSavedOpened. */
+  openSaved?: boolean;
+  onSavedOpened?: () => void;
   /** A key the strip beside the answer changed (plan §2.3): the builder writes it into its applied question and its draft. */
   stripPatch?: StripPatch | null;
   /**
@@ -112,13 +119,13 @@ const WINNER_TOGGLES: Partial<Record<string, string>> = { mainClient: "main", do
 /** Their (?) (final table §3.6, §3.7): the glossary's words. */
 const WINNER_TIPS: Partial<Record<string, GlossaryId>> = { mainClient: "client-principal", dominantSupplier: "o-firma-ia-jumatate" };
 
-export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, initialApplied = true, initialNotes, stripPatch = null, onTrendList }: QuestionBuilderProps) {
+export default function QuestionBuilder({ initial, resolution, fromAi = false, onRun, running, onDraftChange, initialApplied = true, initialNotes, stripPatch = null, onTrendList, openSaved = false, onSavedOpened }: QuestionBuilderProps) {
   const [seed] = useState(() => transitionQuestion(initial ?? defaultQuestion()));
   const [draft, setDraft] = useState<QuestionSpec>(seed.spec);
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
+  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial && !unknownCounty(initial) ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
   const [parked, setParked] = useState<Parked | null>(null);
   // A note's link ("Cât câștigă X ›" for a tautology the change dropped), by the note's text.
   const [noteLinks, setNoteLinks] = useState<Record<string, NoteLink>>({});
@@ -152,6 +159,37 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     () => builderView(draft, { cpvName, entities, peerGroup: peerData?.facts }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})),
     [draft, cpvName, entities, coverage, peerData],
   );
+  // Under a ranking of firms the invitations are grouped by what they narrow (UX audit Z2-17): the firms in their row
+  // („Câștigătorii”), the purchase in its own („Achiziția”); the rest stay under the sentence.
+  const grouped = useMemo(() => {
+    const winners = view.rows.some((row) => row.label === WINNERS_ROW && row.kind === "group");
+    const of = (item: { id: string }) => item.id.replace(/^i:/, "");
+    return {
+      firms: winners ? view.invites.filter((item) => FIRM_INVITES.has(of(item))) : [],
+      purchase: winners ? view.invites.filter((item) => PURCHASE_INVITES.has(of(item))) : [],
+      rest: winners ? view.invites.filter((item) => !FIRM_INVITES.has(of(item)) && !PURCHASE_INVITES.has(of(item))) : view.invites,
+    };
+  }, [view]);
+  // A link's county the data do not know (UX audit Z2-31): its phrase is marked, its window opens to choose another,
+  // and the error under the builder holds „Vezi răspunsul”.
+  const badCounty = unknownCounty(draft);
+  const isBadPhrase = (token: (typeof view.sentence)[number]) => Boolean(badCounty) && token.kind === "slot" && token.value.includes(badCounty!);
+  const sentence = badCounty ? view.sentence.map((token) => isBadPhrase(token) && token.kind === "slot" ? { ...token, className: `${token.className ?? ""} qb-phrase--invalid`.trim() } : token) : view.sentence;
+  const openedBad = useRef(false);
+  useEffect(() => {
+    if (!badCounty || openedBad.current) return;
+    const token = view.sentence.find(isBadPhrase);
+    if (!token || token.kind !== "slot") return;
+    const frame = requestAnimationFrame(() => {
+      const anchor = document.querySelector<HTMLElement>(".question-builder .qb-phrase--invalid");
+      if (!anchor) return;
+      openedBad.current = true;
+      setOpen({ key: token.id, anchor });
+    });
+    return () => cancelAnimationFrame(frame);
+    // Once per mount: the reader may close it and look around.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [badCounty]);
   // F5: the switches of the ranked winners say their number before the click (final table §4), read lazily.
   const winnerToggles = view.rows.some((row) => row.chips.some((chip) => chip.toggle && WINNER_TOGGLES[chip.id]));
   const winners = useFacet(draft, winnerToggles ? "winners" : null);
@@ -323,6 +361,15 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     setSearch("");
     setCatalogue(true);
   }
+  // The empty page's „Întrebările tale salvate ›”: the catalogue on its saved tab, focus back to that entry on close.
+  useEffect(() => {
+    if (!openSaved) return;
+    catalogueTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setCatalogueTab("saved");
+    setSearch("");
+    setCatalogue(true);
+    onSavedOpened?.();
+  }, [openSaved, onSavedOpened]);
   function closeCatalogue() {
     dialogRef.current?.close();
     setCatalogue(false);
@@ -358,7 +405,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     <section className={`qb-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
       {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}
-      <Sentence tokens={view.sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
+      <Sentence tokens={sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
       {view.scopeLine && <ScopeLine />}
       {view.rows.map((row) => <ConditionRow key={row.label} label={row.label} kind={row.kind}>
         {row.chips.map((chip) => chip.toggle
@@ -368,8 +415,14 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
             onToggle={(_id, pressed) => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: pressed ? true : undefined }]); }} />
           : <Chip key={chip.key} id={chip.key} label={chip.label} name={chip.name} active={chip.active} open={open?.key === chip.key} onOpen={openWindow}
             onRemove={() => { const target = view.windows[chip.key]; if (target) choose(target, [{ filter: chip.id, value: undefined }]); }} />)}
+        {/* The winners' own invitations join their row (UX audit Z2-17): the firms' seat and administrator are about the firms. */}
+        {row.label === WINNERS_ROW && grouped.firms.map((item) => <Invite key={item.id} {...item} open={open?.key === item.id} onOpen={openWindow} />)}
       </ConditionRow>)}
-      <Invitations items={view.invites} openId={open?.key ?? null} onOpen={openWindow} />
+      {/* The purchase's own size is no condition of the firms: its own row (UX audit Z2-17). */}
+      {grouped.purchase.length > 0 && <ConditionRow label="Achiziția" kind="group">
+        {grouped.purchase.map((item) => <Invite key={item.id} {...item} open={open?.key === item.id} onOpen={openWindow} />)}
+      </ConditionRow>}
+      <Invitations items={grouped.rest} openId={open?.key ?? null} onOpen={openWindow} />
       <UnderChips items={view.under} openId={open?.key ?? null} onOpen={openWindow} onRemove={removeUnder} onToggle={removeUnder} />
       <ParkedRow label={parked?.label ?? ""} {...(parked ? { tip: { title: parked.label, text: parked.tip } } : {})} items={parked?.items.map((item) => ({ id: item.id, label: item.label })) ?? []} onRestore={bringBackParked} />
       {view.refused.length > 0 && <div className="qb-refused" role="alert">
@@ -380,21 +433,30 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <div className="qb-bottom">
         <div className="qb-bottom-start">
           {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}
+          {/* A menu of one item was two clicks and a mystery (UX audit Z2-18): the item itself, as a link at the row's end. */}
           {view.advanced.length > 0 && <span className="qb-more-wrap" ref={moreRef}>
-            <RowMenu name="Întrebarea" actions={[{ id: "advanced", label: "Selecție avansată", glyph: "▾", onSelect: () => {
-              const button = moreRef.current?.querySelector<HTMLElement>(".qb-more");
-              if (button) openWindow("advanced", button);
-            } }]} />
+            <button type="button" className="qb-advanced-link" aria-haspopup="dialog" aria-expanded={open?.key === "advanced"}
+              onClick={(event) => openWindow("advanced", event.currentTarget)}>Selecție avansată</button>
           </span>}
         </div>
         <div className="qb-actions qb-bottom-end">
           {dirty ? <button type="button" className="qb-discard" onClick={discard}>Renunță la modificări</button> : applied && <span className="qb-ready"><Glyph name="check" />Întrebare aplicată</span>}
-          <SaveQuestionButton spec={draft} unapplied={dirty && Boolean(applied)} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || blocked} />
-          <button type="button" className="qb-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>
+          {/* One „Păstrează”, the answer's (UX audit Z2-20): the builder saves only a draft that differs from the answer
+              („Salvează ciorna”), or the question before any answer. */}
+          {(!applied || dirty) && <SaveQuestionButton spec={draft} unapplied={dirty && Boolean(applied)} active={savedQuestion} onSaved={question => { setSavedQuestion(question); setSavedNotice(`Salvată ${question.storage === "local" ? "pe acest dispozitiv" : "în cont"}: „${question.title}” · Toate întrebările → Salvate`); }} disabled={running || blocked} />}
+          {/* Applied and unchanged, there is nothing to apply: a link to the answer, not a filled button (UX audit Z2-19). */}
+          {applied && !dirty && !running
+            ? <a className="qb-go-answer" href="#raspuns" onClick={(event) => {
+              const answer = document.getElementById("raspuns");
+              if (!answer) return;
+              event.preventDefault();
+              answer.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+              document.getElementById("raspuns-titlu")?.focus({ preventScroll: true });
+            }}>Mergi la răspuns <span aria-hidden="true">↓</span></a>
+            : <button type="button" className="qb-primary qb-apply" disabled={running || blocked} onClick={apply}>{running ? "Caut în date…" : dirty && applied ? "Actualizează răspunsul" : "Vezi răspunsul"}<Glyph name="arrow" /></button>}
         </div>
       </div>
       {errors.length > 0 && <div className="qb-validation" aria-live="polite">{errors.map((error) => <p key={error}>{error}</p>)}</div>}
-      {dirty && <p className="qb-pending-line" role="status"><span />Modificări neaplicate</p>}
     </section>
     <BuilderWindow win={win} anchor={open?.anchor ?? null} draft={draft} excluded={removal?.kind === "exclusion" ? removal.excluded : []}
       onClose={closeWindow} onChoose={(choices, opts) => { if (win) choose(win, choices, opts); }} onReplace={replace} onRemoveExclusions={removeExclusions} peers={peerState}

@@ -317,7 +317,7 @@ export default function TopicSearch(){
   </div></div>;
  };
  return <div className="topic-page">
- <nav className="topic-breadcrumb" aria-label="Perspective de explorare"><Link href="/">Descoperă</Link><span aria-hidden="true">/</span><span>Caută</span><Link href="/intreaba">Construiește o întrebare <DiscoveryIcon name="arrow"/></Link></nav>
+ <nav className="topic-breadcrumb" aria-label="Perspective de explorare"><Link href="/">Descoperă</Link><span aria-hidden="true">/</span><span>Caută</span><Link href={scope.q?`/intreaba?q=${encodeURIComponent(scope.q)}`:"/intreaba"}>Construiește o întrebare <DiscoveryIcon name="arrow"/></Link></nav>
  {/* After a search, phones show the words as the title so the answer fits in the first screen. */}
  <header className={`topic-intro${scope.q&&!parsed.error?' has-query':''}`}><h1><span className="topic-h1-default">Caută un fir de urmărit.</span>{scope.q&&!parsed.error&&<span className="topic-h1-query">„{scope.q}”</span>}</h1></header>
  <div className={`topic-filter-surface${scope.q&&!parsed.error?' has-query':''}`}><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button></form>

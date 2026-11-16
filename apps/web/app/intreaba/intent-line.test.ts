@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { IntentResult } from "../../lib/intent/types";
 import type { AskSpec } from "../../lib/ask/spec";
-import { noteClause, titleSearch, understoodLine } from "./intent-line";
+import { corrections, lineClauses, noteClause, titleSearch, understoodLine } from "./intent-line";
 
 /*
  * Enter → the answer, with how the question was understood as one line under
@@ -53,7 +53,40 @@ describe("the interpretation line", () => {
     expect(noteClause("Am înțeles „cluj” ca Municipiul Cluj-Napoca.")).toBe("„cluj” ca Municipiul Cluj-Napoca");
     expect(noteClause("Arătăm cel mult 50 de rânduri; lista surselor păstrează toată selecția.")).toBe("arătăm cel mult 50 de rânduri; lista surselor păstrează toată selecția");
     expect(noteClause("Dolj este un județ, nu o localitate.")).toBe("Dolj este un județ, nu o localitate");
+    expect(noteClause("Doar consiliile județene, fără primării.")).toBe("doar consiliile județene, fără primării");
     expect(noteClause("„Firme mici” = cel mult 49 de angajați, din ultimul bilanț depus; firmele fără bilanț sunt excluse."))
       .toBe("„Firme mici” = cel mult 49 de angajați, din ultimul bilanț depus; firmele fără bilanț sunt excluse");
+  });
+});
+
+describe("the line stays one line (UX audit Z2-11, Z2-12)", () => {
+  it("says a note's first part on the line and the whole of it, and the long notes, behind the „›”", () => {
+    const { notes, more } = lineClauses([
+      "doar consiliile județene, fără primării",
+      "am adunat ambele domenii: „lucrări de drumuri”, „poduri”. O achiziție care se potrivește cu mai multe e numărată o singură dată",
+      "numărul de oferte îl știm doar pentru o parte din înregistrările contractelor (18–26% în 2019–2023, ~2% din 2024), deci nu îl folosim ca filtru",
+    ]);
+    expect(notes).toEqual(["doar consiliile județene, fără primării", "am adunat ambele domenii"]);
+    expect(more).toHaveLength(2);
+    expect(more[0]).toMatch(/^am adunat ambele domenii: „lucrări/);
+  });
+  it("keeps two clauses on the line", () => {
+    expect(lineClauses(["a unu", "b doi", "c trei"])).toEqual({ notes: ["a unu", "b doi"], more: ["c trei"] });
+  });
+  const subject = (text: string, label: string, from: number, source = "synonym") => ({ term: label, label, cpvName: null, source, matched: { text, from, to: from + 1 } });
+  const asked = (subjects: unknown[], leftover: string[] = []) => ({ ...result({ leftover }), interpretation: { notes: [], placeNote: null, leftover, subjects } }) as unknown as IntentResult;
+  it("searches the titles for the subject as the vocabulary spells it, never for the words left out", () => {
+    expect(titleSearch(asked([subject("medicamnte", "medicamente", 0)], ["mare"]), ranking)?.words).toBe("medicamente");
+    // two subjects of four words: the phrase is the question, not a title
+    expect(titleSearch(asked([subject("lucrări de drumuri", "lucrări de drumuri", 3), subject("poduri", "poduri", 7)], ["ales", "avut"]), ranking)).toBeNull();
+    // no subject read: the unread words, when they are few
+    expect(titleSearch(asked([], ["trotinete"]), ranking)?.words).toBe("trotinete");
+    expect(titleSearch(asked([], ["road", "who", "wins", "most"]), ranking)).toBeNull();
+  });
+  it("says a corrected spelling, not an inflection nor a translation the interpreter said", () => {
+    const translated = { ...asked([subject("road", "drumuri", 0)]), interpretation: { ...asked([subject("road", "drumuri", 0)]).interpretation, notes: ["Am citit „road” ca „drumuri”."] } } as unknown as IntentResult;
+    expect(corrections(translated)).toEqual([]);
+    expect(corrections(asked([subject("medicamnte", "medicamente", 0)]))).toEqual(["am citit „medicamnte” ca „medicamente”"]);
+    expect(corrections(asked([subject("iluminatul", "iluminat", 0), subject("Lucrări", "Lucrări de construcții", 2, "catalog")]))).toEqual([]);
   });
 });

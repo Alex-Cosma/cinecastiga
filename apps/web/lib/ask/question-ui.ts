@@ -4,6 +4,8 @@ import {
 } from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
+import { spellTerm } from "./term-spelling";
+import { countyKnown } from "../counties";
 
 /**
  * The builder uses exactly the public /api/ask spec; it owns no query engine.
@@ -65,7 +67,8 @@ export const QUESTION_TYPES: {
   {
     id: "table",
     group: "money",
-    label: "Cine câștigă cele mai multe contracte?",
+    // „achiziții”: the ranking counts every acquisition, direct ones too; „contracte” is said only of procedures (Z2-30).
+    label: "Cine câștigă cele mai multe achiziții?",
     description: "Un clasament al firmelor, instituțiilor sau județelor.",
     keywords: "top clasament furnizori autoritati",
   },
@@ -319,7 +322,7 @@ export function subjectWords(spec: QuestionSpec): string | null {
   if (term === undefined || term === "") return null;
   // Several subjects ("parcuri + spatii verzi") are counted as their union: name each one.
   const words = cpvTermParts(String(term).trim()).map((text) =>
-    /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${text}”`);
+    /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${spellTerm(text)}”`);
   return words.length > 1 ? `${words.slice(0, -1).join(", ")} și ${words[words.length - 1]}` : words[0]!;
 }
 
@@ -436,9 +439,21 @@ export function transitionQuestion(
   return { spec, changes };
 }
 
+/**
+ * A county the data do not know, from a link (UX audit Z2-31: „Atlantida”): the builder marks its phrase and opens its
+ * window, and the question does not run (its answer could only be the refusal, with a „Reîncearcă” that cannot help).
+ */
+export function unknownCounty(spec: Pick<QuestionSpec, "filters">): string | null {
+  const county = spec.filters.county;
+  return typeof county === "string" && county.trim() && !countyKnown(county) ? county : null;
+}
+export const unknownCountyError = (county: string) => `Nu recunosc județul „${county}”. Alege-l:`;
+
 export function questionErrors(spec: QuestionSpec): string[] {
   const f = spec.filters;
   const errors: string[] = [];
+  const badCounty = unknownCounty(spec);
+  if (badCounty) errors.push(unknownCountyError(badCounty));
   const hasAuthority = Boolean(f.authorityName || f.authorityId),
     hasSupplier = Boolean(f.supplierName || f.supplierId);
   if (

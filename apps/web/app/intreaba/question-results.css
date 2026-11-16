@@ -1407,3 +1407,37 @@ a.cq-source-main { justify-content: center; text-decoration: none; }
 .cq-ranking > .cq-rank-row:only-child .cq-rank-share,
 .cq-ranking > .cq-rank-main:only-child .cq-rank-share,
 .cq-result .ask-complegend .ask-compbar.is-single { visibility: hidden; }
+
+/* Z2-11 (UX audit, 16 November 2026): „am ignorat N cuvinte ›” beside the line's short clauses opens the words left out
+   and the long notes in a box under it, as „Altfel” opens the other readings. */
+.cq-understood-pop { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; box-sizing: border-box; width: min(360px, calc(100vw - 32px)); padding: 10px 12px; background: var(--surface); border: 1px solid var(--line2, var(--line)); border-radius: 8px; box-shadow: var(--shadow2); color: var(--ink2); font: 400 13px/1.55 var(--body); white-space: normal; text-align: left; }
+.cq-understood-pop[hidden] { display: none; }
+.cq-understood-pop--end { left: auto; right: 0; }
+.cq-understood-pop p { margin: 0; max-width: none; }
+.cq-understood-pop p + p { margin-top: 6px; }
+@media (max-width: 600px) { .cq-understood-pop, .cq-understood-pop--end { left: 0; right: auto; width: min(360px, 100%); } }
+/* On phones the title search says its words only; the link keeps the place and the years (Z2-11: the line stays short). */
+@media (max-width: 600px) { .cq-understood-wide { display: none; } }
+
+/* Z2-22 (UX audit, 16 November 2026): keyboard focus in Întreabă is the site's orange ring, as on the box and the header;
+   red is the colour of risk, and a focused pill looked flagged. */
+.cq-app button:focus-visible,
+.cq-app a:focus-visible,
+.cq-app summary:focus-visible { outline-color: var(--orange); }
+
+/* Z2-05 (UX audit, 16 November 2026): an optional condition's pill has its own „×”, a separate target (24 px, 44 px on
+   a phone, where the pills are the unfolded list) that removes it at once; the pill itself still opens its window. */
+.cq-pill-wrap { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; }
+.cq-pill-x { display: inline-grid; place-items: center; flex: none; width: 24px; min-height: 24px; margin: 0 0 0 2px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 500 15px/1 var(--body); cursor: pointer; }
+.cq-pill-x:hover { background: var(--fk-phrase-hover); color: var(--ink); }
+@media (max-width: 600px) { .cq-pill-x { width: 44px; min-height: 44px; margin-left: 4px; } }
+
+/* Z2-25 (UX audit, 16 November 2026): „−3 subclase ›” names the subclasses its domain leaves out in a box under it. */
+.cq-subclasses { position: relative; display: inline-flex; max-width: 100%; }
+.cq-subclasses-pop ul { margin: 0; padding: 0 0 0 16px; }
+.cq-subclasses-pop li + li { margin-top: 2px; }
+.cq-subclasses-h { margin: 0 0 4px !important; color: var(--muted); }
+.cq-subclasses-code { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.cq-subclasses-include { display: inline-flex; align-items: center; min-height: 36px; margin-top: 10px; padding: 6px 12px; border: 1px solid var(--line2, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 13px/1.3 var(--body); cursor: pointer; }
+.cq-subclasses-include:hover { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 600px) { .cq-scope:has(.cq-subclasses) { position: relative; } .cq-subclasses { position: static; } .cq-subclasses-include { min-height: 44px; } }

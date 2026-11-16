@@ -108,6 +108,10 @@ import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
 import { understoodLine } from "./intent-line";
+import { pinnedChoice, type SuggestPin } from "./ask-suggest";
+import { learnTermSpelling } from "../../lib/ask/term-spelling";
+import QuestionBand from "./QuestionBand";
+import { SavedEntry, useSavedCount } from "./SavedEntry";
 import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
@@ -134,6 +138,8 @@ interface AskResponse {
   cpvName?: string;
   /** A locality question's town hall: the identity "primăria X" in the title links to. */
   townHall?: { id: string };
+  /** The written form of the subject's words stored without diacritics (term-spelling.ts). */
+  spelling?: Record<string, string>;
   pills?: string[];
   caveats?: string[];
   data?: BlockData;
@@ -250,6 +256,10 @@ export default function AskPanel({
    */
   const [askUnfolded, setAskUnfolded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  /** A toast's one action („Vezi salvatele” after saving, UX audit Z2-27); it then stays a little longer. */
+  const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
+  /** The saved questions asked for: the builder opens „Toate întrebările” on „Salvate” (Z2-27). */
+  const [wantSaved, setWantSaved] = useState(false);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
   /**
    * The question the answer on screen answers (plan §2.3): the server's resolved
@@ -315,10 +325,11 @@ export default function AskPanel({
   const [builderOpen, setBuilderOpen] = useState(Boolean(linked));
   const askRef = useRef<HTMLInputElement>(null);
   const intentRequest = useRef<AbortController | null>(null);
-  const showToast = useCallback((text: string) => {
+  const showToast = useCallback((text: string, action: { label: string; run: () => void } | null = null) => {
     setToast(text);
+    setToastAction(action);
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2600);
+    toastTimer.current = setTimeout(() => { setToast(null); setToastAction(null); }, action ? 6000 : 2600);
   }, []);
   /** The error appears where the person is looking (on a phone it would otherwise sit under the fold). */
   const revealError = useCallback(() => {
@@ -533,7 +544,7 @@ export default function AskPanel({
     });
   }, [execute]);
   /** `scroll`: false for the question the page opened with (`?q=`), whose answer is already in view under it. */
-  const interpret = useCallback(async (raw: string, fromHistory = false, scroll = true) => {
+  const interpret = useCallback(async (raw: string, fromHistory = false, scroll = true, pin: SuggestPin | null = null) => {
     const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
     if (text.length < 2) return;
     intentRequest.current?.abort();
@@ -555,7 +566,10 @@ export default function AskPanel({
       setResp(null);
       setError(null);
       setEvidence(null);
+      // A firm or institution picked from the box's suggestions is the person's pick among its namesakes (Z2-08).
+      const pinned = shouldAutoRun(body) ? null : pinnedChoice(body, pin, text);
       if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll);
+      else if (pinned) adopt(pinned, scroll);
       else {
         setChosen(null);
         setBuilderInit(null);
@@ -589,6 +603,15 @@ export default function AskPanel({
     setAskText(example.text);
     void interpret(example.text);
   }, [interpret]);
+  /** The empty page, as a fresh visit: «Înapoi» down to /intreaba, „Întrebare nouă” (UX audit zone 2 bug, Z2-14). */
+  const startOver = useCallback(() => {
+    request.current.controller?.abort();
+    intentRequest.current?.abort();
+    setResp(null); setAppliedSpec(null); setError(null); setErrorDetail(null); setLoading(false); setEvidence(null); setThread(null);
+    setIntent(null); setIntentLoading(false); setIntentError(null); setChosen(null); setUnderstood({}); setAskText("");
+    setBuilderInit(null); setBuilderOpen(false); setBuilderCollapsed(false); setAskUnfolded(false); setDirty(false);
+    lastBody.current = null;
+  }, []);
   useEffect(() => {
     /**
      * `opened`: the page's first restore (a link, a reload). Its answer takes its ghost's place where the page stands,
@@ -609,6 +632,9 @@ export default function AskPanel({
         setQ(question);
         setMode("ask");
         void execute({ question });
+      } else if (!question && !encoded && !opened) {
+        // «Înapoi» down to the bare page: the empty page, not the last answer kept on screen (UX audit, zone 2 bug).
+        startOver();
       } else if (encoded) {
         // The link opens in the builder with its conditions as chips; it runs only what /api/ask runs
         // as it is. A key this release reads but does not apply keeps F0a's message, without a builder
@@ -621,8 +647,7 @@ export default function AskPanel({
           setBuilderInit(null);
           setBuilderOpen(false);
           setBuilderCollapsed(false);
-          // Below the examples on a phone: bring the reason into view.
-          revealError();
+          // Said right under the box, where the page opens (UX audit Z2-31): nothing to bring into view.
           return;
         }
         setBuilderInit(restored.spec);
@@ -678,12 +703,14 @@ export default function AskPanel({
       request.current.controller?.abort();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [execute, interpret, revealError]);
+  }, [execute, interpret, revealError, startOver]);
   const applied = appliedSpec ?? undefined;
   // A CPV code is named as the builder names it ("pentru [lucrări de construcții]").
   const appliedCpv = applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm);
   // The answer brings its code's name: the title never says „CPV 45” before it (S4, a fresh page).
   const cpvName = useCpvName(appliedCpv, resp?.spec && String(resp.spec.filters.cpvTerm ?? "") === appliedCpv ? resp.cpvName : undefined);
+  // „lucrari drumuri” is written „lucrări drumuri” in the title, the sentence and the pills (the answer brings the forms).
+  learnTermSpelling(resp?.spelling);
   // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
   // words whether the answer came from typed text, a builder edit or a shared link, in every view,
   // the drawer and the export. A trend's title says the years and months its answer ran (answerLabels).
@@ -750,6 +777,15 @@ export default function AskPanel({
     streamsMemo.current = { key: streamsKey(answered.block, applied), streams: answered.streams };
   const keptStreams = (block: string, spec: AskSpec) => streamsMemo.current?.key === streamsKey(block, spec) ? streamsMemo.current.streams : undefined;
   useEffect(() => { setStreamShown(null); setAnswerSaved(null); }, [appliedKey]);
+  // The box holds the typed words only while the answer on screen is one of their readings (UX audit Z2-13): a pill, the
+  // builder or the strip made another question, so it empties (placeholder „Întreabă altceva…”); «Înapoi» to a reading
+  // brings the words back.
+  const readingsKey = Object.keys(understood).join("|");
+  useEffect(() => {
+    if (!applied || !intent || !readingsKey) return;
+    setAskText(reading ? intent.interpretation.text : "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedKey, readingsKey]);
   /**
    * The strip changed one key of the applied question (plan §2.3): the data
    * stream is a new query (sources, caveats and SQL change); the map's lens
@@ -1058,6 +1094,10 @@ export default function AskPanel({
       heading.focus({ preventScroll: true });
     }));
   };
+  /** „Întrebările tale salvate”, „Vezi salvatele”: the builder opens (unfolded beside an answer) on its saved list (Z2-27). */
+  const openSavedList = () => { setBuilderOpen(true); setBuilderCollapsed(false); setWantSaved(true); };
+  const savedOpened = useCallback(() => setWantSaved(false), []);
+  const savedCount = useSavedCount(!intent && !builderInit && !resp);
   const askAgain = () => {
     setAskUnfolded(true);
     requestAnimationFrame(() => {
@@ -1075,14 +1115,18 @@ export default function AskPanel({
       {toast && (
         <div className="ask-toast" role="status">
           {toast}
+          {toastAction && <> · <button type="button" className="ask-toast-action" onClick={() => { const run = toastAction.run; setToast(null); setToastAction(null); run(); }}>{toastAction.label}</button></>}
         </div>
       )}
       {/* The page title is the question box's label: one line says what this page does. */}
       <header className="cq-workspace-header ia-head" hidden={askFolded}>
         <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
-      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
+      <AskBox value={askText} onChange={setAskText} placeholder={resp?.ok ? "Întreabă altceva…" : undefined} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
+      {/* A link that could not be opened (nothing was asked): said right under the box (UX audit Z2-31). */}
+      {error && !lastBody.current && <div className="cq-error ia-link-error" role="alert" id="raspuns-eroare"><strong>{error}</strong></div>}
+      {!intent && !builderInit && !resp && savedCount ? <SavedEntry count={savedCount} onOpen={openSavedList} /> : null}
       <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
       {intent && !intent.spec && !intent.alternatives.some((alt) => alt.kind !== "intent") && <IntentUnknown result={intent} onPick={pickExample} />}
@@ -1182,10 +1226,23 @@ export default function AskPanel({
             <span className="ia-ask-again-wide">Întreabă altceva…</span>
             <span className="ia-ask-again-narrow">Altă întrebare…</span>
           </button>}
+          {/* Back to the empty page, without reloading it (UX audit Z2-14); a new tab keeps the browser's way. */}
+          <a className="ia-new-question" href="/intreaba" onClick={(event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            startOver();
+            window.history.pushState(null, "", "/intreaba");
+            requestAnimationFrame(() => { window.scrollTo({ top: 0 }); askRef.current?.focus({ preventScroll: true }); });
+          }}>Întrebare nouă</a>
         </div>
       ) : builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
-          <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>Construiește întrebarea pas cu pas</h2>
+          <div className="ia-builder-head">
+            <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>Construiește întrebarea pas cu pas</h2>
+            {/* Folds the builder again (UX audit Z2-14): under „Schimbă întrebarea” beside an answer, shut on the empty page.
+                Not with edits not applied: they would be lost unsaid („Renunță la modificări” first). */}
+            {!dirty && <button type="button" className="ia-builder-hide" onClick={() => { if (resp?.ok) setBuilderCollapsed(true); else setBuilderOpen(false); }}>Ascunde</button>}
+          </div>
           <QuestionBuilder
             key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
@@ -1198,6 +1255,8 @@ export default function AskPanel({
             {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
             stripPatch={stripPatch}
             onTrendList={trendListFromBuilder}
+            openSaved={wantSaved}
+            onSavedOpened={savedOpened}
           />
         </div>
       ) : null}
@@ -1205,7 +1264,7 @@ export default function AskPanel({
       {/* No answer on screen yet (a link, a first question, a retry): its ghost where it will stand, shaped by the
           question asked, after 120 ms so a quick answer never shows it. A new answer over one on screen dims it instead. */}
       {loading && !error && !(resp?.ok && answered && appliedSpec) && <AnswerGhost spec={asked} />}
-      {error && (
+      {error && lastBody.current && (
         <div className="cq-error" role="alert" id="raspuns-eroare">
           <strong>{error}</strong>
           <p>Întrebarea ta este păstrată.</p>
@@ -1222,6 +1281,7 @@ export default function AskPanel({
           )}
         </div>
       )}
+      {resp?.ok && data && applied && <QuestionBand spec={applied} cpvName={cpvName} title={title} onChange={() => setBuilderCollapsed(false)} />}
       {resp?.ok && data && applied && (
         <AnswerEvidence.Provider value={{ open: openEvidence, exclude: excludeRow }}>
           <section
@@ -1236,7 +1296,7 @@ export default function AskPanel({
               <div>
                 <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied, resp.townHall))}</h2>
                 {line && <IntentLine line={line} onAdopt={adopt} />}
-                <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} />
+                <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} caveats={resp.caveats} />
                 {dirty && (
                   <p className="cq-pending" role="status">
                     Răspuns pentru întrebarea anterioară
@@ -1267,7 +1327,10 @@ export default function AskPanel({
                 <div className="cq-answer-more">
                   <ShareMenu onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
                     onShare={() => void share(answerPath(applied, thread), title)} />
-                  <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
+                  <SaveQuestionButton spec={applied} active={answerSaved} onSaved={(question) => {
+                    setAnswerSaved(question);
+                    showToast(question.storage === "local" ? "Păstrată în acest browser" : "Păstrată în cont", { label: "Vezi salvatele", run: openSavedList });
+                  }} disabled={loading} compact />
                   <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}));}}
                     months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
                 </div>

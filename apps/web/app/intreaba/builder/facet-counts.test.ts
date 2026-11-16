@@ -31,7 +31,8 @@ describe("countedOptions: a window's options with their counts", () => {
   it("draws the share and the number, the first row the total, and disables an empty option with the reason", () => {
     const drawn = countedOptions(options, ready(), valueOf);
     expect(drawn.map((o) => [o.count, o.share, o.disabled])).toEqual([
-      ["384", undefined, undefined], ["60,0% · 344", 0.6, undefined], ["0,0% · 0", 0, "Nicio instituție în selecția de acum."], [undefined, undefined, undefined],
+      // The „Toate” row says its unit (UX audit Z2-07).
+      ["384 de instituții", undefined, undefined], ["60,0% · 344", 0.6, undefined], ["0,0% · 0", 0, "Nicio instituție în selecția de acum."], [undefined, undefined, undefined],
     ]);
   });
   it("keeps the checked option and an empty year choosable", () => {
@@ -75,7 +76,7 @@ describe("the other controls' counts", () => {
       { value: "three", label: "Ultimii 3 ani compleți", period: { yearFrom: 2023, yearTo: 2025 } },
       { value: "all", label: "Toți anii", period: undefined },
     ];
-    expect(presetCounts(presets, ready(years)).map((p) => p.count)).toEqual(["50,0% · 30", "100,0% · 60", "60"]);
+    expect(presetCounts(presets, ready(years)).map((p) => p.count)).toEqual(["50,0% · 30", "100,0% · 60", "60 de înregistrări"]);
     expect(presetCounts(presets, { status: "loading" }).every((p) => p.count === FACET_PENDING)).toBe(true);
   });
 });

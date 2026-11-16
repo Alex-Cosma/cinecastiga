@@ -184,3 +184,12 @@
   /* «Selecție avansată»: the precise-selection editor draws its controls at 40–42 px (query-recipes.css, loaded later). */
   .qb-pop .qp-body :is(button, input, select), .qb-pop .qb-minimum :is(input, button) { min-height: 44px; }
 }
+
+/* Z2-19 (UX audit, 16 November 2026): an applied, unchanged question has nothing to apply; its link goes to the answer. */
+.qb-go-answer { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 4px; color: var(--accent); font: 600 14px/1.3 var(--body); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; }
+.qb-go-answer:hover { text-decoration-color: currentColor; }
+
+/* Z2-18 (UX audit, 16 November 2026): „Selecție avansată” at the end of the presentation row, a quiet link. */
+.qb-advanced-link { display: inline-flex; align-items: center; min-height: 32px; margin: 0 0 0 4px; padding: 0 4px; border: 0; background: none; color: var(--accent); font: 500 13px/1.3 var(--body); text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; cursor: pointer; }
+.qb-advanced-link:hover, .qb-advanced-link[aria-expanded="true"] { text-decoration-color: currentColor; }
+@media (max-width: 700px) { .qb-advanced-link { min-height: 44px; } }

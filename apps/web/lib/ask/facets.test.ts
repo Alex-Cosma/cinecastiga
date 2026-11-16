@@ -132,6 +132,9 @@ describe("the words of a count", () => {
     expect(facetCountText({ n: 2867, share: 0.099 })).toBe("9,9% · 2.867");
     expect(facetCountText({ n: 3, share: 0.0004 })).toBe("sub 0,1% · 3");
     expect(facetTotalText({ total: { n: 14911, value_ron: 1 } })).toBe("14.911");
+    // The „Toate” row says its unit when the counts carry it (UX audit Z2-07).
+    expect(facetTotalText({ total: { n: 155582, value_ron: 1 }, unit: "records" })).toBe("155.582 de înregistrări");
+    expect(facetTotalText({ total: { n: 17, value_ron: 1 }, unit: "institutions" })).toBe("17 instituții");
   });
   it("reads a county in any spelling the data has", () => {
     expect(["bucuresti", "BUCUREȘTI", "București"].map(countyOfFolded)).toEqual(["București", "București", "București"]);

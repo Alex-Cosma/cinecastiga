@@ -43,7 +43,7 @@ describe("which filter each answer pill states", () => {
   it("reads a town hall and an institution by name, and the risk cloud's group as its subject", () => {
     const hall: AskSpec = { block: "breakdown", measure: "value", filters: { uatSiruta: 44845, uatName: "Municipiul Râmnicu Sărat (Buzău)" } };
     expect(read(hall, { uat: { siruta: 44845, name: "RAMNICU SARAT", county: "Buzău", authorityIds: ["1"], nAuthorities: 1 } })).toEqual([
-      ["pe domenii", null], ["valoarea înregistrată", "measure"], ["Municipiul Râmnicu Sărat (Buzău)", "locality"], ["toți anii", "period"],
+      ["pe domenii", null], ["valoarea înregistrată", "measure"], ["primăria Râmnicu Sărat (Buzău)", "locality"], ["toți anii", "period"],
       ["toate achizițiile: directe și din proceduri", "dataset"],
     ]);
     const pair: AskSpec = { block: "compare", measure: "value", filters: { authorityId: 1, authorityName: "MUNICIPIUL BUZAU", compareWithId: 2, compareWith: "MUNICIPIUL BRAILA" } };

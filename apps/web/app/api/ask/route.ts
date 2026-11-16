@@ -20,6 +20,8 @@ import { ANSWER_ERROR } from "../../../lib/ask/answer-text";
 import { townHallOf } from "../../../lib/ask/town-hall";
 import { cpvCodeName, isCpvCodeTerm } from "../../../lib/ask/cpv-label";
 import { readableCpvName } from "../../../lib/entity-summary";
+import { cachedSpelling } from "../../../lib/intent/vocabulary-sql";
+import { termSpelling } from "../../../lib/ask/term-spelling";
 import { NATURAL_LANGUAGE_ENABLED, NATURAL_LANGUAGE_UNAVAILABLE } from "@/lib/ask/features";
 
 /**
@@ -108,6 +110,8 @@ export async function POST(req: Request) {
   // A CPV code's name beside the answer (S4: the title said „CPV 45” until the page's own lookup came back).
   const cpvTerm = spec.filters.cpvTerm === undefined ? "" : String(spec.filters.cpvTerm);
   const cpvName = isCpvCodeTerm(cpvTerm) ? cpvCodeName(sql, cpvTerm).catch(() => null) : Promise.resolve(null);
+  // Words stored without diacritics („lucrari drumuri”): their written form, for the title and the pills.
+  const spelling = cpvTerm && !isCpvCodeTerm(cpvTerm) ? cachedSpelling(sql).then((map) => termSpelling(cpvTerm, map)).catch(() => null) : Promise.resolve(null);
   try {
     const grounding = await ground(sql, spec.filters, spec.population);
     const result = await runSpec(sql, spec, grounding, tableOpts);
@@ -146,6 +150,7 @@ export async function POST(req: Request) {
       model,
       spec: resolvedSpec(spec, grounding),
       ...(codeName ? { cpvName: readableCpvName(codeName) } : {}),
+      ...(await spelling.then((words) => words ? { spelling: words } : {})),
       ...(townHall ? { townHall } : {}),
       executedAt: new Date().toISOString(),
       pills: buildPills(spec, grounding, { executedMonths: result.executed?.months, ...answerLabels(result) }),

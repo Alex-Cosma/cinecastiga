@@ -23,7 +23,7 @@ import { winnerOption } from "../../../lib/ask/facet-parts";
 import type { NewScope } from "../../../lib/ask/spec";
 import PopulationEditor from "../PopulationEditor";
 import { codeKinds, PURCHASE_KIND_ORDER, PURCHASE_KIND_WORDS, VALUE_RANGES, valueRangeIndex, type PurchaseKind, type ValueRange } from "@/lib/ask/purchase";
-import Bands, { EMPLOYEE_BANDS, bandRange, bandsWords } from "./Bands";
+import Bands, { EMPLOYEE_BANDS } from "./Bands";
 import Pills, { RangeFields } from "./Pills";
 import { useCoverage } from "./coverage";
 import EntitySearch, { type SearchResult } from "./EntitySearch";
@@ -47,7 +47,7 @@ import { useComparePeers, usePairFacts } from "./use-pair";
 import {
   comparePeriodPresets, comparePeriodTip, generalCodesNote, kindLabel, pairCountyOptions, pairDomainGroup, pairDomainOptions, pairNames, pairRest, peerResults, withPairShares,
 } from "./compare-windows";
-import { FACET_REST, relativeSeat, SEAT_UNCOMPARED, SEAT_UNCOMPARED_TIP, type FacetView } from "../../../lib/ask/facet-parts";
+import { FACET_REST, FACET_UNIT_WORDS, relativeSeat, SEAT_UNCOMPARED, SEAT_UNCOMPARED_TIP, type FacetView } from "../../../lib/ask/facet-parts";
 import type { PeriodChoice } from "@/lib/ask/filters/defs/selection";
 
 /*
@@ -231,10 +231,10 @@ function ListWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
     const over = counts.status === "ready" ? counts.counts.total.value_ron : undefined;
     const procedureView = counts.status === "loading" ? counts : procedureCounts;
     const countedProcedures = countedOptions(procedures, procedureView, (o) => String(o.choice.value), { checked: chosen?.value ?? null, ...(over ? { over } : {}) });
-    return <ChoiceList label={win.name} options={[...counted, ...countedProcedures]} value={chosen?.value ?? value}
-      onPick={(option) => onPick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} />;
+    return <><UnitLine view={counts} /><ChoiceList label={win.name} options={[...counted, ...countedProcedures]} value={chosen?.value ?? value}
+      onPick={(option) => onPick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} /></>;
   }
-  return <ChoiceList label={win.name} options={counted} value={value} {...(restCounted ? { rest: restCounted } : {})} onPick={(option) => onPick([option.choice])} />;
+  return <><UnitLine view={counts} /><ChoiceList label={win.name} options={counted} value={value} {...(restCounted ? { rest: restCounted } : {})} onPick={(option) => onPick([option.choice])} /></>;
 }
 
 /** "Cine a cumpărat?": every institution, a kind (with the institutions of each, R5), one institution or a town hall. */
@@ -283,6 +283,7 @@ function BuyerLists({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
   const current = named ? currentRow("buyer", draft) : null;
   const rest = kinds ? countedRest(kinds.rest, counts) : undefined;
   return <>
+    <UnitLine view={counts} />
     {/* The first row clears the whole window (pickers.ts): every institution, the total. */}
     {kinds && <ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, counts, (o) => o.choice.value === undefined ? undefined : kindValue(o), { checked: named ? null : kinds.value })} value={named ? null : kinds.value} current={current}
       {...(rest ? { rest } : {})} onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
@@ -306,6 +307,7 @@ function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draf
   const set = Boolean(draft.filters.county || draft.filters.uatSiruta);
   const kindRest = kinds ? countedRest(kinds.rest, kindCounts) : undefined;
   return <>
+    <UnitLine view={counts} />
     <ChoiceList label={win.name} options={countedOptions([first], counts, () => undefined)} value={set ? null : "none"} current={set ? currentRow("place", draft) : null}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
     {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, kindCounts, kindValue, { checked: kinds.value })} value={kinds.value}
@@ -332,6 +334,7 @@ function SeatWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
   const rest = countedRest([relativeSeat(draft) ? { label: SEAT_UNCOMPARED, tip: SEAT_UNCOMPARED_TIP } : { label: UNKNOWN_SEAT }], counts);
   const counted = countedOptions(options, counts, (option) => option.value === "none" ? undefined : option.value, { checked: value });
   return <>
+    <UnitLine view={counts} />
     <ChoiceList label={win.name} options={counted} value={value} current={seatCurrentRow(draft)} {...(rest ? { rest } : {})}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : option.value === "none" ? seatClearChoices(draft) : [option.choice])} />
     {/* A county of the seat only where firms are the subject (SEAT_COUNTY_BLOCKS): around an institution the seat is against it. */}
@@ -429,6 +432,16 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       </div>)}
     </div>;
   }
+}
+
+/**
+ * What a window's numbers count, under its title (UX audit Z2-07): „% din valoare · instituții”, the unit from the
+ * counts themselves; a window that shows only the shares or only the numbers says only that. 12 px, muted.
+ */
+function UnitLine({ view, shows = "both" }: { view: FacetView; shows?: "both" | "share" | "count" }) {
+  if (view.status !== "ready") return null;
+  const unit = FACET_UNIT_WORDS[view.counts.unit][1];
+  return <p className="qb-unit">{shows === "share" ? "% din valoare" : shows === "count" ? `numărul de ${unit}` : `% din valoare · ${unit}`}</p>;
 }
 
 function InstitutionSearch({ draft, authority, locality, onPick }: { draft: QuestionSpec; authority: boolean; locality: boolean; onPick: (choices: Choice[]) => void }) {
@@ -598,7 +611,7 @@ function KindSegmented({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; dr
       };
     }),
   ];
-  return <Segmented label="Tipul, după codul CPV" full value={value} options={options} onChange={(next, source) => {
+  return <Segmented label="Tipul, după codul CPV" full className="qb-seg--kinds" value={value} options={options} onChange={(next, source) => {
     setValue(next);
     if (source === "activate" && next !== current) onPick([{ filter: "purchaseKind", value: next === "any" ? undefined : next }]);
   }} />;
@@ -644,6 +657,7 @@ function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: 
     onPick([{ filter: "purchaseValue", value }]);
   };
   return <>
+    <UnitLine view={counts} shows="share" />
     <Pills label="Mărimea achiziției" options={VALUE_RANGES.map((r, i) => {
       // Each range's share of the value (R5); an empty one is struck through with the reason.
       const { label: _label, ...range } = r;
@@ -695,15 +709,20 @@ function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onP
   // F5 (kit §5 table 5): the firms' own year, in our data or in the register, beside their size and seat.
   const [aged, setAged] = useState<AgedFirms | null>(agedOf(draft));
   const agedYears = aged ? newYearsOf(draft as FilterSpec, filterContext(draft as FilterSpec), aged.scope) : [];
-  const range = bandRange(EMPLOYEE_BANDS, values);
   // The firms of each band under it, and those without a filing in the rest row (kit §3 item 10, R5).
   const counts = useFacet(draft, "employees");
   const bands = EMPLOYEE_BANDS.map((band) => { const count = bandCount(counts, band.value); return count ? { ...band, count } : band; });
   // A foreign firm has no filing: a band leaves „În străinătate” shown with its reason, and a band chosen after it moves the seat to „Oriunde”.
   const seats = seat ? firmsKindSeatOptions(draft, values.length > 0) : [];
-  const chooseBands = (next: string[]) => { setValues(next); if (next.length && where === "abroad") setWhere("none"); };
+  // A band pressed is the choice, as an option of a list is (UX audit Z2-06): alone in its window it applies at once, so
+  // Escape never drops it unsaid; beside the seat and the firms' year it waits for the window's button, which says all three.
+  const chooseBands = (next: string[]) => {
+    if (!seat) { onPick([bandsChoice(next)]); return; }
+    setValues(next); if (next.length && where === "abroad") setWhere("none");
+  };
   const clear: Choice[] = [{ filter: "employees", value: undefined }, ...(seat ? [{ filter: "firmSeat" as const, value: undefined }, { filter: "newSince" as const, value: undefined }] : [])];
   return <>
+    {!seat && <UnitLine view={counts} shows="count" />}
     <Bands label="Angajați" bands={bands} value={values} onChange={chooseBands} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
     {seat && <div className="qb-row qb-tipwrap qb-from-seat">
       <span className="qb-row-label">Sediul firmei <HelpTip tip={{ id: "sediul-firmei" }} /></span>
@@ -723,9 +742,9 @@ function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onP
     </div>}
     <div className="qb-pop-foot">
       <button type="button" className="qb-link" onClick={() => onPick(clear)}>Scoate condiția</button>
-      <button type="button" className="qb-primary" onClick={() => onPick(seat ? firmsKindChoices(bandsChoice(values), where, aged) : [bandsChoice(values)])}>
-        {seat ? firmsKindButton(draft, bandsChoice(values), where, aged) : range ? bandsWords(range) : "Orice mărime"}
-      </button>
+      {seat && <button type="button" className="qb-primary" onClick={() => onPick(firmsKindChoices(bandsChoice(values), where, aged))}>
+        {firmsKindButton(draft, bandsChoice(values), where, aged)}
+      </button>}
     </div>
   </>;
 }
@@ -743,8 +762,17 @@ function NewFirmsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choic
   const [scope, setScope] = useState<NewScope | null>(own);
   const years = scope ? newYearsOf(draft as FilterSpec, ctx, scope) : [];
   const [year, setYear] = useState<number | null>(draft.filters.newSince !== undefined ? Number(draft.filters.newSince) : null);
-  const chosen = year !== null && years.includes(year) ? year : newFirmsYear(draft, years);
   const counts = useFacet(draft, "winners");
+  // The firms each year keeps, once read: a year with none is dimmed (its „0” stays), and the window never opens on it
+  // (UX audit Z2-23: „Înmatriculate din 2024” gave an empty answer). It opens on the usual year when it has firms, else
+  // on the most recent year that has some, else on none, with the button waiting for a choice.
+  const firmsIn = (y: number): number | null => {
+    if (!scope || counts.status !== "ready") return null;
+    return counts.counts.options.find((o) => o.value === winnerOption(scope, y))?.n ?? 0;
+  };
+  const usual = newFirmsYear(draft, years);
+  const opening = usual === null || firmsIn(usual) !== 0 ? usual : [...years].reverse().find((y) => (firmsIn(y) ?? 0) > 0) ?? null;
+  const chosen = year !== null && years.includes(year) ? year : opening;
   const set = draft.filters.newSince !== undefined || draft.filters.newScope !== undefined;
   const slot = { id: "newSince" as const };
   // A sense the draft cannot take beside its other conditions (registered beside a foreign seat): shown with the reason.
@@ -761,7 +789,7 @@ function NewFirmsWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choic
       <p className="qb-opt-group">Din</p>
       <Pills label="Din anul" options={years.map((y) => {
         const count = winnerCount(counts, winnerOption(scope, y));
-        return { value: String(y), label: String(y), ...(count ? { count } : {}) };
+        return { value: String(y), label: String(y), ...(count ? { count } : {}), ...(firmsIn(y) === 0 ? { className: "is-zero" } : {}) };
       })} value={chosen === null ? null : String(chosen)} onChange={(value) => setYear(Number(value))} />
     </>}
     <div className="qb-pop-foot">
@@ -785,6 +813,19 @@ function newFirmsYear(draft: QuestionSpec, years: readonly number[]): number | n
   return years.includes(complete) ? complete : years.at(-1) ?? null;
 }
 
+/** The period row that stands for the draft's own period when no preset is it (Z2-24). */
+const CURRENT_PERIOD = "chosen-now";
+const MONTH_SHORT = ["ian.", "feb.", "mar.", "apr.", "mai", "iun.", "iul.", "aug.", "sept.", "oct.", "nov.", "dec."];
+/** „2024”, „2019–2024”, „din 2020”, „până în 2022”, „mar.–iun. 2024”, „mar. 2023 – iun. 2024”. */
+export function currentPeriodWords(f: { yearFrom?: unknown; yearTo?: unknown; monthFrom?: unknown; monthTo?: unknown }): string {
+  const from = f.yearFrom !== undefined ? Number(f.yearFrom) : null, to = f.yearTo !== undefined ? Number(f.yearTo) : null;
+  const mf = f.monthFrom !== undefined ? MONTH_SHORT[Number(f.monthFrom) - 1] : null, mt = f.monthTo !== undefined ? MONTH_SHORT[Number(f.monthTo) - 1] : null;
+  if (from !== null && to !== null && from === to) return mf || mt ? `${mf ?? "ian."}–${mt ?? "dec."} ${from}` : String(from);
+  if (from !== null && to !== null) return mf || mt ? `${mf ?? "ian."} ${from} – ${mt ?? "dec."} ${to}` : `${from}–${to}`;
+  if (from !== null) return `din ${mf ? `${mf} ` : ""}${from}`;
+  return `până în ${mt ? `${mt} ` : ""}${to}`;
+}
+
 /** The years of the free range, oldest first, up to the last year of data. */
 const rangeYears = (from: number, to: number) => Array.from({ length: Math.max(0, to - from + 1) }, (_, i) => String(from + i));
 
@@ -803,9 +844,13 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
     : draft.block === "compare" ? comparePeriodPresets(draft, span, year, coverage?.periods ?? null, pair) : periodPresets(draft, span, year, coverage?.periods ?? null);
   // Each preset's records (the years it holds, R5); a trend's two years are compared, not counted; the months' presets are not years.
   const counts = useFacet(draft, trend || monthly ? null : "years");
-  const presets = presetCounts(plain, counts);
   const f = draft.filters;
-  const [open, setOpen] = useState(value === null && Boolean(f.yearFrom || f.yearTo));
+  // The period on screen when no preset is it (UX audit Z2-24): the first row, ticked („2024 · ales acum”), so the
+  // window says what is chosen; the free range waits folded under its link, and its months under „Alege și lunile”.
+  const current = value === null && (f.yearFrom !== undefined || f.yearTo !== undefined) ? currentPeriodWords(f) : null;
+  const presets = [...(current ? [{ value: CURRENT_PERIOD, label: current, detail: "ales acum" }] : []), ...presetCounts(plain, counts)];
+  const [open, setOpen] = useState(false);
+  const [withMonths, setWithMonths] = useState(Boolean(f.monthFrom || f.monthTo));
   const [range, setRange] = useState<PeriodRangeValue>({ ...EMPTY_RANGE, yearFrom: String(f.yearFrom ?? ""), yearTo: String(f.yearTo ?? ""), monthFrom: String(f.monthFrom ?? ""), monthTo: String(f.monthTo ?? "") });
   const [error, setError] = useState<string | null>(null);
   const last = span?.to ? Number(span.to.slice(0, 4)) : year;
@@ -824,17 +869,26 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   return <>
     {series && <Segmented label="Ritmul" full value={pace} options={[{ value: "year", label: "An de an" }, { value: "month", label: "Lună de lună" }]}
       onChange={(next) => { setPace(next as "year" | "month"); setOpen(false); setError(null); }} />}
-    <PeriodPicker label="Perioada" presets={presets} value={value} onPreset={(next, source) => {
+    <UnitLine view={counts} />
+    <PeriodPicker label="Perioada" presets={presets} value={value ?? (current ? CURRENT_PERIOD : null)} onPreset={(next, source) => {
       if (source !== "activate") return;
-      const preset = presets.find((p) => p.value === next);
+      // The period already chosen: nothing changes, the window closes.
+      if (next === CURRENT_PERIOD) { onPick([]); return; }
+      const preset = plain.find((p) => p.value === next);
       if (preset) onPick(choose(preset.period, monthly));
     }} custom={{
       open, onOpen: () => setOpen((current) => !current), label: trend ? "Alege cei doi ani…" : monthly ? "Alege lunile…" : series ? "Alege anii…" : "Alege anii sau lunile…",
       value: range, onChange: (next) => { setRange(next); setError(null); },
       // 2018 leaves the trend only (trend final §3.2): its direct acquisitions start in April.
-      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && (!series || monthly),
+      years: rangeYears(trend ? MIN_TREND_YEAR : series ? SERIES_FIRST_YEAR : span?.first ? Number(span.first.slice(0, 4)) : SERIES_FIRST_YEAR, last), months: !trend && (monthly || !series && withMonths),
       ...(trend ? { labels: ["Primul an", "Al doilea an"] as const } : {}), error,
     }} />
+    {open && !trend && !series && !withMonths && <button type="button" className="qb-link qb-range-months" onClick={(event) => {
+      // The button gives way to the month fields: the focus goes to the first of them, never to the page.
+      const dialog = event.currentTarget.closest("dialog");
+      setWithMonths(true);
+      requestAnimationFrame(() => dialog?.querySelectorAll<HTMLSelectElement>(".qb-range select")[2]?.focus());
+    }}>Alege și lunile</button>}
     {series && !monthly && open && <p className="qb-pop-note">Un singur an: îl arăt lună de lună.</p>}
     {open && <div className="qb-pop-foot"><span /><button type="button" className="qb-primary" onClick={use}>Folosește</button></div>}
   </>;

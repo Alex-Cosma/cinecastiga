@@ -1,4 +1,4 @@
-import { localityScopeError, transitionQuestion, type QuestionSpec } from "../question-ui";
+import { localityScopeError, transitionQuestion, unknownCounty, unknownCountyError, type QuestionSpec } from "../question-ui";
 import { keyVersionNotes } from "../answer-core";
 import { kindApplies, kindLeftOutNote, type PurchaseKind } from "../purchase";
 import { NEWER_VERSION_LINK, parseSpec, runnableError, unimplementedSpecKeys, type AskSpec } from "../spec";
@@ -17,7 +17,8 @@ import type { FilterSpec } from "./types";
  * without a builder that would show the question without it.
  */
 
-export const INVALID_LINK = "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.";
+/** Said right under the question box (UX audit Z2-31): nothing of the link is kept, and the builder is not „below”. */
+export const INVALID_LINK = "Linkul nu poate fi citit. Pune întrebarea din nou sau alege un exemplu.";
 
 export type RestoredLink =
   | { kind: "error"; error: string; newer?: true }
@@ -54,10 +55,12 @@ export function restoreLink(raw: unknown, labels: ConditionLabels = {}): Restore
   const kind = opened.spec.filters.purchaseKind as PurchaseKind | undefined;
   const leftOut = kind && labels.grounding?.cpv && !kindApplies(kind, labels.grounding) ? kind : null;
   const { spec, changes } = leftOut ? { spec: withoutKind(opened.spec), changes: [...opened.changes, kindLeftOutNote(leftOut, labels.grounding?.cpv?.term ?? opened.spec.filters.cpvTerm)] } : opened;
-  const errorOf = (s: QuestionSpec) => runnableError(s as unknown as AskSpec) ?? localityScopeError(s);
+  const badCounty = unknownCounty(given);
+  const errorOf = (s: QuestionSpec) => (badCounty ? unknownCountyError(badCounty) : null) ?? runnableError(s as unknown as AskSpec) ?? localityScopeError(s);
   const reason = errorOf(spec);
   return {
-    kind: "draft", spec: spec as FilterSpec, link: given as unknown as FilterSpec, notes: [...new Set([...changes, ...keyVersionNotes(given as unknown as AskSpec)])],
+    // An unknown county's link has no version note to say: „Județul firmei e acum sediul ei” is about a known one.
+    kind: "draft", spec: spec as FilterSpec, link: given as unknown as FilterSpec, notes: [...new Set([...changes, ...(badCounty ? [] : keyVersionNotes(given as unknown as AskSpec))])],
     conditions: legacyConditions(spec, labels), advanced: advancedConditions(spec, labels),
     run: reason === null && errorOf(given) === null, reason,
   };

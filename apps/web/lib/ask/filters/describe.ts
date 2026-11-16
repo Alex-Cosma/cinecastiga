@@ -300,7 +300,10 @@ const DESCRIBE: Partial<Record<FilterId, Describe>> = {
   },
   locality: (spec, { grounding }) => {
     const f = spec.filters;
-    const pills = grounding?.uat ? [String(f.uatName ?? grounding.uat.name ?? `UAT ${grounding.uat.siruta}`)] : [];
+    // The pill names the buyer the answer counts, as the title does: „primăria Cluj-Napoca”, not „Municipiul Cluj-Napoca
+    // (Cluj)” (UX audit Z2-29: the same object had four names).
+    const name = f.uatName ?? grounding?.uat?.name;
+    const pills = grounding?.uat ? [name ? `primăria ${localityName(String(name))}` : `UAT ${grounding.uat.siruta}`] : [];
     if (!f.uatSiruta && !f.uatName) return pills.length ? { pills } : null;
     return {
       words: `primăria ${f.uatName ? localityName(String(f.uatName)) : `localității ${f.uatSiruta}`}`,

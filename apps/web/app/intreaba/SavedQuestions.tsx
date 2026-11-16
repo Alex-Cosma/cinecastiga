@@ -12,7 +12,14 @@ import { foldQuestion } from "@/lib/ask/question-ui";
 
 export type SavedQuestion = { id:string; title:string; version:number; spec:QuestionSpec; storage?:"local"; ownerId?:string | undefined };
 
-const summary = savedQuestionSummary;
+/**
+ * A row's second line: the question's sentence and conditions, only when its name is not already that sentence (UX
+ * audit Z2-27: the title said twice). A question this release cannot read keeps its message.
+ */
+const summary = (spec: unknown, title: string): string | null => {
+  const text = savedQuestionSummary(spec);
+  return text.split(" · ")[0] === title ? null : text;
+};
 /** A device item is already parsed; an account summary carries the stored spec, read as opening reads it. */
 function newerItem(item:RecipeSummary & { storage?:"local" }):boolean {
   if (item.storage === "local") return newerQuestion(item.spec);
@@ -101,7 +108,7 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
 
   const next = `/intreaba?spec=${encodeURIComponent(encodeSpec(current))}&mode=builder`;
   return <div className="cq-saved-list" aria-busy={loading || !!opening}>
-    {!loading && <p className="cq-device-note">{userId ? "Cele din cont sunt private; „Pe acest dispozitiv” = doar în acest browser." : "Salvate pe acest dispozitiv, în acest browser. Ștergerea datelor site-ului șterge și aceste întrebări."}</p>}
+    {!loading && <p className="cq-device-note">{userId ? "Cele din cont sunt private; „Pe acest dispozitiv” = doar în acest browser." : "Doar în acest browser: ștergerea datelor site-ului le șterge."}</p>}
     {login && <p>Sesiunea a expirat. <a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te pentru întrebările din cont</a>.</p>}
     {loading ? <p role="status">Se încarcă întrebările salvate…</p> : <>
       {candidate && <div className="cq-replace-question" ref={confirmation} role="group" aria-label="Confirmă înlocuirea întrebării">
@@ -109,13 +116,16 @@ function SavedQuestionsList({ search, current, hasUnsavedChanges, onLoad, userId
         <div><button type="button" onClick={() => { setCandidate(null); requestAnimationFrame(() => selectedRow.current?.focus()); }}>Păstrează întrebarea curentă</button><button type="button" onClick={() => onLoad(candidate)}>Înlocuiește și încarcă</button></div>
       </div>}
       {items.map(item => {
-        const where = `${item.storage === "local" ? "Pe acest dispozitiv" : "În cont"} · ${new Date(item.updatedAt).toLocaleDateString("ro-RO")}`;
+        // A visitor's questions are all in this browser (said once, above): the row says its date only (Z2-27).
+        const date = new Date(item.updatedAt).toLocaleDateString("ro-RO");
+        const where = userId ? `${item.storage === "local" ? "Pe acest dispozitiv" : "În cont"} · ${date}` : date;
+        const extra = summary(item.spec, item.title);
         // A newer release wrote it (its summary says so): listed so it is not lost, but it cannot open here.
         if (newerItem(item)) return <div hidden={!!candidate} className="cq-saved-row" key={item.id} aria-disabled="true">
-          <span><strong>{item.title}</strong><span className="cq-saved-summary">{summary(item.spec)}</span><small>{where}</small></span>
+          <span><strong>{item.title}</strong>{extra && <span className="cq-saved-summary">{extra}</span>}<small>{where}</small></span>
         </div>;
         return <button type="button" hidden={!!candidate} className="cq-saved-row" key={item.id} disabled={!!opening} onClick={event => void open(item,event.currentTarget)}>
-          <span><strong>{item.title}</strong><span className="cq-saved-summary">{summary(item.spec)}</span><small>{opening === item.id ? "Se încarcă…" : where}</small></span>
+          <span><strong>{item.title}</strong>{extra && <span className="cq-saved-summary">{extra}</span>}<small>{opening === item.id ? "Se încarcă…" : where}</small></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
         </button>;
       })}

@@ -51,6 +51,11 @@ function cached<T>(slot: SlotName, load: () => Promise<T>): Promise<T> {
   return entry.value;
 }
 
+/** The catalogue's spelling of folded words, cached as the interpreter's (an answer's subject is written with it). */
+export function cachedSpelling(sql: DbSql): Promise<Map<string, string>> {
+  return cached("__seapIntentSpelling", () => loadSpelling(sql));
+}
+
 /** Tests only: forget the process-wide lists (simulates a cold start). */
 export function resetSharedLists() {
   delete cache.__seapIntentPlaces;

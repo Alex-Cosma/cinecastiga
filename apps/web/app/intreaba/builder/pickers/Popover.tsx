@@ -56,17 +56,20 @@ export interface PopoverProps extends Omit<PanelProps, "titleId"> {
 /**
  * Where focus goes on opening: a marked field, a search field, the chosen
  * option, the first control. A plain field ("Între" of the size) does not
- * take it first: on a phone its keyboard would cover the sheet.
+ * take it first: on a phone its keyboard would cover the sheet. With a
+ * finger (a coarse pointer) no field takes it first (UX audit Z2-33): the
+ * keyboard would cover half of „Ce s-a cumpărat?”; the search waits for a tap.
  */
 function initialFocus(dialog: HTMLElement): HTMLElement | null {
-  const marked = dialog.querySelector<HTMLElement>("[data-autofocus]");
+  const finger = window.matchMedia("(pointer: coarse)").matches;
+  const marked = finger ? null : dialog.querySelector<HTMLElement>("[data-autofocus]");
   if (marked) return marked;
-  const search = dialog.querySelector<HTMLElement>('input[role="combobox"], input[type="search"]');
+  const search = finger ? null : dialog.querySelector<HTMLElement>('input[role="combobox"], input[type="search"]');
   if (search) return search;
   const chosen = dialog.querySelector<HTMLElement>('[aria-checked="true"][tabindex="0"], [aria-selected="true"][tabindex="0"]');
   if (chosen) return chosen;
   const all = focusables(dialog);
-  return all.find(element => !element.classList.contains("qb-close") && !element.classList.contains("term-trigger")) ?? all[0] ?? null;
+  return all.find(element => !element.classList.contains("qb-close") && !element.classList.contains("term-trigger") && !(finger && element.tagName === "INPUT")) ?? all[0] ?? null;
 }
 
 export default function Popover({ open, anchor, onClose, wide = false, ...panel }: PopoverProps) {
@@ -94,14 +97,18 @@ export default function Popover({ open, anchor, onClose, wide = false, ...panel 
     const place = () => {
       const trigger = anchorRef.current;
       if (media.matches || !trigger || !dialog.open) return;
-      const { top, left } = popoverPlacement(trigger.getBoundingClientRect(), { width: dialog.offsetWidth, height: dialog.offsetHeight }, { width: document.documentElement.clientWidth, height: window.innerHeight });
+      // Never over the sticky header (UX audit Z2-35): the top stops 8 px under it, and a window taller than the room
+      // under it scrolls inside.
+      const roof = Math.max(16, (document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0) + 8);
+      dialog.style.maxHeight = `${Math.max(160, Math.min(560, window.innerHeight - roof - 16))}px`;
+      const { top, left } = popoverPlacement(trigger.getBoundingClientRect(), { width: dialog.offsetWidth, height: dialog.offsetHeight }, { width: document.documentElement.clientWidth, height: window.innerHeight }, 16, 8, roof);
       dialog.style.top = `${top}px`;
       dialog.style.left = `${left}px`;
     };
     returnTo.current = anchorRef.current;
     const show = () => {
       if (dialog.open) dialog.close();
-      dialog.style.top = dialog.style.left = "";
+      dialog.style.top = dialog.style.left = dialog.style.maxHeight = "";
       if (media.matches) dialog.showModal();
       else { dialog.show(); place(); }
       initialFocus(dialog)?.focus();

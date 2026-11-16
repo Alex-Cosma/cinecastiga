@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { defaultQuestion, questionErrors, questionKey, transitionQuestion } from "../question-ui";
+import { defaultQuestion, questionErrors, questionKey, transitionQuestion, unknownCounty, unknownCountyError } from "../question-ui";
 import { COMPARE_RULES, IMPLEMENTED_KEYS, NETWORK_RULES, SCATTER_RULES, NEWER_VERSION_LINK, parseSpec, peersRule, READ_AHEAD_KEYS, runnableError, SEAT_RULES, SELECTION_RULES, TIMESERIES_RULES, TREND_RULES, unimplementedSpecKeys, WINNERS_RULES, validateSpec, type AskSpec, type Block } from "../spec";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
@@ -337,7 +337,10 @@ function walk() {
     // What the builder accepts, the engine runs (validateSpec = parseSpec + runnableError, then the locality rule);
     // a window that empties a required input (the second entity, a focal one) asks for it again.
     const engine = engineError(to.spec);
-    if (errors.length && !errors.every((error) => REQUIRED_INPUTS.includes(error))) problems.push(`refused (${errors.join(" / ")}): ${where}`);
+    // A link's county the data do not know is an input the builder asks for again (UX audit Z2-31), as the engine refuses it.
+    const badCounty = unknownCounty(to.spec);
+    const required = (error: string) => REQUIRED_INPUTS.includes(error) || (badCounty !== null && error === unknownCountyError(badCounty));
+    if (errors.length && !errors.every(required)) problems.push(`refused (${errors.join(" / ")}): ${where}`);
     else if (!errors.length && engine) problems.push(`builder accepts, engine refuses (${engine}): ${where}`);
     // No condition hidden: the question shows it, or it is a link's chip it carried in (still a chip).
     const visible = visibleFilters(to.spec), present = presentConditions(to.spec);
