@@ -9,3 +9,13 @@
 .dsc-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .dsc-on{color:var(--ink);font-weight:600}
 @media(max-width:700px){.dsc-nav{margin:-8px 0 4px}}
+
+/* On the Descoperă pages (the ones with this row), between phone and wide screens, the floating feedback button sat over
+   the tables' last column (amounts, arrows, multiples; UX audit Z6-35). There it leaves the overlay and is the row after
+   the footer, as on a phone; the shared component (components/feedback) is unchanged elsewhere. */
+@media (min-width:721px) and (max-width:1359px){
+  body:has(.dsc-nav) .feedback-dock{background:var(--surface);border-top:1px solid var(--line);padding:12px 24px calc(12px + env(safe-area-inset-bottom))}
+  body:has(.dsc-nav) .feedback-fab{position:static;transform:none;width:auto;height:auto;min-height:44px;padding:10px 14px;gap:10px;border:1px solid var(--accent-line);border-radius:8px;box-shadow:none}
+  body:has(.dsc-nav) .feedback-fab span{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
+  body:has(.dsc-nav) .site-footer{padding-bottom:0}
+}
