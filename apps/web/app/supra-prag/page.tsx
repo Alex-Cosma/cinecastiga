@@ -13,6 +13,12 @@ import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmoun
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
 import Term from "@/components/Term";
+import { countWords } from "@/lib/ask/answer-text";
+import { GLOSSARY } from "@/lib/glossary";
+import { FOREIGN } from "@/lib/ted-columns";
+import OpenFunnel from "./OpenFunnel";
+import DiscoverNav from "@/components/discover/DiscoverNav";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import "./supra-prag.css";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +60,12 @@ function winnerCell(a: TedAward) {
   });
 }
 
+/** The usual kind of a TED value (an offer or a result): said once, in the (?) of the column, not under every sum (Z6-28). */
+const USUAL_AMOUNT = "payable";
+/** TED's name for a lot without one, and its implicit lot: the source's noise, not the reader's (UX audit Z6-28). */
+const defaultLotTitle = (title: string | null) => !title || /^default lot$/i.test(title.trim());
+const defaultLotId = (lot: string | null) => !lot || /^LOT-0+$/i.test(lot.trim());
+
 function amountCell(a: TedAward) {
   const kind = a.amountKind ?? "legacy_unknown";
   const details = a.amountDetails;
@@ -61,7 +73,7 @@ function amountCell(a: TedAward) {
   const main = tedAmountHeadline(a);
   return <>
     <div className="tp-amount">{main}</div>
-    <div className="county tp-amount-kind">{label}</div>
+    {kind !== USUAL_AMOUNT && <div className="county tp-amount-kind">{label}</div>}
     {details?.missingTenderIds.length ? <div className="county tp-amount-kind">Referințe de ofertă nerezolvate: {details.missingTenderIds.join(", ")}</div> : null}
   </>;
 }
@@ -127,9 +139,26 @@ export default async function SupraPragPage({
   };
   // The pager sits below the table: the next page opens at the start of the list.
   const pageUrl = (n: number) => `${qstr({ p: n > 1 ? String(n) : undefined })}#atribuiri-lista`;
+  // No result (UX audit Z6-37): a step back, the last filter the address applied, besides „Scoate toate”; the band's
+  // chips stay the main way out. Its label is the chip's words where the server knows them (options), else the column's.
+  const filterParams = TED_COLUMNS.flatMap((c) => [c.param, ...(c.legacy?.params ?? [])]);
+  const lastKey = Object.keys(sp).filter((k) => filterParams.includes(k) && sp[k]).at(-1);
+  const lastColumn = lastKey ? TED_COLUMNS.find((c) => c.param === lastKey || c.legacy?.params.includes(lastKey)) : undefined;
+  const lastValue = lastKey ? String(sp[lastKey]) : "";
+  const lastLabel = lastColumn ? (lastColumn.kind === "options" && !lastValue.includes(",") ? lastColumn.labels?.[lastValue] ?? lastValue : lastColumn.label) : null;
+  const withoutFilters = qstr(Object.fromEntries(filterParams.map((k) => [k, undefined])));
+  // Three figures are the table's own filters (UX audit Z6-10): a click applies it (or takes it off) and opens the list.
+  const has = (key: string, value: string) => filters[key]?.kind === "options" && filters[key].values.includes(value);
+  const toggle = (key: string, value: string) => `${qstr({ [key]: has(key, value) ? undefined : value, ...(key === "tara" ? { extern: undefined } : key === "oferte" ? { unic: undefined } : { "etichetă": undefined }) })}#atribuiri-lista`;
+  const statLinks = [
+    { key: "potrivire", n: stats.tedOnly, label: TED_LABEL["ted-only"]!.title, on: has("potrivire", "ted-only"), href: toggle("potrivire", "ted-only") },
+    { key: "tara", n: stats.foreign, label: "marcate cu un câștigător străin", on: has("tara", FOREIGN), href: toggle("tara", FOREIGN) },
+    { key: "oferte", n: stats.singleBidder, label: "cu o singură ofertă primită", on: has("oferte", "unu"), href: toggle("oferte", "unu") },
+  ];
 
   return (
     <>
+      <DiscoverNav current="supra-prag" />
       <h1 className="page-title">Atribuiri publicate în TED</h1>
       <p className="page-sub ted-tip-line">
         Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title={TED_TERM.title} text={TED_TERM.text} /></span>
@@ -139,67 +168,59 @@ export default async function SupraPragPage({
         <Link href="/metodologie#acoperire">Acoperire →</Link>
       </p>
 
+      {/* The table's filters behind three of the four figures are links to them (UX audit Z6-10); the counts behind the
+          first one and the „străin” left to check are in its (?) and in the „Țara” funnel, so the table comes up. The
+          figures, the chips, the funnels, the sort and the pager change the list: it stays in place, dimmed, while the
+          next one comes (owner, 6 November 2026); the figures and the pager open the list at its start. */}
+      <PendingRegion label="Se încarcă atribuirile…">
       <section className="section">
         <div className="stat-row ted-stats">
           <div className="stat">
             <div className="n">{formatInt(stats.total)}</div>
-            <div className="l">rezultate de loturi TED <Term id="rezultat-lot-ted" tip /></div>
+            <div className="l">rezultate de loturi TED <Term tip title={GLOSSARY["rezultat-lot-ted"].title} text={<>{GLOSSARY["rezultat-lot-ted"].text}{" "}
+              {stats.notices != null ? `${formatInt(stats.notices)} anunțuri. ` : ""}{stats.unknownCompetition != null ? `${formatInt(stats.unknownCompetition)} rezultate fără număr de oferte.` : ""}</>} /></div>
           </div>
-          <div className="stat">
-            <div className="n">{formatInt(stats.tedOnly)}</div>
-            <div className="l">{TED_LABEL["ted-only"]!.title}</div>
-          </div>
-          <div className="stat">
-            <div className="n">{stats.foreign == null ? "—" : formatInt(stats.foreign)}</div>
-            <div className="l">marcate cu un câștigător străin</div>
-          </div>
-          <div className="stat">
-            <div className="n">{formatInt(stats.singleBidder)}</div>
-            <div className="l">cu o singură ofertă primită</div>
-          </div>
+          {statLinks.map((f) => <div className="stat" key={f.key}>
+            <RegionLink scroll className={`tp-stat-link${f.on ? " on" : ""}`} href={f.href} aria-current={f.on ? "true" : undefined}
+              title={f.on ? "Scoate filtrul din tabel" : "Arată-le în tabel"}>
+              <div className="n">{f.n == null ? "—" : formatInt(f.n)}</div>
+              <div className="l">{f.label}</div>
+            </RegionLink>
+          </div>)}
         </div>
-        <p className="hint">
-          {stats.notices != null ? `${formatInt(stats.notices)} anunțuri · ` : ""}
-          {stats.unknownCompetition != null ? `${formatInt(stats.unknownCompetition)} rezultate fără număr de oferte` : "rezultatele fără număr de oferte: statistică în curs de actualizare"}
-        </p>
-        {stats.foreignCountryUnresolved > 0 ? <p className="note">
-          În {formatInt(stats.foreignCountryUnresolved)} rezultate, marcajul „străin” nu este confirmat de țara
-          câștigătorilor din datele preluate. {" "}
-          <Link href={`/supra-prag?tara=${TED_COUNTRY_UNRESOLVED}`}>Vezi înregistrările de verificat</Link>.
-        </p> : null}
         {stats.legacyAmounts == null || stats.legacyAmounts > 0 ? <p className="note">
           {stats.legacyAmounts != null ? `${formatInt(stats.legacyAmounts)} rezultate așteaptă verificarea tipului valorii. ` : "Clasificarea valorilor este în curs de actualizare. "}
           Aceste sume sunt marcate separat și nu intră în comparația valorilor RON.
         </p> : null}
-      </section>
-
-      {/* The country chips, the funnels, the sort and the pager change the list: it stays in place, dimmed, while the
-          next one comes (owner, 6 November 2026); the pager still opens the next page at the start of the list. */}
-      <PendingRegion label="Se încarcă atribuirile…">
-      {stats.byCountry.length > 0 ? (
-        <section className="section">
-          <h2 className="ted-tip-line">Firme străine câștigătoare, după țară <Term id="ted-tari" tip /></h2>
-          <div className="filters" style={{ flexWrap: "wrap" }}>
-            {stats.byCountry.slice(0, 12).map((c) => (
+        {/* The country chips stay as the summary (4 November 2026), on one labelled row: the first six (three on a phone)
+            and „Toate țările”, which opens the „Țara” funnel. */}
+        {stats.byCountry.length > 0 ? (
+          <div className="filters tp-countries">
+            <span className="tp-countries-label ted-tip-line">Câștigători străini: <Term id="ted-tari" tip /></span>
+            {stats.byCountry.slice(0, 6).map((c, i) => (
               <RegionLink key={c.country} scroll={false} href={qstr({ tara: countries.includes(c.country) ? undefined : c.country, extern: undefined })}
-                className={countries.includes(c.country) ? "on" : ""}>
-                {countryName(c.country)} · {formatInt(c.n)} rezultate
+                className={`${countries.includes(c.country) ? "on" : ""}${i >= 3 ? " tp-wide-only" : ""}`}>
+                {countryName(c.country)} · {formatInt(c.n)}
               </RegionLink>
             ))}
+            <OpenFunnel label="Filtrează după țara câștigătorului">Toate țările</OpenFunnel>
           </div>
-        </section>
-      ) : null}
+        ) : null}
+      </section>
 
       <section className="section">
         <h2>Explorează atribuirile</h2>
         <UrlFilterBand table="ted" />
-        <p className="hint">{formatInt(awards.total)} rezultate · {sort === "value" ? "după valoare, doar sumele în lei" : "cele mai noi întâi"}</p>
+        <p className="hint" hidden={awards.total === 0}>{countWords(awards.total, "rezultat", "rezultate")} · {sort === "value" ? "după valoarea în lei; la final, cele fără o valoare de contract în lei" : "cele mai noi întâi"}</p>
         {countries.includes(TED_COUNTRY_UNRESOLVED) ? <p className="hint">
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
         </p> : null}
+        {awards.rows.length === 0 ? <p className="note tp-none">Niciun rezultat.{" "}
+          {lastKey && lastLabel ? <><RegionLink href={qstr({ [lastKey]: undefined })} scroll={false}>Scoate „{lastLabel}”</RegionLink>{" · "}</> : null}
+          <RegionLink href={withoutFilters} scroll={false}>Scoate toate</RegionLink></p> : null}
         {/* On a phone each result is a card (rank-stack) and the header's funnels wrap above the cards as a filter bar. */}
-        <div className="ask-tablewrap rank-stack tp-stack">
+        <div className="ask-tablewrap rank-stack tp-stack" hidden={awards.rows.length === 0}>
         <table className="rank list-anchor" id="atribuiri-lista">
           <thead>
             <tr>
@@ -212,14 +233,18 @@ export default async function SupraPragPage({
                   <RegionLink scroll={false} href={qstr({ sort: sort === "value" ? undefined : "value" })} title={sort === "value" ? "Înapoi la cele mai noi" : "Ordonează după valoarea în lei"}>
                     Valoare{sort === "value" ? " ▾" : ""}
                   </RegionLink>
-                  <UrlFunnel table="ted" column="valoare" align="end" /><Term id="ted-valori" tip />
+                  <UrlFunnel table="ted" column="valoare" align="end" /><Term tip title={GLOSSARY["ted-valori"].title} text={`${GLOSSARY["ted-valori"].text} O sumă fără etichetă e valoarea ofertei sau a rezultatului.`} />
                 </span>
               </th>
             </tr>
           </thead>
           <tbody>
-            {awards.rows.map((a) => { const source = sourceValues(a); return (
+            {awards.rows.map((a, i) => { const source = sourceValues(a); const at = (page - 1) * PAGE_SIZE + i; return (
               <Fragment key={a.tedLotResultId}>
+              {/* By value, the rows without a lei contract value come last, under one line (UX audit Z6-11). */}
+              {awards.valued !== undefined && at >= awards.valued && (at === awards.valued || i === 0) ? <tr className="tp-sep-row"><td colSpan={4}>
+                Fără o valoare de contract în lei · {formatInt(awards.total - awards.valued)}{at > awards.valued ? " (continuare)" : ""}
+                <Term tip title="Fără o valoare de contract în lei" text="Sume în altă monedă, plafoane de acord-cadru sau rezultate fără sumă: nu se compară cu valorile în lei, așa că vin după ele, cele mai noi întâi." /></td></tr> : null}
               <tr className={source ? "tp-has-src" : undefined}>
                 <td>
                   <EntityName id={a.buyerEntityId} role="authority">{cleanName(a.buyerName)}</EntityName>
@@ -228,15 +253,20 @@ export default async function SupraPragPage({
                   {tedCountryNeedsReview(a.isForeign, a.winnerCountries) ? <div className="county">{TED_COUNTRY_REVIEW_LABEL}</div> : null}
                 </td>
                 <td className="county" data-label="Obiect">
-                  {a.title ? <div className="obj-title">{a.title}</div> : null}
-                  {a.cpvName ?? a.cpvCode ?? "—"}
-                  {a.lotId ? <div>Lot: {a.lotId}</div> : null}
+                  {/* The object's own title, else its CPV name as the title; TED's „Default lot” and „LOT-0000” say nothing (Z6-28).
+                      On a phone the title is cut at two lines and a tap shows it whole (Z6-29). */}
+                  {defaultLotTitle(a.title)
+                    ? <div className="obj-title" tabIndex={0} title={a.cpvName ?? undefined}>{a.cpvName ?? a.cpvCode ?? "—"}</div>
+                    : <><div className="obj-title" tabIndex={0} title={a.title ?? undefined}>{a.title}</div>{a.cpvName ?? a.cpvCode ?? "—"}</>}
+                  {!defaultLotId(a.lotId) ? <div>Lot: {a.lotId}</div> : null}
                   <div className="badges">
                     <span className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`} title={TED_LABEL[a.label]?.hint}>
                       {TED_LABEL[a.label]?.title ?? a.label}
                     </span>
                     <span className={`badge ${a.tendersReceived === 1 ? "warn" : ""}`}>{competitionLabel(a.tendersReceived)}</span>
                     {a.euFunded ? <span className="badge">fonduri UE</span> : null}
+                    {/* On a phone the procedure is one more pill here, its column hidden (Z6-29). */}
+                    <span className="badge tp-proc-pill">{procedureName(a.procedureType)}</span>
                   </div>
                 </td>
                 <td className="county" data-label="Procedură">{procedureName(a.procedureType)}</td>
@@ -258,17 +288,9 @@ export default async function SupraPragPage({
         </table>
         </div>
 
-        {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <RegionLink href="/supra-prag" scroll>Vezi toate rezultatele TED</RegionLink>.</p> : null}
 
-        {totalPages > 1 ? (
-          <div className="pager">
-            {page > 1 ? <RegionLink href={pageUrl(page - 1)} scroll>← anterioarele</RegionLink> : <span className="off">← anterioarele</span>}
-            <span className="pager-pos">
-              pagina {formatInt(page)} / {formatInt(totalPages)} · {formatInt(awards.total)} rezultate
-            </span>
-            {page < totalPages ? <RegionLink href={pageUrl(page + 1)} scroll>următoarele →</RegionLink> : <span className="off">următoarele →</span>}
-          </div>
-        ) : null}
+        {/* The pager of the „Descoperă” pages (UX audit Z6-14); the last page is read from the end, as quick as the first. */}
+        {totalPages > 1 ? <DiscoverPager page={page - 1} pageSize={PAGE_SIZE} total={awards.total} unit={["rezultat", "rezultate"]} href={(p) => pageUrl(p + 1)} link={RegionLink} scroll bottom className="tp-pager" /> : null}
 
         <p className="note ted-tip-line ted-tip-up">
           Potrivirile posibile sunt marcate separat de cele confirmate <Term id="potrivire-ted" tip /> · <Link href="/metodologie">Metodologia →</Link>

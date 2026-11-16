@@ -44,3 +44,11 @@
   .source-evidence-save { width: 100%; }
   .source-evidence-intro .clipbtn { width: 100%; }
 }
+
+/* What every row has in common, said once above the table (UX audit Z6-24, opt-in `common`); the closed notes' count. */
+.source-evidence-common { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+.source-evidence-common b { font-weight: 600; color: var(--ink2); }
+.source-evidence-n { font-weight: 400; color: var(--muted); }
+/* With the common facts above, a row's note and its sources share a line. */
+.source-evidence-table.se-compact .se-note { display: inline; }
+.source-evidence-table.se-compact .se-note + .source-evidence-links { display: inline-flex; margin: 0 0 0 12px; vertical-align: middle; }

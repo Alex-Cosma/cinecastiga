@@ -194,3 +194,11 @@ describe("award_calloffs_over_ceiling (owner, 8 November 2026)", () => {
     expect(FLAG_META.award_calloffs_over_ceiling?.caveat).toContain("eroare de introducere a datelor");
   });
 });
+
+describe("a shared representative's line (UX audit bug, 16 November 2026)", () => {
+  it("ends once after an institution whose name ends in a full stop", () => {
+    const line = riskEvidenceLine("net_shared_admin", { person: "POPESCU ION", n_firms: 3, combined: 1000, authority: "COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE S.A.", roles: ["administrator"] });
+    expect(line).toContain("RUTIERE S.A. Calitatea în ONRC");
+    expect(line).not.toContain("S.A..");
+  });
+});

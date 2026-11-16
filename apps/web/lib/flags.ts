@@ -54,7 +54,7 @@ export const FLAG_META: Record<string, FlagMeta> = {
     label: "O firmă are mare parte din valoare",
     entityRule: "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui, cu 3+ achiziții în 2+ ani (minimum 3 furnizori și 100.000 lei). Utilitățile și firma instituției nu intră.",
     subject: "authority",
-    short: "Un singur furnizor primește o parte mare din valoarea achizițiilor directe.",
+    short: "O firmă are o parte mare din valoarea achizițiilor directe ale instituției.",
     description:
       "Un furnizor are cel puțin 60% din valoarea achizițiilor directe ale instituției, fără cea mai mare achiziție a lui (o achiziție mare nu e o relație), cu cel puțin 3 achiziții în cel puțin 2 ani, la minimum 3 furnizori și 100.000 lei. Furnizorii de utilități și firma instituției (in-house) nu sunt numărați; o companie privată cumpărătoare nu e evaluată.",
     rationale:

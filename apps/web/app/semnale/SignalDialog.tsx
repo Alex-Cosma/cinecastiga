@@ -1,19 +1,38 @@
 "use client";
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type PointerEvent, type ReactNode } from "react";
 
-export default function SignalDialog({ title, children, onClose, wide = false }: {
-  title: string; children: ReactNode; onClose: () => void; wide?: boolean;
+/**
+ * /semnale's dialog. On a phone (≤700 px) it is a sheet from the bottom, 92% of the screen, its list scrolling inside
+ * (UX audit Z6-36, as the tables' funnels and „Salvează în anchetă”); its handle can be pulled down to close it.
+ * `subtitle` says under the title what the numbers inside are.
+ */
+export default function SignalDialog({ title, subtitle, children, onClose, wide = false }: {
+  title: string; subtitle?: string; children: ReactNode; onClose: () => void; wide?: boolean;
 }) {
-  const ref = useRef<HTMLDialogElement>(null), titleId = useId(), close = useRef(onClose);
+  const ref = useRef<HTMLDialogElement>(null), titleId = useId(), close = useRef(onClose), drag = useRef<{ y: number; dy: number } | null>(null);
   close.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null, overflow = document.body.style.overflow, node = ref.current;
     node?.showModal(); document.body.style.overflow = "hidden";
     return () => { node?.close(); document.body.style.overflow = overflow; previous?.focus?.(); };
   }, []);
-  return <dialog ref={ref} className={`sg-dialog${wide ? " sg-dialog-wide" : ""}`} aria-labelledby={titleId}
+  // Pulling the handle down moves the sheet with the finger; past 80 px it closes, short of it the sheet goes back.
+  const down = (e: PointerEvent<HTMLDivElement>) => { drag.current = { y: e.clientY, dy: 0 }; e.currentTarget.setPointerCapture(e.pointerId); };
+  const move = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drag.current || !ref.current) return;
+    drag.current.dy = Math.max(0, e.clientY - drag.current.y);
+    ref.current.style.transform = `translateY(${drag.current.dy}px)`;
+  };
+  const up = () => {
+    if (!drag.current || !ref.current) return;
+    const far = drag.current.dy > 80;
+    drag.current = null; ref.current.style.transform = "";
+    if (far) close.current();
+  };
+  return <dialog ref={ref} className={`sg-dialog sg-sheet${wide ? " sg-dialog-wide" : ""}`} aria-labelledby={titleId}
     onCancel={e => { e.preventDefault(); close.current(); }}>
-    <header><div><h2 id={titleId}>{title}</h2></div>
+    <div className="sg-sheet-handle" aria-hidden="true" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}><span /></div>
+    <header><div><h2 id={titleId}>{title}</h2>{subtitle && <p className="sg-dialog-sub">{subtitle}</p>}</div>
       <button className="sg-icon" onClick={onClose} aria-label="Închide dialogul"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="1.7" /></svg></button></header>
     {children}
   </dialog>;

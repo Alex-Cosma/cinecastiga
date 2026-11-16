@@ -60,3 +60,15 @@ describe("unit prices: the strip and the words", () => {
     expect(leadHref("lapte", "", 2019, { authorityId: "2134596", year: 2019 })).toBe("/preturi/lapte?an=2019&deschis=2134596-2019#institutie-2134596-2019");
   });
 });
+
+describe("the median beside a strip (UX audit Z6-40)", () => {
+  it("is one number for a year, a range said as such across years", async () => {
+    const { medianWords, priceYearLabel, priceYearWithLeads } = await import("./unit-prices-shared");
+    expect(medianWords(2.97, 2.97, "lei/kg", 2019)).toEqual({ label: "mediana 2019", value: "2,97 lei/kg" });
+    expect(medianWords(2.97, 6.55, "lei/kg", null)).toEqual({ label: "mediana, de la an la an", value: "2,97–6,55 lei/kg" });
+    expect(medianWords(3, 3, "lei/kg", null).label).toBe("mediana");
+    expect(priceYearLabel(2025, 0)).toBe("2025 · prea puține date");
+    expect(priceYearLabel(2019, 217)).toBe("2019");
+    expect(priceYearWithLeads({ 2018: 148, 2019: 217, 2025: 0, 2026: 0 })).toBe(2019);
+  });
+});

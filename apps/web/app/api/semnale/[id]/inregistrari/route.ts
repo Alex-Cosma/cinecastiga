@@ -4,7 +4,7 @@ import { sharedSql } from "@/lib/shared-db";
 import { readSignalEvidence } from "@/lib/signal-evidence";
 import { readRecordTitles } from "@/lib/source-evidence";
 import { readFlaggedDas, type CaseRecord } from "@/lib/signal-case";
-import { caseRecordRows } from "@/lib/signal-case-rows";
+import { caseCounterparty, caseRecordRows } from "@/lib/signal-case-rows";
 import { decemberRecords } from "@/lib/signal-mirror";
 import { compareRecordRows, parseRecordSort, RECORDS_PAGE } from "@/lib/record-rows";
 import { EvidenceBusyError, withEvidenceSlot } from "@/lib/evidence-slots";
@@ -47,13 +47,15 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
         return rs.map((r) => ({ ...r, title: titles.get(`${r.src}:${r.refId}`) ?? null }));
       };
       const all = sort.key === "title" ? await titled(records) : records.map((r) => ({ ...r, title: r.title ?? null }));
-      const rows = caseRecordRows(all, alsoIn, code).map((row, i) => ({ row, record: all[i]! }));
+      // With more than one partner each row names its own, as the page's first rows (UX audit Z6-07).
+      const side = caseCounterparty(records, role);
+      const rows = caseRecordRows(all, alsoIn, code, side).map((row, i) => ({ row, record: all[i]! }));
       rows.sort((a, b) => compareRecordRows(a.row, b.row, sort));
       const pages = Math.max(1, Math.ceil(rows.length / RECORDS_PAGE));
       const current = Math.min(page, pages - 1);
       const slice = rows.slice(current * RECORDS_PAGE, (current + 1) * RECORDS_PAGE);
       const out = sort.key === "title" ? slice.map((s) => s.row)
-        : caseRecordRows(await titled(slice.map((s) => s.record)), alsoIn, code).map((row, i) => ({ ...row, key: slice[i]!.row.key }));
+        : caseRecordRows(await titled(slice.map((s) => s.record)), alsoIn, code, side).map((row, i) => ({ ...row, key: slice[i]!.row.key }));
       return { rows: out, total: rows.length, page: current, pages };
     }));
     if (!result) return NextResponse.json({ error: "Semnalul nu mai este disponibil." }, { status: 404 });

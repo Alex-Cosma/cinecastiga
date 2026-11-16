@@ -11,6 +11,7 @@ import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import DomainAtlas, { type AtlasMemory } from "./DomainAtlas";
+import DiscoverNav, { DiscoverNavGhost } from "@/components/discover/DiscoverNav";
 import { DOMAIN_ALIASES as aliases } from "@/lib/cpv-aliases";
 import "./domains.css";
 
@@ -98,11 +99,11 @@ function searchNodes(index: ReturnType<typeof indexDataset>, current: DomainNode
   return disjoint(catalogue.length ? catalogue : official.length ? official : available.filter(node => matches(label(node))), index.parents);
 }
 
-export default function DomainExplorer({ initialData, initialCode = "", initialView = "browse" }: { initialData: DomainDataset; initialCode?: string; initialView?: string }) {
+export default function DomainExplorer({ initialData, initialCode = "", initialView = "browse", initialNotice = "" }: { initialData: DomainDataset; initialCode?: string; initialView?: string; initialNotice?: string }) {
   const [data, setData] = useState(initialData);
   const index = useMemo(() => indexDataset(data), [data]);
   const [route, setRoute] = useState<Route>(() => normalizeRoute({ ...emptyRoute(), code: initialCode, view: initialView === "details" ? "details" : "browse" }, indexDataset(initialData)));
-  const [requestedYear, setRequestedYear] = useState(initialData.year), [loading, setLoading] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const [requestedYear, setRequestedYear] = useState(initialData.year), [loading, setLoading] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(initialNotice);
   const [evidence, setEvidence] = useState<(ReturnType<typeof domainSourceQuery> & { title: string }) | null>(null);
   const latest = useRef({ data, route, index }); latest.current = { data, route, index };
   const request = useRef<AbortController | null>(null), lastBrowse = useRef<ReturnScope | null>(null), position = useRef<Position | null>(null);
@@ -138,10 +139,11 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     else lastBrowse.current = { route: { ...route, view: "browse", query: "" }, scrollY: window.scrollY, year: data.year };
     navigate({ code, view: "details", from: route.code, query: "", all: false }, "heading");
   }
-  function returnToAtlas() {
+  /** Back from a domain's details to an atlas: where the reader was, when that was this domain's (or no domain is asked). */
+  function returnToAtlas(code?: string) {
     const previous = lastBrowse.current;
-    if (previous && previous.year === data.year) navigate({ ...previous.route, view: "browse" }, "restore", previous.scrollY);
-    else browse(route.from || index.parents.get(route.code) || "");
+    if (previous && previous.year === data.year && (code === undefined || previous.route.code === code)) navigate({ ...previous.route, view: "browse" }, "restore", previous.scrollY);
+    else browse(code ?? (route.from || index.parents.get(route.code) || ""));
   }
   function updateSearch(query: string) {
     const next = { ...route, query: query.slice(0, 200) }; setRoute(next); writeHistory(next, data.year, true);
@@ -202,6 +204,8 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     // Cached server props can belong to a previous year on browser Back.
     // Keep the raw code until the requested year's hierarchy is available.
     loadRef.current(year, true, rawRoute, scrollY);
+    // A year without data opened the default one: its note stays on screen (the load above clears notes).
+    if (initialNotice) setNotice(initialNotice);
     window.addEventListener("popstate", restore);
     return () => { window.removeEventListener("popstate", restore); window.history.scrollRestoration = previousScroll; request.current?.abort(); };
   }, []);
@@ -210,7 +214,14 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     if (pending.kind === "restore") window.scrollTo({ top: pending.scrollY ?? 0, behavior: "instant" });
     else if (pending.kind === "heading") { document.getElementById("domain-detail-title")?.focus({ preventScroll: true }); window.scrollTo({ top: 0, behavior: "instant" }); }
     else if (pending.kind === "atlas") {
-      if (pending.canvasTop !== undefined && canvas.current) window.scrollBy({ top: canvas.current.getBoundingClientRect().top - pending.canvasTop, behavior: "instant" });
+      // On a phone the atlas is a screen tall: after a tap the page goes to the crumb, the chosen domain's name and sum (Z6-12).
+      const scope = document.querySelector<HTMLElement>(".dm-atlas-scope");
+      if (route.code && scope && window.matchMedia("(max-width: 700px)").matches) {
+        // The header is whole again after a scroll up (SiteNav): measure it whole, with what it folds away.
+        const header = document.querySelector<HTMLElement>(".site-header");
+        const whole = header ? header.getBoundingClientRect().bottom + (parseFloat(header.style.getPropertyValue("--site-header-fold")) || 0) : 0;
+        window.scrollBy({ top: scope.getBoundingClientRect().top - Math.max(0, whole) - 8, behavior: "instant" });
+      } else if (pending.canvasTop !== undefined && canvas.current) window.scrollBy({ top: canvas.current.getBoundingClientRect().top - pending.canvasTop, behavior: "instant" });
       else canvas.current?.scrollIntoView({ block: "center", behavior: "instant" });
       document.getElementById("domain-atlas-heading")?.focus({ preventScroll: true });
     }
@@ -226,24 +237,25 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
   return <div className="domains-page">
     <span className="dm-sr-only" role="status">{loading ? "" : `${selected ? label(selected) : "Toate domeniile"}, ${data.year}. ${number.format(nodes.length)} categorii în această vedere.`}</span>
     {loading && <FloatStatus>Pregătim atlasul pentru {requestedYear}…</FloatStatus>}
+    <DiscoverNav current="domenii" />
     {details && selected ? <>
-      <nav className="dm-breadcrumbs" aria-label="Poziția în domenii"><button type="button" className="dm-atlas-return" onClick={returnToAtlas} disabled={blocked}><Icon name="back" size={12} />Înapoi la atlas</button><button type="button" onClick={() => browse("")} disabled={blocked}>Toate domeniile</button>{ancestors.map((node, i) => <span className="dm-crumb" key={node.code}><Icon name="chevron" size={10} />{i === ancestors.length - 1 ? <span aria-current="page">{label(node)}</span> : <button type="button" disabled={blocked} onClick={() => browse(node.code)}>{label(node)}</button>}</span>)}</nav>
+      <nav className="dm-breadcrumbs" aria-label="Poziția în domenii">{/* One way back (UX audit Z6-12): the crumb; its last step, the domain itself, opens its atlas where it was left (a leaf has none). */}<button type="button" onClick={() => browse("")} disabled={blocked}>Toate domeniile</button>{ancestors.map((node, i) => <span className="dm-crumb" key={node.code}><Icon name="chevron" size={10} />{i === ancestors.length - 1 && node.isLeaf ? <span aria-current="page">{label(node)}</span> : <button type="button" disabled={blocked} aria-current={i === ancestors.length - 1 ? "page" : undefined} onClick={() => i === ancestors.length - 1 ? returnToAtlas(node.code) : browse(node.code)}>{label(node)}</button>}</span>)}</nav>
       <section className="dm-detail-hero"><div><div className="dm-detail-title-line"><span className="dm-detail-icon" style={{ "--category-color": index.colors.get(selected.code), "--category-ink": inkOf(index.colors.get(selected.code) ?? "") } as CSSProperties}><Icon name={categoryIcon(selected.code)} size={29} /></span><div><p className="dm-eyebrow">{selected.nodeKind === "remainder" ? "DOMENII GRUPATE" : `CPV ${selected.cpvFullCode || selected.code}`} · {data.year}</p><h1 id="domain-detail-title" tabIndex={-1}>{label(selected)}</h1></div></div><p className="dm-official-name">{selected.nodeKind === "remainder" ? `${selected.children?.length ?? 0} diviziuni CPV, păstrate integral în total. Alege una pentru a continua.` : selected.officialName}</p></div><div className="dm-detail-actions"><button type="button" className="dm-button" disabled={blocked} onClick={() => sources(selected)}>Vezi înregistrările <Icon name="arrow" size={15} /></button></div></section>
       <div className="dm-detail-period">{scopeChips}</div>
       <div className={`dm-stats-row${loading ? " g-stale" : ""}`}><div className="dm-stat"><span className="dm-stat-label">Valoare înregistrată</span><strong className="dm-stat-value" title={formatEvidenceAmount(selected.valueExact)}>{compact(selected.value)} lei</strong><span className="dm-stat-foot">{formatEvidenceAmount(selected.valueExact)}</span></div><div className="dm-stat"><span className="dm-stat-label">Înregistrări în selecție</span><strong className="dm-stat-value">{number.format(selected.count)}</strong><span className="dm-stat-foot">Achiziții directe + atribuiri pe câștigător</span></div><div className="dm-stat"><span className="dm-stat-label">Pondere în {selectedParent ? label(selectedParent).toLocaleLowerCase("ro") : "totalul național"}</span><strong className="dm-stat-value">{percentage(selected.value, selectedParent?.value ?? data.total)}%</strong><span className="dm-stat-foot">{data.year} · înregistrări cu cod CPV</span></div></div>
     </> : <>
-      <section className="dm-hero"><div><p className="dm-eyebrow"><span className="dm-dash" />DESCOPERĂ / DOMENII</p><h1>Ce cumpără <br /><em>instituțiile publice?</em></h1></div><aside className={`dm-hero-context${loading ? " g-stale" : ""}`}><p className="dm-eyebrow">VALOARE ÎNREGISTRATĂ · {data.year}</p><div className="dm-national-value" title={formatEvidenceAmount(data.totalExact)}>{compact(data.total)} <span>lei</span></div><p className="dm-context-note"><strong>{number.format(data.count)} înregistrări</strong> cu cod CPV<br />Achiziții directe și contracte atribuite</p><button type="button" className="dm-tiny-link" disabled={blocked} onClick={() => sources()}>Vezi înregistrările <Icon name="up" size={12} /></button></aside></section>
+      <section className="dm-hero"><div>{/* where the page is: said by the local row above (Z6-08), no eyebrow repeating it */}<h1>Ce cumpără <br /><em>instituțiile publice?</em></h1></div><aside className={`dm-hero-context${loading ? " g-stale" : ""}`}><p className="dm-eyebrow">VALOARE ÎNREGISTRATĂ · {data.year}</p><div className="dm-national-value" title={formatEvidenceAmount(data.totalExact)}>{compact(data.total)} <span>lei</span></div><p className="dm-context-note"><strong>{number.format(data.count)} înregistrări</strong> cu cod CPV<br />Achiziții directe și contracte atribuite</p><button type="button" className="dm-tiny-link" disabled={blocked} onClick={() => sources()}>Vezi înregistrările <Icon name="up" size={12} /></button></aside></section>
       <div className="dm-search-row"><label className="dm-search-box"><Icon name="search" /><input ref={search} type="search" value={route.query} disabled={blocked} maxLength={200} placeholder={selected ? `Caută în ${label(selected)}…` : "Caută un domeniu sau un cod CPV…"} aria-label="Caută un domeniu sau cod CPV" autoComplete="off" onChange={event => updateSearch(event.target.value)} />{route.query && <button type="button" className="dm-clear-search" aria-label="Șterge căutarea" disabled={blocked} onClick={() => { updateSearch(""); search.current?.focus(); }}><Icon name="close" size={15} /></button>}</label>{scopeChips}</div>
       <div className="dm-quick-search"><span>Încearcă</span>{["Construcții", "Medical", "Servicii IT", "Spații verzi"].map(query => <button key={query} type="button" disabled={blocked} onClick={() => quickSearch(query)}>{query}</button>)}</div>
     </>}
     {notice && <p className="dm-notice" role="status">{notice}</p>}
     <section className={`dm-listing${loading ? " g-stale" : ""}`} aria-label="Atlasul domeniilor" aria-busy={loading || undefined}>
-      <div className="dm-atlas-scope"><div className="dm-atlas-path">{!details && <nav aria-label="Traseul din atlas"><button type="button" disabled={blocked} onClick={() => browse("")}>Toate domeniile</button>{ancestors.map((node, i) => <span className="dm-crumb" key={node.code}><Icon name="chevron" size={11} />{i === ancestors.length - 1 ? <span aria-current="page">{label(node)}</span> : <button type="button" disabled={blocked} onClick={() => browse(node.code)}>{label(node)}</button>}</span>)}</nav>}{selected && <button type="button" className="dm-atlas-back" disabled={blocked} onClick={() => browse(index.parents.get(selected.code) || "")}><Icon name="back" size={13} />Un nivel înapoi</button>}</div>{!details && <div className="dm-atlas-summary"><div><h2 id="domain-atlas-heading" tabIndex={-1}>{route.query ? `Rezultate pentru „${route.query}”` : selected ? label(selected) : "Toate domeniile"}</h2><p>{compact(shownTotal)} lei <span>·</span>{number.format(route.query ? nodes.reduce((sum, node) => sum + node.count, 0) : selected?.count ?? data.count)} înregistrări</p></div>{route.query.trim() && nodes.length > 100 ? <span className="dm-source-hint">Surse pe fiecare categorie: deschide detaliile cu ↗.</span> : selected && !details && !route.query.trim() ? <button type="button" className="dm-button dm-secondary" disabled={blocked} onClick={() => openDetails(selected.code)}>Detalii despre domeniu <Icon name="up" size={15} /></button> : (selected || route.query.trim()) && <button type="button" className="dm-text-link" disabled={blocked} onClick={viewSources}>Vezi înregistrările <Icon name="up" size={14} /></button>}</div>}</div>
+      <div className="dm-atlas-scope"><div className="dm-atlas-path">{!details && (selected || route.query) && <nav aria-label="Traseul din atlas"><button type="button" disabled={blocked} onClick={() => browse("")}>Toate domeniile</button>{ancestors.map((node, i) => <span className="dm-crumb" key={node.code}><Icon name="chevron" size={11} />{i === ancestors.length - 1 ? <span aria-current="page">{label(node)}</span> : <button type="button" disabled={blocked} onClick={() => browse(node.code)}>{label(node)}</button>}</span>)}</nav>}</div>{!details && <div className="dm-atlas-summary"><div><h2 id="domain-atlas-heading" tabIndex={-1}>{route.query ? `Rezultate pentru „${route.query}”` : selected ? label(selected) : "Toate domeniile"}</h2>{(selected || route.query) && <p>{compact(shownTotal)} lei <span>·</span>{number.format(route.query ? nodes.reduce((sum, node) => sum + node.count, 0) : selected?.count ?? data.count)} înregistrări</p>}</div>{route.query.trim() && nodes.length > 100 ? <span className="dm-source-hint">Surse pe fiecare categorie: deschide detaliile cu ↗.</span> : selected && !details && !route.query.trim() ? <button type="button" className="dm-button dm-secondary" disabled={blocked} onClick={() => openDetails(selected.code)}>Detalii despre domeniu <Icon name="arrow" size={15} /></button> : (selected || route.query.trim()) && <button type="button" className="dm-text-link" disabled={blocked} onClick={viewSources}>Vezi înregistrările <Icon name="up" size={14} /></button>}</div>}</div>
       <div className="dm-section-heading"><div className="dm-section-title"><h2>{route.query ? "Categorii fără suprapunere" : selected ? selected.isLeaf ? "Ultimul nivel al clasificării" : "Intră într-un subdomeniu" : "Domenii"}</h2><span className="dm-count">{nodes.length}</span></div>{!selected?.isLeaf && <label className="dm-sort-control"><span>Ordonează</span><select aria-label="Ordonează domeniile" disabled={blocked} value={route.sort} onChange={event => { const next = { ...route, sort: event.target.value as Route["sort"] }; setRoute(next); writeHistory(next, data.year, true); }}><option value="value">După valoare</option><option value="name">Alfabetic</option></select></label>}</div>
       <div className="dm-content-frame">
         <div className={`dm-frame-content${error ? " dm-frame-off" : ""}`} inert={blocked} aria-hidden={error ? true : undefined}>
-          {selected?.isLeaf && details ? <div className="dm-leaf-note"><button type="button" className="dm-button dm-secondary" onClick={() => sources(selected)}>Deschide sursele <Icon name="up" size={15} /></button></div> : <div className="dm-atlas-layout" ref={canvas}><div className="dm-atlas-stage"><DomainAtlas nodes={atlasNodes} onExplore={browse} onDetails={openDetails} shareLabel={route.query ? "din rezultatele căutării" : "din selecție"}
-            scope={`${route.code}|${route.all ? "all" : ""}|${route.query.trim() ? "search" : ""}`} memory={atlasMemory} />{!nodes.length && <div className="dm-empty"><h3>Niciun domeniu găsit</h3><p>Încearcă un cuvânt mai simplu sau un cod CPV.</p>{route.query && <button type="button" className="dm-button dm-secondary" onClick={() => updateSearch("")}>Resetează căutarea</button>}</div>}</div><aside className="dm-atlas-side"><p className="dm-eyebrow dm-side-head">DOMENIILE DIN ACEASTĂ VEDERE<Term id="atlas-navigare" tip /></p><div className="dm-atlas-list">{nodes.map(node => <div className="dm-atlas-list-row" key={node.code}><button type="button" onClick={() => browse(node.code)} aria-label={`${node.isLeaf ? "Vezi detaliile" : "Explorează subdomeniile"}: ${label(node)}`}><i style={{ background: index.colors.get(node.code) }} /><span className="dm-list-name">{label(node)}</span><span className="dm-list-percent">{percentage(node.value, shownTotal)}%</span></button><button type="button" className="dm-list-details" onClick={() => openDetails(node.code)} aria-label={`Vezi detaliile: ${label(node)}`}><Icon name="up" size={15} /></button></div>)}</div></aside></div>}
+          {selected?.isLeaf && details ? <div className="dm-leaf-note"><button type="button" className="dm-button dm-secondary" onClick={() => sources(selected)}>Deschide sursele <Icon name="up" size={15} /></button></div> : <div className="dm-atlas-layout" ref={canvas}>{nodes.length > 0 && <SharesBar nodes={nodes} total={shownTotal} color={(code) => index.colors.get(code) ?? "var(--line2)"} />}<div className="dm-atlas-stage"><DomainAtlas nodes={atlasNodes} onExplore={browse} onDetails={openDetails} shareLabel={route.query ? "din rezultatele căutării" : "din selecție"}
+            scope={`${route.code}|${route.all ? "all" : ""}|${route.query.trim() ? "search" : ""}`} memory={atlasMemory} />{!nodes.length && <div className="dm-empty"><h3>Niciun domeniu găsit</h3><p>Încearcă un cuvânt mai simplu sau un cod CPV.</p>{route.query && <button type="button" className="dm-button dm-secondary" onClick={() => updateSearch("")}>Resetează căutarea</button>}</div>}</div><aside className="dm-atlas-side"><p className="dm-eyebrow dm-side-head">DOMENIILE DIN ACEASTĂ VEDERE<Term id="atlas-navigare" tip /></p><div className="dm-atlas-list">{nodes.map(node => <div className="dm-atlas-list-row" key={node.code}><button type="button" onClick={() => browse(node.code)} aria-label={`${node.isLeaf ? "Vezi detaliile" : "Explorează subdomeniile"}: ${label(node)}`}><i style={{ background: index.colors.get(node.code) }} /><span className="dm-list-name">{label(node)}</span><span className="dm-list-percent">{percentage(node.value, shownTotal)}%</span><span className="dm-list-go" aria-hidden="true">›</span></button></div>)}</div></aside></div>}
         </div>
         {error && <div className="dm-error-cover" role="alert"><Icon name="search" size={28} /><h3>Datele pentru {requestedYear} nu au putut fi încărcate.</h3><p>{error}</p><button type="button" className="dm-button" onClick={() => { const retry = failedLoad.current; if (retry) void loadYear(retry.year, retry.restore, retry.target, retry.scrollY); else void loadYear(requestedYear); }}>Încearcă din nou <Icon name="arrow" size={15} /></button><button type="button" className="dm-text-link" onClick={() => { request.current?.abort(); setError(""); setRequestedYear(data.year); writeHistory(route, data.year, true); }}>Revino la {data.year}</button></div>}
       </div>
@@ -254,6 +266,24 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     <details className="dm-method" ref={method}><summary>Despre datele și clasificarea din acest atlas</summary><p>{data.scopeNote}</p><p>{data.hierarchyNote}</p><p>Denumirile scurte sunt etichete de navigare; denumirile CPV din catalog apar în informațiile fiecărei zone și în detalii. Valorile reprezintă înregistrări, nu plăți confirmate.</p>{data.year === currentYear && <p>Anul {data.year} este în curs. Datele acoperă înregistrările disponibile, nu un an calendaristic încheiat.</p>}<p>Agregare generată la {new Date(data.generatedAt).toLocaleString("ro-RO", { timeZone: "Europe/Bucharest" })}, ora României.</p><Link href="/metodologie">Citește metodologia <Icon name="up" size={13} /></Link></details>
     {evidence && <EvidenceDrawer key={JSON.stringify({ spec: evidence.spec, scope: evidence.scope })} spec={evidence.spec} scope={evidence.scope} title={evidence.title} onClose={() => setEvidence(null)} />}
   </div>;
+}
+
+/**
+ * On a phone, in place of the atlas (UX audit Z6-32): one bar of the shares, the five largest domains in their colours
+ * (the list's dots) and the rest in one grey piece; the list under it is the control. A picture, its shares in words.
+ */
+function SharesBar({ nodes, total, color }: { nodes: readonly DomainNode[]; total: number; color: (code: string) => string }) {
+  // „Celelalte domenii” (the grouped remainder) is part of the grey piece, as the rest.
+  const sorted = [...nodes].sort((a, b) => b.value - a.value), named = sorted.filter((n) => n.nodeKind !== "remainder");
+  const top = named.slice(0, 5), rest = sorted.filter((n) => !top.includes(n)).reduce((sum, n) => sum + n.value, 0);
+  const whole = total > 0 ? total : sorted.reduce((sum, n) => sum + n.value, 0) || 1;
+  const words = [...top.map((n) => `${label(n)} ${percentage(n.value, whole)}%`), ...(rest > 0 ? [`celelalte ${percentage(rest, whole)}%`] : [])].join(", ");
+  return <figure className="dm-sharebar">
+    <div className="dm-sharebar-bar" role="img" aria-label={`Ponderea domeniilor: ${words}`}>
+      {top.map((n) => <i key={n.code} style={{ flexGrow: n.value, background: color(n.code) }} />)}{rest > 0 && <i className="rest" style={{ flexGrow: rest }} />}
+    </div>
+    <figcaption>Ponderea fiecărui domeniu din valoarea înregistrată.</figcaption>
+  </figure>;
 }
 
 /* The atlas's ghost: nine tiles of a fixed decorative treemap in the real atlas box (not data), 4 px gutters. */
@@ -267,19 +297,21 @@ const ATLAS_GHOST = [[0, 0, 422, 475], [422, 0, 288, 266], [422, 266, 288, 209],
 export function DomainsGhost() {
   return <Ghost className="domains-page" name="domenii" label="Se încarcă domeniile de achiziții…" wait="suspense">
     <div inert>
-      <section className="dm-hero"><div><p className="dm-eyebrow"><span className="dm-dash" />DESCOPERĂ / DOMENII</p><h1>Ce cumpără <br /><em>instituțiile publice?</em></h1></div>
+      <DiscoverNavGhost current="domenii" />
+      <section className="dm-hero"><div><h1>Ce cumpără <br /><em>instituțiile publice?</em></h1></div>
         <aside className="dm-hero-context"><p className="dm-eyebrow">VALOARE ÎNREGISTRATĂ · <G.Line inline w="4ch" /></p><div className="dm-national-value"><G.Line inline w="5.6em" />{"\u200b"}</div><p className="dm-context-note"><G.Line inline w="17em" />{"\u200b"}<br />Achiziții directe și contracte atribuite</p><button type="button" className="dm-tiny-link">Vezi înregistrările <Icon name="up" size={12} /></button></aside></section>
       <div className="dm-search-row"><label className="dm-search-box"><Icon name="search" /><input type="search" placeholder="Caută un domeniu sau un cod CPV…" aria-label="Caută un domeniu sau cod CPV" readOnly /></label>
         <div className="dm-scope-chips"><span className="dm-scope-static"><Icon name="globe" size={15} />Toată România</span><span className="dm-scope-chip"><Icon name="calendar" size={15} /><G.Line inline w="96px" /></span></div></div>
       <div className="dm-quick-search"><span>Încearcă</span>{["Construcții", "Medical", "Servicii IT", "Spații verzi"].map(query => <button key={query} type="button">{query}</button>)}</div>
       <section className="dm-listing">
-        <div className="dm-atlas-scope"><div className="dm-atlas-path"><nav><button type="button">Toate domeniile</button></nav></div>
-          <div className="dm-atlas-summary"><div><h2>Toate domeniile</h2><p><G.Line w="15rem" /></p></div></div></div>
+        <div className="dm-atlas-scope"><div className="dm-atlas-path" />
+          <div className="dm-atlas-summary"><div><h2>Toate domeniile</h2></div></div></div>
         <div className="dm-section-heading"><div className="dm-section-title"><h2>Domenii</h2><span className="dm-count"><G.Line inline w="1.2ch" /></span></div><label className="dm-sort-control"><span>Ordonează</span><select aria-label="Ordonează domeniile" defaultValue="value"><option value="value">După valoare</option><option value="name">Alfabetic</option></select></label></div>
         <div className="dm-content-frame"><div className="dm-frame-content"><div className="dm-atlas-layout">
+          <figure className="dm-sharebar"><div className="dm-sharebar-bar" /><figcaption>Ponderea fiecărui domeniu din valoarea înregistrată.</figcaption></figure>
           <div className="dm-atlas-stage"><div className="domain-atlas"><svg className="dm-atlas-ghost" viewBox="0 0 960 475" preserveAspectRatio="none" aria-hidden="true">{ATLAS_GHOST.map(([x, y, w, h], i) => <rect key={i} className="g-svg" x={x + 2} y={y + 2} width={w - 4} height={h - 4} rx="5" />)}</svg></div></div>
           <aside className="dm-atlas-side"><p className="dm-eyebrow dm-side-head">DOMENIILE DIN ACEASTĂ VEDERE<Term id="atlas-navigare" tip /></p>
-            <div className="dm-atlas-list">{Array.from({ length: 9 }, (_, i) => <div className="dm-atlas-list-row" key={i}><button type="button"><i style={{ background: "var(--line)" }} /><span className="dm-list-name"><G.Line w={rankWidth(i, 86, 6, 44)} /></span><span className="dm-list-percent"><G.Line inline w="3.4ch" /></span></button><button type="button" className="dm-list-details"><Icon name="up" size={15} /></button></div>)}</div></aside>
+            <div className="dm-atlas-list">{Array.from({ length: 9 }, (_, i) => <div className="dm-atlas-list-row" key={i}><button type="button"><i style={{ background: "var(--line)" }} /><span className="dm-list-name"><G.Line w={rankWidth(i, 86, 6, 44)} /></span><span className="dm-list-percent"><G.Line inline w="3.4ch" /></span><span className="dm-list-go" aria-hidden="true">›</span></button></div>)}</div></aside>
         </div></div></div>
         <div className="dm-caption"><span>Top 8 + <G.Line inline w="2ch" /> grupate · fiecare înregistrare o singură dată</span><button type="button">Toate cele <G.Line inline w="2ch" /> <Icon name="arrow" size={11} /></button></div>
       </section>

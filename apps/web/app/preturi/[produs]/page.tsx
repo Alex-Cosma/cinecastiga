@@ -9,11 +9,13 @@ import { BUYERS_PAGE, DEFAULT_PRICE_ORDER, LEAD_RULE, getProductPage, productHre
 import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
-import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, priceHref, sentenceCase } from "@/lib/unit-prices-shared";
+import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
 import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } from "../PriceStrips";
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
 import PriceMethod from "../PriceMethod";
+import YearSelect from "../YearSelect";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import "../preturi.css";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +79,8 @@ export default async function ProdusPage({ params, searchParams }: {
   const seasonal = isSeasonal(family.group);
   const sortOf = (k: PriceBuyerSort) => data.sort === k ? (data.dir === "asc" ? "ascending" as const : "descending" as const) : "none" as const;
   const first = data.page * BUYERS_PAGE + 1, last = Math.min(data.total, (data.page + 1) * BUYERS_PAGE);
+  // What the pager counts (UX audit Z6-14): the leads, or every institution's row.
+  const rowsUnit = data.onlyLeads ? ["preț peste dublu", "prețuri peste dublu"] as const : ["rând", "rânduri"] as const;
   return <div className="pr-page pr-product">
     <p className="pr-crumb"><Link href={priceHref({ year: data.year, group: null, product: null, county: null, order: DEFAULT_PRICE_ORDER })}>Prețuri</Link>
       <span aria-hidden="true"> / </span><Link href={priceHref({ year: data.year, group: family.group, product: null, county: null, order: DEFAULT_PRICE_ORDER })}>{PRICE_GROUP_LABEL[family.group]}</Link></p>
@@ -85,16 +89,15 @@ export default async function ProdusPage({ params, searchParams }: {
     {(data.packs.length > 0 || data.years.length > 1) && <nav className="pr-switch" aria-label="Ambalajul și anul">
       {data.packs.length > 0 && <ul className="pr-tabs">{data.packs.map((p) =>
         <li key={p.slug}><Link href={productHref(family.slug, p.slug, data.year)} aria-current={p.slug === data.pack ? "page" : undefined} prefetch={false}>{p.label}</Link></li>)}</ul>}
-      {data.years.length > 1 && <ul className="pr-tabs pr-years">
-        <li><Link href={productHref(family.slug, data.pack, null)} aria-current={data.year == null ? "page" : undefined} prefetch={false}>Toți anii</Link></li>
-        {data.years.map((y) =>
-        <li key={y}><Link href={productHref(family.slug, data.pack, y)} aria-current={y === data.year ? "page" : undefined} prefetch={false}>{y}</Link></li>)}</ul>}
+      {/* The year: the same labelled select as on /preturi (UX audit Z6-34). */}
+      {data.years.length > 1 && <YearSelect action={`/preturi/${family.slug}`} year={data.year} years={data.years}
+        labels={Object.fromEntries(data.years.map((y) => [y, priceYearLabel(y, data.yearLeads[y])]))} keep={data.pack ? { ambalaj: data.pack } : {}} />}
     </nav>}
     {data.yearMissing && <p className="pr-note" role="status">Pentru {data.yearMissing} nu avem prețuri de comparat la acest produs: sunt toți anii.</p>}
     {!g ? <p className="pr-empty">Mai puțin de cinci instituții au cumpărat {family.label.toLowerCase()} în acest ambalaj {data.year ? `în ${data.year}` : "într-un an"}: nu avem cu ce compara.</p> : <>
       <section className="pr-hero" aria-labelledby="pr-hero-h">
         <h2 id="pr-hero-h" className="pr-hero-line">{data.year ? <>În {data.year}, mediana a fost <b>{medianRange(g.medianLo, g.medianHi, g.per)}</b>, la {buyersWord(g.buyers)}.</>
-          : <>Mediana anului: <b>{medianRange(g.medianLo, g.medianHi, g.per)}</b>, la {buyersWord(g.buyers)}.</>}
+          : <>{(() => { const m = medianWords(g.medianLo, g.medianHi, g.per, null); return <>{m.label.charAt(0).toUpperCase() + m.label.slice(1)}: <b>{m.value}</b></>; })()}, la {buyersWord(g.buyers)}.</>}
           {" "}{g.thin ? "Prea puține instituții pentru piste." : `${sentenceCase(leadsWord(g.leads))}.`}</h2>
         {g.thin && <p className="pr-note">O pistă cere un produs cu cel puțin {countWord(LEAD_RULE.buyers, "o instituție", "instituții")} într-un an; aici banda arată doar cum se împrăștie prețurile.</p>}
         {g.mixed && <p className="pr-caution">{MIXED_CAUTION}</p>}
@@ -141,11 +144,9 @@ export default async function ProdusPage({ params, searchParams }: {
                 : "Nicio instituție de arătat."}</td></tr></tbody>}
           </table>
         </div>
-        {pages > 1 && <nav className="pr-pager" aria-label="Paginile listei">
-          {data.page > 0 && <RegionLink href={here({ pagina: data.page > 1 ? String(data.page) : null, deschis: null })}>← Înapoi</RegionLink>}
-          <span>Pagina {data.page + 1} din {pages}</span>
-          {data.page + 1 < pages && <RegionLink href={here({ pagina: String(data.page + 2), deschis: null })}>Înainte →</RegionLink>}
-        </nav>}
+        {/* The pager of the „Descoperă” pages (UX audit Z6-14). */}
+        {pages > 1 && <DiscoverPager page={data.page} pageSize={BUYERS_PAGE} total={data.total} unit={rowsUnit} label="Paginile listei"
+          href={(p) => here({ pagina: p > 0 ? String(p + 1) : null, deschis: null })} link={RegionLink} bottom className="pr-dsc-pager" />}
       </PendingRegion>
     </>}
     <PriceMethod />

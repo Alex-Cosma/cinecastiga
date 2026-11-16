@@ -116,3 +116,75 @@
 }
 /* back to the list's top lands under the sticky header */
 .sg-results{scroll-margin-top:calc(var(--site-header-h, 91px) + 12px)}
+
+/* What a list leaves out by default, with the way back in (owner, 16 November 2026, UX audit Z6-01/Z6-04): one quiet
+   line under the count, as Întreabă says it under its list (scatter.css .sc-hist). The link keeps the line's height;
+   its 44 px target on a phone reaches past it. */
+.sg-left-out{margin:10px 0 4px;font-size:13px;line-height:1.5;color:var(--muted)}
+.sg-left-out a{position:relative;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.sg-left-out a::after{content:"";position:absolute;left:-6px;right:-6px;top:50%;height:44px;transform:translateY(-50%)}
+/* An inactive profile listed on request: a neutral tag after its name (lib/ask/historic.ts historicFact), its explanation
+   on hover or a tap, no "?" (the signal tags' convention, 15 November 2026). */
+.sg-inactive{position:relative;z-index:1;margin-left:8px;vertical-align:1px}
+.sg-inactive>.term-trigger{display:inline-flex;align-items:center;min-height:22px;padding:1px 8px;border:1px solid var(--line2);border-radius:5px;background:var(--sunk);color:var(--ink2);font:500 12px/1.4 var(--body);text-decoration:none;white-space:nowrap;cursor:help}
+.sg-inactive>.term-trigger:hover,.sg-inactive.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
+.sg-inactive>.term-trigger>.term-mark{display:none}
+@media(max-width:700px){.sg-inactive{display:table;margin:4px 0 0}}
+/* A group at 1,2× its ceiling or under, listed on request (Z6-04): it adds nothing to the score, so its multiple is not red. */
+.sg-x.under{color:var(--muted);font-size:16px}
+
+/* The pattern's name once (UX audit Z6-15): the field „Tip de semnal” is written as the section's title, the h2 under it
+   is for the outline only, the methodology is one link beside the description. */
+.sg-explorer .sg-type-button>span:first-child{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.02em;line-height:1.15}
+.sg-context:has(h2.sr-only){padding-top:14px}
+@media(max-width:700px){.sg-explorer .sg-type-button>span:first-child{font-size:18px}}
+
+/* What every row would repeat, said once (UX audit Z6-17): a head over the columns on a wide screen, in the rows' own
+   grid; on a phone, one line over the cards. */
+.sg-case-head{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) 170px 150px 122px 20px;gap:18px;align-items:end;padding:10px 6px 8px;border-bottom:1px solid var(--line);font:600 12px/1.3 var(--body);letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.sg-case-head .r{text-align:right}
+.sg-list-line{display:none;margin:8px 0 2px;font-size:13px;line-height:1.5;color:var(--muted)}
+@media(max-width:1000px){.sg-case-head{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 130px 120px 104px 18px;gap:12px}}
+@media(max-width:700px){.sg-case-head{display:none}.sg-list-line{display:block}}
+
+/* The ranking's order from its head (UX audit Z6-20), in the rows' own grid; on a phone, where the rows are cards, one
+   select in the controls instead. */
+.sg-rank-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,1.15fr) 120px 20px;gap:18px;align-items:end;padding:8px 6px 6px;border-bottom:1px solid var(--line);font:600 12px/1.3 var(--body);letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.sg-rank-head .c{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px}
+.sg-rank-head .c.r{justify-content:flex-end}
+.sg-explorer .sg-rank-head .sg-sort{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0;border:0;background:none;font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--muted);cursor:pointer}
+.sg-explorer .sg-rank-head .sg-sort:hover:not(:disabled){background:none;color:var(--ink)}
+.sg-explorer .sg-rank-head .sg-sort.on{color:var(--accent)}
+.sg-rank-head .sg-sort span{font-size:10px;opacity:.75}
+.sg-cri-controls .sg-sort-phone{display:none}
+@media(max-width:700px){
+  .sg-rank-head{display:none}
+  .sg-cri-controls .sg-sort-phone{display:flex;flex:1 1 100%;align-items:center;gap:10px;font-size:14px;color:var(--ink2)}
+  .sg-cri-controls .sg-sort-phone select{flex:1;max-width:none;min-height:44px;font-size:16px}
+}
+
+/* /semnale on a phone (UX audit Z6-36): the types in a sheet from the bottom, 92% of the screen, its handle pulled down
+   to close it, the note under the title; „Instituții / Firme” and the county in the page, on one row under the type. */
+.sg-dialog-sub{margin:0;font-size:13px;line-height:1.4;color:var(--muted)}
+.sg-sheet-handle{display:none}
+@media(max-width:700px){
+  dialog.sg-sheet[open]{position:fixed;inset:auto 0 0 0;margin:0;width:100%;max-width:100%;height:92dvh;max-height:92dvh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;transition:transform var(--fast) var(--ease)}
+  .sg-sheet .sg-sheet-handle{display:flex;justify-content:center;flex:none;padding:8px 0 4px;touch-action:none;cursor:grab}
+  .sg-sheet .sg-sheet-handle span{width:40px;height:4px;border-radius:2px;background:var(--line2)}
+  dialog.sg-sheet[open] header{padding:8px 18px 8px}
+  dialog.sg-sheet[open] .sg-type-options{flex:1;height:auto;min-height:0}
+  .sg-filters{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center}
+  .sg-filters .sg-type-field{grid-column:1/-1}
+  .sg-explorer .sg-desktop-filter{display:block;min-width:0}
+  .sg-filters .sg-desktop-filter .sg-label{display:none}
+  .sg-filters .sg-segmented{min-height:48px}
+  .sg-filters .sg-segmented button{padding:0 12px;font-size:14px}
+  .sg-filters select{min-height:48px;font-size:16px}
+}
+@media(max-width:700px) and (prefers-reduced-motion:reduce){dialog.sg-sheet[open]{transition:none}}
+
+/* No result (UX audit Z6-19): the sentence and one button per condition to take off; an empty histogram column is grey
+   and cannot be pressed. */
+.sg-empty-acts{display:flex;flex-wrap:wrap;gap:10px}
+.sg-explorer .sg-histogram button:disabled{opacity:.5;cursor:default}
+.sg-explorer .sg-histogram button:disabled:hover{background:none}

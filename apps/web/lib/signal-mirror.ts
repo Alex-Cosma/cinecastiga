@@ -19,6 +19,18 @@ export const SPLIT_COUNTS_ABOVE = 1.2;
 /** "3,0×": a multiple of the ceiling, one decimal. */
 export const ratioWords = (r: number): string => `${(Math.round(r * 10) / 10).toFixed(1).replace(".", ",")}×`;
 
+/**
+ * A group's multiple of its ceiling, never on the wrong side of the score's 1,2× (UX audit bug, 16 November 2026: a
+ * group at 1,199× read „1,2×” beside „sub 1,2×, nu intră în scor”): one decimal, except where that rounding would land
+ * on 1,2× from either side; there two decimals, towards the side the group is on („1,19×”, „1,21×”).
+ */
+export function splitRatioWords(r: number): string {
+  if (Math.round(r * 10) / 10 !== SPLIT_COUNTS_ABOVE || r === SPLIT_COUNTS_ABOVE) return ratioWords(r);
+  const two = r < SPLIT_COUNTS_ABOVE ? Math.floor(r * 100 + 1e-9) / 100 : Math.ceil(r * 100 - 1e-9) / 100;
+  const safe = r < SPLIT_COUNTS_ABOVE ? Math.min(two, 1.19) : Math.max(two, 1.21);
+  return `${safe.toFixed(2).replace(".", ",")}×`;
+}
+
 const MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})/;
 
@@ -90,6 +102,26 @@ export function splitGroup(c: CaseInput): SplitGroup {
     works: String(e.type ?? "").includes("works"), count, total, ceiling, ratio,
     counted: ratio > SPLIT_COUNTS_ABOVE && recurring === null, recurring, items, dates: datesWords(c.records.map((r) => r.date)),
   };
+}
+
+/**
+ * All of an entity's groups of "Adunate, trec de plafon", not only the page's (UX audit Z6-21: the page read 50 and said
+ * „în 50 grupuri” beside a tab of 52): how many, how many count in the score (above 1,2× and not recurring supply),
+ * how many are at 1,2× or under, how many recurring, their acquisitions and their years. From the build's evidence.
+ */
+export interface SplitTotals { groups: number; counted: number; under: number; recurring: number; acquisitions: number; years: { from: string; to: string } | null }
+
+export function splitTotals(evidences: readonly (Record<string, unknown> | null)[]): SplitTotals {
+  let counted = 0, under = 0, recurring = 0, acquisitions = 0;
+  const years: string[] = [];
+  for (const e of evidences) {
+    const g = splitGroup({ id: "", partnerId: null, partnerName: null, period: null, evidence: e, records: [] });
+    if (g.counted) counted++; else if (g.ratio <= SPLIT_COUNTS_ABOVE) under++; else recurring++;
+    acquisitions += g.count;
+    if (g.year) years.push(g.year);
+  }
+  years.sort();
+  return { groups: evidences.length, counted, under, recurring, acquisitions, years: years.length ? { from: years[0]!, to: years[years.length - 1]! } : null };
 }
 
 /** The faces of "Adunate, trec de plafon": every purchase on its own, and the groups summed. */

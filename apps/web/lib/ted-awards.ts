@@ -83,18 +83,14 @@ export function tedSource(sql: DbSql): FilterSource {
   return { columns: TED_COLUMNS, channels: [channel] };
 }
 
-/** One page of the awards under the filters, newest first or by value in lei. */
-export async function getTedAwards(q: { filters: FilterState; sort: "value" | "date"; page: number; pageSize: number }): Promise<{ rows: TedAward[]; total: number; page: number }> {
-  const sql = db();
-  const [channel] = tedSource(sql).channels;
-  const none: Fragment = sql`false`;
-  const filtered = channelWhere(sql, channel!, q.filters) ?? none;
-  // Comparing currencies or framework ceilings to offers would be misleading.
-  const where: Fragment = q.sort === "value" ? sql`${filtered} and ${comparable(sql)}` : filtered;
-  const order = q.sort === "value" ? sql`t.awarded_value desc nulls last, t.ted_lot_result_id` : sql`t.award_date desc nulls last, t.ted_lot_result_id`;
-  const [count] = (await sql`select count(*)::int c from marts.ted_awards t where ${where}`) as unknown as { c: number }[];
-  const total = Number(count?.c ?? 0);
-  const { page, pageSize, offset } = tedPagination(q.page, q.pageSize, total);
+/**
+ * One stretch of an ordered list: `limit` rows from `offset`. Past its middle it is read from the other end, in the
+ * reversed order, and turned back, so the last page of four million rows is as quick as the first (UX audit Z6-14:
+ * the pager jumps to the last page). `order` and `reverse` must be exact mirrors, ties included.
+ */
+async function stretch(sql: DbSql, where: unknown, order: unknown, reverse: unknown, size: number, offset: number, limit: number): Promise<Record<string, unknown>[]> {
+  if (limit <= 0) return [];
+  const back = offset > size / 2;
   const rows = (await sql`
     select ted_lot_result_id, publication_number, buyer_entity_id, buyer_name,
            buyer_county, winner_names, winner_entity_ids, to_jsonb(winner_countries) as winner_countries,
@@ -102,12 +98,45 @@ export async function getTedAwards(q: { filters: FilterState; sort: "value" | "d
            award_date, procedure_type, is_single_bidder, eu_funded, label,
            matched_contract_id, amount_kind, amount_details, lot_id, winner_selection_status, tenders_received
     from marts.ted_awards t
-    where ${where}
-    order by ${order}
-    limit ${pageSize} offset ${offset}
+    where ${where as Fragment}
+    order by ${(back ? reverse : order) as Fragment}
+    limit ${limit} offset ${back ? Math.max(0, size - offset - limit) : offset}
   `) as unknown as Record<string, unknown>[];
+  return back ? rows.reverse() : rows;
+}
+
+/**
+ * One page of the awards under the filters, newest first or by value in lei. By value, every row stays (UX audit
+ * Z6-11: a sort never changes the count): the lei amounts of a payable or a contract value first, largest first, then
+ * the ones without such a value (other currencies, framework ceilings, no amount), newest first; `valued` is how many
+ * come first, so the page can mark where the others begin.
+ */
+export async function getTedAwards(q: { filters: FilterState; sort: "value" | "date"; page: number; pageSize: number }): Promise<{ rows: TedAward[]; total: number; page: number; valued?: number }> {
+  const sql = db();
+  const [channel] = tedSource(sql).channels;
+  const none: Fragment = sql`false`;
+  const filtered = channelWhere(sql, channel!, q.filters) ?? none;
+  const byDate = { order: sql`t.award_date desc nulls last, t.ted_lot_result_id`, reverse: sql`t.award_date asc nulls first, t.ted_lot_result_id desc` };
+  const [count] = (await sql`select count(*)::int c${q.sort === "value" ? sql`, (count(*) filter (where ${comparable(sql)}))::int v` : sql``}
+    from marts.ted_awards t where ${filtered}`) as unknown as { c: number; v?: number }[];
+  const total = Number(count?.c ?? 0);
+  const { page, pageSize, offset } = tedPagination(q.page, q.pageSize, total);
+  const limit = Math.max(0, Math.min(pageSize, total - offset));
+  let rows: Record<string, unknown>[];
+  let valued: number | undefined;
+  if (q.sort === "value") {
+    // Comparing currencies or framework ceilings to offers would be misleading: those come after, by date.
+    valued = Number(count?.v ?? 0);
+    const first = Math.max(0, Math.min(limit, valued - offset));
+    rows = [
+      ...await stretch(sql, sql`${filtered} and ${comparable(sql)}`, sql`t.awarded_value desc nulls last, t.ted_lot_result_id`,
+        sql`t.awarded_value asc nulls first, t.ted_lot_result_id desc`, valued, offset, first),
+      ...await stretch(sql, sql`${filtered} and not coalesce(${comparable(sql)}, false)`, byDate.order, byDate.reverse,
+        total - valued, Math.max(0, offset - valued), limit - first),
+    ];
+  } else rows = await stretch(sql, filtered, byDate.order, byDate.reverse, total, offset, limit);
   return {
-    total, page,
+    total, page, ...(valued !== undefined ? { valued } : {}),
     rows: rows.map((r) => ({
       tedLotResultId: String(r["ted_lot_result_id"]),
       publicationNumber: (r["publication_number"] as string | null) ?? null,

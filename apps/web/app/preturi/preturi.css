@@ -347,3 +347,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pr-sum, .pr-tag, .pr-lines-btn svg { transition: none; }
 }
+
+/* A product's year: the /preturi select, beside the pack's tabs (UX audit Z6-34). */
+.pr-year-form { margin: 0; align-self: flex-end; }

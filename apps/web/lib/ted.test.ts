@@ -60,3 +60,12 @@ describe("TED evidence presentation", () => {
     expect(tedCoverageNote({ observations: [obs("ted", null, null)] }).line).toContain("nu este încă inventariată");
   });
 });
+
+describe("the winners' countries (UX audit bug, 16 November 2026)", () => {
+  it("names every country TED's winners carry, two- and three-letter codes alike", async () => {
+    const { countryName } = await import("./ted-labels");
+    const codes = "AE ARG AT AU AUS AZ BA BE BG BRA CA CH CN COL CY CZ DE DK EE ES FI FR GB GR HK HR HU IDN IE IL IN IT JP KAZ KEN KR KZ LKA LT LV MD MEX MK MT NL NO PA PE PHL PK PL PT RO RS RU SE SGP SI SK THA TR TWN UA UK US UZB VG ZAF".split(" ");
+    for (const code of codes) expect(countryName(code)).not.toBe(code);
+    expect(countryName("BA")).toBe("Bosnia și Herțegovina");
+  });
+});

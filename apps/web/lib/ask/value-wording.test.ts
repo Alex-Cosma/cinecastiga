@@ -35,11 +35,15 @@ describe("value wording (audit F36)", () => {
   // Owner, 7 November 2026: a firm "contracted" (not "received") a value, and a share "is" with a firm (not "the money
   // went to it"); the pattern is "O firmă are mare parte din valoare".
   it.each(["./../signal-case-words.ts", "../../app/semnale/[id]/page.tsx", "../flags.ts", "../../app/metodologie/MethodologyStory.tsx",
-    "../../app/metodologie/MethodologyBehavior.tsx", "../../app/page.tsx"])("%s says contracted, not received", (file) => {
+    "../../app/metodologie/MethodologyBehavior.tsx", "../../app/page.tsx", "../risk-presentation.ts", "../../app/semnale/case/CasePage.tsx", "../../app/semnale/CaseMeter.tsx",
+    "../../app/semnale/SignalsExplorer.tsx"])("%s says contracted, not received", (file) => {
     const source = readFileSync(new URL(file, import.meta.url), "utf8");
     const offending = source.split("\n").filter((line) => /\ba primit\b|\bau mers la\b|\bbanii\b[^.„”]{0,80}\bau mers\b/.test(line));
     expect(offending).toEqual([]);
     expect(source.replace(/„O firmă ia mare parte din bani” → „O firmă primește mare parte din bani”|„O firmă primește mare parte din bani” → /g, "")).not.toContain("primește mare parte din bani");
+    // UX audit Z6-22 (16 November 2026): a supplier "has" a share, it does not "receive" it; a share is of the value, not "of the money".
+    // A rename note („old” → „new”) quotes the old words on purpose.
+    expect(source.split("\n").filter((line) => !line.includes("→")).filter((line) => /\b(?:furnizor|firmă|firma)\s+primește\b|\bprimește o parte (?:mare )?din valoare|\bdin banii achizițiilor\b|\bdin bani, la\b/.test(line))).toEqual([]);
   });
 
   // UX audit Z1-29 (16 November 2026): the home page's question is the site's own verb, „cine câștigă”.

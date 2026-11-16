@@ -6,7 +6,7 @@ import { readDaEvidence, readRecordTitles, type SourceRecord } from "./source-ev
 import { riskNoScoreReason, riskPoints, type RiskCriterion, type ScoreParts } from "./risk-score";
 import { sharedSql } from "./shared-db";
 import { oldestFirst, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "./record-rows";
-import { decemberRecords } from "./signal-mirror";
+import { decemberRecords, splitTotals, type SplitTotals } from "./signal-mirror";
 
 /**
  * One pattern of one entity (/entitati/{id}/semnale?tip=…; owner, 6 November 2026, "Oglinda"): the entity's score and every
@@ -24,6 +24,11 @@ export const CASE_PAGE_SIZE = 50;
  */
 export const CASE_ROW_CODES: ReadonlySet<string> = new Set(["da_round", "da_above_ceiling"]);
 export const CASE_ROW_LIMIT = 2000;
+/**
+ * The patterns whose page reads all of an entity's cases at once: the one-acquisition ones (their table) and the shared
+ * representatives (UX audit Z6-23: one row per institution, its pairs grouped; 1.335 pairs at most in November 2026).
+ */
+export const CASE_ALL_CODES: ReadonlySet<string> = new Set([...CASE_ROW_CODES, "net_shared_admin"]);
 
 /** The acquisitions of one-acquisition signals, in one read (by signal id), as readSignalEvidence reads each. */
 async function readDaSubjects(q: DbSql, ids: readonly string[]): Promise<Map<string, SourceRecord>> {
@@ -44,8 +49,13 @@ export const CASE_RECORD_CODES: ReadonlySet<string> = new Set(["da_split", "da_r
 
 export type CaseRecord = SourceRecord & { title: string | null };
 
+/** A procedure signal's notice, for its row (UX audit Z6-06): what it bought, its TED notices and its contracts. */
+export interface CaseNotice { title: string | null; cpvName: string | null; ted: string[]; contracts: number }
+
 export interface CaseInstance extends SignalInstance {
   records: CaseRecord[];
+  /** A procedure signal's notice (award_*); null for the others. */
+  notice?: CaseNotice | null;
   /** A partner signal's other acquisitions (count, sum, the largest few), set aside. */
   aside: (Omit<AsideRecords, "top"> & { top: CaseRecord[] }) | null;
   /** The balance sheets a firm's capacity or staff signal read. */
@@ -79,6 +89,10 @@ export interface SignalCase {
   pageSize: number;
   /** The other patterns each of these records also shows in (sicap id → codes): "și sub plafon". */
   alsoIn: Record<string, string[]>;
+  /** „Adunate, trec de plafon”: all of the entity's groups counted, beyond the page (UX audit Z6-21). */
+  split?: SplitTotals;
+  /** The groups' CPV classes by name (4 digits → the class's official name): the page names the kind of work (Z6-38). */
+  cpvClassNames?: Record<string, string>;
 }
 
 /** The records of a case whose titles the page shows: all of a short list, the first rows of a long one (and of a year's December). */
@@ -115,12 +129,12 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
   // The counts and the page open their own read-only transactions; the records are read together in one below.
   const [flags, counts, page] = await Promise.all([
     getEntityFlags(state.entity), readEntitySignalCounts(sql, state.entity, state.role),
-    readSignalPage(sql, state, CASE_ROW_CODES.has(state.code) ? CASE_ROW_LIMIT : CASE_PAGE_SIZE),
+    readSignalPage(sql, state, CASE_ALL_CODES.has(state.code) ? CASE_ROW_LIMIT : CASE_PAGE_SIZE),
   ]);
   const row = pickRow(flags, state.role);
   const [named] = row ? [{ name_display: row.name, county: row.county }] : await sql`select name_display, county from core.entities where id = ${state.entity}`;
   if (!named) return null;
-  const { instances, alsoIn } = await sql.begin("isolation level repeatable read read only", async (tx) => {
+  const { instances, alsoIn, split, cpvClassNames } = await sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '30s'`;
     const alsoIn = CASE_RECORD_CODES.has(state.code) ? await readFlaggedDas(q, state) : {};
@@ -148,7 +162,33 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
       i.records = i.records.map(titled);
       if (i.aside) i.aside.top = i.aside.top.map(titled);
     }
-    return { instances, alsoIn };
+    // A procedure signal's row names what the notice bought and its TED notices (UX audit Z6-06): its published title
+    // (rare in the archive), the name of its CPV, the TED publications of the lots the signal cites.
+    const awards = instances.filter((i) => i.subjectType === "award" && i.sourceId);
+    if (awards.length) {
+      const notices = await q`select f.id::text id, nullif(btrim(a.title), '') title, cc.name_ro cpv_name,
+          coalesce((select array_agg(distinct t.publication_number order by t.publication_number) from marts.ted_awards t
+            where t.publication_number is not null and t.ted_lot_result_id in (select (x->>'ted_lot_result_id')::bigint
+              from jsonb_array_elements(case when jsonb_typeof(f.evidence->'contracts') = 'array' then f.evidence->'contracts' else '[]'::jsonb end) x
+              where x->>'ted_lot_result_id' ~ '^[0-9]+$')), '{}') ted,
+          (select count(*)::int from core.contracts c where c.ca_notice_id = s.source_id) contracts
+        from core.flags f join marts.signal_lookup s on s.id = f.id
+        left join core.awards a on a.ca_notice_id = s.source_id
+        left join core.cpv_codes cc on cc.code = coalesce(f.evidence->>'cpv', a.cpv_code)
+        where f.id = any(${awards.map((i) => i.id)}::bigint[])`;
+      const byId = new Map(notices.map((n) => [String(n.id), n]));
+      for (const i of awards) {
+        const n = byId.get(i.id);
+        i.notice = n ? { title: n.title ?? null, cpvName: n.cpv_name ?? null, ted: (n.ted as string[] | null) ?? [], contracts: Number(n.contracts ?? 0) } : null;
+      }
+    }
+    // The words over the page count every group, not the page's (UX audit Z6-21): their evidence only, one read.
+    const split = state.code === "da_split" ? splitTotals((await q`select f.evidence from ${signalPopulation(q, { role: state.role, county: null, entity: state.entity }, "da_split")} p
+      join core.flags f on f.id = p.id`).map((r) => (r.evidence ?? null) as Record<string, unknown> | null)) : undefined;
+    const classes = state.code === "da_split" ? [...new Set(instances.map((i) => (i.evidence as Record<string, unknown> | null)?.cpv_class).filter((c): c is string => typeof c === "string" && /^\d{4}$/.test(c)))] : [];
+    const cpvClassNames = classes.length ? Object.fromEntries((await q`select left(code, 4) cls, name_ro from core.cpv_codes
+      where left(code, 4) = any(${classes}) and substr(code, 5, 4) = '0000'`).map((r) => [String(r.cls), String(r.name_ro)])) : undefined;
+    return { instances, alsoIn, split, cpvClassNames };
   });
   const score = row?.score ?? 0, parts = row?.scoreParts ?? {};
   return {
@@ -160,7 +200,7 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
       noScoreReason: row ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score }) : null,
       otherRole: flags.find((r) => r.role !== state.role)?.role ?? null,
     },
-    counts, code: state.code, instances, total: page.total, page: page.page, pageSize: page.pageSize, alsoIn,
+    counts, code: state.code, instances, total: page.total, page: page.page, pageSize: page.pageSize, alsoIn, ...(split ? { split } : {}), ...(cpvClassNames ? { cpvClassNames } : {}),
   };
 }
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getDomainDataset } from "@/lib/domains";
+import { DomainYearError, getDomainDataset } from "@/lib/domains";
 import { ghostHold } from "@/lib/ghost-hold";
 import DomainExplorer from "./DomainExplorer";
 
@@ -15,6 +15,13 @@ export default async function DomeniiPage({ searchParams }: { searchParams: Prom
   await ghostHold();
   const params = await searchParams;
   const requestedYear = params.year && /^\d{4}$/.test(params.year) ? Number(params.year) : undefined;
-  const data = await getDomainDataset(requestedYear);
-  return <DomainExplorer key={`${data.generatedAt}:${JSON.stringify(params)}`} initialData={data} initialCode={params.code ?? ""} initialView={params.view ?? ""} />;
+  // A year without data (an old or mistyped link) opens the default year with a note, not the error page (UX audit Z6-33).
+  let notice = "";
+  const data = await getDomainDataset(requestedYear).catch(async (error: unknown) => {
+    if (!(error instanceof DomainYearError) || requestedYear === undefined && !params.year) throw error;
+    const fallback = await getDomainDataset();
+    notice = `Pentru ${params.year} nu avem date; arătăm ${fallback.year}.`;
+    return fallback;
+  });
+  return <DomainExplorer key={`${data.generatedAt}:${JSON.stringify(params)}`} initialData={data} initialCode={params.code ?? ""} initialView={params.view ?? ""} initialNotice={notice} />;
 }

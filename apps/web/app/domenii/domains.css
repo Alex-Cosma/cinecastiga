@@ -127,3 +127,33 @@
 }
 @media(max-width:360px){.domains-page{--domain-atlas-height:385px}.domains-page h1{font-size:36px}.dm-hero-context .dm-tiny-link{margin-left:0}.dm-stat-value{font-size:22px}.domains-page .dm-detail-hero h1{font-size:29px}.dm-detail-actions{flex-wrap:wrap}.dm-atlas-back{white-space:normal;max-width:80px}}
 @media(prefers-reduced-motion:reduce){.domains-page *,.domains-page *:before,.domains-page *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* No ↗ in the atlas (UX audit Z6-30): a list row is one control that goes down a level, ending in „›”; the row takes the
+   width the details button had. */
+.dm-atlas-list-row{grid-template-columns:minmax(0,1fr)}
+.dm-atlas-list-row>button:first-child{grid-template-columns:8px 1fr auto 12px}
+.dm-list-go{color:var(--muted);font-size:16px;line-height:1;text-align:right}
+@media(max-width:760px){.dm-atlas-list-row{grid-template-columns:minmax(0,1fr)}}
+
+/* The list has its own height and the atlas stays under the header while the list goes by (UX audit Z6-31): no box
+   scrolling inside the page (8 of 45 rows were visible, its scrollbar hidden on macOS). Phones already did this. */
+@media(min-width:761px){
+  .dm-atlas-list,.domains-page .dm-atlas-list{max-height:none;overflow:visible}
+  .dm-atlas-stage{position:sticky;top:calc(var(--site-header-h, 91px) + 12px)}
+}
+
+/* Phones: a bar of the shares in place of the treemap (UX audit Z6-32), where 6 of 9 zones had no name; the list is the
+   control. Wide screens keep the atlas and never draw the bar. */
+.dm-sharebar{display:none;margin:0}
+@media(max-width:760px){
+  .dm-sharebar{display:block}
+  .dm-sharebar-bar{display:flex;gap:2px;height:28px;border-radius:7px;overflow:hidden;background:var(--line)}
+  .dm-sharebar-bar i{display:block;min-width:3px;height:100%}
+  .dm-sharebar-bar i.rest{background:var(--line2)}
+  .dm-sharebar figcaption{margin-top:8px;font-size:13px;line-height:1.45;color:var(--muted)}
+  .dm-atlas-stage{display:none}
+}
+
+/* The page's own failure (UX audit Z6-33): a headline, not the display title of the hero. */
+.domains-page h1.dm-error-title{font-size:36px;line-height:1.15;letter-spacing:-.025em}
+@media(max-width:760px){.domains-page h1.dm-error-title{font-size:30px}}

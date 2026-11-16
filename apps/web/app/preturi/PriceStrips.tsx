@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { STRIP_DOTS, STRIP_LEADS, productHref, type PriceOrder, type PriceStrip } from "@/lib/unit-prices";
-import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadTicksPath, leadsWord, medianRange } from "@/lib/unit-prices-shared";
+import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadTicksPath, leadsWord, medianWords } from "@/lib/unit-prices-shared";
 import StripChart from "./StripChart";
 import StripRow from "./StripRow";
 
@@ -39,7 +39,8 @@ function Strip({ s, i, county, order }: { s: PriceStrip; i: number; county: stri
   const title = s.packLabel ? `${s.name}, ${s.packLabel}` : s.name;
   // The lead the strip names: the largest by lei above the median (the same for the same address).
   const named = s.named;
-  const median = `${s.year ? "mediana" : "mediana anului"} ${medianRange(s.medianLo, s.medianHi, s.per)}`;
+  const m = medianWords(s.medianLo, s.medianHi, s.per, s.year);
+  const median = `${m.label}: ${m.value}`;
   const partial = largestOf(s.dots.length, s.dotsTotal);
   const seasonal = isSeasonal(s.group);
   const sentence = `${title}: ${median}, ${buyersWord(s.buyers)}, ${s.thin ? "prea puține instituții pentru piste" : leadsWord(s.leads)}${county ? ` în ${county}` : ""}.`

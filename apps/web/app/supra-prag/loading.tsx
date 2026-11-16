@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { DiscoverNavGhost } from "@/components/discover/DiscoverNav";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import FunnelGhost from "@/components/table-filters/FunnelGhost";
@@ -16,6 +17,7 @@ const CHIPS = [19, 15, 16.5, 16, 18.5, 17, 17.5, 17.5, 16, 17.5, 15.5, 15.5];
 export default function SupraPragLoading() {
   return (
     <Ghost name="supra-prag" label="Se încarcă atribuirile TED…" wait="suspense">
+      <DiscoverNavGhost current="supra-prag" />
       <h1 className="page-title">Atribuiri publicate în TED</h1>
       <p className="page-sub ted-tip-line" inert>
         Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title="TED, peste prag" text="" /></span>

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
+import DiscoverPager from "@/components/discover/DiscoverPager";
+import AlsoTag from "./AlsoTag";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
 import { useMemoryFilters } from "@/components/table-filters/useMemoryFilters";
@@ -112,7 +114,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
           : "Niciun caz cu filtrele alese."}
         {!kept.length && filtered && <> <button type="button" className="sgc-link" onClick={() => { setUpdate(true); filters.replace({}); setPage(1); }}>Scoate filtrele</button></>}
       </p>
-      <table className="sgc-table" ref={table} data-chart>
+      <table className="sgc-table" ref={table} data-chart suppressHydrationWarning>
         <thead><tr>
           <th scope="col"><span className="th-filter">{partner}{funnel("partener")}</span></th>
           <th scope="col"><span className="th-filter">Data{funnel("data")}</span></th>
@@ -131,7 +133,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
                   {r.refId
                     ? <Link prefetch={false} className="c-title" href={`/achizitii/${r.refId}`}>{r.title ?? "Achiziție directă"}</Link>
                     : <span className="c-title">{r.title ?? "Achiziție directă"}</span>}
-                  {r.also.length > 0 && <span className="c-also">{r.also.map((c) => <span key={c} className="sgc-also">și la „{c}”</span>)}</span>}
+                  {r.also.length > 0 && <span className="c-also">{r.also.map((c) => <AlsoTag key={c} label={c} />)}</span>}
                 </td>
                 <td className="c-date">{r.date ? formatCalendarDate(r.date) : "fără dată"}</td>
                 {kind === "above" ? <td className="c-bar">
@@ -154,11 +156,9 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
           })}
         </tbody>
       </table>
-      {pages > 1 && <nav className="sgc-pager" aria-label="Paginile cazurilor">
-        <button type="button" disabled={at <= 1} onClick={() => turn(at - 1)}>← Anterior</button>
-        <span>Pagina {formatInt(at)} din {formatInt(pages)}</span>
-        <button type="button" disabled={at >= pages} onClick={() => turn(at + 1)}>Următor →</button>
-      </nav>}
+      {/* The pager of the „Descoperă” pages (UX audit Z6-14), its buttons turning the table's pages here. */}
+      {pages > 1 && <DiscoverPager page={at - 1} pageSize={CASE_TABLE_PAGE} total={kept.length} unit={["caz", "cazuri"]} onPage={(p) => turn(p + 1)}
+        label="Paginile cazurilor" bottom className="sgc-dsc-pager" />}
     </div>
   );
 }

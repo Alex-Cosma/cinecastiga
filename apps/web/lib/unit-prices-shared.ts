@@ -133,6 +133,16 @@ export function medianRange(lo: number, hi: number, per: string): string {
   return Math.abs(hi - lo) < 0.005 ? `${formatUnitPrice(lo)} ${per}` : `${formatUnitPrice(lo)}–${formatUnitPrice(hi)} ${per}`;
 }
 
+/**
+ * The median beside a strip (UX audit Z6-40: „mediana anului 2,97–6,55” read as a contradiction, a median is one
+ * number): „mediana 2019: 2,97 lei/kg” for a year, „mediana, de la an la an: 2,97–6,55 lei/kg” across years whose
+ * medians differ, „mediana: 2,97 lei/kg” when they do not.
+ */
+export function medianWords(lo: number, hi: number, per: string, year: number | null): { label: string; value: string } {
+  const value = medianRange(lo, hi, per);
+  return { label: year ? `mediana ${year}` : Math.abs(hi - lo) < 0.005 ? "mediana" : "mediana, de la an la an", value };
+}
+
 // ── the address of a view ──────────────────────────────────────────────────
 export type PriceOrder = "dublu" | "multiplu" | "lei";
 /** The list opens by the lei above the median (owner, 11 November 2026). */
@@ -172,3 +182,13 @@ export function productHref(family: string, pack: string, year: number | null, e
 export function leadHref(family: string, pack: string, year: number | null, lead: { authorityId: string; year: number }): string {
   return `${productHref(family, pack, year, { deschis: `${lead.authorityId}-${lead.year}` })}#institutie-${lead.authorityId}-${lead.year}`;
 }
+
+/**
+ * A year in a year control of the prices (UX audit Z6-34): a year without a single lead has too few institutions per
+ * product to compare, and says so („2025 · prea puține date”).
+ */
+export const priceYearLabel = (year: number, leads: number | undefined): string => (leads === 0 ? `${year} · prea puține date` : String(year));
+
+/** The latest year with leads, to offer when the chosen one has none. */
+export const priceYearWithLeads = (yearLeads: Readonly<Record<number, number>>): number | null =>
+  Object.entries(yearLeads).filter(([, n]) => n > 0).map(([y]) => Number(y)).sort((a, b) => b - a)[0] ?? null;

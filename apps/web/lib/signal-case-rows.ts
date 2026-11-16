@@ -7,6 +7,16 @@ import type { CaseRecord } from "./signal-case";
 const lei = (v: string | number | null | undefined) => (v == null ? "necunoscută" : `${formatExactDecimal(String(v))} lei`);
 
 /**
+ * The side a case's rows name (UX audit Z6-07): the other party of each acquisition, when the list has more than one
+ * (December's acquisitions, a firm's first month, a capacity year); a list with one partner names it in its title.
+ */
+export function caseCounterparty(records: readonly Pick<CaseRecord, "authorityId" | "authority" | "supplierId" | "supplier">[], role: "authority" | "supplier"): "authority" | "supplier" | undefined {
+  const side = role === "authority" ? "supplier" : "authority";
+  const keys = new Set(records.map((r) => (side === "supplier" ? r.supplierId ?? r.supplier : r.authorityId ?? r.authority) ?? ""));
+  return keys.size > 1 ? side : undefined;
+}
+
+/**
  * A case's records as the record list's rows. `counterparty`: the side each row names (the set-aside acquisitions are
  * with other partners). `code`: the page's pattern, left out of each row's „și la …” list.
  */

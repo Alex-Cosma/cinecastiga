@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readRiskScoreDistribution, readSignalRiskGroup, readEntitySignalCounts, signalTypeCountLabel } from "./signals";
+import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readRiskScoreDistribution, readSignalRiskGroup, readEntitySignalCounts, readSignalTypeCounts, signalTypeCountLabel } from "./signals";
 
 /** Captures parameterized queries, without reading or mutating a database. */
 function database(total = 125, bins: { bin: number; n: string }[] = []) {
@@ -14,7 +14,8 @@ function database(total = 125, bins: { bin: number; n: string }[] = []) {
       return Promise.resolve(resolve([]));
     }
   }
-  const sql = ((chunks: TemplateStringsArray, ...params: unknown[]) => new Fragment(chunks.reduce((query, text, i) => {
+  // sql("ef") names an identifier (lib/ask/entity-card.ts riskActive); a template is a statement or a fragment.
+  const sql = ((chunks: TemplateStringsArray | string, ...params: unknown[]) => typeof chunks === "string" ? new Fragment(`"${chunks}"`) : new Fragment(chunks.reduce((query, text, i) => {
     if (i >= params.length) return query + text;
     const value = params[i];
     if (value instanceof Fragment) return query + text + value.text;
@@ -82,7 +83,8 @@ describe("complete signal population", () => {
     expect(result).toMatchObject({ total: 625, page: 62, pageSize: 10 });
     const page = db.statements.find((q) => q.includes("select selected.*"))!;
     expect(page).toContain("order by total_ron desc nulls last, severity desc nulls last, id");
-    expect(page).toContain("jsonb_agg(winner order by winner.entity_id)");
+    expect(page).toContain("order by winner.cited_value desc nulls last, winner.won desc nulls last, winner.entity_id");
+    expect(page).toContain("winner where winner.cited or not exists");
     expect(db.values).toContain(620);
     expect(db.values).not.toContain(99999 * 10);
   });
@@ -126,6 +128,69 @@ describe("complete signal population", () => {
       expect(query).not.toContain("score >=");
     }
     expect(db.values).toContain(2);
+  });
+});
+
+describe("the ranking leaves out the inactive profiles (owner, 16 November 2026, UX audit Z6-01)", () => {
+  it("lists and bins only the profiles with a record in 24 months, and counts the others for the line", async () => {
+    const db = database(14321);
+    const result = await readSignalRiskGroup(db.sql, parseSignalState({ view: "cri" }));
+    const queries = db.statements.filter((q) => q.includes("marts.entity_flags ef"));
+    const [total, left, page] = queries;
+    expect(total).toContain("and exists (\n  select 1 from marts.entity_profile ep where ep.entity_id = \"ef\".entity_id");
+    expect(left).toContain("and not exists (");
+    expect(page).toContain("last_activity >=");
+    expect(page).not.toContain(" historic");
+    expect(result.inactive).toBe(0);
+    const bins = database(0, []);
+    await readRiskScoreDistribution(bins.sql, parseSignalState({ view: "cri" }));
+    expect(bins.statements.find((q) => q.includes("score / 10"))).toContain("marts.entity_profile ep");
+  });
+  it("lists them with their last day when asked, and keeps the choice while paging, not on the signals' tab", async () => {
+    const state = parseSignalState({ view: "cri", inactive: "1" });
+    expect(state.inactive).toBe(true);
+    const db = database(15730);
+    await readSignalRiskGroup(db.sql, state);
+    const queries = db.statements.filter((q) => q.includes("marts.entity_flags ef"));
+    expect(queries[0]).not.toContain("entity_profile");
+    expect(queries.at(-1)).toContain("end historic");
+    const bins = database(0, []);
+    await readRiskScoreDistribution(bins.sql, state);
+    expect(bins.statements.find((q) => q.includes("score / 10"))).not.toContain("entity_profile");
+    const next = new URL(signalUrl(state, { page: 2 }), "http://local").searchParams;
+    expect(next.get("inactive")).toBe("1");
+    expect(new URL(signalUrl(state, { view: "signals" }), "http://local").searchParams.has("inactive")).toBe(false);
+    expect(parseSignalState({ inactive: "1" }).inactive).toBe(false);
+    expect(new URL(signalUrl(state, { inactive: false }), "http://local").searchParams.has("inactive")).toBe(false);
+  });
+});
+
+describe("the national list of „Adunate, trec de plafon” leaves out the groups under 1,2× (owner, 16 November 2026, Z6-04)", () => {
+  it("lists only the groups above 1,2× its ceiling, counts the others, and its count in the chooser is the list's", async () => {
+    const db = database(11767);
+    const result = await readSignalPage(db.sql, parseSignalState({ tip: "da_split" }));
+    const [total] = db.statements.filter((q) => q.includes("select count(*)::text n from"));
+    expect(total).toContain("where (select (sf.evidence->>'total')::numeric / nullif((sf.evidence->>'ceiling')::numeric, 0)");
+    expect(db.statements.some((q) => q.includes("where not (select (sf.evidence"))).toBe(true);
+    expect(db.values).toContain(1.2);
+    expect(result.under).toBe(0);
+    const counts = database();
+    await readSignalTypeCounts(counts.sql, parseSignalState({ tip: "da_concentration" }));
+    expect(counts.statements.at(-1)).toContain("(flag_code <> 'da_split' or (select");
+  });
+  it("lists them on request (sub=1), only for this pattern, and never filters a case page", async () => {
+    const state = parseSignalState({ tip: "da_split", sub: "1" });
+    expect(state.under).toBe(true);
+    expect(parseSignalState({ tip: "da_round", sub: "1" }).under).toBe(false);
+    expect(new URL(signalUrl(state, { page: 4 }), "http://local").searchParams.get("sub")).toBe("1");
+    expect(new URL(signalUrl(state, { code: "da_round" }), "http://local").searchParams.has("sub")).toBe(false);
+    const db = database(17615);
+    await readSignalPage(db.sql, state);
+    expect(db.statements.find((q) => q.includes("select count(*)::text n from"))).not.toContain("sf.evidence");
+    const entity = database(52);
+    const page = await readSignalPage(entity.sql, { ...parseSignalState({ tip: "da_split" }), entity: "2135987" });
+    expect(entity.statements.some((q) => q.includes("sf.evidence"))).toBe(false);
+    expect(page.under).toBeUndefined();
   });
 });
 
