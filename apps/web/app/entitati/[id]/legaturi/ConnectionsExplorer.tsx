@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useSearchParams } from "next/navigation";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
@@ -484,9 +485,19 @@ function PeriodButton({ scope, onApply }: { scope: Scope; onApply: (years: { yea
 type View = { scope: Scope; base: ConnectionsResponse | null; top: ConnectionsResponse | null; picked: Picked | null; peer: ConnectionPartner | null;
   second: ConnectionsResponse | null; secondTop: ConnectionsResponse | null };
 
-export default function ConnectionsExplorer({ entityId, entityName, county = null, role, initial }: {
-  entityId: string; entityName: string; county?: string | null; role: ConnectionRole; initial: Record<string, string>;
+export default function ConnectionsExplorer({ entityId, entityName, county = null, role, bothRoles = false, initial: fromServer }: {
+  entityId: string; entityName: string; county?: string | null; role: ConnectionRole;
+  /** `?rol=` only for an entity that both buys and sells (owner, 4 November 2026). */
+  bothRoles?: boolean;
+  initial: Record<string, string>;
 }) {
+  // The address as the browser has it now (UX audit bug, 16 November 2026): Back to this page restores the server's
+  // first answer for it, whose parameters predate the choices written to the address since; the address has them.
+  const address = useSearchParams();
+  const [initial] = useState<Record<string, string>>(() => {
+    const now = address ? Object.fromEntries(address.entries()) : {};
+    return Object.keys(now).length > 0 ? now : fromServer;
+  });
   const startingScope: Scope = { dataset: (initial.dataset ?? "all") as Dataset,
     ...(initial.yearFrom ? { yearFrom: Number(initial.yearFrom) } : {}), ...(initial.yearTo ? { yearTo: Number(initial.yearTo) } : {}) };
   const [scope, setScope] = useState<Scope>(startingScope);
@@ -550,7 +561,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   const secondTotal = v.secondTop && v.picked ? Number(v.secondTop.summary.totalExact) + amount(v.picked.partner) : 0;
 
   function remember(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
-    const params = query({ rol: isAuthority ? "autoritate" : "furnizor", ...applied,
+    const params = query({ rol: bothRoles ? (isAuthority ? "autoritate" : "furnizor") : undefined, ...applied,
       identity: pinned.current.identity, checkpointId: pinned.current.checkpointId,
       partner: selection?.partner.entity.id, partnerIdentity: selection?.partner.entity.identity,
       peer: last?.entity.id, peerIdentity: last?.entity.identity });
@@ -576,7 +587,9 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
     setRescoped(true);
     setScope(next); setPicked(null); setPeer(null); setPage(1); setSearch(""); setSources(null); setRestoring(false); auto.current = false; fromLink.current = false; remember(null, null, next);
   }
-  const restart = <a className="cx-button" href={`/entitati/${entityId}/legaturi?rol=${isAuthority ? "autoritate" : "furnizor"}`}>Reia explorarea pe datele disponibile</a>;
+  // Only when the address pins a version or a path: starting over without them changes something (UX audit bug).
+  const pinnedLink = Boolean(fromServer.identity || fromServer.checkpointId || fromServer.partner || initial.identity || initial.checkpointId || initial.partner);
+  const restart = pinnedLink ? <a className="cx-button" href={`/entitati/${entityId}/legaturi${bothRoles ? `?rol=${isAuthority ? "autoritate" : "furnizor"}` : ""}`}>Reia explorarea pe datele disponibile</a> : null;
 
   // A copied URL restores exact partners even when they are beyond the first page.
   useEffect(() => {
@@ -653,7 +666,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   const secondHead = vp ? (isAuthority ? `Cui mai vinde ${name(vp.partner.entity)}` : `Cine mai vinde la ${name(vp.partner.entity)}`) : "";
 
   return <div className="cx-shell">
-    <p className="cx-crumb"><Link href={profileUrl({ id: entityId, role })}>← {currentName}</Link> · {isAuthority ? "instituție" : "firmă"}{countyLabel(entity ? entity.county : county) ? `, ${countyLabel(entity ? entity.county : county)}` : ""}</p>
+    <p className="cx-crumb"><Link href={bothRoles ? profileUrl({ id: entityId, role }) : `/entitati/${entityId}`}>← {currentName}</Link> · {isAuthority ? "instituție" : "firmă"}{countyLabel(entity ? entity.county : county) ? `, ${countyLabel(entity ? entity.county : county)}` : ""}</p>
     <header className="cx-head">
       <div>
         <h1>Cum sunt legate?</h1>
