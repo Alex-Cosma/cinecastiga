@@ -6,7 +6,7 @@ import { pillFilters, type PillLabels } from "../../../lib/ask/pill-filters";
 import { filterContext } from "../../../lib/ask/filters/context";
 import type { Choice } from "../../../lib/ask/filters/pickers";
 import { chooseValue } from "../../../lib/ask/filters/transition";
-import type { FilterSpec } from "../../../lib/ask/filters/types";
+import type { FilterId, FilterSpec } from "../../../lib/ask/filters/types";
 import { questionKey, transitionQuestion, type QuestionSpec } from "../../../lib/ask/question-ui";
 import { spellTerm } from "../../../lib/ask/term-spelling";
 import BuilderWindow from "../builder/BuilderWindow";
@@ -41,6 +41,16 @@ export interface AnswerPillsProps {
 /** On a phone, this many pills or more wait under „Condiții · N”: two fit on a row or two and stay in sight. */
 const FOLD_FROM = 3;
 
+/**
+ * The conditions an answer can do without (UX audit Z2-05): their pill has its own „×”, which removes the condition at
+ * once, as a new step of the history. The answer's shape (the ranking, its measure), the period, the place, the domain
+ * and the stream are said by every answer and have none.
+ */
+export const OPTIONAL_PILLS: ReadonlySet<FilterId> = new Set<FilterId>([
+  "authorityKind", "purchaseKind", "employees", "admin", "firmSeat", "seatCounty", "newSince", "purchaseValue",
+  "singleBidder", "mainClient", "dominantSupplier", "sharedPartners",
+]);
+
 /** A domain's pill longer than this says the person's word and the code; its window and its label keep the whole name. */
 const LONG_CPV_PILL = 34;
 
@@ -59,10 +69,8 @@ export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: A
   // The builder's draft of the applied question: the windows read and write it as the sentence's do.
   const question = useMemo(() => transitionQuestion(spec as unknown as QuestionSpec).spec, [spec]);
   const view = useMemo(() => builderView(question, { cpvName }, filterContext(question as FilterSpec, coverage ? { coverage } : {})), [question, cpvName, coverage]);
-  const windows = useMemo(() => {
-    const filters = pillFilters(spec, pills, labels);
-    return pills.map((_, i) => pillWindow(view, filters[i] ?? null, spec.block));
-  }, [spec, pills, labels, view]);
+  const filters = useMemo(() => pillFilters(spec, pills, labels), [spec, pills, labels]);
+  const windows = useMemo(() => pills.map((_, i) => pillWindow(view, filters[i] ?? null, spec.block)), [filters, pills, view, spec.block]);
   // The pill that opened the window (two pills can share one: a domain and its excluded subclasses).
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement; index: number } | null>(null);
   // On a phone the pills wait under one button, „Condiții · N” (owner, 16 November 2026): the answer starts sooner.
@@ -105,11 +113,15 @@ export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: A
         return <Fragment key={i}>
           {i > 0 && !target && !windows[i - 1] && <span className="cq-scope-sep" aria-hidden="true">·</span>}
           {target
-            ? <button type="button" className="cq-pill" aria-haspopup="dialog" aria-expanded={open?.index === i && win !== null}
-              aria-label={`${target.name}: ${words}`}
-              onClick={(event) => { const anchor = event.currentTarget; setOpen((current) => current?.index === i ? null : { key: target.key, anchor, index: i }); }}>
-              <span>{pill}<i className="qb-chev" aria-hidden="true" /></span>
-            </button>
+            ? <span className="cq-pill-wrap">
+              <button type="button" className="cq-pill" aria-haspopup="dialog" aria-expanded={open?.index === i && win !== null}
+                aria-label={`${target.name}: ${words}`}
+                onClick={(event) => { const anchor = event.currentTarget; setOpen((current) => current?.index === i ? null : { key: target.key, anchor, index: i }); }}>
+                <span>{pill}<i className="qb-chev" aria-hidden="true" /></span>
+              </button>
+              {!ghost && filters[i] && OPTIONAL_PILLS.has(filters[i]!) && <button type="button" className="cq-pill-x" aria-label={`Scoate „${words}”`}
+                onClick={() => choose(target, [{ filter: filters[i]!, value: undefined }])}><span aria-hidden="true">×</span></button>}
+            </span>
             : <span className="cq-scope-text">{pill}</span>}
         </Fragment>;
       })}

@@ -1207,3 +1207,10 @@
 .cq-app button:focus-visible,
 .cq-app a:focus-visible,
 .cq-app summary:focus-visible { outline-color: var(--orange); }
+
+/* Z2-05 (UX audit, 16 November 2026): an optional condition's pill has its own „×”, a separate target (24 px, 44 px on
+   a phone, where the pills are the unfolded list) that removes it at once; the pill itself still opens its window. */
+.cq-pill-wrap { display: inline-flex; align-items: center; max-width: 100%; min-width: 0; }
+.cq-pill-x { display: inline-grid; place-items: center; flex: none; width: 24px; min-height: 24px; margin: 0 0 0 2px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 500 15px/1 var(--body); cursor: pointer; }
+.cq-pill-x:hover { background: var(--fk-phrase-hover); color: var(--ink); }
+@media (max-width: 600px) { .cq-pill-x { width: 44px; min-height: 44px; margin-left: 4px; } }
