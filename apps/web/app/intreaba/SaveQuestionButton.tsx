@@ -13,8 +13,9 @@ import type { SavedQuestion } from "./SavedQuestions";
 /**
  * `unapplied`: the builder's draft differs from the answer on screen; the button saves the draft and says so
  * ("Salvează · neaplicată", plan §2.3). The answer's own button saves the applied question. `compact`: the answer's
- * head, where it shares a row with „Trimite” under the records' button (owner, 2 November 2026), says „Salvează” /
- * „Salvată” and keeps the whole words as its name.
+ * head, where it shares a row with „Trimite” under the records' button (owner, 2 November 2026), says „Păstrează” /
+ * „Păstrată” and keeps the whole words as its name: beside „Salvează în anchetă” (a bookmark) the question has its own
+ * verb and its own sign, a star (UX audit Z8-23, the owner's small variant: the two buttons stay).
  */
 type Props = { spec: QuestionSpec; disabled: boolean; active: SavedQuestion | null; onSaved: (question: SavedQuestion) => void; unapplied?: boolean; compact?: boolean };
 export default function SaveQuestionButton(props:Props) {
@@ -123,14 +124,15 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
   }
 
   const next = `/intreaba?spec=${encodeURIComponent(encodeSpec(snapshot))}&mode=builder`;
-  const words = saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează · neaplicată" : "Salvează întrebarea";
+  const words = compact ? saved ? "Întrebare păstrată" : active ? "Păstrează modificările" : "Păstrează întrebarea"
+    : saved ? "Întrebare salvată" : active ? "Salvează modificările" : unapplied ? "Salvează · neaplicată" : "Salvează întrebarea";
   return <>
     <span className="cq-save-wrap">
     <button ref={trigger} type="button" className="cq-save-question" disabled={disabled} aria-disabled={saved || undefined} aria-haspopup="dialog" {...(compact ? { "aria-label": words } : {})} onClick={() => { if (!saved) open(); }}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {saved ? <path d="m5 12 4 4L19 6" /> : <path d="M6 4h12v16l-6-4-6 4V4Z" />}
+        {saved ? <path d="m5 12 4 4L19 6" /> : <path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z" />}
       </svg>
-      <span aria-live="polite">{compact ? (saved ? "Salvată" : "Salvează") : words}</span>
+      <span aria-live="polite">{compact ? (saved ? "Păstrată" : "Păstrează") : words}</span>
     </button>
     {unapplied && !saved && <Term tip title="Salvează · neaplicată" text="Salvezi întrebarea din propoziție, nu răspunsul afișat." />}
     </span>
@@ -140,7 +142,7 @@ function SaveQuestionForm({ spec, disabled, active, onSaved, userId, unapplied =
       if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
     }}>
       <form onSubmit={event => void save(event)} aria-busy={busy}>
-        <h2 id={headingId}>{copyMode ? "Salvează o copie" : snapshotActive ? "Salvează modificările" : "Salvează întrebarea"}</h2>
+        <h2 id={headingId}>{copyMode ? "Salvează o copie" : snapshotActive ? "Salvează modificările" : compact ? "Păstrează întrebarea" : "Salvează întrebarea"}</h2>
         <p id={descriptionId}>{local ? "Doar în acest browser: se pierde dacă ștergi datele site-ului și o vede oricine folosește același profil. Se salvează întrebarea, nu rezultatele." : "Păstrezi întrebarea și filtrele, privat în contul tău. Rezultatele nu sunt salvate."}</p>
         {login ? <div role="status" className="cq-save-login"><p>Autentifică-te pentru a salva. Întrebarea și filtrele te așteaptă la întoarcere.</p><a href={`/login?next=${encodeURIComponent(next)}`}>Autentifică-te și revino</a></div> : <label>Numele întrebării<input autoFocus required maxLength={160} value={title} disabled={busy} aria-invalid={titleTaken || undefined} onChange={event => { setTitle(event.target.value); setTitleTaken(false); setError(""); }} onFocus={event => event.currentTarget.select()} /></label>}
         {copyMode && !login && <p className="cq-copy-note">Nume propus pentru copie. Îl poți modifica înainte de salvare.</p>}

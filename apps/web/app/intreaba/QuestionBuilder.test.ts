@@ -95,6 +95,11 @@ describe("QuestionBuilder from the registry", () => {
     const answer = renderToStaticMarkup(createElement(SaveQuestionButton, { spec, disabled: false, active: null, onSaved: () => {} }));
     expect(text(answer)).toContain("Salvează întrebarea");
     expect(answer).not.toContain("neaplicată");
+    // The answer's own button, beside „Salvează în anchetă”: its own verb and a star, not a second bookmark (UX audit Z8-23).
+    const head = renderToStaticMarkup(createElement(SaveQuestionButton, { spec, disabled: false, active: null, onSaved: () => {}, compact: true }));
+    expect(text(head)).toContain("Păstrează");
+    expect(head).toContain('aria-label="Păstrează întrebarea"');
+    expect(head).not.toContain("M6 4h12v16l-6-4-6 4V4Z");
   });
 
   it("keeps the parked row's live region mounted, empty until a lens parks something", () => {
