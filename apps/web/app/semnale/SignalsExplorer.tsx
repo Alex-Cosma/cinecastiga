@@ -44,7 +44,7 @@ function Entity({ id, name }: { id: string | null; name: string | null }) { retu
 function TypeChooser({ code, role, counts, choose, close }: { code: string; role: SignalState["role"]; counts: Record<string, number>; choose: (c: string) => void; close: () => void }) {
   const [search, setSearch] = useState("");
   let found = 0;
-  return <SignalDialog title="Ce vrei să verifici?" onClose={close}>
+  return <SignalDialog title="Ce vrei să verifici?" subtitle="Numerele sunt apariții, nu entități unice." onClose={close}>
     <div className="sg-type-search"><label className="sr-only" htmlFor="sg-type-search">Caută un tip de semnal</label><input autoFocus id="sg-type-search" type="search" placeholder="Caută: prag, oferte, salariați…" value={search} onChange={e => setSearch(e.target.value)}/></div>
     <div className="sg-type-options">{groups.map(([label, codes]) => {
       const visible = codes.filter(c => fold(`${flagLabel(c)} ${FLAG_META[c]!.title} ${FLAG_META[c]!.short}`).includes(fold(search)));
@@ -54,22 +54,17 @@ function TypeChooser({ code, role, counts, choose, close }: { code: string; role
         return <button key={c} className="sg-type-option" aria-pressed={code === c} onClick={() => choose(c)}><span><strong>{flagLabel(c)}</strong><small>{exclusive ? (m.subject === "supplier" ? "Firme" : "Autorități") : "Autorități și firme"} · {c === "da_capacity" || c.startsWith("fin_") ? "achiziții și bilanțuri" : c.startsWith("da_first_month") ? "achiziții directe și ONRC" : c.startsWith("da_") ? "achiziții directe" : c.startsWith("award_") ? "proceduri" : "achiziții și ONRC"}</small></span>{compatible && counts[c] !== undefined && <span className="sg-type-count">{formatInt(counts[c])}</span>}</button>;
       })}</section> : null;
     })}{found === 0 && <p className="sg-no-types">Niciun tip găsit. Încearcă „prag” sau „oferte”.</p>}</div>
-    <p className="sg-dialog-note">Apariții, nu entități unice.</p>
   </SignalDialog>;
 }
 function County({ value, role, onChange, id }: { value: string | null; role: SignalState["role"]; onChange: (value: string | null) => void; id: string }) {
   return <label htmlFor={id}><span className="sg-label">{role === "authority" ? "Județul instituției" : "Județul firmei"}</span><select id={id} value={value ?? ""} onChange={e => onChange(e.target.value || null)}><option value="">Toate județele</option>{value && !COUNTIES.includes(value) && <option>{value}</option>}{COUNTIES.map(c => <option key={c}>{c}</option>)}</select></label>;
-}
-function MobileFilters({ state, apply, close }: { state: SignalState; apply: (patch: Partial<SignalState>) => void; close: () => void }) {
-  const [role, setRole] = useState(state.role), [county, setCounty] = useState(state.county);
-  return <SignalDialog title="Restrânge rezultatele" onClose={close}><form className="sg-mobile-form" onSubmit={e => { e.preventDefault(); apply({ ...(role !== state.role ? { role } : {}), county }); }}><label><span className="sg-label">Cine</span><select value={role} onChange={e => setRole(e.target.value as SignalState["role"])}><option value="authority">Instituții</option><option value="supplier">Firme</option></select></label><County id="sg-mobile-county" value={county} role={role} onChange={setCounty}/><button className="sg-primary" type="submit">Arată rezultatele</button></form></SignalDialog>;
 }
 export default function SignalsExplorer({ state, signals, risk, counts, distribution, freshness, error }: {
   state: SignalState; signals: SignalPage | null; risk: SignalRiskGroup | null;
   counts: Record<string, number>; distribution: { bin: number; n: number }[]; freshness: ReactNode; error?: string | undefined;
 }) {
   const router = useRouter(), [pending, startTransition] = useTransition();
-  const [requested, setRequested] = useState(state), [dialog, setDialog] = useState<"type" | "filters" | null>(null);
+  const [requested, setRequested] = useState(state), [dialog, setDialog] = useState<"type" | null>(null);
   const [notice, setNotice] = useState("");
   // In motion (owner, 6 November 2026): at first view the pictures of the rows on screen grow from 0, top to bottom, and
   // the histogram's bars rise left to right. After a filter, a page or the sort (same tab) the new rows enter shorter and
@@ -185,8 +180,6 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       {active.view === "signals" && <div className="sg-type-field"><span className="sg-label">Tip de semnal</span><button className="sg-type-button" onClick={() => setDialog("type")} aria-haspopup="dialog"><span>{flagLabel(code)}</span><span className="sg-chevron"/></button></div>}
       <div className="sg-desktop-filter"><span className="sg-label">Cine</span><div className="sg-segmented">{(["authority", "supplier"] as const).map(role => <button key={role} aria-pressed={active.role === role} onClick={() => navigate({ role })}>{role === "authority" ? "Instituții" : "Firme"}</button>)}</div></div>
       <div className="sg-desktop-filter"><County id="sg-county" role={active.role} value={active.county} onChange={county => navigate({ county })}/></div>
-      <button className="sg-mobile-filter sg-secondary" onClick={() => setDialog("filters")}>Filtre{active.county ? " · 1" : ""}</button>
-      <p className="sg-mobile-scope">{active.role === "authority" ? "Instituții" : "Firme"} · {active.county ?? "Toate județele"}</p>
     </section>
     {notice && <p className="sg-notice" role="status">{notice}</p>}
     {/* The pattern's name is said once, by the field above, written as the section's title; its h2 stays for the outline (UX audit Z6-15). */}
@@ -230,7 +223,6 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     {pending && !reshaping && <FloatStatus>Se încarcă rezultatele…</FloatStatus>}
     <footer className="sg-foot"><p>Un semnal nu este o dovadă de ilegalitate. Valorile pot acoperi aceleași achiziții și nu se adună.</p></footer>
     {dialog === "type" && <TypeChooser code={code} role={active.role} counts={pending ? {} : counts} choose={code => navigate({ code })} close={() => setDialog(null)}/>}
-    {dialog === "filters" && <MobileFilters state={active} apply={navigate} close={() => setDialog(null)}/>}
   </div>;
 }
 /** The bar above and under the rows: the count and the pager (min-height keeps it as tall as the real one). */

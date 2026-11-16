@@ -162,3 +162,23 @@
   .sg-cri-controls .sg-sort-phone{display:flex;flex:1 1 100%;align-items:center;gap:10px;font-size:14px;color:var(--ink2)}
   .sg-cri-controls .sg-sort-phone select{flex:1;max-width:none;min-height:44px;font-size:16px}
 }
+
+/* /semnale on a phone (UX audit Z6-36): the types in a sheet from the bottom, 92% of the screen, its handle pulled down
+   to close it, the note under the title; „Instituții / Firme” and the county in the page, on one row under the type. */
+.sg-dialog-sub{margin:0;font-size:13px;line-height:1.4;color:var(--muted)}
+.sg-sheet-handle{display:none}
+@media(max-width:700px){
+  dialog.sg-sheet[open]{position:fixed;inset:auto 0 0 0;margin:0;width:100%;max-width:100%;height:92dvh;max-height:92dvh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;transition:transform var(--fast) var(--ease)}
+  .sg-sheet .sg-sheet-handle{display:flex;justify-content:center;flex:none;padding:8px 0 4px;touch-action:none;cursor:grab}
+  .sg-sheet .sg-sheet-handle span{width:40px;height:4px;border-radius:2px;background:var(--line2)}
+  dialog.sg-sheet[open] header{padding:8px 18px 8px}
+  dialog.sg-sheet[open] .sg-type-options{flex:1;height:auto;min-height:0}
+  .sg-filters{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center}
+  .sg-filters .sg-type-field{grid-column:1/-1}
+  .sg-explorer .sg-desktop-filter{display:block;min-width:0}
+  .sg-filters .sg-desktop-filter .sg-label{display:none}
+  .sg-filters .sg-segmented{min-height:48px}
+  .sg-filters .sg-segmented button{padding:0 12px;font-size:14px}
+  .sg-filters select{min-height:48px;font-size:16px}
+}
+@media(max-width:700px) and (prefers-reduced-motion:reduce){dialog.sg-sheet[open]{transition:none}}
