@@ -356,7 +356,8 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
   // A function, not a component made in the render: the same bar element stays, so its width tweens.
   const bar = (side: { value: number; joint?: number }, grow: "cm-x" | "cm-xr", i: number) => {
     const part = jointPart(side);
-    return <i className={`cm-tw ${motion.enter(grow)}`} style={{ width: width(side.value), "--i": i } as CSSProperties}>{part && <b className="cm-tw" style={{ width: part }} />}</i>;
+    // The bar in its own track, as wide on every row (the amount beside it has a fixed width): one scale for both sides.
+    return <span className="cmp-mirror-track"><i className={`cm-tw ${motion.enter(grow)}`} style={{ width: width(side.value), "--i": i } as CSSProperties}>{part && <b className="cm-tw" style={{ width: part }} />}</i></span>;
   };
   return (
     <section className="cmp-section">
