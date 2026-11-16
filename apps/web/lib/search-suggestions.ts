@@ -107,8 +107,10 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     if (typed === meant || typed.includes(" ") || meant.startsWith(typed) || !withinOneEdit(typed, meant)) return false;
     return !(typed.startsWith(meant) && ["a", "e", "i", "l", "u"].includes(typed.slice(meant.length)));
   });
-  if (typo) {
-    const meant = `${text.slice(0, text.toLowerCase().indexOf(typo.matched.text.toLowerCase()))}${typo.label}${text.slice(text.toLowerCase().indexOf(typo.matched.text.toLowerCase()) + typo.matched.text.length)}`.trim();
+  // The typed word is replaced where it stands; when it cannot be found as typed (punctuation inside it), nothing is offered.
+  const typoAt = typo ? text.toLowerCase().indexOf(typo.matched.text.toLowerCase()) : -1;
+  if (typo && typoAt >= 0) {
+    const meant = `${text.slice(0, typoAt)}${typo.label}${text.slice(typoAt + typo.matched.text.length)}`.trim();
     if (meant && fold(meant) !== fold(text)) push("likely", { id: "typo", label: `Ai vrut să scrii „${meant}”?`, detail: "în rezultate", href: cauta(meant), icon: "search" });
   }
 
