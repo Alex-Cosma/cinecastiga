@@ -89,7 +89,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   return <div className="discovery-page">
     <section className="d-hero" aria-labelledby="d-hero-title">
       <div className="d-hero-copy">
-        <p className="eyebrow d-hero-eyebrow"><span /> BANII PUBLICI, PE ÎNȚELESUL TĂU</p>
         <h1 id="d-hero-title">Sunt banii tăi.<br /><span>Vezi unde ajung.</span></h1>
         <p className="d-hero-description">De la strada ta la marile contracte. Urmărește cine cumpără, cine câștigă și ce întrebări merită puse.</p>
         <DiscoverySearch hero />
