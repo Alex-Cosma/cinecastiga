@@ -400,3 +400,5 @@ span.mx-p-yr{cursor:default}
 @media (max-width:640px){
   .mx-attr .term-trigger,.mx-attr a{display:inline-flex;align-items:center;min-height:44px;margin-block:-14px}
 }
+/* The institution the map search chose: its ring, drawn once (UX audit M-03, components/motion/Selection.tsx). */
+.mx-dot-ring{fill:none;stroke:var(--orange);pointer-events:none}

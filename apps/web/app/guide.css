@@ -204,3 +204,6 @@
 .term-tip.term-shown>.term-def{opacity:1;transform:none;transition:none}
 @media(prefers-reduced-motion:reduce){.term-tip>.term-def{--tip-out:80ms;--tip-to:0px}}
 @media print{.term-tip>.term-def{transition:none}}
+
+/* M-03 (UX audit, motion pass): the home map's chosen county draws its outline once (DiscoveryMap, Selection.tsx). */
+.d-romania-map .d-county-chosen{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;pointer-events:none}

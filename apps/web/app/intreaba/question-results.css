@@ -1478,3 +1478,8 @@ a.cq-source-main { justify-content: center; text-decoration: none; }
   .cq-answer-head h2.qb-live-sentence .qb-phrase { padding-block: .17em; }
   .cq-live-host .qb-live-present { gap: 0 12px; }
 }
+
+/* The row found by „Unde e o firmă?” holds its drawn outline (UX audit M-03, components/motion/Selection.tsx). */
+.cq-rank-row.is-found, .cq-ranking > .cq-rank-main.is-found { position: relative; }
+/* An answer map's county with its card open: its outline, drawn once (M-03). */
+.ask-choropleth .ask-county-chosen { fill: none; stroke: var(--orange); stroke-width: 2; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none; }

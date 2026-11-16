@@ -350,3 +350,6 @@
 
 /* A product's year: the /preturi select, beside the pack's tabs (UX audit Z6-34). */
 .pr-year-form { margin: 0; align-self: flex-end; }
+/* The dot a touch chose: its ring draws once (UX audit M-03; outline.css .mo-ring). */
+.pr-dot-ring{position:absolute;left:-6px;top:-6px;width:calc(100% + 12px);height:calc(100% + 12px);overflow:visible;pointer-events:none}
+.pr-dot-ring circle{fill:none;stroke:var(--risk);stroke-width:2;vector-effect:non-scaling-stroke}

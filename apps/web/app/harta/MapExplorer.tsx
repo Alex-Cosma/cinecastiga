@@ -19,6 +19,9 @@ import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
+import { SelectPath, useLeaving } from "@/components/motion/Selection";
+import { EASE_CAMERA } from "@/components/motion/outline";
+import { chartPace } from "@/components/motion/pace";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
 /*
@@ -389,6 +392,17 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const busy = !level || (county !== null && !countyGeo[county]);
   const uatGeo = county ? countyGeo[county] : undefined;
   const chosen = uat && uatGeo && !dots ? uatGeo.uats.find((u) => String(u.siruta) === uat)?.d ?? null : null;
+  // A selection draws once (M-03): the county one enters while the camera moves, in the camera's time; a UAT or a tapped
+  // county without the camera in 600 ms × pace; leaving („← România”, Escape) runs it back in 200 ms.
+  const camAt = useRef(0);
+  useEffect(() => { camAt.current = performance.now(); }, [county]);
+  const drawTime = () => { const glide = 560 * chartPace(), since = performance.now() - camAt.current; return since < glide ? Math.max(300, glide - since) : 600 * chartPace(); };
+  const openSel = useLeaving(useMemo(() => (county && shape ? { id: `c:${county}`, d: shape.d } : null), [county, shape]), 200);
+  const pickSel = useLeaving(useMemo(() => (chosen ? { id: `u:${uat}`, d: chosen } : tappedShape ? { id: `t:${tapped}`, d: tappedShape } : null), [chosen, uat, tappedShape, tapped]), 200);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the time is taken when a new selection appears
+  const openDur = useMemo(drawTime, [openSel.shown?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pickDur = useMemo(drawTime, [pickSel.shown?.id]);
   const outline = !hover || !geo ? null : county ? uatGeo?.uats.find((u) => String(u.siruta) === hover)?.d ?? null : geo.counties.find((c) => c.key === hover)?.d ?? null;
   // The open county's hospitals (owner, 8 November 2026): the map's units per pixel at the county's view, so a circle keeps its size.
   const [stageWidth, setStageWidth] = useState(0);
@@ -441,6 +455,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // A hospital or a school chosen in the search: its row comes into view (unfolded on phones) once the list is in.
   const choice = found && found.county === county && found.kind === kind && (found.uat === null || found.uat === uat) ? found : null;
   const lit = choice?.key ?? null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the time is taken when the search chooses
+  const litDur = useMemo(drawTime, [lit]);
   useEffect(() => {
     if (!lit || !level) return;
     if (ranked.findIndex((a) => a.key === lit) >= 15) setUnfolded(county ?? "");
@@ -565,14 +581,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
               {uatGeo.uats.map((u) => <path key={u.siruta} d={u.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" className="mx-area" onPointerEnter={() => setHover(null)} />)}
             </g>}
             {/* Drawn last so their ink closes on every edge: the open county's border, the hovered area's outline. */}
-            {county && shape && <path className="mx-open-edge" d={shape.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
+            {openSel.shown && <SelectPath key={openSel.shown.id} id={openSel.shown.id} className="mx-open-edge" d={openSel.shown.d} duration={openDur} easing={EASE_CAMERA} leaving={openSel.leaving} />}
             {outline && <path className="mx-outline" d={outline} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
-            {chosen && <path className="mx-chosen" d={chosen} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
-            {tappedShape && <path className="mx-chosen" d={tappedShape} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
+            {pickSel.shown && <SelectPath key={pickSel.shown.id} id={pickSel.shown.id} className="mx-chosen" d={pickSel.shown.d} duration={pickDur} easing={EASE_CAMERA} leaving={pickSel.leaving} />}
             {county && uatGeo && dots && unit > 0 && <HospitalLayer key={`${kind}:${county}`} uats={uatGeo.uats} hospitals={loc?.areas ?? []} city={cityCentre} unit={unit}
               radius={schools ? byPupils : undefined}
               // A circle never fades into the backdrop: its ramp starts at 22% (the counties' at 7%).
-              ready={loc !== null} hover={hover ?? tapped ?? lit} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
+              ready={loc !== null} hover={hover ?? tapped ?? lit} chosen={lit} chosenMs={litDur} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
           </svg>}
           {shown && pointer && !touch && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">

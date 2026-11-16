@@ -1,4 +1,5 @@
 "use client";
+import { SelectRing } from "@/components/motion/Selection";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import Term from "@/components/Term";
@@ -57,15 +58,15 @@ const GLIDE_MS = 260;
  * drawing fades the dots in place in the table's order, largest first ("cm-pt", staggered); the dots the 25-supplier
  * view adds fade in alone ("cm-in"); a dot that comes back into view while zooming or panning appears at once.
  */
-function SupplierDot({ born, i, selected, cx, cy, r, label, onSelect, aria, title }: {
-    born: "cm-pt" | "cm-in" | ""; i: number; selected: boolean; cx: number; cy: number; r: number; label: ReactNode;
+function SupplierDot({ born, i, selected, ring = false, cx, cy, r, label, onSelect, aria, title }: {
+    born: "cm-pt" | "cm-in" | ""; i: number; selected: boolean; ring?: boolean; cx: number; cy: number; r: number; label: ReactNode;
     onSelect: () => void; aria: string; title: string;
 }) {
     const [enter] = useState(born);
     return <g className={`rv-point ${selected ? "selected" : ""}`} role="button" tabIndex={0} aria-pressed={selected} aria-label={aria} onClick={onSelect} onKeyDown={(e: KeyboardEvent) => { if (["Enter", " "].includes(e.key)) {
             e.preventDefault();
             onSelect();
-        } }}><circle className={enter || undefined} style={enter === "cm-pt" ? { "--i": i } as CSSProperties : undefined} cx={cx} cy={cy} r={r}/><title>{title}</title>{label}</g>;
+        } }}><circle className={enter || undefined} style={enter === "cm-pt" ? { "--i": i } as CSSProperties : undefined} cx={cx} cy={cy} r={r}/>{ring && <SelectRing cx={cx} cy={cy} r={r + 4} className="rv-ring"/>}<title>{title}</title>{label}</g>;
 }
 /** The chosen supplier's name: at the first drawing it comes last, after the dots; a later choice shows it at once. */
 function DotLabel({ first, x, y, children }: { first: boolean; x: number; y: number; children: ReactNode }) {
@@ -90,6 +91,8 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
     suppliers: number;
 }) {
     const [limit, setLimit] = useState(12), [selected, setSelected] = useState(rows[0]?.id ?? ""), [picked, setPicked] = useState<DepRow | null>(null), [sources, setSources] = useState(false);
+    // The reader's own choice (not the first supplier shown at load): its dot's ring draws once (M-03).
+    const [chose, setChose] = useState(false);
     // `zoom` is where the view is going (the axis labels, the "×", the buttons and the count read it); `view` is where the
     // dots are drawn: the same, or on its way there while a button's or a key's zoom tweens (owner, 6 November 2026).
     const [zoom, setZoom] = useState(INITIAL_ZOOM), [view, setView] = useState(INITIAL_ZOOM);
@@ -145,7 +148,7 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
         return; const wheel = (event: WheelEvent) => { if (!event.ctrlKey && !event.metaKey)
         return; event.preventDefault(); const b = el.getBoundingClientRect(); jump(zoomAt(viewRef.current, Math.exp(-event.deltaY * .003), Math.max(0, Math.min(1, ((event.clientX - b.left) / b.width * 700 - 62) / 613)), Math.max(0, Math.min(1, ((event.clientY - b.top) / b.height * 370 - 68) / 250)))); }; el.addEventListener("wheel", wheel, { passive: false }); return () => el.removeEventListener("wheel", wheel); }, [shown.length]); // eslint-disable-line react-hooks/exhaustive-deps -- jump reads refs and setters only
     function select(row: DepRow) { if (Date.now() < suppressClick.current)
-        return; setSelected(row.id); if (!rows.some(s => s.id === row.id)) setPicked(row); else if (!shown.some(s => s.id === row.id)) showTop(rows.length);
+        return; setSelected(row.id); setChose(true); if (!rows.some(s => s.id === row.id)) setPicked(row); else if (!shown.some(s => s.id === row.id)) showTop(rows.length);
         // The details sit above the table: bring them into view when they are off screen.
         const box = detail.current?.getBoundingClientRect();
         if (box && (box.bottom < 80 || box.top > innerHeight - 80 || matchMedia("(max-width:760px)").matches)) {
@@ -177,7 +180,7 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
             return; d.moved = true; e.currentTarget.setPointerCapture(e.pointerId); const v = viewRef.current; jump(boundZoom({ ...v, x: d.x - dx / d.w / v.k, y: d.y - dy / d.h / v.k })); }} onPointerUp={endDrag} onPointerCancel={endDrag}>
  <svg viewBox="0 0 700 370" role="group" aria-label={`Furnizorii ${authorityName}`}><defs><clipPath id="rv-supplier-clip"><rect x="37" y="43" width="663" height="300"/></clipPath></defs>
  {[0, .25, .5, .75, 1].map(t => <g key={t}><line className="rv-grid" x1={62} x2={675} y1={68 + t * 250} y2={68 + t * 250}/><text className="rv-axis" x={50} y={72 + t * 250} textAnchor="end">{percent(Math.max(0, 1 - zoom.y - t / zoom.k))}</text><text className="rv-axis" x={62 + t * 613} y={342} textAnchor="middle">{percent((zoom.x + t / zoom.k) * maxX)}</text></g>)}
- <text className="rv-chart-label" x={62} y={17}>Cât din câștigurile publice ale firmei vin de aici</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea atribuită de autoritate</text><g clipPath="url(#rv-supplier-clip)">{points.map(s => <SupplierDot key={s.id} born={!drawn ? "cm-pt" : fresh?.has(s.id) ? "cm-in" : ""} i={shown.indexOf(s)} selected={p.id === s.id} cx={X(s.shareHere)} cy={Y(s.shareLife)} r={R(s.all)}
+ <text className="rv-chart-label" x={62} y={17}>Cât din câștigurile publice ale firmei vin de aici</text><text className="rv-axis" x={350} y={367} textAnchor="middle">Furnizorul în valoarea atribuită de autoritate</text><g clipPath="url(#rv-supplier-clip)">{points.map(s => <SupplierDot key={s.id} born={!drawn ? "cm-pt" : fresh?.has(s.id) ? "cm-in" : ""} i={shown.indexOf(s)} selected={p.id === s.id} ring={chose && p.id === s.id} cx={X(s.shareHere)} cy={Y(s.shareLife)} r={R(s.all)}
             aria={`${s.name}, ${sharePct(s.shareHere)} din autoritate, ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} title={`${s.name} · ${sharePct(s.shareHere)} din autoritate · ${sharePct(s.shareLife)} din câștigurile publice ale firmei`} onSelect={() => select(s)}
             label={p.id === s.id && <DotLabel first={!drawn} x={Math.min(470, Math.max(62, X(s.shareHere) - 60))} y={Y(s.shareLife) > 258 ? Y(s.shareLife) - R(s.all) - 10 : Y(s.shareLife) + R(s.all) + 20}>{shortName(s.name).slice(0, 30)}</DotLabel>}/>)}</g></svg></div>
  {visible < shown.length && <p className="rv-small">{visible} din {shown.length} furnizori în zona vizibilă</p>}</div></div>

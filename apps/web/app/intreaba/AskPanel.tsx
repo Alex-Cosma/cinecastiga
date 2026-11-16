@@ -103,6 +103,7 @@ import type { MapFacts } from "@/lib/ask/map-facts";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
+import { SelectTrace } from "../../components/motion/Selection";
 import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
@@ -2004,11 +2005,14 @@ function RankingBars({
                 {" →"}
               </button>
             </span>
+            {/* The row found draws its outline once (M-03). */}
+            {marked && !actions.length && <SelectTrace key={`found:${foundId}`} />}
           </div>
           );
           // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
           return actions.length ? <div className={`cq-rank-row${marked ? " is-found" : ""}`} key={r.entityId ?? r.name} data-qb-arow="" data-rank-id={r.entityId ?? undefined} ref={motion.join}>
             {row}
+            {marked && <SelectTrace key={`found:${foundId}`} />}
             <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
           </div> : row;
         })}
@@ -2029,6 +2033,7 @@ function RankingBars({
           const row = { entityId: pinned.id, name: pinned.name };
           const value = pinned.value ?? 0, count = pinned.n ?? 0, share = rankingShare(value, shareTotals);
           return <div className="cq-rank-row is-found cq-rank-pinned" data-rank-id={pinned.id}>
+            <SelectTrace key={`found:${pinned.id}`} />
             <div className="cq-rank-main">
               <span className="cq-rank-number">{String(pinned.rank).padStart(2, "0")}</span>
               <span className="cq-rank-name">

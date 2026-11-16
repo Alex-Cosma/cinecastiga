@@ -4,6 +4,8 @@ import { useMemo, type CSSProperties } from "react";
 import type { MapArea } from "@/lib/map-capita-shared";
 import { CITY, dotRadius, packDots, pathCentroid } from "./dots";
 import { useFillIn } from "./motion";
+import { SelectRing } from "@/components/motion/Selection";
+import { EASE_CAMERA } from "@/components/motion/outline";
 
 /*
  * The open county's hospitals on its map (owner, 8 November 2026, variant A): each a circle in its town, its area
@@ -15,7 +17,7 @@ import { useFillIn } from "./motion";
 /** A hospital's circle, by its beds (one function, so the packing is not redone on every render). */
 const byBeds = (a: MapArea): number => dotRadius(a.beds);
 
-export default function HospitalLayer({ uats, hospitals, city, unit, ready, hover, tint, onHover, onOpen, radius = byBeds }: {
+export default function HospitalLayer({ uats, hospitals, city, unit, ready, hover, chosen = null, chosenMs, tint, onHover, onOpen, radius = byBeds }: {
   uats: { siruta: string | number; d: string }[];
   hospitals: readonly MapArea[];
   /** București's centre in the map's units (for the capital's hospitals), or null. */
@@ -24,6 +26,9 @@ export default function HospitalLayer({ uats, hospitals, city, unit, ready, hove
   unit: number;
   ready: boolean;
   hover: string | null;
+  /** The institution the map search chose: its ring draws once (M-03), in `chosenMs`. */
+  chosen?: string | null;
+  chosenMs?: number | undefined;
   /** A hospital's fill-opacity on the map's ramp, or null for a hollow ring (no figure). */
   tint: (a: MapArea) => number | null;
   onHover: (key: string | null) => void;
@@ -51,6 +56,7 @@ export default function HospitalLayer({ uats, hospitals, city, unit, ready, hove
         <circle cx={d.at[0]} cy={d.at[1]} r={d.r + 4 * unit} className="mx-dot-hit" />
         <circle cx={d.at[0]} cy={d.at[1]} r={d.r} vectorEffect="non-scaling-stroke" className="mx-dot-m"
           style={t === null ? undefined : { fillOpacity: filled ? t : 0.07 } as CSSProperties} />
+        {chosen === d.key && <SelectRing key={d.key} cx={d.at[0]} cy={d.at[1]} r={d.r + 3 * unit} className="mx-dot-ring" duration={chosenMs} easing={EASE_CAMERA} strokeWidth={2.4 * unit} />}
       </g>;
     })}
   </g>;

@@ -51,9 +51,14 @@
 /* A ring round a chosen dot (pathLength 1, started at its top). */
 .mo-ring { stroke-dasharray: 1 1; animation: mo-ring var(--mo-sel-dur, var(--mo-pick)) var(--mo-sel-ease, var(--ease)) both; }
 @keyframes mo-ring { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-/* Leaving (← România, Escape): the outline runs back. */
-.mo-sel-out { animation: mo-sel-out var(--mo-retreat) var(--ease-exit) both; }
-@keyframes mo-sel-out { to { opacity: 0; } }
+/* Leaving (← România, Escape): the outline runs back in 200 ms (Selection.tsx useLeaving). */
+.mo-sel-a.mo-sel-leave { animation: mo-sel-a-out var(--mo-retreat) var(--ease-exit) both; }
+.mo-sel-b.mo-sel-leave { animation: mo-sel-b-out var(--mo-retreat) var(--ease-exit) both; }
+@keyframes mo-sel-a-out { from { stroke-dashoffset: .5; } to { stroke-dashoffset: 1; } }
+@keyframes mo-sel-b-out { from { stroke-dashoffset: 1.5; } to { stroke-dashoffset: 1; } }
+/* A chosen row's outline (SelectTrace), over its border, kept while it stays chosen. */
+.mo-select-trace { position: absolute; overflow: visible; pointer-events: none; z-index: 1; }
+.mo-select-trace path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 1 2; animation: mo-ring var(--mo-sel-dur, var(--mo-pick)) var(--mo-sel-ease, var(--ease)) var(--mo-sel-delay, 0ms) both; }
 
 /* M-08 — a save at work: a piece of outline turns round the button after a short wait, and closes when it is done. */
 .mo-perim { position: absolute; overflow: visible; pointer-events: none; }
@@ -90,8 +95,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tag-trace path, .term-hold-line .term-words::before { transition: none !important; }
-  .mo-sel-a, .mo-sel-b, .mo-ring, .mo-done-check path { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
-  .mo-sel-out { animation: none; }
+  .mo-sel-a, .mo-sel-b, .mo-ring, .mo-done-check path, .mo-select-trace path { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
+  .mo-sel-leave { animation: none !important; opacity: 0; }
   .mo-hair { display: none; }
   .mo-new, .mo-new-group { animation: none; }
   .mo-new-first { animation: mo-new-mark var(--mo-new-mark) ease-out; }
@@ -100,5 +105,6 @@
 }
 @media print {
   .mo-arrive, .mo-perim, .mo-hair { display: none !important; }
-  .mo-sel-a, .mo-sel-b, .mo-ring, .mo-new, .mo-new-first, .mo-new-group, .mo-chip-in, .mo-changed, .mo-sorted { animation: none !important; }
+  .mo-sel-a, .mo-sel-b, .mo-ring, .mo-select-trace path, .mo-new, .mo-new-first, .mo-new-group, .mo-chip-in, .mo-changed, .mo-sorted { animation: none !important; stroke-dasharray: none; }
+  .mo-sel-leave { display: none; }
 }

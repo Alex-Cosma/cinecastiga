@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectTrace } from "../../components/motion/Selection";
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import type { DistributionDataV2, DistributionDataV3, DistributionData, DistributionMember, ScoredMember } from "../../lib/ask/compile";
@@ -21,6 +22,8 @@ import Popover from "./builder/pickers/Popover";
 import { usePeerDialog } from "./builder/use-peer-dialog";
 import { useChartMotion } from "./answer/chart-motion";
 import "./distribution.css";
+/** „aici” is outlined after the entrance of the columns (--chart-in times --chart-pace). */
+const HERE_DELAY = "calc(var(--chart-in) * var(--chart-pace))";
 
 /*
  * "Unde se situează X?" (distribution-3, rf-2026.18, owner decision of 1
@@ -358,6 +361,8 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
             <span className="dist-n">{here && <em className={histMotion.enter("cm-fade cm-late")}>aici</em>}{would && <em className={histMotion.enter("cm-fade cm-late")}>ar fi aici</em>}{formatInt(h.n)}</span>
             <span className={`dist-hbar cm-tw ${histMotion.enter("cm-y")}`} style={{ "--h": h.n / peak } as CSSProperties} />
             <span className="dist-axis"><b>{h.from}</b><small>{h.to !== h.from ? `–${h.to}` : ""}</small></span>
+            {/* „aici” draws its outline once, after the columns have grown (M-03; the subject's own mark comes last). */}
+            {here && <SelectTrace delay={HERE_DELAY} />}
           </>;
           return h.n > 0
             ? <button key={h.from} type="button" className={cls} onClick={() => bars.toggle({ from: h.from, to: h.to }, h.n)} aria-expanded={opened} aria-controls="dist-bar-members"
@@ -370,6 +375,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
         const words = <>
           <span className="dist-low-axis">sub 10</span>
           <span>{lowHere && <em>{f.inGroup ? "aici" : "ar fi aici"}</em>}<b>{formatInt(lowN)}</b> fără semnal în scor · {formatShare(histN ? lowN / histN : 0)} din grup</span>
+          {lowHere && f.inGroup && <SelectTrace delay={HERE_DELAY} />}
         </>;
         return lowN > 0
           ? <button type="button" className={`dist-low${lowOpen ? " is-open" : ""}`} onClick={() => bars.toggle(LOW_BAND, lowN)} aria-expanded={lowOpen} aria-controls="dist-bar-members"
@@ -493,6 +499,7 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
             <span className="dist-n">{here && <em className={histMotion.enter("cm-fade cm-late")}>aici</em>}{would && <em className={histMotion.enter("cm-fade cm-late")}>ar fi aici</em>}{formatInt(h.n)}</span>
             <span className={`dist-bar cm-tw ${histMotion.enter("cm-y")}`} style={{ height: `${Math.max(2, (h.n / peak) * 100)}%` }} />
             <span className="dist-axis"><b>{h.k}</b><small>{formatDecimal(h.k / max, max === 4 ? 2 : 1)}</small></span>
+            {here && <SelectTrace delay={HERE_DELAY} />}
           </>;
           return h.n > 0
             ? <button key={h.k} type="button" className={cls} onClick={() => bars.toggle(h.k, h.n)} aria-expanded={openK === h.k} aria-controls="dist-bar-members"

@@ -28,6 +28,7 @@ import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn }
 import { FactTag } from "./answer/RowFacts";
 import { historicFact, historicLeftOutWords, historicPlaceWords } from "../../lib/ask/historic";
 import HelpTip from "./builder/HelpTip";
+import { SelectRing } from "../../components/motion/Selection";
 import Term from "../../components/Term";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
@@ -602,7 +603,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         {picked && (() => {
           const d = drawn.find((x) => x.point.id === picked.id);
-          return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring cm-pt" style={FAST} /> : null;
+          // Chosen or found alone, its ring draws once from the top in 300 ms (M-03); a new choice draws anew.
+          return d ? <SelectRing key={picked.id} cx={d.x} cy={d.y} r={9} className="sc-ring" /> : null;
         })()}
         {found?.results.map((m) => { const d = drawn.find((x) => x.point.id === m.id); return d ? <circle key={m.id} cx={d.x} cy={d.y} r={8} className="sc-ring is-find cm-pt" style={FAST} /> : null; })}
       </svg>

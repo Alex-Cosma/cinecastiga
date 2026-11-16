@@ -18,6 +18,8 @@ import HelpTip from "./builder/HelpTip";
 import type { KitLink } from "./builder/kit-types";
 import { G } from "../../components/ghost/Ghost";
 import { chartPace } from "../../components/motion/pace";
+import { SelectPath } from "../../components/motion/Selection";
+import { EASE_CAMERA } from "../../components/motion/outline";
 import { countyMetrics, localNotes, mapFirm, metricWords, nationalMetric, type CountyMetric, type MapLensValue } from "./map-answer";
 
 type MapData = Extract<BlockData, { block: "map" }>;
@@ -311,6 +313,11 @@ export default function MapBlock({
               </a>
             );
           })}
+          {/* The county whose card is open draws its outline once, from its top both ways (M-03; no camera here). */}
+          {card && (() => {
+            const s = countyMap.shapes.find((x) => x.key === card.key);
+            return s ? <SelectPath key={card.key} id={card.key} d={s.d} className="ask-county-chosen" duration={600 * chartPace()} easing={EASE_CAMERA} /> : null;
+          })()}
         </svg>
         <div className="ask-legend qb-tipwrap">
           <span>mai puțin</span>
