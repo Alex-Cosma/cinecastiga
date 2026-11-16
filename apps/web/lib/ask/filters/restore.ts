@@ -17,7 +17,8 @@ import type { FilterSpec } from "./types";
  * without a builder that would show the question without it.
  */
 
-export const INVALID_LINK = "Legătura conține o întrebare invalidă. Poți construi una nouă mai jos.";
+/** Said right under the question box (UX audit Z2-31): nothing of the link is kept, and the builder is not „below”. */
+export const INVALID_LINK = "Linkul nu poate fi citit. Pune întrebarea din nou sau alege un exemplu.";
 
 export type RestoredLink =
   | { kind: "error"; error: string; newer?: true }

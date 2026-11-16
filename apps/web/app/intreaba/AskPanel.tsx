@@ -608,6 +608,14 @@ export default function AskPanel({
         setQ(question);
         setMode("ask");
         void execute({ question });
+      } else if (!question && !encoded && !opened) {
+        // «Înapoi» down to the bare page: the empty page, not the last answer kept on screen (UX audit, zone 2 bug).
+        request.current.controller?.abort();
+        intentRequest.current?.abort();
+        setResp(null); setAppliedSpec(null); setError(null); setErrorDetail(null); setLoading(false); setEvidence(null); setThread(null);
+        setIntent(null); setIntentLoading(false); setIntentError(null); setChosen(null); setUnderstood({}); setAskText("");
+        setBuilderInit(null); setBuilderOpen(false); setBuilderCollapsed(false); setAskUnfolded(false); setDirty(false);
+        lastBody.current = null;
       } else if (encoded) {
         // The link opens in the builder with its conditions as chips; it runs only what /api/ask runs
         // as it is. A key this release reads but does not apply keeps F0a's message, without a builder
@@ -620,8 +628,7 @@ export default function AskPanel({
           setBuilderInit(null);
           setBuilderOpen(false);
           setBuilderCollapsed(false);
-          // Below the examples on a phone: bring the reason into view.
-          revealError();
+          // Said right under the box, where the page opens (UX audit Z2-31): nothing to bring into view.
           return;
         }
         setBuilderInit(restored.spec);
@@ -1082,6 +1089,8 @@ export default function AskPanel({
       </header>
       <AskBox value={askText} onChange={setAskText} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
+      {/* A link that could not be opened (nothing was asked): said right under the box (UX audit Z2-31). */}
+      {error && !lastBody.current && <div className="cq-error ia-link-error" role="alert" id="raspuns-eroare"><strong>{error}</strong></div>}
       <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
       {intent && !intent.spec && !intent.alternatives.some((alt) => alt.kind !== "intent") && <IntentUnknown result={intent} onPick={pickExample} />}
@@ -1204,7 +1213,7 @@ export default function AskPanel({
       {/* No answer on screen yet (a link, a first question, a retry): its ghost where it will stand, shaped by the
           question asked, after 120 ms so a quick answer never shows it. A new answer over one on screen dims it instead. */}
       {loading && !error && !(resp?.ok && answered && appliedSpec) && <AnswerGhost spec={asked} />}
-      {error && (
+      {error && lastBody.current && (
         <div className="cq-error" role="alert" id="raspuns-eroare">
           <strong>{error}</strong>
           <p>Întrebarea ta este păstrată.</p>
