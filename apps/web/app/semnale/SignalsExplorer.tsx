@@ -30,6 +30,13 @@ const groups: [string, string[]][] = [
 ];
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const sorts: [RiskGroupSort, string][] = [["cri", "După risc"], ["flags", "După numărul de tipare"], ["das", "După achiziții directe"], ["total", "După valoare"], ["name", "După nume"]];
+/** The phone's one select (UX audit Z6-20): each order in its usual direction, and the current one if it was turned. */
+function sortOptions(sort: RiskGroupSort, dir: "asc" | "desc"): [string, string][] {
+  const words = (s: RiskGroupSort, d: "asc" | "desc") => `${sorts.find(([v]) => v === s)![1]} ${s === "name" ? (d === "asc" ? "A–Z" : "Z–A") : d === "asc" ? "↑" : "↓"}`;
+  const base = sorts.map(([s]) => [s, s === "name" ? "asc" : "desc"] as const);
+  const all = base.some(([s, d]) => s === sort && d === dir) ? base : [...base, [sort, dir] as const];
+  return all.map(([s, d]) => [`${s}:${d}`, words(s, d)]);
+}
 const scopeKey = (s: SignalState) => `${s.role}:${s.county ?? ""}:${s.entity ?? ""}`;
 /** One entity's page for a pattern (the case page). */
 const caseUrl = (code: string, role: SignalState["role"], entity: string) => signalUrl(parseSignalState({ tip: code, rol: role, ent: entity }));
@@ -121,6 +128,24 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   const noteOf = (fi: SignalInstance) => caseMeter(fi.flagCode, fi.evidence)?.note ?? riskEvidenceLine(fi.flagCode, fi.evidence) ?? "";
   const sameNote = listRows.length > 1 && listRows.every(r => noteOf(r) === noteOf(listRows[0]!));
   const heads = signalListHeads(code, active.role);
+  /**
+   * The ranking is ordered from its head, as the site's other tables (UX audit Z6-20): a column's first press orders by
+   * it in its usual direction (the name A–Z, the others largest first), a second press turns it (▾/▴).
+   */
+  function rankHead() {
+    const col = (sort: RiskGroupSort, label: string, right = false) => {
+      const on = active.sort === sort, first = sort === "name" ? "asc" : "desc";
+      const dir = on ? (active.dir === "asc" ? "desc" : "asc") : first;
+      return <button type="button" className={`sg-sort${on ? " on" : ""}${right ? " r" : ""}`} aria-pressed={on}
+        aria-label={`Ordonează după ${label.toLowerCase()}, ${sort === "name" ? (dir === "asc" ? "de la A la Z" : "de la Z la A") : dir === "asc" ? "crescător" : "descrescător"}`}
+        onClick={() => navigate({ sort, dir })}>{label}<span aria-hidden="true">{on ? (active.dir === "asc" ? "▴" : "▾") : "↕"}</span></button>;
+    };
+    return <div className="sg-rank-head" role="group" aria-label="Ordonează lista">
+      <span className="c">{col("name", active.role === "authority" ? "Instituția" : "Firma")}<span aria-hidden="true">·</span>{col("das", "Achiziții directe")}<span aria-hidden="true">·</span>{col("total", "Valoare")}</span>
+      <span className="c">{col("flags", "Tipare")}</span>
+      <span className="c r">{col("cri", "Scor", true)}</span><span />
+    </div>;
+  }
   /** A case of the list (owner, 6 November 2026): its picture and number; the whole row opens the case page. */
   function signalRow(fi: SignalInstance, i: number) {
     const meter = caseMeter(fi.flagCode, fi.evidence);
@@ -170,9 +195,12 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
     <section ref={resultsRef} className={`sg-results${update ? " sg-upd" : ""}${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined} data-chart>
       {reshaping ? <ResultsGhost state={requested}/> : error ? <div className="sg-empty" role="alert"><h3>Rezultatele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setRequested(state); startTransition(() => router.refresh()); }}>Reîncearcă</button></div> : <>
-        {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "autorități" : "firme"} cu tipare</h3><p>din {formatInt(distTotal)} cu minimum 10 achiziții directe · {formatInt(distNone)} fără niciun tipar</p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls"><span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : "Toate valorile riscului"}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span><div><label>Ordonează <select value={active.sort} onChange={e => navigate({ sort: e.target.value as RiskGroupSort, dir: e.target.value === "name" ? "asc" : "desc" })}>{sorts.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="sg-secondary" onClick={() => navigate({ dir: active.dir === "asc" ? "desc" : "asc" })}>{active.dir === "asc" ? "Crescător" : "Descrescător"}</button></div></div></>}
+        {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "autorități" : "firme"} cu tipare</h3><p>din {formatInt(distTotal)} cu minimum 10 achiziții directe · {formatInt(distNone)} fără niciun tipar</p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls"><span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : "Toate valorile riscului"}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span>{/* On a phone the cards have no head: one select, the direction in its words (UX audit Z6-20). */}
+          <label className="sg-sort-phone">Ordonează <select value={`${active.sort}:${active.dir}`} onChange={e => { const [sort, dir] = e.target.value.split(":") as [RiskGroupSort, "asc" | "desc"]; navigate({ sort, dir }); }}>
+            {sortOptions(active.sort, active.dir).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></>}
         {toolbar()}
         {leftOutLine()}
+        {active.view === "cri" && total > 0 && rankHead()}
         {total > 0 ? <>
           {signals && <>
             <div className="sg-case-head" aria-hidden="true"><span>{heads.entity}</span><span>{heads.partner}</span><span>{heads.meter}</span><span className="r">{heads.amount}</span><span /><span /></div>
@@ -218,7 +246,7 @@ function ResultsGhost({ state }: { state: SignalState }) {
   return <Ghost name="semnale-results" label="Se încarcă rezultatele…" wait="client">
     {cri && <><div className="sg-cri-overview" aria-hidden="true"><div><h3><G.Line w="62%"/></h3><p><G.Line w="88%"/><G.Line w="40%" only="phone"/></p></div>
       <div className="sg-histogram"><svg className="sg-hist-ghost" viewBox="0 0 100 118" preserveAspectRatio="none">{[30, 46, 58, 64, 52, 40, 28, 18, 10, 5].map((h, i) => <rect key={i} className="g-svg" x={i * 10 + 1.5} y={96 - h} width="7" height={h} rx="1"/>)}</svg></div></div>
-      <div className="sg-cri-controls" aria-hidden="true" inert><span>{state.criteria !== null || state.band ? <G.Line inline w="12ch"/> : "Toate valorile riscului"}</span><div><label>Ordonează <select defaultValue={state.sort}>{sorts.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="sg-secondary">{state.dir === "asc" ? "Crescător" : "Descrescător"}</button></div></div></>}
+      <div className="sg-cri-controls" aria-hidden="true" inert><span>{state.criteria !== null || state.band ? <G.Line inline w="12ch"/> : "Toate valorile riscului"}</span><label className="sg-sort-phone">Ordonează <select defaultValue={`${state.sort}:${state.dir}`}>{sortOptions(state.sort, state.dir).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></>}
     <ToolbarGhost/>
     {cri
       ? <G.Rows n={10} as="article" className="sg-result sg-rank-row" cells={i => <>
