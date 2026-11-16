@@ -22,6 +22,11 @@ export interface SignalState {
   band: { from: number; to: number } | null;
   sort: RiskGroupSort;
   dir: "asc" | "desc";
+  /**
+   * The ranking by risk lists the inactive profiles too (no record in 24 months, rf-2026.22 S8; owner, 16 November 2026:
+   * the rule of Întreabă on /semnale, lib/ask/historic.ts). Off by default: they are left out, counted, with „Include-le”.
+   */
+  inactive: boolean;
   /** Signals of one entity, in the role it is viewed in: its page /entitati/{id}/semnale. Signals view only. */
   entity: string | null;
 }
@@ -44,6 +49,7 @@ export function parseSignalState(params: Record<string, string | undefined>): Si
   return { view, criteria, code, role, county, page: Number.isSafeInteger(p) && p >= 0 ? p : 0,
     band: validBand && criteria === null ? { from, to } : null, sort,
     dir: params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc",
+    inactive: view === "cri" && params.inactive === "1",
     entity: view === "signals" && params.ent && ENTITY_ID.test(params.ent) ? params.ent : null };
 }
 
@@ -72,8 +78,8 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
       next.code = next.role === "authority" ? "da_concentration" : "da_dependence";
   }
   if (Object.hasOwn(patch, "role")) { next.criteria = null; next.band = null; }
-  if (next.view === "signals") { next.band = null; next.criteria = null; } else next.entity = null;
-  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity"].some((key) => Object.hasOwn(patch, key));
+  if (next.view === "signals") { next.band = null; next.criteria = null; next.inactive = false; } else next.entity = null;
+  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity", "inactive"].some((key) => Object.hasOwn(patch, key));
   const page = patch.page ?? (changedFilter ? 0 : state.page);
   // One entity's signals are one of its pages, as its other analyses (owner, 6 November 2026): /entitati/{id}/semnale,
   // the role in the entity pages' spelling (the page drops it for an entity with a single role).
@@ -90,6 +96,7 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
     q.set("criMin", String(next.band.from)); q.set("criMax", String(next.band.to));
   }
   if (next.view === "cri" && (next.sort !== "cri" || next.dir !== "desc")) { q.set("sort", next.sort); q.set("dir", next.dir); }
+  if (next.view === "cri" && next.inactive) q.set("inactive", "1");
   if (page > 0) q.set("p", String(page));
   return `/semnale?${q.toString()}`;
 }

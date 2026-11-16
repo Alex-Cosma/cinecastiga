@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { SignalInstance, SignalPage } from "@/lib/signals";
-import type { RiskEntity, RiskGroupSort } from "@/lib/marts";
+import type { SignalInstance, SignalPage, SignalRiskGroup } from "@/lib/signals";
+import type { RiskGroupSort } from "@/lib/marts";
+import { historicFact } from "@/lib/ask/historic";
+import { inactiveIncludedWords, inactiveLeftOutWords } from "@/lib/signal-list-words";
 import { parseSignalState, signalUrl, type SignalState } from "@/lib/signals-shared";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { COUNTIES } from "@/lib/counties";
@@ -64,7 +66,7 @@ function MobileFilters({ state, apply, close }: { state: SignalState; apply: (pa
   return <SignalDialog title="Restrânge rezultatele" onClose={close}><form className="sg-mobile-form" onSubmit={e => { e.preventDefault(); apply({ ...(role !== state.role ? { role } : {}), county }); }}><label><span className="sg-label">Cine</span><select value={role} onChange={e => setRole(e.target.value as SignalState["role"])}><option value="authority">Instituții</option><option value="supplier">Firme</option></select></label><County id="sg-mobile-county" value={county} role={role} onChange={setCounty}/><button className="sg-primary" type="submit">Arată rezultatele</button></form></SignalDialog>;
 }
 export default function SignalsExplorer({ state, signals, risk, counts, distribution, freshness, error }: {
-  state: SignalState; signals: SignalPage | null; risk: { rows: RiskEntity[]; page: number; total: number; pageSize: number } | null;
+  state: SignalState; signals: SignalPage | null; risk: SignalRiskGroup | null;
   counts: Record<string, number>; distribution: { bin: number; n: number }[]; freshness: ReactNode; error?: string | undefined;
 }) {
   const router = useRouter(), [pending, startTransition] = useTransition();
@@ -100,9 +102,19 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
     memory.current[active.view] = active;
     const previous = memory.current[view], same = previous && scopeKey(previous) === scopeKey(active);
     navigate({ view, page: same ? previous.page : 0, criteria: view === "cri" && same ? previous.criteria : null,
-      band: view === "cri" && same ? previous.band : null, ...(view === "cri" && same ? { sort: previous.sort, dir: previous.dir } : {}) });
+      band: view === "cri" && same ? previous.band : null, ...(view === "cri" && same ? { sort: previous.sort, dir: previous.dir, inactive: previous.inactive } : {}) });
   }
   function toolbar(bottom = false) { return <div className={`sg-toolbar${bottom ? " sg-bottom-toolbar" : ""}`}><p className="sg-result-total"><strong>{formatInt(total ? state.page * 10 + 1 : 0)}–{formatInt(Math.min(total, (state.page + 1) * 10))}</strong> din {formatInt(total)} {active.view === "cri" ? "entități" : "cazuri"}{!bottom && active.view === "signals" && meta.subject === "award" && <Term id="aparitie-anunt" tip />}{active.view === "signals" && <span className="sg-result-sort">După valoare</span>}</p><Pager page={state.page} total={total} navigate={page => navigate({ page }, true)}/></div>; }
+  /**
+   * What the list leaves out by default, with the way back in, under its count (owner, 16 November 2026): in the ranking
+   * the inactive profiles, as Întreabă's rankings by risk (lib/ask/historic.ts). A real link; the click stays in the page.
+   */
+  function leftOutLine() {
+    if (active.view !== "cri" || !risk?.inactive) return null;
+    const href = signalUrl(active, { inactive: !active.inactive });
+    return <p className="sg-left-out">{active.inactive ? inactiveIncludedWords(risk.inactive) : inactiveLeftOutWords(risk.inactive)}{" "}
+      <a href={href} onClick={e => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate({ inactive: !active.inactive }); }}>{active.inactive ? "Scoate-le" : "Include-le"}</a></p>;
+  }
   /** A case of the list (owner, 6 November 2026): its picture and number; the whole row opens the case page. */
   function signalRow(fi: SignalInstance, i: number) {
     const meter = caseMeter(fi.flagCode, fi.evidence);
@@ -152,6 +164,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       {reshaping ? <ResultsGhost state={requested}/> : error ? <div className="sg-empty" role="alert"><h3>Rezultatele nu s-au încărcat</h3><p>{error}</p><button className="sg-primary" onClick={() => { setRequested(state); startTransition(() => router.refresh()); }}>Reîncearcă</button></div> : <>
         {active.view === "cri" && <><div className="sg-cri-overview"><div><h3>{formatInt(distTotal - distNone)} {active.role === "authority" ? "autorități" : "firme"} cu tipare</h3><p>din {formatInt(distTotal)} cu minimum 10 achiziții directe · {formatInt(distNone)} fără niciun tipar</p></div><div className="sg-histogram" aria-label="Profilurile pe intervale de risc">{bins.map(({ bin, n }, i) => <button key={bin} onClick={() => navigate({ criteria: null, band: binOn(bin) ? null : { from: bin / 100, to: binTo(bin) / 100 } })} aria-pressed={binOn(bin)} aria-label={`Risc ${binLabel(bin)} din 100, ${formatInt(n)} profiluri`}><span>{formatInt(n)}</span><span className={`sg-bar sg-bar-${riskBand(bin)} cm-y cm-tw`} style={{ height: `${Math.max(2, n / distMax * 70)}px`, "--i": i } as CSSProperties}/><span>{bin}<span className="sg-bin-to">–{bin === 90 ? 100 : binTo(bin) - 1}</span></span></button>)}</div></div><div className="sg-cri-controls"><span>{active.criteria !== null ? `${active.criteria} ${active.criteria === 1 ? "tipar" : "tipare"}` : active.band ? `Risc ${Math.round(active.band.from * 100)}–${Math.round(active.band.to * 100) >= 100 ? 100 : Math.round(active.band.to * 100) - 1}` : "Toate valorile riscului"}{(active.criteria !== null || active.band) && <button onClick={() => navigate({ criteria: null, band: null })}>Arată toate</button>}</span><div><label>Ordonează <select value={active.sort} onChange={e => navigate({ sort: e.target.value as RiskGroupSort, dir: e.target.value === "name" ? "asc" : "desc" })}>{sorts.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button className="sg-secondary" onClick={() => navigate({ dir: active.dir === "asc" ? "desc" : "asc" })}>{active.dir === "asc" ? "Crescător" : "Descrescător"}</button></div></div></>}
         {toolbar()}
+        {leftOutLine()}
         {total > 0 ? <>
           {signals?.rows.map(signalRow)}
           {risk?.rows.map((r, row) => {
@@ -159,7 +172,9 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
             const parts = (Object.keys(points) as RiskCriterion[]).filter(c => (points[c] ?? 0) > 0).sort((a, b) => (points[b] ?? 0) - (points[a] ?? 0));
             const href = parts[0] ? caseUrl(parts[0], active.role, r.entityId) : `/entitati/${r.entityId}`;
             return <article className="sg-result sg-rank-row" key={r.entityId} style={{ "--i": row } as CSSProperties}>
-              <div className="sg-entity"><div className="sg-entity-name"><EntityName id={r.entityId} role={active.role}>{cleanName(r.name)}</EntityName></div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {formatInt(r.nDas)} achiziții directe · {formatRon(r.totalRon)}</p></div>
+              <div className="sg-entity"><div className="sg-entity-name"><EntityName id={r.entityId} role={active.role}>{cleanName(r.name)}</EntityName>
+                {/* Listed when asked for: an inactive profile says so, its last month, the rest on hover or a tap (historicFact). */}
+                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {formatInt(r.nDas)} achiziții directe · {formatRon(r.totalRon)}</p></div>
               <div className="sg-comp-col">{parts.length ? <>
                 {/* The composition is revealed as one bar, with a clip (never scaled: its numbers stay their size). */}
                 <div className="sg-comp cm-x" role="img" aria-label={`Scorul ${formatInt(r.score)}: ${parts.map(c => `${flagLabel(c)} ${points[c]}`).join(", ")}`}>{parts.map((c, i) => <i key={c} className={`c${Math.min(i, 4)} cm-tw`} style={{ width: `${points[c]}%` }}><span>{formatInt(points[c] ?? 0)}</span></i>)}</div>

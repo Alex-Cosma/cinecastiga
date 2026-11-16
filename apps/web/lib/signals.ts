@@ -1,6 +1,7 @@
 import { createDb, type DbSql } from "@seap/db";
 import type { FlagInstance, RiskEntity } from "./marts";
 import type { ScoreParts } from "./risk-score";
+import { riskActive } from "./ask/entity-card";
 
 import { SIGNAL_PAGE_SIZE, RISK_PAGE_SIZE, type SignalState } from "./signals-shared";
 export * from "./signals-shared";
@@ -60,8 +61,13 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
   )`;
 }
 
-interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null; score: number; score_parts?: ScoreParts | null }
-const riskRow = (r: RiskRow): RiskEntity => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [], score: Number(r.score ?? 0), parts: r.score_parts ?? {} });
+interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null; score: number; score_parts?: ScoreParts | null; historic?: string | null }
+const riskRow = (r: RiskRow): RiskEntity & { historic?: string } => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [], score: Number(r.score ?? 0), parts: r.score_parts ?? {},
+  ...(typeof r.historic === "string" ? { historic: r.historic } : {}) });
+/** The ranking's profiles with a record in the last 24 months (lib/ask/entity-card.ts riskActive); `ef` is marts.entity_flags. */
+const activeOnly = (sql: DbSql, state: Pick<SignalState, "inactive">) => state.inactive ? sql`` : sql`and ${riskActive(sql, "ef")}`;
+/** One page of /semnale's risk list, and how many inactive profiles its selection has (left out, or listed). */
+export interface SignalRiskGroup { rows: (RiskEntity & { historic?: string })[]; page: number; total: number; pageSize: number; inactive: number }
 const profileCounty = (sql: DbSql, county: string | null) => county ? sql`and lower(unaccent(county)) = lower(unaccent(${county}))` : sql``;
 
 /** One page of a signal type's occurrences, largest first; an entity's case page reads longer pages (CASE_PAGE_SIZE). */
@@ -107,8 +113,10 @@ export async function readSignalPage(sql: DbSql, state: SignalState, pageSize = 
  * The profiles of /semnale's risk list (≥ 10 DAs). A band is a range of the
  * risk score: the link keeps it on 0–1 (criMin=0.4&criMax=0.5 is 40–49%),
  * the last one includes 100%. `criteria` is the number of patterns met.
+ * Without `inactive` the list leaves out the profiles with no record in 24 months, as Întreabă's rankings by risk
+ * (rf-2026.22 S8; owner, 16 November 2026), and counts them for the line that brings them back; listed, each says its last month.
  */
-export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
+export async function readSignalRiskGroup(sql: DbSql, state: SignalState): Promise<SignalRiskGroup> {
   const { from, to } = state.band ?? { from: 0, to: 1 };
   return sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
@@ -116,16 +124,21 @@ export async function readSignalRiskGroup(sql: DbSql, state: SignalState) {
     const lo = Math.round(from * 100), hi = Math.round(to * 100);
     const band = state.criteria !== null ? q`n_flags = ${state.criteria}` : !state.band ? q`true`
       : hi >= 100 ? q`score >= ${lo}` : q`score >= ${lo} and score < ${hi}`;
-    const where = q`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(q, state.county)}`;
-    const totals = await q`select count(*)::text n from marts.entity_flags where ${where}`;
+    const selection = q`role = ${state.role} and n_das >= 10 and ${band} ${profileCounty(q, state.county)}`;
+    const where = q`${selection} ${activeOnly(q, state)}`;
+    const [totals, old] = [await q`select count(*)::text n from marts.entity_flags ef where ${where}`,
+      await q`select count(*)::int inactive from marts.entity_flags ef where ${selection} and not ${riskActive(q, "ef")}`];
     const total = Number(totals[0]?.n ?? 0);
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / RISK_PAGE_SIZE) - 1));
     const col = { cri: q`score`, flags: q`n_flags`, das: q`n_das`, total: q`coalesce(total_ron, 0)`, name: q`lower(unaccent(coalesce(name_display, '')))` }[state.sort];
     const order = state.dir === "asc" ? q`${col} asc` : q`${col} desc`;
-    const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags, score, score_parts
-      from marts.entity_flags where ${where} order by ${order}, total_ron desc nulls last, entity_id
+    // Listed, an inactive profile's last record (its day), for its tag; null for an active one (scatter.ts historicDay).
+    const historic = state.inactive ? q`, case when ${riskActive(q, "ef")} then null else coalesce((select left(ep.last_activity, 10)
+      from marts.entity_profile ep where ep.entity_id = ef.entity_id and ep.role = ef.role), '') end historic` : q``;
+    const rows = await q`select entity_id, name_display, county, cri, n_flags, n_das, total_ron, flags, score, score_parts${historic}
+      from marts.entity_flags ef where ${where} order by ${order}, total_ron desc nulls last, entity_id
       limit ${RISK_PAGE_SIZE} offset ${page * RISK_PAGE_SIZE}`;
-    return { total, page, pageSize: RISK_PAGE_SIZE, rows: (rows as unknown as RiskRow[]).map(riskRow) };
+    return { total, page, pageSize: RISK_PAGE_SIZE, inactive: Number(old[0]?.inactive ?? 0), rows: (rows as unknown as RiskRow[]).map(riskRow) };
   });
 }
 
@@ -142,13 +155,16 @@ export async function readSignalTypeCounts(sql: DbSql, state: SignalState): Prom
     return Object.fromEntries(rows.map(r => [String(r.flag_code), Number(r.n)]));
   });
 }
-/** How many profiles (≥ 10 DAs) in each tenth of the risk score: 0 alone, then 20–29 … 90–100 (none score 1–19). */
+/**
+ * How many profiles (≥ 10 DAs) in each tenth of the risk score: 0 alone, then 10–19 … 90–100 (none score 1–9); the
+ * profiles the list shows, so without the inactive ones unless it includes them.
+ */
 export async function readRiskScoreDistribution(sql: DbSql, state: SignalState): Promise<{ bin: number; n: number }[]> {
   return sql.begin("isolation level repeatable read read only", async tx => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
-    const rows = await q`select case when score = 0 then 0 when score < 10 then 1 else least(score / 10, 9) * 10 end bin, count(*)::text n from marts.entity_flags
-      where role = ${state.role} and n_das >= 10 ${profileCounty(q, state.county)} group by 1 order by 1`;
+    const rows = await q`select case when score = 0 then 0 when score < 10 then 1 else least(score / 10, 9) * 10 end bin, count(*)::text n from marts.entity_flags ef
+      where role = ${state.role} and n_das >= 10 ${profileCounty(q, state.county)} ${activeOnly(q, state)} group by 1 order by 1`;
     return rows.map(r => ({ bin: Number(r.bin), n: Number(r.n) }));
   });
 }

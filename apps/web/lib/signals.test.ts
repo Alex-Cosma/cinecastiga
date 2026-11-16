@@ -14,7 +14,8 @@ function database(total = 125, bins: { bin: number; n: string }[] = []) {
       return Promise.resolve(resolve([]));
     }
   }
-  const sql = ((chunks: TemplateStringsArray, ...params: unknown[]) => new Fragment(chunks.reduce((query, text, i) => {
+  // sql("ef") names an identifier (lib/ask/entity-card.ts riskActive); a template is a statement or a fragment.
+  const sql = ((chunks: TemplateStringsArray | string, ...params: unknown[]) => typeof chunks === "string" ? new Fragment(`"${chunks}"`) : new Fragment(chunks.reduce((query, text, i) => {
     if (i >= params.length) return query + text;
     const value = params[i];
     if (value instanceof Fragment) return query + text + value.text;
@@ -126,6 +127,40 @@ describe("complete signal population", () => {
       expect(query).not.toContain("score >=");
     }
     expect(db.values).toContain(2);
+  });
+});
+
+describe("the ranking leaves out the inactive profiles (owner, 16 November 2026, UX audit Z6-01)", () => {
+  it("lists and bins only the profiles with a record in 24 months, and counts the others for the line", async () => {
+    const db = database(14321);
+    const result = await readSignalRiskGroup(db.sql, parseSignalState({ view: "cri" }));
+    const queries = db.statements.filter((q) => q.includes("marts.entity_flags ef"));
+    const [total, left, page] = queries;
+    expect(total).toContain("and exists (\n  select 1 from marts.entity_profile ep where ep.entity_id = \"ef\".entity_id");
+    expect(left).toContain("and not exists (");
+    expect(page).toContain("last_activity >=");
+    expect(page).not.toContain(" historic");
+    expect(result.inactive).toBe(0);
+    const bins = database(0, []);
+    await readRiskScoreDistribution(bins.sql, parseSignalState({ view: "cri" }));
+    expect(bins.statements.find((q) => q.includes("score / 10"))).toContain("marts.entity_profile ep");
+  });
+  it("lists them with their last day when asked, and keeps the choice while paging, not on the signals' tab", async () => {
+    const state = parseSignalState({ view: "cri", inactive: "1" });
+    expect(state.inactive).toBe(true);
+    const db = database(15730);
+    await readSignalRiskGroup(db.sql, state);
+    const queries = db.statements.filter((q) => q.includes("marts.entity_flags ef"));
+    expect(queries[0]).not.toContain("entity_profile");
+    expect(queries.at(-1)).toContain("end historic");
+    const bins = database(0, []);
+    await readRiskScoreDistribution(bins.sql, state);
+    expect(bins.statements.find((q) => q.includes("score / 10"))).not.toContain("entity_profile");
+    const next = new URL(signalUrl(state, { page: 2 }), "http://local").searchParams;
+    expect(next.get("inactive")).toBe("1");
+    expect(new URL(signalUrl(state, { view: "signals" }), "http://local").searchParams.has("inactive")).toBe(false);
+    expect(parseSignalState({ inactive: "1" }).inactive).toBe(false);
+    expect(new URL(signalUrl(state, { inactive: false }), "http://local").searchParams.has("inactive")).toBe(false);
   });
 });
 
