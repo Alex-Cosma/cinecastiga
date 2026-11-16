@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ENTITY_YEAR_EVENT } from "./entity-top";
+import { ENTITY_TABLE_EVENT, ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagRecordLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
@@ -55,6 +55,7 @@ export default function TxTable({
   first,
   count,
   initialPage = 1,
+  askHref,
 }: {
   entityId: string;
   role: "furnizor" | "autoritate";
@@ -67,6 +68,8 @@ export default function TxTable({
   count?: number | undefined;
   /** The page the address asks for (`?p=`; UX audit Z5-29), the one `first` holds. */
   initialPage?: number;
+  /** The same records in Întreabă's drawer (captures, follows, its own CSV). */
+  askHref?: string;
 }) {
   const columns = txColumns(isAuth);
   // The address as the browser has it now: Back to this page restores the server's first answer, whose parameters
@@ -106,8 +109,16 @@ export default function TxTable({
       filters.replace({ data: { kind: "dates", years: [year], from: null, to: null } });
       setPage(1);
     };
+    // A partner's records or a channel of the ledger (UX audit Z5-12): those filters alone.
+    const show = (e: Event) => {
+      const next = (e as CustomEvent<FilterState>).detail;
+      if (!next || typeof next !== "object") return;
+      filters.replace(next);
+      setPage(1);
+    };
     window.addEventListener(ENTITY_YEAR_EVENT, pick);
-    return () => window.removeEventListener(ENTITY_YEAR_EVENT, pick);
+    window.addEventListener(ENTITY_TABLE_EVENT, show);
+    return () => { window.removeEventListener(ENTITY_YEAR_EVENT, pick); window.removeEventListener(ENTITY_TABLE_EVENT, show); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- `filters.replace` only sets state
 
   const p = filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir }));
@@ -171,8 +182,15 @@ export default function TxTable({
     <div>
       {tip.el}
       <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={update} />
-      <div className={`ask-detmeta${stale ? " g-stale" : ""}`} role="status" ref={status} tabIndex={-1}>
-        {line ?? (stale ? shownLine : "Se încarcă înregistrările…")}
+      <div className="tx-head">
+        <div className={`ask-detmeta${stale ? " g-stale" : ""}`} role="status" ref={status} tabIndex={-1}>
+          {line ?? (stale ? shownLine : "Se încarcă înregistrările…")}
+        </div>
+        {/* The selection shown, as a file; Întreabă's drawer for captures and follows (UX audit Z5-12). */}
+        <div className="tx-tools">
+          <a href={`/api/entity-tx/csv?${filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, sort, dir })).toString()}`} download>Descarcă CSV</a>
+          {askHref && <a href={askHref}>Deschide în Întreabă <span aria-hidden="true">↗</span></a>}
+        </div>
       </div>
       <div className={`ask-tablewrap${stale ? " g-stale" : ""}`} aria-busy={loading}>
         <table className="ask-table ask-drill ent-tx" aria-label="Toate achizițiile și contractele">

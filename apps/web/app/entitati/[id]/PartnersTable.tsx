@@ -3,8 +3,6 @@
 import { useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { formatRon, formatInt, cleanName } from "@/lib/format";
-import { encodeSpec } from "@/lib/ask/permalink";
-import { pairSpec } from "@/lib/ask/site-links";
 import { useTip } from "../../intreaba/use-tip";
 import type { Partner } from "@/lib/marts";
 import { useEntityTable } from "./useEntityTable";
@@ -13,11 +11,13 @@ import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import Pager from "./Pager";
+import TableLink from "./TableLink";
+import { countWords } from "@/lib/ask/answer-text";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
- * list (10/page, both channels, winner-split basis) with a per-row deep link
- * into the search drill: exact ids + names, all sources, rows auto-opened.
+ * list (10/page, both channels, winner-split basis); each row's records open in the table below, on this page (UX audit
+ * Z5-12, 16 November 2026: no longer Întreabă's drawer, which the table's head still offers).
  * Another page keeps the shown rows in place, dimmed, under a floating status (owner, 6 November 2026); ghost rows only
  * when there are none to keep (a retry after an error).
  */
@@ -29,25 +29,15 @@ interface Resp {
   error?: string;
 }
 
-function pairSearchUrl(
-  self: { id: string; name: string },
-  partner: { id: string; name: string | null },
-  isAuth: boolean,
-): string {
-  const authority = isAuth ? self : { id: partner.id, name: cleanName(partner.name) };
-  const supplier = isAuth ? { id: partner.id, name: cleanName(partner.name) } : self;
-  return `/?spec=${encodeURIComponent(encodeSpec(pairSpec(authority, supplier)))}&drill=1`;
-}
-
 export default function PartnersTable({
   entityId,
-  entityName,
   role,
   isAuth,
   initial,
 }: {
   entityId: string;
-  entityName: string;
+  /** Kept for the callers; the rows no longer build Întreabă links. */
+  entityName?: string;
   role: "furnizor" | "autoritate";
   isAuth: boolean;
   /** Page 1 as rendered by the server (also feeds "Pe scurt"), so it is not fetched twice. */
@@ -95,18 +85,13 @@ export default function PartnersTable({
               <span className="v">{formatRon(p.totalRon)} · {Math.round(p.pct * 100)}%</span>
             </div>
             <div className="bar-go">
-              {p.partnerId !== "0" && p.partnerName ? (
-                <a
-                  href={pairSearchUrl(
-                    { id: entityId, name: entityName },
-                    { id: p.partnerId, name: p.partnerName },
-                    isAuth,
-                  )}
-                >
-                  {formatInt(p.n)} {p.n === 1 ? "tranzacție" : "tranzacții"} →
-                </a>
+              {/* The partner's records in the table below, on this page (UX audit Z5-12); one word for them (Z5-07). */}
+              {p.partnerId !== "0" ? (
+                <TableLink href={`?${isAuth ? "furnizor" : "autoritate"}=${p.partnerId}#achizitii`} filter={{ partener: { kind: "pick", values: [p.partnerId] } }}>
+                  {countWords(p.n, "înregistrare", "înregistrări")} →
+                </TableLink>
               ) : (
-                <span className="county">{formatInt(p.n)} {p.n === 1 ? "tranzacție" : "tranzacții"}</span>
+                <span className="county">{countWords(p.n, "înregistrare", "înregistrări")}</span>
               )}
             </div>
           </div>

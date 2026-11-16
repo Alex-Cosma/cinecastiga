@@ -460,3 +460,11 @@
   .ent-tx .tx-title{font-size:13px}
   .ent-tx td.c-links .tx-seap{display:inline-flex;margin:-10px 0}
 }
+
+/* ---- UX audit Z5-12 (16 November 2026): the table's head — its count, then the selection as a CSV and the same records
+   in Întreabă ---- */
+.tx-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;margin-bottom:10px}
+.tx-head .ask-detmeta{margin-bottom:0}
+.tx-tools{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px}
+.tx-tools a{font-weight:500}
+@media (max-width:700px){.tx-tools a{display:inline-flex;align-items:center;min-height:44px}}

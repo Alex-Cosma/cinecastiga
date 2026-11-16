@@ -49,6 +49,7 @@ import SectionNav from "./SectionNav";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 import DropRolParam from "./DropRolParam";
 import RepsMore from "./RepsMore";
+import TableLink from "./TableLink";
 import { isFillerRep, REPS_SHOWN } from "./reps";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
@@ -409,20 +410,20 @@ export default async function EntityPage({
           <tbody>
             <tr>
               <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-da" />{ledger.nDa > 0
-                ? <a href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}>Achiziții directe&nbsp;→</a>
+                ? <TableLink href="?tip=directe#achizitii" filter={{ tip: { kind: "options", values: ["directe"] } }}>Achiziții directe&nbsp;→</TableLink>
                 : <span>Achiziții directe</span>}</span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa)}</td>
               <td>{formatRon(Number(ledger.valueDa))}</td>
             </tr>
             {ledger.nCt > 0 && (
               <tr>
-                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" /><a href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}>Contracte prin proceduri&nbsp;→</a></span></th>
+                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" /><TableLink href="?tip=contracte#achizitii" filter={{ tip: { kind: "options", values: ["contracte"] } }}>Contracte prin proceduri&nbsp;→</TableLink></span></th>
                 <td className="ent-ledger-n">{formatInt(ledger.nCt)}</td>
                 <td>{formatRon(Number(ledger.valueCt))}</td>
               </tr>
             )}
             <tr className="ent-ledger-total">
-              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>Total înregistrat</a> <Term tip id="valoare-inregistrata" /></span></span></th>
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><TableLink href="#achizitii" filter={{}}>Total înregistrat</TableLink> <Term tip id="valoare-inregistrata" /></span></span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa + ledger.nCt)}</td>
               <td>{formatRon(Number(txCounts.valueExact))}</td>
             </tr>
@@ -534,6 +535,7 @@ export default async function EntityPage({
           initial={txFilters}
           first={txFirst}
           initialPage={txPage}
+          askHref={entityTxSearchUrl(id, cleanName(row.name), role, "all")}
           count={txCounts.nDa + txCounts.nCt}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">

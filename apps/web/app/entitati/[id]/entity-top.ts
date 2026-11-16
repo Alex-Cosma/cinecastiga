@@ -135,6 +135,16 @@ export function evidenceWithPeriod(label: string, period: string | null, line: s
 /** The event a year of the chart sends the records table (TxTable): its year as the table's only filter. */
 export const ENTITY_YEAR_EVENT = "entity:year";
 
+/** The event a link of the page sends the records table (UX audit Z5-12): these filters, and nothing else. */
+export const ENTITY_TABLE_EVENT = "entity:table";
+
+/** Filters the records table to `filter` and scrolls to it (a partner's records, a channel of the ledger). */
+export function showInTable(filter: Readonly<Record<string, unknown>>): void {
+  window.dispatchEvent(new CustomEvent(ENTITY_TABLE_EVENT, { detail: filter }));
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("achizitii")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+}
+
 /**
  * Where a year's tip starts, under the plot (critique 2 November 2026: over it, it hid the bar under inspection and
  * took its click; the plot is too narrow for a tip beside a bar): centred on its column, inside the plot's width.
