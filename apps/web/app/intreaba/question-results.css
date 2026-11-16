@@ -1334,3 +1334,8 @@
   .cq-strip .qb-strip:has(.ask-maplens) > .qb-strip-end { flex: 0 0 auto; margin-left: auto; }
 }
 @media (max-width: 560px) { .cq-strip .cq-strip-end-wide { display: none; } }
+
+/* Bug (UX audit, zone 3): in „Unde e o instituție / firmă?” a name on two lines ran into the next one. The kit's list is
+   a flex column with a height limit, and a result's explicit min-height let it shrink to 48 px: in the answer, results
+   keep their own height and the list scrolls. */
+.cq-answer .qb-find .qb-res { flex-shrink: 0; }
