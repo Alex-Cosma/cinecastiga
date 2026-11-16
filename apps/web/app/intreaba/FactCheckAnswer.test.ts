@@ -95,7 +95,7 @@ describe("the verification's answer", () => {
   it("„Nu” in the whole archive: what the data cover, the entities chosen, a twin with the same name, each side's partners", () => {
     const markup = render(ABA_NONE);
     const shown = text(markup);
-    expect(shown).toMatch(/^Nu Nicio înregistrare între ei în datele noastre\. Date SEAP până la 25\.09\.2026/);
+    expect(shown).toMatch(/^Nu Nicio înregistrare între ei în datele noastre\. Înregistrări până la 25\.09\.2026/);
     expect(shown).toContain("Ai ales: ADMINISTRATIA BAZINALA DE APA SOMES TISA · CUI 42066043 · Cluj PROEURO CONSTRUCT SRL · CUI 17117170 · Sălaj");
     expect(shown).toContain("Același nume, alt CUI: CUI 18269681 · Cluj are 6 înregistrări cu PROEURO CONSTRUCT SRL, 2018–2019. Verifică");
     // UX audit Z3-18: the institution's suppliers are the head's main action; the firm's clients stay here.

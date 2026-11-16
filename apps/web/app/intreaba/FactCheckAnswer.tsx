@@ -166,7 +166,7 @@ function VerdictText({ fact: f, spec }: { fact: FactCheckData; spec: AskSpec | u
   return <>
     <p>{noRecordsWords(words, f.reason ?? "none")}</p>
     {asked && end && <p className="fc-meta">{asked} e incomplet: date până la {roDay(end)}.</p>}
-    {f.reason === "none" && end && <p className="fc-meta qb-tipwrap">Date SEAP până la {roDay(end)} <HelpTip tip={{ title: "Ce acoperă datele", text: VERDICT_TIPS.no }} /></p>}
+    {f.reason === "none" && end && <p className="fc-meta qb-tipwrap">Înregistrări până la {roDay(end)} <HelpTip tip={{ title: "Ce acoperă datele", text: VERDICT_TIPS.no }} /></p>}
   </>;
 }
 
