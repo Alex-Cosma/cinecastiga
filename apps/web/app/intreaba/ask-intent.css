@@ -180,3 +180,7 @@
 @media (max-width: 700px) { .ask-toast-action { min-height: 44px; } }
 .ask-toast:has(.ask-toast-action) { width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding-block: 0; }
 @media (max-width: 700px) { .ask-toast-action { min-height: 44px; } }
+
+/* Z2-34 (UX audit, 16 November 2026), the examples too: on a touch screen the example last tapped keeps its own
+   background; the tint is the mouse's. */
+@media (hover: none) { .ia-example:hover { background: transparent; } .ia-choices button:hover { background: var(--paper, var(--surface)); } }
