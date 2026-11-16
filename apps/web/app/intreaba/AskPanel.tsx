@@ -66,6 +66,7 @@ import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import RankingLocate from "./answer/RankingLocate";
+import type { LocateMatch } from "@/lib/ask/facet-parts";
 import Locate from "./answer/Locate";
 import { FactTag } from "./answer/RowFacts";
 import { useRowFacts } from "./answer/use-row-facts";
@@ -1007,6 +1008,8 @@ export default function AskPanel({
   // whole ranking, in pages, on the page of the place it found.
   const factIds = data?.block === "table" && applied && rowFactsWanted(applied) ? data.rows.flatMap((r) => r.entityId ? [r.entityId] : []) : [];
   const rowFacts = useRowFacts(factIds.length ? applied ?? null : null, factIds);
+  /** The place „Unde e o firmă?” picked: the ranking marks its row, or pins it under the list (UX audit Z3-07). */
+  const [locateFound, setLocateFound] = useState<LocateMatch | null>(null);
   const wholeRanking = (rank: number) => {
     if (!applied) return;
     const { topN: _topN, ...rest } = applied;
@@ -1402,7 +1405,7 @@ export default function AskPanel({
                 <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
               </>}
               {data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
-                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle}
+                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle} onFound={setLocateFound}
                   shown={data.total !== undefined ? ((data.page ?? 0) + 1) * (data.pageSize ?? RANKING_PAGE_SIZE) : data.rows.length} />
                 : data.block === "table" && <div className="qb cq-layout-row">{layoutToggle}</div>}
               {data.block === "table" &&
@@ -1415,6 +1418,7 @@ export default function AskPanel({
                     group={(data.page ?? 0) === 0 && !tableOpts.sort ? data.group : undefined}
                     onSources={openEvidence}
                     facts={rowFacts}
+                    found={locateFound}
                   />
                 ) : (
                   <TableBlock
@@ -1803,11 +1807,14 @@ function RankingBars({
   conditions = [],
   onSources,
   facts = null,
+  found = null,
 }: {
   rows: TableRow[];
   spec: AskSpec;
   /** F5: the facts of the rows shown (use-row-facts.ts), once read. */
   facts?: Record<string, WinnerFacts> | null;
+  /** The place „Unde e o firmă?” picked (Z3-07): its row is marked, or pinned under the list when past it. */
+  found?: LocateMatch | null;
   totals?: RankingTotals | undefined;
   /** F3 (table:employees-2): the ranked firms of a band, the list; `totals` stay the whole selection's. */
   group?: RankingTotals | undefined;
@@ -1838,6 +1845,13 @@ function RankingBars({
   // The bars grow top down when the ranking first shows; a re-query or a measure tweens their widths where a row stays,
   // the rows take their new order at once (no sliding), a row the answer adds fades in (owner, 6 November 2026).
   const motion = useChartMotion();
+  // Z3-07: the row found comes into view (where it is not already) and stays marked.
+  const foundId = found?.rank != null ? found.id : null;
+  useEffect(() => {
+    if (!foundId) return;
+    document.querySelector(`#raspuns [data-rank-id="${CSS.escape(foundId)}"]`)?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+  }, [foundId]);
+  const pinned = found && found.rank !== null && found.rank > rows.length && !rows.some((r) => r.entityId === found.id) ? found : null;
   if (!rows.length)
     return (
       <p className="ask-empty">
@@ -1854,9 +1868,12 @@ function RankingBars({
           const records = () => onSources(spec, entitySourceScope(spec, r), `${shown} · înregistrările din clasament`);
           const entity = r.entityId ? { id: r.entityId, name: cleanName(r.name) } : null;
           const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
+          const share = rankingShare(r.value, shareTotals);
+          const marked = foundId !== null && r.entityId === foundId;
           // The name opens the entity's page; its records are the line under the sum (owner, 2 November 2026).
           const row = (
-          <div className="cq-rank-main" key={r.entityId ?? r.name} ref={actions.length ? undefined : motion.join}>
+          <div className={`cq-rank-main${marked && !actions.length ? " is-found" : ""}`} key={r.entityId ?? r.name} ref={actions.length ? undefined : motion.join}
+            {...(actions.length ? {} : { "data-rank-id": r.entityId ?? undefined })}>
             <span className="cq-rank-number">
               {String(i + 1).padStart(2, "0")}
             </span>
@@ -1870,31 +1887,31 @@ function RankingBars({
                   className={`cm-tw ${motion.enter("cm-x")}`}
                   style={{
                     width: `${Math.max(0.5, (metric(r) / max) * 100)}%`,
-                    opacity: Math.max(0.35, 1 - i * 0.08),
                     "--i": i,
                   } as CSSProperties}
                 />
               </span>
             </span>
+            {/* Z3-06: the sum and its share on one line with the row's records (the share left the records' button). */}
             <span className="cq-rank-value">
               <strong>
                 {spec.measure === "count"
                   ? countWords(r.count, "înregistrare", "înregistrări")
                   : formatRonFull(metric(r))}
                 {spec.measure === "value_per_capita" ? " / locuitor" : ""}
+                {spec.measure !== "count" && share !== null && <span className="cq-rank-share"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
               </strong>
               <button type="button" className="cq-rank-records" onClick={records} aria-label={`Înregistrările din clasament: ${shown}`}>
                 {spec.measure === "count"
-                  ? formatRonFull(r.value)
+                  ? <>{formatRonFull(r.value)}{share !== null && <> · {formatShare(share)} din total</>}</>
                   : countWords(r.count, "înregistrare", "înregistrări")}
-                {rankingShare(r.value, shareTotals) !== null && <> · {formatShare(rankingShare(r.value, shareTotals)!)} din total</>}
                 {" →"}
               </button>
             </span>
           </div>
           );
           // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
-          return actions.length ? <div className="cq-rank-row" key={r.entityId ?? r.name} data-qb-arow="" ref={motion.join}>
+          return actions.length ? <div className={`cq-rank-row${marked ? " is-found" : ""}`} key={r.entityId ?? r.name} data-qb-arow="" data-rank-id={r.entityId ?? undefined} ref={motion.join}>
             {row}
             <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
           </div> : row;
@@ -1911,6 +1928,30 @@ function RankingBars({
             </span>
           </div>
         )}
+        {/* Z3-07: a place past the list, found by „Unde e o firmă?”, pinned under it and marked. */}
+        {pinned && (() => {
+          const row = { entityId: pinned.id, name: pinned.name };
+          const value = pinned.value ?? 0, count = pinned.n ?? 0, share = rankingShare(value, shareTotals);
+          return <div className="cq-rank-row is-found cq-rank-pinned" data-rank-id={pinned.id}>
+            <div className="cq-rank-main">
+              <span className="cq-rank-number">{String(pinned.rank).padStart(2, "0")}</span>
+              <span className="cq-rank-name">
+                <EntityName id={pinned.id} role={spec.dim === "authority" ? "authority" : "supplier"} className="cq-rank-title">{cleanName(pinned.name)}</EntityName>
+                <span className="cq-bar-track"><i style={{ width: `${Math.max(0.5, ((spec.measure === "count" ? count : value) / max) * 100)}%` }} /></span>
+              </span>
+              <span className="cq-rank-value">
+                <strong>
+                  {spec.measure === "count" ? countWords(count, "înregistrare", "înregistrări") : formatRonFull(value)}
+                  {spec.measure !== "count" && share !== null && <span className="cq-rank-share"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
+                </strong>
+                <button type="button" className="cq-rank-records" aria-label={`Înregistrările din clasament: ${cleanName(pinned.name)}`}
+                  onClick={() => onSources(spec, entitySourceScope(spec, row), `${cleanName(pinned.name)} · înregistrările din clasament`)}>
+                  {spec.measure === "count" ? formatRonFull(value) : countWords(count, "înregistrare", "înregistrări")}{" →"}
+                </button>
+              </span>
+            </div>
+          </div>;
+        })()}
       </div>
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
       {/* F3: the band of CÂȘTIGĂTORII narrows the list; its line says the list's sum against the whole selection's. */}

@@ -1190,3 +1190,38 @@
   .cq-locate { align-items: flex-start; }
   .cq-locate .qb-find { flex: 1 1 150px; }
 }
+
+/* UX audit Z3-06, Z3-07 (owner, 16 November 2026): the ranking in low rows. A row is its name over a thin bar, and on
+   the same line its sum · share and its records; every bar in the one accent (no fading by place: the length already
+   says it). The place „Unde e o firmă?” picked is marked (accent-soft, a fine accent-line edge), or pinned under the
+   list when it is past it. A phone keeps the sum and share on the left, „N înregistrări →” on the right, 44 px. */
+.cq-ranking > .cq-rank-main,
+.cq-rank-row > .cq-rank-main { gap: 16px; padding: 10px 12px; }
+.cq-rank-name > strong,
+.cq-rank-name > .cq-rank-title { margin-bottom: 7px; }
+.cq-rank-name > strong + .cq-rank-facts,
+.cq-rank-name > .cq-rank-title + .cq-rank-facts { margin: -3px 0 7px; }
+.cq-bar-track { height: 5px; }
+.cq-rank-value { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 16px; width: 360px; }
+.cq-rank-value .cq-rank-records { display: inline; margin: 0; padding: 2px 0; white-space: nowrap; }
+.cq-rank-share { font-size: 13px; font-weight: 400; color: var(--muted); }
+.cq-rank-rest { padding: 10px 12px; }
+.cq-rank-rest .cq-rank-value small { margin: 0; font-size: 12px; }
+.cq-rank-row.is-found,
+.cq-ranking > .cq-rank-main.is-found { background: var(--accent-soft); outline: 1px solid var(--accent-line); outline-offset: -1px; border-radius: 8px; }
+.cq-rank-pinned { margin-top: 8px; }
+/* The pinned row has no "⋯": its bar ends where the others' do. */
+.cq-rank-pinned::after { content: ""; flex: none; width: 40px; }
+@media (max-width: 850px) {
+  .cq-rank-value { flex-direction: column; align-items: flex-end; gap: 2px; width: 200px; }
+  .cq-rank-share-of { display: none; }
+}
+@media (max-width: 600px) {
+  .cq-ranking > .cq-rank-main,
+  .cq-rank-row > .cq-rank-main { gap: 6px 12px; padding: 12px 0; }
+  .cq-rank-value { flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 8px; width: auto; }
+  .cq-rank-value .cq-rank-records { display: inline-flex; align-items: center; min-height: 44px; padding: 0; }
+  .cq-rank-share { font-size: 12px; }
+  .cq-rank-row.is-found { padding-left: 8px; }
+  .cq-rank-rest { padding: 12px 0; }
+}
