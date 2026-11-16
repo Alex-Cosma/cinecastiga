@@ -33,6 +33,8 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
     corpus: ["site:home-roads", "site:home-hospitals", "site:home-contract-winners", "site:home-communes", "site:home-authority-cloud", "site:home-firm-dependence", "site:home-da-count", "site:home-contract-count", "site:home-value"] },
   { file: "app/DiscoveryMap.tsx", occurrences: 3, kind: "producer", what: "Home map: the national map and a county's domains",
     corpus: ["site:home-map", "site:county-breakdown"] },
+  { file: "app/DiscoverySearch.tsx", occurrences: 5, kind: "producer", what: "Search dialog opened empty: three of the home page's starting questions (UX audit Z1-17)",
+    corpus: ["site:home-hospitals", "site:home-authority-cloud", "site:home-firm-dependence"] },
   { file: "app/metodologie/MethodologyStory.tsx", occurrences: 4, kind: "producer", what: "Methodology, Pe scurt: a county's domains and the roads ranking (the guide's, until 5 Nov 2026)",
     corpus: ["site:county-breakdown", "site:home-roads"] },
   { file: "app/entitati/[id]/page.tsx", occurrences: 5, kind: "producer", what: "Entity page: its records per channel (sources open), the firms of a representative",
@@ -71,6 +73,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/urmariri/noua/page.tsx", occurrences: 2, kind: "plain", what: "Without a question, or with one from a newer release: a link to the builder" },
   { file: "app/urmariri/MonitoringInbox.tsx", occurrences: 2, kind: "plain", what: "\"Urmărește o întrebare\" opens the builder" },
   { file: "lib/search-suggestions.ts", occurrences: 5, kind: "question-text", what: "Search suggestions open `/intreaba?q=` (the interpreter)" },
+  { file: "app/cauta/TopicSearch.tsx", occurrences: 1, kind: "question-text", what: "Search page with nothing found: the words as a question in Întreabă (UX audit Z1-06)" },
   { file: "lib/ask/permalink.ts", occurrences: 1, kind: "definition", what: "encodeSpec" },
   { file: "lib/discovery-links.ts", occurrences: 3, kind: "definition", what: "askHref, countyBreakdownSpec, countyBreakdownHref" },
 ];
