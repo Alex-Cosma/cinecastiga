@@ -14,6 +14,8 @@ import type { SuggestPin } from "./ask-suggest";
 export type { IntentChoice } from "./intent-line";
 
 export const MAX_QUESTION_CHARS = 300;
+/** From here the box counts its characters (UX audit Z2-32). */
+const COUNT_FROM = 250;
 
 export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild }: {
   value: string;
@@ -28,6 +30,8 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
   onBuild?: (() => void) | undefined;
 }) {
   const suggest = useAskSuggest(value, onChange, inputRef);
+  // A paste longer than the box keeps its first 300 characters, and says so until the next keystroke (Z2-32).
+  const [cut, setCut] = useState(false);
   return (
     <form className="ia-ask" role="search" hidden={hidden} onSubmit={(event) => { event.preventDefault(); suggest.close(); onSubmit(value, suggest.pin.current); }}>
       <div className="ia-row">
@@ -47,11 +51,18 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
             maxLength={MAX_QUESTION_CHARS}
             aria-describedby="ia-help"
             {...suggest.inputProps}
+            onPaste={(event) => {
+              const input = event.currentTarget, pasted = event.clipboardData.getData("text");
+              setCut(input.value.length - ((input.selectionEnd ?? 0) - (input.selectionStart ?? 0)) + pasted.length > MAX_QUESTION_CHARS);
+            }}
+            onKeyDown={(event) => { setCut(false); suggest.inputProps.onKeyDown(event); }}
           />
+          {value.length >= COUNT_FROM && <span className="ia-count" aria-hidden="true">{value.length}/{MAX_QUESTION_CHARS}</span>}
           {!hidden && !loading && <AskSuggestList suggest={suggest} />}
         </div>
         <button type="submit" disabled={loading || value.trim().length < 2}>{loading ? "Citesc întrebarea…" : "Întreabă"}</button>
       </div>
+      {cut && <p className="ia-cut" role="status">Am păstrat primele {MAX_QUESTION_CHARS} de caractere.</p>}
       <p id="ia-help" className="ia-help">Scrie ce, unde, când.{onBuild && <> · <button type="button" className="ia-build-link" onClick={onBuild}>sau construiește pas cu pas →</button></>}</p>
     </form>
   );
