@@ -1,6 +1,6 @@
 "use client";
 
-import { arrive, prefersReducedMotion } from "@/components/motion/outline";
+import { arrive, prefersReducedMotion } from "../components/motion/outline";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SuggestResponse } from "@/app/api/suggest/route";

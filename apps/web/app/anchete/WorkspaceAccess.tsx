@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { WorkspaceMembers } from "@/lib/investigation-workspace";
 import { Ghost } from "@/components/ghost/Ghost";
 import { privateDay } from "@/lib/private-format";
-import { arrive, prefersReducedMotion } from "@/components/motion/outline";
+import { arrive, prefersReducedMotion } from "../../components/motion/outline";
 
 /** "Colaboratori": who has access, the open invitations and the form to invite (the dossier head's panel, Z8-27). */
 export default function WorkspaceAccess({ id, initial = null }: { id: string; initial?: WorkspaceMembers | null }) {

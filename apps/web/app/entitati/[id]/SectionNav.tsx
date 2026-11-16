@@ -1,6 +1,6 @@
 "use client";
 
-import { arrive } from "@/components/motion/outline";
+import { arrive } from "../../../components/motion/outline";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";

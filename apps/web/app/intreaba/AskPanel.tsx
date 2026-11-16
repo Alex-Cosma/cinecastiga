@@ -104,6 +104,7 @@ import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
 import { SelectTrace } from "../../components/motion/Selection";
+import { useFlag } from "../../components/motion/Done";
 import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
@@ -258,6 +259,8 @@ export default function AskPanel({
   const [askUnfolded, setAskUnfolded] = useState(false);
   // Where the builder draws its editor beside an answer: the answer's head (UX audit Z2-03 B).
   const [liveHost, setLiveHost] = useState<HTMLElement | null>(null);
+  // „Copiat” on the „Trimite” button after a copy (M-08).
+  const [linkCopied, raiseLinkCopied] = useFlag();
   const [toast, setToast] = useState<string | null>(null);
   /** A toast's one action („Vezi salvatele” after saving, UX audit Z2-27); it then stays a little longer. */
   const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
@@ -944,7 +947,8 @@ export default function AskPanel({
   const copyLink = async (path: string) => {
     try {
       await copyShortLink(path);
-      showToast("Link copiat. Îl poți lipi în WhatsApp.");
+      // Said on the „Trimite” button (M-08): „Copiat” for 1.6 s, read out by its live region.
+      raiseLinkCopied();
     } catch {
       showToast(
         "Copierea nu este disponibilă. Poți copia adresa din bara browserului.",
@@ -1349,7 +1353,7 @@ export default function AskPanel({
                 </button>}
                 {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”. */}
                 <div className="cq-answer-more">
-                  <ShareMenu onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
+                  <ShareMenu copied={linkCopied} onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
                     onShare={() => void share(answerPath(applied, thread), title)} />
                   <SaveQuestionButton spec={applied} active={answerSaved} onSaved={(question) => {
                     setAnswerSaved(question);

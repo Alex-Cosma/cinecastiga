@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { tipPlace } from "@/components/Term";
 import { cancelNavPending } from "@/components/ghost/client";
-import { EASE, cssMs, prefersReducedMotion } from "@/components/motion/outline";
+import { EASE, cssMs, prefersReducedMotion } from "../../../components/motion/outline";
 
 /**
  * An analysis button that says what is behind it (UX audit Z5-21, 16 November 2026): its explanation floats from it,

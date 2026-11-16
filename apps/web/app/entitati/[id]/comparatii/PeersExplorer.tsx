@@ -1,5 +1,6 @@
 "use client";
 
+import { DoneCheck, useFlag } from "../../../../components/motion/Done";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
@@ -477,8 +478,10 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
     } catch { setCopied(`Nu am putut deschide sursele: ${cleanName(name)}. Reîncearcă.`); }
     finally { setOpening(null); }
   }
+  // A copy is said on its button (M-08: „Copiat” for 1.6 s, read out by a live region); a failure stays in words below.
+  const [linkCopied, raiseLinkCopied] = useFlag();
   async function copyLink() {
-    try { await navigator.clipboard.writeText(window.location.href); setCopied("Link copiat. Păstrează criteriile și versiunea datelor."); }
+    try { await navigator.clipboard.writeText(window.location.href); setCopied(""); raiseLinkCopied(); }
     catch { setCopied("Copiază adresa din bara browserului; ea conține criteriile comparației."); }
   }
 
@@ -674,7 +677,8 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
                 <button type="button" className="pxs-btn p" disabled={busy || focal.recordCount === 0} onClick={() => showSources(focal)}>Sursele ei · {count(focal.recordCount)}</button>
                 {canCapture && <button type="button" className="pxs-btn" disabled={busy} onClick={() => showSources()}>Sursele comparației</button>}
                 {comparison && !busy && <ClipButton kind="query" spec={peerEvidenceSpec(comparison)} label={`Comparație în context · ${currentName}`} snapshot={{ peer: comparison, sourceUrl: typeof window === "undefined" ? "" : window.location.pathname + window.location.search }} />}
-                <button type="button" className="pxs-btn" onClick={() => void copyLink()}>Copiază linkul</button>
+                <button type="button" className="pxs-btn" onClick={() => void copyLink()}>{linkCopied ? <><DoneCheck />Copiat</> : "Copiază linkul"}</button>
+                <span className="d-sr-only" role="status">{linkCopied ? "Link copiat. Păstrează criteriile și versiunea datelor." : ""}</span>
                 {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
                 {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
               </div>

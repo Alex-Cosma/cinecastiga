@@ -1,6 +1,6 @@
 "use client";
 
-import { arrive } from "@/components/motion/outline";
+import { arrive } from "../../../../components/motion/outline";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";

@@ -19,9 +19,9 @@ import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
-import { SelectPath, useLeaving } from "@/components/motion/Selection";
-import { EASE_CAMERA } from "@/components/motion/outline";
-import { chartPace } from "@/components/motion/pace";
+import { SelectPath, useLeaving } from "../../components/motion/Selection";
+import { EASE_CAMERA } from "../../components/motion/outline";
+import { chartPace } from "../../components/motion/pace";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
 /*

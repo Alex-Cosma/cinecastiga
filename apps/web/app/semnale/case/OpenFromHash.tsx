@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { arrive } from "@/components/motion/outline";
+import { arrive } from "../../../components/motion/outline";
 
 /**
  * A link to one case (`#caz-<id>`, from the national list or an old sources link) opens that case's details and

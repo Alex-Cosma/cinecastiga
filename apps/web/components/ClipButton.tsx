@@ -1,5 +1,7 @@
 "use client";
 
+import { useProgress } from "./motion/Done";
+import { DONE_TIMING, arrive } from "./motion/outline";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useViewer } from "@/lib/use-viewer";
@@ -168,8 +170,13 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
   const pending = capture && ["queued", "running"].includes(capture.status);
   const existing = sel ? savedIn[sel] ?? null : null;
 
+  // The save at work turns a piece of outline round its button after 300 ms (M-08); what is saved then closes its outline.
+  const work = useProgress<HTMLButtonElement>();
+  const savedBox = useRef<HTMLParagraphElement>(null);
   const save = async () => {
     setBusy(true); setErr(null);
+    let ok = false;
+    work.start();
     try {
       let invId = sel;
       if (existing) {
@@ -179,6 +186,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
         if (!response.ok) { setErr(out?.error ?? "Versiunea nouă nu a putut fi pornită."); return; }
         setDone({ investigationId: invId, clipId: existing, again: true });
         if (out?.capture?.id) setCapture(out.capture);
+        ok = true;
         return;
       }
       if (!invId) {
@@ -200,10 +208,14 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
       if (out?.id && refId) setSavedIn((saved) => ({ ...saved, [invId]: String(out.id) }));
       if (out?.capture?.id) setCapture(out.capture);
       setNote("");
+      ok = true;
     } catch {
       setErr("Nu am putut salva dovada. Textul notei rămâne aici; încearcă din nou.");
     } finally {
       setBusy(false);
+      work.done(ok);
+      // Done: the box of what was saved, which stays, draws its outline closed (the button has made way for the result).
+      if (ok) requestAnimationFrame(() => arrive(savedBox.current, { timing: DONE_TIMING }));
     }
   };
 
@@ -228,7 +240,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
         <h2 id={titleId} title={doneTitle ?? undefined}>{done ? <>{done.again ? "Versiune nouă în" : "Salvată în"} {doneTitle ? <span className="save-where">„{doneTitle}”</span> : "anchetă"}</> : "Salvează în anchetă"}</h2>
         <button type="button" className="save-close" aria-label="Închide" onClick={() => close()}><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg></button>
       </div>
-      <p className="save-subject"><span className="save-kind">{kindName}{detail && <> · <span className="save-detail">{detail}</span></>}</span>{name && <strong title={name}>{name}</strong>}</p>
+      <p className="save-subject" ref={savedBox}><span className="save-kind">{kindName}{detail && <> · <span className="save-detail">{detail}</span></>}</span>{name && <strong title={name}>{name}</strong>}</p>
       {done ? <div className="save-done" role="status">
         {capture?.status === "failed" ? <><p><span className="save-pill">fără surse păstrate</span></p><p>Salvată, dar fără surse păstrate: {captureFailureWords(capture.error).reason}. O reîncercăm din dosar.</p></>
           : pending ? <p><strong>Păstrăm sursele…</strong> Poți continua.</p>
@@ -251,7 +263,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
           : <label className="save-field"><span>De ce contează? <span className="save-optional">Opțional</span></span><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={2000} /></label>}
         {err && <p className="save-error" role="alert">{err}</p>}
         <div className="save-actions">
-          <button type="button" className="save-primary" disabled={busy} onClick={() => void save()}>
+          <button type="button" className="save-primary" ref={work.ref} disabled={busy} onClick={() => void save()}>
             {busy ? "Se pregătește…" : existing ? "Păstrează o versiune nouă" : sel ? "Păstrează în dosar" : "Creează dosarul și păstrează"}
           </button>
           <button type="button" className="save-secondary" onClick={() => close()}>Renunță</button>

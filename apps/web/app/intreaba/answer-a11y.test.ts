@@ -79,7 +79,7 @@ describe("the answer's targets and contrast", () => {
   it("keeps the answer's actions in one group in its head: Trimite ▾ with the link, Salvează, Exportă ▾ (UX audit Z3-15)", () => {
     const panel = readFileSync(new URL("./AskPanel.tsx", import.meta.url), "utf8");
     expect(panel).toContain('<div className="cq-answer-more">');
-    expect(panel).toMatch(/<ShareMenu onPrepare=[^]*?<SaveQuestionButton[^]*?<AnswerExports key=/);
+    expect(panel).toMatch(/<ShareMenu copied=\{linkCopied\} onPrepare=[^]*?<SaveQuestionButton[^]*?<AnswerExports key=/);
     // No second „Copiază linkul” under the notes: the link is in Trimite's menu.
     expect(panel).not.toContain('className="cq-copy"');
     const menu = readFileSync(new URL("./answer/ShareMenu.tsx", import.meta.url), "utf8");

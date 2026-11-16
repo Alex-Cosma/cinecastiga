@@ -4,8 +4,8 @@ import { useMemo, type CSSProperties } from "react";
 import type { MapArea } from "@/lib/map-capita-shared";
 import { CITY, dotRadius, packDots, pathCentroid } from "./dots";
 import { useFillIn } from "./motion";
-import { SelectRing } from "@/components/motion/Selection";
-import { EASE_CAMERA } from "@/components/motion/outline";
+import { SelectRing } from "../../components/motion/Selection";
+import { EASE_CAMERA } from "../../components/motion/outline";
 
 /*
  * The open county's hospitals on its map (owner, 8 November 2026, variant A): each a circle in its town, its area

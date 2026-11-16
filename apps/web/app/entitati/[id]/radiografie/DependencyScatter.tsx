@@ -1,9 +1,9 @@
 "use client";
-import { SelectRing } from "@/components/motion/Selection";
+import { SelectRing } from "../../../../components/motion/Selection";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import Term from "@/components/Term";
-import { chartPace } from "@/components/motion/pace";
+import { chartPace } from "../../../../components/motion/pace";
 import type { DepRow } from "@/lib/radiografie";
 import { shortName } from "@/lib/radiografie-fmt";
 import { formatRon, formatInt } from "@/lib/format";

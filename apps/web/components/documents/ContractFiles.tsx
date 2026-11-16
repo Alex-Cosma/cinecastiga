@@ -1,5 +1,5 @@
 'use client';
-import { arrive } from "@/components/motion/outline";
+import { arrive, progress } from "../motion/outline";
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '@/app/DiscoveryIcon';
@@ -42,7 +42,9 @@ export default function ContractFiles({nid,initial,authenticated,sourceUrl,sourc
   const url=new URL(window.location.href);url.searchParams.set('document',selected.id);url.searchParams.set('page',String(page));window.history.replaceState(null,'',url);
   return()=>{alive=false;controller.abort();};
  },[selected?.id,page]);
- async function enqueue(id:string|null,source:'notice'|'award'='notice'){setBusy(id??(source==='award'?'award':'list'));setError('');try{await json(`/api/contracte/${nid}/files`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documentId:id,source})});await load();}catch(e){setError((e as Error).message);}finally{setBusy(null);}}
+ // The button pressed last: a request that takes a while turns a piece of outline round it (M-08).
+ const pressed=useRef<HTMLButtonElement|null>(null);
+ async function enqueue(id:string|null,source:'notice'|'award'='notice'){setBusy(id??(source==='award'?'award':'list'));setError('');const work=progress(pressed.current);let ok=false;try{await json(`/api/contracte/${nid}/files`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documentId:id,source})});await load();ok=true;}catch(e){setError((e as Error).message);}finally{work.done(ok);setBusy(null);}}
  function open(f:ContractFile,p=1,highlight=''){setReaderHighlight(highlight);if(f.id!==selected?.id){setDocumentHits(null);setDocumentQuery('');}setSelected(f);setPage(p);setQuote('');setTimeout(()=>{reader.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});reader.current?.focus({preventScroll:true});/* the document's name draws its arrival outline once the scroll stops (M-09) */arrive(reader.current?.querySelector('#reader-heading')??reader.current);},0);}
  async function search(e:React.FormEvent){e.preventDefault();setSearching(true);setError('');try{const result=await json(`/api/contracte/${nid}/files/search?q=${encodeURIComponent(query.trim())}${scope==='all'?'':`&documentId=${scope}`}`);setHits(result.hits);setSearched(query.trim());setTruncated(result.truncated);}catch(e){setError((e as Error).message);}finally{setSearching(false);}}
  async function searchDocument(e:React.FormEvent){e.preventDefault();if(!selected)return;setDocumentSearching(true);setReaderError('');try{const r=await json(`/api/contracte/${nid}/files/search?q=${encodeURIComponent(documentQuery.trim())}&documentId=${selected.id}`);setDocumentHits(r.hits);setDocumentApplied(documentQuery.trim());setReaderHighlight(documentQuery.trim());}catch(e){setReaderError((e as Error).message);}finally{setDocumentSearching(false);}}
@@ -65,7 +67,7 @@ export default function ContractFiles({nid,initial,authenticated,sourceUrl,sourc
  const turn=(next:number)=>{setPage(next);const r=reader.current;if(r&&r.getBoundingClientRect().top<0)r.scrollIntoView({block:'start'});};
  // Rendered twice (wide toolbar, phone ⋯ menu) with one state; a function, not a component, so typing keeps focus.
  const documentSearch=(className:string)=><form className={className} onSubmit={e=>void searchDocument(e)}><label>Caută în acest document<input type="search" minLength={2} maxLength={150} required value={documentQuery} onChange={e=>setDocumentQuery(e.target.value)} placeholder="Cuvânt sau expresie"/></label><button className="df-button" disabled={documentSearching}>{documentSearching?'Se caută…':'Găsește paginile'}</button></form>;
- return <section className="df-section" id="fisiere" aria-labelledby="files-heading">
+ return <section className="df-section" id="fisiere" aria-labelledby="files-heading" onClickCapture={e=>{pressed.current=(e.target as Element).closest('button');}}>
   <div className="df-heading"><div><h2 id="files-heading" className="df-tip">Documentele procedurii{data.notice&&<> <Term tip title="Documentele procedurii" text={`Documentele țin de procedura ${data.notice.noticeNo} și pot privi mai multe contracte sau loturi.`}/></>}</h2></div>{data.notice&&<div className="df-heading-actions"><a href={data.notice.url} target="_blank" rel="noopener noreferrer">{`Anunțul de participare ${data.notice.noticeNo??''}`.trim()} în SEAP ↗</a></div>}</div>
   {none?<p className="df-empty df-tip">Nu există documente în SEAP. <Term tip title="Nu există documente" text={noneTip}/>{awardLink&&<> {awardLink}</>}</p>:<>{!data.notice?<p className="df-empty">{data.participation==='none'?'Procedura nu are anunț de participare.':'Nu găsim anunțul de participare al acestei proceduri.'}{!(awardFiles&&!award!.listed)&&awardLink&&<> {awardLink}</>}</p>:<>
    {/* One status line: what can be read now, the list's state, the collection's state (UX audit Z7-14). */}

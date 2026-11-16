@@ -150,7 +150,7 @@ function whenStill(el: Element, then: () => void): () => void {
  * reduced motion it is whole at once and fades. It waits for any scroll to stop first. An element that cannot hold an
  * SVG (a field, a table row) is outlined at its own place, drawn in the nearest box that can.
  */
-export function arrive(target: Element | null | undefined, { stroke = "var(--accent)", width = 2 }: { stroke?: string; width?: number } = {}): void {
+export function arrive(target: Element | null | undefined, { stroke = "var(--accent)", width = 2, timing }: { stroke?: string; width?: number; timing?: { draw: number; stay: number; fade: number } } = {}): void {
   if (typeof window === "undefined" || !target || !(target instanceof HTMLElement || target instanceof SVGElement)) return;
   cancelOutline();
   // A title is outlined round its words, not across the whole width of its block.
@@ -214,9 +214,10 @@ export function arrive(target: Element | null | undefined, { stroke = "var(--acc
     }
     box.appendChild(svg);
     const paths = Array.from(svg.querySelectorAll("path"));
-    const total = reduced ? OUTLINE_MS.arriveStill : OUTLINE_MS.arriveDraw + OUTLINE_MS.arriveStay + OUTLINE_MS.arriveFade;
-    const hold = (total - OUTLINE_MS.arriveFade) / total;
-    if (!reduced) anims = paths.map((p) => p.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: OUTLINE_MS.arriveDraw, easing: EASE_HOLD, fill: "forwards" }));
+    const t = timing ?? { draw: OUTLINE_MS.arriveDraw, stay: OUTLINE_MS.arriveStay, fade: OUTLINE_MS.arriveFade };
+    const total = reduced ? (timing ? t.draw + t.stay + t.fade : OUTLINE_MS.arriveStill) : t.draw + t.stay + t.fade;
+    const hold = (total - t.fade) / total;
+    if (!reduced) anims = paths.map((p) => p.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: t.draw, easing: timing ? EASE : EASE_HOLD, fill: "forwards" }));
     else paths.forEach((p) => p.style.setProperty("stroke-dashoffset", "0"));
     const fade = svg.animate([{ opacity: 1 }, { opacity: 1, offset: hold }, { opacity: 0 }], { duration: total, easing: "linear", fill: "forwards" });
     anims.push(fade);
@@ -235,4 +236,86 @@ export function scrollToArrive(el: Element | null | undefined, { block = "start"
   el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block });
   if (focus && el instanceof HTMLElement) el.focus({ preventScroll: true });
   arrive(outline ?? el);
+}
+
+/* ------------------------------------------------------------------------------------------------------------------
+ * A save at work (M-08): after 300 ms (a fast save shows nothing) a piece of outline turns round the button, one turn in
+ * 1.2 s; when the save is done it closes into the whole outline in 220 ms, stays while the button says „Salvat” and
+ * fades in 300 ms. An error removes it at once (the caller says what failed, in words). Reduced motion: no turn; the
+ * whole outline when it is done.
+ * ------------------------------------------------------------------------------------------------------------------ */
+
+export interface Progress { done: (ok: boolean) => void }
+
+/** The outline that closes on what a finished save left on screen (M-08): 220 ms, kept while „Salvat” shows, 300 ms out. */
+export const DONE_TIMING = { draw: OUTLINE_MS.close, stay: OUTLINE_MS.label - OUTLINE_MS.close - OUTLINE_MS.fade, fade: OUTLINE_MS.fade };
+
+/** Starts the progress outline on `button` (any box); `done(ok)` ends it. */
+export function progress(button: HTMLElement | null | undefined): Progress {
+  if (typeof window === "undefined" || !button) return { done: () => undefined };
+  const reduced = prefersReducedMotion();
+  let svg: SVGSVGElement | null = null, path: SVGPathElement | null = null, loop: Animation | null = null, restore = "", ended = false, minWidth: string | null = null;
+  // Drawn beside the button, in its parent, over its border: the button's own children belong to React, which may
+  // replace them all when its label changes („Se salvează…” → „Salvat”).
+  const host = button.parentElement;
+  const draw = (dash: string) => {
+    if (!host) return;
+    const hs = getComputedStyle(host), cs = getComputedStyle(button);
+    if (hs.position === "static") { restore = host.style.position || "-"; host.style.position = "relative"; }
+    const r = button.getBoundingClientRect(), b = host.getBoundingClientRect();
+    // 2 px outside the button, so it reads on a filled one too.
+    const out = 2, w = r.width + 2 * out, h = r.height + 2 * out;
+    // The button keeps its width while its outline is drawn, so a shorter „Salvat” does not leave the outline behind.
+    minWidth = button.style.minWidth; button.style.minWidth = `${r.width}px`;
+    svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("class", "mo-perim");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("width", String(w));
+    svg.setAttribute("height", String(h));
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.style.cssText = `top:${r.top - b.top - host.clientTop + host.scrollTop - out}px;left:${r.left - b.left - host.clientLeft + host.scrollLeft - out}px`;
+    path = document.createElementNS(NS, "path");
+    path.setAttribute("d", perimeterPath(w, h, (parseFloat(cs.borderTopLeftRadius) || 0) + out));
+    path.setAttribute("pathLength", "1");
+    path.setAttribute("stroke-dasharray", dash);
+    svg.appendChild(path);
+    host.appendChild(svg);
+  };
+  const remove = () => {
+    loop?.cancel();
+    svg?.remove();
+    svg = null;
+    if (restore !== "" && host) { host.style.position = restore === "-" ? "" : restore; restore = ""; }
+    if (minWidth !== null) { button.style.minWidth = minWidth; minWidth = null; }
+  };
+  const fadeOut = () => {
+    const s = svg;
+    if (!s) return;
+    window.setTimeout(() => {
+      if (!s.isConnected) return remove();
+      const f = s.animate([{ opacity: 1 }, { opacity: 0 }], { duration: OUTLINE_MS.fade, fill: "forwards" });
+      f.onfinish = remove;
+    }, OUTLINE_MS.label - OUTLINE_MS.fade);
+  };
+  const timer = window.setTimeout(() => {
+    if (ended || reduced || !button.isConnected) return;
+    draw("0.22 0.78");
+    loop = path!.animate([{ strokeDashoffset: 0 }, { strokeDashoffset: -1 }], { duration: OUTLINE_MS.turn, iterations: Infinity, easing: "linear" });
+  }, OUTLINE_MS.progressDelay);
+  return {
+    done(ok: boolean) {
+      if (ended) return;
+      ended = true;
+      window.clearTimeout(timer);
+      if (!ok || !button.isConnected) return remove();
+      if (reduced) { draw("1 0"); return fadeOut(); }
+      if (!svg || !path) return; // a fast save: nothing turned, nothing to close
+      const offset = parseFloat(getComputedStyle(path).strokeDashoffset) || 0;
+      loop?.cancel();
+      loop = null;
+      const close = path.animate([{ strokeDasharray: "0.22 0.78", strokeDashoffset: offset }, { strokeDasharray: "1 0", strokeDashoffset: offset }], { duration: OUTLINE_MS.close, easing: EASE, fill: "forwards" });
+      close.onfinish = fadeOut;
+    },
+  };
 }

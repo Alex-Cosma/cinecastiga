@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { SelectPath } from "@/components/motion/Selection";
-import { EASE_CAMERA } from "@/components/motion/outline";
-import { chartPace } from "@/components/motion/pace";
+import { SelectPath } from "../components/motion/Selection";
+import { EASE_CAMERA } from "../components/motion/outline";
+import { chartPace } from "../components/motion/pace";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DiscoveryCounty } from "@/lib/discovery";
 import { countyMap, foldCounty } from "@/lib/map";

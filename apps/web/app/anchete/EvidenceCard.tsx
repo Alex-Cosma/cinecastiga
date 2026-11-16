@@ -1,6 +1,6 @@
 "use client";
 
-import { arrive, prefersReducedMotion } from "@/components/motion/outline";
+import { DONE_TIMING, arrive, prefersReducedMotion } from "../../components/motion/outline";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { captureFailureWords, type CaptureSummary } from "@/lib/evidence-captures-shared";
@@ -65,6 +65,8 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
 }) {
   const [panel, setPanel] = useState<Panel>(null);
   const [status, setStatus] = useState("");
+  // „Se păstrează sursele…” → „Surse păstrate” while the reader watches: the pill closes its outline once (M-08).
+  const pillRef = useRef<HTMLSpanElement>(null), wasAtWork = useRef(false);
   const [manual, setManual] = useState("");
   const [pending, setPending] = useState(false);
   const area = useRef<HTMLDivElement>(null);
@@ -79,6 +81,12 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
   const all = [...new Map([...item.versions, ...(capture ? [capture] : [])].map(v => [v.id, v])).values()].sort((a, b) => b.version - a.version);
   const sheet = (v: CaptureSummary) => `/anchete/${investigationId}/dovezi/${v.id}`;
   const pill = capturePill(capture, item.captured);
+  const atWork = capture?.status === "queued" || capture?.status === "running";
+  useEffect(() => {
+    if (atWork) { wasAtWork.current = true; return; }
+    if (wasAtWork.current && capture?.status === "complete") arrive(pillRef.current, { timing: DONE_TIMING });
+    wasAtWork.current = false;
+  }, [atWork, capture?.status]);
   const complete = capture?.status === "complete" ? capture : null;
   const toggle = (next: Panel) => setPanel(current => current === next ? null : next);
   const run = async (task: () => Promise<unknown>, done: string) => {
@@ -115,7 +123,7 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
     <div className="iw-card-top">
       <div className="iw-entry-meta"><span className="iw-card-kind">{item.kindLabel}{item.code && <span className="iw-code"> · {item.code}</span>}</span>
         {item.pinned && <span className="iw-pill iw-pill-pin"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M6 2h4l-.5 4 2.5 2.5H4L6.5 6 6 2ZM8 8.5V14" /></svg>Fixată</span>}
-        {pill && <span className={`iw-pill iw-pill-${pill.tone}`}>{pill.text}{capture?.status === "failed" && <Term tip title="Fără surse păstrate" text={`${captureFailureWords(capture.error).text} Dovada e în dosar; nu o prezentăm ca dovadă completă.`} />}</span>}
+        {pill && <span ref={pillRef} className={`iw-pill iw-pill-${pill.tone}`}>{pill.text}{capture?.status === "failed" && <Term tip title="Fără surse păstrate" text={`${captureFailureWords(capture.error).text} Dovada e în dosar; nu o prezentăm ca dovadă completă.`} />}</span>}
         <span className="iw-card-saved">Salvată la <time dateTime={item.savedAt}>{privateDay(item.savedAt)}</time></span></div>
       <CardMenu name={item.title} actions={actions} />
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Headline } from "@/lib/radiografie";
-import { scrollToArrive } from "@/components/motion/outline";
+import { scrollToArrive } from "../../../../components/motion/outline";
 
 /** The three strongest findings; a click scrolls to the panel, which draws its arrival outline once it stops (M-09). */
 export default function Headlines({ items }: { items: Headline[] }) {

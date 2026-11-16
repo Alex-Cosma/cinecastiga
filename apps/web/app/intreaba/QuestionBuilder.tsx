@@ -50,7 +50,7 @@ import KitLink from "./answer/KitLink";
 import { builderView, onlyExclusions, patchDraft, trendListSwitch, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import type { TrendList } from "@/lib/ask/trend-shared";
 import SaveQuestionButton from "./SaveQuestionButton";
-import { arrive } from "@/components/motion/outline";
+import { arrive } from "../../components/motion/outline";
 import SavedQuestions, { type SavedQuestion } from "./SavedQuestions";
 
 /*
