@@ -1,0 +1,95 @@
+/*
+ * Windows (UX audit M-06, owner, 16 November 2026): every window, menu, list and sheet comes and goes the same way, so
+ * a closing window reads as closed, not as part of the page that vanished. In over 200 ms with --ease (opacity and
+ * 4 px from its anchor's side), out over 140 ms with --ease-exit; a phone's sheet comes 24 px up from the bottom in
+ * 260 ms and goes in 180 ms; a dimmed backdrop 200 / 140 ms. Reduced motion: opacity only, 120 / 90 ms.
+ * A leaving window takes no clicks; focus goes back at once, not after the exit (components/motion/leave.ts).
+ *
+ * Native <dialog>s transition (with @starting-style; `display` and `overlay` are kept until the exit ends): Chrome 117+,
+ * Safari 17.5+, Firefox 129+; elsewhere they still come in and simply go. Windows React draws only while open use the
+ * keyframes below with `data-leaving`, which useLeaving() keeps for the exit's length.
+ *
+ * Where a window comes from: --win-x / --win-y (default: 4 px above, it comes down from its anchor). The exit goes
+ * half as far, the same way.
+ */
+:root {
+  --win-in: 200ms; --win-out: 140ms; --sheet-in: 260ms; --sheet-out: 180ms;
+  --win-dy: 4px; --sheet-dy: 24px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --win-in: 120ms; --win-out: 90ms; --sheet-in: 120ms; --sheet-out: 90ms; --win-dy: 0px; --sheet-dy: 0px; }
+}
+
+@keyframes win-in { from { opacity: 0; translate: var(--win-x, 0px) var(--win-y, calc(-1 * var(--win-dy))); } }
+@keyframes win-out { to { opacity: 0; translate: calc(var(--win-x, 0px) / 2) calc(var(--win-y, calc(-1 * var(--win-dy))) / 2); } }
+@keyframes sheet-in { from { opacity: 0; translate: 0 var(--sheet-dy); } }
+@keyframes sheet-out { to { opacity: 0; translate: 0 var(--sheet-dy); } }
+@keyframes scrim-in { from { opacity: 0; } }
+@keyframes scrim-out { to { opacity: 0; } }
+
+[data-leaving] { pointer-events: none; }
+
+/* Native dialogs: the closed state is where they come from and go to. */
+:is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog) {
+  opacity: 0;
+  translate: calc(var(--win-x, 0px) / 2) calc(var(--win-y, calc(-1 * var(--win-dy))) / 2);
+  transition: opacity var(--win-out) var(--ease-exit), translate var(--win-out) var(--ease-exit), scale var(--win-out) var(--ease-exit),
+    display var(--win-out) var(--ease-exit) allow-discrete, overlay var(--win-out) var(--ease-exit) allow-discrete;
+}
+:is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog):not([open]) { pointer-events: none; }
+:is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog)[open] {
+  opacity: 1; translate: none;
+  transition-duration: var(--win-in); transition-timing-function: var(--ease);
+}
+@starting-style {
+  :is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog)[open] {
+    opacity: 0; translate: var(--win-x, 0px) var(--win-y, calc(-1 * var(--win-dy)));
+  }
+}
+:is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog)::backdrop {
+  opacity: 0;
+  transition: opacity var(--win-out) var(--ease-exit), display var(--win-out) allow-discrete, overlay var(--win-out) allow-discrete;
+}
+:is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog)[open]::backdrop {
+  opacity: 1; transition-duration: var(--win-in); transition-timing-function: var(--ease);
+}
+@starting-style {
+  :is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog)[open]::backdrop { opacity: 0; }
+}
+
+/* Drawers come from the right edge; the builder's windows grow a little from the corner nearest their phrase
+   (Popover.tsx sets the origin) instead of sliding. */
+:is(dialog.evidence-drawer, dialog.rv-drawer) { --win-x: var(--win-dy); --win-y: 0px; }
+dialog.qb-pop { --win-y: 0px; scale: .98; }
+dialog.qb-pop[open] { scale: none; }
+@starting-style { dialog.qb-pop[open] { scale: .96; } }
+
+/* A phone's sheets: the builder's windows (≤ 600 px) and /semnale's dialog (≤ 700 px) come up from the bottom. */
+@media (max-width: 600px) {
+  dialog.qb-pop { scale: none; translate: 0 var(--sheet-dy); transition-duration: var(--sheet-out); }
+  dialog.qb-pop[open] { scale: none; translate: none; transition-duration: var(--sheet-in); }
+  @starting-style { dialog.qb-pop[open] { scale: none; translate: 0 var(--sheet-dy); } }
+}
+@media (max-width: 700px) {
+  /* signals.css gives the open sheet a transform transition (its handle's drag springs back): kept beside these. */
+  html dialog.sg-sheet { translate: 0 var(--sheet-dy);
+    transition: opacity var(--sheet-out) var(--ease-exit), translate var(--sheet-out) var(--ease-exit),
+      display var(--sheet-out) allow-discrete, overlay var(--sheet-out) allow-discrete; }
+  html dialog.sg-sheet[open] { translate: none;
+    transition: opacity var(--sheet-in) var(--ease), translate var(--sheet-in) var(--ease), transform var(--fast) var(--ease),
+      display var(--sheet-in) allow-discrete, overlay var(--sheet-in) allow-discrete; }
+  @starting-style { html dialog.sg-sheet[open] { translate: 0 var(--sheet-dy); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Pages that stop every transition under reduced motion (.question-builder *, .qb *, .cq-app *) keep the fade. */
+  :is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog) {
+    transition: opacity var(--win-out) linear, display var(--win-out) allow-discrete, overlay var(--win-out) allow-discrete !important;
+    translate: none !important; scale: none !important;
+  }
+  :is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog)[open] {
+    transition-duration: var(--win-in) !important;
+  }
+}
+@media print {
+  :is(dialog.evidence-drawer, dialog.rv-drawer, dialog.qb-dialog, dialog.qb-pop, dialog.d-search-dialog, dialog.sg-dialog, dialog.cq-save-dialog, dialog.feedback-dialog) { transition: none; }
+}

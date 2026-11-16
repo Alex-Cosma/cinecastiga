@@ -1,4 +1,5 @@
 import { clampLeft, placeVertical, stepEnabled, typeaheadIndex, type ListItem } from "@/lib/themed-list";
+import { leaveThenRemove } from "../motion/leave";
 
 /**
  * The site's one dropdown list, drawn in the theme (owner, 12 November 2026). One list is open at a time. It is a
@@ -118,7 +119,9 @@ export function openThemedList({ anchor, items, value, label, onPick, returnFocu
     document.removeEventListener("scroll", onScroll, true);
     removeEventListener("resize", onResize);
     panel.removeEventListener("focusout", onFocusOut);
-    panel.remove();
+    // M-06: the list leaves (140 ms, no clicks) while the focus is already back on its control.
+    panel.inert = true;
+    leaveThenRemove(panel);
     anchor.removeAttribute("data-list-open");
     if (refocus && anchor instanceof HTMLElement) anchor.focus({ preventScroll: true });
   }

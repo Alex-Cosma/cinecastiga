@@ -266,8 +266,10 @@ function Ghost({ name, county, gap }: { name: string | undefined; county: string
   </>;
 }
 
-export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
+export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving = false }: {
   siruta: string; query: string; hint: { name: string; county: string | undefined; gap: boolean } | undefined; onClose: () => void; onPick: (key: string) => void;
+  /** A phone's sheet playing its exit (UX audit M-06): drawn, but takes no clicks or focus. */
+  leaving?: boolean;
 }) {
   const [state, setState] = useState<{ key: string; data: MapUatResponse | null; error: string }>({ key: "", data: null, error: "" });
   const t = useTip();
@@ -330,7 +332,8 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
 
   // The panel slides in once; another UAT only replays its content's cascade (the body's key).
   const failed = !d && Boolean(state.error) && !loading;
-  return <section ref={self} tabIndex={-1} className={`mx-panel${loading ? " is-loading" : ""}${full ? " is-full" : ""}`} aria-labelledby="mx-p-h">
+  return <section ref={self} tabIndex={-1} className={`mx-panel${loading ? " is-loading" : ""}${full ? " is-full" : ""}`} aria-labelledby="mx-p-h"
+    data-leaving={leaving ? "" : undefined} inert={leaving} aria-hidden={leaving || undefined}>
     <div className="mx-p-grip" aria-hidden="true"
       onPointerDown={(e) => { drag.current = e.clientY; e.currentTarget.setPointerCapture(e.pointerId); }}
       onPointerCancel={() => { drag.current = null; }}

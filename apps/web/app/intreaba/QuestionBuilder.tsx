@@ -27,6 +27,7 @@ import "./builder/filters-kit.css";
 import BuilderWindow from "./builder/BuilderWindow";
 import { useCoverage } from "./builder/coverage";
 import Chip from "./builder/Chip";
+import { useLeaving } from "../../components/motion/leave";
 import ConditionRow from "./builder/ConditionRow";
 import Toggle, { type ToggleProps } from "./builder/Toggle";
 import Invitations, { Invite } from "./builder/Invitations";
@@ -170,6 +171,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const previousInitial = useRef(initialKey);
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement } | null>(null);
   const [catalogue, setCatalogue] = useState(false);
+  // M-06: the models' window keeps its content while it leaves.
+  const catalogueLeaving = useLeaving(catalogue);
   const [catalogueTab, setCatalogueTab] = useState<"models" | "saved">("models");
   const [search, setSearch] = useState("");
   const [savedQuestion, setSavedQuestion] = useState<SavedQuestion | null>(null);
@@ -478,7 +481,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       onClose={closeWindow} onChoose={(choices, opts) => { if (win) choose(win, choices, opts); }} onReplace={replace} onRemoveExclusions={removeExclusions} peers={peerState}
       onCpvName={(code, name) => setCpvNames(current => ({ ...current, [code]: name }))} coverage={coverage} />;
   const catalogueDialog = <dialog ref={dialogRef} className="qb-dialog qb-dialog-search qb-dialog-catalogue" aria-labelledby={dialogTitleId} onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); closeCatalogue(); } }} onCancel={(event) => { event.preventDefault(); closeCatalogue(); }} onClick={(event) => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeCatalogue(); } }}>
-      {catalogue && <><div className="qb-picker-head"><h2 id={dialogTitleId}>Ce ai vrea să afli?</h2><button className="qb-dialog-close" type="button" onClick={closeCatalogue} aria-label="Închide"><Glyph name="close" /></button></div>
+      {(catalogue || catalogueLeaving) && <><div className="qb-picker-head"><h2 id={dialogTitleId}>Ce ai vrea să afli?</h2><button className="qb-dialog-close" type="button" onClick={closeCatalogue} aria-label="Închide"><Glyph name="close" /></button></div>
         <p className="qb-picker-note">{catalogueTab === "saved" ? "Întrebările tale, cu filtrele păstrate. Cele mai recent salvate apar primele." : "13 feluri de a privi datele. Alege întrebarea, apoi fă-o a ta."}</p>
         <div className="cq-catalogue-tabs" role="tablist" aria-label="Alege o întrebare">{(["models", "saved"] as const).map(tab => <button key={tab} type="button" role="tab" id={`${catalogueId}-${tab}`} aria-selected={catalogueTab === tab} aria-controls={`${catalogueId}-panel`} tabIndex={catalogueTab === tab ? 0 : -1} onClick={() => { setCatalogueTab(tab); setSearch(""); }} onKeyDown={event => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) { event.preventDefault(); const next = event.key === "Home" ? "models" : event.key === "End" ? "saved" : tab === "models" ? "saved" : "models"; setCatalogueTab(next); setSearch(""); document.getElementById(`${catalogueId}-${next}`)?.focus(); } }}>{tab === "models" ? "Modele de întrebări" : "Salvate"}</button>)}</div>
         <label className="qb-picker-search" htmlFor={searchId}><Glyph name="search" /><input id={searchId} type="search" autoComplete="off" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={catalogueTab === "saved" ? "Caută în întrebările salvate…" : "Caută o întrebare, de exemplu: relații, risc, evoluție…"} aria-label={catalogueTab === "saved" ? "Caută în întrebările salvate" : "Caută în cele 13 întrebări"} /></label>

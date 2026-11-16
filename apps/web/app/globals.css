@@ -1569,3 +1569,11 @@ table.rank td { padding: 13px 14px; }
 
 /* radiografie tooltip: its "card" class collides with the generic .card surface → keep it dark */
 .rx-tip, .rx-tip.card { background: var(--ink); color: var(--bg); border: 0; box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+
+/* ============================================================
+   UX audit motion, lot B (16 November 2026). Overrides kept here, after the long rules above.
+   ============================================================ */
+
+/* M-06 windows (components/motion/windows.css): the entity typeahead's list comes and goes like every window. */
+.search-dropdown { animation: win-in var(--win-in) var(--ease) both; }
+.search-dropdown[data-leaving] { animation: win-out var(--win-out) var(--ease-exit) forwards; }

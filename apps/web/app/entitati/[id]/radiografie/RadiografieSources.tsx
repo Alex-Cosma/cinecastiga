@@ -8,6 +8,7 @@ import ClipButton from "@/components/ClipButton";
 import { rxDate } from "@/lib/radiografie-view";
 import EntityName from "../../../../components/EntityName";
 import Pager from "../Pager";
+import { closeThenLeave } from "../../../../components/motion/leave";
 export function SourceDialog({ title, children, onClose }: {
     title: string;
     children: React.ReactNode;
@@ -15,8 +16,11 @@ export function SourceDialog({ title, children, onClose }: {
 }) {
     const ref = useRef<HTMLDialogElement>(null), close = useRef(onClose);
     close.current = onClose;
-    useEffect(() => { const previous = document.activeElement as HTMLElement | null, old = document.body.style.overflow, node = ref.current; node?.showModal(); document.body.style.overflow = "hidden"; return () => { node?.close(); document.body.style.overflow = old; previous?.focus?.(); }; }, []);
-    return <dialog ref={ref} className="rv-drawer" aria-labelledby="rv-source-title" onCancel={e => { e.preventDefault(); close.current(); }}><header><h2 id="rv-source-title">{title}</h2><button aria-label="Închide sursele" onClick={onClose}><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="m4 4 10 10M14 4 4 14" fill="none" stroke="currentColor" strokeWidth="1.8"/></svg></button></header><div className="rv-drawer-body">{children}</div></dialog>;
+    // M-06: closed at once (the page is usable, the focus is back), its exit plays, then the owner is told.
+    const restore = useRef<() => void>(() => { }), cancelLeave = useRef<() => void>(() => { });
+    const leave = () => { restore.current(); cancelLeave.current = closeThenLeave(ref.current, () => close.current()); };
+    useEffect(() => { const previous = document.activeElement as HTMLElement | null, old = document.body.style.overflow, node = ref.current; node?.showModal(); document.body.style.overflow = "hidden"; restore.current = () => { document.body.style.overflow = old; previous?.focus?.(); }; return () => { cancelLeave.current(); node?.close(); document.body.style.overflow = old; previous?.focus?.(); }; }, []);
+    return <dialog ref={ref} className="rv-drawer" aria-labelledby="rv-source-title" onCancel={e => { e.preventDefault(); leave(); }}><header><h2 id="rv-source-title">{title}</h2><button aria-label="Închide sursele" onClick={leave}><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="m4 4 10 10M14 4 4 14" fill="none" stroke="currentColor" strokeWidth="1.8"/></svg></button></header><div className="rv-drawer-body">{children}</div></dialog>;
 }
 export default function RadiografieSources({ authorityId, supplierId, pattern, onClose }: {
     authorityId: string;

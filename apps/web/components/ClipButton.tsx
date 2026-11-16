@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useLeaving } from "./motion/leave";
 import { createPortal } from "react-dom";
 import { useViewer } from "@/lib/use-viewer";
 import { cleanName, formatExactDecimal } from "@/lib/format";
@@ -59,7 +60,9 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
   const trigger = useRef<HTMLButtonElement | null>(null), dialog = useRef<HTMLDivElement | null>(null);
   const titleId = useId(), dialogId = useId();
 
-  const close = useCallback((focusTrigger = true) => { setOpen(false); setPlace(null); if (focusTrigger) trigger.current?.focus(); }, []);
+  // M-06: the dialog leaves where it was (its place is kept for the exit and measured again on the next opening).
+  const close = useCallback((focusTrigger = true) => { setOpen(false); if (focusTrigger) trigger.current?.focus(); }, []);
+  const leaving = useLeaving(open, phone);
 
   // Whether the item is already in a dossier, said on the button (audit Z8-26: "Salvată · 1 dosar"): read once on
   // load with the dialog's own answer (the dossiers, where it is, what it is), so opening it needs no second request.
@@ -149,7 +152,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
 
   const openPanel = async () => {
     setPhone(window.matchMedia(PHONE).matches);
-    setOpen(true); setDone(null); setCapture(null); setErr(null);
+    setOpen(true); setPlace(null); setDone(null); setCapture(null); setErr(null);
     if (list !== null) return;
     if (!await loadDossiers()) { setErr("Dosarele nu au putut fi încărcate. Încearcă din nou."); setList([]); }
   };
@@ -218,9 +221,10 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
     else if (!event.shiftKey && (document.activeElement === last)) { event.preventDefault(); first.focus(); }
   };
 
-  const panel = open ? <>
-    {phone && <div className="save-backdrop" aria-hidden="true" onMouseDown={() => close()} />}
+  const panel = open || leaving ? <>
+    {phone && <div className="save-backdrop" aria-hidden="true" data-leaving={leaving ? "" : undefined} onMouseDown={() => close()} />}
     <div ref={dialog} id={dialogId} role="dialog" aria-modal={phone ? "true" : undefined} aria-labelledby={titleId} tabIndex={-1} onKeyDown={onKeyDown}
+      data-leaving={leaving ? "" : undefined} inert={leaving}
       className={`save-dialog${phone ? " save-sheet" : ""}${place?.above ? " save-above" : ""}`}
       style={phone ? undefined : place ? { top: place.top, left: place.left, width: place.width, ...(place.maxHeight ? { maxHeight: place.maxHeight } : {}) } : { visibility: "hidden" }}>
       <div className="save-head">

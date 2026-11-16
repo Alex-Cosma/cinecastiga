@@ -15,9 +15,8 @@
 .clipbtn .clipbtn-ico{flex:none}
 
 /* The dialog: under or above its button on a wide screen (placed by the component), a bottom sheet on a phone. */
-.save-dialog{position:fixed;z-index:70;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;padding:16px 18px 18px;background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow2);font:14px/1.5 var(--body);text-align:left;white-space:normal;animation:save-in .18s cubic-bezier(.2,.8,.2,1) both}
+.save-dialog{position:fixed;z-index:70;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;max-height:calc(100dvh - 32px);overflow:auto;overscroll-behavior:contain;padding:16px 18px 18px;background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:12px;box-shadow:var(--shadow2);font:14px/1.5 var(--body);text-align:left;white-space:normal}
 .save-dialog:focus{outline:none}.save-dialog a:focus-visible,.save-dialog .save-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.save-dialog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.save-dialog.save-above{animation-name:save-in-up}
 .save-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-4px -6px 0 0}
 .save-head h2{margin:0;font:600 17px/1.3 var(--display);letter-spacing:-.01em;color:var(--ink)}
 .save-dialog .save-close{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:8px;background:none;color:var(--muted);cursor:pointer}
@@ -49,23 +48,19 @@
 .save-dialog .save-secondary{border:1px solid var(--line2);background:var(--surface);color:var(--accent)}
 .save-dialog .save-secondary:hover{background:var(--sunk)}
 .save-dialog :is(.save-primary,.save-secondary):focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.save-backdrop{position:fixed;inset:0;z-index:69;background:color-mix(in srgb,var(--ink) 38%,transparent);animation:save-fade .18s ease both}
+.save-backdrop{position:fixed;inset:0;z-index:69;background:color-mix(in srgb,var(--ink) 38%,transparent)}
 
 @media (max-width:700px){
   .clipbtn .clipbtn-t{min-height:44px}
   .clipbtn .clipbtn-t.ico{width:40px;height:40px}
-  .save-dialog.save-sheet{left:0;right:0;bottom:0;top:auto;width:auto;max-height:88dvh;border-radius:16px 16px 0 0;border-bottom:0;padding:14px 16px calc(18px + env(safe-area-inset-bottom));animation-name:save-sheet-in}
+  .save-dialog.save-sheet{left:0;right:0;bottom:0;top:auto;width:auto;max-height:88dvh;border-radius:16px 16px 0 0;border-bottom:0;padding:14px 16px calc(18px + env(safe-area-inset-bottom))}
   .save-field input,.save-field textarea{font-size:16px}
   .save-option{min-height:44px;align-items:center;font-size:15px}.save-option input{margin:0}
   .save-options{max-height:min(260px,36dvh)}
   .save-dialog .save-primary,.save-dialog .save-secondary{min-height:44px;flex:1 1 auto}
   .save-dialog .save-close{width:44px;height:44px}
 }
-@keyframes save-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-@keyframes save-in-up{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-@keyframes save-sheet-in{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
-@keyframes save-fade{from{opacity:0}to{opacity:1}}
-@media (prefers-reduced-motion:reduce){.save-dialog,.save-backdrop{animation:none}.clipbtn .clipbtn-t{transition:none}}
+@media (prefers-reduced-motion:reduce){.clipbtn .clipbtn-t{transition:none}}
 
 /* An item already in a dossier says so on its button (UX audit Z8-26): "Salvată · 1 dosar", the bookmark filled, a
    state (accent-soft), not a call to action; the click opens the same dialog. */
@@ -79,3 +74,15 @@
 .save-pill{display:inline-flex;padding:1px 9px;border-radius:999px;background:var(--amber-soft);color:var(--ink);font-size:12px;font-weight:600}
 .save-done p{overflow-wrap:anywhere}
 .save-actions .term-tip{margin-left:auto}
+
+/* Windows (UX audit M-06, components/motion/windows.css): in 200 ms, out 140 ms (data-leaving, components/motion/leave.ts);
+   above its button it comes up; on a phone a sheet, 260 / 180 ms; the backdrop 200 / 140 ms. */
+.save-dialog{animation:win-in var(--win-in) var(--ease) both}
+.save-dialog.save-above{--win-y:var(--win-dy)}
+.save-dialog[data-leaving]{animation:win-out var(--win-out) var(--ease-exit) forwards}
+.save-backdrop{animation:scrim-in var(--win-in) var(--ease) both}
+.save-backdrop[data-leaving]{animation:scrim-out var(--win-out) var(--ease-exit) forwards}
+@media (max-width:700px){
+  .save-dialog.save-sheet{animation:sheet-in var(--sheet-in) var(--ease) both}
+  .save-dialog.save-sheet[data-leaving]{animation:sheet-out var(--sheet-out) var(--ease-exit) forwards}
+}

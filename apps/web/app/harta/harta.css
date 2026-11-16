@@ -318,7 +318,7 @@ span.mx-p-yr{cursor:default}
 .mx-panel:focus{outline:none}
 @media (max-width:640px),(hover:none){.mx-chip{display:inline-flex}}
 @media (max-width:640px){
-  .mx-panel{position:fixed;left:0;right:0;bottom:0;z-index:30;height:var(--mx-peek,50vh);max-height:calc(100dvh - var(--site-header-h,53px) - 8px);margin:0;padding:24px 16px 0;overflow:hidden;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);overscroll-behavior:contain;animation:mx-sheet-in var(--slow) var(--ease) both;transition:height var(--med) var(--ease)}
+  .mx-panel{position:fixed;left:0;right:0;bottom:0;z-index:30;height:var(--mx-peek,50vh);max-height:calc(100dvh - var(--site-header-h,53px) - 8px);margin:0;padding:24px 16px 0;overflow:hidden;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);overscroll-behavior:contain;transition:height var(--med) var(--ease)}
   .mx-panel.is-full{height:calc(100dvh - var(--site-header-h,53px) - 8px);overflow-y:auto;padding-bottom:20px}
   .mx-p-grip{display:block;position:absolute;z-index:3;top:0;left:0;right:60px;height:28px;touch-action:none;cursor:grab}
   .mx-p-grip::before{content:"";position:absolute;top:9px;left:calc(50% + 30px);width:40px;height:4px;margin-left:-20px;border-radius:2px;background:var(--line2)}
@@ -327,7 +327,6 @@ span.mx-p-yr{cursor:default}
   .mx-body.has-panel{padding-bottom:var(--mx-peek,50vh)}
   .mx-p-close{top:12px;right:12px}
 }
-@keyframes mx-sheet-in{from{transform:translateY(100%)}}
 @media (prefers-reduced-motion:reduce){.mx-panel{transition:none}}
 /* Z4-14: the open UAT's row stays marked in the ranking, in the panel's orange. */
 .mx-row[aria-pressed="true"]{background:color-mix(in srgb,var(--orange) 9%,var(--surface));border-radius:6px;border-bottom-color:transparent}
@@ -399,4 +398,11 @@ span.mx-p-yr{cursor:default}
 /* Phones: the sources' line keeps 44 px targets without growing the line. */
 @media (max-width:640px){
   .mx-attr .term-trigger,.mx-attr a{display:inline-flex;align-items:center;min-height:44px;margin-block:-14px}
+}
+
+/* Windows (UX audit M-06, components/motion/windows.css): on a phone the UAT's sheet comes 24 px up in 260 ms and
+   leaves in 180 ms (MapExplorer keeps it drawn, data-leaving); with reduced motion it fades. */
+@media (max-width:640px){
+  .mx-panel{animation:sheet-in var(--sheet-in) var(--ease) both}
+  .mx-panel[data-leaving]{animation:sheet-out var(--sheet-out) var(--ease-exit) forwards}
 }

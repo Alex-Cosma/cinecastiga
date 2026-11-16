@@ -17,6 +17,7 @@ import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
 import { encodeSpec } from "@/lib/ask/permalink";
 import "./evidence-drawer.css";
+import { closeThenLeave } from "../../components/motion/leave";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import {requestSourceCsv,downloadSourceCsv,sourceRefusal,SourceRequestError} from "@/lib/ask/source-csv";
 import { drawerWatchBlocked, trendGroupHeader } from "./trend-answer";
@@ -113,6 +114,9 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   const dialog = useRef<HTMLDialogElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  // M-06: the drawer closes at once (the page is usable, the focus is back), plays its exit, then tells its owner.
+  const restore = useRef<() => void>(() => {}), cancelLeave = useRef<() => void>(() => {});
+  const leave = () => { restore.current(); cancelLeave.current = closeThenLeave(dialog.current, () => closeRef.current()); };
   const staleRef = useRef(onStale);
   staleRef.current = onStale;
   const [responseData, setResult] = useState<DrillResult | null>(null);
@@ -160,8 +164,10 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
     const oldOverflow = document.body.style.overflow;
     node?.showModal();
     document.body.style.overflow = "hidden";
+    restore.current = () => { document.body.style.overflow = oldOverflow; previous?.focus(); };
     return () => {
       exportController.current?.abort();
+      cancelLeave.current();
       node?.close();
       document.body.style.overflow = oldOverflow;
       previous?.focus();
@@ -223,15 +229,15 @@ export default function EvidenceDrawer({ spec, title: questionTitle, scopeLabel,
   }
 
   return <dialog ref={dialog} className="evidence-drawer" aria-labelledby={scopeLabel ? "evidence-scope evidence-title" : "evidence-title"}
-    onCancel={(event) => { event.preventDefault(); closeRef.current(); }}
+    onCancel={(event) => { event.preventDefault(); leave(); }}
     onClick={(event) => {
       if (event.target !== event.currentTarget) return;
       const box = event.currentTarget.getBoundingClientRect();
-      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) closeRef.current();
+      if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) leave();
     }}>
     <header className={`ev-header${scopeLabel ? " has-scope" : ""}`}>
       <div className="ev-heading"><p className="ev-eyebrow">Înregistrările din spatele răspunsului</p><h2 id="evidence-title">{questionTitle}{!scopeLabel && titleCount}</h2>{scopeLabel && <p className="ev-scope-label" id="evidence-scope">{scope?.entityIds?.length === 1 ? <EntityName id={scope.entityIds[0]} role={scope.role}>{scopeName}</EntityName> : scopeName}{scopeTail && <span className="ev-scope-tail">{scopeTail}</span>}{titleCount}</p>}{group && <p className="ev-scope-label ev-group-label">{group}</p>}</div>
-      <button type="button" className="ev-close" onClick={onClose} aria-label="Închide lista surselor" autoFocus>×</button>
+      <button type="button" className="ev-close" onClick={leave} aria-label="Închide lista surselor" autoFocus>×</button>
     </header>
     {/* The wait floats over the list's top (owner, 6 November 2026): nothing under it moves, and a quick answer never
         shows it (g-float, 150 ms). The region stays in place, so its words are read when they change. */}

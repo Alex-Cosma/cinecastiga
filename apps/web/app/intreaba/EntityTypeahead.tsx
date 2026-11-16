@@ -6,6 +6,7 @@ import type { EntityHit } from "@/lib/search";
 import { LINKED_LABEL } from "@/lib/entity-successors";
 import { formatRon } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
+import { useLastOpen, useLeaving } from "../../components/motion/leave";
 
 const ROLE_RO: Record<string, string> = { authority: "autoritate", supplier: "furnizor" };
 
@@ -29,6 +30,9 @@ export default function EntityTypeahead({
   const [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  // M-06: the list leaves with the hits it showed (140 ms, no clicks).
+  const leaving = useLeaving(open);
+  const shown = useLastOpen({ hits, total, q }, open);
   const boxRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -126,14 +130,14 @@ export default function EntityTypeahead({
         />
         <button type="submit">Caută</button>
       </form>
-      {open && (
-        <ul className="search-dropdown ask-dropdown" id="home-search-listbox" role="listbox">
-          {hits.length === 0 && (
+      {(open || leaving) && (
+        <ul className="search-dropdown ask-dropdown" id="home-search-listbox" role="listbox" data-leaving={leaving ? "" : undefined}>
+          {shown.hits.length === 0 && (
             <li className="search-empty" role="presentation">
-              Nimic pentru „{q.trim()}”.
+              Nimic pentru „{shown.q.trim()}”.
             </li>
           )}
-          {hits.map((h, i) => (
+          {shown.hits.map((h, i) => (
             <li
               key={h.id}
               role="option"
@@ -156,7 +160,7 @@ export default function EntityTypeahead({
               </span>
             </li>
           ))}
-          {hits.length > 0 && total > hits.length && (
+          {shown.hits.length > 0 && shown.total > shown.hits.length && (
             <li
               className="search-all"
               role="option"
@@ -166,7 +170,7 @@ export default function EntityTypeahead({
                 goAll();
               }}
             >
-              {total === 1 ? "Vezi rezultatul →" : `Vezi toate cele ${countWords(total, "rezultat", "rezultate")} →`}
+              {shown.total === 1 ? "Vezi rezultatul →" : `Vezi toate cele ${countWords(shown.total, "rezultat", "rezultate")} →`}
             </li>
           )}
         </ul>

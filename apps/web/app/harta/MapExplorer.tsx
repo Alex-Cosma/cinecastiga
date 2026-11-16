@@ -19,6 +19,7 @@ import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
+import { useLastOpen, useLeaving } from "../../components/motion/leave";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
 /*
@@ -334,6 +335,11 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     return [x0 - pad, y0 - pad, w + 2 * pad, h + 2 * pad];
   }, [geo, shape]);
   const view = useGlide(target);
+  // M-06: on a phone the UAT's sheet leaves (180 ms, no clicks) with the UAT it showed; on wider screens it goes at once.
+  const panelOpen = Boolean(county && uat && !dots);
+  const panelLeaving = useLeaving(panelOpen, true);
+  const panelUat = useLastOpen(uat, panelOpen);
+  const sheetLeaving = panelLeaving && !panelOpen && window.matchMedia("(max-width: 640px)").matches;
 
   // Same areas, new numbers (a filter): the old ones stay, dimmed, with a floating status. Another level (a county
   // opened, the first load) has no numbers to dim: its ranking is a ghost of its rows (owner, 6 November 2026).
@@ -672,8 +678,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși. " : ""}Doar ce cumpără școala sau grădinița <Term id="scolile-harta" tip />.</>
           : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : `Un județ se împarte la locuitorii ${NB("UAT-urilor")} ale căror primării le identificăm.`} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
-      {county && uat && !dots && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
-        onClose={() => closeTo(county)} onPick={openUat} />}
+      {(panelOpen || sheetLeaving) && panelUat && <UatPanel siruta={panelUat} query={selection} hint={byKey.get(panelUat) && { name: byKey.get(panelUat)!.name, county: countyArea?.name, gap: byKey.get(panelUat)!.perCapita === null }}
+        leaving={!panelOpen} onClose={() => closeTo(county)} onPick={openUat} />}
     </div>}
     {stale && <FloatStatus>Se încarcă…</FloatStatus>}
     <p className="g-sr" role="status" aria-live="polite">{county && uat && !dots && byKey.get(uat) ? `Fișa ${byKey.get(uat)!.name}, deschisă.` : ""}</p>

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import HelpTip from "../HelpTip";
 import { SHEET_QUERY, focusables, popoverPlacement } from "../keyboard";
 import type { KitTip } from "../kit-types";
+import { useLastOpen, useLeaving } from "../../../../components/motion/leave";
 
 /*
  * Component 9, the short window (R6). On desktop a non-modal dialog beside
@@ -74,6 +75,9 @@ function initialFocus(dialog: HTMLElement): HTMLElement | null {
 
 export default function Popover({ open, anchor, onClose, wide = false, ...panel }: PopoverProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  // M-06: the window's content stays while it leaves (the dialog is already closed: no clicks, focus back).
+  const leaving = useLeaving(open, true);
+  const shown = useLastOpen(panel, open);
   const titleId = useId();
   const anchorRef = useRef(anchor), closeRef = useRef(onClose);
   // The trigger focus returns to: the caller usually clears `anchor` with `open`.
@@ -101,14 +105,18 @@ export default function Popover({ open, anchor, onClose, wide = false, ...panel 
       // under it scrolls inside.
       const roof = Math.max(16, (document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0) + 8);
       dialog.style.maxHeight = `${Math.max(160, Math.min(560, window.innerHeight - roof - 16))}px`;
-      const { top, left } = popoverPlacement(trigger.getBoundingClientRect(), { width: dialog.offsetWidth, height: dialog.offsetHeight }, { width: document.documentElement.clientWidth, height: window.innerHeight }, 16, 8, roof);
+      const box = trigger.getBoundingClientRect();
+      const { top, left } = popoverPlacement(box, { width: dialog.offsetWidth, height: dialog.offsetHeight }, { width: document.documentElement.clientWidth, height: window.innerHeight }, 16, 8, roof);
       dialog.style.top = `${top}px`;
       dialog.style.left = `${left}px`;
+      // M-06: it grows from the corner nearest its phrase (and shrinks back there when it leaves).
+      const x = Math.min(Math.max(box.left + box.width / 2 - left, 0), dialog.offsetWidth);
+      dialog.style.transformOrigin = `${Math.round(x)}px ${top >= box.bottom ? 0 : dialog.offsetHeight}px`;
     };
     returnTo.current = anchorRef.current;
     const show = () => {
       if (dialog.open) dialog.close();
-      dialog.style.top = dialog.style.left = dialog.style.maxHeight = "";
+      dialog.style.top = dialog.style.left = dialog.style.maxHeight = dialog.style.transformOrigin = "";
       if (media.matches) dialog.showModal();
       else { dialog.show(); place(); }
       initialFocus(dialog)?.focus();
@@ -154,6 +162,6 @@ export default function Popover({ open, anchor, onClose, wide = false, ...panel 
       if (!event.currentTarget.contains(next) && !anchorRef.current?.contains(next)) onClose();
     }}
   >
-    {open && <PopoverPanel titleId={titleId} onClose={onClose} {...panel} />}
+    {(open || leaving) && <PopoverPanel titleId={titleId} onClose={onClose} {...shown} />}
   </dialog>;
 }
