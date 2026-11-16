@@ -7,7 +7,7 @@ import { answerCore, sameAnswerCore } from "../../lib/ask/answer-core";
 import { CRITERION_LABEL, SCORE_BANDS, barMembersQuery, scoreBandOf } from "../../lib/ask/peer-groups-shared";
 import { answerCsv } from "./answer-csv";
 import { AnswerEvidence } from "./AnswerEvidence";
-import DistributionAnswer, { stripLayout } from "./DistributionAnswer";
+import DistributionAnswer, { splitLowBands, stripLayout } from "./DistributionAnswer";
 
 /*
  * distribution-3 as markup (rf-2026.18, the owner's mockup of 1 November 2026):
@@ -80,9 +80,14 @@ describe("the distribution's answer (distribution-3, the risk score)", () => {
   it("above 50 draws the others by tenths of the score; a bar opens its members, the entity's band marked", () => {
     const markup = render(RUSETU_SCORE_CHART);
     expect(RUSETU_SCORE_CHART.focal.score).toBe(44);
-    expect(markup.match(/<button[^>]*class="dist-hcol[^"]*"[^>]*aria-expanded="false"[^>]*aria-controls="dist-bar-members"/g)).toHaveLength(9);
+    // UX audit Z3-09: the bands from 10 are the chart, against their own largest; the ones under 10 are one line under it.
+    expect(markup.match(/<button[^>]*class="dist-hcol[^"]*"[^>]*aria-expanded="false"[^>]*aria-controls="dist-bar-members"/g)).toHaveLength(8);
     expect(markup).toMatch(/aria-label="Scor 40–49: 280 de primării, aici e COMUNA RUSETU\. Lista lor"/);
-    expect(markup).toMatch(/aria-label="Scor 0: 433 de primării\. Lista lor"/);
+    expect(markup).not.toMatch(/aria-label="Scor 0:/);
+    expect(markup).toMatch(/<button type="button" class="dist-low"[^>]*aria-label="Sub 10, fără semnal în scor: 433 de primării\. Lista lor"/);
+    expect(text(markup)).toContain("sub 10 433 fără semnal în scor · 21,3% din grup");
+    expect(markup).toContain('style="--h:1"'); // 20–29, the largest from 10 up
+    expect(splitLowBands(RUSETU_SCORE_CHART.hist!)).toMatchObject({ lowN: 433, all: 2034 });
     expect(markup).toContain('<em class="cm-fade cm-late">aici</em>280');
     expect(text(markup)).toContain("clic pe o bară: cine are acel scor");
     expect(markup).not.toContain("dist-strip");
