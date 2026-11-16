@@ -116,7 +116,7 @@ const totalsNote = (c: ContractDetail) =>
   c.financialKind === "framework" ? "Separat de totaluri: se numără comenzile subsecvente."
   : c.financialKind === "amendment" ? "Act adițional: nu se adaugă la totaluri."
   : c.financialKind === "review" ? "Tip de contract neclar: în afara totalurilor până la verificare."
-  : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}`}>Motivul</Link></>
+  : c.excludedIdentity ? <>Exclus temporar din totaluri: identitatea față de alte publicații nu e lămurită. <Link href={`/metodologie/excluderi?grup=${c.excludedIdentity}&din=${c.natId}`}>Motivul</Link></>
   : c.winnerIsAuthority ? <>Câștigătorul înregistrat e chiar instituția: în afara totalurilor și clasamentelor. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></>
   : c.aboveValueCap ? <>Peste 1 mld. lei: filtru al site-ului, în afara totalurilor. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></>
   : null;
