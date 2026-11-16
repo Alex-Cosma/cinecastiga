@@ -10,7 +10,7 @@ import { countWords } from "@/lib/ask/answer-text";
 import { privateDay, privateMoment, uniqueNotes } from "@/lib/private-format";
 import { questionTitle } from "@/lib/ask/filters/title";
 import type { AskSpec } from "@/lib/ask/spec";
-import type { FrozenRecord } from "@/lib/evidence-captures-shared";
+import { captureMethodWords, type FrozenRecord } from "@/lib/evidence-captures-shared";
 import { RecordHead, RecordSection, Facts } from "@/components/record/Record";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
@@ -27,11 +27,6 @@ export const metadata = { title: "Fișă de probă", robots: { index: false, fol
 const recordHref = (r: FrozenRecord) => r.refId ? r.src === "da" ? `/achizitii/${r.refId}` : `/contracte/${r.refId}` : null;
 const sortLinks: { id: SheetSort; label: string }[] = [{ id: "data", label: "Data" }, { id: "valoare", label: "Valoarea" }, { id: "captura", label: "Ordinea capturii" }];
 const external = <><span aria-hidden="true"> ↗</span><span className="sr-only"> (filă nouă)</span></>;
-/** How the capture was made, in words (Z8-36): "Probe înghețate, v1 · scor de risc rf-2026.24"; the code stays for export. */
-function methodWords(methodology: Record<string, unknown>): string | null {
-  const version = typeof methodology.version === "string" ? methodology.version : null, frozen = version ? /^frozen-evidence-(\d+)$/.exec(version) : null;
-  return [frozen ? `Probe înghețate, v${frozen[1]}` : version, methodology.riskVersion ? `scor de risc ${String(methodology.riskVersion)}` : null].filter(Boolean).join(" · ") || null;
-}
 
 /**
  * A frozen-sources page as a citable "fișă de probă" (owner, 7 November 2026), in the record template's look: the
@@ -97,7 +92,7 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
           sheet.versions.length > 1 && { label: "Alte versiuni", value: <>{sheet.versions.filter((v) => v.id !== capture.id).map((v, i) => <span key={v.id}>{i > 0 && " · "}<Link href={`/anchete/${id}/dovezi/${v.id}`}>versiunea {v.version}, {privateDay(v.completedAt)}</Link></span>)}</> },
           typeof summary.capturedAt === "string" && clip.kind === "monitoring" && { label: "Observată în urmărire la", value: <>{privateMoment(summary.capturedAt)} <small>Copierea în dosar nu a recalculat datele.</small></> },
           { label: <>Amprentă <Term tip title="Amprentă" text="SHA-256 al fișierului rows.csv, același în manifest.json din export. Dacă se schimbă un singur rând, se schimbă amprenta." /></>, value: fingerprint ? <code className="iw-hash">{fingerprint}</code> : (capture.rowCount ?? 0) > FINGERPRINT_ROW_CAP ? "În manifest.json din exportul dosarului" : "Indisponibilă", wide: true },
-          { label: "Metoda", value: <span title={[methodology.version, methodology.riskVersion].filter(Boolean).map(String).join(" · ") || undefined}>{methodWords(methodology) ?? "Nedocumentată"}</span> },
+          { label: "Metoda", value: <span title={[methodology.version, methodology.riskVersion].filter(Boolean).map(String).join(" · ") || undefined}>{captureMethodWords(methodology) ?? "Nedocumentată"}</span> },
         ]} />
       </RecordSection>
 

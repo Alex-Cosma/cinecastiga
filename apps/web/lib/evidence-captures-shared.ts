@@ -38,3 +38,10 @@ export function captureFailureWords(error: string | null | undefined): { reason:
     return { reason: "datele de azi nu sunt încă validate", text: "Datele de azi nu sunt încă validate. Păstrarea surselor așteaptă o actualizare validată; o poți relua după ea." };
   return { reason: "captura nu s-a încheiat", text: e ? `Captura nu s-a încheiat: ${e}` : "Captura nu s-a încheiat. Nu este prezentată ca dovadă completă." };
 }
+
+/** How a capture was made, in words (audit Z8-36, Z8-43): "Probe înghețate, v1 · scor de risc rf-2026.24". */
+export function captureMethodWords(methodology: Record<string, unknown> | null | undefined): string | null {
+  const m = methodology ?? {};
+  const version = typeof m.version === "string" ? m.version : null, frozen = version ? /^frozen-evidence-(\d+)$/.exec(version) : null;
+  return [frozen ? `Probe înghețate, v${frozen[1]}` : version, m.riskVersion ? `scor de risc ${String(m.riskVersion)}` : null].filter(Boolean).join(" · ") || null;
+}

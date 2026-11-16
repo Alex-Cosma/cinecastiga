@@ -4,7 +4,10 @@ import { getInvestigationAccess, isWorkspaceId, type InvestigationAccess } from 
 import { readInvestigationWorkspace } from "./investigation-workspace";
 import { captureDatabase, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { textChunks, zip64, type ZipEntry } from "./evidence-zip";
-import type { FrozenRecord } from "./evidence-captures-shared";
+import { captureFailureWords, captureMethodWords, type FrozenRecord } from "./evidence-captures-shared";
+import { clipKindLabel, clipTitle, entityKindLabel } from "./evidence-clip";
+import { formatExactDecimal } from "./format";
+import { privateMoment } from "./private-format";
 import { itemName } from "./clip-subject";
 import { caietMarkdown, type CaietClip } from "./evidence-caiet";
 import { dossierRecords, sourceEvents } from "./anchete";
@@ -19,32 +22,46 @@ export function csvCell(value:unknown,numeric=false):string{
   return '"'+text.replaceAll('"','""')+'"';
 }
 const csvLine=(values:unknown[],numerics:number[]=[])=>values.map((v,i)=>csvCell(v,numerics.includes(i))).join(",")+"\r\n";
-interface BundleData { investigation:Record<string,unknown>;clips:Record<string,unknown>[];captures:Record<string,unknown>[];workspace:Awaited<ReturnType<typeof readInvestigationWorkspace>>;exportedAt:string }
+interface BundleData { investigation:Record<string,unknown>;clips:Record<string,unknown>[];captures:Record<string,unknown>[];workspace:Awaited<ReturnType<typeof readInvestigationWorkspace>>;exportedAt:string;
+  /** Each item as the dossier names it (Z8-43): its name, its kind in words and its SEAP code or id. */
+  names:Map<string,{title:string;kind:string;code:string|null;label:string|null;kindLabel:string|null}> }
 async function readBundle(q:DbSql,id:string,access:InvestigationAccess):Promise<BundleData>{
   const [investigation]=await q`select id,title,description,status,created_at,updated_at from app.investigations where id=${id}`;
   const clips=await q`select id,kind,ref_id,spec,snapshot,note,pinned,created_at from app.clips where investigation_id=${id} order by created_at,id`;
   const captures=await q`select * from app.evidence_captures where investigation_id=${id} order by clip_id,version`;
-  return {investigation:investigation!,clips:[...clips],captures:[...captures],workspace:await readInvestigationWorkspace(q,id,access,{allRevisions:true}),exportedAt:new Date().toISOString()};
+  const names=new Map<string,{title:string;kind:string;code:string|null;label:string|null;kindLabel:string|null}>();
+  for(const clip of clips){
+    const complete=captures.filter(c=>c.clip_id===clip.id&&c.status==="complete").sort((a,b)=>Number(b.version)-Number(a.version))[0];
+    const summary=(complete?.summary??null) as Record<string,unknown>|null;
+    const saved=await itemName(String(clip.kind),clip.ref_id==null?null:String(clip.ref_id),clip.snapshot,Boolean(summary),q);
+    const snapshot=summary??(clip.snapshot as Record<string,unknown>|null);
+    names.set(String(clip.id),{...saved,title:clipTitle({id:String(clip.id),kind:String(clip.kind),refId:clip.ref_id==null?null:String(clip.ref_id),spec:clip.spec,snapshot,note:clip.note==null?null:String(clip.note),...saved}),
+      kind:clip.kind==="entity"?entityKindLabel(snapshot,saved.kindLabel):clipKindLabel[String(clip.kind)]??String(clip.kind),code:saved.code});
+  }
+  return {investigation:investigation!,clips:[...clips],captures:[...captures],workspace:await readInvestigationWorkspace(q,id,access,{allRevisions:true}),exportedAt:new Date().toISOString(),names};
 }
 export function bundleMarkdown(data:BundleData,base:string):string{
   const inv=data.investigation;
-  const lines=[`# ${md(inv.title)}`,"",md(inv.description),"",`Exportat: ${data.exportedAt}. Stare: ${md(inv.status)}.`,"",
+  const statusWords:Record<string,string>={activa:"În lucru",publicata:"Publicată editorial",inchisa:"Închisă"};
+  const lines=[`# ${md(inv.title)}`,"",md(inv.description),"",`Exportat: ${privateMoment(data.exportedAt)} (ora României). Stare: ${md(statusWords[String(inv.status)]??inv.status)}.`,"",
     "> Valorile sunt date înregistrate, nu plăți verificate. Semnalele statistice sunt piste de verificare, nu dovezi de nereguli.","",
     "Capturile complete sunt înregistrări server ale surselor și selecției la momentul indicat. O versiune nouă nu o înlocuiește pe cea veche. Exportul nu include fișierele originale PDF/P7S. Pasajele din documente păstrează pagina, amprenta și legăturile către originalele arhivate în aplicație și sursa SEAP.","",
     "Pentru citit: caiet.md (întrebările cu dovezile legate, dovezile cu valorile exacte și linkurile lor, cronologia și verificările). Fișierele de mai jos sunt înregistrarea completă.","",
     "CSV: sumele și identificatorii sunt text zecimal exact; la import setați aceste coloane ca text. Câmpurile text care ar putea fi formule sunt protejate cu apostrof; JSON păstrează textul original. O valoare goală înseamnă lipsă, nu zero.",""];
   for(const clip of data.clips){
-    lines.push(`## ${md(clip.kind)} · ${md(clip.ref_id??clip.id)}`,"",md(clip.note),"");
+    // In the interface's words (Z8-43): the item's name, its kind and its SEAP code; the technical codes stay in JSON and CSV.
+    const named=data.names.get(String(clip.id));
+    lines.push(`## ${md(named?.title??clip.ref_id??clip.id)}`,"",`${md(named?.kind??clip.kind)}${named?.code?` · ${md(named.code)}`:""}`,"",md(clip.note),"");
     if(clip.kind==="document_quote"){
       const s=(clip.snapshot??{}) as Record<string,unknown>;
       lines.push(`### ${md(s.filename)} · pagina ${md(s.page)}`,"",String(s.quote??"").split("\n").map(line=>"> "+md(line)).join("\n"),"",`Text ${s.method==="ocr"?"OCR, de verificat în original":"extras din PDF"}.`,"",`[Pagina originală](${base}/api/documents/${clip.ref_id}/file?kind=pdf#page=${s.page}) · [Original](${base}/api/documents/${clip.ref_id}/file) · [SEAP](${s.sourceUrl})`,"",`SHA-256 original: ${md(s.originalHash)}`,"");
     }
     const versions=data.captures.filter(c=>c.clip_id===clip.id);
-    if(!versions.some(c=>c.status==="complete")&&clip.kind!=="note"&&clip.kind!=="document_quote")lines.push("**Fără captură verificată completă.** Datele salvate anterior sunt conținut istoric neverificat; nu reprezintă o listă înghețată de surse.","");
+    if(!versions.some(c=>c.status==="complete")&&clip.kind!=="note"&&clip.kind!=="document_quote")lines.push("**Fără surse păstrate.** Dovada este în dosar, dar nu reprezintă o listă înghețată de surse.","");
     for(const capture of versions){
       const summary=(capture.summary??{}) as Record<string,unknown>;
-      lines.push(`### Versiunea ${capture.version} · ${md(capture.status)}`,"");
-      if(capture.status!=="complete"){lines.push(`Nu conține surse publicate. ${md(capture.error)}`,"");continue;}
+      lines.push(`### Versiunea ${capture.version} · ${capture.status==="complete"?"surse păstrate":capture.status==="failed"?"captură nefinalizată":"în pregătire"}`,"");
+      if(capture.status!=="complete"){lines.push(`Nu conține surse. ${capture.status==="failed"?md(captureFailureWords(capture.error==null?null:String(capture.error)).text):""}`.trim(),"");continue;}
       if (summary.connectionContext && typeof summary.connectionContext === "object") {
         const connection = summary.connectionContext as Record<string, unknown>;
         lines.push(md(connection.title), "", md(connection.description), "");
@@ -82,9 +99,10 @@ export function bundleMarkdown(data:BundleData,base:string):string{
         for(const description of methodology?.descriptions??[])lines.push(`- ${md(description)}`);
         lines.push("");
       }
-      lines.push(`Înregistrată: ${md(summary.capturedAt??capture.completed_at)}. Rânduri: ${capture.row_count}.`,
-        `Sumă exactă a cotelor / achizițiilor: ${capture.total_exact==null?"necunoscută (există valori lipsă)":`${capture.total_exact} lei`}.`,
-        `Metodologie: ${md((capture.methodology as Record<string,unknown>)?.version)}.`,
+      const kept=summary.capturedAt??capture.completed_at;
+      lines.push(`Păstrată la: ${privateMoment(kept instanceof Date?kept.toISOString():kept==null?null:String(kept),"moment necunoscut")} (ora României). Înregistrări: ${capture.row_count}.`,
+        `Suma exactă a cotelor / achizițiilor: ${capture.total_exact==null?"necunoscută (există valori lipsă)":`${formatExactDecimal(String(capture.total_exact))} lei`}.`,
+        `Metoda: ${md(captureMethodWords(capture.methodology as Record<string,unknown>|null)??"nedocumentată")}.`,
         `[Captură în aplicație](${base}/anchete/${inv.id}/dovezi/${capture.id})`,"",
         "Selecția exactă (inclusiv filtrele locale ale listei):","","```json",json(capture.request).trim(),"```","");
       if(Array.isArray(summary.warnings))for(const warning of summary.warnings)lines.push(`- ${md(warning)}`);
@@ -133,7 +151,7 @@ async function* sourcesCsv(q:DbSql,capture:Record<string,unknown>):AsyncGenerato
 /** The dossier read aloud (caiet.md): each item named after its latest complete version, as the dossier shows it. */
 async function caietFor(q:DbSql,data:BundleData,base:string):Promise<string>{
   const id=String(data.investigation.id);
-  const clips:CaietClip[]=await Promise.all(data.clips.map(async clip=>{
+  const clips:CaietClip[]=data.clips.map(clip=>{
     const complete=data.captures.filter(c=>c.clip_id===clip.id&&c.status==="complete").sort((a,b)=>Number(b.version)-Number(a.version))[0];
     const summary=(complete?.summary??null) as Record<string,unknown>|null;
     return {id:String(clip.id),kind:String(clip.kind),refId:clip.ref_id==null?null:String(clip.ref_id),spec:clip.spec,
@@ -143,8 +161,8 @@ async function caietFor(q:DbSql,data:BundleData,base:string):Promise<string>{
       captureId:complete?String(complete.id):null,rowCount:complete?Number(complete.row_count):null,totalExact:complete?.total_exact==null?null:String(complete.total_exact),
       capturedAt:typeof summary?.capturedAt==="string"?summary.capturedAt:complete?.completed_at instanceof Date?complete.completed_at.toISOString():null,version:complete?Number(complete.version):null,
       // Named as the dossier names it (audit Z8-01, Z8-35): the name kept when it was saved, else the source's.
-      ...await itemName(String(clip.kind),clip.ref_id==null?null:String(clip.ref_id),clip.snapshot,Boolean(summary),q)};
-  }));
+      label:data.names.get(String(clip.id))?.label??null,code:data.names.get(String(clip.id))?.code??null};
+  });
   const events=await sourceEvents(q,id,clips.map(clip=>({id:clip.id,kind:clip.kind as never,refId:clip.refId,snapshot:clip.snapshot,capture:clip.capture??null})));
   return caietMarkdown({title:String(data.investigation.title),description:data.investigation.description==null?null:String(data.investigation.description),
     exportedAt:data.exportedAt,base,investigationId:id,clips,entries:data.workspace.entries,links:data.workspace.links,
