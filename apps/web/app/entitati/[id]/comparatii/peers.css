@@ -188,3 +188,8 @@ span.pxs-src{display:inline-flex;align-items:center}
 @media (max-width:640px){.pxs-chip,.pxs-method-more>summary{min-height:44px}}
 /* Phones: the amount takes the width it needs (a fixed 92 px let „47,0 mil. lei” run under „Surse”). */
 @media (max-width:640px){.pxs-row{grid-template-columns:26px minmax(0,1fr) auto auto}}
+/* Phones: 44 px targets for the way back, the segments and a row's sources. */
+@media (max-width:640px){
+  .pxs-crumb a{display:inline-flex;align-items:center;min-height:44px;margin-block:-12px}
+  .pxs-seg button,.pxs-src{min-height:44px}
+}

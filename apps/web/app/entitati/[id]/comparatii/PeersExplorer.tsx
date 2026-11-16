@@ -25,6 +25,7 @@ import { domainName } from "@/lib/cpv-aliases";
 import { readableCpvName } from "@/lib/entity-summary";
 import { countyKey } from "@/lib/map-capita-shared";
 import { askHref } from "@/lib/discovery-links";
+import { domainContextSpec } from "@/lib/ask/site-links";
 import { softName } from "@/lib/soft-name";
 import type { PeerMember, PeerMethod, PeerPoint, PeerSelectionMember, PeersResponse } from "@/lib/peers-shared";
 
@@ -80,8 +81,9 @@ function UnknownType({ focal, division, county, year, pageHref, onSources, busy 
   focal: PeerMember | null; division: { code: string; name: string } | null; county: string | null; year: number | null; pageHref: string; onSources: (() => void) | null; busy: boolean;
 }) {
   const where = countyLabel(county);
-  const ask = division ? askHref({ block: "table", dim: "authority", measure: "value", dataset: "all", filters: { ...(where ? { county: where } : {}), ...(year ? { yearFrom: year, yearTo: year } : {}) },
-    population: { operator: "and", groups: [{ operator: "and", conditions: [{ field: "cpv", op: "in", values: [division.code] }] }] } }) : null;
+  // The domains page's ranking of the division's buyers in the year (domainContextSpec), narrowed to its county.
+  const ranking = division ? domainContextSpec("table", division.code, year ?? new Date().getFullYear() - 1, "authority") : null;
+  const ask = ranking ? askHref(where ? { ...ranking, filters: { ...ranking.filters, county: where } } : ranking) : null;
   return <section className="px-empty px-empty--short">
     <h2>Nu știm sigur ce fel de instituție e, deci n-o putem compara automat. <Term tip id="tip-institutie" /></h2>
     <p>Comparația pune laolaltă instituții de același tip (spitale, școli, primării).{ask ? <> Pentru ea, poți vedea cine cumpără același lucru {where ? "în județ" : "în țară"}.</> : null}</p>
