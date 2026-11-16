@@ -139,6 +139,22 @@
 
 /* Sticky bars sit under the sticky header at every width. SiteNav measures the
    header into --site-header-h; these are first-paint fallbacks per breakpoint. */
+/* The phone's header while the page is scrolled down (SiteNav, owner 16 November 2026): one row of the site's mark,
+   the menu and the search; the theme and the account are one scroll up away. Its margin keeps the height it gave up. */
+.brand-mark{display:none}
+@media(max-width:700px){
+.site-header[data-condensed]{margin-bottom:var(--site-header-fold,0px)}
+.site-header[data-condensed]>.wrap{flex-wrap:nowrap;align-items:center;gap:6px;padding-top:0;min-height:52px}
+.site-header[data-condensed] .brand{display:grid;place-items:center;width:40px;height:44px;flex:none}
+.site-header[data-condensed] .brand-word{display:none}
+.site-header[data-condensed] .brand-mark{display:block;width:30px;height:30px}
+.site-header[data-condensed] .d-main-nav{order:0;flex:1 1 auto;height:52px;margin:0;max-width:none;gap:0;justify-content:space-around}
+.site-header[data-condensed] .d-main-nav>a{flex:0 1 auto;padding:0 4px}
+.site-header[data-condensed] .hdr-right{margin-left:0;gap:0}
+.site-header[data-condensed] .hdr-right .theme-btn,.site-header[data-condensed] .hdr-right .user-nav{display:none}
+.site-header[data-condensed] .hdr-right{flex:none}
+.site-header[data-condensed] .d-global-search{width:44px;height:44px;min-height:44px;flex:none}
+}
 :root{--site-header-h:91px}
 @media(max-width:900px){:root{--site-header-h:81px}}
 @media(max-width:700px){:root{--site-header-h:112px}}

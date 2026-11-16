@@ -53,7 +53,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <header className="site-header" style={{ viewTransitionName: "site-header" }}>
           <div className="wrap">
             <Link href="/" className="brand" aria-label={SITE_NAME}>
-              cine<em>câștigă</em><b>?</b>
+              <span className="brand-word">cine<em>câștigă</em><b>?</b></span>
+              {/* The site's mark (app/icon.svg), shown only in the phone's condensed header (SiteNav). */}
+              <svg className="brand-mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#204c3c"/><path d="M22.5 23.5a9.5 9.5 0 1 1 14.6 8c-3.4 2.2-5.1 4-5.1 7.6v2.4" fill="none" stroke="#fffefa" strokeWidth="7.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="32" cy="51" r="4.8" fill="#ec9672"/></svg>
             </Link>
             <SiteNav sessionHint={sessionHint} />
             <div className="hdr-right">

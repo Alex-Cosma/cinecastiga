@@ -6,6 +6,11 @@ import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { navItems } from "@/lib/site-nav";
 
+/** The phone's header stays whole this near the top of the page (px). */
+const CONDENSE_BELOW = 240;
+/** Scrolling this far one way changes the header (px): a finger's small corrections do not. */
+const CONDENSE_AFTER = 24;
+
 /**
  * `sessionHint` is only "a session cookie was sent" (no identity, no token),
  * so signed-in readers see "Anchete" without a flash. Once the client knows
@@ -29,6 +34,42 @@ export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean
     const observer = new ResizeObserver(apply);
     observer.observe(header);
     return () => observer.disconnect();
+  }, []);
+  // On a phone the header is one row while the page is scrolled down, whole at the top and on the first scroll up
+  // (owner, 16 November 2026). Its margin keeps the space it gave up, so the page under it does not move.
+  useEffect(() => {
+    const header = ref.current?.closest<HTMLElement>(".site-header");
+    if (!header) return;
+    const phone = window.matchMedia("(max-width: 700px)");
+    let last = window.scrollY;
+    let travelled = 0;
+    let condensed = false;
+    const set = (next: boolean) => {
+      if (next === condensed) return;
+      condensed = next;
+      if (!next) {
+        delete header.dataset.condensed;
+        header.style.removeProperty("--site-header-fold");
+        return;
+      }
+      const whole = header.getBoundingClientRect().height;
+      header.dataset.condensed = "true";
+      header.style.setProperty("--site-header-fold", `${Math.max(0, whole - header.getBoundingClientRect().height)}px`);
+    };
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - last;
+      last = y;
+      if (!phone.matches || y < CONDENSE_BELOW) { travelled = 0; set(false); return; }
+      travelled = Math.sign(delta) === Math.sign(travelled) ? travelled + delta : delta;
+      // A reader using the header keeps it whole: the row under a finger or the focus does not change.
+      if (travelled > CONDENSE_AFTER && !header.contains(document.activeElement)) set(true);
+      else if (travelled < -CONDENSE_AFTER) set(false);
+    };
+    const onWidth = () => { if (!phone.matches) set(false); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    phone.addEventListener("change", onWidth);
+    return () => { window.removeEventListener("scroll", onScroll); phone.removeEventListener("change", onWidth); set(false); };
   }, []);
   const known = hydrated && !isPending;
   const signedIn = known ? Boolean(data) : sessionHint;
