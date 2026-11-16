@@ -20,3 +20,21 @@
   .record-lots td[data-label="Data"] { grid-column: 1; color: var(--muted); }
   .record-lots td.lot-value { grid-column: 2; grid-row: 2 / 4; align-self: start; font-weight: 600; }
 }
+
+/* UX audit (owner, 16 November 2026). Z7-22: rows that carry the notice's shared title show their lot ("Lot 35 · Unt
+   20 gr…"), the shared title said once above; the date never breaks inside (bug z7-2); the column titles stay under
+   the header while a long list scrolls on a wide screen. Z7-21: a notice without any record says so, with SEAP. */
+.record-shared-title { margin: -4px 0 12px; font-size: 14px; line-height: 1.5; color: var(--ink2); }
+.record-shared-title > span { font-size: 12px; font-weight: 600; color: var(--muted); margin-right: 6px; }
+.record-lots .lot-no { margin-right: 6px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.record-lots td[data-label="Data"] { white-space: nowrap; }
+@media (min-width: 761px) { .record-lots thead th { position: sticky; top: var(--site-header-h, 91px); z-index: 1; background: var(--paper); } }
+.record-empty { max-width: 680px; margin-top: 4px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.record-empty p { margin: 0; font-size: 15px; line-height: 1.55; }
+.record-empty p + p { margin-top: 6px; font-size: 14px; color: var(--ink2); }
+.record-empty a { font-weight: 600; text-underline-offset: 4px; }
+@media (max-width: 700px) {
+  .record-lots tbody .lot-object { width: auto; }
+  .record-lots .lot-object a { -webkit-line-clamp: 2; }
+  .record-empty a { display: flex; width: fit-content; align-items: center; min-height: 44px; }
+}

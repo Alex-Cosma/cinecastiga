@@ -1315,6 +1315,12 @@ export interface AwardNoticeDetail {
   totalContractValue: number | null;
   frameworkValue: number | null;
   /** The figures above as stored, for exact display (UX audit Z7-11). */
+  /** The notice's own title in SEAP (rarely given). */
+  awardTitle: string | null;
+  /** The title most records of the notice carry, and how many carry it. */
+  commonTitle: { title: string; n: number } | null;
+  /** The award's signals (award_*), as on its contracts' pages. */
+  flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
   exact: { total: string | null; frameworks: string | null; award: string | null; lowestOffer: string | null; highestOffer: string | null;
     /** Every record's lei value, counted or not: equal to `total` when nothing of the notice stays out of the totals. */
     everyValue: string | null };
@@ -1332,7 +1338,7 @@ export async function getAwardNoticeDetail(
   const sql = db();
   const cid = /^\d+$/.test(caNoticeId) ? caNoticeId : "0";
   const head = (await sql`
-    select a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type,
+    select a.id award_id, a.ca_notice_id, a.notice_no, a.procedure_type, a.acquisition_type, nullif(btrim(a.title), '') award_title,
            to_char(a.state_date at time zone 'Europe/Bucharest','YYYY-MM-DD') version_date, a.ron_contract_value,
            a.lowest_offer_value, a.highest_offer_value, a.cpv_code,
            (select name_ro from core.cpv_codes k where k.code = a.cpv_code) cpv_name,
@@ -1362,6 +1368,21 @@ export async function getAwardNoticeDetail(
           'versionDate', to_char(state_date at time zone 'Europe/Bucharest','YYYY-MM-DD'))
         order by state_date nulls first, ca_notice_id) from versions) versions
   `) as unknown as { first_contract_date: string | null; versions: { caNoticeId: string; versionDate: string | null }[] | null }[];
+
+  // The title most of the notice's records carry (UX audit Z7-19, Z7-22): the notice's own name when SEAP gives it
+  // none, and the line the record rows need not repeat. Compared without case or spacing.
+  const common = (await sql`
+    select min(btrim(title)) title, count(*)::int n from core.contracts
+    where ca_notice_id = ${cid} and nullif(btrim(title), '') is not null
+    group by lower(regexp_replace(btrim(title), '[[:space:]]+', ' ', 'g')) order by 2 desc, 1 limit 1
+  `) as unknown as { title: string; n: number }[];
+  // The award's signals, as on its contracts' pages: once per notice, on its latest version that meets the rule (Z7-18).
+  const flags = (await sql`
+    select distinct on (f.flag_code) f.flag_code, f.severity, f.evidence
+    from core.awards v join core.flags f on f.subject_type = 'award' and f.subject_id = v.id
+    where v.id = ${String(h["award_id"])} ${h["authority_entity_id"] != null && h["notice_no"] ? sql`or (v.authority_entity_id = ${String(h["authority_entity_id"])} and v.notice_no = ${String(h["notice_no"])})` : sql``}
+    order by f.flag_code, v.state_date desc nulls last, v.ca_notice_id desc
+  `) as unknown as Record<string, unknown>[];
 
   const agg = (await sql`
     select count(*)::int n,
@@ -1438,6 +1459,9 @@ export async function getAwardNoticeDetail(
     nShown,
     totalContractValue: agg[0]?.total != null ? Number(agg[0].total) : null,
     frameworkValue: agg[0]?.frameworks != null ? Number(agg[0].frameworks) : null,
+    awardTitle: (h["award_title"] as string | null) ?? null,
+    commonTitle: common[0] ? { title: common[0].title, n: Number(common[0].n) } : null,
+    flags: flags.map((f) => ({ code: String(f["flag_code"]), severity: f["severity"] != null ? Number(f["severity"]) : null, evidence: (f["evidence"] as Record<string, unknown> | null) ?? null })),
     exact: {
       total: agg[0]?.total != null ? String(agg[0].total) : null,
       frameworks: agg[0]?.frameworks != null ? String(agg[0].frameworks) : null,
