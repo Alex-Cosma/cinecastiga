@@ -292,3 +292,12 @@ a.dot{cursor:pointer}
   .sgc-case>summary .sgc-sumw{grid-column:1;grid-row:3;text-align:left}
   .sgc-noscore{text-align:left}
 }
+
+/* A procedure signal's rows (UX audit Z6-06): what the notice bought as the title, the winners named, one line of facts;
+   the pattern's sentence once above them, in place of a head that repeated the title. */
+.sgc-list-note{align-items:baseline}
+.sgc-list-note p{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+.sgc-award .sgc-who b{display:block;font-size:15px;line-height:1.4}
+.sgc-winners{display:block;margin-top:2px;font-size:14px;line-height:1.5;color:var(--ink2);overflow-wrap:anywhere}
+.sgc-winners a{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px}
+.sgc-winners a:hover{text-decoration-color:currentColor}

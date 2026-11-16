@@ -100,12 +100,22 @@ export async function readSignalPage(sql: DbSql, state: SignalState, pageSize = 
           'closing', f.evidence->>'closing', 'ceiling', f.evidence->>'ceiling') else f.evidence end display_evidence,
         e.name_display entity_name, e.county entity_county, p.name_display partner_name,
         case when selected.subject_type = 'award' then (
-          select coalesce(jsonb_agg(winner order by winner.entity_id), '[]'::jsonb) from (
-            select distinct cw.entity_id::text entity_id, we.name_display name, we.county
+          -- The winners of the contracts the signal cites (a single bid: its lots), else of the notice; the largest first
+          -- (UX audit Z6-06: they are named on the case page's rows).
+          select coalesce(jsonb_agg(jsonb_build_object('entity_id', winner.entity_id, 'name', winner.name, 'county', winner.county)
+            order by winner.cited_value desc nulls last, winner.won desc nulls last, winner.entity_id), '[]'::jsonb) from (
+            select cw.entity_id::text entity_id, max(we.name_display) name, max(we.county) county, sum(c.value_ron) won,
+              bool_or(c.ca_notice_contract_id::text in (select x->>'contract_id' from jsonb_array_elements(case when jsonb_typeof(f.evidence->'contracts') = 'array'
+                then f.evidence->'contracts' else '[]'::jsonb end) x)) cited,
+              sum(c.value_ron) filter (where c.ca_notice_contract_id::text in (select x->>'contract_id' from jsonb_array_elements(case when jsonb_typeof(f.evidence->'contracts') = 'array'
+                then f.evidence->'contracts' else '[]'::jsonb end) x)) cited_value
             from core.contracts c join core.contract_winners cw on cw.contract_id = c.id
             left join core.entities we on we.id = cw.entity_id where c.ca_notice_id = selected.source_id
               and cw.entity_id is distinct from selected.entity_id
-          ) winner
+            group by cw.entity_id
+          ) winner where winner.cited or not exists (select 1 from core.contracts cc where cc.ca_notice_id = selected.source_id
+            and cc.ca_notice_contract_id::text in (select x->>'contract_id' from jsonb_array_elements(case when jsonb_typeof(f.evidence->'contracts') = 'array'
+              then f.evidence->'contracts' else '[]'::jsonb end) x))
         ) else '[]'::jsonb end winners
       from (select * from ${population} population
         order by total_ron desc nulls last, severity desc nulls last, id limit ${pageSize} offset ${page * pageSize}) selected

@@ -44,8 +44,13 @@ export const CASE_RECORD_CODES: ReadonlySet<string> = new Set(["da_split", "da_r
 
 export type CaseRecord = SourceRecord & { title: string | null };
 
+/** A procedure signal's notice, for its row (UX audit Z6-06): what it bought, its TED notices and its contracts. */
+export interface CaseNotice { title: string | null; cpvName: string | null; ted: string[]; contracts: number }
+
 export interface CaseInstance extends SignalInstance {
   records: CaseRecord[];
+  /** A procedure signal's notice (award_*); null for the others. */
+  notice?: CaseNotice | null;
   /** A partner signal's other acquisitions (count, sum, the largest few), set aside. */
   aside: (Omit<AsideRecords, "top"> & { top: CaseRecord[] }) | null;
   /** The balance sheets a firm's capacity or staff signal read. */
@@ -147,6 +152,26 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
     for (const i of instances) {
       i.records = i.records.map(titled);
       if (i.aside) i.aside.top = i.aside.top.map(titled);
+    }
+    // A procedure signal's row names what the notice bought and its TED notices (UX audit Z6-06): its published title
+    // (rare in the archive), the name of its CPV, the TED publications of the lots the signal cites.
+    const awards = instances.filter((i) => i.subjectType === "award" && i.sourceId);
+    if (awards.length) {
+      const notices = await q`select f.id::text id, nullif(btrim(a.title), '') title, cc.name_ro cpv_name,
+          coalesce((select array_agg(distinct t.publication_number order by t.publication_number) from marts.ted_awards t
+            where t.publication_number is not null and t.ted_lot_result_id in (select (x->>'ted_lot_result_id')::bigint
+              from jsonb_array_elements(case when jsonb_typeof(f.evidence->'contracts') = 'array' then f.evidence->'contracts' else '[]'::jsonb end) x
+              where x->>'ted_lot_result_id' ~ '^[0-9]+$')), '{}') ted,
+          (select count(*)::int from core.contracts c where c.ca_notice_id = s.source_id) contracts
+        from core.flags f join marts.signal_lookup s on s.id = f.id
+        left join core.awards a on a.ca_notice_id = s.source_id
+        left join core.cpv_codes cc on cc.code = coalesce(f.evidence->>'cpv', a.cpv_code)
+        where f.id = any(${awards.map((i) => i.id)}::bigint[])`;
+      const byId = new Map(notices.map((n) => [String(n.id), n]));
+      for (const i of awards) {
+        const n = byId.get(i.id);
+        i.notice = n ? { title: n.title ?? null, cpvName: n.cpv_name ?? null, ted: (n.ted as string[] | null) ?? [], contracts: Number(n.contracts ?? 0) } : null;
+      }
     }
     return { instances, alsoIn };
   });

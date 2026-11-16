@@ -83,7 +83,8 @@ describe("complete signal population", () => {
     expect(result).toMatchObject({ total: 625, page: 62, pageSize: 10 });
     const page = db.statements.find((q) => q.includes("select selected.*"))!;
     expect(page).toContain("order by total_ron desc nulls last, severity desc nulls last, id");
-    expect(page).toContain("jsonb_agg(winner order by winner.entity_id)");
+    expect(page).toContain("order by winner.cited_value desc nulls last, winner.won desc nulls last, winner.entity_id");
+    expect(page).toContain("winner where winner.cited or not exists");
     expect(db.values).toContain(620);
     expect(db.values).not.toContain(99999 * 10);
   });

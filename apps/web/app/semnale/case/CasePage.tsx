@@ -13,6 +13,7 @@ import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
 import { aboveWords, capacityWords, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
+import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
 import {
   aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, topPartners, yearEnd,
   type AboveCeiling, type CaseInput, type FirstMonth, type NearCeiling, type SplitGroup,
@@ -471,8 +472,39 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
   </>;
 }
 
+/**
+ * A procedure signal's row (UX audit Z6-06, owner 16 November 2026): what the notice bought as its title, the winners
+ * named (the largest first) or, on a firm's page, the institution, and one line of facts; the pattern's sentence is
+ * said once above the rows.
+ */
+function AwardRow({ data, inst }: { data: SignalCase; inst: CaseInstance }) {
+  const title = awardRowTitle(inst.notice) ?? riskEvidenceLine(inst.flagCode, inst.evidence) ?? FLAG_META[inst.flagCode]?.short;
+  const facts = awardRowFacts(inst.flagCode, inst.evidence, inst.notice, inst.period);
+  const firm = data.entity.role === "supplier";
+  const winners = inst.winners.filter((w) => w.entityId !== data.entity.id);
+  return (
+    <article id={`caz-${inst.id}`} className="sgc-row outside sgc-award">
+      <span className="sgc-who"><b>{title}</b>
+        <span className="sgc-winners">{firm
+          ? <>Instituția: <EntityName id={inst.entityId} role="authority">{cleanName(inst.entityName) || "—"}</EntityName></>
+          : winners.length ? <><span aria-hidden="true">→ </span><span className="sr-only">Câștigători: </span>{winners.slice(0, 2).map((w, k) => <span key={w.entityId ?? k}>{k > 0 && " · "}<EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName></span>)}
+              {winners.length > 2 && ` și încă ${formatInt(winners.length - 2)}`}</>
+            : "Câștigător neidentificat în date."}</span>
+        {facts && <small>{facts}</small>}</span>
+      <span className="sgc-sum">{inst.totalExact === null ? "" : lei(inst.totalExact)}</span>
+      <span className="sgc-src"><Link prefetch={false} href={`/semnale/${inst.id}`}>Sursele →</Link></span>
+    </article>
+  );
+}
+
 /** The signals outside the score (procedures, balance sheets, shared administrators): their cases, each with its sources page. */
 function OutsideCase({ data }: { data: SignalCase }) {
+  const note = awardListNote(data.code);
+  if (note) return <>
+    {/* The title already says how many (h1); the list's head says what each row is, once (Z6-06). */}
+    <div className="sgc-cases-h sgc-list-note"><p>{note}{data.total > data.instances.length ? ` Primele ${formatInt(data.instances.length)} din ${formatInt(data.total)}.` : ""}</p></div>
+    <div className="sgc-cases">{data.instances.map((inst) => <AwardRow key={inst.id} data={data} inst={inst} />)}</div>
+  </>;
   return <>
     <CasesHead title={caseUnitWords(data.code, data.total)} total={data.total} shown={data.instances.length} />
     <div className="sgc-cases">
