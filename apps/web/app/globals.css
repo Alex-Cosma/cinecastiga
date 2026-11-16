@@ -17,6 +17,8 @@
   --shadow: 0 1px 1px rgba(17,22,31,.04), 0 2px 6px rgba(17,22,31,.05), 0 12px 32px -14px rgba(17,22,31,.16);
   --shadow2: 0 2px 4px rgba(17,22,31,.05), 0 10px 24px -8px rgba(17,22,31,.14), 0 30px 60px -30px rgba(17,22,31,.22);
   --ease: cubic-bezier(.2,.7,.2,1); --fast: 160ms; --med: 260ms; --slow: 420ms;
+  /* Motion tokens of the UX audit (16 November 2026): a press, the outline that holds while an explanation waits, exits. */
+  --t-press: 100ms; --hold: 1000ms; --ease-exit: cubic-bezier(.4,0,1,1); --ease-hold: cubic-bezier(.45,0,.55,1);
   --r: 10px; --r2: 16px;
   --max: 1180px;
   /* legacy aliases */
