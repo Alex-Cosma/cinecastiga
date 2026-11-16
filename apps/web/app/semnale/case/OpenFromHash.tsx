@@ -24,8 +24,14 @@ export default function OpenFromHash() {
         return;
       }
       if (el instanceof HTMLDetailsElement) el.open = true;
+      // Whole under the sticky header (case.css scroll-margin-top), and marked for a moment (UX audit Z6-26).
       el.scrollIntoView({ block: "start" });
       el.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
+      const mark = el.closest<HTMLElement>(".sgc-case, .sgc-row, tr") ?? el;
+      mark.classList.remove("sgc-hit");
+      void mark.offsetWidth;
+      mark.classList.add("sgc-hit");
+      window.setTimeout(() => mark.classList.remove("sgc-hit"), 1400);
     };
     open();
     window.addEventListener("hashchange", open);

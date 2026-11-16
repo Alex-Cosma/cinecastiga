@@ -323,3 +323,10 @@ a.dot{cursor:pointer}
 .sgc-person>.term-trigger{display:inline;min-height:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline dotted var(--line2);text-underline-offset:3px;cursor:help}
 .sgc-person>.term-trigger>.term-mark{display:none}
 .sgc-shared .sgc-sum small{display:block;font:400 12px/1.4 var(--body);color:var(--muted)}
+
+/* A link to one case (#caz-…, UX audit Z6-26): the case stops whole under the sticky header and is marked for a moment,
+   a soft fill that fades; with reduced motion, nothing moves or fades. */
+.sgc [id^="caz-"]{scroll-margin-top:calc(var(--site-header-h, 91px) + 16px)}
+.sgc-hit{animation:sgc-hit 1.2s var(--ease, ease-out) both}
+@keyframes sgc-hit{from{background-color:var(--accent-soft)}to{background-color:transparent}}
+@media (prefers-reduced-motion:reduce){.sgc-hit{animation:none}}
