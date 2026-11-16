@@ -25,6 +25,7 @@ import CaseTable, { type CaseRow } from "./CaseTable";
 import DiscoverPager from "@/components/discover/DiscoverPager";
 import OpenFromHash from "./OpenFromHash";
 import OutsideMenu from "./OutsideMenu";
+import RovingGroup from "./RovingGroup";
 import RecordList, { type RecordRow } from "./RecordList";
 import { caseCounterparty, caseRecordRows } from "@/lib/signal-case-rows";
 import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "@/lib/record-rows";
@@ -175,32 +176,32 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
             sees each one stop under the ceiling. The stagger is spread over the shown bars and capped. */}
         <div className="sgc-ychart" data-chart suppressHydrationWarning>
           <div className="sgc-yaxis" aria-hidden="true"><span style={{ bottom: "100%" }}>plafonul</span><span style={{ bottom: "50%" }}>50%</span><span style={{ bottom: "0%" }}>0</span></div>
-          <div className="sgc-cols" style={shown > 10 ? { "--chart-step": `calc(var(--chart-cap) / ${shown})` } as CSSProperties : undefined}><span className="sgc-ceil" style={{ bottom: "100%" }} /><span className="sgc-grid50" />
+          <RovingGroup label="Achizițiile, fiecare față de plafonul ei; săgețile trec de la una la alta" className="sgc-cols" style={shown > 10 ? { "--chart-step": `calc(var(--chart-cap) / ${shown})` } as CSSProperties : undefined}><span className="sgc-ceil" style={{ bottom: "100%" }} /><span className="sgc-grid50" />
             {clusters.map(({ g, items: its }) => (
               <div key={g.id} className={`grp${g.counted ? "" : " out"}`} style={{ flexGrow: its.length }}>
                 {its.map((it, k) => {
                   const at = seen++;
                   const words = `${cleanName(g.partnerName)}, ${it.date ? formatCalendarDate(it.date) : "fără dată"}: ${lei(it.value)}, ${pctWords(it.ofCeiling)} din plafonul de ${lei(g.ceiling)}`;
-                  return <span key={k} className="bar cm-y" tabIndex={0} role="img" aria-label={words} style={{ height: `${Math.max(0.8, Math.min(100, it.ofCeiling * 100))}%`, "--i": at } as CSSProperties}>
+                  return <span key={k} className="bar cm-y" data-rove tabIndex={at === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${Math.max(0.8, Math.min(100, it.ofCeiling * 100))}%`, "--i": at } as CSSProperties}>
                     <span className={`sgc-tip${edge(at, shown)}`} aria-hidden="true"><b>{cleanName(g.partnerName)}</b><span>{it.date ? formatCalendarDate(it.date) : "fără dată"}{it.title ? ` · ${it.title}` : ""}</span><span><b>{lei(it.value)}</b> · {pctWords(it.ofCeiling)} din plafonul de {lei(g.ceiling)}</span></span>
                   </span>;
                 })}
               </div>
-            ))}</div>
+            ))}</RovingGroup>
         </div>
         <p className="sgc-cap">Fiecare bară e o achiziție, ca procent din plafonul ei; barele aceleiași firme stau împreună{all.acquisitions > shown ? ` (primele ${formatInt(shown)} din ${formatInt(all.acquisitions)})` : ""}.
           {s.largest && <> Cea mai mare: {lei(s.largest.value)}, cu {formatInt(Math.round(s.largest.ceiling - s.largest.value))} lei sub {lei(s.largest.ceiling)}.</>}</p>
       </Side>
       <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={splitRatioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
         {/* In motion: the ceiling stays; the groups rise together (groups, not a sequence). */}
-        <div className="sgc-groups" data-chart suppressHydrationWarning><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
+        <RovingGroup label="Grupurile adunate, față de plafon; săgețile trec de la unul la altul" className="sgc-groups" data-chart suppressHydrationWarning><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
             const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
             return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
-              <i className="cm-y" tabIndex={0} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
+              <i className="cm-y" data-rove tabIndex={i === 0 ? 0 : -1} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
                 <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : " · nu intră în scor"}</span></span>
               </i></div>;
-          })}</div>
+          })}</RovingGroup>
         <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
         <p className="sgc-cap">Linia punctată e plafonul: fiecare bară e un grup, adunat.{all.groups > top.length ? ` Cele mai mari ${formatInt(top.length)} din ${formatInt(all.groups)}.` : ""}</p>
       </Side>
