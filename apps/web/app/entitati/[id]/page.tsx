@@ -51,6 +51,7 @@ import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 import DropRolParam from "./DropRolParam";
 import RepsMore from "./RepsMore";
 import TableLink from "./TableLink";
+import HintLink from "./HintLink";
 import { isFillerRep, REPS_SHOWN } from "./reps";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
@@ -249,13 +250,21 @@ export default async function EntityPage({
   // The entity's analysis pages, short names; their own titles keep the questions (owner, 4 November 2026). "Semnale"
   // first, the signals page being hard to find from here (owner, 6 November 2026).
   const rolQuery = bothRoles ? `?rol=${rolParam}` : "";
-  const views: { href: string; label: string; icon: AnalysisKey; note?: string; noteWords?: string; band?: string }[] = [
+  // What each analysis shows, on hover, focus or a long press; with few records Radiografie and Legături are quieter and
+  // say so, never hidden (UX audit Z5-21, 16 November 2026).
+  const fewRecords = txCounts.nDa + txCounts.nCt < 10;
+  const few = fewRecords ? ` Puține date: ${countWords(txCounts.nDa + txCounts.nCt, "înregistrare", "înregistrări")}.` : "";
+  const views: { href: string; label: string; icon: AnalysisKey; note?: string; noteWords?: string; band?: string; hint: string; thin?: boolean }[] = [
     ...(firstSignal ? [{ href: entitySignalsUrl(firstSignal), label: "Semnale", icon: "semnale" as const,
       note: formatInt(signalTypes.length), noteWords: signalTypes.length === 1 ? "un tip de semnal" : `${signalTypeCountLabel(signalTypes.length)} de semnale`,
+      hint: "Semnale: tiparele găsite în înregistrări, fiecare cu cazurile și sursele lui. Piste, nu dovezi.",
       ...(hasRiskScore ? { band } : {}) }] : []),
-    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie", icon: "radiografie" as const }] : []),
-    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături", icon: "legaturi" },
-    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații", icon: "comparatii" },
+    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie", icon: "radiografie" as const, thin: fewRecords,
+      hint: `Radiografie: cine depinde de instituție, loturi care se repetă, achiziții apropiate în timp.${few}` }] : []),
+    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături", icon: "legaturi", thin: fewRecords,
+      hint: `Legături: drumul banilor spre parteneri și spre partenerii lor.${few}` },
+    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații", icon: "comparatii",
+      hint: isAuth ? "Comparații: față de instituții asemănătoare." : "Comparații: față de firme asemănătoare." },
   ];
   // A small profile does not repeat itself (UX audit Z5-14): with at most 5 records, each from another partner, the
   // partner list would be the records table again, so it is left out.
@@ -355,7 +364,8 @@ export default async function EntityPage({
       </div>
       {/* The same analyses on a phone, where the tab row scrolls sideways and would hide them. */}
       <nav className="ehead-views" aria-label="Analize">
-        {views.map((v) => <Link key={v.href} href={v.href} data-band={v.band} aria-label={v.noteWords ? `${v.label}, ${v.noteWords}` : undefined}><AnalysisIcon name={v.icon} />{v.label}{v.note && <span className="n" title={v.noteWords}>{v.note}</span>}</Link>)}
+        {views.map((v) => <HintLink key={v.href} href={v.href} hint={v.hint} dataBand={v.band} className={v.thin ? "is-thin" : undefined}
+          ariaLabel={v.noteWords ? `${v.label}, ${v.noteWords}` : undefined}><AnalysisIcon name={v.icon} />{v.label}{v.note && <span className="n">{v.note}</span>}</HintLink>)}
       </nav>
 
       {successor && continuedAt ? (

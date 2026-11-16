@@ -468,3 +468,27 @@
 .tx-tools{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px}
 .tx-tools a{font-weight:500}
 @media (max-width:700px){.tx-tools a{display:inline-flex;align-items:center;min-height:44px}}
+
+/* ---- UX audit Z5-21 (16 November 2026): each analysis button explains itself (HintLink); with few records Radiografie
+   and Legături are quieter, never hidden. The wrappers take no box, so the group's dividers and the phone's grid stay. ---- */
+.subnav-tools>.hint-link,.ehead-views>.hint-link{display:contents}
+.subnav-in .subnav-tools>.hint-link+.hint-link>a{border-left:1px solid var(--line)}
+.subnav-tools a.is-thin,.ehead-views a.is-thin{color:var(--muted)}
+.subnav-tools a.is-thin .an-ico,.ehead-views a.is-thin .an-ico{color:var(--muted)}
+.ehead-views a{-webkit-touch-callout:none}
+@media (max-width:700px){
+  .ehead-views>.hint-link:nth-child(even)>a{border-left:1px solid var(--line)}
+  .ehead-views>.hint-link:nth-child(n+3)>a{border-top:1px solid var(--line)}
+  .ehead-views>.hint-link:last-child:nth-child(odd)>a{grid-column:1/-1}
+}
+
+/* ---- UX audit Z5-22 (16 November 2026): from 701 to 900 px the tabs and the four analyses did not fit one row
+   („Comparații” cut under the fade); there the analyses are icons, their names (and what they show) on hover, focus or
+   a long press, and in their accessible names. ---- */
+@media (min-width:701px) and (max-width:900px){
+  .subnav-in .subnav-tools a{gap:5px;padding:7px 11px}
+  .subnav-in .subnav-tools a .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+}
+/* ---- UX audit Z5-23: the focus ring of the tabs and the analyses is drawn inside them, where the row's clipping
+   (it scrolls sideways; the group has rounded corners) does not cut it ---- */
+.subnav-in>a:focus-visible,.subnav-in .subnav-tools a:focus-visible{outline-offset:-3px}

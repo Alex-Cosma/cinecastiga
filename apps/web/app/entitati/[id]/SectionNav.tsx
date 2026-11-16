@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
+import HintLink from "./HintLink";
 
 export interface SectionItem {
   id?: string; // in-page anchor
@@ -18,6 +19,10 @@ export interface SectionItem {
   /** The note in words, on hover and for screen readers: „4 tipuri de semnale”. */
   noteWords?: string;
   band?: string;
+  /** What the analysis shows, on hover, focus or a long press (UX audit Z5-21). */
+  hint?: string;
+  /** Few records behind it: the button is quieter, its hint says so (UX audit Z5-21). */
+  thin?: boolean;
 }
 
 /** Which edges of the tab row hide more tabs (drives the edge fade). */
@@ -130,7 +135,14 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
         {/* The analysis pages: one group of buttons at the row's end (owner, 6 November 2026), not tabs. */}
         {items.some((it) => !it.id) && (
           <span className="subnav-tools" role="group" aria-label="Analize">
-            {items.filter((it) => !it.id && it.href).map((it) => (
+            {items.filter((it) => !it.id && it.href).map((it) => it.hint ? (
+              <HintLink key={it.href} href={it.href!} hint={it.hint} dataBand={it.band} className={it.thin ? "is-thin" : undefined}
+                ariaLabel={it.noteWords ? `${it.label}, ${it.noteWords}` : undefined}>
+                {it.icon && <AnalysisIcon name={it.icon} />}
+                <span className="lbl">{it.label}</span>
+                {it.note && <span className="n">{it.note}</span>}
+              </HintLink>
+            ) : (
               <Link key={it.href} href={it.href!} data-band={it.band} aria-label={it.noteWords ? `${it.label}, ${it.noteWords}` : undefined}>
                 {it.icon && <AnalysisIcon name={it.icon} />}
                 {it.label}
