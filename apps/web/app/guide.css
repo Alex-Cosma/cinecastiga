@@ -193,3 +193,14 @@
 .d-search-arrive>form{animation:d-arrive-ring 1s ease-out 1.1s 1 backwards}
 @keyframes d-arrive-ring{0%{box-shadow:0 0 0 0 var(--orange)}30%{box-shadow:0 0 0 4px var(--orange)}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.d-search-arrive>form{animation:none}}
+
+/* M-02 (UX audit, motion pass, 16 November 2026): a floating explanation comes out of what was touched and goes back
+   into it. In: 140 ms, --ease, from 4 px on the "?"'s side (Term.tsx, once it knows where the box went). Out: 90 ms,
+   --ease-exit, 2 px toward the "?" (here; Term.tsx sets data-side). Reduced motion: opacity only (100 ms in, 80 ms
+   out). Browsers without transition-behavior: allow-discrete hide it at once, as before. The cursor cards of charts
+   and the map (useTip) stay instant. */
+.term-tip>.term-def{--tip-out:90ms;--tip-to:2px;opacity:0;transform:translateY(var(--tip-to));transition:opacity var(--tip-out) var(--ease-exit),transform var(--tip-out) var(--ease-exit),display var(--tip-out) allow-discrete,overlay var(--tip-out) allow-discrete}
+.term-tip>.term-def[data-side="below"]{--tip-to:-2px}
+.term-tip.term-shown>.term-def{opacity:1;transform:none;transition:none}
+@media(prefers-reduced-motion:reduce){.term-tip>.term-def{--tip-out:80ms;--tip-to:0px}}
+@media print{.term-tip>.term-def{transition:none}}
