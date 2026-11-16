@@ -3,6 +3,7 @@ import { peerGroupWords, PEER_MINIMUM, PROFILE_MIN_DAS } from "./ask/peer-groups
 import { readPeerFocal, resolvePeerFacts } from "./ask/peer-groups";
 import { formatInt } from "./format";
 import { riskBand } from "./risk-score";
+import { countWords } from "./ask/answer-text";
 
 const g = globalThis as unknown as { __seapRiskPeersSql?: DbSql };
 const db = (): DbSql => (g.__seapRiskPeersSql ??= createDb().sql);
@@ -15,6 +16,16 @@ const db = (): DbSql => (g.__seapRiskPeersSql ??= createDb().sql);
  */
 export function riskPeerWords(line: RiskPeerLine): string {
   return `Locul ${formatInt(line.rank)} din ${formatInt(line.n)} · ${line.groupWords.replace(/^toate /, "")}`;
+}
+
+/**
+ * The line in the profile's narrow risk column (UX audit Z5-16, 16 November 2026): a firm's long domain name moves into
+ * an explanation, „Locul 246 din 6.641 de firme din același domeniu (?)”; other groups keep riskPeerWords.
+ */
+export function riskPeerParts(line: RiskPeerLine): { words: string; domain: string | null } {
+  const domain = /^firmele din domeniul „(.+)”$/.exec(line.groupWords)?.[1] ?? null;
+  if (!domain) return { words: riskPeerWords(line), domain: null };
+  return { words: `Locul ${formatInt(line.rank)} din ${countWords(line.n, "firmă", "firme")} din același domeniu`, domain };
 }
 
 export interface RiskPeerLine {

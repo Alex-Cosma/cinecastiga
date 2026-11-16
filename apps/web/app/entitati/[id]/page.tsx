@@ -28,7 +28,7 @@ import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl, withoutRole } from "@/lib/signals-shared";
 import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_HISTORIC_MONTHS, RISK_MIN_DAS, RISK_SCORE_NOTE, riskBand, riskFact, riskHistoric, riskLabel, riskNoScoreReason, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
-import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
+import { getRiskPeerLine, riskPeerParts } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
 import { lastMonthWords } from "@/lib/ask/historic";
 import { getRegistryNames } from "@/lib/registry-names";
@@ -421,9 +421,14 @@ export default async function EntityPage({
               </span>
             </div>
           )}
-          {peerLine && <p className="ent-risk-peer">{riskPeerWords(peerLine)}</p>}
+          {/* A firm's long domain name in its explanation, not in the narrow column (UX audit Z5-16, 16 November 2026). */}
+          {peerLine && (() => {
+            const peer = riskPeerParts(peerLine);
+            return <p className="ent-risk-peer ent-tip">{peer.words}{peer.domain && <> <Term tip title="Același domeniu" text={`„${peer.domain}”: domeniul principal al firmei. Locul e printre firmele lui cu cel puțin 10 achiziții directe.`} /></>}</p>;
+          })()}
           {/* rf-2026.22 (S7): the score reads only the direct acquisitions; their share of the money says how much it covers. */}
-          {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer">Privește achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din bani</p>}
+          {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer ent-tip">Scorul citește doar achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoare{" "}
+            <Term tip title="Doar achizițiile directe" text="Scorul se calculează din achizițiile directe; contractele prin proceduri nu intră în el. Procentul e partea achizițiilor directe din valoarea înregistrată." /></p>}
           {(hasRiskScore || signalTypes.length > 0) && <Link href="/metodologie#indice" className="ent-risk-method">Cum se calculează →</Link>}
         </div>
         <div className="ent-activity">

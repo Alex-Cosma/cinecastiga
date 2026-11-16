@@ -111,7 +111,7 @@ describe("the entity page's top", () => {
     expect(page).not.toMatch(/stat-grid ent-stats|className="hint">Cum se formează\?/);
     expect(page).toContain('<div className={`ent-top${years ? "" : " ent-top--no-years"}`}>');
     expect(page).toMatch(/<Term tip id="scor-risc" \/>/);
-    expect(page).toContain("riskPeerWords(peerLine)");
+    expect(page).toContain("riskPeerParts(peerLine)");
     // Its explanation opens under its line, as wide as the region (critique 2 November 2026: 116 px, cut).
     expect(css).toContain(".ent-top .ent-tip{position:static}");
     expect(css).toContain(".ent-top .ent-risk-read,.ent-top .ent-ledger tbody th{position:relative}");
