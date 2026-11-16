@@ -102,3 +102,12 @@ button.fc-yb:hover i{background:var(--accent)}
   .fc-v{grid-column:2;grid-row:1 / span 2}
 }
 .fc-comp{font-size:13px;color:var(--ink2);display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px}
+
+/* UX audit Z3-31 (owner, 16 November 2026): „Pe ani” stays one chart on a phone: every year on one row (≈37 px each at
+   390, the evolution's width), the years as „’18 … ’26*”; each bar keeps its 44 px height as a target. */
+.fc-y-short{display:none}
+@media (max-width:600px){
+  .fc .fc-yrs{grid-template-columns:repeat(var(--n,9),minmax(0,1fr));grid-auto-rows:auto;height:110px;gap:3px;max-width:none}
+  .fc .fc-y-long{display:none}
+  .fc .fc-y-short{display:inline}
+}

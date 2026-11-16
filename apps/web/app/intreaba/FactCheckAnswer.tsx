@@ -44,8 +44,6 @@ export interface FactCheckAnswerProps {
 const DOMAINS_SHOWN = 3;
 /** Rows outside the sums shown before the rest unfolds (final §4.5). */
 const OUTSIDE_SHOWN = 3;
-/** Under 600 px the years wrap in rows of five, so each bar is a 44 px target (owner UI rule; the final drew nine columns of ~37 px). */
-const YEARS_PER_PHONE_ROW = 5;
 
 /** A figure beside its label (→): "107,5 mil." from a million, else with its unit ("18.453 lei"), so "2 · 18.453" never reads as two counts. */
 const mil = shortLei;
@@ -232,7 +230,8 @@ function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }
   const c = f.channels;
   const lines: ReactNode[] = [];
   if (years.length >= 2) lines.push(<Line key="y" label="Pe ani">
-    <div className="fc-yrs" style={{ "--n": years.length, "--phone": Math.min(years.length, YEARS_PER_PHONE_ROW) } as CSSProperties} {...motion.root}>
+    {/* One row at every width (UX audit Z3-31): on a phone two rows of five read as two charts; the years say „’18 … ’26” there. */}
+    <div className="fc-yrs" style={{ "--n": years.length } as CSSProperties} {...motion.root}>
       {years.map((y) => {
         const partial = y.year === f.partialYear;
         const label = `${y.year}${partial ? "*" : ""}`;
@@ -240,7 +239,7 @@ function Profile({ fact: f, sources }: { fact: FactCheckData; sources: Sources }
         const body = <>
           <em>{y.count.toLocaleString("ro-RO")}</em>
           <i className={`cm-tw ${motion.enter("cm-y")}`} style={{ height: `${Math.max(3, (y.count / peak) * 100)}%` }} />
-          <span>{label}</span>
+          <span><span className="fc-y-long">{label}</span><span className="fc-y-short" aria-hidden="true">’{String(y.year).slice(2)}{partial ? "*" : ""}</span></span>
         </>;
         const title = `${recordWords(y.count)} din ${y.year} · ${lei(y.value)}${partial ? " · an incomplet" : ""}`;
         return open ? <button key={y.year} ref={motion.join} type="button" className={`fc-yb${partial ? " is-partial" : ""}`} title={title} aria-label={`Vezi ${title}`} onClick={open}>{body}</button>
