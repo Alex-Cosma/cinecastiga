@@ -26,7 +26,7 @@ import DiscoverPager from "@/components/discover/DiscoverPager";
 import OpenFromHash from "./OpenFromHash";
 import OutsideMenu from "./OutsideMenu";
 import RecordList, { type RecordRow } from "./RecordList";
-import { caseRecordRows } from "@/lib/signal-case-rows";
+import { caseCounterparty, caseRecordRows } from "@/lib/signal-case-rows";
 import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "@/lib/record-rows";
 import "./case.css";
 
@@ -123,8 +123,9 @@ function ShareBar({ share, ticks = [] }: { share: number; ticks?: { at: number; 
  * acquisitions are with other partners). `source`: the server pages of a long list (owner, 12 November 2026): past
  * RECORDS_SERVER_ABOVE rows only the first ones travel, and the orders and further rows come from the server.
  */
-function Records({ records, alsoIn, code, empty, counterparty, source }: { records: readonly CaseRecord[]; alsoIn: Record<string, string[]>; code: string; empty?: string; counterparty?: "authority" | "supplier"; source?: string }) {
-  const rows: RecordRow[] = caseRecordRows(records, alsoIn, code, counterparty);
+function Records({ records, alsoIn, code, empty, counterparty, source, role }: { records: readonly CaseRecord[]; alsoIn: Record<string, string[]>; code: string; empty?: string; counterparty?: "authority" | "supplier"; source?: string; role?: "authority" | "supplier" }) {
+  // With more than one partner, each row names its own (UX audit Z6-07); the server's pages do the same.
+  const rows: RecordRow[] = caseRecordRows(records, alsoIn, code, counterparty ?? (role ? caseCounterparty(records, role) : undefined));
   const none = empty ?? "Nu mai găsim înregistrările acestui caz în datele de acum.";
   if (source && rows.length > RECORDS_SERVER_ABOVE) {
     const first = [...rows].sort((a, b) => compareRecordRows(a, b, RECORD_DEFAULT_SORT)).slice(0, RECORDS_SHOWN);
@@ -223,7 +224,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
             </summary>
             <div className="sgc-body">
               <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA. Adunate, cele {formatInt(g.count)} achiziții trec de el de {splitRatioWords(g.ratio).replace("×", "")} ori.</p>
-              <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
+              <Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(g.partnerName)} ${g.year}`} />
             </div>
@@ -353,7 +354,7 @@ function YearEndCase({ data }: { data: SignalCase }) {
               <span className="sgc-x">{pctWords(y.share)}</span>
             </summary>
             <div className="sgc-body">
-              <Records records={dec} alsoIn={data.alsoIn} code={data.code} empty="Nu găsim acum achizițiile din decembrie ale acestui an." source={listSource(data, inst.id, "decembrie")} />
+              <Records role={data.entity.role} records={dec} alsoIn={data.alsoIn} code={data.code} empty="Nu găsim acum achizițiile din decembrie ale acestui an." source={listSource(data, inst.id, "decembrie")} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${y.year}`} />
             </div>
@@ -390,7 +391,7 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
     </div>
     <CasesHead title={<>{countWords(inst.records.length, "achiziție", "achiziții")} cu {partnerName}</>} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(code)} · ${partner}`} />} />
     <div id={`caz-${inst.id}`}>
-      <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
+      <Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
       <Warnings inst={inst} />
       {inst.aside && inst.aside.count > 0 && (
         <details className="sgc-aside">
@@ -415,7 +416,7 @@ function CapacityCase({ data }: { data: SignalCase }) {
       </Side>
     </div>
     <CasesHead title={`Achizițiile din ${c.year}`} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(data.code)} · ${c.year}`} />} />
-    <div id={`caz-${inst.id}`}><Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
+    <div id={`caz-${inst.id}`}><Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
   </>;
 }
 
@@ -452,7 +453,7 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
         </Side>
       </div>
       <CasesHead title={`${countWords(inst.records.length, "achiziție", "achiziții")} din această perioadă`} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(data.entity.name)}`} />} />
-      <div id={`caz-${inst.id}`}><Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
+      <div id={`caz-${inst.id}`}><Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
     </>;
   }
   return <>
@@ -476,7 +477,7 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
                   : m.buyersAll === 1 ? "Instituția este singurul ei cumpărător din achizițiile directe ale arhivei." : ""}</p>
               {near(m)}
               {older(m)}
-              <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
+              <Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(inst.partnerName)}`} />
             </div>
