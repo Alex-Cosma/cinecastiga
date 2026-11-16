@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contractValueState, daState, durationLabel, isGenericTitle, kindLabel, lotParts, lotTitle, meaningfulLot, noticeGapNote, procedureLabel, recordHeadline } from "./record-labels";
+import { recordCaveat, contractValueState, daState, durationLabel, isGenericTitle, kindLabel, lotParts, lotTitle, meaningfulLot, noticeGapNote, procedureLabel, recordHeadline } from "./record-labels";
 
 describe("record labels", () => {
   it("writes procedures in Romanian", () => {
@@ -70,5 +70,13 @@ describe("record labels", () => {
     expect(noticeGapNote({ ...e, everyValue: "600000000" })).toBeNull();
     expect(noticeGapNote({ ...e, total: "503000000", everyValue: "503000000" })).toBeNull();
     expect(noticeGapNote({ ...e, award: null })).toBeNull();
+  });
+  it("keeps two sentences of why a signal is not proof, never the counting rules (Z7-06)", () => {
+    expect(recordCaveat("award_calloffs_over_ceiling")).toBe("Poate fi o eroare de introducere a datelor, mai ales când comenzile au aceeași sumă ca plafonul acordului-cadru (plafonul copiat în fiecare comandă). Un act adițional sau o ajustare de preț pot mări puțin plafonul.");
+    expect(recordCaveat("award_single_bid")).toBe("Piețele de nișă pot avea legitim o singură ofertă. Un lot cu o ofertă nu descrie toate loturile anunțului.");
+    expect(recordCaveat("da_split")).toBe("O clasă CPV comună nu dovedește o nevoie unică; achizițiile recurente pot fi legitime. Obligația estimării e a instituției, nu a firmei.");
+    expect(recordCaveat("da_round")).toBe("O achiziție sub plafon este normală. Legea privește valoarea estimată, iar semnalul compară valoarea de închidere.");
+    for (const code of ["award_no_competition", "award_single_bid", "award_calloffs_over_ceiling"]) expect(recordCaveat(code)).not.toContain("anunț de atribuire (apariții)");
+    expect(recordCaveat("nu_exista")).toBeNull();
   });
 });

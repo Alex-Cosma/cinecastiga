@@ -90,3 +90,9 @@
   .record-entry .record-items tfoot td.record-num { text-align: right; }
   .record-items-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 8px; padding: 0 16px; border: 1px solid var(--line2); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 15px/1.2 var(--body); cursor: pointer; }
 }
+
+/* Z7-05: a signal's links (its cases, its rule, why it is not proof) are 44 px targets on a phone. */
+@media (max-width: 700px) {
+  .record-entry .record-signal-links { row-gap: 0; }
+  .record-entry .record-signal-links > a, .record-entry .record-signal-links summary { display: inline-flex; align-items: center; min-height: 44px; }
+}

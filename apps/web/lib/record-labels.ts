@@ -1,3 +1,4 @@
+import { AWARD_COUNTING_CAVEAT, FLAG_META } from "./flags";
 import { formatExactDecimal } from "./format";
 
 /*
@@ -146,4 +147,22 @@ export function noticeGapNote(e: { total: string | null; award: string | null; f
   if (Math.abs(gap) < Math.max(1, 0.01 * Number(e.award))) return null;
   const lei = (value: string) => `${formatExactDecimal(value)} lei`;
   return `Contractele găsite însumează ${lei(e.total)}, cu ${lei(Math.abs(gap).toFixed(2).replace(/\.00$/, ""))} ${gap > 0 ? "mai mult" : "mai puțin"}. Diferența nu e explicată în sursă.`;
+}
+
+/** Which two sentences of a signal's caveat say why it is not proof, where the first two are technical. */
+const CAVEAT_PICK: Record<string, [number, number]> = {
+  da_split: [3, 4], da_dependence: [3, 2], da_above_ceiling: [0, 2], da_first_month: [0, 2], award_single_bid: [4, 1],
+};
+
+/**
+ * „De ce nu e o dovadă” on a record (UX audit Z7-06): two sentences, the usual explanations, in the signal's own words;
+ * how a signal is counted and its technical limits stay in its rule on /metodologie, one click away („Regula →”).
+ */
+export function recordCaveat(code: string): string | null {
+  const caveat = FLAG_META[code]?.caveat;
+  if (!caveat) return null;
+  const text = caveat.endsWith(AWARD_COUNTING_CAVEAT) ? caveat.slice(0, -AWARD_COUNTING_CAVEAT.length).trim() : caveat.trim();
+  const sentences = text.split(/(?<=[.!?])\s+(?=[A-ZĂÂÎȘȚ„])/u);
+  const [a, b] = CAVEAT_PICK[code] ?? [0, 1];
+  return [sentences[a], sentences[b]].filter((x): x is string => !!x).join(" ");
 }

@@ -5,6 +5,7 @@ import { FLAG_META, flagFindingLabel } from "@/lib/flags";
 import { riskEvidenceLine } from "@/lib/risk-presentation";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { formatExactDecimal, formatInt } from "@/lib/format";
+import { recordCaveat } from "@/lib/record-labels";
 import type { PairContext, RecordFlag } from "@/lib/record-types";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { pairSpec } from "@/lib/ask/site-links";
@@ -102,6 +103,8 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
         const href = firms ? (supplierId ? signalUrl(parseSignalState({ tip: f.code, rol: "furnizor", ent: supplierId })) : null)
           : authorityId ? signalUrl(parseSignalState({ tip: f.code, rol: "autoritate", ent: authorityId })) : null;
         const extra = note?.(f) ?? null;
+        // Two sentences of why it is not proof; how it is counted is in its rule (Z7-06).
+        const caveat = recordCaveat(f.code);
         return <li key={f.code}>
           <h3>{flagFindingLabel(f.code)}</h3>
           {meta?.short && <p>{meta.short}</p>}
@@ -109,7 +112,9 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
           {extra && <p className="record-evidence">{extra}</p>}
           <div className="record-signal-links">
             {href && <Link href={href}>{firms ? "Cazul firmei" : "Toate cazurile instituției"}</Link>}
-            {meta?.caveat && <details><summary>De ce nu e o dovadă</summary><p>{meta.caveat}</p></details>}
+            {/* One click from a signal to its rule (UX audit Z7-05); the anchors open the rule in the guide. */}
+            {meta && <Link href={`/metodologie#${f.code}`} prefetch={false}>Regula <span aria-hidden="true">→</span></Link>}
+            {caveat && <details><summary>De ce nu e o dovadă</summary><p>{caveat}</p></details>}
           </div>
         </li>;
       })}
