@@ -196,3 +196,10 @@
 .iw-new-panel h2{font:600 20px/1.3 var(--display);margin:0 0 2px}.iw-new-panel>p{margin:0 0 14px}.iw-new-panel form{display:grid;gap:16px}.iw-new-panel>p:last-child{margin:14px 0 0}
 .iw-dossiers{margin:8px 0 44px}
 @media(max-width:700px){.iw-new-panel{padding:16px}}
+
+/* A dossier's row (Z8-13): title, description, then one meta line with the saved institutions and firms. */
+.iw-dossiers>ul>li{display:block}
+.iw-dossier-line{display:flex;flex-wrap:wrap;align-items:center;gap:2px 0;margin:8px 0 0!important;font-size:14px;color:var(--muted)!important;max-width:none!important}
+.iw-dossier-line>span:not(.iw-pill)+span::before{content:"·";margin:0 8px;color:var(--muted)}
+.iw-dossier-line>.iw-pill{margin-right:10px}
+.iw-dossier-actors{color:var(--ink2)}.iw-dossier-actors a{color:var(--ink2)}

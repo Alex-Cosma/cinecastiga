@@ -120,6 +120,22 @@ export async function listInvestigations(
   }));
 }
 
+/** The institutions and firms saved in each dossier, by name (the list's meta line, audit Z8-13): today's names of
+ *  the saved entity items, in the order they were saved. The caller has already read the dossiers with access. */
+export async function listDossierActors(ids: string[]): Promise<Map<string, { id: string; name: string }[]>> {
+  const out = new Map<string, { id: string; name: string }[]>();
+  if (!ids.length) return out;
+  const rows = await db()`
+    select x.investigation_id::text inv, e.id::text id, e.name_display name
+    from (select distinct on (c.investigation_id, c.ref_id) c.investigation_id, c.ref_id, c.created_at from app.clips c
+          where c.investigation_id = any(${db().array(ids)}::uuid[]) and c.kind = 'entity' and c.ref_id ~ '^[0-9]{1,18}$'
+          order by c.investigation_id, c.ref_id, c.created_at) x
+    join core.entities e on e.id = x.ref_id::bigint
+    order by x.investigation_id, x.created_at`;
+  for (const row of rows) out.set(String(row.inv), [...(out.get(String(row.inv)) ?? []), { id: String(row.id), name: String(row.name ?? "") }]);
+  return out;
+}
+
 /** Open invitations addressed to this account's confirmed address. The link stays the owner's to send: only its
  *  hash is stored, so the list says where to look rather than offering a way in. */
 export async function listPendingInvites(userId: string): Promise<PendingInvite[]> {
