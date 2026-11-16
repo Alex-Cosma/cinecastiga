@@ -96,6 +96,7 @@ import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence, type EvidenceOpenOpts } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
+import { factLead } from "./FactCheckAnswer";
 import MapBlock, { MapGhost } from "./MapBlock";
 import { countyMetrics, mapFirm, mapLensOptions, mapLocalAdmin, metricWords, shownLens, type MapLensValue } from "./map-answer";
 import type { MapFacts } from "@/lib/ask/map-facts";
@@ -1238,8 +1239,15 @@ export default function AskPanel({
                 )}
               </div>
               <div className="cq-answer-actions">
-                {/* G2: an empty answer has no records to open; its relaxations are below. */}
-                {!empty && <button
+                {/* G2: an empty answer has no records to open; its relaxations are below. Nor has a verification's "Nu":
+                    its most useful lead takes the place (Z3-18). */}
+                {data.block === "fact_check" && factLead(data.fact, applied)?.lead && (() => {
+                  const lead = factLead(data.fact, applied)!.lead!;
+                  return lead.href
+                    ? <a className="cq-source-main" href={lead.href}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></a>
+                    : <button type="button" className="cq-source-main" onClick={() => runWider(lead.spec!)}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></button>;
+                })()}
+                {!empty && !(data.block === "fact_check" && factLead(data.fact, applied)) && <button
                   type="button"
                   className="cq-source-main"
                   onClick={() => openEvidence()}

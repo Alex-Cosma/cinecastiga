@@ -60,6 +60,23 @@ export function wholeRelationSpec(spec: AskSpec): AskSpec {
   return { block: "fact_check", measure: spec.measure, filters: Object.fromEntries(keep.filter((key) => f[key] !== undefined).map((key) => [key, f[key]])) } as AskSpec;
 }
 
+/** The network of one side of the pair: its partners, another question. */
+const partnersOf = (p: FactParty, role: "authority" | "supplier"): QuestionSpec => ({ block: "network", measure: "value", filters: role === "authority"
+  ? { authorityId: Number(p.entityId), authorityName: p.name } : { supplierId: Number(p.entityId), supplierName: p.name } });
+
+/**
+ * A "Nu" has no record to open (UX audit Z3-18): the head's records button gives way to the most useful lead. Within the
+ * pair's other records ("Nu" for these choices): „Arată toată relația”; never between them: the institution's suppliers
+ * (›), else the firm's clients (›); none when neither has a partner. Null for every other answer (the button stays).
+ */
+export function factLead(f: FactCheckData, spec: AskSpec): { lead: { label: string; href?: string; spec?: AskSpec; key: "whole" | "authority" | "supplier" } | null } | null {
+  if (f.version !== 2 || f.state !== "no" || f.count > 0) return null;
+  if (f.relation && f.reason !== "none") return { lead: { key: "whole", label: "Arată toată relația", spec: wholeRelationSpec(spec) } };
+  if (f.partners?.authoritySuppliers) return { lead: { key: "authority", label: `Instituția a cumpărat de la ${countWords(f.partners.authoritySuppliers, "firmă", "firme")}`, href: askLink(partnersOf(f.authority, "authority")) } };
+  if (f.partners?.supplierAuthorities) return { lead: { key: "supplier", label: `Firma a vândut către ${countWords(f.partners.supplierAuthorities, "instituție", "instituții")}`, href: askLink(partnersOf(f.supplier, "supplier")) } };
+  return { lead: null };
+}
+
 export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAnswerProps) {
   const evidence = useAnswerEvidence();
   if (f.version !== 2 || !f.state) return <LegacyFact fact={f} />;
@@ -91,7 +108,8 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
       {whole && <button type="button" className="fc-textlink" onClick={whole}>Arată toată relația</button>}
     </p>}
 
-    {state === "no" && f.relation && f.reason !== "none" && <RelationBand relation={f.relation} onWhole={whole} />}
+    {/* Z3-18: „Arată toată relația” is the head's main action on a "Nu". */}
+    {state === "no" && f.relation && f.reason !== "none" && <RelationBand relation={f.relation} onWhole={spec ? null : whole} />}
 
     <p className="fc-ident">
       {state === "no" && f.reason === "none" && <span>Ai ales:</span>}
@@ -99,7 +117,7 @@ export default function FactCheckAnswer({ fact: f, spec, onWider }: FactCheckAns
       <span><Link prefetch={false} href={`/entitati/${f.supplier.entityId}`}>{partyLine(f.supplier)}</Link></span>
     </p>
 
-    {state === "no" && f.reason === "none" && <NoneContext fact={f} />}
+    {state === "no" && f.reason === "none" && <NoneContext fact={f} inHead={spec ? factLead(f, spec)?.lead?.key ?? null : null} />}
 
     {records && f.share && <div className="fc-weight">
       <span>Pentru <EntityName id={f.supplier.entityId} role="supplier">{shortName(f.supplier)}</EntityName>: {shareWords(f.share.ofSupplier, "client", "clienți", shareLabel)}</span>
@@ -174,9 +192,8 @@ function RelationBand({ relation, onWhole }: { relation: NonNullable<FactCheckDa
  * "Nu" in the whole archive (final §5.4): an entity of the same name with records, and each side's partners (›). Each
  * is another question on this page: a plain <a> (a full load), since a client navigation kept this answer (15 November 2026).
  */
-function NoneContext({ fact: f }: { fact: FactCheckData }) {
-  const network = (p: FactParty, role: "authority" | "supplier"): QuestionSpec => ({ block: "network", measure: "value", filters: role === "authority"
-    ? { authorityId: Number(p.entityId), authorityName: p.name } : { supplierId: Number(p.entityId), supplierName: p.name } });
+function NoneContext({ fact: f, inHead = null }: { fact: FactCheckData; inHead?: "whole" | "authority" | "supplier" | null }) {
+  const network = partnersOf;
   const pairWith = (twin: NonNullable<FactCheckData["twins"]>[number]): QuestionSpec => ({ block: "fact_check", measure: "value", filters: twin.role === "authority"
     ? { authorityId: Number(twin.entityId), authorityName: twin.name, supplierId: Number(f.supplier.entityId), supplierName: f.supplier.name }
     : { authorityId: Number(f.authority.entityId), authorityName: f.authority.name, supplierId: Number(twin.entityId), supplierName: twin.name } });
@@ -188,8 +205,9 @@ function NoneContext({ fact: f }: { fact: FactCheckData }) {
       <a className="fc-textlink" href={askLink(pairWith(t))}>Verifică<span className="qb-glyph" aria-hidden="true">›</span></a>
     </div>)}
     {f.partners && <div className="fc-ctx">
-      {f.partners.authoritySuppliers > 0 && <a className="fc-textlink" href={askLink(network(f.authority, "authority"))}>Instituția a cumpărat de la {countWords(f.partners.authoritySuppliers, "firmă", "firme")}<span className="qb-glyph" aria-hidden="true">›</span></a>}
-      {f.partners.supplierAuthorities > 0 && <a className="fc-textlink" href={askLink(network(f.supplier, "supplier"))}>Firma a vândut către {countWords(f.partners.supplierAuthorities, "instituție", "instituții")}<span className="qb-glyph" aria-hidden="true">›</span></a>}
+      {/* The lead the head already offers is not repeated here (Z3-18). */}
+      {f.partners.authoritySuppliers > 0 && inHead !== "authority" && <a className="fc-textlink" href={askLink(network(f.authority, "authority"))}>Instituția a cumpărat de la {countWords(f.partners.authoritySuppliers, "firmă", "firme")}<span className="qb-glyph" aria-hidden="true">›</span></a>}
+      {f.partners.supplierAuthorities > 0 && inHead !== "supplier" && <a className="fc-textlink" href={askLink(network(f.supplier, "supplier"))}>Firma a vândut către {countWords(f.partners.supplierAuthorities, "instituție", "instituții")}<span className="qb-glyph" aria-hidden="true">›</span></a>}
     </div>}
   </>;
 }

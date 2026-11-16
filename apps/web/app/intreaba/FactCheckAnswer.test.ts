@@ -8,7 +8,7 @@ import type { FactCheckData } from "../../lib/ask/fact-check-shared";
 import type { AskSpec } from "../../lib/ask/spec";
 import { answerCsv } from "./answer-csv";
 import { AnswerEvidence } from "./AnswerEvidence";
-import FactCheckAnswer, { wholeRelationSpec } from "./FactCheckAnswer";
+import FactCheckAnswer, { factLead, wholeRelationSpec } from "./FactCheckAnswer";
 
 /*
  * fact_check-2 as markup (plan §4.10, final fact_check §4–§5): the three
@@ -80,8 +80,11 @@ describe("the verification's answer", () => {
     const spec = factSpec(CLUJ_2026, { filters: { ...factSpec(CLUJ_2026).filters, yearFrom: 2026, yearTo: 2026 } });
     const shown = text(render(CLUJ_2026, spec));
     expect(shown).toMatch(/^Nu Nicio înregistrare în 2026\. 2026 e incomplet: date până la 25\.09\.2026\./);
-    expect(shown).toContain("În toată relația: da · 5 înregistrări · 70,2 mil. lei · 2022–2025 · și 3 acorduri-cadru Arată toată relația");
+    // UX audit Z3-18: „Arată toată relația” is the head's main action (factLead), not a second button in the band.
+    expect(shown).toContain("În toată relația: da · 5 înregistrări · 70,2 mil. lei · 2022–2025 · și 3 acorduri-cadru Municipiul");
+    expect(shown).not.toContain("Arată toată relația");
     expect(shown).not.toContain("Vezi cele");
+    expect(factLead(CLUJ_2026, spec)).toEqual({ lead: { key: "whole", label: "Arată toată relația", spec: wholeRelationSpec(spec) } });
   });
 
   it("„Nu” with an old link's condition says so, with the same band", () => {
@@ -95,8 +98,15 @@ describe("the verification's answer", () => {
     expect(shown).toMatch(/^Nu Nicio înregistrare între ei în datele noastre\. Date SEAP până la 25\.09\.2026/);
     expect(shown).toContain("Ai ales: ADMINISTRATIA BAZINALA DE APA SOMES TISA · CUI 42066043 · Cluj PROEURO CONSTRUCT SRL · CUI 17117170 · Sălaj");
     expect(shown).toContain("Același nume, alt CUI: CUI 18269681 · Cluj are 6 înregistrări cu PROEURO CONSTRUCT SRL, 2018–2019. Verifică");
-    expect(shown).toContain("Instituția a cumpărat de la 796 de firme");
+    // UX audit Z3-18: the institution's suppliers are the head's main action; the firm's clients stay here.
+    expect(shown).not.toContain("Instituția a cumpărat de la 796 de firme");
     expect(shown).toContain("Firma a vândut către 3 instituții");
+    expect(factLead(ABA_NONE, factSpec(ABA_NONE))?.lead).toMatchObject({ key: "authority", label: "Instituția a cumpărat de la 796 de firme" });
+    expect(factLead(ABA_NONE, factSpec(ABA_NONE))?.lead?.href).toMatch(/^\/intreaba\?spec=/);
+    // No partner either side: the records' button still goes (nothing to open), no lead takes its place.
+    expect(factLead({ ...ABA_NONE, partners: { authoritySuppliers: 0, supplierAuthorities: 0 } }, factSpec(ABA_NONE))).toEqual({ lead: null });
+    // A "Da" keeps its records' button.
+    expect(factLead(BUZAU_URBAN, factSpec(BUZAU_URBAN))).toBeNull();
     expect(markup).toContain("/intreaba?spec=");
     expect(shown).not.toContain("În toată relația");
   });

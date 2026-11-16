@@ -1370,3 +1370,8 @@
   .cq-answer .qb-net .qb-net-label,
   .cq-answer .qb-net .qb-net-centre-label { display: none; }
 }
+
+/* UX audit Z3-18: a verification's "Nu" has no record to open; its head's main action is the most useful lead (a
+   question of its own, ›), drawn as the records' button it replaces. */
+a.cq-source-main { justify-content: center; text-decoration: none; }
+.cq-source-main > .qb-glyph { margin-left: -2px; }
