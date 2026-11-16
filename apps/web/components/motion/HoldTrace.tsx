@@ -15,8 +15,15 @@ export default function HoldTrace() {
   const ref = useRef<SVGSVGElement>(null);
   const [box, setBox] = useState<{ width: number; height: number; radius: number; top: number; left: number } | null>(null);
   useLayoutEffect(() => {
-    const target = ref.current?.closest<HTMLElement>(".term-tip");
-    if (!target) return;
+    const root = ref.current?.closest<HTMLElement>(".term-tip");
+    if (!root) return;
+    // The outline goes round whichever draws the box: the Term's root (a tag, a pill), or its button when the pill is
+    // drawn on the button and the root has no border (.ehead-flag, .sgc-under, .sgc-also, .sg-inactive).
+    const button = root.querySelector<HTMLElement>(":scope > .term-trigger");
+    const width = (el: HTMLElement) => { const s = getComputedStyle(el); return (parseFloat(s.borderTopWidth) || 0) + (parseFloat(s.borderLeftWidth) || 0); };
+    const onButton = !!button && width(root) === 0 && width(button) > 0;
+    if (onButton) root.dataset.traceOn = "trigger";
+    const target = onButton && button ? button : root;
     const measure = () => setBox((was) => {
       const s = getComputedStyle(target);
       const width = target.offsetWidth, height = target.offsetHeight;
@@ -27,7 +34,7 @@ export default function HoldTrace() {
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(target);
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); delete root.dataset.traceOn; };
   }, []);
   const paths = box && box.width > 0 && box.height > 0 ? tracePaths(box.width, box.height, box.radius) : [];
   return <svg ref={ref} className="tag-trace" aria-hidden="true" focusable="false"

@@ -260,10 +260,13 @@ export default async function SupraPragPage({
                     : <><div className="obj-title" tabIndex={0} title={a.title ?? undefined}>{a.title}</div>{a.cpvName ?? a.cpvCode ?? "—"}</>}
                   {!defaultLotId(a.lotId) ? <div>Lot: {a.lotId}</div> : null}
                   <div className="badges">
-                    <span className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`} title={TED_LABEL[a.label]?.hint}>
-                      {TED_LABEL[a.label]?.title ?? a.label}
-                    </span>
-                    <span className={`badge ${a.tendersReceived === 1 ? "warn" : ""}`}>{competitionLabel(a.tendersReceived)}</span>
+                    {/* The labels hold their explanation (M-01): a resting mouse draws the outline, a tap opens it. */}
+                    {TED_LABEL[a.label]
+                      ? <Term tip hold="box" className={`ted-label ${a.label === "ted-only" ? "only" : "seap"}`} title={TED_LABEL[a.label]!.title} text={TED_LABEL[a.label]!.hint}>{TED_LABEL[a.label]!.title}</Term>
+                      : <span className="ted-label seap">{a.label}</span>}
+                    {a.tendersReceived === 1
+                      ? <Term tip hold="box" className="badge warn" title="1 ofertă primită" text="O licitație la care s-a depus o singură ofertă, potrivit TED.">{competitionLabel(a.tendersReceived)}</Term>
+                      : <span className="badge">{competitionLabel(a.tendersReceived)}</span>}
                     {a.euFunded ? <span className="badge">fonduri UE</span> : null}
                     {/* On a phone the procedure is one more pill here, its column hidden (Z6-29). */}
                     <span className="badge tp-proc-pill">{procedureName(a.procedureType)}</span>

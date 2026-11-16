@@ -97,8 +97,9 @@ describe("the risk cloud's answer", () => {
     expect(words).toContain("Mulți bani contractați în decembrie · 2022");
     expect(words).toContain("Declarate directe, peste plafon");
     // Each row's risk: the score's pill in its band's colour, the band under it.
-    expect(markup).toContain('<span class="cri-pill risk-high">73 din 100</span><small>pronunțat</small>');
-    expect(markup).toContain('<span class="cri-pill risk-mid">64 din 100</span><small>moderat</small>');
+    // The pill holds the score's explanation (M-01).
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-high"><button[^>]*>73 din 100<.*?<\/span><\/span><small>pronunțat<\/small>/);
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-mid"><button[^>]*>64 din 100<.*?<\/span><\/span><small>moderat<\/small>/);
     expect(words).toContain("2.567 de înregistrări");
     // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
     expect(words).toContain("Vezi cele 4.827 de înregistrări →");
@@ -132,7 +133,7 @@ describe("the risk cloud's answer", () => {
     expect(markup).not.toContain("sc-chart");
     expect(text(markup)).toContain("5 profiluri în grup: prea puține pentru un nor. Le arătăm ca listă.");
     expect(text(markup)).toContain("SPITALUL JUDETEAN DE URGENTA BUZAU");
-    expect(markup).toContain('<span class="cri-pill risk-slab">20 din 100</span><small>slab</small>');
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-slab"><button[^>]*>20 din 100<.*?<\/span><\/span><small>slab<\/small>/);
     // Only the place leaves: the hospitals stay hospitals (review: the kind was dropped without a word).
     const link = markup.match(/href="\/intreaba\?spec=([^"]+)"[^>]*>Toate spitalele din țară · 329/);
     expect(link).not.toBeNull();

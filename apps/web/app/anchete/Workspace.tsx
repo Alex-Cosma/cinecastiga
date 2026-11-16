@@ -30,6 +30,8 @@ export type WorkspaceTab = "questions" | "evidence" | "timeline" | "tasks";
 const tabs: { id: WorkspaceTab; label: string }[] = [{ id: "questions", label: "Întrebări" }, { id: "evidence", label: "Dovezi" }, { id: "timeline", label: "Cronologie" }, { id: "tasks", label: "Verificări" }];
 const stanceLabels = { supports: "Susține", contradicts: "Contrazice", check: "De verificat" } as const;
 const stanceOptions = { supports: "Susține ipoteza", contradicts: "Contrazice ipoteza", check: "De verificat" } as const;
+/** What a stance says about the link, in its pill's explanation (M-01). */
+const stanceTips = { supports: "Dovada e legată de întrebare ca sprijin pentru ipoteza ei.", contradicts: "Dovada e legată de întrebare ca argument împotriva ipotezei ei.", check: "Legătura dintre dovadă și ipoteză nu e încă stabilită." } as const;
 const kindLabels = { question: "întrebare", note: "notă", task: "verificare", event: "eveniment" };
 /** The header's search ("Caută", "/"); a page without it goes to /cauta. */
 function openSearch() {
@@ -141,7 +143,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
     return <div className="iw-question-evidence">
       <h4>Dovezi legate {links.length > 0 && <span className="iw-count">{links.length}</span>}</h4>
       {links.length > 0 ? <ul>{links.map(link => { const clip = clipById.get(link.clipId); return <li key={link.clipId}>
-        <span className={`iw-stance iw-stance-${link.stance}`}>{stanceLabels[link.stance]}</span>
+        <Term tip hold="box" className={`iw-stance iw-stance-${link.stance}`} title={stanceOptions[link.stance]} text={stanceTips[link.stance]}>{stanceLabels[link.stance]}</Term>
         <button className="iw-evidence-link" type="button" onClick={() => openEvidence(link.clipId)}>{clip ? clipOption(clip) : "Dovadă salvată"}</button>
         {link.note && <p>{link.note}</p>}
         {canEdit && <button className="iw-unlink" type="button" disabled={busy} onClick={() => void mutate({ action: "unlink", questionId: question.id, clipId: link.clipId }, "Dovada a fost desprinsă de întrebare.")}>Desprinde</button>}

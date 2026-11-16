@@ -178,7 +178,8 @@ export default function Term({ children, className, tip = false, hold, ...source
         aria-expanded={open}
         aria-describedby={definitionId}
         aria-label={children ? undefined : `${entry.title}: ce înseamnă`}
-        onClick={() => { setDismissed(false); setOpen(value => !value); }}
+        // Inside a row's <summary> (a /preturi strip's chips), a tap opens the explanation, not the row.
+        onClick={event => { if (event.currentTarget.closest("summary")) event.preventDefault(); setDismissed(false); setOpen(value => !value); }}
         onFocus={event => { if (event.currentTarget.matches(":focus-visible")) { setDismissed(false); setFocused(true); } }}
       >
         {hold === "line" ? <span className="term-words">{children}</span> : children}

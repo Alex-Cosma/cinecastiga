@@ -14,6 +14,8 @@ import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendar
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
 import { contractValueState, kindLabel, lotTitle, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
+/** What „un singur ofertant” means, beside it (M-01); the words of the welcome tour's glossary (lib/tour.ts). */
+const SINGLE_BIDDER_TIP = "O licitație la care s-a depus o singură ofertă.";
 import { countWords } from "@/lib/ask/answer-text";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
@@ -159,7 +161,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         name: <EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName>,
         place: countyLabel(w.county),
         lines: [
-          multiWinner && w.shareRonExact != null && <><Term tip id="consortiu">Cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</>,
+          multiWinner && w.shareRonExact != null && <><Term hold="line" tip id="consortiu">Cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</>,
           c.authority && others > 0 && <a href={pairHref({ id: c.authority.entityId, name: cleanName(c.authority.name) }, { id: w.entityId, name: cleanName(w.name) })}>
             Încă {others === 1 ? "o înregistrare" : countWords(others, "înregistrare", "înregistrări")} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
           ...pairLines(pair),
@@ -220,8 +222,9 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         parties={<>{authority} a contractat cu {winnerNames.length ? winnerNames : "un câștigător neprecizat"}</>}
         value={headValue(c, currency)}
         meta={[
-          <span className="record-kind" key="k">{kind}</span>,
-          c.contractDate && <span key="d">Semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span className="record-quiet" title="Data din sursă e anterioară arhivei (2018): valoarea rămâne în totaluri, fără an."> · dată improbabilă</span>}</span>,
+          // The meta row's labels hold their explanation (M-01).
+          <span className="record-kind" key="k">{c.financialKind === "calloff" ? <Term tip hold="line" id="acord-cadru">{kind}</Term> : kind}</span>,
+          c.contractDate && <span key="d">Semnat {formatCalendarDate(c.contractDate)}{c.contractDate < CONTRACT_DATE_FLOOR && <span className="record-quiet"> · <Term tip hold="line" title="Dată improbabilă" text="Data din sursă e anterioară arhivei (2018): valoarea rămâne în totaluri, fără an.">dată improbabilă</Term></span>}</span>,
           // The procedure and the single offer are said in Atribuirea, the lead in the signal (Z7-07): once each.
           c.contractNo && <span key="n">nr. {c.contractNo}</span>,
         ]}
@@ -240,10 +243,10 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         {sums.length > 1 && <RecordSums title={sumsTitle} rows={sums} note={sumsNote} />}
         <Facts facts={[
           // A single offer is said where the lead is (Z7-07): by the signal when the page has it, here otherwise.
-          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? " · un singur ofertant" : ""}</>
-            : c.isSingleBidder === true && !singleBidSignal ? "Un singur ofertant" : <span className="record-quiet">Număr nepublicat</span> },
+          { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? <> · <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>un singur ofertant</Term></> : ""}</>
+            : c.isSingleBidder === true && !singleBidSignal ? <Term tip hold="line" title="Un singur ofertant" text={SINGLE_BIDDER_TIP}>Un singur ofertant</Term> : <span className="record-quiet">Număr nepublicat</span> },
           x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED" },
-          procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
+          procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure },
           (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: c.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
           // A republished notice's version date matters (its versions are listed above); otherwise it is folded (Z7-29).
           republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },

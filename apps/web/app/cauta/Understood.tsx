@@ -267,11 +267,11 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
       {shown.length>0&&<> → {shown.map((x,k)=><Fragment key={x.name}>{k>0&&', '}<EntityName id={x.id} role="supplier">{cleanName(x.name)}</EntityName></Fragment>)}</>}
       {more>0&&<> și încă {more}</>}{!oneYear&&r.date&&<> · {r.date.slice(0,4)}</>}</small>
     </span>
-    <span className="topic-answer-amount">{value!=null?formatRon(value):'–'}{winners>1&&<small><Term tip title="Contract întreg" text={`${winners} câștigători. Arătăm valoarea întregului contract, o singură dată, nu partea fiecăruia.`}>contract întreg</Term></small>}</span>
+    <span className="topic-answer-amount">{value!=null?formatRon(value):'–'}{winners>1&&<small><Term hold="line" tip title="Contract întreg" text={`${winners} câștigători. Arătăm valoarea întregului contract, o singură dată, nu partea fiecăruia.`}>contract întreg</Term></small>}</span>
    </li>;}):null)
   :kind==='years'?(years&&years.length>1?(()=>{const max=Math.max(0,...years.map(y=>y.value));return years.map((y,i)=>{const note=partial.get(y.year);
    return <li key={y.year} className="topic-answer-row is-year">
-    <span className="topic-answer-year">{y.year}{note&&<small><Term tip title="An parțial" text={note}>parțial</Term></small>}</span>
+    <span className="topic-answer-year">{y.year}{note&&<small><Term hold="line" tip title="An parțial" text={note}>parțial</Term></small>}</span>
     {bar(max>0?y.value/max:0,i,note?' is-partial':'')}
     <span className="topic-answer-amount">{formatRon(y.value)}</span><span className="topic-answer-n">{recordsWord(y.count)}</span>
    </li>;});})():null)

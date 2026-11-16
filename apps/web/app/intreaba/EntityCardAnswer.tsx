@@ -24,6 +24,7 @@ import { entityRowActions } from "./answer/row-actions";
 import TotalLine from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
+import Term from "../../components/Term";
 import {
   categoryLead, largestWords, leadWords, legacyTieFacts, legacyTiesHeadline, legacyTiesRest, noneSources, placeFacts, placeWords, profilePlace, rankingHeadline,
   rankingRest, restWords, riskCloudLink, riskFacts, scorePill, shareWords, showAllWords, shownRows, shownTied, totalLead,
@@ -268,7 +269,8 @@ function RiskRow({ place, row, facts, actions, first = false }: { place: number;
       <RowFacts facts={facts} />
     </div>
     <div className="qb-arow-val ec-rval">
-      <span className="ec-score qb-tipwrap"><b className={`cri-pill ${pill.className}`}>{pill.text}</b>{pill.band}{first && <HelpTip tip={{ id: "scor-risc" }} />}</span>
+      {/* Every row's pill holds the score's explanation (M-01); the first row's separate "?" is gone. */}
+      <span className="ec-score qb-tipwrap"><Term tip hold="box" id="scor-risc" className={`cri-pill ${pill.className}`}>{pill.text}</Term>{pill.band}</span>
       <span className="qb-num">{formatRon(row.value)}</span>
       {records?.onSelect && <button type="button" className="qb-rec ec-rrec" aria-label={`Înregistrările: ${cleanName(row.name)}`} onClick={records.onSelect}>
         {countWords(row.count, "înregistrare", "înregistrări")}<span className="qb-glyph" aria-hidden="true">→</span></button>}

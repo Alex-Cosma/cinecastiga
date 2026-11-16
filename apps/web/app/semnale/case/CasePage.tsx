@@ -286,7 +286,7 @@ function RoundCase({ data, items }: { data: SignalCase; items: NearCeiling[] }) 
   return <>
     {expected != null && <div className="sgc-mirror">
       <Side title="Ne-am aștepta" big={`~${formatInt(expected)}`}
-        unit={<Term tip className="sgc-unit-tip" title="Așteptate" text="Din achizițiile ei directe la 50–96% din plafon și raportul național pentru același tip și aceleași plafoane.">așteptate</Term>}>
+        unit={<Term tip hold="line" className="sgc-unit-tip" title="Așteptate" text="Din achizițiile ei directe la 50–96% din plafon și raportul național pentru același tip și aceleași plafoane.">așteptate</Term>}>
         <p className="sgc-dots exp cm-fade" aria-hidden="true" data-chart suppressHydrationWarning>{Array.from({ length: Math.min(expected, 80) }, (_, i) => <i key={i} />)}</p>
       </Side>
       <Side title="Am găsit" big={formatInt(found)} unit={expected ? `de ${(found / Math.max(1, expected)).toFixed(1).replace(".", ",")} ori mai multe` : "achiziții la 96–100% din plafon"}>
@@ -543,7 +543,7 @@ function classWords(code: string, official: string | undefined): string {
 
 /** A person of a shared representatives' row: the name, its ONRC role on hover or a tap. */
 function Person({ p }: { p: SharedAdminPerson }) {
-  return <Term tip className="sgc-person" title="Calitatea în ONRC" text={p.roles.length ? p.roles.join("; ") : "Nepublicată în datele preluate."}>{p.name}</Term>;
+  return <Term tip hold="line" className="sgc-person" title="Calitatea în ONRC" text={p.roles.length ? p.roles.join("; ") : "Nepublicată în datele preluate."}>{p.name}</Term>;
 }
 function People({ people }: { people: readonly SharedAdminPerson[] }) {
   return <>{sharedPeopleWords(people.length)}: {peopleByFirms(people).map((g, i) => <span key={g.firms}>{i > 0 && " · "}
@@ -676,7 +676,7 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
       <ScoreTabs data={data} state={state} tabs={tabs} />
       <h1 className="sgc-title">{words.title}</h1>
       {(words.lede || under) && <p className="sgc-lede">
-        {under && <Term tip className="sgc-under" title="Sub prag"
+        {under && <Term tip hold="box" className="sgc-under" title="Sub prag"
           text={<>Apare, dar sub pragul regulii: nu adună puncte în scor.{rule && <> Regula: {rule.charAt(0).toLowerCase() + rule.slice(1)}</>}</>}>Sub prag</Term>}
         {words.lede}</p>}
 

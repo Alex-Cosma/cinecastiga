@@ -226,7 +226,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
             return <article className="sg-result sg-rank-row" key={r.entityId} style={{ "--i": row } as CSSProperties}>
               <div className="sg-entity"><div className="sg-entity-name"><EntityName id={r.entityId} role={active.role}>{cleanName(r.name)}</EntityName>
                 {/* Listed when asked for: an inactive profile says so, its last month, the rest on hover or a tap (historicFact). */}
-                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {formatInt(r.nDas)} achiziții directe · {formatRon(r.totalRon)}</p></div>
+                {r.historic !== undefined && (() => { const f = historicFact(r.historic); return <Term tip hold="box" className="sg-inactive" title={f.tip.title} text={f.tip.text}>{f.text}</Term>; })()}</div><p className="sg-meta">{countyLabel(r.county) ?? "Județ neprecizat"} · {formatInt(r.nDas)} achiziții directe · {formatRon(r.totalRon)}</p></div>
               <div className="sg-comp-col">{parts.length ? <>
                 {/* The composition is revealed as one bar, with a clip (never scaled: its numbers stay their size). */}
                 <div className="sg-comp cm-x" role="img" aria-label={`Scorul ${formatInt(r.score)}: ${parts.map(c => `${flagLabel(c)} ${points[c]}`).join(", ")}`}>{parts.map((c, i) => <i key={c} className={`c${Math.min(i, 4)} cm-tw`} style={{ width: `${points[c]}%` }}><span>{formatInt(points[c] ?? 0)}</span></i>)}</div>

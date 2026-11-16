@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Term from "@/components/Term";
 import { STRIP_DOTS, STRIP_LEADS, productHref, type PriceOrder, type PriceStrip } from "@/lib/unit-prices";
 import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadTicksPath, leadsWord, medianWords } from "@/lib/unit-prices-shared";
 import StripChart from "./StripChart";
@@ -63,8 +64,9 @@ function Strip({ s, i, county, order }: { s: PriceStrip; i: number; county: stri
       <span className="pr-count">
         {s.thin ? <small className="pr-thin">prea puține instituții pentru piste</small>
           : <><b>{s.leads || "—"}</b><small className="pr-count-word">peste dublu</small></>}
-        {s.mixed && <em className="pr-mixed">mărci diferite</em>}
-        {seasonal && s.leads > 0 && <em className="pr-mixed">sezon</em>}
+        {/* Each chip holds its caution (M-01): a resting mouse draws the outline; a tap opens it without opening the row. */}
+        {s.mixed && <Term tip hold="box" className="pr-mixed" title="Mărci diferite" text={MIXED_CAUTION}>mărci diferite</Term>}
+        {seasonal && s.leads > 0 && <Term tip hold="box" className="pr-mixed" title="Sezon" text={SEASON_CAUTION}>sezon</Term>}
       </span>
     </>}>
     {s.mixed && <p className="pr-caution">{MIXED_CAUTION}</p>}

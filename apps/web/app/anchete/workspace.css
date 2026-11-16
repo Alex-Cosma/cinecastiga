@@ -256,3 +256,6 @@
 /* The invitation link replaces the form where it was asked for (Z8-28). */
 .iw-invite-copy{grid-template-columns:1fr auto auto}.iw-invite-copy>.iw-text-button{align-self:center}
 @media(max-width:760px){.iw-invite-copy{grid-template-columns:1fr}}
+/* A stance pill holds its explanation (UX audit M-01): a little room inside the outline that draws round it. */
+.iw-shell .iw-stance.term-hold-box{padding:1px 6px;border-radius:5px}
+.iw-shell .iw-stance.term-hold-box>.term-trigger{border:0;background:transparent;padding:0;min-height:0;font:inherit;color:inherit}

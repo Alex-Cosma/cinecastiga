@@ -309,7 +309,7 @@ export default async function EntityPage({
           {/* Tags beside the role, each with its reason on hover or tap (owner, 6 November 2026; beside the role since UX audit
               Z5-15): the buyer's regime or an in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
           {headFlags.length > 0 && <div className="ehead-flags">
-            {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.label ?? f.title}</Term>)}
+            {headFlags.map((f) => <Term key={f.title} tip hold="box" className="ehead-flag" title={f.title} text={f.text}>{f.label ?? f.title}</Term>)}
           </div>}
           </div>
           <h1 className="page-title">{cleanName(row.name)}</h1>
@@ -403,7 +403,7 @@ export default async function EntityPage({
         <div className="ent-risk">
           <p className="ent-risk-read">
             <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
-            <span className="ent-tip">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"} <Term tip id="scor-risc" />
+            <span className="ent-tip"><Term tip hold="line" id="scor-risc">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"}</Term>
 </span>
           </p>
           {/* Where the score comes from (owner, 6 November 2026): its criteria on the bar, each a link to its pattern's page. */}

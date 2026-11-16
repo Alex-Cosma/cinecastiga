@@ -71,7 +71,7 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
           ? suppliers.map((s, i) => <span key={i}>{i > 0 && ", "}<EntityName id={s.id} role="supplier">{cleanName(s.name) || "Furnizor necunoscut"}</EntityName></span>)
           : <EntityName id={parties.supplierId} role="supplier">{cleanName(parties.supplier) || "Furnizor necunoscut"}</EntityName>}</> : undefined}
         value={{ amount: capture.totalExact === null ? "Total necunoscut" : `${formatExactDecimal(capture.totalExact)} lei`,
-          label: <>{capture.rowCount === null ? "Înregistrări păstrate" : countWords(capture.rowCount, "înregistrare păstrată", "înregistrări păstrate")} · <Term tip id="valoare-inregistrata">valori înregistrate</Term></>,
+          label: <>{capture.rowCount === null ? "Înregistrări păstrate" : countWords(capture.rowCount, "înregistrare păstrată", "înregistrări păstrate")} · <Term hold="line" tip id="valoare-inregistrata">valori înregistrate</Term></>,
           notes: [clip.kind === "contract" && typeof summary.contractValueFull === "string" && summary.contractValueFull !== capture.totalExact ? <>Valoarea contractului: {formatExactDecimal(summary.contractValueFull)} lei</> : null,
             Number(summary.unknownValues ?? 0) > 0 ? <>{countWords(Number(summary.unknownValues), "înregistrare fără valoare publicată", "înregistrări fără valoare publicată")}: lipsa nu este zero.</> : null] }}
         meta={[<span className="record-kind" key="k">Fișă de probă · {kind}{clipCode(clip) ? ` · ${clipCode(clip)}` : ""}</span>, sheet.versions.length > 1 ? `Versiunea ${capture.version} din ${sheet.versions.length}` : `Versiunea ${capture.version}`, `Păstrată la ${privateMoment(capturedAt, "moment necunoscut")}, ora României`]}

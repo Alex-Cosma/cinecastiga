@@ -148,7 +148,8 @@ const chartName = (name: string): string => { const short = cleanName(name).repl
 function RowRisk({ row, levels }: { row: AnyListRow; levels: number }) {
   if ("cri" in row) return <span className="sc-cri qb-num">{formatDecimal(row.cri, levels === 4 ? 2 : 1)} · {row.nFlags} din {levels}</span>;
   return <span className="sc-cri sc-risk">
-    <span className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</span>
+    {/* The pill holds the score's explanation (M-01): a resting mouse draws the outline, a tap opens it. */}
+    <Term tip hold="box" id="scor-risc" className={`cri-pill ${RISK_BAND_CLASS[riskBand(row.score)]}`}>{riskScoreText(row.score)}</Term>
     <small>{scoreBandWord(row.score)}</small>
   </span>;
 }
@@ -470,7 +471,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   const sum = listSumParts(data);
   const historicLine = sum ? <p className="sc-hist qb-tipwrap">
     {formatInt(sum.inList)} în listă
-    {sum.historic > 0 && <>{" · "}<Term tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
+    {sum.historic > 0 && <>{" · "}<Term hold="line" tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
       (<a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a>)</>}
     {sum.cloudOnly > 0 && <>{" · "}{formatInt(sum.cloudOnly)} doar în nor ({sum.from}–{sum.to} achiziții)</>}
   </p> : null;

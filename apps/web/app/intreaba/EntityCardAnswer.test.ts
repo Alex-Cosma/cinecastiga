@@ -128,8 +128,9 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     // Tied rows share their place: 2, 2, 2, then 5.
     expect(words).toContain("2. Spital 4 Cluj");
     expect(words).toContain("5. Spital 5 Cluj");
-    expect(markup).toContain('class="cri-pill risk-high">71 din 100');
-    expect(markup).toContain('class="cri-pill risk-mid">60 din 100');
+    // The pill holds the score's explanation (M-01): it is the (?) itself.
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-high"><button[^>]*>71 din 100/);
+    expect(markup).toMatch(/class="term term-tip term-tip-text term-hold-box cri-pill risk-mid"><button[^>]*>60 din 100/);
     // A pattern's tag is its own (?): the explanation shows on hover or a tap (owner, 15 November 2026).
     expect(markup).toContain('class="term term-tip term-tip-text term-hold-box qb-tag qb-tag-tip qb-tag--signal"');
     // No dots of the old index.
