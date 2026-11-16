@@ -484,6 +484,8 @@ describe("the chart's geometry and words", () => {
   it("words the list's head and its (?): the order, the floor of 20 and how many are in the cloud alone", () => {
     expect(listHeadWords(BUZAU_CLOUD, 10)).toBe("Primele 10 din 82");
     expect(listHeadWords(BUZAU_SPLIT, 10)).toBe("Primele 10 din 46");
+    // UX audit Z3-21: a group under ten, shown whole, says „Toate cele 5”.
+    expect(listHeadWords({ ...BUZAU_CLOUD, historic: 0, group: { ...BUZAU_CLOUD.group, n: 5, nList: 5 } }, 10)).toBe("Toate cele 5");
     expect(listHeadWords(BUZAU_SPLIT, 3)).toBe("Primele 3 din 46");
     expect(listHeadTip({ ...NATIONAL_BANDS, group: { n: 100, nList: 80 } })).toBe("Cel mai mare risc; la egalitate, valoarea mai mare întâi. În listă intră cine are cel puțin 20 de achiziții directe. 20 de profiluri sunt doar în nor (10–19 achiziții).");
     expect(listHeadTip({ ...BUZAU_CLOUD_V2, group: { n: 100, nList: 80 } })).toMatch(/^Cele mai multe semnale;/);

@@ -33,7 +33,7 @@ import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
   RISK_AXIS, RISK_GRID, RISK_ZONES, axisWords, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, density, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
-  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listSumParts, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, rowPlace, scatterFactsKey, scoreBandWord, scoreWords,
+  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listSumParts, SCATTER_FEW, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, rowPlace, scatterFactsKey, scoreBandWord, scoreWords,
   signalsPageLink, stepWords, stripStatusWords, withFacts, type AnyListRow, type Dot, type MeasureText,
 } from "./scatter-answer";
 import "./scatter.css";
@@ -366,7 +366,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         options={[{ value: "risk", label: legacy ? "Semnale" : "Risc" }, { value: "value", label: "Valoare" }]}
         onChange={(value) => { if (value !== (chosen.rank ?? rank)) { setChosen((c) => ({ ...c, rank: value })); stripChange(`rankBy:${value}`); } }} />
     </StripRow>}
-    <StripRow label="Semnal" tip={{ title: "Semnal", text: flagHelp(role) }}>
+    {/* Z3-21: a signal row with „Tot grupul” alone changes nothing: none. */}
+    {signalOptions.length > 1 && <StripRow label="Semnal" tip={{ title: "Semnal", text: flagHelp(role) }}>
       {/* On a phone one menu, not six full-width pills before the chart (critique 15 November 2026): the same choice. */}
       <div className="sc-signal-pills">
         <Pills label="Semnal" value={chosen.flag ?? flag ?? ""} options={signalOptions} onChange={(value) => chooseSignal(value)} />
@@ -377,7 +378,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           {signalOptions.map((o) => <option key={o.value} value={o.value} disabled={Boolean(o.disabled)}>{o.label} · {o.count}</option>)}
         </select>
       </label>
-    </StripRow>
+    </StripRow>}
   </AnswerStrip>;
 
   const records = (scope: Parameters<NonNullable<typeof evidence>["open"]>[1], title: string, plain = false) => {
@@ -622,14 +623,15 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       </figcaption>
     </figure>}
 
-    <div className="sc-find">
+    {/* Z3-21: under ten profiles the list shows them all; there is nothing to find. */}
+    {data.group.n >= SCATTER_FEW && <div className="sc-find">
       <Locate key={`${data.flag ?? ""}|${data.rankBy}`} label={firm ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={searching} onSearch={(q) => void search(q)} delay={LOCATE_DEBOUNCE_MS} minChars={LOCATE_MIN_CHARS}
         emptyText={`Niciun profil „${query}” în ${groupIn}.`}
         onPick={(result) => { const m = found?.results.find((x) => x.id === result.id); if (m) openMatch(m, total); }}
         found={found && found.name ? { name: cleanName(found.name), place: found.place } : null} />
       {found && !searching && found.results.length === 0 && hasPlace
         && <a className="qb-relax-link sc-wide" href={widenHref}>Caută în toată țara<span className="qb-glyph" aria-hidden="true">›</span></a>}
-    </div>
+    </div>}
 
     {picked && <DetailCard
       title={cleanName(picked.name)}
@@ -649,6 +651,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     {rows.length > 0 ? <section className="sc-list-wrap" aria-label="Lista profilurilor">
       <h3 className="qb-tipwrap sc-list-head">{listHeadWords(data, shown)} <HelpTip tip={{ title: listHeadWords(data, shown), text: listHeadTip(data) }} /></h3>
       {historicLine}
+      {/* Z3-21: a group where nobody has a score says it once, above its rows of „0 din 100”. */}
+      {!legacy && rows.length > 1 && rows.every((r) => "score" in r && (r.score ?? 0) === 0) && <p className="sc-hist">Niciunul nu are semnale în scor.</p>}
       <ol className="sc-list" ref={listRef}>
         {visible.map((row, index) => {
           const own = withFacts<string>(row.flags, legacy ? undefined : facts.get(row.entityId));

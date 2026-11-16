@@ -467,8 +467,13 @@ export function listSumParts(data: ScatterData): { inList: number; historic: num
 /** "Primele 10 din 82": the list head — the shown rows of the list (listTotal). */
 export function listHeadWords(data: ScatterData, shown: number): string {
   const total = listTotal(data);
+  // A small group shown whole (UX audit Z3-21): „Toate cele 5”, not „Primele 5 din 5”.
+  if (total >= 2 && total < SCATTER_FEW && shown >= total) return `Toate cele ${formatInt(total)}`;
   return `Primele ${formatInt(Math.min(shown, total))} din ${formatInt(total)}`;
 }
+
+/** Under this many profiles the cloud has no search: the list holds them all at a glance (UX audit Z3-21). */
+export const SCATTER_FEW = 10;
 
 /** The (?) of the head: the order, the 20-acquisition floor and how many are in the cloud alone. */
 export function listHeadTip(data: ScatterData): string {
