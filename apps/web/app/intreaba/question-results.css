@@ -1201,3 +1201,9 @@
 @media (max-width: 600px) { .cq-understood-pop, .cq-understood-pop--end { left: 0; right: auto; width: min(360px, 100%); } }
 /* On phones the title search says its words only; the link keeps the place and the years (Z2-11: the line stays short). */
 @media (max-width: 600px) { .cq-understood-wide { display: none; } }
+
+/* Z2-22 (UX audit, 16 November 2026): keyboard focus in Întreabă is the site's orange ring, as on the box and the header;
+   red is the colour of risk, and a focused pill looked flagged. */
+.cq-app button:focus-visible,
+.cq-app a:focus-visible,
+.cq-app summary:focus-visible { outline-color: var(--orange); }
