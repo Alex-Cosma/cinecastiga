@@ -54,3 +54,24 @@ table.rank td.tp-value .src a{font-size:12px;color:var(--ink2);text-underline-of
   .tp-src-grid{grid-template-columns:minmax(0,1fr);padding:10px 12px}
   table.rank td.tp-value .src a{display:inline-flex;align-items:center;min-height:44px;font-size:14px}
 }
+
+/* The top figures and the country chips (UX audit Z6-10): three figures are links to the table's filters, their label
+   underlined as a link, solid while the filter is on; the chips are one labelled row, the first six (three on a phone)
+   and „Toate țările”, which opens the „Țara” funnel. */
+.tp-stat-link{display:block;color:inherit;text-decoration:none;border-radius:6px}
+.ted-stats .tp-stat-link .l{color:var(--accent);text-decoration:underline;text-decoration-color:var(--accent-line);text-underline-offset:3px}
+.tp-stat-link:hover .l,.tp-stat-link.on .l{text-decoration-color:currentColor}
+.tp-stat-link.on .l{text-decoration-thickness:2px}
+.tp-stat-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.filters.tp-countries{flex-wrap:nowrap;align-items:center;margin:22px 0 0}
+.tp-countries-label{flex:none;margin-right:4px;font-size:14px;font-weight:600;color:var(--ink)}
+.tp-countries a{flex:none;display:inline-flex;align-items:center;min-height:36px}
+.tp-all-countries{flex:none;display:inline-flex;align-items:center;min-height:36px;padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--accent);font:600 13px/1.2 var(--body);cursor:pointer}
+.tp-all-countries:hover{background:var(--accent-soft)}
+.tp-all-countries:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:1100px){.filters.tp-countries{flex-wrap:wrap}}
+@media (max-width:720px){
+  .tp-countries-label{flex-basis:100%}
+  .tp-countries .tp-wide-only{display:none}
+  .tp-countries a,.tp-all-countries{min-height:44px}
+}

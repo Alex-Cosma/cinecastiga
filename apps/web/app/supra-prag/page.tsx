@@ -13,6 +13,9 @@ import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmoun
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
 import Term from "@/components/Term";
+import { GLOSSARY } from "@/lib/glossary";
+import { FOREIGN } from "@/lib/ted-columns";
+import OpenFunnel from "./OpenFunnel";
 import DiscoverNav from "@/components/discover/DiscoverNav";
 import "./supra-prag.css";
 
@@ -128,6 +131,14 @@ export default async function SupraPragPage({
   };
   // The pager sits below the table: the next page opens at the start of the list.
   const pageUrl = (n: number) => `${qstr({ p: n > 1 ? String(n) : undefined })}#atribuiri-lista`;
+  // Three figures are the table's own filters (UX audit Z6-10): a click applies it (or takes it off) and opens the list.
+  const has = (key: string, value: string) => filters[key]?.kind === "options" && filters[key].values.includes(value);
+  const toggle = (key: string, value: string) => `${qstr({ [key]: has(key, value) ? undefined : value, ...(key === "tara" ? { extern: undefined } : key === "oferte" ? { unic: undefined } : { "etichetă": undefined }) })}#atribuiri-lista`;
+  const statLinks = [
+    { key: "potrivire", n: stats.tedOnly, label: TED_LABEL["ted-only"]!.title, on: has("potrivire", "ted-only"), href: toggle("potrivire", "ted-only") },
+    { key: "tara", n: stats.foreign, label: "marcate cu un câștigător străin", on: has("tara", FOREIGN), href: toggle("tara", FOREIGN) },
+    { key: "oferte", n: stats.singleBidder, label: "cu o singură ofertă primită", on: has("oferte", "unu"), href: toggle("oferte", "unu") },
+  ];
 
   return (
     <>
@@ -141,56 +152,45 @@ export default async function SupraPragPage({
         <Link href="/metodologie#acoperire">Acoperire →</Link>
       </p>
 
+      {/* The table's filters behind three of the four figures are links to them (UX audit Z6-10); the counts behind the
+          first one and the „străin” left to check are in its (?) and in the „Țara” funnel, so the table comes up. The
+          figures, the chips, the funnels, the sort and the pager change the list: it stays in place, dimmed, while the
+          next one comes (owner, 6 November 2026); the figures and the pager open the list at its start. */}
+      <PendingRegion label="Se încarcă atribuirile…">
       <section className="section">
         <div className="stat-row ted-stats">
           <div className="stat">
             <div className="n">{formatInt(stats.total)}</div>
-            <div className="l">rezultate de loturi TED <Term id="rezultat-lot-ted" tip /></div>
+            <div className="l">rezultate de loturi TED <Term tip title={GLOSSARY["rezultat-lot-ted"].title} text={<>{GLOSSARY["rezultat-lot-ted"].text}{" "}
+              {stats.notices != null ? `${formatInt(stats.notices)} anunțuri. ` : ""}{stats.unknownCompetition != null ? `${formatInt(stats.unknownCompetition)} rezultate fără număr de oferte.` : ""}</>} /></div>
           </div>
-          <div className="stat">
-            <div className="n">{formatInt(stats.tedOnly)}</div>
-            <div className="l">{TED_LABEL["ted-only"]!.title}</div>
-          </div>
-          <div className="stat">
-            <div className="n">{stats.foreign == null ? "—" : formatInt(stats.foreign)}</div>
-            <div className="l">marcate cu un câștigător străin</div>
-          </div>
-          <div className="stat">
-            <div className="n">{formatInt(stats.singleBidder)}</div>
-            <div className="l">cu o singură ofertă primită</div>
-          </div>
+          {statLinks.map((f) => <div className="stat" key={f.key}>
+            <RegionLink scroll className={`tp-stat-link${f.on ? " on" : ""}`} href={f.href} aria-current={f.on ? "true" : undefined}
+              title={f.on ? "Scoate filtrul din tabel" : "Arată-le în tabel"}>
+              <div className="n">{f.n == null ? "—" : formatInt(f.n)}</div>
+              <div className="l">{f.label}</div>
+            </RegionLink>
+          </div>)}
         </div>
-        <p className="hint">
-          {stats.notices != null ? `${formatInt(stats.notices)} anunțuri · ` : ""}
-          {stats.unknownCompetition != null ? `${formatInt(stats.unknownCompetition)} rezultate fără număr de oferte` : "rezultatele fără număr de oferte: statistică în curs de actualizare"}
-        </p>
-        {stats.foreignCountryUnresolved > 0 ? <p className="note">
-          În {formatInt(stats.foreignCountryUnresolved)} rezultate, marcajul „străin” nu este confirmat de țara
-          câștigătorilor din datele preluate. {" "}
-          <Link href={`/supra-prag?tara=${TED_COUNTRY_UNRESOLVED}`}>Vezi înregistrările de verificat</Link>.
-        </p> : null}
         {stats.legacyAmounts == null || stats.legacyAmounts > 0 ? <p className="note">
           {stats.legacyAmounts != null ? `${formatInt(stats.legacyAmounts)} rezultate așteaptă verificarea tipului valorii. ` : "Clasificarea valorilor este în curs de actualizare. "}
           Aceste sume sunt marcate separat și nu intră în comparația valorilor RON.
         </p> : null}
-      </section>
-
-      {/* The country chips, the funnels, the sort and the pager change the list: it stays in place, dimmed, while the
-          next one comes (owner, 6 November 2026); the pager still opens the next page at the start of the list. */}
-      <PendingRegion label="Se încarcă atribuirile…">
-      {stats.byCountry.length > 0 ? (
-        <section className="section">
-          <h2 className="ted-tip-line">Firme străine câștigătoare, după țară <Term id="ted-tari" tip /></h2>
-          <div className="filters" style={{ flexWrap: "wrap" }}>
-            {stats.byCountry.slice(0, 12).map((c) => (
+        {/* The country chips stay as the summary (4 November 2026), on one labelled row: the first six (three on a phone)
+            and „Toate țările”, which opens the „Țara” funnel. */}
+        {stats.byCountry.length > 0 ? (
+          <div className="filters tp-countries">
+            <span className="tp-countries-label ted-tip-line">Câștigători străini: <Term id="ted-tari" tip /></span>
+            {stats.byCountry.slice(0, 6).map((c, i) => (
               <RegionLink key={c.country} scroll={false} href={qstr({ tara: countries.includes(c.country) ? undefined : c.country, extern: undefined })}
-                className={countries.includes(c.country) ? "on" : ""}>
-                {countryName(c.country)} · {formatInt(c.n)} rezultate
+                className={`${countries.includes(c.country) ? "on" : ""}${i >= 3 ? " tp-wide-only" : ""}`}>
+                {countryName(c.country)} · {formatInt(c.n)}
               </RegionLink>
             ))}
+            <OpenFunnel label="Filtrează după țara câștigătorului">Toate țările</OpenFunnel>
           </div>
-        </section>
-      ) : null}
+        ) : null}
+      </section>
 
       <section className="section">
         <h2>Explorează atribuirile</h2>
