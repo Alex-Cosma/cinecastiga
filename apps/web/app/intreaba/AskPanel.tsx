@@ -774,7 +774,7 @@ export default function AskPanel({
   const readingsKey = Object.keys(understood).join("|");
   useEffect(() => {
     if (!applied || !intent || !readingsKey) return;
-    setAskText(understood[encodeSpec(applied)] ? intent.interpretation.text : "");
+    setAskText(reading ? intent.interpretation.text : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedKey, readingsKey]);
   /**

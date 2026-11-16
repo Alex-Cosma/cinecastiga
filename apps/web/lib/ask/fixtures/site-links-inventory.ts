@@ -72,7 +72,7 @@ export const SITE_LINK_INVENTORY: SiteLinkFile[] = [
   { file: "app/urmariri/noua/page.tsx", occurrences: 2, kind: "plain", what: "Without a question, or with one from a newer release: a link to the builder" },
   { file: "app/urmariri/MonitoringInbox.tsx", occurrences: 2, kind: "plain", what: "\"Urmărește o întrebare\" opens the builder" },
   { file: "lib/search-suggestions.ts", occurrences: 5, kind: "question-text", what: "Search suggestions open `/intreaba?q=` (the interpreter)" },
-  { file: "app/cauta/TopicSearch.tsx", occurrences: 1, kind: "question-text", what: "Search page with nothing found: the words as a question in Întreabă (UX audit Z1-06)" },
+  { file: "app/cauta/TopicSearch.tsx", occurrences: 2, kind: "question-text", what: "Search page with nothing found, and „Construiește o întrebare” above a search: the words as a question in Întreabă (UX audit Z1-06, Z2-28)" },
   { file: "lib/ask/permalink.ts", occurrences: 1, kind: "definition", what: "encodeSpec" },
   { file: "lib/discovery-links.ts", occurrences: 3, kind: "definition", what: "askHref, countyBreakdownSpec, countyBreakdownHref" },
 ];
