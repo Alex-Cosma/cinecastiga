@@ -16,3 +16,14 @@
 /* A tab's underline that slides to the page clicked (UX audit M-07): the main menu's and the private space's; drawn over
    the anchored header, over --med with --ease. With reduced motion every duration above is 0. */
 ::view-transition-group(nav-ind), ::view-transition-group(private-ind) { animation-duration: 260ms; animation-timing-function: var(--ease); z-index: 101; }
+
+/* The root takes the page's timings (UX audit, unify list): out 150 ms, in 210 ms after 60, not the browser's 250 ms. */
+::view-transition-old(root) { animation: page-out 150ms var(--ease) both; }
+::view-transition-new(root) { animation: page-in 210ms var(--ease) 60ms both; }
+
+/* The theme's swap (UX audit M-11, ThemeToggle.tsx): one picture of the page, the old one underneath, the new one fading
+   in over 220 ms; nothing named travels on its own meanwhile (the header and the tabs' marks are in the picture). */
+html[data-vt="theme"]::view-transition-old(root) { animation: none; }
+html[data-vt="theme"]::view-transition-new(root) { animation: theme-in 220ms var(--ease) both; }
+@keyframes theme-in { from { opacity: 0; } }
+html[data-vt="theme"] :is(.site-header, .d-nav-ind, .private-ind) { view-transition-name: none !important; }

@@ -1032,9 +1032,6 @@ input, select, textarea, button { font-family: inherit; }
 /* ============================================================
    chrome: header, nav, footer  (v2)
    ============================================================ */
-html.theming *, html.theming *::before, html.theming *::after {
-  transition: background-color var(--slow) var(--ease), color var(--slow) var(--ease), border-color var(--slow) var(--ease) !important;
-}
 body { font-family: var(--body); font-size: 15px; }
 a { transition: color var(--fast) var(--ease); }
 .wrap { padding: 0 24px; }
