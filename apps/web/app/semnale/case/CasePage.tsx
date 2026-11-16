@@ -7,13 +7,14 @@ import { countWords } from "@/lib/ask/answer-text";
 import { evidenceLinks } from "@/lib/ask/evidence";
 import { entityHref } from "@/lib/entity-href";
 import { FLAG_META, FLAG_ORDER, flagEntityRule, flagLabel } from "@/lib/flags";
-import { cleanName, countyLabel, formatCalendarDate, formatExactDecimal, formatInt, formatRon } from "@/lib/format";
+import { cleanName, countyLabel, formatCalendarDate, formatInt, formatRon } from "@/lib/format";
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText, type RiskCriterion, type ScorePart } from "@/lib/risk-score";
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
 import { aboveWords, capacityWords, caseUnitNouns, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
+import { signalLei } from "@/lib/signal-money";
 import { groupSharedAdmin, peopleByFirms, peopleKey, sharedPeopleWords, type SharedAdminPerson } from "@/lib/signal-shared-admin";
 import {
   aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, splitTotals, topPartners, yearEnd,
@@ -44,7 +45,8 @@ import "./case.css";
 const SEGMENT_CLASS = ["c0", "c1", "c2", "c3", "c4"] as const;
 const RISK_CODES = new Set<string>(Object.keys(SIGNAL_GUIDANCE));
 const inputOf = (i: CaseInstance): CaseInput => ({ id: i.id, partnerId: i.partnerId, partnerName: i.partnerName, period: i.period, evidence: i.evidence, records: i.records });
-const lei = (v: string | number | null | undefined) => (v == null ? "necunoscută" : `${formatExactDecimal(String(v))} lei`);
+/** A sum in lei; a derived one with more than two decimals in bani (lib/signal-money.ts). */
+const lei = (v: string | number | null | undefined) => signalLei(v) ?? "necunoscută";
 /** The entity's own links carry `?rol=` only when it both buys and sells. */
 const roleless = (data: SignalCase, href: string) => (data.entity.otherRole ? href : withoutRole(href));
 const partnerRole = (role: SignalState["role"]) => (role === "authority" ? "supplier" : "authority");

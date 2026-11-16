@@ -18,6 +18,7 @@ import { awardValueLabel, noticeContractsNote, riskEvidenceLine, signalPeriodLab
 import { readCaseTarget } from "@/lib/signal-case";
 import { caseUnitWords } from "@/lib/signal-case-words";
 import { readSignalPageData, type SignalPageData } from "@/lib/signal-page";
+import { baniDecimal } from "@/lib/signal-money";
 import { joinWords, partyShares, ratioNumber, shareWords } from "@/lib/signal-page-words";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { groupSourceRecords } from "@/lib/source-groups";
@@ -52,7 +53,8 @@ function decimalOf(value: unknown): string | null {
   return /^-?\d+(\.\d+)?$/.test(text) ? text : null;
 }
 const numOf = (value: unknown): number | null => { const d = decimalOf(value); return d === null ? null : Number(d); };
-const lei = (value: unknown) => { const d = decimalOf(value); return d === null ? "valoare necunoscută" : `${formatExactDecimal(d)} lei`; };
+/** A sum in lei; a derived one with more than two decimals (shares, sums over years) in bani (lib/signal-money.ts). */
+const lei = (value: unknown) => { const d = decimalOf(value); return d === null ? "valoare necunoscută" : `${formatExactDecimal(baniDecimal(d))} lei`; };
 const cap = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 const Party = ({ party, role }: { party: { id: string | null; name: string } | null | undefined; role: "authority" | "supplier" }) =>

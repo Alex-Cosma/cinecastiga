@@ -62,8 +62,10 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
         bar: <span className="sg-meter"><i className="g cm-x" style={{ width: `${share * 100}%` }} /></span> };
     }
     case "da_capacity": {
-      const r = num(e.ratio);
-      return r > 0 ? { value: ratioWords(r), note: "cifra de afaceri", bar: null, tip: [] } : null;
+      // What the multiple is of (UX audit bug: the column said only „cifra de afaceri”): the turnover and its year.
+      const r = num(e.ratio), turnover = num(e.turnover), year = e.turnover_year ?? e.year;
+      const sheet = e.implausible === true ? "o cifră de afaceri nerealistă" : turnover > 0 ? `cifra de afaceri de ${formatRon(turnover)}` : "cifra de afaceri";
+      return r > 0 ? { value: ratioWords(r), note: `${formatInt(num(e.da_count))} ${num(e.da_count) === 1 ? "achiziție directă" : "achiziții directe"} în ${e.year ?? ""} · de ${ratioWords(r).replace("×", "")} ori ${sheet}${year ? ` (bilanț ${year})` : ""}`, bar: null, tip: [] } : null;
     }
     // A firm's first month (rf-2026.24): how soon after its registration the first direct award came, against the window.
     case "da_first_month": case "da_first_month_buyer": {

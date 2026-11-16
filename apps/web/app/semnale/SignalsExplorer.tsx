@@ -12,13 +12,14 @@ import { FLAG_META, flagLabel } from "@/lib/flags";
 import { COUNTIES } from "@/lib/counties";
 import { awardValueLabel, riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_CRITERIA, riskBand, riskLabel, riskPoints, riskScoreText, type RiskCriterion } from "@/lib/risk-score";
-import { cleanName, countyLabel, formatExactDecimal, formatInt, formatRon } from "@/lib/format";
+import { cleanName, countyLabel, formatInt, formatRon } from "@/lib/format";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import DiscoverNav from "@/components/discover/DiscoverNav";
 import DiscoverPager from "@/components/discover/DiscoverPager";
+import { signalLei } from "@/lib/signal-money";
 import SignalDialog from "./SignalDialog";
 import { caseMeter } from "./CaseMeter";
 
@@ -159,7 +160,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       </div>
       {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
       <div className="sg-meter-col">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
-      <div className="sg-amount"><strong>{fi.totalExact === null ? "Necunoscută" : `${formatExactDecimal(fi.totalExact)} lei`}</strong>{fi.subjectType === "award" && <small>{awardValueLabel(fi.evidence)}</small>}</div>
+      <div className="sg-amount"><strong>{signalLei(fi.totalExact ?? (fi.flagCode === "da_capacity" ? fi.evidence?.da_value as string | number | null | undefined : null)) ?? "Necunoscută"}</strong>{fi.subjectType === "award" && <small>{awardValueLabel(fi.evidence)}</small>}</div>
       <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}${meter?.under ? " under" : ""}`}>{meter?.value ?? ""}</div>
       <Link href={href} className="sg-open" aria-describedby={meter?.bar && meter.tip.length ? `sg-tip-${fi.id}` : undefined} aria-label={`Deschide cazul: ${cleanName(fi.entityName)}${fi.partnerName ? `, ${cleanName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
     </article>;

@@ -204,7 +204,8 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     case "fin_public_reliance":
       return `Raport valori contractate / cifră de afaceri: ${pct("ratio")} (${money("public_total")} / ${money("revenue_total")}, ${s("years")} ani cu bilanț). Nu reprezintă ponderea încasărilor de la stat.`;
     case "net_shared_admin":
-      return `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme cu ${money("combined")} în achiziții înregistrate la ${s("authority")}.${onrcRoleNote(evidence)}`;
+      // A name that ends in a full stop („… S.A.”) ends the sentence (UX audit bug: „S.A..”).
+      return `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme cu ${money("combined")} în achiziții înregistrate la ${s("authority").replace(/\s+$/, "").replace(/\.+$/, "")}.${onrcRoleNote(evidence)}`;
     default:
       return null;
   }
