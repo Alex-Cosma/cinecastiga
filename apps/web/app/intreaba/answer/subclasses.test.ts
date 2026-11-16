@@ -9,7 +9,7 @@ describe("the subclasses a domain leaves out (Z2-25)", () => {
     expect(subclassesWords("doar spitale")).toBeNull();
   });
   it("reads them from the answer's caveat, with ș and ț", () => {
-    expect(excludedSubclasses(["Sursă: …", "Din „medicamente” nu sunt numărate: Dale de cauciuc (33682000-4); Reactivi şi produse de contrast (33696000-5)."]))
+    expect(excludedSubclasses(["Sursă: …", "Din „medicamente” nu sunt numărate: Dale de cauciuc (33682000-4); Reactivi \u015fi produse de contrast (33696000-5)."]))
       .toEqual([{ name: "Dale de cauciuc", code: "33682000-4" }, { name: "Reactivi și produse de contrast", code: "33696000-5" }]);
     expect(excludedSubclasses(["Sursă: …"])).toEqual([]);
   });

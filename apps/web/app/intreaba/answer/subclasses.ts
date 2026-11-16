@@ -23,7 +23,7 @@ export function excludedSubclasses(caveats: readonly string[] | undefined): Subc
   if (!caveat) return [];
   return caveat.replace(/^Din „[^”]+” nu sunt numărate: /, "").replace(/\.$/, "").split("; ").map((part) => {
     const m = /^(.*?)\s*\((\d{8}-\d)\)$/.exec(part.trim());
-    return m ? { name: m[1]!.replace(/ş/g, "ș").replace(/ţ/g, "ț"), code: m[2]! } : { name: part.trim(), code: null };
+    return m ? { name: m[1]!.replace(/\u015f/g, "ș").replace(/\u0163/g, "ț"), code: m[2]! } : { name: part.trim(), code: null };
   }).filter((s) => s.name);
 }
 
