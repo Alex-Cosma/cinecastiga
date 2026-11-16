@@ -4,6 +4,7 @@ import {
 } from "./spec";
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
+import { spellTerm } from "./term-spelling";
 
 /**
  * The builder uses exactly the public /api/ask spec; it owns no query engine.
@@ -319,7 +320,7 @@ export function subjectWords(spec: QuestionSpec): string | null {
   if (term === undefined || term === "") return null;
   // Several subjects ("parcuri + spatii verzi") are counted as their union: name each one.
   const words = cpvTermParts(String(term).trim()).map((text) =>
-    /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${text}”`);
+    /^\d[\d\s-]*$/.test(text) ? `CPV ${text.replace(/\s+/g, "")}` : `„${spellTerm(text)}”`);
   return words.length > 1 ? `${words.slice(0, -1).join(", ")} și ${words[words.length - 1]}` : words[0]!;
 }
 

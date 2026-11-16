@@ -105,6 +105,7 @@ import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
 import { understoodLine } from "./intent-line";
 import { pinnedChoice, type SuggestPin } from "./ask-suggest";
+import { learnTermSpelling } from "../../lib/ask/term-spelling";
 import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
@@ -131,6 +132,8 @@ interface AskResponse {
   cpvName?: string;
   /** A locality question's town hall: the identity "primăria X" in the title links to. */
   townHall?: { id: string };
+  /** The written form of the subject's words stored without diacritics (term-spelling.ts). */
+  spelling?: Record<string, string>;
   pills?: string[];
   caveats?: string[];
   data?: BlockData;
@@ -679,6 +682,8 @@ export default function AskPanel({
   const appliedCpv = applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm);
   // The answer brings its code's name: the title never says „CPV 45” before it (S4, a fresh page).
   const cpvName = useCpvName(appliedCpv, resp?.spec && String(resp.spec.filters.cpvTerm ?? "") === appliedCpv ? resp.cpvName : undefined);
+  // „lucrari drumuri” is written „lucrări drumuri” in the title, the sentence and the pills (the answer brings the forms).
+  learnTermSpelling(resp?.spelling);
   // One title per answered spec, the builder's sentence and the conditions under it (G7): the same
   // words whether the answer came from typed text, a builder edit or a shared link, in every view,
   // the drawer and the export. A trend's title says the years and months its answer ran (answerLabels).

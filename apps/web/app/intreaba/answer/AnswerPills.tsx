@@ -8,6 +8,7 @@ import type { Choice } from "../../../lib/ask/filters/pickers";
 import { chooseValue } from "../../../lib/ask/filters/transition";
 import type { FilterSpec } from "../../../lib/ask/filters/types";
 import { questionKey, transitionQuestion, type QuestionSpec } from "../../../lib/ask/question-ui";
+import { spellTerm } from "../../../lib/ask/term-spelling";
 import BuilderWindow from "../builder/BuilderWindow";
 import { useCoverage } from "../builder/coverage";
 import { builderView, type BuilderWindowSpec } from "../builder/view";
@@ -50,7 +51,7 @@ const LONG_CPV_PILL = 34;
 export function shortCpvPill(words: string, term: string): string {
   const match = /\((\d{8}-\d)\)(?: (\+\d+) CPV)?$/.exec(words.trim());
   if (!match || words.trim().length <= LONG_CPV_PILL || !term || /\d{8}/.test(term)) return words;
-  return `„${term}” · CPV ${match[1]}${match[2] ? ` ${match[2]}` : ""}`;
+  return `„${spellTerm(term)}” · CPV ${match[1]}${match[2] ? ` ${match[2]}` : ""}`;
 }
 
 export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: AnswerPillsProps) {
