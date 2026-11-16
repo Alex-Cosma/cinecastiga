@@ -217,3 +217,22 @@
 .iw-saved{display:inline-flex;margin:0 0 18px;padding:4px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600}
 @media(max-width:700px){.iw-head-note{display:none}.iw-head-tools{padding-top:0}.iw-shell .iw-head-tools>button,.iw-head-tool{min-height:44px}.iw-head-panel{padding:16px}.iw-head-panel .iw-delete>summary{min-height:44px}}
 .iw-card-pills{margin:-2px 0 4px;font-size:13px;color:var(--muted)}
+
+/* The evidence sheet's rows on a phone (Z8-37): the value first with its date, who bought from whom, the CPV, then
+   the code and its SEAP link on a 44px line; 25 rows at a time; a constant pair said once above the rows. */
+.iw-sheet-pair,.iw-sheet-more,.iw-sheet-unit{display:none}
+@media(max-width:700px){
+  .iw-sheet-pair{display:block;margin:4px 0 8px;font-size:14px;color:var(--ink2)}
+  .iw-sheet-same-pair .iw-sheet-pair-cell{display:none!important}
+  .iw-sheet-rows tbody tr{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"value date" "pair pair" "cpv cpv" "code code";gap:2px 12px;padding:12px 0}
+  .iw-sheet-rows td::before{content:none!important}
+  .iw-sheet-rows .iw-sheet-value{grid-area:value;font-weight:600;font-size:16px;color:var(--ink)}.iw-sheet-unit{display:inline;font-weight:600}
+  .iw-sheet-rows .iw-sheet-date{grid-area:date;align-self:center;font-size:14px;color:var(--ink2)}
+  .iw-sheet-rows .iw-sheet-pair-cell{grid-area:pair;font-size:14px}
+  .iw-sheet-rows .iw-sheet-cpv{grid-area:cpv;font-size:13px;color:var(--muted)}.iw-sheet-rows .iw-sheet-cpv .iw-code{font-weight:400}
+  .iw-sheet-rows .iw-sheet-code{grid-area:code;display:flex!important;align-items:center;gap:4px 14px;flex-wrap:wrap}
+  .iw-sheet-rows .iw-sheet-code>a{display:inline-flex;align-items:center;min-height:44px}
+  .iw-sheet-rows .iw-ext{margin-left:0}
+  .iw-sheet-rows[data-shown="25"] tbody tr:nth-child(n+26),.iw-sheet-rows[data-shown="50"] tbody tr:nth-child(n+51),.iw-sheet-rows[data-shown="75"] tbody tr:nth-child(n+76){display:none!important}
+  .iw-shell .iw-sheet-more{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:12px;font-weight:600}
+}
