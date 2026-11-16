@@ -5,8 +5,6 @@
 export interface NavItem {
   href: string;
   label: string;
-  /** The red dot marks the private investigations workspace. */
-  dot?: boolean;
   active: boolean;
 }
 
@@ -41,10 +39,10 @@ export function navItems({ pathname, signedIn }: NavContext): NavItem[] {
     // The map of the value contracted per inhabitant (owner, 6 November 2026): it took the place of the stories.
     { href: "/harta", label: "Hartă", active: under(path, "/harta") },
     // Investigations are private and invitation-only: an anonymous visitor
-    // would only reach a login wall, so the item (and its dot) is hidden. It is
+    // would only reach a login wall, so the item is hidden. It is
     // the private space: its tabs are the investigations, the follows and the
     // account (owner, 7 November 2026).
-    signedIn ? { href: "/anchete", label: "Anchete", dot: true, active: PRIVATE_PREFIXES.some(prefix => under(path, prefix)) } : null,
+    signedIn ? { href: "/anchete", label: "Anchete", active: PRIVATE_PREFIXES.some(prefix => under(path, prefix)) } : null,
     { href: GUIDE_HREF, label: GUIDE_LABEL, active: GUIDE_PREFIXES.some(prefix => under(path, prefix)) },
   ];
   return items.filter((item): item is NavItem => item !== null);
