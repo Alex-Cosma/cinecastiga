@@ -1210,8 +1210,8 @@
 .cq-rank-row.is-found,
 .cq-ranking > .cq-rank-main.is-found { background: var(--accent-soft); outline: 1px solid var(--accent-line); outline-offset: -1px; border-radius: 8px; }
 .cq-rank-pinned { margin-top: 8px; }
-/* The pinned row has no "⋯": its bar ends where the others' do. */
-.cq-rank-pinned::after { content: ""; flex: none; width: 40px; }
+/* The pinned row has no "⋯": its bar ends where the others' do (the "⋯" is 44 px, Z3-30). */
+.cq-rank-pinned::after { content: ""; flex: none; width: 50px; }
 @media (max-width: 850px) {
   .cq-rank-value { flex-direction: column; align-items: flex-end; gap: 2px; width: 200px; }
   .cq-rank-share-of { display: none; }
@@ -1375,3 +1375,21 @@
    question of its own, ›), drawn as the records' button it replaces. */
 a.cq-source-main { justify-content: center; text-decoration: none; }
 .cq-source-main > .qb-glyph { margin-left: -2px; }
+
+/* UX audit Z3-30 (owner, 16 November 2026): a ranking row's "⋯" holds only „Scoate din calcul” (F4); it loses its box
+   (an icon, a 44 px target), shown at all times on a touch screen and on the row's hover or focus with a mouse. */
+.cq-rank-row .cq-rank-menu .qb-more,
+.qb.ec .qb-more { width: 44px; height: 44px; border-color: transparent; background: none; color: var(--muted); }
+.cq-rank-row .cq-rank-menu .qb-more:hover,
+.cq-rank-row .cq-rank-menu .qb-more:focus-visible,
+.cq-rank-row .cq-rank-menu .qb-more[aria-expanded="true"],
+.qb.ec .qb-more:hover,
+.qb.ec .qb-more:focus-visible,
+.qb.ec .qb-more[aria-expanded="true"] { border-color: var(--line); background: var(--surface); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .cq-rank-row .cq-rank-menu .qb-more { opacity: 0; transition: opacity var(--fast) var(--ease); }
+  .cq-rank-row:hover .cq-rank-menu .qb-more,
+  .cq-rank-row:focus-within .cq-rank-menu .qb-more,
+  .cq-rank-row .cq-rank-menu .qb-more[aria-expanded="true"] { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .cq-rank-row .cq-rank-menu .qb-more { transition: none; } }

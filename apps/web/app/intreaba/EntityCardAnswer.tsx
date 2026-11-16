@@ -88,9 +88,9 @@ function PodiumAnswer({ podium, spec, conditions }: { podium: Podium; spec: Ques
     ? () => evidence.open(undefined, { entityIds: [place.entityId], role }, `${cleanName(place.name)} · achizițiile selectate`) : undefined;
   const menu = (place: { entityId: string; name: string }, index: number) => {
     const entity = { id: place.entityId, name: cleanName(place.name) };
-    const records = open(place);
+    // UX audit Z3-30: the "⋯" holds „Scoate din calcul” only; the records are the row's link (place 1's, the head's button).
     return evidence?.exclude
-      ? entityRowActions(spec as unknown as AskSpec, entity, { ...(records ? { records } : {}), exclude: () => evidence.exclude!(entity, index) }) : [];
+      ? entityRowActions(spec as unknown as AskSpec, entity, { exclude: () => evidence.exclude!(entity, index) }) : [];
   };
   // „Tot clasamentul ›”: the same question as a ranking, every condition as it is (retarget keeps what the ranking applies).
   const ranking = retarget(spec, "table");

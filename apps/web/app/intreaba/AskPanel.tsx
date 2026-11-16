@@ -1873,7 +1873,8 @@ function RankingBars({
           const shown = r.entityId ? cleanName(r.name) : countyName(cleanName(r.name));
           const records = () => onSources(spec, entitySourceScope(spec, r), `${shown} · înregistrările din clasament`);
           const entity = r.entityId ? { id: r.entityId, name: cleanName(r.name) } : null;
-          const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
+          // Z3-30: the "⋯" holds what the row does not show: „Scoate din calcul” (its records are the link beside the sum).
+          const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { exclude: () => answer.exclude!(entity, i) }) : [];
           const share = rankingShare(r.value, shareTotals);
           const marked = foundId !== null && r.entityId === foundId;
           // The name opens the entity's page; its records are the line under the sum (owner, 2 November 2026).
