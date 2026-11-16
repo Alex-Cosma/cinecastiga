@@ -51,6 +51,14 @@ const KIND_WORDS: Record<MapKind, { plural: string; button: string }> = {
 };
 
 const int = (n: number) => Math.round(n).toLocaleString("ro-RO");
+/**
+ * The year the map opens on (owner, 16 November 2026, UX audit Z4-05): the last complete year, so the first figure is
+ * one a reader can set beside a yearly budget; „Toată perioada” is one click away and writes `ani=toti`. The address
+ * always carries `ani`; an older link without it (made when the whole period was the default) keeps that meaning.
+ */
+const THIS_YEAR = new Date().getFullYear();
+const LAST_FULL = String(THIS_YEAR - 1);
+const roDay = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
 const box = (raw: string | number[]): number[] => (typeof raw === "string" ? JSON.parse(raw) as number[] : raw);
 function short(value: number): string {
   const f = (n: number, d: number) => n.toLocaleString("ro-RO", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -77,6 +85,7 @@ const Arrow = ({ back = false }: { back?: boolean }) => <svg viewBox="0 0 12 12"
   <path d={back ? "M10 6H2.5M5.5 3 2.5 6l3 3" : "M2 6h7.5M6.5 3l3 3-3 3"} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 /** How long the pointer rests on an area of the map before the ranking scrolls to its row (owner, 7 November 2026). */
 const FOLLOW_DELAY = 250;
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
 
 function Pick({ label, text, title, children, wide = false, className }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean; className?: string }) {
@@ -110,7 +119,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const items = (raw ?? "").split(",").map((s) => s.trim()).filter((s) => valid.test(s));
     return items.length ? [...new Set(items)].sort() : "all";
   };
-  const [years, setYears] = useState<Years>(() => parse(start.ani, /^20\d\d$/));
+  const [years, setYears] = useState<Years>(() => {
+    if (start.ani === "toti") return "all";
+    const picked = parse(start.ani, /^20\d\d$/);
+    if (picked !== "all") return picked;
+    // No `ani`: a bare /harta opens on the last complete year; an older link that holds a view keeps the whole period.
+    return [start.judet, start.uat, start.cpv, start.canal, start.inst, start.cu].some(Boolean) ? "all" : [LAST_FULL];
+  });
   const [cpv, setCpv] = useState<Years>(() => parse(start.cpv, /^\d\d$/));
   const [dataset, setDataset] = useState<MapDataset>(() => DATASETS.find((d) => d.url === start.canal)?.value ?? "all");
   // The kind of institution (owner, 8 November 2026): the local administrations, the public hospitals (`?inst=spitale`)
@@ -138,6 +153,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const [hover, setHover] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const [search, setSearch] = useState("");
+  // The data's last day, for a current year (Z4-06): read once, only when such a year is chosen.
+  const [through, setThrough] = useState<string | null>(null);
   // Phones show the first 15 of the ranking (owner: no long phone lists); a county change folds it again.
   const [unfolded, setUnfolded] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
@@ -203,7 +220,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const inst = KIND_URL[kind];
     if (inst) p.set("inst", inst);
     if (kind === "local_admin" && !sub) p.set("cu", "fara");
-    if (years !== "all") p.set("ani", years.join(","));
+    p.set("ani", years === "all" ? "toti" : years.join(","));
     if (cpv !== "all") p.set("cpv", cpv.join(","));
     const canal = DATASETS.find((d) => d.value === dataset)?.url;
     if (canal) p.set("canal", canal);
@@ -279,7 +296,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   /** A figure as the page writes it: lei per inhabitant or per bed in full, totals short ("1,6 mld."). */
   const say = (n: number) => (metric === "value" ? short(n) : int(n));
   const allYears = (options?.years ?? []).map((y) => y.year);
-  const cpvWords = cpv === "all" ? "toate domeniile" : cpv.length === 1 ? (options?.cpv.find((c) => c.code === cpv[0])?.name ?? `CPV ${cpv[0]}`).toLowerCase() : `${cpv.length} domenii CPV`;
+  const cpvWords = cpv === "all" ? "toate domeniile" : cpv.length === 1 ? (options?.cpv.find((c) => c.code === cpv[0])?.name ?? `CPV ${cpv[0]}`).toLowerCase() : `${cpv.length} domenii`;
   const channelWords = dataset === "da" ? ", prin achiziții directe" : dataset === "contracts" ? ", prin proceduri" : "";
   const tint = (a: MapArea): number | null => { const f = figure(a, metric); return f === null ? null : BASE.fillOpacity + (1 - BASE.fillOpacity) * (f / max); };
   const fill = (a: MapArea | undefined): CSSProperties | undefined => { const t = a ? tint(a) : null; return t === null ? undefined : { fillOpacity: t }; };
@@ -357,16 +374,41 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     ...(options?.cpv ?? []).filter((c) => !q || `${c.code} ${c.name} ${c.official ?? ""}`.toLowerCase().includes(q))
       .map((c) => ({ value: c.code, label: `${c.code} · ${c.name}`, count: `${short(c.value)} lei`, share: c.value / top, ...(c.official && c.official !== c.name ? { detail: c.official } : {}) }))];
 
+  // The current year chosen (Z4-06): the sentence and the button say it is not over, with the data's last day.
+  const current = years !== "all" && years.some((y) => Number(y) >= THIS_YEAR);
+  const periodWords = `${yearsWords(years, allYears)}${current ? ` (an în curs${through ? `, date până la ${roDay(through)}` : ""})` : ""}`;
+  const narrowWords = `${cpv === "all" ? "" : `, doar ${cpvWords}`}${channelWords}`;
+  const whoWords = hospitals ? "Ce au contractat spitalele publice" : schools ? "Ce au contractat școlile și grădinițele publice" : sub ? "Ce au contractat primăriile și consiliile județene, cu instituțiile lor" : "Ce au contractat primăriile și consiliile județene";
+  useEffect(() => {
+    if (!current || through) return;
+    let live = true;
+    void fetch("/api/data-coverage").then((r) => (r.ok ? r.json() : null)).then((c: { periods?: { da?: { to?: string | null }; contracts?: { to?: string | null } } | null } | null) => {
+      const days = [c?.periods?.da?.to, c?.periods?.contracts?.to].filter((d): d is string => Boolean(d)).map((d) => d.slice(0, 10)).sort();
+      if (live && days.length) setThrough(days[days.length - 1]!);
+    }).catch(() => undefined);
+    return () => { live = false; };
+  }, [current, through]);
+  /** How many of the refining filters are on (the phone's „Filtre · 2”). */
+  const narrowed = (cpv === "all" ? 0 : 1) + (dataset === "all" ? 0 : 1);
+  const segment = DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={dataset === d.value} onClick={() => setDataset(d.value)}>{d.label}</button>);
+  const domains = <>
+    <input className="mx-search" type="search" placeholder="Caută un domeniu sau un cod CPV" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Caută un domeniu" />
+    {cpvOptions.length ? <OptionList label="Domenii" multiple values={cpv === "all" ? ["all"] : cpv} options={cpvOptions} onChange={(v, source) => { if (source === "activate") setCpv((c) => toggle(c, v)); }} />
+      : <p className="qb-pop-note">Niciun domeniu nu se potrivește.</p>}
+  </>;
+
   return <div className="mx">
     <header className="mx-head">
       {hospitals
         ? <h1>{county ? `Spitalele din ${countyName || "județ"}` : metric === "perBed" ? "Lei pe pat de spital, pe județe" : "Spitalele, pe județe"}</h1>
         : schools ? <h1>{county ? `Școlile și grădinițele din ${countyName || "județ"}` : metric === "perPupil" ? "Lei pe elev, pe județe" : "Școlile și grădinițele, pe județe"}</h1>
         : <h1>{county ? `Lei pe locuitor în ${countyName || "județ"}` : "Lei pe locuitor, pe județe"}</h1>}
-      <p className="mx-lede">{hospitals ? "Ce au contractat spitalele publice" : schools ? "Ce au contractat școlile și grădinițele publice" : sub ? "Ce au contractat primăriile și consiliile județene, cu instituțiile lor" : "Ce au contractat primăriile și consiliile județene"}, {yearsWords(years, allYears)}, {cpvWords}{channelWords}.
-        {(average !== null || !nat) && <> <span className={natStale ? "g-stale" : undefined}>{dots
+      {/* The figure, its period and only what the buttons do not say at once (Z4-21): the domains and the channel, which
+          sit behind „Filtre” on phones. The whole sentence (who, period, domains) stays in the map's label. */}
+      <p className="mx-lede">{average !== null || !nat ? <span className={natStale ? "g-stale" : undefined}>{dots
           ? (county ? countyName : metric === "perBed" || metric === "perPupil" ? "Media țării" : "În total")
-          : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}.</span></>}</p>
+          : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}, {periodWords}{narrowWords}.</span>
+        : <>{whoWords}, {periodWords}{narrowWords}.</>}</p>
     </header>
 
     <div className="mx-filters" role="group" aria-label="Ce arată harta">
@@ -378,15 +420,19 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
           </label> }} />
       </Pick>
-      <Pick label="Perioada" text={years === "all" ? "Toată perioada" : yearsWords(years, allYears)} title="Ce ani?">
+      <Pick label="Perioada" text={years === "all" ? "Toată perioada" : `${yearsWords(years, allYears)}${current ? " · în curs" : ""}`} title="Ce ani?">
         <OptionList label="Perioada" multiple values={years === "all" ? ["all"] : years} options={yearOptions} onChange={(v, source) => { if (source === "activate") setYears((y) => toggle(y, v)); }} />
       </Pick>
-      <Pick label="Domenii CPV" text={cpv === "all" ? "Toate" : cpv.length === 1 ? cpvWords : `${cpv.length} domenii`} title="Ce domenii CPV?" wide>
-        <input className="mx-search" type="search" placeholder="Caută un domeniu sau un cod" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Caută un domeniu CPV" />
-        {cpvOptions.length ? <OptionList label="Domenii CPV" multiple values={cpv === "all" ? ["all"] : cpv} options={cpvOptions} onChange={(v, source) => { if (source === "activate") setCpv((c) => toggle(c, v)); }} />
-          : <p className="qb-pop-note">Niciun domeniu nu se potrivește.</p>}
+      <Pick label="Domenii" text={cpv === "all" ? "Toate" : cpv.length === 1 ? cpvWords : `${cpv.length} domenii`} title="Ce domenii?" wide className="mx-pick--cpv">{domains}</Pick>
+      <div className="mx-seg" role="group" aria-label="Achiziții">{segment}</div>
+      {/* Phones (Z4-04): the domains and the channel only refine, so they share one button and one sheet. */}
+      <Pick label={narrowed ? `Filtre · ${narrowed}` : "Filtre"} text={narrowed ? [cpv === "all" ? null : cpv.length === 1 ? capital(cpvWords) : `${cpv.length} domenii`, dataset === "da" ? "directe" : dataset === "contracts" ? "proceduri" : null].filter(Boolean).join(" · ") : "Toate domeniile și achizițiile"}
+        title="Filtre" wide className={`mx-pick--more${narrowed ? " is-on" : ""}`}>
+        <h4 className="mx-pop-h">Achiziții</h4>
+        <div className="mx-seg mx-seg--sheet" role="group" aria-label="Achiziții">{segment}</div>
+        <h4 className="mx-pop-h">Domenii</h4>
+        {domains}
       </Pick>
-      <div className="mx-seg" role="group" aria-label="Achiziții">{DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={dataset === d.value} onClick={() => setDataset(d.value)}>{d.label}</button>)}</div>
     </div>
 
     {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div className={`mx-body${county && uat && !dots ? " has-panel" : ""}`}>
@@ -394,7 +440,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         {county && <p className="mx-crumb"><button type="button" onClick={() => { setUat(null); setCounty(null); }}><Arrow back /> România</button><span>· {countyName}</span></p>}
         <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}>
           {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" className={stale ? "g-stale" : undefined}
-            aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli și grădinițe"}.` : "Clasamentul de alături are aceleași cifre."}`}>
+            aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${whoWords}, ${periodWords}, ${cpvWords}${channelWords}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli și grădinițe"}.` : "Clasamentul de alături are aceleași cifre."}`}>
             <defs><pattern id="mx-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform={`rotate(45) scale(${view[2] / geo.width})`}><rect width="6" height="6" className="mx-hatch-bg" /><line x1="0" y1="0" x2="0" y2="6" className="mx-hatch-line" /></pattern></defs>
             <g className={county ? "mx-counties is-back" : "mx-counties"}>
               {geo.counties.map((c) => {

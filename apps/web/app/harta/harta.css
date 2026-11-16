@@ -268,3 +268,19 @@ span.mx-p-yr{cursor:default}
   .mx-p-close{min-width:44px;min-height:44px}
 }
 @media (prefers-reduced-motion:reduce){.mx-body,.mx-p-bar,.mx-p-dot,.mx-p-me,.mx-p-yr{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
+
+/* ---- UX audit, 16 November 2026 ---- */
+/* Z4-04: on phones the domains and the channel share one „Filtre” button and its sheet (the real domains window with
+   the channel above it); wider screens keep both in the row. A button with filters on is lit like an open one. */
+.mx-pick--more{display:none}
+.mx-pick--more.is-on{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-pop-h{margin:2px 0 8px;font:600 13.5px/1.3 var(--body);color:var(--ink)}
+.mx-pop-h+.mx-search{margin-top:0}
+.mx-seg.mx-seg--sheet{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;margin:0 0 14px}
+.mx-seg--sheet button{min-height:44px}
+@media (max-width:640px){
+  .mx-filters>.mx-pick--cpv,.mx-filters>.mx-seg{display:none}
+  .mx-filters>.mx-pick--more{display:grid}
+  .mx-stage{padding:8px 4px}
+  .mx-foot{padding:0 4px}
+}
