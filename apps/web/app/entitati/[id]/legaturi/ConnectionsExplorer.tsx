@@ -9,6 +9,7 @@ import Term from "@/components/Term";
 import EntityName from "@/components/EntityName";
 import EntityPager from "../Pager";
 import EntityCrumb from "../EntityCrumb";
+import { copyShortLink, prepareShortLink } from "@/lib/short-link-client";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import PeriodPicker, { EMPTY_RANGE, periodRangeError, type PeriodRangeValue } from "@/app/intreaba/builder/PeriodPicker";
@@ -487,16 +488,32 @@ function PeriodButton({ scope, onApply }: { scope: Scope; onApply: (years: { yea
   </>;
 }
 
+/**
+ * „Copiază linkul” (UX audit Z5-35, 16 November 2026): the site's short link (/l/…) to this path, which keeps the same
+ * pinned version and identities, so the link reopens exactly what is shown; the long address when one cannot be made.
+ */
+function CopyLink({ path }: { path: string }) {
+  const [said, setSaid] = useState("");
+  useEffect(() => { if (!said) return; const timer = setTimeout(() => setSaid(""), 2500); return () => clearTimeout(timer); }, [said]);
+  return <>
+    <button type="button" className="cx-copy" onPointerDown={() => prepareShortLink(path)}
+      onClick={() => { copyShortLink(path).then(() => setSaid("Link copiat"), () => setSaid("Linkul nu a putut fi copiat")); }}>Copiază linkul</button>
+    <span className="cx-copied" role="status">{said}</span>
+  </>;
+}
+
 /* ---------------- the page ---------------- */
 
 /** What the page draws: the live answer, or, while a new period or kind loads, the previous one kept in place. */
 type View = { scope: Scope; base: ConnectionsResponse | null; top: ConnectionsResponse | null; picked: Picked | null; peer: ConnectionPartner | null;
   second: ConnectionsResponse | null; secondTop: ConnectionsResponse | null };
 
-export default function ConnectionsExplorer({ entityId, entityName, county = null, role, bothRoles = false, initial: fromServer }: {
+export default function ConnectionsExplorer({ entityId, entityName, role, bothRoles = false, channels, initial: fromServer }: {
   entityId: string; entityName: string; county?: string | null; role: ConnectionRole;
   /** `?rol=` only for an entity that both buys and sells (owner, 4 November 2026). */
   bothRoles?: boolean;
+  /** The entity's records in this role per channel, every year (the profile's ledger): an empty channel is not offered. */
+  channels?: { da: number; contracts: number } | undefined;
   initial: Record<string, string>;
 }) {
   // The address as the browser has it now (UX audit bug, 16 November 2026): Back to this page restores the server's
@@ -568,25 +585,40 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   const total = v.top ? Number(v.top.summary.totalExact) : 0;
   const secondTotal = v.secondTop && v.picked ? Number(v.secondTop.summary.totalExact) + amount(v.picked.partner) : 0;
 
-  function remember(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
+  /** The address of a path: the scope, the pinned version and identities (what a copied link reopens). */
+  function addressOf(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
     const params = query({ rol: bothRoles ? (isAuthority ? "autoritate" : "furnizor") : undefined, ...applied,
       identity: pinned.current.identity, checkpointId: pinned.current.checkpointId,
       partner: selection?.partner.entity.id, partnerIdentity: selection?.partner.entity.identity,
       peer: last?.entity.id, peerIdentity: last?.entity.identity });
-    window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
+    return `/entitati/${entityId}/legaturi?${params}`;
+  }
+  function remember(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
+    window.history.replaceState(null, "", addressOf(selection, last, applied));
   }
   const narrow = () => window.matchMedia("(max-width: 760px)").matches;
+  /** On a wide screen, after a choice in a list below, the dock comes into view under the header (UX audit Z5-34). */
+  function showDock() {
+    requestAnimationFrame(() => {
+      const box = dock.current?.getBoundingClientRect();
+      if (!box) return;
+      const roof = (document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0) + 12;
+      if (box.top >= roof && box.bottom <= window.innerHeight) return;
+      const by = box.top < roof ? box.top - roof : Math.min(box.top - roof, box.bottom - window.innerHeight + 16);
+      window.scrollTo({ top: window.scrollY + by, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+  }
   function choose(item: ConnectionPartner, quiet = false) {
     const data = baseShown ?? topData;
     if (!data) return;
     restoreController.current?.abort();
     const next = { root: data.entity, partner: item, checkpointId: data.checkpoint.id };
     setPicked(next); setPeer(null); setPeerSearch(""); setPeerPage(1); setLinkError(""); setRestoring(false); if (!quiet) { listsShown.current.add("second"); setPhoneList("second"); }
-    if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); }
+    if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock(); }
   }
   function choosePeer(item: ConnectionPartner) {
     setPeer(item); remember(picked, item);
-    if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" }));
+    if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock();
   }
   function resetSelection() { restoreController.current?.abort(); setRestoring(false); setPicked(null); setPeer(null); remember(null, null); }
   function applyScope(next: Scope) {
@@ -672,25 +704,51 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   // On a phone the list's page 1 starts at the fifth: the first four are named under the bar of shares (UX audit Z5-33).
   const legendRows = !onePartner && page === 1 && !rootSearch && v.base && v.top && v.base.items.length > 0 ? Math.min(4, v.base.items.length) : 0;
   const secondHead = vp ? (isAuthority ? `Cui mai vinde ${name(vp.partner.entity)}` : `Cine mai vinde la ${name(vp.partner.entity)}`) : "";
+  // What each list's percentages are a share of (UX audit Z5-40): the two lists' totals differ.
+  const rootShareWords = `% din ce a ${isAuthority ? "cumpărat" : "vândut"} ${currentName}`;
+  const secondShareWords = vp ? `% din ce a ${isAuthority ? "vândut" : "cumpărat"} ${name(vp.partner.entity)}` : "";
+  // A selection without any record (UX audit Z5-38): one sentence and one way out, instead of four messages and a search.
+  const empty = !!v.top && v.top.items.length === 0;
+  const emptyWords = `${scope.dataset === "da" ? "Nicio achiziție directă" : scope.dataset === "contracts" ? "Niciun contract prin proceduri" : "Nicio înregistrare"}${scope.yearFrom || scope.yearTo ? " în această perioadă" : ""}.`;
+  // The other role of an entity that both buys and sells, its partners under the same channel and years (UX audit Z5-39).
+  const otherRole: ConnectionRole = isAuthority ? "supplier" : "authority";
+  const other = useConnections(bothRoles ? query({ entityId, role: otherRole, ...scope, page: 1 }) : null);
 
   return <div className="cx-shell">
     <EntityCrumb id={entityId} name={currentName} role={role} bothRoles={bothRoles} current="Legături" />
+    {bothRoles && <nav className="cx-roles" aria-label="Rolul">
+      {(["authority", "supplier"] as const).map((r) => {
+        const n = r === role ? (v.top ? count : null) : other.data?.pagination.totalPartners ?? null;
+        const words = n === null ? "" : countWords(n, r === "authority" ? "furnizor" : "instituție", r === "authority" ? "furnizori" : "instituții");
+        const href = `/entitati/${entityId}/legaturi?${query({ rol: r === "authority" ? "autoritate" : "furnizor", ...scope })}`;
+        return <Link key={r} href={href} aria-current={r === role ? "page" : undefined}>{r === "authority" ? "Ca instituție" : "Ca firmă"}<span className="n">{words}</span></Link>;
+      })}
+    </nav>}
     <header className="cx-head">
       <div>
         <h1>Cum sunt legate?</h1>
-        {v.top && onePartner
+        {v.top && empty ? null
+          : v.top && onePartner
           ? <p className={`cx-lede${stale}`}>{isAuthority ? "Singurul furnizor" : "Singurul client"}: <b><EntityName id={onePartner.entity.id} role={onePartner.entity.role}>{name(onePartner.entity)}</EntityName></b> · {formatEvidenceAmount(onePartner.totalExact)}{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
           : v.top
           ? <p className={`cx-lede${stale}`}>{short(total)} lei {isAuthority ? "către" : "de la"} <b>{countWords(count, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}</b>{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.{count > 4 && <> {isAuthority ? "Primii patru iau" : "Primele patru aduc"} <b>{pct(top4)}</b>.</>}</p>
           : <Ghost as="p" className="cx-lede" name="cx-lede" wait="client"><G.Line w="31em" /><G.Line w="11em" only="phone" /></Ghost>}
       </div>
       <div className="cx-scope" role="group" aria-label="Ce achiziții și ce ani">
-        <div className="cx-seg">{DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={scope.dataset === d.value} onClick={() => applyScope({ ...scope, dataset: d.value })}>{d.label}</button>)}</div>
+        {/* A channel without any record is shown with its 0, not offered (UX audit Z5-38). */}
+        <div className="cx-seg">{DATASETS.map((d) => {
+          const none = d.value !== "all" && channels !== undefined && channels[d.value === "da" ? "da" : "contracts"] === 0;
+          return <button key={d.value} type="button" aria-pressed={scope.dataset === d.value} disabled={none && scope.dataset !== d.value}
+            title={none ? (d.value === "da" ? "Nicio achiziție directă înregistrată" : "Niciun contract prin proceduri înregistrat") : undefined}
+            onClick={() => applyScope({ ...scope, dataset: d.value })}>{d.label}{none && <span className="cx-seg-n"> · 0</span>}</button>;
+        })}</div>
         <PeriodButton scope={scope} onApply={(years) => applyScope({ dataset: scope.dataset, ...years })} />
       </div>
     </header>
 
-    {linkError && <div className="cx-error" role="alert"><p>{linkError}</p><button type="button" onClick={() => { setLinkError(""); resetSelection(); }}>Alege din listă</button> {restart}</div>}
+    {/* A link that no longer matches the data: a neutral note and one way on (UX audit Z5-35). */}
+    {linkError && <div className="cx-note" role="status"><p>Linkul nu se mai potrivește cu datele de acum. Alege din nou partenerul din listă.</p>
+      <button type="button" onClick={() => { setLinkError(""); resetSelection(); }}>Alege din listă</button></div>}
     {base.error && !held ? <div className="cx-error" role="alert"><p>{base.error}</p><button type="button" onClick={base.retry}>Reîncearcă</button> {restart}</div> : <>
       {!v.top ? <StageGhost isAuthority={isAuthority} /> : <section className={`cx-stage${stale}`} aria-label="Fluxul banilor" aria-busy={held ? true : undefined} inert={held ? true : undefined}>
         {entity && v.top.items.length > 0
@@ -698,20 +756,22 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
               second={v.secondTop} secondTotal={secondTotal} peer={v.peer} waiting={waiting}
               onPick={(i) => choose(i)} onPeer={choosePeer}
               onRest={() => rootList.current?.focus()} onSecondRest={() => secondList.current?.focus()} />
-          : <div className="cx-empty"><h2>Nicio legătură în această selecție</h2><p>Poți extinde perioada sau include ambele tipuri de achiziții. Lipsa înregistrărilor nu dovedește lipsa unei relații.</p></div>}
+          : <div className="cx-empty"><h2>{emptyWords}</h2>
+              {(scope.dataset !== "all" || scope.yearFrom || scope.yearTo) && <button type="button" className="cx-primary" onClick={() => applyScope({ dataset: "all" })}>Arată toate achizițiile</button>}</div>}
 
         {entity && v.top.items.length > 0 && <Strips root={entity} rootRole={role} items={v.top.items} total={total} count={count}
           picked={v.picked?.partner ?? null} second={v.secondTop} secondTotal={secondTotal} peer={v.peer} waiting={waiting} onPick={(i) => choose(i)} onPeer={choosePeer}
           onList={(which) => { showList(which); setTimeout(() => document.getElementById(which === "root" ? "cx-list-1" : "cx-list-2")?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 30); }} />}
         {/* The chosen path, its records and its saving. */}
-        <section className="cx-dock" ref={dock} aria-label="Legătura aleasă" tabIndex={-1}>
+        {!empty && <section className="cx-dock" ref={dock} aria-label="Legătura aleasă" tabIndex={-1}>
           {!vp ? (pickPending ? <DockGhost /> : <p className="cx-dock-hint">Alege {isAuthority ? "un furnizor" : "o instituție"} din flux sau din listă.</p>) : !v.peer ? <div className="cx-dock-one"><div className="cx-dock-text">
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>{isAuthority ? "a cumpărat de la" : "a vândut către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
             <div className="cx-dock-facts"><span className="amt">{formatEvidenceAmount(vp.partner.totalExact)}</span>
               <span>{recordLabel(records(vp.partner))} · {vp.partner.firstDate ? `${date(vp.partner.firstDate)} – ${date(vp.partner.lastDate)}` : "fără date"}</span>
               {rankWords ? <span className="rank">{rankWords}</span> : waitingSecond && <RankGhost />}</div></div>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>{sourceLabel(records(vp.partner))}</button>
-              <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} /></div>
+              <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
+              <CopyLink path={addressOf(vp, null, v.scope)} /></div>
           </div> : <>
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>și</span><b><EntityName id={v.peer.entity.id} role={v.peer.entity.role}>{name(v.peer.entity)}</EntityName></b>
               <span>{isAuthority ? "cumpără de la" : "vând către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
@@ -722,10 +782,11 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
             <p className="cx-dock-note">{isAuthority ? "Un furnizor comun" : "O instituție comună"} nu dovedește o relație între {isAuthority ? "instituții" : "firme"}, proprietate comună sau o neregulă. Împreună: {recordLabel(records(vp.partner) + records(v.peer))} · {formatEvidenceAmount(sumDecimalStrings([vp.partner.totalExact, v.peer.totalExact]))} <Term tip id="consortiu" /></p>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>Sursele ambelor legături</button>
               <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
+              <CopyLink path={addressOf(vp, v.peer, v.scope)} />
               <button type="button" className="cx-link" onClick={() => { setPeer(null); remember(picked, null); }}>← Doar {name(vp.root)} și {name(vp.partner.entity)}</button></div>
           </>}
           <p className="cx-dock-fine">Valori înregistrate, nu plăți.</p>
-        </section>
+        </section>}
       </section>}
 
       {/* The complete lists: any partner, by name or CUI, page by page (on a phone, the page itself). */}
@@ -735,9 +796,9 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
       </div> : !v.top && <div className="cx-list-switch" aria-hidden="true" data-ghost="client" data-g="cx-list-switch">
         <span>{isAuthority ? "Furnizorii" : "Instituțiile"} · <G.Line inline w="3ch" /></span><span>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"} · <G.Line inline w="4ch" /></span>
       </div>}
-      <div id="cx-lists" className={`cx-lists show-${vp ? (onePartner ? "second" : phoneList) : "root"}${onePartner && vp ? " one" : ""}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined} data-motion={listAgain ? "settled" : undefined}>
+      {!empty && <div id="cx-lists" className={`cx-lists show-${vp ? (onePartner ? "second" : phoneList) : "root"}${onePartner && vp ? " one" : ""}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined} data-motion={listAgain ? "settled" : undefined}>
         {!(onePartner && vp) && <section className="cx-list root" aria-labelledby="cx-list-1">
-          <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span>{v.base ? <>{`${number(v.base.pagination.totalPartners)}${rootSearch ? " găsite" : ""} · după valoare`}{legendRows > 0 && <span className="cx-from5"> · de la al 5-lea</span>}</> : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
+          <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span title={rootShareWords}>{v.base ? <>{`${number(v.base.pagination.totalPartners)}${rootSearch ? " găsite" : ""} · ${rootShareWords}`}{legendRows > 0 && <span className="cx-from5"> · de la al 5-lea</span>}</> : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={rootList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută un furnizor" : "Caută o instituție"} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           <div aria-busy={listPending} className={rootStale ? "g-stale" : undefined} inert={rootStale || undefined}>
             {!v.base ? <ListGhost />
@@ -747,7 +808,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
           {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} head="cx-list-1" />}
         </section>}
         {vp ? <section className="cx-list second" aria-labelledby="cx-list-2">
-          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · după valoare` : <Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
+          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span title={secondShareWords}>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · ${secondShareWords}` : <Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={secondList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"} value={peerSearch} onChange={(e) => { setPeerSearch(e.target.value); setPeerPage(1); }} />
           {second.error && !held ? <div className="cx-error" role="alert"><p>{second.error}</p><button type="button" onClick={second.retry}>Reîncearcă</button> {restart}</div> : <div aria-busy={secondPending} className={secondStale ? "g-stale" : undefined} inert={secondStale || undefined}>
             {!v.second ? <ListGhost />
@@ -760,7 +821,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
           <span className="cx-search g-quiet" />
           <ListGhost />
         </section>}
-      </div>
+      </div>}
     </>}
 
     <details className="cx-method"><summary>Ce arată aceste legături și ce date includem?</summary><p>Legăturile descriu achiziții înregistrate între o autoritate și un furnizor. Un partener comun este un punct de pornire pentru documentare; nu dovedește o relație de proprietate sau o neregulă.</p><p>Includem achiziții directe cu valoare pozitivă de cel mult 2.000.000 lei și cote de contract cu valoare pozitivă, conform selecției standard a aplicației. Pragul de 2.000.000 lei este o regulă de filtrare a valorilor suspecte, nu un prag legal. Înregistrările fără valoare eligibilă nu intră în acest ecran.</p><p>Contractele se numără separat de cotele atribuite furnizorilor. Când valorile pe membri lipsesc, aplicația împarte valoarea contractului între câștigători. TED completează sursele, fără a adăuga din nou valoarea contractului.</p><p>Perioada se aplică datei de finalizare. Fără limite de an includem și înregistrările fără dată; cu limite, acestea nu pot fi încadrate și sunt excluse. În flux, lățimea fiecărei benzi e valoarea ei; ponderile din dreapta sunt din tot ce înregistrează partenerul ales.</p>

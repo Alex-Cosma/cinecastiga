@@ -2,7 +2,7 @@ import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { getEntityProfile } from "@/lib/marts";
+import { getEntityProfile, getEntityTxCounts } from "@/lib/marts";
 import { cleanName } from "@/lib/format";
 import ConnectionsExplorer from "./ConnectionsExplorer";
 import "./connections.css";
@@ -30,6 +30,8 @@ export default async function ConnectionsPage({ params, searchParams }: {
   const raw = await searchParams;
   const initial = Object.fromEntries(Object.entries(raw).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
   const role = parseRoleParam(initial.rol) ?? profile.roles[0]?.role ?? "authority";
+  // The entity's records per channel in this role (the profile's ledger): an empty channel is not offered (UX audit Z5-38).
+  const channels = await getEntityTxCounts(id, role).catch(() => null);
   return <ConnectionsExplorer key={`${id}:${role}`} entityId={id} entityName={cleanName(profile.name)} county={profile.county} role={role}
-    bothRoles={profile.roles.length > 1} initial={initial} />;
+    bothRoles={profile.roles.length > 1} channels={channels ? { da: channels.nDa, contracts: channels.nCt } : undefined} initial={initial} />;
 }
