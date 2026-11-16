@@ -8,7 +8,7 @@ import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {Broader,ReadingGhost,SubjectAnswer,Understood,answerKey as answerKeyOf,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
+import {Broader,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
@@ -25,8 +25,9 @@ const answerPeriod=(f:Filters)=>f.yearFrom!==undefined&&f.yearTo!==undefined?(f.
 const defaults:TopicScope={q:'',place:'',from:'',to:'',type:'all',match:'words',tab:'all',page:1,role:''};
 /** A question about who („cine câștigă…”, „ce firme…”): „Pe scurt” puts the firms or institutions before the total. */
 const WHO_ASKED=/^\s*(cine\b|(ce|care)\s+(firme|firma|companii|instituții|institutii|instituţii)\b)/i;
-/** On phones the four tabs are one row: the names are short there („Nume”, UX audit Z1-12). */
-const TABS:{id:SearchTab;label:string;short?:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme',short:'Nume'},{id:'acquisitions',label:'Achiziții'},{id:'documents',label:'Documente'}];
+/** On phones the four tabs are one row: the names are short there („Nume”, UX audit Z1-12). The titles' tab says what it
+ *  counts: titles that hold the words, not every acquisition of the subject „Pe scurt” counts by domain (Z1-07). */
+const TABS:{id:SearchTab;label:string;short?:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme',short:'Nume'},{id:'acquisitions',label:'În titluri',short:'Titluri'},{id:'documents',label:'Documente'}];
 /** The closest name match, first among the institutions and firms: its profile and all its acquisitions. */
 function BestMatch({entity:e,unfiltered}:{entity:EntityHit;unfiltered:boolean}){
  const role=e.roles.includes('authority')?'autoritate':'furnizor',profile=`/entitati/${e.id}${e.roles.length>1?`?rol=${role}`:''}`; // the role only for an entity that both buys and sells
@@ -97,7 +98,9 @@ type Failure={key:string;message:string};
 type View={url:string;scope:TopicScope;effective:TopicScope;t:TopicInterpretation|null;literal:boolean};
 type Main=Loaded<TopicResult>&{view:View};
 const TAB_PANELS:{id:Exclude<SearchTab,'all'>;icon:'building'|'list'|'document';title:string}[]=[{id:'entities',icon:'building',title:'Instituții și firme'},{id:'acquisitions',icon:'list',title:'Achiziții'},{id:'documents',icon:'document',title:'Documente'}];
-const panelSub=(id:SearchTab,q:string):React.ReactNode=>id==='entities'?'după nume și CUI':id==='acquisitions'?<>cu „{q}” în titlu</>:'în textul extras din PDF-uri';
+const panelSub=(id:SearchTab):React.ReactNode=>id==='entities'?'după nume și CUI':id==='acquisitions'?'cele mai noi întâi':'în textul extras din PDF-uri';
+/** The titles' panel names what it lists: „Titluri cu „asfaltare”” (UX audit Z1-07). */
+const titlesTitle=(q:string)=><>Titluri cu „{q}”</>;
 /*
  * Ghosts of the result panels (owner, 6 November 2026: "ghost data loading"): the panels' own heads and rows, in the
  * number the answer will have (3 of each on "Toate", a page of 10 on a tab, fewer when the count is known), so the
@@ -118,19 +121,17 @@ function DocumentGhost(){
 /** The documents' own wait: they come from a separate request, after the titles. */
 const DocumentsGhost=({rows}:{rows:number})=><Ghost className="topic-docs-ghost" name="topic-documents" wait="client"><DocumentsGhostBody rows={rows}/></Ghost>;
 function PanelHeadGhost({id,icon,title,q,n}:{id:SearchTab;icon:'building'|'list'|'document';title:string;q:string;n:number|null}){
- return <div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2>{title}</h2><span className="topic-panel-count">{n!=null?formatInt(n):<G.Line inline w="2.2em"/>}</span><span className="topic-panel-sub">{panelSub(id,q)}</span></div>;
+ return <div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2>{id==='acquisitions'?titlesTitle(q):title}</h2><span className="topic-panel-count">{n!=null?formatInt(n):<G.Line inline w="2.2em"/>}</span><span className="topic-panel-sub">{panelSub(id)}</span></div>;
 }
-/** The line that reconciles „Pe scurt” with the title matches: its words, then its link. */
-const UnitsGhost=()=><p className="topic-units" aria-hidden="true"><span className="topic-g-fill"><G.Line w="92%"/><G.Line w="64%" only="phone"/></span><span className="topic-g-link"><G.Line w="13em"/></span></p>;
 const FootGhost=()=><div className="topic-panel-foot" aria-hidden="true"><span className="topic-text-button"><G.Line w="14em"/></span></div>;
-function PanelsGhost({tab,page,q,counts,units}:{tab:SearchTab;page:number;q:string;counts:(id:SearchTab)=>number|null;units:boolean}){
+function PanelsGhost({tab,page,q,counts}:{tab:SearchTab;page:number;q:string;counts:(id:SearchTab)=>number|null}){
  // On a tab, a page of 10 (fewer on the last page, when the count is known); on "Toate", the 3 first of each.
  const rows=(id:SearchTab)=>{const n=counts(id);return tab==='all'?Math.min(3,n??3):Math.max(1,Math.min(PAGE_SIZE,n==null?PAGE_SIZE:n-(page-1)*PAGE_SIZE));};
  const shown=TAB_PANELS.filter(p=>tab==='all'||tab===p.id);
  return <Ghost className="topic-panels" name="topic-panels" wait="client">
   {shown.map(p=><section className="topic-panel" key={p.id}><PanelHeadGhost id={p.id} icon={p.icon} title={p.title} q={q} n={counts(p.id)}/>
    {p.id==='entities'?<>{tab==='entities'&&<p className="topic-role" aria-hidden="true">Arată<G.Block w="11em" h="44px" r="7px" className="g-quiet"/></p>}<div className="topic-entities">{Array.from({length:rows('entities')},(_,i)=><EntityRowGhost key={i} i={i}/>)}</div></>
-    :p.id==='acquisitions'?<>{units&&<UnitsGhost/>}{Array.from({length:rows('acquisitions')},(_,i)=><AcquisitionGhost key={i} i={i}/>)}</>
+    :p.id==='acquisitions'?<>{Array.from({length:rows('acquisitions')},(_,i)=><AcquisitionGhost key={i} i={i}/>)}</>
     :<DocumentsGhostBody rows={tab==='all'?2:rows('documents')}/>}
    {tab==='all'&&<FootGhost/>}
   </section>)}
@@ -203,8 +204,6 @@ export default function TopicSearch(){
  const placeName=effective.place?(place?.id===effective.place?place.name:''):'';
  const where=effective.place?placeName||'locul ales':'toată țara';
  const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
- // What "Pe scurt" counted, to name the units next to the title matches.
- const [answerCount,setAnswerCount]=useState<AnswerCount>(null);
  // A question's words searched as written: when nothing matches, one quiet line instead of empty sections.
  const [literalOpen,setLiteralOpen]=useState('');
  const filterSummary=[placeLabel(effective.place&&place?.id===effective.place?place:null),effective.from?(effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`):'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
@@ -228,9 +227,6 @@ export default function TopicSearch(){
   const question=t?.question??null;
   // A question's words searched as written; a question about one subject searches that subject instead.
   const literalQ=Boolean(question)&&effective.q===scope.q;
-  const answerKey=t?.answer?answerKeyOf(t.answer):'';
-  // undefined while „Pe scurt” is still counting; null when it has no total.
-  const counted=answerCount&&answerCount.key===answerKey?answerCount.count:undefined;
   const literalEmpty=Boolean(question&&result&&!result.entities.total&&!result.acquisitions.total&&!(docsResult?.documents.total));
   // A question's results are usually empty: their ghost is the one quiet line they collapse to.
   const collapsed=(literalEmpty||Boolean(literalQ&&!result))&&scope.tab==='all'&&literalOpen!==v.url;
@@ -244,7 +240,7 @@ export default function TopicSearch(){
   const isShown=(id:SearchTab)=>scope.tab==='all'||scope.tab===id;
   const total=scope.tab==='all'?null:count(scope.tab);
   // Each kind of result is its own panel: a head with its count, and a closing link to all of them.
-  const panelHead=(icon:'building'|'list'|'document',id:SearchTab,title:string,n:number|null,sub:React.ReactNode,tip?:React.ReactNode)=><div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2 id={`topic-panel-${id}`}>{title}{tip&&<> {tip}</>}</h2>{n!=null&&<span className="topic-panel-count">{formatInt(n)}</span>}<span className="topic-panel-sub">{sub}</span></div>;
+  const panelHead=(icon:'building'|'list'|'document',id:SearchTab,title:React.ReactNode,n:number|null,sub:React.ReactNode,tip?:React.ReactNode)=><div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2 id={`topic-panel-${id}`}>{title}{tip&&<> {tip}</>}</h2>{n!=null&&<span className="topic-panel-count">{formatInt(n)}</span>}<span className="topic-panel-sub">{sub}</span></div>;
   const panelFoot=(id:SearchTab,n:number,shown:number,what:string)=>scope.tab==='all'&&n>shown?<div className="topic-panel-foot"><button type="button" className="topic-text-button" onClick={()=>tab(id)}>Vezi toate cele {what} <DiscoveryIcon name="arrow"/></button></div>:null;
   // The words, the place and the period are already in the chips of „Am înțeles”: the line stays for screen readers only.
   const quietStatus=reading||Boolean(question||t?.answer||t?.subject);
@@ -253,20 +249,18 @@ export default function TopicSearch(){
   // have answered too; a category empty beside others with results is one line, not a panel (Z1-13).
   const zero=Boolean(result&&scope.tab==='all'&&!collapsed&&!result.entities.total&&!result.acquisitions.total&&docsResult&&!docsResult.documents.total&&!docsLoading&&!docsFailure);
   const emptyRow=(id:'entities'|'documents')=>scope.tab==='all'&&Boolean(result)&&(id==='entities'?result!.entities.total===0:Boolean(docsResult&&!docsResult.documents.total&&!docsLoading&&!docsFailure));
-  // "Pe scurt" counts by domain, the list by title: the line that reconciles them waits in place for both.
-  const units=Boolean(t?.answer&&!literalQ&&scope.tab==='all');
   return <div className={`topic-answer-area${dim?' g-stale':''}${reading?' is-reading':''}`} aria-busy={dim||undefined}>
   <div className={`topic-status${quietStatus?' is-quiet':''}`} role="status" aria-live="polite">{question?<>Întrebarea ta: <strong>„{scope.q}”</strong></>:<>Rezultate pentru <strong>„{effective.q}”</strong> · {where} · {period}</>}</div>
   {v.literal&&<p className="topic-help topic-literal">Cauți exact cuvintele scrise, fără interpretare. <Link prefetch={false} href={searchHref(scope,{})}>Interpretează căutarea</Link></p>}
   {t&&<Understood scope={scope} effective={effective} t={t} place={vPlace}/>}
   {reading&&<ReadingGhost answer={scope.tab==='all'&&!v.literal}/>}
   {/* The short answer comes from Ask and does not wait for the titles. */}
-  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined} onCount={setAnswerCount}/>}
+  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined}/>}
   <div className={`topic-results${collapsed?' is-collapsed':''}`} style={{minHeight:collapsed||literalQ?0:400}}>
   {collapsed?(result?<p className="topic-literal-quiet">{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume. <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>Arată</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)
   :<>{question&&<h2 className="topic-literal-head">{literalQ?<>Cuvintele exacte „{scope.q}”, căutate ca atare</>:<>Rezultate pentru „{effective.q}”{'\u00a0'}· {where}{'\u00a0'}· {period}</>}</h2>}<div className="topic-tabbar"><nav className="topic-tabs" aria-label="Tipuri de rezultate">{TABS.map(t=>{const n=count(t.id),waiting=t.id==='documents'?docsLoading:!result&&n==null;return <button type="button" key={t.id} className={n===0?'is-empty':undefined} aria-current={scope.tab===t.id?'page':undefined} disabled={!result} onClick={()=>tab(t.id)}>{t.short?<><span className="topic-tab-wide">{t.label}</span><span className="topic-tab-short">{t.short}</span></>:t.label}{n!=null?<span className="topic-tab-n">{formatInt(n)}</span>:waiting&&t.id!=='all'?<span className="topic-tab-n topic-count-wait"><span aria-hidden="true">…</span><span className="d-sr-only">se numără</span></span>:null}</button>;})}</nav><div className="topic-copy"><button type="button" className="topic-control" aria-label="Copiază căutarea" onClick={()=>void copy()}><DiscoveryIcon name="link"/><span className="topic-copy-label">Copiază căutarea</span></button>{copied&&<p role="status">{copied}</p>}</div></div>
-  {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count} units={units}/>:zero?<ZeroResults q={effective.q} coverage={result.titleCoverage} filtered={Boolean(effective.place||effective.from||scope.type!=='all'||scope.match!=='words')} onExample={q=>update({q,place:'',from:'',to:'',type:'all',match:'words'})} onClear={()=>update({q:effective.q,place:'',from:'',to:'',type:'all',match:'words',hall:false})}/>:<div className="topic-panels g-content">
+  {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count}/>:zero?<ZeroResults q={effective.q} coverage={result.titleCoverage} filtered={Boolean(effective.place||effective.from||scope.type!=='all'||scope.match!=='words')} onExample={q=>update({q,place:'',from:'',to:'',type:'all',match:'words'})} onClear={()=>update({q:effective.q,place:'',from:'',to:'',type:'all',match:'words',hall:false})}/>:<div className="topic-panels g-content">
   {isShown('entities')&&emptyRow('entities')&&<p className="topic-empty-row"><strong>Instituții și firme:</strong> niciuna cu acest nume{scope.place||scope.from||scope.type!=='all'?' în selecție':''}.</p>}
   {isShown('entities')&&!emptyRow('entities')&&<section className="topic-panel" aria-labelledby="topic-panel-entities">{panelHead('building','entities','Instituții și firme',result.entities.total,result.entities.approximate?'nume apropiate de cele scrise':'după nume și CUI')}
   {scope.tab==='entities'&&<label className="topic-role">Arată<select value={scope.role} onChange={e=>update({role:e.target.value as TopicScope['role'],tab:'entities'})}><option value="">Instituții și firme</option><option value="authority">Doar instituții</option><option value="supplier">Doar furnizori</option></select></label>}
@@ -276,9 +270,7 @@ export default function TopicSearch(){
   {!result.entities.total&&<p className="topic-empty">Nicio instituție sau firmă cu acest nume în selecție.</p>}
   {panelFoot('entities',result.entities.total,result.entities.hits.length,roCount(result.entities.total,'o instituție sau firmă','instituții și firme'))}
   </section>}
-  {isShown('acquisitions')&&<section className="topic-panel" aria-labelledby="topic-panel-acquisitions">{panelHead('list','acquisitions','Achiziții',result.acquisitions.total,<>cu „{effective.q}” în titlu{result.acquisitions.total>1&&<> · {effective.order==='value'?<>cele mai mari valori întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'date',page:1})}>Ordonează după dată</button></>:<>cele mai noi întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'value',page:1})}>Ordonează după valoare</button></>}</>}</>,result.acquisitions.total>0?<Term id="lista-titluri" tip/>:null)}
-  {units&&counted===undefined&&result.acquisitions.total>0&&<UnitsGhost/>}
-  {t?.answer&&!literalQ&&counted!=null&&counted>0&&counted!==result.acquisitions.total&&<p className="topic-units"><span><strong>{formatInt(counted)}</strong> după domeniu în „Pe scurt” · {result.acquisitions.total===0?<>niciunul cu „{effective.q}” în titlu</>:<><strong>{formatInt(result.acquisitions.total)}</strong> cu „{effective.q}” în titlu</>} <Term tip title="De ce diferă" text={`„Pe scurt” numără achizițiile încadrate la domeniu (CPV), oricare le-ar fi titlul. Lista de aici are doar titlurile care conțin cuvintele căutate, de la toate instituțiile${t.kind&&result.acquisitions.total>0?`, nu doar ${t.kind.label}`:''}.`}/></span> <Link prefetch={false} href={t.answer.evidenceHref}>Vezi {counted===1?'înregistrarea':`toate cele ${formatInt(counted)}`} <DiscoveryIcon name="arrow"/></Link></p>}
+  {isShown('acquisitions')&&<section className="topic-panel" aria-labelledby="topic-panel-acquisitions"> {panelHead('list','acquisitions',titlesTitle(effective.q),result.acquisitions.total,<>{result.acquisitions.total>1&&<>{effective.order==='value'?<>cele mai mari valori întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'date',page:1})}>Ordonează după dată</button></>:<>cele mai noi întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'value',page:1})}>Ordonează după valoare</button></>}</>}</>,result.acquisitions.total>0?<Term id="lista-titluri" tip/>:null)}
   {result.acquisitions.hits.map(a=><article key={a.id} className="topic-record topic-acquisition"><div className="topic-record-main"><div className="topic-record-meta"><span>{a.kind==='da'?'Achiziție directă':'Contract din procedură'}</span>{a.date&&<span>{a.kind==='da'?'Finalizată':'Semnat'} {a.date.slice(0,10).split('-').reverse().join('.')}</span>}{a.county&&<span>{a.county}</span>}</div><h3><a href={a.href} target="_blank" rel="noopener noreferrer"><Highlight text={a.title} query={effective.q}/></a></h3><div className="topic-parties">{a.authorityId?<Link prefetch={false} href={`/entitati/${a.authorityId}`}>{cleanName(a.authorityName)}</Link>:<span>{a.authorityName??'Instituție neprecizată'}</span>}<span aria-hidden="true"> → </span><span>{a.suppliers.length?a.suppliers.map((s,i)=><Fragment key={a.supplierIds?.[i]??i}>{i>0&&', '}<EntityName id={a.supplierIds?.[i]} role="supplier">{cleanName(s)}</EntityName></Fragment>):'Furnizor neprecizat'}</span></div></div><div className="topic-record-side"><strong>{formatExactDecimal(a.value)}{a.value!=null?' lei':''}</strong><small>valoare înregistrată · nu plăți</small><a href={a.sourceUrl} target="_blank" rel="noopener noreferrer">Verifică în SEAP <DiscoveryIcon name="arrow"/></a></div></article>)}
   {!result.acquisitions.total&&<div className="topic-panel-empty"><p className="topic-empty">Niciun titlu potrivit. <Term id="lista-titluri" tip/></p>{result.elsewhere?<p className="topic-help topic-elsewhere">{roCount(result.elsewhere,'un titlu','titluri')} la celelalte instituții din localitate. <button type="button" className="topic-text-button" onClick={()=>refine({hall:false})}>Caută la toate instituțiile <DiscoveryIcon name="arrow"/></button></p>:null}<TitleCoverage coverage={result.titleCoverage}/><Broader scope={scope} effective={effective} t={t} place={vPlace} onDocuments={()=>tab('documents')}/></div>}
   {panelFoot('acquisitions',result.acquisitions.total,result.acquisitions.hits.length,roCount(result.acquisitions.total,'o achiziție','achiziții'))}
