@@ -615,3 +615,5 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 
 /* Z2-23 (UX audit, 16 November 2026): a year of „Firme noi” with no firm is dimmed, its „0” still read. */
 .qb-pill.is-zero:not([aria-checked="true"]) { opacity: .55; }
+/* Z2-24: „Alege și lunile” sits under the year fields of the free range. */
+.qb-range-months { margin-top: 6px; }
