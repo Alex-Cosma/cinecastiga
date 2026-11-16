@@ -27,6 +27,9 @@ const SIGNAL_LABELS: Readonly<Record<string, string>> = {
   [NO_SIGNAL]: "fără semnal",
 };
 
+/** One of the Semnale column's codes, exactly (UX audit bug, 16 November 2026: „?sem=xyz” became a filter „xyz”). */
+const SIGNAL_CODE = new RegExp(`^(${Object.keys(SIGNAL_LABELS).join("|")})$`);
+
 const LEGACY_CHANNEL: Readonly<Record<string, TxType>> = { directe: "directe", contracte: "contracte" };
 
 /** The table's type filter from the addresses before 4 November 2026 (?canal=directe|contracte, ?excluse=1). */
@@ -47,7 +50,8 @@ function columns(isAuth: boolean): TableColumns {
     partner,
     { key: "cpv", kind: "pick", label: "Obiect (CPV)", chip: "CPV", param: "cpv", valuePattern: /^\d{8}-\d$/ },
     { key: "valoare", kind: "range", label: "Valoare", chip: "valoare", param: "valoare", unit: "lei" },
-    { key: "semnale", kind: "options", label: "Semnale", chip: "", param: "sem", valuePattern: /^[a-z_]{1,40}$/, labels: SIGNAL_LABELS },
+    // Only the column's own codes: an unknown one in the address is left out, never a filter that empties the table.
+    { key: "semnale", kind: "options", label: "Semnale", chip: "", param: "sem", valuePattern: SIGNAL_CODE, labels: SIGNAL_LABELS },
   ];
 }
 
