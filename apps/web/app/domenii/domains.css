@@ -153,3 +153,7 @@
   .dm-sharebar figcaption{margin-top:8px;font-size:13px;line-height:1.45;color:var(--muted)}
   .dm-atlas-stage{display:none}
 }
+
+/* The page's own failure (UX audit Z6-33): a headline, not the display title of the hero. */
+.domains-page h1.dm-error-title{font-size:36px;line-height:1.15;letter-spacing:-.025em}
+@media(max-width:760px){.domains-page h1.dm-error-title{font-size:30px}}

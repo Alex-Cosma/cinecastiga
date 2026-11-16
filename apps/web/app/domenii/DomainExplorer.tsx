@@ -99,11 +99,11 @@ function searchNodes(index: ReturnType<typeof indexDataset>, current: DomainNode
   return disjoint(catalogue.length ? catalogue : official.length ? official : available.filter(node => matches(label(node))), index.parents);
 }
 
-export default function DomainExplorer({ initialData, initialCode = "", initialView = "browse" }: { initialData: DomainDataset; initialCode?: string; initialView?: string }) {
+export default function DomainExplorer({ initialData, initialCode = "", initialView = "browse", initialNotice = "" }: { initialData: DomainDataset; initialCode?: string; initialView?: string; initialNotice?: string }) {
   const [data, setData] = useState(initialData);
   const index = useMemo(() => indexDataset(data), [data]);
   const [route, setRoute] = useState<Route>(() => normalizeRoute({ ...emptyRoute(), code: initialCode, view: initialView === "details" ? "details" : "browse" }, indexDataset(initialData)));
-  const [requestedYear, setRequestedYear] = useState(initialData.year), [loading, setLoading] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const [requestedYear, setRequestedYear] = useState(initialData.year), [loading, setLoading] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState(initialNotice);
   const [evidence, setEvidence] = useState<(ReturnType<typeof domainSourceQuery> & { title: string }) | null>(null);
   const latest = useRef({ data, route, index }); latest.current = { data, route, index };
   const request = useRef<AbortController | null>(null), lastBrowse = useRef<ReturnScope | null>(null), position = useRef<Position | null>(null);
@@ -204,6 +204,8 @@ export default function DomainExplorer({ initialData, initialCode = "", initialV
     // Cached server props can belong to a previous year on browser Back.
     // Keep the raw code until the requested year's hierarchy is available.
     loadRef.current(year, true, rawRoute, scrollY);
+    // A year without data opened the default one: its note stays on screen (the load above clears notes).
+    if (initialNotice) setNotice(initialNotice);
     window.addEventListener("popstate", restore);
     return () => { window.removeEventListener("popstate", restore); window.history.scrollRestoration = previousScroll; request.current?.abort(); };
   }, []);
