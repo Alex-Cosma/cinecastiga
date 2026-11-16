@@ -6,7 +6,7 @@ import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
 import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
-import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
+import {parseTopicScope,cleanTopicParams,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {Broader,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
@@ -166,6 +166,11 @@ export default function TopicSearch(){
  const [main,setMain]=useState<Main|null>(null),[mainError,setMainError]=useState<Failure|null>(null),[retry,setRetry]=useState(0),[refetching,setRefetching]=useState(false);
  const [docs,setDocs]=useState<Loaded<TopicDocumentsResult>[]>([]),[docsError,setDocsError]=useState<Failure|null>(null),[docsRetry,setDocsRetry]=useState(0);
  const [filtersExpanded,setFiltersExpanded]=useState(false);
+ // An address with a filter the page cannot read runs without it, and says so once (UX audit Z1-31).
+ const [cleaned,setCleaned]=useState('');
+ useEffect(()=>{if(!parsed.error)return;const out=cleanTopicParams(new URLSearchParams(url));if(!out)return;const target=out.toString();setCleaned(target);router.replace(`/cauta?${target}`,{scroll:false});
+ // eslint-disable-next-line react-hooks/exhaustive-deps -- once per unreadable address
+ },[url,parsed.error]);
  const previous=useRef<TopicResult|null>(null);
  useEffect(()=>{setQuery(parsed.scope.q);setCopied('');},[parsed]);
  // The start page and an invalid address show no answer: the next search starts from a ghost, not an old answer.
@@ -316,7 +321,11 @@ export default function TopicSearch(){
  <div id="topic-filters" className={`topic-filters${filtersExpanded?' is-expanded':''}`}><PlacePicker value={effective.place} selected={place?.id===effective.place?place:null} onChange={p=>{setPlace(p);if(!p&&t?.placeAlone)router.push(searchHref(scope,{place:''},true),{scroll:false});else refine({place:p?.id??''});}}/><PeriodPicker scope={effective} onChange={refine}/><label>Tipul achiziției<select value={scope.type} onChange={e=>keepReading({type:e.target.value as TopicScope['type']})}><option value="all">Toate tipurile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte din proceduri</option></select></label><label>Potrivirea<select value={scope.match} onChange={e=>keepReading({match:e.target.value as TopicScope['match']})}><option value="words">Toate cuvintele</option><option value="phrase">Expresia în ordine</option></select></label></div>
  {effective.place.startsWith('uat:')&&<LocalityScope locality={(result??main?.result)?.locality??null} hall={Boolean(effective.hall)} onChange={hall=>refine({hall})}/>}
  </div>
- {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
+ {cleaned===url&&!error&&<p className="topic-help topic-cleaned" role="status">Am scos un filtru pe care nu l-am înțeles.</p>}
+ {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p>{parsed.error
+   // the address itself cannot be read: trying it again would fail again
+   ?<Link className="topic-primary" href={scope.q?`/cauta?${new URLSearchParams({q:scope.q})}`:'/cauta'}>Resetează filtrele</Link>
+   :<><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></>}</div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
   :!scope.q?<div className="topic-results" style={{minHeight:400}}><div className="topic-start"><p>Exemple:</p><div>{EXAMPLES.map(q=><button type="button" className="topic-control" key={q} onClick={()=>update({q})}>{q}<DiscoveryIcon name="arrow"/></button>)}</div></div></div>
   :stale?answer(stale.view,stale.result,{dim:true})
   :answer(view,result,{dim:refetching,reading:!interpReady})}

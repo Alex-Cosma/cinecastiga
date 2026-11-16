@@ -384,3 +384,6 @@
 .topic-panel-head.topic-panel-bar{min-height:44px;padding:6px 24px;gap:4px 10px}
 .topic-panel-bar>.topic-panel-sub{margin-left:0}
 @media(max-width:650px){.topic-panel-head.topic-panel-bar{padding:4px 16px}.topic-panel-bar>.topic-panel-sub{flex-basis:auto;flex:1;min-width:0}}
+/* A filter left out of an address the page could not read (UX audit Z1-31). */
+.topic-cleaned{margin:12px 0 0!important}
+.topic-error>.topic-primary{text-decoration:none}
