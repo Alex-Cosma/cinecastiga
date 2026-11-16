@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagRecordLabel } from "@/lib/flags";
@@ -9,7 +10,7 @@ import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/use-tip";
 import type { DaTx } from "@/lib/marts";
 import { txColumns } from "@/lib/entity-tx-columns";
-import { filterParams } from "@/lib/table-filters/codec";
+import { filterParams, readFilters, writeFilters } from "@/lib/table-filters/codec";
 import { chipsOf } from "@/lib/table-filters/describe";
 import type { ColumnDef, FilterState, FilterValue } from "@/lib/table-filters/types";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
@@ -22,6 +23,7 @@ import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consort
 import EntityName from "@/components/EntityName";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import Pager from "./Pager";
 
 /**
  * The entity page's records table, to the drill-table standard: 10 rows a page, sortable dates and values, a SEAP
@@ -52,6 +54,7 @@ export default function TxTable({
   initial = {},
   first,
   count,
+  initialPage = 1,
 }: {
   entityId: string;
   role: "furnizor" | "autoritate";
@@ -62,9 +65,26 @@ export default function TxTable({
   first?: { rows: DaTx[]; total: number } | null | undefined;
   /** The entity's records in this role (the "Achiziții" tab's count): how many ghost rows a page without filters has. */
   count?: number | undefined;
+  /** The page the address asks for (`?p=`; UX audit Z5-29), the one `first` holds. */
+  initialPage?: number;
 }) {
   const columns = txColumns(isAuth);
-  const [page, setPage] = useState(1);
+  // The address as the browser has it now: Back to this page restores the server's first answer, whose parameters
+  // predate the filters and the page written to the address since (UX audit, 16 November 2026).
+  const address = useSearchParams();
+  const [start] = useState(() => {
+    if (!address || address.toString() === "") return { filters: initial, page: initialPage };
+    const p = address.get("p") ?? "";
+    return { filters: readFilters(columns, (key) => address.get(key)), page: /^[1-9]\d{0,5}$/.test(p) ? Number(p) : 1 };
+  });
+  const [page, setPage] = useState(start.page);
+  // The page is in the address (UX audit Z5-29, 16 November 2026), without a history entry per page: Back after a
+  // record's „detalii →” returns to the same page of the table.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (page > 1) url.searchParams.set("p", String(page)); else url.searchParams.delete("p");
+    if (url.search !== window.location.search) history.replaceState(history.state, "", `${url.pathname}${url.search.replaceAll("%2C", ",")}${url.hash}`);
+  }, [page]);
   const [sort, setSort] = useState<"value" | "date">("value");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const tip = useTip();
@@ -74,7 +94,7 @@ export default function TxTable({
     if (term) p.set("cauta", term);
     return `/api/entity-tx?${p.toString()}`;
   };
-  const filters = useTableFilters(columns, initial, facetUrl);
+  const filters = useTableFilters(columns, start.filters, facetUrl);
   const update = (next: FilterState) => { filters.replace(next); setPage(1); };
   const setColumn = (key: string) => (value: FilterValue | null) => { filters.set(key, value); setPage(1); };
 
@@ -92,7 +112,9 @@ export default function TxTable({
 
   const p = filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir }));
   const url = `/api/entity-tx?${p.toString()}`;
-  const [seed] = useState(() => (first ? { url, data: { ok: true, rows: first.rows, total: first.total } satisfies Resp } : undefined));
+  // The server's first page serves only the selection it was read for (after Back the address may ask another).
+  const [seed] = useState(() => (first && start.page === initialPage && writeFilters(columns, "", start.filters) === writeFilters(columns, "", initial)
+    ? { url, data: { ok: true, rows: first.rows, total: first.total } satisfies Resp } : undefined));
   const { data, loading, error, retry } = useEntityTable<Resp>(url, seed);
 
   const sortBy = (key: "value" | "date") => {
@@ -106,6 +128,8 @@ export default function TxTable({
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 10));
   const rows = data?.rows ?? [];
+  // An address whose page is past the end (fewer records since) opens the last one.
+  useEffect(() => { if (!loading && !error && data && page > pages) setPage(pages); }, [loading, error, data, page, pages]);
   // While a new page loads, the old rows stay where they are, dimmed and out of reach; ghost rows only before the first.
   const stale = loading && rows.length > 0;
   // The status line keeps the shown rows' words while others load (the floating status says it is loading), so it
@@ -326,18 +350,7 @@ export default function TxTable({
         </table>
       </div>
       {stale && <FloatStatus>Se încarcă înregistrările…</FloatStatus>}
-      {pages > 1 && (
-        <div className="ask-pager">
-          {/* aria-disabled, not disabled: the focused button keeps the focus while the next page loads */}
-          <button type="button" aria-disabled={loading || page <= 1} onClick={() => goPage(page - 1)}>
-            ‹ anterioare
-          </button>
-          <span className="ask-pager-pos">pagina {formatInt(page)} din {formatInt(pages)}</span>
-          <button type="button" aria-disabled={loading || page >= pages} onClick={() => goPage(page + 1)}>
-            următoare ›
-          </button>
-        </div>
-      )}
+      <Pager page={page} pages={pages} busy={loading} onPage={goPage} label="Paginile înregistrărilor" />
     </div>
   );
 }

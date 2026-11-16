@@ -1,0 +1,8 @@
+/* The entity pages' one pager (Pager.tsx): at the list's left, 44 px targets on a phone. `nav.` keeps it the same inside
+   Radiografie, whose buttons are styled as a group. */
+nav.ent-pager,div.ent-pager{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
+nav.ent-pager button{min-width:0;min-height:36px;padding:6px 12px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;font-weight:400;cursor:pointer;outline-offset:2px}
+nav.ent-pager button:hover:not([aria-disabled="true"]){border-color:var(--accent-line);background:var(--accent-soft)}
+nav.ent-pager button[aria-disabled="true"]{opacity:.45;cursor:default}
+.ent-pager-pos{font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
+@media (max-width:700px){nav.ent-pager button{min-height:44px}}

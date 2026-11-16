@@ -7,6 +7,7 @@ import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
 import EntityName from "@/components/EntityName";
+import EntityPager from "../Pager";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import PeriodPicker, { EMPTY_RANGE, periodRangeError, type PeriodRangeValue } from "@/app/intreaba/builder/PeriodPicker";
@@ -393,7 +394,7 @@ function ListGhost() {
         <span className="bar"><G.Block w={`${Math.max(4, 70 - i * 6)}%`} h="100%" r="3px" /></span>
       </>} />
     </ul>
-    <div className="cx-pager" aria-hidden="true"><G.Block w="8.2em" h="36px" /><span><G.Line inline w="12ch" /></span><G.Block w="8.6em" h="36px" /></div>
+    <div className="ent-pager" aria-hidden="true"><G.Block w="7.4em" h="36px" /><span><G.Line inline w="14ch" /></span><G.Block w="7.4em" h="36px" /></div>
   </Ghost>;
 }
 
@@ -423,13 +424,19 @@ function ListRow({ item, total, max, on, onPick, enter, inLegend }: { item: Conn
     <span className="bar" aria-hidden="true"><i className="cm-tw cm-x" style={{ width: `${(amount(item) / max) * 100}%`, ...(born >= 0 ? { "--i": born } : { "--cm-dur": "var(--fast)" }) } as CSSProperties} /></span>
   </li>;
 }
-function Pager({ data, busy, onPage }: { data: ConnectionsResponse; busy: boolean; onPage: (page: number) => void }) {
-  if (data.pagination.totalPages < 2 && data.pagination.page === 1) return null;
-  return <nav className="cx-pager" aria-label="Paginile listei">
-    <button type="button" disabled={busy || data.pagination.page <= 1} onClick={() => onPage(data.pagination.page - 1)}>← Anterioara</button>
-    <span>Pagina {number(data.pagination.page)} din {number(Math.max(1, data.pagination.totalPages))}</span>
-    <button type="button" disabled={busy || !data.pagination.hasNext} onClick={() => onPage(data.pagination.page + 1)}>Următoarea →</button>
-  </nav>;
+/**
+ * A list's pager, the entity pages' one (UX audit Z5-41, 16 November 2026). Another page starts at the list's title
+ * when the title is above the screen, so the reader reads the new page from its first row.
+ */
+function Pager({ data, busy, onPage, head }: { data: ConnectionsResponse; busy: boolean; onPage: (page: number) => void; head: string }) {
+  const turn = (n: number) => {
+    onPage(n);
+    const title = document.getElementById(head);
+    if (!title || title.getBoundingClientRect().top >= 0) return;
+    title.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
+  return <EntityPager page={data.pagination.page} pages={Math.max(data.pagination.totalPages, data.pagination.hasNext ? data.pagination.page + 1 : data.pagination.page)}
+    busy={busy} onPage={turn} label="Paginile listei" />;
 }
 
 /**
@@ -736,7 +743,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
               : v.base.items.length ? <ListRows data={v.base} total={total} largest={v.top?.items[0] ? amount(v.top.items[0]) : 0} pickedId={vp?.partner.entity.id} onPick={(i) => choose(i)} label={isAuthority ? "Furnizorii" : "Instituțiile"} inLegend={legendRows} />
               : <p className="cx-empty-line">{rootSearch ? "Nicio potrivire. Încearcă o parte din nume sau codul fiscal." : "Nicio legătură în această selecție."}{search && <> <button type="button" className="cx-link" onClick={() => { setSearch(""); setPage(1); }}>Șterge căutarea</button></>}</p>}
           </div>
-          {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} />}
+          {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} head="cx-list-1" />}
         </section>}
         {vp ? <section className="cx-list second" aria-labelledby="cx-list-2">
           <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · după valoare` : <Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
@@ -746,7 +753,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
               : v.second.items.length ? <ListRows data={v.second} total={secondTotal} largest={v.secondTop?.items[0] ? amount(v.secondTop.items[0]) : 0} pickedId={v.peer?.entity.id} onPick={choosePeer} label="Ceilalți parteneri" />
               : <p className="cx-empty-line">{peerSearch ? "Nicio potrivire. Încearcă alt nume sau șterge căutarea." : "Nu apar alți parteneri identificați în selecția aplicată."}</p>}
           </div>}
-          {v.second && <Pager data={v.second} busy={secondPending} onPage={setPeerPage} />}
+          {v.second && <Pager data={v.second} busy={secondPending} onPage={setPeerPage} head="cx-list-2" />}
         </section> : (pickPending || !v.top) && <section className="cx-list second" aria-hidden="true">
           <div className="cx-list-head"><h2><Ghost as="span" name="cx-list-2-head" wait="client"><G.Line w="72%" /></Ghost></h2><span><Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost></span></div>
           <span className="cx-search g-quiet" />

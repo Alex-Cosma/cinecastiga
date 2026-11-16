@@ -12,6 +12,7 @@ import { consortiumRankingNote } from "@/lib/consortium";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import Pager from "./Pager";
 
 /**
  * "Principalele autorități / Principalii furnizori" — paginated counterparty
@@ -112,20 +113,7 @@ export default function PartnersTable({
         ))}
       </div>}
       {stale && <FloatStatus>Se încarcă partenerii…</FloatStatus>}
-      {pages > 1 && (
-        <div className="pager">
-          {/* aria-disabled, not disabled: the focused button keeps the focus while the next page loads */}
-          <button type="button" aria-disabled={loading || page <= 1} onClick={() => { if (!loading && page > 1) turn(page - 1); }}>
-            ← Anterior
-          </button>
-          <span className="note">
-            Pagina {page} din {formatInt(pages)}
-          </span>
-          <button type="button" aria-disabled={loading || page >= pages} onClick={() => { if (!loading && page < pages) turn(page + 1); }}>
-            Următor →
-          </button>
-        </div>
-      )}
+      <Pager page={page} pages={pages} busy={loading} onPage={turn} label="Paginile partenerilor" />
     </div>
   );
 }

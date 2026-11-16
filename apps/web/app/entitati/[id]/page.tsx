@@ -158,6 +158,8 @@ export default async function EntityPage({
   const base = { rol: bothRoles ? rolParam : undefined, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
   // The records table's filters from the address (its funnels; lib/entity-tx-columns.ts).
   const txFilters = readFilters(txColumns(role === "authority"), (key) => sp[key]);
+  // The records table's page from the address (UX audit Z5-29).
+  const txPage = /^[1-9]\d{0,5}$/.test(sp["p"] ?? "") ? Number(sp["p"]) : 1;
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
@@ -187,7 +189,7 @@ export default async function EntityPage({
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
       // Page 1 of the records table, as TxTable first asks for it (by value, the address's filters): the table is in
       // the first paint instead of growing the page after it (owner, 6 November 2026). On a failure the table asks itself.
-      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: 1, pageSize: 10, wholeConsortia: true })
+      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: txPage, pageSize: 10, wholeConsortia: true })
         .catch((e: unknown) => { console.error("entity-tx first page", { id, role }, e); return null; }),
       // The other role's records, on its tab above the name (UX audit Z5-13), only for an entity that both buys and sells.
       bothRoles ? getEntityTxCounts(id, otherRole).catch(() => null) : null,
@@ -531,6 +533,7 @@ export default async function EntityPage({
           isAuth={isAuth}
           initial={txFilters}
           first={txFirst}
+          initialPage={txPage}
           count={txCounts.nDa + txCounts.nCt}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
