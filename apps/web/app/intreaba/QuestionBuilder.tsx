@@ -50,6 +50,7 @@ import KitLink from "./answer/KitLink";
 import { builderView, onlyExclusions, patchDraft, trendListSwitch, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import type { TrendList } from "@/lib/ask/trend-shared";
 import SaveQuestionButton from "./SaveQuestionButton";
+import { arrive } from "@/components/motion/outline";
 import SavedQuestions, { type SavedQuestion } from "./SavedQuestions";
 
 /*
@@ -169,6 +170,8 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const initialKey = initial ? questionKey(initial) : "";
   const previousInitial = useRef(initialKey);
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement } | null>(null);
+  /** Beside an answer, the phrase or chip whose window made the last change: its outline draws once the answer is in (M-09). */
+  const arrival = useRef<HTMLElement | null>(null);
   const [catalogue, setCatalogue] = useState(false);
   const [catalogueTab, setCatalogueTab] = useState<"models" | "saved">("models");
   const [search, setSearch] = useState("");
@@ -356,6 +359,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     }
     settle({ spec, notes, parked: current, links });
     if (opts.keepOpen) return;
+    if (auto) arrival.current = open?.anchor ?? null;
     closeWindow();
     // The trend's group in the sentence and the answer's group buttons are one control (plan §4.7 P1, P6):
     // a group the answer already holds is shown at once, the draft applied by the StripPatch that follows.
@@ -446,6 +450,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       if (outcome === false) return;
       const accepted = typeof outcome === "object" && outcome !== null ? cloneQuestion(outcome as QuestionSpec) : next;
       setApplied(accepted);
+      // The answer is in: the phrase or chip that changed it draws its outline once (M-09).
+      const landed = arrival.current;
+      arrival.current = null;
+      if (auto && landed) requestAnimationFrame(() => { if (landed.isConnected) arrive(landed); });
       // Edits made while the server works remain a separate, unapplied draft.
       setDraft((current) => reconcileQuestionDraft(current, next, accepted));
       if (questionKey(draftRef.current) === submittedKey) {

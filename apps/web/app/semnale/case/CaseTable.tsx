@@ -1,5 +1,6 @@
 "use client";
 
+import { arrive } from "@/components/motion/outline";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
@@ -94,7 +95,10 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
   }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps -- the filters' setters are stable in use
   useEffect(() => {
     if (!focus) return;
-    document.getElementById(`caz-${focus}`)?.scrollIntoView({ block: "center" });
+    const row = document.getElementById(`caz-${focus}`);
+    row?.scrollIntoView({ block: "center" });
+    // The row a link chose draws its outline once where it stopped (M-09); its mark stays.
+    arrive(row);
   }, [focus, at]);
 
   const turn = (next: number) => { setUpdate(true); setPage(next); table.current?.scrollIntoView({ block: "nearest" }); };

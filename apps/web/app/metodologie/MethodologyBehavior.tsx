@@ -1,5 +1,6 @@
 "use client";
 
+import { arrive } from "@/components/motion/outline";
 import { useEffect } from "react";
 
 // The behaviour of the /metodologie page (MethodologyStory's static markup): the three lanes, the four-step stage,
@@ -391,6 +392,11 @@ function mount(root: HTMLElement): () => void {
       const timers = (initial ? [60, 250, 700] : [0]).map((ms, i) => window.setTimeout(() => go(i === 0), ms));
       cleanups.push(() => timers.forEach((t) => window.clearTimeout(t)));
     }
+    // Where the link landed draws its arrival outline once the page has stopped (M-09): a chapter by its title, a
+    // folded section by its summary, anything else itself.
+    const mark = el.matches("section") ? q("h2", el) ?? el : el instanceof HTMLDetailsElement ? q("summary", el) ?? el : el;
+    const landing = window.setTimeout(() => arrive(mark), initial ? 760 : switched ? 30 : 0);
+    cleanups.push(() => window.clearTimeout(landing));
   }
   on(window, "hashchange", () => openTarget(location.hash.slice(1)));
   on(root, "click", (e) => {

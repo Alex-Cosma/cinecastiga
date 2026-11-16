@@ -1,5 +1,6 @@
 "use client";
 
+import { arrive, prefersReducedMotion } from "@/components/motion/outline";
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { captureFailureWords, type CaptureSummary } from "@/lib/evidence-captures-shared";
@@ -103,7 +104,10 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
   if (canEdit) actions.push({ id: "note", label: item.note ? "Schimbă nota" : "Adaugă notă", onSelect: () => toggle("note") });
   if (all.length > 1) actions.push({ id: "versions", label: `Toate versiunile (${all.length})`, onSelect: () => toggle("versions") });
   if (canEdit) actions.push({ id: "pin", label: item.pinned ? "Desprinde din începutul listei" : "Fixează la început",
-    onSelect: () => void run(() => toggleClipPin(form({ pinned: String(!item.pinned) })), item.pinned ? "Dovada nu mai e fixată la început." : "Dovada e fixată la începutul listei.") });
+    onSelect: () => void run(() => toggleClipPin(form({ pinned: String(!item.pinned) })), item.pinned ? "Dovada nu mai e fixată la început." : "Dovada e fixată la începutul listei.").then(() => {
+      // Where the card went: once the list has its new order, the card comes into view and draws its arrival outline (M-09).
+      window.setTimeout(() => { const card = document.getElementById(`clip-${item.id}`); if (!card) return; card.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" }); arrive(card); }, 120);
+    }) });
   if (canEdit) actions.push({ id: "remove", label: "Scoate din dosar", danger: true, onSelect: () => toggle("remove") });
 
   const total = complete && complete.totalExact !== item.ownValue ? complete.totalExact === null ? "total necunoscut" : `${formatExactDecimal(complete.totalExact)} lei` : null;

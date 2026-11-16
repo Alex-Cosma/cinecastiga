@@ -131,7 +131,8 @@ function whenStill(el: Element, then: () => void): () => void {
     if (/(auto|scroll)/.test(s.overflowY + s.overflowX) && p.scrollHeight > p.clientHeight) boxes.push(p);
   }
   const at = () => boxes.map((b) => (b instanceof Window ? `${b.scrollX},${b.scrollY}` : `${b.scrollLeft},${b.scrollTop}`)).join("|");
-  let last = at(), still = 0, frame = 0;
+  // Two frames' grace: a smooth scroll asked for in the same frame has not moved yet.
+  let last = at(), still = -2, frame = 0;
   const start = performance.now();
   const tick = () => {
     const now = at();
@@ -146,14 +147,17 @@ function whenStill(el: Element, then: () => void): () => void {
 
 /**
  * Draws the arrival outline round `target` (M-09): 600 ms with the holding curve, stays 900 ms, fades in 400 ms. With
- * reduced motion it is whole at once and fades. It waits for any scroll to stop first. Elements that cannot hold an
- * SVG (a field, a table row) are outlined by their nearest box that can.
+ * reduced motion it is whole at once and fades. It waits for any scroll to stop first. An element that cannot hold an
+ * SVG (a field, a table row) is outlined at its own place, drawn in the nearest box that can.
  */
 export function arrive(target: Element | null | undefined, { stroke = "var(--accent)", width = 2 }: { stroke?: string; width?: number } = {}): void {
   if (typeof window === "undefined" || !target || !(target instanceof HTMLElement || target instanceof SVGElement)) return;
   cancelOutline();
-  let host = target as Element;
-  while (host.parentElement && (VOID.test(host.tagName) || host instanceof SVGElement)) host = host.parentElement;
+  // A title is outlined round its words, not across the whole width of its block.
+  const words = target instanceof HTMLElement && /^H[1-4]$/.test(target.tagName);
+  const own = target instanceof HTMLElement && !VOID.test(target.tagName) && !words;
+  let host: Element = target;
+  while (host.parentElement && (!(host instanceof HTMLElement) || VOID.test(host.tagName))) host = host.parentElement;
   if (!(host instanceof HTMLElement)) return;
   const box = host;
   const reduced = prefersReducedMotion();
@@ -166,14 +170,33 @@ export function arrive(target: Element | null | undefined, { stroke = "var(--acc
     if (restore !== "") box.style.position = restore === "-" ? "" : restore;
   };
   const stopWaiting = whenStill(target, () => {
-    if (done || !box.isConnected) return cleanup();
-    const cs = getComputedStyle(box);
+    if (done || !box.isConnected || !target.isConnected) return cleanup();
+    const cs = getComputedStyle(box), ts = getComputedStyle(target);
     if (cs.position === "static") { restore = box.style.position || "-"; box.style.position = "relative"; }
-    const clipped = !/visible/.test(cs.overflow) || cs.overflow === "";
-    const bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
-    const w = clipped ? box.clientWidth : box.offsetWidth, h = clipped ? box.clientHeight : box.offsetHeight;
+    let w: number, h: number, top: number, left: number, radius: number, inset: number;
+    if (own) {
+      // Over its own border; inside it when the box clips what overflows it.
+      const clipped = cs.overflow !== "" && !/visible/.test(cs.overflow);
+      const bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
+      w = clipped ? box.clientWidth : box.offsetWidth; h = clipped ? box.clientHeight : box.offsetHeight;
+      top = clipped ? 0 : -bt; left = clipped ? 0 : -bl;
+      radius = Math.max(0, (parseFloat(cs.borderTopLeftRadius) || 0) - (clipped ? bl : 0));
+      inset = clipped ? width / 2 : Math.max(width / 2, bt / 2);
+    } else {
+      // At the target's place in the box that holds the outline (a title: round its words, a little apart).
+      let r = target.getBoundingClientRect();
+      if (words) {
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        const t = range.getBoundingClientRect();
+        if (t.width && t.height) r = new DOMRect(t.left - 6, t.top - 3, Math.min(t.width + 12, r.right - t.left + 6), t.height + 6);
+      }
+      const b = box.getBoundingClientRect();
+      w = r.width; h = r.height;
+      top = r.top - b.top - box.clientTop + box.scrollTop; left = r.left - b.left - box.clientLeft + box.scrollLeft;
+      radius = words ? 6 : parseFloat(ts.borderTopLeftRadius) || 0; inset = width / 2;
+    }
     if (!w || !h) return cleanup();
-    const radius = parseFloat(cs.borderTopLeftRadius) || 0;
     svg = document.createElementNS(NS, "svg");
     svg.setAttribute("class", "mo-arrive");
     svg.setAttribute("aria-hidden", "true");
@@ -181,9 +204,8 @@ export function arrive(target: Element | null | undefined, { stroke = "var(--acc
     svg.setAttribute("width", String(w));
     svg.setAttribute("height", String(h));
     svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    svg.style.cssText = `top:${clipped ? 0 : -bt}px;left:${clipped ? 0 : -bl}px;color:${stroke}`;
-    const inset = clipped ? width / 2 : Math.max(width / 2, bt / 2);
-    for (const d of tracePaths(w, h, clipped ? Math.max(0, radius - bl) : radius, inset)) {
+    svg.style.cssText = `top:${top}px;left:${left}px;color:${stroke}`;
+    for (const d of tracePaths(w, h, radius, inset)) {
       const p = document.createElementNS(NS, "path");
       p.setAttribute("d", d);
       p.setAttribute("pathLength", "1");

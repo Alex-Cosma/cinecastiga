@@ -1,4 +1,5 @@
 'use client';
+import { arrive } from "@/components/motion/outline";
 import {useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '@/app/DiscoveryIcon';
@@ -35,14 +36,14 @@ export default function ContractFiles({nid,initial,authenticated,sourceUrl,sourc
   const resume=()=>void refresh();window.addEventListener('focus',resume);document.addEventListener('visibilitychange',resume);
   return()=>{alive=false;controller.abort();clearInterval(timer);window.removeEventListener('focus',resume);document.removeEventListener('visibilitychange',resume);};
  },[running,nid]);
- useEffect(()=>{const params=new URLSearchParams(window.location.search),id=params.get('document'),p=Number(params.get('page')??1);const f=initial.files.find(f=>f.id===id&&f.pdfHash);if(f){setReaderHighlight((params.get('highlight')??'').slice(0,150));setSelected(f);setPage(Number.isInteger(p)&&p>0&&p<=(f.pageCount??1)?p:1);setTimeout(()=>reader.current?.scrollIntoView({block:'start'}),100);}},[initial.files]);
+ useEffect(()=>{const params=new URLSearchParams(window.location.search),id=params.get('document'),p=Number(params.get('page')??1);const f=initial.files.find(f=>f.id===id&&f.pdfHash);if(f){setReaderHighlight((params.get('highlight')??'').slice(0,150));setSelected(f);setPage(Number.isInteger(p)&&p>0&&p<=(f.pageCount??1)?p:1);setTimeout(()=>{reader.current?.scrollIntoView({block:'start'});arrive(reader.current?.querySelector('#reader-heading')??reader.current);},100);}},[initial.files]);
  useEffect(()=>{if(!selected)return;let alive=true;const controller=new AbortController();setReading(true);setText(null);setQuote('');setReaderError('');
   void json(`${api(selected.id)}?page=${page}`,{signal:controller.signal}).then(d=>{if(alive)setText(d.page);}).catch(e=>{if(alive)setReaderError(e.message);}).finally(()=>{if(alive)setReading(false);});
   const url=new URL(window.location.href);url.searchParams.set('document',selected.id);url.searchParams.set('page',String(page));window.history.replaceState(null,'',url);
   return()=>{alive=false;controller.abort();};
  },[selected?.id,page]);
  async function enqueue(id:string|null,source:'notice'|'award'='notice'){setBusy(id??(source==='award'?'award':'list'));setError('');try{await json(`/api/contracte/${nid}/files`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({documentId:id,source})});await load();}catch(e){setError((e as Error).message);}finally{setBusy(null);}}
- function open(f:ContractFile,p=1,highlight=''){setReaderHighlight(highlight);if(f.id!==selected?.id){setDocumentHits(null);setDocumentQuery('');}setSelected(f);setPage(p);setQuote('');setTimeout(()=>{reader.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});reader.current?.focus({preventScroll:true});},0);}
+ function open(f:ContractFile,p=1,highlight=''){setReaderHighlight(highlight);if(f.id!==selected?.id){setDocumentHits(null);setDocumentQuery('');}setSelected(f);setPage(p);setQuote('');setTimeout(()=>{reader.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});reader.current?.focus({preventScroll:true});/* the document's name draws its arrival outline once the scroll stops (M-09) */arrive(reader.current?.querySelector('#reader-heading')??reader.current);},0);}
  async function search(e:React.FormEvent){e.preventDefault();setSearching(true);setError('');try{const result=await json(`/api/contracte/${nid}/files/search?q=${encodeURIComponent(query.trim())}${scope==='all'?'':`&documentId=${scope}`}`);setHits(result.hits);setSearched(query.trim());setTruncated(result.truncated);}catch(e){setError((e as Error).message);}finally{setSearching(false);}}
  async function searchDocument(e:React.FormEvent){e.preventDefault();if(!selected)return;setDocumentSearching(true);setReaderError('');try{const r=await json(`/api/contracte/${nid}/files/search?q=${encodeURIComponent(documentQuery.trim())}&documentId=${selected.id}`);setDocumentHits(r.hits);setDocumentApplied(documentQuery.trim());setReaderHighlight(documentQuery.trim());}catch(e){setReaderError((e as Error).message);}finally{setDocumentSearching(false);}}
  function captureSelection(){const selection=window.getSelection();if(selection&&ocr.current?.contains(selection.anchorNode)&&ocr.current?.contains(selection.focusNode)){const value=selection.toString();setQuote(value.length>=3&&value.length<=8000?value:'');}}

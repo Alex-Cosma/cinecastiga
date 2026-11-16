@@ -207,3 +207,5 @@
 
 /* M-03 (UX audit, motion pass): the home map's chosen county draws its outline once (DiscoveryMap, Selection.tsx). */
 .d-romania-map .d-county-chosen{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;pointer-events:none}
+/* M-09: the tour's question arrives with the arrival outline (DiscoverySearch, components/motion/outline.ts), not the ring. */
+.d-search-arrive>form{animation:none}

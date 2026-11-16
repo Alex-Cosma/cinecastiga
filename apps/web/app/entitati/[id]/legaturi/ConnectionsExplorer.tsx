@@ -1,5 +1,6 @@
 "use client";
 
+import { arrive } from "@/components/motion/outline";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
@@ -614,11 +615,14 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
     restoreController.current?.abort();
     const next = { root: data.entity, partner: item, checkpointId: data.checkpoint.id };
     setPicked(next); setPeer(null); setPeerSearch(""); setPeerPage(1); setLinkError(""); setRestoring(false); if (!quiet) { listsShown.current.add("second"); setPhoneList("second"); }
-    if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock(); }
+    if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock(); land(); }
   }
+  /** The partner's box draws its arrival outline once the page has stopped (M-09). */
+  const land = () => requestAnimationFrame(() => arrive(dock.current));
   function choosePeer(item: ConnectionPartner) {
     setPeer(item); remember(picked, item);
     if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock();
+    land();
   }
   function resetSelection() { restoreController.current?.abort(); setRestoring(false); setPicked(null); setPeer(null); remember(null, null); }
   function applyScope(next: Scope) {

@@ -1,16 +1,15 @@
 "use client";
 
 import type { Headline } from "@/lib/radiografie";
+import { scrollToArrive } from "@/components/motion/outline";
 
-/** The three strongest findings; click scrolls to the panel and highlights it. */
+/** The three strongest findings; a click scrolls to the panel, which draws its arrival outline once it stops (M-09). */
 export default function Headlines({ items }: { items: Headline[] }) {
   if (items.length === 0) return null;
   const go = (h: Headline) => {
     const p = document.getElementById(`rx-${h.go}`);
     if (!p) return;
-    p.scrollIntoView({ behavior: "smooth", block: "start" });
-    p.classList.add("rx-hl");
-    setTimeout(() => p.classList.remove("rx-hl"), 1800);
+    scrollToArrive(p);
     window.dispatchEvent(new CustomEvent("rx-focus", { detail: h }));
   };
   return (

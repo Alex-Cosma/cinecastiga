@@ -1,5 +1,6 @@
 "use client";
 
+import { arrive, prefersReducedMotion } from "@/components/motion/outline";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SuggestResponse } from "@/app/api/suggest/route";
@@ -64,6 +65,13 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
     window.addEventListener(TOUR_QUERY_EVENT, onTour);
     return () => window.removeEventListener(TOUR_QUERY_EVENT, onTour);
   }, [hero]);
+  // Where the tour's question landed: once the field has settled (the tour's rise, 1.1 s), its outline draws once (M-09;
+  // it replaced an orange ring). Without motion the field does not rise and the outline is whole at once.
+  useEffect(() => {
+    if (!arrived) return;
+    const t = window.setTimeout(() => arrive(box.current?.querySelector("form")), prefersReducedMotion() ? 0 : 1100);
+    return () => window.clearTimeout(t);
+  }, [arrived]);
   const term = query.trim().replace(/\s+/g, " "), latestTerm = useRef(term);
   latestTerm.current = term;
   const lastWord = lastWordOf(term);

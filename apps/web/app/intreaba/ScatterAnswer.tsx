@@ -29,6 +29,7 @@ import { FactTag } from "./answer/RowFacts";
 import { historicFact, historicLeftOutWords, historicPlaceWords } from "../../lib/ask/historic";
 import HelpTip from "./builder/HelpTip";
 import { SelectRing } from "../../components/motion/Selection";
+import { arrive } from "../../components/motion/outline";
 import Term from "../../components/Term";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
@@ -314,6 +315,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       if (row) {
         window.scrollBy({ top: row.getBoundingClientRect().top - back.top, behavior: "instant" });
         row.querySelector<HTMLElement>("a.sc-name")?.focus({ preventScroll: true });
+        // The row Back brought back draws its outline once (M-09).
+        arrive(row);
       }
       forgetListReturn();
       setBack(null);
