@@ -145,7 +145,10 @@ export default async function EntityPage({
         : [];
   if (flagRows.length === 0) notFound();
 
-  const role: Role = parseRoleParam(sp["rol"]) ?? flagRows[0]!.role;
+  // A role the entity does not have, asked in the address, opens its own (UX audit bug, 16 November 2026): the page was
+  // empty in the wrong role while DropRolParam cleaned the address.
+  const wantedRole = parseRoleParam(sp["rol"]);
+  const role: Role = wantedRole && flagRows.some((r) => r.role === wantedRole) ? wantedRole : flagRows[0]!.role;
   const row: EntityFlagRow = flagRows.find((r) => r.role === role) ?? flagRows[0]!;
   const rolParam = role === "supplier" ? "furnizor" : "autoritate";
   // `?rol=` only for an entity that both buys and sells (owner, 4 November 2026); a single-role page drops it.
@@ -586,8 +589,8 @@ export default async function EntityPage({
           <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
           {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!, role)}</>}
         </li>)}</ul>
-        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
-          <a href="#semnale">lista semnalelor</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
+        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt pe{" "}
+          {firstSignal ? <Link href={entitySignalsUrl(firstSignal)}>pagina semnalelor</Link> : "pagina semnalelor"}. Lipsa unui tipar nu certifică absența neregulilor.{" "}
           <Link href="/metodologie#indice">Formula și limitele →</Link></p>
       </details>}
     </>
