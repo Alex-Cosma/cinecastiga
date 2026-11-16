@@ -6,7 +6,7 @@ import { readDaEvidence, readRecordTitles, type SourceRecord } from "./source-ev
 import { riskNoScoreReason, riskPoints, type RiskCriterion, type ScoreParts } from "./risk-score";
 import { sharedSql } from "./shared-db";
 import { oldestFirst, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "./record-rows";
-import { decemberRecords } from "./signal-mirror";
+import { decemberRecords, splitTotals, type SplitTotals } from "./signal-mirror";
 
 /**
  * One pattern of one entity (/entitati/{id}/semnale?tip=…; owner, 6 November 2026, "Oglinda"): the entity's score and every
@@ -89,6 +89,8 @@ export interface SignalCase {
   pageSize: number;
   /** The other patterns each of these records also shows in (sicap id → codes): "și sub plafon". */
   alsoIn: Record<string, string[]>;
+  /** „Adunate, trec de plafon”: all of the entity's groups counted, beyond the page (UX audit Z6-21). */
+  split?: SplitTotals;
 }
 
 /** The records of a case whose titles the page shows: all of a short list, the first rows of a long one (and of a year's December). */
@@ -130,7 +132,7 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
   const row = pickRow(flags, state.role);
   const [named] = row ? [{ name_display: row.name, county: row.county }] : await sql`select name_display, county from core.entities where id = ${state.entity}`;
   if (!named) return null;
-  const { instances, alsoIn } = await sql.begin("isolation level repeatable read read only", async (tx) => {
+  const { instances, alsoIn, split } = await sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '30s'`;
     const alsoIn = CASE_RECORD_CODES.has(state.code) ? await readFlaggedDas(q, state) : {};
@@ -178,7 +180,10 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
         i.notice = n ? { title: n.title ?? null, cpvName: n.cpv_name ?? null, ted: (n.ted as string[] | null) ?? [], contracts: Number(n.contracts ?? 0) } : null;
       }
     }
-    return { instances, alsoIn };
+    // The words over the page count every group, not the page's (UX audit Z6-21): their evidence only, one read.
+    const split = state.code === "da_split" ? splitTotals((await q`select f.evidence from ${signalPopulation(q, { role: state.role, county: null, entity: state.entity }, "da_split")} p
+      join core.flags f on f.id = p.id`).map((r) => (r.evidence ?? null) as Record<string, unknown> | null)) : undefined;
+    return { instances, alsoIn, split };
   });
   const score = row?.score ?? 0, parts = row?.scoreParts ?? {};
   return {
@@ -190,7 +195,7 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
       noScoreReason: row ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score }) : null,
       otherRole: flags.find((r) => r.role !== state.role)?.role ?? null,
     },
-    counts, code: state.code, instances, total: page.total, page: page.page, pageSize: page.pageSize, alsoIn,
+    counts, code: state.code, instances, total: page.total, page: page.page, pageSize: page.pageSize, alsoIn, ...(split ? { split } : {}),
   };
 }
 

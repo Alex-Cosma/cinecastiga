@@ -16,7 +16,7 @@ import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
 import { groupSharedAdmin, peopleByFirms, peopleKey, sharedPeopleWords, type SharedAdminPerson } from "@/lib/signal-shared-admin";
 import {
-  aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, topPartners, yearEnd,
+  aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, splitTotals, topPartners, yearEnd,
   type AboveCeiling, type CaseInput, type FirstMonth, type NearCeiling, type SplitGroup,
 } from "@/lib/signal-mirror";
 import { signalUrl, withoutRole, type SignalState } from "@/lib/signals-shared";
@@ -152,6 +152,8 @@ function Warnings({ inst }: { inst: CaseInstance }) {
 
 function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] }) {
   const s = splitSummary(groups);
+  // The page holds 50 groups; the captions count all of them (UX audit Z6-21).
+  const all = data.split ?? splitTotals(data.instances.map((i) => i.evidence));
   const items = groups.flatMap((g) => g.items);
   // At most 80 bars, whole groups first: a group's purchases stay side by side, the groups apart.
   const clusters: { g: SplitGroup; items: SplitGroup["items"] }[] = [];
@@ -165,7 +167,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
   const edge = (at: number, of: number) => (at < of * 0.2 ? " l" : at > of * 0.8 ? " r" : "");
   return <>
     <div className="sgc-mirror">
-      <Side title="Luate pe rând" big={formatInt(s.acquisitions)} unit={s.allUnder ? (s.acquisitions === 1 ? "achiziție, sub plafon" : "achiziții, toate sub plafon") : "achiziții"}>
+      <Side title="Luate pe rând" big={formatInt(all.acquisitions)} unit={s.allUnder ? (all.acquisitions === 1 ? "achiziție, sub plafon" : "achiziții, toate sub plafon") : "achiziții"}>
         {/* In motion: the axis, the ceiling and the 50% line stay; each purchase rises from 0, in their order, so the reader
             sees each one stop under the ceiling. The stagger is spread over the shown bars and capped. */}
         <div className="sgc-ychart" data-chart suppressHydrationWarning>
@@ -183,7 +185,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               </div>
             ))}</div>
         </div>
-        <p className="sgc-cap">Fiecare bară e o achiziție, ca procent din plafonul ei; barele aceleiași firme stau împreună{items.length > shown ? ` (primele ${formatInt(shown)} din ${formatInt(items.length)})` : ""}.
+        <p className="sgc-cap">Fiecare bară e o achiziție, ca procent din plafonul ei; barele aceleiași firme stau împreună{all.acquisitions > shown ? ` (primele ${formatInt(shown)} din ${formatInt(all.acquisitions)})` : ""}.
           {s.largest && <> Cea mai mare: {lei(s.largest.value)}, cu {formatInt(Math.round(s.largest.ceiling - s.largest.value))} lei sub {lei(s.largest.ceiling)}.</>}</p>
       </Side>
       <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={splitRatioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
@@ -197,10 +199,10 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               </i></div>;
           })}</div>
         <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
-        <p className="sgc-cap">Linia punctată e plafonul: fiecare bară e un grup, adunat.{groups.length > top.length ? ` Primele ${formatInt(top.length)} din ${formatInt(groups.length)}.` : ""}</p>
+        <p className="sgc-cap">Linia punctată e plafonul: fiecare bară e un grup, adunat.{all.groups > top.length ? ` Cele mai mari ${formatInt(top.length)} din ${formatInt(all.groups)}.` : ""}</p>
       </Side>
     </div>
-    <CasesHead title={countWords(groups.length, "grup", "grupuri")} total={data.total} shown={groups.length} />
+    <CasesHead title={countWords(data.total, "grup", "grupuri")} total={data.total} shown={data.total} />
     {/* In motion: the rows on screen when the list comes into view grow their spark and their track, top to bottom. */}
     <div className="sgc-cases" data-chart suppressHydrationWarning>
       {groups.map((g, row) => {
@@ -448,7 +450,7 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
     </>;
   }
   return <>
-    <CasesHead title={countWords(data.total, "firmă", "firme")} total={data.total} shown={cases.length} />
+    <CasesHead title={countWords(data.total, "firmă", "firme")} total={data.total} shown={data.total} />
     <div className="sgc-cases" data-chart suppressHydrationWarning>
       {cases.map(({ inst, m }, row) => {
         const age = firstMonthAge(m.ageDays);
@@ -558,7 +560,7 @@ function OutsideCase({ data, state }: { data: SignalCase; state: SignalState }) 
     <div className="sgc-cases">{data.instances.map((inst) => <AwardRow key={inst.id} data={data} inst={inst} />)}</div>
   </>;
   return <>
-    <CasesHead title={caseUnitWords(data.code, data.total)} total={data.total} shown={data.instances.length} />
+    <CasesHead title={caseUnitWords(data.code, data.total)} total={data.total} shown={data.total} />
     <div className="sgc-cases">
       {data.instances.map((inst) => (
         <article key={inst.id} id={`caz-${inst.id}`} className="sgc-row outside">
@@ -575,6 +577,7 @@ function OutsideCase({ data, state }: { data: SignalCase; state: SignalState }) 
 function CasesHead({ title, total, shown, actions }: { title: ReactNode; total: number; shown: number; actions?: ReactNode }) {
   return <div className="sgc-cases-h"><h2>{title}{total > shown ? ` · primele ${formatInt(shown)} din ${formatInt(total)}` : ""}</h2>{actions}</div>;
 }
+/* A list with a pager under it (more than a page of cases) is titled by its total; the pager says which ones show. */
 
 const firstSentence = (text: string) => { const i = text.indexOf(". "); return i > 0 ? text.slice(0, i + 1) : text; };
 
@@ -582,7 +585,7 @@ function headline(data: SignalCase, models: { split: SplitGroup[] | undefined; r
   const { entity: e, code } = data;
   const part = e.parts[code as RiskCriterion] as ScorePart | undefined;
   switch (code) {
-    case "da_split": return splitWords(e.role, splitSummary(models.split ?? []), part);
+    case "da_split": return splitWords(e.role, data.split ?? splitTotals(data.instances.map((i) => i.evidence)), part);
     case "da_round": return roundWords(data.total, part, models.round ?? [], topPartners(models.round ?? []));
     case "da_above_ceiling": return aboveWords(models.above ?? [], part);
     case "da_year_end": return yearEndWords(data.instances.map((i) => yearEnd(inputOf(i))));

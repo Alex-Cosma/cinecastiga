@@ -104,6 +104,26 @@ export function splitGroup(c: CaseInput): SplitGroup {
   };
 }
 
+/**
+ * All of an entity's groups of "Adunate, trec de plafon", not only the page's (UX audit Z6-21: the page read 50 and said
+ * „în 50 grupuri” beside a tab of 52): how many, how many count in the score (above 1,2× and not recurring supply),
+ * how many are at 1,2× or under, how many recurring, their acquisitions and their years. From the build's evidence.
+ */
+export interface SplitTotals { groups: number; counted: number; under: number; recurring: number; acquisitions: number; years: { from: string; to: string } | null }
+
+export function splitTotals(evidences: readonly (Record<string, unknown> | null)[]): SplitTotals {
+  let counted = 0, under = 0, recurring = 0, acquisitions = 0;
+  const years: string[] = [];
+  for (const e of evidences) {
+    const g = splitGroup({ id: "", partnerId: null, partnerName: null, period: null, evidence: e, records: [] });
+    if (g.counted) counted++; else if (g.ratio <= SPLIT_COUNTS_ABOVE) under++; else recurring++;
+    acquisitions += g.count;
+    if (g.year) years.push(g.year);
+  }
+  years.sort();
+  return { groups: evidences.length, counted, under, recurring, acquisitions, years: years.length ? { from: years[0]!, to: years[years.length - 1]! } : null };
+}
+
 /** The faces of "Adunate, trec de plafon": every purchase on its own, and the groups summed. */
 export interface SplitSummary {
   groups: number;

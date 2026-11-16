@@ -6,7 +6,7 @@
 import { countWords } from "./ask/answer-text";
 import { cleanName, formatInt, formatRon } from "./format";
 import type { RiskRole, ScorePart } from "./risk-score";
-import { datesWords, dayWords, ratioWords, type AboveCeiling, type Capacity, type FirstMonth, type NearCeiling, type PartnerShare, type SplitSummary, type YearEnd } from "./signal-mirror";
+import { datesWords, dayWords, ratioWords, type AboveCeiling, type Capacity, type FirstMonth, type NearCeiling, type PartnerShare, type SplitTotals, type YearEnd } from "./signal-mirror";
 
 /** A share as a whole percentage ("96%"); a non-zero share under 0,5% says "sub 1%". */
 export const pctWords = (share: number): string => (share > 0 && share < 0.005 ? "sub 1%" : `${formatInt(Math.round(share * 100))}%`);
@@ -17,18 +17,25 @@ export interface CaseWords { title: string; lede: string | null }
 const yearsWords = (years: { from: string; to: string } | null): string =>
   !years ? "" : years.from === years.to ? `în ${years.from}` : `din ${years.from} până în ${years.to}`;
 
-export function splitWords(role: RiskRole, s: SplitSummary, part: ScorePart | undefined): CaseWords {
-  const counted = part?.groups != null ? n(part.groups) : s.counted;
-  const times = counted || s.groups;
+/**
+ * „De 47 de ori, aceeași firmă …”, then the split said once (UX audit Z6-21): „52 de grupuri cu 480 de achiziții,
+ * 2018–2025: 47 intră în scor (71,4 mil. lei, 35% din valoarea achizițiilor directe), 5 sunt sub 1,2×.” Every number by
+ * the „de” rule; `t` counts all of the entity's groups, not the page's.
+ */
+export function splitWords(role: RiskRole, t: SplitTotals, part: ScorePart | undefined): CaseWords {
+  const counted = part?.groups != null ? n(part.groups) : t.counted;
+  const times = counted || t.groups;
   const who = role === "authority"
     ? "aceeași firmă a câștigat în același an mai multe achiziții directe pentru același fel de lucru"
     : "aceeași instituție a cumpărat de la firmă, în același an, mai multe achiziții directe pentru același fel de lucru";
-  const title = `${times === 1 ? "O dată" : `De ${formatInt(times)} ori`}, ${who}: luate pe rând sunt sub plafon, adunate îl depășesc.`;
-  const where = s.groups === 1 ? `într-un grup` : `în ${formatInt(s.groups)} grupuri`;
-  const scored = counted > 0 && part
-    ? ` ${counted === 1 ? "Grupul din scor adună" : `Cele ${formatInt(counted)} grupuri din scor adună`} ${part.value != null ? `${formatRon(n(part.value))}, ` : ""}${pctWords(part.rawShare != null ? n(part.rawShare) : n(part.share))} din banii achizițiilor directe.`
-    : " Niciun grup nu trece de 1,2 ori plafonul, așa că tiparul nu adaugă puncte.";
-  return { title, lede: `${countWords(s.acquisitions, "achiziție", "achiziții")} ${where}, ${yearsWords(s.years)}.${scored}` };
+  const title = `${times === 1 ? "O dată" : `De ${countWords(times, "oară", "ori")}`}, ${who}: luate pe rând sunt sub plafon, adunate îl depășesc.`;
+  const span = !t.years ? "" : t.years.from === t.years.to ? `, ${t.years.from}` : `, ${t.years.from}–${t.years.to}`;
+  const head = `${countWords(t.groups, "grup", "grupuri")} cu ${countWords(t.acquisitions, "achiziție", "achiziții")}${span}`;
+  if (!(counted > 0 && part)) return { title, lede: `${head}. Niciun grup nu trece de 1,2 ori plafonul, așa că tiparul nu adaugă puncte.` };
+  const share = pctWords(part.rawShare != null ? n(part.rawShare) : n(part.share));
+  const scored = `${counted === t.groups && counted > 1 ? "toate" : formatInt(counted)} intră în scor (${part.value != null ? `${formatRon(n(part.value))}, ` : ""}${share} din valoarea achizițiilor directe)`;
+  const rest = [t.under ? `${formatInt(t.under)} ${t.under === 1 ? "e" : "sunt"} sub 1,2×` : null, t.recurring ? `${formatInt(t.recurring)} ${t.recurring === 1 ? "e aprovizionare recurentă" : "sunt aprovizionare recurentă"}` : null].filter(Boolean);
+  return { title, lede: `${head}: ${scored}${rest.length ? `, ${rest.join(", ")}` : ""}.` };
 }
 
 export function roundWords(found: number, part: ScorePart | undefined, items: readonly NearCeiling[], partners: readonly { name: string; n: number }[]): CaseWords {
