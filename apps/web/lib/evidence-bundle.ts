@@ -5,6 +5,7 @@ import { readInvestigationWorkspace } from "./investigation-workspace";
 import { captureDatabase, CAPTURE_METHODOLOGY } from "./evidence-captures";
 import { textChunks, zip64, type ZipEntry } from "./evidence-zip";
 import type { FrozenRecord } from "./evidence-captures-shared";
+import { itemName } from "./clip-subject";
 import { caietMarkdown, type CaietClip } from "./evidence-caiet";
 import { dossierRecords, sourceEvents } from "./anchete";
 
@@ -132,7 +133,7 @@ async function* sourcesCsv(q:DbSql,capture:Record<string,unknown>):AsyncGenerato
 /** The dossier read aloud (caiet.md): each item named after its latest complete version, as the dossier shows it. */
 async function caietFor(q:DbSql,data:BundleData,base:string):Promise<string>{
   const id=String(data.investigation.id);
-  const clips:CaietClip[]=data.clips.map(clip=>{
+  const clips:CaietClip[]=await Promise.all(data.clips.map(async clip=>{
     const complete=data.captures.filter(c=>c.clip_id===clip.id&&c.status==="complete").sort((a,b)=>Number(b.version)-Number(a.version))[0];
     const summary=(complete?.summary??null) as Record<string,unknown>|null;
     return {id:String(clip.id),kind:String(clip.kind),refId:clip.ref_id==null?null:String(clip.ref_id),spec:clip.spec,
@@ -140,8 +141,10 @@ async function caietFor(q:DbSql,data:BundleData,base:string):Promise<string>{
       capture:complete?{id:String(complete.id),version:Number(complete.version),status:"complete",createdAt:"",startedAt:null,completedAt:null,rowCount:Number(complete.row_count),
         totalExact:complete.total_exact==null?null:String(complete.total_exact),error:null,methodology:null,scope:complete.request as never,summary}:null,
       captureId:complete?String(complete.id):null,rowCount:complete?Number(complete.row_count):null,totalExact:complete?.total_exact==null?null:String(complete.total_exact),
-      capturedAt:typeof summary?.capturedAt==="string"?summary.capturedAt:complete?.completed_at instanceof Date?complete.completed_at.toISOString():null,version:complete?Number(complete.version):null};
-  });
+      capturedAt:typeof summary?.capturedAt==="string"?summary.capturedAt:complete?.completed_at instanceof Date?complete.completed_at.toISOString():null,version:complete?Number(complete.version):null,
+      // Named as the dossier names it (audit Z8-01, Z8-35): the name kept when it was saved, else the source's.
+      ...await itemName(String(clip.kind),clip.ref_id==null?null:String(clip.ref_id),clip.snapshot,Boolean(summary),q)};
+  }));
   const events=await sourceEvents(q,id,clips.map(clip=>({id:clip.id,kind:clip.kind as never,refId:clip.refId,snapshot:clip.snapshot,capture:clip.capture??null})));
   return caietMarkdown({title:String(data.investigation.title),description:data.investigation.description==null?null:String(data.investigation.description),
     exportedAt:data.exportedAt,base,investigationId:id,clips,entries:data.workspace.entries,links:data.workspace.links,

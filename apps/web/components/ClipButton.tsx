@@ -183,7 +183,8 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
       }
       const res = await fetch(`/api/anchete/${invId}/clips`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, refId: refId ?? null, spec: spec ?? null, note: note.trim() || null, snapshot: snapshot ?? null }),
+        // The name the dialog shows is kept with the item (audit Z8-01): the dossier reads it while its sources are not kept.
+        body: JSON.stringify({ kind, refId: refId ?? null, spec: spec ?? null, note: note.trim() || null, snapshot: snapshot ?? null, label: name }),
       });
       const out = await res.json().catch(() => null);
       if (!res.ok) { setErr(out?.error ?? "Eroare la salvare."); return; }

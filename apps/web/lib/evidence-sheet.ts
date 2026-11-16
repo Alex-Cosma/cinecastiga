@@ -3,6 +3,7 @@ import { captureDatabase, captureSummary } from "./evidence-captures";
 import { captureFingerprint } from "./evidence-bundle";
 import { citationText } from "./evidence-citation";
 import { clipHref, clipKindLabel, clipSourceUrl, clipTitle, clipValue, type ClipLike } from "./evidence-clip";
+import { itemName } from "./clip-subject";
 import type { CaptureSummary, FrozenRecord } from "./evidence-captures-shared";
 
 /*
@@ -54,7 +55,9 @@ export async function readEvidenceSheet(userId: string, investigationId: string,
       order by ${order} limit ${SHEET_PAGE + 1} offset ${offset}`;
     const clip = { id: String(clipRow?.id ?? row.clip_id), kind: String(clipRow?.kind ?? capture.scope.kind), refId: clipRow?.ref_id == null ? capture.scope.refId : String(clipRow.ref_id),
       spec: clipRow?.spec ?? capture.scope.spec, snapshot: capture.summary, note: clipRow?.note == null ? null : String(clipRow.note),
-      createdAt: clipRow?.created_at instanceof Date ? clipRow.created_at.toISOString() : String(clipRow?.created_at ?? capture.createdAt), capture };
+      createdAt: clipRow?.created_at instanceof Date ? clipRow.created_at.toISOString() : String(clipRow?.created_at ?? capture.createdAt), capture,
+      // Its name, not its code (audit Z8-35): the one kept when it was saved, else the source's.
+      ...await itemName(String(clipRow?.kind ?? capture.scope.kind), clipRow?.ref_id == null ? capture.scope.refId : String(clipRow.ref_id), clipRow?.snapshot ?? null, true, q) };
     return { capture, clip, sort: used, sortable, page: Math.max(0, page), hasMore: rows.length > SHEET_PAGE, investigationTitle: String(investigation?.title ?? "Dosar"),
       versions: versions.map((v) => ({ id: String(v.id), version: Number(v.version), completedAt: v.completed_at == null ? null : String(v.completed_at) })),
       rows: rows.slice(0, SHEET_PAGE).map((r) => ({ ...(r.record as FrozenRecord), rowNo: String(r.row_no) })) };

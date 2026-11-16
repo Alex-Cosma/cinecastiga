@@ -1,34 +1,74 @@
 import { contractRonValue, createDb, type DbSql } from "@seap/db";
+import { cleanName } from "./format";
+import { flagFindingLabel } from "./flags";
+import { recordHeadline } from "./record-labels";
+import { savedName } from "./evidence-clip";
 
 /*
  * What "Salvează în anchetă" is about to save, said on its first line (owner, 7 November 2026): the item's name and,
  * when one number is known exactly before the capture, its value (a contract's, an acquisition's, a notice's). An
- * institution's or a firm's record count is not shown here: the capture counts its own selection.
+ * institution's or a firm's record count is not shown here: the capture counts its own selection. Names, not codes
+ * (audit Z8-35, owner 16 November 2026): an acquisition and a notice are named by their object, their SEAP code is
+ * `code`; a signal by its finding, the firm (or institution) of the case and its period.
  */
 const globalDb = globalThis as unknown as { __clipSubjectSql?: DbSql };
 const db = () => globalDb.__clipSubjectSql ??= createDb().sql;
 
-export interface ClipSubject { name: string | null; valueExact: string | null; detail: string | null }
+export interface ClipSubject { name: string | null; valueExact: string | null; detail: string | null; code?: string | null;
+  /** An entity as a reader says it: "Instituție" when it buys, "Firmă" when it only sells (Z8-25). */
+  kindLabel?: string | null }
 
 export async function readClipSubject(kind: string, refId: string, sql: DbSql = db()): Promise<ClipSubject | null> {
   if (!/^\d+$/.test(refId)) return null;
   if (kind === "contract") {
-    const [row] = await sql`select c.title, ${contractRonValue(sql)}::text value from core.contracts c where c.ca_notice_contract_id = ${refId} limit 1`;
-    return row ? { name: row.title == null ? null : String(row.title), valueExact: row.value == null ? null : String(row.value), detail: "valoarea contractului" } : null;
+    // The contract page's own headline: its title when it names something, else its lot, its notice's title, its CPV category.
+    const [row] = await sql`select c.title, c.lots_caption, a.title notice_title, a.notice_no, k.name_ro cpv_name, ${contractRonValue(sql)}::text value from core.contracts c
+      left join core.awards a on a.ca_notice_id = c.ca_notice_id left join core.cpv_codes k on k.code = c.cpv_code
+      where c.ca_notice_contract_id = ${refId} limit 1`;
+    const text = (v: unknown) => v == null ? null : String(v);
+    return row ? { name: recordHeadline({ title: text(row.title), lot: text(row.lots_caption), noticeTitle: text(row.notice_title), cpvName: text(row.cpv_name), noticeNo: text(row.notice_no), kind: "Contract" }),
+      valueExact: text(row.value), detail: "valoarea contractului" } : null;
   }
   if (kind === "da") {
-    const [row] = await sql`select da_code, closing_value::text value from core.direct_acquisitions where sicap_da_id = ${refId}`;
-    return row ? { name: row.da_code == null ? null : String(row.da_code), valueExact: row.value == null ? null : String(row.value), detail: "valoarea achiziției" } : null;
+    // The acquisition page's own title: its name in SEAP, else its CPV category (app/achizitii/[id]).
+    const [row] = await sql`select d.da_code, d.closing_value::text value, nullif(btrim(r.payload->>'directAcquisitionName'), '') title, k.name_ro cpv_name
+      from core.direct_acquisitions d left join raw.raw_documents r on r.id = d.raw_id left join core.cpv_codes k on k.code = d.cpv_code
+      where d.sicap_da_id = ${refId}`;
+    const code = row?.da_code == null ? null : String(row.da_code);
+    return row ? { name: row.title == null && row.cpv_name == null ? code : String(row.title ?? row.cpv_name), code, valueExact: row.value == null ? null : String(row.value), detail: "valoarea achiziției" } : null;
   }
   if (kind === "notice") {
-    const [row] = await sql`select notice_no, ron_contract_value::text value from core.awards where ca_notice_id = ${refId} limit 1`;
-    return row ? { name: row.notice_no == null ? null : `Anunțul ${String(row.notice_no)}`, valueExact: row.value == null ? null : String(row.value), detail: "valoarea din anunț" } : null;
+    const [row] = await sql`select a.notice_no, a.ron_contract_value::text value, a.title, k.name_ro cpv_name from core.awards a left join core.cpv_codes k on k.code = a.cpv_code
+      where a.ca_notice_id = ${refId} limit 1`;
+    const code = row?.notice_no == null ? null : String(row.notice_no);
+    return row ? { name: recordHeadline({ title: row.title == null ? null : String(row.title), cpvName: row.cpv_name == null ? null : String(row.cpv_name), noticeNo: code, kind: code ? `Anunțul ${code}` : "Anunț de atribuire" }),
+      code, valueExact: row.value == null ? null : String(row.value), detail: "valoarea din anunț" } : null;
+  }
+  if (kind === "signal") {
+    const [row] = await sql`select flag_code, entity_name, partner_name, period from marts.flag_instances where id = ${refId}`;
+    if (!row) return null;
+    const who = row.partner_name ?? row.entity_name;
+    return { name: [flagFindingLabel(String(row.flag_code)), who == null ? null : cleanName(String(who)), row.period == null ? null : String(row.period)].filter(Boolean).join(" · "), valueExact: null, detail: null };
   }
   if (kind === "entity") {
-    const [row] = await sql`select name_display, county from core.entities where id = ${refId}`;
-    return row ? { name: row.name_display == null ? null : String(row.name_display), valueExact: null, detail: row.county == null ? null : String(row.county) } : null;
+    const [row] = await sql`select e.name_display, e.county, array(select distinct p.role from marts.entity_profile p where p.entity_id = e.id) roles from core.entities e where e.id = ${refId}`;
+    const roles = (row?.roles ?? []) as string[];
+    return row ? { name: row.name_display == null ? null : String(row.name_display), valueExact: null, detail: row.county == null ? null : String(row.county),
+      kindLabel: roles.includes("authority") ? "Instituție" : roles.includes("supplier") ? "Firmă" : null } : null;
   }
   return null;
+}
+
+/**
+ * The name and code of a saved item (audit Z8-01, Z8-35): the ones kept with it when it was saved, else, for an item
+ * saved before they were kept, the source's — always for an acquisition, a notice or a signal (their kept version
+ * names them by code or finding only), and for an institution, a firm or a contract while it has no kept version.
+ */
+export async function itemName(kind: string, refId: string | null, rawSnapshot: unknown, hasKeptName: boolean, sql: DbSql = db()): Promise<{ label: string | null; code: string | null; kindLabel: string | null }> {
+  const saved = savedName(rawSnapshot);
+  if (saved.label || !refId || !(["da", "notice", "signal"].includes(kind) || !hasKeptName && ["entity", "contract"].includes(kind))) return saved;
+  const subject = await readClipSubject(kind, refId, sql).catch(() => null);
+  return { label: subject?.name ?? null, code: saved.code ?? subject?.code ?? null, kindLabel: saved.kindLabel ?? subject?.kindLabel ?? null };
 }
 
 /** The dossiers of this account that already hold the same item (same kind and source id; a Radiografie selection also by its spec). */

@@ -5,7 +5,8 @@ import { EVIDENCE_KINDS, type EvidenceKind, type CaptureSummary } from "./eviden
 import { validateCaptureRequest } from "./evidence-capture-input";
 import { captureSummary, queueCapture } from "./evidence-captures";
 import { sharedRepresentativePairs, type MemberRepRow } from "./shared-representatives";
-import { moneyUnit } from "./evidence-clip";
+import { moneyUnit, savedName } from "./evidence-clip";
+import { itemName } from "./clip-subject";
 
 /**
  * Data access for watchdog investigations ("anchete"). Server-only.
@@ -71,6 +72,11 @@ export interface ClipRow {
   captures?: CaptureSummary[];
   /** A saved contract's or acquisition's parties, with their ids, read from its records. */
   parties?: ClipParties | null;
+  /** The name shown when it was saved and its SEAP code (lib/evidence-clip savedName); for an item saved before they
+   *  were kept, read from the source when the dossier opens. */
+  label?: string | null;
+  code?: string | null;
+  kindLabel?: string | null;
 }
 
 export interface ClipParties { authorityId: string | null; authority: string | null; suppliers: { id: string | null; name: string | null }[] }
@@ -399,12 +405,15 @@ export async function buildSnapshot(
 
 export async function addClip(userId:string,investigationId:string,input:{
   kind:ClipKind;refId:string|null;spec:unknown;note:string|null;clientSnapshot:Record<string,unknown>|null;
+  /** The name shown when it was saved and its SEAP code (text only, never a value): see savedName in evidence-clip. */
+  saved?:{name:string|null;code:string|null;kind?:string|null}|null;
 }):Promise<{id:string;capture:CaptureSummary|null;captureId:string|null}|{error:string}>{
   const request=validateCaptureRequest(input.kind,input.refId,input.spec,input.clientSnapshot);
   if("error" in request)return request;
   const added=await withInvestigationAccess(userId,investigationId,"edit",async q=>{
     const snapshot={verification:request.kind==="note"?"editorial":"queued",
-      evidenceScope:request.options.scope??{},evidenceOptions:request.options,...(request.connection?{connection:request.connection}:{}),...(request.peer?{peer:request.peer}:{})};
+      evidenceScope:request.options.scope??{},evidenceOptions:request.options,...(request.connection?{connection:request.connection}:{}),...(request.peer?{peer:request.peer}:{}),
+      ...(input.saved?{saved:{name:input.saved.name?.slice(0,300)??null,code:input.saved.code?.slice(0,40)??null,...(input.saved.kind?{kind:input.saved.kind.slice(0,40)}:{})}}:{})};
     const [clip]=await q`insert into app.clips(investigation_id,kind,ref_id,spec,snapshot,note,created_by)
       values(${investigationId},${request.kind},${request.refId},${JSON.stringify(request.spec)}::jsonb,
       ${JSON.stringify(snapshot)}::jsonb,${input.note},${userId}) returning id`;
@@ -535,10 +544,12 @@ async function castRelations(clipRows: ClipRow[]): Promise<{
       c.refId &&
       !members.some((m) => m.refId === c.refId)
     ) {
-      members.push({
+      // A kept name, else the one saved; an actor whose name is not known is not drawn as "?" (audit Z8-04).
+      const name = typeof c.snapshot?.["name"] === "string" ? c.snapshot["name"] : c.label;
+      if (name) members.push({
         kind: "entity",
         refId: c.refId,
-        name: String(c.snapshot?.["name"] ?? "?"),
+        name,
       });
     }
     if (
@@ -816,6 +827,7 @@ export async function getDosar(
     note: r.note,
     pinned: r.pinned,
     createdAt: String(r.created_at),
+    ...savedName(r.snapshot),
   }));
   const captured=await sql`select * from app.evidence_captures where investigation_id=${id} order by version desc`;
   for(const clip of clips){
@@ -824,6 +836,8 @@ export async function getDosar(
     const complete=clip.captures.find(capture=>capture.status==="complete");
     if(complete?.summary)clip.snapshot=complete.summary;
     else if(!clip.capture&&clip.kind!=="note"&&clip.kind!=="document_quote")clip.snapshot={...clip.snapshot,verification:"legacy-unverified"};
+    // Saved before the name was kept with it (audit Z8-01): the source's name, so no card reads as an internal id.
+    if(!clip.label)Object.assign(clip,await itemName(clip.kind,clip.refId,null,Boolean(complete?.summary),sql));
   }
   // live recompute + drift for the cheap kinds
   for (const c of clips) {

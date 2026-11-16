@@ -13,6 +13,8 @@ import CardMenu, { type CardAction } from "./CardMenu";
 /** One saved item of a dossier, as the server reads it (DossierEvidence) and the card draws it. */
 export interface EvidenceItem {
   id: string; kind: string; kindLabel: string;
+  /** An acquisition's or a notice's SEAP code, beside the kind (the name is the title: Z8-35). */
+  code: string | null;
   /** Its group in the kind filter ("Contracte", "Instituții și firme"…). */
   group: string;
   title: string; href: string | null; savedAt: string; pinned: boolean; note: string | null; refId: string | null;
@@ -106,7 +108,7 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
   const total = complete && complete.totalExact !== item.ownValue ? complete.totalExact === null ? "total necunoscut" : `${formatExactDecimal(complete.totalExact)} lei` : null;
   return <>
     <div className="iw-card-top">
-      <div className="iw-entry-meta"><span className="iw-card-kind">{item.kindLabel}</span>
+      <div className="iw-entry-meta"><span className="iw-card-kind">{item.kindLabel}{item.code && <span className="iw-code"> · {item.code}</span>}</span>
         {item.pinned && <span className="iw-pill iw-pill-pin">Fixată</span>}
         {pill && <span className={`iw-pill iw-pill-${pill.tone}`}>{pill.text}</span>}
         <span className="iw-card-saved">Salvată la <time dateTime={item.savedAt}>{privateDay(item.savedAt)}</time></span></div>

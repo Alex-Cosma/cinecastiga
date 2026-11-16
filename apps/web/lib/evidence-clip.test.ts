@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipHref, clipTitle, clipValue, radiografieHref, type ClipLike } from "./evidence-clip";
+import { clipCode, clipHref, clipTitle, clipValue, entityKindLabel, radiografieHref, savedName, type ClipLike } from "./evidence-clip";
 import { citationText } from "./evidence-citation";
 import { recordParties, sourceEventsFrom } from "./anchete";
 
@@ -25,6 +25,39 @@ describe("a dossier's saved item (owner, 7 November 2026)", () => {
   });
   it("names an entity without its leading registry number", () => {
     expect(clipTitle(clip({ kind: "entity", snapshot: { name: "9813902 COSTALEX CONSTRUCT", title: "9813902 COSTALEX CONSTRUCT" } }))).toBe("COSTALEX CONSTRUCT");
+  });
+});
+
+describe("names, not codes (UX audit Z8-01, Z8-35)", () => {
+  it("names a question by its sentence, never by its pills or its kind", () => {
+    const spec = { block: "timeseries", measure: "value", filters: { authorityId: 2144659, authorityName: "Orasul Cisnadie" } };
+    expect(clipTitle(clip({ kind: "query", refId: null, spec, snapshot: { pills: ["evoluție pe ani", "Orasul Cisnadie"] } }))).toBe("Cum evoluează valoarea tuturor achizițiilor făcute de Orasul Cisnadie, an de an?");
+    expect(clipTitle(clip({ kind: "query", refId: null, spec, snapshot: { verification: "queued" } }))).not.toBe("Întrebare salvată");
+    // The title the answer showed when it was saved wins over the sentence rebuilt without its labels.
+    expect(clipTitle(clip({ kind: "query", refId: null, spec, snapshot: {}, label: "Titlul răspunsului" }))).toBe("Titlul răspunsului");
+  });
+  it("names an acquisition and a notice by their object, the code apart", () => {
+    const da = clip({ kind: "da", refId: "119998450", snapshot: { title: "DA38378700" }, label: "Lucrări de construcţii de linii electrice" });
+    expect(clipTitle(da)).toBe("Lucrări de construcţii de linii electrice");
+    expect(clipCode(da)).toBe("DA38378700");
+    const notice = clip({ kind: "notice", refId: "100114992", snapshot: { title: "SCNA1031122", noticeNo: "SCNA1031122" }, label: "Lucrări de construcţii" });
+    expect([clipTitle(notice), clipCode(notice)]).toEqual(["Lucrări de construcţii", "SCNA1031122"]);
+    // Without a kept name (an old save), the code is still a name rather than an id.
+    expect(clipTitle(clip({ kind: "da", refId: "1", snapshot: { title: "DA1" } }))).toBe("DA1");
+  });
+  it("uses the name saved with the item while its sources are not kept, the id only when nothing is known", () => {
+    expect(clipTitle(clip({ kind: "entity", refId: "2144659", snapshot: { verification: "queued" }, label: "Orasul Cisnadie" }))).toBe("Orasul Cisnadie");
+    expect(clipTitle(clip({ kind: "signal", refId: "1", snapshot: { title: "Adunate, trec de plafon" }, label: "Adunate, trec de plafon · TOPO CAD · 2021" }))).toBe("Adunate, trec de plafon · TOPO CAD · 2021");
+    expect(clipTitle(clip({ kind: "contract", refId: "107371750", snapshot: { verification: "queued" } }))).toBe("Contract · 107371750");
+  });
+  it("reads the saved name and code from the item's own row", () => {
+    expect(savedName({ verification: "queued", saved: { name: " Orasul Cisnadie ", code: null, kind: "Instituție" } })).toEqual({ label: "Orasul Cisnadie", code: null, kindLabel: "Instituție" });
+    expect(savedName({ verification: "queued" })).toEqual({ label: null, code: null, kindLabel: null });
+  });
+  it("says an entity's kind as a reader does", () => {
+    expect(entityKindLabel({ roles: { authority: {} } })).toBe("Instituție");
+    expect(entityKindLabel({ roles: { supplier: {} } })).toBe("Firmă");
+    expect(entityKindLabel({}, "Firmă")).toBe("Firmă");
   });
 });
 
