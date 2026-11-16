@@ -34,6 +34,11 @@ import "./case.css";
  * check, not proof; values are recorded, not payments.
  */
 
+/*
+ * Every chart here carries suppressHydrationWarning (UX audit bug, 16 November 2026: a hydration error at 390 px): the
+ * chart gate (app/Reveal.tsx) may mark a chart below the fold `cm-wait` in the moment between React adopting it and React
+ * re-checking it while this streamed page hydrates. Keeping the browser's class is what the gate wants.
+ */
 const SEGMENT_CLASS = ["c0", "c1", "c2", "c3", "c4"] as const;
 const RISK_CODES = new Set<string>(Object.keys(SIGNAL_GUIDANCE));
 const inputOf = (i: CaseInstance): CaseInput => ({ id: i.id, partnerId: i.partnerId, partnerName: i.partnerName, period: i.period, evidence: i.evidence, records: i.records });
@@ -75,7 +80,7 @@ function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState
       {scored && (
         // Each segment opens its pattern's tab (the tabs under it are the same links, for the keyboard and screen readers).
         // In motion: the bar grows from 0 as one piece (components/motion/chart-motion.css).
-        <div className="sgc-bar cm-x" data-chart title={`Scorul ${formatInt(Math.round(e.score))} din 100`}>
+        <div className="sgc-bar cm-x" data-chart suppressHydrationWarning title={`Scorul ${formatInt(Math.round(e.score))} din 100`}>
           {tabs.inScore.map((c, i) => (
             <Link key={c} href={href(c)} tabIndex={-1} aria-hidden="true" className={`sgc-seg ${seg(c)}${c === code ? " on" : ""}${i === 0 ? " first" : ""}`} style={{ width: `${e.points[c] ?? 0}%` }}>
               <span className={`sgc-tip${i === 0 ? " l" : ""}`}><b>{flagLabel(c)}</b><span>+{formatInt(e.points[c] ?? 0)} din scorul de {formatInt(Math.round(e.score))} · {caseUnitWords(c, counts[c] ?? 0)}</span></span>
@@ -104,7 +109,7 @@ function Side({ title, big, unit, children }: { title: string; big: string; unit
 /** The share bar of a partner signal, with the rule's thresholds. */
 function ShareBar({ share, ticks = [] }: { share: number; ticks?: { at: number; label: string; left?: boolean }[] }) {
   return <>
-    <div className="sgc-share" aria-hidden="true" data-chart><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, share * 100))}%` }} /></div>
+    <div className="sgc-share" aria-hidden="true" data-chart suppressHydrationWarning><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, share * 100))}%` }} /></div>
     {ticks.length > 0 && <div className="sgc-ticks" aria-hidden="true">{ticks.map((t) => <span key={t.at} className={t.left ? "l" : ""} style={{ left: `${t.at * 100}%` }}><em>{t.label}</em></span>)}</div>}
   </>;
 }
@@ -161,7 +166,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
       <Side title="Luate pe rând" big={formatInt(s.acquisitions)} unit={s.allUnder ? (s.acquisitions === 1 ? "achiziție, sub plafon" : "achiziții, toate sub plafon") : "achiziții"}>
         {/* In motion: the axis, the ceiling and the 50% line stay; each purchase rises from 0, in their order, so the reader
             sees each one stop under the ceiling. The stagger is spread over the shown bars and capped. */}
-        <div className="sgc-ychart" data-chart>
+        <div className="sgc-ychart" data-chart suppressHydrationWarning>
           <div className="sgc-yaxis" aria-hidden="true"><span style={{ bottom: "100%" }}>plafonul</span><span style={{ bottom: "50%" }}>50%</span><span style={{ bottom: "0%" }}>0</span></div>
           <div className="sgc-cols" style={shown > 10 ? { "--chart-step": `calc(var(--chart-cap) / ${shown})` } as CSSProperties : undefined}><span className="sgc-ceil" style={{ bottom: "100%" }} /><span className="sgc-grid50" />
             {clusters.map(({ g, items: its }) => (
@@ -181,7 +186,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
       </Side>
       <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={splitRatioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
         {/* In motion: the ceiling stays; the groups rise together (groups, not a sequence). */}
-        <div className="sgc-groups" data-chart><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
+        <div className="sgc-groups" data-chart suppressHydrationWarning><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
             const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
             return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
@@ -195,7 +200,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
     </div>
     <CasesHead title={countWords(groups.length, "grup", "grupuri")} total={data.total} shown={groups.length} />
     {/* In motion: the rows on screen when the list comes into view grow their spark and their track, top to bottom. */}
-    <div className="sgc-cases" data-chart>
+    <div className="sgc-cases" data-chart suppressHydrationWarning>
       {groups.map((g, row) => {
         const inst = data.instances.find((x) => x.id === g.id)!;
         return (
@@ -259,16 +264,16 @@ function RoundCase({ data, items }: { data: SignalCase; items: NearCeiling[] }) 
     {expected != null && <div className="sgc-mirror">
       <Side title="Ne-am aștepta" big={`~${formatInt(expected)}`}
         unit={<Term tip className="sgc-unit-tip" title="Așteptate" text="Din achizițiile ei directe la 50–96% din plafon și raportul național pentru același tip și aceleași plafoane.">așteptate</Term>}>
-        <p className="sgc-dots exp cm-fade" aria-hidden="true" data-chart>{Array.from({ length: Math.min(expected, 80) }, (_, i) => <i key={i} />)}</p>
+        <p className="sgc-dots exp cm-fade" aria-hidden="true" data-chart suppressHydrationWarning>{Array.from({ length: Math.min(expected, 80) }, (_, i) => <i key={i} />)}</p>
       </Side>
       <Side title="Am găsit" big={formatInt(found)} unit={expected ? `de ${(found / Math.max(1, expected)).toFixed(1).replace(".", ",")} ori mai multe` : "achiziții la 96–100% din plafon"}>
-        <p className="sgc-dots cm-fade" aria-hidden="true" data-chart>{items.slice(0, 80).map((it, i) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)} edge={rowEdge(i)} />)}</p>
+        <p className="sgc-dots cm-fade" aria-hidden="true" data-chart suppressHydrationWarning>{items.slice(0, 80).map((it, i) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)} edge={rowEdge(i)} />)}</p>
       </Side>
     </div>}
     <section className="sgc-near" aria-label="Cât de aproape de plafon">
       <h3>Cât de aproape de plafon</h3>
       {/* In motion: the ceiling line and the counts stay; the dots appear where they are, together (one group). */}
-      <div className="sgc-swarm" style={{ height: `${Math.max(48, tall * 15 + (capped.length ? 40 : 24))}px` }} aria-hidden="true" data-chart>
+      <div className="sgc-swarm" style={{ height: `${Math.max(48, tall * 15 + (capped.length ? 40 : 24))}px` }} aria-hidden="true" data-chart suppressHydrationWarning>
         <span className="sgc-line" />
         <span className="sgc-swarm-dots cm-fade">
           {placed.filter((p) => p.level < STACK).map(({ it, left, level }) => <AcqDot key={it.id} it={it} rec={recs.get(it.id)}
@@ -326,7 +331,7 @@ function YearEndCase({ data }: { data: SignalCase }) {
       <Side title="Restul anului" big={pctWords(1 - top.y.share)} unit={formatRon(top.y.total - top.y.december)} />
     </div>
     <CasesHead title={countWords(years.length, "an", "ani")} total={data.total} shown={years.length} />
-    <div className="sgc-cases" data-chart>
+    <div className="sgc-cases" data-chart suppressHydrationWarning>
       {years.map(({ inst, y }, i) => {
         const dec = decemberRecords(inst.records, y.year);
         return (
@@ -442,7 +447,7 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
   }
   return <>
     <CasesHead title={countWords(data.total, "firmă", "firme")} total={data.total} shown={cases.length} />
-    <div className="sgc-cases" data-chart>
+    <div className="sgc-cases" data-chart suppressHydrationWarning>
       {cases.map(({ inst, m }, row) => {
         const age = firstMonthAge(m.ageDays);
         return (

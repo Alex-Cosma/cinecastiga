@@ -112,7 +112,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
           : "Niciun caz cu filtrele alese."}
         {!kept.length && filtered && <> <button type="button" className="sgc-link" onClick={() => { setUpdate(true); filters.replace({}); setPage(1); }}>Scoate filtrele</button></>}
       </p>
-      <table className="sgc-table" ref={table} data-chart>
+      <table className="sgc-table" ref={table} data-chart suppressHydrationWarning>
         <thead><tr>
           <th scope="col"><span className="th-filter">{partner}{funnel("partener")}</span></th>
           <th scope="col"><span className="th-filter">Data{funnel("data")}</span></th>
