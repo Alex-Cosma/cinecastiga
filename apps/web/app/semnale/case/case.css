@@ -330,3 +330,18 @@ a.dot{cursor:pointer}
 .sgc-hit{animation:sgc-hit 1.2s var(--ease, ease-out) both}
 @keyframes sgc-hit{from{background-color:var(--accent-soft)}to{background-color:transparent}}
 @media (prefers-reduced-motion:reduce){.sgc-hit{animation:none}}
+
+/* „Mulți bani contractați în decembrie”: December and the rest of the year in one bar (UX audit Z6-27). */
+.sgc-yband{margin:24px 0;padding:20px 22px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.sgc-yband .lg{display:flex;justify-content:space-between;gap:16px;margin-bottom:10px;font-size:14px;line-height:1.4;color:var(--ink2)}
+.sgc-yband .lg em{display:block;font-style:normal}
+.sgc-yband .lg b{display:block;font:700 30px/1.1 var(--display);letter-spacing:-.02em;color:var(--ink)}
+.sgc-yband .lg .r{text-align:right}.sgc-yband .lg .r b{color:var(--muted)}
+.sgc-yband .bar{position:relative;display:flex;height:22px;border-radius:6px;background:var(--line)}
+.sgc-yband .bar i{display:block;height:100%;border-radius:6px 0 0 6px;background:var(--accent)}
+.sgc-yband .bar s{position:absolute;top:-6px;bottom:-6px;border-left:2px dashed var(--ink)}
+.sgc-yband .tk{position:relative;height:22px;margin-top:6px;font-size:13px;line-height:1.4;color:var(--muted)}
+.sgc-yband .tk span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.sgc-yband .tk span.l{transform:none}.sgc-yband .tk span.r{transform:translateX(-100%)}
+.sgc-one>summary .sgc-mini,.sgc-one>summary .sgc-x,.sgc-one>summary .sgc-who small{display:none}
+@media (max-width:760px){.sgc-yband{padding:16px}.sgc-yband .lg b{font-size:26px}.sgc-yband .tk{height:auto}.sgc-yband .tk span{position:static;transform:none;white-space:normal}}

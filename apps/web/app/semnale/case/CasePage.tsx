@@ -328,18 +328,22 @@ function YearEndCase({ data }: { data: SignalCase }) {
   const top = years[0];
   if (!top) return null;
   return <>
-    <div className="sgc-mirror">
-      <Side title={`Decembrie ${top.y.year}`} big={pctWords(top.y.share)} unit={formatRon(top.y.december)}>
-        <ShareBar share={top.y.share} ticks={top.y.reference != null ? [{ at: top.y.reference, label: `pragul, ${pctWords(top.y.reference)}`, left: top.y.reference > 0.6 }] : []} />
-      </Side>
-      <Side title="Restul anului" big={pctWords(1 - top.y.share)} unit={formatRon(top.y.total - top.y.december)} />
-    </div>
-    <CasesHead title={countWords(years.length, "an", "ani")} total={data.total} shown={years.length} />
+    {/* December and the rest of the year in one bar across the page (UX audit Z6-27), the threshold of the institutions
+        of the same type marked on it; the comparison of 6 November 2026 stays, without an empty half. */}
+    <section className="sgc-yband" aria-label={`Decembrie ${top.y.year}: ${pctWords(top.y.share)}, ${formatRon(top.y.december)}; restul anului: ${pctWords(1 - top.y.share)}, ${formatRon(top.y.total - top.y.december)}${top.y.reference != null ? `; pragul: ${pctWords(top.y.reference)}` : ""}`}>
+      <div className="lg" aria-hidden="true"><span><em>Decembrie {top.y.year}</em><b>{pctWords(top.y.share)}</b>{formatRon(top.y.december)}</span>
+        <span className="r"><em>Restul anului</em><b>{pctWords(1 - top.y.share)}</b>{formatRon(top.y.total - top.y.december)}</span></div>
+      <div className="bar" aria-hidden="true" data-chart suppressHydrationWarning><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, top.y.share * 100))}%` }} />
+        {top.y.reference != null && <s style={{ left: `${top.y.reference * 100}%` }} />}</div>
+      {top.y.reference != null && <div className="tk" aria-hidden="true"><span className={top.y.reference > 0.7 ? "r" : top.y.reference < 0.15 ? "l" : ""} style={{ left: `${top.y.reference * 100}%` }}>pragul, {pctWords(top.y.reference)} la instituțiile de același tip</span></div>}
+    </section>
+    <CasesHead title={years.length === 1 ? `Achizițiile din decembrie ${top.y.year}` : countWords(years.length, "an", "ani")} total={data.total} shown={years.length} />
     <div className="sgc-cases" data-chart suppressHydrationWarning>
       {years.map(({ inst, y }, i) => {
         const dec = decemberRecords(inst.records, y.year);
+        // One year only: its card keeps the records; its bar and percent were the mirror's.
         return (
-          <details key={inst.id} id={`caz-${inst.id}`} className="sgc-case" open={i === 0} style={{ "--i": i } as CSSProperties}>
+          <details key={inst.id} id={`caz-${inst.id}`} className={`sgc-case${years.length === 1 ? " sgc-one" : ""}`} open={i === 0} style={{ "--i": i } as CSSProperties}>
             <summary>
               <span className="sgc-who"><b>{y.year}</b><small>decembrie: {formatRon(y.december)} din {formatRon(y.total)}</small></span>
               <span className="sgc-mini" aria-hidden="true"><span className="t"><i className="cm-x" style={{ width: `${y.share * 100}%` }} />{y.reference != null && <b style={{ left: `${y.reference * 100}%` }} />}</span></span>
