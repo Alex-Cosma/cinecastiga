@@ -14,7 +14,9 @@ import { writeAddress } from "@/lib/address";
 import { entityHref } from "@/lib/entity-href";
 import HospitalLayer from "./HospitalLayer";
 import { pupilRadius } from "./dots";
+import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
+import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
@@ -88,6 +90,18 @@ const FOLLOW_DELAY = 250;
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
 
+/** Brings a ranking row into view inside the list's own scroll (never the page's), clear of the bottom fade. */
+function followRow(list: HTMLElement | null, key: string, top = false) {
+  const row = list?.querySelector<HTMLElement>(`[data-key="${key}"]`);
+  if (!list || !row) return;
+  // Measured against the list itself (offsetTop counts from the page's positioned ancestor, which hid the top rows).
+  const at = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop, bottom = at + row.offsetHeight;
+  const to = top || at < list.scrollTop ? at - 8 : bottom > list.scrollTop + list.clientHeight - 44 ? bottom - list.clientHeight + 48 : null;
+  if (to === null) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  list.scrollTo({ top: Math.max(0, to), behavior: reduce ? "auto" : "smooth" });
+}
+
 function Pick({ label, text, title, children, wide = false, className }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean; className?: string }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -104,44 +118,55 @@ function Pick({ label, text, title, children, wide = false, className }: { label
 }
 
 type Initial = { ani?: string | undefined; cpv?: string | undefined; canal?: string | undefined; judet?: string | undefined; uat?: string | undefined; inst?: string | undefined; cu?: string | undefined };
+type AddressView = { years: Years; cpv: Years; dataset: MapDataset; kind: MapKind; withInst: boolean; county: string | null; uat: string | null };
+/** What the map keeps in its history entries: the view an entry was opened from. */
+type HistoryView = { mxBack?: { county: string | null; uat: string | null } | null };
+
+/** An address's parameters (a repeated one is ignored). */
+function addressOf(p: URLSearchParams): Initial {
+  const one = (key: string) => { const all = p.getAll(key); return all.length === 1 ? all[0] : undefined; };
+  return { ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat"), inst: one("inst"), cu: one("cu") };
+}
+const listOf = (raw: string | undefined, valid: RegExp): Years => {
+  const items = (raw ?? "").split(",").map((s) => s.trim()).filter((s) => valid.test(s));
+  return items.length ? [...new Set(items)].sort() : "all";
+};
+/** The view an address holds: on a first visit, and on Back or Forward. */
+function viewOf(a: Initial): AddressView {
+  const picked = a.ani === "toti" ? "all" : listOf(a.ani, /^20\d\d$/);
+  // No `ani`: a bare /harta opens on the last complete year; an older link that holds a view keeps the whole period.
+  const years = a.ani === "toti" || picked !== "all" ? picked : [a.judet, a.uat, a.cpv, a.canal, a.inst, a.cu].some(Boolean) ? "all" : [LAST_FULL];
+  const county = a.judet && /^[a-z-]{2,20}$/.test(a.judet) ? a.judet : null;
+  return {
+    years, cpv: listOf(a.cpv, /^\d\d$/), dataset: DATASETS.find((d) => d.url === a.canal)?.value ?? "all",
+    kind: a.inst === KIND_URL.hospitals ? "hospitals" : a.inst === KIND_URL.schools ? "schools" : "local_admin",
+    // The local administrations with their institutions: ticked unless `?cu=fara` (an old `?cu=institutii` still opens them).
+    withInst: a.cu !== "fara", county, uat: county && a.uat && /^\d{1,7}$/.test(a.uat) ? a.uat : null,
+  };
+}
 
 export default function MapExplorer({ initial }: { initial: Initial }) {
   // The address is the view. Back from a page opened here (a year of a UAT's panel) remounts the map from the
   // router's cache, whose props are the first visit's (often a bare /harta), while the address already holds the
   // county and the UAT that were open: the browser reads the address, the server its own copy of it.
-  const [start] = useState<Initial>(() => {
-    if (typeof window === "undefined") return initial;
-    const p = new URLSearchParams(window.location.search);
-    const one = (key: string) => { const all = p.getAll(key); return all.length === 1 ? all[0] : undefined; };
-    return { ani: one("ani"), cpv: one("cpv"), canal: one("canal"), judet: one("judet"), uat: one("uat"), inst: one("inst"), cu: one("cu") };
-  });
-  const parse = (raw: string | undefined, valid: RegExp): Years => {
-    const items = (raw ?? "").split(",").map((s) => s.trim()).filter((s) => valid.test(s));
-    return items.length ? [...new Set(items)].sort() : "all";
-  };
-  const [years, setYears] = useState<Years>(() => {
-    if (start.ani === "toti") return "all";
-    const picked = parse(start.ani, /^20\d\d$/);
-    if (picked !== "all") return picked;
-    // No `ani`: a bare /harta opens on the last complete year; an older link that holds a view keeps the whole period.
-    return [start.judet, start.uat, start.cpv, start.canal, start.inst, start.cu].some(Boolean) ? "all" : [LAST_FULL];
-  });
-  const [cpv, setCpv] = useState<Years>(() => parse(start.cpv, /^\d\d$/));
-  const [dataset, setDataset] = useState<MapDataset>(() => DATASETS.find((d) => d.url === start.canal)?.value ?? "all");
+  const [start] = useState<AddressView>(() => viewOf(typeof window === "undefined" ? initial : addressOf(new URLSearchParams(window.location.search))));
+  const [years, setYears] = useState<Years>(start.years);
+  const [cpv, setCpv] = useState<Years>(start.cpv);
+  const [dataset, setDataset] = useState<MapDataset>(start.dataset);
   // The kind of institution (owner, 8 November 2026): the local administrations, the public hospitals (`?inst=spitale`)
   // or the public schools (`?inst=scoli`).
-  const [kind, setKind] = useState<MapKind>(() => (start.inst === KIND_URL.hospitals ? "hospitals" : start.inst === KIND_URL.schools ? "schools" : "local_admin"));
+  const [kind, setKind] = useState<MapKind>(start.kind);
   const hospitals = kind === "hospitals", schools = kind === "schools";
   // Hospitals and schools: circles inside a county, each in its UAT, with their list beside the map.
   const dots = isDotted(kind);
   // The local administrations with their institutions (owner, 8 November 2026): a checkbox under "Primării și consilii
   // județene" in the kind's window, ticked by default; `?cu=fara` without them (an old `?cu=institutii` still opens them).
-  const [withInst, setWithInst] = useState<boolean>(() => start.cu !== "fara");
+  const [withInst, setWithInst] = useState<boolean>(start.withInst);
   const sub = kind === "local_admin" && withInst;
   const router = useRouter();
-  const [county, setCounty] = useState<string | null>(start.judet && /^[a-z-]{2,20}$/.test(start.judet) ? start.judet : null);
+  const [county, setCounty] = useState<string | null>(start.county);
   // The UAT whose panel is open (owner, 6 November 2026): its SIRUTA, inside the open county.
-  const [uat, setUat] = useState<string | null>(start.judet && start.uat && /^\d{1,7}$/.test(start.uat) ? start.uat : null);
+  const [uat, setUat] = useState<string | null>(start.uat);
   const [geo, setGeo] = useState<Geo | null>(null);
   const [countyGeo, setCountyGeo] = useState<Record<string, CountyGeo>>({});
   const [options, setOptions] = useState<MapOptions | null>(null);
@@ -158,6 +183,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // Phones show the first 15 of the ranking (owner: no long phone lists); a county change folds it again.
   const [unfolded, setUnfolded] = useState<string | null>(null);
   const listRef = useRef<HTMLOListElement>(null);
+  // What the search chose (Z4-01): its name stays in the field while the map shows it; a hospital or a school stays lit.
+  const [found, setFound] = useState<{ label: string; county: string; uat: string | null; kind: MapKind; key: string | null } | null>(null);
   // Where the hover came from: only the map's scrolls the ranking (a row under the pointer must never move away).
   const fromMap = useRef(false);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -202,14 +229,24 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nationalKey, localKey, retry]);
-  // Back closes a county opened by a click (its own history entry); the breadcrumb and Escape do the same.
+  // Back closes a county opened by a click (its own history entry); the breadcrumb and Escape do the same. Each entry
+  // the map adds remembers the view it was opened from (`mxBack` in the entry's state), so closing back to exactly that
+  // view goes back to that entry instead of writing a second copy of it (UX audit: X on a panel, then Back, did nothing).
   const fromPop = useRef(false);
+  /** A close that went Back: the entry it lands on gives only the county and the UAT; the filters stay as they are. */
+  const closing = useRef(false);
+  /** The next write is a new entry even without a new county or UAT (a choice in the search). */
+  const pushNext = useRef(false);
   const shownCounty = useRef<string | null>(county);
   const shownUat = useRef<string | null>(uat);
   useEffect(() => {
     const onPop = () => {
-      const p = new URLSearchParams(window.location.search), j = p.get("judet"), u = p.get("uat");
-      fromPop.current = true; setCounty(j && /^[a-z-]{2,20}$/.test(j) ? j : null); setUat(j && u && /^\d{1,7}$/.test(u) ? u : null);
+      const v = viewOf(addressOf(new URLSearchParams(window.location.search)));
+      fromPop.current = true;
+      setCounty(v.county); setUat(v.uat);
+      if (closing.current) { closing.current = false; return; }
+      // Back or Forward over an entry the search added may change the layer and its filters too.
+      setKind(v.kind); setWithInst(v.withInst); setYears(v.years); setCpv(v.cpv); setDataset(v.dataset);
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
@@ -228,16 +265,25 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     if (county && uat) p.set("uat", uat);
     const q = p.toString(), url = `${window.location.pathname}${q ? `?${q}` : ""}`;
     // Opening a county or a UAT's panel is a history entry: Back closes it.
-    const opened = !fromPop.current && ((county !== null && county !== shownCounty.current) || (uat !== null && uat !== shownUat.current));
-    writeAddress(url, opened ? "push" : "replace");
-    shownCounty.current = county; shownUat.current = uat; fromPop.current = false;
+    const opened = !fromPop.current && (pushNext.current || (county !== null && county !== shownCounty.current) || (uat !== null && uat !== shownUat.current));
+    const back = opened ? { county: shownCounty.current, uat: shownUat.current } : (window.history.state as HistoryView | null)?.mxBack ?? null;
+    writeAddress(url, opened ? "push" : "replace", { mxBack: back });
+    shownCounty.current = county; shownUat.current = uat; fromPop.current = false; pushNext.current = false;
   }, [years, cpv, dataset, county, uat, kind, sub]);
+  /** Closes the panel (to its county) or the county (to the country): Back when this entry was opened from exactly there. */
+  const closeTo = (to: string | null) => {
+    const back = (window.history.state as HistoryView | null)?.mxBack;
+    if (back && back.county === to && back.uat === null) { closing.current = true; window.history.back(); return; }
+    setUat(null); setCounty(to);
+  };
+  const closeRef = useRef(closeTo);
+  closeRef.current = closeTo;
   // Escape steps back to the country.
   useEffect(() => {
     if (!county) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || document.querySelector("dialog[open]")) return;
-      if (uat) setUat(null); else setCounty(null);
+      closeRef.current(uat ? county : null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -341,20 +387,19 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // the row instead of jumping. The row's highlight, the outline and the card stay instant.
   useEffect(() => {
     if (!hover || !fromMap.current) return;
-    const timer = window.setTimeout(() => {
-      const list = listRef.current;
-      const row = list?.querySelector<HTMLElement>(`[data-key="${hover}"]`);
-      if (!list || !row) return;
-      // Measured against the list itself (offsetTop counts from the page's positioned ancestor, which hid the top rows);
-      // the bottom keeps clear of the fade.
-      const top = row.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop, bottom = top + row.offsetHeight;
-      const to = top < list.scrollTop ? top - 8 : bottom > list.scrollTop + list.clientHeight - 44 ? bottom - list.clientHeight + 48 : null;
-      if (to === null) return;
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      list.scrollTo({ top: Math.max(0, to), behavior: reduce ? "auto" : "smooth" });
-    }, FOLLOW_DELAY);
+    const timer = window.setTimeout(() => followRow(listRef.current, hover), FOLLOW_DELAY);
     return () => window.clearTimeout(timer);
   }, [hover]);
+  // A hospital or a school chosen in the search: its row comes into view (unfolded on phones) once the list is in.
+  const choice = found && found.county === county && found.kind === kind && (found.uat === null || found.uat === uat) ? found : null;
+  const lit = choice?.key ?? null;
+  useEffect(() => {
+    if (!lit || !level) return;
+    if (ranked.findIndex((a) => a.key === lit) >= 15) setUnfolded(county ?? "");
+    const frame = window.requestAnimationFrame(() => followRow(listRef.current, lit, true));
+    return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lit, level]);
 
   function track(event: ReactPointerEvent<HTMLDivElement>) {
     const rect = stageRef.current?.getBoundingClientRect();
@@ -362,6 +407,15 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   }
   const openCounty = (key: string) => { setHover(null); setUat(null); setCounty(key); };
   const openUat = (key: string) => { setHover(key); setUat(key); };
+  const pickPlace = (p: MapSearchPlace) => {
+    const siruta = p.siruta === BUCHAREST_CITY ? null : String(p.siruta);
+    pushNext.current = true; setHover(null); setKind("local_admin"); setCounty(p.county); setUat(siruta);
+    setFound({ label: p.name, county: p.county, uat: siruta, kind: "local_admin", key: null });
+  };
+  const pickInstitution = (i: MapSearchInstitution) => {
+    pushNext.current = true; setHover(null); setUat(null); setKind(i.kind); setCounty(i.county);
+    setFound({ label: i.name, county: i.county, uat: null, kind: i.kind, key: i.key });
+  };
 
   // Hospitals and schools: only 2025 alone has lei per bed or per pupil (owner, 8 November 2026), and the year's choice says so.
   const yearDetail = (year: string) => Number(year) >= new Date().getFullYear() ? "an în curs, incomplet"
@@ -412,6 +466,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     </header>
 
     <div className="mx-filters" role="group" aria-label="Ce arată harta">
+      <MapSearch chosen={choice?.label ?? null} onPlace={pickPlace} onInstitution={pickInstitution} />
       <Pick label="Instituții" text={sub ? "Primării și CJ, cu instituțiile lor" : KIND_WORDS[kind].button} title="Ce instituții?" className="mx-pick--kind">
         <OptionList label="Instituții" value={kind} options={KINDS}
           onChange={(v) => { if (v === "local_admin" || v === "hospitals" || v === "schools") { setKind(v); setUat(null); setHover(null); } }}
@@ -437,7 +492,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
 
     {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div className={`mx-body${county && uat && !dots ? " has-panel" : ""}`}>
       <section className={`mx-stage${busy ? " is-busy" : ""}`} aria-label={county ? `Harta județului ${countyName}` : "Harta României pe județe"}>
-        {county && <p className="mx-crumb"><button type="button" onClick={() => { setUat(null); setCounty(null); }}><Arrow back /> România</button><span>· {countyName}</span></p>}
+        {county && <p className="mx-crumb"><button type="button" onClick={() => closeTo(null)}><Arrow back /> România</button><span>· {countyName}</span></p>}
         <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}>
           {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" className={stale ? "g-stale" : undefined}
             aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${whoWords}, ${periodWords}, ${cpvWords}${channelWords}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli și grădinițe"}.` : "Clasamentul de alături are aceleași cifre."}`}>
@@ -464,7 +519,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {county && uatGeo && dots && unit > 0 && <HospitalLayer key={`${kind}:${county}`} uats={uatGeo.uats} hospitals={loc?.areas ?? []} city={cityCentre} unit={unit}
               radius={schools ? byPupils : undefined}
               // A circle never fades into the backdrop: its ramp starts at 22% (the counties' at 7%).
-              ready={loc !== null} hover={hover} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
+              ready={loc !== null} hover={hover ?? lit} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
           </svg>}
           {shown && pointer && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
@@ -506,7 +561,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             const total = metric === "perBed" || metric === "perPupil" ? <span className="mx-v2" title="total contractat">{a.value === null ? "—" : short(a.value)}</span> : null;
             // A county's hospital or school (owner, 8 November 2026): its name is the link to its page; the row lights its circle.
             if (county && dots) return <li key={a.key} data-key={a.key}>
-              <div className={`mx-row${hover === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
+              <div className={`mx-row${(hover ?? lit) === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
                 onFocus={() => { fromMap.current = false; setHover(a.key); }} onBlur={() => setHover(null)}>
                 <span className="mx-n">{gap ? "" : i + 1}</span>
                 <span className="mx-name"><EntityName id={a.entityId} className="mx-clamp" title={a.name}>{a.name}</EntityName><small>{schools ? (a.pupils ? withDe(a.pupils, "elev", "elevi") : "fără elevi în lista ministerului") : a.beds ? withDe(a.beds, "pat", "paturi") : "fără paturi în lista CNAS"}</small></span>
@@ -541,7 +596,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
       {county && uat && !dots && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
-        onClose={() => setUat(null)} onPick={openUat} />}
+        onClose={() => closeTo(county)} onPick={openUat} />}
     </div>}
     {stale && <FloatStatus>Se încarcă…</FloatStatus>}
   </div>;
@@ -567,6 +622,9 @@ function DotCard({ a, metric, county, schools }: { a: MapArea; metric: MapMetric
 
 /** A school's circle, by its pupils (one function, so the packing is not redone on every render). */
 const byPupils = (a: MapArea): number => pupilRadius(a.pupils);
+
+/** București as a whole (its city hall): no shape of its own, so the search opens the city (lib/map-capita.ts). */
+const BUCHAREST_CITY = 179132;
 
 /** The ramp's base tint: an area at zero lei, and every area of a layer whose numbers are not in yet. */
 const BASE = { fillOpacity: 0.07 } as const;
