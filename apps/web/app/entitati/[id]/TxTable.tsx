@@ -1,5 +1,6 @@
 "use client";
 
+import { useChangedMark } from "../../../components/motion/changed";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -153,6 +154,8 @@ export default function TxTable({
   // The status line keeps the shown rows' words while others load (the floating status says it is loading), so it
   // neither changes length nor is read out twice.
   const line = loading ? null : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, page, pages, filters.state);
+  // A year or a filter that changes how many records there are marks the line once (M-05); a page turn does not.
+  useChangedMark(status, loading || error ? null : total, entityId);
   const [shownLine, setShownLine] = useState(line);
   if (line !== null && line !== shownLine) setShownLine(line);
   // A new page starts under the sticky header and tabs, where the reader left the old one's first row, not at its

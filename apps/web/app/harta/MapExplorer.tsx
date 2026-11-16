@@ -21,6 +21,7 @@ import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
 import { SelectPath, useLeaving } from "../../components/motion/Selection";
 import WorkLine from "../../components/motion/WorkLine";
+import { useChangedMark } from "../../components/motion/changed";
 import { EASE_CAMERA } from "../../components/motion/outline";
 import { chartPace } from "../../components/motion/pace";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
@@ -456,6 +457,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   // A hospital or a school chosen in the search: its row comes into view (unfolded on phones) once the list is in.
   const choice = found && found.county === county && found.kind === kind && (found.uat === null || found.uat === uat) ? found : null;
   const lit = choice?.key ?? null;
+  // The lede's figure changed by the institutions, the period or the domains, for the same place: marked once (M-05).
+  const averageRef = useRef<HTMLElement>(null);
+  useChangedMark(averageRef, average === null ? null : say(average), county ?? "");
   // eslint-disable-next-line react-hooks/exhaustive-deps -- the time is taken when the search chooses
   const litDur = useMemo(drawTime, [lit]);
   useEffect(() => {
@@ -526,7 +530,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           sit behind „Filtre” on phones. The whole sentence (who, period, domains) stays in the map's label. */}
       <p className="mx-lede">{average !== null || !nat ? <span className={natStale ? "g-stale" : undefined}>{dots
           ? (county ? countyName : metric === "perBed" || metric === "perPupil" ? "Media țării" : "În total")
-          : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}, {periodWords}{narrowWords}.</span>
+          : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b ref={averageRef}>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}, {periodWords}{narrowWords}.</span>
         : <>{whoWords}, {periodWords}{narrowWords}.</>}
         {/* The comparable figure one click away (UX audit Z4-07): lei per bed or per pupil exist for 2025 alone; the period stays the reader's. */}
         {dots && metric === "value" && <> <button type="button" className="mx-lede-go" onClick={() => setYears([hospitals ? BEDS_YEAR : PUPILS_YEAR])}>{hospitals ? `Lei pe pat, ${BEDS_YEAR}` : `Lei pe elev, ${PUPILS_YEAR}`} ›</button></>}</p>

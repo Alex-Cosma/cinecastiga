@@ -1,6 +1,7 @@
 "use client";
 
 import { OUTLINE_MS, arrive } from "../../components/motion/outline";
+import { markChanged } from "../../components/motion/changed";
 import { useEffect } from "react";
 /** The check drawn on a button that copied (outline.css .mo-done-check, M-08). */
 const CHECK = '<svg class="mo-done-check" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 8.5l3.2 3L13 4.5" pathLength="1"/></svg>';
@@ -130,6 +131,9 @@ function mount(root: HTMLElement): () => void {
     const s = n ? score(st) : 0;
     const tot = q("#lg-tot");
     if (!tot) return;
+    // The score changed by the next pattern is marked once (M-05): the number is never counted up.
+    if (tot.textContent !== String(s) && tot.dataset.shown) markChanged(tot);
+    tot.dataset.shown = "1";
     tot.textContent = String(s);
     const g = q("#lg-g");
     if (g) g.style.width = s + "%";

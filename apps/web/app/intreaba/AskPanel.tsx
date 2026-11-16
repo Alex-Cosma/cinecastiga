@@ -106,6 +106,7 @@ import AnswerExports from "./AnswerExports";
 import { SelectTrace } from "../../components/motion/Selection";
 import { useFlag } from "../../components/motion/Done";
 import WorkLine from "../../components/motion/WorkLine";
+import { useChangedMark } from "../../components/motion/changed";
 import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
@@ -2231,10 +2232,13 @@ function StatBlock({
     byStream?: { src: "da" | "contracts"; value: number; count: number }[];
   };
 }) {
+  // The figure changed by a filter for the same question is marked once (M-05); another subject remounts it.
+  const figure = useRef<HTMLDivElement>(null), shown = measure === "count" ? formatInt(stat.count) : formatRon(stat.value);
+  useChangedMark(figure, shown);
   return (
     <div className="ask-bigstat">
-      <div className="v">
-        {measure === "count" ? formatInt(stat.count) : formatRon(stat.value)}
+      <div className="v" ref={figure}>
+        {shown}
       </div>
       {/* Z3-27: one line under the figure, the caveat beside it; the channels are „Din care”'s first rows (StatMix). */}
       <div className="d">
