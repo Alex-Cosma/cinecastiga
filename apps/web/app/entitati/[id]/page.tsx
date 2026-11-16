@@ -29,6 +29,7 @@ import { parseSignalState, signalTypeCountLabel, signalUrl, withoutRole } from "
 import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_HISTORIC_MONTHS, RISK_MIN_DAS, RISK_SCORE_NOTE, riskBand, riskFact, riskHistoric, riskLabel, riskNoScoreReason, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
 import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
+import { lastMonthWords } from "@/lib/ask/historic";
 import { getRegistryNames } from "@/lib/registry-names";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import { successorOf } from "@/lib/entity-successors";
@@ -201,11 +202,14 @@ export default async function EntityPage({
   // The buyer's regime or an in-house firm (rf-2026.20): a hover next to the score.
   const scoreNote = row.scoreNote ? RISK_SCORE_NOTE[row.scoreNote] ?? null : null;
   // rf-2026.22 (S8): no record in this role for 24 months reads "Inactiv"; the score and its evidence stay.
-  const historic = riskHistoric(profile?.roles.find((r) => r.role === role)?.lastActivity);
+  const lastActivity = profile?.roles.find((r) => r.role === role)?.lastActivity ?? null;
+  const historic = riskHistoric(lastActivity);
   // The header's tags (owner, 6 November 2026): the score's note, then inactivity.
-  const headFlags = [
+  const headFlags: { title: string; text: string; label?: string }[] = [
     ...(scoreNote ? [scoreNote] : []),
-    ...(historic ? [{ title: "Inactiv", text: `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.` }] : []),
+    // In Ask's words, with the month of the last record (UX audit Z5-15, 16 November 2026); its explanation unchanged.
+    ...(historic ? [{ title: "Inactiv", label: lastActivity && lastMonthWords(lastActivity) ? `Inactiv · ultima ${lastMonthWords(lastActivity)}` : "Inactiv",
+      text: `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.` }] : []),
   ];
   // rf-2026.22 (S4b, S9b, S10): why a profile with signals has no score.
   const noScoreReason = hasRiskScore ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score: row.score }) : null;
@@ -256,13 +260,9 @@ export default async function EntityPage({
   return (
     <>
       {/* Identity */}
-      <div className={`ehead${headFlags.length ? ` has-flags n${headFlags.length}` : ""}`} id="top">
-        {/* Tags on the role's line, each with its reason on hover or tap (owner, 6 November 2026): the buyer's regime or an
-            in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
-        {headFlags.length > 0 && <div className="ehead-flags">
-          {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.title}</Term>)}
-        </div>}
+      <div className="ehead" id="top">
         <div className="ehead-main">
+          <div className="ehead-role">
           {/* An entity that both buys and sells: its two roles are tabs in the role line's place, each with its records
               (UX audit Z5-13, 16 November 2026); a public company or a foreign firm keeps those words in the line under the name. */}
           {bothRoles ? (
@@ -285,6 +285,12 @@ export default async function EntityPage({
               {profile?.isForeign ? ` · ${entityCountryLabel(true, profile.countryCode)}` : ""}
             </p>
           )}
+          {/* Tags beside the role, each with its reason on hover or tap (owner, 6 November 2026; beside the role since UX audit
+              Z5-15): the buyer's regime or an in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
+          {headFlags.length > 0 && <div className="ehead-flags">
+            {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.label ?? f.title}</Term>)}
+          </div>}
+          </div>
           <h1 className="page-title">{cleanName(row.name)}</h1>
           <div className="id-meta">
             {bothRoles && (profile?.isPublicCompany || profile?.isForeign) ? (

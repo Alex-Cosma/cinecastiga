@@ -30,8 +30,11 @@ function lineReach(x: number): number {
  */
 export default function EntityYears({ model, title }: { model: YearsModel; title: string }) {
   const n = model.bars.length;
+  // The years with something to show; the silent ones after them are drawn empty, named, and lead nowhere (UX audit Z5-15).
+  const live = model.bars.filter((b) => !b.silent).length;
+  const silent = n - live;
   const [active, setActive] = useState<number | null>(null);
-  const [focusable, setFocusable] = useState(n - 1);
+  const [focusable, setFocusable] = useState(live - 1);
   const [left, setLeft] = useState(0);
   const area = useRef<HTMLDivElement>(null);
   const tip = useRef<HTMLDivElement>(null);
@@ -65,8 +68,8 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
     setActive(null);
   };
   const move = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
-    const to = e.key === "ArrowRight" ? Math.min(n - 1, i + 1) : e.key === "ArrowLeft" ? Math.max(0, i - 1)
-      : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : null;
+    const to = e.key === "ArrowRight" ? Math.min(live - 1, i + 1) : e.key === "ArrowLeft" ? Math.max(0, i - 1)
+      : e.key === "Home" ? 0 : e.key === "End" ? live - 1 : null;
     if (to === null) return;
     e.preventDefault();
     setFocusable(to);
@@ -87,6 +90,7 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
           {model.ticks.map((t) => <i key={t.pct} className="ent-years-grid" style={{ bottom: `${t.pct}%` }} aria-hidden="true" />)}
           <div className="ent-years-cols">
             {model.bars.map((b, i) => {
+              if (b.silent) return <span key={b.year} className="ent-years-col is-silent" aria-hidden="true" />;
               const w = yearWords(b);
               return (
                 <button
@@ -125,6 +129,12 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
               : <i key={b.year} className="ent-years-dot cm-fade" aria-hidden="true" style={{ left: `${center(i)}%`, bottom: `${b.turnoverPct}%`,
                   "--cm-d": `calc(var(--years-draw) + var(--chart-in) * ${lineReach(center(i) / 100).toFixed(3)})` } as CSSProperties} />)}
           </>}
+          {silent > 0 && (
+            <div className="ent-years-silence" style={{ left: `${(live / n) * 100}%`, width: `${(silent / n) * 100}%` }}>
+              {/* One year is too narrow for the words: its dashed baseline says it, the words are for screen readers. */}
+              <span className={silent === 1 ? "sr-only" : undefined}>nicio înregistrare<span className="sr-only"> în {silent === 1 ? model.bars[live]!.year : `${model.bars[live]!.year}–${model.bars[n - 1]!.year}`}</span></span>
+            </div>
+          )}
           {words && active !== null && (
             <div ref={tip} className="ent-years-tip" style={{ left }} aria-hidden="true">
               <b>{words.head}</b>

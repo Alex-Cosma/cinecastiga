@@ -21,6 +21,8 @@ export interface YearBar {
   daPct: number; ctPct: number;
   turnover: number | null; turnoverPct: number | null;
   partial: boolean;
+  /** A year after the last one with records, up to the current one (UX audit Z5-15): drawn empty and named. */
+  silent: boolean;
 }
 export interface YearsModel { bars: YearBar[]; ticks: { label: string; pct: number }[]; turnover: boolean }
 
@@ -41,13 +43,14 @@ export function axisLabel(v: number): string {
 }
 
 /**
- * The chart from the years with records: every calendar year from the first to the last (a year without records is a
- * gap, never skipped), the turnover of those years only, and a scale over both so the line and the bars share one axis.
+ * The chart from the years with records: every calendar year from the first to the current one (a year without records
+ * is a gap, never skipped; the years after the last record are `silent`, so a silence shows: UX audit Z5-15,
+ * 16 November 2026), the turnover of those years only, and a scale over both so the line and the bars share one axis.
  */
 export function yearsModel(years: readonly EntityYear[], turnover: readonly { year: number; value: number }[] | null, currentYear: number): YearsModel | null {
   const withRecords = years.filter((y) => y.nDa + y.nCt > 0);
   if (withRecords.length === 0) return null;
-  const first = withRecords[0]!.year, last = withRecords.at(-1)!.year;
+  const first = withRecords[0]!.year, lastRecord = withRecords.at(-1)!.year, last = Math.max(lastRecord, currentYear);
   const byYear = new Map(years.map((y) => [y.year, y]));
   const turnoverByYear = new Map((turnover ?? []).map((t) => [t.year, t.value]));
   const rows = Array.from({ length: last - first + 1 }, (_, i) => {
@@ -58,7 +61,8 @@ export function yearsModel(years: readonly EntityYear[], turnover: readonly { ye
   const top = niceTop(Math.max(...rows.map((r) => Math.max(r.total, r.turnover ?? 0))));
   const pct = (v: number) => Math.round((v / top) * 1000) / 10;
   return {
-    bars: rows.map((r) => ({ ...r, daPct: pct(r.valueDa), ctPct: pct(r.valueCt), turnoverPct: r.turnover === null ? null : pct(r.turnover), partial: r.year === currentYear })),
+    bars: rows.map((r) => ({ ...r, daPct: pct(r.valueDa), ctPct: pct(r.valueCt), turnoverPct: r.turnover === null ? null : pct(r.turnover),
+      partial: r.year === currentYear, silent: r.year > lastRecord })),
     ticks: [0, top / 2, top].map((v) => ({ label: axisLabel(v), pct: pct(v) })),
     turnover: rows.some((r) => r.turnover !== null),
   };

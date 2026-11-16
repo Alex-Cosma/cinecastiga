@@ -41,6 +41,16 @@ describe("the entity's years", () => {
     expect(yearsModel([{ year: 2020, nDa: 0, valueDa: "0", nCt: 0, valueCt: "0" }], null, 2026)).toBeNull();
   });
 
+  it("runs to the current year, the years after the last record silent (UX audit Z5-15)", () => {
+    const model = yearsModel(AGNITA.slice(0, 2), null, 2026)!;
+    expect(model.bars.map((b) => b.year)).toEqual([2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026]);
+    expect(model.bars.filter((b) => b.silent).map((b) => b.year)).toEqual([2022, 2023, 2024, 2025, 2026]);
+    // A gap between two years with records is not a silence.
+    expect(model.bars[1]!.silent).toBe(false);
+    expect(model.bars.at(-1)).toMatchObject({ partial: true, silent: true });
+    expect(yearsModel(AGNITA, null, 2026)!.bars.some((b) => b.silent)).toBe(false);
+  });
+
   it("says a year as its tip does, the numerals with „de” from 20", () => {
     const model = yearsModel(AGNITA, [{ year: 2026, value: 2_000_000 }], 2026)!;
     expect(yearWords(model.bars[3]!)).toEqual({ head: "2021 · 3,9 mil. lei", da: "497 de achiziții directe · 1,5 mil. lei", ct: "6 contracte · 2,4 mil. lei", turnover: null });
