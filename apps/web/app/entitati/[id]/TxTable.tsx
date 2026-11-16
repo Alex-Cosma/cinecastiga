@@ -247,6 +247,8 @@ export default function TxTable({
                   {t.cpvName ?? t.cpvCode ?? "—"}
                 </td>
                 <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}`}>
+                  {/* The value and its warning together: on a phone's card they sit at the right of its first line (Z5-24). */}
+                  <span className="c-val-main">
                   <span title={exact}>{formatRonFull(t.closingValue)}</span>
                   {t.valueSuspect && (
                     <span
@@ -265,6 +267,7 @@ export default function TxTable({
                       ⚠
                     </span>
                   )}
+                  </span>
                   {isConsortium(t.nWinners) && (
                     <span className="cons-line" title={consortiumExplanation(t.nWinners)}>
                       {consortiumShareLabel(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)}
