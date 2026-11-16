@@ -113,3 +113,26 @@
   .ia-builder-collapsed > .ia-ask-again { padding-inline: 12px; }
 }
 
+
+/* Z2-08 (UX audit, 16 November 2026): suggestions under the question box while a name is typed after its cue word
+   („firma”, „spitalul”, „primăria”, „în”). The field wraps the input so the list hangs under the input only; on phones
+   it covers the „Întreabă” button (the keyboard's search key still asks) and shows four rows. */
+.ia-field { position: relative; display: flex; flex: 1; min-width: 0; }
+.ia-field > input { flex: 1; width: 100%; }
+.ia-sug { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 30; box-sizing: border-box; padding: 6px; background: var(--surface); border: 1px solid var(--line2, var(--line)); border-radius: 10px; box-shadow: var(--shadow2); }
+.ia-sug ul { list-style: none; margin: 0; padding: 0; }
+.ia-sug-h { margin: 6px 10px 4px !important; font: 600 11px/1.2 var(--body) !important; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ia-sug-i { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 44px; padding: 12px 10px; box-sizing: border-box; border-radius: 8px; cursor: pointer; }
+.ia-sug-i[aria-selected="true"] { background: var(--accent-soft); }
+@media (hover: hover) { .ia-sug-i:hover { background: var(--accent-soft); } }
+.ia-sug-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 14px/1.3 var(--body); color: var(--ink); }
+.ia-sug-n mark { background: none; color: var(--accent); font-weight: 700; }
+.ia-sug-m { flex: none; font: 400 12px/1.3 var(--body); color: var(--muted); }
+.ia-sug-f { margin: 4px 10px 6px !important; padding-top: 8px; border-top: 1px solid var(--line); font: 400 12px/1.4 var(--body) !important; color: var(--muted); max-width: none !important; }
+.ia-sug-f kbd { padding: 0 4px; border: 1px solid var(--line2, var(--line)); border-radius: 4px; font: 600 12px/1.4 var(--body); color: var(--ink2); }
+@media (max-width: 700px) {
+  .ia-field { flex: none; width: 100%; }
+  .ia-sug-i { flex-direction: column; align-items: flex-start; gap: 2px; min-height: 52px; padding: 8px 10px; }
+  .ia-sug-n { white-space: normal; overflow-wrap: anywhere; }
+  .ia-sug-i:nth-child(n + 5) { display: none; }
+}

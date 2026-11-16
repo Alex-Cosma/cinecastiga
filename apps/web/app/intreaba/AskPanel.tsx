@@ -104,6 +104,7 @@ import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
 import { understoodLine } from "./intent-line";
+import { pinnedChoice, type SuggestPin } from "./ask-suggest";
 import AnswerPills from "./answer/AnswerPills";
 import type { AskExample } from "./ask-examples";
 import "./ask-intent.css";
@@ -524,7 +525,7 @@ export default function AskPanel({
     });
   }, [execute]);
   /** `scroll`: false for the question the page opened with (`?q=`), whose answer is already in view under it. */
-  const interpret = useCallback(async (raw: string, fromHistory = false, scroll = true) => {
+  const interpret = useCallback(async (raw: string, fromHistory = false, scroll = true, pin: SuggestPin | null = null) => {
     const text = raw.replace(/\s+/g, " ").trim().slice(0, MAX_QUESTION_CHARS);
     if (text.length < 2) return;
     intentRequest.current?.abort();
@@ -546,7 +547,10 @@ export default function AskPanel({
       setResp(null);
       setError(null);
       setEvidence(null);
+      // A firm or institution picked from the box's suggestions is the person's pick among its namesakes (Z2-08).
+      const pinned = shouldAutoRun(body) ? null : pinnedChoice(body, pin, text);
       if (shouldAutoRun(body)) adopt({ spec: body.spec!, sentence: body.sentence! }, scroll);
+      else if (pinned) adopt(pinned, scroll);
       else {
         setChosen(null);
         setBuilderInit(null);
@@ -1070,7 +1074,7 @@ export default function AskPanel({
       <header className="cq-workspace-header ia-head" hidden={askFolded}>
         <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
-      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
+      <AskBox value={askText} onChange={setAskText} onSubmit={(text, pin) => void interpret(text, false, true, pin)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
       <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}

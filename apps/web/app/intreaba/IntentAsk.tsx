@@ -8,6 +8,8 @@ import type { IntentChoice, UnderstoodLine } from "./intent-line";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AskExampleArt from "./AskExampleArt";
 import RowMenu from "./answer/RowMenu";
+import { AskSuggestList, useAskSuggest } from "./AskSuggest";
+import type { SuggestPin } from "./ask-suggest";
 
 export type { IntentChoice } from "./intent-line";
 
@@ -16,7 +18,8 @@ export const MAX_QUESTION_CHARS = 300;
 export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild }: {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: (value: string) => void;
+  /** `pin`: the firm or institution picked from the suggestions, while its exact name is in the words (Z2-08). */
+  onSubmit: (value: string, pin: SuggestPin | null) => void;
   loading: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   /** An answer on screen folds the box into „Întreabă altceva…” (AskPanel). */
@@ -24,20 +27,29 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
   /** Opens the step-by-step builder; absent while it is open. Its door is here, under the box (owner, 16 November 2026). */
   onBuild?: (() => void) | undefined;
 }) {
+  const suggest = useAskSuggest(value, onChange, inputRef);
   return (
-    <form className="ia-ask" role="search" hidden={hidden} onSubmit={(event) => { event.preventDefault(); onSubmit(value); }}>
+    <form className="ia-ask" role="search" hidden={hidden} onSubmit={(event) => { event.preventDefault(); suggest.close(); onSubmit(value, suggest.pin.current); }}>
       <div className="ia-row">
-        <input
-          id="ia-question"
-          ref={inputRef}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder="de exemplu: cine face iluminatul în Buzău și cât costă"
-          autoComplete="off"
-          enterKeyHint="search"
-          maxLength={MAX_QUESTION_CHARS}
-          aria-describedby="ia-help"
-        />
+        <div className="ia-field">
+          <input
+            id="ia-question"
+            ref={inputRef}
+            value={value}
+            onChange={(event) => {
+              const input = event.target;
+              onChange(input.value);
+              suggest.onInput(input.value, input.selectionEnd === input.value.length);
+            }}
+            placeholder="de exemplu: cine face iluminatul în Buzău și cât costă"
+            autoComplete="off"
+            enterKeyHint="search"
+            maxLength={MAX_QUESTION_CHARS}
+            aria-describedby="ia-help"
+            {...suggest.inputProps}
+          />
+          {!hidden && !loading && <AskSuggestList suggest={suggest} />}
+        </div>
         <button type="submit" disabled={loading || value.trim().length < 2}>{loading ? "Citesc întrebarea…" : "Întreabă"}</button>
       </div>
       <p id="ia-help" className="ia-help">Scrie ce, unde, când.{onBuild && <> · <button type="button" className="ia-build-link" onClick={onBuild}>sau construiește pas cu pas →</button></>}</p>
