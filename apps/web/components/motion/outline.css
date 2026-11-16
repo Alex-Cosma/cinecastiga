@@ -91,6 +91,10 @@
 .mo-sorted { animation: mo-sorted var(--mo-sorted) ease-out; }
 @keyframes mo-sorted { from { background-color: var(--accent-soft); } to { background-color: transparent; } }
 
+/* M-16 — the sort arrow turns (▾ pointing down for „descrescător”, turned for „crescător”). */
+.mo-sort-arrow { display: inline-block; transition: transform var(--fast) var(--ease); }
+.mo-sort-arrow.is-up { transform: rotate(180deg); }
+
 /* M-10 — a filter chip enters and leaves; its neighbours make room (outline.ts / chip-motion.ts). */
 .mo-chip-in { animation: mo-chip-in var(--fast) var(--ease) backwards; }
 @keyframes mo-chip-in { from { opacity: 0; transform: scale(.92); } }
@@ -99,6 +103,7 @@
   .tag-trace path, .term-hold-line .term-words::before { transition: none !important; }
   .mo-sel-a, .mo-sel-b, .mo-ring, .mo-done-check path, .mo-select-trace path, .mo-draw-check { animation: none; stroke-dasharray: none; stroke-dashoffset: 0; }
   .mo-sel-leave { animation: none !important; opacity: 0; }
+  .mo-sort-arrow { transition: none; }
   .mo-hair { display: none; }
   .mo-new, .mo-new-group { animation: none; }
   .mo-new-first { animation: mo-new-mark var(--mo-new-mark) ease-out; }

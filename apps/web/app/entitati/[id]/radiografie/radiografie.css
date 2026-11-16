@@ -113,3 +113,6 @@
 }
 /* The chosen supplier's ring, drawn once when the reader picks it (UX audit M-03; components/motion/Selection.tsx). */
 .rv-point circle.rv-ring,.rv-point:is(.selected,:hover,:focus-visible) circle.rv-ring{fill:none;fill-opacity:1;stroke:var(--accent);stroke-width:1.5;pointer-events:none}
+/* The sort arrow turns in --fast (UX audit M-16), like the site's other sort arrows. */
+.rv-th .rv-sortmark{transition:opacity var(--fast) var(--ease),transform var(--fast) var(--ease)}
+@media (prefers-reduced-motion:reduce){.rv-th .rv-sortmark{transition:none}}

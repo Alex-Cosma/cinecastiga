@@ -1,6 +1,7 @@
 "use client";
 
 import { useChangedMark } from "../../../components/motion/changed";
+import { useSortedColumn } from "../../../components/motion/rows";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -147,6 +148,9 @@ export default function TxTable({
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 10));
   const rows = data?.rows ?? [];
+  // A new order is seen in its column once its rows are here (M-16); the rows take it at once.
+  const table = useRef<HTMLTableElement>(null);
+  useSortedColumn(table, `${sort}:${dir}`, sort === "date" ? "tbody td.c-date" : "tbody td.c-val", !loading && rows.length > 0);
   // An address whose page is past the end (fewer records since) opens the last one.
   useEffect(() => { if (!loading && !error && data && page > pages) setPage(pages); }, [loading, error, data, page, pages]);
   // While a new page loads, the old rows stay where they are, dimmed and out of reach; ghost rows only before the first.
@@ -203,14 +207,14 @@ export default function TxTable({
         </div>
       </div>
       <div className={`ask-tablewrap${stale ? " g-stale" : ""}`} aria-busy={loading}>
-        <table className="ask-table ask-drill ent-tx" aria-label="Toate înregistrările">
+        <table ref={table} className="ask-table ask-drill ent-tx" aria-label="Toate înregistrările">
           <thead>
             <tr>
               {/* Sorting and filtering are buttons in the header, their state on it (keyboard and screen readers). */}
               <th scope="col" className="col-date sortable" aria-sort={sortState("date")}>
                 <span className="th-filter">
                   <button type="button" className="th-sort" onClick={() => sortBy("date")}>
-                    Data{sort === "date" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                    Data{sort === "date" && <> <span className={`mo-sort-arrow${dir === "asc" ? " is-up" : ""}`} aria-hidden="true">▾</span></>}
                   </button>
                   {funnel("data")}
                 </span>
@@ -221,7 +225,7 @@ export default function TxTable({
               <th scope="col" className="col-value num sortable" aria-sort={sortState("value")}>
                 <span className="th-filter">
                   <button type="button" className="th-sort" onClick={() => sortBy("value")}>
-                    Valoare{sort === "value" ? (dir === "desc" ? " ▾" : " ▴") : ""}
+                    Valoare{sort === "value" && <> <span className={`mo-sort-arrow${dir === "asc" ? " is-up" : ""}`} aria-hidden="true">▾</span></>}
                   </button>
                   {funnel("valoare", "end")}
                 </span>
