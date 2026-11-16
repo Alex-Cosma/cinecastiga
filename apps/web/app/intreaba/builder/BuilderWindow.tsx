@@ -47,7 +47,7 @@ import { useComparePeers, usePairFacts } from "./use-pair";
 import {
   comparePeriodPresets, comparePeriodTip, generalCodesNote, kindLabel, pairCountyOptions, pairDomainGroup, pairDomainOptions, pairNames, pairRest, peerResults, withPairShares,
 } from "./compare-windows";
-import { FACET_REST, relativeSeat, SEAT_UNCOMPARED, SEAT_UNCOMPARED_TIP, type FacetView } from "../../../lib/ask/facet-parts";
+import { FACET_REST, FACET_UNIT_WORDS, relativeSeat, SEAT_UNCOMPARED, SEAT_UNCOMPARED_TIP, type FacetView } from "../../../lib/ask/facet-parts";
 import type { PeriodChoice } from "@/lib/ask/filters/defs/selection";
 
 /*
@@ -231,10 +231,10 @@ function ListWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
     const over = counts.status === "ready" ? counts.counts.total.value_ron : undefined;
     const procedureView = counts.status === "loading" ? counts : procedureCounts;
     const countedProcedures = countedOptions(procedures, procedureView, (o) => String(o.choice.value), { checked: chosen?.value ?? null, ...(over ? { over } : {}) });
-    return <ChoiceList label={win.name} options={[...counted, ...countedProcedures]} value={chosen?.value ?? value}
-      onPick={(option) => onPick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} />;
+    return <><UnitLine view={counts} /><ChoiceList label={win.name} options={[...counted, ...countedProcedures]} value={chosen?.value ?? value}
+      onPick={(option) => onPick(option.choice.filter === "dataset" && draft.filters.procedure ? [option.choice, { filter: "procedure", value: undefined }] : [option.choice])} /></>;
   }
-  return <ChoiceList label={win.name} options={counted} value={value} {...(restCounted ? { rest: restCounted } : {})} onPick={(option) => onPick([option.choice])} />;
+  return <><UnitLine view={counts} /><ChoiceList label={win.name} options={counted} value={value} {...(restCounted ? { rest: restCounted } : {})} onPick={(option) => onPick([option.choice])} /></>;
 }
 
 /** "Cine a cumpărat?": every institution, a kind (with the institutions of each, R5), one institution or a town hall. */
@@ -283,6 +283,7 @@ function BuyerLists({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
   const current = named ? currentRow("buyer", draft) : null;
   const rest = kinds ? countedRest(kinds.rest, counts) : undefined;
   return <>
+    <UnitLine view={counts} />
     {/* The first row clears the whole window (pickers.ts): every institution, the total. */}
     {kinds && <ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, counts, (o) => o.choice.value === undefined ? undefined : kindValue(o), { checked: named ? null : kinds.value })} value={named ? null : kinds.value} current={current}
       {...(rest ? { rest } : {})} onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [option.choice])} />}
@@ -306,6 +307,7 @@ function PlaceWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draf
   const set = Boolean(draft.filters.county || draft.filters.uatSiruta);
   const kindRest = kinds ? countedRest(kinds.rest, kindCounts) : undefined;
   return <>
+    <UnitLine view={counts} />
     <ChoiceList label={win.name} options={countedOptions([first], counts, () => undefined)} value={set ? null : "none"} current={set ? currentRow("place", draft) : null}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : [...(draft.filters.uatSiruta ? [{ filter: "locality" as const, value: undefined }] : []), first.choice])} />
     {kinds && <><p className="qb-opt-group">Ce fel de instituții</p><ChoiceList label="Tipul instituției" options={countedOptions(kinds.options, kindCounts, kindValue, { checked: kinds.value })} value={kinds.value}
@@ -332,6 +334,7 @@ function SeatWindow({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; draft
   const rest = countedRest([relativeSeat(draft) ? { label: SEAT_UNCOMPARED, tip: SEAT_UNCOMPARED_TIP } : { label: UNKNOWN_SEAT }], counts);
   const counted = countedOptions(options, counts, (option) => option.value === "none" ? undefined : option.value, { checked: value });
   return <>
+    <UnitLine view={counts} />
     <ChoiceList label={win.name} options={counted} value={value} current={seatCurrentRow(draft)} {...(rest ? { rest } : {})}
       onPick={(option) => onPick(option.value === CURRENT_ROW ? [] : option.value === "none" ? seatClearChoices(draft) : [option.choice])} />
     {/* A county of the seat only where firms are the subject (SEAT_COUNTY_BLOCKS): around an institution the seat is against it. */}
@@ -429,6 +432,16 @@ function WindowBody({ win, draft, excluded = [], onChoose, onReplace, onRemoveEx
       </div>)}
     </div>;
   }
+}
+
+/**
+ * What a window's numbers count, under its title (UX audit Z2-07): „% din valoare · instituții”, the unit from the
+ * counts themselves; a window that shows only the shares or only the numbers says only that. 12 px, muted.
+ */
+function UnitLine({ view, shows = "both" }: { view: FacetView; shows?: "both" | "share" | "count" }) {
+  if (view.status !== "ready") return null;
+  const unit = FACET_UNIT_WORDS[view.counts.unit][1];
+  return <p className="qb-unit">{shows === "share" ? "% din valoare" : shows === "count" ? `numărul de ${unit}` : `% din valoare · ${unit}`}</p>;
 }
 
 function InstitutionSearch({ draft, authority, locality, onPick }: { draft: QuestionSpec; authority: boolean; locality: boolean; onPick: (choices: Choice[]) => void }) {
@@ -644,6 +657,7 @@ function SizeWindow({ draft, onPick }: { draft: QuestionSpec; onPick: (choices: 
     onPick([{ filter: "purchaseValue", value }]);
   };
   return <>
+    <UnitLine view={counts} shows="share" />
     <Pills label="Mărimea achiziției" options={VALUE_RANGES.map((r, i) => {
       // Each range's share of the value (R5); an empty one is struck through with the reason.
       const { label: _label, ...range } = r;
@@ -708,6 +722,7 @@ function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onP
   };
   const clear: Choice[] = [{ filter: "employees", value: undefined }, ...(seat ? [{ filter: "firmSeat" as const, value: undefined }, { filter: "newSince" as const, value: undefined }] : [])];
   return <>
+    {!seat && <UnitLine view={counts} shows="count" />}
     <Bands label="Angajați" bands={bands} value={values} onChange={chooseBands} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
     {seat && <div className="qb-row qb-tipwrap qb-from-seat">
       <span className="qb-row-label">Sediul firmei <HelpTip tip={{ id: "sediul-firmei" }} /></span>
@@ -854,6 +869,7 @@ function PeriodWindow({ draft, year, onPick }: { draft: QuestionSpec; year: numb
   return <>
     {series && <Segmented label="Ritmul" full value={pace} options={[{ value: "year", label: "An de an" }, { value: "month", label: "Lună de lună" }]}
       onChange={(next) => { setPace(next as "year" | "month"); setOpen(false); setError(null); }} />}
+    <UnitLine view={counts} />
     <PeriodPicker label="Perioada" presets={presets} value={value ?? (current ? CURRENT_PERIOD : null)} onPreset={(next, source) => {
       if (source !== "activate") return;
       // The period already chosen: nothing changes, the window closes.

@@ -617,3 +617,7 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 .qb-pill.is-zero:not([aria-checked="true"]) { opacity: .55; }
 /* Z2-24: „Alege și lunile” sits under the year fields of the free range. */
 .qb-range-months { margin-top: 6px; }
+
+/* Z2-07 (UX audit, 16 November 2026): under a window's title, what its numbers count („% din valoare · instituții”),
+   from the counts' own unit; 12 px, muted. */
+.qb-unit { margin: -4px 0 8px !important; color: var(--muted); font-size: 12px !important; line-height: 1.4; }

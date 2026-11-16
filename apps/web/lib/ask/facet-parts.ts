@@ -1,6 +1,6 @@
 import { formatInt } from "../format";
 import { countyKnown } from "../counties";
-import { formatShare } from "./answer-text";
+import { countWords, formatShare } from "./answer-text";
 import { isHistoricalProfile } from "./population";
 import type { ScatterFlagFact } from "./scatter-shared";
 
@@ -257,7 +257,13 @@ export function facetCountText(count: { n: number; share: number }): string {
   return `${formatShare(count.share)} · ${formatInt(count.n)}`;
 }
 /** The first row's count („Toată țara 15.729”): the whole draft. */
-export const facetTotalText = (counts: Pick<FacetCounts, "total">): string => formatInt(counts.total.n);
+/** What a window's numbers count, one and many (UX audit Z2-07: the unit was written nowhere). */
+export const FACET_UNIT_WORDS: Record<FacetUnit, readonly [string, string]> = {
+  records: ["înregistrare", "înregistrări"], institutions: ["instituție", "instituții"], firms: ["firmă", "firme"], profiles: ["profil", "profiluri"],
+};
+/** The whole selection's count, on its „Toate” row: with its unit when known („155.582 de înregistrări”, Z2-07). */
+export const facetTotalText = (counts: Pick<FacetCounts, "total"> & Partial<Pick<FacetCounts, "unit">>): string =>
+  counts.unit ? countWords(counts.total.n, ...FACET_UNIT_WORDS[counts.unit]) : formatInt(counts.total.n);
 /** While the counts load (kit, final table §5: „până atunci „…””); on a timeout or an error the options stay without numbers. */
 export const FACET_PENDING = "…";
 
