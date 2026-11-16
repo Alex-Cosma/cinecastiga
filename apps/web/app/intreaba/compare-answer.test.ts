@@ -88,12 +88,12 @@ describe("the comparison as one table on a phone (UX audit Z3-05)", () => {
   const stream = (value: number, count: number, extra: object = {}) => ({ value, count, ...extra });
   const buzau = entity({
     name: "MUNICIPIUL BUZAU", county: "Buzău", value: 1_581_000_000, count: 983, partners: 282, population: 103_000, populationLevel: "local",
-    streams: { da: stream(81_800_000, 782), contracts: stream(1_500_000_000, 201, { singleBid: 34, bidsKnown: 39 }) } as CompareEntity["streams"],
+    streams: { da: stream(81_800_000, 782), contracts: stream(1_500_000_000, 201, { singleBid: 34, bidsKnown: 39 }) } as NonNullable<CompareEntity["streams"]>,
     seats: { same: 32, other: 64, abroad: 4, unknown: 0 }, hasProfile: true, score: 48, nFlags: 2, flags: ["da_split", "da_threshold"] as CompareEntity["flags"],
   });
   const focsani = entity({
     entityId: "2", name: "MUNICIPIUL FOCSANI", county: "Vrancea", value: 660_100_000, count: 2123, partners: 378, population: 66_000, populationLevel: "local",
-    streams: { da: stream(21_700_000, 1915), contracts: stream(638_400_000, 208, { singleBid: 7, bidsKnown: 14 }) } as CompareEntity["streams"],
+    streams: { da: stream(21_700_000, 1915), contracts: stream(638_400_000, 208, { singleBid: 7, bidsKnown: 14 }) } as NonNullable<CompareEntity["streams"]>,
     seats: { same: 21, other: 66, abroad: 12, unknown: 1 }, hasProfile: true, score: 0, nFlags: 0, flags: [],
   });
 
@@ -112,7 +112,8 @@ describe("the comparison as one table on a phone (UX audit Z3-05)", () => {
   });
 
   it("leaves out what neither side has: no streams on one channel, no offers on direct acquisitions, no risk on an old answer", () => {
-    const rows = facingRows({ ...buzau, hasProfile: undefined, flags: [] }, { ...focsani, hasProfile: undefined }, { dataset: "da", perCapita: false, period: null });
+    const { hasProfile: _a, ...oldA } = buzau, { hasProfile: _b, ...oldB } = focsani;
+    const rows = facingRows({ ...oldA, flags: [] }, oldB, { dataset: "da", perCapita: false, period: null });
     expect(rows.map((r) => r.key)).toEqual(["partners", "seat-same", "seat-other", "seat-abroad", "seat-unknown"]);
     expect(riskWords({ hasProfile: false, score: null, cri: null, nFlags: 0 })).toBe("fără profil: prea puține achiziții directe");
   });
