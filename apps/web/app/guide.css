@@ -193,3 +193,8 @@
 .d-search-arrive>form{animation:d-arrive-ring 1s ease-out 1.1s 1 backwards}
 @keyframes d-arrive-ring{0%{box-shadow:0 0 0 0 var(--orange)}30%{box-shadow:0 0 0 4px var(--orange)}100%{box-shadow:0 0 0 0 transparent}}
 @media(prefers-reduced-motion:reduce){.d-search-arrive>form{animation:none}}
+
+/* UX audit M-13 (16 November 2026): the home strip's „Ce include?” arrow turns over --fast with --ease, like every
+   section's arrow. */
+.d-national-strip>.coverage-disclosure>summary>span{transition:transform var(--fast) var(--ease)}
+@media(prefers-reduced-motion:reduce){.d-national-strip>.coverage-disclosure>summary>span{transition:none}}

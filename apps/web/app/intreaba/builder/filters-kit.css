@@ -638,3 +638,7 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 .qb-seg-opt{position:relative;isolation:isolate}
 .qb-seg-opt[aria-checked="true"],.qb-seg-opt[aria-selected="true"]{background:none;box-shadow:none}
 .qb-seg-opt[aria-checked="true"]::before,.qb-seg-opt[aria-selected="true"]::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--fk-seg-on);box-shadow:var(--fk-shadow);transform-origin:0 0;pointer-events:none}
+
+/* UX audit M-13: beside an answer, „Schimbă întrebarea” opens under the title: the invitations („+ …”) and the models
+   come out over 180 ms (components/motion/disclosures.css), no height animated; folding is at once. */
+.qb-live.is-expanded .qb-invite,.question-builder--live>.qb-navigation{animation:disclose-in 180ms var(--ease) both}

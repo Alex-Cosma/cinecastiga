@@ -1,0 +1,18 @@
+/*
+ * A section opens from its title (UX audit M-13, owner, 16 November 2026): what it shows comes out under the title over
+ * 180 ms with --ease (opacity and 4 px down), never by animating its height, which would move the page every frame;
+ * it folds at once; its arrow turns over --fast (each page's own sheet). Reduced motion and print: at once.
+ * The places: /cauta's „Cum am numărat”, „Ce include?” (CoverageDisclosure), the methodology's reference, sockets and
+ * branches, the peers' method, /supra-prag's „Valorile și referințele din sursă”, a dossier's Editează / Colaboratori
+ * panel (workspace.css) and, beside an answer, what „Schimbă întrebarea” adds under the title (filters-kit.css).
+ */
+@keyframes disclose-in { from { opacity: 0; translate: 0 -4px; } }
+:is(details.topic-answer-how, details.coverage-disclosure, .mt-ref details, details.mt-sock, details.mt-branch, details.pxs-method, details.tp-src)[open] > :not(summary) {
+  animation: disclose-in 180ms var(--ease) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(details.topic-answer-how, details.coverage-disclosure, .mt-ref details, details.mt-sock, details.mt-branch, details.pxs-method, details.tp-src)[open] > :not(summary) { animation: none; }
+}
+@media print {
+  :is(details.topic-answer-how, details.coverage-disclosure, .mt-ref details, details.mt-sock, details.mt-branch, details.pxs-method, details.tp-src)[open] > :not(summary) { animation: none; }
+}

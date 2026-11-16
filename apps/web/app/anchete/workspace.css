@@ -256,3 +256,8 @@
 /* The invitation link replaces the form where it was asked for (Z8-28). */
 .iw-invite-copy{grid-template-columns:1fr auto auto}.iw-invite-copy>.iw-text-button{align-self:center}
 @media(max-width:760px){.iw-invite-copy{grid-template-columns:1fr}}
+
+/* UX audit M-13: a dossier's Editează / Colaboratori panel comes out under its buttons over 180 ms, opacity and 4 px
+   (components/motion/disclosures.css), without animating its height; reduced motion: at once. */
+.iw-head-panel{animation:disclose-in 180ms var(--ease) both}
+@media(prefers-reduced-motion:reduce){.iw-head-panel{animation:none}}

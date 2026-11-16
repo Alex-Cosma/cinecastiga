@@ -207,7 +207,7 @@
 .mt .mt-ref details{border-bottom:1px solid var(--line)}
 .mt .mt-ref summary{cursor:pointer;min-height:56px;display:flex;align-items:center;gap:12px;font-weight:600;font-size:17px;list-style:none}
 .mt .mt-ref summary::-webkit-details-marker{display:none}
-.mt .mt-ref summary::before{content:"";flex:none;width:9px;height:9px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg);transition:transform .15s}
+.mt .mt-ref summary::before{content:"";flex:none;width:9px;height:9px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg);transition:transform var(--fast) var(--ease)}
 .mt .mt-ref details[open] summary::before{transform:rotate(45deg)}
 .mt .mt-ref .mt-body{padding:0 0 18px 21px;font-size:16px;color:var(--ink2);display:flex;flex-direction:column;gap:10px}
 .mt .mt-ref .mt-body h4{margin:8px 0 0;font-size:16px;color:var(--ink)}
@@ -273,7 +273,7 @@
 .mt .mt-sock{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .mt .mt-sock>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:8px;padding:0 16px;font-weight:600;color:var(--accent);font-size:16.5px;list-style:none}
 .mt .mt-sock>summary::-webkit-details-marker{display:none}
-.mt .mt-sock>summary::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:4px}
+.mt .mt-sock>summary::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform var(--fast) var(--ease);margin-right:4px}
 .mt .mt-sock[open]>summary::before{transform:rotate(45deg)}
 .mt .mt-sock .mt-calc{margin:0 12px 14px;background:var(--paper)}
 .mt .mt-sock>p,.mt .mt-sock>.mt-btn{margin:0 16px 14px}
@@ -710,7 +710,7 @@
 .mt .mt-branch{border:1.5px solid var(--line2);border-radius:14px;background:var(--surface)}
 .mt .mt-branch>summary{cursor:pointer;min-height:56px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 16px;font-weight:600;color:var(--accent);font-size:17px;list-style:none}
 .mt .mt-branch>summary::-webkit-details-marker{display:none}
-.mt .mt-branch>summary::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .2s;margin-right:4px}
+.mt .mt-branch>summary::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform var(--fast) var(--ease);margin-right:4px}
 .mt .mt-branch[open]>summary::before{transform:rotate(45deg)}
 .mt .mt-branch .mt-bs{font-weight:400;font-size:14px;color:var(--muted)}
 .mt .mt-branch>.mt-stack{padding:6px 16px 22px}
@@ -838,7 +838,7 @@
  .mt .mt-chrail a[aria-current]{color:var(--accent);font-weight:600;border-left:2px solid var(--accent);padding-left:11px}
  .mt .mt-chrow{display:none}
 }
-@media(prefers-reduced-motion:no-preference){.mt .mt-chrow>summary>i{transition:transform .16s}}
+@media(prefers-reduced-motion:no-preference){.mt .mt-chrow>summary>i{transition:transform var(--fast) var(--ease)}}
 
 /* UX audit Z7-38: the four parts of a rule (în scorul de risc, ce măsoară, ce merită verificat, limită) have one size
    and colour; the labels stay bold. Z7-34: in the dark theme the selected lane is marked by more than a shade (accent
