@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { DiscoveryCounty } from "@/lib/discovery";
 import { countyMap, foldCounty } from "@/lib/map";
 import { formatRon } from "@/lib/format";
+import { countyKey } from "@/lib/map-capita-shared";
 import { askHref, countyBreakdownHref } from "@/lib/discovery-links";
 import { NATIONAL_MAP_SPEC } from "@/lib/ask/site-links";
 import Term from "@/components/Term";
@@ -47,6 +48,8 @@ export default function DiscoveryMap({ counties }: { counties: DiscoveryCounty[]
       <p className="d-map-current" role="status">{current ? <><b>{current.label}</b> · {total ? <span>{formatRon(total.amount)}</span> : "Fără valoare localizată în arhivă"}</> : present ? <>Județele și București</> : <>Nu avem încă date cartografiate.</>}</p>
       {/* Outside the live region: a button must not sit inside role="status". */}
       {present && <Term id="sediul-institutiei" tip />}
+      {/* The map of lei per inhabitant (UX audit Z4-20): the chosen county opens there, on the map's own default year. */}
+      <Link className="d-map-tolink" href={selected ? `/harta?ani=${new Date().getFullYear() - 1}&judet=${countyKey(countyMap.shapes.find((shape) => shape.key === selected)!.label)}` : "/harta"} prefetch={false}>Harta pe locuitor →</Link>
     </div>
   </section>;
 }
