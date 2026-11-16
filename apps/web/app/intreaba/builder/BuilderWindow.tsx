@@ -23,7 +23,7 @@ import { winnerOption } from "../../../lib/ask/facet-parts";
 import type { NewScope } from "../../../lib/ask/spec";
 import PopulationEditor from "../PopulationEditor";
 import { codeKinds, PURCHASE_KIND_ORDER, PURCHASE_KIND_WORDS, VALUE_RANGES, valueRangeIndex, type PurchaseKind, type ValueRange } from "@/lib/ask/purchase";
-import Bands, { EMPLOYEE_BANDS, bandRange, bandsWords } from "./Bands";
+import Bands, { EMPLOYEE_BANDS } from "./Bands";
 import Pills, { RangeFields } from "./Pills";
 import { useCoverage } from "./coverage";
 import EntitySearch, { type SearchResult } from "./EntitySearch";
@@ -598,7 +598,7 @@ function KindSegmented({ win, draft, ctx, onPick }: { win: BuilderWindowSpec; dr
       };
     }),
   ];
-  return <Segmented label="Tipul, după codul CPV" full value={value} options={options} onChange={(next, source) => {
+  return <Segmented label="Tipul, după codul CPV" full className="qb-seg--kinds" value={value} options={options} onChange={(next, source) => {
     setValue(next);
     if (source === "activate" && next !== current) onPick([{ filter: "purchaseKind", value: next === "any" ? undefined : next }]);
   }} />;
@@ -695,13 +695,17 @@ function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onP
   // F5 (kit §5 table 5): the firms' own year, in our data or in the register, beside their size and seat.
   const [aged, setAged] = useState<AgedFirms | null>(agedOf(draft));
   const agedYears = aged ? newYearsOf(draft as FilterSpec, filterContext(draft as FilterSpec), aged.scope) : [];
-  const range = bandRange(EMPLOYEE_BANDS, values);
   // The firms of each band under it, and those without a filing in the rest row (kit §3 item 10, R5).
   const counts = useFacet(draft, "employees");
   const bands = EMPLOYEE_BANDS.map((band) => { const count = bandCount(counts, band.value); return count ? { ...band, count } : band; });
   // A foreign firm has no filing: a band leaves „În străinătate” shown with its reason, and a band chosen after it moves the seat to „Oriunde”.
   const seats = seat ? firmsKindSeatOptions(draft, values.length > 0) : [];
-  const chooseBands = (next: string[]) => { setValues(next); if (next.length && where === "abroad") setWhere("none"); };
+  // A band pressed is the choice, as an option of a list is (UX audit Z2-06): alone in its window it applies at once, so
+  // Escape never drops it unsaid; beside the seat and the firms' year it waits for the window's button, which says all three.
+  const chooseBands = (next: string[]) => {
+    if (!seat) { onPick([bandsChoice(next)]); return; }
+    setValues(next); if (next.length && where === "abroad") setWhere("none");
+  };
   const clear: Choice[] = [{ filter: "employees", value: undefined }, ...(seat ? [{ filter: "firmSeat" as const, value: undefined }, { filter: "newSince" as const, value: undefined }] : [])];
   return <>
     <Bands label="Angajați" bands={bands} value={values} onChange={chooseBands} rest={countedRest([{ label: "Fără bilanț" }], counts) ?? []} />
@@ -723,9 +727,9 @@ function BandsWindow({ draft, onPick, seat = false }: { draft: QuestionSpec; onP
     </div>}
     <div className="qb-pop-foot">
       <button type="button" className="qb-link" onClick={() => onPick(clear)}>Scoate condiția</button>
-      <button type="button" className="qb-primary" onClick={() => onPick(seat ? firmsKindChoices(bandsChoice(values), where, aged) : [bandsChoice(values)])}>
-        {seat ? firmsKindButton(draft, bandsChoice(values), where, aged) : range ? bandsWords(range) : "Orice mărime"}
-      </button>
+      {seat && <button type="button" className="qb-primary" onClick={() => onPick(firmsKindChoices(bandsChoice(values), where, aged))}>
+        {firmsKindButton(draft, bandsChoice(values), where, aged)}
+      </button>}
     </div>
   </>;
 }

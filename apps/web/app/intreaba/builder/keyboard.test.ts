@@ -126,6 +126,13 @@ describe("window placement", () => {
     const narrow = { width: 700, height: 720 };
     expect(popoverPlacement(anchor(200, 216, 200), { width: 340, height: 537 }, narrow).top).toBe(720 - 16 - 537);
   });
+  it("never opens over the sticky header (UX audit Z2-35)", () => {
+    // 1280×900, the header's bottom at 91: „+ Sediul firmei” low in the builder, a window of 520 px.
+    const placed = popoverPlacement(anchor(200, 560), { width: 340, height: 520 }, { width: 1280, height: 900 }, 16, 8, 99);
+    expect(placed.top).toBeGreaterThanOrEqual(99);
+    // Above the trigger only when it fits under the header; otherwise beside it, under the header.
+    expect(popoverPlacement(anchor(200, 700), { width: 340, height: 300 }, { width: 1280, height: 900 }, 16, 8, 99).top).toBe(700 - 8 - 300);
+  });
 });
 
 describe("revealing the active result", () => {
