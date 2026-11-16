@@ -422,8 +422,13 @@ export const employeesWords = (employees: number | null | undefined, year: numbe
 
 /** The line under a name in the list: the kind or the employees, the county, the acquisitions. */
 export function rowMeta(row: AnyListRow, role: ScatterRole): string {
+  return [rowPlace(row, role), countWords(row.nDas, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
+}
+
+/** The row's kind (a firm's size) and county, without its count: a phone's records link says the count (UX audit Z3-22). */
+export function rowPlace(row: AnyListRow, role: ScatterRole): string {
   const first = role === "supplier" ? employeesWords(row.employees, row.employeesYear) : kindWords(row.kind);
-  return [first, row.county, countWords(row.nDas, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
+  return [first, row.county].filter(Boolean).join(" · ");
 }
 
 /** A signal's tag in the list and the card: the label with its years or share, orange (the official signals only). */

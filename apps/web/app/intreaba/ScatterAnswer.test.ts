@@ -10,7 +10,7 @@ import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
   SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, density, densitySteps, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip,
-  listHeadWords, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
+  listHeadWords, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, rowPlace, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
 } from "./scatter-answer";
 import type { ScatterData } from "../../lib/ask/scatter-shared";
 
@@ -437,6 +437,8 @@ describe("the chart's geometry and words", () => {
     expect(employeesWords(3, 2025)).toBe("3 angajați · bilanț 2025");
     expect(employeesWords(null, null)).toBe("fără bilanț");
     expect(rowMeta({ ...BUZAU_CLOUD.list[0]!, employees: 3, employeesYear: 2025 }, "supplier")).toBe("3 angajați · bilanț 2025 · Buzău · 2.567 de achiziții directe");
+    // UX audit Z3-22: a phone's row leaves the count to its records link; the kind (a firm's size) and county stay.
+    expect(rowPlace({ ...BUZAU_CLOUD.list[0]!, employees: 3, employeesYear: 2025 }, "supplier")).toBe("3 angajați · bilanț 2025 · Buzău");
     expect(flagTag({ code: "da_split", years: [2018, 2019] }, "authority")).toMatchObject({ text: `${SPLIT} · 2018–2019`, tone: "signal" });
     // Each tag explains itself and its number (owner, 15 November 2026: signal-tips.ts).
     expect(flagTag({ code: "da_split", years: [2018, 2019] }, "authority").tip).toEqual({ title: SPLIT, text: expect.stringMatching(/2018–2019: anii în care apare\.$/) });

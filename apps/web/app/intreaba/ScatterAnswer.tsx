@@ -32,7 +32,7 @@ import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
   RISK_AXIS, RISK_GRID, RISK_ZONES, axisWords, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, density, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
-  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, scatterFactsKey, scoreBandWord, scoreWords,
+  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, rowPlace, scatterFactsKey, scoreBandWord, scoreWords,
   signalsPageLink, stepWords, stripStatusWords, withFacts, type AnyListRow, type Dot, type MeasureText,
 } from "./scatter-answer";
 import "./scatter.css";
@@ -650,7 +650,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             <span className="sc-rank qb-num">{index + 1}</span>
             <span className="sc-who">
               <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
-              <small>{rowMeta(row, role)}</small>
+              {/* Z3-22: a phone leaves the count of direct acquisitions to the records link, which says it (not with a signal chosen). */}
+              <small>{live ? rowMeta(row, role) : <>{rowPlace(row, role)}<span className="sc-who-n">{rowPlace(row, role) ? " · " : ""}{countWords(row.nDas, "achiziție directă", "achiziții directe")}</span></>}</small>
               {(own.length > 0 || row.historic !== undefined) && <span className="qb-tags">
                 {row.historic !== undefined && <FactTag fact={historicFact(row.historic)} />}
                 {own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
