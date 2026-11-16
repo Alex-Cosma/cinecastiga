@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { navItems } from "@/lib/site-nav";
-import { newsWords, usePrivateNews } from "@/lib/use-private-news";
+import { newsWords, usePrivateNews } from "../lib/use-private-news";
 
 /** The phone's header stays whole this near the top of the page (px). */
 const CONDENSE_BELOW = 240;
