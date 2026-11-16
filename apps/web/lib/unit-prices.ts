@@ -102,6 +102,8 @@ export interface PriceStrip {
 
 export interface PricePage {
   years: number[]; year: number | null;
+  /** The leads of each year: a year with none has too few institutions per product to compare (UX audit Z6-34). */
+  yearLeads: Record<number, number>;
   /** The year the address asked for that no product has: every year is shown instead, and the page says so. */
   yearMissing: number | null;
   strips: PriceStrip[];
@@ -178,8 +180,9 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export async function getPricePage(state: PriceState): Promise<PricePage> {
   const q = database();
-  const yearsRows = await q<{ year: number }[]>`select distinct year::int from marts.unit_price_groups order by year desc`;
+  const yearsRows = await q<{ year: number; leads: number }[]>`select year::int, sum(leads)::int leads from marts.unit_price_groups group by 1 order by 1 desc`;
   const years = yearsRows.map((y) => y.year);
+  const yearLeads = Object.fromEntries(yearsRows.map((y) => [y.year, Number(y.leads)]));
   const year = state.year && years.includes(state.year) ? state.year : null;
   const families = familiesOf(state).join(",");
   const [spreads, leads, counties] = await Promise.all([
@@ -217,7 +220,7 @@ export async function getPricePage(state: PriceState): Promise<PricePage> {
     : state.order === "dublu" ? b.leads - a.leads || b.excess - a.excess || byLabel(a, b)
     : b.excess - a.excess || b.leads - a.leads || byLabel(a, b));
   return {
-    years, year, yearMissing: state.year && !year ? state.year : null, strips,
+    years, yearLeads, year, yearMissing: state.year && !year ? state.year : null, strips,
     totals: { leads: strips.reduce((s, x) => s + x.leads, 0), products: strips.length, excess: strips.reduce((s, x) => s + x.excess, 0),
       buyers: counties.filter((c) => !state.county || countyKnown(c.county) === state.county).reduce((s, c) => s + c.n, 0) },
     counties: [...new Set(counties.map((c) => countyKnown(c.county)).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, "ro")),
@@ -256,6 +259,8 @@ export type ProductGroup = Omit<PriceStrip, "dots" | "dotsTotal" | "leadRatios" 
 export interface ProductPage {
   family: PriceFamily; pack: string; packs: { slug: string; label: string; buyers: number }[];
   years: number[]; year: number | null;
+  /** This pack's leads in each year (UX audit Z6-34: a year without any is labelled in the year control). */
+  yearLeads: Record<number, number>;
   /** The year the address asked for that this pack does not have: every year is shown instead, and the page says so. */
   yearMissing: number | null;
   group: ProductGroup | null;
@@ -334,12 +339,13 @@ export async function getProductPage(slug: string, sp: Record<string, string | u
   if (!scope) return null;
   const { family, onlyLeads } = scope;
   const q = database();
-  const groups = await q<{ pack: string; year: number; buyers: number }[]>`select pack, year::int, buyers from marts.unit_price_groups where family = ${slug}`;
+  const groups = await q<{ pack: string; year: number; buyers: number; leads: number }[]>`select pack, year::int, buyers, leads from marts.unit_price_groups where family = ${slug}`;
   const packsIn = [...new Set(groups.map((g) => g.pack))];
   const packs = (family.packs?.list ?? []).filter((p) => packsIn.includes(p.slug))
     .map((p) => ({ slug: p.slug, label: p.label, buyers: groups.filter((g) => g.pack === p.slug).reduce((s, g) => s + g.buyers, 0) }));
   const pack = family.packs ? (packs.find((p) => p.slug === scope.wantedPack) ?? [...packs].sort((a, b) => b.buyers - a.buyers)[0])?.slug ?? "" : "";
   const years = [...new Set(groups.filter((g) => g.pack === pack).map((g) => g.year))].sort((a, b) => b - a);
+  const yearLeads = Object.fromEntries(years.map((y) => [y, groups.filter((g) => g.pack === pack && g.year === y).reduce((s, g) => s + Number(g.leads), 0)]));
   // Every year by default (owner, 11 November 2026); one year when the address names one this product has.
   const year = scope.wantedYear && years.includes(scope.wantedYear) ? scope.wantedYear : null;
   const yearMissing = scope.wantedYear && !year ? scope.wantedYear : null;
@@ -349,7 +355,7 @@ export async function getProductPage(slug: string, sp: Record<string, string | u
   if (year) delete (filters as Record<string, unknown>)["an"];
   const filtered = Object.keys(filters).length > 0;
   const requestScope: Record<string, string> = { produs: slug, ambalaj: pack, ...(year ? { an: String(year) } : {}), ...(onlyLeads ? {} : { toate: "1" }) };
-  const empty: ProductPage = { family, pack, packs, years, year, yearMissing, group: null, bins: [], dots: [], dotsTotal: 0, leadRatios: [], buyers: [], total: 0, page: 0, pages: 1,
+  const empty: ProductPage = { family, pack, packs, years, yearLeads, year, yearMissing, group: null, bins: [], dots: [], dotsTotal: 0, leadRatios: [], buyers: [], total: 0, page: 0, pages: 1,
     pinnedExtra: 0, onlyLeads, sort, dir, filtered, scope: requestScope, suppliers: {} };
   const [g] = await spreadOf(q, slug, year, pack);
   if (!g) return empty;

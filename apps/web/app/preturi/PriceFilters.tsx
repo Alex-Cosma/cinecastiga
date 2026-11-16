@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { usePendingRegion } from "@/components/ghost/client";
-import { PRICE_ORDERS, priceHref, type PriceOption, type PriceState } from "@/lib/unit-prices-shared";
+import { PRICE_ORDERS, priceHref, priceYearLabel, type PriceOption, type PriceState } from "@/lib/unit-prices-shared";
 
 const fold = (s: string) => s.normalize("NFD").replace(/\p{Mn}/gu, "").toLowerCase();
 
@@ -17,8 +17,8 @@ export function matchOptions(options: readonly PriceOption[], text: string): Pri
  * The filters of /preturi: the year, one typeahead over our own groups and products (owner, 11 November 2026: not
  * CPV), the county and the order. Each change replaces the list in place, dimmed (PendingRegion).
  */
-export default function PriceFilters({ state, years, counties, options }: {
-  state: PriceState; years: number[]; counties: string[]; options: PriceOption[];
+export default function PriceFilters({ state, years, yearLeads, counties, options }: {
+  state: PriceState; years: number[]; yearLeads: Record<number, number>; counties: string[]; options: PriceOption[];
 }) {
   const region = usePendingRegion();
   const go = (patch: Partial<PriceState>) => region?.go(priceHref(state, patch));
@@ -51,7 +51,7 @@ export default function PriceFilters({ state, years, counties, options }: {
     <label className="pr-field pr-year">An
       <select name="an" value={state.year ?? ""} onChange={(e) => go({ year: e.target.value ? Number(e.target.value) : null })}>
         <option value="">Toți anii</option>
-        {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        {years.map((y) => <option key={y} value={y}>{priceYearLabel(y, yearLeads[y])}</option>)}
       </select>
     </label>
     <div className="pr-field pr-pick" ref={box} onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node | null)) setOpen(false); }}>

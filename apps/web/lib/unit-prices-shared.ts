@@ -172,3 +172,13 @@ export function productHref(family: string, pack: string, year: number | null, e
 export function leadHref(family: string, pack: string, year: number | null, lead: { authorityId: string; year: number }): string {
   return `${productHref(family, pack, year, { deschis: `${lead.authorityId}-${lead.year}` })}#institutie-${lead.authorityId}-${lead.year}`;
 }
+
+/**
+ * A year in a year control of the prices (UX audit Z6-34): a year without a single lead has too few institutions per
+ * product to compare, and says so („2025 · prea puține date”).
+ */
+export const priceYearLabel = (year: number, leads: number | undefined): string => (leads === 0 ? `${year} · prea puține date` : String(year));
+
+/** The latest year with leads, to offer when the chosen one has none. */
+export const priceYearWithLeads = (yearLeads: Readonly<Record<number, number>>): number | null =>
+  Object.entries(yearLeads).filter(([, n]) => n > 0).map(([y]) => Number(y)).sort((a, b) => b - a)[0] ?? null;

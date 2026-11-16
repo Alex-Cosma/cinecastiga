@@ -4,7 +4,8 @@ import { PendingRegion } from "@/components/ghost/client";
 import { priceAdmin } from "@/lib/price-access";
 import { flatParams } from "@/lib/unit-prices-params";
 import { getPricePage, parsePriceState, priceOptions } from "@/lib/unit-prices";
-import { buyersWord, countWord, formatLei, leadsCount, sentenceCase } from "@/lib/unit-prices-shared";
+import Link from "next/link";
+import { buyersWord, countWord, formatLei, leadsCount, priceHref, priceYearWithLeads, sentenceCase } from "@/lib/unit-prices-shared";
 import PriceFilters from "./PriceFilters";
 import PriceStrips from "./PriceStrips";
 import PriceMethod from "./PriceMethod";
@@ -29,13 +30,14 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
   const state = parsePriceState(flatParams(await searchParams));
   const data = await getPricePage(state);
   const scope = state.county ? ` în ${state.county}` : "";
+  const other = priceYearWithLeads(data.yearLeads);
   return <div className="pr-page">
     <DiscoverNav current="preturi" />
     <h1 className="page-title">Cine cumpără mai scump același produs</h1>
     <p className="page-sub pr-sub">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an. Valori contractate, fără TVA. Un preț peste dublu e o pistă de verificat, nu o dovadă.</p>
     <PendingRegion label="Se actualizează prețurile…" className="pr-region">
       <div className="pr-bar">
-        <PriceFilters state={{ ...state, year: data.year }} years={data.years} counties={data.counties} options={priceOptions()} />
+        <PriceFilters state={{ ...state, year: data.year }} years={data.years} yearLeads={data.yearLeads} counties={data.counties} options={priceOptions()} />
         <p className="pr-total" aria-live="polite">
           <strong>{sentenceCase(leadsCount(data.totals.leads))}{scope}</strong>
           <span>{countWord(data.totals.products, "un produs", "produse")} · {buyersWord(data.totals.buyers)}</span>
@@ -43,7 +45,10 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
         </p>
       </div>
       {data.yearMissing && <p className="pr-note" role="status">Pentru {data.yearMissing} nu avem prețuri de comparat: sunt toți anii.</p>}
-      {data.year != null && data.strips.length > 0 && data.strips.every((s) => s.thin) && <p className="pr-note">În {data.year} avem doar o mică parte din achiziții: prea puține instituții pentru piste.</p>}
+      {/* A year with too few institutions per product says why there is no lead, and where there are (UX audit Z6-34). */}
+      {data.year != null && data.yearLeads[data.year] === 0 ? <p className="pr-note">În {data.year} avem prea puține instituții pe produs ca să comparăm: doar o mică parte din achizițiile anului.
+        {" "}Încearcă {other ? <><Link href={priceHref({ ...state, year: other })} prefetch={false}>{other}</Link> sau </> : null}<Link href={priceHref({ ...state, year: null })} prefetch={false}>toți anii</Link>.</p>
+        : data.year != null && data.strips.length > 0 && data.strips.every((s) => s.thin) && <p className="pr-note">În {data.year} avem doar o mică parte din achiziții: prea puține instituții pentru piste.</p>}
       {data.strips.length ? <PriceStrips strips={data.strips} county={state.county} order={state.order} narrowed={state.county != null || data.year != null} />
         : <p className="pr-empty">Niciun produs cu cel puțin cinci instituții {data.year ? `în ${data.year}` : "într-un an"} pentru această alegere.</p>}
     </PendingRegion>

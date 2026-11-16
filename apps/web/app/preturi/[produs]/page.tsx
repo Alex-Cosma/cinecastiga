@@ -9,11 +9,12 @@ import { BUYERS_PAGE, DEFAULT_PRICE_ORDER, LEAD_RULE, getProductPage, productHre
 import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
-import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, priceHref, sentenceCase } from "@/lib/unit-prices-shared";
+import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
 import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } from "../PriceStrips";
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
 import PriceMethod from "../PriceMethod";
+import YearSelect from "../YearSelect";
 import DiscoverPager from "@/components/discover/DiscoverPager";
 import "../preturi.css";
 
@@ -88,10 +89,9 @@ export default async function ProdusPage({ params, searchParams }: {
     {(data.packs.length > 0 || data.years.length > 1) && <nav className="pr-switch" aria-label="Ambalajul și anul">
       {data.packs.length > 0 && <ul className="pr-tabs">{data.packs.map((p) =>
         <li key={p.slug}><Link href={productHref(family.slug, p.slug, data.year)} aria-current={p.slug === data.pack ? "page" : undefined} prefetch={false}>{p.label}</Link></li>)}</ul>}
-      {data.years.length > 1 && <ul className="pr-tabs pr-years">
-        <li><Link href={productHref(family.slug, data.pack, null)} aria-current={data.year == null ? "page" : undefined} prefetch={false}>Toți anii</Link></li>
-        {data.years.map((y) =>
-        <li key={y}><Link href={productHref(family.slug, data.pack, y)} aria-current={y === data.year ? "page" : undefined} prefetch={false}>{y}</Link></li>)}</ul>}
+      {/* The year: the same labelled select as on /preturi (UX audit Z6-34). */}
+      {data.years.length > 1 && <YearSelect action={`/preturi/${family.slug}`} year={data.year} years={data.years}
+        labels={Object.fromEntries(data.years.map((y) => [y, priceYearLabel(y, data.yearLeads[y])]))} keep={data.pack ? { ambalaj: data.pack } : {}} />}
     </nav>}
     {data.yearMissing && <p className="pr-note" role="status">Pentru {data.yearMissing} nu avem prețuri de comparat la acest produs: sunt toți anii.</p>}
     {!g ? <p className="pr-empty">Mai puțin de cinci instituții au cumpărat {family.label.toLowerCase()} în acest ambalaj {data.year ? `în ${data.year}` : "într-un an"}: nu avem cu ce compara.</p> : <>
