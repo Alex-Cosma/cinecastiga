@@ -1253,3 +1253,56 @@
   .cq-result .ask-complegend .vv .cq-record-link { min-height: 44px; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { .cq-result .ask-comp > .seg { transition: none; } }
+
+/* UX audit Z3-15 (owner, 16 November 2026; adjusts the head of 2 November): the answer's actions in one group in its
+   head. The records' button on its row, under it „Trimite ▾” (its menu copies the link), „Salvează” beside it and
+   „Exportă ▾” (the export menu, floating over the answer); the row of tools under the notes is gone. A signed-in
+   reader's „Urmărește” and „Salvează în anchetă” are the next row, half each. On a phone (the head of 16 November) the
+   three are 46 px icons on their own row under the records' button. */
+.cq-answer-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.cq-answer-more { display: contents; }
+.cq-answer-more > .cq-share-menu,
+.cq-answer-more > .cq-save-wrap,
+.cq-answer-more > .cq-export { grid-column: span 2; min-width: 0; }
+.cq-answer-actions > .follow-action,
+.cq-answer-actions > .clipbtn { grid-column: span 3; }
+.cq-share-menu { position: relative; display: flex; min-width: 0; }
+.cq-share-menu > .cq-share { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; }
+.cq-share-menu > .cq-share .d-icon { width: 14px; height: 14px; margin-left: -2px; }
+.cq-share-menu > .cq-share[aria-expanded="true"] .d-icon { transform: rotate(180deg); }
+.cq-share-menu .qb-menu--pop { left: 0; right: auto; top: calc(100% + 6px); width: 260px; max-width: calc(100vw - 32px); }
+.cq-share-menu .qb-menu--pop.qb-menu--end { left: auto; right: 0; }
+.cq-share-menu .qb-menu-item { min-height: 44px; font-size: 14px; text-align: left; }
+.cq-share-menu .qb-menu-item > .qb-menu-t { color: var(--ink); }
+.cq-share-menu .qb-menu-t small { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.cq-answer-more > .cq-save-wrap { width: 100%; }
+.cq-answer-more > .cq-save-wrap > .cq-save-question { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; }
+.cq-answer-more > .cq-export { position: relative; flex: none; max-width: none; width: 100%; }
+.cq-answer-more > .cq-export > summary { width: 100%; min-height: 44px; padding: 10px 12px; gap: 6px; justify-content: center; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font-size: 13px; font-weight: 600; list-style: none; }
+.cq-answer-more > .cq-export > summary::-webkit-details-marker { display: none; }
+.cq-answer-more > .cq-export > summary:hover { border-color: var(--accent); background: var(--accent-soft); }
+.cq-answer-more > .cq-export .d-icon { width: 16px; height: 16px; }
+.cq-answer-more > .cq-export > summary > .d-icon:last-child { width: 14px; height: 14px; }
+.cq-answer-more > .cq-export > .cq-export-options { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 320px; max-width: calc(100vw - 32px); margin: 0; padding: 2px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--fk-pop-shadow, var(--shadow)); text-align: left; }
+.cq-answer-more > .cq-export .cq-export-options > div { padding: 12px 0; }
+.cq-answer-more > .cq-export .cq-export-options > div:last-child { border-bottom: 0; }
+.cq-answer-more > .cq-export .cq-export-options button { min-height: 36px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.cq-answer-more > .cq-export .cq-export-options p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink2); white-space: normal; }
+.cq-answer-more > .cq-export > .cq-export-status { position: absolute; right: 0; top: calc(100% + 6px); z-index: 29; width: 320px; max-width: calc(100vw - 32px); margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.cq-answer-more > .cq-export[open] > .cq-export-status { position: static; width: auto; margin-top: 6px; }
+@media (max-width: 600px) {
+  /* The three cannot sit beside the records' button (the head of 16 November kept two icons there): they take their
+     own row under it, a third each, with their words. */
+  .cq-answer-actions { position: relative; }
+  .cq-answer-actions > .cq-answer-more { display: grid; flex: 1 1 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .cq-answer-more > .cq-share-menu,
+  .cq-answer-more > .cq-save-wrap,
+  .cq-answer-more > .cq-export { grid-column: auto; width: 100%; }
+  .cq-share-menu > .cq-share,
+  .cq-answer-more > .cq-save-wrap > .cq-save-question,
+  .cq-answer-more > .cq-export > summary { min-height: 46px; padding: 8px 6px; gap: 5px; }
+  /* The export's menu and its message take the actions' width, under the row. */
+  .cq-answer-more > .cq-export { position: static; }
+  .cq-answer-more > .cq-export > .cq-export-options,
+  .cq-answer-more > .cq-export > .cq-export-status { left: 0; right: 0; width: auto; max-width: none; }
+}

@@ -8,6 +8,14 @@ import DiscoveryIcon from '../DiscoveryIcon';
 export default function AnswerExports({spec,disabled,onResult,months,onStale}:{spec:AskSpec;disabled:boolean;onResult:()=>void;months?:readonly [number,number]|undefined;onStale?:(()=>boolean)|undefined}){
  const controller=useRef<AbortController|null>(null);
  const [busy,setBusy]=useState(false),[message,setMessage]=useState('');
+ // In the answer's head (UX audit Z3-15) the menu floats over the answer: a press outside or Escape closes it.
+ const box=useRef<HTMLDetailsElement>(null);
+ useEffect(()=>{
+  const outside=(event:PointerEvent)=>{const node=box.current;if(node?.open&&!node.contains(event.target as Node))node.open=false;};
+  const escape=(event:KeyboardEvent)=>{const node=box.current;if(event.key==='Escape'&&node?.open&&node.contains(document.activeElement)){node.open=false;node.querySelector('summary')?.focus();}};
+  document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);
+  return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};
+ },[]);
  useEffect(()=>{if(disabled){controller.current?.abort();setBusy(false);setMessage('');}},[disabled]);
  useEffect(()=>()=>controller.current?.abort(),[]);
  async function sources(){
@@ -16,7 +24,7 @@ export default function AnswerExports({spec,disabled,onResult,months,onStale}:{s
   catch(e){if(request.signal.aborted)return;const refusal=sourceRefusal(e,onStale,'Exportul nu a putut fi generat.');if(refusal!==null)setMessage(refusal);}
   finally{if(!request.signal.aborted)setBusy(false);}
  }
- return <details className="cq-export">
+ return <details ref={box} className="cq-export">
   <summary><DiscoveryIcon name="download"/>Exportă<DiscoveryIcon name="chevronDown"/></summary>
   <div className="cq-export-options">
    <div><button type="button" disabled={disabled||busy} onClick={onResult}>Rezultatul afișat · CSV</button><p>Doar ce vezi acum.</p></div>

@@ -101,6 +101,7 @@ import type { MapFacts } from "@/lib/ask/map-facts";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
+import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
@@ -1247,16 +1248,14 @@ export default function AskPanel({
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
                     :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>}
-                <button
-                  type="button"
-                  className="cq-share"
-                  onPointerDown={() => prepareShortLink(answerPath(applied, thread))}
-                  onClick={() => void share(answerPath(applied, thread), title)}
-                >
-                  <ShareIcon />
-                  <span>Trimite</span>
-                </button>
-                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
+                {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”. */}
+                <div className="cq-answer-more">
+                  <ShareMenu onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
+                    onShare={() => void share(answerPath(applied, thread), title)} />
+                  <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
+                  <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}));}}
+                    months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
+                </div>
                 {/* A trend's or a network's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title}
                   {...(watchedGroup ? { label: watchedGroup.label, blocked: watchedGroup.blocked } : {})} />
@@ -1565,19 +1564,9 @@ export default function AskPanel({
                 </details>
               )}
             </CoverageDisclosure>
-            <div className="cq-answer-tools">
-              <button
-                type="button"
-                className="cq-copy"
-                onPointerDown={() => prepareShortLink(answerPath(applied, thread))}
-                onClick={() => void copyLink(answerPath(applied, thread))}
-              >
-                <CopyIcon />
-                Copiază linkul
-              </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}));}}
-                months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
-              {mode === "ask" && (
+            {/* Z3-15: „Copiază linkul” is in „Trimite ▾”, „Exportă” in the head; the row stays for the AI mode's „Ajustează”. */}
+            {mode === "ask" && <div className="cq-answer-tools">
+              {(
                 <button
                   type="button"
                   onClick={() => {
@@ -1591,7 +1580,7 @@ export default function AskPanel({
                   Ajustează întrebarea ↑
                 </button>
               )}
-            </div>
+            </div>}
 
           </section>
         </AnswerEvidence.Provider>
@@ -1647,11 +1636,14 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
       </div>
       <div className="cq-answer-actions g-quiet" inert>
         <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>
-        <button type="button" className="cq-share"><ShareIcon />Trimite</button>
-        <span className="cq-save-wrap"><button type="button" className="cq-save-question">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
-          <span>Salvează</span>
-        </button></span>
+        <div className="cq-answer-more">
+          <span className="qb cq-share-menu"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>
+          <span className="cq-save-wrap"><button type="button" className="cq-save-question">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
+            <span>Salvează</span>
+          </button></span>
+          {spec && <AnswerExports spec={spec} disabled onResult={() => undefined} />}
+        </div>
         {/* A signed-in reader's „Urmărește” and „Salvează în anchetă”: one more pair. */}
         {viewer.userId && <span className="cq-ghost-pair g-block" />}
       </div>
@@ -1671,10 +1663,6 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
     <div inert className="g-quiet">
       <details className="cq-caveats"><summary>Ce include calculul · <G.Line inline w="1ch" /></summary></details>
       {spec && <CoverageDisclosure spec={spec} />}
-      <div className="cq-answer-tools">
-        <button type="button" className="cq-copy"><CopyIcon />Copiază linkul</button>
-        {spec && <AnswerExports spec={spec} disabled onResult={() => undefined} />}
-      </div>
     </div>
   </Ghost>;
 }
@@ -2333,15 +2321,6 @@ function Loader({ label }: { label: string }) {
 /** The answer's address on the site, with its thread; the copy and share buttons turn it into a short link (/l/…). */
 function answerPath(spec: AskSpec, thread: Thread | null): string {
   return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}${thread?.steps.length ? `&fir=${encodeURIComponent(writeThread(thread))}` : ""}`;
-}
-
-function CopyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="8" y="8" width="12" height="12" rx="2" />
-      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
-    </svg>
-  );
 }
 
 function ShareIcon() {
