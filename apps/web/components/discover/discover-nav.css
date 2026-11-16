@@ -1,0 +1,11 @@
+/* The „Descoperă” pages' local row (UX audit Z6-08): small, above the page's title; links of 44 px for a finger. */
+.dsc-nav{display:flex;flex-wrap:wrap;align-items:center;gap:0 6px;margin:-14px 0 6px;font:500 14px/1.2 var(--body);color:var(--muted)}
+.dsc-label{margin-right:8px;font:600 11px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dsc-item{display:inline-flex;align-items:center;gap:6px}
+.dsc-dot{color:var(--line2)}
+.dsc-nav a,.dsc-on,.dsc-link{display:inline-flex;align-items:center;min-height:44px;padding:0 2px}
+.dsc-nav a,.dsc-link{color:var(--accent);text-decoration:none}
+.dsc-nav a:hover{text-decoration:underline;text-underline-offset:3px}
+.dsc-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.dsc-on{color:var(--ink);font-weight:600}
+@media(max-width:700px){.dsc-nav{margin:-8px 0 4px}}

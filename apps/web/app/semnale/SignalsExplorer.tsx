@@ -17,6 +17,7 @@ import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import DiscoverNav from "@/components/discover/DiscoverNav";
 import SignalDialog from "./SignalDialog";
 import { caseMeter } from "./CaseMeter";
 
@@ -149,6 +150,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   const binLabel = (bin: number) => `${bin}–${bin === 90 ? 100 : binTo(bin) - 1}`;
   const binOn = (bin: number) => active.band !== null && Math.round(active.band.from * 100) === bin && Math.round(active.band.to * 100) === binTo(bin);
   return <div className="sg-explorer">
+    <DiscoverNav current="semnale" />
     <header className="sg-heading"><div className="sg-title"><h1>Semnale</h1><Term id="semnal" tip /></div><Link href="/metodologie" className="sg-method-link">Cum se calculează →</Link></header>
     <div className="sg-freshness">{freshness}</div>
     <nav className="sg-tabs" aria-label="Vizualizarea semnalelor"><button onClick={() => switchView("signals")} aria-current={active.view === "signals" ? "page" : undefined}>Cazuri, pe tipar</button><button onClick={() => switchView("cri")} aria-current={active.view === "cri" ? "page" : undefined}>Clasament după risc</button></nav>

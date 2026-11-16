@@ -13,6 +13,7 @@ import { countryName, procedureName, TED_LABEL, TED_AMOUNT_LABEL, formatTedAmoun
 import { getCoverage } from "@/lib/coverage";
 import { formatInt, cleanName } from "@/lib/format";
 import Term from "@/components/Term";
+import DiscoverNav from "@/components/discover/DiscoverNav";
 import "./supra-prag.css";
 
 export const dynamic = "force-dynamic";
@@ -130,6 +131,7 @@ export default async function SupraPragPage({
 
   return (
     <>
+      <DiscoverNav current="supra-prag" />
       <h1 className="page-title">Atribuiri publicate în TED</h1>
       <p className="page-sub ted-tip-line">
         Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title={TED_TERM.title} text={TED_TERM.text} /></span>
