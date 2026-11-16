@@ -99,7 +99,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   // The count and the pages, above and under the rows: the pager of every „Descoperă” page (UX audit Z6-14).
   function toolbar(bottom = false) {
     return <DiscoverPager page={state.page} pageSize={10} total={total} unit={active.view === "cri" ? ["entitate", "entități"] : ["caz", "cazuri"]} onPage={page => navigate({ page }, true)} always bottom={bottom} className="sg-toolbar"
-      extra={<>{!bottom && active.view === "signals" && meta.subject === "award" && <Term id="aparitie-anunt" tip />}{active.view === "signals" && <span className="sg-result-sort">După valoare</span>}</>} />;
+      extra={<>{!bottom && active.view === "signals" && meta.subject === "award" && <Term id="aparitie-anunt" tip />}</>} />;
   }
   /**
    * What the list leaves out by default, with the way back in, under its count (owner, 16 November 2026): in the ranking
@@ -146,7 +146,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
   const binOn = (bin: number) => active.band !== null && Math.round(active.band.from * 100) === bin && Math.round(active.band.to * 100) === binTo(bin);
   return <div className="sg-explorer">
     <DiscoverNav current="semnale" />
-    <header className="sg-heading"><div className="sg-title"><h1>Semnale</h1><Term id="semnal" tip /></div><Link href="/metodologie" className="sg-method-link">Cum se calculează →</Link></header>
+    <header className="sg-heading"><div className="sg-title"><h1>Semnale</h1><Term id="semnal" tip /></div></header>
     <div className="sg-freshness">{freshness}</div>
     <nav className="sg-tabs" aria-label="Vizualizarea semnalelor"><button onClick={() => switchView("signals")} aria-current={active.view === "signals" ? "page" : undefined}>Cazuri, pe tipar</button><button onClick={() => switchView("cri")} aria-current={active.view === "cri" ? "page" : undefined}>Clasament după risc</button></nav>
     <section className={`sg-filters${active.view === "cri" ? " sg-cri-filters" : ""}`} aria-label="Filtre">
@@ -157,7 +157,8 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       <p className="sg-mobile-scope">{active.role === "authority" ? "Instituții" : "Firme"} · {active.county ?? "Toate județele"}</p>
     </section>
     {notice && <p className="sg-notice" role="status">{notice}</p>}
-    <div className="sg-context"><div><h2>{active.view === "signals" ? flagLabel(code) : active.role === "authority" ? "Instituțiile după risc" : "Firmele după risc"}</h2><p>{active.view === "cri" ? `Riscul adună ${criteria.length} tipare din achizițiile directe, de la 0 la 100. Nu este o probabilitate de corupție.` : meta.short}</p></div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`}>Criterii și limite →</Link></div>
+    {/* The pattern's name is said once, by the field above, written as the section's title; its h2 stays for the outline (UX audit Z6-15). */}
+    <div className="sg-context"><div><h2 className={active.view === "signals" ? "sr-only" : undefined}>{active.view === "signals" ? flagLabel(code) : active.role === "authority" ? "Instituțiile după risc" : "Firmele după risc"}</h2><p>{active.view === "cri" ? `Riscul adună ${criteria.length} tipare din achizițiile directe, de la 0 la 100. Nu este o probabilitate de corupție.` : meta.short}</p></div><Link href={`/metodologie#${active.view === "cri" ? "indice" : code}`}>Criterii și limite →</Link></div>
     {/* While a change is on its way the status is the floating one (same view) or the ghost's (another view). */}
     <p className="sr-only" role="status" aria-live="polite">{pending ? "" : error ? "Rezultatele nu s-au încărcat." : `${formatInt(total)} ${active.view === "cri" ? "entități" : "cazuri"}. Pagina ${state.page + 1}.`}</p>
     <section ref={resultsRef} className={`sg-results${update ? " sg-upd" : ""}${pending && !reshaping ? " g-stale" : ""}`} tabIndex={-1} aria-label="Rezultate" aria-busy={pending || undefined} data-chart>

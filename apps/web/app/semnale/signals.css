@@ -132,3 +132,9 @@
 @media(max-width:700px){.sg-inactive{display:table;margin:4px 0 0}}
 /* A group at 1,2× its ceiling or under, listed on request (Z6-04): it adds nothing to the score, so its multiple is not red. */
 .sg-x.under{color:var(--muted);font-size:16px}
+
+/* The pattern's name once (UX audit Z6-15): the field „Tip de semnal” is written as the section's title, the h2 under it
+   is for the outline only, the methodology is one link beside the description. */
+.sg-explorer .sg-type-button>span:first-child{font-family:var(--display);font-weight:700;font-size:19px;letter-spacing:-.02em;line-height:1.15}
+.sg-context:has(h2.sr-only){padding-top:14px}
+@media(max-width:700px){.sg-explorer .sg-type-button>span:first-child{font-size:18px}}
