@@ -103,6 +103,13 @@ function ScoreHistogram({ kinds }: { kinds: MethodologyFigures["kinds"] }) {
   );
 }
 
+/** The rules' index (Z7-31): procedures (award signals), firms (supplier signals), institutions (the rest). */
+const SIGNAL_GROUPS: [string, string[]][] = [
+  ["Instituții", FLAG_ORDER.filter((c) => !["award", "supplier"].includes(FLAG_META[c]!.subject))],
+  ["Firme", FLAG_ORDER.filter((c) => FLAG_META[c]!.subject === "supplier")],
+  ["Proceduri", FLAG_ORDER.filter((c) => FLAG_META[c]!.subject === "award")],
+];
+
 function PatternList({ codes }: { codes: readonly string[] }) {
   return <>{codes.map((c, i) => <span key={c}>{i ? ", " : ""}<a href={`#${c}`}>{flagLabel(c)}</a></span>)}</>;
 }
@@ -121,6 +128,15 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
         <header className="mt-col">
           <h1>Cum citim banii publici</h1>
           <p className="mt-lede">Ce face o primărie cu banii publici și cum îți dai seama ce merită întrebat? Urmărim o comună inventată, Comuna Exemplara, mai ales în 2024.</p>
+          {/* The three lanes right under the introduction (UX audit Z7-30, variant A): a reader looking for a rule sees
+              „Regulile” on the first screen; the four-step story opens the „Pe scurt” lane, nothing removed. */}
+          <nav className="mt-lanes" role="tablist" aria-label="Cum vrei să citești">
+            <button type="button" role="tab" id="tab-scurt" aria-selected="true" aria-controls="lane-scurt" data-lane="scurt">Pe scurt<small>2 minute</small></button>
+            <button type="button" role="tab" id="tab-poveste" aria-selected="false" aria-controls="lane-poveste" data-lane="poveste" tabIndex={-1}>Povestea<small>cam 20 de minute</small></button>
+            <button type="button" role="tab" id="tab-reguli" aria-selected="false" aria-controls="lane-reguli" data-lane="reguli" tabIndex={-1}>Regulile<small>toate, cu formula</small></button>
+          </nav>
+        </header>
+        <div className="mt-lane mt-col" id="lane-scurt" role="tabpanel" aria-labelledby="tab-scurt">
           <section className="mt-stage" aria-labelledby="stage-t" data-fr="1">
             <h2 id="stage-t" className="mt-sr">Scorul, în patru pași</h2>
             <div className="mt-frames">
@@ -310,13 +326,6 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
             <p className="mt-sr mt-st-live" aria-live="polite" />
           </section>
           <p className="mt-meta">Comuna Exemplara, Mobilier Exemplara SRL, Firma A și Firma B nu există: numele și cifrele sunt inventate. Regulile sunt cele reale.</p>
-          <nav className="mt-lanes" role="tablist" aria-label="Cum vrei să citești">
-            <button type="button" role="tab" id="tab-scurt" aria-selected="true" aria-controls="lane-scurt" data-lane="scurt">Pe scurt<small>2 minute</small></button>
-            <button type="button" role="tab" id="tab-poveste" aria-selected="false" aria-controls="lane-poveste" data-lane="poveste" tabIndex={-1}>Povestea<small>cam 20 de minute</small></button>
-            <button type="button" role="tab" id="tab-reguli" aria-selected="false" aria-controls="lane-reguli" data-lane="reguli" tabIndex={-1}>Regulile<small>toate, cu formula</small></button>
-          </nav>
-        </header>
-        <div className="mt-lane mt-col" id="lane-scurt" role="tabpanel" aria-labelledby="tab-scurt">
           <div className="mt-go-row mt-top">
             <a className="mt-go2" href="/semnale">Vezi semnalele</a>
           </div>
@@ -1455,7 +1464,19 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <a className="mt-btn-l" href="#cod-formula">Codul scorului, la {VERSION}</a>
               <a className="mt-btn-l" href="/metodologie/constants.json">Constantele, ca JSON</a>
             </div>
-            <details suppressHydrationWarning open id="constante">
+            {/* Every signal one click away (UX audit Z7-31): the anchors open the lane and the rule; grouped by who the
+                signal is about. The constants table below starts folded, like the other rules. */}
+            <nav className="mt-sigindex" aria-labelledby="sigindex-t">
+              <h3 id="sigindex-t">Semnalele, fiecare cu regula lui</h3>
+              {SIGNAL_GROUPS.map(([label, codes]) => (
+                <div className="mt-sigindex-g" key={label}>
+                  <span>{label}</span>
+                  <ul>{codes.map((c) => <li key={c}><a href={`#${c}`}>{FLAG_META[c]!.title}</a></li>)}</ul>
+                </div>
+              ))}
+              <p>Un clic deschide regula: ce măsoară, ce merită verificat, limita ei.</p>
+            </nav>
+            <details suppressHydrationWarning id="constante">
               <summary>Constantele, într-un tabel</summary>
               <div className="mt-body">
                 <p>Toate numerele din calcul, la un loc. Constantele formulei sunt și în <a href="/metodologie/constants.json">constants.json</a>. Fiecare număr e explicat în secțiunile de mai jos și în „De ce aceste numere”.</p>

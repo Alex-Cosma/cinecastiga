@@ -792,3 +792,20 @@
 .mt .mt-k-keyword{font-weight:600}
 .mt .mt-code-wait{display:block;padding-left:12px;color:var(--muted);font-family:var(--body)}
 .mt .mt-ref .mt-code .mt-code-raw{margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:14px}
+
+/* UX audit Z7-31 (owner, 16 November 2026): „Regulile” opens with an index of the signals, grouped by who they are
+   about; each name opens its rule. */
+.mt .mt-sigindex{margin:22px 0 18px;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.mt .mt-sigindex h3{margin:0 0 6px;font-size:17px}
+.mt .mt-sigindex-g{display:grid;row-gap:4px;padding:10px 0;border-top:1px solid var(--line)}
+.mt .mt-sigindex-g:first-of-type{border-top:0}
+.mt .mt-sigindex-g>span{font-size:13px;font-weight:600;color:var(--muted)}
+.mt .mt-sigindex ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px}
+.mt .mt-sigindex li{line-height:1.35;margin:0}
+.mt .mt-sigindex a{font-size:15px;line-height:1.35;text-underline-offset:4px}
+.mt .mt-sigindex>p{margin:10px 0 0;font-size:13px;color:var(--muted)}
+@media(max-width:700px){
+ .mt .mt-sigindex{padding:12px 14px}
+ .mt .mt-sigindex ul{grid-template-columns:minmax(0,1fr);gap:0}
+ .mt .mt-sigindex a{display:inline-flex;align-items:center;min-height:44px}
+}
