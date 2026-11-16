@@ -67,7 +67,8 @@ export const QUESTION_TYPES: {
   {
     id: "table",
     group: "money",
-    label: "Cine câștigă cele mai multe contracte?",
+    // „achiziții”: the ranking counts every acquisition, direct ones too; „contracte” is said only of procedures (Z2-30).
+    label: "Cine câștigă cele mai multe achiziții?",
     description: "Un clasament al firmelor, instituțiilor sau județelor.",
     keywords: "top clasament furnizori autoritati",
   },

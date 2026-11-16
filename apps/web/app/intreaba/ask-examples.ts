@@ -32,7 +32,8 @@ export const ASK_EXAMPLE_GROUPS: AskExampleGroup[] = [
     title: "Cine câștigă",
     examples: [
       { text: "Cine face iluminatul în Buzău și cât costă?" },
-      { text: "Ce firme câștigă contractele de drumuri din Prahova?" },
+      // „achiziții”, not „contracte”: the answer counts every acquisition, direct ones too (UX audit Z2-30).
+      { text: "Ce firme câștigă achizițiile de drumuri din Prahova?" },
       { text: "Cine vinde laptopuri școlilor din Iași?" },
     ],
   },
