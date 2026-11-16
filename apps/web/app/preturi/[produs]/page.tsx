@@ -9,7 +9,7 @@ import { BUYERS_PAGE, DEFAULT_PRICE_ORDER, LEAD_RULE, getProductPage, productHre
 import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
-import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
+import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
 import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } from "../PriceStrips";
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
@@ -97,7 +97,7 @@ export default async function ProdusPage({ params, searchParams }: {
     {!g ? <p className="pr-empty">Mai puțin de cinci instituții au cumpărat {family.label.toLowerCase()} în acest ambalaj {data.year ? `în ${data.year}` : "într-un an"}: nu avem cu ce compara.</p> : <>
       <section className="pr-hero" aria-labelledby="pr-hero-h">
         <h2 id="pr-hero-h" className="pr-hero-line">{data.year ? <>În {data.year}, mediana a fost <b>{medianRange(g.medianLo, g.medianHi, g.per)}</b>, la {buyersWord(g.buyers)}.</>
-          : <>Mediana anului: <b>{medianRange(g.medianLo, g.medianHi, g.per)}</b>, la {buyersWord(g.buyers)}.</>}
+          : <>{(() => { const m = medianWords(g.medianLo, g.medianHi, g.per, null); return <>{m.label.charAt(0).toUpperCase() + m.label.slice(1)}: <b>{m.value}</b></>; })()}, la {buyersWord(g.buyers)}.</>}
           {" "}{g.thin ? "Prea puține instituții pentru piste." : `${sentenceCase(leadsWord(g.leads))}.`}</h2>
         {g.thin && <p className="pr-note">O pistă cere un produs cu cel puțin {countWord(LEAD_RULE.buyers, "o instituție", "instituții")} într-un an; aici banda arată doar cum se împrăștie prețurile.</p>}
         {g.mixed && <p className="pr-caution">{MIXED_CAUTION}</p>}
