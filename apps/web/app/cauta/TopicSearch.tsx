@@ -8,13 +8,20 @@ import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {Broader,SubjectAnswer,Understood,answerKey as answerKeyOf,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
+import {Broader,ReadingGhost,SubjectAnswer,Understood,answerKey as answerKeyOf,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
 import {silentChoice} from '@/lib/topic-search/places';
 import {roCount} from '@/lib/ro-count';
 
+/** A place as the sentence and the chips name it: „Județul Buzău”, „Municipiul București”, „Cisnădie”. */
+const placeLabel=(p:Place|null)=>!p?'':p.kind==='county'?(p.name==='București'?'Municipiul București':`Județul ${p.name}`):p.name;
+type Filters=NonNullable<TopicInterpretation['answer']>['total']['spec']['filters'];
+/** The place a short answer counts when the lists have none (a question: „cine a câștigat cel mai mult în Cluj”). */
+const answerPlace=(f:Filters|undefined)=>f?.county?(f.county==='București'?'Municipiul București':`Județul ${f.county}`):f?.uatName?f.uatName:null;
+/** The years a short answer counts when the lists have none. */
+const answerPeriod=(f:Filters)=>f.yearFrom!==undefined&&f.yearTo!==undefined?(f.yearFrom===f.yearTo?String(f.yearFrom):`${f.yearFrom}–${f.yearTo}`):f.yearFrom!==undefined?`din ${f.yearFrom}`:f.yearTo!==undefined?`până în ${f.yearTo}`:null;
 const defaults:TopicScope={q:'',place:'',from:'',to:'',type:'all',match:'words',tab:'all',page:1,role:''};
 /** A question about who („cine câștigă…”, „ce firme…”): „Pe scurt” puts the firms or institutions before the total. */
 const WHO_ASKED=/^\s*(cine\b|(ce|care)\s+(firme|firma|companii|instituții|institutii|instituţii)\b)/i;
@@ -199,7 +206,7 @@ export default function TopicSearch(){
  const [answerCount,setAnswerCount]=useState<AnswerCount>(null);
  // A question's words searched as written: when nothing matches, one quiet line instead of empty sections.
  const [literalOpen,setLiteralOpen]=useState('');
- const filterSummary=[placeName,effective.from?`${effective.from}–${effective.to}`:'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
+ const filterSummary=[placeLabel(effective.place&&place?.id===effective.place?place:null),effective.from?(effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`):'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
  const copy=async()=>{try{await navigator.clipboard.writeText(new URL(`/cauta?${topicParams(scope)}${literal?'&literal=1':''}`,window.location.origin).href);setCopied('Link copiat');}catch{setCopied('Nu am putut copia linkul. Copiază adresa din browser.');}};
  /*
   * The answer area for a view: the status line, „Am înțeles”, „Pe scurt” and the result panels. `result` null draws
@@ -215,7 +222,7 @@ export default function TopicSearch(){
   const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
   // The place as its chip in „Am înțeles” names it („Municipiul Sibiu”, „Județul Cluj”), without the county after a locality.
   const chipPlace=t?.fromWords.place??(t?.explicitPlace?.id===effective.place?t.explicitPlace:null);
-  const answerWhere=!effective.place?where:chipPlace?chipPlace.label.replace(/\s*\([^)]*\)$/,''):vPlace?.kind==='county'?(vPlace.name==='București'?'Municipiul București':`Județul ${vPlace.name}`):where;
+  const answerWhere=!effective.place?(answerPlace(t?.answer?.total.spec.filters)??where):chipPlace?chipPlace.label.replace(/\s*\([^)]*\)$/,''):vPlace?.kind==='county'?(vPlace.name==='București'?'Municipiul București':`Județul ${vPlace.name}`):where;
   // A recognised subject or a whole question leads with its answer, above the results.
   const question=t?.question??null;
   // A question's words searched as written; a question about one subject searches that subject instead.
@@ -247,8 +254,9 @@ export default function TopicSearch(){
   <div className={`topic-status${quietStatus?' is-quiet':''}`} role="status" aria-live="polite">{question?<>Întrebarea ta: <strong>„{scope.q}”</strong></>:<>Rezultate pentru <strong>„{effective.q}”</strong> · {where} · {period}</>}</div>
   {v.literal&&<p className="topic-help topic-literal">Cauți exact cuvintele scrise, fără interpretare. <Link prefetch={false} href={searchHref(scope,{})}>Interpretează căutarea</Link></p>}
   {t&&<Understood scope={scope} effective={effective} t={t} place={vPlace}/>}
+  {reading&&<ReadingGhost answer={scope.tab==='all'&&!v.literal}/>}
   {/* The short answer comes from Ask and does not wait for the titles. */}
-  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.subject?.label??effective.q,kind:t.kind?.label??null,where:answerWhere,period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined} onCount={setAnswerCount}/>}
+  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined} onCount={setAnswerCount}/>}
   <div className={`topic-results${collapsed?' is-collapsed':''}`} style={{minHeight:collapsed||literalQ?0:400}}>
   {collapsed?(result?<p className="topic-literal-quiet">{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume. <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>Arată</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)
@@ -290,9 +298,9 @@ export default function TopicSearch(){
  <nav className="topic-breadcrumb" aria-label="Perspective de explorare"><Link href="/">Descoperă</Link><span aria-hidden="true">/</span><span>Caută</span><Link href="/intreaba">Construiește o întrebare <DiscoveryIcon name="arrow"/></Link></nav>
  {/* After a search, phones show the words as the title so the answer fits in the first screen. */}
  <header className={`topic-intro${scope.q&&!parsed.error?' has-query':''}`}><h1><span className="topic-h1-default">Caută un fir de urmărit.</span>{scope.q&&!parsed.error&&<span className="topic-h1-query">„{scope.q}”</span>}</h1></header>
- <div className="topic-filter-surface"><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button></form>
+ <div className={`topic-filter-surface${scope.q&&!parsed.error?' has-query':''}`}><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button></form>
  <button type="button" className="topic-filter-toggle" aria-expanded={filtersExpanded} aria-controls="topic-filters" onClick={()=>setFiltersExpanded(v=>!v)}><span>Loc, perioadă și alte filtre{filterSummary&&<small>{filterSummary}</small>}</span><DiscoveryIcon name="chevronDown"/></button>
- <div id="topic-filters" className={`topic-filters${filtersExpanded?' is-expanded':''}`}><PlacePicker value={effective.place} selected={place?.id===effective.place?place:null} onChange={p=>{setPlace(p);refine({place:p?.id??''});}}/><PeriodPicker scope={effective} onChange={refine}/><label>Tipul achiziției<select value={scope.type} onChange={e=>keepReading({type:e.target.value as TopicScope['type']})}><option value="all">Toate tipurile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte din proceduri</option></select></label><label>Potrivirea<select value={scope.match} onChange={e=>keepReading({match:e.target.value as TopicScope['match']})}><option value="words">Toate cuvintele</option><option value="phrase">Expresia în ordine</option></select></label></div>
+ <div id="topic-filters" className={`topic-filters${filtersExpanded?' is-expanded':''}`}><PlacePicker value={effective.place} selected={place?.id===effective.place?place:null} onChange={p=>{setPlace(p);if(!p&&t?.placeAlone)router.push(searchHref(scope,{place:''},true),{scroll:false});else refine({place:p?.id??''});}}/><PeriodPicker scope={effective} onChange={refine}/><label>Tipul achiziției<select value={scope.type} onChange={e=>keepReading({type:e.target.value as TopicScope['type']})}><option value="all">Toate tipurile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte din proceduri</option></select></label><label>Potrivirea<select value={scope.match} onChange={e=>keepReading({match:e.target.value as TopicScope['match']})}><option value="words">Toate cuvintele</option><option value="phrase">Expresia în ordine</option></select></label></div>
  {effective.place.startsWith('uat:')&&<LocalityScope locality={(result??main?.result)?.locality??null} hall={Boolean(effective.hall)} onChange={hall=>refine({hall})}/>}
  </div>
  {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
