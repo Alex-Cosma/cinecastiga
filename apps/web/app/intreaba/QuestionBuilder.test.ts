@@ -50,7 +50,9 @@ describe("QuestionBuilder from the registry", () => {
     expect(markup).toContain('aria-label="Perioada: 2025"');
     expect(text(markup)).toContain("+ Angajați");
     expect(text(markup)).toContain("Arată primele 10 , după valoarea înregistrată");
-    expect(markup).toContain('aria-label="Mai multe pentru Întrebarea"');
+    // „Selecție avansată” is a link at the row's end, not a menu of one item behind „⋯” (UX audit Z2-18).
+    expect(markup).toContain('class="qb-advanced-link"');
+    expect(markup).not.toContain('aria-label="Mai multe pentru Întrebarea"');
     for (const retired of ["Adaugă o condiție", "Mai multe filtre", "Număr minim de înregistrări", "Selecție precisă", "qb-add", "cq-more-filters"]) expect(markup).not.toContain(retired);
     // A run question: applied, nothing to apply or save in the builder (the answer's „Păstrează” saves it), a link to the
     // answer in place of a filled button (UX audit Z2-19, Z2-20).

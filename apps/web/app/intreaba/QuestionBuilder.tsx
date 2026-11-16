@@ -36,7 +36,6 @@ import { usePeerDialog } from "./builder/use-peer-dialog";
 import { peerDataFor } from "./builder/PeersWindow";
 import { peerFollowUp } from "../../lib/ask/peer-groups-shared";
 import KitLink from "./answer/KitLink";
-import RowMenu from "./answer/RowMenu";
 import { builderView, onlyExclusions, patchDraft, trendListSwitch, withoutExclusions, type BuilderWindowSpec, type StripPatch } from "./builder/view";
 import type { TrendList } from "@/lib/ask/trend-shared";
 import SaveQuestionButton from "./SaveQuestionButton";
@@ -412,11 +411,10 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
       <div className="qb-bottom">
         <div className="qb-bottom-start">
           {view.presentation.length > 0 && <Presentation tokens={view.presentation} openId={open?.key ?? null} onOpen={openWindow} />}
+          {/* A menu of one item was two clicks and a mystery (UX audit Z2-18): the item itself, as a link at the row's end. */}
           {view.advanced.length > 0 && <span className="qb-more-wrap" ref={moreRef}>
-            <RowMenu name="Întrebarea" actions={[{ id: "advanced", label: "Selecție avansată", glyph: "▾", onSelect: () => {
-              const button = moreRef.current?.querySelector<HTMLElement>(".qb-more");
-              if (button) openWindow("advanced", button);
-            } }]} />
+            <button type="button" className="qb-advanced-link" aria-haspopup="dialog" aria-expanded={open?.key === "advanced"}
+              onClick={(event) => openWindow("advanced", event.currentTarget)}>Selecție avansată</button>
           </span>}
         </div>
         <div className="qb-actions qb-bottom-end">
