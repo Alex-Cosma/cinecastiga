@@ -1339,3 +1339,34 @@
    a flex column with a height limit, and a result's explicit min-height let it shrink to 48 px: in the answer, results
    keep their own height and the list scrolls. */
 .cq-answer .qb-find .qb-res { flex-shrink: 0; }
+
+/* UX audit Z3-24 (owner, 16 November 2026; the rule of 1 November): on a phone no text of an answer is under 12 px (an
+   all-caps label may be 11 px). The map's list is 13 px in 44 px rows; the tables, the signals' and the procedures'
+   tags (still 22 px tall), the axes' ticks, the charts' notes and the bars' values reach 12 px. The network's radial
+   chart is drawn at a third of its size there: its names (≈ 6 px) give way to its discs, whose tap picks their row. */
+@media (max-width: 700px) {
+  .cq-answer .cq-result .ask-table th,
+  .cq-answer .cq-result .ask-table td { font-size: 12px; }
+  .cq-answer .cq-result .ask-mapside td { height: 44px; padding-block: 0; font-size: 13px; }
+  .cq-answer .cq-result .ask-mapside td.num { white-space: nowrap; }
+  .cq-answer .cq-result .ask-mapside td a { display: inline-flex; align-items: center; min-height: 44px; }
+  .cq-answer .ask-legend { font-size: 12px; }
+  .cq-answer .cq-result .ask-ts .cv { font-size: 12px; }
+  .cq-answer .qb-tag { font-size: 12px; line-height: 1.5; }
+  .cq-answer .qb-seg-n { font-size: 12px; }
+  .cq-answer .fc-ident, .cq-answer .fc-note, .cq-answer .fc-n, .cq-answer .fc-d, .cq-answer .fc-recs-head small,
+  .cq-answer .fc-yb > span, .cq-answer .fc-yb em { font-size: 12px; }
+  .cq-answer .fc-badge { font-size: 12px; line-height: 1.5; }
+  .cq-answer .dist-member-t small, .cq-answer .dist-legend, .cq-answer .dist-caveat, .cq-answer .dist-strip-name,
+  .cq-answer .dist-axis small, .cq-answer .dist-strip-axis, .cq-answer .dist-strip-over { font-size: 12px; }
+  .cq-answer .dist-n em { font-size: 11px; }
+  .cq-answer .qb-nrow-val small, .cq-answer .qb-nrow-years small, .cq-answer .qb-arow-val small { font-size: 12px; }
+  .cq-answer .cmp-year-label { font-size: 12px; }
+  .cq-answer .cmp-risk small, .cq-answer .cmp-flags span, .cq-answer .cmp-share small, .cq-answer .cmp-mirror-a, .cq-answer .cmp-mirror-b { font-size: 12px; }
+  .cq-answer .ec-legend { font-size: 12px; }
+  .cq-answer .sc-label { font-size: 12px; }
+}
+@media (max-width: 560px) {
+  .cq-answer .qb-net .qb-net-label,
+  .cq-answer .qb-net .qb-net-centre-label { display: none; }
+}
