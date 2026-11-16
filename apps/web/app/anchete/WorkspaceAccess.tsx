@@ -1,17 +1,20 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { WorkspaceMembers } from "@/lib/investigation-workspace";
 import { Ghost } from "@/components/ghost/Ghost";
 import { privateDay } from "@/lib/private-format";
 
-export default function WorkspaceAccess({ id }: { id: string }) {
-  const [data, setData] = useState<WorkspaceMembers | null>(null);
+/** "Colaboratori": who has access, the open invitations and the form to invite (the dossier head's panel, Z8-27). */
+export default function WorkspaceAccess({ id, initial = null }: { id: string; initial?: WorkspaceMembers | null }) {
+  const [data, setData] = useState<WorkspaceMembers | null>(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [invite, setInvite] = useState("");
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState("");
   const base = `/api/anchete/${id}`;
+  const router = useRouter();
   async function reload() {
     const response = await fetch(`${base}/members`, { cache: "no-store" }); const result = await response.json();
     if (!response.ok) throw new Error(result.error ?? "Nu am putut încărca accesul."); setData(result);
@@ -21,7 +24,7 @@ export default function WorkspaceAccess({ id }: { id: string }) {
     try {
       const response = await fetch(path, { method, ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "Nu am putut modifica accesul.");
-      await reload(); setNotice("Accesul a fost actualizat."); return result;
+      await reload(); setNotice("Accesul a fost actualizat."); router.refresh(); return result;
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Încearcă din nou."); return null; }
     finally { setBusy(false); }
   }
@@ -35,8 +38,8 @@ export default function WorkspaceAccess({ id }: { id: string }) {
             <label>Acces<select name="role" defaultValue="viewer"><option value="viewer">Cititor · consultă și exportă</option><option value="editor">Editor · poate modifica dosarul</option></select></label></div>
           <button type="submit" className="iw-primary">{busy ? "Se creează…" : "Creează link de invitație"}</button><p className="iw-muted">Valabil 7 zile. Trimite tu linkul; nu trimitem e-mail.</p>
         </fieldset></form>;
-  return <details className="iw-access" onToggle={event => { if (event.currentTarget.open && !data) void reload().catch(failure => setError(String(failure.message))); }}>
-    <summary>Colaboratori</summary>
+  useEffect(() => { if (!data) void reload().catch(failure => setError(String(failure.message))); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <div className="iw-access">
     <div className="iw-access-content"><p>Dosarul este privat. Invitația funcționează doar pentru contul cu adresa aleasă și confirmată; simpla posesie a linkului nu oferă acces.</p>
       {error && <p className="iw-error" role="alert">{error}</p>}<p role="status">{notice}</p>
       {/* While the access list loads (owner, 6 November 2026: "ghost data loading"), the invitation form is already in
@@ -55,5 +58,5 @@ export default function WorkspaceAccess({ id }: { id: string }) {
         {data.invites.length > 0 && <><h3>Invitații în așteptare</h3><ul className="iw-pending-invites">{data.invites.map(item => <li key={item.id}><span>{item.email} · {item.role === "editor" ? "editor" : "cititor"}<small>Expiră la {privateDay(item.expiresAt)}</small></span><button type="button" disabled={busy} onClick={() => { void act(`${base}/invites/${item.id}`, "DELETE"); setInvite(""); }}>Revocă invitația</button></li>)}</ul></>}
       </>}
     </div>
-  </details>;
+  </div>;
 }

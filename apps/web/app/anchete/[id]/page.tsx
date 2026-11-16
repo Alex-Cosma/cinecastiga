@@ -2,12 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { sessionUserId } from "@/lib/session";
 import type { Metadata } from "next";
 import { getDosar, getOwnedInvestigation } from "@/lib/anchete";
-import { getInvestigationWorkspace } from "@/lib/investigation-workspace";
+import { getInvestigationWorkspace, getWorkspaceMembers } from "@/lib/investigation-workspace";
 import { clipDate, clipTitle, clipValue } from "@/lib/evidence-clip";
 import PrivateTrail from "@/components/private/PrivateTrail";
-import { deleteAncheta, saveAnchetaMeta } from "../actions";
 import Workspace, { type WorkspaceTab } from "../Workspace";
-import WorkspaceAccess from "../WorkspaceAccess";
+import DossierHead from "../DossierHead";
 import { dossierEvidenceParts } from "../DossierEvidence";
 import DossierBrief from "../DossierBrief";
 import "../workspace.css";
@@ -31,20 +30,12 @@ export default async function DosarPage({ params, searchParams }: { params: Prom
   const role = workspace.access.role === "owner" ? "Proprietar" : workspace.access.role === "editor" ? "Editor" : "Cititor · doar consultare";
   // Nothing to export or to share yet (audit Z8-08): the export and the owner's role come back with the first item.
   const empty = dosar.clips.length === 0 && workspace.entries.length === 0;
+  // The owner's head says how many invitations wait or who has access (Z8-27); the panel starts from the same read.
+  const access = workspace.access.canManage ? await getWorkspaceMembers(user, id).catch(() => null) : null;
   return <div className="private-shell iw-shell iw-dossier">
     <PrivateTrail current="anchete" />
-    <header className="iw-header iw-dossier-head"><div><h1>{inv.title}</h1>{inv.description && <p className="iw-description">{inv.description}</p>}
-      <p className="iw-header-meta"><span className="iw-private">Dosar privat</span><span>{statuses[inv.status] ?? inv.status}</span>{!(empty && workspace.access.role === "owner") && <span>{role}</span>}</p>
-    </div></header>
-    <div className="iw-top-tools">
-      {!empty && <a className="iw-tool" href={`/api/anchete/${id}/export?format=zip`} download>Exportă dosarul · ZIP</a>}
-      {workspace.access.canManage && <WorkspaceAccess id={id} />}
-      {workspace.access.canEdit && <details className="iw-settings"><summary>Detalii</summary><form action={saveAnchetaMeta}><input type="hidden" name="id" value={id} />
-        <label>Titlu<input name="title" required maxLength={200} defaultValue={inv.title} /></label><label>Descriere<textarea name="description" rows={3} maxLength={4000} defaultValue={inv.description ?? ""} /></label>
-        <label>Stare editorială<select name="status" defaultValue={inv.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <p className="iw-muted">„Publicată editorial” nu face dosarul public: accesul rămâne la colaboratorii invitați.</p><button type="submit">Salvează detaliile</button>
-      </form>{workspace.access.canManage && <details className="iw-delete"><summary>Șterge dosarul</summary><p>Se elimină dosarul, notele, capturile și accesul colaboratorilor. Acțiunea este definitivă.</p><form action={deleteAncheta}><input type="hidden" name="id" value={id} /><button type="submit" className="iw-danger">Confirmă ștergerea definitivă</button></form></details>}</details>}
-    </div>
+    <DossierHead id={id} title={inv.title} description={inv.description} status={inv.status} canEdit={workspace.access.canEdit} canManage={workspace.access.canManage} empty={empty} access={access}
+      meta={<p className="iw-header-meta"><span className="iw-private">Dosar privat</span><span>{statuses[inv.status] ?? inv.status}</span>{!(empty && workspace.access.role === "owner") && <span>{role}</span>}</p>} />
     {!workspace.access.canEdit && <p className="iw-readonly">Doar consultare. Pentru modificări, cere acces de editor.</p>}
     <DossierBrief id={id} dosar={dosar} entries={workspace.entries} />
     <Workspace investigationId={id} initial={workspace} initialTab={tab} sourceEvents={dosar.sourceEvents}

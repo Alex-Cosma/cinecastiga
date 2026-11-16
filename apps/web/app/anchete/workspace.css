@@ -203,3 +203,16 @@
 .iw-dossier-line>span:not(.iw-pill)+span::before{content:"·";margin:0 8px;color:var(--muted)}
 .iw-dossier-line>.iw-pill{margin-right:10px}
 .iw-dossier-actors{color:var(--ink2)}.iw-dossier-actors a{color:var(--ink2)}
+
+/* The dossier's head (Z8-27): its tools beside the title; a tool's panel opens framed under the head, nothing moves. */
+.iw-head-tools{display:flex;flex-wrap:wrap;gap:8px;flex:none;padding-top:6px}
+.iw-shell .iw-head-tools>button,.iw-head-tool{display:inline-flex;align-items:center;gap:5px;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}
+.iw-head-tool:hover{background:var(--sunk);border-color:var(--accent-line)}
+.iw-shell .iw-head-tools>button[aria-expanded=true]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
+.iw-head-note{font-weight:400;color:var(--muted);font-size:12px}
+.iw-head-panel{margin:0 0 24px;padding:20px 22px;border:1px solid var(--line2);border-radius:12px;background:var(--surface)}.iw-head-panel:focus{outline:none}
+.iw-settings-form{display:grid;gap:14px;max-width:720px}.iw-settings-form>p{margin:0}
+.iw-head-panel .iw-delete{margin-top:18px;padding:14px 0 0;border-top:1px solid var(--line)}.iw-head-panel .iw-delete>summary{color:var(--risk);font-size:13px;font-weight:600;cursor:pointer;min-height:32px;display:inline-flex;align-items:center}
+.iw-head-panel .iw-access-content{padding:0}
+.iw-saved{display:inline-flex;margin:0 0 18px;padding:4px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:13px;font-weight:600}
+@media(max-width:700px){.iw-head-note{display:none}.iw-head-tools{padding-top:0}.iw-shell .iw-head-tools>button,.iw-head-tool{min-height:44px}.iw-head-panel{padding:16px}.iw-head-panel .iw-delete>summary{min-height:44px}}
