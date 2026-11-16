@@ -1,6 +1,7 @@
 "use client";
 
 import type { Headline } from "@/lib/radiografie";
+import { scrollMotion } from "../../../../components/motion/scroll";
 
 /** The three strongest findings; click scrolls to the panel and highlights it. */
 export default function Headlines({ items }: { items: Headline[] }) {
@@ -8,7 +9,7 @@ export default function Headlines({ items }: { items: Headline[] }) {
   const go = (h: Headline) => {
     const p = document.getElementById(`rx-${h.go}`);
     if (!p) return;
-    p.scrollIntoView({ behavior: "smooth", block: "start" });
+    p.scrollIntoView({ behavior: scrollMotion(), block: "start" });
     p.classList.add("rx-hl");
     setTimeout(() => p.classList.remove("rx-hl"), 1800);
     window.dispatchEvent(new CustomEvent("rx-focus", { detail: h }));

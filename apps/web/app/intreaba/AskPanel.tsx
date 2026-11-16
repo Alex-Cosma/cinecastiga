@@ -121,6 +121,7 @@ import { isCpvCode } from "./cpv-name";
 import type { AskLinkHint } from "./link-hint";
 import { MixGhost } from "./answer/StatMix";
 import { answerSubject, useChartMotion } from "./answer/chart-motion";
+import { scrollMotion } from "../../components/motion/scroll";
 
 type TableRow = Extract<BlockData, { block: "table" }>["rows"][number];
 type SeriesPoint = Extract<
@@ -1685,7 +1686,7 @@ export default function AskPanel({
                     setLinkRuns(true);
                     setBuilderFromAi(true);
                     setMode("build");
-                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    window.scrollTo({ top: 0, behavior: scrollMotion() });
                   }}
                 >
                   Ajustează întrebarea ↑

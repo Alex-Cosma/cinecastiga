@@ -28,6 +28,7 @@ import { askHref } from "@/lib/discovery-links";
 import { domainContextSpec } from "@/lib/ask/site-links";
 import { softName } from "@/lib/soft-name";
 import type { PeerMember, PeerMethod, PeerPoint, PeerSelectionMember, PeersResponse } from "@/lib/peers-shared";
+import { scrollMotion } from "../../../../components/motion/scroll";
 
 /*
  * "Comparații" (owner, 6 November 2026, "Șirul celor 465"): the whole group on one value axis, every member a dot,
@@ -583,7 +584,7 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
   const countyOptions: KitOption[] = [{ value: "", label: "Toată țara" }, ...(ownCounty ? [{ value: ownCounty, label: `${countyLabel(ownCounty) ?? ownCounty} · județul ${role === "supplier" ? "firmei" : "ei"}` }] : []),
     ...(options?.counties ?? []).filter((c) => c !== ownCounty).map((c) => ({ value: c, label: countyLabel(c) ?? c }))];
   const rowSources = (row: Row) => (row.focal ? showSources(focal!) : void showPointSources(row.id, row.name));
-  function openList() { setListOpen(true); setListPage(focalPage); requestAnimationFrame(() => listHeading.current?.scrollIntoView({ behavior: "smooth", block: "start" })); }
+  function openList() { setListOpen(true); setListPage(focalPage); requestAnimationFrame(() => listHeading.current?.scrollIntoView({ behavior: scrollMotion(), block: "start" })); }
   // A member's row, named as the map names a town hall's place, with its county (UX audit Z4-34).
   const membersById = useMemo(() => new Map((data?.members ?? []).map((m) => [m.entity.id, m])), [data?.members]);
   const placeOf = (id: string): { name: string; county: string | null } | null => {

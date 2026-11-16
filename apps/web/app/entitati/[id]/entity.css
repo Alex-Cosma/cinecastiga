@@ -492,3 +492,5 @@
 /* ---- UX audit Z5-23: the focus ring of the tabs and the analyses is drawn inside them, where the row's clipping
    (it scrolls sideways; the group has rounded corners) does not cut it ---- */
 .subnav-in>a:focus-visible,.subnav-in .subnav-tools a:focus-visible{outline-offset:-3px}
+/* UX audit M-19: with reduced motion a hovered segment of the signals' bar changes at once (no growing inset). */
+@media (prefers-reduced-motion:reduce){.ent-sig-bar .ent-seg::before{transition:none}}

@@ -1577,3 +1577,16 @@ table.rank td { padding: 13px 14px; }
 /* M-06 windows (components/motion/windows.css): the entity typeahead's list comes and goes like every window. */
 .search-dropdown { animation: win-in var(--win-in) var(--ease) both; }
 .search-dropdown[data-leaving] { animation: win-out var(--win-out) var(--ease-exit) forwards; }
+
+/* M-19 reduced motion everywhere: with prefers-reduced-motion nothing moves on hover, focus or press (lifts, the
+   theme button's turn, the avatar's growth, a press's scale) and no indicator slides; colour, shadow and opacity that
+   carry state still change. Scrolls the page starts itself go at once (components/motion/scroll.ts). */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .chip, .brand, .theme-btn, .avatar, .ask-box, .ask-box button, .ask-modes button, .ask-chip, .tile .g, .cri-pill, .rx-head, .cb-run,
+  .auth-form button[type="submit"], .ask-rail .ask-r-actions button {
+    transition-property: background-color, border-color, color, box-shadow, opacity;
+  }
+  :is(.btn, .chip, .brand, .theme-btn, .ask-box, .ask-box button, .ask-modes button, .ask-chip, .rx-head, .cb-run, .auth-form button[type="submit"], .ask-rail .ask-r-actions button):is(:hover, :active, :focus-within),
+  .avatar-link:hover .avatar, .tile:hover .g, tr:hover .cri-pill { transform: none; }
+  .subnav-ind { transition: none; }
+}

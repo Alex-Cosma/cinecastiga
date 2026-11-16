@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 import HintLink from "./HintLink";
+import { scrollMotion } from "../../../components/motion/scroll";
 
 export interface SectionItem {
   id?: string; // in-page anchor
@@ -102,7 +103,7 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
     setInd({ left: on.offsetLeft, width: on.offsetWidth });
     // Keep the active tab visible in a row that scrolls sideways (phones).
     const start = on.offsetLeft - nav.scrollLeft;
-    if (start < 0 || start + on.offsetWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, on.offsetLeft - 32), behavior: "smooth" });
+    if (start < 0 || start + on.offsetWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, on.offsetLeft - 32), behavior: scrollMotion() });
   }, [active, away]);
 
   // A navigation landmark whose current section is announced, not only underlined (critique 2 November 2026).
@@ -123,7 +124,7 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
               onClick={(e) => {
                 e.preventDefault();
                 const target = document.getElementById(it.id!);
-                if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - coveredTop() - 12, behavior: "smooth" });
+                if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - coveredTop() - 12, behavior: scrollMotion() });
                 history.replaceState(null, "", `#${it.id}`);
               }}
             >
