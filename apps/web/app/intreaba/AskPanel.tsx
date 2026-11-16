@@ -1565,15 +1565,16 @@ export default function AskPanel({
                   /am ales|Am restrâns|nu există|ignor|în afara/i.test(c),
                 )}
               >
+                {/* Z3-16: two disclosures with two names: what the number leaves in and out, and where the data come from. */}
                 <summary>
-                  Ce include calculul · {resp.caveats!.length}
+                  Limite · {resp.caveats!.length}
                 </summary>
                 {resp.caveats!.map((c) => (
                   <p key={c}>{c}</p>
                 ))}
               </details>
             )}
-            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied}>
+            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied} summary="Surse și date">
               {resp.displaySql && (
                 <details>
                   <summary>Interogarea SQL · avansat</summary>
@@ -1680,8 +1681,8 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
     </div>
     {totalWords.length > 0 && <div className="qb cq-total" inert><TotalLine conditions={totalWords}><G.Line inline w="40%" /></TotalLine></div>}
     <div inert className="g-quiet">
-      <details className="cq-caveats"><summary>Ce include calculul · <G.Line inline w="1ch" /></summary></details>
-      {spec && <CoverageDisclosure spec={spec} />}
+      <details className="cq-caveats"><summary>Limite · <G.Line inline w="1ch" /></summary></details>
+      {spec && <CoverageDisclosure spec={spec} summary="Surse și date" />}
     </div>
   </Ghost>;
 }
