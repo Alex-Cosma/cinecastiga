@@ -1,5 +1,6 @@
 import type { AskSpec } from '../ask/spec';
 import { askHref } from '../discovery-links';
+import type { RelatedSubject, SubjectPart } from './subject-parts';
 import { buildPlaces, countyDisplay } from '../intent/places';
 import { fold as foldText } from '../intent/text';
 import { joinCpvTerms } from '../ask/cpv-terms';
@@ -61,7 +62,11 @@ export interface TopicInterpretation {
   /** The place chosen on the page (URL), named as the interpreter names places. */
   explicitPlace: ChipPlace | null;
   /** `notes`: curated notes for people on the synonym rows ("Include și semnalizarea…"), filled by the route. */
-  subject: { term: string; label: string; cpvName: string | null; source: 'synonym' | 'catalog'; notes: string[] } | null;
+  subject: {
+    term: string; label: string; cpvName: string | null; source: 'synonym' | 'catalog'; notes: string[];
+    /** The CPV domains a curated subject counts, the curated subjects around it and the domain kept alone (its code), filled by the route. */
+    parts?: SubjectPart[]; related?: RelatedSubject[]; chosen?: string;
+  } | null;
   otherSubjects: { label: string; cpvName: string | null }[];
   /** Other readings of the place, ready to apply ("Doar Municipiul Buzău"). */
   placeChoices: (ChipPlace & { choice: string; q: string })[];
@@ -456,6 +461,31 @@ function shortAnswer(reading: Interpretation, choice: { place?: PlaceMatch | nul
     domains: domainsOf(reading, choice, total, totalSentence),
     cpv: [],
     cpvExcluded: [],
+  };
+}
+
+/**
+ * One domain of the subject kept alone (owner, 16 November 2026): „Pe scurt” counts that CPV code instead of the whole
+ * subject, its sentences name the domain, and its links to Întreabă and to the records carry the code. The words, the
+ * place and the period stay as they were: the lists still search the words.
+ */
+export function narrowToPart(t: TopicInterpretation, part: Pick<SubjectPart, 'code' | 'name'>): TopicInterpretation {
+  const a = t.answer, s = t.subject;
+  if (!a || !s) return t;
+  const swap = (spec: AskSpec): AskSpec => ({ ...spec, filters: { ...spec.filters, cpvTerm: part.code } });
+  const quoted = `„${s.label}”`;
+  const say = (sentence: string, spec: AskSpec) => (sentence.includes(quoted) ? sentence.replace(quoted, `„${part.name}”`) : sentenceFor(spec, { subject: part.name }));
+  const total = swap(a.total.spec), totalSentence = say(a.total.sentence, total);
+  const top = a.top ? { ...a.top, spec: swap(a.top.spec), sentence: say(a.top.sentence, swap(a.top.spec)) } : null;
+  return {
+    ...t,
+    subject: { ...s, chosen: part.code },
+    question: t.question ? { sentence: t.question.sentence.includes(quoted) ? t.question.sentence.replace(quoted, `„${part.name}”`) : t.question.sentence } : null,
+    answer: {
+      ...a, total: { spec: total, sentence: totalSentence }, top,
+      href: askHref(!top || top.kind === 'records' ? total : top.spec), evidenceHref: `${askHref(total)}&drill=1`,
+      empty: emptyAnswerText(totalSentence, part.name), domains: null,
+    },
   };
 }
 

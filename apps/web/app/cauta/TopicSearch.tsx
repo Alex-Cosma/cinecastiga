@@ -6,7 +6,7 @@ import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
 import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
-import {parseTopicScope,cleanTopicParams,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
+import {parseTopicScope,cleanTopicParams,topicParams,documentScope,withoutDomain,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {Broader,OWN_PLACE_NOTE,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
@@ -150,7 +150,7 @@ export default function TopicSearch(){
  const parsed=useMemo(()=>{try{return {scope:parseTopicScope(new URLSearchParams(url)),error:''};}catch(e){return {scope:defaults,error:(e as Error).message};}},[url]);
  const scope=parsed.scope,literal=new URLSearchParams(url).get('literal')==='1';
  // The words are read by the rules interpreter first: "iluminat buzau" searches "iluminat" in Buzău.
- const interpKey=!parsed.error&&scope.q&&!literal?new URLSearchParams({q:scope.q,...(scope.place?{place:scope.place}:{}),...(scope.from?{from:scope.from,to:scope.to}:{}),...(scope.hall&&scope.place.startsWith('uat:')?{doar:'primaria'}:{})}).toString():'';
+ const interpKey=!parsed.error&&scope.q&&!literal?new URLSearchParams({q:scope.q,...(scope.place?{place:scope.place}:{}),...(scope.from?{from:scope.from,to:scope.to}:{}),...(scope.hall&&scope.place.startsWith('uat:')?{doar:'primaria'}:{}),...(scope.domain?{domeniu:scope.domain}:{})}).toString():'';
  const [interp,setInterp]=useState<{key:string;data:TopicInterpretation|null}|null>(null);
  useEffect(()=>{if(!interpKey)return;let slow=false;const abort=new AbortController(),timer=setTimeout(()=>{slow=true;abort.abort();},3500);
   // A failed or slow interpretation never blocks the search: the words are then searched as written.
@@ -160,7 +160,8 @@ export default function TopicSearch(){
   return()=>{clearTimeout(timer);abort.abort();};
  },[interpKey]);
  const interpReady=!interpKey||interp?.key===interpKey,t=interpKey&&interp?.key===interpKey?interp.data:null;
- const effective=useMemo<TopicScope>(()=>t?{...scope,...t.applied}:scope,[scope,t]);
+ // A domain kept alone narrows only „Pe scurt” (owner, 16 November 2026): the lists search the same words with or without it.
+ const effective=useMemo<TopicScope>(()=>t?{...withoutDomain(scope),...t.applied}:withoutDomain(scope),[scope,t]);
  const mainKey=interpReady?topicParams(effective).toString():'',docsKey=interpReady&&!parsed.error&&effective.q?topicParams(documentScope(effective)).toString():'';
  const [query,setQuery]=useState(''),[place,setPlace]=useState<Place|null>(null),[copied,setCopied]=useState('');
  // The last answer read stays (with the reading it answered) until the next one arrives: a new search, a filter or
@@ -200,11 +201,12 @@ export default function TopicSearch(){
  // nothing shown yet (first search, after an error) has nothing to dim: those get the ghost.
  const stale=loading&&scope.q&&main&&main.view.scope.tab===scope.tab?main:null;
  const pending=Boolean(scope.q)&&!error&&(loading||refetching);
- const update=(patch:Partial<TopicScope>)=>{const next={...scope,...patch,page:patch.page??1},params=topicParams(next);if(literal&&patch.q===undefined)params.set('literal','1');const target=params.toString();
+ // Other words are another subject: its domain is not kept (a filter that only restates the words passes it on, below).
+ const update=(patch:Partial<TopicScope>)=>{const base=patch.q!==undefined&&patch.q!==scope.q&&!('domain' in patch)?withoutDomain(scope):scope,next={...base,...patch,page:patch.page??1},params=topicParams(next);if(literal&&patch.q===undefined)params.set('literal','1');const target=params.toString();
   setMainError(null);
   if(target===url){setRefetching(true);setRetry(n=>n+1);setDocsError(null);setDocsRetry(n=>n+1);}else router.push(`/cauta?${target}`,{scroll:false});};
  // Editing a filter keeps what was taken from the words, as explicit filters.
- const refine=(patch:Partial<TopicScope>)=>update({...(t&&(t.fromWords.place||t.fromWords.period||t.applied.q!==scope.q)?{q:t.applied.q,place:effective.place,from:effective.from,to:effective.to,...(effective.order?{order:effective.order}:{})}:{}),...patch});
+ const refine=(patch:Partial<TopicScope>)=>update({...(t&&(t.fromWords.place||t.fromWords.period||t.applied.q!==scope.q)?{q:t.applied.q,place:effective.place,from:effective.from,to:effective.to,...(effective.order?{order:effective.order}:{}),...(scope.domain?{domain:scope.domain}:{})}:{}),...patch});
  // A question about one subject keeps the subject, place and period it was read as when a filter changes.
  const keepReading=(patch:Partial<TopicScope>)=>t?.question&&t.applied.q!==scope.q?refine(patch):update(patch);
  // Another page of a list (UX audit Z1-11): once it is shown, the tabs come up under the header (unless the list's
@@ -279,7 +281,7 @@ export default function TopicSearch(){
   {t&&<Understood scope={scope} effective={effective} t={t} place={vPlace}/>}
   {reading&&<ReadingGhost answer={scope.tab==='all'&&!v.literal}/>}
   {/* The short answer comes from Ask and does not wait for the titles. */}
-  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined}/>}
+  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.parts?.find(x=>x.code===t.subject?.chosen)?.name??t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined}/>}
   <div className={`topic-results${collapsed?' is-collapsed':''}`} style={{minHeight:collapsed||literalQ?0:400}}>
   {collapsed?(result?<p className="topic-literal-quiet">{ownPlace&&!literalEmpty?<>Numele și titlurile cu „{effective.q}” sunt din toată țara.</>:<>{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume.</>} <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>{ownPlace&&!literalEmpty?'Arată-le':'Arată'}</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)

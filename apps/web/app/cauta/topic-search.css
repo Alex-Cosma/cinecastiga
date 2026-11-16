@@ -393,3 +393,57 @@
 @media(max-width:650px){.topic-pick-hall{min-height:44px}}
 /* The work sign under the search while it runs (UX audit M-15, components/motion/WorkLine.tsx). */
 .topic-query{position:relative}
+
+/* ---- The subject's word says what it counts (owner, 16 November 2026, „varianta B”; Understood.tsx SubjectWord) ----
+   Its menu lists the CPV domains of the subject, each with its value, records and a thin bar of its share; one can be
+   kept alone. It comes like every window (components/motion/windows.css) and is a sheet from the bottom on a phone,
+   whose dimmed page is the word's own summary, so a tap outside closes it. */
+.topic-part-menu.topic-domain-menu{width:540px;max-width:min(540px,calc(100vw - 48px));padding:10px;gap:2px;font-size:14px;line-height:1.4;animation:win-in var(--win-in) var(--ease) both}
+/* the menu is a column that may scroll inside: its rows keep their height */
+.topic-part-menu.topic-domain-menu>*{flex:none}
+.topic-part-menu.topic-domain-menu{max-height:calc(100dvh - var(--site-header-h,91px) - 24px);overflow-y:auto;overscroll-behavior:contain;scroll-margin:16px}
+.topic-domain-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:2px 6px 8px}
+.topic-domain-head p{margin:0!important}
+.topic-part-menu .topic-domain-title{font-size:14px;font-weight:600;color:var(--ink)}
+.topic-part-menu .topic-domain-note{margin-top:2px!important;font-size:13px;color:var(--topic-muted)}
+.topic-domain-close{display:none;flex:none;place-items:center;width:44px;height:44px;border:1px solid var(--line2);border-radius:50%;background:var(--paper);color:var(--ink);cursor:pointer}
+.topic-domain-close .d-icon{width:16px!important;height:16px!important}
+.topic-part-menu>.topic-domain{display:grid;grid-template-columns:18px minmax(0,1fr) auto;column-gap:10px;align-items:start;min-height:48px;padding:9px 10px;border:1px solid transparent;border-radius:8px;color:var(--ink);text-decoration:none}
+.topic-part-menu>a.topic-domain:hover{background:var(--accent-soft)}
+.topic-part-menu>.topic-domain[aria-current]{background:var(--accent-soft);border-color:var(--accent-line)}
+.topic-domain-mark{display:grid;place-items:center;width:16px;height:16px;margin-top:2px;border:1.5px solid var(--accent);border-radius:50%;background:var(--surface)}
+.topic-domain[aria-current]>.topic-domain-mark::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.topic-domain.is-plain>.topic-domain-mark{visibility:hidden}
+.topic-domain.is-only{grid-template-columns:minmax(0,1fr) auto;background:var(--accent-soft);border-color:var(--accent-line)}
+.topic-domain.is-only>.topic-domain-mark{display:none}
+.topic-domain-name{display:flex;flex-direction:column;gap:3px;min-width:0}
+.topic-domain-name>span:first-child{font-weight:500;overflow-wrap:anywhere}
+.topic-domain-name>code,.topic-domain-name>small{font-size:12px;color:var(--topic-muted)}
+.topic-domain-name>code{font-family:var(--mono);background:none;padding:0}
+.topic-domain-bar{display:block;height:4px;margin-top:3px;border-radius:2px;background:var(--line)}
+.topic-domain-bar>i{display:block;height:4px;border-radius:2px;background:var(--accent)}
+.topic-domain-fig{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
+.topic-domain-fig>b{font-weight:600;font-variant-numeric:tabular-nums}
+.topic-domain-fig>small{font-size:12px;color:var(--topic-muted)}
+.topic-domain-more{margin-top:6px;padding:10px 6px 2px;border-top:1px solid var(--line)}
+.topic-part-menu .topic-domain-more>p{margin:0!important;font-size:13px;font-weight:600;color:var(--ink)}
+.topic-domain-more>div{display:flex;flex-wrap:wrap;gap:2px 16px;margin-top:2px}
+.topic-domain-more a{display:inline-flex;align-items:center;min-height:36px;font-weight:500;color:var(--accent);text-decoration:none}
+.topic-domain-more a:hover{text-decoration:underline;text-underline-offset:3px}
+.topic-domain-chosen{margin:10px 0 0!important;padding-top:10px;border-top:1px solid var(--line);font-size:14px;color:var(--topic-muted)}
+.topic-domain-chosen>a{font-weight:600;white-space:nowrap}
+@media(max-width:650px){
+ .topic-part-subject[open]>summary::before{content:"";position:fixed;inset:0;z-index:39;background:color-mix(in srgb,var(--ink) 38%,transparent);cursor:default}
+ .topic-part-menu.topic-domain-menu{position:fixed;z-index:40;top:auto;left:0;right:0;bottom:0;width:auto;max-width:none;max-height:calc(100dvh - var(--site-header-h,53px) - 24px);overflow-y:auto;overscroll-behavior:contain;padding:14px 12px calc(16px + env(safe-area-inset-bottom));border:0;border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);font-size:15px;animation:sheet-in var(--sheet-in) var(--ease) both}
+ .topic-domain-close{display:grid}
+ .topic-part-menu .topic-domain-title{font-family:var(--display);font-size:19px;letter-spacing:-.02em}
+ .topic-part-menu>.topic-domain{grid-template-columns:18px minmax(0,1fr);min-height:56px}
+ .topic-domain.is-only{grid-template-columns:minmax(0,1fr)}
+ .topic-domain-fig{grid-column:2;flex-direction:row;align-items:baseline;gap:8px;margin-top:4px;white-space:normal}
+ .topic-domain.is-only>.topic-domain-fig{grid-column:1}
+ .topic-domain-fig>small{font-size:13px}
+ .topic-domain-name>code,.topic-domain-name>small{font-size:13px}
+ .topic-domain-more a{min-height:44px}
+ .topic-domain-chosen>a{display:inline-flex;align-items:center;min-height:44px}
+}
+@media print{.topic-part-menu.topic-domain-menu{animation:none}}

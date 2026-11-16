@@ -3,7 +3,11 @@ import {devlog} from '@/lib/devlog';
 import {ground} from '@/lib/ask/ground';
 import {intentCacheKey,intentPeriods,interpretQuestion} from '@/lib/intent/server';
 import type {IntentResult} from '@/lib/intent/types';
-import {applyInterpretation,withLocalityInstitutions} from '@/lib/topic-search/interpretation';
+import {applyInterpretation,narrowToPart,withLocalityInstitutions} from '@/lib/topic-search/interpretation';
+import {partNotes,partOf,relatedSubjects,type SubjectPart,type TermRow} from '@/lib/topic-search/subject-parts';
+import {cachedSpelling} from '@/lib/intent/vocabulary-sql';
+import {spell} from '@/lib/intent/spelling';
+import {CPV_TERM_SEPARATOR} from '@/lib/ask/cpv-terms';
 import {localityInstitutions} from '@/lib/locality-institutions';
 import {resolvePlace} from '@/lib/topic-search/server';
 import {parseTopicScope} from '@/lib/topic-search/shared';
@@ -16,11 +20,21 @@ export const dynamic='force-dynamic';
  * answer (the page runs them through /api/ask) with the CPV classes they
  * include. Deterministic rules only.
  */
-const g=globalThis as unknown as {__seapTopicIntentSql?:DbSql;__seapTopicIntentCache?:Map<string,{at:number;body:IntentResult}>};
+const g=globalThis as unknown as {__seapTopicIntentSql?:DbSql;__seapTopicIntentCache?:Map<string,{at:number;body:IntentResult}>;__seapTopicTerms?:{at:number;rows:Promise<TermRow[]>}};
 const db=()=>g.__seapTopicIntentSql??=createDb(undefined,{max:2}).sql;
 const CACHE_MAX=300,CACHE_MS=10*60*1000,TIME_BUDGET_MS=3000;
 // Relative periods ("anul trecut") follow the Romanian calendar date.
 const bucharestDate=(now:Date)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Bucharest',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+
+/** The curated subjects and their CPV rows (reference.cpv_synonym, under a thousand rows), kept ten minutes. */
+function termRows():Promise<TermRow[]>{
+ const hit=g.__seapTopicTerms;
+ if(hit&&Date.now()-hit.at<CACHE_MS)return hit.rows;
+ const rows=(db()`select lower(unaccent(term)) term, cpv_prefix prefix, coalesce(exclude,false) exclude, note from reference.cpv_synonym` as unknown as Promise<TermRow[]>).then(r=>[...r]);
+ const entry={at:Date.now(),rows};g.__seapTopicTerms=entry;
+ rows.catch(()=>{if(g.__seapTopicTerms===entry)delete g.__seapTopicTerms;});
+ return rows;
+}
 
 async function interpret(q:string,now:Date):Promise<IntentResult>{
  // The archive's checkpoint and complete days are in the key, as in /api/intent (a trend's years follow them).
@@ -56,6 +70,21 @@ export async function GET(req:Request){
    const cpv=(await ground(db(),{cpvTerm:term})).cpv;
    t.subject.notes=cpv?.notes??[];
    if(t.answer&&t.answer.total.spec.filters.cpvTerm===term){t.answer.cpv=cpv?.matchedNames??[];t.answer.cpvExcluded=cpv?.excludedNames??[];}
+   // One curated subject: the domains it counts and the curated subjects around it, for the word's menu; one of the
+   // domains may be kept alone (`domeniu`), when „Pe scurt” counts exactly this subject (owner, 16 November 2026).
+   if(cpv?.method==='synonym'&&!term.includes(CPV_TERM_SEPARATOR)){
+    const parts=cpv.matchedNames.map(l=>partOf(l,cpv.excludePrefixes??[])).filter((x):x is SubjectPart=>x!==null);
+    const counted=t.answer?.total.spec.filters.cpvTerm===term;
+    const [rows,spelling]=await Promise.all([termRows(),cachedSpelling(db())]);
+    t.subject.parts=parts.map(x=>({...x,pick:x.pick&&counted&&parts.length>1}));
+    t.subject.related=relatedSubjects(term,rows).map(r=>({...r,label:spell(r.term,spelling)}));
+    const chosen=scope.domain?t.subject.parts.find(x=>x.code===scope.domain&&x.pick):undefined;
+    if(chosen&&t.answer){
+     const notes=partNotes(term,chosen,rows),all=cpv.matchedNames,label=all.find(l=>l.endsWith(`(${chosen.code})`));
+     t=narrowToPart(t,chosen);
+     t.subject!.notes=notes;t.answer!.cpv=label?[label]:[];t.answer!.cpvExcluded=[];
+    }
+   }
   }
   return Response.json({interpretation:t},{headers:{'Cache-Control':'no-store'}});
  }catch(e){

@@ -9,10 +9,11 @@ import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {answerShape,fold,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
+import {answerShape,fold,topicParams,withoutDomain,type Place,type TopicScope} from '@/lib/topic-search/shared';
 import {relatedSubjects,relatedWord} from '@/lib/topic-search/related';
 import {markParts,placeSentence,placeTexts} from '@/lib/topic-search/sentence';
 import {TownHallPicker} from '../TownHallTile';
+import {scrollMotion} from '../../components/motion/scroll';
 
 const capital=(s:string)=>s.charAt(0).toLocaleUpperCase('ro-RO')+s.slice(1);
 /** A /cauta link for the same selection with some parts changed. */
@@ -34,6 +35,69 @@ function Part({text,what,children}:{text:string;what:string;children:React.React
  return <details className="topic-part"><summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> ({what})</span></summary><div className="topic-part-menu">{children}</div></details>;
 }
 
+type Subject=NonNullable<TopicInterpretation['subject']>;
+type PartStat={value:number;count:number}|null;
+// What each domain holds in the selection, asked once per tab when the word's menu is first opened.
+const partStats=new Map<string,Promise<PartStat>>();
+function partStat(spec:AskSpec):Promise<PartStat>{
+ const key=JSON.stringify(spec),hit=partStats.get(key);
+ if(hit)return hit;
+ const asked=fetch('/api/ask',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({spec})}).then(r=>r.json() as Promise<{ok?:boolean;data?:{block?:string;stat?:{value:number|string;count:number|string}}}>)
+  .then(r=>r.ok&&r.data?.block==='stat'&&r.data.stat?{value:Number(r.data.stat.value),count:Number(r.data.stat.count)}:null,()=>null);
+ partStats.set(key,asked);void asked.then(v=>{if(!v)partStats.delete(key);});
+ if(partStats.size>80)partStats.delete(partStats.keys().next().value!);
+ return asked;
+}
+/** Whether the word of a subject has anything to say when opened: its domains, the subjects around it, another reading. */
+export const subjectHasMenu=(subject:Subject,others:number)=>Boolean(subject.parts?.length||subject.related?.length||others);
+
+/**
+ * The subject's word in „Am înțeles” (owner, 16 November 2026, „varianta B”): opened, it says which CPV domains the
+ * subject counts, each with its value and records in the selection (asked when the menu first opens, „…” until then)
+ * and a thin bar of its share; one domain can be kept alone, and „Toate cele N domenii” brings the subject back. Under
+ * them: the curated subjects inside it or beside it, and the other subjects read in the words. It never says „Nu e un
+ * subiect”: „Caută exact ce ai scris” on the same row is that way out. On a phone it is a sheet from the bottom.
+ */
+function SubjectWord({text,scope,effective,subject,others,total}:{text:string;scope:TopicScope;effective:TopicScope;subject:Subject;others:TopicInterpretation['otherSubjects'];total:AskSpec|null}){
+ const box=useRef<HTMLDetailsElement>(null),[opened,setOpened]=useState(false),[stats,setStats]=useState<Record<string,PartStat|undefined>>({});
+ const parts=subject.parts??[],related=subject.related??[],choose=parts.length>1&&parts.some(x=>x.pick);
+ const specOf=(cpvTerm:string):AskSpec|null=>total?{...total,filters:{...total.filters,cpvTerm}}:null;
+ const keys=opened&&total?[subject.term,...parts.map(x=>x.code)].join('|'):'';
+ useEffect(()=>{if(!keys)return;let alive=true;
+  for(const cpvTerm of keys.split('|')){const spec=specOf(cpvTerm);if(spec)void partStat(spec).then(v=>{if(alive)setStats(now=>({...now,[cpvTerm]:v}));});}
+  return()=>{alive=false;};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+ },[keys,JSON.stringify(total)]);
+ const sum=parts.reduce((n,x)=>n+(stats[x.code]?.value??0),0);
+ const figure=(key:string)=>{const v=stats[key];return v===undefined?(total?<span className="topic-domain-fig topic-count-wait" aria-hidden="true">…</span>:null):v?<span className="topic-domain-fig"><b>{v.count?formatRon(v.value):'nimic'}</b>{v.count>0&&<small>{formatInt(v.count)} {v.count===1?'înregistrare':'înregistrări'}</small>}</span>:null;};
+ const bar=(key:string)=>{const v=stats[key];return v&&sum>0?<span className="topic-domain-bar" aria-hidden="true"><i style={{width:`${Math.max(1,Math.round(v.value/sum*100))}%`}}/></span>:null;};
+ const here={place:effective.place,from:effective.from,to:effective.to};
+ const close=()=>{if(box.current){box.current.open=false;box.current.querySelector('summary')?.focus();}};
+ const label=subject.label,n=parts.length;
+ return <details ref={box} className="topic-part topic-part-subject" onToggle={e=>{const el=e.currentTarget as HTMLDetailsElement;if(!el.open)return;setOpened(true);
+   // a tall menu opened low on the screen is brought into view (not the phone's sheet, which is fixed)
+   el.querySelector('.topic-domain-menu')?.scrollIntoView({block:'nearest',behavior:scrollMotion()});}}>
+  <summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> (ce numărăm la acest subiect)</span></summary>
+  <div className="topic-part-menu topic-domain-menu">
+   <div className="topic-domain-head">
+    <div>{n>0?<p className="topic-domain-title">La „{label}” numărăm {n===1?'un domeniu CPV':`${n} domenii CPV`}</p>:subject.cpvName?<p className="topic-domain-title">Domeniul CPV: {subject.cpvName}</p>:<p className="topic-domain-title">„{capital(label)}”</p>}
+     {n>0&&<p className="topic-domain-note">După încadrarea oficială a achiziției, nu după titlu.{choose&&' Alege unul ca să vezi doar acel domeniu.'}</p>}</div>
+    <button type="button" className="topic-domain-close" onClick={close} aria-label="Închide"><DiscoveryIcon name="close"/></button>
+   </div>
+   {choose&&<Link prefetch={false} scroll={false} className="topic-domain" aria-current={subject.chosen?undefined:'true'} href={searchHref(withoutDomain(scope),{})} onClick={close}>
+    <span className="topic-domain-mark" aria-hidden="true"/><span className="topic-domain-name"><span>Toate cele {n} domenii</span><small>tot ce numărăm la „{label}”</small></span>{figure(subject.term)}</Link>}
+   {parts.map(x=>{const inner=<><span className="topic-domain-mark" aria-hidden="true"/><span className="topic-domain-name"><span>{x.name}</span><code>{x.code}</code>{bar(x.code)}</span>{figure(x.code)}</>;
+    return choose&&x.pick?<Link prefetch={false} scroll={false} key={x.code} className="topic-domain" aria-current={subject.chosen===x.code?'true':undefined} href={searchHref(scope,{domain:x.code})} onClick={close}>{inner}</Link>
+     :<div key={x.code} className={`topic-domain is-plain${choose?'':' is-only'}`}>{inner}</div>;})}
+   {(['narrower','near'] as const).map(kind=>{const list=related.filter(r=>r.kind===kind);return list.length?<div className="topic-domain-more" key={kind}>
+    <p>{kind==='narrower'?'Mai îngust, în același domeniu':'Subiecte apropiate'}</p>
+    <div>{list.map(r=><Link prefetch={false} key={r.term} href={searchHref(withoutDomain(scope),{q:r.label,...here})}>{r.label} ›</Link>)}</div></div>:null;})}
+   {others.length>0&&<div className="topic-domain-more"><p>Alt subiect citit în cuvinte</p>
+    <div>{others.map(o=><Link prefetch={false} key={o.label} href={searchHref(withoutDomain(scope),{q:o.label,...here})}>{capital(o.label)} ›</Link>)}</div></div>}
+  </div>
+ </details>;
+}
+
 /**
  * "Am înțeles": what /cauta took from the words, as one sentence (UX audit Z1-03, 16 November 2026): the interpreter's
  * own words, with the subject, the buyers, the place and the period marked where it wrote them; each opens what else it
@@ -42,7 +106,7 @@ function Part({text,what,children}:{text:string;what:string;children:React.React
  */
 export function Understood({scope,effective,t,place}:{scope:TopicScope;effective:TopicScope;t:TopicInterpretation;place:Place|null}){
  const fromWords=t.fromWords,placeChip=fromWords.place??(t.explicitPlace?.id===effective.place?t.explicitPlace:null)??(effective.place&&place?.id===effective.place?{id:place.id,label:place.kind==='county'?(place.name==='București'?'Municipiul București':`Județul ${place.name}`):place.name,kind:place.kind}:null);
- const literal=searchHref(scope,{},true);
+ const literal=searchHref(withoutDomain(scope),{},true);
  // A place named alone is read as the place again: without it, the words are searched as typed.
  const removePlace=t.placeAlone?literal:fromWords.place?searchHref(scope,{q:t.applied.q,place:'',from:effective.from,to:effective.to}):searchHref(scope,{place:''});
  const period=fromWords.period??(effective.from?{from:effective.from,to:effective.to,label:periodLabel(effective.from,effective.to)}:null);
@@ -66,9 +130,9 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
   ??(t.subject||placeChip||period||t.kind?`Căutăm „${effective.q}”${placeChip?` în ${placeTexts(placeChip.label)[0]}`:''}${period?`, în ${period.label}`:''}.`:null);
  type Key='subject'|'kind'|'place'|'period';
  const menus:Partial<Record<Key,{what:string;label:string;body:React.ReactNode}>>={};
- if(t.subject)menus.subject={what:'schimbă subiectul',label:`Subiect: ${capital(t.subject.label)}`,body:<>
-  {t.otherSubjects.map(s=><Link prefetch={false} key={s.label} href={searchHref(scope,{q:s.label,place:effective.place,from:effective.from,to:effective.to})}>Subiect: {capital(s.label)}</Link>)}
-  <Link prefetch={false} href={literal}>Nu e un subiect: caută exact cuvintele scrise</Link></>};
+ // The subject's word opens what it counts (SubjectWord); with nothing to say it is plain text, never a one-line menu.
+ const chosenPart=t.subject?.chosen?t.subject.parts?.find(x=>x.code===t.subject!.chosen):undefined;
+ if(t.subject&&subjectHasMenu(t.subject,t.otherSubjects.length))menus.subject={what:'ce numărăm la acest subiect',label:`Subiect: ${capital(chosenPart?.name??t.subject.label)}`,body:null};
  if(t.kind)menus.kind={what:'doar în „Pe scurt”',label:`Cine cumpără: ${t.kind.label}`,body:<>
   <p>Doar „Pe scurt” se restrânge la {t.kind.label}; titlurile sunt de la toate instituțiile.</p>
   <Link prefetch={false} href={searchHref(scope,{q:t.kind.withoutQ,place:effective.place,from:effective.from,to:effective.to})}>Scoate „{t.kind.label}”: toate instituțiile</Link></>};
@@ -77,14 +141,15 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
   <Link prefetch={false} href={removePlace}>{t.placeAlone?`Caută „${scope.q}” în toată țara`:'Scoate locul: toată țara'}</Link></>};
  if(period)menus.period={what:'schimbă perioada',label:`Perioada: ${period.label}`,body:<Link prefetch={false} href={removePeriod}>Scoate perioada: toți anii</Link>};
  const keys=(Object.keys(menus) as Key[]);
- const texts:Record<Key,string[]>={subject:t.subject?[`„${t.subject.label}”`,t.subject.label]:[],kind:t.kind?[t.kind.label]:[],place:placeChip?placeTexts(placeChip.label):[],period:period?[period.label]:[]};
+ const texts:Record<Key,string[]>={subject:t.subject?[...(chosenPart?[`„${chosenPart.name}”`,chosenPart.name]:[]),`„${t.subject.label}”`,t.subject.label]:[],kind:t.kind?[t.kind.label]:[],place:placeChip?placeTexts(placeChip.label):[],period:period?[period.label]:[]};
  const marked=sentence?markParts(sentence,keys.map(key=>({key,texts:texts[key]}))):{segments:[],missing:keys};
- const part=(key:Key,text:string)=>{const m=menus[key]!;return <Part key={key} text={text} what={m.what}>{m.body}</Part>;};
+ const part=(key:Key,text:string)=>{const m=menus[key]!;return key==='subject'&&t.subject?<SubjectWord key={key} text={text} scope={scope} effective={effective} subject={t.subject} others={t.otherSubjects} total={t.answer?.total.spec??null}/>:<Part key={key} text={text} what={m.what}>{m.body}</Part>;};
  // A question's „Caută exact ce ai scris” is in „Pe scurt” (or beside its question when it has none).
  const showLiteral=!t.question&&Boolean(fromWords.place||fromWords.period||t.subject||t.placeAlone);
  return <section ref={box} className="topic-understood topic-question" aria-label={t.question?'Cum am înțeles întrebarea':'Cum am înțeles căutarea'}>
   {sentence&&<div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence">{marked.segments.map((x,i)=>x.key?part(x.key,x.text):<Fragment key={i}>{x.text}</Fragment>)}{marked.missing.map(key=><Fragment key={key}> · {part(key,menus[key]!.label)}</Fragment>)}</span>
    {showLiteral&&<Link prefetch={false} className="topic-understood-literal" href={literal}>Caută exact ce ai scris ›</Link>}</div>}
+  {chosenPart&&t.subject?.parts&&<p className="topic-domain-chosen">Un domeniu din cele {t.subject.parts.length} numărate la „{t.subject.label}”. Listele de mai jos caută în continuare cuvântul. <Link prefetch={false} scroll={false} href={searchHref(withoutDomain(scope),{})}>Arată-le pe toate</Link></p>}
   {t.question&&!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   <ReadingNotes notes={t.notes}/>
