@@ -349,3 +349,10 @@ a.dot{cursor:pointer}
 .sgc-ticks:has(.low){height:46px}
 .sgc-ticks span.low{height:28px}
 .sgc-ticks span.low em{top:29px}
+
+/* „+ Adunate”: an acquisition in another pattern too (UX audit Z6-39), a neutral tag, its whole name on hover or a tap. */
+.sgc-also.term{display:inline-flex;margin-left:8px;padding:0;border:0;border-radius:0;vertical-align:1px;color:inherit;font-weight:400}
+.sgc-also>.term-trigger{display:inline-flex;align-items:center;min-height:20px;padding:0 7px;border:1px solid var(--line2);border-radius:5px;background:var(--sunk);color:var(--ink2);font:500 12px/1.5 var(--body);text-decoration:none;white-space:nowrap;cursor:help}
+.sgc-also>.term-trigger:hover,.sgc-also.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
+.sgc-also>.term-trigger>.term-mark{display:none}
+.c-also .sgc-also.term{margin:0 6px 0 0}

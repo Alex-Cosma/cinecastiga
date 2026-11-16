@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
+import AlsoTag from "./AlsoTag";
 import { formatCalendarDate, formatInt } from "@/lib/format";
 import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SHOWN, type RecordRow, type RecordSort, type RecordSortKey } from "@/lib/record-rows";
 
@@ -76,7 +77,7 @@ export default function RecordList({ rows, empty, total, source }: {
           <span className="sgc-date">{r.date ? formatCalendarDate(r.date) : "fără dată"}</span>
           <span className="sgc-what">
             <Link href={r.href} prefetch={false}>{r.title}</Link>
-            {r.also.map((c) => <span key={c} className="sgc-also">și la „{c}”</span>)}
+            {r.also.map((c) => <AlsoTag key={c} label={c} />)}
             {r.party && <small className="sgc-cp"><EntityName id={r.party.id} role={r.party.role}>{r.party.name}</EntityName></small>}
           </span>
           <span className="sgc-val">{r.valueText}</span>

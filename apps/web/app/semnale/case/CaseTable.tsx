@@ -5,6 +5,7 @@ import Link from "next/link";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import DiscoverPager from "@/components/discover/DiscoverPager";
+import AlsoTag from "./AlsoTag";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
 import { useMemoryFilters } from "@/components/table-filters/useMemoryFilters";
@@ -132,7 +133,7 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
                   {r.refId
                     ? <Link prefetch={false} className="c-title" href={`/achizitii/${r.refId}`}>{r.title ?? "Achiziție directă"}</Link>
                     : <span className="c-title">{r.title ?? "Achiziție directă"}</span>}
-                  {r.also.length > 0 && <span className="c-also">{r.also.map((c) => <span key={c} className="sgc-also">și la „{c}”</span>)}</span>}
+                  {r.also.length > 0 && <span className="c-also">{r.also.map((c) => <AlsoTag key={c} label={c} />)}</span>}
                 </td>
                 <td className="c-date">{r.date ? formatCalendarDate(r.date) : "fără dată"}</td>
                 {kind === "above" ? <td className="c-bar">
