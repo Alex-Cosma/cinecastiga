@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useRef, useState, type FormEvent } from "react";
 import type { EntryKind, InvestigationWorkspace, WorkspaceEntry } from "@/lib/investigation-workspace";
 import type { SourceEvent } from "@/lib/anchete";
 import { captureFailureWords, type CaptureSummary } from "@/lib/evidence-captures-shared";
 import { countWords } from "@/lib/ask/answer-text";
 import { formatExactDecimal } from "@/lib/format";
 import { privateDay, privateMoment } from "@/lib/private-format";
-import { clipKindGroup } from "@/lib/evidence-clip";
+import { clipKindGroup, mergeSourceEvents, type MergedSourceEvent } from "@/lib/evidence-clip";
 import Term from "@/components/Term";
 import RegistryFacts from "./RegistryFacts";
 import EvidenceCard, { type EvidenceItem } from "./EvidenceCard";
@@ -27,7 +27,7 @@ export interface WorkspaceClip {
 const FILTER_ORDER = ["Note", "Întrebări salvate", "Semnale", "Contracte", "Anunțuri", "Achiziții directe", "Instituții și firme", "Persoane", "Radiografii", "Modificări urmărite", "Pasaje din documente", "Alte dovezi"];
 const filterName: Record<string, string> = { "Întrebări salvate": "Întrebări" };
 export type WorkspaceTab = "questions" | "evidence" | "timeline" | "tasks";
-const tabs: { id: WorkspaceTab; label: string }[] = [{ id: "questions", label: "Întrebări" }, { id: "evidence", label: "Dovezi" }, { id: "timeline", label: "Cronologie" }, { id: "tasks", label: "De verificat" }];
+const tabs: { id: WorkspaceTab; label: string }[] = [{ id: "questions", label: "Întrebări" }, { id: "evidence", label: "Dovezi" }, { id: "timeline", label: "Cronologie" }, { id: "tasks", label: "Verificări" }];
 const stanceLabels = { supports: "Susține", contradicts: "Contrazice", check: "De verificat" } as const;
 const stanceOptions = { supports: "Susține ipoteza", contradicts: "Contrazice ipoteza", check: "De verificat" } as const;
 const kindLabels = { question: "întrebare", note: "notă", task: "verificare", event: "eveniment" };
@@ -113,8 +113,8 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
   const notes = workspace.entries.filter(entry => entry.kind === "note");
   const tasks = workspace.entries.filter(entry => entry.kind === "task");
   const events = workspace.entries.filter(entry => entry.kind === "event");
-  const timeline = [...events.map(event => ({ key: event.id, date: event.occurredOn ?? "", event, source: null as SourceEvent | null })),
-    ...sourceEvents.map((source, i) => ({ key: `source-${i}`, date: source.date, event: null as WorkspaceEntry | null, source }))]
+  const timeline = [...events.map(event => ({ key: event.id, date: event.occurredOn ?? "", event, source: null as MergedSourceEvent | null })),
+    ...mergeSourceEvents(sourceEvents).map((source, i) => ({ key: `source-${i}`, date: source.date, event: null as WorkspaceEntry | null, source }))]
     .sort((a, b) => a.date.localeCompare(b.date) || (a.source ? -1 : 1));
   const canEdit = workspace.access.canEdit;
   const clipById = new Map(clips.map(clip => [clip.id, clip]));
@@ -129,10 +129,10 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
           <strong>{String(revision.content.title ?? "")}</strong>
           {revision.content.body ? <p>{String(revision.content.body)}</p> : null}
           {revision.content.alternative ? <p>Explicație alternativă: {String(revision.content.alternative)}</p> : null}
-          {revision.content.deleted === true && <p>Eliminată din lista de lucru; istoricul se păstrează.</p>}
+          {revision.content.deleted === true && <p>Scoasă din dosar; istoricul se păstrează.</p>}
         </li>)}
       </ul></details>
-      {canEdit && <details><summary>Elimină din listă</summary><p>Textul rămâne în istoricul dosarului.</p><button type="button" className="iw-danger" disabled={busy} onClick={() => void mutate({ action: "archive", entryId: entry.id, revision: entry.revision })}>Confirmă eliminarea</button></details>}
+      {canEdit && <details><summary>Scoate din dosar</summary><p>Textul rămâne în istoricul dosarului.</p><button type="button" className="iw-danger" disabled={busy} onClick={() => void mutate({ action: "archive", entryId: entry.id, revision: entry.revision }, "Scos din dosar; istoricul rămâne.")}>Confirmă: scoate din dosar</button></details>}
     </div>;
   }
   function linkedEvidence(question: WorkspaceEntry) {
@@ -187,7 +187,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       onCancel={() => setEditing(null)} onSave={async body => { if (await mutate(body)) setEditing(null); }} />}
     <section id="iw-panel" role="tabpanel" aria-labelledby={`iw-tab-${tab}`} tabIndex={0}>
       {tab === "questions" && <>
-        <div className="iw-section-head"><h2>Întrebări</h2>{canEdit && <button className="iw-primary" type="button" onClick={() => setEditing("question")}>Adaugă întrebare</button>}</div>
+        <div className="iw-section-head"><h2 className="d-sr-only">Întrebări</h2>{canEdit && <button className="iw-primary" type="button" onClick={() => setEditing("question")}>Adaugă întrebare</button>}</div>
         {questions.length === 0 ? <div className="iw-empty"><h3>Ce vrei să afli?</h3><p>Formulează o întrebare verificabilă. De exemplu: „De ce revine aceeași firmă în achizițiile acestei instituții?”</p><p>Leagă apoi dovezi pro și contra. O întrebare documentată nu este automat o concluzie.</p></div> : questions.map((question, index) => <article className="iw-question" id={`question-${question.id}`} tabIndex={-1} key={question.id}>
           <div className="iw-entry-meta"><span>Întrebarea {index + 1}</span><span>{question.status === "done" ? "Documentată" : question.status === "checking" ? "În verificare" : "Deschisă"}</span></div>
           <h3>{question.title}</h3>{question.body && <p className="iw-prose">{question.body}</p>}
@@ -196,11 +196,12 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
         </article>)}
       </>}
       {tab === "evidence" && <>
-        <div className="iw-section-head"><h2>Dovezi</h2>{canEdit && (evidence.length > 0 || notes.length > 0) && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
-        {groups.length > 1 && <div className="iw-filter">
+        <div className="iw-section-head"><h2 className="d-sr-only">Dovezi</h2>
+          {groups.length > 1 && <div className="iw-filter">
           <div className="iw-filter-pills" role="group" aria-label="Arată dovezile">{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <button key={group.name} type="button" aria-pressed={show === group.name} onClick={() => setShow(group.name)}>{group.label}<span className="iw-count">{group.n}</span></button>)}</div>
           <label className="iw-filter-select">Arată<select value={show} onChange={event => setShow(event.target.value)}>{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <option key={group.name} value={group.name}>{group.label} ({group.n})</option>)}</select></label>
         </div>}
+          {canEdit && (evidence.length > 0 || notes.length > 0) && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
         {/* Captures that did not keep the sources, said once over the list (Z8-02); each card keeps its pill. */}
         {failed.length > 0 && <p className="iw-failed-line"><span>{countWords(failed.length, "dovadă", "dovezi")} fără surse păstrate: {failedReason}. <Term tip title="Fără surse păstrate" text="Dovezile sunt în dosar, cu numele și nota lor. Sursele (înregistrările și totalul exact) se păstrează doar dintr-o actualizare validată a datelor; până atunci nu le prezentăm ca dovadă completă." /></span>
           {canEdit && <button type="button" disabled={retrying} onClick={() => void retryAll()}>{retrying ? "Se reia…" : "Reîncearcă toate"}</button>}</p>}
@@ -212,31 +213,37 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
             {/* The way to a first piece of evidence is the empty dossier's main action (audit Z8-08). */}
             <div className="iw-empty-actions"><button type="button" className="iw-primary" onClick={openSearch}><DiscoveryIcon name="search" width={16} height={16} />Caută o instituție sau o firmă</button>
               <Link className="iw-secondary" href="/intreaba">Pune o întrebare</Link>{canEdit && <button type="button" onClick={() => setEditing("note")}>Adaugă notă</button>}</div></div>
-          : <div className="iw-evidence-list">{evidence.filter(item => show === "all" || item.group === show).map(item => { const clip = clipById.get(item.id); return <article id={`clip-${item.id}`} className="iw-evidence" tabIndex={-1} key={item.id}>
+          : <div className="iw-evidence-list">{evidence.filter(item => show === "all" || item.group === show).map((item, index, shown) => { const clip = clipById.get(item.id);
+            // Pinned items come first (the server's order); the group is named, and its end marked (Z8-30).
+            const label = item.pinned && index === 0 ? "Fixate la început" : !item.pinned && index > 0 && shown[index - 1]!.pinned ? "Celelalte dovezi" : null;
+            return <Fragment key={item.id}>{label && <p className="iw-group-label">{label}</p>}<article id={`clip-${item.id}`} className={item.pinned ? "iw-evidence iw-pinned" : "iw-evidence"} tabIndex={-1}>
             <EvidenceCard item={item} capture={captures[item.id] ?? null} canEdit={canEdit} busy={busy} investigationId={investigationId}
               questions={clipChips(item.id)} linkForm={clipLinkForm(item.id)} onCapture={capture}
               onAskQuestion={canEdit && questions.length === 0 ? () => { changeTab("questions"); setEditing("question"); } : null}
               registry={clip?.registry && clip.refId ? <RegistryFacts open investigationId={investigationId} entityId={clip.refId} name={clip.title} canEdit={canEdit} busy={busy} onAddNote={addNote} /> : null} />
-          </article>; })}</div>}
+          </article></Fragment>; })}</div>}
       </>}
       {tab === "timeline" && <>
-        <div className="iw-section-head"><h2>Cronologie</h2>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("event")}>Adaugă eveniment</button>}</div>
+        <div className="iw-section-head"><h2 className="d-sr-only">Cronologie</h2>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("event")}>Adaugă eveniment</button>}</div>
         <p className="iw-legend"><span className="iw-legend-source">Din surse</span> datele contractelor și achizițiilor salvate · <span className="iw-legend-people">Scris în dosar</span> evenimentele adăugate de echipă <Term id="cronologie-redactie" tip /></p>
         {timeline.length === 0 && <div className="iw-empty"><h3>Construiește firul evenimentelor</h3><p>Datele contractelor și achizițiilor salvate apar aici singure. Adaugă un răspuns primit sau o verificare, cu sursa datei în notă.</p></div>}
         <ul className="iw-timeline">{timeline.map(item => item.source ? <li key={item.key} className="iw-timeline-source">
           <time dateTime={item.date}>{privateDay(item.date)}</time>
-          <div><p className="iw-timeline-tag">Din surse · {item.source.label}</p><h3><Link href={item.source.href}>{item.source.title}</Link></h3>
-            <p className="iw-timeline-line">{item.source.valueExact ? `${formatExactDecimal(item.source.valueExact)} ${item.source.unit} · ` : ""}<button type="button" className="iw-text-button" onClick={() => openEvidence(item.source!.clipId)}>Dovada din dosar</button>{item.source.sourceUrl && <> · <a href={item.source.sourceUrl} target="_blank" rel="noopener noreferrer">SEAP<span aria-hidden="true"> ↗</span><span className="sr-only"> (filă nouă)</span></a></>}</p></div>
+          <div><p className="iw-timeline-tag">Din surse · {item.source.label}{item.source.noticeNo && item.source.label === "Contract semnat" ? ` · anunț ${item.source.noticeNo}` : ""}</p><h3><Link href={item.source.href}>{item.source.kind === "da" ? clipById.get(item.source.clips[0]!.clipId)?.title ?? item.source.title : item.source.title}</Link></h3>
+            <p className="iw-timeline-line">{item.source.valueExact ? `${formatExactDecimal(item.source.valueExact)} ${item.source.unit} · ` : ""}{item.source.clips.length === 1
+              ? <button type="button" className="iw-text-button" onClick={() => openEvidence(item.source!.clips[0]!.clipId)}>Dovada din dosar</button>
+              : <>Dovezile din dosar: {item.source.clips.map((c, i) => <Fragment key={c.clipId}>{i > 0 && ", "}<button type="button" className="iw-text-button" onClick={() => openEvidence(c.clipId)}>{c.kind === "notice" ? "anunțul" : c.kind === "da" ? "achiziția" : "contractul"}</button></Fragment>)}</>}
+              {item.source.sourceUrl && <> · <a href={item.source.sourceUrl} target="_blank" rel="noopener noreferrer">SEAP<span aria-hidden="true"> ↗</span><span className="sr-only"> (filă nouă)</span></a></>}</p></div>
         </li> : <li key={item.key}>
           <time dateTime={item.event!.occurredOn ?? undefined}>{item.event!.occurredOn ? privateDay(item.event!.occurredOn) : "Dată necunoscută"}</time>
           <div><p className="iw-timeline-tag">Scris în dosar{item.event!.author ? ` · ${item.event!.author}` : ""}</p><h3>{item.event!.title}</h3>{item.event!.body && <p className="iw-prose">{item.event!.body}</p>}{entryActions(item.event!)}</div>
         </li>)}</ul>
         <details className="iw-journal"><summary>Jurnalul dosarului · salvări și revizii</summary><p className="iw-muted">Ordinea salvării în aplicație, nu data faptelor. Cele mai recente 200 de revizii.</p><ul>
-          {[...workspace.revisions.map(revision => ({ id: `${revision.entryId}-${revision.revision}`, at: revision.createdAt, text: `${String(revision.content.title ?? "Notă")} · versiunea ${revision.revision}${revision.content.deleted === true ? " · eliminată din listă" : ""}` })), ...clips.map(clip => ({ id: clip.id, at: clip.createdAt, text: `Dovadă salvată: ${clip.title}` }))].sort((a, b) => b.at.localeCompare(a.at)).map(event => <li key={event.id}><time dateTime={event.at}>{privateMoment(event.at)}</time><span>{event.text}</span></li>)}
+          {[...workspace.revisions.map(revision => ({ id: `${revision.entryId}-${revision.revision}`, at: revision.createdAt, text: `${String(revision.content.title ?? "Notă")} · versiunea ${revision.revision}${revision.content.deleted === true ? " · scoasă din dosar" : ""}` })), ...clips.map(clip => ({ id: clip.id, at: clip.createdAt, text: `Dovadă salvată: ${clip.title}` }))].sort((a, b) => b.at.localeCompare(a.at)).map(event => <li key={event.id}><time dateTime={event.at}>{privateMoment(event.at)}</time><span>{event.text}</span></li>)}
         </ul></details>
       </>}
       {tab === "tasks" && <>
-        <div className="iw-section-head"><h2>De verificat</h2>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("task")}>Adaugă verificare</button>}</div>
+        <div className="iw-section-head"><h2 className="d-sr-only">Verificări</h2>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("task")}>Adaugă verificare</button>}</div>
         {tasks.length === 0 && <div className="iw-empty"><h3>Nicio verificare deschisă încă</h3><p>Transformă incertitudinile în pași concreți, cu o notă despre ce ar clarifica răspunsul.</p></div>}
         <div className="iw-tasks">{tasks.map(task => <article key={task.id} className={task.status === "done" ? "iw-task iw-task-done" : "iw-task"}>
           <label className="iw-task-check"><input type="checkbox" checked={task.status === "done"} disabled={!canEdit || busy} onChange={() => void mutate({ action: "update", entryId: task.id, revision: task.revision, entry: { ...task, status: task.status === "done" ? "open" : "done" } })} /><span className="d-sr-only">Marchează „{task.title}” ca {task.status === "done" ? "nefinalizată" : "finalizată"}</span></label>
@@ -307,7 +314,7 @@ function EntryEditor({ entry, kind, busy, onCancel, onSave }: { entry: Workspace
     } });
   }
   return <form ref={form} className="iw-editor" onSubmit={submit} aria-busy={busy} onKeyDown={event => { if (event.key === "Escape") { event.preventDefault(); onCancel(); } }}>
-    <h3>{kind === "note" ? (entry ? "Schimbă nota" : "Adaugă notă") : `${entry ? "Editează" : "Adaugă"} ${kindLabels[kind]}`}</h3><fieldset disabled={busy}>
+    <h3>{kind === "note" ? (entry ? "Schimbă nota" : "Notă editorială") : `${entry ? "Editează" : "Adaugă"} ${kindLabels[kind]}`}</h3><fieldset disabled={busy}>
       <label>{kind === "question" ? "Întrebarea de lucru" : "Titlu"}<input name="title" required maxLength={300} defaultValue={value.title} placeholder={kind === "question" ? "Ce ar trebui să verificăm?" : "Un titlu clar, ușor de regăsit"} /></label>
       <label>{kind === "event" ? "Ce s-a întâmplat și de unde știm" : "Context și observații"}<textarea name="body" rows={3} maxLength={12000} defaultValue={value.body} /></label>
       {(kind === "question" || kind === "note") && <label>Explicații alternative<textarea name="alternative" rows={2} maxLength={12000} defaultValue={value.alternative} placeholder="Ce explicație legitimă ar putea exista? Ce informație ne-ar schimba concluzia?" /></label>}

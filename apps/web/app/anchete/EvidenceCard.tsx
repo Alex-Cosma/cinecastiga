@@ -110,7 +110,7 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
   return <>
     <div className="iw-card-top">
       <div className="iw-entry-meta"><span className="iw-card-kind">{item.kindLabel}{item.code && <span className="iw-code"> · {item.code}</span>}</span>
-        {item.pinned && <span className="iw-pill iw-pill-pin">Fixată</span>}
+        {item.pinned && <span className="iw-pill iw-pill-pin"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M6 2h4l-.5 4 2.5 2.5H4L6.5 6 6 2ZM8 8.5V14" /></svg>Fixată</span>}
         {pill && <span className={`iw-pill iw-pill-${pill.tone}`}>{pill.text}{capture?.status === "failed" && <Term tip title="Fără surse păstrate" text={`${captureFailureWords(capture.error).text} Dovada e în dosar; nu o prezentăm ca dovadă completă.`} />}</span>}
         <span className="iw-card-saved">Salvată la <time dateTime={item.savedAt}>{privateDay(item.savedAt)}</time></span></div>
       <CardMenu name={item.title} actions={actions} />

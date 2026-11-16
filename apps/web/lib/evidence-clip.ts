@@ -5,6 +5,7 @@ import { personClipSpec } from "./ask/site-links";
 import { cleanName } from "./format";
 import { FLAG_META, flagFindingLabel } from "./flags";
 import type { CaptureSummary } from "./evidence-captures-shared";
+import type { SourceEvent } from "./anchete";
 
 /*
  * What a saved item of a dossier is called, where it opens and what it is worth, in one place for the dossier, its
@@ -175,4 +176,36 @@ export function clipValue(c: ClipLike): { exact: string; label: string; unit: st
 export function clipDate(c: ClipLike): string | null {
   const s = c.snapshot ?? {};
   return ["contract", "da"].includes(c.kind) && typeof s.date === "string" && /^\d{4}-\d{2}-\d{2}/.test(s.date) ? s.date.slice(0, 10) : null;
+}
+
+/** A timeline event read from the saved records, with every saved item that gives it (a contract and its notice). */
+export interface MergedSourceEvent extends Omit<SourceEvent, "clipId"> { clips: { clipId: string; kind: string }[]; noticeNo: string | null }
+
+/**
+ * The same contract on the same day said once (audit Z8-42): a saved contract and its saved notice both date it
+ * ("Data contractului", "Contract din anunțul SCNA…"); they become one "Contract semnat" with the contract's title,
+ * its value, the notice's code and both items linked. Events of different records stay apart. Pure.
+ */
+export function mergeSourceEvents(events: readonly SourceEvent[]): MergedSourceEvent[] {
+  const out: MergedSourceEvent[] = [];
+  const byKey = new Map<string, MergedSourceEvent>();
+  for (const event of events) {
+    const notice = /^Contract din anunțul\s*(.*)$/.exec(event.label);
+    const key = event.kind === "contract" ? `${event.date}|${event.href}` : null;
+    const found = key ? byKey.get(key) : undefined;
+    const fromNotice = notice ? { clipId: event.clipId, kind: "notice" } : { clipId: event.clipId, kind: event.kind };
+    if (found) {
+      found.clips.push(fromNotice);
+      if (notice?.[1]) found.noticeNo = notice[1];
+      if (!notice) { found.title = event.title; found.valueExact = event.valueExact ?? found.valueExact; found.unit = event.unit; }
+      found.valueExact ??= event.valueExact; found.sourceUrl ??= event.sourceUrl;
+      found.label = "Contract semnat";
+      continue;
+    }
+    const { clipId: _clip, ...rest } = event;
+    const merged: MergedSourceEvent = { ...rest, clips: [fromNotice], noticeNo: notice?.[1] || null };
+    if (key) byKey.set(key, merged);
+    out.push(merged);
+  }
+  return out;
 }

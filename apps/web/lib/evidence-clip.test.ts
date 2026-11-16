@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipCode, clipHref, clipTitle, clipValue, entityKindLabel, radiografieHref, savedName, type ClipLike } from "./evidence-clip";
+import { clipCode, clipHref, clipTitle, clipValue, entityKindLabel, mergeSourceEvents, radiografieHref, savedName, type ClipLike } from "./evidence-clip";
 import { citationText } from "./evidence-citation";
 import { recordParties, sourceEventsFrom } from "./anchete";
 
@@ -102,5 +102,25 @@ describe("dates and parties read from the saved records", () => {
   it("names who bought from whom, each supplier once", () => {
     expect(recordParties(records.get("k1")!)).toEqual({ authorityId: "2139059", authority: "COMUNA FELNAC", suppliers: [{ id: "1", name: "A" }, { id: "2", name: "B" }] });
     expect(recordParties([])).toBeNull();
+  });
+});
+
+describe("the timeline from the sources (Z8-42)", () => {
+  const base = { date: "2020-01-15", unit: "lei", sourceUrl: null } as const;
+  it("says a contract once when its contract and its notice are both saved", () => {
+    const merged = mergeSourceEvents([
+      { ...base, clipId: "n", kind: "contract", label: "Contract din anunțul SCNA1031122", title: "SCNA1031122", valueExact: "4930170", href: "/contracte/100427344" },
+      { ...base, clipId: "c", kind: "contract", label: "Data contractului", title: "Contract de lucrări", valueExact: "4930170", href: "/contracte/100427344" },
+      { ...base, clipId: "d", kind: "da", label: "Achiziție directă finalizată", title: "DA1", valueExact: "10", href: "/achizitii/1" },
+    ]);
+    expect(merged).toHaveLength(2);
+    expect(merged[0]).toMatchObject({ label: "Contract semnat", title: "Contract de lucrări", noticeNo: "SCNA1031122", clips: [{ clipId: "n", kind: "notice" }, { clipId: "c", kind: "contract" }] });
+    expect(merged[1]).toMatchObject({ label: "Achiziție directă finalizată", clips: [{ clipId: "d", kind: "da" }] });
+  });
+  it("keeps different contracts and days apart", () => {
+    expect(mergeSourceEvents([
+      { ...base, clipId: "a", kind: "contract", label: "Data contractului", title: "A", valueExact: "1", href: "/contracte/1" },
+      { ...base, clipId: "b", kind: "contract", label: "Data contractului", title: "B", valueExact: "1", href: "/contracte/2" },
+    ])).toHaveLength(2);
   });
 });

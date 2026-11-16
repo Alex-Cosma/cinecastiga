@@ -242,3 +242,14 @@
 .iw-failed-line>span{position:relative}.iw-shell .iw-failed-line>button{min-height:36px;font-weight:600}
 .iw-pill .term-tip{margin-left:4px}
 @media(max-width:700px){.iw-shell .iw-failed-line>button{min-height:44px}}
+
+/* A tab's heading is the tab itself (Z8-09): read by screen readers, its action alone on the right. */
+.iw-section-head{margin:14px 0 8px;justify-content:flex-end;min-height:0}
+.iw-section-head:has(> h2.d-sr-only:only-child){margin:6px 0 0}
+@media(max-width:760px){.iw-section-head{flex-direction:row;justify-content:flex-start}}
+/* Pinned items (Z8-30): a pill with a pin, the group named over it and its end marked. */
+.iw-pill-pin{display:inline-flex;align-items:center;gap:4px}
+.iw-group-label{margin:14px 0 0;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.iw-filter{margin:10px 0 6px}
+.iw-section-head .iw-filter{flex:1;margin:0;min-width:0}.iw-section-head:has(.iw-filter){align-items:center;margin-top:16px}
+@media(max-width:700px){.iw-section-head:has(.iw-filter){flex-direction:column-reverse;align-items:stretch;gap:12px}.iw-section-head:has(.iw-filter)>button{align-self:flex-start}}
