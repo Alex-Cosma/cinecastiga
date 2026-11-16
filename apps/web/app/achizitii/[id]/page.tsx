@@ -15,6 +15,7 @@ import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import RecordTitle from "@/components/record/RecordTitle";
 import ItemsMore from "@/components/record/ItemsMore";
+import SeapDetails from "@/components/record/SeapDetails";
 import { formatQuantity, itemsSum, lineTotal, productsTitle } from "@/lib/record-items";
 import "@/components/record/record-pages.css";
 import { Facts, MissingLine, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party } from "@/components/record/Record";
@@ -125,10 +126,16 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
       <Facts facts={[
         d.estimate != null && { label: "Valoare estimată", value: amount(d.estimate) },
         (d.publishedAt || d.finalizedAt) && { label: "Publicată → finalizată (ora României)", value: <>{d.publishedAt ? formatCalendarDate(d.publishedAt, true) : "—"} → {d.finalizedAt ? formatCalendarDate(d.finalizedAt, true) : "—"}{duration && <small>în {duration}</small>}</> },
-        (d.cpvName || d.cpvCode) && { label: "Domeniu CPV", value: <>{d.cpvName ?? "Denumire neprecizată"}{d.cpvCode && <small>{d.cpvCode}</small>}</> },
+        (d.cpvName || d.cpvCode) && { label: "Domeniu CPV", value: d.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
         d.acquisitionType && { label: "Tipul achiziției", value: d.acquisitionType },
       ]} />
       <MissingLine fields={missing} />
+      {/* The codes, for citing and checking (Z7-29). */}
+      <SeapDetails facts={[
+        d.code && { label: "Cod SEAP", value: d.code },
+        { label: "ID SEAP", value: id },
+        d.cpvCode && { label: "Cod CPV", value: d.cpvCode },
+      ]} />
     </RecordSection>
     {x.items.length > 0 && <RecordSection id="produse" title="Ce s-a cumpărat">
       {/* Each line's total and their sum, as the institution wrote them (UX audit Z7-16); on a phone one short row per

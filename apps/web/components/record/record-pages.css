@@ -96,3 +96,13 @@
   .record-entry .record-signal-links { row-gap: 0; }
   .record-entry .record-signal-links > a, .record-entry .record-signal-links summary { display: inline-flex; align-items: center; min-height: 44px; }
 }
+
+/* Z7-29: facts for completeness (a version's date, codes, ids) folded at the end of a section. */
+.record-seap-details { margin-top: 12px; }
+.record-seap-details > summary { display: inline-flex; align-items: center; min-height: 36px; list-style: none; color: var(--accent); font-size: 14px; font-weight: 600; cursor: pointer; }
+.record-seap-details > summary::-webkit-details-marker { display: none; }
+.record-seap-details > summary::before { content: "▸"; margin-right: 6px; font-size: 11px; }
+.record-seap-details[open] > summary::before { content: "▾"; }
+.record-seap-details[open] > summary { margin-bottom: 2px; }
+.record-seap-details .record-facts dd { font-size: 15px; }
+@media (max-width: 700px) { .record-seap-details > summary { min-height: 44px; } }

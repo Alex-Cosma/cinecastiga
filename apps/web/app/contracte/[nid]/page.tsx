@@ -20,6 +20,7 @@ import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
 import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party, type RecordValue, type Source } from "@/components/record/Record";
 import RecordSums, { type SumRow } from "@/components/record/RecordSums";
+import SeapDetails from "@/components/record/SeapDetails";
 import { consortiumShareLabel } from "@/lib/consortium";
 import RecordTitle from "@/components/record/RecordTitle";
 import "@/components/record/record-pages.css";
@@ -194,6 +195,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
   }
   const sumsTitle = `Sumele, de la ${x.ted?.estimateRon != null ? "estimare" : sums.some((r) => r.key === "of") ? "oferte" : "anunț"} la ${fw && fw.calloffs > 0 ? "comenzi" : c.financialKind === "calloff" ? "comandă" : c.financialKind === "framework" ? "acordul-cadru" : c.financialKind === "amendment" ? "actul adițional" : "contract"}`;
 
+  const republished = c.publications.length > 1;
   const awardSourceLabel = `Anunțul de atribuire${c.noticeNo ? ` ${c.noticeNo}` : ""} în SEAP`;
   const sources: Source[] = [
     ...(c.caNoticeId ? [{ href: awardUrl(c.caNoticeId), label: awardSourceLabel, external: true }] : []),
@@ -242,11 +244,18 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
             : c.isSingleBidder === true && !singleBidSignal ? "Un singur ofertant" : <span className="record-quiet">Număr nepublicat</span> },
           x.ted?.euFunded != null && { label: "Fonduri UE", value: x.ted.euFunded ? "Da, potrivit TED" : "Nu, potrivit TED" },
           procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
-          (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: <>{c.cpvName ?? "Denumire neprecizată"}{c.cpvCode && <small>{c.cpvCode}</small>}</> },
-          c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
+          (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: c.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
+          // A republished notice's version date matters (its versions are listed above); otherwise it is folded (Z7-29).
+          republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
           x.framework?.role === "calloff" && { label: "Acordul-cadru", value: <><Link prefetch={false} href={`/contracte/${x.framework.frameworkNatId}`}>{cleanName(x.framework.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
             {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon, f.topRon); return times && <small className="record-warn">Comenzile lui declarate în SEAP ({formatInt(f.calloffs)}) însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul de {formatExactDecimal(f.ceilingRon!)} lei.{f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : overCeilingWhy}{countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : ""}</small>; })()}</>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon, x.framework.topRon) !== null },
           x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a><small>Recunoscute după numele fișierului: pot fi greșit clasificate.</small></>, wide: true },
+        ]} />
+        <SeapDetails facts={[
+          !republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
+          c.cpvCode && { label: "Cod CPV", value: c.cpvCode },
+          { label: "ID SEAP al contractului", value: c.natId },
+          c.caNoticeId && { label: "ID SEAP al anunțului de atribuire", value: c.caNoticeId },
         ]} />
       </RecordSection>
 

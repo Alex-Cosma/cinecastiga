@@ -18,6 +18,7 @@ import { readFilters } from "@/lib/table-filters/codec";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
 import { PendingRegion } from "@/components/ghost/client";
 import ListPager from "@/components/record/ListPager";
+import SeapDetails from "@/components/record/SeapDetails";
 import { Facts, RecordHead, RecordPage, RecordSection, SignalList, Sources, type Source } from "@/components/record/Record";
 import RecordTitle from "@/components/record/RecordTitle";
 import "@/components/record/record-pages.css";
@@ -131,11 +132,16 @@ export default async function NoticePage({ params, searchParams }: {
           awarded && { label: <Term tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: <>{lei(awarded)}{gapNote && <small>{gapNote}</small>}</>, wide: !!gapNote },
           offers && { label: "Oferte, de la cea mai mică la cea mai mare", value: offers },
           procedure && { label: <Term tip id="contract-procedura">Procedura</Term>, value: procedure },
-          (n.cpvName || n.cpvCode) && { label: "Domeniu CPV", value: <>{n.cpvName ?? "Denumire neprecizată"}{n.cpvCode && <small>{n.cpvCode}</small>}</> },
-          { label: "Primul contract din anunț", value: n.firstContractDate ? formatCalendarDate(n.firstContractDate) : <span className="record-quiet">Fără dată plauzibilă</span> },
+          (n.cpvName || n.cpvCode) && { label: "Domeniu CPV", value: n.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
+          // Only a notice with several records has a "first" one (Z7-29).
+          n.nLots > 1 && { label: "Primul contract din anunț", value: n.firstContractDate ? formatCalendarDate(n.firstContractDate) : <span className="record-quiet">Fără dată plauzibilă</span> },
           n.versions.length > 1 && { label: <Term tip id="versiuni-anunt">Versiuni SEAP</Term>, wide: true, value: n.versions.map((v, i) => <span key={v.caNoticeId}>{i > 0 && ", "}{v.caNoticeId === n.caNoticeId
             ? <span aria-current="page">{formatCalendarDate(v.versionDate)} (aceasta)</span>
             : <Link prefetch={false} href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>}</span>) },
+        ]} />
+        <SeapDetails facts={[
+          n.cpvCode && { label: "Cod CPV", value: n.cpvCode },
+          { label: "ID SEAP al anunțului", value: n.caNoticeId },
         ]} />
       </RecordSection>
 
