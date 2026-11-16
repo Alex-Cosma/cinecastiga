@@ -736,7 +736,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
           ? <p className={`cx-lede${stale}`}>{isAuthority ? "Singurul furnizor" : "Singurul client"}: <b><EntityName id={onePartner.entity.id} role={onePartner.entity.role}>{name(onePartner.entity)}</EntityName></b> · {formatEvidenceAmount(onePartner.totalExact)}{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
           : v.top
           ? <p className={`cx-lede${stale}`}>{short(total)} lei {isAuthority ? "către" : "de la"} <b>{countWords(count, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}</b>{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.{count > 4 && <> {isAuthority ? "Primii patru iau" : "Primele patru aduc"} <b>{pct(top4)}</b>.</>}</p>
-          : <Ghost as="p" className="cx-lede" name="cx-lede" wait="client"><G.Line w="31em" /><G.Line w="11em" only="phone" /></Ghost>}
+          : <Ghost as="p" className={`cx-lede${base.error && !held ? " g-still" : ""}`} name="cx-lede" wait="client"><G.Line w="31em" /><G.Line w="11em" only="phone" /></Ghost>}
       </div>
       <div className="cx-scope" role="group" aria-label="Ce achiziții și ce ani">
         {/* A channel without any record is shown with its 0, not offered (UX audit Z5-38). */}
@@ -796,7 +796,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
       {/* The complete lists: any partner, by name or CUI, page by page (on a phone, the page itself). */}
       {vp || pickPending ? <div className={`cx-list-switch${stale}`} role="tablist" aria-label="Listele" inert={held ? true : undefined}>
         {!onePartner && <button type="button" role="tab" aria-selected={phoneList === "root"} onClick={() => showList("root")}>{isAuthority ? "Furnizorii" : "Instituțiile"} · {number(count)}</button>}
-        <button type="button" role="tab" aria-selected={phoneList === "second"} onClick={() => showList("second")}>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"}{v.second ? ` · ${number(v.second.pagination.totalPartners)}` : <> · <Ghost as="span" name="cx-switch-count" wait="client"><G.Line inline w="4ch" /></Ghost></>}</button>
+        <button type="button" role="tab" aria-selected={phoneList === "second"} onClick={() => showList("second")}>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"}{v.second ? ` · ${number(v.second.pagination.totalPartners)}` : <> · <Ghost as="span" name="cx-switch-count" wait="client" className={second.error ? "g-still" : undefined}><G.Line inline w="4ch" /></Ghost></>}</button>
       </div> : !v.top && <div className="cx-list-switch" aria-hidden="true" data-ghost="client" data-g="cx-list-switch">
         <span>{isAuthority ? "Furnizorii" : "Instituțiile"} · <G.Line inline w="3ch" /></span><span>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"} · <G.Line inline w="4ch" /></span>
       </div>}
@@ -812,7 +812,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
           {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} head="cx-list-1" />}
         </section>}
         {vp ? <section className="cx-list second" aria-labelledby="cx-list-2">
-          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span title={secondShareWords}>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · ${secondShareWords}` : <Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
+          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span title={secondShareWords}>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · ${secondShareWords}` : <Ghost as="span" name="cx-count-2" wait="client" className={second.error ? "g-still" : undefined}><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={secondList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"} value={peerSearch} onChange={(e) => { setPeerSearch(e.target.value); setPeerPage(1); }} />
           {second.error && !held ? <div className="cx-error" role="alert"><p>{second.error}</p><button type="button" onClick={second.retry}>Reîncearcă</button> {restart}</div> : <div aria-busy={secondPending} className={secondStale ? "g-stale" : undefined} inert={secondStale || undefined}>
             {!v.second ? <ListGhost />
@@ -821,7 +821,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
           </div>}
           {v.second && <Pager data={v.second} busy={secondPending} onPage={setPeerPage} head="cx-list-2" />}
         </section> : (pickPending || !v.top) && <section className="cx-list second" aria-hidden="true">
-          <div className="cx-list-head"><h2><Ghost as="span" name="cx-list-2-head" wait="client"><G.Line w="72%" /></Ghost></h2><span><Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost></span></div>
+          <div className="cx-list-head"><h2><Ghost as="span" name="cx-list-2-head" wait="client"><G.Line w="72%" /></Ghost></h2><span><Ghost as="span" name="cx-count-2" wait="client" className={second.error ? "g-still" : undefined}><G.Line w="9em" /></Ghost></span></div>
           <span className="cx-search g-quiet" />
           <ListGhost />
         </section>}

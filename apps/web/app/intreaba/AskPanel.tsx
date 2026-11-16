@@ -105,6 +105,7 @@ import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
 import { SelectTrace } from "../../components/motion/Selection";
 import { useFlag } from "../../components/motion/Done";
+import WorkLine from "../../components/motion/WorkLine";
 import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
@@ -1386,6 +1387,8 @@ export default function AskPanel({
                   label={title}
                 />
               </div>
+              {/* The work sign: a line under the question while its new answer is on the way (M-15). */}
+              <WorkLine busy={loading} failed={!!error} />
             </div>
             {/* A profile's kind is in the line under the sentence („achiziții directe”); „Ce include calculul” adds the
                 archive, the ceiling and „valori înregistrate, nu plăți”. No banner (owner, 2 November 2026). */}
@@ -2400,9 +2403,9 @@ function TableBlock({
 }
 
 /**
- * Animated loading indicator: three pulsing bars + elapsed seconds once the
- * query stops being instant, so long queries (up to the 20s cap) read as
- * "working", not "stuck". It floats under the header (the kit's FloatStatus place) and shows only once the wait
+ * Loading status: its words + elapsed seconds once the query stops being
+ * instant, so long queries (up to the 20s cap) read as "working", not "stuck";
+ * the line under the question is the sign of work (M-15, WorkLine), no bars. It floats under the header (the kit's FloatStatus place) and shows only once the wait
  * passes 150 ms (`g-float`), so a quick answer never flashes it.
  */
 function Loader({ label }: { label: string }) {
@@ -2413,11 +2416,6 @@ function Loader({ label }: { label: string }) {
   }, []);
   return (
     <div className="ask-loader g-float" role="status" aria-live="polite">
-      <span className="bars" aria-hidden>
-        <i />
-        <i />
-        <i />
-      </span>
       <span>
         {label}…{secs >= 3 && ` ${secs}s`}
         {secs >= 8 && " — interogare mare, poate dura până la 20s"}

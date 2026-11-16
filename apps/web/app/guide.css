@@ -209,3 +209,5 @@
 .d-romania-map .d-county-chosen{fill:none;stroke:var(--ink);stroke-width:2;stroke-linejoin:round;pointer-events:none}
 /* M-09: the tour's question arrives with the arrival outline (DiscoverySearch, components/motion/outline.ts), not the ring. */
 .d-search-arrive>form{animation:none}
+/* M-15: the work sign under the search field while suggestions come (DiscoverySearch, WorkLine); no spinner. */
+.d-search>form{position:relative}

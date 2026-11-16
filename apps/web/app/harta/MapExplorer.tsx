@@ -20,6 +20,7 @@ import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
 import { SelectPath, useLeaving } from "../../components/motion/Selection";
+import WorkLine from "../../components/motion/WorkLine";
 import { EASE_CAMERA } from "../../components/motion/outline";
 import { chartPace } from "../../components/motion/pace";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
@@ -602,6 +603,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {county && dots && shown.entityId && <span className="mx-card-go">Apasă: pagina {schools ? (/^gr[aă]din/i.test(shown.name) ? "grădiniței" : "școlii") : "spitalului"} <Arrow /></span>}
           </div>}
           {busy && <p className="mx-busy g-float" role="status">Se încarcă…</p>}
+          {/* The work sign along the bottom of the map while a county or the country loads (M-15). */}
+          <WorkLine busy={busy} />
           {/* The smallest area and the most looked for, one touch away on phones (Z4-03). */}
           {!county && geo && <button type="button" className="mx-chip" onClick={() => openCounty("bucuresti")}>București ›</button>}
         </div>

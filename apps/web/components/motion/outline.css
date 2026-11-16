@@ -69,9 +69,9 @@
 .mo-draw-check { stroke-dasharray: 1 2; animation: mo-ring var(--mo-new) var(--ease) both; }
 
 /* M-15 — the work sign: one line under the question that runs while a request is open and fills when it ends. */
-.mo-hair { position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; overflow: hidden; pointer-events: none; border-radius: 2px; }
+.mo-hair { position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; overflow: hidden; pointer-events: none; border-radius: 2px; z-index: 1; }
 .mo-hair::before { content: ""; position: absolute; left: 0; top: 0; width: 30%; height: 100%; border-radius: 2px; background: var(--accent); opacity: 0; transform: translateX(-100%); }
-.mo-hair[data-state="run"]::before { opacity: 1; animation: mo-hair 1100ms var(--ease-hold) infinite; }
+.mo-hair[data-state="run"]::before { opacity: 1; animation: mo-hair 1100ms var(--ease-hold) 150ms infinite backwards; }
 .mo-hair[data-state="end"]::before { width: 100%; transform-origin: 0 50%; animation: mo-hair-end 500ms var(--ease) forwards; }
 @keyframes mo-hair { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 @keyframes mo-hair-end { from { opacity: 1; transform: scaleX(.3); } 40% { opacity: 1; transform: none; } to { opacity: 0; transform: none; } }
@@ -110,3 +110,6 @@
   .mo-sel-a, .mo-sel-b, .mo-ring, .mo-select-trace path, .mo-new, .mo-new-first, .mo-new-group, .mo-chip-in, .mo-changed, .mo-sorted { animation: none !important; stroke-dasharray: none; }
   .mo-sel-leave { display: none; }
 }
+
+/* M-15: a ghost beside an error stops pulsing (it would say "loading" and "failed" at once; Legături, Z5). */
+.g-still .g-line, .g-still .g-block, .g-still .g-svg, .g-still.g-line { animation: none; }

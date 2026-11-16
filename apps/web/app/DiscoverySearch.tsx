@@ -1,6 +1,7 @@
 "use client";
 
 import { arrive, prefersReducedMotion } from "../components/motion/outline";
+import WorkLine from "../components/motion/WorkLine";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SuggestResponse } from "@/app/api/suggest/route";
@@ -159,6 +160,8 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
           setActive((current) => event.key === "ArrowDown" ? Math.min(current + 1, options.length - 1) : Math.max(current - 1, -1));
         }} />
       <button type="submit" aria-label="Vezi rezultatele căutării"><DiscoveryIcon name="arrow" /></button>
+      {/* The work sign under the field while suggestions come (M-15; it replaced the spinner). */}
+      <WorkLine busy={loading && term.length >= 2} failed={failedAll} />
     </form>
     <span className="d-sr-only" role="status">{!expanded ? "" : failedAll ? "Sugestiile nu sunt disponibile momentan. Apasă Enter pentru rezultate." : loading && !options.length ? "Căutăm…" : `${options.length === 1 ? "O sugestie" : `${options.length} sugestii`}. Folosește săgețile pentru a le parcurge; Enter fără o sugestie aleasă deschide rezultatele.`}</span>
     <div className="d-search-results" hidden={!modal && !open}>
@@ -190,7 +193,7 @@ export default function DiscoverySearch({ hero = false, modal = false, onNavigat
           })}
         </ul>)}
         {modal && <ul role="group" aria-label="Mai multe condiții" className="d-search-group d-search-more"><li role="presentation"><a href="/intreaba" onClick={() => onClose?.()}>Mai multe condiții? <b>Construiește o întrebare <span aria-hidden="true">→</span></b></a></li></ul>}
-        {loading && term.length >= 2 && <div role="presentation" className="d-search-pending"><span className="d-search-progress" aria-hidden="true" />Căutăm sugestii pentru „{term}”… Enter deschide rezultatele.</div>}
+        {loading && term.length >= 2 && <div role="presentation" className="d-search-pending">Căutăm sugestii pentru „{term}”… Enter deschide rezultatele.</div>}
       </div>
       {starting && <p className="d-search-keys" aria-hidden="true">↑ ↓ alegi · Enter caută · Esc închizi</p>}
     </div>

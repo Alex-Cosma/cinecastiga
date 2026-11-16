@@ -391,3 +391,5 @@
 .topic-pick-hall{margin:2px 0 4px;min-height:40px;font-size:13px;gap:8px;justify-content:flex-start}
 .topic-pick-hall .d-icon{width:16px;height:16px;color:var(--accent)}
 @media(max-width:650px){.topic-pick-hall{min-height:44px}}
+/* The work sign under the search while it runs (UX audit M-15, components/motion/WorkLine.tsx). */
+.topic-query{position:relative}
