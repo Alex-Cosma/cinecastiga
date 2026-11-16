@@ -9,7 +9,8 @@ const day = (v: unknown): string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}
 /**
  * A case of the national list in one small picture and its number (owner, 6 November 2026, "Oglinda"): the sum of a
  * group with the ceiling's line inside it, how close a purchase stopped to its ceiling, the part above it, a share.
- * Null for the signals the list tells in words. In motion, the fill grows from 0 (an above-the-ceiling pair as one
+ * Null for the signals the list tells in words. A group of „Adunate” is green up to its ceiling and red past it; a sum just
+ * under the ceiling has no picture, its number says it (UX audit Z6-16). In motion, the fill grows from 0 (an above-the-ceiling pair as one
  * piece, components/motion/chart-motion.css); the reference line stays. `tip`: what the picture draws, in figures, for
  * the card shown on hover (owner, 13 November 2026), its first line the title.
  */
@@ -23,15 +24,18 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
       // At 1,2× or under a group adds nothing to the score: listed only on request, its multiple says so (UX audit Z6-04).
       const under = r <= SPLIT_COUNTS_ABOVE;
       return { value: splitRatioWords(r), under, note: `${formatInt(num(e.count))} achiziții adunate față de plafon${under ? " · nu intră în scor" : ""}`,
-        tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, clasa CPV ${e.cpv_class}` : ""}`, `Adunate: ${formatRonFull(total)}`, `Linia: plafonul de ${formatRonFull(ceiling)}`, `De ${splitRatioWords(r)} plafonul`],
-        bar: <span className="sg-meter sum"><i className="cm-x" style={{ width: "100%" }} /><b style={{ left: `${Math.max(1, (1 / r) * 100)}%` }} /></span> };
+        tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, clasa CPV ${e.cpv_class}` : ""}`, `Adunate: ${formatRonFull(total)}`,
+          `Verde: plafonul de ${formatRonFull(ceiling)}`, ...(r > 1 ? [`Roșu: ${formatRonFull(Math.round((total - ceiling) * 100) / 100)} peste plafon`] : []), `De ${splitRatioWords(r)} plafonul`],
+        // Red only past the ceiling (UX audit Z6-16): up to it green, as „Declarate directe”, so 1,2× has a short red
+        // tail and 15,8× a long one; the bar is the group's own sum, no common scale.
+        bar: <span className="sg-meter over cm-x"><i className="g" style={{ flex: Math.min(1, r) }} />{r > 1 && <i className="r" style={{ flex: r - 1 }} />}</span> };
     }
     case "da_round": {
       const ceiling = num(e.ceiling), value = num(e.closing);
       if (!(ceiling > 0 && value > 0)) return null;
+      // No bar (UX audit Z6-16): every one would be 96–100% full and repeat the number beside it; the ceiling is said in words.
       return { value: `−${formatInt(Math.round(ceiling - value))} lei`, note: `sub plafonul de ${formatRon(ceiling)}`,
-        tip: ["Cât de aproape de plafon", `Achiziția: ${formatRonFull(value)}`, `Linia: plafonul de ${formatRonFull(ceiling)}`, `Cu ${formatRonFull(Math.round(ceiling - value))} sub plafon`],
-        bar: <span className="sg-meter"><i className="g cm-x" style={{ width: `${Math.min(100, (value / ceiling) * 100)}%` }} /><b style={{ left: "100%" }} /></span> };
+        tip: [], bar: null };
     }
     case "da_above_ceiling": {
       const ceiling = num(e.ceiling), value = e.basis === "estimate" ? num(e.estimate) || num(e.closing) : num(e.closing);
