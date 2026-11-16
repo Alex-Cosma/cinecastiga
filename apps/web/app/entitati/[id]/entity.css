@@ -438,3 +438,15 @@
   #conducere .reps:not(.reps-all) .reps-table tr.rep-more{display:none}
   .reps-more{display:inline-flex;align-items:center;min-height:44px;margin-top:6px;padding:0 4px;border:0;background:none;color:var(--accent);font:600 14px var(--body);cursor:pointer}
 }
+
+/* ---- UX audit bug (16 November 2026): at 320 px the ledger's total reached the card's edge and the years' labels
+   touched. The narrowest phones get tighter ledger cells, and a long axis names every other year (the current one kept). ---- */
+@media (max-width:360px){
+  .ent-top>*{padding:14px 12px}
+  .ent-ledger td{padding-left:8px;font-size:13px}
+  .ent-ledger thead th{padding-left:8px}
+  .ent-ledger tbody .ent-ledger-total>td:last-child{font-size:15px}
+}
+@container (max-width:300px){
+  .ent-years[data-many] .ent-years-x>span:nth-last-child(even){visibility:hidden}
+}

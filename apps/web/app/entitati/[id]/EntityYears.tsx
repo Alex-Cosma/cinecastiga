@@ -79,7 +79,7 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
   const words = active === null ? null : yearWords(model.bars[active]!);
   const line = model.bars.flatMap((b, i) => (b.turnoverPct === null ? [] : [`${center(i)},${100 - b.turnoverPct}`])).join(" ");
   return (
-    <figure className="ent-years" aria-labelledby={titleId} data-chart>
+    <figure className="ent-years" aria-labelledby={titleId} data-chart data-many={n >= 8 ? "" : undefined}>
       <figcaption id={titleId} className="ent-years-title">{title}</figcaption>
       {/* Leaving the whole plot (bars, years, the tip under them) closes the tip, so the mouse can reach its link. */}
       <div className="ent-years-plot" onMouseLeave={() => setActive(null)}>
