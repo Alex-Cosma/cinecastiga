@@ -468,7 +468,7 @@ describe("the chart's geometry and words", () => {
     expect(text(markup)).toContain("Primele 2 din 81 81 în listă · 1 inactiv ( Include-le )");
     // UX audit Z3-20: the line adds up to the group (81 listed + 1 inactive = 82, the pill); the cloud-only ones join it.
     expect(listSumParts(out)).toMatchObject({ inList: 81, historic: 1 });
-    expect(listSumParts({ ...out, group: { ...out.group, n: out.group.nList + 8, small: false } })).toMatchObject({ inList: 81, historic: 1, cloudOnly: 8, from: 10, to: 19 });
+    expect(listSumParts({ ...out, group: { ...out.group, n: out.group.nList + 8 } })).toMatchObject({ inList: 81, historic: 1, cloudOnly: 8, from: 10, to: 19 });
     expect(listSumParts({ ...BUZAU_CLOUD, historic: 0, group: { ...BUZAU_CLOUD.group, n: BUZAU_CLOUD.group.nList } })).toBeNull();
     // A full page load (a client navigation to the same page kept the answer), to the same question with them.
     const link = /<a class="qb-link" href="([^"]+)">Include-le<\/a>/.exec(markup);
