@@ -1555,7 +1555,7 @@ export default function AskPanel({
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
             {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && data.block !== "entity_card" && (
-              <div className="qb cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
+              <div className="qb cq-total"><TotalLine conditions={totalWords} {...(data.block === "stat" ? { note: false as const } : {})}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}
             {(resp.caveats?.length ?? 0) > 0 && (
@@ -1760,8 +1760,7 @@ function StatGhost({ spec }: { spec: AskSpec }) {
   return <>
     <div className="ask-bigstat" aria-hidden="true">
       <div className="v"><G.Line inline w="6ch" /></div>
-      <div className="d"><G.Line inline w="34ch" /></div>
-      {(spec.dataset ?? "all") === "all" && <div className="ask-streamsplit"><G.Line inline w="62ch" /><G.Line w="40ch" only="phone" /></div>}
+      <div className="d"><G.Line inline w="58ch" /><G.Line w="30ch" only="phone" /></div>
     </div>
     <MixGhost />
   </>;
@@ -2130,23 +2129,15 @@ function StatBlock({
     byStream?: { src: "da" | "contracts"; value: number; count: number }[];
   };
 }) {
-  const da = stat.byStream?.find((s) => s.src === "da");
-  const ctr = stat.byStream?.find((s) => s.src === "contracts");
   return (
     <div className="ask-bigstat">
       <div className="v">
         {measure === "count" ? formatInt(stat.count) : formatRon(stat.value)}
       </div>
+      {/* Z3-27: one line under the figure, the caveat beside it; the channels are „Din care”'s first rows (StatMix). */}
       <div className="d">
-        {formatRonFull(stat.value)} · {countWords(stat.count, "înregistrare", "înregistrări")}
+        {formatRonFull(stat.value)} · {countWords(stat.count, "înregistrare", "înregistrări")} · {RECORDED_VALUE.text}
       </div>
-      {stat.byStream && (
-        <div className="ask-streamsplit">
-          {formatRon(da?.value ?? 0)} achiziții directe (
-          {formatInt(da?.count ?? 0)}) + {formatRon(ctr?.value ?? 0)} contracte din proceduri
-          ({formatInt(ctr?.count ?? 0)})
-        </div>
-      )}
     </div>
   );
 }

@@ -164,7 +164,8 @@ export default function StatMix({ spec, onOnly }: { spec: AskSpec; onOnly: (next
           </li>;
         })}
       </ul>
-      {tab === "procedure" && !tabs.includes("offers") && mix.offers && contracts > 0 && <p className="qb-mix-foot qb-tipwrap">
+      {/* UX audit Z3-27: said only when some offers are known („0,0%” said nothing). */}
+      {tab === "procedure" && !tabs.includes("offers") && mix.offers && contracts > 0 && mix.offers.known > 0 && <p className="qb-mix-foot qb-tipwrap">
         Oferte cunoscute: {formatShare(mix.offers.known)} din valoarea contractelor <HelpTip tip={TIPS.offers} />
       </p>}
     </div>
