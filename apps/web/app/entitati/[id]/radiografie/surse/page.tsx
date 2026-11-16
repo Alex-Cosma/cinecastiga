@@ -15,6 +15,7 @@ import { readRadiografieSources, type RadiografieSourcesData } from "@/lib/radio
 import { sharedSql } from "@/lib/shared-db";
 import { daySpan, decimalDifference, joinWords, patternTitle, PATTERN_LABEL, radiografieWarnings, ratioNumber } from "@/lib/signal-page-words";
 import type { DbSql } from "@seap/db";
+import EntityCrumb from "../../EntityCrumb";
 
 /*
  * The records behind one Radiografie finding, on the record template (owner, 7 November 2026): the head names the
@@ -121,7 +122,11 @@ export default async function RadiografieSourcesPage({ params, searchParams }: {
   const selection = selectionOf(search);
   const page = pageOf(search.p);
   const data = selection ? await load(id, JSON.stringify(selection), page) : null;
-  const back = <Link prefetch={false} href={`/entitati/${id}/radiografie`} className="back">← Radiografia instituției</Link>;
+  // The analysis pages' one way back (UX audit Z5-08): „← Municipiul Cluj-Napoca · Radiografie · Achiziții adunate”.
+  const back = data?.authority ? <EntityCrumb id={id} name={cleanName(data.authority.name)} role="authority" current="Radiografie"
+      currentHref={`/entitati/${id}/radiografie${data.slice ? "?vedere=adunate" : data.pattern ? "?vedere=loturi" : ""}`}
+      sub={data.slice ? "Achiziții adunate" : data.pattern ? PATTERN_LABEL[data.pattern.kind] ?? "Tipar de loturi" : undefined} />
+    : <Link prefetch={false} href={`/entitati/${id}/radiografie`} className="back">← Radiografia instituției</Link>;
   if (!data || (!data.pattern && !data.slice)) return <RecordPage className="rx-sources-record">{back}
     <header className="record-head"><div className="record-title"><h1>Tiparul nu mai corespunde selecției</h1>
       <p className="record-parties">Datele au fost recalculate sau sursele nu mai sunt disponibile. Deschide Radiografia de acum și alege din nou tiparul.</p></div></header>

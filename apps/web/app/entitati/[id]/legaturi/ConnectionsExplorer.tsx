@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useSearchParams } from "next/navigation";
 import EvidenceDrawer from "@/app/intreaba/EvidenceDrawer";
 import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
 import EntityName from "@/components/EntityName";
+import EntityPager from "../Pager";
+import EntityCrumb from "../EntityCrumb";
+import { copyShortLink, prepareShortLink } from "@/lib/short-link-client";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import PeriodPicker, { EMPTY_RANGE, periodRangeError, type PeriodRangeValue } from "@/app/intreaba/builder/PeriodPicker";
@@ -114,18 +118,26 @@ function stack<T>(nodes: { key: string; item: T | null; value: number; label: st
   let y = 0;
   return nodes.map((n, i) => { const h = raw[i]! * scale; const node = { ...n, share: n.value / Math.max(1, total), y, h }; y += h + GAP; return node; });
 }
-/** Label tops: at their node's middle, pushed down so that two never overlap. */
+/**
+ * Label tops: at their node's middle, pushed down so that two never overlap, then up from the stage's foot, never above
+ * its top (UX audit, 16 November 2026: a large first node's label was shifted over the column's title and lost its name).
+ */
 function spread(nodes: { y: number; h: number }[], min = 44): number[] {
+  const last = H - 30;
+  const gap = nodes.length > 1 ? Math.min(min, last / (nodes.length - 1)) : min;
   const out: number[] = [];
-  for (const n of nodes) { const want = n.y + n.h / 2 - 15; out.push(Math.max(want, (out[out.length - 1] ?? -Infinity) + min)); }
-  const over = (out[out.length - 1] ?? 0) + 30 - H;
-  return over > 0 ? out.map((t) => t - over) : out;
+  for (const n of nodes) { const want = n.y + n.h / 2 - 15; out.push(Math.max(want, (out[out.length - 1] ?? -Infinity) + gap)); }
+  for (let i = out.length - 1; i >= 0; i--) out[i] = Math.min(out[i]!, i === out.length - 1 ? last : out[i + 1]! - gap);
+  for (let i = 0; i < out.length; i++) out[i] = Math.max(out[i]!, i === 0 ? 0 : out[i - 1]! + gap);
+  return out;
 }
 const band = (x1: number, a0: number, a1: number, x2: number, b0: number, b1: number) => {
   const m = (x1 + x2) / 2;
   return `M${x1} ${a0}C${m} ${a0} ${m} ${b0} ${x2} ${b0}L${x2} ${b1}C${m} ${b1} ${m} ${a1} ${x1} ${a1}Z`;
 };
 const SHADES = ["c0", "c1", "c2", "c3", "c4", "c4", "c4"];
+/** How many partners a column names: `n`, or every one when only one more would be left as „alte 1” (UX audit bug, 16 November 2026). */
+const namedCount = (count: number, n: number) => (count === n + 1 ? n + 1 : n);
 /** The largest few, and the chosen one when it ranks lower, in value order. */
 function drawnOf(items: ConnectionPartner[], n: number, chosen: ConnectionPartner | null): ConnectionPartner[] {
   const top = items.slice(0, n);
@@ -150,7 +162,11 @@ function Flow({ root, rootRole, items, total, count, picked, second, secondTotal
   const isAuthority = rootRole === "authority";
   const [hover, setHover] = useState<string | null>(null);
   const [first] = useState(enter === "first");
-  const drawn = drawnOf(items, DRAWN, picked);
+  // One partner (UX audit Z5-37, 16 November 2026): the flow starts from it, without the step of 100% before it, and its
+  // own partners take the stage.
+  const one = count === 1 && items.length === 1;
+  const xMid = one ? 0 : X_MID, xMidW = one ? X_ROOT : X_MID_W;
+  const drawn = drawnOf(items, namedCount(count, DRAWN), picked);
   const restValue = Math.max(0, total - drawn.reduce((a, i) => a + amount(i), 0));
   const mid = stack<ConnectionPartner>([
     ...drawn.map((i) => ({ key: i.entity.id, item: i, value: amount(i), label: name(i.entity) })),
@@ -164,45 +180,45 @@ function Flow({ root, rootRole, items, total, count, picked, second, secondTotal
 
   // The chosen partner's other partners, the root placed among them by value (it is left out of the second list).
   const rootValue = picked ? amount(picked) : 0;
-  const others = (second?.items ?? []).slice(0, DRAWN_RIGHT);
+  const secondCount = second?.pagination.totalPartners ?? 0;
+  const others = (second?.items ?? []).slice(0, namedCount(secondCount, DRAWN_RIGHT));
   const rightRaw: { key: string; item: ConnectionPartner | null; value: number; label: string; rest?: number }[] =
     others.map((i) => ({ key: i.entity.id, item: i, value: amount(i), label: name(i.entity) }));
   const rootAt = rightRaw.findIndex((r) => r.value < rootValue);
   if (picked) rightRaw.splice(rootAt < 0 ? rightRaw.length : rootAt, 0, { key: "root", item: null, value: rootValue, label: name(root) });
-  const secondCount = second?.pagination.totalPartners ?? 0;
   const shownOthers = others.length;
   if (second && secondCount > shownOthers) rightRaw.push({ key: "rest", item: null, value: Math.max(0, secondTotal - rootValue - others.reduce((a, i) => a + amount(i), 0)), label: `alte ${countWords(secondCount - shownOthers, isAuthority ? "instituție" : "firmă", isAuthority ? "instituții" : "firme")}`, rest: secondCount - shownOthers });
   const right = second && picked ? stack<ConnectionPartner>(rightRaw, secondTotal) : [];
   const rightLabels = spread(right, 62);
   let fan = sel?.y ?? 0;
-  const heads = { root: isAuthority ? "Instituția" : "Firma", mid: isAuthority ? "De la cine cumpără" : "Cine cumpără de la ea",
+  const heads = { root: isAuthority ? "Instituția" : "Firma", mid: one ? (isAuthority ? "Furnizorul" : "Clientul") : isAuthority ? "De la cine cumpără" : "Cine cumpără de la ea",
     right: picked ? (isAuthority ? `Cui mai vinde ${name(picked.entity)}` : `Cine mai vinde la ${name(picked.entity)}`) : "" };
 
   return (
     <div className="cx-flow" role="group" aria-label="Fluxul banilor" data-chart="">
-      <div className="cx-flow-heads" aria-hidden="true" style={{ gridTemplateColumns: `${X_MID / 10}% ${(X_RIGHT - X_MID) / 10}% 1fr` }}>
-        <span>{heads.root}</span><span>{heads.mid}</span><span className="r">{heads.right || (waiting && <><G.Line w="92%" /><G.Line w="56%" /></>)}</span>
+      <div className="cx-flow-heads" aria-hidden="true" style={{ gridTemplateColumns: one ? `${X_RIGHT / 10}% 1fr` : `${X_MID / 10}% ${(X_RIGHT - X_MID) / 10}% 1fr` }}>
+        {!one && <span>{heads.root}</span>}<span>{heads.mid}</span><span className="r">{heads.right || (waiting && <><G.Line w="92%" /><G.Line w="56%" /></>)}</span>
       </div>
       <div className={first ? "cx-flow-stage" : "cx-flow-stage cm-in"}>
         <svg viewBox={`0 0 1000 ${H}`} preserveAspectRatio="none" aria-hidden="true">
-          <rect className="cx-root-bar" x="0" y="0" width={X_ROOT} height={H} rx="2" />
-          <g className={first ? "cm-x" : undefined}>{mid.map((n, i) => (
+          {!one && <rect className="cx-root-bar" x="0" y="0" width={X_ROOT} height={H} rx="2" />}
+          {!one && <g className={first ? "cm-x" : undefined}>{mid.map((n, i) => (
             <path key={n.key} className={`cx-band ${n.item ? SHADES[i] : "rest"}${sel && n === sel ? " on" : ""}${sel && n !== sel ? " dim" : ""}${hover === n.key ? " hov" : ""}`}
               d={band(X_ROOT, rootAt0[i]!, rootAt0[i]! + n.share * H, X_MID, n.y, n.y + n.h)}
               onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
               onClick={() => (n.item ? onPick(n.item) : onRest())} />
-          ))}</g>
-          <g className={first ? "cm-fade cx-after" : undefined}>{mid.map((n, i) => <rect key={n.key} className={`cx-node ${n.item ? SHADES[i] : "rest"}${sel && n === sel ? " on" : ""}`} x={X_MID} y={n.y} width={X_MID_W} height={n.h} />)}</g>
+          ))}</g>}
+          <g className={first ? "cm-fade cx-after" : undefined}>{mid.map((n, i) => <rect key={n.key} className={`cx-node ${n.item ? SHADES[i] : "rest"}${sel && n === sel ? " on" : ""}`} x={xMid} y={n.y} width={xMidW} height={n.h} />)}</g>
           {sel && right.map((n) => {
             const slice = sel.h * n.share, a0 = fan; fan += slice;
             return <path key={`${picked!.entity.id}:${n.key}`} className={`cx-band2${n.key === "root" ? " root" : n.item ? "" : " rest"}${peer && n.item?.entity.id === peer.entity.id ? " on" : ""}${peer && n.item?.entity.id !== peer.entity.id ? " dim" : ""}${hover === `r:${n.key}` ? " hov" : ""}`}
-              d={band(X_MID + X_MID_W, a0, a0 + slice, X_RIGHT, n.y, n.y + n.h)} onMouseEnter={() => setHover(`r:${n.key}`)} onMouseLeave={() => setHover(null)}
+              d={band(xMid + xMidW, a0, a0 + slice, X_RIGHT, n.y, n.y + n.h)} onMouseEnter={() => setHover(`r:${n.key}`)} onMouseLeave={() => setHover(null)}
               onClick={() => (n.item ? onPeer(n.item) : n.rest ? onSecondRest() : undefined)} />;
           })}
           {sel && right.map((n) => <rect key={n.key} className={`cx-node2${n.key === "root" ? " root" : n.item ? "" : " rest"}`} x={X_RIGHT} y={n.y} width={X_RIGHT_W} height={n.h} />)}
         </svg>
         <div className={first ? "cx-flow-labels cm-fade cx-after" : "cx-flow-labels"}>{mid.map((n, i) => (
-          <button key={n.key} type="button" className={`cx-label${n.item ? "" : " rest"}${sel && n === sel ? " on" : ""}${hover === n.key ? " hov" : ""}`} style={{ left: `calc(${(X_MID + X_MID_W) / 10}% + 10px)`, top: `${(midLabels[i]! / H) * 100}%` }}
+          <button key={n.key} type="button" className={`cx-label${n.item ? "" : " rest"}${sel && n === sel ? " on" : ""}${hover === n.key ? " hov" : ""}`} style={{ left: `calc(${(xMid + xMidW) / 10}% + 10px)`, top: `${(midLabels[i]! / H) * 100}%` }}
             onMouseEnter={() => setHover(n.key)} onMouseLeave={() => setHover(null)}
             aria-pressed={n.item ? !!sel && n === sel : undefined} onClick={() => (n.item ? onPick(n.item) : onRest())}>
             <b>{n.label}</b><span>{short(n.value)} · {pct(n.share)}</span>
@@ -222,20 +238,39 @@ function Flow({ root, rootRole, items, total, count, picked, second, secondTotal
   );
 }
 
+/** Under a phone's bar of shares, its four largest parts with their names (UX audit Z5-33): the same action as the part. */
+type LegendRow = { key: string; label: string; value: number; shade: string; on?: boolean; root?: boolean; act?: () => void };
+function StripLegend({ rows, of, rest, onList }: { rows: LegendRow[]; of: number; rest: { label: string; value: number } | null; onList: () => void }) {
+  return <ul className="cx-legend">
+    {rows.map((r) => {
+      const inner = <><i className={`sw ${r.shade}`} aria-hidden="true" /><span className="nm">{r.label}</span><span className="v">{short(r.value)}<em>{pct(r.value / Math.max(1, of))}</em></span></>;
+      return <li key={r.key} className={`${r.on ? "on" : ""}${r.root ? " root" : ""}`}>
+        {r.act ? <button type="button" aria-pressed={!!r.on} onClick={r.act}>{inner}</button> : <span className="cx-legend-row">{inner}</span>}
+      </li>;
+    })}
+    {rest && <li className="rest"><span>{rest.label} · {pct(rest.value / Math.max(1, of))}</span>
+      <a href="#cx-lists" onClick={(e) => { e.preventDefault(); onList(); }}>în listă <span aria-hidden="true">↓</span></a></li>}
+  </ul>;
+}
+
 /**
  * The flow on a phone: each column as one bar of shares, the largest first, the rest as one grey part; a part opens
- * what its band opens. The chosen partner's bar marks the root in orange.
+ * what its band opens. The chosen partner's bar marks the root in orange. Under each bar, its four largest parts are
+ * named (UX audit Z5-33, 16 November 2026), the list below starting from the fifth.
  */
-function Strips({ root, rootRole, items, total, count, picked, second, secondTotal, peer, waiting, onPick, onPeer }: {
+function Strips({ root, rootRole, items, total, count, picked, second, secondTotal, peer, waiting, onPick, onPeer, onList }: {
   root: ConnectionEntity; rootRole: ConnectionRole; items: ConnectionPartner[]; total: number; count: number;
   picked: ConnectionPartner | null; second: ConnectionsResponse | null; secondTotal: number; peer: ConnectionPartner | null;
   waiting: boolean;
-  onPick: (item: ConnectionPartner) => void; onPeer: (item: ConnectionPartner) => void;
+  onPick: (item: ConnectionPartner) => void; onPeer: (item: ConnectionPartner) => void; onList: (which: "root" | "second") => void;
 }) {
   const isAuthority = rootRole === "authority";
-  const drawn = drawnOf(items, DRAWN, picked);
+  // One partner (UX audit Z5-37): no bar of a single 100% part; the partner's own bar is the strip.
+  const one = count === 1 && items.length === 1;
+  const drawn = drawnOf(items, namedCount(count, DRAWN), picked);
   const rest = Math.max(0, total - drawn.reduce((a, i) => a + amount(i), 0));
-  const others = (second?.items ?? []).slice(0, DRAWN_RIGHT);
+  const secondCount = second?.pagination.totalPartners ?? 0;
+  const others = (second?.items ?? []).slice(0, namedCount(secondCount, DRAWN_RIGHT));
   const rootValue = picked ? amount(picked) : 0;
   const rest2 = Math.max(0, secondTotal - rootValue - others.reduce((a, i) => a + amount(i), 0));
   const seg = (key: string, value: number, of: number, cls: string, label: string, on: boolean, act?: () => void) =>
@@ -243,15 +278,30 @@ function Strips({ root, rootRole, items, total, count, picked, second, secondTot
       : <span key={key} className={`cx-strip-seg cm-tw ${cls}`} style={{ flexGrow: Math.max(value / Math.max(1, of), 0.012) }} aria-label={`${label}: ${pct(value / Math.max(1, of))}`} role="img" />;
   // Each strip grows as one, left to right, when it first appears (the chosen partner's when its answer arrives); a pick
   // then tweens the parts that stay (.cm-tw on flex-grow).
+  const top4 = items.slice(0, 4);
+  const rest4 = total - top4.reduce((a, i) => a + amount(i), 0);
+  const secondParts = [...others.map((i) => ({ key: i.entity.id, i, v: amount(i) })), { key: "root", i: null, v: rootValue }].sort((a, b) => b.v - a.v);
+  const second4 = secondParts.slice(0, 4);
+  const secondRest4 = secondTotal - second4.reduce((a, p) => a + p.v, 0);
   return <div className="cx-strips" data-chart="">
-    <p className="cx-strip-h">{isAuthority ? "De la cine cumpără" : "Cine cumpără de la ea"}</p>
-    <div className="cx-strip cm-x">{drawn.map((i, k) => seg(i.entity.id, amount(i), total, SHADES[k]!, name(i.entity), picked?.entity.id === i.entity.id, () => onPick(i)))}
-      {count > drawn.length && seg("rest", rest, total, "rest", `alte ${count - drawn.length}`, false)}</div>
+    {!one && <>
+      <p className="cx-strip-h">{isAuthority ? "De la cine cumpără" : "Cine cumpără de la ea"}</p>
+      <div className="cx-strip cm-x">{drawn.map((i, k) => seg(i.entity.id, amount(i), total, SHADES[k]!, name(i.entity), picked?.entity.id === i.entity.id, () => onPick(i)))}
+        {count > drawn.length && seg("rest", rest, total, "rest", `alte ${count - drawn.length}`, false)}</div>
+      <StripLegend of={total} onList={() => onList("root")}
+        rows={top4.map((i, k) => ({ key: i.entity.id, label: name(i.entity), value: amount(i), shade: SHADES[k]!, on: picked?.entity.id === i.entity.id, act: () => onPick(i) }))}
+        rest={count > top4.length ? { label: `alte ${countWords(count - top4.length, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}`, value: rest4 } : null} />
+    </>}
     {picked && second && <>
       <p className="cx-strip-h">{isAuthority ? `Cui mai vinde ${name(picked.entity)}` : `Cine mai vinde la ${name(picked.entity)}`}</p>
-      <div className="cx-strip cm-x">{[...others.map((i) => ({ key: i.entity.id, i, v: amount(i) })), { key: "root", i: null, v: rootValue }].sort((a, b) => b.v - a.v)
+      <div className="cx-strip cm-x">{secondParts
         .map(({ key, i, v }) => i ? seg(key, v, secondTotal, "c2", name(i.entity), peer?.entity.id === i.entity.id, () => onPeer(i)) : seg(key, v, secondTotal, "root", name(root), false))}
-        {(second.pagination.totalPartners ?? 0) > others.length && seg("rest", rest2, secondTotal, "rest", "ceilalți", false)}</div>
+        {secondCount > others.length && seg("rest", rest2, secondTotal, "rest", "ceilalți", false)}</div>
+      <StripLegend of={secondTotal} onList={() => onList("second")}
+        rows={second4.map(({ key, i, v }) => i
+          ? { key, label: name(i.entity), value: v, shade: "c2", on: peer?.entity.id === i.entity.id, act: () => onPeer(i) }
+          : { key, label: name(root), value: v, shade: "root", root: true })}
+        rest={secondCount + 1 > second4.length ? { label: "ceilalți", value: secondRest4 } : null} />
     </>}
     {waiting && <>
       <p className="cx-strip-h">{picked ? (isAuthority ? `Cui mai vinde ${name(picked.entity)}` : `Cine mai vinde la ${name(picked.entity)}`) : <><G.Line w="92%" /><G.Line w="48%" /></>}</p>
@@ -346,7 +396,7 @@ function ListGhost() {
         <span className="bar"><G.Block w={`${Math.max(4, 70 - i * 6)}%`} h="100%" r="3px" /></span>
       </>} />
     </ul>
-    <div className="cx-pager" aria-hidden="true"><G.Block w="8.2em" h="36px" /><span><G.Line inline w="12ch" /></span><G.Block w="8.6em" h="36px" /></div>
+    <div className="ent-pager" aria-hidden="true"><G.Block w="7.4em" h="36px" /><span><G.Line inline w="14ch" /></span><G.Block w="7.4em" h="36px" /></div>
   </Ghost>;
 }
 
@@ -356,31 +406,39 @@ function ListGhost() {
  * A list's rows: the whole row chooses the partner, its name opens the partner's page (owner rule: every name links to
  * its entity). The bars share one scale on every page and search: the largest partner overall is the full bar.
  */
-function ListRows({ data, total, largest, pickedId, onPick, label }: { data: ConnectionsResponse; total: number; largest: number; pickedId?: string | undefined; onPick: (item: ConnectionPartner) => void; label: string }) {
+function ListRows({ data, total, largest, pickedId, onPick, label, inLegend = 0 }: { data: ConnectionsResponse; total: number; largest: number; pickedId?: string | undefined; onPick: (item: ConnectionPartner) => void; label: string;
+  /** The first rows, already named under a phone's bar of shares (UX audit Z5-33): left out there, kept on a desktop. */
+  inLegend?: number }) {
   const max = Math.max(1, largest, ...data.items.map(amount));
   // The answer the list was first drawn with: its bars grow top to bottom; a later page or search grows its new rows at
   // once, over --fast (charts in motion, owner 6 November 2026).
   const [firstData] = useState(data);
   return <ul className="cx-rows" aria-label={label} data-chart="">
-    {data.items.map((item, i) => <ListRow key={item.entity.id} item={item} total={total} max={max} on={pickedId === item.entity.id} onPick={onPick} enter={data === firstData ? i : -1} />)}
+    {data.items.map((item, i) => <ListRow key={item.entity.id} item={item} total={total} max={max} on={pickedId === item.entity.id} onPick={onPick} enter={data === firstData ? i : -1} inLegend={i < inLegend} />)}
   </ul>;
 }
-function ListRow({ item, total, max, on, onPick, enter }: { item: ConnectionPartner; total: number; max: number; on: boolean; onPick: (item: ConnectionPartner) => void; enter: number }) {
+function ListRow({ item, total, max, on, onPick, enter, inLegend }: { item: ConnectionPartner; total: number; max: number; on: boolean; onPick: (item: ConnectionPartner) => void; enter: number; inLegend: boolean }) {
   const [born] = useState(enter);
-  return <li className={`cx-row${on ? " on" : ""}`}>
+  return <li className={`cx-row${on ? " on" : ""}${inLegend ? " in-legend" : ""}`}>
     <button type="button" className="cx-row-hit" aria-pressed={on} aria-label={`Alege ${name(item.entity)}`} onClick={() => onPick(item)} />
     <span className="t"><b><EntityName id={item.entity.id} role={item.entity.role}>{name(item.entity)}</EntityName></b><small>{item.entity.cui ? `CUI ${item.entity.cui}` : "CUI nepublicat"}{countyLabel(item.entity.county) ? ` · ${countyLabel(item.entity.county)}` : ""} · {recordLabel(records(item))}</small></span>
     <span className="v">{short(amount(item))} <em>{pct(amount(item) / Math.max(1, total))}</em></span>
     <span className="bar" aria-hidden="true"><i className="cm-tw cm-x" style={{ width: `${(amount(item) / max) * 100}%`, ...(born >= 0 ? { "--i": born } : { "--cm-dur": "var(--fast)" }) } as CSSProperties} /></span>
   </li>;
 }
-function Pager({ data, busy, onPage }: { data: ConnectionsResponse; busy: boolean; onPage: (page: number) => void }) {
-  if (data.pagination.totalPages < 2 && data.pagination.page === 1) return null;
-  return <nav className="cx-pager" aria-label="Paginile listei">
-    <button type="button" disabled={busy || data.pagination.page <= 1} onClick={() => onPage(data.pagination.page - 1)}>← Anterioara</button>
-    <span>Pagina {number(data.pagination.page)} din {number(Math.max(1, data.pagination.totalPages))}</span>
-    <button type="button" disabled={busy || !data.pagination.hasNext} onClick={() => onPage(data.pagination.page + 1)}>Următoarea →</button>
-  </nav>;
+/**
+ * A list's pager, the entity pages' one (UX audit Z5-41, 16 November 2026). Another page starts at the list's title
+ * when the title is above the screen, so the reader reads the new page from its first row.
+ */
+function Pager({ data, busy, onPage, head }: { data: ConnectionsResponse; busy: boolean; onPage: (page: number) => void; head: string }) {
+  const turn = (n: number) => {
+    onPage(n);
+    const title = document.getElementById(head);
+    if (!title || title.getBoundingClientRect().top >= 0) return;
+    title.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
+  return <EntityPager page={data.pagination.page} pages={Math.max(data.pagination.totalPages, data.pagination.hasNext ? data.pagination.page + 1 : data.pagination.page)}
+    busy={busy} onPage={turn} label="Paginile listei" />;
 }
 
 /**
@@ -430,15 +488,41 @@ function PeriodButton({ scope, onApply }: { scope: Scope; onApply: (years: { yea
   </>;
 }
 
+/**
+ * „Copiază linkul” (UX audit Z5-35, 16 November 2026): the site's short link (/l/…) to this path, which keeps the same
+ * pinned version and identities, so the link reopens exactly what is shown; the long address when one cannot be made.
+ */
+function CopyLink({ path }: { path: string }) {
+  const [said, setSaid] = useState("");
+  useEffect(() => { if (!said) return; const timer = setTimeout(() => setSaid(""), 2500); return () => clearTimeout(timer); }, [said]);
+  return <>
+    <button type="button" className="cx-copy" onPointerDown={() => prepareShortLink(path)}
+      onClick={() => { copyShortLink(path).then(() => setSaid("Link copiat"), () => setSaid("Linkul nu a putut fi copiat")); }}>Copiază linkul</button>
+    <span className="cx-copied" role="status">{said}</span>
+  </>;
+}
+
 /* ---------------- the page ---------------- */
 
 /** What the page draws: the live answer, or, while a new period or kind loads, the previous one kept in place. */
 type View = { scope: Scope; base: ConnectionsResponse | null; top: ConnectionsResponse | null; picked: Picked | null; peer: ConnectionPartner | null;
   second: ConnectionsResponse | null; secondTop: ConnectionsResponse | null };
 
-export default function ConnectionsExplorer({ entityId, entityName, county = null, role, initial }: {
-  entityId: string; entityName: string; county?: string | null; role: ConnectionRole; initial: Record<string, string>;
+export default function ConnectionsExplorer({ entityId, entityName, role, bothRoles = false, channels, initial: fromServer }: {
+  entityId: string; entityName: string; county?: string | null; role: ConnectionRole;
+  /** `?rol=` only for an entity that both buys and sells (owner, 4 November 2026). */
+  bothRoles?: boolean;
+  /** The entity's records in this role per channel, every year (the profile's ledger): an empty channel is not offered. */
+  channels?: { da: number; contracts: number } | undefined;
+  initial: Record<string, string>;
 }) {
+  // The address as the browser has it now (UX audit bug, 16 November 2026): Back to this page restores the server's
+  // first answer for it, whose parameters predate the choices written to the address since; the address has them.
+  const address = useSearchParams();
+  const [initial] = useState<Record<string, string>>(() => {
+    const now = address ? Object.fromEntries(address.entries()) : {};
+    return Object.keys(now).length > 0 ? now : fromServer;
+  });
   const startingScope: Scope = { dataset: (initial.dataset ?? "all") as Dataset,
     ...(initial.yearFrom ? { yearFrom: Number(initial.yearFrom) } : {}), ...(initial.yearTo ? { yearTo: Number(initial.yearTo) } : {}) };
   const [scope, setScope] = useState<Scope>(startingScope);
@@ -501,25 +585,40 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   const total = v.top ? Number(v.top.summary.totalExact) : 0;
   const secondTotal = v.secondTop && v.picked ? Number(v.secondTop.summary.totalExact) + amount(v.picked.partner) : 0;
 
-  function remember(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
-    const params = query({ rol: isAuthority ? "autoritate" : "furnizor", ...applied,
+  /** The address of a path: the scope, the pinned version and identities (what a copied link reopens). */
+  function addressOf(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
+    const params = query({ rol: bothRoles ? (isAuthority ? "autoritate" : "furnizor") : undefined, ...applied,
       identity: pinned.current.identity, checkpointId: pinned.current.checkpointId,
       partner: selection?.partner.entity.id, partnerIdentity: selection?.partner.entity.identity,
       peer: last?.entity.id, peerIdentity: last?.entity.identity });
-    window.history.replaceState(null, "", `${window.location.pathname}?${params}`);
+    return `/entitati/${entityId}/legaturi?${params}`;
+  }
+  function remember(selection: Picked | null, last: ConnectionPartner | null, applied = scope) {
+    window.history.replaceState(null, "", addressOf(selection, last, applied));
   }
   const narrow = () => window.matchMedia("(max-width: 760px)").matches;
+  /** On a wide screen, after a choice in a list below, the dock comes into view under the header (UX audit Z5-34). */
+  function showDock() {
+    requestAnimationFrame(() => {
+      const box = dock.current?.getBoundingClientRect();
+      if (!box) return;
+      const roof = (document.querySelector(".site-header")?.getBoundingClientRect().bottom ?? 0) + 12;
+      if (box.top >= roof && box.bottom <= window.innerHeight) return;
+      const by = box.top < roof ? box.top - roof : Math.min(box.top - roof, box.bottom - window.innerHeight + 16);
+      window.scrollTo({ top: window.scrollY + by, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    });
+  }
   function choose(item: ConnectionPartner, quiet = false) {
     const data = baseShown ?? topData;
     if (!data) return;
     restoreController.current?.abort();
     const next = { root: data.entity, partner: item, checkpointId: data.checkpoint.id };
     setPicked(next); setPeer(null); setPeerSearch(""); setPeerPage(1); setLinkError(""); setRestoring(false); if (!quiet) { listsShown.current.add("second"); setPhoneList("second"); }
-    if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); }
+    if (!quiet) { remember(next, null); if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock(); }
   }
   function choosePeer(item: ConnectionPartner) {
     setPeer(item); remember(picked, item);
-    if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" }));
+    if (narrow()) requestAnimationFrame(() => dock.current?.scrollIntoView({ block: "start" })); else showDock();
   }
   function resetSelection() { restoreController.current?.abort(); setRestoring(false); setPicked(null); setPeer(null); remember(null, null); }
   function applyScope(next: Scope) {
@@ -528,7 +627,9 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
     setRescoped(true);
     setScope(next); setPicked(null); setPeer(null); setPage(1); setSearch(""); setSources(null); setRestoring(false); auto.current = false; fromLink.current = false; remember(null, null, next);
   }
-  const restart = <a className="cx-button" href={`/entitati/${entityId}/legaturi?rol=${isAuthority ? "autoritate" : "furnizor"}`}>Reia explorarea pe datele disponibile</a>;
+  // Only when the address pins a version or a path: starting over without them changes something (UX audit bug).
+  const pinnedLink = Boolean(fromServer.identity || fromServer.checkpointId || fromServer.partner || initial.identity || initial.checkpointId || initial.partner);
+  const restart = pinnedLink ? <a className="cx-button" href={`/entitati/${entityId}/legaturi${bothRoles ? `?rol=${isAuthority ? "autoritate" : "furnizor"}` : ""}`}>Reia explorarea pe datele disponibile</a> : null;
 
   // A copied URL restores exact partners even when they are beyond the first page.
   useEffect(() => {
@@ -590,6 +691,8 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   // The lede: the total, the partners, the years, and how much the largest four carry.
   const top4 = v.top ? v.top.items.slice(0, 4).reduce((a, i) => a + amount(i), 0) / Math.max(1, total) : 0;
   const count = v.top?.pagination.totalPartners ?? 0;
+  // One partner (UX audit Z5-37): the lede names it, the flow starts from it, one list (the partner's own).
+  const onePartner = count === 1 && v.top?.items.length === 1 ? v.top.items[0]! : null;
   const years = v.top ? [year(v.top.summary.firstDate), year(v.top.summary.lastDate)].filter(Boolean) : [];
   // Where the root stands among the chosen partner's partners (the second list leaves the root out).
   const vp = v.picked;
@@ -598,24 +701,54 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
     ? `${name(vp.root)} e ${rank === 1 ? "cel mai mare" : `al ${rank}-lea`} ${isAuthority ? "client" : "furnizor"} al ${isAuthority ? "firmei" : "instituției"} ${name(vp.partner.entity)}, cu ${pct(amount(vp.partner) / secondTotal)}.`
     : null;
   const stale = held ? " g-stale" : "";
+  // On a phone the list's page 1 starts at the fifth: the first four are named under the bar of shares (UX audit Z5-33).
+  const legendRows = !onePartner && page === 1 && !rootSearch && v.base && v.top && v.base.items.length > 0 ? Math.min(4, v.base.items.length) : 0;
   const secondHead = vp ? (isAuthority ? `Cui mai vinde ${name(vp.partner.entity)}` : `Cine mai vinde la ${name(vp.partner.entity)}`) : "";
+  // What each list's percentages are a share of (UX audit Z5-40): the two lists' totals differ.
+  const rootShareWords = `% din ce a ${isAuthority ? "cumpărat" : "vândut"} ${currentName}`;
+  const secondShareWords = vp ? `% din ce a ${isAuthority ? "vândut" : "cumpărat"} ${name(vp.partner.entity)}` : "";
+  // A selection without any record (UX audit Z5-38): one sentence and one way out, instead of four messages and a search.
+  const empty = !!v.top && v.top.items.length === 0;
+  const emptyWords = `${scope.dataset === "da" ? "Nicio achiziție directă" : scope.dataset === "contracts" ? "Niciun contract prin proceduri" : "Nicio înregistrare"}${scope.yearFrom || scope.yearTo ? " în această perioadă" : ""}.`;
+  // The other role of an entity that both buys and sells, its partners under the same channel and years (UX audit Z5-39).
+  const otherRole: ConnectionRole = isAuthority ? "supplier" : "authority";
+  const other = useConnections(bothRoles ? query({ entityId, role: otherRole, ...scope, page: 1 }) : null);
 
   return <div className="cx-shell">
-    <p className="cx-crumb"><Link href={profileUrl({ id: entityId, role })}>← {currentName}</Link> · {isAuthority ? "instituție" : "firmă"}{countyLabel(entity ? entity.county : county) ? `, ${countyLabel(entity ? entity.county : county)}` : ""}</p>
+    <EntityCrumb id={entityId} name={currentName} role={role} bothRoles={bothRoles} current="Legături" />
+    {bothRoles && <nav className="cx-roles" aria-label="Rolul">
+      {(["authority", "supplier"] as const).map((r) => {
+        const n = r === role ? (v.top ? count : null) : other.data?.pagination.totalPartners ?? null;
+        const words = n === null ? "" : countWords(n, r === "authority" ? "furnizor" : "instituție", r === "authority" ? "furnizori" : "instituții");
+        const href = `/entitati/${entityId}/legaturi?${query({ rol: r === "authority" ? "autoritate" : "furnizor", ...scope })}`;
+        return <Link key={r} href={href} aria-current={r === role ? "page" : undefined}>{r === "authority" ? "Ca instituție" : "Ca firmă"}<span className="n">{words}</span></Link>;
+      })}
+    </nav>}
     <header className="cx-head">
       <div>
         <h1>Cum sunt legate?</h1>
-        {v.top
+        {v.top && empty ? null
+          : v.top && onePartner
+          ? <p className={`cx-lede${stale}`}>{isAuthority ? "Singurul furnizor" : "Singurul client"}: <b><EntityName id={onePartner.entity.id} role={onePartner.entity.role}>{name(onePartner.entity)}</EntityName></b> · {formatEvidenceAmount(onePartner.totalExact)}{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
+          : v.top
           ? <p className={`cx-lede${stale}`}>{short(total)} lei {isAuthority ? "către" : "de la"} <b>{countWords(count, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}</b>{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.{count > 4 && <> {isAuthority ? "Primii patru iau" : "Primele patru aduc"} <b>{pct(top4)}</b>.</>}</p>
           : <Ghost as="p" className="cx-lede" name="cx-lede" wait="client"><G.Line w="31em" /><G.Line w="11em" only="phone" /></Ghost>}
       </div>
       <div className="cx-scope" role="group" aria-label="Ce achiziții și ce ani">
-        <div className="cx-seg">{DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={scope.dataset === d.value} onClick={() => applyScope({ ...scope, dataset: d.value })}>{d.label}</button>)}</div>
+        {/* A channel without any record is shown with its 0, not offered (UX audit Z5-38). */}
+        <div className="cx-seg">{DATASETS.map((d) => {
+          const none = d.value !== "all" && channels !== undefined && channels[d.value === "da" ? "da" : "contracts"] === 0;
+          return <button key={d.value} type="button" aria-pressed={scope.dataset === d.value} disabled={none && scope.dataset !== d.value}
+            title={none ? (d.value === "da" ? "Nicio achiziție directă înregistrată" : "Niciun contract prin proceduri înregistrat") : undefined}
+            onClick={() => applyScope({ ...scope, dataset: d.value })}>{d.label}{none && <span className="cx-seg-n"> · 0</span>}</button>;
+        })}</div>
         <PeriodButton scope={scope} onApply={(years) => applyScope({ dataset: scope.dataset, ...years })} />
       </div>
     </header>
 
-    {linkError && <div className="cx-error" role="alert"><p>{linkError}</p><button type="button" onClick={() => { setLinkError(""); resetSelection(); }}>Alege din listă</button> {restart}</div>}
+    {/* A link that no longer matches the data: a neutral note and one way on (UX audit Z5-35). */}
+    {linkError && <div className="cx-note" role="status"><p>Linkul nu se mai potrivește cu datele de acum. Alege din nou partenerul din listă.</p>
+      <button type="button" onClick={() => { setLinkError(""); resetSelection(); }}>Alege din listă</button></div>}
     {base.error && !held ? <div className="cx-error" role="alert"><p>{base.error}</p><button type="button" onClick={base.retry}>Reîncearcă</button> {restart}</div> : <>
       {!v.top ? <StageGhost isAuthority={isAuthority} /> : <section className={`cx-stage${stale}`} aria-label="Fluxul banilor" aria-busy={held ? true : undefined} inert={held ? true : undefined}>
         {entity && v.top.items.length > 0
@@ -623,19 +756,22 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
               second={v.secondTop} secondTotal={secondTotal} peer={v.peer} waiting={waiting}
               onPick={(i) => choose(i)} onPeer={choosePeer}
               onRest={() => rootList.current?.focus()} onSecondRest={() => secondList.current?.focus()} />
-          : <div className="cx-empty"><h2>Nicio legătură în această selecție</h2><p>Poți extinde perioada sau include ambele tipuri de achiziții. Lipsa înregistrărilor nu dovedește lipsa unei relații.</p></div>}
+          : <div className="cx-empty"><h2>{emptyWords}</h2>
+              {(scope.dataset !== "all" || scope.yearFrom || scope.yearTo) && <button type="button" className="cx-primary" onClick={() => applyScope({ dataset: "all" })}>Arată toate achizițiile</button>}</div>}
 
         {entity && v.top.items.length > 0 && <Strips root={entity} rootRole={role} items={v.top.items} total={total} count={count}
-          picked={v.picked?.partner ?? null} second={v.secondTop} secondTotal={secondTotal} peer={v.peer} waiting={waiting} onPick={(i) => choose(i)} onPeer={choosePeer} />}
+          picked={v.picked?.partner ?? null} second={v.secondTop} secondTotal={secondTotal} peer={v.peer} waiting={waiting} onPick={(i) => choose(i)} onPeer={choosePeer}
+          onList={(which) => { showList(which); setTimeout(() => document.getElementById(which === "root" ? "cx-list-1" : "cx-list-2")?.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }), 30); }} />}
         {/* The chosen path, its records and its saving. */}
-        <section className="cx-dock" ref={dock} aria-label="Legătura aleasă" tabIndex={-1}>
+        {!empty && <section className="cx-dock" ref={dock} aria-label="Legătura aleasă" tabIndex={-1}>
           {!vp ? (pickPending ? <DockGhost /> : <p className="cx-dock-hint">Alege {isAuthority ? "un furnizor" : "o instituție"} din flux sau din listă.</p>) : !v.peer ? <div className="cx-dock-one"><div className="cx-dock-text">
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>{isAuthority ? "a cumpărat de la" : "a vândut către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
             <div className="cx-dock-facts"><span className="amt">{formatEvidenceAmount(vp.partner.totalExact)}</span>
               <span>{recordLabel(records(vp.partner))} · {vp.partner.firstDate ? `${date(vp.partner.firstDate)} – ${date(vp.partner.lastDate)}` : "fără date"}</span>
               {rankWords ? <span className="rank">{rankWords}</span> : waitingSecond && <RankGhost />}</div></div>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>{sourceLabel(records(vp.partner))}</button>
-              <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} /></div>
+              <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
+              <CopyLink path={addressOf(vp, null, v.scope)} /></div>
           </div> : <>
             <div className="cx-dock-path"><b>{name(vp.root)}</b><span>și</span><b><EntityName id={v.peer.entity.id} role={v.peer.entity.role}>{name(v.peer.entity)}</EntityName></b>
               <span>{isAuthority ? "cumpără de la" : "vând către"}</span><b><EntityName id={vp.partner.entity.id} role={vp.partner.entity.role}>{name(vp.partner.entity)}</EntityName></b></div>
@@ -646,45 +782,46 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
             <p className="cx-dock-note">{isAuthority ? "Un furnizor comun" : "O instituție comună"} nu dovedește o relație între {isAuthority ? "instituții" : "firme"}, proprietate comună sau o neregulă. Împreună: {recordLabel(records(vp.partner) + records(v.peer))} · {formatEvidenceAmount(sumDecimalStrings([vp.partner.totalExact, v.peer.totalExact]))} <Term tip id="consortiu" /></p>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>Sursele ambelor legături</button>
               <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
+              <CopyLink path={addressOf(vp, v.peer, v.scope)} />
               <button type="button" className="cx-link" onClick={() => { setPeer(null); remember(picked, null); }}>← Doar {name(vp.root)} și {name(vp.partner.entity)}</button></div>
           </>}
           <p className="cx-dock-fine">Valori înregistrate, nu plăți.</p>
-        </section>
+        </section>}
       </section>}
 
       {/* The complete lists: any partner, by name or CUI, page by page (on a phone, the page itself). */}
       {vp || pickPending ? <div className={`cx-list-switch${stale}`} role="tablist" aria-label="Listele" inert={held ? true : undefined}>
-        <button type="button" role="tab" aria-selected={phoneList === "root"} onClick={() => showList("root")}>{isAuthority ? "Furnizorii" : "Instituțiile"} · {number(count)}</button>
+        {!onePartner && <button type="button" role="tab" aria-selected={phoneList === "root"} onClick={() => showList("root")}>{isAuthority ? "Furnizorii" : "Instituțiile"} · {number(count)}</button>}
         <button type="button" role="tab" aria-selected={phoneList === "second"} onClick={() => showList("second")}>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"}{v.second ? ` · ${number(v.second.pagination.totalPartners)}` : <> · <Ghost as="span" name="cx-switch-count" wait="client"><G.Line inline w="4ch" /></Ghost></>}</button>
       </div> : !v.top && <div className="cx-list-switch" aria-hidden="true" data-ghost="client" data-g="cx-list-switch">
         <span>{isAuthority ? "Furnizorii" : "Instituțiile"} · <G.Line inline w="3ch" /></span><span>{isAuthority ? `Cui mai vinde` : "Cine mai vinde acolo"} · <G.Line inline w="4ch" /></span>
       </div>}
-      <div className={`cx-lists show-${vp ? phoneList : "root"}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined} data-motion={listAgain ? "settled" : undefined}>
-        <section className="cx-list root" aria-labelledby="cx-list-1">
-          <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span>{v.base ? `${number(v.base.pagination.totalPartners)}${rootSearch ? " găsite" : ""} · după valoare` : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
+      {!empty && <div id="cx-lists" className={`cx-lists show-${vp ? (onePartner ? "second" : phoneList) : "root"}${onePartner && vp ? " one" : ""}${stale}`} aria-busy={held ? true : undefined} inert={held ? true : undefined} data-motion={listAgain ? "settled" : undefined}>
+        {!(onePartner && vp) && <section className="cx-list root" aria-labelledby="cx-list-1">
+          <div className="cx-list-head"><h2 id="cx-list-1">{isAuthority ? "Toți furnizorii" : "Toate instituțiile"}</h2><span title={rootShareWords}>{v.base ? <>{`${number(v.base.pagination.totalPartners)}${rootSearch ? " găsite" : ""} · ${rootShareWords}`}{legendRows > 0 && <span className="cx-from5"> · de la al 5-lea</span>}</> : <Ghost as="span" name="cx-count" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={rootList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută un furnizor" : "Caută o instituție"} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           <div aria-busy={listPending} className={rootStale ? "g-stale" : undefined} inert={rootStale || undefined}>
             {!v.base ? <ListGhost />
-              : v.base.items.length ? <ListRows data={v.base} total={total} largest={v.top?.items[0] ? amount(v.top.items[0]) : 0} pickedId={vp?.partner.entity.id} onPick={(i) => choose(i)} label={isAuthority ? "Furnizorii" : "Instituțiile"} />
+              : v.base.items.length ? <ListRows data={v.base} total={total} largest={v.top?.items[0] ? amount(v.top.items[0]) : 0} pickedId={vp?.partner.entity.id} onPick={(i) => choose(i)} label={isAuthority ? "Furnizorii" : "Instituțiile"} inLegend={legendRows} />
               : <p className="cx-empty-line">{rootSearch ? "Nicio potrivire. Încearcă o parte din nume sau codul fiscal." : "Nicio legătură în această selecție."}{search && <> <button type="button" className="cx-link" onClick={() => { setSearch(""); setPage(1); }}>Șterge căutarea</button></>}</p>}
           </div>
-          {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} />}
-        </section>
+          {v.base && <Pager data={v.base} busy={listPending} onPage={setPage} head="cx-list-1" />}
+        </section>}
         {vp ? <section className="cx-list second" aria-labelledby="cx-list-2">
-          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · după valoare` : <Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
+          <div className="cx-list-head"><h2 id="cx-list-2" title={secondHead}>{secondHead}</h2><span title={secondShareWords}>{v.second ? `${number(v.second.pagination.totalPartners)}${peerSearch ? " găsite" : ""} · ${secondShareWords}` : <Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost>}</span></div>
           <input ref={secondList} type="search" className="cx-search" maxLength={150} placeholder="Caută după nume sau CUI" aria-label={isAuthority ? "Caută între celelalte instituții" : "Caută între ceilalți furnizori"} value={peerSearch} onChange={(e) => { setPeerSearch(e.target.value); setPeerPage(1); }} />
           {second.error && !held ? <div className="cx-error" role="alert"><p>{second.error}</p><button type="button" onClick={second.retry}>Reîncearcă</button> {restart}</div> : <div aria-busy={secondPending} className={secondStale ? "g-stale" : undefined} inert={secondStale || undefined}>
             {!v.second ? <ListGhost />
               : v.second.items.length ? <ListRows data={v.second} total={secondTotal} largest={v.secondTop?.items[0] ? amount(v.secondTop.items[0]) : 0} pickedId={v.peer?.entity.id} onPick={choosePeer} label="Ceilalți parteneri" />
               : <p className="cx-empty-line">{peerSearch ? "Nicio potrivire. Încearcă alt nume sau șterge căutarea." : "Nu apar alți parteneri identificați în selecția aplicată."}</p>}
           </div>}
-          {v.second && <Pager data={v.second} busy={secondPending} onPage={setPeerPage} />}
+          {v.second && <Pager data={v.second} busy={secondPending} onPage={setPeerPage} head="cx-list-2" />}
         </section> : (pickPending || !v.top) && <section className="cx-list second" aria-hidden="true">
           <div className="cx-list-head"><h2><Ghost as="span" name="cx-list-2-head" wait="client"><G.Line w="72%" /></Ghost></h2><span><Ghost as="span" name="cx-count-2" wait="client"><G.Line w="9em" /></Ghost></span></div>
           <span className="cx-search g-quiet" />
           <ListGhost />
         </section>}
-      </div>
+      </div>}
     </>}
 
     <details className="cx-method"><summary>Ce arată aceste legături și ce date includem?</summary><p>Legăturile descriu achiziții înregistrate între o autoritate și un furnizor. Un partener comun este un punct de pornire pentru documentare; nu dovedește o relație de proprietate sau o neregulă.</p><p>Includem achiziții directe cu valoare pozitivă de cel mult 2.000.000 lei și cote de contract cu valoare pozitivă, conform selecției standard a aplicației. Pragul de 2.000.000 lei este o regulă de filtrare a valorilor suspecte, nu un prag legal. Înregistrările fără valoare eligibilă nu intră în acest ecran.</p><p>Contractele se numără separat de cotele atribuite furnizorilor. Când valorile pe membri lipsesc, aplicația împarte valoarea contractului între câștigători. TED completează sursele, fără a adăuga din nou valoarea contractului.</p><p>Perioada se aplică datei de finalizare. Fără limite de an includem și înregistrările fără dată; cu limite, acestea nu pot fi încadrate și sunt excluse. În flux, lățimea fiecărei benzi e valoarea ei; ponderile din dreapta sunt din tot ce înregistrează partenerul ales.</p>

@@ -1,6 +1,7 @@
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { DependencyScatterGhost } from "./DependencyScatter";
 import { TabsGhost } from "./RadiografieExplorer";
+import { CrumbGhost } from "../EntityCrumb";
 import { SupplierTableGhost } from "./SupplierTable";
 import "./radiografie.css";
 
@@ -11,11 +12,11 @@ import "./radiografie.css";
  */
 export default function Loading() {
   return <Ghost className="radiografie-view" name="rv" wait="suspense" label="Se încarcă radiografia…">
-    <div className="rv-breadcrumb" aria-hidden="true"><span className="rv-g-link">Profilul instituției</span><span> / Radiografie</span></div>
+    <CrumbGhost current="Radiografie" />
     <header className="rv-header"><div><h1>Radiografie</h1><p className="rv-authority"><G.Line w="44ch" /><G.Line w="60%" only="phone" /></p></div></header>
     <div className="rv-context" aria-hidden="true">
-      <span><strong><G.Line inline w="9ch" /></strong> valoare contractată</span><span><strong><G.Line inline w="6ch" /></strong> contracte distincte</span>
-      <span><strong><G.Line inline w="5ch" /></strong> achiziții directe</span><span>Istoric <strong><G.Line inline w="9ch" /></strong></span>
+      <span><strong><G.Line inline w="9ch" /></strong> valoarea contractelor (fără directe)</span><span><strong><G.Line inline w="6ch" /></strong> contracte distincte</span>
+      <span><strong><G.Line inline w="5ch" /></strong> achiziții directe</span><span><strong><G.Line inline w="9ch" /></strong></span>
     </div>
     <TabsGhost />
     <DependencyScatterGhost />

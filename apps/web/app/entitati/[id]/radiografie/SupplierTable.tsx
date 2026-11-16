@@ -15,6 +15,7 @@ import { shortName } from "@/lib/radiografie-fmt";
 import { formatInt, formatRon } from "@/lib/format";
 import { useEntityTable } from "../useEntityTable";
 import { recordWords, sharePct } from "./supplier-words";
+import Pager from "../Pager";
 
 /**
  * The relation table under the chart (owner, 2 November 2026, mockup B „Față în față”): every supplier of the
@@ -78,7 +79,7 @@ export function SupplierTableGhost() {
         <p className="rv-rank-count"><G.Line inline w="22ch" /></p>
         <p className="rv-legend"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>
-      <div className="rv-sortpills">{(["value", "here", "life", "recs", "name"] as const).map((k) => <span key={k} className="rv-pill-g" data-on={k === "value" || undefined}>{PILL[k]}{k === "value" ? " ↓" : ""}</span>)}</div>
+      <span className="rv-sortselect" aria-hidden="true"><span>Ordonează</span><span className="rv-select-g">{PILL.value} ↓</span></span>
       <div className="rv-filterpills">{RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}<FunnelGhost /></span>)}</div>
       <div className="rv-rank-wrap">
         <table className="rv-rank">
@@ -93,7 +94,7 @@ export function SupplierTableGhost() {
           <SupplierRowsGhost />
         </table>
       </div>
-      <div className="rv-pager"><G.Block w="7.4em" h="44px" /><span><G.Line inline w="14ch" /></span><G.Block w="7.4em" h="44px" /></div>
+      <div className="ent-pager"><G.Block w="7.4em" h="36px" /><span><G.Line inline w="14ch" /></span><G.Block w="7.4em" h="36px" /></div>
     </div>
   );
 }
@@ -166,12 +167,15 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
         </p>
         <p className="rv-legend" aria-hidden="true"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>
-      {/* On a phone the columns' order comes from these buttons. */}
-      <div className="rv-sortpills" role="group" aria-label="Ordonează furnizorii">
-        {(["value", "here", "life", "recs", "name"] as const).map((k) => (
-          <button key={k} type="button" aria-pressed={sort === k} onClick={() => sortBy(k)}>{PILL[k]}{sort === k ? (dir === "desc" ? " ↓" : " ↑") : ""}</button>
-        ))}
-      </div>
+      {/* On a phone the order is one native menu (UX audit Z5-32, 16 November 2026), not five pills on three rows. */}
+      <label className="rv-sortselect">
+        <span>Ordonează</span>
+        <select value={`${sort}:${dir}`} onChange={(e) => { const [k, d] = e.target.value.split(":") as [DepSort, "asc" | "desc"]; setSort(k); setDir(d); setPage(1); }}>
+          {(["value", "here", "life", "recs", "name"] as const).flatMap((k) => (["desc", "asc"] as const).map((d) => (
+            <option key={`${k}:${d}`} value={`${k}:${d}`}>{k === "life" ? "Câștigurile firmei venite de aici" : PILL[k]} {k === "name" ? (d === "asc" ? "A–Z" : "Z–A") : d === "desc" ? "↓" : "↑"}</option>
+          )))}
+        </select>
+      </label>
       <div className="rv-filterpills" role="group" aria-label="Filtrează furnizorii">
         {RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}{funnel(c.key)}</span>)}
       </div>
@@ -218,13 +222,7 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
           </tbody>}
         </table>
       </div>
-      {pages > 1 && (
-        <nav className="rv-pager" aria-label="Paginarea furnizorilor">
-          <button type="button" aria-disabled={loading || page <= 1} onClick={() => go(page - 1)}>‹ anterioare</button>
-          <span>pagina {formatInt(page)} din {formatInt(pages)}</span>
-          <button type="button" aria-disabled={loading || page >= pages} onClick={() => go(page + 1)}>următoare ›</button>
-        </nav>
-      )}
+      <Pager page={page} pages={pages} busy={loading} onPage={go} label="Paginarea furnizorilor" />
     </div>
   );
 }

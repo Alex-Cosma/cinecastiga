@@ -33,6 +33,9 @@ describe("a table's filters in the address", () => {
 
   it("drops what is malformed instead of guessing", () => {
     expect(read("?an=2021-12..2020-01&valoare=9..1&cpv=7162&furnizor=abc&tip=toate&sem=DROP%20TABLE")).toEqual({});
+    // An unknown signal code is left out, not a filter that empties the table.
+    expect(read("?sem=xyz")).toEqual({});
+    expect(read("?sem=xyz,da_round")).toEqual({ semnale: { kind: "options", values: ["da_round"] } });
     expect(read("?an=2021,20x1,2021").data).toEqual({ kind: "dates", years: ["2021"], from: null, to: null });
   });
 

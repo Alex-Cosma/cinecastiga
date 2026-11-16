@@ -325,6 +325,8 @@ export interface DaTx {
   consortiumMembers?: { id: string; name: string }[];
   /** Contract rows: contractKind (contract, calloff, framework, amendment, review); null for DAs. */
   financialKind?: string | null;
+  /** Direct acquisitions: the title published in SICAP, when there is one (the entity page's table, UX audit Z5-06). */
+  title?: string | null;
 }
 
 export interface CompanyRep {
@@ -943,6 +945,21 @@ export interface TedAward {
   euFunded: boolean | null;
   label: string;
   matchedContractId: string | null;
+}
+
+/**
+ * A firm's first registration in the trade register (marts.entity_profile, suppliers only: the oldest ONRC day of its
+ * corroborated CUI, else its year), for the profile's line under the name (UX audit Z5-17, 16 November 2026). Null when
+ * the register has neither, or before the mart has the column.
+ */
+export async function getEntityRegistered(entityId: string): Promise<{ on: string | null; year: number | null } | null> {
+  const sql = db();
+  const id = await canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
+  const [r] = (await sql`
+    select registered_on::text "on", registered_year "year" from marts.entity_profile
+    where entity_id = ${id} and role = 'supplier' and (registered_on is not null or registered_year is not null)
+  `) as unknown as { on: string | null; year: number | null }[];
+  return r ? { on: r.on ? r.on.slice(0, 10) : null, year: r.year == null ? null : Number(r.year) } : null;
 }
 
 export async function getEntityProfile(entityId: string): Promise<EntityProfile | null> {

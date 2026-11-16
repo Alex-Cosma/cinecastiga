@@ -32,6 +32,7 @@ describe("the records table's words", () => {
 describe("the records table", () => {
   const table = readFileSync(new URL("./TxTable.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("./entity.css", import.meta.url), "utf8");
+  const pager = readFileSync(new URL("./Pager.tsx", import.meta.url), "utf8");
   it("filters from its headers, with the applied filters alone above it", () => {
     for (const key of ["data", "tip", "partener", "cpv", "valoare", "semnale"]) expect(table).toContain(`funnel("${key}"`);
     expect(table).toContain("<FilterBand ");
@@ -42,9 +43,11 @@ describe("the records table", () => {
   it("keeps the old rows dimmed in place while a page loads, the pager focusable, and says where the reader is", () => {
     expect(table).toContain('const stale = loading && rows.length > 0;');
     expect(table).toContain("<tbody inert={stale || undefined}>");
-    expect(table).toMatch(/aria-disabled=\{loading \|\| page <= 1\}/);
-    expect(table).not.toMatch(/\sdisabled=\{loading/);
-    expect(table).toContain('<span className="ask-pager-pos">pagina {formatInt(page)} din {formatInt(pages)}</span>');
+    // The entity pages' one pager (UX audit Z5-29): busy while a page loads, aria-disabled so the focus stays.
+    expect(table).toContain('<Pager page={page} pages={pages} busy={loading} onPage={goPage} label="Paginile înregistrărilor" />');
+    expect(pager).toMatch(/aria-disabled=\{busy \|\| page <= 1\}/);
+    expect(pager).not.toMatch(/\sdisabled=\{/);
+    expect(pager).toContain('<span className="ent-pager-pos">pagina {formatInt(page)} din {formatInt(Math.max(1, pages))}</span>');
   });
 
   it("puts a single bidder among a row's leads, wraps long signals and turns rows into cards below 1000 px", () => {

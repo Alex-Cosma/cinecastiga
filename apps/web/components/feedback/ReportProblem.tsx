@@ -14,6 +14,33 @@ export default function ReportProblem() {
   // Page a kept draft was started on, when it differs from the page now attached.
   const [draftPath,setDraftPath] = useState<string | null>(null);
   useEffect(() => () => request.current?.abort(), []);
+  // The side tab (721–1359 px) steps aside while a word, a figure or a link of the page is under it (UX audit
+  // Z5-31, 16 November 2026: it covered „9%”, „1 tranzacție →”, „SEAP ↗”), and is back as soon as it is clear; the
+  // keyboard still reaches it. Phones have it after the footer, wide screens docked in the margin.
+  const [clear, setClear] = useState(true);
+  useEffect(() => {
+    const fab = trigger.current;
+    if (!fab) return;
+    const floating = window.matchMedia("(min-width: 721px) and (max-width: 1359px)");
+    const content = (el: Element) => !!el.closest("a[href],button,input,select,textarea,summary,[role=button],[tabindex]:not([tabindex='-1'])")
+      || [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() !== "");
+    let frame = 0;
+    const check = () => {
+      frame = 0;
+      if (!floating.matches || getComputedStyle(fab).position !== "fixed") { setClear(true); return; }
+      const r = fab.getBoundingClientRect();
+      const points: [number, number][] = [[r.left + r.width / 2, r.top + r.height / 2], [r.left + 3, r.top + 3], [r.right - 3, r.top + 3], [r.left + 3, r.bottom - 3], [r.right - 3, r.bottom - 3]];
+      setClear(!points.some(([x, y]) => {
+        const under = document.elementsFromPoint(x, y).find((el) => !el.closest(".feedback-dock"));
+        return !!under && content(under);
+      }));
+    };
+    const soon = () => { if (!frame) frame = requestAnimationFrame(check); };
+    soon();
+    window.addEventListener("scroll", soon, { passive: true });
+    window.addEventListener("resize", soon);
+    return () => { cancelAnimationFrame(frame); window.removeEventListener("scroll", soon); window.removeEventListener("resize", soon); };
+  }, []);
   const close = () => { if (pending.current) return; dialog.current?.close(); trigger.current?.focus(); };
   function open() {
     const fresh = !id || sent, current = feedbackSourcePath(pathname);
@@ -47,7 +74,7 @@ export default function ReportProblem() {
   if (pathname === "/admin" || pathname?.startsWith("/admin/")) return null;
   return <>
     <aside aria-label="Feedback" className="feedback-dock">
-      <button ref={trigger} type="button" className="feedback-fab" aria-haspopup="dialog" aria-label="Feedback: semnalează o problemă sau trimite o sugestie" onClick={open}>
+      <button ref={trigger} type="button" className={`feedback-fab${clear ? "" : " is-yielding"}`} aria-haspopup="dialog" aria-label="Feedback: semnalează o problemă sau trimite o sugestie" onClick={open}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17h-7.2L7.5 20.2V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z"/><path d="M12 8.5v3.2M12 14.4v.1"/></svg>
         <span>Feedback</span>
       </button>

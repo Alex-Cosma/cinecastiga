@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
+import HintLink from "./HintLink";
 
 export interface SectionItem {
   id?: string; // in-page anchor
   href?: string; // or a real link
   label: string;
   count?: string;
+  /** The count in words, on hover and for screen readers: „6.582 de înregistrări” (UX audit Z5-07). */
+  countWords?: string;
   /** An analysis page's icon. */
   icon?: AnalysisKey;
   /** A small number after an analysis page's name (the signal types found), in its risk band's color. */
@@ -16,6 +19,10 @@ export interface SectionItem {
   /** The note in words, on hover and for screen readers: „4 tipuri de semnale”. */
   noteWords?: string;
   band?: string;
+  /** What the analysis shows, on hover, focus or a long press (UX audit Z5-21). */
+  hint?: string;
+  /** Few records behind it: the button is quieter, its hint says so (UX audit Z5-21). */
+  thin?: boolean;
 }
 
 /** Which edges of the tab row hide more tabs (drives the edge fade). */
@@ -25,12 +32,16 @@ type Fade = "none" | "left" | "right" | "both";
  * Sticky section navigation under the site header. Scroll-spy picks the
  * active anchor; one measured underline slides between items. On narrow
  * screens the row scrolls sideways and fades at the edge that hides tabs.
+ *
+ * Once the page's title has scrolled away, the first tab („Rezumat”) names the entity instead (UX audit Z5-09,
+ * 16 November 2026): what is sticky says whose page it is, without growing the bar.
  */
-export default function SectionNav({ items }: { items: SectionItem[] }) {
+export default function SectionNav({ items, name }: { items: SectionItem[]; name?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<string>(items.find((i) => i.id)?.id ?? "");
   const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
   const [fade, setFade] = useState<Fade>("none");
+  const [away, setAway] = useState(false);
 
   /** Height covered by the sticky site header plus this bar. */
   const coveredTop = useCallback(() => {
@@ -38,6 +49,18 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     const bar = ref.current?.parentElement?.getBoundingClientRect().height ?? 0;
     return header + bar;
   }, []);
+
+  // The title is away once it is entirely above the sticky header and this bar.
+  useEffect(() => {
+    if (!name) return;
+    const title = document.querySelector<HTMLElement>("#top h1, h1.page-title");
+    if (!title) return;
+    const onScroll = () => setAway(title.getBoundingClientRect().bottom < coveredTop());
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
+  }, [name, coveredTop]);
 
   useEffect(() => {
     const ids = items.filter((i) => i.id).map((i) => i.id!);
@@ -80,7 +103,7 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     // Keep the active tab visible in a row that scrolls sideways (phones).
     const start = on.offsetLeft - nav.scrollLeft;
     if (start < 0 || start + on.offsetWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, on.offsetLeft - 32), behavior: "smooth" });
-  }, [active]);
+  }, [active, away]);
 
   // A navigation landmark whose current section is announced, not only underlined (critique 2 November 2026).
   return (
@@ -93,7 +116,9 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
               key={it.id}
               href={`#${it.id}`}
               data-on={active === it.id ? "1" : undefined}
-              className={active === it.id ? "on" : undefined}
+              className={[active === it.id ? "on" : "", it.id === "top" && name && away ? "subnav-name" : ""].filter(Boolean).join(" ") || undefined}
+              title={it.id === "top" && name && away ? name : undefined}
+              aria-label={it.id === "top" && name && away ? `${name}, începutul paginii` : it.countWords ? `${it.label}, ${it.countWords}` : undefined}
               aria-current={active === it.id ? "location" : undefined}
               onClick={(e) => {
                 e.preventDefault();
@@ -102,15 +127,22 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
                 history.replaceState(null, "", `#${it.id}`);
               }}
             >
-              {it.label}
-              {it.count ? <span className="c">{it.count}</span> : null}
+              {it.id === "top" && name && away ? name : it.label}
+              {it.count ? <span className="c" title={it.countWords}>{it.count}</span> : null}
             </a>
           ) : null,
         )}
         {/* The analysis pages: one group of buttons at the row's end (owner, 6 November 2026), not tabs. */}
         {items.some((it) => !it.id) && (
           <span className="subnav-tools" role="group" aria-label="Analize">
-            {items.filter((it) => !it.id && it.href).map((it) => (
+            {items.filter((it) => !it.id && it.href).map((it) => it.hint ? (
+              <HintLink key={it.href} href={it.href!} hint={it.hint} dataBand={it.band} className={it.thin ? "is-thin" : undefined}
+                ariaLabel={it.noteWords ? `${it.label}, ${it.noteWords}` : undefined}>
+                {it.icon && <AnalysisIcon name={it.icon} />}
+                <span className="lbl">{it.label}</span>
+                {it.note && <span className="n">{it.note}</span>}
+              </HintLink>
+            ) : (
               <Link key={it.href} href={it.href!} data-band={it.band} aria-label={it.noteWords ? `${it.label}, ${it.noteWords}` : undefined}>
                 {it.icon && <AnalysisIcon name={it.icon} />}
                 {it.label}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DaTx } from "@/lib/marts";
-import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
+import { consortiumGroups, contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
 
 const row = (over: Partial<DaTx>): DaTx => ({
   src: "contract", sicapDaId: "1", daCode: "16732", partnerId: "10", partnerName: "ALLIANCE", county: null,
@@ -31,5 +31,19 @@ describe("entity table rows", () => {
     expect(contractKindLabel("amendment")?.text).toBe("act adițional");
     expect(contractKindLabel("contract")).toBeNull();
     expect(contractKindLabel(null)).toBeNull();
+  });
+
+  it("groups the member records of one consortium contract that are neighbours, nothing else", () => {
+    const members = [row({ partnerId: "10" }), row({ partnerId: "11" }), row({ partnerId: "12" })];
+    const single = row({ sicapDaId: "9", nWinners: 1, partnerId: "20" });
+    const da = row({ src: "da", sicapDaId: "7", nWinners: null });
+    const groups = consortiumGroups([single, ...members, da, da]);
+    expect(groups.map((g) => g.length)).toEqual([1, 3, 1, 1]);
+    // The first member takes the remaining bani of the split: still one contract.
+    expect(consortiumGroups([row({ closingValue: 34022764.81 }), row({ partnerId: "11" })]).map((g) => g.length)).toEqual([2]);
+    // A member with its own published value stays its own row.
+    expect(consortiumGroups([row({}), row({ partnerId: "11", closingValue: 5 })]).map((g) => g.length)).toEqual([1, 1]);
+    // Another contract right after is another group.
+    expect(consortiumGroups([row({}), row({ sicapDaId: "2", partnerId: "11" })]).map((g) => g.length)).toEqual([1, 1]);
   });
 });

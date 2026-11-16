@@ -134,25 +134,19 @@ describe("contracts above the 1 mld. lei cap", () => {
       { natId: "2", title: "TR35 Proiectare si executie", contractNo: "12", valueRonExact: "4730000000.00" },
     ],
   };
-  it("says right after the total that they are left out, with their value, titles and the list", () => {
+  it("says in one short line that they are left out of the total, with their value and the list (UX audit Z5-04)", () => {
     const s = composeEntitySummary({ ...authority, aboveCap })!;
     const sentence = s.sentences[1]!;
-    expect(text(sentence)).toBe(
-      `Separat, 2 contracte de peste 1 mld. lei (${formatRon("13790000000.00")}) nu intră în cifrele de mai sus: `
-      + `„Proiectare si executie Magistrala I de metrou si tren metropolitan…” (${formatRon("9060000000.00")}) `
-      + `și „TR35 Proiectare si executie” (${formatRon("4730000000.00")}). Vezi lista.`,
-    );
-    expect(sentence).toContainEqual({ text: "Vezi lista", href: "#peste-plafon" });
+    expect(text(sentence)).toBe(`2 contracte peste 1 mld. lei (${formatRon("13790000000.00").replace(/ lei$/, "")}) sunt în afara totalului · Vezi lista ↓`);
+    expect(sentence).toContainEqual({ text: "Vezi lista ↓", href: "#peste-plafon" });
   });
-  it("counts the ones not named and falls back to the list when no title is known", () => {
-    const more = aboveCapSentence({ ...aboveCap, count: 5 })!;
-    expect(text(more)).toContain(", plus încă 3 contracte. Vezi lista.");
+  it("says one contract in the singular and nothing without such contracts", () => {
     const one = aboveCapSentence({ count: 1, totalExact: "1200000000", rows: [{ natId: "9", title: null, contractNo: null, valueRonExact: "1200000000" }] })!;
-    expect(text(one)).toBe(`Separat, un contract de peste 1 mld. lei (${formatRon("1200000000")}) nu intră în cifrele de mai sus: vezi lista.`);
+    expect(text(one)).toBe(`Un contract peste 1 mld. lei (${formatRon("1200000000").replace(/ lei$/, "")}) e în afara totalului · Vezi lista ↓`);
     expect(aboveCapSentence({ count: 0, totalExact: "0", rows: [] })).toBeNull();
     expect(aboveCapSentence(undefined)).toBeNull();
     // without such contracts the summary is unchanged
-    expect(composeEntitySummary(authority)!.sentences.map(text).join(" ")).not.toContain("Separat");
+    expect(composeEntitySummary(authority)!.sentences.map(text).join(" ")).not.toContain("peste 1 mld.");
   });
   it("cuts long titles at a word", () => {
     expect(shortTitle("Scurt")).toBe("Scurt");

@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import "@/app/semnale/case/case.css";
+import { CrumbGhost } from "../EntityCrumb";
 
 /*
  * The signals page while the server reads the case (a slow route: 0.22–0.30 s in production; owner, 6 November 2026).
@@ -20,6 +21,7 @@ export default function EntitySignalsLoading() {
   const split = !tip || tip === "da_split";
   return (
     <Ghost className="sgc" name="entity-signals" label="Se încarcă semnalele…" wait="suspense">
+      <CrumbGhost current="Semnale" />
       <div className="sgc-crumb" aria-hidden="true">
         <span><G.Line w="40ch" /><G.Line w="24ch" only="phone" /></span>
         <span className="cri-pill risk-none g-quiet"><G.Line inline w="104px" /></span>

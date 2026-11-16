@@ -2,10 +2,13 @@ import Link from "next/link";
 import { flagLabel } from "@/lib/flags";
 import { countWords } from "@/lib/ask/answer-text";
 import { formatInt } from "@/lib/format";
-import { RISK_BAND_MIN, type RiskCriterion, type ScoreParts } from "@/lib/risk-score";
+import { RISK_BAND_MIN, riskBand, type RiskCriterion, type ScoreParts } from "@/lib/risk-score";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 
-/** The segments' fills, darkest first: told apart by lightness, in both themes (choropleth scale, as on /semnale). */
+/**
+ * The segments' fills, strongest first, in the score's own band colour (UX audit Z5-05, 16 November 2026): full, three
+ * quarters, then hatched. The greens mean only the channels (direct acquisitions, contracts) on this page.
+ */
 const SEGMENT_CLASS = ["c0", "c1", "c2", "c3", "c4"] as const;
 
 /**
@@ -40,7 +43,7 @@ export default function ScoreSignals({ hasRiskScore, score, parts, points, signa
   if (!scored && signalTypes.length === 0) return null;
 
   return (
-    <div className="ent-sig">
+    <div className={`ent-sig ent-sig--${riskBand(score)}`}>
       {scored ? <>
         {/* In motion (owner, 6 November 2026): the criteria grow from 0 as one bar, never one after the other; the band
             ticks stay; the score's marker appears last, where it is. The criteria sit in a group as long as the score, so

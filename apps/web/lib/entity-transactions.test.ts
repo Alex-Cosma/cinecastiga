@@ -104,6 +104,7 @@ describe("consortium rows in the entity table", () => {
         statements.push(this.query);
         if (this.query.includes("count(*)::int c")) return Promise.resolve(resolve([{ c: 2 }]));
         if (this.query.includes("supplier_id::text sid")) return Promise.resolve(resolve(members));
+        if (this.query.includes("directAcquisitionName")) return Promise.resolve(resolve([{ id: "55", title: "Hârtie copiator A4" }]));
         return Promise.resolve(resolve(this.query.includes("limit") ? page : []));
       }
     }
@@ -117,14 +118,17 @@ describe("consortium rows in the entity table", () => {
   it("looks up the other members only for consortium rows and keeps the split amounts", async () => {
     const statements = consortiumDatabase();
     const { rows } = await getEntityTransactions("2144364", "authority", { filters: {}, pageSize: 10 });
-    expect(statements).toHaveLength(3);
+    // The page, its count, the consortium members and the direct acquisitions' titles (UX audit Z5-06).
+    expect(statements).toHaveLength(4);
     expect(statements[2]).toContain("where contract_id = any(");
+    expect(statements[3]).toContain("where d.sicap_da_id = any(");
     expect(rows[0]).toMatchObject({
       closingValue: 127303264.06, contractValueFull: 381909792.16, nWinners: 3,
       consortiumOthers: ["Concelex Engineering S.R.L", "CONSTRUCTII ERBASU S.A."],
     });
     expect(rows[0]?.financialKind).toBe("framework");
     expect(statements[0]).toContain("\"cc\".source_contract_type");
-    expect(rows[1]).toMatchObject({ src: "da", nWinners: null, contractValueFull: null, consortiumOthers: [], financialKind: null });
+    expect(rows[1]).toMatchObject({ src: "da", nWinners: null, contractValueFull: null, consortiumOthers: [], financialKind: null, title: "Hârtie copiator A4" });
+    expect(rows[0]?.title).toBeNull();
   });
 });

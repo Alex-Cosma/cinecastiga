@@ -286,16 +286,15 @@
 /* The header (owner, 4 November 2026, variant A): the name takes the width, the two actions sit at its foot on the
    right, the registries are quiet links beside the CUI and the analyses are linked once, beside the tabs. */
 .ehead{align-items:end}
-/* The header's tags (a score note, "Inactiv"): at the right of the role's line, each reason on hover or tap. */
-.ehead.has-flags{position:relative}
-.ehead.has-flags .eyebrow{padding-right:110px}
-.ehead.has-flags.n2 .eyebrow{padding-right:240px}
-.ehead-flags{position:absolute;top:0;right:0;z-index:4;display:flex;gap:6px}
+/* The header's tags (a score note, "Inactiv · ultima 06.2023"): beside the role (UX audit Z5-15, 16 November 2026), on the
+   row under it when there is no room; each reason on hover or tap. */
+.ehead-role{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px}
+.ehead-role>.eyebrow{margin:0}
+.ehead-role+.page-title{margin-top:8px}
+.ehead-role .ehead-roles{margin:0}
+.ehead-role:has(.ehead-roles)+.page-title{margin-top:10px}
+.ehead-flags{display:flex;flex-wrap:wrap;gap:6px}
 .ehead-flag{position:relative}
-@media (max-width:600px){
-  .ehead.has-flags.n2 .eyebrow{padding-right:0}
-  .ehead.has-flags.n2 .ehead-flags{position:static;justify-content:flex-end;margin-bottom:-6px}
-}
 .ehead-flag>.term-trigger{display:inline-flex;align-items:center;min-height:24px;padding:2px 10px;border:1px solid var(--line2);border-radius:999px;background:var(--sunk);color:var(--ink2);font:600 12.5px/1.2 var(--body);text-decoration:none;cursor:help}
 .ehead-flag>.term-trigger:hover,.ehead-flag.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
 .ehead-flag>.term-trigger>.term-mark{display:none}
@@ -340,3 +339,156 @@
 .ent-successor a{color:var(--accent);font-weight:600}
 .ent-successor .mono{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
 
+
+/* ---- UX audit Z5-05 (16 November 2026): the greens mean only the channels (the ledger's swatches, the years chart).
+   The score's criteria take the score's own band colour, as „79 din 100” does: full, three quarters, then hatched;
+   each part stays apart from its neighbour by the existing 2 px gap. Share bars (domains, partners) are neutral grey and
+   the score's marker is ink. ---- */
+.ent-sig{--band:var(--ink2)}
+.ent-sig--moderat{--band:var(--amber-ink,var(--amber))}
+.ent-sig--puternic{--band:var(--risk)}
+.ent-sig .c0{--seg:var(--band)}
+.ent-sig .c1{--seg:color-mix(in srgb,var(--band) 75%,var(--surface))}
+.ent-sig .c2,.ent-sig .c3,.ent-sig .c4{--seg:repeating-linear-gradient(135deg,var(--band) 0 2px,var(--surface) 2px 4px)}
+.ent-sig-bar .ent-marker{background:var(--ink)}
+.ent-brief-track i,.ent-partners .bar-fill{background:var(--muted)}
+
+/* ---- UX audit Z5-09 (16 November 2026): once the title has scrolled away, the first tab names the entity, cut with
+   „…”, divided from the tabs by a line; the bar does not grow. ---- */
+.subnav-in a.subnav-name{flex:0 1 auto;min-width:0;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:10px;padding-right:16px;border-right:1px solid var(--line);color:var(--ink);font:700 15px/1.3 var(--display);letter-spacing:-.01em;animation:subnav-name-in var(--fast) var(--ease) both}
+.subnav-in a.subnav-name:hover{color:var(--accent)}
+.subnav-in:has(.subnav-name)>a:not(.subnav-name),.subnav-in:has(.subnav-name) .subnav-tools{flex:none}
+@keyframes subnav-name-in{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.subnav-in a.subnav-name{animation:none}}
+@media (max-width:700px){
+  .subnav-in a.subnav-name{flex:1 1 0;min-width:96px;max-width:none;font-size:14.5px;margin-right:4px;padding-right:12px}
+}
+
+/* ---- UX audit Z5-11 (16 November 2026): a consortium contract's member records on one row, every member named ---- */
+.ent-tx .tx-members{display:flex;flex-wrap:wrap;gap:2px 0}
+.ent-tx .tx-members>span:not(:last-child)::after{content:"·";display:inline-block;margin:0 7px;color:var(--muted)}
+
+/* ---- UX audit Z5-13 (16 November 2026): an entity that both buys and sells shows its two roles as tabs in the role
+   line's place, each with its records; full width and 44 px on a phone. ---- */
+.ehead-roles{display:inline-flex;margin:0 0 10px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);overflow:hidden}
+.ehead-roles a{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:6px 14px;color:var(--ink2);font-size:13.5px;font-weight:500;text-decoration:none;white-space:nowrap;transition:background var(--fast),color var(--fast)}
+.ehead-roles a+a{border-left:1px solid var(--line)}
+.ehead-roles a .n{font:12.5px/1 var(--mono);color:var(--muted)}
+.ehead-roles a[aria-current]{background:var(--accent);color:var(--on-accent)}
+.ehead-roles a[aria-current] .n{color:var(--on-accent);opacity:.85}
+.ehead-roles a:not([aria-current]):hover{background:var(--accent-soft);color:var(--accent);text-decoration:none}
+@media (max-width:700px){
+  .ehead-roles{display:flex}
+  .ehead-roles a{flex:1;justify-content:center;min-height:44px;padding:6px 10px}
+}
+
+/* ---- UX audit Z5-14 (16 November 2026): one domain is one line under the top, not a card ---- */
+.ent-brief-line{margin:14px 2px 30px;font-size:14px;line-height:1.6;color:var(--ink2)}
+.ent-brief-line b{color:var(--ink);font-weight:600}
+.ent-brief-line a{color:inherit}
+
+/* ---- UX audit Z5-15 (16 November 2026): the years after the last record, up to the current one, drawn empty and named ---- */
+.ent-years-col.is-silent{cursor:default;background:transparent}
+.ent-years-silence{position:absolute;bottom:0;height:0;border-top:2px dashed var(--line2);pointer-events:none}
+.ent-years-silence>span{position:absolute;left:0;right:0;bottom:8px;text-align:center;font:12px/1.3 var(--body);color:var(--muted);white-space:nowrap}
+
+/* ---- UX audit Z5-24 (16 November 2026): on phones and tablets a record is a compact card — date · type · value on its
+   first line, then the party, the object, the share, the signals, and „nr.” with „detalii →” on one line (a 44 px
+   target). The header pills stay (owner, 4 November 2026). ---- */
+@media (max-width:1000px){
+  .ent-tx tbody tr{grid-template-columns:auto minmax(0,1fr) auto;gap:3px 10px;padding:12px}
+  .ent-tx td.c-date{grid-column:1;grid-row:1;align-self:center;font-size:13px}
+  .ent-tx td.c-src{grid-column:2;grid-row:1;justify-self:start;align-self:center}
+  .ent-tx td.c-val{display:contents}
+  .ent-tx td.c-val>.c-val-main{grid-column:3;grid-row:1;align-self:center;text-align:right;font:600 14.5px/1.3 var(--mono);white-space:nowrap}
+  .ent-tx td.c-val>.cons-line{grid-column:1/-1;margin:0;text-align:left;font-weight:400}
+  .ent-tx td.c-party{grid-column:1/-1;grid-row:2;font-size:14.5px;line-height:1.4}
+  .ent-tx td.c-party .cons-line{margin-top:0}
+  .ent-tx td.c-cpv{grid-column:1/-1;font-size:13px;line-height:1.4}
+  .ent-tx td.c-flags{grid-column:1/-1}
+  .ent-tx td.c-links{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:0 12px;font-size:13px}
+  .ent-tx td.c-links .c-no{display:inline;margin:0}
+  .ent-tx td.c-links a{display:inline-flex;align-items:center;min-height:44px;margin:-10px 0 -10px auto}
+  .ent-tx td.c-links a+a{margin-left:0}
+}
+
+/* ---- UX audit Z5-25 (16 November 2026): a turnover too large for the bars' axis is said under the chart ---- */
+.ent-years-apart{margin:2px 0 0;font-size:12.5px;line-height:1.5;color:var(--ink2)}
+@media (max-width:700px){.ent-years-apart{font-size:13px}}
+
+/* ---- UX audit Z5-26 (16 November 2026): „Conducere” — a register filler is grey words, not a person; on a phone each
+   person is one line („NUME · administrator · n. 1970, Loc. …”), „încă 2 firme →” under it only where there are any,
+   and the first five persons with „Încă N persoane” after them. ---- */
+.reps-table .rep-none{color:var(--muted);font-style:italic}
+.reps-more{display:none}
+@media (max-width:700px){
+  #conducere .reps-table thead{display:none}
+  #conducere .reps-table,.reps-table tbody{display:block}
+  #conducere .reps-table tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 0;padding:10px 0;border-bottom:1px solid var(--line)}
+  #conducere .reps-table td{padding:0;border:0}
+  #conducere .reps-table td.rep-name{display:contents}
+  #conducere .reps-table .rep-n{order:1;font-weight:500;color:var(--ink)}
+  #conducere .reps-table .rep-n.rep-none{font-weight:400;color:var(--muted)}
+  #conducere .reps-table td.rep-cal{order:2}
+  #conducere .reps-table td.rep-cal::before,#conducere .reps-table .rep-b::before{content:"·";margin:0 6px;color:var(--muted)}
+  #conducere .reps-table .rep-b{order:3}
+  #conducere .reps-table td.rep-other{order:4;flex-basis:100%;margin-top:2px}
+  #conducere .reps-table td.rep-other a{display:inline-flex;align-items:center;min-height:44px;margin:-10px 0}
+  #conducere .reps-table td.rep-other[data-empty="1"]{display:none}
+  #conducere .reps:not(.reps-all) .reps-table tr.rep-more{display:none}
+  .reps-more{display:inline-flex;align-items:center;min-height:44px;margin-top:6px;padding:0 4px;border:0;background:none;color:var(--accent);font:600 14px var(--body);cursor:pointer}
+}
+
+/* ---- UX audit bug (16 November 2026): at 320 px the ledger's total reached the card's edge and the years' labels
+   touched. The narrowest phones get tighter ledger cells, and a long axis names every other year (the current one kept). ---- */
+@media (max-width:360px){
+  .ent-top>*{padding:14px 12px}
+  .ent-ledger td{padding-left:8px;font-size:13px}
+  .ent-ledger thead th{padding-left:8px}
+  .ent-ledger tbody .ent-ledger-total>td:last-child{font-size:15px}
+}
+@container (max-width:300px){
+  .ent-years[data-many] .ent-years-x>span:nth-last-child(even){visibility:hidden}
+}
+
+/* ---- UX audit Z5-06 (16 November 2026): a direct acquisition's published title under its category, one line; every row
+   leads to its page on the site („detalii →”), its SEAP source smaller ---- */
+.ent-tx .tx-title{display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px;color:var(--ink2)}
+.ent-tx td.c-links .tx-seap{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.ent-tx td.c-links .tx-seap:hover{color:var(--accent)}
+@media (max-width:1000px){
+  .ent-tx .tx-title{font-size:13px}
+  .ent-tx td.c-links .tx-seap{display:inline-flex;margin:-10px 0}
+}
+
+/* ---- UX audit Z5-12 (16 November 2026): the table's head — its count, then the selection as a CSV and the same records
+   in Întreabă ---- */
+.tx-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;margin-bottom:10px}
+.tx-head .ask-detmeta{margin-bottom:0}
+.tx-tools{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px}
+.tx-tools a{font-weight:500}
+@media (max-width:700px){.tx-tools a{display:inline-flex;align-items:center;min-height:44px}}
+
+/* ---- UX audit Z5-21 (16 November 2026): each analysis button explains itself (HintLink); with few records Radiografie
+   and Legături are quieter, never hidden. The wrappers take no box, so the group's dividers and the phone's grid stay. ---- */
+.subnav-tools>.hint-link,.ehead-views>.hint-link{display:contents}
+.subnav-in .subnav-tools>.hint-link+.hint-link>a{border-left:1px solid var(--line)}
+.subnav-tools a.is-thin,.ehead-views a.is-thin{color:var(--muted)}
+.subnav-tools a.is-thin .an-ico,.ehead-views a.is-thin .an-ico{color:var(--muted)}
+.ehead-views a{-webkit-touch-callout:none}
+@media (max-width:700px){
+  .ehead-views>.hint-link:nth-child(even)>a{border-left:1px solid var(--line)}
+  .ehead-views>.hint-link:nth-child(n+3)>a{border-top:1px solid var(--line)}
+  .ehead-views>.hint-link:last-child:nth-child(odd)>a{grid-column:1/-1}
+}
+
+/* ---- UX audit Z5-22 (16 November 2026): from 701 to 900 px the tabs and the four analyses did not fit one row
+   („Comparații” cut under the fade); there the analyses are icons, their names (and what they show) on hover, focus or
+   a long press, and in their accessible names. ---- */
+@media (min-width:701px) and (max-width:900px){
+  .subnav-in .subnav-tools a{gap:5px;padding:7px 11px}
+  .subnav-in .subnav-tools a .lbl{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+}
+/* ---- UX audit Z5-23: the focus ring of the tabs and the analyses is drawn inside them, where the row's clipping
+   (it scrolls sideways; the group has rounded corners) does not cut it ---- */
+.subnav-in>a:focus-visible,.subnav-in .subnav-tools a:focus-visible{outline-offset:-3px}

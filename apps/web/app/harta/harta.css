@@ -394,14 +394,8 @@ span.mx-p-yr{cursor:default}
 /* Z4-22: the sources' line. */
 .mx-attr{max-width:none}
 .mx-attr .term-trigger{color:var(--muted);font:inherit}
-/* Z4-28: on the map the round feedback button (721–1359 px) covered the ranking's figures and the panel's strip; here it
-   becomes the row after the footer, as on phones. */
-@media (min-width:721px) and (max-width:1359px){
-  body:has(.mx) .feedback-dock{background:var(--surface);border-top:1px solid var(--line);padding:12px 16px}
-  body:has(.mx) .feedback-fab{position:static;width:auto;height:auto;min-height:44px;margin:0 auto;padding:10px 14px;gap:10px;border:1px solid var(--accent-line);border-radius:8px;box-shadow:none}
-  body:has(.mx) .feedback-fab span{position:static;width:auto;height:auto;overflow:visible;clip-path:none}
-  body:has(.mx) .site-footer{padding-bottom:0}
-}
+/* Z4-28: the feedback button no longer covers the ranking between 721 and 1359 px: it is the slim tab in the page's
+   margin on every page (components/feedback/feedback.css, Z1-21). */
 /* Phones: the sources' line keeps 44 px targets without growing the line. */
 @media (max-width:640px){
   .mx-attr .term-trigger,.mx-attr a{display:inline-flex;align-items:center;min-height:44px;margin-block:-14px}

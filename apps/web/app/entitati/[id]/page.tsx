@@ -15,6 +15,7 @@ import {
   getEntitySubjects,
   getEntityYears,
   getCompanyTurnover,
+  getEntityRegistered,
   type Role,
   type EntityFlagRow,
 } from "@/lib/marts";
@@ -27,8 +28,9 @@ import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import { getEntitySignalCounts } from "@/lib/signals";
 import { parseSignalState, signalTypeCountLabel, signalUrl, withoutRole } from "@/lib/signals-shared";
 import { RISK_BAND_CLASS, RISK_BAND_MIN, RISK_CRITERIA, RISK_HISTORIC_MONTHS, RISK_MIN_DAS, RISK_SCORE_NOTE, riskBand, riskFact, riskHistoric, riskLabel, riskNoScoreReason, riskScoreText, riskPoints, type RiskCriterion } from "@/lib/risk-score";
-import { getRiskPeerLine, riskPeerWords } from "@/lib/risk-peers";
+import { getRiskPeerLine, riskPeerParts } from "@/lib/risk-peers";
 import { getHolderTwin, individualHolder } from "@/lib/individual-holder";
+import { lastMonthWords } from "@/lib/ask/historic";
 import { getRegistryNames } from "@/lib/registry-names";
 import { daUrl, registryLinks } from "@/lib/elicitatie";
 import { successorOf } from "@/lib/entity-successors";
@@ -47,8 +49,13 @@ import ScoreSignals from "./ScoreSignals";
 import SectionNav from "./SectionNav";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 import DropRolParam from "./DropRolParam";
+import RepsMore from "./RepsMore";
+import TableLink from "./TableLink";
+import HintLink from "./HintLink";
+import { isFillerRep, REPS_SHOWN } from "./reps";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
+import { countWords } from "@/lib/ask/answer-text";
 import "./entity.css";
 import { parseRoleParam } from "@/lib/role-param";
 
@@ -144,7 +151,10 @@ export default async function EntityPage({
         : [];
   if (flagRows.length === 0) notFound();
 
-  const role: Role = parseRoleParam(sp["rol"]) ?? flagRows[0]!.role;
+  // A role the entity does not have, asked in the address, opens its own (UX audit bug, 16 November 2026): the page was
+  // empty in the wrong role while DropRolParam cleaned the address.
+  const wantedRole = parseRoleParam(sp["rol"]);
+  const role: Role = wantedRole && flagRows.some((r) => r.role === wantedRole) ? wantedRole : flagRows[0]!.role;
   const row: EntityFlagRow = flagRows.find((r) => r.role === role) ?? flagRows[0]!;
   const rolParam = role === "supplier" ? "furnizor" : "autoritate";
   // `?rol=` only for an entity that both buys and sells (owner, 4 November 2026); a single-role page drops it.
@@ -152,6 +162,8 @@ export default async function EntityPage({
   const base = { rol: bothRoles ? rolParam : undefined, sort: sp["sort"], an: sp["an"], sem: sp["sem"] };
   // The records table's filters from the address (its funnels; lib/entity-tx-columns.ts).
   const txFilters = readFilters(txColumns(role === "authority"), (key) => sp[key]);
+  // The records table's page from the address (UX audit Z5-29).
+  const txPage = /^[1-9]\d{0,5}$/.test(sp["p"] ?? "") ? Number(sp["p"]) : 1;
 
   const cui = flagRows.find((r) => r.cui)?.cui ?? null;
   // ONRC/MF data only through a corroborated CUI (audit F03): a foreign number
@@ -160,7 +172,8 @@ export default async function EntityPage({
   // A reviewed older or secondary identity of an institution (owner, 4 November 2026): where its activity is now.
   const successor = successorOf(id);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
-  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst] =
+  const otherRole: Role = role === "authority" ? "supplier" : "authority";
+  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst, otherCounts, registered] =
     await Promise.all([
       registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
       getEntityTxCounts(id, role),
@@ -180,8 +193,12 @@ export default async function EntityPage({
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
       // Page 1 of the records table, as TxTable first asks for it (by value, the address's filters): the table is in
       // the first paint instead of growing the page after it (owner, 6 November 2026). On a failure the table asks itself.
-      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: 1, pageSize: 10 })
+      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: txPage, pageSize: 10, wholeConsortia: true })
         .catch((e: unknown) => { console.error("entity-tx first page", { id, role }, e); return null; }),
+      // The other role's records, on its tab above the name (UX audit Z5-13), only for an entity that both buys and sells.
+      bothRoles ? getEntityTxCounts(id, otherRole).catch(() => null) : null,
+      // A firm's first registration in the trade register (UX audit Z5-17).
+      role === "supplier" ? getEntityRegistered(id).catch(() => null) : null,
     ]);
   const continuedAt = await successorTarget;
   const cuiUncorroborated = cui !== null && registryCui === null;
@@ -198,17 +215,21 @@ export default async function EntityPage({
   // The buyer's regime or an in-house firm (rf-2026.20): a hover next to the score.
   const scoreNote = row.scoreNote ? RISK_SCORE_NOTE[row.scoreNote] ?? null : null;
   // rf-2026.22 (S8): no record in this role for 24 months reads "Inactiv"; the score and its evidence stay.
-  const historic = riskHistoric(profile?.roles.find((r) => r.role === role)?.lastActivity);
+  const lastActivity = profile?.roles.find((r) => r.role === role)?.lastActivity ?? null;
+  const historic = riskHistoric(lastActivity);
   // The header's tags (owner, 6 November 2026): the score's note, then inactivity.
-  const headFlags = [
+  const headFlags: { title: string; text: string; label?: string }[] = [
     ...(scoreNote ? [scoreNote] : []),
-    ...(historic ? [{ title: "Inactiv", text: `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.` }] : []),
+    // In Ask's words, with the month of the last record (UX audit Z5-15, 16 November 2026); its explanation unchanged.
+    ...(historic ? [{ title: "Inactiv", label: lastActivity && lastMonthWords(lastActivity) ? `Inactiv · ultima ${lastMonthWords(lastActivity)}` : "Inactiv",
+      text: `Nicio achiziție sau contract în ultimele ${RISK_HISTORIC_MONTHS} de luni. Scorul și dovezile rămân; clasamentele nu-l arată implicit.` }] : []),
   ];
   // rf-2026.22 (S4b, S9b, S10): why a profile with signals has no score.
   const noScoreReason = hasRiskScore ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score: row.score }) : null;
   // The top's ledger per channel and its years chart; the bars and the undated rest add up to txCounts' value.
   const ledger = ledgerTotals(activityYears.years, activityYears.undated);
-  const years = yearsModel(activityYears.years, turnover, bucharestYear());
+  // The chart from two years with records up; one year is the ledger alone (UX audit Z5-14, 16 November 2026).
+  const years = activityYears.years.filter((y) => y.nDa + y.nCt > 0).length >= 2 ? yearsModel(activityYears.years, turnover, bucharestYear()) : null;
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
   // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
@@ -229,14 +250,26 @@ export default async function EntityPage({
   // The entity's analysis pages, short names; their own titles keep the questions (owner, 4 November 2026). "Semnale"
   // first, the signals page being hard to find from here (owner, 6 November 2026).
   const rolQuery = bothRoles ? `?rol=${rolParam}` : "";
-  const views: { href: string; label: string; icon: AnalysisKey; note?: string; noteWords?: string; band?: string }[] = [
+  // What each analysis shows, on hover, focus or a long press; with few records Radiografie and Legături are quieter and
+  // say so, never hidden (UX audit Z5-21, 16 November 2026).
+  const fewRecords = txCounts.nDa + txCounts.nCt < 10;
+  const few = fewRecords ? ` Puține date: ${countWords(txCounts.nDa + txCounts.nCt, "înregistrare", "înregistrări")}.` : "";
+  const views: { href: string; label: string; icon: AnalysisKey; note?: string; noteWords?: string; band?: string; hint: string; thin?: boolean }[] = [
     ...(firstSignal ? [{ href: entitySignalsUrl(firstSignal), label: "Semnale", icon: "semnale" as const,
       note: formatInt(signalTypes.length), noteWords: signalTypes.length === 1 ? "un tip de semnal" : `${signalTypeCountLabel(signalTypes.length)} de semnale`,
+      hint: "Semnale: tiparele găsite în înregistrări, fiecare cu cazurile și sursele lui. Piste, nu dovezi.",
       ...(hasRiskScore ? { band } : {}) }] : []),
-    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie", icon: "radiografie" as const }] : []),
-    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături", icon: "legaturi" },
-    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații", icon: "comparatii" },
+    ...(isAuth ? [{ href: `/entitati/${id}/radiografie`, label: "Radiografie", icon: "radiografie" as const, thin: fewRecords,
+      hint: `Radiografie: cine depinde de instituție, loturi care se repetă, achiziții apropiate în timp.${few}` }] : []),
+    { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături", icon: "legaturi", thin: fewRecords,
+      hint: `Legături: drumul banilor spre parteneri și spre partenerii lor.${few}` },
+    { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații", icon: "comparatii",
+      hint: isAuth ? "Comparații: față de instituții asemănătoare." : "Comparații: față de firme asemănătoare." },
   ];
+  // A small profile does not repeat itself (UX audit Z5-14): with at most 5 records, each from another partner, the
+  // partner list would be the records table again, so it is left out.
+  const nRecords = txCounts.nDa + txCounts.nCt;
+  const partnersRepeatTable = nRecords > 0 && nRecords <= 5 && topPartners.total === nRecords;
   // "Pe scurt": the KPI numbers above, the same selection by CPV division, the partner list's top rows.
   const summary = composeEntitySummary({
     role, totalExact: txCounts.valueExact, nDa: txCounts.nDa, nContracts: txCounts.nContracts,
@@ -248,31 +281,41 @@ export default async function EntityPage({
   return (
     <>
       {/* Identity */}
-      <div className={`ehead${headFlags.length ? ` has-flags n${headFlags.length}` : ""}`} id="top">
-        {/* Tags on the role's line, each with its reason on hover or tap (owner, 6 November 2026): the buyer's regime or an
-            in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
-        {headFlags.length > 0 && <div className="ehead-flags">
-          {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.title}</Term>)}
-        </div>}
+      <div className="ehead" id="top">
         <div className="ehead-main">
-          <p className="eyebrow">
-            {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
-            {profile?.isForeign ? ` · ${entityCountryLabel(true, profile.countryCode)}` : ""}
-          </p>
+          <div className="ehead-role">
+          {/* An entity that both buys and sells: its two roles are tabs in the role line's place, each with its records
+              (UX audit Z5-13, 16 November 2026); a public company or a foreign firm keeps those words in the line under the name. */}
+          {bothRoles ? (
+            <nav className="ehead-roles" aria-label="Rolul">
+              {(["authority", "supplier"] as const).map((r) => {
+                const counts = r === role ? txCounts : otherCounts;
+                return (
+                  <Link key={r} href={q(base, { rol: r === "supplier" ? "furnizor" : "autoritate", p: undefined })}
+                    aria-current={r === role ? "page" : undefined}
+                    title={counts ? `${ROLE_LABEL[r]}: ${formatInt(counts.nDa + counts.nCt)} înregistrări` : ROLE_LABEL[r]}>
+                    <span>{r === "authority" ? "Cumpără · autoritate" : "Vinde · furnizor"}</span>
+                    {counts && <span className="n">{formatInt(counts.nDa + counts.nCt)}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : (
+            <p className="eyebrow">
+              {role === "authority" && profile?.isPublicCompany ? "Companie publică · autoritate contractantă" : ROLE_LABEL[role]}
+              {profile?.isForeign ? ` · ${entityCountryLabel(true, profile.countryCode)}` : ""}
+            </p>
+          )}
+          {/* Tags beside the role, each with its reason on hover or tap (owner, 6 November 2026; beside the role since UX audit
+              Z5-15): the buyer's regime or an in-house firm (rf-2026.20), no record in this role for 24 months (rf-2026.22 S8). */}
+          {headFlags.length > 0 && <div className="ehead-flags">
+            {headFlags.map((f) => <Term key={f.title} tip className="ehead-flag" title={f.title} text={f.text}>{f.label ?? f.title}</Term>)}
+          </div>}
+          </div>
           <h1 className="page-title">{cleanName(row.name)}</h1>
           <div className="id-meta">
-            {flagRows.length > 1 ? (
-              <span className="roles">
-                {flagRows.map((r) => (
-                  <Link
-                    key={r.role}
-                    href={q(base, { rol: r.role === "supplier" ? "furnizor" : "autoritate", p: undefined })}
-                    className={r.role === role ? "on" : undefined}
-                  >
-                    {ROLE_LABEL[r.role]}
-                  </Link>
-                ))}
-              </span>
+            {bothRoles && (profile?.isPublicCompany || profile?.isForeign) ? (
+              <span>{[profile.isPublicCompany ? "companie publică" : null, profile.isForeign ? entityCountryLabel(true, profile.countryCode) : null].filter(Boolean).join(" · ")}</span>
             ) : null}
             {county && !(profile?.isForeign && isAbroadCounty(county)) ? <span>{countyLabel(county)}</span> : null}
             {cui ? <span className="mono">CUI {cui}</span> : null}
@@ -286,6 +329,14 @@ export default async function EntityPage({
                   </a>
                 ))}
               </span>
+            ) : null}
+            {/* Since when the firm exists and which years its records cover, without opening a block (UX audit Z5-17). */}
+            {registered && registryCui !== null && (registered.on || registered.year) ? (
+              <span className="ent-tip">înființată {registered.on ? `${registered.on.slice(5, 7)}.${registered.on.slice(0, 4)}` : registered.year}{" "}
+                <Term tip title="Înființată" text={`Data primei înmatriculări a acestui CUI la Registrul Comerțului${registered.on ? `: ${formatCalendarDate(registered.on)}` : ""}.`} /></span>
+            ) : null}
+            {txCounts.dateFrom && txCounts.dateTo ? (
+              <span>înregistrări {txCounts.dateFrom.slice(0, 4) === txCounts.dateTo.slice(0, 4) ? txCounts.dateFrom.slice(0, 4) : `${txCounts.dateFrom.slice(0, 4)}–${txCounts.dateTo.slice(0, 4)}`}</span>
             ) : null}
             {registryNames.length > 0 ? (
               <span className="ent-tip">
@@ -313,7 +364,8 @@ export default async function EntityPage({
       </div>
       {/* The same analyses on a phone, where the tab row scrolls sideways and would hide them. */}
       <nav className="ehead-views" aria-label="Analize">
-        {views.map((v) => <Link key={v.href} href={v.href} data-band={v.band} aria-label={v.noteWords ? `${v.label}, ${v.noteWords}` : undefined}><AnalysisIcon name={v.icon} />{v.label}{v.note && <span className="n" title={v.noteWords}>{v.note}</span>}</Link>)}
+        {views.map((v) => <HintLink key={v.href} href={v.href} hint={v.hint} dataBand={v.band} className={v.thin ? "is-thin" : undefined}
+          ariaLabel={v.noteWords ? `${v.label}, ${v.noteWords}` : undefined}><AnalysisIcon name={v.icon} />{v.label}{v.note && <span className="n">{v.note}</span>}</HintLink>)}
       </nav>
 
       {successor && continuedAt ? (
@@ -329,6 +381,7 @@ export default async function EntityPage({
       {!bothRoles && sp["rol"] !== undefined && <DropRolParam />}
       {/* The page's tabs right under its header, above the summary they start with (owner, 2 November 2026). */}
       <SectionNav
+        name={cleanName(row.name)}
         items={[
           { id: "top", label: "Rezumat" },
           // In the page's order (critique of 2 November 2026): the representatives come right after the summary,
@@ -336,8 +389,8 @@ export default async function EntityPage({
           ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
           // Then the partners and the acquisitions (owner, 4 November 2026); the signals are their own page, "Semnale →"
           // among the analyses, and the score's parts are in the top (owner, 6 November 2026).
-          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
-          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
+          ...(partnersRepeatTable ? [] : [{ id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" }]),
+          { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt), countWords: countWords(txCounts.nDa + txCounts.nCt, "înregistrare", "înregistrări") },
           ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
           ...views,
         ]}
@@ -368,9 +421,14 @@ export default async function EntityPage({
               </span>
             </div>
           )}
-          {peerLine && <p className="ent-risk-peer">{riskPeerWords(peerLine)}</p>}
+          {/* A firm's long domain name in its explanation, not in the narrow column (UX audit Z5-16, 16 November 2026). */}
+          {peerLine && (() => {
+            const peer = riskPeerParts(peerLine);
+            return <p className="ent-risk-peer ent-tip">{peer.words}{peer.domain && <> <Term tip title="Același domeniu" text={`„${peer.domain}”: domeniul principal al firmei. Locul e printre firmele lui cu cel puțin 10 achiziții directe.`} /></>}</p>;
+          })()}
           {/* rf-2026.22 (S7): the score reads only the direct acquisitions; their share of the money says how much it covers. */}
-          {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer">Privește achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din bani</p>}
+          {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer ent-tip">Scorul citește doar achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoare{" "}
+            <Term tip title="Doar achizițiile directe" text="Scorul se calculează din achizițiile directe; contractele prin proceduri nu intră în el. Procentul e partea achizițiilor directe din valoarea înregistrată." /></p>}
           {(hasRiskScore || signalTypes.length > 0) && <Link href="/metodologie#indice" className="ent-risk-method">Cum se calculează →</Link>}
         </div>
         <div className="ent-activity">
@@ -379,20 +437,20 @@ export default async function EntityPage({
           <tbody>
             <tr>
               <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-da" />{ledger.nDa > 0
-                ? <a href={entityTxSearchUrl(id, cleanName(row.name), role, "da")}>Achiziții directe&nbsp;→</a>
+                ? <TableLink href="?tip=directe#achizitii" filter={{ tip: { kind: "options", values: ["directe"] } }}>Achiziții directe&nbsp;→</TableLink>
                 : <span>Achiziții directe</span>}</span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa)}</td>
               <td>{formatRon(Number(ledger.valueDa))}</td>
             </tr>
             {ledger.nCt > 0 && (
               <tr>
-                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" /><a href={entityTxSearchUrl(id, cleanName(row.name), role, "contracts")}>Contracte prin proceduri&nbsp;→</a></span></th>
+                <th scope="row"><span className="ent-ledger-label"><i className="ent-sw ent-sw-ct" /><TableLink href="?tip=contracte#achizitii" filter={{ tip: { kind: "options", values: ["contracte"] } }}>Contracte prin proceduri&nbsp;→</TableLink></span></th>
                 <td className="ent-ledger-n">{formatInt(ledger.nCt)}</td>
                 <td>{formatRon(Number(ledger.valueCt))}</td>
               </tr>
             )}
             <tr className="ent-ledger-total">
-              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><a href={entityTxSearchUrl(id, cleanName(row.name), role, "all")}>Total înregistrat</a> <Term tip id="valoare-inregistrata" /></span></span></th>
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><TableLink href="#achizitii" filter={{}}>Total înregistrat</TableLink> <Term tip id="valoare-inregistrata" /></span></span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa + ledger.nCt)}</td>
               <td>{formatRon(Number(txCounts.valueExact))}</td>
             </tr>
@@ -419,32 +477,43 @@ export default async function EntityPage({
       {summary && <SummaryNotes notes={summary.notes} />}
       {summary && <EntityBrief summary={summary} />}
 
-      {/* Legal representatives (ONRC snapshot) */}
-      {reps.length > 0 && (
+      {/* Legal representatives (ONRC snapshot). A register filler is never a person (UX audit Z5-26); the „other firms”
+          column only when someone has any; on a phone each person is one line and the first five are shown. */}
+      {reps.length > 0 && (() => {
+        const people = reps.filter((r, i) => !isFillerRep(r.personName) || reps.findIndex((x) => isFillerRep(x.personName)) === i);
+        const others = people.some((r) => !isFillerRep(r.personName) && ((r.nOtherFirms > 0 && r.personKey) || r.nOtherOnrcOnly > 0));
+        return (
         <section className="section" id="conducere">
           <h2 className="ent-tip">Conducere <Term tip id="conducere-onrc" /></h2>
-          <table className="rank">
+          <RepsMore hidden={Math.max(0, people.length - REPS_SHOWN)}>
+          <table className="rank reps-table">
             <thead>
               <tr>
                 <th>Persoană</th>
                 <th>Calitate</th>
-                <th>Alte firme reprezentate</th>
+                {others && <th>Alte firme reprezentate</th>}
               </tr>
             </thead>
             <tbody>
-              {reps.map((r, i) => (
-                <tr key={`${r.personName}-${i}`}>
-                  <td>
-                    {cleanName(r.personName)}
+              {people.map((r, i) => isFillerRep(r.personName) ? (
+                <tr key={`filler-${i}`} className={i >= REPS_SHOWN ? "rep-more" : undefined}>
+                  <td className="rep-name"><span className="rep-n rep-none">fără reprezentant declarat</span></td>
+                  <td className="county rep-cal">{r.calitate ?? "—"}</td>
+                  {others && <td className="rep-other" data-empty="1" />}
+                </tr>
+              ) : (
+                <tr key={`${r.personName}-${i}`} className={i >= REPS_SHOWN ? "rep-more" : undefined}>
+                  <td className="rep-name">
+                    <span className="rep-n">{cleanName(r.personName)}</span>
                     {(r.birthYear || r.birthDateImplausible) && (
-                      <span className="county">
+                      <span className="county rep-b">
                         {" "}
                         {birthNote({ ...r, birthLocality: r.birthLocality ? cleanName(r.birthLocality) : null })}
                       </span>
                     )}
                   </td>
-                  <td className="county">{r.calitate ?? "—"}</td>
-                  <td>
+                  <td className="county rep-cal">{r.calitate ?? "—"}</td>
+                  {others && <td className="rep-other" data-empty={r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 ? "1" : undefined}>
                     {r.nOtherFirms > 0 && r.personKey ? (
                       <a href={personFirmsUrl(r.personKey, cleanName(r.personName))}>
                         {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} →
@@ -459,16 +528,18 @@ export default async function EntityPage({
                       </span>
                     )}
                     {r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 && "—"}
-                  </td>
+                  </td>}
                 </tr>
               ))}
             </tbody>
           </table>
+          </RepsMore>
         </section>
-      )}
+        );
+      })()}
 
       {/* Counterparties */}
-      <section className="section" id="parteneri">
+      {!partnersRepeatTable && <section className="section" id="parteneri">
         <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
         <PartnersTable
           key={`${id}-${role}`}
@@ -478,11 +549,11 @@ export default async function EntityPage({
           isAuth={isAuth}
           initial={topPartners}
         />
-      </section>
+      </section>}
 
       {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload; page 1 from the server */}
       <section className="section" id="achizitii">
-        <h2>Toate achizițiile și contractele</h2>
+        <h2>Toate înregistrările</h2>
         <TxTable
           key={`${id}:${rolParam}:${writeFilters(txColumns(isAuth), "", txFilters)}`}
           entityId={id}
@@ -490,6 +561,8 @@ export default async function EntityPage({
           isAuth={isAuth}
           initial={txFilters}
           first={txFirst}
+          initialPage={txPage}
+          askHref={entityTxSearchUrl(id, cleanName(row.name), role, "all")}
           count={txCounts.nDa + txCounts.nCt}
         />
         {aboveCap.count > 0 && <details className="data-context" id="peste-plafon">
@@ -538,9 +611,8 @@ export default async function EntityPage({
           : <p>Numărul {cui} trece cifra de control a unui CUI românesc, dar sursa indică o firmă străină,
             iar ONRC nu înregistrează acest număr sub un nume asemănător. Poate fi un cod fiscal străin. Nu afișăm pentru el
             reprezentanți ONRC, date din bilanț sau semnale bazate pe bilanț.</p>)}
-        {aboveCap.count > 0 && <p><strong>{formatInt(aboveCap.count)} {aboveCap.count === 1 ? "contract" : "contracte"} peste 1 miliard lei, în valoare
-          integrală de {formatRon(Number(aboveCap.totalExact))}, nu {aboveCap.count === 1 ? "este inclus" : "sunt incluse"} în total și nici în lista partenerilor.</strong>
-          {" "}Plafonul este un filtru al aplicației, nu dovada unei erori. <a href="#peste-plafon">Vezi aceste contracte</a>.</p>}
+        {/* Said once, plainly (UX audit Z5-04): the line under the top and the list under the table say the rest. */}
+        {aboveCap.count > 0 && <p>Contractele peste 1 mld. lei nu intră în totaluri și nici în lista partenerilor (filtru al aplicației, nu dovada unei erori).</p>}
         <p>{formatInt(txCounts.nContracts)} contracte distincte apar în {formatInt(txCounts.nCt)} înregistrări contract–furnizor.
           Pentru consorții, valoarea este împărțită egal între membrii publicați; aceasta este o estimare a alocării.
           Pot exista plafoane de acord-cadru pentru care nu avem contracte subsecvente identificate.</p>
@@ -550,7 +622,8 @@ export default async function EntityPage({
 
       </details>
 
-      {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
+      {/* Only where a score can be (UX audit Z5-14): under the minimum of direct acquisitions there is none to explain. */}
+      {hasRiskScore && row.nDas >= RISK_MIN_DAS && <details className="data-context entity-data-context" id="calcul-scor">
         <summary>Cum se formează riscul?</summary>
         <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
           pronunțat e. Tiparele se grupează în patru familii (evitarea plafonului, relația cu un partener, decembrie, capacitatea
@@ -562,8 +635,8 @@ export default async function EntityPage({
           <Link href={`/metodologie#${code}`}>{flagLabel(code)}</Link>
           {row.scoreParts[code] && <> · {riskFact(code, row.scoreParts[code]!, role)}</>}
         </li>)}</ul>
-        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt la{" "}
-          <a href="#semnale">lista semnalelor</a>. Lipsa unui tipar nu certifică absența neregulilor.{" "}
+        <p>Nu este o probabilitate de corupție. Semnalele din proceduri, bilanțuri și ONRC nu intră în risc; sunt pe{" "}
+          {firstSignal ? <Link href={entitySignalsUrl(firstSignal)}>pagina semnalelor</Link> : "pagina semnalelor"}. Lipsa unui tipar nu certifică absența neregulilor.{" "}
           <Link href="/metodologie#indice">Formula și limitele →</Link></p>
       </details>}
     </>

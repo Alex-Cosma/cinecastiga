@@ -2,26 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ENTITY_YEAR_EVENT } from "./entity-top";
+import { useSearchParams } from "next/navigation";
+import { ENTITY_TABLE_EVENT, ENTITY_YEAR_EVENT } from "./entity-top";
 import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagRecordLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/use-tip";
 import type { DaTx } from "@/lib/marts";
 import { txColumns } from "@/lib/entity-tx-columns";
-import { filterParams } from "@/lib/table-filters/codec";
+import { filterParams, readFilters, writeFilters } from "@/lib/table-filters/codec";
 import { chipsOf } from "@/lib/table-filters/describe";
 import type { ColumnDef, FilterState, FilterValue } from "@/lib/table-filters/types";
 import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
 import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import { useEntityTable } from "./useEntityTable";
-import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
+import { consortiumGroups, contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
 import { emptyState, statusLine } from "./tx-filters";
 import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import Pager from "./Pager";
 
 /**
  * The entity page's records table, to the drill-table standard: 10 rows a page, sortable dates and values, a SEAP
@@ -52,6 +54,8 @@ export default function TxTable({
   initial = {},
   first,
   count,
+  initialPage = 1,
+  askHref,
 }: {
   entityId: string;
   role: "furnizor" | "autoritate";
@@ -62,9 +66,35 @@ export default function TxTable({
   first?: { rows: DaTx[]; total: number } | null | undefined;
   /** The entity's records in this role (the "Achiziții" tab's count): how many ghost rows a page without filters has. */
   count?: number | undefined;
+  /** The page the address asks for (`?p=`; UX audit Z5-29), the one `first` holds. */
+  initialPage?: number;
+  /** The same records in Întreabă's drawer (captures, follows, its own CSV). */
+  askHref?: string;
 }) {
   const columns = txColumns(isAuth);
-  const [page, setPage] = useState(1);
+  // The address as the browser has it now: Back to this page restores the server's first answer, whose parameters
+  // predate the filters and the page written to the address since (UX audit, 16 November 2026).
+  const address = useSearchParams();
+  const [start] = useState(() => {
+    if (!address || address.toString() === "") return { filters: initial, page: initialPage };
+    const p = address.get("p") ?? "";
+    return { filters: readFilters(columns, (key) => address.get(key)), page: /^[1-9]\d{0,5}$/.test(p) ? Number(p) : 1 };
+  });
+  const [page, setPage] = useState(start.page);
+  // An address that filters the table (or asks for one of its pages) opens on it (UX audit Z5-28, 16 November 2026), as
+  // the map's links do with #achizitii: the reader sees at once why the table shows what it shows. Only a fresh open at
+  // the page's top; Back keeps the reader's place.
+  useEffect(() => {
+    if (window.location.hash || window.scrollY > 0 || (Object.keys(start.filters).length === 0 && start.page === 1)) return;
+    document.getElementById("achizitii")?.scrollIntoView({ block: "start" });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- once, at the first paint
+  // The page is in the address (UX audit Z5-29, 16 November 2026), without a history entry per page: Back after a
+  // record's „detalii →” returns to the same page of the table.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (page > 1) url.searchParams.set("p", String(page)); else url.searchParams.delete("p");
+    if (url.search !== window.location.search) history.replaceState(history.state, "", `${url.pathname}${url.search.replaceAll("%2C", ",")}${url.hash}`);
+  }, [page]);
   const [sort, setSort] = useState<"value" | "date">("value");
   const [dir, setDir] = useState<"asc" | "desc">("desc");
   const tip = useTip();
@@ -74,7 +104,7 @@ export default function TxTable({
     if (term) p.set("cauta", term);
     return `/api/entity-tx?${p.toString()}`;
   };
-  const filters = useTableFilters(columns, initial, facetUrl);
+  const filters = useTableFilters(columns, start.filters, facetUrl);
   const update = (next: FilterState) => { filters.replace(next); setPage(1); };
   const setColumn = (key: string) => (value: FilterValue | null) => { filters.set(key, value); setPage(1); };
 
@@ -86,13 +116,23 @@ export default function TxTable({
       filters.replace({ data: { kind: "dates", years: [year], from: null, to: null } });
       setPage(1);
     };
+    // A partner's records or a channel of the ledger (UX audit Z5-12): those filters alone.
+    const show = (e: Event) => {
+      const next = (e as CustomEvent<FilterState>).detail;
+      if (!next || typeof next !== "object") return;
+      filters.replace(next);
+      setPage(1);
+    };
     window.addEventListener(ENTITY_YEAR_EVENT, pick);
-    return () => window.removeEventListener(ENTITY_YEAR_EVENT, pick);
+    window.addEventListener(ENTITY_TABLE_EVENT, show);
+    return () => { window.removeEventListener(ENTITY_YEAR_EVENT, pick); window.removeEventListener(ENTITY_TABLE_EVENT, show); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- `filters.replace` only sets state
 
   const p = filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, page: String(page), sort, dir }));
   const url = `/api/entity-tx?${p.toString()}`;
-  const [seed] = useState(() => (first ? { url, data: { ok: true, rows: first.rows, total: first.total } satisfies Resp } : undefined));
+  // The server's first page serves only the selection it was read for (after Back the address may ask another).
+  const [seed] = useState(() => (first && start.page === initialPage && writeFilters(columns, "", start.filters) === writeFilters(columns, "", initial)
+    ? { url, data: { ok: true, rows: first.rows, total: first.total } satisfies Resp } : undefined));
   const { data, loading, error, retry } = useEntityTable<Resp>(url, seed);
 
   const sortBy = (key: "value" | "date") => {
@@ -106,6 +146,8 @@ export default function TxTable({
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / 10));
   const rows = data?.rows ?? [];
+  // An address whose page is past the end (fewer records since) opens the last one.
+  useEffect(() => { if (!loading && !error && data && page > pages) setPage(pages); }, [loading, error, data, page, pages]);
   // While a new page loads, the old rows stay where they are, dimmed and out of reach; ghost rows only before the first.
   const stale = loading && rows.length > 0;
   // The status line keeps the shown rows' words while others load (the floating status says it is loading), so it
@@ -147,11 +189,18 @@ export default function TxTable({
     <div>
       {tip.el}
       <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={update} />
-      <div className={`ask-detmeta${stale ? " g-stale" : ""}`} role="status" ref={status} tabIndex={-1}>
-        {line ?? (stale ? shownLine : "Se încarcă înregistrările…")}
+      <div className="tx-head">
+        <div className={`ask-detmeta${stale ? " g-stale" : ""}`} role="status" ref={status} tabIndex={-1}>
+          {line ?? (stale ? shownLine : "Se încarcă înregistrările…")}
+        </div>
+        {/* The selection shown, as a file; Întreabă's drawer for captures and follows (UX audit Z5-12). */}
+        <div className="tx-tools">
+          <a href={`/api/entity-tx/csv?${filterParams(columns, filters.state, new URLSearchParams({ id: entityId, rol: role, sort, dir })).toString()}`} download>Descarcă CSV</a>
+          {askHref && <a href={askHref}>Deschide în Întreabă <span aria-hidden="true">↗</span></a>}
+        </div>
       </div>
       <div className={`ask-tablewrap${stale ? " g-stale" : ""}`} aria-busy={loading}>
-        <table className="ask-table ask-drill ent-tx" aria-label="Toate achizițiile și contractele">
+        <table className="ask-table ask-drill ent-tx" aria-label="Toate înregistrările">
           <thead>
             <tr>
               {/* Sorting and filtering are buttons in the header, their state on it (keyboard and screen readers). */}
@@ -198,12 +247,15 @@ export default function TxTable({
                 </td>
               </tr>
             )}
-            {!error && rows.map((t, i) => {
+            {!error && (isAuth ? consortiumGroups(rows) : rows.map((t) => [t])).map((group) => {
+              const t = group[0]!, i = rows.indexOf(t);
               // The table rounds to the leu (owner, 2 November 2026); the exact value, to the ban, on hover.
               const exact = t.closingValueExact && /\.\d*[1-9]/.test(t.closingValueExact) ? `${formatExactDecimal(t.closingValueExact)} lei` : undefined;
               const flagged = t.daFlags.length > 0 || t.singleBidder === true;
+              // A consortium contract's member records on one row, every member named (UX audit Z5-11); a lone member
+              // record keeps „consorțiu cu …”.
+              const members = group.length > 1 ? group : null;
               return (
-              // consortium contracts come as one row per member with the same contract id
               <tr key={txRowKey(t, i)}>
                 <td className="c-date" title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
                 <td className="c-src">
@@ -214,6 +266,16 @@ export default function TxTable({
                     {t.src === "contract" ? "contract" : "directă"}
                   </span>
                 </td>
+                {members ? (
+                <td className="clip c-party" {...tip.bindClip(members.map((m) => cleanName(m.partnerName)).join(" · "))}>
+                  <span className="tx-members">
+                    {members.map((m, k) => <span key={m.partnerId ?? k}>{m.partnerId
+                      ? <EntityName id={m.partnerId} role="supplier">{cleanName(m.partnerName)}</EntityName>
+                      : (m.partnerName ?? "—")}</span>)}
+                  </span>
+                  <span className="cons-line">{formatInt(members.length)} înregistrări, câte una pe membru</span>
+                </td>
+                ) : (
                 <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>
                   {t.partnerId ? (
                     <Link prefetch={false} href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
@@ -229,10 +291,15 @@ export default function TxTable({
                     </span>
                   )}
                 </td>
+                )}
                 <td className="clip c-cpv" {...tip.bindClip(t.cpvName ?? t.cpvCode)}>
                   {t.cpvName ?? t.cpvCode ?? "—"}
+                  {/* What was bought, as SICAP publishes it (UX audit Z5-06): one line, whole on hover. */}
+                  {t.src === "da" && t.title && <span className="tx-title" title={t.title}>{t.title}</span>}
                 </td>
                 <td className={`num c-val${t.valueSuspect ? " val-suspect" : ""}`}>
+                  {/* The value and its warning together: on a phone's card they sit at the right of its first line (Z5-24). */}
+                  <span className="c-val-main">
                   <span title={exact}>{formatRonFull(t.closingValue)}</span>
                   {t.valueSuspect && (
                     <span
@@ -251,6 +318,7 @@ export default function TxTable({
                       ⚠
                     </span>
                   )}
+                  </span>
                   {isConsortium(t.nWinners) && (
                     <span className="cons-line" title={consortiumExplanation(t.nWinners)}>
                       {consortiumShareLabel(t.nWinners, t.contractValueFull != null ? formatRonFull(t.contractValueFull) : null)}
@@ -274,14 +342,18 @@ export default function TxTable({
                   {t.src === "contract" && t.daCode?.trim() ? (
                     <span className="c-no" title={`Numărul contractului în sursă: ${t.daCode.trim()}`}>nr. {t.daCode.trim()}</span>
                   ) : null}
-                  {republished.has(txRowKey(t, i)) ? (
+                  {group.some((m) => republished.has(txRowKey(m, rows.indexOf(m)))) ? (
                     <span className="c-no c-dup" title="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">
                       apare și sub alt anunț
                     </span>
                   ) : null}
+                  {/* Every row leads to its page on the site, its SEAP source smaller beside it (UX audit Z5-06). */}
                   {t.src === "contract" ? (
                     t.natId ? (
-                      <Link prefetch={false} href={`/contracte/${t.natId}`}>detalii →</Link>
+                      <>
+                        <Link prefetch={false} href={`/contracte/${t.natId}`}>detalii →</Link>
+                        {t.caNoticeId && <a className="tx-seap" href={awardUrl(t.caNoticeId)} target="_blank" rel="noopener noreferrer">SEAP ↗</a>}
+                      </>
                     ) : t.caNoticeId ? (
                       <a href={awardUrl(t.caNoticeId)} target="_blank" rel="noopener noreferrer">
                         anunț ↗
@@ -290,9 +362,10 @@ export default function TxTable({
                       "—"
                     )
                   ) : (
-                    <a href={daUrl(t.sicapDaId)} target="_blank" rel="noopener noreferrer">
-                      sursa ↗
-                    </a>
+                    <>
+                      <Link prefetch={false} href={`/achizitii/${t.sicapDaId}`}>detalii →</Link>
+                      <a className="tx-seap" href={daUrl(t.sicapDaId)} target="_blank" rel="noopener noreferrer">SEAP ↗</a>
+                    </>
                   )}
                 </td>
               </tr>
@@ -302,18 +375,7 @@ export default function TxTable({
         </table>
       </div>
       {stale && <FloatStatus>Se încarcă înregistrările…</FloatStatus>}
-      {pages > 1 && (
-        <div className="ask-pager">
-          {/* aria-disabled, not disabled: the focused button keeps the focus while the next page loads */}
-          <button type="button" aria-disabled={loading || page <= 1} onClick={() => goPage(page - 1)}>
-            ‹ anterioare
-          </button>
-          <span className="ask-pager-pos">pagina {formatInt(page)} din {formatInt(pages)}</span>
-          <button type="button" aria-disabled={loading || page >= pages} onClick={() => goPage(page + 1)}>
-            următoare ›
-          </button>
-        </div>
-      )}
+      <Pager page={page} pages={pages} busy={loading} onPage={goPage} label="Paginile înregistrărilor" />
     </div>
   );
 }

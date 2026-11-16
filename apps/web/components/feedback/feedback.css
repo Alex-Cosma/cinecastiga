@@ -31,6 +31,13 @@
   .feedback-fab svg{width:18px;height:18px}
   .site-footer{padding-bottom:0}
 }
+/* UX audit Z5-31 (16 November 2026): between 721 and 1359 px the tab steps aside while a word, a figure or a link is
+   under it (ReportProblem.tsx: a page whose content reaches the 28px margin); the keyboard still finds it. */
+@media(min-width:721px) and (max-width:1359px){
+  .feedback-fab{transition:opacity var(--fast) var(--ease),background-color .16s ease}
+  .feedback-fab.is-yielding{opacity:0;pointer-events:none}
+  .feedback-fab.is-yielding:focus-visible{opacity:1;pointer-events:auto}
+}
 @media print{.feedback-fab{display:none}}
 @media(prefers-reduced-motion:reduce){.feedback-fab{transition:none}}
 .feedback-dialog{width:540px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:28px;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--ink)}

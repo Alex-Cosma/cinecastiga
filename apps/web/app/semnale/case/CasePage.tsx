@@ -25,6 +25,7 @@ import RecordList, { type RecordRow } from "./RecordList";
 import { caseRecordRows } from "@/lib/signal-case-rows";
 import { compareRecordRows, RECORD_DEFAULT_SORT, RECORDS_SERVER_ABOVE, RECORDS_SHOWN } from "@/lib/record-rows";
 import "./case.css";
+import EntityCrumb from "@/app/entitati/[id]/EntityCrumb";
 
 /*
  * One pattern of one entity (owner, 6 November 2026, "Oglinda"): the entity's score made of its patterns is the
@@ -545,9 +546,10 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
   return (
     <div className="sgc">
       <OpenFromHash />
+      {/* The analysis pages' one way back (UX audit Z5-08, 16 November 2026); the entity's facts and score stay under it. */}
+      <EntityCrumb id={e.id} name={cleanName(e.name) || `entitatea ${e.id}`} role={e.role} bothRoles={!!e.otherRole} current="Semnale" />
       <div className="sgc-crumb">
-        <span><Link href={entityHref(e.id, e.role)} className="sgc-back">← {cleanName(e.name) || `entitatea ${e.id}`}</Link>
-          {" · "}{e.role === "authority" ? "instituție" : "firmă"}{county ? `, ${county}` : ""}{e.nDas ? ` · ${countWords(e.nDas, "achiziție directă", "achiziții directe")}` : ""}
+        <span>{e.role === "authority" ? "Instituție" : "Firmă"}{county ? `, ${county}` : ""}{e.nDas ? ` · ${countWords(e.nDas, "achiziție directă", "achiziții directe")}` : ""}
           {e.otherRole && <> · <Link href={entityHref(e.id, e.otherRole)}>{e.otherRole === "authority" ? "și ca instituție" : "și ca firmă"}</Link></>}</span>
         {scored ? <span className={`cri-pill ${RISK_BAND_CLASS[band]}`}>{riskScoreText(e.score)} · {RISK_BAND_WORD[band]}</span>
           : e.noScoreReason ? <span className="sgc-noscore">{e.noScoreReason}</span> : null}

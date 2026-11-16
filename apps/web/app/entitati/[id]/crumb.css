@@ -1,0 +1,19 @@
+/* The analysis pages' way back (EntityCrumb.tsx): one line, the long name cut with „…” on a phone; the sister analyses at
+   its right, on their own line under it on a phone. */
+.ent-crumb{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 18px;margin:0 0 6px;font-size:13px;color:var(--muted)}
+.ent-crumb p{margin:0;max-width:none}
+.ent-crumb-trail{display:flex;align-items:baseline;min-width:0;flex:1 1 auto;white-space:nowrap}
+.ent-crumb-trail>*{flex:none}
+.ent-crumb-trail>.ent-crumb-name{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ent-crumb-trail>.sep{margin:0 6px}
+.ent-crumb-trail a{font-weight:600;color:var(--accent);text-decoration:none}
+.ent-crumb-trail a:hover{text-decoration:underline;text-underline-offset:3px}
+.ent-crumb-trail [aria-current]{color:var(--ink2);font-weight:600}
+.ent-crumb-sisters{flex:none;white-space:nowrap}
+.ent-crumb-sisters a{color:var(--ink2);text-decoration:underline;text-decoration-color:var(--line2);text-underline-offset:3px}
+.ent-crumb-sisters a:hover{color:var(--accent);text-decoration-color:currentColor}
+.ent-crumb-sisters b{color:var(--ink);font-weight:600}
+@media (max-width:700px){
+  .ent-crumb{display:grid;gap:2px}
+  .ent-crumb-sisters a,.ent-crumb-sisters b{display:inline-flex;align-items:center;min-height:44px}
+}

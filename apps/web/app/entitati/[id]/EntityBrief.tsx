@@ -43,6 +43,17 @@ function Bars({ bars }: { bars: SummaryBar[] }) {
 
 export default function EntityBrief({ summary }: { summary: EntitySummary }) {
   if (summary.subjects.length === 0) return null;
+  // One domain is one line, not a card around a bar of 100% (UX audit Z5-14, 16 November 2026).
+  if (summary.subjects.length === 1) {
+    const b = summary.subjects[0]!;
+    return (
+      <p className="ent-brief-line ent-tip">
+        {summary.subjectsTitle}: {b.href ? <Link href={b.href}><b>{b.label}</b></Link> : <b>{b.label}</b>}
+        {b.consortium && <> <Term tip title="În consorțiu" text={b.consortium} className="cons-tag">în consorțiu</Term></>}
+        {" · "}{b.valueLabel} · {b.shareLabel} <Term tip id="cpv" />
+      </p>
+    );
+  }
   return (
     <section className="ent-brief" aria-labelledby="ce-a-atribuit">
       <h2 id="ce-a-atribuit" className="ent-tip">{summary.subjectsTitle} <Term tip id="cpv" /></h2>
