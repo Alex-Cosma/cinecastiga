@@ -248,6 +248,10 @@ export default function TopicSearch(){
   // The words, the place and the period are already in the chips of „Am înțeles”: the line stays for screen readers only.
   const quietStatus=reading||Boolean(question||t?.answer||t?.subject);
   const documentHref=(d:DocumentHit,page:number)=>`/contracte/${d.contractId}?document=${d.id}&page=${page}&highlight=${encodeURIComponent(effective.q)}#fisiere`;
+  // Nothing anywhere (UX audit Z1-06): one block with real ways out instead of three empty panels, once the documents
+  // have answered too; a category empty beside others with results is one line, not a panel (Z1-13).
+  const zero=Boolean(result&&scope.tab==='all'&&!collapsed&&!result.entities.total&&!result.acquisitions.total&&docsResult&&!docsResult.documents.total&&!docsLoading&&!docsFailure);
+  const emptyRow=(id:'entities'|'documents')=>scope.tab==='all'&&Boolean(result)&&(id==='entities'?result!.entities.total===0:Boolean(docsResult&&!docsResult.documents.total&&!docsLoading&&!docsFailure));
   // "Pe scurt" counts by domain, the list by title: the line that reconciles them waits in place for both.
   const units=Boolean(t?.answer&&!literalQ&&scope.tab==='all');
   return <div className={`topic-answer-area${dim?' g-stale':''}${reading?' is-reading':''}`} aria-busy={dim||undefined}>
@@ -261,8 +265,9 @@ export default function TopicSearch(){
   {collapsed?(result?<p className="topic-literal-quiet">{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume. <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>Arată</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)
   :<>{question&&<h2 className="topic-literal-head">{literalQ?<>Cuvintele exacte „{scope.q}”, căutate ca atare</>:<>Rezultate pentru „{effective.q}”{'\u00a0'}· {where}{'\u00a0'}· {period}</>}</h2>}<div className="topic-tabbar"><nav className="topic-tabs" aria-label="Tipuri de rezultate">{TABS.map(t=>{const n=count(t.id),waiting=t.id==='documents'?docsLoading:!result&&n==null;return <button type="button" key={t.id} aria-current={scope.tab===t.id?'page':undefined} disabled={!result} onClick={()=>tab(t.id)}>{t.label}{n!=null?<span>{formatInt(n)}</span>:waiting&&t.id!=='all'?<span className="topic-count-wait"><span aria-hidden="true">…</span><span className="d-sr-only">se numără</span></span>:null}</button>;})}</nav><div className="topic-copy"><button type="button" className="topic-control" onClick={()=>void copy()}><DiscoveryIcon name="link"/>Copiază căutarea</button>{copied&&<p role="status">{copied}</p>}</div></div>
-  {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count} units={units}/>:<div className="topic-panels g-content">
-  {isShown('entities')&&<section className="topic-panel" aria-labelledby="topic-panel-entities">{panelHead('building','entities','Instituții și firme',result.entities.total,result.entities.approximate?'nume apropiate de cele scrise':'după nume și CUI')}
+  {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count} units={units}/>:zero?<ZeroResults q={effective.q} coverage={result.titleCoverage} filtered={Boolean(effective.place||effective.from||scope.type!=='all'||scope.match!=='words')} onExample={q=>update({q,place:'',from:'',to:'',type:'all',match:'words'})} onClear={()=>update({q:effective.q,place:'',from:'',to:'',type:'all',match:'words',hall:false})}/>:<div className="topic-panels g-content">
+  {isShown('entities')&&emptyRow('entities')&&<p className="topic-empty-row"><strong>Instituții și firme:</strong> niciuna cu acest nume{scope.place||scope.from||scope.type!=='all'?' în selecție':''}.</p>}
+  {isShown('entities')&&!emptyRow('entities')&&<section className="topic-panel" aria-labelledby="topic-panel-entities">{panelHead('building','entities','Instituții și firme',result.entities.total,result.entities.approximate?'nume apropiate de cele scrise':'după nume și CUI')}
   {scope.tab==='entities'&&<label className="topic-role">Arată<select value={scope.role} onChange={e=>update({role:e.target.value as TopicScope['role'],tab:'entities'})}><option value="">Instituții și firme</option><option value="authority">Doar instituții</option><option value="supplier">Doar furnizori</option></select></label>}
   {best&&<BestMatch entity={best} unfiltered={Boolean(scope.place||scope.from||scope.type!=='all')}/>}
   {(scope.place||scope.from||scope.type!=='all')&&otherEntities.length>0&&<p className="topic-panel-note">Cu achiziții în selecție.</p>}
@@ -277,7 +282,8 @@ export default function TopicSearch(){
   {!result.acquisitions.total&&<div className="topic-panel-empty"><p className="topic-empty">Niciun titlu potrivit. <Term id="lista-titluri" tip/></p>{result.elsewhere?<p className="topic-help topic-elsewhere">{roCount(result.elsewhere,'un titlu','titluri')} la celelalte instituții din localitate. <button type="button" className="topic-text-button" onClick={()=>refine({hall:false})}>Caută la toate instituțiile <DiscoveryIcon name="arrow"/></button></p>:null}<TitleCoverage coverage={result.titleCoverage}/><Broader scope={scope} effective={effective} t={t} place={vPlace} onDocuments={()=>tab('documents')}/></div>}
   {panelFoot('acquisitions',result.acquisitions.total,result.acquisitions.hits.length,roCount(result.acquisitions.total,'o achiziție','achiziții'))}
   </section>}
-  {isShown('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul extras din PDF-uri',<Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
+  {isShown('documents')&&emptyRow('documents')&&<p className="topic-empty-row"><strong>Documente:</strong> niciunul pregătit pentru această căutare. <Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Niciun document pregătit nu înseamnă că lipsește din originale."/></p>}
+  {isShown('documents')&&!emptyRow('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul extras din PDF-uri',<Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
   {docsLoading?<DocumentsGhost rows={scope.tab==='documents'?Math.max(1,Math.min(PAGE_SIZE,(count('documents')??PAGE_SIZE)-(scope.page-1)*PAGE_SIZE)):2}/>
   :<>{docsResult&&docsResult.coverage.known>0&&<div className="topic-coverage"><progress value={docsResult.coverage.ready} max={Math.max(1,docsResult.coverage.known)} aria-label="Acoperirea documentelor pregătite"/><span><strong>{formatInt(docsResult.coverage.ready)} din {formatInt(docsResult.coverage.known)}</strong> fișiere cunoscute au text pregătit · {formatInt(docsResult.coverage.pages)} pagini căutabile. Nu sunt toate documentele din SEAP.</span></div>}
   {!docsResult&&<div className="topic-coverage"><span>Acoperirea documentelor nu este disponibilă acum.</span></div>}
@@ -304,13 +310,31 @@ export default function TopicSearch(){
  {effective.place.startsWith('uat:')&&<LocalityScope locality={(result??main?.result)?.locality??null} hall={Boolean(effective.hall)} onChange={hall=>refine({hall})}/>}
  </div>
  {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
-  :!scope.q?<div className="topic-results" style={{minHeight:400}}><div className="topic-start"><p>Exemple:</p><div>{['locuri de joacă','iluminat','Municipiul Buzău'].map(q=><button type="button" className="topic-control" key={q} onClick={()=>update({q})}>{q}<DiscoveryIcon name="arrow"/></button>)}</div></div></div>
+  :!scope.q?<div className="topic-results" style={{minHeight:400}}><div className="topic-start"><p>Exemple:</p><div>{EXAMPLES.map(q=><button type="button" className="topic-control" key={q} onClick={()=>update({q})}>{q}<DiscoveryIcon name="arrow"/></button>)}</div></div></div>
   :stale?answer(stale.view,stale.result,{dim:true})
   :answer(view,result,{dim:refetching,reading:!interpReady})}
  {/* Present before documents load, so their arrival is announced. */}
  <p className="d-sr-only" role="status" aria-live="polite">{!docsKey||error||loading?'':currentDocs.loading?'Căutăm și în documentele procedurilor.':currentDocs.failure?'Căutarea în documente nu s-a încheiat.':currentDocs.result?(currentDocs.result.documents.total===1?'Un document găsit.':`Documente găsite: ${formatInt(currentDocs.result.documents.total)}.`):''}</p>
  {pending&&<FloatStatus>{interpReady?<>Căutăm „{effective.q}” · {where} · {period}…</>:<>Citim căutarea „{scope.q}”…</>}</FloatStatus>}
  </div>;
+}
+
+/** The examples of the empty /cauta page: the zero block offers the same. */
+const EXAMPLES=['locuri de joacă','iluminat','Municipiul Buzău'];
+/**
+ * Nothing in the names, the titles or the prepared documents (UX audit Z1-06, 16 November 2026): one block that says so
+ * and offers real ways out (the examples of the empty page, Întreabă, and clearing the filters when there are some),
+ * instead of three empty panels whose only suggestion led to documents that were empty too.
+ */
+function ZeroResults({q,coverage,filtered,onExample,onClear}:{q:string;coverage:TopicResult['titleCoverage'];filtered:boolean;onExample:(q:string)=>void;onClear:()=>void}){
+ const pct=coverage.total?Math.max(1,Math.round(coverage.searchable/coverage.total*100)):null;
+ return <section className="topic-panel topic-zero" aria-labelledby="topic-zero-title">
+  <h2 id="topic-zero-title">Nimic pentru „{q}”.</h2>
+  <p className="topic-empty">Nu l-am găsit în nume, în titluri sau în documentele pregătite{filtered?', cu filtrele alese':''}. Verifică scrierea sau încearcă un cuvânt mai general. <Term tip title="De ce nu găsim" text={<>{pct!=null&&pct<100?<>Doar {pct}% din înregistrări au titlul original; la celelalte afișăm numele categoriei, așa că nu apar la o căutare după titlu. </>:null}Un document care nu e pregătit aici nu înseamnă că lipsește din originale.</>}/></p>
+  {filtered&&<p className="topic-zero-clear"><button type="button" className="topic-control" onClick={onClear}>Șterge filtrele <DiscoveryIcon name="arrow"/></button></p>}
+  <div className="topic-start"><p>Încearcă:</p><div>{EXAMPLES.map(x=><button type="button" className="topic-control" key={x} onClick={()=>onExample(x)}>{x}<DiscoveryIcon name="arrow"/></button>)}</div></div>
+  <Link prefetch={false} className="topic-zero-ask" href={`/intreaba?q=${encodeURIComponent(q)}`}>Scrie o întrebare în Întreabă <DiscoveryIcon name="arrow"/></Link>
+ </section>;
 }
 
 /**

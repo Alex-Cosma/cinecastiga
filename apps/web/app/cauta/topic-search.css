@@ -347,3 +347,15 @@
  .topic-part>summary::after{content:'';position:absolute;inset:-9px -3px}
  .topic-understood-literal{display:flex;align-items:center;width:max-content;min-height:44px;margin:4px 0 -8px;font-size:14px}
 }
+/* Nothing anywhere: one block with its ways out; an empty category beside others is one line (UX audit Z1-06, Z1-13). */
+.topic-zero{display:grid;gap:14px;padding:26px 28px 28px}
+.topic-zero>h2{font-size:24px!important;letter-spacing:-.4px;color:var(--ink)}
+.topic-zero>.topic-empty{margin:0;padding:0;border:0;max-width:62ch}
+.topic-zero>.topic-start{padding:0;margin:2px 0 0}
+.topic-zero>.topic-start>p{margin:0 0 8px}
+.topic-zero-clear{margin:0!important}
+.topic-zero-ask{display:inline-flex;align-items:center;gap:8px;width:max-content;max-width:100%;min-height:44px;color:var(--accent);font-weight:600;font-size:14px}
+.topic-zero-ask .d-icon{width:16px;height:16px}
+.topic-empty-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-height:44px;margin:4px 0 24px!important;padding-top:6px;border-top:1px solid var(--line);color:var(--topic-muted);font-size:13px}
+.topic-empty-row>strong{color:var(--ink2);font-weight:600}
+@media(max-width:650px){.topic-zero{padding:20px 18px 22px}.topic-zero>h2{font-size:22px!important}}
