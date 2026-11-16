@@ -181,3 +181,10 @@
   .iw-brief-body[data-open=true] .iw-brief-facts{border-radius:0 0 10px 10px;padding-top:4px}
 }
 @media(prefers-reduced-motion:reduce){.iw-brief-chevron{transition:none}}
+
+/* An empty dossier's way to its first evidence (Z8-08): search filled, a question and a note beside it. */
+.iw-empty-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.iw-empty-actions .iw-primary{gap:8px}.iw-empty-actions .d-icon{flex:none}
+.iw-shell .iw-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-size:13px;font-weight:600;text-decoration:none}
+.iw-shell .iw-secondary:hover{background:var(--sunk);border-color:var(--accent-line)}
+.iw-empty-actions>button:not(.iw-primary){min-height:44px;font-weight:600}

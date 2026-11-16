@@ -12,6 +12,7 @@ import Term from "@/components/Term";
 import RegistryFacts from "./RegistryFacts";
 import EvidenceCard, { type EvidenceItem } from "./EvidenceCard";
 import CardMenu from "./CardMenu";
+import DiscoveryIcon from "@/app/DiscoveryIcon";
 
 export interface WorkspaceClip {
   id: string; title: string; kind: string; createdAt: string; refId: string | null;
@@ -28,6 +29,11 @@ const tabs: { id: WorkspaceTab; label: string }[] = [{ id: "questions", label: "
 const stanceLabels = { supports: "Susține", contradicts: "Contrazice", check: "De verificat" } as const;
 const stanceOptions = { supports: "Susține ipoteza", contradicts: "Contrazice ipoteza", check: "De verificat" } as const;
 const kindLabels = { question: "întrebare", note: "notă", task: "verificare", event: "eveniment" };
+/** The header's search ("Caută", "/"); a page without it goes to /cauta. */
+function openSearch() {
+  const button = document.querySelector<HTMLButtonElement>(".d-global-search");
+  if (button) button.click(); else location.assign("/cauta");
+}
 const blank = (kind: EntryKind) => ({ kind, title: "", body: "", alternative: "", status: "open" as const, occurredOn: null });
 /** A picker option names the item with its exact value and date, never a bare title (owner, 7 November 2026). */
 const clipOption = (clip: WorkspaceClip) => [clip.title.length > 90 ? `${clip.title.slice(0, 88)}…` : clip.title, clip.valueExact ? `${formatExactDecimal(clip.valueExact)} ${clip.valueUnit}` : null, clip.date ? privateDay(clip.date) : null].filter(Boolean).join(" · ");
@@ -178,7 +184,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
         </article>)}
       </>}
       {tab === "evidence" && <>
-        <div className="iw-section-head"><h2>Dovezi</h2>{canEdit && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
+        <div className="iw-section-head"><h2>Dovezi</h2>{canEdit && (evidence.length > 0 || notes.length > 0) && <button type="button" className="iw-primary" onClick={() => setEditing("note")}>Adaugă notă</button>}</div>
         {groups.length > 1 && <div className="iw-filter">
           <div className="iw-filter-pills" role="group" aria-label="Arată dovezile">{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <button key={group.name} type="button" aria-pressed={show === group.name} onClick={() => setShow(group.name)}>{group.label}<span className="iw-count">{group.n}</span></button>)}</div>
           <label className="iw-filter-select">Arată<select value={show} onChange={event => setShow(event.target.value)}>{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <option key={group.name} value={group.name}>{group.label} ({group.n})</option>)}</select></label>
@@ -187,7 +193,10 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
           <NoteCard note={note} revisions={workspace.revisions.filter(revision => revision.entryId === note.id)} canEdit={canEdit} busy={busy} onEdit={() => setEditing(note)}
             onRemove={() => mutate({ action: "archive", entryId: note.id, revision: note.revision }, "Nota a fost scoasă din dosar; istoricul rămâne.")} />
         </article>)}
-        {evidence.length === 0 && notes.length === 0 ? <div className="iw-empty"><h3>Păstrează prima dovadă</h3><p>Folosește „Salvează în anchetă” pe pagina unei instituții, a unei firme, a unui contract sau lângă o întrebare. Vei regăsi aici selecția, sursele și momentul salvării.</p><Link href="/intreaba">Deschide o întrebare →</Link></div>
+        {evidence.length === 0 && notes.length === 0 ? <div className="iw-empty"><h3>Păstrează prima dovadă</h3><p>Deschide pagina unei instituții, a unei firme sau a unui contract și apasă „Salvează în anchetă”. Vei regăsi aici selecția, sursele și momentul salvării.</p>
+            {/* The way to a first piece of evidence is the empty dossier's main action (audit Z8-08). */}
+            <div className="iw-empty-actions"><button type="button" className="iw-primary" onClick={openSearch}><DiscoveryIcon name="search" width={16} height={16} />Caută o instituție sau o firmă</button>
+              <Link className="iw-secondary" href="/intreaba">Pune o întrebare</Link>{canEdit && <button type="button" onClick={() => setEditing("note")}>Adaugă notă</button>}</div></div>
           : <div className="iw-evidence-list">{evidence.filter(item => show === "all" || item.group === show).map(item => { const clip = clipById.get(item.id); return <article id={`clip-${item.id}`} className="iw-evidence" tabIndex={-1} key={item.id}>
             <EvidenceCard item={item} capture={captures[item.id] ?? null} canEdit={canEdit} busy={busy} investigationId={investigationId}
               questions={clipChips(item.id)} linkForm={clipLinkForm(item.id)} onCapture={capture}

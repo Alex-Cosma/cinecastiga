@@ -29,13 +29,15 @@ export default async function DosarPage({ params, searchParams }: { params: Prom
   const tab: WorkspaceTab = ["questions", "evidence", "timeline", "tasks"].includes(sectiune ?? "") ? sectiune as WorkspaceTab
     : tip || workspace.links.length === 0 ? "evidence" : "questions";
   const role = workspace.access.role === "owner" ? "Proprietar" : workspace.access.role === "editor" ? "Editor" : "Cititor · doar consultare";
+  // Nothing to export or to share yet (audit Z8-08): the export and the owner's role come back with the first item.
+  const empty = dosar.clips.length === 0 && workspace.entries.length === 0;
   return <div className="private-shell iw-shell iw-dossier">
     <PrivateTrail current="anchete" />
     <header className="iw-header iw-dossier-head"><div><h1>{inv.title}</h1>{inv.description && <p className="iw-description">{inv.description}</p>}
-      <p className="iw-header-meta"><span className="iw-private">Dosar privat</span><span>{statuses[inv.status] ?? inv.status}</span><span>{role}</span></p>
+      <p className="iw-header-meta"><span className="iw-private">Dosar privat</span><span>{statuses[inv.status] ?? inv.status}</span>{!(empty && workspace.access.role === "owner") && <span>{role}</span>}</p>
     </div></header>
     <div className="iw-top-tools">
-      <a className="iw-tool" href={`/api/anchete/${id}/export?format=zip`} download>Exportă dosarul · ZIP</a>
+      {!empty && <a className="iw-tool" href={`/api/anchete/${id}/export?format=zip`} download>Exportă dosarul · ZIP</a>}
       {workspace.access.canManage && <WorkspaceAccess id={id} />}
       {workspace.access.canEdit && <details className="iw-settings"><summary>Detalii</summary><form action={saveAnchetaMeta}><input type="hidden" name="id" value={id} />
         <label>Titlu<input name="title" required maxLength={200} defaultValue={inv.title} /></label><label>Descriere<textarea name="description" rows={3} maxLength={4000} defaultValue={inv.description ?? ""} /></label>
