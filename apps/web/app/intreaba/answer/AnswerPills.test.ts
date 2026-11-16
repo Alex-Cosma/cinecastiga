@@ -19,7 +19,7 @@ vi.mock("@/lib/format", () => import("../../../lib/format"));
 vi.mock("@/lib/entity-summary", () => import("../../../lib/entity-summary"));
 vi.mock("@/components/Term", () => import("../../../components/Term"));
 
-const { default: AnswerPills } = await import("./AnswerPills");
+const { default: AnswerPills, shortCpvPill } = await import("./AnswerPills");
 
 /*
  * The pills under the answer's title open the builder's windows in place
@@ -46,7 +46,7 @@ describe("the answer's pills", () => {
   it("separates two words that are text with a dot that is drawn, not read", () => {
     const spec: AskSpec = { block: "breakdown", measure: "value", filters: { uatSiruta: 44845, uatName: "Municipiul Râmnicu Sărat (Buzău)" } };
     const markup = render(spec, ["pe domenii", "valoarea înregistrată", "Municipiul Râmnicu Sărat (Buzău)", "toți anii", "toate achizițiile: directe și din proceduri"]);
-    expect(markup).toMatch(/^<div class="cq-scope"><span class="cq-scope-text">pe domenii<\/span><span class="cq-scope-sep" aria-hidden="true">·<\/span><span class="cq-scope-text">valoarea înregistrată<\/span><button/);
+    expect(markup).toMatch(/^<div class="cq-scope" data-unfolded="false"><span class="cq-scope-text">pe domenii<\/span><span class="cq-scope-sep" aria-hidden="true">·<\/span><span class="cq-scope-text">valoarea înregistrată<\/span><button/);
     for (const name of ["Cine a cumpărat: Municipiul Râmnicu Sărat (Buzău)", "Perioada: toți anii"]) expect(markup).toContain(`aria-label="${name}"`);
   });
 
@@ -54,5 +54,29 @@ describe("the answer's pills", () => {
     const spec: AskSpec = { block: "distribution", measure: "value", dim: "authority", filters: { authorityId: 1, authorityName: "MUNICIPIUL VASLUI" }, peers: { similar: true } };
     const markup = render(spec, ["risc față de grup", "MUNICIPIUL VASLUI", "grupul de comparație: populație apropiată", "populație RPL 2021", "achiziții directe"]);
     expect(markup).not.toContain('class="cq-pill"');
+  });
+});
+
+/*
+ * A long domain name as a pill is the person's word and the code; on a phone the pills wait under „Condiții · N”
+ * (owner, 16 November 2026).
+ */
+describe("the answer's pills, shortened", () => {
+  it("says the person's word and the code when the domain's name runs long", () => {
+    expect(shortCpvPill("Lucrări de construcții de autostrăzi și de drumuri (45233000-9)", "drumuri")).toBe("„drumuri” · CPV 45233000-9");
+    expect(shortCpvPill("Vehicule pentru întreținere pe timp de iarnă (34143000-1) +4 CPV", "deszapezire")).toBe("„deszapezire” · CPV 34143000-1 +4");
+  });
+  it("keeps a short name, and a domain the question names by its code", () => {
+    expect(shortCpvPill("Lemn de foc (03413000-8)", "lemn de foc")).toBe("Lemn de foc (03413000-8)");
+    const long = "Lucrări de construcții de autostrăzi și de drumuri (45233000-9)";
+    expect(shortCpvPill(long, "45233000-9")).toBe(long);
+    expect(shortCpvPill(long, "")).toBe(long);
+  });
+  it("keeps the domain's whole name as the pill's label and counts the pills that open a window", () => {
+    const spec: AskSpec = { block: "table", measure: "value", dim: "supplier", topN: 10, filters: { cpvTerm: "drumuri", county: "Prahova" } };
+    const markup = render(spec, ["clasament", "top 10 furnizori", "valoarea înregistrată", "Lucrări de construcții de autostrăzi și de drumuri (45233000-9)", "județul Prahova", "toți anii", "toate achizițiile: directe și din proceduri"]);
+    expect(markup).toContain('aria-label="Ce s-a cumpărat: Lucrări de construcții de autostrăzi și de drumuri (45233000-9)"');
+    expect(markup).toContain("„drumuri” · CPV 45233000-9");
+    expect(markup).toContain('<button type="button" class="cq-scope-fold" aria-expanded="false"><span>Condiții · 6</span>');
   });
 });

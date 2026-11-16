@@ -65,7 +65,8 @@ describe("the year chart's labels", () => {
     const css = readFileSync(new URL("./question-results.css", import.meta.url), "utf8");
     // Transparent, not removed: every bar measures from the same space and a screen reader still reads the value.
     expect(css).toMatch(/\.ask-ts \.ts-off \{\s*color: transparent;\s*max-width: 100%;\s*overflow: hidden;/);
-    const phone = css.slice(css.lastIndexOf("@media (max-width: 600px) {"));
+    // The phone block that holds the rule (later phone blocks may follow it in the file).
+    const phone = css.slice(css.lastIndexOf("@media (max-width: 600px) {", css.indexOf(".ask-ts .ts-off-sm {")));
     expect(phone).toMatch(/\.ask-ts \.ts-off-sm \{\s*color: transparent;\s*max-width: 100%;\s*overflow: hidden;/);
     expect(css).not.toMatch(/\.ts-off[^{]*\{[^}]*(display: none|visibility: hidden|position: absolute)/);
   });

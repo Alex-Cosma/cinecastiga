@@ -234,6 +234,12 @@ export default function AskPanel({
   /** The same, for execute (a stable callback): a strip's new query reaches a folded builder through its initial question. */
   const builderCollapsedRef = useRef(false);
   builderCollapsedRef.current = builderCollapsed;
+  /**
+   * An answer on screen folds the page's title and the question box into „Întreabă altceva…”, beside „Schimbă
+   * întrebarea” (owner, 16 November 2026): a link lands on its answer, as a typed question does. The button opens
+   * the box again, until the next answer.
+   */
+  const [askUnfolded, setAskUnfolded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [layout, setLayout] = useState<"visual" | "table">("visual");
   /**
@@ -508,6 +514,7 @@ export default function AskPanel({
     setBuilderFromAi(false);
     setBuilderOpen(true);
     setBuilderCollapsed(true);
+    setAskUnfolded(false);
     // The folded builder is not mounted: an earlier draft's "modificat" does not stay on this answer.
     setDirty(false);
     setMode("build");
@@ -614,6 +621,7 @@ export default function AskPanel({
         setLinkNotes(restored.notes);
         setBuilderOpen(true);
         setBuilderCollapsed(restored.run && params.get("drill") !== "1");
+        setAskUnfolded(false);
         setMode("build");
         let scope: EvidenceScope | undefined;
         let sourceFilters: EvidenceFilters | undefined;
@@ -1027,6 +1035,17 @@ export default function AskPanel({
     options={[{ value: "visual", label: "Vizual" }, { value: "table", label: "Tabel" }]}
     onChange={(value) => setLayout(value as "visual" | "table")}
   />;
+  // The box stays open while it has something to say about the words in it: an error, a choice, an unread question.
+  const askFolded = builderOpen && builderCollapsed && mode === "build" && !askUnfolded && !intentLoading && !intentError && !(intent && !intent.spec);
+  const askAgain = () => {
+    setAskUnfolded(true);
+    requestAnimationFrame(() => {
+      const input = askRef.current;
+      if (!input) return;
+      input.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+      input.focus({ preventScroll: true });
+    });
+  };
   return (
     <div
       className={`ask cq-app${centered ? " ask-centered" : ""}`}
@@ -1038,10 +1057,10 @@ export default function AskPanel({
         </div>
       )}
       {/* The page title is the question box's label: one line says what this page does. */}
-      <header className="cq-workspace-header ia-head">
+      <header className="cq-workspace-header ia-head" hidden={askFolded}>
         <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
-      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} />
+      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} hidden={askFolded} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
       <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
@@ -1137,6 +1156,11 @@ export default function AskPanel({
             <PencilIcon />
             Schimbă întrebarea
           </button>
+          {askFolded && <button type="button" className="ia-change-question ia-ask-again" aria-label="Întreabă altceva" onClick={askAgain}>
+            <DiscoveryIcon name="search" />
+            <span className="ia-ask-again-wide">Întreabă altceva…</span>
+            <span className="ia-ask-again-narrow">Altă întrebare…</span>
+          </button>}
         </div>
       ) : builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
@@ -1222,7 +1246,7 @@ export default function AskPanel({
                   onClick={() => void share(answerPath(applied, thread), title)}
                 >
                   <ShareIcon />
-                  Trimite
+                  <span>Trimite</span>
                 </button>
                 <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
                 {/* A trend's or a network's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}

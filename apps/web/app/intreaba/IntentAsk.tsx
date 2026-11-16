@@ -13,15 +13,17 @@ export type { IntentChoice } from "./intent-line";
 
 export const MAX_QUESTION_CHARS = 300;
 
-export function AskBox({ value, onChange, onSubmit, loading, inputRef }: {
+export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (value: string) => void;
   loading: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  /** An answer on screen folds the box into „Întreabă altceva…” (AskPanel). */
+  hidden?: boolean;
 }) {
   return (
-    <form className="ia-ask" role="search" onSubmit={(event) => { event.preventDefault(); onSubmit(value); }}>
+    <form className="ia-ask" role="search" hidden={hidden} onSubmit={(event) => { event.preventDefault(); onSubmit(value); }}>
       <div className="ia-row">
         <input
           id="ia-question"

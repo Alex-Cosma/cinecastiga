@@ -37,6 +37,22 @@ export interface AnswerPillsProps {
   onApply: (next: QuestionSpec, notes: string[]) => void;
 }
 
+/** On a phone, this many pills or more wait under „Condiții · N”: two fit on a row or two and stay in sight. */
+const FOLD_FROM = 3;
+
+/** A domain's pill longer than this says the person's word and the code; its window and its label keep the whole name. */
+const LONG_CPV_PILL = 34;
+
+/**
+ * A long CPV name as a pill, „drumuri” · CPV 45233000-9 (owner, 16 November 2026): the word the person wrote and the
+ * code it was read as. A question that names the code itself has no word of the person's, so its pill stays whole.
+ */
+export function shortCpvPill(words: string, term: string): string {
+  const match = /\((\d{8}-\d)\)(?: (\+\d+) CPV)?$/.exec(words.trim());
+  if (!match || words.trim().length <= LONG_CPV_PILL || !term || /\d{8}/.test(term)) return words;
+  return `„${term}” · CPV ${match[1]}${match[2] ? ` ${match[2]}` : ""}`;
+}
+
 export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: AnswerPillsProps) {
   const coverage = useCoverage()?.periods ?? null;
   // The builder's draft of the applied question: the windows read and write it as the sentence's do.
@@ -48,6 +64,8 @@ export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: A
   }, [spec, pills, labels, view]);
   // The pill that opened the window (two pills can share one: a domain and its excluded subclasses).
   const [open, setOpen] = useState<{ key: string; anchor: HTMLElement; index: number } | null>(null);
+  // On a phone the pills wait under one button, „Condiții · N” (owner, 16 November 2026): the answer starts sooner.
+  const [unfolded, setUnfolded] = useState(false);
   const win = open ? view.windows[open.key] ?? null : null;
   // Another answer («Înapoi», the strip) closes a window left open on this one.
   const key = questionKey(question);
@@ -66,13 +84,22 @@ export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: A
     if (questionKey(next) !== key) onApply(next, [...new Set(notes)]);
   };
 
+  const term = spec.filters.cpvTerm === undefined ? "" : String(spec.filters.cpvTerm);
+  // The pills that open a window: the ones the fold counts.
+  const conditions = windows.filter(Boolean).length;
   return <>
-    <div className="cq-scope">
+    <div className="cq-scope" data-unfolded={unfolded}>
+      {conditions >= FOLD_FROM && <>
+        <button type="button" className="cq-scope-fold" aria-expanded={unfolded} onClick={() => setUnfolded((current) => !current)}>
+          <span>Condiții · {conditions}</span><span className="cq-scope-chev" aria-hidden="true">›</span>
+        </button>
+        <span className="cq-scope-break" aria-hidden="true" />
+      </>}
       {pills.map((words, i) => {
         const target = windows[i];
         // An answer's ghost (AskPanel AnswerGhost): a pill the engine names, unknown before it answers, is a line.
         const ghost = ghostPillWidth(words);
-        const pill = ghost ? <G.Line inline w={ghost} /> : words;
+        const pill = ghost ? <G.Line inline w={ghost} /> : shortCpvPill(words, term);
         // A pill's tint is its own edge: the dot separates two words that are text.
         return <Fragment key={i}>
           {i > 0 && !target && !windows[i - 1] && <span className="cq-scope-sep" aria-hidden="true">·</span>}
