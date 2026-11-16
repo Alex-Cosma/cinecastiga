@@ -66,3 +66,8 @@
 @keyframes save-sheet-in{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
 @keyframes save-fade{from{opacity:0}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.save-dialog,.save-backdrop{animation:none}.clipbtn .clipbtn-t{transition:none}}
+
+/* An item already in a dossier says so on its button (UX audit Z8-26): "Salvată · 1 dosar", the bookmark filled, a
+   state (accent-soft), not a call to action; the click opens the same dialog. */
+.clipbtn .clipbtn-t.saved,.clipbtn .clipbtn-t.pri.saved{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-ink)}
+.clipbtn .clipbtn-t.saved:hover,.clipbtn .clipbtn-t.pri.saved:hover,.clipbtn .clipbtn-t.saved[aria-expanded=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}

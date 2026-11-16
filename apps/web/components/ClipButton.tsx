@@ -28,7 +28,7 @@ const PHONE = "(max-width: 700px)";
 const WIDTH = 360, GAP = 8, MARGIN = 16;
 const focusables = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
   .filter((el) => el.getClientRects().length > 0 && !(el instanceof HTMLInputElement && el.type === "radio" && !el.checked && root.querySelector(`input[type=radio][name="${el.name}"]:checked`)));
-const bookmark = <svg className="clipbtn-ico" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="M4 2.5h8v11l-4-2.6-4 2.6Z" /></svg>;
+const bookmark = (filled = false) => <svg className="clipbtn-ico" viewBox="0 0 16 16" width="15" height="15" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true"><path d="M4 2.5h8v11l-4-2.6-4 2.6Z" /></svg>;
 
 function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary = false, compact = false }: {
   kind: Kind;
@@ -58,6 +58,20 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
   const titleId = useId(), dialogId = useId();
 
   const close = useCallback((focusTrigger = true) => { setOpen(false); setPlace(null); if (focusTrigger) trigger.current?.focus(); }, []);
+
+  // Whether the item is already in a dossier, said on the button (audit Z8-26: "Salvată · 1 dosar"): read once on
+  // load with the dialog's own answer (the dossiers, where it is, what it is), so opening it needs no second request.
+  // Not for a row's icon in a table (one request per row) nor for an item without a source id.
+  const params = new URLSearchParams({ kind, ...(refId ? { ref: refId } : {}), ...(kind === "radiografie" && spec ? { spec: JSON.stringify(spec) } : {}) }).toString();
+  const loadDossiers = useCallback(async () => {
+    const r = await fetch(`/api/anchete?${params}`, { cache: "no-store" }).then((x) => x.ok ? x.json() : null).catch(() => null);
+    if (!r) return false;
+    const invs: Inv[] = (r.investigations ?? []).filter((i: Inv) => i.access?.canEdit !== false);
+    setList(invs); setSavedIn(r.savedIn ?? {}); setSubject(r.subject ?? null);
+    setSel((current) => current || invs[0]?.id || "");
+    return true;
+  }, [params]);
+  useEffect(() => { if (refId && !compact) void loadDossiers(); }, [refId, compact, loadDossiers]);
 
   // A capture runs after the answer: its state is polled until it ends, and a failure is said as one.
   useEffect(() => {
@@ -135,12 +149,7 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
     setPhone(window.matchMedia(PHONE).matches);
     setOpen(true); setDone(null); setCapture(null); setErr(null);
     if (list !== null) return;
-    const params = new URLSearchParams({ kind, ...(refId ? { ref: refId } : {}), ...(kind === "radiografie" && spec ? { spec: JSON.stringify(spec) } : {}) });
-    const r = await fetch(`/api/anchete?${params}`, { cache: "no-store" }).then((x) => x.ok ? x.json() : null).catch(() => null);
-    if (!r) { setErr("Dosarele nu au putut fi încărcate. Încearcă din nou."); setList([]); return; }
-    const invs: Inv[] = (r.investigations ?? []).filter((i: Inv) => i.access?.canEdit !== false);
-    setList(invs); setSavedIn(r.savedIn ?? {}); setSubject(r.subject ?? null);
-    setSel(invs[0]?.id ?? "");
+    if (!await loadDossiers()) { setErr("Dosarele nu au putut fi încărcate. Încearcă din nou."); setList([]); }
   };
 
   const snap = snapshot ?? {};
@@ -240,13 +249,15 @@ function AuthenticatedClipButton({ kind, refId, spec, snapshot, label, primary =
     </div>
   </> : null;
 
+  const savedCount = Object.keys(savedIn).length;
+  const savedLabel = savedCount ? `Salvată · ${savedCount === 1 ? "1 dosar" : `${savedCount} dosare`}` : null;
   return (
     <div className="clipbtn">
-      <button ref={trigger} type="button" className={primary ? "clipbtn-t pri" : compact ? "clipbtn-t ico" : "clipbtn-t"}
+      <button ref={trigger} type="button" className={`${primary ? "clipbtn-t pri" : compact ? "clipbtn-t ico" : "clipbtn-t"}${savedLabel && !compact ? " saved" : ""}`}
         aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? dialogId : undefined}
-        aria-label={compact ? "Salvează în anchetă" : undefined} title={compact ? "Salvează în anchetă" : undefined}
+        aria-label={compact ? "Salvează în anchetă" : savedLabel ? `Salvează în anchetă — ${savedLabel.toLowerCase()}` : undefined} title={compact ? "Salvează în anchetă" : undefined}
         onClick={() => (open ? close() : void openPanel())}>
-        {bookmark}{!compact && "Salvează în anchetă"}
+        {bookmark(Boolean(savedLabel) && !compact)}{!compact && (savedLabel ?? "Salvează în anchetă")}
       </button>
       {panel && createPortal(panel, document.body)}
     </div>
