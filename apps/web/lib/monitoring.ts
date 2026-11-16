@@ -137,6 +137,12 @@ export async function listMonitoringRuns(userId:string,opts:{watchId?:string;aft
   const items=rows.slice(0,50);
   return {items:items.map(monitoringRunSummary),nextCursor:rows.length>50?String(items.at(-1)!.id):null};
 }
+/** Whether a check of the reader's own watch exists (a page answers 404 before its client reads it: audit Z8-22). */
+export async function monitoringRunExists(userId:string,watchId:string,runId:string,sql=monitoringDatabase()):Promise<boolean>{
+  if(!isWorkspaceId(watchId)||!isWorkspaceId(runId))return false;
+  const [row]=await sql`select 1 from app.monitoring_runs r join app.monitoring_watches w on w.id=r.watch_id where r.id=${runId} and r.watch_id=${watchId} and w.owner_user_id=${userId}`;
+  return Boolean(row);
+}
 export async function getMonitoringRun(userId:string,watchId:string,runId:string,sql=monitoringDatabase()):Promise<MonitoringRunDetail|null>{
   if(!isWorkspaceId(watchId)||!isWorkspaceId(runId))return null;
   return sql.begin("isolation level repeatable read read only",async tx=>{

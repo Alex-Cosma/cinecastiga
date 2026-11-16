@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getMonitoringWatch } from "@/lib/monitoring";
+import { notFound, redirect } from "next/navigation";
+import { getMonitoringWatch, monitoringRunExists } from "@/lib/monitoring";
 import { sessionUserId } from "@/lib/session";
 import UpdateDetail from "../../../UpdateDetail";
 export const dynamic = "force-dynamic";
@@ -11,6 +11,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 export default async function Page({ params }: { params: Promise<{ id: string; runId: string }> }) {
   const { id, runId } = await params;
-  if (!await sessionUserId()) redirect(`/login?next=${encodeURIComponent(`/urmariri/${id}/actualizari/${runId}`)}`);
+  const user = await sessionUserId();
+  if (!user) redirect(`/login?next=${encodeURIComponent(`/urmariri/${id}/actualizari/${runId}`)}`);
+  if (!await monitoringRunExists(user, id, runId)) notFound();
   return <UpdateDetail id={id} runId={runId} />;
 }
