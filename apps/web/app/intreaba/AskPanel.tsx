@@ -1354,7 +1354,8 @@ export default function AskPanel({
                 {data.block === "breakdown" && !crumbs && applied.filters.purchaseKind && PURCHASE_KIND_WORDS[applied.filters.purchaseKind] && (
                   <Crumbs label="Domenii" items={[{ label: "toate", onClick: () => applyStripChange("purchaseKind", "") }]} current={PURCHASE_KIND_WORDS[applied.filters.purchaseKind].label} />
                 )}
-                {data.block === "breakdown" && (() => {
+                {data.block === "breakdown" && !(data.slices.length === 1 && data.slices[0]!.count === 1 && data.other.count === 0) && (() => {
+                  // Z3-33: a single record has nothing deeper to show.
                   const deeper = breakdownSuggestion(data, applied, thread);
                   return deeper && <Suggest text={deeper.text} href={deeper.href} />;
                 })()}
@@ -1424,7 +1425,9 @@ export default function AskPanel({
                     restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
                 <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
               </>}
-              {data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
+              {/* Z3-33: a ranking of one has nothing to find and one view: no search, no „Vizual | Tabel”. */}
+              {data.block === "table" && data.rows.length === 1 && (data.page ?? 0) === 0 && (data.totals?.entities ?? data.total ?? 1) <= 1 ? null
+                : data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
                 ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle} onFound={setLocateFound}
                   shown={data.total !== undefined ? ((data.page ?? 0) + 1) * (data.pageSize ?? RANKING_PAGE_SIZE) : data.rows.length} />
                 : data.block === "table" && <div className="qb cq-layout-row">{layoutToggle}</div>}

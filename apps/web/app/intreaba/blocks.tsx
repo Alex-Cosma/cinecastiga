@@ -100,6 +100,8 @@ export function BreakdownBlock({
   const measureTotal = byCount ? shown.total.count : shown.total.value;
   const amount = (s: { value: number; count: number }) => byCount ? s.count : s.value;
   const kinds = !spec.filters.purchaseKind && base && onKind ? breakdownKinds(base, byCount) : null;
+  // UX audit Z3-33: one domain and nothing else is said by its row: no bar of 100%, no order, no tag of 100%.
+  const single = shown.groups.length === 1 && amount(shown.rest) <= 0;
   const items = [
     ...shown.groups.map((s, i) => ({
       // The catalogue writes ş/ţ; the answer says ș/ț, as the sentence does (data and CSV keep the catalogue's).
@@ -132,7 +134,7 @@ export function BreakdownBlock({
         </button>)}
         <HelpTip tip={{ id: "tip-achizitie" }} />
       </div>}
-      <div className={`ask-comp ${motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root}>
+      {!single && <div className={`ask-comp ${motion.entering ? "cm-x" : "is-shown"}${hot !== null ? " has-hot" : ""}`} {...motion.root}>
         {items.map((s, i) => {
           const bind = t.bind(
             s.name,
@@ -162,9 +164,9 @@ export function BreakdownBlock({
             />
           );
         })}
-      </div>
+      </div>}
       {/* The legend orders by value or by records (final §3.8): both are on every row. */}
-      {base && onMeasure && <div className="qb qb-legend-head qb-tipwrap" role="group" aria-label="Ordonează domeniile">
+      {base && onMeasure && !single && <div className="qb qb-legend-head qb-tipwrap" role="group" aria-label="Ordonează domeniile">
         <span>{countWords(base.length, "domeniu", "domenii")}</span>
         <button type="button" className="qb-sort" aria-pressed={!byCount} onClick={() => onMeasure("value")}>Valoare{!byCount && <span aria-hidden="true"> ▾</span>}</button>
         <button type="button" className="qb-sort" aria-pressed={byCount} onClick={() => onMeasure("count")}>Înreg.{byCount && <span aria-hidden="true"> ▾</span>}</button>
@@ -184,9 +186,9 @@ export function BreakdownBlock({
               ) : (
                 s.name
               )}
-              {s.tags.map((tag) => <FactTag key={tag.text} fact={tag} />)}
+              {!single && s.tags.map((tag) => <FactTag key={tag.text} fact={tag} />)}
             </span>
-            <span className="ask-compbar" aria-hidden="true"><i style={{ width: `${Math.min(100, (amount(s) / measureTotal) * 100)}%`, background: s.color }} /></span>
+            <span className={`ask-compbar${single ? " is-single" : ""}`} aria-hidden="true"><i style={{ width: `${Math.min(100, (amount(s) / measureTotal) * 100)}%`, background: s.color }} /></span>
             <span className="vv num">
               <span>{byCount ? `${countWords(s.count, "înregistrare", "înregistrări")} · ${formatRon(s.value)}` : formatRonFull(s.value)} · {formatShare(amount(s) / measureTotal)}</span>
               {evidence && (

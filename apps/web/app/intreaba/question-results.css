@@ -1399,3 +1399,11 @@ a.cq-source-main { justify-content: center; text-decoration: none; }
 .cq-answer .qb-listfoot .qb-rest { padding: 0; border: 0; border-radius: 0; color: var(--muted); }
 .cq-answer .qb-listfoot .qb-row:has(> .qb-more-btn) > .qb-rest::before { content: "· "; }
 @media (max-width: 600px) { .cq-answer .qb-listfoot .qb-row:has(> .qb-more-btn) { flex-wrap: wrap; justify-content: center; } .cq-answer .qb-listfoot .qb-rest { width: auto; } }
+
+/* UX audit Z3-33 (owner, 16 November 2026): an answer of one element reads in its line: a ranking of one firm draws no
+   bar of 100% (nor its share), a breakdown of one domain no bar of its share. */
+.cq-ranking > .cq-rank-row:only-child .cq-bar-track,
+.cq-ranking > .cq-rank-main:only-child .cq-bar-track,
+.cq-ranking > .cq-rank-row:only-child .cq-rank-share,
+.cq-ranking > .cq-rank-main:only-child .cq-rank-share,
+.cq-result .ask-complegend .ask-compbar.is-single { visibility: hidden; }
