@@ -1393,3 +1393,9 @@ a.cq-source-main { justify-content: center; text-decoration: none; }
   .cq-rank-row .cq-rank-menu .qb-more[aria-expanded="true"] { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .cq-rank-row .cq-rank-menu .qb-more { transition: none; } }
+
+/* UX audit Z3-23 (owner, 16 November 2026): beside „Arată încă 10” the rest of a list („alte 40 de profiluri”) is plain
+   words, no dashed box that read as a disabled second button. */
+.cq-answer .qb-listfoot .qb-rest { padding: 0; border: 0; border-radius: 0; color: var(--muted); }
+.cq-answer .qb-listfoot .qb-row:has(> .qb-more-btn) > .qb-rest::before { content: "· "; }
+@media (max-width: 600px) { .cq-answer .qb-listfoot .qb-row:has(> .qb-more-btn) { flex-wrap: wrap; justify-content: center; } .cq-answer .qb-listfoot .qb-rest { width: auto; } }
