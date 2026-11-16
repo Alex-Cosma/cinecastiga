@@ -165,3 +165,28 @@ span.cx-search{display:block}
   .cx-period{justify-content:flex-start}
   .cx-row .t b{display:-webkit-box;white-space:normal;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 }
+
+/* ---- UX audit Z5-33 (16 November 2026): on a phone, under each bar of shares its four largest parts are named, each
+   row (≥ 44 px) doing what its part does; the complete list then starts at the fifth. ---- */
+.cx-legend{list-style:none;margin:6px 0 12px;padding:0;display:grid}
+.cx-legend li+li{border-top:1px solid var(--line)}
+.cx-legend button,.cx-legend .cx-legend-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 8px;border:0;border-radius:6px;background:none;color:var(--ink);font:500 14px/1.3 var(--body);text-align:left}
+.cx-legend button:hover{background:var(--sunk)}
+.cx-legend li.on button{background:var(--accent-soft)}
+.cx-legend .sw{width:10px;height:10px;border-radius:2px;background:var(--b,var(--choro-2))}
+.cx-legend .sw.c0{--b:var(--choro-4)}.cx-legend .sw.c1{--b:var(--choro-3)}.cx-legend .sw.c2{--b:var(--choro-2)}.cx-legend .sw.c3{--b:var(--choro-1)}.cx-legend .sw.c4{--b:var(--choro-0)}.cx-legend .sw.root{--b:var(--orange)}
+.cx-legend .nm{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.cx-legend .v{display:grid;justify-items:end;font:12.5px/1.35 var(--mono);color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.cx-legend .v em{font-style:normal;color:var(--ink2)}
+.cx-legend li.root .nm{color:var(--orange);font-weight:600}
+.cx-legend li.rest{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:44px;padding:0 8px;font-size:13px;color:var(--ink2)}
+.cx-legend li.rest a{display:inline-flex;align-items:center;min-height:44px;color:var(--accent);font-weight:500}
+.cx-strip+.cx-legend+.cx-strip-h{margin-top:4px}
+.cx-from5{display:none}
+.cx-list-head h2{scroll-margin-top:calc(var(--site-header-h,91px) + 12px)}
+@media (max-width:760px){
+  .cx-rows>li.in-legend{display:none}
+  .cx-from5{display:inline}
+}
+/* ---- UX audit Z5-37: one partner, one list (the partner's own) ---- */
+.cx-lists.one{grid-template-columns:minmax(0,1fr)}
