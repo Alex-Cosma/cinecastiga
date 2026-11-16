@@ -64,3 +64,51 @@
 @media(hover:none){.ev-hint{text-decoration:none;cursor:auto}.ev-hint:hover::after{content:none}}
 /* The list's ghost (SourcesGhost): the phone's card line keeps its lines (the rule above makes its spans inline). */
 .ev-source-summary .ev-summary-line .g-line{display:block}
+/* UX audit Z3-03 (owner, 16 November 2026): compact rows, no new filters (the drawer has none on its columns, 4 November).
+   The selection is one line at every width (a phone leaves the count to its title); search, kind and order share one
+   row; the list's own line shows only for a filtered list; the code joins the date line; the buyer is one quiet line
+   and „→” the firm under it; export is an outline button. On a phone the value, „Detalii importate” and „SEAP ↗”
+   share the card's last row, each target 44 px. */
+.evidence-drawer .ev-source-summary{display:block;padding:11px 16px;border-radius:10px}
+.evidence-drawer .ev-source-summary .ev-summary-line{display:block;margin:0;font-size:14px;line-height:1.5;color:var(--ev-ink);font-variant-numeric:tabular-nums}
+.evidence-drawer .ev-source-summary .ev-summary-line strong{font-size:inherit;line-height:inherit;letter-spacing:0;font-weight:650}
+.evidence-drawer .ev-source-summary .ev-summary-line .g-line{display:inline-block}
+.evidence-drawer .ev-calculation{margin:8px 0 12px;padding-bottom:8px}
+.evidence-drawer .ev-filters{margin-bottom:10px}
+.evidence-drawer .ev-filters .ev-sort{flex:1 1 150px}
+.evidence-drawer .ev-filters .ev-sort select{min-height:42px;padding:11px 12px}
+.evidence-drawer .ev-list-toolbar{margin:0 0 10px}
+.evidence-drawer .ev-list-toolbar:not(.is-filtered){display:none}
+@media(min-width:761px){.evidence-drawer .ev-table td{padding:9px 10px;line-height:1.45}}
+.evidence-drawer .ev-table .ev-contract-title{margin-bottom:2px;font-weight:650}
+.evidence-drawer .ev-table td>span.ev-muted{margin:2px 0 0}
+.evidence-drawer .ev-party-buyer{font-size:12px;color:var(--ev-muted)}
+.evidence-drawer .ev-party-buyer a{color:inherit}
+.evidence-drawer .ev-party-supplier{margin-top:2px}
+.evidence-drawer .ev-party-supplier .ev-party-arrow{display:inline;margin:0 5px 0 0;line-height:inherit}
+.evidence-drawer .ev-record-details{margin-top:2px}
+.evidence-drawer .ev-table th:nth-child(1){width:38%}.evidence-drawer .ev-table th:nth-child(2){width:36%}
+.evidence-drawer .ev-table th:nth-child(3){width:17%}.evidence-drawer .ev-table th:nth-child(4){width:9%}
+.evidence-drawer .ev-footer .ev-export-main{background:var(--surface);color:var(--accent);border-color:var(--ev-line)}
+.evidence-drawer .ev-footer .ev-export-main:hover:not(:disabled){background:var(--accent-soft);border-color:var(--accent-line, var(--line))}
+@media(max-width:760px){
+  .evidence-drawer .ev-source-summary{padding:10px 14px}
+  .evidence-drawer .ev-source-summary .ev-summary-line{font-size:14px;font-weight:400}
+  .evidence-drawer .ev-source-summary .ev-summary-count,.evidence-drawer .ev-source-summary .ev-summary-sep{display:none}
+  .evidence-drawer .ev-filters .ev-sort select{max-width:none}
+  .evidence-drawer .ev-table tr{grid-template-columns:minmax(0,1fr) auto;padding:8px 14px;margin-bottom:8px;gap:0 12px}
+  .evidence-drawer .ev-table td:nth-child(1){border-bottom:0;margin-bottom:0;padding-bottom:0}
+  .evidence-drawer .ev-table .ev-contract-title{margin-bottom:0}
+  .evidence-drawer .ev-table td:nth-child(2){margin-bottom:0}
+  .evidence-drawer .ev-table td:nth-child(2)::before{content:none}
+  .evidence-drawer .ev-party-buyer{font-size:13px}
+  .evidence-drawer .ev-party-buyer>a,.evidence-drawer .ev-party-supplier>a{min-width:0}
+  .evidence-drawer .ev-party-supplier{display:flex;align-items:center;margin-top:0}
+  .evidence-drawer .ev-table td:nth-child(3){grid-column:1;display:flex;flex-wrap:wrap;align-items:center;gap:0 16px}
+  .evidence-drawer .ev-table td:nth-child(3)>.ev-row-value{display:flex;align-items:center;min-height:44px}
+  .evidence-drawer .ev-table td:nth-child(3)>.ev-warning,.evidence-drawer .ev-table td:nth-child(3)>.ev-muted,.evidence-drawer .ev-record-details[open]{flex-basis:100%}
+  .evidence-drawer .ev-table td:nth-child(3) .ev-record-details{margin-top:0}
+  .evidence-drawer .ev-table td:nth-child(4){grid-column:2;align-self:start;text-align:right}
+  .evidence-drawer .ev-table td:nth-child(4) .ev-seap,.evidence-drawer .ev-table td:nth-child(4) .ev-ted{display:flex;align-items:center;justify-content:flex-end;min-height:44px;margin-left:auto}
+  .evidence-drawer .ev-table td:nth-child(4) .ev-state{margin:8px 0 0 auto}
+}

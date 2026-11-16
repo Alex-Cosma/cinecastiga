@@ -10,7 +10,7 @@ import {
   CRITERION_LABEL, CRITERION_RULE, PEER_MEMBERS_PAGE, PEER_MINIMUM, PROFILE_MIN_DAS, barMembersQuery, coverageWords, peerCountWords, peerGroupValue, peerWindowTip,
   scoreBandOf, scoreBandWords, similarRuleName, writePeerTicks, type PeerRowId, type ScoreBand,
 } from "../../lib/ask/peer-groups-shared";
-import { RISK_BAND_CLASS, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
+import { RISK_BAND_CLASS, RISK_BAND_MIN, riskBand, riskFact, riskLabel, riskScoreText, riskPoints, type RiskCriterion } from "../../lib/risk-score";
 import { cleanName, formatInt } from "../../lib/format";
 import { parseSignalState, signalUrl } from "../../lib/signals-shared";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -191,7 +191,8 @@ function MemberName({ m }: { m: Pick<DistributionMember, "entityId" | "name" | "
 function SourcesFoot({ d, name }: { d: AnyDistribution; name: string }) {
   const evidence = useAnswerEvidence();
   return <div className="dist-foot">
-    {evidence && <button type="button" className="cq-record-link" onClick={() => evidence.open(undefined, { entityIds: [d.focal.entityId], role: d.role }, `${name} · sursele profilului`)}>Verifică profilul ales →</button>}
+    {/* Z3-08: the profile's records say how many they are (its direct acquisitions), as everywhere. */}
+    {evidence && <button type="button" className="cq-record-link" onClick={() => evidence.open(undefined, { entityIds: [d.focal.entityId], role: d.role }, `${name} · sursele profilului`)}>{d.focal.nDas === 1 ? "Vezi achiziția" : `Vezi cele ${countWords(d.focal.nDas, "achiziție", "achiziții")}`} →</button>}
     <p className="dist-caveat">Semnal, nu dovadă. Valori înregistrate, nu plăți.</p>
   </div>;
 }
@@ -210,8 +211,16 @@ function ScoreRow({ m }: { m: Pick<ScoredMember, "entityId" | "name" | "county" 
   </>;
 }
 
-/** The ticks of the strip: the bands' lower bounds (slab 20, moderat 40, puternic 68). */
-const STRIP_TICKS = [0, 20, 40, 68, 100];
+/** The scores without a signal in the score (rf-2026.22): one band under 10, out of the histogram (Z3-09). */
+const LOW_BAND: ScoreBand = { from: 0, to: 9 };
+/** The histogram's bands from 10 up, and the ones under 10 counted together. */
+export function splitLowBands<H extends { from: number; to: number; n: number }>(hist: readonly H[]): { field: H[]; lowN: number; all: number } {
+  const low = hist.filter((h) => h.to < 10), field = hist.filter((h) => h.from >= 10);
+  return { field, lowN: low.reduce((n, h) => n + h.n, 0), all: hist.reduce((n, h) => n + h.n, 0) };
+}
+
+/** The ticks of the strip: the bands' lower bounds (lib/risk-score.ts RISK_BAND_MIN: slab 10, moderat 40, puternic 68), as the cloud's axis. */
+const STRIP_TICKS = [0, RISK_BAND_MIN.slab, RISK_BAND_MIN.moderat, RISK_BAND_MIN.puternic, 100];
 /** Dots closer than this many points stack; above this many levels the rest are counted ("+12"). */
 const STRIP_GAP = 2, STRIP_LEVELS = 6;
 
@@ -297,8 +306,12 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
   // The patterns it has first, by their points, then the others in the role's order.
   const order = [...per].sort((a, b) => (partOf(b.code) ? points[b.code as RiskCriterion] ?? 0 : -1) - (partOf(a.code) ? points[a.code as RiskCriterion] ?? 0 : -1));
   const own = scoreBandOf(f.score);
-  const peak = Math.max(...hist.map((h) => h.n), 1);
-  const bandTitle = (b: ScoreBand, n: number) => b.from === 0 && b.to === 0 ? `${noun(n)} fără niciun tipar (0)` : `${noun(n)} cu scor ${scoreBandWords(b)}`;
+  // UX audit Z3-09: the profiles under 10 (no signal in the score, most of any group) leave the histogram for a line
+  // under it, as in the risk cloud (15 November 2026); the histogram draws 10–100 against its own largest bar.
+  const { field, lowN, all: histN } = splitLowBands(hist);
+  const peak = Math.max(...field.map((h) => h.n), 1);
+  const lowHere = Boolean(own && own.to < 10);
+  const bandTitle = (b: ScoreBand, n: number) => b.from === 0 && b.to === LOW_BAND.to ? `${noun(n)} fără semnal în scor (sub 10)` : b.from === 0 && b.to === 0 ? `${noun(n)} fără niciun tipar (0)` : `${noun(n)} cu scor ${scoreBandWords(b)}`;
   const showAll = () => {
     setAll(true);
     // The first row unfolded takes the focus (the entity's row and the first seven stay above it).
@@ -335,8 +348,8 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
         {hidden > 0 && <button type="button" className="qb-link dist-all" onClick={showAll}>Arată toate cele {formatInt(members.length)}</button>}
       </section>
     </> : <section className="dist-chart" aria-label="Ceilalți membri, după scor">
-      <div className="dist-hist" style={{ "--cols": hist.length } as CSSProperties} {...histMotion.root}>
-        {hist.map((h) => {
+      <div className="dist-hist" style={{ "--cols": field.length } as CSSProperties} {...histMotion.root}>
+        {field.map((h) => {
           // The entity's band: "aici" when it is a member; an old link's other county leaves it out, so "ar fi aici", unmarked.
           const mark = own?.from === h.from, here = mark && f.inGroup, would = mark && !f.inGroup;
           const opened = openBand?.from === h.from;
@@ -352,6 +365,17 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
             : <div key={h.from} className={cls}>{body}</div>;
         })}
       </div>
+      {(lowN > 0 || lowHere) && (() => {
+        const lowOpen = openBand !== null && openBand.from === 0 && openBand.to === LOW_BAND.to;
+        const words = <>
+          <span className="dist-low-axis">sub 10</span>
+          <span>{lowHere && <em>{f.inGroup ? "aici" : "ar fi aici"}</em>}<b>{formatInt(lowN)}</b> fără semnal în scor · {formatShare(histN ? lowN / histN : 0)} din grup</span>
+        </>;
+        return lowN > 0
+          ? <button type="button" className={`dist-low${lowOpen ? " is-open" : ""}`} onClick={() => bars.toggle(LOW_BAND, lowN)} aria-expanded={lowOpen} aria-controls="dist-bar-members"
+            aria-label={`Sub 10, fără semnal în scor: ${noun(lowN)}${lowHere ? `, aici e ${name}` : ""}. Lista lor`}>{words}</button>
+          : <p className="dist-low">{words}</p>;
+      })()}
       <p className="dist-legend">scor din 100 · clic pe o bară: cine are acel scor</p>
       {bar && openBand && <BarMembers bar={bar} title={bandTitle(openBand, bar.total)} row={(m) => <ScoreRow m={m} />} listRef={bars.listRef}
         onMore={() => bars.load(openBand, bar.total, bar.rows.length)} onClose={bars.close}

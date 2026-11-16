@@ -170,7 +170,7 @@ export const CHANNEL_SHARE_TIP = { title: "Ponderile", text: "Directe: fără li
  * them; a channel without records is disabled („—”).
  */
 export function channelShares(data: { streams?: Record<"da" | "contracts", { value: number; count: number }> }, byCount: boolean):
-  { options: (base: readonly SegmentOption[]) => SegmentOption[]; unit: string } | null {
+  { options: (base: readonly SegmentOption[]) => SegmentOption[]; unit: string; title: string } | null {
   const streams = data.streams;
   if (!streams) return null;
   const amount = (s: { value: number; count: number }) => byCount ? s.count : s.value;
@@ -178,6 +178,7 @@ export function channelShares(data: { streams?: Record<"da" | "contracts", { val
   if (total <= 0) return null;
   return {
     unit: byCount ? "% din înregistrări" : "% din valoare",
+    title: byCount ? "Cota din înregistrări" : "Cota din valoare",
     options: (base) => base.map((option) => {
       if (option.value !== "da" && option.value !== "contracts") return option;
       const share = amount(streams[option.value]) / total;

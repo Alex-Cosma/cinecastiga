@@ -423,7 +423,8 @@ const timeseries: Write = (out, spec, ctx, labels) => {
   // "lună de lună, 2025–2026" (F3: its window writes the grain with the period).
   const month = spec.timeseries?.grain === "month";
   const { value } = periodPhrase(spec.filters), oneYear = /^\d{4}$/.test(value);
-  const words = month ? `lună de lună, ${oneYear ? `în ${value}` : value}` : hasPeriod(spec) ? `an de an, ${value}` : "an de an";
+  // A single year has no "an de an" (UX audit Z3-29): „…, în 2019?”.
+  const words = month ? `lună de lună, ${oneYear ? `în ${value}` : value}` : hasPeriod(spec) ? oneYear ? `în ${value}` : `an de an, ${value}` : "an de an";
   out.text(", ").slot("period", "when", words, {
     says: [...(hasPeriod(spec) ? ["period" as const] : []), ...(month ? ["timeseriesGrain" as const] : [])], writes: ["timeseriesGrain"],
   });

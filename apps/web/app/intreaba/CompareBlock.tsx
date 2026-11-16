@@ -14,7 +14,7 @@ import { cleanName, formatInt, formatRon } from "@/lib/format";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import { useTip } from "./blocks";
 import {
-  cardSpan, consortiumWords, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatRow, sharedSubtitle, yearColumns, yearReadout, type YearColumn,
+  cardSpan, consortiumWords, facingRows, generalRow, jointRow, partnersOfWhole, percent, perCapitaShown, seatRow, sharedSubtitle, yearColumns, yearReadout, type YearColumn,
 } from "./compare-answer";
 import { useChartMotion, type ChartMotion } from "./answer/chart-motion";
 import "./compare.css";
@@ -64,6 +64,8 @@ export function CompareBlock({ data, partial = [], dataset = "all", shared = fal
         <CompareCard entity={a} side="a" dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} motion={motion} />
         <CompareCard entity={b} side="b" dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} motion={motion} />
       </div>
+      {/* A phone reads the two as one table, A and B on every row (UX audit Z3-05); the wide screen keeps the cards. */}
+      <FacingTable a={a} b={b} dataset={dataset} perCapita={perCapita} period={periodOf(a, b)} />
       <Years a={a} b={b} partial={partial} />
       {data.shared && <Partners data={data} firms={firms} shared={shared} />}
       <Domains a={a} b={b} firms={firms} />
@@ -198,10 +200,64 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
           className="cq-record-link"
           onClick={() => evidence.open(undefined, { entityIds: [e.entityId], role: firms ? "supplier" : "authority" }, `${cleanName(e.name)} · sursele selecției`)}
         >
-          Vezi cele {countWords(e.count, "înregistrare", "înregistrări")} →
+          {countWords(e.count, "înregistrare", "înregistrări")} →
         </button>
       )}
     </article>
+  );
+}
+
+/**
+ * The comparison on a phone (Z3-05): one table, the two names on top in their colours, then a row per measure with
+ * A and B side by side, each (?) beside its row's label; the risk's note once, and the two records' buttons together.
+ * Hidden on a wide screen (compare.css), where the cards stand side by side.
+ */
+function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b: CompareEntity; dataset: string; perCapita: boolean; period: string | null }) {
+  const evidence = useAnswerEvidence();
+  const firms = a.role === "supplier";
+  const rows = facingRows(a, b, { dataset, perCapita, period });
+  const side = (e: CompareEntity) => ({ e, key: e === a ? "a" : "b" });
+  const sides = [side(a), side(b)];
+  const value = (e: CompareEntity) => {
+    const consortium = consortiumWords(e);
+    return e.count === 0 ? <>0 lei<small>nicio înregistrare aici</small></>
+      : <>{formatRon(e.value)}<small>{countWords(e.count, "înregistrare", "înregistrări")}{consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}</small></>;
+  };
+  const profiled = a.hasProfile !== undefined || b.hasProfile !== undefined;
+  return (
+    <div className="cmp-ab" role="table" aria-label={`${cleanName(a.name)} și ${cleanName(b.name)}`}>
+      <div className="cmp-ab-head" role="row">
+        <span className="ev-sr-only" role="columnheader">Măsura</span>
+        {sides.map(({ e, key }) => (
+          <div key={key} className={`cmp-ab-name cmp-ab-${key}`} role="columnheader">
+            <EntityName id={e.entityId} role={firms ? "supplier" : "authority"}>{cleanName(e.name)}</EntityName>
+            <small className="cmp-sub">{sharedSubtitle(e) ?? <>{countyName(e.county) ?? (firms ? "sediu necunoscut" : "județ necunoscut")} · <RoleWord entity={e} />{cardSpan(e).years && ` · ${cardSpan(e).years}`}{cardSpan(e).older > 0 && ` · +${formatInt(cardSpan(e).older)} mai vechi`}</>}</small>
+          </div>
+        ))}
+      </div>
+      <div className="cmp-ab-row cmp-ab-big" role="row">
+        <span className="cmp-ab-label" role="rowheader">Valoare înregistrată</span>
+        {sides.map(({ e, key }) => <span key={key} className="cmp-ab-val" role="cell">{value(e)}</span>)}
+      </div>
+      {rows.map((row) => (
+        <div key={row.key} className="cmp-ab-row" role="row">
+          <span className="cmp-ab-label" role="rowheader">{row.label}{row.tip && <> {"id" in row.tip ? <Term id={row.tip.id} tip /> : <Term tip title={row.tip.title} text={row.tip.text} />}</>}</span>
+          <span className="cmp-ab-val" role="cell">{row.a ?? "–"}</span>
+          <span className="cmp-ab-val" role="cell">{row.b ?? "–"}</span>
+        </div>
+      ))}
+      {profiled && <p className="cmp-ab-note">Riscul: tot istoricul de achiziții directe; nu urmează filtrele. Semnal, nu dovadă.</p>}
+      {evidence && (a.count > 0 || b.count > 0) && (
+        <div className="cmp-ab-actions">
+          {sides.map(({ e, key }) => e.count > 0
+            ? <button key={key} type="button" className="cq-record-link"
+              onClick={() => evidence.open(undefined, { entityIds: [e.entityId], role: firms ? "supplier" : "authority" }, `${cleanName(e.name)} · sursele selecției`)}>
+              {countWords(e.count, "înregistrare", "înregistrări")} →
+            </button>
+            : <span key={key} />)}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -300,7 +356,8 @@ function Partners({ data, firms, shared }: { data: CompareData; firms: boolean; 
   // A function, not a component made in the render: the same bar element stays, so its width tweens.
   const bar = (side: { value: number; joint?: number }, grow: "cm-x" | "cm-xr", i: number) => {
     const part = jointPart(side);
-    return <i className={`cm-tw ${motion.enter(grow)}`} style={{ width: width(side.value), "--i": i } as CSSProperties}>{part && <b className="cm-tw" style={{ width: part }} />}</i>;
+    // The bar in its own track, as wide on every row (the amount beside it has a fixed width): one scale for both sides.
+    return <span className="cmp-mirror-track"><i className={`cm-tw ${motion.enter(grow)}`} style={{ width: width(side.value), "--i": i } as CSSProperties}>{part && <b className="cm-tw" style={{ width: part }} />}</i></span>;
   };
   return (
     <section className="cmp-section">

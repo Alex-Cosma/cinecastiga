@@ -138,3 +138,44 @@ button.cmp-year[aria-pressed="true"] { background: var(--sunk); }
   .cmp-joint li { padding: 0 0 6px; }
   .cmp-all { margin-top: 0; }
 }
+
+/* UX audit Z3-05 (owner, 16 November 2026): on a phone the two face each other in one table, A and B on every row,
+   instead of card A then card B (the same measure 757 px apart). The wide screen keeps the cards. */
+.cmp-ab { display: none; }
+@media (max-width: 760px) {
+  .cmp-cards { display: none; }
+  .cmp-ab { display: block; padding: 4px 14px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; }
+  .cmp-ab-head, .cmp-ab-row > .cmp-ab-val:first-of-type, .cmp-ab-actions { min-width: 0; }
+  .cmp-ab-head { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+  .cmp-ab-name { min-width: 0; padding-top: 6px; border-top: 3px solid var(--cmp-a); }
+  .cmp-ab-name.cmp-ab-b { border-top-color: var(--cmp-b); }
+  .cmp-ab-name > a { display: flex; align-items: center; min-height: 44px; font: 650 16px/1.2 var(--display); color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+  .cmp-ab-name .cmp-sub { display: block; margin: 0; font-size: 12px; line-height: 1.45; }
+  .cmp-ab-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .cmp-ab-label { position: relative; grid-column: 1 / -1; margin-bottom: 2px; font-size: 12px; color: var(--muted); }
+  .cmp-ab-val { min-width: 0; font-size: 14px; line-height: 1.35; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .cmp-ab-big .cmp-ab-val { font: 650 20px/1.2 var(--display); }
+  .cmp-ab-big .cmp-ab-val small { position: relative; display: block; font: 400 13px/1.4 var(--font-body); color: var(--muted); }
+  .cmp-ab-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+  .cmp-ab-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .cmp-ab-actions .cq-record-link { width: 100%; min-height: 44px; margin: 0; justify-content: center; text-align: center; }
+}
+
+/* Bug (UX audit, zone 3): the shared partners' bars shrank beside their amounts (flex) and stopped at 70%, so 51 and
+   73 mil. lei were as long. Each bar has a track as wide on every row, its amount a fixed width beside it. */
+.cmp-mirror-track { display: flex; flex: 1 1 0; min-width: 0; }
+.cmp-mirror-a .cmp-mirror-track { justify-content: flex-end; }
+.cmp-mirror-a > span:not(.cmp-mirror-track), .cmp-mirror-b > span:not(.cmp-mirror-track) { flex: 0 0 12.5em; min-width: max-content; }
+@media (max-width: 1000px) { .cmp-mirror-a > span:not(.cmp-mirror-track), .cmp-mirror-b > span:not(.cmp-mirror-track) { flex-basis: 11em; } }
+.cmp-mirror-a > span:not(.cmp-mirror-track) { text-align: right; }
+.cmp-mirror-track > i { flex: none; max-width: 100%; }
+@media (max-width: 760px) {
+  .cmp-mirror-track { flex: none; width: 100%; justify-content: flex-start; }
+  .cmp-mirror-a .cmp-mirror-track { justify-content: flex-start; }
+  .cmp-mirror-a > span:not(.cmp-mirror-track), .cmp-mirror-b > span:not(.cmp-mirror-track) { flex: none; text-align: left; }
+}
+
+/* UX audit Z3-26 (owner, 16 November 2026): the second side was orange-red, the colour of risk (DESIGN.md), on a side
+   that may have no signal at all. It is the palette's green-grey (--slate), apart from A's forest by lightness in both
+   themes; the names beside every swatch keep A and B apart without colour. */
+.cmp { --cmp-b: var(--slate); }

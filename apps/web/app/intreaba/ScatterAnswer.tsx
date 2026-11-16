@@ -28,11 +28,12 @@ import { forgetListReturn, readListReturn, rememberListReturn, type ListReturn }
 import { FactTag } from "./answer/RowFacts";
 import { historicFact, historicLeftOutWords, historicPlaceWords } from "../../lib/ask/historic";
 import HelpTip from "./builder/HelpTip";
+import Term from "../../components/Term";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
   RISK_AXIS, RISK_GRID, RISK_ZONES, axisWords, bandIndex, cardFacts, cardFactsV2, cellRects, chartLabels, density, dots, employeesWords, exactDot, fetchScatterFacts, flagTag, geometry, groupCounty,
-  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, scatterFactsKey, scoreBandWord, scoreWords,
+  keptScatterFacts, kindWords, listHeadTip, listHeadWords, listSumParts, SCATTER_FEW, listTotal, nearest, p90Label, p90Words, pointLevel, pointPlace, rankWords, rowMeta, rowPlace, scatterFactsKey, scoreBandWord, scoreWords,
   signalsPageLink, stepWords, stripStatusWords, withFacts, type AnyListRow, type Dot, type MeasureText,
 } from "./scatter-answer";
 import "./scatter.css";
@@ -365,7 +366,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         options={[{ value: "risk", label: legacy ? "Semnale" : "Risc" }, { value: "value", label: "Valoare" }]}
         onChange={(value) => { if (value !== (chosen.rank ?? rank)) { setChosen((c) => ({ ...c, rank: value })); stripChange(`rankBy:${value}`); } }} />
     </StripRow>}
-    <StripRow label="Semnal" tip={{ title: "Semnal", text: flagHelp(role) }}>
+    {/* Z3-21: a signal row with „Tot grupul” alone changes nothing: none. */}
+    {signalOptions.length > 1 && <StripRow label="Semnal" tip={{ title: "Semnal", text: flagHelp(role) }}>
       {/* On a phone one menu, not six full-width pills before the chart (critique 15 November 2026): the same choice. */}
       <div className="sc-signal-pills">
         <Pills label="Semnal" value={chosen.flag ?? flag ?? ""} options={signalOptions} onChange={(value) => chooseSignal(value)} />
@@ -376,7 +378,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           {signalOptions.map((o) => <option key={o.value} value={o.value} disabled={Boolean(o.disabled)}>{o.label} · {o.count}</option>)}
         </select>
       </label>
-    </StripRow>
+    </StripRow>}
   </AnswerStrip>;
 
   const records = (scope: Parameters<NonNullable<typeof evidence>["open"]>[1], title: string, plain = false) => {
@@ -463,8 +465,15 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   // In the order of risk the list leaves out the historic profiles, said under its head with the way back in (owner,
   // 15 November 2026: the pattern of "Cine conduce?"; the filter's pill takes them out again). A plain <a>, as KitLink's:
   // a client navigation to the same page would change the address and keep the answer (AskPanel reads it on load).
-  const historicLine = data.historic ? <p className="sc-hist">{historicLeftOutWords(data.historic)}{" "}
-    <a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a></p> : null;
+  // UX audit Z3-20: one line that adds up to the group's pill: who is in the list, who is inactive (with the way back
+  // in), who is in the cloud only; the words of each are in its (?).
+  const sum = listSumParts(data);
+  const historicLine = sum ? <p className="sc-hist qb-tipwrap">
+    {formatInt(sum.inList)} în listă
+    {sum.historic > 0 && <>{" · "}<Term tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
+      (<a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a>)</>}
+    {sum.cloudOnly > 0 && <>{" · "}{formatInt(sum.cloudOnly)} doar în nor ({sum.from}–{sum.to} achiziții)</>}
+  </p> : null;
 
   const results = (found?.results ?? []).map((m) => ({
     id: m.id, name: cleanName(m.name), detail: m.rank !== null ? `locul ${formatInt(m.rank)} din ${formatInt(total)}` : outWords(m, "nu are semnalul ales"),
@@ -582,13 +591,14 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
           {flaggedField.cells.map((c, i) => <rect key={i} x={c.x} y={c.y} width={c.w} height={c.h} rx={1.2} className={`sc-cell s${c.step}`} />)}
           {flaggedField.bars.map((b, i) => <rect key={`b${i}`} x={b.x} y={b.y} width={b.w} height={b.h} rx={1} className="sc-bar" />)}
         </g>}
-        {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         <g className={motion.enter("cm-fade")}>{all.filter((d) => !d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={3} className="sc-dot" />)}</g>
         <g key={`points:${flag ?? ""}`} ref={motion.join} className={motion.enter("cm-fade")}>{all.filter((d) => d.flagged && !d.listed).map((d) => <circle key={d.point.id} cx={d.x} cy={d.y} r={4} className="sc-dot is-flag" />)}</g>
         {/* The list's points (at most 50): each fades in at its place, together; one the list gains fades in. */}
         {all.filter((d) => d.listed).map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4.5} className={`sc-dot is-list${d.flagged ? " is-flag" : ""} cm-tw ${motion.enter("cm-pt")}`} />)}
         {extra.map((d) => <circle key={d.point.id} ref={motion.join} cx={d.x} cy={d.y} r={4} className={`sc-dot${d.flagged ? " is-flag" : ""}`} />)}
         {labels.map((l) => <text key={l.id} ref={motion.join} x={l.x} y={l.y} textAnchor={l.anchor} className={`sc-label ${motion.enter("cm-fade cm-late")}`} style={FAST}>{l.text}</text>)}
+        {/* UX audit Z3-32: a phone's strip word is drawn over its dots (after them), in its halo of paper, so it reads. */}
+        {g.strip && g.box.compact && <text x={g.pad.l + 4} y={g.strip.y + 12} className="sc-strip-word">fără semnal: {formatInt(noneCount)}</text>}
         {picked && (() => {
           const d = drawn.find((x) => x.point.id === picked.id);
           return d ? <circle cx={d.x} cy={d.y} r={9} className="sc-ring cm-pt" style={FAST} /> : null;
@@ -613,14 +623,15 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       </figcaption>
     </figure>}
 
-    <div className="sc-find">
+    {/* Z3-21: under ten profiles the list shows them all; there is nothing to find. */}
+    {data.group.n >= SCATTER_FEW && <div className="sc-find">
       <Locate key={`${data.flag ?? ""}|${data.rankBy}`} label={firm ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={searching} onSearch={(q) => void search(q)} delay={LOCATE_DEBOUNCE_MS} minChars={LOCATE_MIN_CHARS}
         emptyText={`Niciun profil „${query}” în ${groupIn}.`}
         onPick={(result) => { const m = found?.results.find((x) => x.id === result.id); if (m) openMatch(m, total); }}
         found={found && found.name ? { name: cleanName(found.name), place: found.place } : null} />
       {found && !searching && found.results.length === 0 && hasPlace
         && <a className="qb-relax-link sc-wide" href={widenHref}>Caută în toată țara<span className="qb-glyph" aria-hidden="true">›</span></a>}
-    </div>
+    </div>}
 
     {picked && <DetailCard
       title={cleanName(picked.name)}
@@ -632,7 +643,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       actions={[
         ...(live && picked.flags.includes(live) ? [{ label: signalRecords(picked.id), glyph: "→" as const,
           onClick: () => records({ entityIds: [picked.id], flag: live }, `${picked.name} · ${lower(live)}`) }] : []),
-        { label: "Vezi înregistrările", glyph: "→" as const, onClick: () => records({ entityIds: [picked.id] }, `${picked.name} · înregistrările profilului`, true) },
+        { label: countWords(picked.nDas, "înregistrare", "înregistrări"), glyph: "→" as const, onClick: () => records({ entityIds: [picked.id] }, `${picked.name} · înregistrările profilului`, true) },
         { label: "Unde se situează?", glyph: "›" as const, href: askLink({ block: "distribution", measure: "value", dim: role, filters: { [`${role}Id`]: Number(picked.id), [`${role}Name`]: picked.name } } as unknown as QuestionSpec) },
       ]}
     />}
@@ -640,6 +651,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     {rows.length > 0 ? <section className="sc-list-wrap" aria-label="Lista profilurilor">
       <h3 className="qb-tipwrap sc-list-head">{listHeadWords(data, shown)} <HelpTip tip={{ title: listHeadWords(data, shown), text: listHeadTip(data) }} /></h3>
       {historicLine}
+      {/* Z3-21: a group where nobody has a score says it once, above its rows of „0 din 100”. */}
+      {!legacy && rows.length > 1 && rows.every((r) => "score" in r && (r.score ?? 0) === 0) && <p className="sc-hist">Niciunul nu are semnale în scor.</p>}
       <ol className="sc-list" ref={listRef}>
         {visible.map((row, index) => {
           const own = withFacts<string>(row.flags, legacy ? undefined : facts.get(row.entityId));
@@ -650,7 +663,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             <span className="sc-rank qb-num">{index + 1}</span>
             <span className="sc-who">
               <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
-              <small>{rowMeta(row, role)}</small>
+              {/* Z3-22: a phone leaves the count of direct acquisitions to the records link, which says it (not with a signal chosen). */}
+              <small>{live ? rowMeta(row, role) : <>{rowPlace(row, role)}<span className="sc-who-n">{rowPlace(row, role) ? " · " : ""}{countWords(row.nDas, "achiziție directă", "achiziții directe")}</span></>}</small>
               {(own.length > 0 || row.historic !== undefined) && <span className="qb-tags">
                 {row.historic !== undefined && <FactTag fact={historicFact(row.historic)} />}
                 {own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
@@ -665,7 +679,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         })}
       </ol>
       <ListFoot shown={shown} total={rows.length} noun={["profil", "profiluri", "n"]} list={listRef} onMore={() => setMore((m) => Math.min(m + SCATTER_LIST_PAGE, rows.length))}
-        records={{ label: live ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : "Vezi înregistrările celor din listă", glyph: "→",
+        records={{ label: live ? (signalLoaded ? `Vezi cele ${countWords(signalRows, "înregistrare", "înregistrări")} cu semnalul` : "Vezi înregistrările cu semnalul") : `Vezi cele ${countWords(visible.reduce((n, r) => n + r.nDas, 0), "înregistrare", "înregistrări")}`, glyph: "→",
           onClick: () => records({ entityIds: visible.map((r) => r.entityId), ...(live ? { flag: live } : {}) }, live ? `semnalul „${lower(live)}” · profilurile din listă` : "profilurile din listă", !live) }} />
       <p className="sc-more"><Link className="qb-link" href={signals.href}>{signals.label}<span className="qb-glyph" aria-hidden="true">↗</span></Link></p>
     </section> : data.historic ? historicLine

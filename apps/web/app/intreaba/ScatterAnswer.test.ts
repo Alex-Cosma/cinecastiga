@@ -10,7 +10,7 @@ import { emptyAnswer, emptyMessage } from "./answer-empty";
 import ScatterAnswer from "./ScatterAnswer";
 import {
   SCORE_SPREAD, axisTicks, axisWords, bandIndex, cardFacts, cardFactsV2, chartLabels, density, densitySteps, dots, employeesWords, exactDot, flagTag, geometry, jitter, kindWords, listHeadTip,
-  listHeadWords, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
+  listHeadWords, listSumParts, listTotal, nearest, p90Label, stepOf, stepWords, pointPlace, rowMeta, rowPlace, scatterCsv, scoreWords, signalsPageLink, stripStatusWords, withFacts, type Dot,
 } from "./scatter-answer";
 import type { ScatterData } from "../../lib/ask/scatter-shared";
 
@@ -100,7 +100,8 @@ describe("the risk cloud's answer", () => {
     expect(markup).toContain('<span class="cri-pill risk-high">73 din 100</span><small>pronunțat</small>');
     expect(markup).toContain('<span class="cri-pill risk-mid">64 din 100</span><small>moderat</small>');
     expect(words).toContain("2.567 de înregistrări");
-    expect(words).toContain("Vezi înregistrările celor din listă");
+    // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
+    expect(words).toContain("Vezi cele 4.827 de înregistrări →");
     expect(words).toContain("Toată lista pe /semnale");
     expect(words).toContain("Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți.");
   });
@@ -437,6 +438,8 @@ describe("the chart's geometry and words", () => {
     expect(employeesWords(3, 2025)).toBe("3 angajați · bilanț 2025");
     expect(employeesWords(null, null)).toBe("fără bilanț");
     expect(rowMeta({ ...BUZAU_CLOUD.list[0]!, employees: 3, employeesYear: 2025 }, "supplier")).toBe("3 angajați · bilanț 2025 · Buzău · 2.567 de achiziții directe");
+    // UX audit Z3-22: a phone's row leaves the count to its records link; the kind (a firm's size) and county stay.
+    expect(rowPlace({ ...BUZAU_CLOUD.list[0]!, employees: 3, employeesYear: 2025 }, "supplier")).toBe("3 angajați · bilanț 2025 · Buzău");
     expect(flagTag({ code: "da_split", years: [2018, 2019] }, "authority")).toMatchObject({ text: `${SPLIT} · 2018–2019`, tone: "signal" });
     // Each tag explains itself and its number (owner, 15 November 2026: signal-tips.ts).
     expect(flagTag({ code: "da_split", years: [2018, 2019] }, "authority").tip).toEqual({ title: SPLIT, text: expect.stringMatching(/2018–2019: anii în care apare\.$/) });
@@ -462,7 +465,11 @@ describe("the chart's geometry and words", () => {
     expect(listHeadWords(out, 10)).toBe("Primele 10 din 81");
     expect([pointPlace(out, "2144803"), pointPlace(out, "2146202"), pointPlace(out, "2144792")]).toEqual([1, 2, null]);
     const markup = render(out);
-    expect(text(markup)).toContain("Primele 2 din 81 1 profil inactiv, fără înregistrări în ultimele 24 de luni, nu e în listă. Include-le");
+    expect(text(markup)).toContain("Primele 2 din 81 81 în listă · 1 inactiv ( Include-le )");
+    // UX audit Z3-20: the line adds up to the group (81 listed + 1 inactive = 82, the pill); the cloud-only ones join it.
+    expect(listSumParts(out)).toMatchObject({ inList: 81, historic: 1 });
+    expect(listSumParts({ ...out, group: { ...out.group, n: out.group.nList + 8 } })).toMatchObject({ inList: 81, historic: 1, cloudOnly: 8, from: 10, to: 19 });
+    expect(listSumParts({ ...BUZAU_CLOUD, historic: 0, group: { ...BUZAU_CLOUD.group, n: BUZAU_CLOUD.group.nList } })).toBeNull();
     // A full page load (a client navigation to the same page kept the answer), to the same question with them.
     const link = /<a class="qb-link" href="([^"]+)">Include-le<\/a>/.exec(markup);
     expect(decodeSpec(decodeURIComponent(link![1]!.split("spec=")[1]!.replace(/&amp;/g, "&")))).toMatchObject({ block: "scatter", filters: { includeHistoric: true } });
@@ -477,6 +484,8 @@ describe("the chart's geometry and words", () => {
   it("words the list's head and its (?): the order, the floor of 20 and how many are in the cloud alone", () => {
     expect(listHeadWords(BUZAU_CLOUD, 10)).toBe("Primele 10 din 82");
     expect(listHeadWords(BUZAU_SPLIT, 10)).toBe("Primele 10 din 46");
+    // UX audit Z3-21: a group under ten, shown whole, says „Toate cele 5”.
+    expect(listHeadWords({ ...BUZAU_CLOUD, historic: 0, group: { ...BUZAU_CLOUD.group, n: 5, nList: 5 } }, 10)).toBe("Toate cele 5");
     expect(listHeadWords(BUZAU_SPLIT, 3)).toBe("Primele 3 din 46");
     expect(listHeadTip({ ...NATIONAL_BANDS, group: { n: 100, nList: 80 } })).toBe("Cel mai mare risc; la egalitate, valoarea mai mare întâi. În listă intră cine are cel puțin 20 de achiziții directe. 20 de profiluri sunt doar în nor (10–19 achiziții).");
     expect(listHeadTip({ ...BUZAU_CLOUD_V2, group: { n: 100, nList: 80 } })).toMatch(/^Cele mai multe semnale;/);

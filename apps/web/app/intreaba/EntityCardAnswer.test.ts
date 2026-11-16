@@ -64,7 +64,8 @@ describe("by value: the podium", () => {
     // „Scoate din calcul” on every place (its menu), the page of the firm.
     expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(3);
     expect(words).toContain("Din 26,5 mld. lei, câștigați de 1.467 de firme · doar 2025 · valoare înregistrată, nu plăți");
-    expect(words).toContain("Vezi cele 13.669 de înregistrări →");
+    // UX audit Z3-08: place 1's records are the head's button (AskPanel), not a second one under the podium.
+    expect(words).not.toContain("Vezi cele 13.669 de înregistrări");
     // „Tot clasamentul ›” keeps every condition of the question, as a ranking of the first ten.
     const href = /href="([^"]*intreaba\?spec=[^"]*)"[^>]*>Tot clasamentul/.exec(markup)?.[1] ?? "";
     const spec = JSON.parse(Buffer.from(decodeURIComponent(href.split("spec=")[1]!), "base64").toString("utf8")) as QuestionSpec;
@@ -112,16 +113,17 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
   it("names the first with its score and band, lists five with their place, score pill and patterns, and the value at the right", () => {
     const markup = render({ card: card({ role: "authority", score: 71, nFlags: 3 }), ranking: RANKING }, riskSpec, true);
     const words = text(markup);
-    expect(words).toContain("Primul: SPITALUL ORASENESC AGNITA, 71 din 100 · pronunțat.");
-    // The score is no probability: its (?) beside the headline.
+    // UX audit Z3-19: no „Primul: …” line repeating row 1; row 1 is marked, the score's (?) beside its band.
+    expect(words).not.toContain("Primul:");
+    expect(markup).toContain('class="qb-arow ec-rrow is-first"');
     expect(markup).toContain("Riscul, din 100");
     expect(words).not.toContain("la egalitate");
     // One with the best score: the order is the score's, not the value's.
     expect(words).not.toContain("În ordinea valorii");
-    expect(markup.match(/class="qb-arow ec-rrow"/g)).toHaveLength(5);
+    expect(markup.match(/class="qb-arow ec-rrow( is-first)?"/g)).toHaveLength(5);
     // Three patterns fit in their place, no „+1” (owner, 2 November 2026); the name opens the profile's page.
-    expect(words).toContain("1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie declarate directe, peste plafon 71 din 100 pronunțat 190 mil. lei");
-    expect(markup).toMatch(/class="qb-arow-name">1\. <a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
+    expect(words).toContain("1 1. SPITALUL ORASENESC AGNITA Sibiu · 1.000 de achiziții directe adunate, trec de plafon mulți bani contractați în decembrie declarate directe, peste plafon 71 din 100 pronunțat 190 mil. lei");
+    expect(markup).toMatch(/class="qb-arow-name"><span class="ec-first-n" aria-hidden="true">1<\/span><span class="qb-sr">1\. <\/span><a href="\/entitati\/1">SPITALUL ORASENESC AGNITA<\/a>/);
     expect(words).toContain("2. Spital 2 Cluj · 2.000 de achiziții directe adunate, trec de plafon 60 din 100 moderat 180 mil. lei");
     // Tied rows share their place: 2, 2, 2, then 5.
     expect(words).toContain("2. Spital 4 Cluj");
@@ -140,10 +142,9 @@ describe("on the risk axis: the first profiles by the risk score (entity_card-3)
     expect(markup.match(/class="qb-rec ec-rrec"/g)).toHaveLength(5);
     expect(markup).not.toContain('aria-haspopup="menu"');
     expect(words).not.toContain("Scoate din calcul");
-    // The headline names the list, and anchors its (?) on its own line (owner, 2 November 2026: it opened far below).
-    const head = /<p class="ec-ties-text qb-tipwrap" id="([^"]+)"/.exec(markup)?.[1];
-    expect(head).toBeTruthy();
-    expect(markup).toContain(`aria-describedby="${head}"`);
+    // One first, no headline (Z3-19): the score's (?) anchors on row 1's score (qb-tipwrap); a tie keeps its headline (below).
+    expect(markup).not.toMatch(/<p class="ec-ties-text qb-tipwrap"/);
+    expect(markup).toContain('class="ec-score qb-tipwrap"');
   });
 
   it("says the profiles tied on the best score, with the (?) of a tie, and the order of value when every shown row is tied", () => {

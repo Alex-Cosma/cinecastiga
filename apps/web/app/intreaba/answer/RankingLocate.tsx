@@ -25,9 +25,11 @@ export interface RankingLocateProps {
   onWhole: (rank: number) => void;
   /** At the row's end: the ranking's „Vizual | Tabel”, which has no strip of its own. */
   end?: ReactNode;
+  /** The place picked (or none): the ranking marks its row, or pins it under the list (UX audit Z3-07). */
+  onFound?: (match: LocateMatch | null) => void;
 }
 
-export default function RankingLocate({ spec, shown, onWhole, end }: RankingLocateProps) {
+export default function RankingLocate({ spec, shown, onWhole, end, onFound }: RankingLocateProps) {
   const firms = spec.dim === "supplier";
   const [results, setResults] = useState<(SearchResult & { match: LocateMatch })[]>([]);
   const [total, setTotal] = useState(0);
@@ -37,7 +39,7 @@ export default function RankingLocate({ spec, shown, onWhole, end }: RankingLoca
   useEffect(() => () => controller.current?.abort(), []);
   // A new question forgets the last search's place.
   const key = JSON.stringify(spec);
-  useEffect(() => { setFound(null); setResults([]); }, [key]);
+  useEffect(() => { setFound(null); setResults([]); onFound?.(null); }, [key]);
 
   const search = (q: string) => {
     controller.current?.abort();
@@ -64,7 +66,7 @@ export default function RankingLocate({ spec, shown, onWhole, end }: RankingLoca
   return <div className="qb cq-locate">
     <Locate label={firms ? "Unde e o firmă?" : "Unde e o instituție?"} results={results} loading={loading} delay={LOCATE_DEBOUNCE_MS}
       minChars={LOCATE_MIN_CHARS} onSearch={search} emptyText="Niciun nume găsit în clasament."
-      onPick={(result) => setFound((result as SearchResult & { match: LocateMatch }).match)}
+      onPick={(result) => { const match = (result as SearchResult & { match: LocateMatch }).match; setFound(match); onFound?.(match); }}
       found={found && place ? { name: found.name, place } : null} />
     {found?.rank != null && found.rank > shown && (
       <button type="button" className="qb-link cq-locate-whole" onClick={() => onWhole(found.rank!)}>Vezi în tot clasamentul ›</button>

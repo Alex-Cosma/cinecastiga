@@ -66,12 +66,14 @@ import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
 import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import RankingLocate from "./answer/RankingLocate";
+import type { LocateMatch } from "@/lib/ask/facet-parts";
 import Locate from "./answer/Locate";
+import PhoneSelect from "./answer/PhoneSelect";
 import { FactTag } from "./answer/RowFacts";
 import { useRowFacts } from "./answer/use-row-facts";
 import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
 import type { WinnerFacts } from "@/lib/ask/winners";
-import EmptyState from "./answer/EmptyState";
+import CountedEmptyState from "./answer/CountedEmptyState";
 import EmptyHints from "./answer/EmptyHints";
 import { emptyAnswer, emptyMessage, relaxations } from "./answer-empty";
 import { countyName } from "../../lib/counties";
@@ -94,12 +96,14 @@ import EntityTypeahead from "./EntityTypeahead";
 import EvidenceDrawer from "./EvidenceDrawer";
 import { AnswerEvidence, useAnswerEvidence, type EvidenceOpenOpts } from "./AnswerEvidence";
 import { CompareBlock } from "./CompareBlock";
+import { factLead } from "./FactCheckAnswer";
 import MapBlock, { MapGhost } from "./MapBlock";
 import { countyMetrics, mapFirm, mapLensOptions, mapLocalAdmin, metricWords, shownLens, type MapLensValue } from "./map-answer";
 import type { MapFacts } from "@/lib/ask/map-facts";
 import "./question-results.css";
 import DiscoveryIcon from "../DiscoveryIcon";
 import AnswerExports from "./AnswerExports";
+import ShareMenu from "./answer/ShareMenu";
 import CoverageDisclosure from "@/components/CoverageDisclosure";
 import Term from "@/components/Term";
 import { AskBox, AskExamples, IntentAnnouncer, IntentChoose, IntentLine, IntentUnknown, MAX_QUESTION_CHARS, type IntentChoice } from "./IntentAsk";
@@ -188,6 +192,11 @@ function sourceCount(data: BlockData, applied?: AskSpec): number | null {
       return data.counties.reduce((n, r) => n + r.count, 0);
     case "breakdown":
       return data.slices.reduce((n, r) => n + r.count, 0) + data.other.count;
+    // Z3-08: a ranking's whole selection (its band's, when it lists one), and both sides of a comparison.
+    case "table":
+      return data.group?.count ?? data.totals?.count ?? null;
+    case "compare":
+      return data.entities.reduce((n, e) => n + e.count, 0);
     // entity_card-2 (F6c): the sources are place 1's records by value, the tied profiles' on the index (runRows).
     case "entity_card":
       return data.ranking ? data.ranking.rows.reduce((n, r) => n + r.count, 0)
@@ -1007,6 +1016,8 @@ export default function AskPanel({
   // whole ranking, in pages, on the page of the place it found.
   const factIds = data?.block === "table" && applied && rowFactsWanted(applied) ? data.rows.flatMap((r) => r.entityId ? [r.entityId] : []) : [];
   const rowFacts = useRowFacts(factIds.length ? applied ?? null : null, factIds);
+  /** The place „Unde e o firmă?” picked: the ranking marks its row, or pins it under the list (UX audit Z3-07). */
+  const [locateFound, setLocateFound] = useState<LocateMatch | null>(null);
   const wholeRanking = (rank: number) => {
     if (!applied) return;
     const { topN: _topN, ...rest } = applied;
@@ -1233,27 +1244,33 @@ export default function AskPanel({
                 )}
               </div>
               <div className="cq-answer-actions">
-                {/* G2: an empty answer has no records to open; its relaxations are below. */}
-                {!empty && <button
+                {/* G2: an empty answer has no records to open; its relaxations are below. Nor has a verification's "Nu":
+                    its most useful lead takes the place (Z3-18). */}
+                {data.block === "fact_check" && factLead(data.fact, applied)?.lead && (() => {
+                  const lead = factLead(data.fact, applied)!.lead!;
+                  return lead.href
+                    ? <a className="cq-source-main" href={lead.href}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></a>
+                    : <button type="button" className="cq-source-main" onClick={() => runWider(lead.spec!)}>{lead.label}<span className="qb-glyph" aria-hidden="true">›</span></button>;
+                })()}
+                {!empty && !(data.block === "fact_check" && factLead(data.fact, applied)) && <button
                   type="button"
                   className="cq-source-main"
                   onClick={() => openEvidence()}
                 >
                   <DiscoveryIcon name="database"/>
-                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările sursă':isProfile||applied.dataset==='da'
+                  {/* Z3-08: „Vezi cele N înregistrări”, N where the answer knows it; „achiziții” only for direct acquisitions. */}
+                  {applied.block==='scatter'&&applied.scatter?.flag?'Vezi înregistrările semnalului':count===null||count===0?'Vezi înregistrările':isProfile||applied.dataset==='da'
                     ?count===1?'Vezi achiziția':`Vezi cele ${countWords(count, 'achiziție', 'achiziții')}`
-                    :count===1?'Vezi înregistrarea sursă':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
+                    :count===1?'Vezi înregistrarea':`Vezi cele ${countWords(count, 'înregistrare', 'înregistrări')}`}
                 </button>}
-                <button
-                  type="button"
-                  className="cq-share"
-                  onPointerDown={() => prepareShortLink(answerPath(applied, thread))}
-                  onClick={() => void share(answerPath(applied, thread), title)}
-                >
-                  <ShareIcon />
-                  <span>Trimite</span>
-                </button>
-                <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
+                {/* Z3-15: the answer's actions in one group: „Trimite ▾” (its menu copies the link), „Salvează”, „Exportă ▾”. */}
+                <div className="cq-answer-more">
+                  <ShareMenu onPrepare={() => prepareShortLink(answerPath(applied, thread))} onCopy={() => void copyLink(answerPath(applied, thread))}
+                    onShare={() => void share(answerPath(applied, thread), title)} />
+                  <SaveQuestionButton spec={applied} active={answerSaved} onSaved={setAnswerSaved} disabled={loading} compact />
+                  <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}));}}
+                    months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
+                </div>
                 {/* A trend's or a network's group: the watch fixes its members (plan §2.8); too large a group says how to narrow it. */}
                 <FollowButton key={JSON.stringify(applied)} spec={applied} title={title}
                   {...(watchedGroup ? { label: watchedGroup.label, blocked: watchedGroup.blocked } : {})} />
@@ -1283,7 +1300,8 @@ export default function AskPanel({
                 archive, the ceiling and „valori înregistrate, nu plăți”. No banner (owner, 2 November 2026). */}
             {/* The trend's groups (its strip keys) are drawn by its block, above its rows: no empty strip here. A ranking's
                 strip would hold only „Vizual | Tabel” (owner, 1 November 2026): it ends the row of „Unde e o firmă?” instead. */}
-            {(stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
+            {/* Z3-29: an empty answer has nothing for its strip to act on. */}
+            {!empty && (stripKeys.some((key) => key === "dataset" || key === "measure") || crumbs || ["timeseries", "map"].includes(data.block)) && (
               <div className="qb cq-strip"><AnswerStrip>
                 {stripKeys.includes("dataset") && (() => {
                   // A breakdown's channels say their share of the whole selection (F3, final breakdown §3.6), with the unit beside.
@@ -1301,7 +1319,7 @@ export default function AskPanel({
                       applyStripChange("dataset", value);
                     }}
                   />;
-                  return shares ? <StripLabelled after={shares.unit} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
+                  return shares ? <StripLabelled after={shares.unit} title={shares.title} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
                 })()}
                 {/* Two firms (F4, final compare §3.4): „Doar clienții comuni N”, N the shared clients of the answer on screen. */}
                 {data.block === "compare" && stripKeys.includes("sharedPartners") && data.entities[0]?.role === "supplier" && (() => {
@@ -1336,7 +1354,8 @@ export default function AskPanel({
                 {data.block === "breakdown" && !crumbs && applied.filters.purchaseKind && PURCHASE_KIND_WORDS[applied.filters.purchaseKind] && (
                   <Crumbs label="Domenii" items={[{ label: "toate", onClick: () => applyStripChange("purchaseKind", "") }]} current={PURCHASE_KIND_WORDS[applied.filters.purchaseKind].label} />
                 )}
-                {data.block === "breakdown" && (() => {
+                {data.block === "breakdown" && !(data.slices.length === 1 && data.slices[0]!.count === 1 && data.other.count === 0) && (() => {
+                  // Z3-33: a single record has nothing deeper to show.
                   const deeper = breakdownSuggestion(data, applied, thread);
                   return deeper && <Suggest text={deeper.text} href={deeper.href} />;
                 })()}
@@ -1344,6 +1363,9 @@ export default function AskPanel({
                 {data.block === "sankey" && stripKeys.includes("sankeyShown") && (
                   <StripLabelled before="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"}>
                     <Segmented label="Câți parteneri arăți" size="sm" value={String(sankeyShown(applied))} options={sankeyShownOptions(data)}
+                      onChange={(value) => { if (Number(value) !== sankeyShown(applied)) applySankeyShown(Number(value)); }} />
+                    {/* Z3-28: a phone's native menu, „Arată [6 ▾] firme”. */}
+                    <PhoneSelect label="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"} value={String(sankeyShown(applied))} options={sankeyShownOptions(data)}
                       onChange={(value) => { if (Number(value) !== sankeyShown(applied)) applySankeyShown(Number(value)); }} />
                   </StripLabelled>
                 )}
@@ -1363,8 +1385,9 @@ export default function AskPanel({
                         options={lensChoices}
                         onChange={(value) => { if (value !== mapLens) applyStripChange("measure", value); }}
                       />
+                      {/* Z3-28: in the lens's row, so a phone puts it beside „Harta arată”. */}
+                      <HelpTip tip={mapLens === "value_per_capita" ? PER_INHABITANT_LENS_TIP : MAP_LENS_TIP} />
                     </StripLabelled>
-                    <HelpTip tip={mapLens === "value_per_capita" ? PER_INHABITANT_LENS_TIP : MAP_LENS_TIP} />
                     {/* Per inhabitant only for the local administrations (map final §3.7): the link changes the buyers, in view. */}
                     {!mapFirm(applied) && !mapLocalAdmin(applied) && (
                       <span className="qb-row ask-percap-link">
@@ -1375,7 +1398,7 @@ export default function AskPanel({
                   </span>
                 )}
                 {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
-                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd>{layoutToggle}</StripEnd>}
+                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd wideOnly={data.block === "sankey"}>{layoutToggle}</StripEnd>}
               </AnswerStrip></div>
             )}
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
@@ -1383,14 +1406,15 @@ export default function AskPanel({
             )}
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
-              <EmptyState
+              {/* Z3-29: each wider question says how many records it would bring (counted lazily). */}
+              <CountedEmptyState
                 message={emptyMessage(data, isProfile)}
-                relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, onClick: () => runWider(r.spec) }))}
+                relax={relaxations(applied).map((r) => ({ id: r.id, label: r.label, spec: r.spec, onClick: () => runWider(r.spec) }))}
                 titleId="raspuns-titlu"
               >
                 {applied.filters.cpvTerm && <EmptyHints spec={applied} title={title} subject={/\d{8}/.test(String(applied.filters.cpvTerm)) ? null : String(applied.filters.cpvTerm)}
                   onRun={(next) => { runWider(next); requestAnimationFrame(() => document.getElementById("raspuns-titlu")?.focus()); }} />}
-              </EmptyState>
+              </CountedEmptyState>
             </div>
               // Keyed by its subject (chart-motion.ts): another block, unit or entity enters anew; a filter, a measure or
               // a group changes the same charts in place, so their marks tween.
@@ -1401,8 +1425,10 @@ export default function AskPanel({
                     restriction in a new history entry (plan §2.3), so "Înapoi" brings the whole total back. */}
                 <StatMix spec={applied} onOnly={(next, words) => { runWider(next); showToast(`${words}.`); }} />
               </>}
-              {data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
-                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle}
+              {/* Z3-33: a ranking of one has nothing to find and one view: no search, no „Vizual | Tabel”. */}
+              {data.block === "table" && data.rows.length === 1 && (data.page ?? 0) === 0 && (data.totals?.entities ?? data.total ?? 1) <= 1 ? null
+                : data.block === "table" && (applied.dim === "supplier" || applied.dim === "authority") && applied.measure !== "value_per_capita" && data.rows.length > 0
+                ? <RankingLocate spec={applied} onWhole={wholeRanking} end={layoutToggle} onFound={setLocateFound}
                   shown={data.total !== undefined ? ((data.page ?? 0) + 1) * (data.pageSize ?? RANKING_PAGE_SIZE) : data.rows.length} />
                 : data.block === "table" && <div className="qb cq-layout-row">{layoutToggle}</div>}
               {data.block === "table" &&
@@ -1415,6 +1441,7 @@ export default function AskPanel({
                     group={(data.page ?? 0) === 0 && !tableOpts.sort ? data.group : undefined}
                     onSources={openEvidence}
                     facts={rowFacts}
+                    found={locateFound}
                   />
                 ) : (
                   <TableBlock
@@ -1533,7 +1560,7 @@ export default function AskPanel({
             {/* G8: what changed the total outside the sentence; the ranking says it in its own total line. A risk
                 profile has no total in lei: its seat is the sentence's, and «nu plăți» would speak of sums it does not show. */}
             {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && data.block !== "entity_card" && (
-              <div className="qb cq-total"><TotalLine conditions={totalWords}>{totalLead(data)}</TotalLine></div>
+              <div className="qb cq-total"><TotalLine conditions={totalWords} {...(data.block === "stat" ? { note: false as const } : {})}>{totalLead(data)}</TotalLine></div>
             )}
             {/* How the number was built reads after the answer, not before it. */}
             {(resp.caveats?.length ?? 0) > 0 && (
@@ -1543,15 +1570,16 @@ export default function AskPanel({
                   /am ales|Am restrâns|nu există|ignor|în afara/i.test(c),
                 )}
               >
+                {/* Z3-16: two disclosures with two names: what the number leaves in and out, and where the data come from. */}
                 <summary>
-                  Ce include calculul · {resp.caveats!.length}
+                  Limite · {resp.caveats!.length}
                 </summary>
                 {resp.caveats!.map((c) => (
                   <p key={c}>{c}</p>
                 ))}
               </details>
             )}
-            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied}>
+            <CoverageDisclosure key={JSON.stringify(applied)} spec={applied} summary="Surse și date">
               {resp.displaySql && (
                 <details>
                   <summary>Interogarea SQL · avansat</summary>
@@ -1561,19 +1589,9 @@ export default function AskPanel({
                 </details>
               )}
             </CoverageDisclosure>
-            <div className="cq-answer-tools">
-              <button
-                type="button"
-                className="cq-copy"
-                onPointerDown={() => prepareShortLink(answerPath(applied, thread))}
-                onClick={() => void copyLink(answerPath(applied, thread))}
-              >
-                <CopyIcon />
-                Copiază linkul
-              </button>
-              <AnswerExports key={encodeSpec(applied)} spec={applied} disabled={loading} onResult={async()=>{if(data.block==="scatter"&&"scatter" in data)await ensureScatterFacts(applied,data.scatter.list.map((r)=>r.entityId));downloadCsv(answerCsv(data,applied,title,band,{mapFacts:mapFacts.status==="ready"?mapFacts.value:null}));}}
-                months={resp.executed?.months} onStale={() => reloadOutdated(false)}/>
-              {mode === "ask" && (
+            {/* Z3-15: „Copiază linkul” is in „Trimite ▾”, „Exportă” in the head; the row stays for the AI mode's „Ajustează”. */}
+            {mode === "ask" && <div className="cq-answer-tools">
+              {(
                 <button
                   type="button"
                   onClick={() => {
@@ -1587,7 +1605,7 @@ export default function AskPanel({
                   Ajustează întrebarea ↑
                 </button>
               )}
-            </div>
+            </div>}
 
           </section>
         </AnswerEvidence.Provider>
@@ -1627,9 +1645,9 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
   const profile = Boolean(spec && isHistoricalProfile(spec));
   const n = <G.Line inline w="9ch" />;
   // The records' button says its count where the answer has one (sourceCount): its width sets the title's.
-  const counted = block !== undefined && ["network", "sankey", "stat", "fact_check", "timeseries", "map", "breakdown", "entity_card"].includes(block);
+  const counted = block !== undefined && ["network", "sankey", "stat", "fact_check", "timeseries", "map", "breakdown", "entity_card", "table", "compare"].includes(block);
   const source = block === "scatter" && spec?.scatter?.flag ? "Vezi înregistrările semnalului"
-    : !counted ? "Vezi înregistrările sursă"
+    : !counted ? "Vezi înregistrările"
       : <span>Vezi cele {n} {profile || spec?.dataset === "da" ? "de achiziții" : "de înregistrări"}</span>;
   const totalWords = spec && block !== "table" && block !== "network" && block !== "entity_card" && !profile ? totalConditionWords(spec) : [];
   return <Ghost as="section" className="cq-answer" name="ask-answer" wait="client">
@@ -1643,11 +1661,14 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
       </div>
       <div className="cq-answer-actions g-quiet" inert>
         <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>
-        <button type="button" className="cq-share"><ShareIcon />Trimite</button>
-        <span className="cq-save-wrap"><button type="button" className="cq-save-question">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
-          <span>Salvează</span>
-        </button></span>
+        <div className="cq-answer-more">
+          <span className="qb cq-share-menu"><button type="button" className="cq-share"><ShareIcon /><span>Trimite</span><DiscoveryIcon name="chevronDown" /></button></span>
+          <span className="cq-save-wrap"><button type="button" className="cq-save-question">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z" /></svg>
+            <span>Salvează</span>
+          </button></span>
+          {spec && <AnswerExports spec={spec} disabled onResult={() => undefined} />}
+        </div>
         {/* A signed-in reader's „Urmărește” and „Salvează în anchetă”: one more pair. */}
         {viewer.userId && <span className="cq-ghost-pair g-block" />}
       </div>
@@ -1665,12 +1686,8 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
     </div>
     {totalWords.length > 0 && <div className="qb cq-total" inert><TotalLine conditions={totalWords}><G.Line inline w="40%" /></TotalLine></div>}
     <div inert className="g-quiet">
-      <details className="cq-caveats"><summary>Ce include calculul · <G.Line inline w="1ch" /></summary></details>
-      {spec && <CoverageDisclosure spec={spec} />}
-      <div className="cq-answer-tools">
-        <button type="button" className="cq-copy"><CopyIcon />Copiază linkul</button>
-        {spec && <AnswerExports spec={spec} disabled onResult={() => undefined} />}
-      </div>
+      <details className="cq-caveats"><summary>Limite · <G.Line inline w="1ch" /></summary></details>
+      {spec && <CoverageDisclosure spec={spec} summary="Surse și date" />}
     </div>
   </Ghost>;
 }
@@ -1687,11 +1704,10 @@ function StripGhost({ spec }: { spec: AskSpec }) {
     : streamOptions(spec);
   return <div className="qb cq-strip g-quiet" inert><AnswerStrip>
     {keys.includes("dataset") && (spec.block === "breakdown"
-      ? <StripLabelled after={spec.measure === "count" ? "% din înregistrări" : "% din valoare"} wide><Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} /><HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled>
+      ? <StripLabelled after={spec.measure === "count" ? "% din înregistrări" : "% din valoare"} title={spec.measure === "count" ? "Cota din înregistrări" : "Cota din valoare"} wide><Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} /><HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled>
       : <Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} />)}
     {spec.block === "map" && keys.includes("measure") && <span className="qb-row qb-row--wide qb-tipwrap-sm ask-maplens">
-      <StripLabelled before="Harta arată"><Segmented label="Harta arată" value={spec.measure === "count" ? "count" : "value"} options={mapLensOptions(spec, { status: "loading" })} /></StripLabelled>
-      <HelpTip tip={MAP_LENS_TIP} />
+      <StripLabelled before="Harta arată"><Segmented label="Harta arată" value={spec.measure === "count" ? "count" : "value"} options={mapLensOptions(spec, { status: "loading" })} /><HelpTip tip={MAP_LENS_TIP} /></StripLabelled>
       {!mapFirm(spec) && !mapLocalAdmin(spec) && <span className="qb-row ask-percap-link"><button type="button" className="qb-link">Pe locuitor<span className="qb-glyph" aria-hidden="true">→</span></button><HelpTip tip={PER_INHABITANT_TIP} /></span>}
     </span>}
     {spec.block === "timeseries" && keys.includes("timeseriesSplit") && <StripLabelled before="Împarte" smHide><Segmented label="Împarte" value={`split:${spec.timeseries?.split ?? ""}`} options={seriesSplitOptions(spec)} /></StripLabelled>}
@@ -1750,8 +1766,7 @@ function StatGhost({ spec }: { spec: AskSpec }) {
   return <>
     <div className="ask-bigstat" aria-hidden="true">
       <div className="v"><G.Line inline w="6ch" /></div>
-      <div className="d"><G.Line inline w="34ch" /></div>
-      {(spec.dataset ?? "all") === "all" && <div className="ask-streamsplit"><G.Line inline w="62ch" /><G.Line w="40ch" only="phone" /></div>}
+      <div className="d"><G.Line inline w="58ch" /><G.Line w="30ch" only="phone" /></div>
     </div>
     <MixGhost />
   </>;
@@ -1803,11 +1818,14 @@ function RankingBars({
   conditions = [],
   onSources,
   facts = null,
+  found = null,
 }: {
   rows: TableRow[];
   spec: AskSpec;
   /** F5: the facts of the rows shown (use-row-facts.ts), once read. */
   facts?: Record<string, WinnerFacts> | null;
+  /** The place „Unde e o firmă?” picked (Z3-07): its row is marked, or pinned under the list when past it. */
+  found?: LocateMatch | null;
   totals?: RankingTotals | undefined;
   /** F3 (table:employees-2): the ranked firms of a band, the list; `totals` stay the whole selection's. */
   group?: RankingTotals | undefined;
@@ -1838,6 +1856,13 @@ function RankingBars({
   // The bars grow top down when the ranking first shows; a re-query or a measure tweens their widths where a row stays,
   // the rows take their new order at once (no sliding), a row the answer adds fades in (owner, 6 November 2026).
   const motion = useChartMotion();
+  // Z3-07: the row found comes into view (where it is not already) and stays marked.
+  const foundId = found?.rank != null ? found.id : null;
+  useEffect(() => {
+    if (!foundId) return;
+    document.querySelector(`#raspuns [data-rank-id="${CSS.escape(foundId)}"]`)?.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+  }, [foundId]);
+  const pinned = found && found.rank !== null && found.rank > rows.length && !rows.some((r) => r.entityId === found.id) ? found : null;
   if (!rows.length)
     return (
       <p className="ask-empty">
@@ -1853,10 +1878,14 @@ function RankingBars({
           const shown = r.entityId ? cleanName(r.name) : countyName(cleanName(r.name));
           const records = () => onSources(spec, entitySourceScope(spec, r), `${shown} · înregistrările din clasament`);
           const entity = r.entityId ? { id: r.entityId, name: cleanName(r.name) } : null;
-          const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { records, exclude: () => answer.exclude!(entity, i) }) : [];
+          // Z3-30: the "⋯" holds what the row does not show: „Scoate din calcul” (its records are the link beside the sum).
+          const actions = entity && answer?.exclude ? entityRowActions(spec, entity, { exclude: () => answer.exclude!(entity, i) }) : [];
+          const share = rankingShare(r.value, shareTotals);
+          const marked = foundId !== null && r.entityId === foundId;
           // The name opens the entity's page; its records are the line under the sum (owner, 2 November 2026).
           const row = (
-          <div className="cq-rank-main" key={r.entityId ?? r.name} ref={actions.length ? undefined : motion.join}>
+          <div className={`cq-rank-main${marked && !actions.length ? " is-found" : ""}`} key={r.entityId ?? r.name} ref={actions.length ? undefined : motion.join}
+            {...(actions.length ? {} : { "data-rank-id": r.entityId ?? undefined })}>
             <span className="cq-rank-number">
               {String(i + 1).padStart(2, "0")}
             </span>
@@ -1870,31 +1899,31 @@ function RankingBars({
                   className={`cm-tw ${motion.enter("cm-x")}`}
                   style={{
                     width: `${Math.max(0.5, (metric(r) / max) * 100)}%`,
-                    opacity: Math.max(0.35, 1 - i * 0.08),
                     "--i": i,
                   } as CSSProperties}
                 />
               </span>
             </span>
+            {/* Z3-06: the sum and its share on one line with the row's records (the share left the records' button). */}
             <span className="cq-rank-value">
               <strong>
                 {spec.measure === "count"
                   ? countWords(r.count, "înregistrare", "înregistrări")
                   : formatRonFull(metric(r))}
                 {spec.measure === "value_per_capita" ? " / locuitor" : ""}
+                {spec.measure !== "count" && share !== null && <span className="cq-rank-share"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
               </strong>
               <button type="button" className="cq-rank-records" onClick={records} aria-label={`Înregistrările din clasament: ${shown}`}>
                 {spec.measure === "count"
-                  ? formatRonFull(r.value)
+                  ? <>{formatRonFull(r.value)}{share !== null && <> · {formatShare(share)} din total</>}</>
                   : countWords(r.count, "înregistrare", "înregistrări")}
-                {rankingShare(r.value, shareTotals) !== null && <> · {formatShare(rankingShare(r.value, shareTotals)!)} din total</>}
                 {" →"}
               </button>
             </span>
           </div>
           );
           // The kit's menu in its own .qb box (its reset and focus ring), anchored to the row.
-          return actions.length ? <div className="cq-rank-row" key={r.entityId ?? r.name} data-qb-arow="" ref={motion.join}>
+          return actions.length ? <div className={`cq-rank-row${marked ? " is-found" : ""}`} key={r.entityId ?? r.name} data-qb-arow="" data-rank-id={r.entityId ?? undefined} ref={motion.join}>
             {row}
             <span className="qb cq-rank-menu"><RowMenu name={cleanName(r.name)} actions={actions} /></span>
           </div> : row;
@@ -1911,6 +1940,30 @@ function RankingBars({
             </span>
           </div>
         )}
+        {/* Z3-07: a place past the list, found by „Unde e o firmă?”, pinned under it and marked. */}
+        {pinned && (() => {
+          const row = { entityId: pinned.id, name: pinned.name };
+          const value = pinned.value ?? 0, count = pinned.n ?? 0, share = rankingShare(value, shareTotals);
+          return <div className="cq-rank-row is-found cq-rank-pinned" data-rank-id={pinned.id}>
+            <div className="cq-rank-main">
+              <span className="cq-rank-number">{String(pinned.rank).padStart(2, "0")}</span>
+              <span className="cq-rank-name">
+                <EntityName id={pinned.id} role={spec.dim === "authority" ? "authority" : "supplier"} className="cq-rank-title">{cleanName(pinned.name)}</EntityName>
+                <span className="cq-bar-track"><i style={{ width: `${Math.max(0.5, ((spec.measure === "count" ? count : value) / max) * 100)}%` }} /></span>
+              </span>
+              <span className="cq-rank-value">
+                <strong>
+                  {spec.measure === "count" ? countWords(count, "înregistrare", "înregistrări") : formatRonFull(value)}
+                  {spec.measure !== "count" && share !== null && <span className="cq-rank-share"> · {formatShare(share)}<span className="cq-rank-share-of"> din total</span></span>}
+                </strong>
+                <button type="button" className="cq-rank-records" aria-label={`Înregistrările din clasament: ${cleanName(pinned.name)}`}
+                  onClick={() => onSources(spec, entitySourceScope(spec, row), `${cleanName(pinned.name)} · înregistrările din clasament`)}>
+                  {spec.measure === "count" ? formatRonFull(value) : countWords(count, "înregistrare", "înregistrări")}{" →"}
+                </button>
+              </span>
+            </div>
+          </div>;
+        })()}
       </div>
       {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
       {/* F3: the band of CÂȘTIGĂTORII narrows the list; its line says the list's sum against the whole selection's. */}
@@ -1983,7 +2036,7 @@ function ExactSeries({
             {!monthly && <td>{change}</td>}
             <td>
               <button type="button" onClick={() => onSources(sources.spec, sources.scope, `${barName(r)} · înregistrările ${monthly ? "lunii" : "anului"}`)}>
-                Vezi înregistrările →
+                {countWords(r.count, "înregistrare", "înregistrări")} →
               </button>
             </td>
           </tr>
@@ -2048,7 +2101,7 @@ function CountyValues({
                     onSources(spec, { county:r.county }, `${countyName(r.county)} · înregistrările județului`)
                   }
                 >
-                  Vezi înregistrările →
+                  {countWords(r.count, "înregistrare", "înregistrări")} →
                 </button>
               </td>
             </tr>
@@ -2082,23 +2135,15 @@ function StatBlock({
     byStream?: { src: "da" | "contracts"; value: number; count: number }[];
   };
 }) {
-  const da = stat.byStream?.find((s) => s.src === "da");
-  const ctr = stat.byStream?.find((s) => s.src === "contracts");
   return (
     <div className="ask-bigstat">
       <div className="v">
         {measure === "count" ? formatInt(stat.count) : formatRon(stat.value)}
       </div>
+      {/* Z3-27: one line under the figure, the caveat beside it; the channels are „Din care”'s first rows (StatMix). */}
       <div className="d">
-        {formatRonFull(stat.value)} · {countWords(stat.count, "înregistrare", "înregistrări")}
+        {formatRonFull(stat.value)} · {countWords(stat.count, "înregistrare", "înregistrări")} · {RECORDED_VALUE.text}
       </div>
-      {stat.byStream && (
-        <div className="ask-streamsplit">
-          {formatRon(da?.value ?? 0)} achiziții directe (
-          {formatInt(da?.count ?? 0)}) + {formatRon(ctr?.value ?? 0)} contracte din proceduri
-          ({formatInt(ctr?.count ?? 0)})
-        </div>
-      )}
     </div>
   );
 }
@@ -2292,15 +2337,6 @@ function Loader({ label }: { label: string }) {
 /** The answer's address on the site, with its thread; the copy and share buttons turn it into a short link (/l/…). */
 function answerPath(spec: AskSpec, thread: Thread | null): string {
   return `/intreaba?spec=${encodeURIComponent(encodeSpec(spec))}${thread?.steps.length ? `&fir=${encodeURIComponent(writeThread(thread))}` : ""}`;
-}
-
-function CopyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="8" y="8" width="12" height="12" rx="2" />
-      <path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" />
-    </svg>
-  );
 }
 
 function ShareIcon() {

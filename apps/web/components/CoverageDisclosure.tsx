@@ -54,7 +54,8 @@ export default function CoverageDisclosure({ spec, summary, children }: { spec?:
           {/* Audit F10: after "complet până la" the records are provisional (contracts are published late). */}
           {coverageSources(spec).some(dataset => data.sources.find(row => row.dataset === dataset)?.completeUntil) &&
             <p>{coverageSources(spec).includes("contracts") ? "După „complet până la”, cifrele sunt provizorii și pot crește: SEAP publică multe contracte cu întârziere." : "După „complet până la”, cifrele sunt provizorii."}</p>}
-          <p className="coverage-freshness">{data.dataAt ? `Date publicate în aplicație la ${publicationDay(data.dataAt)}.` : "Data publicării acestui set de date nu este confirmată."}
+          {/* UX audit Z3-17: an answer says its update as the verification and the periods do („actualizat”, „înregistrări până la”). */}
+          <p className="coverage-freshness">{data.dataAt ? spec ? `Actualizat la ${publicationDay(data.dataAt)}.` : `Date publicate în aplicație la ${publicationDay(data.dataAt)}.` : "Data publicării acestui set de date nu este confirmată."}
             {spec && isHistoricalProfile(spec) && ` Semnale recalculate: ${publicationDay(data.riskAt)}.`}</p>
         </>}
       </div>

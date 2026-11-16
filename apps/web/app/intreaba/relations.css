@@ -95,3 +95,18 @@
 .qb-net .qb-net-spokes.cm-fade { --cm-k: qb-net-reach; transform-box: view-box; transform-origin: 50% 50%; }
 @keyframes qb-net-reach { from { transform: scale(0); } to { transform: scale(1); } }
 .qb-net .qb-net-spoke.cm-tw { transition: transform calc(var(--chart-tw) * var(--chart-pace)) var(--ease), opacity var(--fast) var(--ease); }
+
+/* UX audit Z3-13 (owner, 16 November 2026): the flow's „⋯” lose their box (it comes back on hover and focus) and line
+   up in one column on each side: beside the labels' fixed width on a wide screen, on the outer edge under 900 px, where
+   the flows' column narrows so the nodes' labels („145 de înregistrări · 65 de parteneri”) are no longer cut. */
+.qb-sankey .qb-flow-label { justify-content: flex-start; }
+.qb-sankey .qb-flow-label > .qb-flow-label-text { flex: 0 0 260px; }
+.qb-sankey .qb-flow-label > .qb-more { border-color: transparent; background: none; color: var(--muted); }
+.qb-sankey .qb-flow-label > .qb-more:hover,
+.qb-sankey .qb-flow-label > .qb-more:focus-visible,
+.qb-sankey .qb-flow-label > .qb-more[aria-expanded="true"] { border-color: var(--line); background: var(--surface); color: var(--ink); }
+@media (max-width: 900px) {
+  .qb-sankey .qb-flow { grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr); }
+  .qb-sankey .qb-flow-label { justify-content: space-between; }
+  .qb-sankey .qb-flow-label > .qb-flow-label-text { flex: 1 1 auto; }
+}

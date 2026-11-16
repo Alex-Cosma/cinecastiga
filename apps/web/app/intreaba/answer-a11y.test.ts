@@ -76,6 +76,17 @@ describe("the answer's targets and contrast", () => {
     expect(results).toContain(".cq-answer-actions > .cq-source-main { grid-column: 1 / -1;");
   });
 
+  it("keeps the answer's actions in one group in its head: Trimite ▾ with the link, Salvează, Exportă ▾ (UX audit Z3-15)", () => {
+    const panel = readFileSync(new URL("./AskPanel.tsx", import.meta.url), "utf8");
+    expect(panel).toContain('<div className="cq-answer-more">');
+    expect(panel).toMatch(/<ShareMenu onPrepare=[^]*?<SaveQuestionButton[^]*?<AnswerExports key=/);
+    // No second „Copiază linkul” under the notes: the link is in Trimite's menu.
+    expect(panel).not.toContain('className="cq-copy"');
+    const menu = readFileSync(new URL("./answer/ShareMenu.tsx", import.meta.url), "utf8");
+    expect(menu).toContain('label: "Copiază linkul", note: "Un link scurt, de lipit oriunde"');
+    expect(css("./question-results.css")).toMatch(/\.cq-answer-actions > \.cq-answer-more \{ display: grid; flex: 1 1 100%; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+  });
+
   it("opens every (?) of the answer over its own line, never at the page's top (S4 tests)", () => {
     // guide.css opens a tip above its nearest positioned box; without one inside the page it opened above the page's top,
     // off screen (the strip's in answer/answer.test.ts). „Din care”, the breakdown's kinds, legend head and rows, the

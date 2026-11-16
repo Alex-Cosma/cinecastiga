@@ -75,3 +75,7 @@
   .ec-score{min-width:0}
   .ec-rval .qb-num{min-width:0;text-align:left}
 }
+
+/* UX audit Z3-19 (owner, 16 November 2026): „Cine conduce?” by risk names the first once: its row, its place in a
+   circle (as the podium by value marks its first), the score's (?) beside its band; no „Primul: …” line above it. */
+.ec-first-n{display:inline-grid;place-items:center;width:24px;height:24px;margin-right:8px;border-radius:50%;background:var(--accent);color:var(--on-accent);font:600 13px/1 var(--mono);vertical-align:2px}

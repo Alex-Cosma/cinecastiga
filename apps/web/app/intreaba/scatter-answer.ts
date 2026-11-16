@@ -422,8 +422,13 @@ export const employeesWords = (employees: number | null | undefined, year: numbe
 
 /** The line under a name in the list: the kind or the employees, the county, the acquisitions. */
 export function rowMeta(row: AnyListRow, role: ScatterRole): string {
+  return [rowPlace(row, role), countWords(row.nDas, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
+}
+
+/** The row's kind (a firm's size) and county, without its count: a phone's records link says the count (UX audit Z3-22). */
+export function rowPlace(row: AnyListRow, role: ScatterRole): string {
   const first = role === "supplier" ? employeesWords(row.employees, row.employeesYear) : kindWords(row.kind);
-  return [first, row.county, countWords(row.nDas, "achiziție directă", "achiziții directe")].filter(Boolean).join(" · ");
+  return [first, row.county].filter(Boolean).join(" · ");
 }
 
 /** A signal's tag in the list and the card: the label with its years or share, orange (the official signals only). */
@@ -447,11 +452,28 @@ export function withFacts<C extends string>(flags: readonly ScatterFlagFact<C>[]
  */
 export const listTotal = (data: ScatterData): number => (data.chosen ? data.chosen.nList : data.group.nList) - (data.historic ?? 0);
 
+/**
+ * The line under the list's head that adds up to the group's pill (UX audit Z3-20): „317 în listă · 12 inactive · 8
+ * doar în nor (10–19 achiziții)” = 337. Null when the list is the whole group (nothing to add up).
+ */
+export function listSumParts(data: ScatterData): { inList: number; historic: number; cloudOnly: number; from: number; to: number } | null {
+  const base = data.chosen ?? data.group;
+  const historic = data.historic ?? 0;
+  const cloudOnly = data.group.small ? 0 : Math.max(0, base.n - base.nList);
+  if (!historic && !cloudOnly) return null;
+  return { inList: listTotal(data), historic, cloudOnly, from: SCATTER_CLOUD_MIN_DAS, to: SCATTER_LIST_MIN_DAS - 1 };
+}
+
 /** "Primele 10 din 82": the list head — the shown rows of the list (listTotal). */
 export function listHeadWords(data: ScatterData, shown: number): string {
   const total = listTotal(data);
+  // A small group shown whole (UX audit Z3-21): „Toate cele 5”, not „Primele 5 din 5”.
+  if (total >= 2 && total < SCATTER_FEW && shown >= total) return `Toate cele ${formatInt(total)}`;
   return `Primele ${formatInt(Math.min(shown, total))} din ${formatInt(total)}`;
 }
+
+/** Under this many profiles the cloud has no search: the list holds them all at a glance (UX audit Z3-21). */
+export const SCATTER_FEW = 10;
 
 /** The (?) of the head: the order, the 20-acquisition floor and how many are in the cloud alone. */
 export function listHeadTip(data: ScatterData): string {

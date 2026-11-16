@@ -139,6 +139,9 @@ describe("the breakdown (final breakdown §3.5–§3.10)", () => {
   it("gives the channels their share of the selection, and goes down a level from 90% of one group", () => {
     const shares = channelShares({ streams: { da: { value: 25, count: 90 }, contracts: { value: 75, count: 10 } } }, false)!;
     expect(shares.unit).toBe("% din valoare");
+    // UX audit Z3-28: a phone titles the shares above them.
+    expect(shares.title).toBe("Cota din valoare");
+    expect(channelShares({ streams: { da: { value: 1, count: 1 }, contracts: { value: 1, count: 1 } } }, true)!.title).toBe("Cota din înregistrări");
     expect(shares.options([{ value: "all", label: "Toate" }, { value: "da", label: "Directe" }, { value: "contracts", label: "Proceduri" }]).map((o) => o.count ?? null))
       .toEqual([null, "25,0%", "75,0%"]);
     expect(channelShares({ streams: { da: { value: 0, count: 0 }, contracts: { value: 5, count: 1 } } }, true)!.options([{ value: "da", label: "Directe" }])[0]).toMatchObject({ count: "—" });

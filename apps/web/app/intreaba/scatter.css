@@ -155,3 +155,22 @@
   .sc-tick,.sc-axis,.sc-p90 text{font-size:12px}
   .sc-who small,.sc-risk small,.sc-foot{font-size:12px}
 }
+
+/* UX audit Z3-22 (owner, 16 November 2026): a list row on a phone puts the score the list is ordered by on the name's
+   line, at the right ("66 din 100", its band under it); the kind and county under the name, without the count of direct
+   acquisitions (the records link says it); the signals' tags take the width; the value and „N înregistrări →” share the
+   last line. The wide row stays as it is. */
+@media (max-width:640px){
+  .sc-row{grid-template-columns:24px minmax(0,1fr) auto;grid-template-areas:"rank name cri" ". meta cri" ". tags tags" ". val rec";column-gap:10px;row-gap:0}
+  .sc-row .sc-who{display:contents}
+  .sc-row .sc-who>.sc-name{grid-area:name}
+  .sc-row .sc-who>small{grid-area:meta}
+  .sc-row .sc-who>.qb-tags{grid-area:tags;margin-top:6px}
+  .sc-row .sc-cri{grid-area:cri;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:2px;padding-top:10px;text-align:right}
+  .sc-row .sc-val{grid-area:val;align-self:center;font-size:14px;color:var(--ink)}
+  .sc-row .sc-rec{grid-area:rec;justify-self:end}
+  .sc-who-n{display:none}
+}
+
+/* UX audit Z3-32: the phone's strip word sits over the strip's dots with a wider halo of paper, as the points' names. */
+.sc-strip-word{stroke-width:4px;font-weight:600}

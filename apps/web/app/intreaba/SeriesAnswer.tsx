@@ -148,7 +148,7 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
         {before && (
           <p className="ask-fine">
             {countWords(before.count, "înregistrare", "înregistrări")} datate {before.from === before.to ? before.from : `${before.from}–${before.to}`} ({formatRon(before.value)}) nu apar pe axă.{" "}
-            <KitLink className="qb-rec" link={{ label: "Vezi-le", glyph: "→", onClick: () => onSources(spec, { years: before.years }, `${before.from}–${before.to} · înregistrările dinainte de ${CHART_FIRST_YEAR}`) }} />
+            <KitLink className="qb-rec" link={{ label: countWords(before.count, "înregistrare", "înregistrări"), glyph: "→", onClick: () => onSources(spec, { years: before.years }, `${before.from}–${before.to} · înregistrările dinainte de ${CHART_FIRST_YEAR}`) }} />
           </p>
         )}
         {partial.filter((x) => drawn.some((p) => p.year === x.year)).length > 0 && (() => {
@@ -201,7 +201,7 @@ function BarCard({ data, spec, point, partial, facts, onSources, onClose }: {
       ...(above?.n ? [{ text: aboveWords(above.n), tag: { text: "peste plafon", tone: "caveat" as const, tip: ABOVE_TIP } }] : []),
     ]}
     actions={[
-      { label: `Vezi înregistrările ${unit}`, glyph: "→", onClick: () => onSources(records.spec, records.scope, `${name} · înregistrările ${unit}`) },
+      { label: recordsWords(point.count), glyph: "→", onClick: () => onSources(records.spec, records.scope, `${name} · înregistrările ${unit}`) },
       ...links.map((link) => ({ label: link.label, glyph: "›" as const, href: askLink(link.spec) })),
     ]}
     onClose={onClose}

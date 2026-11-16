@@ -17,8 +17,10 @@ import { menuButtonKey, menuKey } from "../builder/keyboard";
 export interface RowAction {
   id: string;
   label: string;
-  /** R8: → records, − leaves the calculation, › another answer, ↗ another page, ▾ a window (the builder's "⋯ › Selecție avansată"). */
-  glyph: "→" | "−" | "›" | "↗" | "▾";
+  /** R8: → records, − leaves the calculation, › another answer, ↗ another page, ▾ a window (the builder's "⋯ › Selecție avansată"); none for a plain action („Copiază linkul”). */
+  glyph?: "→" | "−" | "›" | "↗" | "▾";
+  /** A second line that says what the action gives („Un link scurt, de lipit oriunde”); a disabled action's reason takes its place. */
+  note?: string;
   /** A page of the site (↗); otherwise onSelect. */
   href?: string;
   onSelect?: () => void;
@@ -107,7 +109,7 @@ export default function RowMenu({ name, actions, className, defaultOpen = false,
       }}
     >
       {actions.map(action => {
-        const body = <><span className="qb-menu-t">{action.label}{action.disabled && <small>{action.disabled}</small>}</span><span aria-hidden="true">{action.glyph}</span></>;
+        const body = <><span className="qb-menu-t">{action.label}{action.disabled ? <small>{action.disabled}</small> : action.note && <small>{action.note}</small>}</span>{action.glyph && <span aria-hidden="true">{action.glyph}</span>}</>;
         const common = { role: "menuitem", tabIndex: -1, "data-label": action.label, className: `qb-menu-item${action.className ? ` ${action.className}` : ""}`, "aria-disabled": action.disabled ? true : undefined } as const;
         if (action.href && !action.disabled) return <a key={action.id} {...common} href={action.href} onClick={() => close(false)}>{body}</a>;
         return <button key={action.id} type="button" {...common} onClick={() => { if (!action.disabled) select(action); }}>{body}</button>;

@@ -171,3 +171,19 @@ button.dist-hcol:hover .dist-hbar{background:var(--accent)}
 @media (max-width:600px){
   .dist-hcol .dist-hbar.cm-y{--cm-k:cm-x}
 }
+
+/* UX audit Z3-09 (owner, 16 November 2026): the profiles under 10 leave the histogram for one line under it (a button
+   that opens them, as a bar does), as in the risk cloud; the entity's bar is the accent (the cloud's „ales”), its
+   „aici” too, never orange (risk's colour, Z3-26). */
+.dist-hcol.is-here .dist-hbar,.dist-hcol.is-here.is-open .dist-hbar{background:var(--accent)}
+.dist-hcol.is-here.is-open .dist-hbar{box-shadow:0 0 0 2px var(--accent-line)}
+.dist-hcol.is-would .dist-hbar{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.dist-hcol .dist-n em,.dist-low em{color:var(--accent)}
+.dist-low{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;width:100%;margin:12px 0 4px;padding:8px 12px;border:0;border-radius:8px;background:var(--sunk);font:inherit;font-size:13px;color:var(--ink2);text-align:left}
+button.dist-low{cursor:pointer}
+button.dist-low:hover,button.dist-low.is-open{background:var(--accent-soft)}
+button.dist-low:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.dist-low-axis{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.dist-low b{margin-right:4px;font-family:var(--mono);font-weight:600;color:var(--ink)}
+.dist-low em{margin-right:6px;font-style:normal;font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+@media (max-width:600px){button.dist-low{min-height:44px}}

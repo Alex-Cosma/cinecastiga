@@ -1190,3 +1190,220 @@
   .cq-locate { align-items: flex-start; }
   .cq-locate .qb-find { flex: 1 1 150px; }
 }
+
+/* UX audit Z3-06, Z3-07 (owner, 16 November 2026): the ranking in low rows. A row is its name over a thin bar, and on
+   the same line its sum · share and its records; every bar in the one accent (no fading by place: the length already
+   says it). The place „Unde e o firmă?” picked is marked (accent-soft, a fine accent-line edge), or pinned under the
+   list when it is past it. A phone keeps the sum and share on the left, „N înregistrări →” on the right, 44 px. */
+.cq-ranking > .cq-rank-main,
+.cq-rank-row > .cq-rank-main { gap: 16px; padding: 10px 12px; }
+.cq-rank-name > strong,
+.cq-rank-name > .cq-rank-title { margin-bottom: 7px; }
+.cq-rank-name > strong + .cq-rank-facts,
+.cq-rank-name > .cq-rank-title + .cq-rank-facts { margin: -3px 0 7px; }
+.cq-bar-track { height: 5px; }
+.cq-rank-value { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: baseline; gap: 2px 16px; width: 360px; }
+.cq-rank-value .cq-rank-records { display: inline; margin: 0; padding: 2px 0; white-space: nowrap; }
+.cq-rank-share { font-size: 13px; font-weight: 400; color: var(--muted); }
+.cq-rank-rest { padding: 10px 12px; }
+.cq-rank-rest .cq-rank-value small { margin: 0; font-size: 12px; }
+.cq-rank-row.is-found,
+.cq-ranking > .cq-rank-main.is-found { background: var(--accent-soft); outline: 1px solid var(--accent-line); outline-offset: -1px; border-radius: 8px; }
+.cq-rank-pinned { margin-top: 8px; }
+/* The pinned row has no "⋯": its bar ends where the others' do (the "⋯" is 44 px, Z3-30). */
+.cq-rank-pinned::after { content: ""; flex: none; width: 50px; }
+@media (max-width: 850px) {
+  .cq-rank-value { flex-direction: column; align-items: flex-end; gap: 2px; width: 200px; }
+  .cq-rank-share-of { display: none; }
+}
+@media (max-width: 600px) {
+  .cq-ranking > .cq-rank-main,
+  .cq-rank-row > .cq-rank-main { gap: 6px 12px; padding: 12px 0; }
+  .cq-rank-value { flex-direction: row; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 8px; width: auto; }
+  .cq-rank-value .cq-rank-records { display: inline-flex; align-items: center; min-height: 44px; padding: 0; }
+  .cq-rank-share { font-size: 12px; }
+  .cq-rank-row.is-found { padding-left: 8px; }
+  .cq-rank-rest { padding: 12px 0; }
+}
+
+/* UX audit Z3-14 (owner, 16 November 2026): „Ce se cumpără” reads along each row, no jump across the page: swatch ·
+   name · a thin bar of the row's share in its own colour · value and share · „N înregistrări →” as a quiet link, no box.
+   The rows share one grid (subgrid), so values and links line up; a row pointed at lights its segment in the bar. On a
+   phone the swatch sits on the name's line, the bar under it, the value and the link (44 px) share the last line. */
+.cq-result .ask-complegend { display: grid; grid-template-columns: 12px minmax(180px, 470px) minmax(60px, 1fr) max-content minmax(150px, max-content); gap: 0 14px; }
+.cq-result .ask-complegend .li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 44px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.cq-result .ask-complegend .nm { font-size: 13px; }
+.cq-result .ask-complegend .vv { display: contents; }
+.cq-result .ask-complegend .vv > span { text-align: right; }
+.ask-compbar { display: block; height: 6px; overflow: hidden; border-radius: 3px; background: var(--sunk); }
+.ask-compbar > i { display: block; height: 100%; border-radius: 3px; }
+.cq-result .ask-complegend .vv .cq-record-link { justify-self: end; min-height: 36px; margin: 0; padding: 0; border: 0; background: none; color: var(--accent); font-size: 13px;
+  text-decoration: underline; text-decoration-color: var(--accent-line); text-underline-offset: 3px; cursor: pointer; }
+.cq-result .ask-complegend .vv .cq-record-link:hover { background: none; text-decoration-color: currentColor; }
+.cq-result .ask-comp.has-hot > .seg:not(.is-hot) { opacity: .45; }
+.cq-result .ask-comp > .seg { transition: opacity var(--fast) var(--ease); }
+@media (max-width: 720px) {
+  .cq-result .ask-complegend { display: flex; }
+  .cq-result .ask-complegend .li { grid-template-columns: 12px minmax(0, 1fr); grid-template-areas: "sw nm" ". bar" ". vv"; gap: 2px 10px; align-items: center; min-height: 0; padding: 6px 0; }
+  .cq-result .ask-complegend .sw { grid-area: sw; margin-top: 0; }
+  .cq-result .ask-complegend .nm { grid-area: nm; }
+  .cq-result .ask-complegend .ask-compbar { grid-area: bar; }
+  .cq-result .ask-complegend .vv { grid-area: vv; display: flex; flex-wrap: nowrap; justify-content: space-between; align-items: center; gap: 4px 12px; }
+  .cq-result .ask-complegend .vv > span { text-align: left; }
+  .cq-result .ask-complegend .vv .cq-record-link { min-height: 44px; white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) { .cq-result .ask-comp > .seg { transition: none; } }
+
+/* UX audit Z3-15 (owner, 16 November 2026; adjusts the head of 2 November): the answer's actions in one group in its
+   head. The records' button on its row, under it „Trimite ▾” (its menu copies the link), „Salvează” beside it and
+   „Exportă ▾” (the export menu, floating over the answer); the row of tools under the notes is gone. A signed-in
+   reader's „Urmărește” and „Salvează în anchetă” are the next row, half each. On a phone (the head of 16 November) the
+   three are 46 px icons on their own row under the records' button. */
+.cq-answer-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.cq-answer-more { display: contents; }
+.cq-answer-more > .cq-share-menu,
+.cq-answer-more > .cq-save-wrap,
+.cq-answer-more > .cq-export { grid-column: span 2; min-width: 0; }
+.cq-answer-actions > .follow-action,
+.cq-answer-actions > .clipbtn { grid-column: span 3; }
+.cq-share-menu { position: relative; display: flex; min-width: 0; }
+.cq-share-menu > .cq-share { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; }
+.cq-share-menu > .cq-share .d-icon { width: 14px; height: 14px; margin-left: -2px; }
+.cq-share-menu > .cq-share[aria-expanded="true"] .d-icon { transform: rotate(180deg); }
+.cq-share-menu .qb-menu--pop { left: 0; right: auto; top: calc(100% + 6px); width: 260px; max-width: calc(100vw - 32px); }
+.cq-share-menu .qb-menu--pop.qb-menu--end { left: auto; right: 0; }
+.cq-share-menu .qb-menu-item { min-height: 44px; font-size: 14px; text-align: left; }
+.cq-share-menu .qb-menu-item > .qb-menu-t { color: var(--ink); }
+.cq-share-menu .qb-menu-t small { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.cq-answer-more > .cq-save-wrap { width: 100%; }
+.cq-answer-more > .cq-save-wrap > .cq-save-question { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; gap: 6px; font-size: 13px; }
+.cq-answer-more > .cq-export { position: relative; flex: none; max-width: none; width: 100%; }
+.cq-answer-more > .cq-export > summary { width: 100%; min-height: 44px; padding: 10px 12px; gap: 6px; justify-content: center; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font-size: 13px; font-weight: 600; list-style: none; }
+.cq-answer-more > .cq-export > summary::-webkit-details-marker { display: none; }
+.cq-answer-more > .cq-export > summary:hover { border-color: var(--accent); background: var(--accent-soft); }
+.cq-answer-more > .cq-export .d-icon { width: 16px; height: 16px; }
+.cq-answer-more > .cq-export > summary > .d-icon:last-child { width: 14px; height: 14px; }
+.cq-answer-more > .cq-export > .cq-export-options { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 320px; max-width: calc(100vw - 32px); margin: 0; padding: 2px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: var(--fk-pop-shadow, var(--shadow)); text-align: left; }
+.cq-answer-more > .cq-export .cq-export-options > div { padding: 12px 0; }
+.cq-answer-more > .cq-export .cq-export-options > div:last-child { border-bottom: 0; }
+.cq-answer-more > .cq-export .cq-export-options button { min-height: 36px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.cq-answer-more > .cq-export .cq-export-options p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; color: var(--ink2); white-space: normal; }
+.cq-answer-more > .cq-export > .cq-export-status { position: absolute; right: 0; top: calc(100% + 6px); z-index: 29; width: 320px; max-width: calc(100vw - 32px); margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.cq-answer-more > .cq-export[open] > .cq-export-status { position: static; width: auto; margin-top: 6px; }
+@media (max-width: 600px) {
+  /* The three cannot sit beside the records' button (the head of 16 November kept two icons there): they take their
+     own row under it, a third each, with their words. */
+  .cq-answer-actions { position: relative; }
+  .cq-answer-actions > .cq-answer-more { display: grid; flex: 1 1 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .cq-answer-more > .cq-share-menu,
+  .cq-answer-more > .cq-save-wrap,
+  .cq-answer-more > .cq-export { grid-column: auto; width: 100%; }
+  .cq-share-menu > .cq-share,
+  .cq-answer-more > .cq-save-wrap > .cq-save-question,
+  .cq-answer-more > .cq-export > summary { min-height: 46px; padding: 8px 6px; gap: 5px; }
+  /* The export's menu and its message take the actions' width, under the row. */
+  .cq-answer-more > .cq-export { position: static; }
+  .cq-answer-more > .cq-export > .cq-export-options,
+  .cq-answer-more > .cq-export > .cq-export-status { left: 0; right: 0; width: auto; max-width: none; }
+}
+
+/* UX audit Z3-28 (owner, 16 November 2026): the answer's command bands on a phone. A choice that broke onto two rows is
+   one native menu (as the cloud's „Semnal”): the network's „Grupele, față de (?) [2025 ▾]”, the flow's „Arată [6 ▾]
+   firme”; the flow loses „Vizual | Tabel” (a phone's flow is a list in both); the channels' shares are titled above
+   them („Cota din valoare (?)”); the map says „Harta arată (?)” over its lens and puts „Pe locuitor → (?)” beside
+   „Vizual | Tabel”. Same controls and values; every (?) beside its label. */
+.cq-phone-select,
+.cq-strip-title { display: none; }
+@media (max-width: 600px) {
+  .qb-row:has(> .cq-phone-select) > :not(.cq-phone-select) { display: none; }
+  .cq-phone-select { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+  .cq-phone-select > .qb-strip-label { font-size: 13px; }
+  .cq-phone-select > select { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 7px; background: var(--fk-editor); color: var(--ink); font: 400 16px/1.4 var(--body); }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) { flex-wrap: wrap; align-items: center; gap: 4px; }
+  .cq-strip .qb-strip .qb-row--wide > .cq-strip-title { display: inline; order: -2; font-size: 13px; color: var(--fk-muted-strong); }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) > .term { order: -1; }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) > .qb-seg { flex: 1 1 100%; }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) > .qb-strip-label { display: none; }
+  .cq-strip .qb-strip:has(.ask-maplens) { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .cq-strip .qb-strip .ask-maplens { display: contents; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) { flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 6px 4px; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) > .qb-strip-label { order: -2; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) > .term { order: -1; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) > .qb-seg { flex: 1 1 100%; }
+  .cq-strip .qb-strip .ask-maplens > .ask-percap-link { flex: 1 1 auto; width: auto; }
+  .cq-strip .qb-strip:has(.ask-maplens) > .qb-strip-end { flex: 0 0 auto; margin-left: auto; }
+}
+@media (max-width: 560px) { .cq-strip .cq-strip-end-wide { display: none; } }
+
+/* Bug (UX audit, zone 3): in „Unde e o instituție / firmă?” a name on two lines ran into the next one. The kit's list is
+   a flex column with a height limit, and a result's explicit min-height let it shrink to 48 px: in the answer, results
+   keep their own height and the list scrolls. */
+.cq-answer .qb-find .qb-res { flex-shrink: 0; }
+
+/* UX audit Z3-24 (owner, 16 November 2026; the rule of 1 November): on a phone no text of an answer is under 12 px (an
+   all-caps label may be 11 px). The map's list is 13 px in 44 px rows; the tables, the signals' and the procedures'
+   tags (still 22 px tall), the axes' ticks, the charts' notes and the bars' values reach 12 px. The network's radial
+   chart is drawn at a third of its size there: its names (≈ 6 px) give way to its discs, whose tap picks their row. */
+@media (max-width: 700px) {
+  .cq-answer .cq-result .ask-table th,
+  .cq-answer .cq-result .ask-table td { font-size: 12px; }
+  .cq-answer .cq-result .ask-mapside td { height: 44px; padding-block: 0; font-size: 13px; }
+  .cq-answer .cq-result .ask-mapside td.num { white-space: nowrap; }
+  .cq-answer .cq-result .ask-mapside td a { display: inline-flex; align-items: center; min-height: 44px; }
+  .cq-answer .ask-legend { font-size: 12px; }
+  .cq-answer .cq-result .ask-ts .cv { font-size: 12px; }
+  .cq-answer .qb-tag { font-size: 12px; line-height: 1.5; }
+  .cq-answer .qb-seg-n { font-size: 12px; }
+  .cq-answer .fc-ident, .cq-answer .fc-note, .cq-answer .fc-n, .cq-answer .fc-d, .cq-answer .fc-recs-head small,
+  .cq-answer .fc-yb > span, .cq-answer .fc-yb em { font-size: 12px; }
+  .cq-answer .fc-badge { font-size: 12px; line-height: 1.5; }
+  .cq-answer .dist-member-t small, .cq-answer .dist-legend, .cq-answer .dist-caveat, .cq-answer .dist-strip-name,
+  .cq-answer .dist-axis small, .cq-answer .dist-strip-axis, .cq-answer .dist-strip-over { font-size: 12px; }
+  .cq-answer .dist-n em { font-size: 11px; }
+  .cq-answer .qb-nrow-val small, .cq-answer .qb-nrow-years small, .cq-answer .qb-arow-val small { font-size: 12px; }
+  .cq-answer .cmp-year-label { font-size: 12px; }
+  .cq-answer .cmp-risk small, .cq-answer .cmp-flags span, .cq-answer .cmp-share small, .cq-answer .cmp-mirror-a, .cq-answer .cmp-mirror-b { font-size: 12px; }
+  .cq-answer .ec-legend { font-size: 12px; }
+  .cq-answer .sc-label { font-size: 12px; }
+}
+@media (max-width: 560px) {
+  .cq-answer .qb-net .qb-net-label,
+  .cq-answer .qb-net .qb-net-centre-label { display: none; }
+}
+
+/* UX audit Z3-18: a verification's "Nu" has no record to open; its head's main action is the most useful lead (a
+   question of its own, ›), drawn as the records' button it replaces. */
+a.cq-source-main { justify-content: center; text-decoration: none; }
+.cq-source-main > .qb-glyph { margin-left: -2px; }
+
+/* UX audit Z3-30 (owner, 16 November 2026): a ranking row's "⋯" holds only „Scoate din calcul” (F4); it loses its box
+   (an icon, a 44 px target), shown at all times on a touch screen and on the row's hover or focus with a mouse. */
+.cq-rank-row .cq-rank-menu .qb-more,
+.qb.ec .qb-more { width: 44px; height: 44px; border-color: transparent; background: none; color: var(--muted); }
+.cq-rank-row .cq-rank-menu .qb-more:hover,
+.cq-rank-row .cq-rank-menu .qb-more:focus-visible,
+.cq-rank-row .cq-rank-menu .qb-more[aria-expanded="true"],
+.qb.ec .qb-more:hover,
+.qb.ec .qb-more:focus-visible,
+.qb.ec .qb-more[aria-expanded="true"] { border-color: var(--line); background: var(--surface); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .cq-rank-row .cq-rank-menu .qb-more { opacity: 0; transition: opacity var(--fast) var(--ease); }
+  .cq-rank-row:hover .cq-rank-menu .qb-more,
+  .cq-rank-row:focus-within .cq-rank-menu .qb-more,
+  .cq-rank-row .cq-rank-menu .qb-more[aria-expanded="true"] { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .cq-rank-row .cq-rank-menu .qb-more { transition: none; } }
+
+/* UX audit Z3-23 (owner, 16 November 2026): beside „Arată încă 10” the rest of a list („alte 40 de profiluri”) is plain
+   words, no dashed box that read as a disabled second button. */
+.cq-answer .qb-listfoot .qb-rest { padding: 0; border: 0; border-radius: 0; color: var(--muted); }
+.cq-answer .qb-listfoot .qb-row:has(> .qb-more-btn) > .qb-rest::before { content: "· "; }
+@media (max-width: 600px) { .cq-answer .qb-listfoot .qb-row:has(> .qb-more-btn) { flex-wrap: wrap; justify-content: center; } .cq-answer .qb-listfoot .qb-rest { width: auto; } }
+
+/* UX audit Z3-33 (owner, 16 November 2026): an answer of one element reads in its line: a ranking of one firm draws no
+   bar of 100% (nor its share), a breakdown of one domain no bar of its share. */
+.cq-ranking > .cq-rank-row:only-child .cq-bar-track,
+.cq-ranking > .cq-rank-main:only-child .cq-bar-track,
+.cq-ranking > .cq-rank-row:only-child .cq-rank-share,
+.cq-ranking > .cq-rank-main:only-child .cq-rank-share,
+.cq-result .ask-complegend .ask-compbar.is-single { visibility: hidden; }
