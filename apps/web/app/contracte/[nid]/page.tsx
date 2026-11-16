@@ -149,7 +149,6 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
   const overCeilingWhy = c.flags.some((f) => f.code === "award_calloffs_over_ceiling") ? " Vezi semnalul de mai sus." : " Poate fi o depășire reală sau o eroare de completare în SEAP.";
 
   const parties: Party[] = [
-    { key: "a", role: "Instituția", name: authority, lines: [countyLabel(c.authority?.county)] },
     ...c.winners.map((w, i): Party => {
       const pair = x.pairs.find((p) => p.supplierId === w.entityId);
       const others = pair ? pair.history.nDa + pair.history.nCt : 0;
@@ -157,8 +156,8 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         key: w.entityId,
         role: c.winners.length > 1 ? `Câștigătorul ${i + 1} din ${c.winners.length}` : "Câștigătorul",
         name: <EntityName id={w.entityId} role="supplier">{cleanName(w.name)}</EntityName>,
+        place: countyLabel(w.county),
         lines: [
-          countyLabel(w.county),
           multiWinner && w.shareRonExact != null && <><Term tip id="consortiu">Cotă estimată</Term>: {formatExactDecimal(w.shareRonExact)} lei{splitLabel ? ` (${splitLabel})` : ""}</>,
           c.authority && others > 0 && <a href={pairHref({ id: c.authority.entityId, name: cleanName(c.authority.name) }, { id: w.entityId, name: cleanName(w.name) })}>
             Încă {others === 1 ? "o înregistrare" : `${formatInt(others)} înregistrări`} cu instituția · {formatRon(pair!.history.totalRon)}</a>,
@@ -251,7 +250,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
       </RecordSection>
 
       <RecordSection id="parti" title="Instituție și câștigători">
-        <PartyList parties={parties} />
+        <PartyList institution={{ name: authority, place: countyLabel(c.authority?.county) }} parties={parties} />
       </RecordSection>
 
       <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId ? { sourceUrl: awardUrl(c.caNoticeId) } : {})} />

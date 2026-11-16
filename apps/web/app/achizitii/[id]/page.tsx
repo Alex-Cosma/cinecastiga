@@ -69,14 +69,14 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
     sameParty && (purchase ? <>Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></> : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
   ];
   const h = x.pairHistory, s = x.slicing;
+  // The same order as on a contract (Z7-12): the history with the institution, then its share of the firm, its size.
   const supplierLines = [
-    ...pairLines(x.pair),
     h && d.authorityId && d.supplierId && (h.nDa > 0 || h.nCt > 0) && <a href={pairHref({ id: d.authorityId, name: cleanName(d.authority) }, { id: d.supplierId, name: cleanName(d.supplier) })}>
       Alte {[h.nDa > 0 && `${formatInt(h.nDa)} ${h.nDa === 1 ? "achiziție directă" : "achiziții directe"}`, h.nCt > 0 && `${formatInt(h.nCt)} ${h.nCt === 1 ? "contract" : "contracte"}`].filter(Boolean).join(" și ")} cu instituția · {formatRon(h.totalRon)}</a>,
+    ...pairLines(x.pair),
     s && <span className="warn">În aceeași fereastră de 60 de zile{s.cpvName ? `, ${s.cpvName.toLowerCase()}` : ", aceeași categorie"}: {formatInt(s.n)} achiziții · {formatExactDecimal(s.sumRon)} lei{s.ceilingRon ? ` față de plafonul de ${formatExactDecimal(s.ceilingRon)} lei` : ""}{s.from && s.to ? ` (${formatCalendarDate(s.from)} – ${formatCalendarDate(s.to)})` : ""}</span>,
   ];
   const parties: Party[] = [
-    { key: "a", role: "Instituția", name: authority, lines: [countyLabel(x.authorityCounty)] },
     { key: "s", role: purchase ? "Furnizorul" : "Ofertantul", name: supplier, lines: supplierLines },
   ];
 
@@ -137,7 +137,7 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
       <p className="record-missing">Așa cum le-a scris instituția în SEAP; unitățile nu sunt standardizate.</p>
     </RecordSection>}
     <RecordSection id="parti" title={purchase ? "Instituție și furnizor" : "Instituție și ofertant"}>
-      <PartyList parties={parties} />
+      <PartyList institution={{ name: authority, place: countyLabel(x.authorityCounty) }} parties={parties} />
     </RecordSection>
     <Sources sources={[{ href: daUrl(id), label: `Achiziția directă ${d.code ?? id} în SEAP`, external: true }]} />
   </RecordPage>;

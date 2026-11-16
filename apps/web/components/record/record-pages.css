@@ -58,3 +58,17 @@
   .record-sums li { grid-template-columns: minmax(0, 1fr) fit-content(52%); column-gap: 12px; }
   .record-sum-value { font-size: 15px; }
 }
+
+/* Z7-12: the parties. The institution is one plain row; each firm a row (who on the left, the pair's facts on the
+   right), separated by a thin line instead of a card. */
+.record-entry .record-institution { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 0; padding: 0 0 12px; border-bottom: 1px solid var(--line2); }
+.record-entry .record-institution .record-party-name { margin: 0; }
+.record-entry .record-parties-list { display: block; }
+.record-entry .record-parties-list li { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); column-gap: 32px; padding: 14px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; }
+.record-entry .record-party-who > *, .record-entry .record-party-what > * { margin: 0; }
+.record-entry .record-party-who .record-party-name { margin-top: 2px; }
+.record-entry .record-party-who .record-party-line { margin-top: 2px; }
+.record-entry .record-party-what .record-party-line + .record-party-line { margin-top: 4px; }
+@media (max-width: 760px) {
+  .record-entry .record-parties-list li { grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+}

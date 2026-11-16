@@ -121,17 +121,33 @@ export interface Party {
   key: string;
   role: string;
   name: ReactNode;
-  /** One short line each: county, share, history, dependence, size, anomaly. */
+  /** Under the name: where the firm is (its county). */
+  place?: ReactNode;
+  /** What the data says about the pair, one short line each, in the same order on every record: this record's share,
+   * the history with the institution, the institution's part of the firm's contracts, its size, an anomaly. */
   lines: ReactNode[];
 }
-export function PartyList({ parties }: { parties: Party[] }) {
-  return <ul className="record-parties-list">
-    {parties.map((p) => <li key={p.key}>
-      <p className="record-party-role">{p.role}</p>
-      <p className="record-party-name">{p.name}</p>
-      {p.lines.filter(Boolean).map((line, i) => <p className="record-party-line" key={i}>{line}</p>)}
-    </li>)}
-  </ul>;
+/**
+ * The parties (UX audit Z7-12, owner 16 November 2026): the institution one plain row (role · name · county), then each
+ * firm a row, who on the left and what the data says about the pair on the right; the rows stack on a phone.
+ */
+export function PartyList({ institution, parties }: { institution: { name: ReactNode; place?: ReactNode }; parties: Party[] }) {
+  return <>
+    <p className="record-institution"><span className="record-party-role">Instituția</span> <span className="record-party-name">{institution.name}</span>{institution.place && <span className="record-quiet"> {institution.place}</span>}</p>
+    <ul className="record-parties-list">
+      {parties.map((p) => {
+        const lines = p.lines.filter(Boolean);
+        return <li key={p.key}>
+          <div className="record-party-who">
+            <p className="record-party-role">{p.role}</p>
+            <p className="record-party-name">{p.name}</p>
+            {p.place && <p className="record-party-line">{p.place}</p>}
+          </div>
+          {lines.length > 0 && <div className="record-party-what">{lines.map((line, i) => <p className="record-party-line" key={i}>{line}</p>)}</div>}
+        </li>;
+      })}
+    </ul>
+  </>;
 }
 
 const pct = (share: number) => share >= 0.995 ? "Toate" : share < 0.01 ? "Sub 1%" : `${Math.round(share * 100)}%`;
