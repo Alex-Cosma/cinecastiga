@@ -253,3 +253,6 @@
 .iw-filter{margin:10px 0 6px}
 .iw-section-head .iw-filter{flex:1;margin:0;min-width:0}.iw-section-head:has(.iw-filter){align-items:center;margin-top:16px}
 @media(max-width:700px){.iw-section-head:has(.iw-filter){flex-direction:column-reverse;align-items:stretch;gap:12px}.iw-section-head:has(.iw-filter)>button{align-self:flex-start}}
+/* The invitation link replaces the form where it was asked for (Z8-28). */
+.iw-invite-copy{grid-template-columns:1fr auto auto}.iw-invite-copy>.iw-text-button{align-self:center}
+@media(max-width:760px){.iw-invite-copy{grid-template-columns:1fr}}
