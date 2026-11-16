@@ -383,3 +383,8 @@
   .ehead-roles{display:flex}
   .ehead-roles a{flex:1;justify-content:center;min-height:44px;padding:6px 10px}
 }
+
+/* ---- UX audit Z5-14 (16 November 2026): one domain is one line under the top, not a card ---- */
+.ent-brief-line{margin:14px 2px 30px;font-size:14px;line-height:1.6;color:var(--ink2)}
+.ent-brief-line b{color:var(--ink);font-weight:600}
+.ent-brief-line a{color:inherit}

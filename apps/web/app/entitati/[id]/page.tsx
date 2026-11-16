@@ -211,7 +211,8 @@ export default async function EntityPage({
   const noScoreReason = hasRiskScore ? riskNoScoreReason({ nDas: row.nDas, scoreNote: row.scoreNote, score: row.score }) : null;
   // The top's ledger per channel and its years chart; the bars and the undated rest add up to txCounts' value.
   const ledger = ledgerTotals(activityYears.years, activityYears.undated);
-  const years = yearsModel(activityYears.years, turnover, bucharestYear());
+  // The chart from two years with records up; one year is the ledger alone (UX audit Z5-14, 16 November 2026).
+  const years = activityYears.years.filter((y) => y.nDa + y.nCt > 0).length >= 2 ? yearsModel(activityYears.years, turnover, bucharestYear()) : null;
   const county = flagRows.find((r) => r.county)?.county ?? null;
   const isAuth = role === "authority";
   // Every signal type in /semnale for this entity and role, CRI or not (audit F24):
@@ -240,6 +241,10 @@ export default async function EntityPage({
     { href: `/entitati/${id}/legaturi${rolQuery}`, label: "Legături", icon: "legaturi" },
     { href: `/entitati/${id}/comparatii${rolQuery}`, label: "Comparații", icon: "comparatii" },
   ];
+  // A small profile does not repeat itself (UX audit Z5-14): with at most 5 records, each from another partner, the
+  // partner list would be the records table again, so it is left out.
+  const nRecords = txCounts.nDa + txCounts.nCt;
+  const partnersRepeatTable = nRecords > 0 && nRecords <= 5 && topPartners.total === nRecords;
   // "Pe scurt": the KPI numbers above, the same selection by CPV division, the partner list's top rows.
   const summary = composeEntitySummary({
     role, totalExact: txCounts.valueExact, nDa: txCounts.nDa, nContracts: txCounts.nContracts,
@@ -348,7 +353,7 @@ export default async function EntityPage({
           ...(reps.length > 0 ? [{ id: "conducere", label: "Conducere" }] : []),
           // Then the partners and the acquisitions (owner, 4 November 2026); the signals are their own page, "Semnale →"
           // among the analyses, and the score's parts are in the top (owner, 6 November 2026).
-          { id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" },
+          ...(partnersRepeatTable ? [] : [{ id: "parteneri", label: isAuth ? "Furnizori" : "Autorități" }]),
           { id: "achizitii", label: "Achiziții", count: formatInt(txCounts.nDa + txCounts.nCt) },
           ...(reps.length === 0 && holderTwin ? [{ id: "conducere", label: "Titular" }] : []),
           ...views,
@@ -480,7 +485,7 @@ export default async function EntityPage({
       )}
 
       {/* Counterparties */}
-      <section className="section" id="parteneri">
+      {!partnersRepeatTable && <section className="section" id="parteneri">
         <h2>{isAuth ? "Principalii furnizori" : "Principalele autorități"}</h2>
         <PartnersTable
           key={`${id}-${role}`}
@@ -490,7 +495,7 @@ export default async function EntityPage({
           isAuth={isAuth}
           initial={topPartners}
         />
-      </section>
+      </section>}
 
       {/* Transactions — client table: 10/pagină, sortabil, filtre fără reload; page 1 from the server */}
       <section className="section" id="achizitii">
@@ -562,7 +567,8 @@ export default async function EntityPage({
 
       </details>
 
-      {hasRiskScore && <details className="data-context entity-data-context" id="calcul-scor">
+      {/* Only where a score can be (UX audit Z5-14): under the minimum of direct acquisitions there is none to explain. */}
+      {hasRiskScore && row.nDas >= RISK_MIN_DAS && <details className="data-context entity-data-context" id="calcul-scor">
         <summary>Cum se formează riscul?</summary>
         <p id="criterii-scor">Din tiparele găsite în achizițiile directe, pe toată perioada disponibilă: fiecare tipar adaugă puncte după cât de
           pronunțat e. Tiparele se grupează în patru familii (evitarea plafonului, relația cu un partener, decembrie, capacitatea
