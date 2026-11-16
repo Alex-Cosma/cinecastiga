@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, facet });
     }
     const { rows, total } = await getEntityTransactions(id, role, {
-      filters, sort, dir, page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1, pageSize: 10,
+      filters, sort, dir, page: Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1, pageSize: 10, wholeConsortia: true,
     });
     return NextResponse.json({ ok: true, rows, total, pageSize: 10 });
   } catch (e) {

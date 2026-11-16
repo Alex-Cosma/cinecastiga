@@ -180,7 +180,7 @@ export default async function EntityPage({
       role === "supplier" ? registryCuiLookup.then((registry) => (registry ? getCompanyTurnover(registry) : null)) : null,
       // Page 1 of the records table, as TxTable first asks for it (by value, the address's filters): the table is in
       // the first paint instead of growing the page after it (owner, 6 November 2026). On a failure the table asks itself.
-      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: 1, pageSize: 10 })
+      getEntityTransactions(id, role, { filters: txFilters, sort: "value", dir: "desc", page: 1, pageSize: 10, wholeConsortia: true })
         .catch((e: unknown) => { console.error("entity-tx first page", { id, role }, e); return null; }),
     ]);
   const continuedAt = await successorTarget;

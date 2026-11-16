@@ -16,7 +16,7 @@ import ColumnFilter from "@/components/table-filters/ColumnFilter";
 import FilterBand from "@/components/table-filters/FilterBand";
 import { useTableFilters } from "@/components/table-filters/useTableFilters";
 import { useEntityTable } from "./useEntityTable";
-import { contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
+import { consortiumGroups, contractKindLabel, republishedContractKeys, txRowKey } from "./tx-rows";
 import { emptyState, statusLine } from "./tx-filters";
 import { consortiumExplanation, consortiumPhrase, consortiumPhraseParts, consortiumShareLabel, isConsortium } from "@/lib/consortium";
 import EntityName from "@/components/EntityName";
@@ -198,12 +198,15 @@ export default function TxTable({
                 </td>
               </tr>
             )}
-            {!error && rows.map((t, i) => {
+            {!error && (isAuth ? consortiumGroups(rows) : rows.map((t) => [t])).map((group) => {
+              const t = group[0]!, i = rows.indexOf(t);
               // The table rounds to the leu (owner, 2 November 2026); the exact value, to the ban, on hover.
               const exact = t.closingValueExact && /\.\d*[1-9]/.test(t.closingValueExact) ? `${formatExactDecimal(t.closingValueExact)} lei` : undefined;
               const flagged = t.daFlags.length > 0 || t.singleBidder === true;
+              // A consortium contract's member records on one row, every member named (UX audit Z5-11); a lone member
+              // record keeps „consorțiu cu …”.
+              const members = group.length > 1 ? group : null;
               return (
-              // consortium contracts come as one row per member with the same contract id
               <tr key={txRowKey(t, i)}>
                 <td className="c-date" title={t.src === "contract" ? "Data semnării" : "Data finalizării"}>{t.src === "contract" && !t.finalizationDate ? "Dată sursă improbabilă" : formatCalendarDate(t.finalizationDate)}</td>
                 <td className="c-src">
@@ -214,6 +217,16 @@ export default function TxTable({
                     {t.src === "contract" ? "contract" : "directă"}
                   </span>
                 </td>
+                {members ? (
+                <td className="clip c-party" {...tip.bindClip(members.map((m) => cleanName(m.partnerName)).join(" · "))}>
+                  <span className="tx-members">
+                    {members.map((m, k) => <span key={m.partnerId ?? k}>{m.partnerId
+                      ? <EntityName id={m.partnerId} role="supplier">{cleanName(m.partnerName)}</EntityName>
+                      : (m.partnerName ?? "—")}</span>)}
+                  </span>
+                  <span className="cons-line">{formatInt(members.length)} înregistrări, câte una pe membru</span>
+                </td>
+                ) : (
                 <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>
                   {t.partnerId ? (
                     <Link prefetch={false} href={`/entitati/${t.partnerId}`}>{cleanName(t.partnerName)}</Link>
@@ -229,6 +242,7 @@ export default function TxTable({
                     </span>
                   )}
                 </td>
+                )}
                 <td className="clip c-cpv" {...tip.bindClip(t.cpvName ?? t.cpvCode)}>
                   {t.cpvName ?? t.cpvCode ?? "—"}
                 </td>
@@ -274,7 +288,7 @@ export default function TxTable({
                   {t.src === "contract" && t.daCode?.trim() ? (
                     <span className="c-no" title={`Numărul contractului în sursă: ${t.daCode.trim()}`}>nr. {t.daCode.trim()}</span>
                   ) : null}
-                  {republished.has(txRowKey(t, i)) ? (
+                  {group.some((m) => republished.has(txRowKey(m, rows.indexOf(m)))) ? (
                     <span className="c-no c-dup" title="Același număr, aceeași dată, aceeași valoare și același partener apar și sub alt anunț de atribuire. Deschide detaliile ca să compari anunțurile.">
                       apare și sub alt anunț
                     </span>

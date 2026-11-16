@@ -139,6 +139,12 @@ export interface TxPage {
   dir?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+  /**
+   * An institution's table shows a consortium contract as one row with all its members (UX audit Z5-11, 16 November
+   * 2026): a page never splits one contract's member records. A page holds the records whose contract starts within its
+   * `pageSize` places of the order, so the count and the number of pages stay those of the records.
+   */
+  wholeConsortia?: boolean;
 }
 
 const canonical = (sql: DbSql, entityId: string) => canonicalEntityId(sql, /^\d+$/.test(entityId) ? entityId : "0");
@@ -155,11 +161,28 @@ export async function getEntityTransactions(entityId: string, role: Role, q: TxP
   const col = q.sort === "date" ? sql`finalization_date` : sql`closing_value`;
   const order = q.dir === "asc" ? sql`${col} asc nulls last` : sql`${col} desc nulls last`;
 
-  const rows = (await sql`
-    select * from (${body}) u
-    order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last
-    limit ${pageSize} offset ${offset}
-  `) as unknown as Record<string, unknown>[];
+  // The members of one consortium contract split its value equally (the first takes the remaining bani) and share its
+  // date, so they are neighbours in either order; a page takes a contract's records together, on the page where its
+  // first record falls. A member with its own published value is not an equal share and stays where its value puts it.
+  const rows = (q.wholeConsortia && role === "authority"
+    ? await sql`
+      select * from (
+        select o.*, min(o.rn) over (partition by coalesce(o.gk, o.rn::text)) first_rn
+        from (
+          select u.*, row_number() over (order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last) rn,
+            case when u.src = 'contract' and coalesce(u.n_winners, 1) > 1
+              and abs(u.closing_value - u.contract_value_full / u.n_winners) < 1 then u.rid::text end gk
+          from (${body}) u
+        ) o
+      ) p
+      where p.first_rn > ${offset} and p.first_rn <= ${offset + pageSize}
+      order by p.rn
+    `
+    : await sql`
+      select * from (${body}) u
+      order by ${order}, src asc, rid::bigint asc, cp_id asc nulls last
+      limit ${pageSize} offset ${offset}
+    `) as unknown as Record<string, unknown>[];
   const totalRows = (await sql`select count(*)::int c from (${body}) u`) as unknown as { c: number }[];
 
   // Name the other members of each consortium on this page (one indexed lookup).

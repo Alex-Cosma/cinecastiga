@@ -39,3 +39,22 @@ export function contractKindLabel(kind: string | null | undefined): { text: stri
   };
   return null;
 }
+
+/**
+ * An institution's records grouped for display (UX audit Z5-11, 16 November 2026): the member records of one consortium
+ * contract (same contract, each an equal share of it, neighbours in the table's order) become one row with all its members.
+ * Only the display groups; the count and the pages stay on records (owner, 24 October 2026).
+ */
+export function consortiumGroups(rows: DaTx[]): DaTx[][] {
+  const groups: DaTx[][] = [];
+  // An equal share of the contract (the first member takes the remaining bani); a member's own published value is not.
+  const key = (t: DaTx) => (t.src === "contract" && (t.nWinners ?? 1) > 1 && t.closingValue != null && t.contractValueFull != null
+    && Math.abs(t.closingValue - t.contractValueFull / t.nWinners!) < 1 ? t.sicapDaId : null);
+  for (const t of rows) {
+    const last = groups.at(-1);
+    const k = key(t);
+    if (k !== null && last && key(last[0]!) === k) last.push(t);
+    else groups.push([t]);
+  }
+  return groups;
+}
