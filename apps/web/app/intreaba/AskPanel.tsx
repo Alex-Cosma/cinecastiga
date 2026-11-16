@@ -1245,7 +1245,7 @@ export default function AskPanel({
               <div>
                 <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied, resp.townHall))}</h2>
                 {line && <IntentLine line={line} onAdopt={adopt} />}
-                <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} />
+                <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} caveats={resp.caveats} />
                 {dirty && (
                   <p className="cq-pending" role="status">
                     Răspuns pentru întrebarea anterioară

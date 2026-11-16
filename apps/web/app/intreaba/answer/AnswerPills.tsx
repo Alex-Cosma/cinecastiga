@@ -13,6 +13,8 @@ import BuilderWindow from "../builder/BuilderWindow";
 import { useCoverage } from "../builder/coverage";
 import { builderView, type BuilderWindowSpec } from "../builder/view";
 import { pillWindow } from "./pill-windows";
+import SubclassesPill from "./SubclassesPill";
+import { excludedSubclasses, subclassesWords, wholeDomainCode } from "./subclasses";
 import { G } from "../../../components/ghost/Ghost";
 import { ghostPillWidth } from "../link-hint";
 
@@ -36,6 +38,8 @@ export interface AnswerPillsProps {
   cpvName?: string | undefined;
   /** The question after a choice, with the notes of what the choice changed besides. */
   onApply: (next: QuestionSpec, notes: string[]) => void;
+  /** The answer's caveats: the subclasses its domain leaves out are named there (Z2-25). */
+  caveats?: readonly string[] | undefined;
 }
 
 /** On a phone, this many pills or more wait under „Condiții · N”: two fit on a row or two and stay in sight. */
@@ -64,7 +68,7 @@ export function shortCpvPill(words: string, term: string): string {
   return `„${spellTerm(term)}” · CPV ${match[1]}${match[2] ? ` ${match[2]}` : ""}`;
 }
 
-export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: AnswerPillsProps) {
+export default function AnswerPills({ spec, pills, labels, cpvName, onApply, caveats }: AnswerPillsProps) {
   const coverage = useCoverage()?.periods ?? null;
   // The builder's draft of the applied question: the windows read and write it as the sentence's do.
   const question = useMemo(() => transitionQuestion(spec as unknown as QuestionSpec).spec, [spec]);
@@ -109,6 +113,14 @@ export default function AnswerPills({ spec, pills, labels, cpvName, onApply }: A
         // An answer's ghost (AskPanel AnswerGhost): a pill the engine names, unknown before it answers, is a line.
         const ghost = ghostPillWidth(words);
         const pill = ghost ? <G.Line inline w={ghost} /> : shortCpvPill(words, term);
+        // „fără 3 subclase (vezi limitele)” names them where it stands, with „Include-le” (Z2-25).
+        const excluded = ghost ? null : subclassesWords(words);
+        const subclasses = excluded ? excludedSubclasses(caveats) : [];
+        if (excluded && subclasses.length) {
+          const code = wholeDomainCode(pills);
+          return <Fragment key={i}><SubclassesPill words={excluded} subclasses={subclasses}
+            onInclude={target && code ? () => choose(target, [{ filter: "cpvTerm", value: code }]) : null} /></Fragment>;
+        }
         // A pill's tint is its own edge: the dot separates two words that are text.
         return <Fragment key={i}>
           {i > 0 && !target && !windows[i - 1] && <span className="cq-scope-sep" aria-hidden="true">·</span>}

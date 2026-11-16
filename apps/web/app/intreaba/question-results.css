@@ -1214,3 +1214,13 @@
 .cq-pill-x { display: inline-grid; place-items: center; flex: none; width: 24px; min-height: 24px; margin: 0 0 0 2px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); font: 500 15px/1 var(--body); cursor: pointer; }
 .cq-pill-x:hover { background: var(--fk-phrase-hover); color: var(--ink); }
 @media (max-width: 600px) { .cq-pill-x { width: 44px; min-height: 44px; margin-left: 4px; } }
+
+/* Z2-25 (UX audit, 16 November 2026): „−3 subclase ›” names the subclasses its domain leaves out in a box under it. */
+.cq-subclasses { position: relative; display: inline-flex; max-width: 100%; }
+.cq-subclasses-pop ul { margin: 0; padding: 0 0 0 16px; }
+.cq-subclasses-pop li + li { margin-top: 2px; }
+.cq-subclasses-h { margin: 0 0 4px !important; color: var(--muted); }
+.cq-subclasses-code { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.cq-subclasses-include { display: inline-flex; align-items: center; min-height: 36px; margin-top: 10px; padding: 6px 12px; border: 1px solid var(--line2, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 13px/1.3 var(--body); cursor: pointer; }
+.cq-subclasses-include:hover { border-color: var(--accent); background: var(--accent-soft); }
+@media (max-width: 600px) { .cq-scope:has(.cq-subclasses) { position: relative; } .cq-subclasses { position: static; } .cq-subclasses-include { min-height: 44px; } }
