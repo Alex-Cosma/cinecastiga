@@ -5,6 +5,7 @@ import {entityIntent} from './entity-intent';
 import {titleTsquery,trailingCounty,wordForms} from './words';
 import {rankPlaces,type UatRow} from './places';
 import {COUNTIES} from '../counties';
+import {buildPlaces} from '../intent/places';
 import {localityInstitutions} from '../locality-institutions';
 import {fold,PAGE_SIZE,excerpt,type TopicScope,type TopicLocality,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
@@ -26,14 +27,25 @@ function uatRows():Promise<UatRow[]>{
  uatCache.topicUats={at:Date.now(),rows};rows.catch(()=>{if(uatCache.topicUats?.rows===rows)delete uatCache.topicUats;});
  return rows;
 }
+/**
+ * A locality as the gazetteer spells it (RPL 2021, with diacritics), as the town hall dialog shows it (UX audit Z1-16):
+ * „ORAŞ CISNADIE · Oraș · sibiu” becomes „Cisnădie · Oraș · Sibiu”. Matching keeps using the registry's rows.
+ */
+const TIP_CODE:Record<string,string>={Municipiu:'1','Oraș':'2','Comună':'3'};
+export function shownPlace(p:Place):Place{
+ if(p.kind!=='locality')return p;
+ const siruta=Number(p.id.slice(4)),[kind='',county='']=p.detail.split(' · ');
+ const entry=buildPlaces([{siruta,name:p.name,tip:TIP_CODE[kind]??'3',county}]).find(e=>e.siruta===siruta);
+ return entry?{...p,name:entry.name.replace(/^(?:Municipiul|Orașul|Comuna)\s+/,''),detail:`${kind} · ${entry.county}`}:p;
+}
 export async function topicPlaces(term:string):Promise<Place[]> {
  const word=fold(term.trim()).slice(0,100);
  if(word.length<2)return rankPlaces(word,countyPlaces,[]);
- return rankPlaces(word,countyPlaces,await uatRows());
+ return rankPlaces(word,countyPlaces,await uatRows()).map(shownPlace);
 }
 export async function resolvePlace(id:string):Promise<Place|null>{
  if(!id)return null;if(id.startsWith('county:'))return countyPlaces.find(p=>p.id===id)??null;
- const rows=await db()`select siruta,name,county,tip from reference.uat where siruta=${Number(id.slice(4))}`;return rows[0]?local(rows[0]):null;
+ const rows=await db()`select siruta,name,county,tip from reference.uat where siruta=${Number(id.slice(4))}`;return rows[0]?shownPlace(local(rows[0])):null;
 }
 /**
  * A locality's institutions (owner, 13 November 2026), or only its town hall („Doar primăria”): the identities beside the

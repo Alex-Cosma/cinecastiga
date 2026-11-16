@@ -30,6 +30,26 @@ export function parseTopicScope(p:URLSearchParams):TopicScope {
  const ordine=p.get('ordine');
  return {q,place,from,to,type:type as TopicScope['type'],match:match as TopicScope['match'],tab:role?'entities':tab as SearchTab,page:Number(rawPage),role,...(ordine==='valoare'?{order:'value' as const}:ordine==='data'?{order:'date' as const}:{}),...(p.get('nume')==='exacte'?{names:'exact' as const}:{}),...(p.get('doar')==='primaria'&&place.startsWith('uat:')?{hall:true as const}:{})};
 }
+/**
+ * An address with filters /cauta cannot read (UX audit Z1-31, 16 November 2026): the same address without them, so the
+ * search still runs and the page says one was left out. Each filter is checked on its own (the years as a pair); null
+ * when the address reads as it is, or when the words themselves cannot be searched.
+ */
+export function cleanTopicParams(p:URLSearchParams):URLSearchParams|null {
+ const reads=(x:URLSearchParams)=>{try{parseTopicScope(x);return true;}catch{return false;}};
+ if(reads(p))return null;
+ const q=p.get('q'),base=new URLSearchParams(q!=null?{q}:{});
+ if(!reads(base))return null;
+ const out=new URLSearchParams(base),seen=new Set<string>(['q']);
+ for(const key of p.keys()){
+  if(seen.has(key))continue;
+  const group=key==='from'||key==='to'?['from','to']:[key];
+  group.forEach(k=>seen.add(k));
+  const trial=new URLSearchParams(base);for(const k of group)for(const v of p.getAll(k))trial.append(k,v);
+  if(reads(trial))for(const k of group)for(const v of p.getAll(k))out.append(k,v);
+ }
+ return reads(out)?out:null;
+}
 export function topicParams(s:TopicScope):URLSearchParams {
  const p=new URLSearchParams();
  if(s.q)p.set('q',s.q);if(s.place)p.set('place',s.place);

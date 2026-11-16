@@ -55,7 +55,7 @@ function Typed({ text }: { text: string }) {
 
 const SearchIcon = () => <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5" /><path d="M12.2 12.2 16 16" /></svg>;
 
-export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(query: string): void }) {
+export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(query: string, county?: string): void }) {
   const [step, setStep] = useState(0);
   const [county, setCounty] = useState(""), [topicKey, setTopicKey] = useState("");
   const [byValue, setByValue] = useState(false);
@@ -65,6 +65,9 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
   const [asked, setAsked] = useState<string | null>(null), [understood, setUnderstood] = useState<{ query: string; sentence: string } | null>(null);
   const [tip, setTip] = useState<{ dot: number; left: number; top: number; arrow: number } | null>(null);
   const [leaving, setLeaving] = useState(false);
+  // How the signal step says to open an example: a finger taps, a mouse points (UX audit Z1-35). The tour renders in the
+  // browser only (TourGate loads it without server rendering), so the media query is read at once.
+  const [touch] = useState(() => typeof window !== "undefined" && window.matchMedia("(hover: none)").matches);
   const root = useRef<HTMLDivElement>(null), dots = useRef<HTMLDivElement>(null);
   // The press on a signal dot under way: a tap focuses the dot before its click, and the focus must not open the
   // example the click then toggles shut (14 November 2026: on a phone only a long press, with no click, showed it).
@@ -99,10 +102,10 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
     root.current?.scrollTo({ top: 0, behavior: calm() ? "auto" : "smooth" });
   }, []);
   const finish = useCallback(() => {
-    if (calm()) { onFinish(query); return; }
+    if (calm()) { onFinish(query, county); return; }
     setLeaving(true);
-    window.setTimeout(() => onFinish(query), 620);
-  }, [onFinish, query]);
+    window.setTimeout(() => onFinish(query, county), 620);
+  }, [onFinish, query, county]);
   const forward = useCallback(() => { if (step === 0 && !chosen) return; if (step === TOUR_LAST_STEP) finish(); else go(step + 1); }, [chosen, finish, go, step]);
   // „Continuă” on a narrow screen: a press first shows the rest of the step, the next one goes on (lib/tour.ts,
   // tourRestHidden). A press without a pointer, from the keyboard or an assistive technology, goes on at once:
@@ -268,7 +271,7 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
             <div className="tr-paid-no"><strong>?</strong><span>plătiți efectiv. SEAP nu publică plățile.</span></div>
           </div>}
           {step === 4 && <>
-            <p className="tr-cap">Câteva puncte ies în evidență. Treci cu mouse-ul peste unul portocaliu, sau atinge-l, ca să vezi un exemplu de semnal.</p>
+            <p className="tr-cap">Câteva puncte ies în evidență. {touch ? "Atinge un punct portocaliu" : "Treci cu mouse-ul peste un punct portocaliu"} ca să vezi un exemplu de semnal.</p>
             <div className="tr-score" role="img" aria-label="Exemplu: scor de risc 73 din 100"><span className="tr-score-mark">73 din 100</span><div className="tr-score-track" /><div className="tr-score-ends"><span>0 · niciun tipar</span><span>100 · multe tipare</span></div></div>
           </>}
           {step === 5 && chosen && <div className="tr-search">
@@ -281,7 +284,9 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
     </div>
 
     <footer className="tr-nav">
-      <button type="button" className="tr-btn" onClick={() => go(step - 1)} style={step === 0 ? { visibility: "hidden" } : undefined}>Înapoi</button>
+      {/* On the first step there is nothing to go back to: on wide screens „Continuă” then stands at the text's edge
+          (tour.css), on phones the row keeps its place (UX audit Z1-35). */}
+      <button type="button" className="tr-btn tr-nav-back" onClick={() => go(step - 1)} aria-hidden={step === 0 || undefined} tabIndex={step === 0 ? -1 : undefined}>Înapoi</button>
       <span className="tr-count">{step + 1} din {TOUR_LAST_STEP + 1}</span>
       <button type="button" className="tr-btn tr-btn-primary" onClick={press} disabled={step === 0 && !chosen}>Continuă</button>
     </footer>

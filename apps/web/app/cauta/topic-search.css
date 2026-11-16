@@ -311,3 +311,83 @@
 .topic-locality-list small{color:var(--topic-muted);white-space:nowrap}
 @media(max-width:650px){.topic-seg{width:100%}.topic-seg>button{flex:1;min-height:44px}.topic-locality-list li{flex-direction:column;gap:0}.topic-locality-list small{white-space:normal}}
 
+/* UX audit Z1-03 (16 November 2026): after a search the words are the title on every width, the filters fold into one
+   row („Loc, perioadă și alte filtre  Județul Buzău · 2024 ⌄”), and „Am înțeles” is one sentence whose parts (subject,
+   buyers, place, period) open a short menu: what else they can be and how to take them out. */
+@media(min-width:651px){
+ .topic-intro.has-query{margin:0 0 20px}
+ .topic-intro.has-query h1{font-size:34px;line-height:1.15;letter-spacing:-.6px;margin:20px 0 0;overflow-wrap:anywhere}
+ .topic-intro.has-query .topic-h1-default{display:none}
+ .topic-intro.has-query .topic-h1-query{display:inline}
+ .topic-filter-surface.has-query .topic-filter-toggle{display:inline-flex;align-items:center;gap:8px;width:auto;max-width:100%;margin-top:4px;padding:8px 4px 0;min-height:44px;border:0;border-radius:8px;background:none;color:var(--ink2);font-size:14px;text-align:left}
+ .topic-filter-surface.has-query .topic-filter-toggle>span{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px}
+ .topic-filter-surface.has-query .topic-filter-toggle small{font-size:14px;color:var(--accent);font-weight:600}
+ .topic-filter-surface.has-query .topic-filter-toggle .d-icon{width:16px;height:16px;color:var(--topic-muted)}
+ .topic-filter-surface.has-query .topic-filters:not(.is-expanded){display:none}
+}
+.topic-sentence{flex:0 1 auto;min-width:0;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+.topic-part{display:inline-block;position:relative}
+.topic-part>summary{display:inline;list-style:none;cursor:pointer;border-bottom:1.5px dashed var(--accent-line);white-space:nowrap}
+.topic-part>summary::-webkit-details-marker{display:none}
+.topic-part>summary .d-icon{width:13px!important;height:13px!important;margin-left:1px;vertical-align:-1px;color:var(--topic-muted)}
+.topic-part>summary:hover,.topic-part[open]>summary{border-bottom-color:var(--accent)}
+.topic-part[open]>summary{border-bottom-style:solid}
+.topic-part-menu{position:absolute;top:calc(100% + 6px);left:0;z-index:30;display:flex;flex-direction:column;min-width:240px;max-width:min(340px,calc(100vw - 48px));padding:6px;background:var(--surface);border:1px solid var(--line2);border-radius:10px;box-shadow:var(--shadow);font-size:13px;font-weight:400;white-space:normal}
+.topic-part-menu>a{display:flex;align-items:center;min-height:40px;padding:8px 10px;border-radius:6px;color:var(--ink);text-decoration:none;line-height:1.45}
+.topic-part-menu>a:hover{background:var(--accent-soft)}
+.topic-part-menu>p{margin:4px 10px 6px!important;font-size:12px;color:var(--topic-muted);line-height:1.5}
+.topic-understood-literal{font-size:13px;font-weight:500;white-space:nowrap}
+@media(max-width:650px){
+ .topic-question-line{display:block;font-size:17px;line-height:1.5}
+ .topic-question-line>.topic-understood-label{display:block;margin-bottom:2px}
+ .topic-part{position:static}
+ .topic-part-menu{top:calc(100% + 6px);left:12px;right:12px;min-width:0;max-width:none}
+ .topic-part>summary{position:relative}
+ /* the part stays a word of the sentence; its touch area reaches the 44 px of the row around it */
+ .topic-part>summary::after{content:'';position:absolute;inset:-9px -3px}
+ .topic-understood-literal{display:flex;align-items:center;width:max-content;min-height:44px;margin:4px 0 -8px;font-size:14px}
+}
+/* Nothing anywhere: one block with its ways out; an empty category beside others is one line (UX audit Z1-06, Z1-13). */
+.topic-zero{display:grid;gap:14px;padding:26px 28px 28px}
+.topic-zero>h2{font-size:24px!important;letter-spacing:-.4px;color:var(--ink)}
+.topic-zero>.topic-empty{margin:0;padding:0;border:0;max-width:62ch}
+.topic-zero>.topic-start{padding:0;margin:2px 0 0}
+.topic-zero>.topic-start>p{margin:0 0 8px}
+.topic-zero-clear{margin:0!important}
+.topic-zero-ask{display:inline-flex;align-items:center;gap:8px;width:max-content;max-width:100%;min-height:44px;color:var(--accent);font-weight:600;font-size:14px}
+.topic-zero-ask .d-icon{width:16px;height:16px}
+.topic-empty-row{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-height:44px;margin:4px 0 24px!important;padding-top:6px;border-top:1px solid var(--line);color:var(--topic-muted);font-size:13px}
+.topic-empty-row>strong{color:var(--ink2);font-weight:600}
+@media(max-width:650px){.topic-zero{padding:20px 18px 22px}.topic-zero>h2{font-size:22px!important}}
+/* The tabs (UX audit Z1-12, 16 November 2026): on phones one row of four segments, the count under the name, short
+   names („Nume”, „Titluri”) and the copy button as a 44 px icon at its end; a tab with 0 is quieter but still opens. */
+.topic-tabs .topic-tab-wide,.topic-tabs .topic-tab-short{font-size:inherit;background:none;padding:0;border-radius:0}
+.topic-tabs .topic-tab-short{display:none}
+.topic-tabs>button.is-empty{color:var(--topic-muted)}
+@media(max-width:650px){
+ .topic-tabbar{flex-direction:row;align-items:stretch;gap:4px;border-bottom:1px solid var(--line2);margin-bottom:22px}
+ .topic-tabbar>.topic-tabs{display:flex;justify-content:space-between;gap:2px;flex:1;min-width:0;border-bottom:0;margin:0}
+ .topic-tabs>button{flex:1 1 auto;flex-direction:column;justify-content:center;align-items:center;gap:3px;min-width:0;min-height:58px;padding:8px 3px 6px;font-size:13px;line-height:1.2;text-align:center}
+ .topic-tabs>button>.topic-tab-n{font-size:12px;padding:0 6px}
+ .topic-tabs>button.is-empty{opacity:.75}
+ .topic-tabs .topic-tab-wide{display:none}
+ .topic-tabs .topic-tab-short{display:inline}
+ .topic-copy{position:relative;flex-wrap:nowrap;align-items:center;padding:0}
+ .topic-copy>.topic-control{width:44px;min-width:44px;height:44px;padding:0;justify-content:center}
+ .topic-copy-label{display:none}
+ .topic-copy>p{position:absolute;right:0;top:calc(100% + 4px);z-index:5;white-space:nowrap;padding:4px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--line2)}
+}
+@media(max-width:360px){.topic-tabs>button{font-size:12px;padding:8px 1px 6px}}
+/* „Nu plăți” once per list, beside its order (UX audit Z1-15): the rows keep the amount alone. */
+.topic-not-paid{white-space:nowrap}
+/* A tab chosen (UX audit Z1-32): the panel's head is only the list's order line and its (?), the tab names the rest. */
+.topic-panel-head.topic-panel-bar{min-height:44px;padding:6px 24px;gap:4px 10px}
+.topic-panel-bar>.topic-panel-sub{margin-left:0}
+@media(max-width:650px){.topic-panel-head.topic-panel-bar{padding:4px 16px}.topic-panel-bar>.topic-panel-sub{flex-basis:auto;flex:1;min-width:0}}
+/* A filter left out of an address the page could not read (UX audit Z1-31). */
+.topic-cleaned{margin:12px 0 0!important}
+.topic-error>.topic-primary{text-decoration:none}
+/* „primăria mea”: the town hall picker beside the note (UX audit Z1-33). */
+.topic-pick-hall{margin:2px 0 4px;min-height:40px;font-size:13px;gap:8px;justify-content:flex-start}
+.topic-pick-hall .d-icon{width:16px;height:16px;color:var(--accent)}
+@media(max-width:650px){.topic-pick-hall{min-height:44px}}

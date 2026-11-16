@@ -146,6 +146,9 @@ export const TOUR_SEEN_COOKIE = "cc_tour";
 /** The question handed to the home page's search field when the tour ends on another page. */
 export const TOUR_QUERY_KEY = "cc-tour-query";
 export const TOUR_QUERY_EVENT = "cc-tour-query";
+/** The county chosen in the tour, handed to the home page's map the same way (UX audit Z1-25). */
+export const TOUR_COUNTY_KEY = "cc-tour-county";
+export const TOUR_COUNTY_EVENT = "cc-tour-county";
 /** `/?tur=1` opens the tour again (the footer's link). */
 export const TOUR_PARAM = "tur";
 

@@ -1,5 +1,5 @@
 'use client';
-import {Fragment,useEffect,useId,useState} from 'react';
+import {Fragment,useEffect,useId,useRef,useState} from 'react';
 import Link from 'next/link';
 import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
@@ -9,65 +9,87 @@ import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
 import type {AskSpec} from '@/lib/ask/spec';
 import type {SuggestResponse} from '@/app/api/suggest/route';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {answerShape,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
+import {answerShape,fold,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
 import {relatedSubjects,relatedWord} from '@/lib/topic-search/related';
+import {markParts,placeSentence,placeTexts} from '@/lib/topic-search/sentence';
+import {TownHallPicker} from '../TownHallTile';
 
 const capital=(s:string)=>s.charAt(0).toLocaleUpperCase('ro-RO')+s.slice(1);
 /** A /cauta link for the same selection with some parts changed. */
 export const searchHref=(scope:TopicScope,patch:Partial<TopicScope>,literal=false)=>{const p=topicParams({...scope,tab:'all',page:1,role:'',...patch});if(literal)p.set('literal','1');return `/cauta?${p}`;};
 const periodLabel=(from:string,to:string)=>from===to?from:`${from}–${to}`;
 
-/** What the reading dropped or narrowed, said under it (a place that cannot be left out, the first of two years…). */
+/** The words name „my” town hall or locality: which one is not known (lib/intent notes). */
+export const OWN_PLACE_NOTE=/nu știm ce localitate/;
+/**
+ * What the reading dropped or narrowed, said under it (a place that cannot be left out, the first of two years…). A
+ * town hall not named („primăria mea”) gets the home page's town hall picker beside its note (UX audit Z1-33).
+ */
 function ReadingNotes({notes}:{notes:string[]}){
- return notes.length?<>{notes.map(n=><p key={n} className="topic-help topic-reading-note">{n}</p>)}</>:null;
+ return notes.length?<>{notes.map(n=><Fragment key={n}><p className="topic-help topic-reading-note">{n}</p>{OWN_PLACE_NOTE.test(n)&&<TownHallPicker trigger={show=><button type="button" className="topic-control topic-pick-hall" aria-haspopup="dialog" onClick={show}><DiscoveryIcon name="pin"/>Alege primăria ta</button>}/>}</Fragment>)}</>:null;
+}
+
+/** One part of the sentence the person can change: its words, underlined, open a short menu of what else it can be. */
+function Part({text,what,children}:{text:string;what:string;children:React.ReactNode}){
+ return <details className="topic-part"><summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> ({what})</span></summary><div className="topic-part-menu">{children}</div></details>;
 }
 
 /**
- * "Am înțeles": what /cauta took from the words, as chips the person can
- * remove or change. Explicit filters chosen on the page are shown as well,
- * so the line always says what is searched.
+ * "Am înțeles": what /cauta took from the words, as one sentence (UX audit Z1-03, 16 November 2026): the interpreter's
+ * own words, with the subject, the buyers, the place and the period marked where it wrote them; each opens what else it
+ * can be and how to take it out. Explicit filters chosen on the page are in it as well, so it always says what is
+ * searched. A part the sentence does not name is offered after it.
  */
 export function Understood({scope,effective,t,place}:{scope:TopicScope;effective:TopicScope;t:TopicInterpretation;place:Place|null}){
  const fromWords=t.fromWords,placeChip=fromWords.place??(t.explicitPlace?.id===effective.place?t.explicitPlace:null)??(effective.place&&place?.id===effective.place?{id:place.id,label:place.kind==='county'?(place.name==='București'?'Municipiul București':`Județul ${place.name}`):place.name,kind:place.kind}:null);
- const removePlace=fromWords.place?searchHref(scope,{q:t.applied.q,place:'',from:effective.from,to:effective.to}):searchHref(scope,{place:''});
+ const literal=searchHref(scope,{},true);
+ // A place named alone is read as the place again: without it, the words are searched as typed.
+ const removePlace=t.placeAlone?literal:fromWords.place?searchHref(scope,{q:t.applied.q,place:'',from:effective.from,to:effective.to}):searchHref(scope,{place:''});
  const period=fromWords.period??(effective.from?{from:effective.from,to:effective.to,label:periodLabel(effective.from,effective.to)}:null);
  const removePeriod=fromWords.period?searchHref(scope,{q:t.applied.q,place:effective.place,from:'',to:''}):searchHref(scope,{from:'',to:''});
- const literal=searchHref(scope,{},true);
- // A whole question: the interpreter's sentence is what is answered; the words are searched as written below.
- if(t.question)return <section className="topic-understood topic-question" aria-label="Cum am înțeles întrebarea">
-  <p className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <strong>{t.question.sentence}</strong></p>
-  <ReadingNotes notes={t.notes}/>
-  {!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
- </section>;
- if(!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note&&!t.notes.length){
+ const box=useRef<HTMLElement>(null);
+ // An open part closes on a click elsewhere or Escape, as the other menus of the page.
+ useEffect(()=>{const el=box.current;if(!el)return;
+  const outside=(e:PointerEvent)=>el.querySelectorAll<HTMLDetailsElement>('details.topic-part[open]').forEach(d=>{if(!d.contains(e.target as Node))d.open=false;});
+  const esc=(e:KeyboardEvent)=>{if(e.key!=='Escape')return;const d=el.querySelector<HTMLDetailsElement>('details.topic-part[open]');if(d){d.open=false;d.querySelector('summary')?.focus();}};
+  document.addEventListener('pointerdown',outside);el.addEventListener('keydown',esc);return()=>{document.removeEventListener('pointerdown',outside);el.removeEventListener('keydown',esc);};},[]);
+ if(!t.question&&!t.subject&&!placeChip&&!period&&!t.placeAmbiguous&&!t.note&&!t.notes.length){
   // Nothing applied: a reading that needs a choice of person is chosen in Întreabă. Same-named firms and
   // institutions are listed first in the results, so they need no line of their own.
   return t.problem&&t.askHref&&!t.entityChoice?<p className="topic-help topic-understood-note">{t.problem} <Link prefetch={false} href={t.askHref}>Alege în Întreabă</Link></p>:null;
  }
  // Only a note („primăria” without its locality, „la noi”): the note alone, without an empty „Am înțeles” line.
- if(!t.subject&&!placeChip&&!period&&!t.kind&&!t.placeAmbiguous&&!t.note)return <section className="topic-understood" aria-label="Cum am înțeles căutarea"><ReadingNotes notes={t.notes}/></section>;
- return <section className="topic-understood" aria-label="Cum am înțeles căutarea">
-  <div className="topic-understood-line"><span className="topic-understood-label">Am înțeles:</span>
-   <ul className="topic-chips">
-    {t.subject&&<li className="topic-chip"><span>Subiect:</span> <strong title={t.subject.cpvName??undefined}>{capital(t.subject.label)}</strong>
-     <details className="topic-chip-menu"><summary aria-label={`Schimbă subiectul „${t.subject.label}”`}><DiscoveryIcon name="chevronDown"/></summary><div>
-      {t.otherSubjects.map(s=><Link prefetch={false} key={s.label} href={searchHref(scope,{q:s.label,place:effective.place,from:effective.from,to:effective.to})}>Subiect: {capital(s.label)}</Link>)}
-      <Link prefetch={false} href={literal}>Nu e un subiect: caută exact cuvintele scrise</Link>
-     </div></details></li>}
-    {placeChip&&<li className="topic-chip"><span>Loc:</span> <strong>{placeChip.label}</strong>
-     {t.placeChoices.length>0&&<details className="topic-chip-menu"><summary aria-label={`Schimbă locul „${placeChip.label}”`}><DiscoveryIcon name="chevronDown"/></summary><div>
-      {t.placeChoices.map(c=><Link prefetch={false} key={c.id} href={searchHref(scope,{q:c.q,place:c.id,from:effective.from,to:effective.to})}>{c.choice}</Link>)}
-     </div></details>}
-     <Link prefetch={false} className="topic-chip-remove" href={removePlace} aria-label={`Scoate locul „${placeChip.label}”: caută în toată țara`}><DiscoveryIcon name="close"/></Link></li>}
-    {t.kind&&<li className="topic-chip"><span>Cine cumpără:</span> <strong>{t.kind.label}</strong><small className="topic-chip-scope">doar în „Pe scurt”</small><Link prefetch={false} className="topic-chip-remove" href={searchHref(scope,{q:t.kind.withoutQ,place:effective.place,from:effective.from,to:effective.to})} aria-label={`Scoate „${t.kind.label}”: toate instituțiile`}><DiscoveryIcon name="close"/></Link></li>}
-    {period&&<li className="topic-chip"><span>Perioada:</span> <strong>{period.label}</strong><Link prefetch={false} className="topic-chip-remove" href={removePeriod} aria-label="Scoate perioada: toți anii"><DiscoveryIcon name="close"/></Link></li>}
-   </ul>
-  </div>
+ if(!t.question&&!t.subject&&!placeChip&&!period&&!t.kind&&!t.placeAmbiguous&&!t.note)return <section className="topic-understood" aria-label="Cum am înțeles căutarea"><ReadingNotes notes={t.notes}/></section>;
+ // The sentence: the question, the place's own statement, what „Pe scurt” answers; else what the lists search.
+ const answered=t.answer?(t.answer.top?.sentence??t.answer.total.sentence):null;
+ const sentence=t.question?.sentence??(t.placeAlone&&t.answer?placeSentence(t.answer.total.sentence):null)??answered
+  ??(t.subject||placeChip||period||t.kind?`Căutăm „${effective.q}”${placeChip?` în ${placeTexts(placeChip.label)[0]}`:''}${period?`, în ${period.label}`:''}.`:null);
+ type Key='subject'|'kind'|'place'|'period';
+ const menus:Partial<Record<Key,{what:string;label:string;body:React.ReactNode}>>={};
+ if(t.subject)menus.subject={what:'schimbă subiectul',label:`Subiect: ${capital(t.subject.label)}`,body:<>
+  {t.otherSubjects.map(s=><Link prefetch={false} key={s.label} href={searchHref(scope,{q:s.label,place:effective.place,from:effective.from,to:effective.to})}>Subiect: {capital(s.label)}</Link>)}
+  <Link prefetch={false} href={literal}>Nu e un subiect: caută exact cuvintele scrise</Link></>};
+ if(t.kind)menus.kind={what:'doar în „Pe scurt”',label:`Cine cumpără: ${t.kind.label}`,body:<>
+  <p>Doar „Pe scurt” se restrânge la {t.kind.label}; titlurile sunt de la toate instituțiile.</p>
+  <Link prefetch={false} href={searchHref(scope,{q:t.kind.withoutQ,place:effective.place,from:effective.from,to:effective.to})}>Scoate „{t.kind.label}”: toate instituțiile</Link></>};
+ if(placeChip)menus.place={what:'schimbă locul',label:`Loc: ${placeChip.label}`,body:<>
+  {t.placeChoices.map(c=><Link prefetch={false} key={c.id} href={searchHref(scope,{q:c.q,place:c.id,from:effective.from,to:effective.to})}>{c.choice}</Link>)}
+  <Link prefetch={false} href={removePlace}>{t.placeAlone?`Caută „${scope.q}” în toată țara`:'Scoate locul: toată țara'}</Link></>};
+ if(period)menus.period={what:'schimbă perioada',label:`Perioada: ${period.label}`,body:<Link prefetch={false} href={removePeriod}>Scoate perioada: toți anii</Link>};
+ const keys=(Object.keys(menus) as Key[]);
+ const texts:Record<Key,string[]>={subject:t.subject?[`„${t.subject.label}”`,t.subject.label]:[],kind:t.kind?[t.kind.label]:[],place:placeChip?placeTexts(placeChip.label):[],period:period?[period.label]:[]};
+ const marked=sentence?markParts(sentence,keys.map(key=>({key,texts:texts[key]}))):{segments:[],missing:keys};
+ const part=(key:Key,text:string)=>{const m=menus[key]!;return <Part key={key} text={text} what={m.what}>{m.body}</Part>;};
+ // A question's „Caută exact ce ai scris” is in „Pe scurt” (or beside its question when it has none).
+ const showLiteral=!t.question&&Boolean(fromWords.place||fromWords.period||t.subject||t.placeAlone);
+ return <section ref={box} className="topic-understood topic-question" aria-label={t.question?'Cum am înțeles întrebarea':'Cum am înțeles căutarea'}>
+  {sentence&&<div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence">{marked.segments.map((x,i)=>x.key?part(x.key,x.text):<Fragment key={i}>{x.text}</Fragment>)}{marked.missing.map(key=><Fragment key={key}> · {part(key,menus[key]!.label)}</Fragment>)}</span>
+   {showLiteral&&<Link prefetch={false} className="topic-understood-literal" href={literal}>Caută exact ce ai scris ›</Link>}</div>}
+  {t.question&&!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   <ReadingNotes notes={t.notes}/>
   {t.note&&<p className="topic-help">{t.note}{t.askHref&&<> <Link prefetch={false} href={t.askHref}>Deschide în Întreabă</Link></>}</p>}
   {(t.placeAmbiguous||(t.note&&!placeChip))&&t.placeChoices.length>0&&<div className="topic-understood-choose"><p>{t.placeAmbiguous?'Mai multe localități au acest nume. Pe care o cauți?':'Poți căuta în titluri:'}</p><div>{t.placeChoices.map(c=><Link prefetch={false} className="topic-control" key={c.id} href={searchHref(scope,{q:c.q,place:c.id})}>{c.choice}<DiscoveryIcon name="arrow"/></Link>)}</div></div>}
-  {(fromWords.place||fromWords.period||t.subject)&&<p className="topic-help"><Link prefetch={false} href={literal}>Caută exact ce ai scris</Link></p>}
  </section>;
 }
 
@@ -315,6 +337,23 @@ function AnswerGhost({head,answer,kind,led,compare,notes,literal}:{head:React.Re
  </Ghost>;
 }
 
+/**
+ * Before the words are read (UX audit Z1-10, 16 November 2026): the places of „Am înțeles” and „Pe scurt”, in their
+ * shapes, with lines for every word that depends on the reading, so the tabs stay where they will be when it arrives.
+ * A reading without „Pe scurt” gives its place back.
+ */
+export function ReadingGhost({answer}:{answer:boolean}){
+ return <>
+  <Ghost as="section" className="topic-understood topic-question" name="topic-understood" wait="client" label="Citim căutarea…"><div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence topic-g-fill"><G.Line w="56%" only="not-phone"/><G.Lines w={[]} phone={['96%','88%','42%']}/></span><span className="topic-understood-literal g-phone" aria-hidden="true"><G.Line inline w="10em"/></span></div></Ghost>
+  {answer&&<Ghost as="section" className="topic-answer" name="topic-answer" wait="client">
+   <div className="topic-answer-head"><h2><G.Line inline w="4.2em"/></h2><p className="topic-answer-scope"><G.Line inline w="14em"/></p></div>
+   <div className="topic-answer-body has-list"><div className="topic-answer-rail"><p className="topic-answer-label"><G.Line inline w="3em"/></p><p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p><p className="topic-answer-count"><G.Line w="9em"/></p><p className="topic-answer-sub"><G.Line w="9em"/></p></div>
+    <div className="topic-answer-main"><p className="topic-answer-label"><G.Line inline w="8em"/></p><ol className="topic-answer-list is-suppliers" role="list" aria-hidden="true">{[58,46,52].map((w,i)=><li key={i} className="topic-answer-row"><span className="topic-answer-rank">{i+1}</span><span className="topic-answer-what"><span><G.Line w={`${w}%`}/></span><small><G.Line inline w="11em"/></small></span><span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div></div>
+   <div className="topic-answer-foot"><div className="topic-answer-how"><p className="topic-answer-how-summary"><G.Line inline w="9em"/></p></div><div className="topic-answer-actions"><G.Line inline w="13em"/></div></div>
+  </Ghost>}
+ </>;
+}
+
 /** No title matched: wider selections to try, without guessing. */
 export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;effective:TopicScope;t:TopicInterpretation|null;place:Place|null;onDocuments:()=>void}){
  const [related,setRelated]=useState<{q:string;items:string[]}|null>(null);
@@ -326,7 +365,7 @@ export function Broader({scope,effective,t,place,onDocuments}:{scope:TopicScope;
  const county=place?.kind==='locality'?place.detail.split(' · ')[1]:null;
  const subjects=[...(t?.otherSubjects.map(s=>s.label)??[]),...(related?.q===first?related.items:[])].filter((s,i,a)=>a.findIndex(x=>x.toLowerCase()===s.toLowerCase())===i&&s.toLowerCase()!==effective.q.toLowerCase()).slice(0,4);
  return <div className="topic-broader"><p>Încearcă mai larg:</p><ul>
-  {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${county}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
+  {county&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:`county:${fold(county)}`,from:effective.from,to:effective.to})}>„{effective.q}” în tot județul</Link></li>}
   {effective.place&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:'',from:effective.from,to:effective.to})}>„{effective.q}” în toată țara</Link></li>}
   {effective.from&&<li><Link prefetch={false} href={searchHref(scope,{q:effective.q,place:effective.place,from:'',to:''})}>„{effective.q}” în toți anii</Link></li>}
   {t?.alsoTry.map(w=><li key={w}><Link prefetch={false} href={searchHref(scope,{q:w,place:effective.place,from:effective.from,to:effective.to})}>Doar „{w}”</Link></li>)}

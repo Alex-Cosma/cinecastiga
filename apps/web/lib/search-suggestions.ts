@@ -6,6 +6,7 @@ import type { IntentResult, PlaceMatch } from "./intent/types";
 import type { EntityHit } from "./search";
 import { fold } from "./topic-search/shared";
 import { placeId, remainingWords, subjectWords, weakSubject } from "./topic-search/words";
+import { withinOneEdit } from "./topic-search/places";
 export { weakSubject };
 
 /**
@@ -98,9 +99,22 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     groups.set(g, list);
   };
 
+  // 0. A word one letter away from a subject the interpreter read in its place („iluminatt stradal”): the words as they
+  // were probably meant lead (UX audit Z1-19, 16 November 2026).
+  // A word still being typed („ilumina”) or an ending of the word („asfaltarea”) is not a typo.
+  const typo = i?.subjects.find((x) => {
+    const typed = fold(x.matched.text).trim(), meant = fold(x.label).trim();
+    if (typed === meant || typed.includes(" ") || meant.startsWith(typed) || !withinOneEdit(typed, meant)) return false;
+    return !(typed.startsWith(meant) && ["a", "e", "i", "l", "u"].includes(typed.slice(meant.length)));
+  });
+  if (typo) {
+    const meant = `${text.slice(0, text.toLowerCase().indexOf(typo.matched.text.toLowerCase()))}${typo.label}${text.slice(text.toLowerCase().indexOf(typo.matched.text.toLowerCase()) + typo.matched.text.length)}`.trim();
+    if (meant && fold(meant) !== fold(text)) push("likely", { id: "typo", label: `Ai vrut să scrii „${meant}”?`, detail: "în rezultate", href: cauta(meant), icon: "search" });
+  }
+
   // 1. The interpreter's reading, verbatim. An ambiguous reading is offered as a choice, never picked.
   if (intent && i && understood && (i.confidenceLabel === "high" || i.confidenceLabel === "medium")) {
-    if (intent.sentence) push("likely", { id: "likely", label: intent.sentence, detail: "Deschide întrebarea în Întreabă", href: `/intreaba?q=${encodeURIComponent(text)}`, icon: "question" });
+    if (intent.sentence) push("likely", { id: "likely", label: intent.sentence, detail: "în Întreabă", href: `/intreaba?q=${encodeURIComponent(text)}`, icon: "question" });
     else if (intent.problem && intent.alternatives.length) push("likely", { id: "likely", label: intent.problem, detail: `${intent.alternatives.length} variante de ales în Întreabă`, href: `/intreaba?q=${encodeURIComponent(text)}`, icon: "question" });
   }
 
@@ -109,19 +123,21 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
   const subjectRest = place?.matched ? remainingWords(text, [place.matched]) : text;
   for (const s of subjects) {
     const label = s.source === "catalog" ? s.cpvName ?? s.label : s.label;
-    push("subjects", { id: `subject:${s.term}`, label: capital(label), detail: s.source === "synonym" && s.cpvName ? `Subiect · de exemplu ${s.cpvName}` : "Subiect din catalogul CPV", href: cauta(label), icon: "layers" });
+    push("subjects", { id: `subject:${s.term}`, label: capital(label), detail: s.source === "synonym" && s.cpvName ? `în rezultate · de exemplu ${s.cpvName}` : "în rezultate · din catalogul CPV", href: cauta(label), icon: "layers" });
   }
   for (const c of input.vocab?.cpv ?? []) {
     const synonym = !/^\d/.test(c.term);
     const label = synonym ? c.term : c.cpvName ?? c.term;
-    push("subjects", { id: `cpv:${c.term}`, label: capital(label), detail: synonym ? `Subiect${c.cpvName ? ` · de exemplu ${c.cpvName}` : ""}` : `Subiect din catalogul CPV · ${c.term}`, href: cauta(label), icon: "layers" });
+    push("subjects", { id: `cpv:${c.term}`, label: capital(label), detail: synonym ? `în rezultate${c.cpvName ? ` · de exemplu ${c.cpvName}` : ""}` : `în rezultate · CPV ${c.term}`, href: cauta(label), icon: "layers" });
   }
 
-  // 3. Places. With other words ("iluminat buzau"), the place narrows the search for them.
+  // 3. Places. With other words ("iluminat buzau"), the place narrows the search for them. The place the likely row
+  // already answers („buzău”: both lead to the same answer) is not listed again (Z1-19).
+  const likelyPlace = groups.get("likely")?.some((x) => x.id === "likely") && place && !subjects.length && !named ? placeId(place) : null;
   const placeRow = (id: string | null, label: string, detail: string, rest: string, askAbout: string) => {
-    if (!id) return;
-    if (rest.length >= 2) push("places", { id: `place:${id}`, label: `${rest} · ${label}`, href: cauta(rest, id), icon: "pin" });
-    else push("places", { id: `place:${id}`, label, detail, href: `/intreaba?q=${encodeURIComponent(askAbout)}`, icon: "pin" });
+    if (!id || (id === likelyPlace && rest.length < 2)) return;
+    if (rest.length >= 2) push("places", { id: `place:${id}`, label: `${rest} · ${label}`, detail: "în rezultate", href: cauta(rest, id), icon: "pin" });
+    else push("places", { id: `place:${id}`, label, detail: `${detail} · în Întreabă`, href: `/intreaba?q=${encodeURIComponent(askAbout)}`, icon: "pin" });
   };
   const placeMatches: PlaceMatch[] = i ? [...(i.place ? [i.place] : []), ...i.placeAlternatives] : [];
   for (const p of placeMatches) {
@@ -159,7 +175,7 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     push(authority ? "authorities" : "suppliers", {
       id: `entity:${e.id}`,
       label: cleanName(e.name),
-      detail: [authority ? "Instituție publică" : "Firmă", e.county, e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
+      detail: [authority ? "pagina instituției" : "pagina firmei", e.county, e.cui ? `CUI ${e.cui}` : null, e.registryName ? `în registru: ${e.registryName}` : null].filter(Boolean).join(" · "),
       href: `/entitati/${e.id}`,
       icon: authority ? "building" : "network",
     });
@@ -171,14 +187,21 @@ export function buildSuggestionGroups(input: SuggestionInput): SuggestionGroup[]
     for (const p of input.vocab?.person ?? []) {
       const name = cleanName(p.name);
       const who = `${name}${p.birthYear ? ` (n. ${p.birthYear}${p.birthLocality ? `, ${p.birthLocality}` : ""})` : ""}`;
-      push("persons", { id: `person:${p.key}`, label: name, detail: [p.birthYear ? `n. ${p.birthYear}` : null, p.birthLocality, `${p.nFirms} ${p.nFirms === 1 ? "firmă condusă" : "firme conduse"}`].filter(Boolean).join(" · "), href: askHref({ block: "table", measure: "value", dim: "supplier", filters: { adminPersonKey: p.key, adminName: who } }), icon: "network" });
+      push("persons", { id: `person:${p.key}`, label: name, detail: [p.birthYear ? `n. ${p.birthYear}` : null, p.birthLocality, `${p.nFirms} ${p.nFirms === 1 ? "firmă condusă" : "firme conduse"}`, "în Întreabă"].filter(Boolean).join(" · "), href: askHref({ block: "table", measure: "value", dim: "supplier", filters: { adminPersonKey: p.key, adminName: who } }), icon: "network" });
     }
 
-  push("words", { id: "words", label: `Caută „${text}” în titluri și documente`, detail: "Exact cuvintele scrise, fără interpretare", href: `/cauta?${new URLSearchParams({ q: text, literal: "1" })}`, icon: "search" });
+  push("words", { id: "words", label: `Caută „${text}” în titluri și documente`, detail: "în rezultate · exact cuvintele scrise", href: `/cauta?${new URLSearchParams({ q: text, literal: "1" })}`, icon: "search" });
 
-  // Subjects and places lead when the words read as a subject or a place; names lead otherwise.
+  // A name every word of which begins a word of a person's name in the registry („popescu ion”): the persons come
+  // before the firms and institutions that share it (Z1-19).
+  const typedWords = fold(text).split(/[^a-z0-9]+/).filter(Boolean);
+  const personLike = typedWords.length >= 2 && (input.vocab?.person ?? []).some((p) => { const nameWords = fold(p.name).split(/[^a-z0-9]+/).filter(Boolean); return typedWords.every((w) => nameWords.some((n) => n.startsWith(w))); });
+  // Subjects and places lead when the words read as a subject or a place; names lead otherwise. Two or three letters
+  // („buz”) are most often the start of a place: the places come before the names then (Z1-19).
   const order: SuggestionGroupId[] = strongSubject || place
     ? ["likely", "subjects", "places", "authorities", "suppliers", "persons", "words"]
+    : personLike && groups.get("persons")?.length ? ["likely", "persons", "authorities", "suppliers", "subjects", "places", "words"]
+    : text.length <= 3 ? ["likely", "places", "authorities", "suppliers", "persons", "subjects", "words"]
     : ["likely", "authorities", "suppliers", "persons", "subjects", "places", "words"];
   return order.filter((id) => groups.get(id)?.length).map((id) => ({ id, title: TITLES[id], items: groups.get(id)! }));
 }

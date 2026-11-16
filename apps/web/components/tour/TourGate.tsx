@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { TOUR_PARAM, TOUR_QUERY_EVENT, TOUR_QUERY_KEY, TOUR_SEEN_COOKIE, TOUR_SEEN_KEY, tourEntry } from "@/lib/tour";
+import { TOUR_COUNTY_EVENT, TOUR_COUNTY_KEY, TOUR_PARAM, TOUR_QUERY_EVENT, TOUR_QUERY_KEY, TOUR_SEEN_COOKIE, TOUR_SEEN_KEY, tourEntry } from "@/lib/tour";
 import "./tour-gate.css";
 
 /**
@@ -46,13 +46,18 @@ export default function TourGate({ sessionHint }: { sessionHint: boolean }) {
   }, [forced, pathname, sessionHint]);
 
   const close = useCallback(() => { markSeen(); setMode("none"); }, []);
-  const finish = useCallback((query: string) => {
+  const finish = useCallback((query: string, county?: string) => {
     markSeen();
     setMode("none");
     if (!query) return;
-    if (location.pathname === "/") { window.dispatchEvent(new CustomEvent(TOUR_QUERY_EVENT, { detail: query })); return; }
-    // From another page: the home page's search field picks the question up when it mounts.
-    try { sessionStorage.setItem(TOUR_QUERY_KEY, query); } catch { /* without storage the home page opens with an empty field */ }
+    // The question goes to the search field, the county to the map's readout (UX audit Z1-25).
+    if (location.pathname === "/") {
+      window.dispatchEvent(new CustomEvent(TOUR_QUERY_EVENT, { detail: query }));
+      if (county) window.dispatchEvent(new CustomEvent(TOUR_COUNTY_EVENT, { detail: county }));
+      return;
+    }
+    // From another page: the home page's search field and map pick them up when they mount.
+    try { sessionStorage.setItem(TOUR_QUERY_KEY, query); if (county) sessionStorage.setItem(TOUR_COUNTY_KEY, county); } catch { /* without storage the home page opens with an empty field */ }
     router.push("/");
   }, [router]);
 

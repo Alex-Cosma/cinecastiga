@@ -83,6 +83,6 @@ export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean
     window.location.assign(href);
   };
   return <nav ref={ref} className="main-nav d-main-nav" aria-label="Navigare principală">
-    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}{item.dot ? <span className="d-nav-dot" aria-hidden="true" /> : null}</Link>)}
+    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}</Link>)}
   </nav>;
 }

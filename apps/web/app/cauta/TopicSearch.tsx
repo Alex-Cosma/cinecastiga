@@ -6,24 +6,34 @@ import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
 import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
-import {parseTopicScope,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
+import {parseTopicScope,cleanTopicParams,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {Broader,SubjectAnswer,Understood,answerKey as answerKeyOf,prefetchAnswer,searchHref,type AnswerCount} from './Understood';
+import {Broader,OWN_PLACE_NOTE,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
 import {silentChoice} from '@/lib/topic-search/places';
 import {roCount} from '@/lib/ro-count';
+import {countyName} from '@/lib/counties';
 
+/** A place as the sentence and the chips name it: „Județul Buzău”, „Municipiul București”, „Cisnădie”. */
+const placeLabel=(p:Place|null)=>!p?'':p.kind==='county'?(p.name==='București'?'Municipiul București':`Județul ${p.name}`):p.name;
+type Filters=NonNullable<TopicInterpretation['answer']>['total']['spec']['filters'];
+/** The place a short answer counts when the lists have none (a question: „cine a câștigat cel mai mult în Cluj”). */
+const answerPlace=(f:Filters|undefined)=>f?.county?(f.county==='București'?'Municipiul București':`Județul ${f.county}`):f?.uatName?f.uatName:null;
+/** The years a short answer counts when the lists have none. */
+const answerPeriod=(f:Filters)=>f.yearFrom!==undefined&&f.yearTo!==undefined?(f.yearFrom===f.yearTo?String(f.yearFrom):`${f.yearFrom}–${f.yearTo}`):f.yearFrom!==undefined?`din ${f.yearFrom}`:f.yearTo!==undefined?`până în ${f.yearTo}`:null;
 const defaults:TopicScope={q:'',place:'',from:'',to:'',type:'all',match:'words',tab:'all',page:1,role:''};
 /** A question about who („cine câștigă…”, „ce firme…”): „Pe scurt” puts the firms or institutions before the total. */
 const WHO_ASKED=/^\s*(cine\b|(ce|care)\s+(firme|firma|companii|instituții|institutii|instituţii)\b)/i;
-const TABS:{id:SearchTab;label:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme'},{id:'acquisitions',label:'Achiziții'},{id:'documents',label:'Documente'}];
+/** On phones the four tabs are one row: the names are short there („Nume”, UX audit Z1-12). The titles' tab says what it
+ *  counts: titles that hold the words, not every acquisition of the subject „Pe scurt” counts by domain (Z1-07). */
+const TABS:{id:SearchTab;label:string;short?:string}[]=[{id:'all',label:'Toate'},{id:'entities',label:'Instituții și firme',short:'Nume'},{id:'acquisitions',label:'În titluri',short:'Titluri'},{id:'documents',label:'Documente'}];
 /** The closest name match, first among the institutions and firms: its profile and all its acquisitions. */
 function BestMatch({entity:e,unfiltered}:{entity:EntityHit;unfiltered:boolean}){
  const role=e.roles.includes('authority')?'autoritate':'furnizor',profile=`/entitati/${e.id}${e.roles.length>1?`?rol=${role}`:''}`; // the role only for an entity that both buys and sells
  return <div className="topic-best">
- <div><h3><Link prefetch={false} href={profile}>{cleanName(e.name)}</Link></h3><p>{[e.roles.includes('authority')?'Instituție':'Furnizor',e.county,e.cui?`CUI ${e.cui}`:'CUI neprecizat'].filter(Boolean).join(' · ')}{unfiltered&&' · profil complet, fără filtre'}</p></div>
+ <div><h3><Link prefetch={false} href={profile}>{cleanName(e.name)}</Link></h3><p>{[e.roles.includes('authority')?'Instituție':'Furnizor',countyName(e.county),e.cui?`CUI ${e.cui}`:'CUI neprecizat'].filter(Boolean).join(' · ')}{unfiltered&&' · profil complet, fără filtre'}</p></div>
  <div className="topic-best-actions"><Link prefetch={false} className="topic-control" href={profile}>{e.roles.includes('authority')?'Vezi instituția':'Vezi firma'}</Link><Link prefetch={false} className="topic-primary" href={`${profile}#achizitii`}>Toate achizițiile <DiscoveryIcon name="arrow"/></Link></div>
  </div>;
 }
@@ -89,7 +99,9 @@ type Failure={key:string;message:string};
 type View={url:string;scope:TopicScope;effective:TopicScope;t:TopicInterpretation|null;literal:boolean};
 type Main=Loaded<TopicResult>&{view:View};
 const TAB_PANELS:{id:Exclude<SearchTab,'all'>;icon:'building'|'list'|'document';title:string}[]=[{id:'entities',icon:'building',title:'Instituții și firme'},{id:'acquisitions',icon:'list',title:'Achiziții'},{id:'documents',icon:'document',title:'Documente'}];
-const panelSub=(id:SearchTab,q:string):React.ReactNode=>id==='entities'?'după nume și CUI':id==='acquisitions'?<>cu „{q}” în titlu</>:'în textul extras din PDF-uri';
+const panelSub=(id:SearchTab):React.ReactNode=>id==='entities'?'după nume și CUI':id==='acquisitions'?'cele mai noi întâi':'în textul extras din PDF-uri';
+/** The titles' panel names what it lists: „Titluri cu „asfaltare”” (UX audit Z1-07). */
+const titlesTitle=(q:string)=><>Titluri cu „{q}”</>;
 /*
  * Ghosts of the result panels (owner, 6 November 2026: "ghost data loading"): the panels' own heads and rows, in the
  * number the answer will have (3 of each on "Toate", a page of 10 on a tab, fewer when the count is known), so the
@@ -100,7 +112,7 @@ function AcquisitionGhost({i}:{i:number}){
  // Long titles wrap: every other row has a second line (a third on phones), as the loaded lists average.
  return <article className="topic-record topic-acquisition" aria-hidden="true"><div className="topic-record-main"><div className="topic-record-meta"><G.Line inline w="9em"/><G.Line inline w="8em"/><G.Line inline w="4em"/></div>
   <h3><G.Line w="86%"/>{i%2===1&&<G.Line w="44%" only="not-phone"/>}<G.Line w="58%" only="phone"/>{i%2===1&&<G.Line w="36%" only="phone"/>}</h3><div className="topic-parties"><G.Line w="62%"/><G.Line w="44%" only="phone"/></div></div>
-  <div className="topic-record-side"><strong><G.Line w="6.5em"/></strong><small>valoare înregistrată · nu plăți</small><a>Verifică în SEAP <DiscoveryIcon name="arrow"/></a></div></article>;
+  <div className="topic-record-side"><strong><G.Line w="6.5em"/></strong><a>Verifică în SEAP <span aria-hidden="true">↗</span></a></div></article>;
 }
 function DocumentGhost(){
  return <article className="topic-record topic-document" aria-hidden="true"><div className="topic-record-main"><div className="topic-record-meta"><DiscoveryIcon name="bookOpen"/><G.Line inline w="12em"/><G.Line inline w="6em"/></div>
@@ -109,20 +121,19 @@ function DocumentGhost(){
 }
 /** The documents' own wait: they come from a separate request, after the titles. */
 const DocumentsGhost=({rows}:{rows:number})=><Ghost className="topic-docs-ghost" name="topic-documents" wait="client"><DocumentsGhostBody rows={rows}/></Ghost>;
-function PanelHeadGhost({id,icon,title,q,n}:{id:SearchTab;icon:'building'|'list'|'document';title:string;q:string;n:number|null}){
- return <div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2>{title}</h2><span className="topic-panel-count">{n!=null?formatInt(n):<G.Line inline w="2.2em"/>}</span><span className="topic-panel-sub">{panelSub(id,q)}</span></div>;
+function PanelHeadGhost({id,icon,title,q,n,bar}:{id:SearchTab;icon:'building'|'list'|'document';title:string;q:string;n:number|null;bar:boolean}){
+ if(bar)return <div className="topic-panel-head topic-panel-bar"><span className="topic-panel-sub">{panelSub(id)}</span></div>;
+ return <div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2>{id==='acquisitions'?titlesTitle(q):title}</h2><span className="topic-panel-count">{n!=null?formatInt(n):<G.Line inline w="2.2em"/>}</span><span className="topic-panel-sub">{panelSub(id)}</span></div>;
 }
-/** The line that reconciles „Pe scurt” with the title matches: its words, then its link. */
-const UnitsGhost=()=><p className="topic-units" aria-hidden="true"><span className="topic-g-fill"><G.Line w="92%"/><G.Line w="64%" only="phone"/></span><span className="topic-g-link"><G.Line w="13em"/></span></p>;
 const FootGhost=()=><div className="topic-panel-foot" aria-hidden="true"><span className="topic-text-button"><G.Line w="14em"/></span></div>;
-function PanelsGhost({tab,page,q,counts,units}:{tab:SearchTab;page:number;q:string;counts:(id:SearchTab)=>number|null;units:boolean}){
+function PanelsGhost({tab,page,q,counts}:{tab:SearchTab;page:number;q:string;counts:(id:SearchTab)=>number|null}){
  // On a tab, a page of 10 (fewer on the last page, when the count is known); on "Toate", the 3 first of each.
  const rows=(id:SearchTab)=>{const n=counts(id);return tab==='all'?Math.min(3,n??3):Math.max(1,Math.min(PAGE_SIZE,n==null?PAGE_SIZE:n-(page-1)*PAGE_SIZE));};
  const shown=TAB_PANELS.filter(p=>tab==='all'||tab===p.id);
  return <Ghost className="topic-panels" name="topic-panels" wait="client">
-  {shown.map(p=><section className="topic-panel" key={p.id}><PanelHeadGhost id={p.id} icon={p.icon} title={p.title} q={q} n={counts(p.id)}/>
+  {shown.map(p=><section className="topic-panel" key={p.id}><PanelHeadGhost id={p.id} icon={p.icon} title={p.title} q={q} n={counts(p.id)} bar={tab!=='all'}/>
    {p.id==='entities'?<>{tab==='entities'&&<p className="topic-role" aria-hidden="true">Arată<G.Block w="11em" h="44px" r="7px" className="g-quiet"/></p>}<div className="topic-entities">{Array.from({length:rows('entities')},(_,i)=><EntityRowGhost key={i} i={i}/>)}</div></>
-    :p.id==='acquisitions'?<>{units&&<UnitsGhost/>}{Array.from({length:rows('acquisitions')},(_,i)=><AcquisitionGhost key={i} i={i}/>)}</>
+    :p.id==='acquisitions'?<>{Array.from({length:rows('acquisitions')},(_,i)=><AcquisitionGhost key={i} i={i}/>)}</>
     :<DocumentsGhostBody rows={tab==='all'?2:rows('documents')}/>}
    {tab==='all'&&<FootGhost/>}
   </section>)}
@@ -156,6 +167,11 @@ export default function TopicSearch(){
  const [main,setMain]=useState<Main|null>(null),[mainError,setMainError]=useState<Failure|null>(null),[retry,setRetry]=useState(0),[refetching,setRefetching]=useState(false);
  const [docs,setDocs]=useState<Loaded<TopicDocumentsResult>[]>([]),[docsError,setDocsError]=useState<Failure|null>(null),[docsRetry,setDocsRetry]=useState(0);
  const [filtersExpanded,setFiltersExpanded]=useState(false);
+ // An address with a filter the page cannot read runs without it, and says so once (UX audit Z1-31).
+ const [cleaned,setCleaned]=useState('');
+ useEffect(()=>{if(!parsed.error)return;const out=cleanTopicParams(new URLSearchParams(url));if(!out)return;const target=out.toString();setCleaned(target);router.replace(`/cauta?${target}`,{scroll:false});
+ // eslint-disable-next-line react-hooks/exhaustive-deps -- once per unreadable address
+ },[url,parsed.error]);
  const previous=useRef<TopicResult|null>(null);
  useEffect(()=>{setQuery(parsed.scope.q);setCopied('');},[parsed]);
  // The start page and an invalid address show no answer: the next search starts from a ghost, not an old answer.
@@ -190,16 +206,24 @@ export default function TopicSearch(){
  const refine=(patch:Partial<TopicScope>)=>update({...(t&&(t.fromWords.place||t.fromWords.period||t.applied.q!==scope.q)?{q:t.applied.q,place:effective.place,from:effective.from,to:effective.to,...(effective.order?{order:effective.order}:{})}:{}),...patch});
  // A question about one subject keeps the subject, place and period it was read as when a filter changes.
  const keepReading=(patch:Partial<TopicScope>)=>t?.question&&t.applied.q!==scope.q?refine(patch):update(patch);
+ // Another page of a list (UX audit Z1-11): once it is shown, the tabs come up under the header (unless the list's
+ // start is already in view) and the list's title takes the focus, so a screen reader hears „pagina 2 din 10”.
+ const pageTurn=useRef(false);
+ const turnPage=(page:number)=>{pageTurn.current=true;update({page});};
+ useEffect(()=>{if(!pageTurn.current||!result)return;pageTurn.current=false;
+  const bar=document.querySelector<HTMLElement>('.topic-tabbar');if(!bar)return;
+  const header=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--site-header-h'))||64,top=bar.getBoundingClientRect().top;
+  if(top<header||top>innerHeight*.5)window.scrollTo({top:Math.max(0,top+scrollY-header-8),behavior:'instant'});
+  document.getElementById(`topic-panel-${scope.tab}`)?.focus({preventScroll:true});
+ },[result,scope.tab]);
  const retryDocs=()=>{setDocsError(null);setDocsRetry(n=>n+1);};
  const tab=(id:SearchTab)=>update({tab:id,role:''});
  const placeName=effective.place?(place?.id===effective.place?place.name:''):'';
  const where=effective.place?placeName||'locul ales':'toată țara';
  const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
- // What "Pe scurt" counted, to name the units next to the title matches.
- const [answerCount,setAnswerCount]=useState<AnswerCount>(null);
  // A question's words searched as written: when nothing matches, one quiet line instead of empty sections.
  const [literalOpen,setLiteralOpen]=useState('');
- const filterSummary=[placeName,effective.from?`${effective.from}–${effective.to}`:'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
+ const filterSummary=[placeLabel(effective.place&&place?.id===effective.place?place:null),effective.from?(effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`):'',scope.type==='da'?'Achiziții directe':scope.type==='contracts'?'Contracte':'',scope.match==='phrase'?'Expresia în ordine':''].filter(Boolean).join(' · ');
  const copy=async()=>{try{await navigator.clipboard.writeText(new URL(`/cauta?${topicParams(scope)}${literal?'&literal=1':''}`,window.location.origin).href);setCopied('Link copiat');}catch{setCopied('Nu am putut copia linkul. Copiază adresa din browser.');}};
  /*
   * The answer area for a view: the status line, „Am înțeles”, „Pe scurt” and the result panels. `result` null draws
@@ -215,17 +239,17 @@ export default function TopicSearch(){
   const period=effective.from?effective.from===effective.to?effective.from:`${effective.from}–${effective.to}`:'toți anii';
   // The place as its chip in „Am înțeles” names it („Municipiul Sibiu”, „Județul Cluj”), without the county after a locality.
   const chipPlace=t?.fromWords.place??(t?.explicitPlace?.id===effective.place?t.explicitPlace:null);
-  const answerWhere=!effective.place?where:chipPlace?chipPlace.label.replace(/\s*\([^)]*\)$/,''):vPlace?.kind==='county'?(vPlace.name==='București'?'Municipiul București':`Județul ${vPlace.name}`):where;
+  const answerWhere=!effective.place?(answerPlace(t?.answer?.total.spec.filters)??where):chipPlace?chipPlace.label.replace(/\s*\([^)]*\)$/,''):vPlace?.kind==='county'?(vPlace.name==='București'?'Municipiul București':`Județul ${vPlace.name}`):where;
   // A recognised subject or a whole question leads with its answer, above the results.
   const question=t?.question??null;
   // A question's words searched as written; a question about one subject searches that subject instead.
   const literalQ=Boolean(question)&&effective.q===scope.q;
-  const answerKey=t?.answer?answerKeyOf(t.answer):'';
-  // undefined while „Pe scurt” is still counting; null when it has no total.
-  const counted=answerCount&&answerCount.key===answerKey?answerCount.count:undefined;
   const literalEmpty=Boolean(question&&result&&!result.entities.total&&!result.acquisitions.total&&!(docsResult?.documents.total));
   // A question's results are usually empty: their ghost is the one quiet line they collapse to.
-  const collapsed=(literalEmpty||Boolean(literalQ&&!result))&&scope.tab==='all'&&literalOpen!==v.url;
+  // „primăria mea”: the names and titles that carry the words come from the whole country, not from the reader's own
+  // town hall; they wait behind one line while the picker beside the note offers the town hall (UX audit Z1-33).
+  const ownPlace=Boolean(t?.notes.some(n=>OWN_PLACE_NOTE.test(n)))&&!effective.place;
+  const collapsed=(literalEmpty||Boolean(literalQ&&!result)||ownPlace)&&scope.tab==='all'&&literalOpen!==v.url;
   // Counts stay visible while only the tab or page changes; a new selection starts empty.
   const selection=(s:TopicScope)=>topicParams({...s,tab:'all',page:1}).toString();
   const counts=result??(previous.current&&selection(previous.current.scope)===selection(effective)?previous.current:null);
@@ -236,40 +260,46 @@ export default function TopicSearch(){
   const isShown=(id:SearchTab)=>scope.tab==='all'||scope.tab===id;
   const total=scope.tab==='all'?null:count(scope.tab);
   // Each kind of result is its own panel: a head with its count, and a closing link to all of them.
-  const panelHead=(icon:'building'|'list'|'document',id:SearchTab,title:string,n:number|null,sub:React.ReactNode,tip?:React.ReactNode)=><div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2 id={`topic-panel-${id}`}>{title}{tip&&<> {tip}</>}</h2>{n!=null&&<span className="topic-panel-count">{formatInt(n)}</span>}<span className="topic-panel-sub">{sub}</span></div>;
+  // A tab chosen: the tab already names the list and its count, so the head is only its order line and its (?) (UX
+  // audit Z1-32); the title stays for screen readers.
+  const pages=total!=null&&total>PAGE_SIZE?Math.ceil(total/PAGE_SIZE):0;
+  const panelHead=(icon:'building'|'list'|'document',id:SearchTab,title:React.ReactNode,n:number|null,sub:React.ReactNode,tip?:React.ReactNode)=>scope.tab!=='all'?<div className="topic-panel-head topic-panel-bar"><h2 id={`topic-panel-${id}`} className="d-sr-only" tabIndex={-1}>{title}{pages>1&&<>, pagina {scope.page} din {formatInt(pages)}</>}</h2>{tip}<span className="topic-panel-sub">{sub}</span></div>:<div className="topic-panel-head"><DiscoveryIcon name={icon}/><h2 id={`topic-panel-${id}`}>{title}{tip&&<> {tip}</>}</h2>{n!=null&&<span className="topic-panel-count">{formatInt(n)}</span>}<span className="topic-panel-sub">{sub}</span></div>;
   const panelFoot=(id:SearchTab,n:number,shown:number,what:string)=>scope.tab==='all'&&n>shown?<div className="topic-panel-foot"><button type="button" className="topic-text-button" onClick={()=>tab(id)}>Vezi toate cele {what} <DiscoveryIcon name="arrow"/></button></div>:null;
   // The words, the place and the period are already in the chips of „Am înțeles”: the line stays for screen readers only.
   const quietStatus=reading||Boolean(question||t?.answer||t?.subject);
   const documentHref=(d:DocumentHit,page:number)=>`/contracte/${d.contractId}?document=${d.id}&page=${page}&highlight=${encodeURIComponent(effective.q)}#fisiere`;
-  // "Pe scurt" counts by domain, the list by title: the line that reconciles them waits in place for both.
-  const units=Boolean(t?.answer&&!literalQ&&scope.tab==='all');
+  // Nothing anywhere (UX audit Z1-06): one block with real ways out instead of three empty panels, once the documents
+  // have answered too; a category empty beside others with results is one line, not a panel (Z1-13).
+  const zero=Boolean(result&&scope.tab==='all'&&!collapsed&&!result.entities.total&&!result.acquisitions.total&&docsResult&&!docsResult.documents.total&&!docsLoading&&!docsFailure);
+  const emptyRow=(id:'entities'|'documents')=>scope.tab==='all'&&Boolean(result)&&(id==='entities'?result!.entities.total===0:Boolean(docsResult&&!docsResult.documents.total&&!docsLoading&&!docsFailure));
   return <div className={`topic-answer-area${dim?' g-stale':''}${reading?' is-reading':''}`} aria-busy={dim||undefined}>
   <div className={`topic-status${quietStatus?' is-quiet':''}`} role="status" aria-live="polite">{question?<>Întrebarea ta: <strong>„{scope.q}”</strong></>:<>Rezultate pentru <strong>„{effective.q}”</strong> · {where} · {period}</>}</div>
   {v.literal&&<p className="topic-help topic-literal">Cauți exact cuvintele scrise, fără interpretare. <Link prefetch={false} href={searchHref(scope,{})}>Interpretează căutarea</Link></p>}
   {t&&<Understood scope={scope} effective={effective} t={t} place={vPlace}/>}
+  {reading&&<ReadingGhost answer={scope.tab==='all'&&!v.literal}/>}
   {/* The short answer comes from Ask and does not wait for the titles. */}
-  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.subject?.label??effective.q,kind:t.kind?.label??null,where:answerWhere,period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined} onCount={setAnswerCount}/>}
+  {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined}/>}
   <div className={`topic-results${collapsed?' is-collapsed':''}`} style={{minHeight:collapsed||literalQ?0:400}}>
-  {collapsed?(result?<p className="topic-literal-quiet">{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume. <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>Arată</button></p>
+  {collapsed?(result?<p className="topic-literal-quiet">{ownPlace&&!literalEmpty?<>Numele și titlurile cu „{effective.q}” sunt din toată țara.</>:<>{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume.</>} <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>{ownPlace&&!literalEmpty?'Arată-le':'Arată'}</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)
-  :<>{question&&<h2 className="topic-literal-head">{literalQ?<>Cuvintele exacte „{scope.q}”, căutate ca atare</>:<>Rezultate pentru „{effective.q}”{'\u00a0'}· {where}{'\u00a0'}· {period}</>}</h2>}<div className="topic-tabbar"><nav className="topic-tabs" aria-label="Tipuri de rezultate">{TABS.map(t=>{const n=count(t.id),waiting=t.id==='documents'?docsLoading:!result&&n==null;return <button type="button" key={t.id} aria-current={scope.tab===t.id?'page':undefined} disabled={!result} onClick={()=>tab(t.id)}>{t.label}{n!=null?<span>{formatInt(n)}</span>:waiting&&t.id!=='all'?<span className="topic-count-wait"><span aria-hidden="true">…</span><span className="d-sr-only">se numără</span></span>:null}</button>;})}</nav><div className="topic-copy"><button type="button" className="topic-control" onClick={()=>void copy()}><DiscoveryIcon name="link"/>Copiază căutarea</button>{copied&&<p role="status">{copied}</p>}</div></div>
-  {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count} units={units}/>:<div className="topic-panels g-content">
-  {isShown('entities')&&<section className="topic-panel" aria-labelledby="topic-panel-entities">{panelHead('building','entities','Instituții și firme',result.entities.total,result.entities.approximate?'nume apropiate de cele scrise':'după nume și CUI')}
+  :<>{question&&<h2 className="topic-literal-head">{literalQ?<>Cuvintele exacte „{scope.q}”, căutate ca atare</>:<>Rezultate pentru „{effective.q}”{'\u00a0'}· {where}{'\u00a0'}· {period}</>}</h2>}<div className="topic-tabbar"><nav className="topic-tabs" aria-label="Tipuri de rezultate">{TABS.map(t=>{const n=count(t.id),waiting=t.id==='documents'?docsLoading:!result&&n==null;return <button type="button" key={t.id} className={n===0?'is-empty':undefined} aria-current={scope.tab===t.id?'page':undefined} disabled={!result} onClick={()=>tab(t.id)}>{t.short?<><span className="topic-tab-wide">{t.label}</span><span className="topic-tab-short">{t.short}</span></>:t.label}{n!=null?<span className="topic-tab-n">{formatInt(n)}</span>:waiting&&t.id!=='all'?<span className="topic-tab-n topic-count-wait"><span aria-hidden="true">…</span><span className="d-sr-only">se numără</span></span>:null}</button>;})}</nav><div className="topic-copy"><button type="button" className="topic-control" aria-label="Copiază căutarea" onClick={()=>void copy()}><DiscoveryIcon name="link"/><span className="topic-copy-label">Copiază căutarea</span></button>{copied&&<p role="status">{copied}</p>}</div></div>
+  {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count}/>:zero?<ZeroResults q={effective.q} coverage={result.titleCoverage} filtered={Boolean(effective.place||effective.from||scope.type!=='all'||scope.match!=='words')} onExample={q=>update({q,place:'',from:'',to:'',type:'all',match:'words'})} onClear={()=>update({q:effective.q,place:'',from:'',to:'',type:'all',match:'words',hall:false})}/>:<div className="topic-panels g-content">
+  {isShown('entities')&&emptyRow('entities')&&<p className="topic-empty-row"><strong>Instituții și firme:</strong> niciuna cu acest nume{scope.place||scope.from||scope.type!=='all'?' în selecție':''}.</p>}
+  {isShown('entities')&&!emptyRow('entities')&&<section className="topic-panel" aria-labelledby="topic-panel-entities">{panelHead('building','entities','Instituții și firme',result.entities.total,result.entities.approximate?'nume apropiate de cele scrise':'după nume și CUI')}
   {scope.tab==='entities'&&<label className="topic-role">Arată<select value={scope.role} onChange={e=>update({role:e.target.value as TopicScope['role'],tab:'entities'})}><option value="">Instituții și firme</option><option value="authority">Doar instituții</option><option value="supplier">Doar furnizori</option></select></label>}
   {best&&<BestMatch entity={best} unfiltered={Boolean(scope.place||scope.from||scope.type!=='all')}/>}
   {(scope.place||scope.from||scope.type!=='all')&&otherEntities.length>0&&<p className="topic-panel-note">Cu achiziții în selecție.</p>}
-  {otherEntities.length>0&&<div className="topic-entities">{otherEntities.map(e=><Link prefetch={false} className="topic-entity-row" key={e.id} href={`/entitati/${e.id}`}><span><strong><Highlight text={cleanName(e.name)} query={effective.q}/></strong><small>{[e.roles.map(r=>r==='authority'?'Instituție':'Furnizor').join(' · '),e.county,e.cui?`CUI ${e.cui}`:''].filter(Boolean).join(' · ')}</small></span><DiscoveryIcon name="arrow"/></Link>)}</div>}
+  {otherEntities.length>0&&<div className="topic-entities">{otherEntities.map(e=><Link prefetch={false} className="topic-entity-row" key={e.id} href={`/entitati/${e.id}`}><span><strong><Highlight text={cleanName(e.name)} query={effective.q}/></strong><small>{[e.roles.map(r=>r==='authority'?'Instituție':'Furnizor').join(' · '),countyName(e.county),e.cui?`CUI ${e.cui}`:''].filter(Boolean).join(' · ')}</small></span><DiscoveryIcon name="arrow"/></Link>)}</div>}
   {!result.entities.total&&<p className="topic-empty">Nicio instituție sau firmă cu acest nume în selecție.</p>}
   {panelFoot('entities',result.entities.total,result.entities.hits.length,roCount(result.entities.total,'o instituție sau firmă','instituții și firme'))}
   </section>}
-  {isShown('acquisitions')&&<section className="topic-panel" aria-labelledby="topic-panel-acquisitions">{panelHead('list','acquisitions','Achiziții',result.acquisitions.total,<>cu „{effective.q}” în titlu{result.acquisitions.total>1&&<> · {effective.order==='value'?<>cele mai mari valori întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'date',page:1})}>Ordonează după dată</button></>:<>cele mai noi întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'value',page:1})}>Ordonează după valoare</button></>}</>}</>,result.acquisitions.total>0?<Term id="lista-titluri" tip/>:null)}
-  {units&&counted===undefined&&result.acquisitions.total>0&&<UnitsGhost/>}
-  {t?.answer&&!literalQ&&counted!=null&&counted>0&&counted!==result.acquisitions.total&&<p className="topic-units"><span><strong>{formatInt(counted)}</strong> după domeniu în „Pe scurt” · {result.acquisitions.total===0?<>niciunul cu „{effective.q}” în titlu</>:<><strong>{formatInt(result.acquisitions.total)}</strong> cu „{effective.q}” în titlu</>} <Term tip title="De ce diferă" text={`„Pe scurt” numără achizițiile încadrate la domeniu (CPV), oricare le-ar fi titlul. Lista de aici are doar titlurile care conțin cuvintele căutate, de la toate instituțiile${t.kind&&result.acquisitions.total>0?`, nu doar ${t.kind.label}`:''}.`}/></span> <Link prefetch={false} href={t.answer.evidenceHref}>Vezi {counted===1?'înregistrarea':`toate cele ${formatInt(counted)}`} <DiscoveryIcon name="arrow"/></Link></p>}
-  {result.acquisitions.hits.map(a=><article key={a.id} className="topic-record topic-acquisition"><div className="topic-record-main"><div className="topic-record-meta"><span>{a.kind==='da'?'Achiziție directă':'Contract din procedură'}</span>{a.date&&<span>{a.kind==='da'?'Finalizată':'Semnat'} {a.date.slice(0,10).split('-').reverse().join('.')}</span>}{a.county&&<span>{a.county}</span>}</div><h3><a href={a.href} target="_blank" rel="noopener noreferrer"><Highlight text={a.title} query={effective.q}/></a></h3><div className="topic-parties">{a.authorityId?<Link prefetch={false} href={`/entitati/${a.authorityId}`}>{cleanName(a.authorityName)}</Link>:<span>{a.authorityName??'Instituție neprecizată'}</span>}<span aria-hidden="true"> → </span><span>{a.suppliers.length?a.suppliers.map((s,i)=><Fragment key={a.supplierIds?.[i]??i}>{i>0&&', '}<EntityName id={a.supplierIds?.[i]} role="supplier">{cleanName(s)}</EntityName></Fragment>):'Furnizor neprecizat'}</span></div></div><div className="topic-record-side"><strong>{formatExactDecimal(a.value)}{a.value!=null?' lei':''}</strong><small>valoare înregistrată · nu plăți</small><a href={a.sourceUrl} target="_blank" rel="noopener noreferrer">Verifică în SEAP <DiscoveryIcon name="arrow"/></a></div></article>)}
+  {isShown('acquisitions')&&<section className="topic-panel" aria-labelledby="topic-panel-acquisitions"> {panelHead('list','acquisitions',titlesTitle(effective.q),result.acquisitions.total,<>{result.acquisitions.total>1&&<>{effective.order==='value'?<>cele mai mari valori întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'date',page:1})}>Ordonează după dată</button></>:<>cele mai noi întâi · <button type="button" className="topic-text-button" onClick={()=>update({order:'value',page:1})}>Ordonează după valoare</button></>} · </>}{result.acquisitions.total>0&&<span className="topic-not-paid">valori înregistrate, nu plăți</span>}</>,result.acquisitions.total>0?<Term id="lista-titluri" tip/>:null)}
+  {result.acquisitions.hits.map(a=><article key={a.id} className="topic-record topic-acquisition"><div className="topic-record-main"><div className="topic-record-meta"><span>{a.kind==='da'?'Achiziție directă':'Contract din procedură'}</span>{a.date&&<span>{a.kind==='da'?'Finalizată':'Semnat'} {a.date.slice(0,10).split('-').reverse().join('.')}</span>}{a.county&&<span>{countyName(a.county)}</span>}</div><h3><Link prefetch={false} href={a.href}><Highlight text={a.title} query={effective.q}/></Link></h3><div className="topic-parties">{a.authorityId?<Link prefetch={false} href={`/entitati/${a.authorityId}`}>{cleanName(a.authorityName)}</Link>:<span>{a.authorityName??'Instituție neprecizată'}</span>}<span aria-hidden="true"> → </span><span>{a.suppliers.length?a.suppliers.map((s,i)=><Fragment key={a.supplierIds?.[i]??i}>{i>0&&', '}<EntityName id={a.supplierIds?.[i]} role="supplier">{cleanName(s)}</EntityName></Fragment>):'Furnizor neprecizat'}</span></div></div><div className="topic-record-side"><strong>{formatExactDecimal(a.value)}{a.value!=null?' lei':''}</strong><a href={a.sourceUrl} target="_blank" rel="noopener noreferrer">Verifică în SEAP <span aria-hidden="true">↗</span><span className="d-sr-only"> (filă nouă)</span></a></div></article>)}
   {!result.acquisitions.total&&<div className="topic-panel-empty"><p className="topic-empty">Niciun titlu potrivit. <Term id="lista-titluri" tip/></p>{result.elsewhere?<p className="topic-help topic-elsewhere">{roCount(result.elsewhere,'un titlu','titluri')} la celelalte instituții din localitate. <button type="button" className="topic-text-button" onClick={()=>refine({hall:false})}>Caută la toate instituțiile <DiscoveryIcon name="arrow"/></button></p>:null}<TitleCoverage coverage={result.titleCoverage}/><Broader scope={scope} effective={effective} t={t} place={vPlace} onDocuments={()=>tab('documents')}/></div>}
   {panelFoot('acquisitions',result.acquisitions.total,result.acquisitions.hits.length,roCount(result.acquisitions.total,'o achiziție','achiziții'))}
   </section>}
-  {isShown('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul extras din PDF-uri',<Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
+  {isShown('documents')&&emptyRow('documents')&&<p className="topic-empty-row"><strong>Documente:</strong> niciunul pregătit pentru această căutare. <Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Niciun document pregătit nu înseamnă că lipsește din originale."/></p>}
+  {isShown('documents')&&!emptyRow('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul extras din PDF-uri',<Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
   {docsLoading?<DocumentsGhost rows={scope.tab==='documents'?Math.max(1,Math.min(PAGE_SIZE,(count('documents')??PAGE_SIZE)-(scope.page-1)*PAGE_SIZE)):2}/>
   :<>{docsResult&&docsResult.coverage.known>0&&<div className="topic-coverage"><progress value={docsResult.coverage.ready} max={Math.max(1,docsResult.coverage.known)} aria-label="Acoperirea documentelor pregătite"/><span><strong>{formatInt(docsResult.coverage.ready)} din {formatInt(docsResult.coverage.known)}</strong> fișiere cunoscute au text pregătit · {formatInt(docsResult.coverage.pages)} pagini căutabile. Nu sunt toate documentele din SEAP.</span></div>}
   {!docsResult&&<div className="topic-coverage"><span>Acoperirea documentelor nu este disponibilă acum.</span></div>}
@@ -281,7 +311,7 @@ export default function TopicSearch(){
   {result&&total!=null&&scope.page>Math.max(1,Math.ceil(total/PAGE_SIZE))&&<p className="topic-empty">Această pagină nu mai are rezultate. <button type="button" className="topic-text-button" onClick={()=>update({page:1})}>Înapoi la prima pagină</button></p>}
   {/* A tab opened by its link: the count is not known yet, and a tab's list usually has more than one page. */}
   {!result&&total==null&&scope.tab!=='all'&&<Ghost className="topic-pagination" name="topic-pages" wait="client"><span className="topic-control g-quiet" aria-hidden="true">Înapoi</span><span aria-hidden="true"><G.Line inline w="7.5em"/></span><span className="topic-control g-quiet" aria-hidden="true">Înainte</span></Ghost>}
-  {total!=null&&total>PAGE_SIZE&&<nav className="topic-pagination" aria-label="Paginarea rezultatelor"><button type="button" className="topic-control" disabled={!result||scope.page<=1} onClick={()=>update({page:scope.page-1})}>Înapoi</button><span>Pagina {scope.page} din {formatInt(Math.ceil(total/PAGE_SIZE))}</span><button type="button" className="topic-control" disabled={!result||scope.page*PAGE_SIZE>=total||scope.page>=1000} onClick={()=>update({page:scope.page+1})}>Înainte</button></nav>}
+  {total!=null&&total>PAGE_SIZE&&<nav className="topic-pagination" aria-label="Paginarea rezultatelor"><button type="button" className="topic-control" disabled={!result||scope.page<=1} onClick={()=>turnPage(scope.page-1)}>Înapoi</button><span>Pagina {scope.page} din {formatInt(Math.ceil(total/PAGE_SIZE))}</span><button type="button" className="topic-control" disabled={!result||scope.page*PAGE_SIZE>=total||scope.page>=1000} onClick={()=>turnPage(scope.page+1)}>Înainte</button></nav>}
   <details className="topic-how"><summary>Cum funcționează căutarea</summary>{result&&<p>În arhivă, {formatInt(result.titleCoverage.searchable)} din {formatInt(result.titleCoverage.total)} de achiziții au titlu căutabil. Unele importuri istorice nu păstrează titlul; achizițiile lor rămân accesibile din profilurile instituțiilor și firmelor.</p>}<p>În titluri și documente căutăm cuvintele și formele lor („laptopul” găsește și „laptopuri”), fără diferențe între litere mari, mici sau diacritice; „sau” caută oricare dintre variante. „Expresia în ordine” păstrează ordinea cuvintelor; punctuația nu schimbă potrivirea. În nume și CUI sunt acceptate și fragmente.</p><p>Perioada folosește data achiziției sau contractului, inclusiv ambii ani. O localitate înseamnă primăria, instituțiile și firmele ei, spitalele și școlile din localitate („Doar primăria” le restrânge); instituțiile județului sau ale statului care au doar sediul acolo nu intră. Un județ înseamnă instituțiile cu sediul în județ.</p><p>Documentele sunt căutate doar când există o legătură verificată cu o procedură din selecție. Textul OCR poate avea erori. Rezultatele din documente sosesc separat, după titluri, instituții și firme.</p>{result?.builtAt&&<p>Index de titluri actualizat la {new Date(result.builtAt).toLocaleString('ro-RO')}.</p>}</details>
   </>}
   </div></div>;
@@ -290,19 +320,41 @@ export default function TopicSearch(){
  <nav className="topic-breadcrumb" aria-label="Perspective de explorare"><Link href="/">Descoperă</Link><span aria-hidden="true">/</span><span>Caută</span><Link href="/intreaba">Construiește o întrebare <DiscoveryIcon name="arrow"/></Link></nav>
  {/* After a search, phones show the words as the title so the answer fits in the first screen. */}
  <header className={`topic-intro${scope.q&&!parsed.error?' has-query':''}`}><h1><span className="topic-h1-default">Caută un fir de urmărit.</span>{scope.q&&!parsed.error&&<span className="topic-h1-query">„{scope.q}”</span>}</h1></header>
- <div className="topic-filter-surface"><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button></form>
+ <div className={`topic-filter-surface${scope.q&&!parsed.error?' has-query':''}`}><form className="topic-query" role="search" onSubmit={e=>{e.preventDefault();update({q:query.trim(),tab:'all',role:''});}}><label className="d-sr-only" htmlFor="topic-query">Ce te interesează?</label><DiscoveryIcon name="search"/><input id="topic-query" type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="De exemplu: locuri de joacă, iluminat, o firmă…" minLength={2} maxLength={150} required/><button className="topic-primary" type="submit">Caută <DiscoveryIcon name="arrow"/></button></form>
  <button type="button" className="topic-filter-toggle" aria-expanded={filtersExpanded} aria-controls="topic-filters" onClick={()=>setFiltersExpanded(v=>!v)}><span>Loc, perioadă și alte filtre{filterSummary&&<small>{filterSummary}</small>}</span><DiscoveryIcon name="chevronDown"/></button>
- <div id="topic-filters" className={`topic-filters${filtersExpanded?' is-expanded':''}`}><PlacePicker value={effective.place} selected={place?.id===effective.place?place:null} onChange={p=>{setPlace(p);refine({place:p?.id??''});}}/><PeriodPicker scope={effective} onChange={refine}/><label>Tipul achiziției<select value={scope.type} onChange={e=>keepReading({type:e.target.value as TopicScope['type']})}><option value="all">Toate tipurile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte din proceduri</option></select></label><label>Potrivirea<select value={scope.match} onChange={e=>keepReading({match:e.target.value as TopicScope['match']})}><option value="words">Toate cuvintele</option><option value="phrase">Expresia în ordine</option></select></label></div>
+ <div id="topic-filters" className={`topic-filters${filtersExpanded?' is-expanded':''}`}><PlacePicker value={effective.place} selected={place?.id===effective.place?place:null} onChange={p=>{setPlace(p);if(!p&&t?.placeAlone)router.push(searchHref(scope,{place:''},true),{scroll:false});else refine({place:p?.id??''});}}/><PeriodPicker scope={effective} onChange={refine}/><label>Tipul achiziției<select value={scope.type} onChange={e=>keepReading({type:e.target.value as TopicScope['type']})}><option value="all">Toate tipurile</option><option value="da">Achiziții directe</option><option value="contracts">Contracte din proceduri</option></select></label><label>Potrivirea<select value={scope.match} onChange={e=>keepReading({match:e.target.value as TopicScope['match']})}><option value="words">Toate cuvintele</option><option value="phrase">Expresia în ordine</option></select></label></div>
  {effective.place.startsWith('uat:')&&<LocalityScope locality={(result??main?.result)?.locality??null} hall={Boolean(effective.hall)} onChange={hall=>refine({hall})}/>}
  </div>
- {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
-  :!scope.q?<div className="topic-results" style={{minHeight:400}}><div className="topic-start"><p>Exemple:</p><div>{['locuri de joacă','iluminat','Municipiul Buzău'].map(q=><button type="button" className="topic-control" key={q} onClick={()=>update({q})}>{q}<DiscoveryIcon name="arrow"/></button>)}</div></div></div>
+ {cleaned===url&&!error&&<p className="topic-help topic-cleaned" role="status">Am scos un filtru pe care nu l-am înțeles.</p>}
+ {error?<><div className="topic-status" role="status" aria-live="polite">Căutarea nu s-a încheiat.</div><div className="topic-error" role="alert"><p>{error}</p>{parsed.error
+   // the address itself cannot be read: trying it again would fail again
+   ?<Link className="topic-primary" href={scope.q?`/cauta?${new URLSearchParams({q:scope.q})}`:'/cauta'}>Resetează filtrele</Link>
+   :<><button type="button" className="topic-control" onClick={()=>{setMainError(null);setRetry(n=>n+1);}}>Reîncearcă</button> <Link href="/cauta">Resetează filtrele</Link></>}</div><div className="topic-results" style={{minHeight:t?.question?0:400}}/></>
+  :!scope.q?<div className="topic-results" style={{minHeight:400}}><div className="topic-start"><p>Exemple:</p><div>{EXAMPLES.map(q=><button type="button" className="topic-control" key={q} onClick={()=>update({q})}>{q}<DiscoveryIcon name="arrow"/></button>)}</div></div></div>
   :stale?answer(stale.view,stale.result,{dim:true})
   :answer(view,result,{dim:refetching,reading:!interpReady})}
  {/* Present before documents load, so their arrival is announced. */}
  <p className="d-sr-only" role="status" aria-live="polite">{!docsKey||error||loading?'':currentDocs.loading?'Căutăm și în documentele procedurilor.':currentDocs.failure?'Căutarea în documente nu s-a încheiat.':currentDocs.result?(currentDocs.result.documents.total===1?'Un document găsit.':`Documente găsite: ${formatInt(currentDocs.result.documents.total)}.`):''}</p>
  {pending&&<FloatStatus>{interpReady?<>Căutăm „{effective.q}” · {where} · {period}…</>:<>Citim căutarea „{scope.q}”…</>}</FloatStatus>}
  </div>;
+}
+
+/** The examples of the empty /cauta page: the zero block offers the same. */
+const EXAMPLES=['locuri de joacă','iluminat','Municipiul Buzău'];
+/**
+ * Nothing in the names, the titles or the prepared documents (UX audit Z1-06, 16 November 2026): one block that says so
+ * and offers real ways out (the examples of the empty page, Întreabă, and clearing the filters when there are some),
+ * instead of three empty panels whose only suggestion led to documents that were empty too.
+ */
+function ZeroResults({q,coverage,filtered,onExample,onClear}:{q:string;coverage:TopicResult['titleCoverage'];filtered:boolean;onExample:(q:string)=>void;onClear:()=>void}){
+ const pct=coverage.total?Math.max(1,Math.round(coverage.searchable/coverage.total*100)):null;
+ return <section className="topic-panel topic-zero" aria-labelledby="topic-zero-title">
+  <h2 id="topic-zero-title">Nimic pentru „{q}”.</h2>
+  <p className="topic-empty">Nu l-am găsit în nume, în titluri sau în documentele pregătite{filtered?', cu filtrele alese':''}. Verifică scrierea sau încearcă un cuvânt mai general. <Term tip title="De ce nu găsim" text={<>{pct!=null&&pct<100?<>Doar {pct}% din înregistrări au titlul original; la celelalte afișăm numele categoriei, așa că nu apar la o căutare după titlu. </>:null}Un document care nu e pregătit aici nu înseamnă că lipsește din originale.</>}/></p>
+  {filtered&&<p className="topic-zero-clear"><button type="button" className="topic-control" onClick={onClear}>Șterge filtrele <DiscoveryIcon name="arrow"/></button></p>}
+  <div className="topic-start"><p>Încearcă:</p><div>{EXAMPLES.map(x=><button type="button" className="topic-control" key={x} onClick={()=>onExample(x)}>{x}<DiscoveryIcon name="arrow"/></button>)}</div></div>
+  <Link prefetch={false} className="topic-zero-ask" href={`/intreaba?q=${encodeURIComponent(q)}`}>Scrie o întrebare în Întreabă <DiscoveryIcon name="arrow"/></Link>
+ </section>;
 }
 
 /**

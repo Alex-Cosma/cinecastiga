@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {parseTopicScope,topicParams,documentScope,answerShape} from './shared';
+import {parseTopicScope,topicParams,documentScope,answerShape,cleanTopicParams} from './shared';
 describe('subject search URLs',()=>{
  it('defaults to all years and all sources',()=>{expect(parseTopicScope(new URLSearchParams('q=iluminat'))).toMatchObject({from:'',to:'',type:'all',place:'',page:1});});
  it('round-trips a shared selection, including a county with accents folded',()=>{const s=parseTopicScope(new URLSearchParams('q=locuri+de+joacă&place=county:buzau&from=2022&to=2024&type=contracts&match=phrase&tab=documents&page=2'));expect(parseTopicScope(topicParams(s))).toEqual(s);});
@@ -21,5 +21,17 @@ describe('short answer hero',()=>{
   expect(answerShape({value:0,count:3})).toBe('count-only');
   expect(answerShape({value:109_500_000,count:816})).toBe('value');
   expect(answerShape(null)).toBe('none');
+ });
+});
+
+describe('an address with filters /cauta cannot read (UX audit Z1-31)',()=>{
+ it('keeps the words and the filters it reads, and leaves out the others',()=>{
+  const out=cleanTopicParams(new URLSearchParams('q=iluminat&type=zzz&place=county:cluj&from=2020&to=2019&page=2'));
+  expect(out?.toString()).toBe('q=iluminat&place=county%3Acluj&page=2');
+  expect(parseTopicScope(out!)).toMatchObject({q:'iluminat',place:'county:cluj',from:'',type:'all',page:2});
+ });
+ it('changes nothing in an address that reads, and gives up on words that cannot be searched',()=>{
+  expect(cleanTopicParams(new URLSearchParams('q=iluminat&type=da'))).toBeNull();
+  expect(cleanTopicParams(new URLSearchParams('q=x&type=zzz'))).toBeNull();
  });
 });

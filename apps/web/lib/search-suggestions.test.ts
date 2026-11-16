@@ -89,7 +89,7 @@ describe("home search suggestions", () => {
   it("works without the interpreter: entities still come, nothing is guessed", () => {
     const groups = buildSuggestionGroups({ text: "primaria buzau", intent: null, vocab: null, entities: [entity(2144364, "MUNICIPIUL BUZAU", ["authority"])] });
     expect(ids(groups)).toEqual(["authorities", "words"]);
-    expect(groups[0]!.items[0]).toMatchObject({ href: "/entitati/2144364", detail: "Instituție publică · Buzau · CUI 2144364" });
+    expect(groups[0]!.items[0]).toMatchObject({ href: "/entitati/2144364", detail: "pagina instituției · Buzau · CUI 2144364" });
   });
 
   it("offers an ambiguous reading as a choice, never as an answer", async () => {
@@ -115,5 +115,34 @@ describe("home search suggestions", () => {
     expect(ids(groups)).toEqual(["subjects", "words"]);
     expect(flattenSuggestions(groups).map((s) => s.id)).toEqual(["cpv:drumuri", "words"]);
     expect(buildSuggestionGroups({ text: "a" })).toEqual([]);
+  });
+
+  // UX audit Z1-19 (16 November 2026)
+  it("offers the words as probably meant when one subject word is a letter off", async () => {
+    const intent = await intentFor("iluminatt");
+    const typoRead = intent.interpretation.subjects.some((x) => x.matched.text === "iluminatt");
+    const groups = buildSuggestionGroups({ text: "iluminatt", intent, vocab: vocab(), entities: [] });
+    if (typoRead) expect(groups[0]!.items[0]).toMatchObject({ id: "typo", label: "Ai vrut să scrii „iluminat”?", href: "/cauta?q=iluminat" });
+    const ending = buildSuggestionGroups({ text: "iluminatul", intent: await intentFor("iluminatul"), vocab: vocab(), entities: [] });
+    expect(ending.flatMap((g) => g.items).some((x) => x.id === "typo")).toBe(false);
+  });
+
+  it("lists persons before same-named firms when every word begins a word of their name", () => {
+    const groups = buildSuggestionGroups({ text: "popescu ion", intent: null, vocab: vocab({ person: [{ key: "p1", name: "POPESCU IONEL", birthYear: null, birthLocality: null, nFirms: 2 }] as SuggestResponse["person"] }), entities: [entity(1, "SCOALA ION POPESCU", ["authority"])] });
+    expect(ids(groups).slice(0, 2)).toEqual(["persons", "authorities"]);
+  });
+
+  it("puts places before names for two or three letters", async () => {
+    const groups = buildSuggestionGroups({ text: "buz", intent: await intentFor("buz"), vocab: vocab(), entities: [entity(2, "BUZ SRL", ["supplier"])] });
+    const order = ids(groups);
+    if (order.includes("places")) expect(order.indexOf("places")).toBeLessThan(order.indexOf("suppliers"));
+  });
+
+  it("does not list again the place the likely row already answers", async () => {
+    const intent = await intentFor("buzau");
+    const groups = buildSuggestionGroups({ text: "buzau", intent, vocab: vocab(), entities: [] });
+    const likely = groups.find((g) => g.id === "likely");
+    const places = groups.find((g) => g.id === "places")?.items ?? [];
+    if (likely) expect(places.some((p) => p.id === "place:county:buzau")).toBe(false);
   });
 });
