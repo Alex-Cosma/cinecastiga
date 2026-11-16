@@ -494,3 +494,7 @@
 .subnav-in>a:focus-visible,.subnav-in .subnav-tools a:focus-visible{outline-offset:-3px}
 /* UX audit M-19: with reduced motion a hovered segment of the signals' bar changes at once (no growing inset). */
 @media (prefers-reduced-motion:reduce){.ent-sig-bar .ent-seg::before{transition:none}}
+/* UX audit M-07: the chosen role's fill is its ::before, so it slides from the role left (components/motion/slide.ts). */
+.ehead-roles a{position:relative;isolation:isolate}
+.ehead-roles a[aria-current]{background:none}
+.ehead-roles a[aria-current]::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--accent);transform-origin:0 0;pointer-events:none}

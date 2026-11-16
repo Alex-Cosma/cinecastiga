@@ -67,3 +67,9 @@
 .df-section>.df-heading h2{font-size:22px}
 .df-status-line{margin:14px 0 0;font-size:14px;line-height:1.5;color:var(--ink2);max-width:80ch}
 .df-status-line b{font-weight:600;color:var(--ink)}
+
+/* UX audit M-07 (Z7): a new page of the reader comes in as one change: its image and its text each fade in over --fast
+   when they are ready (the viewport and the text say aria-busy while they load); reduced motion shows them at once. */
+.df-pdf-viewport[aria-busy="false"] canvas,.df-page-text[aria-busy="false"]{animation:df-page-in var(--fast) var(--ease) both}
+@keyframes df-page-in{from{opacity:0}}
+@media(prefers-reduced-motion:reduce){.df-pdf-viewport canvas,.df-page-text{animation:none!important}}

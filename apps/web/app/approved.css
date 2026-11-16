@@ -216,3 +216,9 @@
 .d-townhall-try button:hover{background:var(--accent-soft)}
 @media(max-width:700px){.d-search-dialog.d-townhall-dialog{margin:12px auto auto;padding:18px 16px}.d-townhall-drop{max-height:min(300px,38vh)}.d-townhall-dialog .d-dialog-head h2{font-size:24px}.d-townhall-dialog>.d-townhall-lead{font-size:14px}.d-townhall-try button{min-height:44px}.d-townhall-dialog>.d-dialog-hint{display:none}}
 
+
+/* UX audit M-07 (16 November 2026): the main menu's underline is a real element with its own view-transition name,
+   so a click to another page slides it there (page-transition.css) while the content cross-fades; Back jumps. */
+.d-main-nav>a.on:after{content:none}
+.d-nav-ind{position:absolute;left:0;right:0;bottom:-1px;height:3px;background:var(--accent);view-transition-name:nav-ind;pointer-events:none}
+@media(max-width:700px){.d-nav-ind{height:2px}}

@@ -18,7 +18,7 @@ export default function PrivateTrail({ current }: { current: PrivateTab }) {
   return (
     <nav className="monitoring-trail private-trail" aria-label="Spațiu privat">
       {TABS.map((tab) => (
-        <Link key={tab.id} href={tab.href} aria-current={tab.id === current ? "page" : undefined}>{tab.label}</Link>
+        <Link key={tab.id} href={tab.href} aria-current={tab.id === current ? "page" : undefined}>{tab.label}{tab.id === current && <span className="private-ind" aria-hidden="true" />}</Link>
       ))}
     </nav>
   );

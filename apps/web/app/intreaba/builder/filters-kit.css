@@ -633,3 +633,8 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 @media (max-width:600px){
   .qb-phrase-go { min-width: 44px; min-height: 44px; margin-left: 0; }
 }
+
+/* UX audit M-07: the chosen option's fill is its ::before, so it can slide from the option left (components/motion/slide.ts). */
+.qb-seg-opt{position:relative;isolation:isolate}
+.qb-seg-opt[aria-checked="true"],.qb-seg-opt[aria-selected="true"]{background:none;box-shadow:none}
+.qb-seg-opt[aria-checked="true"]::before,.qb-seg-opt[aria-selected="true"]::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;background:var(--fk-seg-on);box-shadow:var(--fk-shadow);transform-origin:0 0;pointer-events:none}

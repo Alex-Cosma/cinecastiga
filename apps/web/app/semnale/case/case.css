@@ -361,3 +361,8 @@ a.dot{cursor:pointer}
 .sgc-also>.term-trigger:hover,.sgc-also.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
 .sgc-also>.term-trigger>.term-mark{display:none}
 .c-also .sgc-also.term{margin:0 6px 0 0}
+
+/* UX audit M-07: the open pattern's fill is its ::before, so it slides from the tab left (components/motion/slide.ts). */
+.sgc-tab{position:relative;isolation:isolate}
+.sgc-tab[aria-current="page"]{background:none;border-color:transparent}
+.sgc-tab[aria-current="page"]::before{content:"";position:absolute;inset:-1px;z-index:-1;border-radius:8px;background:var(--accent);transform-origin:0 0;pointer-events:none}

@@ -1590,3 +1590,11 @@ table.rank td { padding: 13px 14px; }
   .avatar-link:hover .avatar, .tile:hover .g, tr:hover .cri-pill { transform: none; }
   .subnav-ind { transition: none; }
 }
+
+/* M-07: the entity's section underline slides with transform (SectionNav.tsx: translateX by its tab's left, scaleX by
+   its width / 100 px), not left and width. */
+.subnav-ind { left: 0; width: 100px; transform-origin: 0 0; transition: transform var(--med) var(--ease); }
+@media (prefers-reduced-motion: reduce) { .subnav-ind { transition: none; } }
+
+/* M-07: the chosen tab's fill slides from the tab left (components/motion/slide.ts); its words change colour with it. */
+.slide-to, .slide-to * { transition: color var(--med) var(--ease) !important; }

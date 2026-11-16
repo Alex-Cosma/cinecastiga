@@ -25,6 +25,7 @@ import SiteNav from "./SiteNav";
 import ThemeToggle from "./ThemeToggle";
 import GlobalSearch from "./GlobalSearch";
 import Reveal from "./Reveal";
+import MotionKit from "@/components/motion/MotionKit";
 import { CoverageSummary } from "@/components/DataCoverage";
 import Term from "@/components/Term";
 import { SITE_DESCRIPTION, SITE_NAME, pageTitle } from "@/lib/site";
@@ -108,6 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ThemedSelect />
         <Suspense><TourGate sessionHint={sessionHint} /></Suspense>
         <Suspense><Reveal /></Suspense>
+        <MotionKit />
         <Suspense><NavPending /></Suspense>
       </body>
     </html>

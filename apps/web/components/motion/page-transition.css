@@ -12,3 +12,7 @@
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0s !important; animation-delay: 0s !important; }
 }
+
+/* A tab's underline that slides to the page clicked (UX audit M-07): the main menu's and the private space's; drawn over
+   the anchored header, over --med with --ease. With reduced motion every duration above is 0. */
+::view-transition-group(nav-ind), ::view-transition-group(private-ind) { animation-duration: 260ms; animation-timing-function: var(--ease); z-index: 101; }

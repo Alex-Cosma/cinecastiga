@@ -110,7 +110,7 @@ export default function SectionNav({ items, name }: { items: SectionItem[]; name
   return (
     <nav className="subnav" aria-label="Secțiunile paginii">
       <div className="subnav-in" ref={ref} data-fade={fade === "none" ? undefined : fade}>
-        {ind && <span className="subnav-ind" style={{ left: ind.left, width: ind.width }} aria-hidden />}
+        {ind && <span className="subnav-ind" style={{ transform: `translateX(${ind.left}px) scaleX(${ind.width / 100})` }} aria-hidden />}
         {items.filter((it) => it.id).map((it) =>
           it.id ? (
             <a

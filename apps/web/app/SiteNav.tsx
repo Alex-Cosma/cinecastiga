@@ -89,6 +89,6 @@ export default function SiteNav({ sessionHint = false }: { sessionHint?: boolean
     window.location.assign(href);
   };
   return <nav ref={ref} className="main-nav d-main-nav" aria-label="Navigare principală">
-    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}{item.dot ? <><span className="d-nav-dot" aria-hidden="true" /><span className="sr-only">, {newsWords(waiting)}</span></> : null}</Link>)}
+    {items.map((item) => <Link key={item.href} href={item.href} onClick={toBarePage(item.href)} className={item.active ? "on" : undefined} aria-current={item.active ? (pathname === item.href ? "page" : "true") : undefined}>{item.label}{item.active && <span className="d-nav-ind" aria-hidden="true" />}{item.dot ? <><span className="d-nav-dot" aria-hidden="true" /><span className="sr-only">, {newsWords(waiting)}</span></> : null}</Link>)}
   </nav>;
 }
