@@ -14,6 +14,13 @@ export const COUNTRY_RO: Record<string, string> = {
   CH: "Elveția", NO: "Norvegia", US: "SUA", TR: "Turcia", CN: "China",
   IL: "Israel", RS: "Serbia", UA: "Ucraina", MD: "Moldova", JP: "Japonia",
   KR: "Coreea de Sud", IN: "India", CA: "Canada", BIH: "Bosnia și Herțegovina",
+  // The other codes TED's winners carry (marts.ted_awards, November 2026), two- and three-letter alike: a name, never a
+  // bare code beside the named ones (UX audit bug, „BA” on /supra-prag).
+  BA: "Bosnia și Herțegovina", MK: "Macedonia de Nord", RU: "Rusia", AZ: "Azerbaidjan", KZ: "Kazahstan", KAZ: "Kazahstan",
+  UZB: "Uzbekistan", AE: "Emiratele Arabe Unite", AU: "Australia", AUS: "Australia", ARG: "Argentina", BRA: "Brazilia",
+  COL: "Columbia", MEX: "Mexic", PA: "Panama", PE: "Peru", HK: "Hong Kong", TWN: "Taiwan", SGP: "Singapore",
+  THA: "Thailanda", IDN: "Indonezia", PHL: "Filipine", PK: "Pakistan", LKA: "Sri Lanka", KEN: "Kenya",
+  ZAF: "Africa de Sud", VG: "Insulele Virgine Britanice",
 };
 
 export function countryName(code: string | null | undefined): string {
