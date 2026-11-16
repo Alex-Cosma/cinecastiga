@@ -5,6 +5,7 @@ import { decodeSpec } from "@/lib/ask/permalink";
 import { NEWER_VERSION_LINK, validateSpec } from "@/lib/ask/spec";
 import { evidenceOptions } from "@/lib/ask/evidence-request";
 import FollowSetup from "../FollowSetup";
+import { safeReturnPath } from "../../login/login-context";
 export const dynamic = "force-dynamic";
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
@@ -17,5 +18,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   // The setup would describe the question without the condition this release does not read.
   if ("error" in spec && spec.newer) return <section className="mon-empty"><h1>Urmărire indisponibilă</h1><p>{spec.error}</p><Link className="mon-primary" href="/intreaba?mode=builder">Construiește întrebarea →</Link></section>;
   if ("error" in spec || "error" in options) return <section className="mon-empty"><h1>De unde vrei să pornești?</h1><p>Deschide o entitate sau aplică o întrebare, apoi alege „Urmărește modificările”. Condițiile aplicate vor fi păstrate exact.</p><Link className="mon-primary" href="/intreaba?mode=builder">Construiește întrebarea →</Link></section>;
-  return <FollowSetup spec={spec} options={options} {...(values.title ? { title: values.title } : {})} {...(values.recipeId ? { recipeId: values.recipeId } : {})} {...(values.recipeVersion ? { recipeVersion: Number(values.recipeVersion) } : {})} />;
+  // Back to the page it was opened from (audit Z8-31): only a path on this site.
+  const back = safeReturnPath(values.inapoi);
+  return <FollowSetup spec={spec} options={options} {...(back ? { back: { href: back, label: values.inapoiLa?.slice(0, 120) || "pagina anterioară" } } : {})} {...(values.title ? { title: values.title } : {})} {...(values.recipeId ? { recipeId: values.recipeId } : {})} {...(values.recipeVersion ? { recipeVersion: Number(values.recipeVersion) } : {})} />;
 }

@@ -55,3 +55,13 @@
 .mon-watch{padding:22px 0}.mon-watch h2{margin:6px 0 4px}.mon-watch-compact h3{margin:4px 0 2px}
 .mon-empty-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;margin-top:20px}.mon-empty-actions>a:not(.mon-primary){display:inline-flex;align-items:center;min-height:44px;font-size:14px}
 @media(max-width:700px){.mon-seg{display:flex}.mon-seg a{flex:1;justify-content:center;min-height:44px;padding:6px 8px}}
+
+/* Setting up a watch on a phone (audit Z8-31): the name and "Începe urmărirea" first, what is followed folded under. */
+.mon-what-toggle{display:none!important}
+@media(max-width:700px){
+  .mon-setup-form{order:-1}
+  .mon-what>h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .mon-shell .mon-what-toggle{display:flex!important;justify-content:space-between;width:100%;min-height:48px;font-weight:600}
+  .mon-what[data-open=false] .mon-what-body{display:none}
+  .mon-what-body{margin-top:12px}
+}
