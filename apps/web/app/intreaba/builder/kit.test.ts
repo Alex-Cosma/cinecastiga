@@ -118,9 +118,9 @@ describe("the condition row (3), the chip (4) and the switch (5)", () => {
   });
   it("lets a chip or switch with a (?) anchor its own tip on phones, outside the chip's clip", () => {
     const disabled = html(Chip, { id: "emp", label: "Angajați", availability: { state: "disabled", reason: "Motiv.", tip: { title: "Angajați", text: "Motiv." } } });
-    expect(disabled).toMatch(/^<span class="qb-pair qb-tipwrap-sm"><span class="qb-chip is-dim">/);
+    expect(disabled).toMatch(/^<span class="qb-pair qb-tipwrap-sm"><span class="qb-chip is-dim" data-chip="emp">/);
     const legacy = html(UnderChips, { items: [{ kind: "legacy", id: "min", words: "doar firmele cu cel puțin 5 înregistrări", tip: { title: "Din link", text: "Text." } }] });
-    expect(legacy).toContain('<span class="qb-tipwrap-sm"><span class="qb-chip qb-chip--legacy">');
+    expect(legacy).toContain('<span class="qb-tipwrap-sm"><span class="qb-chip qb-chip--legacy" data-chip="legacy:min">');
   });
   it("draws an unset chip as “+ X ▾” without ×, an active one as “✓ value · count ▾ ×”", () => {
     const unset = html(Chip, { id: "emp", label: "Angajați" });

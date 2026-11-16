@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useChipMotion } from "../../../components/motion/chips";
 import KitLink from "../answer/KitLink";
 import { removeAndRefocus } from "./Chip";
 import HelpTip from "./HelpTip";
@@ -61,19 +62,19 @@ export function UnderChip({ item, openId, onOpen, onRemove, onToggle }: { item: 
   >{children}<i className="qb-chev" aria-hidden="true" /></button>;
   switch (item.kind) {
     case "only":
-      return <span className="qb-chip qb-chip--only">{opener(item.label)}{remove(item.name)}</span>;
+      return <span className="qb-chip qb-chip--only" data-chip={`${item.kind}:${item.id}`}>{opener(item.label)}{remove(item.name)}</span>;
     case "exclude":
-      return <span className="qb-chip qb-chip--exclude">
+      return <span className="qb-chip qb-chip--exclude" data-chip={`${item.kind}:${item.id}`}>
         {item.collapsed ? opener(item.label) : <span className="qb-chip-main">{item.label}</span>}
         {remove(item.name ?? item.label)}
       </span>;
     case "auto": {
-      const chip = <span className="qb-chip qb-chip--auto">{opener(<><i className="qb-half" aria-hidden="true" /><span>{item.label}</span></>)}{item.tip && <HelpTip tip={item.tip} />}{remove(item.name)}</span>;
+      const chip = <span className="qb-chip qb-chip--auto" data-chip={`${item.kind}:${item.id}`}>{opener(<><i className="qb-half" aria-hidden="true" /><span>{item.label}</span></>)}{item.tip && <HelpTip tip={item.tip} />}{remove(item.name)}</span>;
       return item.tip ? <span className="qb-tipwrap-sm">{chip}</span> : chip;
     }
     case "notice":
       return <>
-        <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--auto qb-chip--notice">
+        <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--auto qb-chip--notice" data-chip={`${item.kind}:${item.id}`}>
           <span className="qb-chip-main"><i className="qb-half" aria-hidden="true" /><span>{item.label}</span></span>
           <HelpTip tip={item.tip} />
         </span></span>
@@ -86,7 +87,7 @@ export function UnderChip({ item, openId, onOpen, onRemove, onToggle }: { item: 
       </button>;
     // The two with a (?): on a phone the tip opens over its own chip (.qb-tipwrap-sm), outside the chip's clip.
     case "legacy": {
-      const chip = <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--legacy">
+      const chip = <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--legacy" data-chip={`${item.kind}:${item.id}`}>
         <span className="qb-chip-main"><span><b>Din link:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(`Din link: ${item.words}`)}
@@ -94,7 +95,7 @@ export function UnderChip({ item, openId, onOpen, onRemove, onToggle }: { item: 
       return item.link ? <>{chip}<KitLink link={item.link} className="qb-relax-link" /></> : chip;
     }
     case "origin":
-      return <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--origin">
+      return <span className="qb-tipwrap-sm"><span className="qb-chip qb-chip--origin" data-chip={`${item.kind}:${item.id}`}>
         <span className="qb-chip-main"><span><b>{item.prefix}:</b> {item.words}</span></span>
         <HelpTip tip={item.tip} />
         {remove(item.prefix)}
@@ -103,8 +104,11 @@ export function UnderChip({ item, openId, onOpen, onRemove, onToggle }: { item: 
 }
 
 export default function UnderChips({ items, label = "Alte condiții", ...handlers }: { items: readonly UnderChipItem[]; label?: string } & Handlers) {
+  // The chips enter and leave; their neighbours make room (M-10).
+  const box = useRef<HTMLDivElement>(null);
+  useChipMotion(box);
   if (!items.length) return null;
-  return <div className="qb-under qb-tipwrap" role="group" aria-label={label} data-qb-row="">
+  return <div ref={box} className="qb-under qb-tipwrap" role="group" aria-label={label} data-qb-row="">
     {orderUnderChips(items).map(item => <UnderChip key={`${item.kind}:${item.id}`} item={item} {...handlers} />)}
   </div>;
 }
