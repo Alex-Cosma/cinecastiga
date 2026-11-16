@@ -156,6 +156,9 @@ export interface MapOptions {
   datasets: MapDataset[];
 }
 
+/** How many institutions each layer of the map holds (/api/map/counts; UX audit Z4-30). */
+export interface MapCounts { local_admin: number; institutions: number; companies: number; hospitals: number; schools: number }
+
 export class MapError extends Error {
   constructor(message: string, readonly status = 400) { super(message); }
 }

@@ -15,8 +15,8 @@ import reference from "./reference/local-institutions-2026.json" with { type: "j
  * Schools and hospitals are kinds of their own: an institution Întreabă names a school or a hospital is left out.
  */
 
-interface ReferenceInstitution { cui: string; name: string; parent: string }
-const LIST: readonly ReferenceInstitution[] = [...(reference.institutions as ReferenceInstitution[]), ...(reference.companies as ReferenceInstitution[])];
+interface ReferenceInstitution { cui: string; name: string; parent: string; company?: boolean }
+const LIST: readonly ReferenceInstitution[] = [...(reference.institutions as ReferenceInstitution[]), ...(reference.companies as ReferenceInstitution[]).map((x) => ({ ...x, company: true }))];
 
 export const INSTITUTIONS_SOURCE = "Instituțiile: Ministerul Finanțelor, Lista entităților publice la 01.11.2026 (ordonatorul principal de credite); companiile în care o primărie sau un consiliu județean e singurul acționar ori cel majoritar, verificate de mână pe sursă.";
 
@@ -25,7 +25,7 @@ export const INSTITUTIONS_SOURCE = "Instituțiile: Ministerul Finanțelor, Lista
  * institution's CUI with an authority profile, with the index of its administration in `admins`. An institution
  * whose administration the strict list does not hold is left out (its value would have nowhere to go).
  */
-export async function localInstitutions(sql: DbSql, admins: readonly string[]): Promise<{ id: string; parent: number }[]> {
+export async function localInstitutions(sql: DbSql, admins: readonly string[]): Promise<{ id: string; parent: number; cui: string; company: boolean }[]> {
   const cuis = [...new Set(LIST.flatMap((x) => [x.cui, x.parent]))];
   const [rows, kinds] = await Promise.all([
     sql`select e.id::text id, e.cui_canonical cui from core.entities e
@@ -43,13 +43,13 @@ export async function localInstitutions(sql: DbSql, admins: readonly string[]): 
     if (at !== undefined) parentOf.set(cui, at);
   }
   const skip = new Set<string>([...kinds.ids.spital, ...kinds.ids.scoala, ...admins]);
-  const out: { id: string; parent: number }[] = [], taken = new Set<string>();
+  const out: { id: string; parent: number; cui: string; company: boolean }[] = [], taken = new Set<string>();
   for (const x of LIST) {
     const parent = parentOf.get(x.parent);
     if (parent === undefined) continue;
     for (const id of byCui.get(x.cui) ?? []) {
       if (skip.has(id) || taken.has(id)) continue;
-      taken.add(id); out.push({ id, parent });
+      taken.add(id); out.push({ id, parent, cui: x.cui, company: x.company === true });
     }
   }
   return out;

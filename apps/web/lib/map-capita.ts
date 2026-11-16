@@ -6,7 +6,7 @@ import catalog from "./reference/population-rpl2021.json" with { type: "json" };
 import geo from "./reference/uat-geo.json" with { type: "json" };
 import {
   areaOf, counted, countyKey, lei, MapError, mapMetric, perCapita, rowSelected, sumByInstitution, withSubValue,
-  type MapArea, type MapInstitution, type MapKind, type MapOptions, type MapResponse, type MapRow, type MapSelection, type MapUatResponse,
+  type MapArea, type MapCounts, type MapInstitution, type MapKind, type MapOptions, type MapResponse, type MapRow, type MapSelection, type MapUatResponse,
 } from "./map-capita-shared";
 import { BEDS_SOURCE, countyHospitals, hospitalCounties, hospitalNames, loadHospitals, type HospitalData, type ReadRows } from "./map-hospitals";
 import { INSTITUTIONS_SOURCE, localInstitutions } from "./map-institutions";
@@ -42,6 +42,8 @@ interface KindData {
   rows: MapRow[];
   source: "rollup" | "live";
   councils: ReadonlySet<string>;
+  /** How many the kind holds (UX audit Z4-30): administrations, and their institutions and companies (by CUI). */
+  counts?: { admins: number; institutions: number; companies: number };
 }
 
 const CACHE_MS = 600_000;
@@ -97,7 +99,8 @@ async function loadKind(sql: DbSql, ready: boolean): Promise<KindData> {
     const a = index.get(String(r.a));
     if (a !== undefined) rows.push({ a, y: r.y, src: r.src, c: r.c, v: Number(r.v), n: Number(r.n) });
   }
-  return { institutions, rows, source: ready ? "rollup" : "live", councils: p.councils };
+  const counts = { admins: admins.length, institutions: new Set(subs.filter((x) => !x.company).map((x) => x.cui)).size, companies: new Set(subs.filter((x) => x.company).map((x) => x.cui)).size };
+  return { institutions, rows, source: ready ? "rollup" : "live", councils: p.councils, counts };
 }
 
 /** The kind's institutions and rows of the current build, read once per build and per 10 minutes. */
@@ -283,6 +286,22 @@ function divisionNames(sql: DbSql): Promise<Map<string, string | null>> {
   names = { at: Date.now(), rows };
   rows.catch(() => { if (names?.rows === rows) names = null; });
   return rows;
+}
+
+/**
+ * How many institutions each layer holds (UX audit Z4-30, the „Instituții” window): the administrations of the strict
+ * list, their institutions and companies, the hospitals of CNAS's list and the schools of the network that the data has.
+ */
+export async function getMapCounts(): Promise<MapCounts> {
+  const sql = db();
+  const [kind, hospitals, schools] = await Promise.all([readMapKind(sql), readMapHospitals(sql), readMapSchools(sql)]);
+  return {
+    local_admin: kind.counts?.admins ?? kind.institutions.filter((inst) => inst.parent === undefined).length,
+    institutions: kind.counts?.institutions ?? 0, companies: kind.counts?.companies ?? 0,
+    // The hospitals of CNAS's list; the other institutions named a hospital (codes "e…") are counted, not drawn.
+    hospitals: hospitals.hospitals.filter((h) => !h.code.startsWith("e")).length,
+    schools: schools.schools.length,
+  };
 }
 
 /** The kinds the map offers (the page's "Instituții" filter). */

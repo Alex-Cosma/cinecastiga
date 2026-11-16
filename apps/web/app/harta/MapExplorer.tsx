@@ -19,7 +19,7 @@ import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
 import { useEntrance, useFillIn, useGlide } from "./motion";
-import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
+import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
 /*
  * "Hartă" (owner, 6 November 2026, "Harta și clasamentul"): lei per inhabitant of the local administrations on the
@@ -105,11 +105,11 @@ function followRow(list: HTMLElement | null, key: string, top = false) {
   list.scrollTo({ top: Math.max(0, to), behavior: reduce ? "auto" : "smooth" });
 }
 
-function Pick({ label, text, title, children, wide = false, className }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean; className?: string }) {
+function Pick({ label, text, title, children, wide = false, className, onOpen }: { label: string; text: string; title: string; children: ReactNode; wide?: boolean; className?: string; onOpen?: () => void }) {
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   return <>
-    <button ref={button} type="button" className={className ? `mx-pick ${className}` : "mx-pick"} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((o) => !o)}>
+    <button ref={button} type="button" className={className ? `mx-pick ${className}` : "mx-pick"} aria-expanded={open} aria-haspopup="dialog" onClick={() => { if (!open) onOpen?.(); setOpen((o) => !o); }}>
       <span>{label}</span><b>{text}</b>
       <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
     </button>
@@ -181,6 +181,14 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const [hover, setHover] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
   const [search, setSearch] = useState("");
+  // How many each layer holds (Z4-30): read once, when the „Instituții” window first opens.
+  const [counts, setCounts] = useState<MapCounts | null>(null);
+  const asked = useRef(false);
+  const loadCounts = () => {
+    if (asked.current) return;
+    asked.current = true;
+    void fetch("/api/map/counts").then((r) => (r.ok ? r.json() as Promise<MapCounts> : null)).then((c) => { if (c) setCounts(c); else asked.current = false; }).catch(() => { asked.current = false; });
+  };
   // The data's last day, for a current year (Z4-06): read once, only when such a year is chosen.
   const [through, setThrough] = useState<string | null>(null);
   // Phones show the first 15 of the ranking (owner: no long phone lists); a county change folds it again.
@@ -509,12 +517,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
 
     <div className="mx-filters" role="group" aria-label="Ce arată harta">
       <MapSearch chosen={choice?.label ?? null} onPlace={pickPlace} onInstitution={pickInstitution} />
-      <Pick label="Instituții" text={sub ? "Primării și CJ, cu instituțiile lor" : KIND_WORDS[kind].button} title="Ce instituții?" className="mx-pick--kind">
-        <OptionList label="Instituții" value={kind} options={KINDS}
+      <Pick label="Instituții" text={sub ? "Primării și CJ, cu instituțiile lor" : KIND_WORDS[kind].button} title="Ce instituții?" className="mx-pick--kind" onOpen={loadCounts}>
+        <OptionList label="Instituții" value={kind} options={KINDS.map((k) => (counts ? { ...k, count: int(counts[k.value as MapKind]) } : k))}
           onChange={(v) => { if (v === "local_admin" || v === "hospitals" || v === "schools") { setKind(v); setUat(null); setHover(null); } }}
           under={kind !== "local_admin" ? undefined : { after: "local_admin", node: <label className="mx-check">
             <input type="checkbox" checked={withInst} onChange={(e) => setWithInst(e.target.checked)} />
             <span>cu instituțiile lor</span><Term id="institutiile-lor" tip />
+            {counts && <small>+{int(counts.institutions)} {counts.institutions === 1 ? "instituție" : "instituții"}, {withDe(counts.companies, "companie", "companii")}</small>}
           </label> }} />
       </Pick>
       <Pick label="Perioada" text={years === "all" ? "Toată perioada" : `${yearsWords(years, allYears)}${current ? " · în curs" : ""}`} title="Ce ani?">
@@ -595,13 +604,19 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {(!dots || !county || metric !== "value") && <span className="mx-legend-g"><span>0</span><i /><span>{level ? `${say(dotTop)}${dotTop < max ? "+" : ""}` : <G.Line inline w="3.4em" />} lei{metric === "value" ? "" : ` ${UNIT[metric]}`}</span></span>}
             {county && dots && <span className="mx-legend-g"><b className="mx-legend-dots"><s /><s /><s /></b><span>{schools ? "cercul: elevii" : "cercul: paturile spitalului"}</span></span>}
             {areas.some((a) => fig(a) === null) && <span className="mx-legend-g">{county && dots ? <b className="mx-legend-ring" /> : <b className="mx-legend-gap" />}<span>{hospitals ? "fără paturi în lista CNAS" : schools ? "fără elevi în lista ministerului" : county ? "primărie neidentificată" : "fără cifră"}</span></span>}</div>
-          <p className="mx-attr">Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
-              : schools ? <>Școli, grădinițe și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>, CC BY 4.0).</> : "Populația: INS, RPL 2021."}</p>
+          {/* The sources in one line (UX audit Z4-22): their names and the licence stay on the page, the whole attribution
+              with its links in the (?). */}
+          <p className="mx-attr"><Term tip title="Surse" text={<>Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
+              : schools ? <>Școli, grădinițe și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>).</> : "Populația: INS, RPL 2021."} Licența: CC BY 4.0.</>}>
+            Surse: ANCPI, INS{hospitals ? ", CNAS" : schools ? ", Ministerul Educației" : ""}</Term> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)</p>
         </div>
       </section>
 
       <aside className="mx-rank" aria-labelledby="mx-rank-h" aria-busy={!level || stale || undefined}>
-        <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : NB("UAT-urile")) : "Județele"} {/* The hovered area's place is not repeated here: its row is lit (owner, 8 November 2026). */}<span>lei {UNIT[metric]}{metric === "perBed" ? ` · ${BEDS_YEAR}` : metric === "perPupil" ? ` · ${PUPILS_YEAR}` : ""}</span></h2>
+        <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : NB("UAT-urile")) : "Județele"} {/* The hovered area's place is not repeated here: its row is lit (owner, 8 November 2026). */}{metric === "perBed" || metric === "perPupil"
+          // Two columns, two names (UX audit Z4-17): the figure per bed or pupil, then the total.
+          ? <span className="mx-h-cols"><span>lei {UNIT[metric]} · {metric === "perBed" ? BEDS_YEAR : PUPILS_YEAR}</span><span>total</span></span>
+          : <span>lei {UNIT[metric]}</span>}</h2>
         {!level ? <RankGhost names={county ? (dots ? null : uatGeo?.uats.map((u) => u.name) ?? null) : geo?.counties.map((c) => c.name) ?? null} rows={county ? null : 42}
           city={county === "bucuresti"} folded={unfolded !== (county ?? "")} key={county ?? ""} /> : <>
         {/* București's city hall and a county's council (UX audit Z4-11): apart from the areas, over the whole city or
@@ -620,7 +635,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             const f = fig(a), gap = f === null;
             const bar = <span className="mx-bar" aria-hidden="true">{!gap && <i className={`cm-tw ${rankMotion.mark(a.key, i < 10 ? "cm-x" : "")}`}
               style={{ width: `${Math.max(1.5, (f / max) * 100)}%`, opacity: 0.25 + 0.75 * (f / max), "--i": i } as CSSProperties} />}</span>;
-            const total = metric === "perBed" || metric === "perPupil" ? <span className="mx-v2" title="total contractat">{a.value === null ? "—" : short(a.value)}</span> : null;
+            const total = metric === "perBed" || metric === "perPupil" ? <span className="mx-v2">{a.value === null ? "—" : short(a.value)}</span> : null;
             // A county's hospital or school (owner, 8 November 2026): its name is the link to its page; the row lights its circle.
             if (county && dots) return <li key={a.key} data-key={a.key}>
               <div className={`mx-row${(hover ?? lit) === a.key ? " is-hover" : ""}${gap ? " is-gap" : ""}`} onPointerEnter={() => { fromMap.current = false; setHover(a.key); }} onPointerLeave={() => setHover(null)}
