@@ -205,13 +205,20 @@ function signalYears(d: SignalPageData): number[] {
   return [];
 }
 
-/** A single bid's TED lot, offers and procedure under each of its contracts. */
-function lotNotes(d: SignalPageData): Record<string, ReactNode> {
-  if (d.code !== "award_single_bid") return {};
+/**
+ * A single bid's TED lot, offers and procedure under each of its contracts; what all of them share (one TED notice, the
+ * procedure) is said once above the table instead (UX audit Z6-24), so a row keeps its lot and its offers.
+ */
+function lotNotes(d: SignalPageData): { notes: Record<string, ReactNode>; common: ReactNode[] } {
+  if (d.code !== "award_single_bid") return { notes: {}, common: [] };
   const procedure = procedureLabel(d.award?.procedure);
-  return Object.fromEntries(Object.entries(d.tedLots).map(([id, lot]) => [`contracts:${id}`, <>
-    {lot.lot ? `Lotul ${lot.lot}` : "Lot"}{lot.publication ? ` în TED ${lot.publication}` : ""} · {lot.tenders == null ? "oferte necunoscute" : countWords(lot.tenders, "ofertă", "oferte")}{procedure ? ` · ${procedure}` : ""}
+  const lots = Object.values(d.tedLots);
+  const pubs = [...new Set(lots.map((l) => l.publication))];
+  const onePub = lots.length > 1 && pubs.length === 1 && pubs[0] ? pubs[0] : null;
+  const notes = Object.fromEntries(Object.entries(d.tedLots).map(([id, lot]) => [`contracts:${id}`, <>
+    {lot.lot ? `Lotul ${lot.lot}` : "Lot"}{lot.publication && !onePub ? ` în TED ${lot.publication}` : ""} · {lot.tenders == null ? "oferte necunoscute" : countWords(lot.tenders, "ofertă", "oferte")}{procedure && lots.length < 2 ? ` · ${procedure}` : ""}
   </>]));
+  return { notes, common: [onePub && <span key="t">TED {onePub}</span>, procedure && lots.length > 1 && <span key="p">{procedure}</span>].filter(Boolean) as ReactNode[] };
 }
 
 export default async function SignalPage({ params, searchParams }: {
@@ -226,6 +233,7 @@ export default async function SignalPage({ params, searchParams }: {
   if (!d) notFound();
   const meta = FLAG_META[d.code];
   const head = headOf(d);
+  const lots = lotNotes(d);
   const role = d.entity?.role ?? "authority";
   const caseHref = d.entity ? signalUrl(parseSignalState({ tip: d.code, rol: role, ent: d.entity.id })) : `/semnale?tip=${encodeURIComponent(d.code)}`;
   const period = d.period === "all" ? "Toată perioada disponibilă" : d.period
@@ -241,7 +249,8 @@ export default async function SignalPage({ params, searchParams }: {
     { href: "/metodologie#citare", label: "Cum citez" },
   ];
   return <RecordPage className="signal-record">
-    <Link href={caseHref} className="back">← {d.entity ? `Toate cazurile ${role === "supplier" ? "firmei" : "instituției"}` : "Toate cazurile acestui semnal"}</Link>
+    {/* The way back says where it goes: the entity's page of this pattern (UX audit Z6-24). */}
+    <Link href={caseHref} className="back">← {d.entity ? `${cleanName(d.entity.name) || (role === "supplier" ? "Firma" : "Instituția")} · ${flagLabel(d.code)}` : `Toate cazurile: ${flagLabel(d.code)}`}</Link>
     <RecordHead
       title={head.title}
       lot={head.lot ?? null}
@@ -264,7 +273,8 @@ export default async function SignalPage({ params, searchParams }: {
     {d.firm && <FirmCard firm={d.firm} years={signalYears(d)} title={d.code === "net_shared_admin" ? "Firma semnalului" : "Firma"} />}
 
     <RecordSection id="inregistrari" title={d.code === "award_single_bid" ? "Contractele cu o singură ofertă" : d.code === "award_no_competition" ? "Contractele anunțului" : d.code === "award_calloffs_over_ceiling" ? "Comenzile anunțului" : "Înregistrările din semnal"}>
-      <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} kind="signal" refId={id} heading={null} save={false} titles={d.titles} notes={lotNotes(d)} />
+      <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} kind="signal" refId={id} heading={null} save={false} titles={d.titles}
+        notes={lots.notes} notesOpen={false} common={{ extra: lots.common }} />
     </RecordSection>
 
     {others.length > 0 && d.entity && <RecordSection id="alte-semnale" title={`Alte semnale ale ${role === "supplier" ? "firmei" : "instituției"}`}>
