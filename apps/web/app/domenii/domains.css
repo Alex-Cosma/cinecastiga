@@ -127,3 +127,10 @@
 }
 @media(max-width:360px){.domains-page{--domain-atlas-height:385px}.domains-page h1{font-size:36px}.dm-hero-context .dm-tiny-link{margin-left:0}.dm-stat-value{font-size:22px}.domains-page .dm-detail-hero h1{font-size:29px}.dm-detail-actions{flex-wrap:wrap}.dm-atlas-back{white-space:normal;max-width:80px}}
 @media(prefers-reduced-motion:reduce){.domains-page *,.domains-page *:before,.domains-page *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* No ↗ in the atlas (UX audit Z6-30): a list row is one control that goes down a level, ending in „›”; the row takes the
+   width the details button had. */
+.dm-atlas-list-row{grid-template-columns:minmax(0,1fr)}
+.dm-atlas-list-row>button:first-child{grid-template-columns:8px 1fr auto 12px}
+.dm-list-go{color:var(--muted);font-size:16px;line-height:1;text-align:right}
+@media(max-width:760px){.dm-atlas-list-row{grid-template-columns:minmax(0,1fr)}}

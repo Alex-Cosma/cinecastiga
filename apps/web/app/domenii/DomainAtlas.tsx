@@ -274,16 +274,13 @@ function mountAtlas(
       outline.style.stroke = ink;
       outline.style.transition = motion.matches ? "none" : "opacity var(--fast) var(--ease)";
       body.append(outline);
-      const hasArrow = w >= 70 && h >= 64;
       const roomy = w >= 210 && h >= 150;
       const hasLabel = w >= 108 && h >= 67;
       if (hasLabel) {
         const compact = !roomy && (w < 165 || h < 115);
         const padding = roomy ? 20 : compact ? 8 : 14;
         const nameSize = roomy ? Math.min(23, Math.max(18, w / 18)) : compact ? 12 : 13;
-        // Give the title the full tile width above the arrow target. Values can
-        // use the remaining space beside it; do not discard a whole bottom row.
-        const nameLines = roomy ? 3 : Math.max(1, Math.min(2, Math.floor((h - (hasArrow ? 49 : padding) - padding) / (nameSize * 1.2))));
+        const nameLines = roomy ? 3 : Math.max(1, Math.min(2, Math.floor((h - 2 * padding) / (nameSize * 1.2))));
         const content = el("foreignObject", { x: tile.x + 2 + padding, y: tile.y + 2 + padding, width: Math.max(0, w - 2 * padding), height: Math.max(0, h - 2 * padding), "pointer-events": "none", "aria-hidden": "true" });
         const label = document.createElement("div");
         label.style.cssText = `display:flex;flex-direction:column;gap:${roomy ? 9 : 5}px;height:100%;overflow:hidden;color:${ink};font-family:inherit;line-height:1.35;text-align:left;box-sizing:border-box`;
@@ -302,7 +299,6 @@ function mountAtlas(
           const value = document.createElement("span");
           value.textContent = compactMoney(node.value);
           value.style.cssText = `font-size:${roomy ? 18 : 12}px;font-variant-numeric:tabular-nums;letter-spacing:-.25px;flex:none`;
-          if (hasArrow && !roomy) value.style.maxWidth = `${Math.max(0, w - 2 * padding - 44)}px`;
           label.append(value);
         }
         if (roomy) {
@@ -332,25 +328,9 @@ function mountAtlas(
           groups[next]?.body.focus();
         }
       });
-      if (hasArrow) {
-        const size = 44, x = tile.x + tile.w - size - 7, y = tile.y + tile.h - size - 7;
-        const arrow = el("g", {
-          role: "button", tabindex: "0", "data-atlas-code": node.code, "data-atlas-action": "details",
-          "aria-label": `Detalii și contracte — ${node.name}`,
-        });
-        arrow.style.cssText = "cursor:pointer;outline:none";
-        const arrowFace = el("rect", { x: x + 6, y: y + 6, width: 32, height: 32, rx: 9, "fill-opacity": ".07", "stroke-opacity": ".14", "stroke-width": 1.4 });
-        arrowFace.style.fill = ink; arrowFace.style.stroke = ink;
-        const arrowPath = el("path", { d: `M${x + 16} ${y + 28}l12-12m-11 0h11v11`, fill: "none", "stroke-width": 1.7, "stroke-linecap": "round", "stroke-linejoin": "round", "pointer-events": "none" });
-        arrowPath.style.stroke = ink;
-        arrow.append(el("rect", { x, y, width: size, height: size, fill: "transparent" }), arrowFace, arrowPath);
-        arrow.addEventListener("pointerdown", (event) => event.stopPropagation());
-        arrow.addEventListener("click", (event) => activate(event, onDetails));
-        arrow.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") activate(event, onDetails);
-        });
-        group.append(arrow); item.arrow = arrow; item.arrowFace = arrowFace;
-      }
+      // No ↗ on a zone (UX audit Z6-30): the whole zone goes down a level, a leaf opens its details; elsewhere on the
+      // site ↗ is a link out, and the zone and its arrow were two targets on top of each other. Details open from
+      // „Detalii despre domeniu” once a domain is chosen.
       group.addEventListener("pointerenter", (event) => {
         if (event.pointerType === "touch") return;
         hovered = item; dismissed = null; hoveredAction = (event.target instanceof Element ? event.target.closest("[data-atlas-action]")?.getAttribute("data-atlas-action") : null) ?? null;
