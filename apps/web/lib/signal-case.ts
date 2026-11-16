@@ -24,6 +24,11 @@ export const CASE_PAGE_SIZE = 50;
  */
 export const CASE_ROW_CODES: ReadonlySet<string> = new Set(["da_round", "da_above_ceiling"]);
 export const CASE_ROW_LIMIT = 2000;
+/**
+ * The patterns whose page reads all of an entity's cases at once: the one-acquisition ones (their table) and the shared
+ * representatives (UX audit Z6-23: one row per institution, its pairs grouped; 1.335 pairs at most in November 2026).
+ */
+export const CASE_ALL_CODES: ReadonlySet<string> = new Set([...CASE_ROW_CODES, "net_shared_admin"]);
 
 /** The acquisitions of one-acquisition signals, in one read (by signal id), as readSignalEvidence reads each. */
 async function readDaSubjects(q: DbSql, ids: readonly string[]): Promise<Map<string, SourceRecord>> {
@@ -120,7 +125,7 @@ export async function readSignalCase(state: SignalState & { entity: string }): P
   // The counts and the page open their own read-only transactions; the records are read together in one below.
   const [flags, counts, page] = await Promise.all([
     getEntityFlags(state.entity), readEntitySignalCounts(sql, state.entity, state.role),
-    readSignalPage(sql, state, CASE_ROW_CODES.has(state.code) ? CASE_ROW_LIMIT : CASE_PAGE_SIZE),
+    readSignalPage(sql, state, CASE_ALL_CODES.has(state.code) ? CASE_ROW_LIMIT : CASE_PAGE_SIZE),
   ]);
   const row = pickRow(flags, state.role);
   const [named] = row ? [{ name_display: row.name, county: row.county }] : await sql`select name_display, county from core.entities where id = ${state.entity}`;

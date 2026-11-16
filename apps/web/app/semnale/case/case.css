@@ -313,3 +313,13 @@ a.dot{cursor:pointer}
   .sgc-tabs>.sgc-more{grid-column:1/-1}
   .sgc-tabs .sgc-morebtn:not(.cur) small{display:none}
 }
+
+/* The shared representatives, one row per institution (UX audit Z6-23): its people under its name, each with the firms it
+   represents (the ONRC role on hover or a tap), the largest group's sum; the same people on every row said once above. */
+.sgc-shared{position:relative}
+.sgc-anchor{position:absolute;top:0;left:0;width:0;height:0}
+.sgc-people{display:block;margin-top:3px;font-size:14px;line-height:1.5;color:var(--ink2)}
+.sgc-people-all{margin:10px 0 0;font-size:14px;line-height:1.5;color:var(--ink2)}
+.sgc-person>.term-trigger{display:inline;min-height:0;padding:0;border:0;background:none;color:inherit;font:inherit;text-decoration:underline dotted var(--line2);text-underline-offset:3px;cursor:help}
+.sgc-person>.term-trigger>.term-mark{display:none}
+.sgc-shared .sgc-sum small{display:block;font:400 12px/1.4 var(--body);color:var(--muted)}

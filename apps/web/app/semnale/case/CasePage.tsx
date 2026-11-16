@@ -14,6 +14,7 @@ import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
 import { aboveWords, capacityWords, caseUnitNouns, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import { awardListNote, awardRowFacts, awardRowTitle } from "@/lib/signal-award-rows";
+import { groupSharedAdmin, peopleByFirms, peopleKey, sharedPeopleWords, type SharedAdminPerson } from "@/lib/signal-shared-admin";
 import {
   aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, topPartners, yearEnd,
   type AboveCeiling, type CaseInput, type FirstMonth, type NearCeiling, type SplitGroup,
@@ -503,8 +504,53 @@ function AwardRow({ data, inst }: { data: SignalCase; inst: CaseInstance }) {
   );
 }
 
+const SHARED_PAGE = 50;
+
+/** A person of a shared representatives' row: the name, its ONRC role on hover or a tap. */
+function Person({ p }: { p: SharedAdminPerson }) {
+  return <Term tip className="sgc-person" title="Calitatea în ONRC" text={p.roles.length ? p.roles.join("; ") : "Nepublicată în datele preluate."}>{p.name}</Term>;
+}
+function People({ people }: { people: readonly SharedAdminPerson[] }) {
+  return <>{sharedPeopleWords(people.length)}: {peopleByFirms(people).map((g, i) => <span key={g.firms}>{i > 0 && " · "}
+    {g.people.map((p, k) => <span key={p.name}>{k > 0 && ", "}<Person p={p} /></span>)} ({countWords(g.firms, "firmă", "firme")})</span>)}</>;
+}
+
+/**
+ * „Reprezentant comun, aceeași autoritate” (UX audit Z6-23): one row per institution with its shared representatives
+ * and the largest group's sum, 50 institutions a page; the same people on every row are said once above the list. A
+ * link to one pair (`#caz-…`) finds its institution's row, on whichever page (OpenFromHash reads the index).
+ */
+function SharedAdminCase({ data, state }: { data: SignalCase; state: SignalState }) {
+  const rows = groupSharedAdmin(data.instances);
+  const pages = Math.max(1, Math.ceil(rows.length / SHARED_PAGE)), page = Math.min(Math.max(0, state.page), pages - 1);
+  const shown = rows.slice(page * SHARED_PAGE, (page + 1) * SHARED_PAGE);
+  const common = rows.length > 1 && rows.every((r) => peopleKey(r.people) === peopleKey(rows[0]!.people)) ? rows[0]!.people : null;
+  const index: Record<string, number> = {};
+  data.instances.forEach((i) => { const at = rows.findIndex((r) => r.partnerId === i.partnerId); if (at >= 0) index[i.id] = Math.floor(at / SHARED_PAGE); });
+  const more = data.total > data.instances.length;
+  return <>
+    <div className="sgc-cases-h"><h2>{countWords(rows.length, "instituție", "instituții")}{more ? ` · primele ${formatInt(data.instances.length)} de legături din ${formatInt(data.total)}` : ""}</h2></div>
+    {common && <p className="sgc-list-note sgc-people-all">La toate: <People people={common} />.</p>}
+    <div className="sgc-cases" data-case-index={JSON.stringify(index)}>
+      {shown.map((r) => {
+        const ids = data.instances.filter((i) => i.partnerId === r.partnerId).map((i) => i.id);
+        return <article key={r.largest.id} id={`caz-${r.largest.id}`} className="sgc-row outside sgc-shared">
+          {ids.filter((id) => id !== r.largest.id).map((id) => <span key={id} id={`caz-${id}`} className="sgc-anchor" />)}
+          <span className="sgc-who"><b><EntityName id={r.partnerId} role="authority">{cleanName(r.partnerName) || "—"}</EntityName></b>
+            {!common && <span className="sgc-people"><People people={r.people} /></span>}</span>
+          <span className="sgc-sum">{lei(r.largest.value)}<small>cel mai mare grup: {countWords(r.largest.firms, "firmă", "firme")}</small></span>
+          <span className="sgc-src"><Link prefetch={false} href={`/semnale/${r.largest.id}`} aria-label={`Sursele celui mai mare grup: ${cleanName(r.partnerName)}`}>Sursele →</Link></span>
+        </article>;
+      })}
+    </div>
+    {pages > 1 && <DiscoverPager page={page} pageSize={SHARED_PAGE} total={rows.length} unit={["instituție", "instituții"]} label="Paginile instituțiilor"
+      href={(p) => roleless(data, signalUrl(state, { page: p }))} link={Link} bottom className="sgc-dsc-pager" />}
+  </>;
+}
+
 /** The signals outside the score (procedures, balance sheets, shared administrators): their cases, each with its sources page. */
-function OutsideCase({ data }: { data: SignalCase }) {
+function OutsideCase({ data, state }: { data: SignalCase; state: SignalState }) {
+  if (data.code === "net_shared_admin") return <SharedAdminCase data={data} state={state} />;
   const note = awardListNote(data.code);
   if (note) return <>
     {/* The title already says how many (h1); the list's head says what each row is, once (Z6-06). */}
@@ -606,7 +652,7 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
         : code === "da_concentration" || code === "da_dependence" ? <PartnerCase data={data} code={code} />
         : code === "da_capacity" ? <CapacityCase data={data} />
         : code === "da_first_month" || code === "da_first_month_buyer" ? <FirstMonthCase data={data} />
-        : <OutsideCase data={data} />}
+        : <OutsideCase data={data} state={state} />}
 
       {/* The pager of the „Descoperă” pages (UX audit Z6-14): links to this page's other pages (CaseRegion keeps the case in place). */}
       {data.total > data.pageSize && <DiscoverPager page={data.page} pageSize={data.pageSize} total={data.total} unit={caseUnitNouns(code)}
