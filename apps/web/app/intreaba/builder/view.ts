@@ -216,11 +216,11 @@ function sameMonthsChip(slot: Slot, state: NonNullable<TrendMonthsState>): { ite
 }
 
 /** The builder's view of a draft. `labels` names a CPV code; `ctx` comes from the caller when it has more than the spec. */
-export function builderView(input: QuestionSpec, labels: ConditionLabels & Pick<SentenceLabels, "peerGroup"> = {}, ctx: FilterCtx = filterContext(input as FilterSpec)): BuilderView {
+export function builderView(input: QuestionSpec, labels: ConditionLabels & Pick<SentenceLabels, "peerGroup" | "trendYears" | "networkSince"> = {}, ctx: FilterCtx = filterContext(input as FilterSpec)): BuilderView {
   const spec = input as FilterSpec;
   const entry = BLOCK_FILTERS[ctx.block];
   const windows: Record<string, BuilderWindowSpec> = {};
-  const sentence = kitTokens(sentenceTokens(spec, ctx, { cpvName: labels.cpvName, peerGroup: labels.peerGroup }), "s:", windows);
+  const sentence = kitTokens(sentenceTokens(spec, ctx, { cpvName: labels.cpvName, peerGroup: labels.peerGroup, trendYears: labels.trendYears, networkSince: labels.networkSince }), "s:", windows);
   const presentation = kitTokens(presentationTokens(spec), "p:", windows);
   const described = describeConditions(spec, labels).byId;
 

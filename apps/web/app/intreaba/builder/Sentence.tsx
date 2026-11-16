@@ -16,11 +16,16 @@ interface TokenProps {
   onOpen?: (id: string, trigger: HTMLButtonElement) => void;
   /** The id of the phrase whose window is open (aria-expanded). */
   openId?: string | null;
+  /** What follows a phrase on its line: an entity's „→” to its page, where the phrase itself opens a window (UX audit Z2-03). */
+  after?: (token: Extract<SentenceToken, { kind: "slot" }>) => ReactNode;
 }
 
 export interface SentenceProps extends TokenProps {
   as?: "h1" | "h2" | "h3" | "p";
   className?: string;
+  /** The sentence as a heading that takes the focus (the answer's title). */
+  id?: string;
+  tabIndex?: number;
 }
 
 /** An editable phrase: a button named "{slot}: {value}" ("Perioada: 2025"). */
@@ -42,7 +47,7 @@ const LEADING_PUNCTUATION = /^([?!.,;:…»”)]+)(.*)$/s;
  * phrase's line, and the last two words before the closing "?" stay
  * together (kit §9: short phrases are not split across lines).
  */
-export function sentenceNodes({ tokens, onOpen, openId }: TokenProps): ReactNode[] {
+export function sentenceNodes({ tokens, onOpen, openId, after }: TokenProps): ReactNode[] {
   const nodes: ReactNode[] = [];
   tokens.forEach((token, index) => {
     const key = `t${index}`;
@@ -66,14 +71,19 @@ export function sentenceNodes({ tokens, onOpen, openId }: TokenProps): ReactNode
       const tip = typeof token.tip === "string" ? { title: token.text.charAt(0).toLocaleUpperCase("ro-RO") + token.text.slice(1), text: token.tip } : token.tip;
       nodes.push(tip ? <span className="qb-nowrap" key={key}>{fixed}<HelpTip tip={tip} /></span> : fixed);
     }
-    else nodes.push(<Phrase key={key} token={token} open={openId === token.id} {...(onOpen ? { onOpen } : {})} />);
+    else {
+      const phrase = <Phrase key={key} token={token} open={openId === token.id} {...(onOpen ? { onOpen } : {})} />;
+      const next = after?.(token);
+      // One box on the line: a long name wraps inside its phrase and the „→” stays beside it.
+      nodes.push(next ? <span className="qb-phrase-pair" key={key}>{phrase}{next}</span> : phrase);
+    }
   });
   return nodes;
 }
 
-export default function Sentence({ as: Tag = "h2", className, ...tokens }: SentenceProps) {
+export default function Sentence({ as: Tag = "h2", className, id, tabIndex, ...tokens }: SentenceProps) {
   const tip = tokens.tokens.some(token => token.kind === "fixed" && token.tip);
-  return <Tag className={`qb-sentence${tip ? " qb-tipwrap" : ""}${className ? ` ${className}` : ""}`}>{sentenceNodes(tokens)}</Tag>;
+  return <Tag className={`qb-sentence${tip ? " qb-tipwrap" : ""}${className ? ` ${className}` : ""}`} {...(id ? { id } : {})} {...(tabIndex !== undefined ? { tabIndex } : {})}>{sentenceNodes(tokens)}</Tag>;
 }
 
 /** P5: how many rows and in what order, when that changes the query. */

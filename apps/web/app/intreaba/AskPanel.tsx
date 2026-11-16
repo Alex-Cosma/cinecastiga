@@ -118,7 +118,7 @@ import "./ask-intent.css";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { useViewer } from "@/lib/use-viewer";
 import { isCpvCode } from "./cpv-name";
-import { ghostPills, type AskLinkHint } from "./link-hint";
+import type { AskLinkHint } from "./link-hint";
 import { MixGhost } from "./answer/StatMix";
 import { answerSubject, useChartMotion } from "./answer/chart-motion";
 
@@ -255,6 +255,8 @@ export default function AskPanel({
    * the box again, until the next answer.
    */
   const [askUnfolded, setAskUnfolded] = useState(false);
+  // Where the builder draws its editor beside an answer: the answer's head (UX audit Z2-03 B).
+  const [liveHost, setLiveHost] = useState<HTMLElement | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   /** A toast's one action („Vezi salvatele” after saving, UX audit Z2-27); it then stays a little longer. */
   const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
@@ -331,6 +333,8 @@ export default function AskPanel({
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => { setToast(null); setToastAction(null); }, action ? 6000 : 2600);
   }, []);
+  /** What a choice in the answer's title changed besides (transition.ts notes), said as a pill's choice said it. */
+  const liveNotes = useCallback((notes: string[]) => showToast(notes.join(" ")), [showToast]);
   /** The error appears where the person is looking (on a phone it would otherwise sit under the fold). */
   const revealError = useCallback(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -1084,6 +1088,9 @@ export default function AskPanel({
   />;
   // The box stays open while it has something to say about the words in it: an error, a choice, an unread question.
   const askFolded = builderOpen && builderCollapsed && mode === "build" && !askUnfolded && !intentLoading && !intentError && !(intent && !intent.spec);
+  // Beside an answer the builder's sentence is the answer's title and its choices apply at once (UX audit Z2-03 B,
+  // owner 16 November 2026): the builder stays mounted, folded or not, and draws its editor in the answer's head.
+  const live = mode === "build" && builderOpen && Boolean(resp?.ok && data && applied);
   // The builder's door is the link under the box: it opens under the examples and takes the focus, in view.
   const openBuilder = () => {
     setBuilderOpen(true);
@@ -1215,49 +1222,62 @@ export default function AskPanel({
           </div>
         </section>
       )}
-      {builderOpen && builderCollapsed ? (
-        <div hidden={mode !== "build"} id="intrebarea" className="ia-builder ia-builder-collapsed">
-          <button type="button" className="ia-change-question" aria-expanded="false" onClick={() => setBuilderCollapsed(false)}>
-            <PencilIcon />
-            Schimbă întrebarea
-          </button>
-          {askFolded && <button type="button" className="ia-change-question ia-ask-again" aria-label="Întreabă altceva" onClick={askAgain}>
-            <DiscoveryIcon name="search" />
-            <span className="ia-ask-again-wide">Întreabă altceva…</span>
-            <span className="ia-ask-again-narrow">Altă întrebare…</span>
-          </button>}
-          {/* Back to the empty page, without reloading it (UX audit Z2-14); a new tab keeps the browser's way. */}
-          <a className="ia-new-question" href="/intreaba" onClick={(event) => {
-            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-            event.preventDefault();
-            startOver();
-            window.history.pushState(null, "", "/intreaba");
-            requestAnimationFrame(() => { window.scrollTo({ top: 0 }); askRef.current?.focus({ preventScroll: true }); });
-          }}>Întrebare nouă</a>
-        </div>
-      ) : builderOpen ? (
-        <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
-          <div className="ia-builder-head">
-            <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>Construiește întrebarea pas cu pas</h2>
-            {/* Folds the builder again (UX audit Z2-14): under „Schimbă întrebarea” beside an answer, shut on the empty page.
-                Not with edits not applied: they would be lost unsaid („Renunță la modificări” first). */}
-            {!dirty && <button type="button" className="ia-builder-hide" onClick={() => { if (resp?.ok) setBuilderCollapsed(true); else setBuilderOpen(false); }}>Ascunde</button>}
-          </div>
-          <QuestionBuilder
-            key={builderInit ? encodeSpec(builderInit) : "start"}
-            initial={builderInit}
-            resolution={builderInit && builderResolution && questionKey(builderInit) === questionKey(builderResolution.submitted) ? builderResolution : null}
-            fromAi={builderFromAi}
-            running={loading}
-            onDraftChange={setDirty}
-            onRun={(spec) => execute({ spec })}
-            initialApplied={!chosen && linkRuns}
-            {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
-            stripPatch={stripPatch}
-            onTrendList={trendListFromBuilder}
-            openSaved={wantSaved}
-            onSavedOpened={savedOpened}
-          />
+      {builderOpen ? (
+        <div hidden={mode !== "build"} id="intrebarea" className={`ia-builder${builderCollapsed ? " ia-builder-collapsed" : ""}${live ? " ia-builder-live" : ""}`}>
+          {builderCollapsed ? <>
+            <button type="button" className="ia-change-question" aria-expanded="false" onClick={() => setBuilderCollapsed(false)}>
+              <PencilIcon />
+              Schimbă întrebarea
+            </button>
+            {askFolded && <button type="button" className="ia-change-question ia-ask-again" aria-label="Întreabă altceva" onClick={askAgain}>
+              <DiscoveryIcon name="search" />
+              <span className="ia-ask-again-wide">Întreabă altceva…</span>
+              <span className="ia-ask-again-narrow">Altă întrebare…</span>
+            </button>}
+            {/* Back to the empty page, without reloading it (UX audit Z2-14); a new tab keeps the browser's way. */}
+            <a className="ia-new-question" href="/intreaba" onClick={(event) => {
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              startOver();
+              window.history.pushState(null, "", "/intreaba");
+              requestAnimationFrame(() => { window.scrollTo({ top: 0 }); askRef.current?.focus({ preventScroll: true }); });
+            }}>Întrebare nouă</a>
+          </> : (
+            <div className="ia-builder-head">
+              <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>{live ? "Alt fel de întrebare" : "Construiește întrebarea pas cu pas"}</h2>
+              {/* Folds the builder again (UX audit Z2-14): under „Schimbă întrebarea” beside an answer, shut on the empty page.
+                  Not with edits not applied: they would be lost unsaid („Renunță la modificări” first). */}
+              {!dirty && <button type="button" className="ia-builder-hide" onClick={() => { if (resp?.ok) setBuilderCollapsed(true); else setBuilderOpen(false); }}>Ascunde</button>}
+            </div>
+          )}
+          {/* Folded without an answer (a link that loads), the builder is not mounted; beside an answer it always is. */}
+          {(!builderCollapsed || live) && (
+            <QuestionBuilder
+              key={builderInit ? encodeSpec(builderInit) : "start"}
+              initial={builderInit}
+              resolution={builderInit && builderResolution && questionKey(builderInit) === questionKey(builderResolution.submitted) ? builderResolution : null}
+              fromAi={builderFromAi}
+              running={loading}
+              onDraftChange={setDirty}
+              // Beside an answer a choice leaves the page where it is, as a pill's did.
+              onRun={(spec) => execute({ spec }, false, undefined, undefined, !live)}
+              initialApplied={!chosen && linkRuns}
+              {...(!chosen && !linkRuns ? { initialNotes: linkNotes } : {})}
+              stripPatch={stripPatch}
+              onTrendList={trendListFromBuilder}
+              openSaved={wantSaved}
+              onSavedOpened={savedOpened}
+              live={live && resp && applied ? {
+                host: liveHost, expanded: !builderCollapsed, applied: applied as unknown as QuestionSpec,
+                entities: titleEntities(applied, resp.townHall),
+                // The map's title follows its lens (map final §3.7): the heading says it, the sentence stays the question's.
+                title: applied.block === "map" && mapLens && mapLens !== "value" ? title : null,
+                pills: shown.pills, labels: pillLabels, caveats: resp.caveats, cpvName,
+                afterTitle: line ? <IntentLine line={line} onAdopt={adopt} /> : null,
+                onNotes: liveNotes,
+              } : null}
+            />
+          )}
         </div>
       ) : null}
       {loading && <Loader label="Căutăm răspunsul în date" />}
@@ -1294,9 +1314,12 @@ export default function AskPanel({
           >
             <div className="cq-answer-head">
               <div>
-                <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied, resp.townHall))}</h2>
-                {line && <IntentLine line={line} onAdopt={adopt} />}
-                <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} caveats={resp.caveats} />
+                {/* Z2-03 B: beside its builder the title is the editable sentence, drawn here by the builder (LiveBuilder). */}
+                {live ? <div className="cq-live-host" ref={setLiveHost} /> : <>
+                  <h2 id="raspuns-titlu" tabIndex={-1}>{linkNames(title, titleEntities(applied, resp.townHall))}</h2>
+                  {line && <IntentLine line={line} onAdopt={adopt} />}
+                  <AnswerPills spec={applied} pills={shown.pills} labels={pillLabels} cpvName={cpvName} onApply={applyPill} caveats={resp.caveats} />
+                </>}
                 {dirty && (
                   <p className="cq-pending" role="status">
                     Răspuns pentru întrebarea anterioară
@@ -1716,11 +1739,9 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
   return <Ghost as="section" className="cq-answer" name="ask-answer" wait="client">
     <div className="cq-answer-head">
       <div>
-        <h2>{title ?? <><G.Line w="94%" /><G.Line w="48%" /></>}</h2>
-        <div inert>{spec
-          // The cloud's first pill is its group's window (labels.scatterGroup): a pill, its words a line.
-          ? <AnswerPills spec={spec} pills={ghostPills(spec)} labels={spec.block === "scatter" ? { scatterGroup: 0 } : {}} onApply={() => undefined} />
-          : <div className="cq-scope"><G.Line inline w="44%" /></div>}</div>
+        {/* Z2-03 B: the title's lines are the editable sentence's (taller); under it one quiet line, no pills. */}
+        <h2 className="qb-live-sentence">{title ?? <><G.Line w="94%" /><G.Line w="48%" /></>}</h2>
+        <div className="cq-scope" inert><G.Line inline w="44%" /></div>
       </div>
       <div className="cq-answer-actions g-quiet" inert>
         <button type="button" className="cq-source-main"><DiscoveryIcon name="database" />{source}</button>

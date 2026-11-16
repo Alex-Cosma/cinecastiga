@@ -621,3 +621,15 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
 /* Z2-07 (UX audit, 16 November 2026): under a window's title, what its numbers count („% din valoare · instituții”),
    from the counts' own unit; 12 px, muted. */
 .qb-unit { margin: -4px 0 8px !important; color: var(--muted); font-size: 12px !important; line-height: 1.4; }
+
+/* UX audit Z2-03, variant B (16 November 2026): the sentence as an answer's title. */
+/* An entity's page: the „→” after its phrase (the name itself opens its window; owner, 2 November 2026: every name
+   leads to its page, here by a control of its own). */
+.qb-phrase-go { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; margin-left: .1em; border-radius: 4px; color: var(--accent); font: 600 .6em/1 var(--body); letter-spacing: 0; text-decoration: none; vertical-align: .2em; }
+.qb-phrase-go:hover { background: var(--accent-soft); }
+.qb-phrase-pair { display: inline-flex; align-items: baseline; max-width: 100%; min-width: 0; white-space: normal; }
+.qb-phrase-pair > .qb-phrase { flex: 0 1 auto; min-width: 0; }
+.qb-phrase-pair > .qb-phrase-go { flex: none; align-self: center; }
+@media (max-width:600px){
+  .qb-phrase-go { min-width: 44px; min-height: 44px; margin-left: 0; }
+}
