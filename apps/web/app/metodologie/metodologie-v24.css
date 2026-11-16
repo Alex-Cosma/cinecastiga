@@ -839,3 +839,13 @@
  .mt .mt-chrow{display:none}
 }
 @media(prefers-reduced-motion:no-preference){.mt .mt-chrow>summary>i{transition:transform .16s}}
+
+/* UX audit Z7-38: the four parts of a rule (în scorul de risc, ce măsoară, ce merită verificat, limită) have one size
+   and colour; the labels stay bold. Z7-34: in the dark theme the selected lane is marked by more than a shade (accent
+   soft fill, a 2 px accent rule under its name), so the state reads without colour contrast alone. */
+.mt .mt-sig>p,.mt .mt-sig>p.mt-how{font-size:16px;color:var(--ink2);line-height:1.6}
+.mt .mt-sig>p b{color:var(--ink)}
+@media (prefers-color-scheme: dark){
+:root:not([data-theme="light"]) .mt .mt-lanes button[aria-selected="true"]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+}
+:root[data-theme="dark"] .mt .mt-lanes button[aria-selected="true"]{background:var(--accent-soft);color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}

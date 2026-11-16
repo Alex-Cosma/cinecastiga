@@ -9,7 +9,8 @@ import "./metodologie-v24.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Metodologie",
+  // The guide has one name, „Ghid” (owner, 5 and 13 November 2026): the tab says it with the page's title (Z7-35).
+  title: "Ghid · Cum citim banii publici",
   description: "Cum citim banii publici: ce e un tipar, cum se calculează scorul de la 0 la 100 și ce nu înseamnă. Toate regulile, cu codul lor.",
 };
 
