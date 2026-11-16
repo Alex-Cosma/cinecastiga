@@ -588,6 +588,15 @@ export default function AskPanel({
     setAskText(example.text);
     void interpret(example.text);
   }, [interpret]);
+  /** The empty page, as a fresh visit: «Înapoi» down to /intreaba, „Întrebare nouă” (UX audit zone 2 bug, Z2-14). */
+  const startOver = useCallback(() => {
+    request.current.controller?.abort();
+    intentRequest.current?.abort();
+    setResp(null); setAppliedSpec(null); setError(null); setErrorDetail(null); setLoading(false); setEvidence(null); setThread(null);
+    setIntent(null); setIntentLoading(false); setIntentError(null); setChosen(null); setUnderstood({}); setAskText("");
+    setBuilderInit(null); setBuilderOpen(false); setBuilderCollapsed(false); setAskUnfolded(false); setDirty(false);
+    lastBody.current = null;
+  }, []);
   useEffect(() => {
     /**
      * `opened`: the page's first restore (a link, a reload). Its answer takes its ghost's place where the page stands,
@@ -610,12 +619,7 @@ export default function AskPanel({
         void execute({ question });
       } else if (!question && !encoded && !opened) {
         // «Înapoi» down to the bare page: the empty page, not the last answer kept on screen (UX audit, zone 2 bug).
-        request.current.controller?.abort();
-        intentRequest.current?.abort();
-        setResp(null); setAppliedSpec(null); setError(null); setErrorDetail(null); setLoading(false); setEvidence(null); setThread(null);
-        setIntent(null); setIntentLoading(false); setIntentError(null); setChosen(null); setUnderstood({}); setAskText("");
-        setBuilderInit(null); setBuilderOpen(false); setBuilderCollapsed(false); setAskUnfolded(false); setDirty(false);
-        lastBody.current = null;
+        startOver();
       } else if (encoded) {
         // The link opens in the builder with its conditions as chips; it runs only what /api/ask runs
         // as it is. A key this release reads but does not apply keeps F0a's message, without a builder
@@ -684,7 +688,7 @@ export default function AskPanel({
       request.current.controller?.abort();
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-  }, [execute, interpret, revealError]);
+  }, [execute, interpret, revealError, startOver]);
   const applied = appliedSpec ?? undefined;
   // A CPV code is named as the builder names it ("pentru [lucrări de construcții]").
   const appliedCpv = applied?.filters.cpvTerm === undefined ? undefined : String(applied.filters.cpvTerm);
@@ -1199,10 +1203,23 @@ export default function AskPanel({
             <span className="ia-ask-again-wide">Întreabă altceva…</span>
             <span className="ia-ask-again-narrow">Altă întrebare…</span>
           </button>}
+          {/* Back to the empty page, without reloading it (UX audit Z2-14); a new tab keeps the browser's way. */}
+          <a className="ia-new-question" href="/intreaba" onClick={(event) => {
+            if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            startOver();
+            window.history.pushState(null, "", "/intreaba");
+            requestAnimationFrame(() => { window.scrollTo({ top: 0 }); askRef.current?.focus({ preventScroll: true }); });
+          }}>Întrebare nouă</a>
         </div>
       ) : builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
-          <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>Construiește întrebarea pas cu pas</h2>
+          <div className="ia-builder-head">
+            <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>Construiește întrebarea pas cu pas</h2>
+            {/* Folds the builder again (UX audit Z2-14): under „Schimbă întrebarea” beside an answer, shut on the empty page.
+                Not with edits not applied: they would be lost unsaid („Renunță la modificări” first). */}
+            {!dirty && <button type="button" className="ia-builder-hide" onClick={() => { if (resp?.ok) setBuilderCollapsed(true); else setBuilderOpen(false); }}>Ascunde</button>}
+          </div>
           <QuestionBuilder
             key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
