@@ -8,6 +8,7 @@ import ClipButton from "@/components/ClipButton";
 import Term from "@/components/Term";
 import EntityName from "@/components/EntityName";
 import EntityPager from "../Pager";
+import EntityCrumb from "../EntityCrumb";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import PeriodPicker, { EMPTY_RANGE, periodRangeError, type PeriodRangeValue } from "@/app/intreaba/builder/PeriodPicker";
@@ -673,7 +674,7 @@ export default function ConnectionsExplorer({ entityId, entityName, county = nul
   const secondHead = vp ? (isAuthority ? `Cui mai vinde ${name(vp.partner.entity)}` : `Cine mai vinde la ${name(vp.partner.entity)}`) : "";
 
   return <div className="cx-shell">
-    <p className="cx-crumb"><Link href={bothRoles ? profileUrl({ id: entityId, role }) : `/entitati/${entityId}`}>← {currentName}</Link> · {isAuthority ? "instituție" : "firmă"}{countyLabel(entity ? entity.county : county) ? `, ${countyLabel(entity ? entity.county : county)}` : ""}</p>
+    <EntityCrumb id={entityId} name={currentName} role={role} bothRoles={bothRoles} current="Legături" />
     <header className="cx-head">
       <div>
         <h1>Cum sunt legate?</h1>

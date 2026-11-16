@@ -1,5 +1,6 @@
 import { G, Ghost } from "@/components/ghost/Ghost";
 import "@/components/record/record.css";
+import { CrumbGhost } from "../../EntityCrumb";
 import "@/components/source-evidence.css";
 
 /**
@@ -9,7 +10,7 @@ import "@/components/source-evidence.css";
  */
 export default function Loading() {
   return <Ghost as="article" className="record rx-sources-record" name="rv-surse" wait="suspense" label="Se încarcă sursele…">
-    <span className="back g-quiet" aria-hidden="true">← Radiografia instituției</span>
+    <CrumbGhost current="Radiografie" />
     <header className="record-head" aria-hidden="true">
       <div className="record-title">
         <h1><G.Line w="88%" /><G.Line w="46%" /><G.Lines w={[]} phone={["70%"]} /></h1>

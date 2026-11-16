@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
 import Link from "next/link";
-import { cleanName, countyLabel } from "@/lib/format";
-import { entityHref } from "@/lib/entity-href";
+import { cleanName } from "@/lib/format";
+import EntityCrumb from "../EntityCrumb";
 import { ghostHold } from "@/lib/ghost-hold";
 import { RISK_CRITERIA, riskPoints } from "@/lib/risk-score";
 import { parseRoleParam } from "@/lib/role-param";
@@ -67,10 +67,8 @@ export default async function EntitySignalsPage({ params, searchParams }: { para
   if (!r) notFound();
   if (r.none) {
     const name = cleanName(r.profile.name) || `entitatea ${id}`;
-    const county = countyLabel(r.profile.county);
     return <div className="sgc">
-      <div className="sgc-crumb"><span><Link href={entityHref(id, r.bothRoles ? r.role : null)} className="sgc-back">← {name}</Link>
-        {" · "}{r.role === "authority" ? "instituție" : "firmă"}{county ? `, ${county}` : ""}</span></div>
+      <EntityCrumb id={id} name={name} role={r.role} bothRoles={r.bothRoles} current="Semnale" />
       <h1 className="sgc-title">Niciun semnal</h1>
       <div className="sgc-empty"><p>Nu am găsit niciun tipar în înregistrările {r.role === "authority" ? "acestei instituții" : "acestei firme"}. Lipsa unui tipar nu certifică absența neregulilor.</p>
         <p><Link href="/metodologie#indice">Ce tipare căutăm →</Link></p></div>
