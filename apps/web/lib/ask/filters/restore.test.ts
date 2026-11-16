@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { localityScopeError } from "../question-ui";
+import { localityScopeError, unknownCounty, unknownCountyError } from "../question-ui";
 import { NEWER_VERSION_LINK, parseSpec, runnableError, unimplementedSpecKeys, validateSpec, type AskSpec } from "../spec";
 import { FIXTURE_IDENTITIES } from "../fixtures/golden-fixture";
 import { legacyCorpus } from "../fixtures/legacy-corpus";
@@ -14,7 +14,9 @@ import { INVALID_LINK, restoreLink, withoutLinkConditions } from "./restore";
  */
 
 const corpus = legacyCorpus(FIXTURE_IDENTITIES);
-const errorOf = (spec: AskSpec) => runnableError(spec) ?? localityScopeError(spec);
+/** What holds a link: the engine's refusal, the locality rule, and a county the data do not know (UX audit Z2-31). */
+const countyError = (spec: AskSpec) => { const county = unknownCounty(spec); return county ? unknownCountyError(county) : null; };
+const errorOf = (spec: AskSpec) => countyError(spec) ?? runnableError(spec) ?? localityScopeError(spec);
 
 describe("a link opened in the builder", () => {
   it("is an error only when its shape is, or when it comes from a newer release (F0a)", () => {
@@ -37,7 +39,8 @@ describe("a link opened in the builder", () => {
       const restored = restoreLink(entry.spec);
       if (restored.kind !== "draft") continue;
       const today = validateSpec(entry.spec);
-      expect(restored.run, entry.id).toBe(!("error" in today) && localityScopeError(today) === null);
+      // A county the data do not know never runs: its answer could only be the engine's refusal (UX audit Z2-31).
+      expect(restored.run, entry.id).toBe(!("error" in today) && localityScopeError(today) === null && unknownCounty(today) === null);
       if (restored.run) runs++;
       // A link the builder repaired (a measure only rankings of institutions have) waits, with the note that says so.
       else if (restored.reason === null) expect(restored.notes.length, entry.id).toBeGreaterThan(0);

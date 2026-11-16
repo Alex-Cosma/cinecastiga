@@ -608,3 +608,7 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
    „Întreabă” and „Vezi înregistrările sursă” (--accent on --on-accent), not the kit's own moss green. */
 .qb-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .qb-primary:hover, .qb-primary.is-hover { background: var(--ink); border-color: var(--ink); }
+
+/* Z2-31 (UX audit, 16 November 2026): a link's county the data do not know is marked as wrong in the sentence (its
+   window opens to choose another; the error under the builder says it in words). */
+.qb-phrase.qb-phrase--invalid { background: var(--fk-warm-bg); border-bottom: 2px solid var(--fk-warm-ink); color: var(--fk-warm-ink); }

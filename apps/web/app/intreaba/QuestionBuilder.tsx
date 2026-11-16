@@ -14,7 +14,7 @@ import type { Choice } from "@/lib/ask/filters/pickers";
 import { splitExcluded, type Excluded } from "@/lib/ask/filters/origin";
 import {
   QUESTION_GROUPS, QUESTION_TYPES, cloneQuestion, defaultQuestion, foldQuestion,
-  questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, type QuestionSpec,
+  questionErrors, questionKey, reconcileQuestionDraft, transitionQuestion, unknownCounty, type QuestionSpec,
 } from "@/lib/ask/question-ui";
 import "./question-builder.css";
 import "./builder/filters-kit.css";
@@ -118,7 +118,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
   const [applied, setApplied] = useState<QuestionSpec | null>(initial && initialApplied ? cloneQuestion(initial) : null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
-  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
+  const [changes, setChanges] = useState<string[]>(() => unique([...(initialNotes ?? []), ...seed.changes, ...(initial && !unknownCounty(initial) ? keyVersionNotes(initial as unknown as AskSpec) : [])]));
   const [parked, setParked] = useState<Parked | null>(null);
   // A note's link ("Cât câștigă X ›" for a tautology the change dropped), by the note's text.
   const [noteLinks, setNoteLinks] = useState<Record<string, NoteLink>>({});
@@ -152,6 +152,26 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     () => builderView(draft, { cpvName, entities, peerGroup: peerData?.facts }, filterContext(draft as FilterSpec, coverage ? { coverage } : {})),
     [draft, cpvName, entities, coverage, peerData],
   );
+  // A link's county the data do not know (UX audit Z2-31): its phrase is marked, its window opens to choose another,
+  // and the error under the builder holds „Vezi răspunsul”.
+  const badCounty = unknownCounty(draft);
+  const isBadPhrase = (token: (typeof view.sentence)[number]) => Boolean(badCounty) && token.kind === "slot" && token.value.includes(badCounty!);
+  const sentence = badCounty ? view.sentence.map((token) => isBadPhrase(token) && token.kind === "slot" ? { ...token, className: `${token.className ?? ""} qb-phrase--invalid`.trim() } : token) : view.sentence;
+  const openedBad = useRef(false);
+  useEffect(() => {
+    if (!badCounty || openedBad.current) return;
+    const token = view.sentence.find(isBadPhrase);
+    if (!token || token.kind !== "slot") return;
+    const frame = requestAnimationFrame(() => {
+      const anchor = document.querySelector<HTMLElement>(".question-builder .qb-phrase--invalid");
+      if (!anchor) return;
+      openedBad.current = true;
+      setOpen({ key: token.id, anchor });
+    });
+    return () => cancelAnimationFrame(frame);
+    // Once per mount: the reader may close it and look around.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [badCounty]);
   // F5: the switches of the ranked winners say their number before the click (final table §4), read lazily.
   const winnerToggles = view.rows.some((row) => row.chips.some((chip) => chip.toggle && WINNER_TOGGLES[chip.id]));
   const winners = useFacet(draft, winnerToggles ? "winners" : null);
@@ -358,7 +378,7 @@ export default function QuestionBuilder({ initial, resolution, fromAi = false, o
     <section className={`qb-editor qb-editor-kit${dirty ? " is-pending" : ""}`} aria-label="Construiește întrebarea">
       {savedNotice && <p className="cq-loaded-question" role="status">{savedNotice}</p>}
       {fromAi && <p className="qb-ai-note">Am transformat întrebarea în condiții pe care le poți verifica și modifica.</p>}
-      <Sentence tokens={view.sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
+      <Sentence tokens={sentence} openId={open?.key ?? null} onOpen={openWindow} className={`qb-kit-sentence qb-kit-sentence--${draft.block}`} />
       {view.scopeLine && <ScopeLine />}
       {view.rows.map((row) => <ConditionRow key={row.label} label={row.label} kind={row.kind}>
         {row.chips.map((chip) => chip.toggle

@@ -5,6 +5,7 @@ import {
 import { isHistoricalProfile, type MinimumRecords, type QueryPopulation } from "./population";
 import { cpvTermParts } from "./cpv-terms";
 import { spellTerm } from "./term-spelling";
+import { countyKnown } from "../counties";
 
 /**
  * The builder uses exactly the public /api/ask spec; it owns no query engine.
@@ -437,9 +438,21 @@ export function transitionQuestion(
   return { spec, changes };
 }
 
+/**
+ * A county the data do not know, from a link (UX audit Z2-31: „Atlantida”): the builder marks its phrase and opens its
+ * window, and the question does not run (its answer could only be the refusal, with a „Reîncearcă” that cannot help).
+ */
+export function unknownCounty(spec: Pick<QuestionSpec, "filters">): string | null {
+  const county = spec.filters.county;
+  return typeof county === "string" && county.trim() && !countyKnown(county) ? county : null;
+}
+export const unknownCountyError = (county: string) => `Nu recunosc județul „${county}”. Alege-l:`;
+
 export function questionErrors(spec: QuestionSpec): string[] {
   const f = spec.filters;
   const errors: string[] = [];
+  const badCounty = unknownCounty(spec);
+  if (badCounty) errors.push(unknownCountyError(badCounty));
   const hasAuthority = Boolean(f.authorityName || f.authorityId),
     hasSupplier = Boolean(f.supplierName || f.supplierId);
   if (
