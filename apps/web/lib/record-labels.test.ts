@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daState, durationLabel, isGenericTitle, kindLabel, meaningfulLot, procedureLabel, recordHeadline } from "./record-labels";
+import { daState, durationLabel, isGenericTitle, kindLabel, lotParts, lotTitle, meaningfulLot, procedureLabel, recordHeadline } from "./record-labels";
 
 describe("record labels", () => {
   it("writes procedures in Romanian", () => {
@@ -27,6 +27,20 @@ describe("record labels", () => {
     expect(isGenericTitle("1. Default lot")).toBe(true);
     expect(meaningfulLot("4. Serviciu APN privat", "Servicii de comunicații")).toBe("4. Serviciu APN privat");
     expect(meaningfulLot("Servicii", "Servicii")).toBeNull();
+    // The lot's number does not make it new (UX audit bug 5, /contracte/556750).
+    expect(meaningfulLot("1. Elaborarea hartilor strategice de zgomot", "Elaborarea hărților strategice de zgomot")).toBeNull();
+    expect(meaningfulLot("1. Elaborarea hartilor strategice de zgomot.", "Elaborarea hartilor strategice de zgomot")).toBeNull();
+  });
+  it("reads a lot's number and object, and names a page after a lot only when it says something", () => {
+    expect(lotParts("123. DOPAMINUM clorhidrat")).toEqual({ no: "123", object: "DOPAMINUM clorhidrat" });
+    expect(lotParts("Pulpa vita")).toEqual({ no: null, object: "Pulpa vita" });
+    expect(lotParts("  ")).toBeNull();
+    expect(lotTitle("123. DOPAMINUM clorhidrat")).toEqual({ no: "123", object: "DOPAMINUM clorhidrat" });
+    expect(lotTitle("Lot 3")).toBeNull();
+    expect(lotTitle("1. Default lot")).toBeNull();
+    expect(lotTitle("2. A1")).toBeNull();
+    expect(lotTitle("4. LOT 4 - Conexiuni")).toEqual({ no: "4", object: "LOT 4 - Conexiuni" });
+    expect(lotTitle(null)).toBeNull();
   });
   it("chooses a headline, never the notice number", () => {
     expect(recordHeadline({ title: "Contract subsecvent", lot: "4. Serviciu APN privat", cpvName: "Servicii", kind: "Contract" })).toBe("4. Serviciu APN privat");

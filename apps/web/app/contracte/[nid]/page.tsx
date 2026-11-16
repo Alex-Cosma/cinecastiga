@@ -13,7 +13,8 @@ import { CONTRACT_DATE_FLOOR } from "@seap/db";
 import { formatRon, formatRonFull, formatInt, formatExactDecimal, formatCalendarDate, cleanName, countyLabel } from "@/lib/format";
 import { awardValueLabel, noticeContractsNote } from "@/lib/risk-presentation";
 import { awardUrl } from "@/lib/elicitatie";
-import { kindLabel, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
+import { kindLabel, lotTitle, meaningfulLot, procedureLabel, recordHeadline } from "@/lib/record-labels";
+import { countWords } from "@/lib/ask/answer-text";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
@@ -37,9 +38,20 @@ const contractDetail = cache(getContractDetail);
 const headlineOf = (c: ContractDetail, noticeTitle: string | null) =>
   recordHeadline({ title: c.title, lot: c.lotsCaption, noticeTitle, cpvName: c.cpvName, noticeNo: c.noticeNo, kind: kindLabel(c.financialKind) });
 
+/**
+ * When every record of the notice carries this same title, the lot names what was bought: it becomes the page's
+ * title and the shared title goes under it (UX audit Z7-03; the owner's head of 7 November otherwise stands).
+ */
+function titleParts(c: ContractDetail, noticeTitle: string | null) {
+  const headline = cleanName(headlineOf(c, noticeTitle));
+  const lot = c.noticeSameTitle && c.title && headline === cleanName(c.title.trim()) ? lotTitle(c.lotsCaption) : null;
+  return lot ? { title: cleanName(lot.object), lotNo: lot.no, lotLine: headline, lotLabel: "Titlul comun al loturilor" }
+    : { title: headline, lotNo: null, lotLine: meaningfulLot(c.lotsCaption, headline), lotLabel: "Lot" };
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ nid: string }> }): Promise<Metadata> {
   const c = await contractDetail((await params).nid);
-  return c ? { title: `${cleanName(headlineOf(c, null)).slice(0, 70)} · ${cleanName(c.authority?.name) || "contract"}` } : {};
+  return c ? { title: `${titleParts(c, null).title.slice(0, 70)} · ${cleanName(c.authority?.name) || "contract"}` } : {};
 }
 
 const moneyNote = (c: ContractDetail) => c.amountStatus === "converted" && c.valueRonExact !== null
@@ -89,8 +101,10 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
   if (!c) notFound();
 
   const [files, userId, x] = await Promise.all([getContractFiles(nid), sessionUserId(), getContractContext(c)]);
-  const headline = cleanName(headlineOf(c, files.notice?.title ?? null));
-  const lot = meaningfulLot(c.lotsCaption, headline);
+  const { title: headline, lotNo, lotLine: lot, lotLabel } = titleParts(c, files.notice?.title ?? null);
+  // The way to the notice and, for a call-off, to its framework agreement: the first row of the head (Z7-03, Z7-04).
+  const noticeHref = c.caNoticeId && c.noticeLotCount > 1 ? `/anunturi/${c.caNoticeId}` : null;
+  const noticeRecords = countWords(c.noticeLotCount, "înregistrare", "înregistrări");
   const kind = kindLabel(c.financialKind);
   const procedure = procedureLabel(c.procedureType);
   const tedNo = x.ted?.publicationNumber ?? (c.tedNoticeNo ? tedPublicationNumber(c.tedNoticeNo) : null);
@@ -135,7 +149,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
     ...(c.caNoticeId ? [{ href: awardUrl(c.caNoticeId), label: `Anunțul de atribuire${c.noticeNo ? ` ${c.noticeNo}` : ""} în SEAP`, external: true }] : []),
     ...(files.notice ? [{ href: files.notice.url, label: `Anunțul de participare ${files.notice.noticeNo ?? ""} în SEAP`.replace("  ", " "), external: true }] : []),
     ...(tedHref ? [{ href: tedHref, label: `Publicarea în TED ${tedNo ?? ""}`.trim(), external: true }] : []),
-    ...(c.caNoticeId && c.noticeLotCount > 1 ? [{ href: `/anunturi/${c.caNoticeId}`, label: `Anunțul, cu toate cele ${formatInt(c.noticeLotCount)} înregistrări` }] : []),
+    ...(noticeHref ? [{ href: noticeHref, label: `Anunțul, cu toate cele ${noticeRecords}` }] : []),
   ];
 
   return (
@@ -143,7 +157,14 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
       <RecordHead
         title={headline}
         heading={<RecordTitle>{headline}</RecordTitle>}
+        context={(noticeHref || x.framework?.role === "calloff") && <>
+          {x.framework?.role === "calloff" && <Link prefetch={false} href={`/contracte/${x.framework.frameworkNatId}`} title={cleanName(x.framework.frameworkTitle) || undefined}>Comandă din acordul-cadru <span aria-hidden="true">→</span></Link>}
+          {noticeHref && (lotNo
+            ? <span>Lotul {lotNo} din <Link prefetch={false} href={noticeHref}>anunțul{c.noticeNo ? ` ${c.noticeNo}` : ""} · {noticeRecords} <span aria-hidden="true">→</span></Link></span>
+            : <Link prefetch={false} href={noticeHref}>Anunțul{c.noticeNo ? ` ${c.noticeNo}` : " de atribuire"} · {noticeRecords} <span aria-hidden="true">→</span></Link>)}
+        </>}
         lot={lot}
+        lotLabel={lotLabel}
         parties={<>{authority} a contractat cu {winnerNames.length ? winnerNames : "un câștigător neprecizat"}</>}
         value={{
           amount: c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${currency}` : "Valoare nepublicată",
@@ -169,7 +190,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
 
       <RecordSection id="atribuire" title="Atribuirea">
         <Facts facts={[
-          award != null && { label: "Valoarea anunțului (toate contractele)", value: <>{formatRon(award)}<small>{formatInt(c.noticeLotCount)} înregistrări în anunț</small></> },
+          award != null && { label: "Valoarea anunțului (toate contractele)", value: <>{formatRon(award)}<small>{noticeHref ? <Link prefetch={false} href={noticeHref}>{noticeRecords} în anunț <span aria-hidden="true">→</span></Link> : `${noticeRecords} în anunț`}</small></> },
           // A single offer is said where the lead is (Z7-07): by the signal when the page has it, here otherwise.
           { label: "Oferte primite", value: tenders != null ? <>{formatInt(tenders)}{tenders === 1 && !singleBidSignal ? " · un singur ofertant" : ""}</>
             : c.isSingleBidder === true && !singleBidSignal ? "Un singur ofertant" : <span className="record-quiet">Număr nepublicat</span> },

@@ -1058,6 +1058,9 @@ export interface ContractDetail {
   flags: { code: string; severity: number | null; evidence: Record<string, unknown> | null }[];
   /** how many contracts (lots) the same award notice produced */
   noticeLotCount: number;
+  /** Other records of the notice carry this same title, so it does not tell them apart: the lot names what was bought
+   * (UX audit Z7-03). */
+  noticeSameTitle: boolean;
   publications: {natId:string;noticeId:string;noticeNo:string|null;canonical:boolean;publishedOn:string|null;valueRon:string|null;title:string|null;supplierIds:string[];supplierNames:string[];unflaggedChange:string|null}[];
   countedOnce: boolean;
   financialKind: string;
@@ -1141,9 +1144,11 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       : Promise.resolve([] as Record<string, unknown>[]),
     caId
       ? (sql`
-          select count(*)::int c from core.contracts where ca_notice_id = ${caId}
-        ` as unknown as Promise<{ c: number }[]>)
-      : Promise.resolve([{ c: 1 }]),
+          select count(*)::int c, count(*) filter (where lower(regexp_replace(btrim(x.title), '[[:space:]]+', ' ', 'g')) =
+              (select lower(regexp_replace(btrim(t.title), '[[:space:]]+', ' ', 'g')) from core.contracts t where t.id = ${contractId}))::int same_title
+          from core.contracts x where x.ca_notice_id = ${caId}
+        ` as unknown as Promise<{ c: number; same_title?: number }[]>)
+      : Promise.resolve([{ c: 1, same_title: 1 }]),
   ]);
 
   const openedPublication=publications.find(p=>String(p.nat_id)===nid);
@@ -1252,6 +1257,7 @@ export async function getContractDetail(natId: string): Promise<ContractDetail |
       evidence: (f["evidence"] as Record<string, unknown> | null) ?? null,
     })),
     noticeLotCount: Number(lotCount[0]?.c ?? 1),
+    noticeSameTitle: Number(lotCount[0]?.same_title ?? 0) > 1,
   };
 }
 

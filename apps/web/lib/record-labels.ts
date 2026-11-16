@@ -69,12 +69,37 @@ export function isGenericTitle(title: string | null | undefined, noticeNo?: stri
   return s.length < 12 || /^(contract(ul)?|acord[- ]cadru)( (subsecvent|de (furnizare|servicii|lucrari|achizitie( publica)?)))?[\s\d./-]*(nr\.?[\s\d./-]*)?$/i.test(fold(s));
 }
 
-/** The lot line is worth showing unless it repeats the title or is SEAP's placeholder ("Default lot", "Lot 1"). */
+/** Compared without case, diacritics, punctuation or spacing: "1. Elaborarea hărților…" repeats "Elaborarea hartilor…". */
+const bare = (s: string) => fold(s).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+
+/**
+ * The lot line is worth showing unless it repeats the title or is SEAP's placeholder ("Default lot", "Lot 1"). The
+ * lot's number does not make it new: "Lot 1. Elaborarea…" under the title "Elaborarea…" says nothing (UX audit bug 5).
+ */
 export function meaningfulLot(lot: string | null | undefined, title: string | null | undefined): string | null {
   const s = lot?.trim();
   if (!s || /^(default lot|lot( unic| \d+)?|lotul? \d+)\.?$/i.test(fold(unnumbered(s)))) return null;
-  if (title && fold(s) === fold(title)) return null;
+  if (title && (bare(s) === bare(title) || bare(unnumbered(s)) === bare(title))) return null;
   return s;
+}
+
+/** A lot caption's number and object: "123. DOPAMINUM clorhidrat" → { no: "123", object: "DOPAMINUM clorhidrat" }. */
+export function lotParts(lot: string | null | undefined): { no: string | null; object: string } | null {
+  const s = lot?.trim();
+  if (!s) return null;
+  const m = /^(\d{1,4})\s*[.)-]\s*(\S[\s\S]*)$/.exec(s);
+  return m ? { no: m[1]!, object: m[2]!.trim() } : { no: null, object: s };
+}
+
+/**
+ * The lot's object as a page's title, when the record's own title is the one every lot of its notice shares (UX audit
+ * Z7-03): only a lot that names something (not SEAP's placeholder, not a short code), else null and the title stays.
+ */
+export function lotTitle(lot: string | null | undefined): { no: string | null; object: string } | null {
+  if (!meaningfulLot(lot, null)) return null;
+  const parts = lotParts(lot);
+  if (!parts || (parts.object.match(/\p{L}/gu)?.length ?? 0) < 4) return null;
+  return parts;
 }
 
 /**

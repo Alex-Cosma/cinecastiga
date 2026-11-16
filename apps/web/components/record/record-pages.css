@@ -35,5 +35,5 @@
   .record-title-more { min-height: 44px; }
   .record-context { flex-direction: column; align-items: flex-start; margin-bottom: 4px; }
   .record-context > * + *::before { content: none; }
-  .record-context a { display: inline-flex; align-items: center; min-height: 44px; }
+  .record-context a { display: inline-flex; align-items: center; gap: .3em; min-height: 44px; }
 }
