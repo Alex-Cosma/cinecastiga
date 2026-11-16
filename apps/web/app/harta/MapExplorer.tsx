@@ -502,7 +502,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
       <p className="mx-lede">{average !== null || !nat ? <span className={natStale ? "g-stale" : undefined}>{dots
           ? (county ? countyName : metric === "perBed" || metric === "perPupil" ? "Media țării" : "În total")
           : county ? (county === "bucuresti" ? "București, cu primăria municipiului" : `${countyName}, cu consiliul județean`) : "Media țării"}: <b>{average !== null ? `${say(average)} lei` : <G.Line inline w="4.6em" />}</b>{metric === "value" ? "" : ` ${UNIT[metric]}`}, {periodWords}{narrowWords}.</span>
-        : <>{whoWords}, {periodWords}{narrowWords}.</>}</p>
+        : <>{whoWords}, {periodWords}{narrowWords}.</>}
+        {/* The comparable figure one click away (UX audit Z4-07): lei per bed or per pupil exist for 2025 alone; the period stays the reader's. */}
+        {dots && metric === "value" && <> <button type="button" className="mx-lede-go" onClick={() => setYears([hospitals ? BEDS_YEAR : PUPILS_YEAR])}>{hospitals ? `Lei pe pat, ${BEDS_YEAR}` : `Lei pe elev, ${PUPILS_YEAR}`} ›</button></>}</p>
     </header>
 
     <div className="mx-filters" role="group" aria-label="Ce arată harta">
@@ -645,8 +647,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         {!busy && !ranked.length && <p className="mx-note">Nicio valoare în această selecție.</p>}
         </>}
         <p className="mx-note">{hospitals
-          ? (county ? "Fiecare spital e desenat în orașul lui, nu la adresă." : metric === "perBed" ? "Lei pe pat: valoarea din 2025 a spitalelor cu paturi, la paturile lor aprobate." : `Lei pe pat apare doar cu ${BEDS_YEAR} ales singur.`)
-          : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși." : `Lei pe elev apare doar cu ${PUPILS_YEAR} ales singur.`} Doar ce cumpără școala sau grădinița <Term id="scolile-harta" tip />.</>
+          ? (county ? "Fiecare spital e desenat în orașul lui, nu la adresă." : metric === "perBed" ? "Lei pe pat: valoarea din 2025 a spitalelor cu paturi, la paturile lor aprobate." : "")
+          : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși. " : ""}Doar ce cumpără școala sau grădinița <Term id="scolile-harta" tip />.</>
           : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
       {county && uat && !dots && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
