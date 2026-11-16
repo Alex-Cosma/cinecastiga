@@ -55,7 +55,7 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
       const share = num(code === "da_dependence" ? e.top_authority_pct : e.top_supplier_pct);
       if (!share) return null;
       const many = num(code === "da_dependence" ? e.top_authority_count : e.top_supplier_count), years = num(code === "da_dependence" ? e.top_authority_years : e.top_supplier_years);
-      return { value: pctWords(share), note: code === "da_dependence" ? "din vânzări, de la un client" : "din bani, la o firmă",
+      return { value: pctWords(share), note: code === "da_dependence" ? "din vânzări, de la un client" : "din valoare, la o firmă",
         tip: [code === "da_dependence" ? `${pctWords(share)} din vânzări, de la un singur client` : `${pctWords(share)} din valoare, la o singură firmă`,
           ...(num(e.total) > 0 ? [`${code === "da_dependence" ? "Vânzările firmei" : "Achizițiile directe"}: ${formatRonFull(num(e.total))}`] : []),
           ...(many > 0 ? [`${formatInt(many)} ${many === 1 ? "achiziție" : "achiziții"}${years > 0 ? `, în ${formatInt(years)} ${years === 1 ? "an" : "ani"}` : ""}`] : [])],

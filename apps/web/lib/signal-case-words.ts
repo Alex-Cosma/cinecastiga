@@ -51,7 +51,7 @@ export function roundWords(found: number, part: ScorePart | undefined, items: re
 export function aboveWords(items: readonly AboveCeiling[], part: ScorePart | undefined): CaseWords {
   const title = `${countWords(items.length, "achiziție directă a trecut", "achiziții directe au trecut")} de plafon.`;
   const rule = "Cu valoarea estimată sau cu suma finală, chiar și cu TVA.";
-  const scored = part ? ` Împreună: ${formatRon(n(part.value))}, ${pctWords(n(part.share))} din bani.`
+  const scored = part ? ` Împreună: ${formatRon(n(part.value))}, ${pctWords(n(part.share))} din valoarea achizițiilor directe.`
     : items.length === 1 ? " Se vede aici, dar nu intră în scor: tiparul cere cel puțin două cazuri." : "";
   return { title, lede: rule + scored };
 }
@@ -60,7 +60,7 @@ export function yearEndWords(years: readonly YearEnd[]): CaseWords {
   const sorted = [...years].sort((a, b) => b.share - a.share);
   const top = sorted[0];
   if (!top) return { title: "Mulți bani contractați în decembrie", lede: null };
-  const title = `În ${top.year}, ${pctWords(top.share)} din banii achizițiilor directe au fost contractați în decembrie.`;
+  const title = `În ${top.year}, ${pctWords(top.share)} din valoarea achizițiilor directe a fost contractată în decembrie.`;
   const rest = sorted.slice(1).map((y) => `${y.year}: ${pctWords(y.share)}`);
   const lede = `${formatRon(top.december)} din ${formatRon(top.total)}.`
     + (top.reference != null ? ` La instituțiile de același tip, pragul (percentila 95) e ${pctWords(top.reference)}.` : "")
