@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { G } from "@/components/ghost/Ghost";
+import { cancelNavPending } from "@/components/ghost/client";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import EntityName from "@/components/EntityName";
 import { entityHref } from "@/lib/entity-href";
@@ -145,7 +146,8 @@ function Years({ years, href, allDomains, words }: { years: MapUatResponse["year
           ? <Link key={y.year} {...common} href={href(y.year)} prefetch={false} aria-label={`${label} Vezi înregistrările anului.`}
               onClick={(e) => {
                 // A tap shows the tip first (its link opens the records); a click or Enter opens them.
-                if (pointer.current === "touch" && !opened.current) { e.preventDefault(); setActive(i); }
+                // The click keeps the reader here: „Se deschide…” (NavPending, which counted the link) goes.
+                if (pointer.current === "touch" && !opened.current) { e.preventDefault(); cancelNavPending(); setActive(i); }
                 pointer.current = "";
               }} />
           : <span key={y.year} {...common} role="img" aria-label={label} />;
