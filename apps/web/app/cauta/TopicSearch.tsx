@@ -8,7 +8,7 @@ import EntityName from '@/components/EntityName';
 import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,cleanTopicParams,topicParams,documentScope,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
-import {Broader,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
+import {Broader,OWN_PLACE_NOTE,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
 import {titleTerms} from '@/lib/topic-search/words';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
@@ -245,7 +245,10 @@ export default function TopicSearch(){
   const literalQ=Boolean(question)&&effective.q===scope.q;
   const literalEmpty=Boolean(question&&result&&!result.entities.total&&!result.acquisitions.total&&!(docsResult?.documents.total));
   // A question's results are usually empty: their ghost is the one quiet line they collapse to.
-  const collapsed=(literalEmpty||Boolean(literalQ&&!result))&&scope.tab==='all'&&literalOpen!==v.url;
+  // „primăria mea”: the names and titles that carry the words come from the whole country, not from the reader's own
+  // town hall; they wait behind one line while the picker beside the note offers the town hall (UX audit Z1-33).
+  const ownPlace=Boolean(t?.notes.some(n=>OWN_PLACE_NOTE.test(n)))&&!effective.place;
+  const collapsed=(literalEmpty||Boolean(literalQ&&!result)||ownPlace)&&scope.tab==='all'&&literalOpen!==v.url;
   // Counts stay visible while only the tab or page changes; a new selection starts empty.
   const selection=(s:TopicScope)=>topicParams({...s,tab:'all',page:1}).toString();
   const counts=result??(previous.current&&selection(previous.current.scope)===selection(effective)?previous.current:null);
@@ -276,7 +279,7 @@ export default function TopicSearch(){
   {/* The short answer comes from Ask and does not wait for the titles. */}
   {t?.answer&&scope.tab==='all'&&<SubjectAnswer answer={t.answer} scope={{subject:t.placeAlone?'':t.subject?.label??(literalQ?t.answer.total.spec.filters.supplierName??t.answer.total.spec.filters.authorityName??'':effective.q),kind:t.kind?.label??null,where:answerWhere,period:effective.from?period:answerPeriod(t.answer.total.spec.filters)??period,named:!t.subject,who:WHO_ASKED.test(scope.q)}} asked={question?.sentence} notes={t.subject?.notes??[]} literalHref={question?searchHref(scope,{},true):undefined} titles={!literalQ&&result?{count:result.acquisitions.total,q:effective.q,onShow:()=>tab('acquisitions')}:undefined}/>}
   <div className={`topic-results${collapsed?' is-collapsed':''}`} style={{minHeight:collapsed||literalQ?0:400}}>
-  {collapsed?(result?<p className="topic-literal-quiet">{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume. <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>Arată</button></p>
+  {collapsed?(result?<p className="topic-literal-quiet">{ownPlace&&!literalEmpty?<>Numele și titlurile cu „{effective.q}” sunt din toată țara.</>:<>{literalQ?<>Pentru cuvintele exacte „{scope.q}”</>:<>Pentru „{effective.q}” ({where}, {period})</>} nu am găsit titluri sau nume.</>} <button type="button" className="topic-text-button" onClick={()=>setLiteralOpen(v.url)}>{ownPlace&&!literalEmpty?'Arată-le':'Arată'}</button></p>
    :<Ghost as="p" className="topic-literal-quiet" name="topic-literal" wait="client"><G.Line w="62%"/><G.Line w="30%" only="phone"/></Ghost>)
   :<>{question&&<h2 className="topic-literal-head">{literalQ?<>Cuvintele exacte „{scope.q}”, căutate ca atare</>:<>Rezultate pentru „{effective.q}”{'\u00a0'}· {where}{'\u00a0'}· {period}</>}</h2>}<div className="topic-tabbar"><nav className="topic-tabs" aria-label="Tipuri de rezultate">{TABS.map(t=>{const n=count(t.id),waiting=t.id==='documents'?docsLoading:!result&&n==null;return <button type="button" key={t.id} className={n===0?'is-empty':undefined} aria-current={scope.tab===t.id?'page':undefined} disabled={!result} onClick={()=>tab(t.id)}>{t.short?<><span className="topic-tab-wide">{t.label}</span><span className="topic-tab-short">{t.short}</span></>:t.label}{n!=null?<span className="topic-tab-n">{formatInt(n)}</span>:waiting&&t.id!=='all'?<span className="topic-tab-n topic-count-wait"><span aria-hidden="true">…</span><span className="d-sr-only">se numără</span></span>:null}</button>;})}</nav><div className="topic-copy"><button type="button" className="topic-control" aria-label="Copiază căutarea" onClick={()=>void copy()}><DiscoveryIcon name="link"/><span className="topic-copy-label">Copiază căutarea</span></button>{copied&&<p role="status">{copied}</p>}</div></div>
   {!result?<PanelsGhost key={reading?'reading':'read'} tab={scope.tab} page={scope.page} q={effective.q} counts={count}/>:zero?<ZeroResults q={effective.q} coverage={result.titleCoverage} filtered={Boolean(effective.place||effective.from||scope.type!=='all'||scope.match!=='words')} onExample={q=>update({q,place:'',from:'',to:'',type:'all',match:'words'})} onClear={()=>update({q:effective.q,place:'',from:'',to:'',type:'all',match:'words',hall:false})}/>:<div className="topic-panels g-content">

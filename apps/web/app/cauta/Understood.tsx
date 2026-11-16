@@ -12,15 +12,21 @@ import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {answerShape,topicParams,type Place,type TopicScope} from '@/lib/topic-search/shared';
 import {relatedSubjects,relatedWord} from '@/lib/topic-search/related';
 import {markParts,placeSentence,placeTexts} from '@/lib/topic-search/sentence';
+import {TownHallPicker} from '../TownHallTile';
 
 const capital=(s:string)=>s.charAt(0).toLocaleUpperCase('ro-RO')+s.slice(1);
 /** A /cauta link for the same selection with some parts changed. */
 export const searchHref=(scope:TopicScope,patch:Partial<TopicScope>,literal=false)=>{const p=topicParams({...scope,tab:'all',page:1,role:'',...patch});if(literal)p.set('literal','1');return `/cauta?${p}`;};
 const periodLabel=(from:string,to:string)=>from===to?from:`${from}–${to}`;
 
-/** What the reading dropped or narrowed, said under it (a place that cannot be left out, the first of two years…). */
+/** The words name „my” town hall or locality: which one is not known (lib/intent notes). */
+export const OWN_PLACE_NOTE=/nu știm ce localitate/;
+/**
+ * What the reading dropped or narrowed, said under it (a place that cannot be left out, the first of two years…). A
+ * town hall not named („primăria mea”) gets the home page's town hall picker beside its note (UX audit Z1-33).
+ */
 function ReadingNotes({notes}:{notes:string[]}){
- return notes.length?<>{notes.map(n=><p key={n} className="topic-help topic-reading-note">{n}</p>)}</>:null;
+ return notes.length?<>{notes.map(n=><Fragment key={n}><p className="topic-help topic-reading-note">{n}</p>{OWN_PLACE_NOTE.test(n)&&<TownHallPicker trigger={show=><button type="button" className="topic-control topic-pick-hall" aria-haspopup="dialog" onClick={show}><DiscoveryIcon name="pin"/>Alege primăria ta</button>}/>}</Fragment>)}</>:null;
 }
 
 /** One part of the sentence the person can change: its words, underlined, open a short menu of what else it can be. */

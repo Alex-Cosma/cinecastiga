@@ -387,3 +387,7 @@
 /* A filter left out of an address the page could not read (UX audit Z1-31). */
 .topic-cleaned{margin:12px 0 0!important}
 .topic-error>.topic-primary{text-decoration:none}
+/* „primăria mea”: the town hall picker beside the note (UX audit Z1-33). */
+.topic-pick-hall{margin:2px 0 4px;min-height:40px;font-size:13px;gap:8px;justify-content:flex-start}
+.topic-pick-hall .d-icon{width:16px;height:16px;color:var(--accent)}
+@media(max-width:650px){.topic-pick-hall{min-height:44px}}

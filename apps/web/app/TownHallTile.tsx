@@ -13,7 +13,22 @@ import type { TownHallHit } from "@/lib/town-halls";
 
 const TRY = ["Cisnădie", "Râmnicu Sărat", "Sectorul 3"];
 
+/** The home page's first question card; it opens the town hall dialog. */
 export default function TownHallTile({ art, number }: { art: ReactNode; number: string }) {
+  return <TownHallPicker trigger={(show) => <button type="button" className="d-question-card d-question-button" aria-haspopup="dialog" onClick={show}>
+    <div className="d-question-top"><span>PRIMĂRIA TA</span><span>{number}</span></div>
+    {art}
+    <h3>Ce a cumpărat primăria ta?<span className="d-card-go" aria-hidden="true"><DiscoveryIcon name="arrow" /></span></h3>
+    <p>Alegi localitatea și ajungi la pagina primăriei: ce a cumpărat, de la cine, cu ce semnale.</p>
+    <div className="d-question-bottom"><span>Alege primăria</span><span><DiscoveryIcon name="arrow" /></span></div>
+  </button>} />;
+}
+
+/**
+ * The town hall dialog with any trigger: the home page's card, and on /cauta the button beside „primăria mea: nu știm ce
+ * localitate este” (UX audit Z1-33, 16 November 2026).
+ */
+export function TownHallPicker({ trigger }: { trigger: (show: () => void) => ReactNode }) {
   const router = useRouter();
   const id = useId();
   const dialog = useRef<HTMLDialogElement>(null), input = useRef<HTMLInputElement>(null), previous = useRef<HTMLElement | null>(null), overflow = useRef("");
@@ -56,13 +71,7 @@ export default function TownHallTile({ art, number }: { art: ReactNode; number: 
   const dropped = term.trim().length >= 2 && (items.length > 0 || Boolean(status));
 
   return <>
-    <button type="button" className="d-question-card d-question-button" aria-haspopup="dialog" onClick={show}>
-      <div className="d-question-top"><span>PRIMĂRIA TA</span><span>{number}</span></div>
-      {art}
-      <h3>Ce a cumpărat primăria ta?<span className="d-card-go" aria-hidden="true"><DiscoveryIcon name="arrow" /></span></h3>
-      <p>Alegi localitatea și ajungi la pagina primăriei: ce a cumpărat, de la cine, cu ce semnale.</p>
-      <div className="d-question-bottom"><span>Alege primăria</span><span><DiscoveryIcon name="arrow" /></span></div>
-    </button>
+    {trigger(show)}
     <dialog ref={dialog} className="d-search-dialog d-townhall-dialog" aria-labelledby={`${id}-title`} onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => {
       if (event.target !== dialog.current) return;
       const rect = dialog.current.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close();
