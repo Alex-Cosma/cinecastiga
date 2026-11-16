@@ -26,3 +26,15 @@ export interface FrozenRecord {
   contractInternalId?: string | null;
   valueSuspect: boolean; sourceUrl: string | null; tedUrl: string | null;
 }
+
+/**
+ * Why a capture did not keep the sources, in the dossier's words (audit Z8-02): the data gate's messages speak of
+ * "Monitorizarea" (Urmăriri's own product, packages/db), which a dossier does not use. Pure, for the card, the
+ * dossier's summary line and the export.
+ */
+export function captureFailureWords(error: string | null | undefined): { reason: string; text: string } {
+  const e = error ?? "";
+  if (/nu a fost validat|Monitorizarea așteaptă|actualizare verificată a datelor|în curs de actualizare|Versiunea datelor s-a schimbat/i.test(e))
+    return { reason: "datele de azi nu sunt încă validate", text: "Datele de azi nu sunt încă validate. Păstrarea surselor așteaptă o actualizare validată; o poți relua după ea." };
+  return { reason: "captura nu s-a încheiat", text: e ? `Captura nu s-a încheiat: ${e}` : "Captura nu s-a încheiat. Nu este prezentată ca dovadă completă." };
+}

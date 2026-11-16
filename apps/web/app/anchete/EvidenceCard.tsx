@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { CaptureSummary } from "@/lib/evidence-captures-shared";
+import { captureFailureWords, type CaptureSummary } from "@/lib/evidence-captures-shared";
+import Term from "@/components/Term";
 import { formatExactDecimal } from "@/lib/format";
 import { countWords } from "@/lib/ask/answer-text";
 import { privateDay } from "@/lib/private-format";
@@ -110,7 +111,7 @@ export default function EvidenceCard({ item, capture, canEdit, busy, investigati
     <div className="iw-card-top">
       <div className="iw-entry-meta"><span className="iw-card-kind">{item.kindLabel}{item.code && <span className="iw-code"> · {item.code}</span>}</span>
         {item.pinned && <span className="iw-pill iw-pill-pin">Fixată</span>}
-        {pill && <span className={`iw-pill iw-pill-${pill.tone}`}>{pill.text}</span>}
+        {pill && <span className={`iw-pill iw-pill-${pill.tone}`}>{pill.text}{capture?.status === "failed" && <Term tip title="Fără surse păstrate" text={`${captureFailureWords(capture.error).text} Dovada e în dosar; nu o prezentăm ca dovadă completă.`} />}</span>}
         <span className="iw-card-saved">Salvată la <time dateTime={item.savedAt}>{privateDay(item.savedAt)}</time></span></div>
       <CardMenu name={item.title} actions={actions} />
     </div>

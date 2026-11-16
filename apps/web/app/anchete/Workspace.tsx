@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { EntryKind, InvestigationWorkspace, WorkspaceEntry } from "@/lib/investigation-workspace";
 import type { SourceEvent } from "@/lib/anchete";
-import type { CaptureSummary } from "@/lib/evidence-captures-shared";
+import { captureFailureWords, type CaptureSummary } from "@/lib/evidence-captures-shared";
+import { countWords } from "@/lib/ask/answer-text";
 import { formatExactDecimal } from "@/lib/format";
 import { privateDay, privateMoment } from "@/lib/private-format";
 import { clipKindGroup } from "@/lib/evidence-clip";
@@ -72,6 +73,11 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
     }, 2000);
     return () => { controller.abort(); clearTimeout(timer); };
   }, [pendingKey, investigationId]);
+  const [retrying, setRetrying] = useState(false);
+  async function retryAll() {
+    setRetrying(true);
+    try { for (const item of evidence) if (captures[item.id]?.status === "failed") await capture(item.id, false); } finally { setRetrying(false); }
+  }
   async function capture(clipId: string, newVersion: boolean) {
     const current = captures[clipId];
     setError("");
@@ -164,6 +170,9 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       label="Întrebarea" options={[{ group: null, items: free.map(question => ({ value: question.id, label: question.title })) }]} />;
   }
   const addNote = (title: string, body: string) => mutate({ action: "create", entry: { kind: "note", title, body, alternative: "", status: "open", occurredOn: null } }, "Nota a fost adăugată în Dovezi.");
+  const failed = evidence.filter(item => item.captured && captures[item.id]?.status === "failed");
+  const reasons = [...new Set(failed.map(item => captureFailureWords(captures[item.id]?.error).reason))];
+  const failedReason = reasons.length === 1 ? reasons[0] : "capturile nu s-au încheiat";
   const groups = FILTER_ORDER.map(name => ({ name, label: filterName[name] ?? name, n: name === "Note" ? notes.length : evidence.filter(item => item.group === name).length })).filter(group => group.n > 0);
   const counts: Record<WorkspaceTab, number> = { questions: questions.length, evidence: clips.length + notes.length, timeline: timeline.length, tasks: tasks.filter(task => task.status !== "done").length };
 
@@ -192,6 +201,9 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
           <div className="iw-filter-pills" role="group" aria-label="Arată dovezile">{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <button key={group.name} type="button" aria-pressed={show === group.name} onClick={() => setShow(group.name)}>{group.label}<span className="iw-count">{group.n}</span></button>)}</div>
           <label className="iw-filter-select">Arată<select value={show} onChange={event => setShow(event.target.value)}>{[{ name: "all", label: "Toate", n: notes.length + evidence.length }, ...groups].map(group => <option key={group.name} value={group.name}>{group.label} ({group.n})</option>)}</select></label>
         </div>}
+        {/* Captures that did not keep the sources, said once over the list (Z8-02); each card keeps its pill. */}
+        {failed.length > 0 && <p className="iw-failed-line"><span>{countWords(failed.length, "dovadă", "dovezi")} fără surse păstrate: {failedReason}. <Term tip title="Fără surse păstrate" text="Dovezile sunt în dosar, cu numele și nota lor. Sursele (înregistrările și totalul exact) se păstrează doar dintr-o actualizare validată a datelor; până atunci nu le prezentăm ca dovadă completă." /></span>
+          {canEdit && <button type="button" disabled={retrying} onClick={() => void retryAll()}>{retrying ? "Se reia…" : "Reîncearcă toate"}</button>}</p>}
         {(show === "all" || show === "Note") && notes.map(note => <article className="iw-editorial-note" key={note.id}>
           <NoteCard note={note} revisions={workspace.revisions.filter(revision => revision.entryId === note.id)} canEdit={canEdit} busy={busy} onEdit={() => setEditing(note)}
             onRemove={() => mutate({ action: "archive", entryId: note.id, revision: note.revision }, "Nota a fost scoasă din dosar; istoricul rămâne.")} />

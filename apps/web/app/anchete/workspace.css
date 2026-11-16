@@ -236,3 +236,9 @@
   .iw-sheet-rows[data-shown="25"] tbody tr:nth-child(n+26),.iw-sheet-rows[data-shown="50"] tbody tr:nth-child(n+51),.iw-sheet-rows[data-shown="75"] tbody tr:nth-child(n+76){display:none!important}
   .iw-shell .iw-sheet-more{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:44px;margin-top:12px;font-weight:600}
 }
+
+/* Failed captures said once over the list (Z8-02). */
+.iw-failed-line{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;margin:0 0 4px;padding:10px 14px;border-radius:8px;background:var(--amber-soft);color:var(--ink2);font-size:14px}
+.iw-failed-line>span{position:relative}.iw-shell .iw-failed-line>button{min-height:36px;font-weight:600}
+.iw-pill .term-tip{margin-left:4px}
+@media(max-width:700px){.iw-shell .iw-failed-line>button{min-height:44px}}
