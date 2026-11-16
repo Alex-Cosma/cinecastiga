@@ -194,8 +194,9 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
   }
   const sumsTitle = `Sumele, de la ${x.ted?.estimateRon != null ? "estimare" : sums.some((r) => r.key === "of") ? "oferte" : "anunț"} la ${fw && fw.calloffs > 0 ? "comenzi" : c.financialKind === "calloff" ? "comandă" : c.financialKind === "framework" ? "acordul-cadru" : c.financialKind === "amendment" ? "actul adițional" : "contract"}`;
 
+  const awardSourceLabel = `Anunțul de atribuire${c.noticeNo ? ` ${c.noticeNo}` : ""} în SEAP`;
   const sources: Source[] = [
-    ...(c.caNoticeId ? [{ href: awardUrl(c.caNoticeId), label: `Anunțul de atribuire${c.noticeNo ? ` ${c.noticeNo}` : ""} în SEAP`, external: true }] : []),
+    ...(c.caNoticeId ? [{ href: awardUrl(c.caNoticeId), label: awardSourceLabel, external: true }] : []),
     ...(files.notice ? [{ href: files.notice.url, label: `Anunțul de participare ${files.notice.noticeNo ?? ""} în SEAP`.replace("  ", " "), external: true }] : []),
     ...(tedHref ? [{ href: tedHref, label: `Publicarea în TED ${tedNo ?? ""}`.trim(), external: true }] : []),
     ...(noticeHref ? [{ href: noticeHref, label: `Anunțul, cu toate cele ${noticeRecords}` }] : []),
@@ -253,7 +254,8 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         <PartyList institution={{ name: authority, place: countyLabel(c.authority?.county) }} parties={parties} />
       </RecordSection>
 
-      <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId ? { sourceUrl: awardUrl(c.caNoticeId) } : {})} />
+      {/* Each SEAP document keeps one name on the page, the one in Sources (UX audit Z7-13). */}
+      <ContractFiles nid={nid} initial={files} authenticated={!!userId} {...(c.caNoticeId ? { sourceUrl: awardUrl(c.caNoticeId), sourceLabel: awardSourceLabel } : {})} />
 
       <Sources sources={sources} />
     </RecordPage>

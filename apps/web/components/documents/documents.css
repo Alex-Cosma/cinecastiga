@@ -33,3 +33,37 @@
 
 .df-contents { max-height: 24rem; overflow: auto; padding-inline-start: 1.25rem; }
 .df-contents li { margin-block: .6rem; overflow-wrap: anywhere; }
+
+/* UX audit (owner, 16 November 2026). Z7-26: the reader opens with its file name and „Închide” under the sticky header.
+   Z7-15: on a phone the page's text comes first (no box of its own), its image one tab away, and the pages move from a
+   bar kept at the reader's bottom; „PDF în alt tab”, „Originalul” and the search in the document sit in its „⋯”.
+   Wide screens keep the PDF beside its text. */
+.df-reader{scroll-margin-top:calc(var(--site-header-h,91px) + 12px)}
+.df-reader-tabs,.df-reader-bar{display:none}
+@media(max-width:760px){
+ .df-reader .df-wide{display:none}
+ .df-reader .df-reader-head{flex-direction:row;align-items:center;gap:12px}
+ .df-reader-head>div{min-width:0}
+ .df-reader .df-reader-head h3{font-size:18px;margin:0}
+ .df-reader-close{flex:none;min-height:44px}
+ .df-reader-tabs{display:flex;gap:4px;margin:12px 0;border-bottom:1px solid var(--line)}
+ .df-reader-tabs button{min-height:44px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;color:var(--ink2);font:600 14px/1.2 var(--body);cursor:pointer}
+ .df-reader-tabs button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--accent)}
+ .df-reader[data-view=text] .df-pdf{display:none}
+ .df-reader[data-view=image] .df-transcript{display:none}
+ .df-reader .df-transcript h4{display:none}
+ .df-reader .df-page-text{max-height:none;overflow:visible;padding:0;border:0;background:none}
+ .df-reader-bar{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:8px;min-height:60px;margin-top:16px;padding:8px 0;background:var(--paper);border-top:1px solid var(--line)}
+ .df-reader-bar>.df-button{min-width:44px;min-height:44px;padding:0}
+ .df-reader-bar>span{flex:1;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+ .df-reader-more{position:relative}
+ .df-reader-more>summary{list-style:none;display:grid;place-items:center;min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:7px;background:var(--surface);font-size:20px;line-height:1;cursor:pointer}
+ .df-reader-more>summary::-webkit-details-marker{display:none}
+ .df-reader-menu{position:absolute;right:0;bottom:calc(100% + 8px);width:min(320px,calc(100vw - 32px));display:grid;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow,0 6px 18px rgba(0,0,0,.12))}
+ .df-reader-menu>a{display:flex;align-items:center;min-height:44px;font-size:14px}
+ .df-reader-menu .df-document-search{flex-direction:column;align-items:stretch;margin:6px 0 0}
+}
+/* Z7-27: the section's title has the size of the record page's other sections (22 px), at every width. */
+.df-section>.df-heading h2{font-size:22px}
+.df-status-line{margin:14px 0 0;font-size:14px;line-height:1.5;color:var(--ink2);max-width:80ch}
+.df-status-line b{font-weight:600;color:var(--ink)}
