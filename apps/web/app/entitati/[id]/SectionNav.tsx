@@ -25,12 +25,16 @@ type Fade = "none" | "left" | "right" | "both";
  * Sticky section navigation under the site header. Scroll-spy picks the
  * active anchor; one measured underline slides between items. On narrow
  * screens the row scrolls sideways and fades at the edge that hides tabs.
+ *
+ * Once the page's title has scrolled away, the first tab („Rezumat”) names the entity instead (UX audit Z5-09,
+ * 16 November 2026): what is sticky says whose page it is, without growing the bar.
  */
-export default function SectionNav({ items }: { items: SectionItem[] }) {
+export default function SectionNav({ items, name }: { items: SectionItem[]; name?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState<string>(items.find((i) => i.id)?.id ?? "");
   const [ind, setInd] = useState<{ left: number; width: number } | null>(null);
   const [fade, setFade] = useState<Fade>("none");
+  const [away, setAway] = useState(false);
 
   /** Height covered by the sticky site header plus this bar. */
   const coveredTop = useCallback(() => {
@@ -38,6 +42,18 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     const bar = ref.current?.parentElement?.getBoundingClientRect().height ?? 0;
     return header + bar;
   }, []);
+
+  // The title is away once it is entirely above the sticky header and this bar.
+  useEffect(() => {
+    if (!name) return;
+    const title = document.querySelector<HTMLElement>("#top h1, h1.page-title");
+    if (!title) return;
+    const onScroll = () => setAway(title.getBoundingClientRect().bottom < coveredTop());
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
+  }, [name, coveredTop]);
 
   useEffect(() => {
     const ids = items.filter((i) => i.id).map((i) => i.id!);
@@ -80,7 +96,7 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
     // Keep the active tab visible in a row that scrolls sideways (phones).
     const start = on.offsetLeft - nav.scrollLeft;
     if (start < 0 || start + on.offsetWidth > nav.clientWidth) nav.scrollTo({ left: Math.max(0, on.offsetLeft - 32), behavior: "smooth" });
-  }, [active]);
+  }, [active, away]);
 
   // A navigation landmark whose current section is announced, not only underlined (critique 2 November 2026).
   return (
@@ -93,7 +109,9 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
               key={it.id}
               href={`#${it.id}`}
               data-on={active === it.id ? "1" : undefined}
-              className={active === it.id ? "on" : undefined}
+              className={[active === it.id ? "on" : "", it.id === "top" && name && away ? "subnav-name" : ""].filter(Boolean).join(" ") || undefined}
+              title={it.id === "top" && name && away ? name : undefined}
+              aria-label={it.id === "top" && name && away ? `${name}, începutul paginii` : undefined}
               aria-current={active === it.id ? "location" : undefined}
               onClick={(e) => {
                 e.preventDefault();
@@ -102,7 +120,7 @@ export default function SectionNav({ items }: { items: SectionItem[] }) {
                 history.replaceState(null, "", `#${it.id}`);
               }}
             >
-              {it.label}
+              {it.id === "top" && name && away ? name : it.label}
               {it.count ? <span className="c">{it.count}</span> : null}
             </a>
           ) : null,
