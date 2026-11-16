@@ -18,7 +18,7 @@ import { pupilRadius } from "./dots";
 import MapSearch from "./MapSearch";
 import UatPanel from "./UatPanel";
 import type { MapSearchInstitution, MapSearchPlace } from "@/lib/map-search";
-import { useEntrance, useFillIn, useGlide } from "./motion";
+import { useEntrance, useFillIn, useGlide, usePanelShift } from "./motion";
 import { useLastOpen, useLeaving } from "../../components/motion/leave";
 import { BEDS_YEAR, dotted as isDotted, figure, KIND_URL, mapMetric, PUPILS_YEAR, type MapArea, type MapDataset, type MapCounts, type MapKind, type MapMetric, type MapOptions, type MapResponse } from "@/lib/map-capita-shared";
 
@@ -334,12 +334,14 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const w = x1 - x0, h = y1 - y0, pad = Math.max(w, h) * 0.08;
     return [x0 - pad, y0 - pad, w + 2 * pad, h + 2 * pad];
   }, [geo, shape]);
-  const view = useGlide(target);
+  const { view, cam } = useGlide(target);
   // M-06: on a phone the UAT's sheet leaves (180 ms, no clicks) with the UAT it showed; on wider screens it goes at once.
   const panelOpen = Boolean(county && uat && !dots);
   const panelLeaving = useLeaving(panelOpen, true);
   const panelUat = useLastOpen(uat, panelOpen);
   const sheetLeaving = panelLeaving && !panelOpen && window.matchMedia("(max-width: 640px)").matches;
+  // M-17: the panel's columns are taken at once; the map and the ranking glide from where they were (transforms).
+  const bodyRef = usePanelShift(panelOpen);
 
   // Same areas, new numbers (a filter): the old ones stay, dimmed, with a floating status. Another level (a county
   // opened, the first load) has no numbers to dim: its ranking is a ghost of its rows (owner, 6 November 2026).
@@ -547,7 +549,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
       </Pick>
     </div>
 
-    {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div className={`mx-body${county && uat && !dots ? " has-panel" : ""}`}>
+    {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div ref={bodyRef} className={`mx-body${county && uat && !dots ? " has-panel" : ""}`}>
       <section className={`mx-stage${busy ? " is-busy" : ""}`} aria-label={county ? `Harta județului ${countyName}` : "Harta României pe județe"}>
         {county && <p className="mx-crumb"><button type="button" ref={crumbRef} onClick={() => closeTo(null)}><Arrow back /> România</button><span>· {countyName}</span></p>}
         <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}
@@ -555,6 +557,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
           {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" className={stale ? "g-stale" : undefined}
             aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${whoWords}, ${periodWords}, ${cpvWords}${channelWords}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli și grădinițe"}.` : "Clasamentul de alături are aceleași cifre."}`}>
             <defs><pattern id="mx-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform={`rotate(45) scale(${view[2] / geo.width})`}><rect width="6" height="6" className="mx-hatch-bg" /><line x1="0" y1="0" x2="0" y2="6" className="mx-hatch-line" /></pattern></defs>
+            {/* The camera (M-17, motion.ts): the whole drawing moves as one transform while the viewBox is already the new one. */}
+            <g ref={cam} className="mx-cam">
             <g className={county ? "mx-counties is-back" : "mx-counties"}>
               {geo.counties.map((c) => {
                 const a = nat?.areas.find((x) => x.key === c.key);
@@ -580,6 +584,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
               // A circle never fades into the backdrop: its ramp starts at 22% (the counties' at 7%).
               ready={loc !== null} hover={hover ?? tapped ?? lit} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
+            </g>
           </svg>}
           {shown && pointer && !touch && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
             <b>{shown.name}</b>

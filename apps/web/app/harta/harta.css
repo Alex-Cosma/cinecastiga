@@ -174,7 +174,6 @@
 /* ---- a UAT's panel (owner, 6 November 2026, "Povestea în trei întrebări") ----
    The map and the ranking draw back into the left column, the panel comes in from the right; another UAT replays
    only the panel's content. */
-.mx-body{transition:grid-template-columns var(--slow) var(--ease)}
 .mx-body.has-panel{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-areas:"stage panel" "rank panel"}
 .mx-body.has-panel .mx-stage{grid-area:stage}
 .mx-body.has-panel .mx-rank{grid-area:rank;animation:mx-rise var(--slow) var(--ease) both}
@@ -267,7 +266,7 @@ span.mx-p-yr{cursor:default}
   .mx-p-lead{font-size:18px}
   .mx-p-close{min-width:44px;min-height:44px}
 }
-@media (prefers-reduced-motion:reduce){.mx-body,.mx-p-bar,.mx-p-dot,.mx-p-me,.mx-p-yr{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
+@media (prefers-reduced-motion:reduce){.mx-p-bar,.mx-p-dot,.mx-p-me,.mx-p-yr{transition:none}.mx-panel,.mx-p-body>*,.mx-body.has-panel .mx-rank,.mx-p-body.is-ghost>:not(.mx-p-close),.mx-p-body.is-ghost .mx-p-rows i{animation:none}}
 
 /* ---- UX audit, 16 November 2026 ---- */
 /* Z4-04: on phones the domains and the channel share one „Filtre” button and its sheet (the real domains window with
@@ -405,4 +404,17 @@ span.mx-p-yr{cursor:default}
 @media (max-width:640px){
   .mx-panel{animation:sheet-in var(--sheet-in) var(--ease) both}
   .mx-panel[data-leaving]{animation:sheet-out var(--sheet-out) var(--ease-exit) forwards}
+}
+
+/* The camera and the panel without laying the page out again (UX audit M-17, motion.ts): the camera moves the map's
+   whole drawing (.mx-cam) by transform from its own (0, 0) while the viewBox is already the new one; the UAT panel's
+   columns are taken at once and the map and the ranking glide by transform (usePanelShift), so on wide screens the
+   ranking travels to its new place instead of rising there. */
+.mx-cam{transform-box:view-box;transform-origin:0 0}
+@media (min-width:981px){
+  .mx-body.has-panel .mx-rank{animation:none}
+  /* While they glide, the ranking passes under the map's frame and the panel over both. */
+  .mx-body>.mx-stage{position:relative;z-index:1}
+  .mx-body>.mx-rank{position:relative;z-index:0}
+  .mx-body>.mx-panel{z-index:2}
 }
