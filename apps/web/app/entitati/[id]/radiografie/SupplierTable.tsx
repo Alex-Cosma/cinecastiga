@@ -79,7 +79,7 @@ export function SupplierTableGhost() {
         <p className="rv-rank-count"><G.Line inline w="22ch" /></p>
         <p className="rv-legend"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>
-      <div className="rv-sortpills">{(["value", "here", "life", "recs", "name"] as const).map((k) => <span key={k} className="rv-pill-g" data-on={k === "value" || undefined}>{PILL[k]}{k === "value" ? " ↓" : ""}</span>)}</div>
+      <span className="rv-sortselect" aria-hidden="true"><span>Ordonează</span><span className="rv-select-g">{PILL.value} ↓</span></span>
       <div className="rv-filterpills">{RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}<FunnelGhost /></span>)}</div>
       <div className="rv-rank-wrap">
         <table className="rv-rank">
@@ -167,12 +167,15 @@ export default function SupplierTable({ authorityId, suppliers, maxValue, select
         </p>
         <p className="rv-legend" aria-hidden="true"><span><i className="rv-sw-ct" />contracte prin proceduri</span><span><i className="rv-sw-da" />achiziții directe</span></p>
       </div>
-      {/* On a phone the columns' order comes from these buttons. */}
-      <div className="rv-sortpills" role="group" aria-label="Ordonează furnizorii">
-        {(["value", "here", "life", "recs", "name"] as const).map((k) => (
-          <button key={k} type="button" aria-pressed={sort === k} onClick={() => sortBy(k)}>{PILL[k]}{sort === k ? (dir === "desc" ? " ↓" : " ↑") : ""}</button>
-        ))}
-      </div>
+      {/* On a phone the order is one native menu (UX audit Z5-32, 16 November 2026), not five pills on three rows. */}
+      <label className="rv-sortselect">
+        <span>Ordonează</span>
+        <select value={`${sort}:${dir}`} onChange={(e) => { const [k, d] = e.target.value.split(":") as [DepSort, "asc" | "desc"]; setSort(k); setDir(d); setPage(1); }}>
+          {(["value", "here", "life", "recs", "name"] as const).flatMap((k) => (["desc", "asc"] as const).map((d) => (
+            <option key={`${k}:${d}`} value={`${k}:${d}`}>{k === "life" ? "Câștigurile firmei venite de aici" : PILL[k]} {k === "name" ? (d === "asc" ? "A–Z" : "Z–A") : d === "desc" ? "↓" : "↑"}</option>
+          )))}
+        </select>
+      </label>
       <div className="rv-filterpills" role="group" aria-label="Filtrează furnizorii">
         {RADIOGRAFIE_COLUMNS.map((c) => <span key={c.key} className="rv-filterpill">{c.label}{funnel(c.key)}</span>)}
       </div>
