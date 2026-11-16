@@ -85,9 +85,14 @@ export function AskExamples({ onPick }: { onPick: (example: AskExample) => void 
   );
 }
 
-/** Nothing usable was understood: say what, and offer questions that work. */
+/**
+ * Nothing usable was understood: say what, and offer a way on (UX audit Z2-10). First the words searched in the
+ * purchases' titles (/cauta, which has its own empty state), then questions that work; the builder's door is the link
+ * right above, under the box. A question, not an error: the panel is neutral, not amber.
+ */
 export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick: (example: AskExample) => void }) {
   const words = result.interpretation.leftover;
+  const phrase = (words.length ? words.join(" ") : result.interpretation.text).trim();
   return (
     <section className="ia-panel ia-unknown" aria-labelledby="ia-result-title">
       <h2 id="ia-result-title" tabIndex={-1}>Nu am înțeles întrebarea</h2>
@@ -98,6 +103,9 @@ export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick
         Spune <strong>ce</strong>, <strong>unde</strong> sau numele unei instituții ori firme.
       </p>
       {result.interpretation.notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
+      {phrase && <p className="ia-unknown-ways">
+        <a className="ia-unknown-search" href={`/cauta?q=${encodeURIComponent(phrase)}`}>Caută „{phrase}” în titlurile achizițiilor →</a>
+      </p>}
       <p className="ia-try">Exemple:</p>
       <div className="ia-fallback">
         {FALLBACK_EXAMPLES.map((example) => <ExampleButton key={example.text} example={example} onPick={onPick} />)}

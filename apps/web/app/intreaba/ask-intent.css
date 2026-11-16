@@ -147,3 +147,11 @@
   .ia-qband-q strong { color: var(--ink); font-weight: 600; }
   .ia-qband-go { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line2, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 14px/1 var(--body); cursor: pointer; }
 }
+
+/* Z2-10 (UX audit, 16 November 2026): a question not understood is a question, not an error: the panel is neutral, and
+   its first way on is the words searched in the purchases' titles, then the builder. */
+.ia-unknown { border-color: var(--line); background: var(--surface); }
+.ia-unknown .ia-example { border-top-color: var(--line); }
+.ia-unknown-ways { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 4px 0 14px !important; }
+.ia-unknown-search { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 16px; box-sizing: border-box; border-radius: 8px; background: var(--accent); color: var(--on-accent) !important; font: 600 14px/1.3 var(--body); text-decoration: none; overflow-wrap: anywhere; }
+.ia-unknown-search:hover { background: var(--ink); }
