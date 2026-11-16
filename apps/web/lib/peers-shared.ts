@@ -16,6 +16,8 @@ export interface PeerSelectionMember { id: string; identity: string }
 export interface PeerPopulation {
   value: number; siruta?: number; unitName: string; county: string; level: "local" | "county" | "sector";
   referenceDate: string; sourceUrl: string; sourceSha256?: string; sourceRow: number; catalogVersion: string; differencePercent: number | null; mappingMethod?: "siruta_name_county" | "exact_name_county" | "owner_approved";
+  /** The UAT's name as the map writes it („Zărnești”), by its SIRUTA (UX audit Z4-34); added by /api/peers. */
+  placeName?: string;
 }
 export interface PeerFilters { dataset: Dataset; year: PeerYear | null; cpv: string | null; county?: string; page: number;
   method?: PeerMethod; populationVersion?: string; members?: PeerSelectionMember[] }

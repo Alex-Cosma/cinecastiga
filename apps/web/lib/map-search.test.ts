@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { searchMap } from "./map-search";
+import { searchMap, townHallPlace, uatName } from "./map-search";
 
 describe("searchMap (/harta's search, UX audit Z4-01)", () => {
   it("finds a town by the start of its name, with its county, and its hospital", () => {
@@ -17,5 +17,21 @@ describe("searchMap (/harta's search, UX audit Z4-01)", () => {
   it("waits for two letters, and three for institutions", () => {
     expect(searchMap("c")).toEqual({ places: [], institutions: [] });
     expect(searchMap("ci").institutions).toEqual([]);
+  });
+});
+
+describe("townHallPlace and uatName (the comparison's way to the map, UX audit Z4-26, Z4-34, Z4-39)", () => {
+  it("reads a town hall's name in its county", () => {
+    expect(townHallPlace("Orasul Cisnadie", "Sibiu")).toEqual({ county: "sibiu", siruta: 143735 });
+    expect(townHallPlace("Orasul Zarnesti (Primaria Orasului Zarnesti)", "Brasov")?.siruta).toBe(40492);
+    expect(townHallPlace("MUNICIPIUL BUCURESTI", "Bucuresti")).toEqual({ county: "bucuresti", siruta: null });
+  });
+  it("names no place for what is not a town hall", () => {
+    expect(townHallPlace("DIRECTIA DE ASISTENTA SOCIALA SIBIU", "Sibiu")).toBeNull();
+    expect(townHallPlace("Orasul Cisnadie", "Cluj")).toBeNull();
+  });
+  it("names a UAT as the map does", () => {
+    expect(uatName(151870)).toBe("Roșiori de Vede");
+    expect(uatName(null)).toBeNull();
   });
 });

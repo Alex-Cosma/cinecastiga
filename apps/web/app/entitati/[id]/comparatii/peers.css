@@ -150,3 +150,41 @@ span.pxs-src{display:inline-flex;align-items:center}
   .pxs-facts dd{font-size:15px}
 }
 @media (prefers-reduced-motion:reduce){.pxs-band,.pxs-dot,.pxs-focal,.pxs-method summary svg{transition:none}}
+
+/* ---- UX audit, 16 November 2026 ---- */
+/* Z4-27: the title's name without the source's capitals, two lines at most; the whole of it on hover, focus or a tap. */
+.pxs-h1-name.is-long{display:-webkit-inline-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;vertical-align:top;cursor:default}
+.pxs-h1-name.is-long:is(:hover,:focus){-webkit-line-clamp:unset}
+.pxs-h1-name.is-long:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+/* Z4-32: the domain and year are in the title; one click widens either. */
+.pxs-widen{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+.pxs-chip{display:inline-flex;align-items:center;min-height:32px;padding:4px 13px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600}
+.pxs-chip:hover:not(:disabled){border-color:var(--accent-line);background:var(--accent-soft)}
+/* Z4-34: a town hall's county beside its place, quieter. */
+.pxs-county{font-weight:400;color:var(--muted)}
+.pxs-row.is-focal .pxs-name b .pxs-county{color:var(--muted)}
+/* Z4-26, Z4-36, Z4-37: short answers with their ways out. */
+.px-empty--short{min-height:0;padding:18px 0 6px}
+.px-empty h2{font:700 21px/1.3 var(--display);margin:0 0 6px}
+.px-empty p{margin:0;max-width:62ch;color:var(--ink2)}
+.pxs-acts.pxs-acts--out{margin-top:14px;padding-top:0;border-top:0}
+/* Z4-38: a touch shows the nearest dot's tip, with its way to the member's page. */
+.pxs-tip-go{margin-top:3px;color:var(--accent);font-weight:600}
+.pxs-tip.is-pinned{pointer-events:auto}
+.pxs-tip.is-pinned .pxs-tip-go{display:inline-flex;align-items:center;min-height:36px;text-decoration:none}
+/* Z4-40: „Total / Pe înregistrare” keeps its place, top right of the card; the legend gives way, its name shortened. */
+.pxs-stage-top{flex-wrap:nowrap;align-items:flex-start}
+.pxs-stage-top>.pxs-key{flex:1;min-width:0}
+.pxs-stage-top>.pxs-seg{flex:none}
+.pxs-legend-me{display:inline-block;max-width:26ch;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+@media (max-width:640px){.pxs-stage-top{flex-wrap:wrap}}
+/* Z4-19: the segment clips its corners, so its buttons draw their focus inside. */
+.pxs-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:5px}
+.pxs-seg button[aria-pressed="true"]:focus-visible{outline-color:var(--on-accent)}
+/* Z4-42: three plain sentences, the technical text behind its own fold. */
+.pxs-method-more{margin-top:10px}
+.pxs-method-more>summary{display:inline-flex;align-items:center;min-height:32px;cursor:pointer;color:var(--accent);font-weight:600;list-style:none}
+.pxs-method-more>summary::-webkit-details-marker{display:none}
+@media (max-width:640px){.pxs-chip,.pxs-method-more>summary{min-height:44px}}
+/* Phones: the amount takes the width it needs (a fixed 92 px let „47,0 mil. lei” run under „Surse”). */
+@media (max-width:640px){.pxs-row{grid-template-columns:26px minmax(0,1fr) auto auto}}

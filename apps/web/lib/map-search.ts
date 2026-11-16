@@ -77,3 +77,25 @@ export function searchMap(term: string, limits: { places?: number; institutions?
     });
   return { places, institutions };
 }
+
+/** A UAT's name as the map writes it („Roșiori de Vede”), by its SIRUTA; null for an unknown code. */
+export function uatName(siruta: number | null | undefined): string | null {
+  return siruta == null ? null : NAME_OF.get(siruta) ?? (siruta === BUCHAREST.siruta ? BUCHAREST.name : null);
+}
+
+const HALL_PREFIX = /^(?:primaria |primarie |consiliul local (?:al )?|uat )?(?:municipiului |municipiul |orasului |orasul |oras |comunei |comuna )/;
+/**
+ * Where a town hall sits on the map, from its name and county (UX audit Z4-26, Z4-39: the comparison's way to the map):
+ * „Orasul Cisnadie” in Sibiu → Cisnădie's SIRUTA; „MUNICIPIUL BUCURESTI” → the city. A name that does not read as a
+ * town hall, or matches no UAT of the county, has none (a link the reader can always follow, never a guess).
+ */
+export function townHallPlace(name: string | null | undefined, county: string | null | undefined): { county: string; siruta: number | null } | null {
+  if (!name || !county) return null;
+  const key = countyKey(county), folded = fold(name.replace(/\(.*$/, ""));
+  if (!COUNTY_NAME.has(key) || !HALL_PREFIX.test(folded)) return null;
+  const rest = folded.replace(HALL_PREFIX, "").trim();
+  if (key === "bucuresti" && rest === "bucuresti") return { county: key, siruta: null };
+  const sector = /^bucuresti sector(?:ul)? (\d)$|^sector(?:ul)? (\d)/.exec(rest);
+  const hit = UATS.find((u) => u.county === key && (sector ? u.kind === "sector" && u.name.endsWith(sector[1] ?? sector[2]!) : fold(u.name) === rest));
+  return hit ? { county: key, siruta: hit.siruta } : null;
+}
