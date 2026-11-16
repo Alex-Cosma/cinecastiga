@@ -134,3 +134,10 @@
 .dm-atlas-list-row>button:first-child{grid-template-columns:8px 1fr auto 12px}
 .dm-list-go{color:var(--muted);font-size:16px;line-height:1;text-align:right}
 @media(max-width:760px){.dm-atlas-list-row{grid-template-columns:minmax(0,1fr)}}
+
+/* The list has its own height and the atlas stays under the header while the list goes by (UX audit Z6-31): no box
+   scrolling inside the page (8 of 45 rows were visible, its scrollbar hidden on macOS). Phones already did this. */
+@media(min-width:761px){
+  .dm-atlas-list,.domains-page .dm-atlas-list{max-height:none;overflow:visible}
+  .dm-atlas-stage{position:sticky;top:calc(var(--site-header-h, 91px) + 12px)}
+}
