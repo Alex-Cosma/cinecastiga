@@ -15,6 +15,7 @@ import {
   getEntitySubjects,
   getEntityYears,
   getCompanyTurnover,
+  getEntityRegistered,
   type Role,
   type EntityFlagRow,
 } from "@/lib/marts";
@@ -171,7 +172,7 @@ export default async function EntityPage({
   const successor = successorOf(id);
   const successorTarget = successor ? getSuccessorTarget(successor.to).catch(() => null) : Promise.resolve(null);
   const otherRole: Role = role === "authority" ? "supplier" : "authority";
-  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst, otherCounts] =
+  const [reps, txCounts, aboveCap, signalCounts, registryCui, subjects, topPartners, peerLine, holderTwin, registryNames, activityYears, turnover, txFirst, otherCounts, registered] =
     await Promise.all([
       registryCuiLookup.then((registry) => (registry ? getCompanyReps(registry) : [])),
       getEntityTxCounts(id, role),
@@ -195,6 +196,8 @@ export default async function EntityPage({
         .catch((e: unknown) => { console.error("entity-tx first page", { id, role }, e); return null; }),
       // The other role's records, on its tab above the name (UX audit Z5-13), only for an entity that both buys and sells.
       bothRoles ? getEntityTxCounts(id, otherRole).catch(() => null) : null,
+      // A firm's first registration in the trade register (UX audit Z5-17).
+      role === "supplier" ? getEntityRegistered(id).catch(() => null) : null,
     ]);
   const continuedAt = await successorTarget;
   const cuiUncorroborated = cui !== null && registryCui === null;
@@ -317,6 +320,14 @@ export default async function EntityPage({
                   </a>
                 ))}
               </span>
+            ) : null}
+            {/* Since when the firm exists and which years its records cover, without opening a block (UX audit Z5-17). */}
+            {registered && registryCui !== null && (registered.on || registered.year) ? (
+              <span className="ent-tip">înființată {registered.on ? `${registered.on.slice(5, 7)}.${registered.on.slice(0, 4)}` : registered.year}{" "}
+                <Term tip title="Înființată" text={`Data primei înmatriculări a acestui CUI la Registrul Comerțului${registered.on ? `: ${formatCalendarDate(registered.on)}` : ""}.`} /></span>
+            ) : null}
+            {txCounts.dateFrom && txCounts.dateTo ? (
+              <span>înregistrări {txCounts.dateFrom.slice(0, 4) === txCounts.dateTo.slice(0, 4) ? txCounts.dateFrom.slice(0, 4) : `${txCounts.dateFrom.slice(0, 4)}–${txCounts.dateTo.slice(0, 4)}`}</span>
             ) : null}
             {registryNames.length > 0 ? (
               <span className="ent-tip">
