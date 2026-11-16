@@ -185,3 +185,11 @@
 /* The dialog's title names the tool (Z1-09) on one line. */
 .d-search-dialog:not(.d-townhall-dialog) .d-dialog-head>div{flex:1;min-width:0}
 .d-search-dialog:not(.d-townhall-dialog) .d-dialog-head h2{font-size:27px;letter-spacing:-.7px}
+/* Home map (UX audit Z1-24): the per-inhabitant map, one link away beside the readout's (?). */
+.d-map-per-capita{display:inline-flex;align-items:center;gap:6px;margin-left:auto;min-height:32px;font-size:13px;font-weight:600;white-space:nowrap}
+.d-map-per-capita .d-icon{width:14px;height:14px}
+@media(max-width:700px){.d-map-per-capita{min-height:44px}}
+/* The welcome tour's question arrives (UX audit Z1-25): one outline around the field for a second, no focus. */
+.d-search-arrive>form{animation:d-arrive-ring 1s ease-out 1.1s 1 backwards}
+@keyframes d-arrive-ring{0%{box-shadow:0 0 0 0 var(--orange)}30%{box-shadow:0 0 0 4px var(--orange)}100%{box-shadow:0 0 0 0 transparent}}
+@media(prefers-reduced-motion:reduce){.d-search-arrive>form{animation:none}}

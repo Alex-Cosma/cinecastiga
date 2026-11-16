@@ -55,7 +55,7 @@ function Typed({ text }: { text: string }) {
 
 const SearchIcon = () => <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5" /><path d="M12.2 12.2 16 16" /></svg>;
 
-export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(query: string): void }) {
+export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(query: string, county?: string): void }) {
   const [step, setStep] = useState(0);
   const [county, setCounty] = useState(""), [topicKey, setTopicKey] = useState("");
   const [byValue, setByValue] = useState(false);
@@ -99,10 +99,10 @@ export default function Tour({ onSkip, onFinish }: { onSkip(): void; onFinish(qu
     root.current?.scrollTo({ top: 0, behavior: calm() ? "auto" : "smooth" });
   }, []);
   const finish = useCallback(() => {
-    if (calm()) { onFinish(query); return; }
+    if (calm()) { onFinish(query, county); return; }
     setLeaving(true);
-    window.setTimeout(() => onFinish(query), 620);
-  }, [onFinish, query]);
+    window.setTimeout(() => onFinish(query, county), 620);
+  }, [onFinish, query, county]);
   const forward = useCallback(() => { if (step === 0 && !chosen) return; if (step === TOUR_LAST_STEP) finish(); else go(step + 1); }, [chosen, finish, go, step]);
   // „Continuă” on a narrow screen: a press first shows the rest of the step, the next one goes on (lib/tour.ts,
   // tourRestHidden). A press without a pointer, from the keyboard or an assistive technology, goes on at once:
