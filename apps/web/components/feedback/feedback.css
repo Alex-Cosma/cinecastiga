@@ -23,6 +23,15 @@
   .feedback-fab svg{width:18px;height:18px}
   .site-footer{padding-bottom:0}
 }
+/* UX audit Z5-31 (16 November 2026): the round button is 36 px (44 px for a finger) and steps aside while a word, a
+   figure or a link is under it (ReportProblem.tsx); the keyboard still finds it. */
+@media(min-width:721px) and (max-width:1359px){
+  .feedback-fab{width:36px;height:36px;transition:opacity var(--fast) var(--ease)}
+  .feedback-fab svg{width:17px;height:17px}
+  .feedback-fab.is-yielding{opacity:0;pointer-events:none}
+  .feedback-fab.is-yielding:focus-visible{opacity:1;pointer-events:auto}
+}
+@media(min-width:721px) and (max-width:1359px) and (pointer:coarse){.feedback-fab{width:44px;height:44px}}
 @media print{.feedback-fab{display:none}}
 @media(prefers-reduced-motion:reduce){.feedback-fab{transition:none}}
 .feedback-dialog{width:540px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:28px;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--ink)}
