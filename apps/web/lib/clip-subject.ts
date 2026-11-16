@@ -23,7 +23,7 @@ export async function readClipSubject(kind: string, refId: string, sql: DbSql = 
   if (kind === "contract") {
     // The contract page's own headline: its title when it names something, else its lot, its notice's title, its CPV category.
     const [row] = await sql`select c.title, c.lots_caption, a.title notice_title, a.notice_no, k.name_ro cpv_name, ${contractRonValue(sql)}::text value from core.contracts c
-      left join core.awards a on a.ca_notice_id = c.ca_notice_id left join core.cpv_codes k on k.code = c.cpv_code
+      left join core.awards a on a.ca_notice_id = c.ca_notice_id left join core.cpv_codes k on k.code = coalesce(c.cpv_code, a.cpv_code)
       where c.ca_notice_contract_id = ${refId} limit 1`;
     const text = (v: unknown) => v == null ? null : String(v);
     return row ? { name: recordHeadline({ title: text(row.title), lot: text(row.lots_caption), noticeTitle: text(row.notice_title), cpvName: text(row.cpv_name), noticeNo: text(row.notice_no), kind: "Contract" }),
