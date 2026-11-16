@@ -181,8 +181,29 @@ export function countyAreas(data: KindData, s: MapSelection): MapArea[] {
   });
 }
 
+/**
+ * A county's town halls as one average (owner, 16 November 2026, UX audit Z4-09): the value of the UATs' own town halls
+ * (with their institutions when the selection has them) over the population of the UATs whose town hall the list
+ * holds, each UAT once, without the county council; in București the six sectors, without the city hall. What a UAT's
+ * figure is set against in its panel, so the council's purchases for the whole county do not push every UAT under it.
+ */
+export function townHallsPerCapita(data: KindData, s: MapSelection, county: string, sums = sumByInstitution(data.rows, data.institutions.length, s)): number | null {
+  const c = COUNTY_BY_KEY.get(county);
+  if (!c) return null;
+  let value = 0;
+  const served = new Set<number>();
+  data.institutions.forEach((inst, i) => {
+    if (!counted(inst, s) || inst.county !== c.marts || inst.level !== "local" || inst.siruta === null || inst.siruta === BUCHAREST_SIRUTA) return;
+    value += sums.v[i]!;
+    if (inst.parent === undefined) served.add(inst.siruta);
+  });
+  let people = 0;
+  for (const siruta of served) people += UNIT_POPULATION.get(siruta) ?? 0;
+  return perCapita(lei(value), people);
+}
+
 /** The UAT level of one county: each UAT of the geometry with its own town hall, divided by the UAT's population. */
-export function uatAreas(data: KindData, s: MapSelection, county: string): { areas: MapArea[]; city: MapArea | null } {
+export function uatAreas(data: KindData, s: MapSelection, county: string): { areas: MapArea[]; city: MapArea | null; council: MapArea | null } {
   const sums = sumByInstitution(data.rows, data.institutions.length, s);
   const bySiruta = new Map<number, number[]>();
   data.institutions.forEach((inst, i) => {
@@ -195,8 +216,18 @@ export function uatAreas(data: KindData, s: MapSelection, county: string): { are
     return withSubValue(areaOf(String(u.siruta), u.name, UNIT_POPULATION.get(u.siruta) ?? null, members, sums, hasAdmin(members) ? null : "no_admin"), members, data.institutions, sums, s);
   });
   const cityMembers = county === "bucuresti" ? bySiruta.get(BUCHAREST_SIRUTA) ?? [] : null;
-  const city = cityMembers ? withSubValue(areaOf(String(BUCHAREST_SIRUTA), "Primăria Municipiului București", UNIT_POPULATION.get(BUCHAREST_SIRUTA) ?? null, cityMembers, sums, hasAdmin(cityMembers) ? null : "no_admin"), cityMembers, data.institutions, sums, s) : null;
-  return { areas, city };
+  // The city hall's and the council's own identity (UX audit Z4-11): their box links to its page.
+  const own = (members: readonly number[]) => members.find((i) => data.institutions[i]!.parent === undefined);
+  const idOf = (members: readonly number[]) => { const i = own(members); return i === undefined ? null : data.institutions[i]!.id; };
+  const city = cityMembers ? { ...withSubValue(areaOf(String(BUCHAREST_SIRUTA), "Primăria Municipiului București", UNIT_POPULATION.get(BUCHAREST_SIRUTA) ?? null, cityMembers, sums, hasAdmin(cityMembers) ? null : "no_admin"), cityMembers, data.institutions, sums, s), entityId: idOf(cityMembers) } : null;
+  // The county council (UX audit Z4-11): its purchases serve the whole county, so it is apart from the UATs, over the
+  // county's population, as the city hall is in București; the county's figure on the map holds it.
+  const c = COUNTY_BY_KEY.get(county);
+  const councilMembers = c && c.marts !== "Bucuresti" ? data.institutions.flatMap((inst, i) => (counted(inst, s) && inst.county === c.marts && inst.level === "county" ? [i] : [])) : [];
+  const council = c && councilMembers.some((i) => data.institutions[i]!.parent === undefined)
+    ? { ...withSubValue(areaOf(`cj-${county}`, `Consiliul Județean ${c.name}`, COUNTY_POPULATION.get(c.marts) ?? null, councilMembers, sums, null), councilMembers, data.institutions, sums, s), entityId: idOf(councilMembers) }
+    : null;
+  return { areas, city, council };
 }
 
 export async function getMap(s: MapSelection): Promise<MapResponse> {
@@ -210,7 +241,7 @@ export async function getMap(s: MapSelection): Promise<MapResponse> {
     const areas = s.level === "county" ? hospitalCounties(data, s, COUNTY_LIST, metric === "perBed")
       : countyHospitals(data, s, s.county!, metric === "perBed", await hospitalNames(sql, data));
     return {
-      selection: s, county: county ? { key: s.county!, name: county.name } : null, areas, city: null,
+      selection: s, county: county ? { key: s.county!, name: county.name } : null, areas, city: null, council: null,
       totals: { value: lei(areas.reduce((a, x) => a + (x.value ?? 0), 0)), records: areas.reduce((a, x) => a + x.records, 0), buyers: areas.reduce((a, x) => a + x.buyers, 0) },
       source: data.source, metric, notes: HOSPITAL_NOTES,
     };
@@ -222,18 +253,18 @@ export async function getMap(s: MapSelection): Promise<MapResponse> {
     const areas = s.level === "county" ? schoolCounties(data, s, COUNTY_LIST, metric === "perPupil")
       : countySchools(data, s, s.county!, metric === "perPupil", await schoolNames(sql, data, s.county!));
     return {
-      selection: s, county: county ? { key: s.county!, name: county.name } : null, areas, city: null,
+      selection: s, county: county ? { key: s.county!, name: county.name } : null, areas, city: null, council: null,
       totals: { value: lei(areas.reduce((a, x) => a + (x.value ?? 0), 0)), records: areas.reduce((a, x) => a + x.records, 0), buyers: areas.reduce((a, x) => a + x.buyers, 0) },
       source: data.source, metric, notes: SCHOOL_NOTES,
     };
   }
   const data = await readMapKind();
-  const { areas, city } = s.level === "county" ? { areas: countyAreas(data, s), city: null } : uatAreas(data, s, s.county!);
+  const { areas, city, council } = s.level === "county" ? { areas: countyAreas(data, s), city: null, council: null } : uatAreas(data, s, s.county!);
   const all = city ? [...areas, city] : areas;
   return {
     selection: s,
     county: county ? { key: s.county!, name: county.name } : null,
-    areas, city,
+    areas, city, council,
     totals: { value: lei(all.reduce((a, x) => a + (x.value ?? 0), 0)), records: all.reduce((a, x) => a + x.records, 0), buyers: all.reduce((a, x) => a + x.buyers, 0) },
     source: data.source,
     metric,
@@ -311,7 +342,8 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
     const picked = own.filter((r) => rowSelected(r, one, ys, cpvSet));
     const value = picked.reduce((a, r) => a + r.v, 0), records = picked.reduce((a, r) => a + r.n, 0);
     const c = countyAreas(data, one).find((a) => a.key === unit.county);
-    return { year, value: lei(value), records, perCapita: area.gap ? null : perCapita(value, population), countyPerCapita: c?.perCapita ?? null, selected: !yearsSet || yearsSet.has(year) };
+    return { year, value: lei(value), records, perCapita: area.gap ? null : perCapita(value, population), countyPerCapita: c?.perCapita ?? null,
+      hallsPerCapita: townHallsPerCapita(data, one, unit.county), selected: !yearsSet || yearsSet.has(year) };
   });
   const byCpv = new Map<string | null, { value: number; records: number }>(), channels = { da: 0, contracts: 0 };
   for (const r of own) {
@@ -343,7 +375,7 @@ export async function getMapUat(s: MapSelection, siruta: number): Promise<MapUat
     group by 1, 2 order by value desc limit 5`) as unknown as { id: string; name: string; value: number; records: number }[] : [];
   return {
     selection: s,
-    county: { key: unit.county, name: county.name, perCapita: countyArea?.perCapita ?? null },
+    county: { key: unit.county, name: county.name, perCapita: countyArea?.perCapita ?? null, hallsPerCapita: townHallsPerCapita(data, s, unit.county) },
     uat: { ...area, kind: unit.kind },
     townHalls,
     institutions,

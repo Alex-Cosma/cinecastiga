@@ -335,3 +335,42 @@ span.mx-p-yr{cursor:default}
 .mx-lede-go{display:inline-flex;align-items:center;min-height:30px;margin-left:2px;padding:2px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--accent);font:600 13.5px/1.3 var(--body);vertical-align:1px}
 .mx-lede-go:hover{border-color:var(--accent);color:var(--accent-ink)}
 @media (max-width:640px){.mx-lede-go{display:flex;min-height:44px;margin:8px 0 0;padding:0 16px}}
+/* Z4-10: the panel leads to the town hall's records (its table, the map's period and channel) and to its comparison;
+   the name, a link to the town hall, looks like one. */
+.mx-panel h2 a{text-decoration:underline;text-decoration-color:var(--accent-line);text-decoration-thickness:2px;text-underline-offset:6px}
+.mx-p-acts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0}
+.mx-p-act{display:inline-flex;align-items:center;min-height:36px;padding:6px 13px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13.5px/1.3 var(--body);text-decoration:none}
+.mx-p-act:hover{border-color:var(--accent-line);background:var(--accent-soft)}
+.mx-p-act.is-main{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
+.mx-p-act.is-main:hover{filter:brightness(1.08)}
+/* Z4-13: „Cât?” takes the panel's width (its sentence left, the years' chart right and larger); „Pe ce?” and „Cui?”
+   share the row under it, so their names are read whole. One column on phones. */
+.mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px}
+.mx-p-cols>.mx-p-sec:first-child{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);grid-template-rows:auto 1fr;column-gap:28px;align-items:start}
+/* The panel spans the stage's row and the ranking's: its extra height goes to the ranking's row, so the ranking stays
+   right under the map. */
+.mx-body.has-panel{grid-template-rows:auto 1fr}
+.mx-p-cols>.mx-p-sec:first-child>:is(h3,p){grid-column:1}
+.mx-p-cols>.mx-p-sec:first-child>:is(.mx-p-yrs,.mx-p-years){grid-column:2;grid-row:1/span 2}
+.mx-p-cols>.mx-p-sec:first-child>p{min-height:0}
+/* Z4-12: the neighbours' strip in the panel's pixels; on phones its subtitle under its title and the nearest UATs as rows. */
+.mx-p-near-box{width:100%;min-height:96px;margin-top:6px}
+.mx-p-nrows,.mx-phone-only{display:none}
+.mx-p-nrows{margin:10px 0 0;padding:0;list-style:none}
+.mx-p-nrow{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 2px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);text-align:left;font-size:15px}
+.mx-p-nrow>span{font:500 12.5px var(--mono);color:var(--muted)}
+.mx-p-nrow>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.mx-p-nrow>em{font:600 14px var(--mono);font-style:normal}
+.mx-p-nrow.is-me>b,.mx-p-nrow.is-me>em{color:var(--orange);font-weight:600}
+@media (max-width:1180px){.mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr))}.mx-p-sec>p{min-height:3.9em}}
+@media (max-width:640px){
+  .mx-p-cols{grid-template-columns:1fr}
+  .mx-p-cols>.mx-p-sec:first-child{display:block}
+  .mx-p-sec>p{min-height:0}
+  .mx-p-acts .mx-p-act{min-height:44px}
+  .mx-p-wide h3{display:block}
+  .mx-p-wide h3 small{display:block;margin-top:2px}
+  .mx-p-nrows{display:block}
+  .mx-wide-only{display:none}
+  .mx-phone-only{display:inline}
+}

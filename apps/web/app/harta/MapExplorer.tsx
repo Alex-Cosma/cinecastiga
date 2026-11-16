@@ -48,7 +48,7 @@ const KINDS: KitOption[] = [
 const UNIT: Record<MapMetric, string> = { perCapita: "pe locuitor", perBed: "pe pat", perPupil: "pe elev", value: "contractați" };
 /** The kind's words: its institutions (plural, articled) and its address word. */
 const KIND_WORDS: Record<MapKind, { plural: string; button: string }> = {
-  local_admin: { plural: "UAT-urile", button: "Primării și CJ" },
+  local_admin: { plural: "UAT\u2011urile", button: "Primării și CJ" },
   hospitals: { plural: "Spitalele", button: "Spitale" },
   schools: { plural: "Școlile și grădinițele", button: "Școli și grădinițe" },
 };
@@ -601,7 +601,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
       </section>
 
       <aside className="mx-rank" aria-labelledby="mx-rank-h" aria-busy={!level || stale || undefined}>
-        <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : "UAT-urile") : "Județele"} {/* The hovered area's place is not repeated here: its row is lit (owner, 8 November 2026). */}<span>lei {UNIT[metric]}{metric === "perBed" ? ` · ${BEDS_YEAR}` : metric === "perPupil" ? ` · ${PUPILS_YEAR}` : ""}</span></h2>
+        <h2 id="mx-rank-h">{county ? (dots ? KIND_WORDS[kind].plural : county === "bucuresti" ? "Sectoarele" : NB("UAT-urile")) : "Județele"} {/* The hovered area's place is not repeated here: its row is lit (owner, 8 November 2026). */}<span>lei {UNIT[metric]}{metric === "perBed" ? ` · ${BEDS_YEAR}` : metric === "perPupil" ? ` · ${PUPILS_YEAR}` : ""}</span></h2>
         {!level ? <RankGhost names={county ? (dots ? null : uatGeo?.uats.map((u) => u.name) ?? null) : geo?.counties.map((c) => c.name) ?? null} rows={county ? null : 42}
           city={county === "bucuresti"} folded={unfolded !== (county ?? "")} key={county ?? ""} /> : <>
         {county && loc?.city && <div className={`mx-city${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
@@ -649,7 +649,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         <p className="mx-note">{hospitals
           ? (county ? "Fiecare spital e desenat în orașul lui, nu la adresă." : metric === "perBed" ? "Lei pe pat: valoarea din 2025 a spitalelor cu paturi, la paturile lor aprobate." : "")
           : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși. " : ""}Doar ce cumpără școala sau grădinița <Term id="scolile-harta" tip />.</>
-          : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : "Un județ se împarte la locuitorii UAT-urilor ale căror primării le identificăm."} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
+          : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : `Un județ se împarte la locuitorii ${NB("UAT-urilor")} ale căror primării le identificăm.`} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
       </aside>
       {county && uat && !dots && <UatPanel siruta={uat} query={selection} hint={byKey.get(uat) && { name: byKey.get(uat)!.name, county: countyArea?.name, gap: byKey.get(uat)!.perCapita === null }}
         onClose={() => closeTo(county)} onPick={openUat} />}

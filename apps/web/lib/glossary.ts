@@ -204,7 +204,7 @@ export const GLOSSARY = {
   },
   "grup-populatie": {
     title: "Grup după populație",
-    text: "Grupul depinde doar de populație, nu de anul sau domeniul ales. Comunele, orașele și municipiile pot fi în același grup; consiliile județene se compară după populația județului.",
+    text: "Grupul depinde doar de populație, nu de anul sau domeniul ales. Comunele, orașele și municipiile pot fi în același grup; consiliile județene se compară după populația județului. Pe hartă, o primărie e comparată cu primăriile din județul ei; aici, cu administrații de aceeași mărime din toată țara.",
   },
   "grup-activitate": {
     title: "Grup după activitate",
