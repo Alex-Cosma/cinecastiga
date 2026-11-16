@@ -75,3 +75,8 @@ table.rank td.tp-value .src a{font-size:12px;color:var(--ink2);text-underline-of
   .tp-countries .tp-wide-only{display:none}
   .tp-countries a,.tp-all-countries{min-height:44px}
 }
+/* By value, where the rows without a lei contract value begin (UX audit Z6-11). */
+table.rank tr.tp-sep-row td{padding:14px 14px 8px;background:var(--sunk);font-size:13px;font-weight:600;color:var(--ink2)}
+.tp-sep-row .term-tip{margin-left:4px}
+.dsc-pg.tp-pager{margin-top:8px}
+@media (max-width:720px){.ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-sep-row{display:block;padding:12px 14px}.ask-tablewrap.rank-stack.tp-stack table.rank tbody tr.tp-sep-row td{display:block;padding:0;background:none}}

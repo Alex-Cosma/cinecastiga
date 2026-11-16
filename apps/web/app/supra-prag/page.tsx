@@ -17,6 +17,7 @@ import { GLOSSARY } from "@/lib/glossary";
 import { FOREIGN } from "@/lib/ted-columns";
 import OpenFunnel from "./OpenFunnel";
 import DiscoverNav from "@/components/discover/DiscoverNav";
+import DiscoverPager from "@/components/discover/DiscoverPager";
 import "./supra-prag.css";
 
 export const dynamic = "force-dynamic";
@@ -195,7 +196,7 @@ export default async function SupraPragPage({
       <section className="section">
         <h2>Explorează atribuirile</h2>
         <UrlFilterBand table="ted" />
-        <p className="hint">{formatInt(awards.total)} rezultate · {sort === "value" ? "după valoare, doar sumele în lei" : "cele mai noi întâi"}</p>
+        <p className="hint">{formatInt(awards.total)} rezultate · {sort === "value" ? "după valoarea în lei; la final, cele fără o valoare de contract în lei" : "cele mai noi întâi"}</p>
         {countries.includes(TED_COUNTRY_UNRESOLVED) ? <p className="hint">
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
@@ -220,8 +221,12 @@ export default async function SupraPragPage({
             </tr>
           </thead>
           <tbody>
-            {awards.rows.map((a) => { const source = sourceValues(a); return (
+            {awards.rows.map((a, i) => { const source = sourceValues(a); const at = (page - 1) * PAGE_SIZE + i; return (
               <Fragment key={a.tedLotResultId}>
+              {/* By value, the rows without a lei contract value come last, under one line (UX audit Z6-11). */}
+              {awards.valued !== undefined && at >= awards.valued && (at === awards.valued || i === 0) ? <tr className="tp-sep-row"><td colSpan={4}>
+                Fără o valoare de contract în lei · {formatInt(awards.total - awards.valued)}{at > awards.valued ? " (continuare)" : ""}
+                <Term tip title="Fără o valoare de contract în lei" text="Sume în altă monedă, plafoane de acord-cadru sau rezultate fără sumă: nu se compară cu valorile în lei, așa că vin după ele, cele mai noi întâi." /></td></tr> : null}
               <tr className={source ? "tp-has-src" : undefined}>
                 <td>
                   <EntityName id={a.buyerEntityId} role="authority">{cleanName(a.buyerName)}</EntityName>
@@ -262,15 +267,8 @@ export default async function SupraPragPage({
 
         {awards.rows.length === 0 ? <p className="note">Niciun rezultat cu filtrele alese. <RegionLink href="/supra-prag" scroll>Vezi toate rezultatele TED</RegionLink>.</p> : null}
 
-        {totalPages > 1 ? (
-          <div className="pager">
-            {page > 1 ? <RegionLink href={pageUrl(page - 1)} scroll>← anterioarele</RegionLink> : <span className="off">← anterioarele</span>}
-            <span className="pager-pos">
-              pagina {formatInt(page)} / {formatInt(totalPages)} · {formatInt(awards.total)} rezultate
-            </span>
-            {page < totalPages ? <RegionLink href={pageUrl(page + 1)} scroll>următoarele →</RegionLink> : <span className="off">următoarele →</span>}
-          </div>
-        ) : null}
+        {/* The pager of the „Descoperă” pages (UX audit Z6-14); the last page is read from the end, as quick as the first. */}
+        {totalPages > 1 ? <DiscoverPager page={page - 1} pageSize={PAGE_SIZE} total={awards.total} unit={["rezultat", "rezultate"]} href={(p) => pageUrl(p + 1)} link={RegionLink} scroll bottom className="tp-pager" /> : null}
 
         <p className="note ted-tip-line ted-tip-up">
           Potrivirile posibile sunt marcate separat de cele confirmate <Term id="potrivire-ted" tip /> · <Link href="/metodologie">Metodologia →</Link>
