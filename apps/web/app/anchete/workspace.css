@@ -167,3 +167,17 @@
 @media(prefers-reduced-motion:reduce){.iw-menu{transition:none}}
 :root[data-theme=dark] .iw-menu{box-shadow:0 10px 28px rgba(0,0,0,.45)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .iw-menu{box-shadow:0 10px 28px rgba(0,0,0,.45)}}
+
+/* "Pe scurt" (Z8-07): one row on a phone, which opens into the band; the band as before on a wide screen. */
+.iw-brief-toggle{display:none!important}
+@media(max-width:700px){
+  .iw-brief-title{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .iw-shell .iw-brief-toggle{display:flex!important;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:48px;padding:12px 14px;border:0;border-radius:10px;background:var(--sunk);color:var(--ink);font-size:14px;font-weight:400;text-align:left;font-variant-numeric:tabular-nums}
+  .iw-shell .iw-brief-toggle:hover{background:var(--sunk)}
+  .iw-brief-chevron{flex:none;width:8px;height:8px;border-right:1.5px solid var(--accent);border-bottom:1.5px solid var(--accent);transform:rotate(45deg) translateY(-2px);transition:transform .16s ease}
+  .iw-brief-toggle[aria-expanded=true] .iw-brief-chevron{transform:rotate(-135deg) translate(-2px,0)}
+  .iw-brief-toggle[aria-expanded=true]{border-radius:10px 10px 0 0}
+  .iw-brief-body[data-open=false]{display:none}
+  .iw-brief-body[data-open=true] .iw-brief-facts{border-radius:0 0 10px 10px;padding-top:4px}
+}
+@media(prefers-reduced-motion:reduce){.iw-brief-chevron{transition:none}}
