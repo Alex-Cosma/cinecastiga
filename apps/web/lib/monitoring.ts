@@ -29,7 +29,8 @@ function watchSummary(row:Record<string,unknown>):MonitoringWatch {
     paused:!!row.paused,preferences:row.preferences as MonitoringWatch["preferences"],createdAt:date(row.created_at)!,updatedAt:date(row.updated_at)!,pinnedAt:date(row.pinned_at)!,
     recipeId:decimal(row.recipe_id),recipeVersion:row.recipe_version==null?null:Number(row.recipe_version),
     lastSuccessRunId:decimal(row.last_success_run_id),lastSuccessAt:date(row.last_success_at),lastAttemptAt:date(row.last_attempt_at),lastError:decimal(row.last_error),
-    unreadCount:Number(row.unread_count??0),scopeNotes:(row.scope_notes??[]) as string[]};
+    unreadCount:Number(row.unread_count??0),scopeNotes:(row.scope_notes??[]) as string[],
+    lastTotalExact:decimal(row.last_total_exact),lastRowCount:row.last_row_count==null?null:Number(row.last_row_count)};
 }
 export function monitoringRunSummary(row:Record<string,unknown>):MonitoringRun {
   return {id:String(row.id),watchId:String(row.watch_id),watchTitle:String(row.watch_title??""),checkpointId:String(row.checkpoint_id),previousRunId:decimal(row.previous_run_id),previousCheckedAt:date(row.previous_checked_at),
@@ -96,8 +97,11 @@ export async function getMonitoringWatch(userId:string,id:string,sql=monitoringD
 }
 export async function listMonitoringWatches(userId:string,after?:string,sql=monitoringDatabase()){
   if(after&&!isWorkspaceId(after))throw new MonitoringError("Poziție invalidă.");
-  const items=await sql`select w.*,(select count(*) from app.monitoring_runs r left join app.monitoring_reviews v on v.run_id=r.id where r.watch_id=w.id and r.has_alert and v.run_id is null) unread_count
-    from app.monitoring_watches w where w.owner_user_id=${userId}
+  // What each watch holds now (audit Z8-39): its last complete check's total and records, with the list.
+  const items=await sql`select w.*,(select count(*) from app.monitoring_runs r left join app.monitoring_reviews v on v.run_id=r.id where r.watch_id=w.id and r.has_alert and v.run_id is null) unread_count,
+      last.total_exact::text last_total_exact,last.row_count last_row_count
+    from app.monitoring_watches w left join lateral (select r.total_exact,r.row_count from app.monitoring_runs r where r.id=w.last_success_run_id) last on true
+    where w.owner_user_id=${userId}
       and ${after?sql`(w.created_at,w.id)<(select created_at,id from app.monitoring_watches where id=${after} and owner_user_id=${userId})`:sql`true`}
     order by w.created_at desc,w.id desc limit 51`;
   const page=items.slice(0,50);
