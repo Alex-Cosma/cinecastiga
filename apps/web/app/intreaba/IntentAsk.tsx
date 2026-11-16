@@ -13,7 +13,7 @@ export type { IntentChoice } from "./intent-line";
 
 export const MAX_QUESTION_CHARS = 300;
 
-export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false }: {
+export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = false, onBuild }: {
   value: string;
   onChange: (value: string) => void;
   onSubmit: (value: string) => void;
@@ -21,6 +21,8 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
   inputRef: RefObject<HTMLInputElement | null>;
   /** An answer on screen folds the box into „Întreabă altceva…” (AskPanel). */
   hidden?: boolean;
+  /** Opens the step-by-step builder; absent while it is open. Its door is here, under the box (owner, 16 November 2026). */
+  onBuild?: (() => void) | undefined;
 }) {
   return (
     <form className="ia-ask" role="search" hidden={hidden} onSubmit={(event) => { event.preventDefault(); onSubmit(value); }}>
@@ -38,7 +40,7 @@ export function AskBox({ value, onChange, onSubmit, loading, inputRef, hidden = 
         />
         <button type="submit" disabled={loading || value.trim().length < 2}>{loading ? "Citesc întrebarea…" : "Întreabă"}</button>
       </div>
-      <p id="ia-help" className="ia-help">Scrie ca unui om: ce, unde, când. Îți arătăm cum am înțeles întrebarea, o poți corecta, apoi vezi răspunsul și înregistrările din spatele lui.</p>
+      <p id="ia-help" className="ia-help">Scrie ce, unde, când.{onBuild && <> · <button type="button" className="ia-build-link" onClick={onBuild}>sau construiește pas cu pas →</button></>}</p>
     </form>
   );
 }

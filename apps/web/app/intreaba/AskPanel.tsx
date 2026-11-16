@@ -1037,6 +1037,16 @@ export default function AskPanel({
   />;
   // The box stays open while it has something to say about the words in it: an error, a choice, an unread question.
   const askFolded = builderOpen && builderCollapsed && mode === "build" && !askUnfolded && !intentLoading && !intentError && !(intent && !intent.spec);
+  // The builder's door is the link under the box: it opens under the examples and takes the focus, in view.
+  const openBuilder = () => {
+    setBuilderOpen(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const heading = document.getElementById("ia-builder-title");
+      if (!heading) return;
+      heading.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+      heading.focus({ preventScroll: true });
+    }));
+  };
   const askAgain = () => {
     setAskUnfolded(true);
     requestAnimationFrame(() => {
@@ -1060,7 +1070,7 @@ export default function AskPanel({
       <header className="cq-workspace-header ia-head" hidden={askFolded}>
         <h1><label htmlFor="ia-question" className="ia-title-label">Ce vrei să afli despre banii publici?</label></h1>
       </header>
-      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} hidden={askFolded} />
+      <AskBox value={askText} onChange={setAskText} onSubmit={(text) => void interpret(text)} loading={intentLoading} inputRef={askRef} hidden={askFolded} onBuild={builderOpen ? undefined : openBuilder} />
       {intentError && <div className="cq-error" role="alert"><strong>Întrebarea ta este păstrată.</strong><p>{intentError}</p></div>}
       <IntentAnnouncer result={intent} error={intentError} />
       {intent && !intent.spec && intent.alternatives.some((alt) => alt.kind !== "intent") && !chosen && <IntentChoose result={intent} onAdopt={adopt} />}
@@ -1164,7 +1174,7 @@ export default function AskPanel({
         </div>
       ) : builderOpen ? (
         <div hidden={mode !== "build"} id="intrebarea" className="ia-builder">
-          <h2 className="ia-builder-title">Construiește întrebarea pas cu pas</h2>
+          <h2 className="ia-builder-title" id="ia-builder-title" tabIndex={-1}>Construiește întrebarea pas cu pas</h2>
           <QuestionBuilder
             key={builderInit ? encodeSpec(builderInit) : "start"}
             initial={builderInit}
@@ -1179,12 +1189,7 @@ export default function AskPanel({
             onTrendList={trendListFromBuilder}
           />
         </div>
-      ) : (
-        <button type="button" className="ia-open-builder" onClick={() => setBuilderOpen(true)}>
-          <strong>Construiește întrebarea pas cu pas</strong>
-          <span>Alege din 13 modele de întrebări: clasamente, totaluri, evoluții, comparații, relații și semnale.</span>
-        </button>
-      )}
+      ) : null}
       {loading && <Loader label="Căutăm răspunsul în date" />}
       {/* No answer on screen yet (a link, a first question, a retry): its ghost where it will stand, shaped by the
           question asked, after 120 ms so a quick answer never shows it. A new answer over one on screen dims it instead. */}
