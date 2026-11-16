@@ -603,3 +603,8 @@ button.qb-mix-row:hover .qb-mix-only-w,button.qb-mix-row:focus-visible .qb-mix-o
    columns with the share under each word, at every width (at 1280 „Lucrări 0,0%” fell alone onto a second line). */
 .qb-seg.qb-seg--kinds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; box-sizing: border-box; }
 .qb-seg--kinds .qb-seg-opt { min-width: 0; padding: 6px 4px; flex-direction: column; gap: 0; white-space: normal; text-align: center; }
+
+/* Z2-21 (UX audit, 16 November 2026): the kit's committing button is the site's primary action, the same green as
+   „Întreabă” and „Vezi înregistrările sursă” (--accent on --on-accent), not the kit's own moss green. */
+.qb-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.qb-primary:hover, .qb-primary.is-hover { background: var(--ink); border-color: var(--ink); }
