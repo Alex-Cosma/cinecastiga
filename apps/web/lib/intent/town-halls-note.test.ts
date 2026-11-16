@@ -27,3 +27,10 @@ describe("the town halls' note", () => {
     expect(i.notes.filter((x) => /Nu putem restrânge/.test(x))).toHaveLength(1);
   });
 });
+
+describe("the namesakes' note (UX audit, zone 2 bug „51 firme se potrivesc”)", () => {
+  it("says „de” from 20 on", async () => {
+    const notes = (await read("cu ce instituții lucrează firma Popa")).notes.filter((n) => /se potrivesc/.test(n));
+    for (const note of notes) expect(note).not.toMatch(/^(?:[2-9]\d|1\d\d) (?:firme|instituții)/);
+  });
+});

@@ -782,7 +782,7 @@ export class RulesInterpreter implements QuestionInterpreter {
       const shown = r.hits.slice(0, 6);
       out.entityAlternatives = shown.map((e) => ({ role: r.role, id: e.id, name: e.name, county: e.county, matched: span }));
       if (r.total > shown.length) out.choicesPartial = { shown: shown.length, total: r.total, search, hint: ENTITY_HINT };
-      out.notes.push(`${r.total} ${r.role === "supplier" ? "firme" : "instituții"} se potrivesc cu „${span.text}”.`);
+      out.notes.push(`${r.role === "supplier" ? countWords(r.total, "firmă", "firme") : countWords(r.total, "instituție", "instituții")} se potrivesc cu „${span.text}”.`);
       return "many";
     }
     return "none";

@@ -106,15 +106,34 @@ export function IntentUnknown({ result, onPick }: { result: IntentResult; onPick
   );
 }
 
-/** Several readings and none chosen (namesakes, same-named institutions or firms, localities of the same name). */
+/**
+ * What the namesakes are, for the line under the list (UX audit Z2-09): firms, institutions, people, from the readings
+ * offered; „potriviri” when they mix.
+ */
+export function namesakeNoun(result: IntentResult): readonly [string, string] {
+  const choices = result.alternatives.filter((alt) => alt.kind !== "intent");
+  if (choices.length && choices.every((alt) => alt.kind === "person")) return ["persoană", "persoane"];
+  const f = (alt: (typeof choices)[number]) => alt.spec.filters as { supplierId?: unknown; authorityId?: unknown };
+  if (choices.length && choices.every((alt) => f(alt).supplierId !== undefined && f(alt).authorityId === undefined)) return ["firmă", "firme"];
+  if (choices.length && choices.every((alt) => f(alt).authorityId !== undefined && f(alt).supplierId === undefined)) return ["instituție", "instituții"];
+  return ["potrivire", "potriviri"];
+}
+
+/**
+ * Several readings and none chosen (namesakes, same-named institutions or firms, localities of the same name). With
+ * more namesakes than shown, one question and one line (UX audit Z2-09): „Care „Dacia”?”, the choices, „6 din 51 de
+ * firme · Caută toate „Dacia” →”; the count is not said a third time in a note.
+ */
 export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdopt: (choice: IntentChoice) => void }) {
   const partial = result.interpretation.choicesPartial;
   const choices = result.alternatives.filter((alt) => alt.kind !== "intent");
+  const notes = partial ? result.interpretation.notes.filter((note) => !/ se potrivesc? cu „/.test(note)) : result.interpretation.notes;
+  const noun = namesakeNoun(result);
   return (
     <section className="ia-panel ia-choose" aria-labelledby="ia-result-title">
-      <h2 id="ia-result-title" tabIndex={-1}>{result.problem}</h2>
+      <h2 id="ia-result-title" tabIndex={-1}>{partial ? <>Care „{partial.search}”?</> : result.problem}</h2>
       {result.interpretation.placeNote && <p className="ia-note">{result.interpretation.placeNote}</p>}
-      {result.interpretation.notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
+      {notes.map((note, i) => <p key={i} className="ia-note">{note}</p>)}
       <ul className="ia-choices">
         {choices.map((alt, i) => (
           <li key={i}>
@@ -127,7 +146,7 @@ export function IntentChoose({ result, onAdopt }: { result: IntentResult; onAdop
       </ul>
       {partial && (
         <p className="ia-partial">
-          Lista arată {partial.shown} din {countWords(partial.total, "potrivire", "potriviri")}. Dacă nu găsești ce cauți, <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>caută „{partial.search}”</a>. {partial.hint ?? "Scrie numele complet, cu localitatea ori anul nașterii."}
+          {partial.shown} din {countWords(partial.total, noun[0], noun[1])} · <a href={`/cauta?q=${encodeURIComponent(partial.search)}`}>Caută toate „{partial.search}” →</a>
         </p>
       )}
     </section>
