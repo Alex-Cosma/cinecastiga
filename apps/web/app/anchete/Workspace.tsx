@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { EntryKind, InvestigationWorkspace, WorkspaceEntry } from "@/lib/investigation-workspace";
 import type { SourceEvent } from "@/lib/anchete";
@@ -42,6 +43,7 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
   investigationId: string; initial: InvestigationWorkspace; clips: WorkspaceClip[]; evidence: EvidenceItem[]; sourceEvents: SourceEvent[]; initialTab?: WorkspaceTab;
 }) {
   const [workspace, setWorkspace] = useState(initial);
+  const router = useRouter();
   const [tab, setTab] = useState<WorkspaceTab>(initialTab);
   const [editing, setEditing] = useState<WorkspaceEntry | EntryKind | null>(null);
   const [busy, setBusy] = useState(false);
@@ -92,7 +94,8 @@ export default function Workspace({ investigationId, initial, clips, evidence, s
       const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "Modificarea nu a fost salvată.");
       const fresh = await fetch(`/api/anchete/${investigationId}/workspace`, { cache: "no-store" });
       if (!fresh.ok) throw new Error("Modificarea a fost salvată, dar dosarul nu s-a reîncărcat. Reîncarcă pagina.");
-      setWorkspace(await fresh.json()); setNotice(done); return true;
+      // The server's parts of the page ("Pe scurt", the counts) read the same change (bug: they kept the old state).
+      setWorkspace(await fresh.json()); setNotice(done); router.refresh(); return true;
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Nu am putut salva. Încearcă din nou."); return false; }
     finally { setBusy(false); }
   }
