@@ -1190,3 +1190,14 @@
   .cq-locate { align-items: flex-start; }
   .cq-locate .qb-find { flex: 1 1 150px; }
 }
+
+/* Z2-11 (UX audit, 16 November 2026): „am ignorat N cuvinte ›” beside the line's short clauses opens the words left out
+   and the long notes in a box under it, as „Altfel” opens the other readings. */
+.cq-understood-pop { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; box-sizing: border-box; width: min(360px, calc(100vw - 32px)); padding: 10px 12px; background: var(--surface); border: 1px solid var(--line2, var(--line)); border-radius: 8px; box-shadow: var(--shadow2); color: var(--ink2); font: 400 13px/1.55 var(--body); white-space: normal; text-align: left; }
+.cq-understood-pop[hidden] { display: none; }
+.cq-understood-pop--end { left: auto; right: 0; }
+.cq-understood-pop p { margin: 0; max-width: none; }
+.cq-understood-pop p + p { margin-top: 6px; }
+@media (max-width: 600px) { .cq-understood-pop, .cq-understood-pop--end { left: 0; right: auto; width: min(360px, 100%); } }
+/* On phones the title search says its words only; the link keeps the place and the years (Z2-11: the line stays short). */
+@media (max-width: 600px) { .cq-understood-wide { display: none; } }

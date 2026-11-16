@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type RefObject } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import type { IntentResult } from "@/lib/intent/types";
 import { countWords } from "@/lib/ask/answer-text";
 import { ASK_EXAMPLE_GROUPS, FALLBACK_EXAMPLES, type AskExample } from "./ask-examples";
@@ -143,17 +143,59 @@ export function IntentAnnouncer({ result, error }: { result: IntentResult | null
   return <p className="d-sr-only" role="status" aria-live="polite">{text}</p>;
 }
 
+/** A clause as a sentence of its own: its first letter up, its full stop. */
+const asSentence = (clause: string) => {
+  const text = clause.charAt(0).toLocaleUpperCase("ro-RO") + clause.slice(1);
+  return /[.!?…]$/.test(text) ? text : `${text}.`;
+};
+
+/**
+ * The line's "›" beside its short clauses (UX audit Z2-11): the words left out and the notes too long for the line,
+ * in a box under it. A press elsewhere or Escape closes it.
+ */
+function UnderstoodMore({ ignored, more, first }: { ignored: readonly string[]; more: readonly string[]; first: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [end, setEnd] = useState(false);
+  const id = useId();
+  const root = useRef<HTMLSpanElement>(null), button = useRef<HTMLButtonElement>(null), box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (event: PointerEvent) => { if (!(event.target instanceof Node) || !root.current?.contains(event.target)) setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+  }, [open]);
+  // Past the page's right edge, the box hangs from the button's right side instead.
+  useLayoutEffect(() => {
+    if (!open || !box.current) { setEnd(false); return; }
+    setEnd(box.current.getBoundingClientRect().right > document.documentElement.clientWidth - 8);
+  }, [open]);
+  const words = ignored.length ? `am ignorat ${countWords(ignored.length, "cuvânt", "cuvinte")}` : "detalii";
+  return (
+    <span className="cq-understood-more" ref={root}
+      onKeyDown={(event) => { if (event.key === "Escape" && open) { event.preventDefault(); event.stopPropagation(); setOpen(false); button.current?.focus(); } }}>
+      <button ref={button} type="button" className="cq-understood-alt" aria-expanded={open} aria-controls={id} onClick={() => setOpen((value) => !value)}>
+        {first ? words.charAt(0).toLocaleUpperCase("ro-RO") + words.slice(1) : words}<span aria-hidden="true">›</span>
+      </button>
+      <div id={id} ref={box} className={`cq-understood-pop${end ? " cq-understood-pop--end" : ""}`} hidden={!open}>
+        {ignored.length > 0 && <p>Am ignorat {ignored.map((word) => `„${word}”`).join(", ")}.</p>}
+        {more.map((note, i) => <p key={i}>{asSentence(note)}</p>)}
+      </div>
+    </span>
+  );
+}
+
 /**
  * Under the answer's title (owner, 1 November 2026): what was assumed, the other readings (each answered at once)
- * and the words left out, one muted line; a part with nothing to say is left out.
+ * and the words left out, one muted line; a part with nothing to say is left out. At most two short clauses stay on
+ * the line; the words left out and the long notes wait behind „am ignorat N cuvinte ›” (UX audit Z2-11).
  */
 export function IntentLine({ line, onAdopt }: { line: UnderstoodLine; onAdopt: (choice: IntentChoice) => void }) {
   // On phones "am ales" drops out of the place clause so the line stays one line (owner, 2 November 2026).
   const clause = (note: string) => note.startsWith("am ales ") ? <><span className="cq-understood-verb">am ales </span>{note.slice(8)}</> : note;
   const parts = [
     ...(line.notes.length ? [<>Am înțeles: {line.notes.map((note, i) => <Fragment key={i}>{i > 0 && " · "}{clause(note)}</Fragment>)}</>] : []),
-    ...(line.ignored.length ? [<>Am ignorat {line.ignored.map((word) => `„${word}”`).join(", ")}</>] : []),
-    ...(line.titles ? [<a href={line.titles.href}>caută „{line.titles.words}” în titluri{line.titles.where ? `, la ${line.titles.where}` : ""}{line.titles.period ? `, ${line.titles.period}` : ""}</a>] : []),
+    ...(line.ignored.length || line.more.length ? [<UnderstoodMore ignored={line.ignored} more={line.more} first={!line.notes.length} />] : []),
+    ...(line.titles ? [<a href={line.titles.href}>caută „{line.titles.words}” în titluri<span className="cq-understood-wide">{line.titles.where ? `, la ${line.titles.where}` : ""}{line.titles.period ? `, ${line.titles.period}` : ""}</span></a>] : []),
     ...(line.options.length ? [<span className="cq-understood-more"><RowMenu
       name="Alte lecturi ale întrebării"
       trigger={{ text: <>Altfel ({line.options.length})<span aria-hidden="true">›</span></>, className: "cq-understood-alt", label: `Altfel: ${countWords(line.options.length, "altă lectură", "alte lecturi")} ale întrebării` }}

@@ -8,6 +8,7 @@ import { placeKey } from "./places";
 import { AMOUNT_LENS, ANY_AMOUNT, KIND_WORDS, LENS_PHRASES, NOT_MOST_OFTEN, SEAT_LENSES, amountBound } from "./lens-phrases";
 import { AMOUNT_VERBS, NUMBER_WORDS, STOPWORDS, fold, personPatterns, rawSpan, stems, tokenize, wordMatches, type Token } from "./text";
 import { spell } from "./spelling";
+import { KIND_WORDS as KIND_PLURALS } from "../ask/question-ui";
 import type {
   CpvHit, EntityHit, EntityMatch, IntentKind, InterpretContext, Interpretation, PersonHit, PersonMatch,
   PlaceEntry, PlaceMatch, QuestionInterpreter, Span, Vocabulary,
@@ -407,7 +408,8 @@ export class RulesInterpreter implements QuestionInterpreter {
     this.modifiers(c, out);
     await this.fiscalCodes(c, out);
     await this.people(c, out);
-    const cues = this.cues(c, out);
+    const townHalls = { said: false };
+    const cues = this.cues(c, out, townHalls);
     this.lenses(c, out);
     await this.kinds(c, out);
     const compareCue = cues.find((x) => x.intent === "compare")?.at ?? null;
@@ -467,6 +469,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     // „cine câștigă la CJ”: one county council named without its county is every county council, and said
     if (out.authorityKind?.kind === "consiliu_judetean" && /^(cj|consiliul|consiliului)$/.test(fold(out.authorityKind.matched.text.split(/\s+/)[0] ?? ""))
       && !out.place && !out.placeAmbiguous && !out.authority) out.notes.push(COUNTY_COUNCILS_NOTE);
+    this.townHallsNote(out, townHalls.said);
     this.settleIntent(cues, out);
     this.leftover(c, out);
     this.score(c, out);
@@ -634,7 +637,7 @@ export class RulesInterpreter implements QuestionInterpreter {
     for (const h of c.all(MODIFIER)) c.take(h.i, h.j, "modifier");
   }
 
-  private cues(c: Cursor, out: Interpretation): { intent: IntentKind; at: number }[] {
+  private cues(c: Cursor, out: Interpretation, townHalls: { said: boolean }): { intent: IntentKind; at: number }[] {
     const found: { intent: IntentKind; at: number }[] = [];
     // rf-2026.18: „finalizare rapidă” is no signal any more (owner decision, 1 November 2026). The words still ask the
     // signals' question, on the whole group, and the answer says why none is applied.
@@ -657,14 +660,26 @@ export class RulesInterpreter implements QuestionInterpreter {
     // "care firmă …" / "care instituție …" is itself a (one-row) ranking
     if (out.superlative && out.dimHint && !found.some((x) => x.intent.startsWith("ranking")))
       found.push({ intent: out.dimHint === "supplier" ? "ranking_suppliers" : "ranking_authorities", at: 0 });
-    // "primării" alone has no kind in the engine: say what the ranking covers
+    // "primării" alone has no kind in the engine: what the ranking covers is said once the reading is final (townHallsNote)
     for (const h of c.all(/\bprimari(?:i|ile|ilor)\b/)) {
       c.take(h.i, h.j, "kind");
       if (!out.authorityKind) out.askedTownHalls = true;
-      if (out.measure !== "value_per_capita" && !out.authorityKind)
-        out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); arătăm toate instituțiile. Valoarea pe locuitor se calculează doar pentru primării.");
+      townHalls.said = true;
     }
     return found;
+  }
+
+  /**
+   * „primăriile” said (UX audit Z2-11): the note is written after the final reading, with what it kept. No kind read:
+   * every institution is ranked. Another kind read („consiliul județean și primăriile”): only that kind is kept, said
+   * first, with the town halls left out. A town hall kind („primăriile de comună”) needs no note.
+   */
+  private townHallsNote(out: Interpretation, said: boolean) {
+    if (!said || out.measure === "value_per_capita") return;
+    const kind = out.authorityKind?.kind;
+    if (!kind) out.notes.push("Nu putem restrânge clasamentul doar la primării (primăriile de comună și de oraș sunt tipuri separate); arătăm toate instituțiile.");
+    else if (kind !== "comuna" && kind !== "oras_municipiu" && KIND_PLURALS[kind])
+      out.notes.unshift(`Doar ${KIND_PLURALS[kind]!.the}, fără primării.`);
   }
 
   /**
