@@ -188,3 +188,11 @@
 .iw-shell .iw-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:8px 16px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font-size:13px;font-weight:600;text-decoration:none}
 .iw-shell .iw-secondary:hover{background:var(--sunk);border-color:var(--accent-line)}
 .iw-empty-actions>button:not(.iw-primary){min-height:44px;font-weight:600}
+
+/* /anchete's head (Z8-11, Z8-12): the count beside the title, one "Dosar nou", the form under the head when asked for. */
+.iw-list-title{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;min-width:0}
+.iw-list-count{font:500 14px/1.2 var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.iw-new-panel{margin:-6px 0 28px;padding:20px 22px;border:1px solid var(--line2);border-radius:10px;background:var(--surface);max-width:760px}
+.iw-new-panel h2{font:600 20px/1.3 var(--display);margin:0 0 2px}.iw-new-panel>p{margin:0 0 14px}.iw-new-panel form{display:grid;gap:16px}.iw-new-panel>p:last-child{margin:14px 0 0}
+.iw-dossiers{margin:8px 0 44px}
+@media(max-width:700px){.iw-new-panel{padding:16px}}
