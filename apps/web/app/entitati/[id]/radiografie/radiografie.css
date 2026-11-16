@@ -31,7 +31,7 @@
 .rv-ranking .rv-th:hover,.rv-ranking .rv-th[data-on]{color:var(--ink)}
 .rv-ranking .rv-th:hover,.rv-ranking .rv-pick:hover{background:transparent;border-color:transparent}
 .rv-ranking .rv-th:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-.rv-sortmark{flex:none;margin-bottom:3px;opacity:0;transition:opacity .12s,transform .12s}
+.rv-sortmark{flex:none;margin-bottom:3px;opacity:0;transition:opacity var(--fast) var(--ease),transform var(--fast) var(--ease)}
 .rv-th:hover .rv-sortmark{opacity:.5}
 .rv-th[data-on] .rv-sortmark{opacity:1}
 .rv-th[data-dir=asc] .rv-sortmark{transform:rotate(180deg)}
@@ -39,7 +39,7 @@
 .rv-duelhead>span:first-child{text-align:right}
 .rv-duelhead .axis{height:14px;background:var(--line2)}
 .rv-rank td{padding:11px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
-.rv-rank tbody tr{cursor:pointer;transition:background .12s}
+.rv-rank tbody tr{cursor:pointer;transition:background-color var(--fast) var(--ease)}
 .rv-rank tbody tr:hover{background:color-mix(in srgb,var(--sunk) 60%,transparent)}
 .rv-rank tbody tr[aria-selected=true]{background:var(--accent-soft)}
 .rv-rank tbody tr[aria-selected=true] .c-name a{font-weight:600}

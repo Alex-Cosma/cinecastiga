@@ -228,3 +228,8 @@
 .d-question-card:hover{transform:none}
 .d-question-card{transition:box-shadow var(--fast) var(--ease),border-color var(--fast) var(--ease)}
 @media(prefers-reduced-motion:reduce){.d-question-card{transition:none}}
+
+/* UX audit motion, unify list: hand-written timings become the tokens (--fast, --ease). */
+.d-county{transition:fill var(--fast) var(--ease),opacity var(--fast) var(--ease)}
+.follow-action{transition:background-color var(--fast) var(--ease),border-color var(--fast) var(--ease)}
+@media(prefers-reduced-motion:reduce){.d-county{transition:none}}

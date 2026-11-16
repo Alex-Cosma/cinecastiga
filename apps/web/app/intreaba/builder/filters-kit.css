@@ -83,7 +83,7 @@
 
 /* ---------- 1. The sentence and its phrases; 1b. the fixed phrase; P5 presentation ---------- */
 .qb-sentence{margin:0 0 18px;font-family:var(--display);font-weight:500;font-size:clamp(24px,2.5vw,34px);line-height:1.75;letter-spacing:-.9px;color:var(--ink);text-wrap:pretty;overflow-wrap:anywhere}
-.qb-phrase{position:relative;display:inline-flex;align-items:baseline;max-width:100%;border:0;border-bottom:1px dashed var(--fk-phrase-line);border-radius:4px 4px 0 0;background:var(--fk-phrase-bg);color:var(--fk-green);font:inherit;letter-spacing:inherit;line-height:1.35;padding:.06em .15em .04em;transition:background 140ms}
+.qb-phrase{position:relative;display:inline-flex;align-items:baseline;max-width:100%;border:0;border-bottom:1px dashed var(--fk-phrase-line);border-radius:4px 4px 0 0;background:var(--fk-phrase-bg);color:var(--fk-green);font:inherit;letter-spacing:inherit;line-height:1.35;padding:.06em .15em .04em;transition:background-color var(--fast) var(--ease)}
 .qb-phrase>span{min-width:0;overflow-wrap:anywhere}
 /* A phrase glued to the punctuation after it (Sentence.tsx, .qb-nowrap) still wraps inside: a long name
    ("SELGROS CASH&CARRY SRL" at 320 px) breaks within the phrase and leaves room for its "?" or ",". */
@@ -172,7 +172,7 @@ span.qb-chip-main:hover{background:none}
 
 /* ---------- 7. Segmented (radiogroup, or tablist with the same drawing) ---------- */
 .qb-seg{display:inline-flex;align-items:stretch;gap:3px;max-width:100%;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--fk-well)}
-.qb-seg-opt{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:6px 12px;border-radius:7px;color:var(--fk-muted-strong);font-size:13px;line-height:1.3;font-weight:500;white-space:nowrap;transition:background 140ms,color 140ms}
+.qb-seg-opt{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:6px 12px;border-radius:7px;color:var(--fk-muted-strong);font-size:13px;line-height:1.3;font-weight:500;white-space:nowrap;transition:background-color var(--fast) var(--ease),color var(--fast) var(--ease)}
 .qb-seg-opt:hover,.qb-seg-opt.is-hover{color:var(--fk-green);background:color-mix(in srgb,var(--fk-seg-on) 55%,transparent)}
 .qb-seg-opt[aria-checked="true"],.qb-seg-opt[aria-selected="true"]{background:var(--fk-seg-on);color:var(--fk-green);box-shadow:var(--fk-shadow)}
 .qb-seg-opt[aria-disabled="true"]{opacity:.45}

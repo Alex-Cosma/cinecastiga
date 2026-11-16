@@ -7,7 +7,7 @@
 
 /* "Copiază citarea" (owner, 7 November 2026): the button; on a refused clipboard, the text in a field to copy by hand. */
 .cite{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 10px;max-width:100%}
-.cite .cite-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13px/1.3 var(--body);cursor:pointer;transition:background .16s ease,border-color .16s ease}
+.cite .cite-button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13px/1.3 var(--body);cursor:pointer;transition:background-color var(--fast) var(--ease),border-color var(--fast) var(--ease)}
 .cite .cite-button:hover{background:var(--sunk);border-color:var(--accent-line)}.cite .cite-button:disabled{opacity:.6;cursor:wait}
 .cite .cite-button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 .cite-error{font-size:13px;color:var(--risk)}

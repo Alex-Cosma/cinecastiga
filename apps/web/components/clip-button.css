@@ -5,7 +5,7 @@
  * `.clipbtn-pop` rules no longer reach it.
  */
 .clipbtn.clipbtn,.clipbtn.clipbtn:hover{display:inline-block;position:relative;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;transform:none;font:inherit}
-.clipbtn .clipbtn-t{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13.5px/1.2 var(--body);white-space:nowrap;cursor:pointer;transition:background var(--fast,.16s) ease,border-color var(--fast,.16s) ease}
+.clipbtn .clipbtn-t{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:8px 14px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 13.5px/1.2 var(--body);white-space:nowrap;cursor:pointer;transition:background-color var(--fast) var(--ease),border-color var(--fast) var(--ease)}
 .clipbtn .clipbtn-t:hover{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
 .clipbtn .clipbtn-t[aria-expanded=true]{background:var(--accent-soft);border-color:var(--accent-line)}
 .clipbtn .clipbtn-t:focus-visible{outline:2px solid var(--accent);outline-offset:3px}

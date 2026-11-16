@@ -39,7 +39,7 @@
 .ia-example:hover .ia-example-go { border-color: var(--accent); }
 /* With a mouse the icon shows on hover or keyboard focus only; touch screens keep it. */
 @media (hover: hover) and (pointer: fine) {
-  .ia-example-go { opacity: 0; transition: opacity .15s; }
+  .ia-example-go { opacity: 0; transition: opacity var(--fast) var(--ease); }
   .ia-example:hover .ia-example-go, .ia-example:focus-visible .ia-example-go { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) { .ia-example-go { transition: none; } }

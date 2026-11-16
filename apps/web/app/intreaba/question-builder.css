@@ -19,7 +19,7 @@
 .question-builder .qb-icon { display: inline-block; width: 19px; height: 19px; flex-shrink: 0; vertical-align: middle; }
 .qb-navigation { display: flex; justify-content: space-between; gap: 14px; align-items: center; margin: 0 0 17px; }
 .qb-shortcuts { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--qb-line); border-radius: 11px; background: var(--fk-well); }
-.qb-shortcuts button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 13px; border: 0; border-radius: 7px; color: var(--fk-muted-strong); background: transparent; font-size: 12px; line-height: 1.4; font-weight: 500; transition: background 140ms, color 140ms; }
+.qb-shortcuts button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 13px; border: 0; border-radius: 7px; color: var(--fk-muted-strong); background: transparent; font-size: 12px; line-height: 1.4; font-weight: 500; transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease); }
 .qb-shortcuts button[aria-pressed=true] { background: var(--qb-surface); color: var(--qb-green); box-shadow: 0 1px 4px #2b3d2510; }
 .qb-shortcuts button:hover { color: var(--qb-green); background: var(--qb-surface); }
 .qb-shortcuts .qb-icon { width: 16px; height: 16px; }
@@ -134,7 +134,7 @@
 /* ---------- F1b: the builder drawn from the registry with the kit (.qb-, builder/filters-kit.css) ----------
    Only tokens, so both themes follow; the places keep the kit's order: sentence, profile line, rows,
    invitations, chips under the sentence, parked row, then the notes and the bottom line. */
-.qb-editor-kit { display: flex; flex-direction: column; gap: 14px; transition: border-color 180ms; }
+.qb-editor-kit { display: flex; flex-direction: column; gap: 14px; transition: border-color var(--fast) var(--ease); }
 .qb-editor-kit.is-pending { border-color: var(--fk-phrase-line); }
 .qb-editor-kit > .qb-sentence, .qb-editor-kit > .qb-scopeline, .qb-editor-kit > .qb-under, .qb-editor-kit > .qb-parked { margin: 0; }
 .qb-editor-kit > .qb-row + .qb-row { margin-top: 0; }

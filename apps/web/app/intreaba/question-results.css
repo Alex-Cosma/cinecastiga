@@ -207,7 +207,7 @@
 @media (max-width: 600px) {
   .cq-scope-fold { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line-strong, var(--line)); border-radius: 8px; background: var(--surface); color: var(--accent); font: 600 14px/1.3 var(--body); cursor: pointer; }
   .cq-scope-fold:hover { border-color: var(--accent); background: var(--accent-soft); }
-  .cq-scope-chev { display: inline-block; transition: transform .16s ease; }
+  .cq-scope-chev { display: inline-block; transition: transform var(--fast) var(--ease); }
   .cq-scope[data-unfolded="true"] .cq-scope-chev { transform: rotate(90deg); }
   .cq-scope-fold { flex: none; white-space: nowrap; }
   /* Opened: the button keeps its own row, the pills start under it. */
