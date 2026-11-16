@@ -9,6 +9,10 @@ import type { MapUatResponse } from "@/lib/map-capita-shared";
 import { useTip } from "../intreaba/use-tip";
 import { useEntrance } from "./motion";
 
+/** The phone's sheet (UX audit Z4-02): the map's own phone breakpoint, and the header's height once the page is scrolled (SiteNav). */
+const SHEET = "(max-width: 640px)";
+const PHONE_HEADER = 53;
+
 /** The panel's hover tip (lib house rule: an instant tip on every mark, never the native title). */
 type Tip = ReturnType<typeof useTip>["bind"];
 
@@ -219,6 +223,33 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
 }) {
   const [state, setState] = useState<{ key: string; data: MapUatResponse | null; error: string }>({ key: "", data: null, error: "" });
   const t = useTip();
+  const self = useRef<HTMLElement>(null);
+  // Phones (owner, 16 November 2026, UX audit Z4-02, „Foaia de jos”): the panel is a sheet rising from the bottom, the
+  // map moved up under the header above it, so another touch changes the UAT; „Toată fișa ↑”, a tap or a drag up on
+  // the grip open it whole; a drag down lowers it, then closes it; Back and × close it before the page.
+  const [full, setFull] = useState(false);
+  const drag = useRef<number | null>(null);
+  useEffect(() => {
+    const el = self.current, root = el?.closest<HTMLElement>(".mx");
+    if (!el || !root) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (window.matchMedia(SHEET).matches) {
+      const stage = root.querySelector<HTMLElement>(".mx-stage"), map = root.querySelector<HTMLElement>(".mx-map");
+      if (stage && map) {
+        // The stage under the header (PHONE_HEADER once the page is scrolled), the sheet over the rest of the screen.
+        const top = Math.max(0, stage.getBoundingClientRect().top + window.scrollY - PHONE_HEADER - 8);
+        const mapBottom = map.getBoundingClientRect().bottom + window.scrollY - top;
+        root.style.setProperty("--mx-peek", `${Math.max(Math.round(window.innerHeight * 0.4), Math.round(window.innerHeight - mapBottom - 6))}px`);
+        window.scrollTo({ top, behavior: reduce ? "auto" : "smooth" });
+      }
+    } else if (window.matchMedia("(max-width: 980px)").matches) {
+      // Under the stage (980 px and less, owner 6 November 2026): brought into view, so the touch has a visible answer.
+      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    } else return;
+    el.focus({ preventScroll: true });
+    return () => { root.style.removeProperty("--mx-peek"); };
+  }, []);
+  const lower = () => { setFull(false); if (self.current) self.current.scrollTop = 0; };
   const key = `siruta=${siruta}&${query}`;
   useEffect(() => {
     const controller = new AbortController();
@@ -240,7 +271,18 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
 
   // The panel slides in once; another UAT only replays its content's cascade (the body's key).
   const failed = !d && Boolean(state.error) && !loading;
-  return <section className={`mx-panel${loading ? " is-loading" : ""}`} aria-labelledby="mx-p-h"><div className={`mx-p-body${!d && !failed ? " is-ghost" : ""}`} aria-busy={!d && !failed ? true : undefined} key={d?.uat.key ?? (failed ? "error" : "wait")}>
+  return <section ref={self} tabIndex={-1} className={`mx-panel${loading ? " is-loading" : ""}${full ? " is-full" : ""}`} aria-labelledby="mx-p-h">
+    <div className="mx-p-grip" aria-hidden="true"
+      onPointerDown={(e) => { drag.current = e.clientY; e.currentTarget.setPointerCapture(e.pointerId); }}
+      onPointerCancel={() => { drag.current = null; }}
+      onPointerUp={(e) => {
+        const from = drag.current; drag.current = null;
+        if (from === null) return;
+        const dy = e.clientY - from;
+        if (dy < -24 || (Math.abs(dy) < 8 && !full)) setFull(true);
+        else if (dy > 48 || Math.abs(dy) < 8) { if (full) lower(); else if (dy > 48) onClose(); }
+      }} />
+    <div className={`mx-p-body${!d && !failed ? " is-ghost" : ""}`} aria-busy={!d && !failed ? true : undefined} key={d?.uat.key ?? (failed ? "error" : "wait")}>
     <button type="button" className="mx-p-close" onClick={onClose} aria-label="Închide panoul">
       <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
     </button>
@@ -299,5 +341,7 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick }: {
           </>;
         })()}
       </>}
-  </div>{t.el}</section>;
+  </div>
+    {!full && <div className="mx-sheet-more"><button type="button" onClick={() => setFull(true)}>Toată fișa ↑</button></div>}
+    {t.el}</section>;
 }

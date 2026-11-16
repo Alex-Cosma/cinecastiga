@@ -304,3 +304,30 @@ span.mx-p-yr{cursor:default}
   .mx-find input{min-height:44px;font-size:16px}
   .mx-find-drop{width:100%}
 }
+/* Z4-02/03 (owner, 16 November 2026: „Foaia de jos”): on phones a touch first chooses a county, a hospital or a school
+   (outlined, its card under the map with „Deschide ›”); București has its own chip. A UAT's panel is a sheet rising
+   from the bottom under the map moved up to the header: a grip, „Toată fișa ↑”, its content scrolling inside once whole. */
+.mx-chosen{stroke-linejoin:round}
+.mx-chip{display:none;position:absolute;top:4px;left:4px;z-index:2;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--line2);border-radius:999px;background:var(--surface);color:var(--accent);font:600 14px var(--body);box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.mx-tap{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 12px;margin:8px 0 2px;padding:10px 12px;border:1px solid var(--accent-line);border-radius:10px;background:var(--surface);font-size:13px;line-height:1.4}
+.mx-tap-t{display:grid;gap:2px;min-width:0}
+.mx-tap-t b{font:600 15px var(--body);color:var(--ink)}
+.mx-tap-t em{font:600 14px var(--mono);font-style:normal;color:var(--ink)}
+.mx-tap-go{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border:0;border-radius:8px;background:var(--accent);color:var(--on-accent);font:600 14px var(--body);text-decoration:none;white-space:nowrap}
+.mx-p-grip,.mx-sheet-more{display:none}
+.mx-panel:focus{outline:none}
+@media (max-width:640px),(hover:none){.mx-chip{display:inline-flex}}
+@media (max-width:640px){
+  .mx-panel{position:fixed;left:0;right:0;bottom:0;z-index:30;height:var(--mx-peek,50vh);max-height:calc(100dvh - var(--site-header-h,53px) - 8px);margin:0;padding:24px 16px 0;overflow:hidden;border-bottom:0;border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);overscroll-behavior:contain;animation:mx-sheet-in var(--slow) var(--ease) both;transition:height var(--med) var(--ease)}
+  .mx-panel.is-full{height:calc(100dvh - var(--site-header-h,53px) - 8px);overflow-y:auto;padding-bottom:20px}
+  .mx-p-grip{display:block;position:absolute;z-index:3;top:0;left:0;right:60px;height:28px;touch-action:none;cursor:grab}
+  .mx-p-grip::before{content:"";position:absolute;top:9px;left:calc(50% + 30px);width:40px;height:4px;margin-left:-20px;border-radius:2px;background:var(--line2)}
+  .mx-sheet-more{display:block;position:absolute;z-index:4;left:0;right:0;bottom:0;padding:26px 16px 14px;background:linear-gradient(to bottom,transparent,var(--surface) 34%)}
+  .mx-sheet-more button{width:100%;min-height:44px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--accent);font:600 15px var(--body)}
+  .mx-body.has-panel{padding-bottom:var(--mx-peek,50vh)}
+  .mx-p-close{top:12px;right:12px}
+}
+@keyframes mx-sheet-in{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){.mx-panel{transition:none}}
+/* Z4-14: the open UAT's row stays marked in the ranking, in the panel's orange. */
+.mx-row[aria-pressed="true"]{background:color-mix(in srgb,var(--orange) 9%,var(--surface));border-radius:6px;border-bottom-color:transparent}

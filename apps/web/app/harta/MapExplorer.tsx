@@ -8,6 +8,7 @@ import "@/app/intreaba/builder/filters-kit.css";
 import Term from "@/components/Term";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import EntityName from "@/components/EntityName";
 import { writeAddress } from "@/lib/address";
@@ -87,6 +88,8 @@ const Arrow = ({ back = false }: { back?: boolean }) => <svg viewBox="0 0 12 12"
   <path d={back ? "M10 6H2.5M5.5 3 2.5 6l3 3" : "M2 6h7.5M6.5 3l3 3-3 3"} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 /** How long the pointer rests on an area of the map before the ranking scrolls to its row (owner, 7 November 2026). */
 const FOLLOW_DELAY = 250;
+/** „UAT-ul” with a hyphen that does not break the line (UX audit Z4-23: „UAT-” / „uri” at a line's end). */
+const NB = (text: string) => text.replace(/-/g, "\u2011");
 const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const withDe = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${int(n)}${n % 100 === 0 || n % 100 >= 20 ? " de" : ""} ${many}`);
 
@@ -182,6 +185,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const [through, setThrough] = useState<string | null>(null);
   // Phones show the first 15 of the ranking (owner: no long phone lists); a county change folds it again.
   const [unfolded, setUnfolded] = useState<string | null>(null);
+  // A touch first chooses, then opens (UX audit Z4-03, as the years of a UAT's panel): the chosen county, hospital or
+  // school is outlined and its figures stand in a card under the map with „Deschide ›”; a second touch or the button opens it.
+  const [tapped, setTapped] = useState<string | null>(null);
+  const [touch, setTouch] = useState(false);
+  /** A county opened from a click or a key: after it, focus that was on its row (now gone) goes to „← România” (Z4-18). */
+  const opener = useRef<"county" | null>(null);
+  const crumbRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLOListElement>(null);
   // What the search chose (Z4-01): its name stays in the field while the map shows it; a hospital or a school stays lit.
   const [found, setFound] = useState<{ label: string; county: string; uat: string | null; kind: MapKind; key: string | null } | null>(null);
@@ -289,6 +299,23 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [county, uat]);
 
+  // Another level or layer drops what a touch chose.
+  useEffect(() => { setTapped(null); }, [county, kind]);
+  // Focus that the change of level left on the page's body (UX audit Z4-18): after a county opens, on „← România”; after
+  // a panel or a county closes, on the row of what was open.
+  const wasOpen = useRef<{ county: string | null; uat: string | null }>({ county, uat });
+  useEffect(() => {
+    const before = wasOpen.current;
+    wasOpen.current = { county, uat };
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (opener.current === "county") { opener.current = null; if (county && lost) crumbRef.current?.focus({ preventScroll: true }); return; }
+    const back = before.uat && !uat ? before.uat : before.county && !county ? before.county : null;
+    if (!back || !lost) return;
+    // The list may be rebuilt (the country's rows): its row once it is in.
+    const frame = window.requestAnimationFrame(() => listRef.current?.querySelector<HTMLElement>(`[data-key="${back}"] .mx-row`)?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [county, uat]);
+
   // The glide (the camera, motion.ts): the viewBox eases from where it is to the county's box (or back to the country).
   const shape = geo && county ? geo.counties.find((c) => c.key === county) : undefined;
   const target: View | null = useMemo(() => {
@@ -348,6 +375,8 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
   const fill = (a: MapArea | undefined): CSSProperties | undefined => { const t = a ? tint(a) : null; return t === null ? undefined : { fillOpacity: t }; };
   // The counties fill in together once their numbers are in (motion.ts); until then they wait at the base tint.
   const natFilled = useFillIn(Boolean(geo && view && nat));
+  const tappedArea = tapped ? byKey.get(tapped) ?? null : null;
+  const tappedShape = tapped && !county && geo ? geo.counties.find((c) => c.key === tapped)?.d ?? null : null;
   const shown = hover ? byKey.get(hover) ?? (loc?.city?.key === hover ? loc.city : undefined) : undefined;
   const busy = !level || (county !== null && !countyGeo[county]);
   const uatGeo = county ? countyGeo[county] : undefined;
@@ -369,7 +398,10 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const [x0, y0, x1, y1] = box(b) as [number, number, number, number];
     return [(x0 + x1) / 2, (y0 + y1) / 2];
   }, [geo]);
-  const openHospital = (a: MapArea) => { if (a.entityId) router.push(entityHref(a.entityId)); };
+  const openHospital = (a: MapArea) => {
+    if (touch && tapped !== a.key) { setTapped(a.key); return; }
+    if (a.entityId) router.push(entityHref(a.entityId));
+  };
   // The ranking's bars grow (the first ten, top down) when a level's rows first appear; a filter then tweens their
   // widths in place, and the rows take their new order at once (no sliding).
   const rankLevel = county ?? "";
@@ -390,6 +422,14 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const timer = window.setTimeout(() => followRow(listRef.current, hover), FOLLOW_DELAY);
     return () => window.clearTimeout(timer);
   }, [hover]);
+  // A UAT's panel opened (UX audit Z4-14): the ranking moves under the map in a shorter box; its row comes to the top
+  // of it, whole, instead of the old scroll cutting a row in half.
+  useEffect(() => {
+    if (!uat || dots) return;
+    const frame = window.requestAnimationFrame(() => followRow(listRef.current, uat, true));
+    return () => window.cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uat, level]);
   // A hospital or a school chosen in the search: its row comes into view (unfolded on phones) once the list is in.
   const choice = found && found.county === county && found.kind === kind && (found.uat === null || found.uat === uat) ? found : null;
   const lit = choice?.key ?? null;
@@ -405,7 +445,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
     const rect = stageRef.current?.getBoundingClientRect();
     if (rect) setPointer({ x: event.clientX - rect.left, y: event.clientY - rect.top });
   }
-  const openCounty = (key: string) => { setHover(null); setUat(null); setCounty(key); };
+  const openCounty = (key: string) => { setHover(null); setTapped(null); setUat(null); setCounty(key); opener.current = "county"; };
   const openUat = (key: string) => { setHover(key); setUat(key); };
   const pickPlace = (p: MapSearchPlace) => {
     const siruta = p.siruta === BUCHAREST_CITY ? null : String(p.siruta);
@@ -492,8 +532,9 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
 
     {error ? <div className="mx-error" role="alert"><p>{error}</p><button type="button" className="mx-btn" onClick={() => setRetry((r) => r + 1)}>Reîncearcă</button></div> : <div className={`mx-body${county && uat && !dots ? " has-panel" : ""}`}>
       <section className={`mx-stage${busy ? " is-busy" : ""}`} aria-label={county ? `Harta județului ${countyName}` : "Harta României pe județe"}>
-        {county && <p className="mx-crumb"><button type="button" onClick={() => closeTo(null)}><Arrow back /> România</button><span>· {countyName}</span></p>}
-        <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}>
+        {county && <p className="mx-crumb"><button type="button" ref={crumbRef} onClick={() => closeTo(null)}><Arrow back /> România</button><span>· {countyName}</span></p>}
+        <div className="mx-map" ref={stageRef} onPointerMove={track} onPointerLeave={() => { setHover(null); setPointer(null); }}
+          onPointerDown={(e) => setTouch(e.pointerType !== "mouse")}>
           {geo && view && <svg viewBox={view.join(" ")} preserveAspectRatio="xMidYMid meet" role="img" className={stale ? "g-stale" : undefined}
             aria-label={`${county ? countyName : "România"}: lei ${UNIT[metric]}${average !== null ? `, ${metric === "value" ? "în total" : "în medie"} ${say(average)}` : ""}. ${whoWords}, ${periodWords}, ${cpvWords}${channelWords}. ${county && dots ? `Lista de alături are aceleași ${hospitals ? "spitale" : "școli și grădinițe"}.` : "Clasamentul de alături are aceleași cifre."}`}>
             <defs><pattern id="mx-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform={`rotate(45) scale(${view[2] / geo.width})`}><rect width="6" height="6" className="mx-hatch-bg" /><line x1="0" y1="0" x2="0" y2="6" className="mx-hatch-line" /></pattern></defs>
@@ -504,7 +545,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
                 return <path key={c.key} d={c.d} fillRule="evenodd" vectorEffect="non-scaling-stroke"
                   className={`mx-area${gap ? " is-gap" : ""}${!county && hover === c.key ? " is-hover" : ""}${county === c.key ? " is-open" : ""}`}
                   style={county ? undefined : natFilled ? fill(a) : BASE}
-                  onPointerEnter={county ? undefined : () => { fromMap.current = true; setHover(c.key); }} onClick={() => (county === c.key ? undefined : openCounty(c.key))} />;
+                  onPointerEnter={county ? undefined : () => { fromMap.current = true; setHover(c.key); }} onClick={() => { if (county === c.key) return; if (touch && tapped !== c.key) setTapped(c.key); else openCounty(c.key); }} />;
               })}
             </g>
             {county && uatGeo && !dots && <UatLayer key={county} uats={uatGeo.uats} ready={loc !== null} byKey={byKey} hover={hover} fill={fill}
@@ -516,24 +557,37 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {county && shape && <path className="mx-open-edge" d={shape.d} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
             {outline && <path className="mx-outline" d={outline} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
             {chosen && <path className="mx-chosen" d={chosen} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
+            {tappedShape && <path className="mx-chosen" d={tappedShape} fillRule="evenodd" vectorEffect="non-scaling-stroke" pointerEvents="none" />}
             {county && uatGeo && dots && unit > 0 && <HospitalLayer key={`${kind}:${county}`} uats={uatGeo.uats} hospitals={loc?.areas ?? []} city={cityCentre} unit={unit}
               radius={schools ? byPupils : undefined}
               // A circle never fades into the backdrop: its ramp starts at 22% (the counties' at 7%).
-              ready={loc !== null} hover={hover ?? lit} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
+              ready={loc !== null} hover={hover ?? tapped ?? lit} tint={(a) => { const f = fig(a); return metric === "value" ? 0.55 : f === null ? null : 0.22 + 0.78 * Math.min(1, f / dotTop); }}
               onHover={(key) => { fromMap.current = true; setHover(key); }} onOpen={openHospital} />}
           </svg>}
-          {shown && pointer && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
+          {shown && pointer && !touch && <div className={`mx-card${pointer.x > (stageRef.current?.clientWidth ?? 0) * 0.62 ? " r" : ""}`} style={{ left: pointer.x, top: pointer.y }} aria-hidden="true">
             <b>{shown.name}</b>
             {dots ? <DotCard a={shown} metric={metric} county={!county} schools={schools} />
               : <>{shown.perCapita !== null ? <span><em>{int(shown.perCapita)} lei</em> pe locuitor</span>
               : <span className="mx-card-gap">{shown.gap === "no_admin" ? "Primăria nu e identificată sigur: valoare necunoscută, nu zero." : shown.gap === "no_council" ? "Consiliul județean nu e identificat: fără cifră pe locuitor." : "Fără populație cunoscută."}</span>}
             {shown.value !== null && <span className="mx-card-sub">{short(shown.value)} lei · {withDe(shown.denominator ?? shown.population ?? 0, "locuitor", "locuitori")}{shown.coverage !== undefined && shown.coverage < 0.9 ? ` · acoperire ${Math.round(shown.coverage * 100)}%` : ""}</span>}
             {sub && shown.subValue ? <span className="mx-card-sub">din care instituțiile lor: {short(shown.subValue)} lei</span> : null}</>}
-            {!county && <span className="mx-card-go">Apasă: {KIND_WORDS[kind].plural.toLowerCase()} județului <Arrow /></span>}
+            {!county && <span className="mx-card-go">Apasă: {kind === "local_admin" ? (shown.key === "bucuresti" ? "sectoarele" : `${NB("UAT-urile")} județului`) : hospitals ? "spitalele județului" : "școlile și grădinițele județului"} <Arrow /></span>}
+            {county && !dots && byKey.has(shown.key) && <span className="mx-card-go">Apasă: {shown.perCapita === null ? "vecinii lui" : `fișa ${NB("UAT-ului")}`} <Arrow /></span>}
             {county && dots && shown.entityId && <span className="mx-card-go">Apasă: pagina {schools ? (/^gr[aă]din/i.test(shown.name) ? "grădiniței" : "școlii") : "spitalului"} <Arrow /></span>}
           </div>}
           {busy && <p className="mx-busy g-float" role="status">Se încarcă…</p>}
+          {/* The smallest area and the most looked for, one touch away on phones (Z4-03). */}
+          {!county && geo && <button type="button" className="mx-chip" onClick={() => openCounty("bucuresti")}>București ›</button>}
         </div>
+        {tappedArea && <div className="mx-tap" role="status">
+          <div className="mx-tap-t"><b>{tappedArea.name}</b>
+            {dots ? <DotCard a={tappedArea} metric={metric} county={!county} schools={schools} />
+              : <>{tappedArea.perCapita !== null ? <span><em>{int(tappedArea.perCapita)} lei</em> pe locuitor</span> : <span className="mx-card-gap">Fără cifră pe locuitor.</span>}
+                <span className="mx-card-sub">{tappedArea.key === "bucuresti" ? "cu primăria municipiului" : "cu consiliul județean"}</span></>}
+          </div>
+          {county ? (tappedArea.entityId ? <Link className="mx-tap-go" href={entityHref(tappedArea.entityId)}>Deschide ›</Link> : null)
+            : <button type="button" className="mx-tap-go" onClick={() => openCounty(tappedArea.key)}>Deschide ›</button>}
+        </div>}
         <div className="mx-foot">
           <div className="mx-legend" aria-hidden="true">
             {(!dots || !county || metric !== "value") && <span className="mx-legend-g"><span>0</span><i /><span>{level ? `${say(dotTop)}${dotTop < max ? "+" : ""}` : <G.Line inline w="3.4em" />} lei{metric === "value" ? "" : ` ${UNIT[metric]}`}</span></span>}
@@ -599,6 +653,7 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         onClose={() => closeTo(county)} onPick={openUat} />}
     </div>}
     {stale && <FloatStatus>Se încarcă…</FloatStatus>}
+    <p className="g-sr" role="status" aria-live="polite">{county && uat && !dots && byKey.get(uat) ? `Fișa ${byKey.get(uat)!.name}, deschisă.` : ""}</p>
   </div>;
 }
 
