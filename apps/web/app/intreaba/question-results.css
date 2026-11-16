@@ -1306,3 +1306,31 @@
   .cq-answer-more > .cq-export > .cq-export-options,
   .cq-answer-more > .cq-export > .cq-export-status { left: 0; right: 0; width: auto; max-width: none; }
 }
+
+/* UX audit Z3-28 (owner, 16 November 2026): the answer's command bands on a phone. A choice that broke onto two rows is
+   one native menu (as the cloud's „Semnal”): the network's „Grupele, față de (?) [2025 ▾]”, the flow's „Arată [6 ▾]
+   firme”; the flow loses „Vizual | Tabel” (a phone's flow is a list in both); the channels' shares are titled above
+   them („Cota din valoare (?)”); the map says „Harta arată (?)” over its lens and puts „Pe locuitor → (?)” beside
+   „Vizual | Tabel”. Same controls and values; every (?) beside its label. */
+.cq-phone-select,
+.cq-strip-title { display: none; }
+@media (max-width: 600px) {
+  .qb-row:has(> .cq-phone-select) > :not(.cq-phone-select) { display: none; }
+  .cq-phone-select { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+  .cq-phone-select > .qb-strip-label { font-size: 13px; }
+  .cq-phone-select > select { flex: 1 1 auto; min-width: 0; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line2); border-radius: 7px; background: var(--fk-editor); color: var(--ink); font: 400 16px/1.4 var(--body); }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) { flex-wrap: wrap; align-items: center; gap: 4px; }
+  .cq-strip .qb-strip .qb-row--wide > .cq-strip-title { display: inline; order: -2; font-size: 13px; color: var(--fk-muted-strong); }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) > .term { order: -1; }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) > .qb-seg { flex: 1 1 100%; }
+  .cq-strip .qb-strip .qb-row--wide:has(> .cq-strip-title) > .qb-strip-label { display: none; }
+  .cq-strip .qb-strip:has(.ask-maplens) { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .cq-strip .qb-strip .ask-maplens { display: contents; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) { flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 6px 4px; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) > .qb-strip-label { order: -2; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) > .term { order: -1; }
+  .cq-strip .qb-strip .ask-maplens > .qb-row:not(.ask-percap-link) > .qb-seg { flex: 1 1 100%; }
+  .cq-strip .qb-strip .ask-maplens > .ask-percap-link { flex: 1 1 auto; width: auto; }
+  .cq-strip .qb-strip:has(.ask-maplens) > .qb-strip-end { flex: 0 0 auto; margin-left: auto; }
+}
+@media (max-width: 560px) { .cq-strip .cq-strip-end-wide { display: none; } }

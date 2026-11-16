@@ -68,6 +68,7 @@ import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
 import RankingLocate from "./answer/RankingLocate";
 import type { LocateMatch } from "@/lib/ask/facet-parts";
 import Locate from "./answer/Locate";
+import PhoneSelect from "./answer/PhoneSelect";
 import { FactTag } from "./answer/RowFacts";
 import { useRowFacts } from "./answer/use-row-facts";
 import { RANKING_PAGE_SIZE, rankedGroupLead, rowFactsWanted, winnerFactTags, type WinnerTag } from "@/lib/ask/winner-words";
@@ -1303,7 +1304,7 @@ export default function AskPanel({
                       applyStripChange("dataset", value);
                     }}
                   />;
-                  return shares ? <StripLabelled after={shares.unit} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
+                  return shares ? <StripLabelled after={shares.unit} title={shares.title} wide>{control}<HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled> : control;
                 })()}
                 {/* Two firms (F4, final compare §3.4): „Doar clienții comuni N”, N the shared clients of the answer on screen. */}
                 {data.block === "compare" && stripKeys.includes("sharedPartners") && data.entities[0]?.role === "supplier" && (() => {
@@ -1347,6 +1348,9 @@ export default function AskPanel({
                   <StripLabelled before="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"}>
                     <Segmented label="Câți parteneri arăți" size="sm" value={String(sankeyShown(applied))} options={sankeyShownOptions(data)}
                       onChange={(value) => { if (Number(value) !== sankeyShown(applied)) applySankeyShown(Number(value)); }} />
+                    {/* Z3-28: a phone's native menu, „Arată [6 ▾] firme”. */}
+                    <PhoneSelect label="Arată" after={data.focal.role === "authority" ? "firme" : "instituții"} value={String(sankeyShown(applied))} options={sankeyShownOptions(data)}
+                      onChange={(value) => { if (Number(value) !== sankeyShown(applied)) applySankeyShown(Number(value)); }} />
                   </StripLabelled>
                 )}
                 {data.block === "sankey" && !crumbs && (applied.filters.cpvTerm
@@ -1365,8 +1369,9 @@ export default function AskPanel({
                         options={lensChoices}
                         onChange={(value) => { if (value !== mapLens) applyStripChange("measure", value); }}
                       />
+                      {/* Z3-28: in the lens's row, so a phone puts it beside „Harta arată”. */}
+                      <HelpTip tip={mapLens === "value_per_capita" ? PER_INHABITANT_LENS_TIP : MAP_LENS_TIP} />
                     </StripLabelled>
-                    <HelpTip tip={mapLens === "value_per_capita" ? PER_INHABITANT_LENS_TIP : MAP_LENS_TIP} />
                     {/* Per inhabitant only for the local administrations (map final §3.7): the link changes the buyers, in view. */}
                     {!mapFirm(applied) && !mapLocalAdmin(applied) && (
                       <span className="qb-row ask-percap-link">
@@ -1377,7 +1382,7 @@ export default function AskPanel({
                   </span>
                 )}
                 {crumbs && <Crumbs label="Domenii" items={crumbs.items} current={crumbs.current} />}
-                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd>{layoutToggle}</StripEnd>}
+                {["timeseries", "map", "sankey"].includes(data.block) && <StripEnd wideOnly={data.block === "sankey"}>{layoutToggle}</StripEnd>}
               </AnswerStrip></div>
             )}
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
@@ -1679,11 +1684,10 @@ function StripGhost({ spec }: { spec: AskSpec }) {
     : streamOptions(spec);
   return <div className="qb cq-strip g-quiet" inert><AnswerStrip>
     {keys.includes("dataset") && (spec.block === "breakdown"
-      ? <StripLabelled after={spec.measure === "count" ? "% din înregistrări" : "% din valoare"} wide><Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} /><HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled>
+      ? <StripLabelled after={spec.measure === "count" ? "% din înregistrări" : "% din valoare"} title={spec.measure === "count" ? "Cota din înregistrări" : "Cota din valoare"} wide><Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} /><HelpTip tip={CHANNEL_SHARE_TIP} /></StripLabelled>
       : <Segmented label="Ce fel de achiziții" value={spec.dataset ?? "all"} options={channels} />)}
     {spec.block === "map" && keys.includes("measure") && <span className="qb-row qb-row--wide qb-tipwrap-sm ask-maplens">
-      <StripLabelled before="Harta arată"><Segmented label="Harta arată" value={spec.measure === "count" ? "count" : "value"} options={mapLensOptions(spec, { status: "loading" })} /></StripLabelled>
-      <HelpTip tip={MAP_LENS_TIP} />
+      <StripLabelled before="Harta arată"><Segmented label="Harta arată" value={spec.measure === "count" ? "count" : "value"} options={mapLensOptions(spec, { status: "loading" })} /><HelpTip tip={MAP_LENS_TIP} /></StripLabelled>
       {!mapFirm(spec) && !mapLocalAdmin(spec) && <span className="qb-row ask-percap-link"><button type="button" className="qb-link">Pe locuitor<span className="qb-glyph" aria-hidden="true">→</span></button><HelpTip tip={PER_INHABITANT_TIP} /></span>}
     </span>}
     {spec.block === "timeseries" && keys.includes("timeseriesSplit") && <StripLabelled before="Împarte" smHide><Segmented label="Împarte" value={`split:${spec.timeseries?.split ?? ""}`} options={seriesSplitOptions(spec)} /></StripLabelled>}

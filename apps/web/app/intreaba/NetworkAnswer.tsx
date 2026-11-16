@@ -10,6 +10,7 @@ import type { AskSpec } from "@/lib/ask/spec";
 import { useAnswerEvidence } from "./AnswerEvidence";
 import CountGroups from "./builder/CountGroups";
 import Segmented from "./builder/Segmented";
+import PhoneSelect from "./answer/PhoneSelect";
 import HelpTip from "./builder/HelpTip";
 import EmptyState from "./answer/EmptyState";
 import RowFacts from "./answer/RowFacts";
@@ -82,6 +83,9 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
           options={years.map((year) => ({ value: String(year), label: String(year) }))}
           onChange={(value) => { if (Number(value) !== data.since) onSince?.(Number(value)); }} />
         <HelpTip tip={sinceTip(data)} />
+        {/* UX audit Z3-28: a phone's native menu, its (?) beside its label (the years broke onto two rows there). */}
+        <PhoneSelect label="Grupele, față de" tip={sinceTip(data)} value={String(data.since)} options={years.map((year) => ({ value: String(year), label: String(year) }))}
+          onChange={(value) => { if (Number(value) !== data.since) onSince?.(Number(value)); }} />
       </div>
       <CountGroups label="Ce parteneri" groups={networkButtons(data, relation)} value={list} onChange={(value) => { if (value !== list) onList?.(value as NetworkList); }} />
     </div>

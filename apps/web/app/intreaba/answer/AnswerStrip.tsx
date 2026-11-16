@@ -32,17 +32,19 @@ export function StripRow({ label, tip, children }: { label: string; tip?: KitTip
  * readers only there (`smHide`). A control whose options carry a number keeps
  * the whole width there, its words under it (`wide`).
  */
-export function StripLabelled({ before, after, smHide = false, wide = false, children }: { before?: string; after?: string; smHide?: boolean; wide?: boolean; children: ReactNode }) {
+export function StripLabelled({ before, after, title, smHide = false, wide = false, children }: { before?: string; after?: string; title?: string; smHide?: boolean; wide?: boolean; children: ReactNode }) {
   return <span className={`qb-row${wide ? " qb-row--wide" : ""}`}>
+    {/* A phone's title of the control („Cota din valoare”, UX audit Z3-28): the words after it go, its (?) comes beside it. */}
+    {title && <span className="cq-strip-title">{title}</span>}
     {before && <span className={`qb-strip-label${smHide ? " qb-strip-label--sm-hide" : ""}`}>{before}</span>}
     {children}
     {after && <span className="qb-strip-label">{after}</span>}
   </span>;
 }
 
-/** The end of the strip: "Vizual | Tabel". */
-export function StripEnd({ children }: { children: ReactNode }) {
-  return <span className="qb-strip-end">{children}</span>;
+/** The end of the strip: "Vizual | Tabel" (`wideOnly`: a view the phone does not have, the flow's list being both). */
+export function StripEnd({ wideOnly = false, children }: { wideOnly?: boolean; children: ReactNode }) {
+  return <span className={`qb-strip-end${wideOnly ? " cq-strip-end-wide" : ""}`}>{children}</span>;
 }
 
 /** The suggestion to go down a level: "99,9% e Construcții · Detaliază ›" (R8: › is another answer), a link where the level has its own address. */
