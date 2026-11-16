@@ -1,6 +1,6 @@
 import { formatInt, formatRon, formatRonFull } from "@/lib/format";
 import { pctWords } from "@/lib/signal-case-words";
-import { ratioWords } from "@/lib/signal-mirror";
+import { ratioWords, SPLIT_COUNTS_ABOVE, splitRatioWords } from "@/lib/signal-mirror";
 
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : Number(v) || 0);
 /** „2024-05-28” → „28.05.2024”. */
@@ -13,15 +13,17 @@ const day = (v: unknown): string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}
  * piece, components/motion/chart-motion.css); the reference line stays. `tip`: what the picture draws, in figures, for
  * the card shown on hover (owner, 13 November 2026), its first line the title.
  */
-export function caseMeter(code: string, evidence: Record<string, unknown> | null): { bar: React.ReactNode; value: string; note: string; tip: string[] } | null {
+export function caseMeter(code: string, evidence: Record<string, unknown> | null): { bar: React.ReactNode; value: string; note: string; tip: string[]; under?: boolean } | null {
   const e = evidence ?? {};
   switch (code) {
     case "da_split": {
       const ceiling = num(e.ceiling), total = num(e.total);
       if (!(ceiling > 0 && total > 0)) return null;
       const r = total / ceiling;
-      return { value: ratioWords(r), note: `${formatInt(num(e.count))} achiziții adunate față de plafon`,
-        tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, clasa CPV ${e.cpv_class}` : ""}`, `Adunate: ${formatRonFull(total)}`, `Linia: plafonul de ${formatRonFull(ceiling)}`, `De ${ratioWords(r)} plafonul`],
+      // At 1,2× or under a group adds nothing to the score: listed only on request, its multiple says so (UX audit Z6-04).
+      const under = r <= SPLIT_COUNTS_ABOVE;
+      return { value: splitRatioWords(r), under, note: `${formatInt(num(e.count))} achiziții adunate față de plafon${under ? " · nu intră în scor" : ""}`,
+        tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, clasa CPV ${e.cpv_class}` : ""}`, `Adunate: ${formatRonFull(total)}`, `Linia: plafonul de ${formatRonFull(ceiling)}`, `De ${splitRatioWords(r)} plafonul`],
         bar: <span className="sg-meter sum"><i className="cm-x" style={{ width: "100%" }} /><b style={{ left: `${Math.max(1, (1 / r) * 100)}%` }} /></span> };
     }
     case "da_round": {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DbSql } from "@seap/db";
-import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readRiskScoreDistribution, readSignalRiskGroup, readEntitySignalCounts, signalTypeCountLabel } from "./signals";
+import { parseSignalState, signalUrl, signalPopulation, readSignalPage, readRiskScoreDistribution, readSignalRiskGroup, readEntitySignalCounts, readSignalTypeCounts, signalTypeCountLabel } from "./signals";
 
 /** Captures parameterized queries, without reading or mutating a database. */
 function database(total = 125, bins: { bin: number; n: string }[] = []) {
@@ -161,6 +161,35 @@ describe("the ranking leaves out the inactive profiles (owner, 16 November 2026,
     expect(new URL(signalUrl(state, { view: "signals" }), "http://local").searchParams.has("inactive")).toBe(false);
     expect(parseSignalState({ inactive: "1" }).inactive).toBe(false);
     expect(new URL(signalUrl(state, { inactive: false }), "http://local").searchParams.has("inactive")).toBe(false);
+  });
+});
+
+describe("the national list of „Adunate, trec de plafon” leaves out the groups under 1,2× (owner, 16 November 2026, Z6-04)", () => {
+  it("lists only the groups above 1,2× its ceiling, counts the others, and its count in the chooser is the list's", async () => {
+    const db = database(11767);
+    const result = await readSignalPage(db.sql, parseSignalState({ tip: "da_split" }));
+    const [total] = db.statements.filter((q) => q.includes("select count(*)::text n from"));
+    expect(total).toContain("where (select (sf.evidence->>'total')::numeric / nullif((sf.evidence->>'ceiling')::numeric, 0)");
+    expect(db.statements.some((q) => q.includes("where not (select (sf.evidence"))).toBe(true);
+    expect(db.values).toContain(1.2);
+    expect(result.under).toBe(0);
+    const counts = database();
+    await readSignalTypeCounts(counts.sql, parseSignalState({ tip: "da_concentration" }));
+    expect(counts.statements.at(-1)).toContain("(flag_code <> 'da_split' or (select");
+  });
+  it("lists them on request (sub=1), only for this pattern, and never filters a case page", async () => {
+    const state = parseSignalState({ tip: "da_split", sub: "1" });
+    expect(state.under).toBe(true);
+    expect(parseSignalState({ tip: "da_round", sub: "1" }).under).toBe(false);
+    expect(new URL(signalUrl(state, { page: 4 }), "http://local").searchParams.get("sub")).toBe("1");
+    expect(new URL(signalUrl(state, { code: "da_round" }), "http://local").searchParams.has("sub")).toBe(false);
+    const db = database(17615);
+    await readSignalPage(db.sql, state);
+    expect(db.statements.find((q) => q.includes("select count(*)::text n from"))).not.toContain("sf.evidence");
+    const entity = database(52);
+    const page = await readSignalPage(entity.sql, { ...parseSignalState({ tip: "da_split" }), entity: "2135987" });
+    expect(entity.statements.some((q) => q.includes("sf.evidence"))).toBe(false);
+    expect(page.under).toBeUndefined();
   });
 });
 

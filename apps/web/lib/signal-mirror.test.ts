@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aboveCeiling, datesWords, dayWords, decemberRecords, nearCeiling, partnerShare, ratioWords, repeatedAmounts, splitGroup, splitSummary, topPartners, yearEnd } from "./signal-mirror";
+import { aboveCeiling, datesWords, dayWords, decemberRecords, nearCeiling, partnerShare, ratioWords, repeatedAmounts, splitRatioWords, splitGroup, splitSummary, topPartners, yearEnd } from "./signal-mirror";
 import { splitPartnerRecords } from "./signal-evidence";
 
 const rec = (date: string, value: number, refId = date + value) => ({ date, value, valueExact: String(value), refId });
@@ -25,6 +25,18 @@ describe("the mirror of «Adunate, trec de plafon»", () => {
   it("leaves a group at 1,2× or under out of the score", () => {
     expect(ratioWords(flamengo.ratio)).toBe("1,2×");
     expect(flamengo.counted).toBe(false);
+  });
+
+  it("never writes a group's multiple on the wrong side of 1,2× (UX audit, 16 November 2026)", () => {
+    expect(splitRatioWords(flamengo.ratio)).toBe("1,18×");
+    expect(splitRatioWords(1.199)).toBe("1,19×");
+    expect(splitRatioWords(1.1999)).toBe("1,19×");
+    expect(splitRatioWords(1.2001)).toBe("1,21×");
+    expect(splitRatioWords(1.234)).toBe("1,24×");
+    expect(splitRatioWords(1.2)).toBe("1,2×");
+    expect(splitRatioWords(1.14)).toBe("1,1×");
+    expect(splitRatioWords(1.26)).toBe("1,3×");
+    expect(splitRatioWords(2.978)).toBe("3,0×");
   });
 
   it("leaves recurring medical supply out of the score whatever its multiple", () => {

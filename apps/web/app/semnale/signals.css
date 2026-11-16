@@ -130,3 +130,5 @@
 .sg-inactive>.term-trigger:hover,.sg-inactive.term-open>.term-trigger{border-color:var(--muted);color:var(--ink)}
 .sg-inactive>.term-trigger>.term-mark{display:none}
 @media(max-width:700px){.sg-inactive{display:table;margin:4px 0 0}}
+/* A group at 1,2× its ceiling or under, listed on request (Z6-04): it adds nothing to the score, so its multiple is not red. */
+.sg-x.under{color:var(--muted);font-size:16px}

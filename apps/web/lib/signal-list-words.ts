@@ -14,3 +14,13 @@ export const inactiveLeftOutWords = historicLeftOutWords;
 export const inactiveIncludedWords = (n: number): string =>
   n === 1 ? `Este inclus și profilul inactiv, fără înregistrări în ultimele ${HISTORIC_MONTHS} de luni.`
     : `Sunt incluse și cele ${countWords(n, "profil inactiv", "profiluri inactive")}, fără înregistrări în ultimele ${HISTORIC_MONTHS} de luni.`;
+
+/** „5.848 de cazuri sub 1,2× plafonul nu intră în scor și nu sunt în listă.” */
+export const underLeftOutWords = (n: number): string =>
+  n === 1 ? "Un caz sub 1,2× plafonul nu intră în scor și nu e în listă."
+    : `${countWords(n, "caz", "cazuri")} sub 1,2× plafonul nu intră în scor și nu sunt în listă.`;
+
+/** „Sunt incluse și cele 5.848 de cazuri sub 1,2× plafonul, care nu intră în scor.” */
+export const underIncludedWords = (n: number): string =>
+  n === 1 ? "Este inclus și cazul sub 1,2× plafonul, care nu intră în scor."
+    : `Sunt incluse și cele ${countWords(n, "caz", "cazuri")} sub 1,2× plafonul, care nu intră în scor.`;

@@ -14,7 +14,7 @@ import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
 import { aboveWords, capacityWords, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import {
-  aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, ratioWords, repeatedAmounts, splitGroup, splitSummary, topPartners, yearEnd,
+  aboveCeiling, capacity, decemberRecords, firstMonth, nearCeiling, partnerShare, repeatedAmounts, splitGroup, splitRatioWords, splitSummary, topPartners, yearEnd,
   type AboveCeiling, type CaseInput, type FirstMonth, type NearCeiling, type SplitGroup,
 } from "@/lib/signal-mirror";
 import { signalUrl, withoutRole, type SignalState } from "@/lib/signals-shared";
@@ -178,14 +178,14 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
         <p className="sgc-cap">Fiecare bară e o achiziție, ca procent din plafonul ei; barele aceleiași firme stau împreună{items.length > shown ? ` (primele ${formatInt(shown)} din ${formatInt(items.length)})` : ""}.
           {s.largest && <> Cea mai mare: {lei(s.largest.value)}, cu {formatInt(Math.round(s.largest.ceiling - s.largest.value))} lei sub {lei(s.largest.ceiling)}.</>}</p>
       </Side>
-      <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={ratioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
+      <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={splitRatioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
         {/* In motion: the ceiling stays; the groups rise together (groups, not a sequence). */}
         <div className="sgc-groups" data-chart><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
-            const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${ratioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
-            return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{ratioWords(g.ratio)}</em>
+            const words = `${cleanName(g.partnerName)}, ${g.year}: ${countWords(g.count, "achiziție", "achiziții")}, ${lei(g.total)}, ${splitRatioWords(g.ratio)} plafonul de ${lei(g.ceiling)}`;
+            return <div key={g.id} className={g.counted ? "" : "out"}><em aria-hidden="true">{splitRatioWords(g.ratio)}</em>
               <i className="cm-y" tabIndex={0} role="img" aria-label={words} style={{ height: `${(g.ratio / max) * 100}%` }}>
-                <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {ratioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : " · nu intră în scor"}</span></span>
+                <span className={`sgc-tip${edge(i, top.length)}`} aria-hidden="true"><b>{cleanName(g.partnerName)} · {g.year}</b><span>{countWords(g.count, "achiziție", "achiziții")}{g.dates ? `, ${g.dates}` : ""}</span><span><b>{lei(g.total)}</b> · {splitRatioWords(g.ratio)} plafonul de {lei(g.ceiling)}{g.counted ? "" : " · nu intră în scor"}</span></span>
               </i></div>;
           })}</div>
         <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
@@ -207,10 +207,10 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
                 <span className="t"><i className="cm-x" style={{ width: `${(g.ratio / max) * 100}%` }} /><b style={{ left: `${(1 / max) * 100}%` }} /></span>
               </span>
               <span className="sgc-sum">{lei(g.total)}</span>
-              <span className="sgc-x">{ratioWords(g.ratio)}</span>
+              <span className="sgc-x">{splitRatioWords(g.ratio)}</span>
             </summary>
             <div className="sgc-body">
-              <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA. Adunate, cele {formatInt(g.count)} achiziții trec de el de {ratioWords(g.ratio).replace("×", "")} ori.</p>
+              <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA. Adunate, cele {formatInt(g.count)} achiziții trec de el de {splitRatioWords(g.ratio).replace("×", "")} ori.</p>
               <Records records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(g.partnerName)} ${g.year}`} />

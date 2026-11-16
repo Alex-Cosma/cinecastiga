@@ -19,6 +19,18 @@ export const SPLIT_COUNTS_ABOVE = 1.2;
 /** "3,0×": a multiple of the ceiling, one decimal. */
 export const ratioWords = (r: number): string => `${(Math.round(r * 10) / 10).toFixed(1).replace(".", ",")}×`;
 
+/**
+ * A group's multiple of its ceiling, never on the wrong side of the score's 1,2× (UX audit bug, 16 November 2026: a
+ * group at 1,199× read „1,2×” beside „sub 1,2×, nu intră în scor”): one decimal, except where that rounding would land
+ * on 1,2× from either side; there two decimals, towards the side the group is on („1,19×”, „1,21×”).
+ */
+export function splitRatioWords(r: number): string {
+  if (Math.round(r * 10) / 10 !== SPLIT_COUNTS_ABOVE || r === SPLIT_COUNTS_ABOVE) return ratioWords(r);
+  const two = r < SPLIT_COUNTS_ABOVE ? Math.floor(r * 100 + 1e-9) / 100 : Math.ceil(r * 100 - 1e-9) / 100;
+  const safe = r < SPLIT_COUNTS_ABOVE ? Math.min(two, 1.19) : Math.max(two, 1.21);
+  return `${safe.toFixed(2).replace(".", ",")}×`;
+}
+
 const MONTHS = ["ianuarie", "februarie", "martie", "aprilie", "mai", "iunie", "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie"];
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})/;
 

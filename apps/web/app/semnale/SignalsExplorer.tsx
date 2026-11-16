@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import type { SignalInstance, SignalPage, SignalRiskGroup } from "@/lib/signals";
 import type { RiskGroupSort } from "@/lib/marts";
 import { historicFact } from "@/lib/ask/historic";
-import { inactiveIncludedWords, inactiveLeftOutWords } from "@/lib/signal-list-words";
+import { inactiveIncludedWords, inactiveLeftOutWords, underIncludedWords, underLeftOutWords } from "@/lib/signal-list-words";
 import { parseSignalState, signalUrl, type SignalState } from "@/lib/signals-shared";
 import { FLAG_META, flagLabel } from "@/lib/flags";
 import { COUNTIES } from "@/lib/counties";
@@ -110,10 +110,13 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
    * the inactive profiles, as Întreabă's rankings by risk (lib/ask/historic.ts). A real link; the click stays in the page.
    */
   function leftOutLine() {
-    if (active.view !== "cri" || !risk?.inactive) return null;
-    const href = signalUrl(active, { inactive: !active.inactive });
-    return <p className="sg-left-out">{active.inactive ? inactiveIncludedWords(risk.inactive) : inactiveLeftOutWords(risk.inactive)}{" "}
-      <a href={href} onClick={e => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate({ inactive: !active.inactive }); }}>{active.inactive ? "Scoate-le" : "Include-le"}</a></p>;
+    const patch: Partial<SignalState> | null = active.view === "cri" && risk?.inactive ? { inactive: !active.inactive }
+      : active.view === "signals" && code === "da_split" && signals?.under ? { under: !active.under } : null;
+    if (!patch) return null;
+    const included = "inactive" in patch ? active.inactive : active.under;
+    const words = "inactive" in patch ? (included ? inactiveIncludedWords : inactiveLeftOutWords)(risk!.inactive) : (included ? underIncludedWords : underLeftOutWords)(signals!.under!);
+    return <p className="sg-left-out">{words}{" "}
+      <a href={signalUrl(active, patch)} onClick={e => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigate(patch); }}>{included ? "Scoate-le" : "Include-le"}</a></p>;
   }
   /** A case of the list (owner, 6 November 2026): its picture and number; the whole row opens the case page. */
   function signalRow(fi: SignalInstance, i: number) {
@@ -134,7 +137,7 @@ export default function SignalsExplorer({ state, signals, risk, counts, distribu
       {/* the picture is a way into the case too; its figures show on hover, or with the row's link focused */}
       <div className="sg-meter-col">{meter?.bar && <Link href={href} className="sg-meter-hit" tabIndex={-1} aria-hidden="true">{meter.bar}{meter.tip.length > 0 && <span className="sg-tip" id={`sg-tip-${fi.id}`}>{meter.tip.map((line, k) => <span key={k}>{line}</span>)}</span>}</Link>}</div>
       <div className="sg-amount"><strong>{fi.totalExact === null ? "Necunoscută" : `${formatExactDecimal(fi.totalExact)} lei`}</strong><small>{fi.subjectType !== "award" ? "valoare înregistrată" : awardValueLabel(fi.evidence)}</small></div>
-      <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}`}>{meter?.value ?? ""}</div>
+      <div className={`sg-x${(meter?.value.length ?? 0) > 8 ? " long" : ""}${meter?.under ? " under" : ""}`}>{meter?.value ?? ""}</div>
       <Link href={href} className="sg-open" aria-describedby={meter?.bar && meter.tip.length ? `sg-tip-${fi.id}` : undefined} aria-label={`Deschide cazul: ${cleanName(fi.entityName)}${fi.partnerName ? `, ${cleanName(fi.partnerName)}` : ""}`}><span aria-hidden="true">→</span></Link>
     </article>;
   }

@@ -2,6 +2,7 @@ import { createDb, type DbSql } from "@seap/db";
 import type { FlagInstance, RiskEntity } from "./marts";
 import type { ScoreParts } from "./risk-score";
 import { riskActive } from "./ask/entity-card";
+import { SPLIT_COUNTS_ABOVE } from "./signal-mirror";
 
 import { SIGNAL_PAGE_SIZE, RISK_PAGE_SIZE, type SignalState } from "./signals-shared";
 export * from "./signals-shared";
@@ -15,7 +16,8 @@ export interface SignalInstance extends FlagInstance {
   /** Award signals are one occurrence, even when several suppliers won. */
   winners: { entityId: string; name: string | null; county: string | null }[];
 }
-export interface SignalPage { rows: SignalInstance[]; total: number; page: number; pageSize: number }
+/** `under`: the national list of „Adunate, trec de plafon” leaves out the groups at 1,2× the ceiling or under, unless asked (UX audit Z6-04); how many. */
+export interface SignalPage { rows: SignalInstance[]; total: number; page: number; pageSize: number; under?: number }
 const globalDb = globalThis as unknown as { __seapSignalSql?: DbSql };
 const database = () => globalDb.__seapSignalSql ??= createDb().sql;
 
@@ -61,6 +63,15 @@ export function signalPopulation(sql: DbSql, state: Pick<SignalState, "role" | "
   )`;
 }
 
+/**
+ * A group of „Adunate, trec de plafon” that adds to the score by its multiple: above 1,2 times its ceiling (signal-mirror
+ * SPLIT_COUNTS_ABOVE, read from the build's evidence). `alias` is a row of the population, its id core.flags'.
+ */
+const splitScored = (sql: DbSql, alias: string) => sql`(select (sf.evidence->>'total')::numeric / nullif((sf.evidence->>'ceiling')::numeric, 0)
+  from core.flags sf where sf.id = ${sql(alias)}.id) > ${SPLIT_COUNTS_ABOVE}`;
+/** The national list leaves the groups under 1,2× out (owner, 16 November 2026, variant B of Z6-04); a case page lists them all. */
+const leavesUnder = (state: SignalState) => state.code === "da_split" && !state.entity && !state.under;
+
 interface RiskRow { entity_id: string; name_display: string | null; county: string | null; cri: string | null; n_flags: number; n_das: number; total_ron: string | null; flags: string[] | null; score: number; score_parts?: ScoreParts | null; historic?: string | null }
 const riskRow = (r: RiskRow): RiskEntity & { historic?: string } => ({ entityId: String(r.entity_id), name: r.name_display, county: r.county, cri: Number(r.cri ?? 0), nFlags: Number(r.n_flags), nDas: Number(r.n_das), totalRon: Number(r.total_ron ?? 0), flags: r.flags ?? [], score: Number(r.score ?? 0), parts: r.score_parts ?? {},
   ...(typeof r.historic === "string" ? { historic: r.historic } : {}) });
@@ -75,9 +86,13 @@ export async function readSignalPage(sql: DbSql, state: SignalState, pageSize = 
   return sql.begin("isolation level repeatable read read only", async (tx) => {
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
-    const population = signalPopulation(q, state, state.code);
+    const all = signalPopulation(q, state, state.code);
+    const population = leavesUnder(state) ? q`(select scored.* from ${all} scored where ${splitScored(q, "scored")})` : all;
     const totals = await q`select count(*)::text n from ${population} population`;
     const total = Number(totals[0]?.n ?? 0);
+    // How many groups under 1,2× the national list has: left out (the line that brings them back), or listed on request.
+    const under = state.code === "da_split" && !state.entity
+      ? Number((await q`select count(*)::int n from ${all} population where not ${splitScored(q, "population")}`)[0]?.n ?? 0) : undefined;
     const page = Math.min(state.page, Math.max(0, Math.ceil(total / pageSize) - 1));
     const rows = await q`
       select selected.*, selected.total_ron::text total_exact, f.period, f.evidence, f.methodology_version,
@@ -98,7 +113,7 @@ export async function readSignalPage(sql: DbSql, state: SignalState, pageSize = 
       left join core.entities e on e.id = selected.entity_id
       left join core.entities p on p.id = selected.partner_id
       order by selected.total_ron desc nulls last, selected.severity desc nulls last, selected.id`;
-    return { total, page, pageSize, rows: rows.map((r) => ({
+    return { total, page, pageSize, ...(under !== undefined ? { under } : {}), rows: rows.map((r) => ({
       id: String(r.id), totalExact: r.total_exact ?? null, flagCode: String(r.flag_code), subjectType: String(r.subject_type),
       entityId: r.entity_id == null ? null : String(r.entity_id), entityName: r.entity_name ?? null, entityCounty: r.entity_county ?? null,
       partnerId: r.partner_id == null ? null : String(r.partner_id), partnerName: r.partner_name ?? null,
@@ -151,7 +166,9 @@ export async function readSignalTypeCounts(sql: DbSql, state: SignalState): Prom
     const q = tx as unknown as DbSql;
     await q`set local statement_timeout = '20s'`;
     const population = signalPopulation(q, state);
-    const rows = await q`select flag_code, count(*)::text n from ${population} population group by flag_code`;
+    // „Adunate, trec de plafon” counts the groups its list shows (above 1,2× unless the list includes them, UX audit Z6-04).
+    const shown = state.under ? q`true` : q`(flag_code <> 'da_split' or ${splitScored(q, "population")})`;
+    const rows = await q`select flag_code, count(*)::text n from ${population} population where ${shown} group by flag_code`;
     return Object.fromEntries(rows.map(r => [String(r.flag_code), Number(r.n)]));
   });
 }

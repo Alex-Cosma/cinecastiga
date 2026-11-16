@@ -27,6 +27,11 @@ export interface SignalState {
    * the rule of Întreabă on /semnale, lib/ask/historic.ts). Off by default: they are left out, counted, with „Include-le”.
    */
   inactive: boolean;
+  /**
+   * The national list of „Adunate, trec de plafon” lists the groups at 1,2× the ceiling or under too (`sub=1`; owner,
+   * 16 November 2026, variant B of Z6-04: they add nothing to the score, so by default they are left out and counted).
+   */
+  under: boolean;
   /** Signals of one entity, in the role it is viewed in: its page /entitati/{id}/semnale. Signals view only. */
   entity: string | null;
 }
@@ -50,6 +55,7 @@ export function parseSignalState(params: Record<string, string | undefined>): Si
     band: validBand && criteria === null ? { from, to } : null, sort,
     dir: params.dir === "asc" || params.dir === "desc" ? params.dir : sort === "name" ? "asc" : "desc",
     inactive: view === "cri" && params.inactive === "1",
+    under: view === "signals" && code === "da_split" && params.sub === "1",
     entity: view === "signals" && params.ent && ENTITY_ID.test(params.ent) ? params.ent : null };
 }
 
@@ -78,8 +84,9 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
       next.code = next.role === "authority" ? "da_concentration" : "da_dependence";
   }
   if (Object.hasOwn(patch, "role")) { next.criteria = null; next.band = null; }
-  if (next.view === "signals") { next.band = null; next.criteria = null; next.inactive = false; } else next.entity = null;
-  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity", "inactive"].some((key) => Object.hasOwn(patch, key));
+  if (next.view === "signals") { next.band = null; next.criteria = null; next.inactive = false; } else { next.entity = null; next.under = false; }
+  if (next.code !== "da_split") next.under = false;
+  const changedFilter = ["view", "code", "role", "county", "band", "criteria", "sort", "dir", "entity", "inactive", "under"].some((key) => Object.hasOwn(patch, key));
   const page = patch.page ?? (changedFilter ? 0 : state.page);
   // One entity's signals are one of its pages, as its other analyses (owner, 6 November 2026): /entitati/{id}/semnale,
   // the role in the entity pages' spelling (the page drops it for an entity with a single role).
@@ -97,6 +104,7 @@ export function signalUrl(state: SignalState, patch: Partial<SignalState> = {}):
   }
   if (next.view === "cri" && (next.sort !== "cri" || next.dir !== "desc")) { q.set("sort", next.sort); q.set("dir", next.dir); }
   if (next.view === "cri" && next.inactive) q.set("inactive", "1");
+  if (next.under) q.set("sub", "1");
   if (page > 0) q.set("p", String(page));
   return `/semnale?${q.toString()}`;
 }
