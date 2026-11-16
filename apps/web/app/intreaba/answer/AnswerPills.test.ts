@@ -45,9 +45,10 @@ describe("the answer's pills", () => {
 
   it("separates two words that are text with a dot that is drawn, not read", () => {
     const spec: AskSpec = { block: "breakdown", measure: "value", filters: { uatSiruta: 44845, uatName: "Municipiul Râmnicu Sărat (Buzău)" } };
-    const markup = render(spec, ["pe domenii", "valoarea înregistrată", "Municipiul Râmnicu Sărat (Buzău)", "toți anii", "toate achizițiile: directe și din proceduri"]);
-    expect(markup).toMatch(/^<div class="cq-scope" data-unfolded="false"><span class="cq-scope-text">pe domenii<\/span><span class="cq-scope-sep" aria-hidden="true">·<\/span><span class="cq-scope-text">valoarea înregistrată<\/span><button/);
-    for (const name of ["Cine a cumpărat: Municipiul Râmnicu Sărat (Buzău)", "Perioada: toți anii"]) expect(markup).toContain(`aria-label="${name}"`);
+    const markup = render(spec, ["pe domenii", "valoarea înregistrată", "primăria Râmnicu Sărat (Buzău)", "toți anii", "toate achizițiile: directe și din proceduri"]);
+    // A pill with a window sits in its wrapper with room for its „×” (Z2-05).
+    expect(markup).toMatch(/^<div class="cq-scope" data-unfolded="false"><span class="cq-scope-text">pe domenii<\/span><span class="cq-scope-sep" aria-hidden="true">·<\/span><span class="cq-scope-text">valoarea înregistrată<\/span><span class="cq-pill-wrap"><button/);
+    for (const name of ["Cine a cumpărat: primăria Râmnicu Sărat (Buzău)", "Perioada: toți anii"]) expect(markup).toContain(`aria-label="${name}"`);
   });
 
   it("keeps a distribution's entity and group as text: their windows follow up the entity and tick one by one", () => {
