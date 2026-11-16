@@ -103,6 +103,23 @@ function ScoreHistogram({ kinds }: { kinds: MethodologyFigures["kinds"] }) {
   );
 }
 
+/** The story's parts, in order (the chapter list, the rail and the phone's chapter row, Z7-33). */
+const CHAPTERS: { id: string; n: number | null; label: string }[] = [
+  { id: "urma", n: 1, label: "O achiziție" },
+  { id: "plafon", n: 2, label: "Plafonul" },
+  { id: "adunam", n: 3, label: "Cum adunăm" },
+  { id: "anul", n: 4, label: "Tiparele Comunei Exemplara" },
+  { id: "scorul", n: 5, label: "Cum se face scorul" },
+  { id: "fata", n: 6, label: "Cu cine comparăm" },
+  { id: "marime", n: null, label: "Ramură: firme mari, firme mici" },
+  { id: "pista", n: 7, label: "Ce faci cu un semnal" },
+  { id: "epilog", n: null, label: "Epilog" },
+  { id: "cuvinte", n: null, label: "Cuvintele din pagină" },
+];
+const chapterLabel = (c: { n: number | null; label: string }) => (c.n ? `${c.n}. ${c.label}` : c.label);
+/** The phone row's lead: "Capitolul 2 din 7", or nothing for the branch, the epilogue and the words. */
+const chapterLead = (c: { n: number | null }) => (c.n ? `Capitolul ${c.n} din 7` : "");
+
 /** The rules' index (Z7-31): procedures (award signals), firms (supplier signals), institutions (the rest). */
 const SIGNAL_GROUPS: [string, string[]][] = [
   ["Instituții", FLAG_ORDER.filter((c) => !["award", "supplier"].includes(FLAG_META[c]!.subject))],
@@ -441,21 +458,23 @@ export default function MethodologyStory({ figures }: { figures: MethodologyFigu
               <summary>Sari la un capitol</summary>
               <nav aria-label="Capitole">
                 <ul className="mt-toc">
-                  <li><a href="#urma">1. O achiziție</a></li>
-                  <li><a href="#plafon">2. Plafonul</a></li>
-                  <li><a href="#adunam">3. Cum adunăm</a></li>
-                  <li><a href="#anul">4. Tiparele Comunei Exemplara</a></li>
-                  <li><a href="#scorul">5. Cum se face scorul</a></li>
-                  <li><a href="#fata">6. Cu cine comparăm</a></li>
-                  <li><a href="#marime">Ramură: firme mari, firme mici</a></li>
-                  <li><a href="#pista">7. Ce faci cu un semnal</a></li>
-                  <li><a href="#epilog">Epilog</a></li>
-                  <li><a href="#cuvinte">Cuvintele din pagină</a></li>
+                  {CHAPTERS.map((c) => <li key={c.id}><a href={`#${c.id}`}>{chapterLabel(c)}</a></li>)}
                   <li><a href="#detalii">Toate regulile</a></li>
                 </ul>
               </nav>
             </details>
           </div>
+          {/* „Sari la un capitol” within reach all along the story (UX audit Z7-33): on a wide screen a list in the right
+              margin, under the header; narrower, one row under the header that opens the list. The current chapter is
+              marked by MethodologyBehavior as the story scrolls. */}
+          <div className="mt-chrail"><nav aria-label="Capitolele poveștii">
+            <p>Povestea</p>
+            <ol>{CHAPTERS.map((c) => <li key={c.id}><a href={`#${c.id}`} data-ch={c.id}>{chapterLabel(c)}</a></li>)}</ol>
+          </nav></div>
+          <details suppressHydrationWarning className="mt-chrow">
+            <summary aria-label="Sari la un capitol"><span><b>{chapterLead(CHAPTERS[0]!)}</b>{CHAPTERS[0]!.label}</span><i aria-hidden="true">▾</i></summary>
+            <ol className="mt-chrow-list">{CHAPTERS.map((c) => <li key={c.id}><a href={`#${c.id}`} data-ch={c.id}>{chapterLabel(c)}</a></li>)}</ol>
+          </details>
           <section className="mt-ch mt-col mt-stack" id="urma" aria-labelledby="h-urma">
             <h2 id="h-urma"><span className="mt-ch-n">Capitolul 1</span>Fiecare achiziție are o fișă</h2>
             <svg className="mt-scene mt-sm" viewBox="0 0 680 120" role="img" aria-label="Desen: Ioana, reportera, la birou, cu laptopul deschis pe SEAP și un carnet">
