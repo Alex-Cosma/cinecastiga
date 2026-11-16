@@ -1,5 +1,6 @@
 "use client";
 
+import { riseNew } from "../../components/motion/rows";
 import Link from "next/link";
 import EntityName from "../../components/EntityName";
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -317,7 +318,7 @@ function Outside({ rows, total, warm = false }: { rows: readonly FactOutsideRow[
   const shown = all ? rows : rows.slice(0, OUTSIDE_SHOWN);
   const hidden = (total ?? rows.length) - shown.length;
   // The rows unfold in place: keyboard focus moves to the first one shown, not back to the page's top.
-  const more = () => { setAll(true); requestAnimationFrame(() => list.current?.querySelector<HTMLElement>(`li:nth-child(${OUTSIDE_SHOWN + 1})`)?.focus()); };
+  const more = () => { setAll(true); requestAnimationFrame(() => { riseNew(Array.from(list.current?.children ?? []).slice(OUTSIDE_SHOWN)); list.current?.querySelector<HTMLElement>(`li:nth-child(${OUTSIDE_SHOWN + 1})`)?.focus(); }); };
   return <div className={warm ? "fc-excl" : undefined}>
     <ul ref={list} className="fc-outside">{shown.map((r, i) => {
       const why = r.category === "framework" ? "plafon" : OUTSIDE_WHY[r.category];

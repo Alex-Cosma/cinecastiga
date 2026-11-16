@@ -1,5 +1,6 @@
 "use client";
 
+import { useRiseOnMore } from "../../components/motion/rows";
 import { countyName } from "../../lib/counties";
 import Link from "next/link";
 import { useAnswerEvidence } from "./AnswerEvidence";
@@ -78,6 +79,9 @@ export function BreakdownBlock({
   const t = useTip();
   const evidence = useAnswerEvidence();
   const [all, setAll] = useState(false);
+  // The rows „Arată toate” adds rise in, the first marked (M-04).
+  const shownBefore = useRef(0), legend = useRef<HTMLDivElement>(null);
+  const grow = useRiseOnMore(legend, all ? 1 : 0, (l) => Array.from(l.children).slice(shownBefore.current));
   // A legend row pointed at or focused lights its segment in the bar (UX audit Z3-14); the others stay, quieter.
   const [hot, setHot] = useState<number | null>(null);
   // The bar is revealed left to right as one piece when it first shows. Value ↔ records, another channel or „Arată
@@ -173,7 +177,7 @@ export function BreakdownBlock({
         <HelpTip tip={{ title: "Înregistrări", text: "Un contract cu mai mulți câștigători apare o dată pentru fiecare, mai des la lucrări." }} />
       </div>}
       {/* Z3-14: each row reads in one line: swatch · name · a thin bar of its share in its colour · value · its records. */}
-      <div className="ask-complegend">
+      <div className="ask-complegend" ref={legend}>
         {items.map((s, i) => (
           <div key={s.name} className="li qb-tipwrap" onPointerEnter={() => setHot(i)} onPointerLeave={() => setHot(null)}
             onFocus={() => setHot(i)} onBlur={() => setHot(null)}>
@@ -214,7 +218,7 @@ export function BreakdownBlock({
           </div>
         ))}
       </div>
-      {shown.more > 0 && <div className="qb qb-listfoot"><button type="button" className="qb-more-btn" onClick={() => setAll(true)}>Arată toate</button></div>}
+      {shown.more > 0 && <div className="qb qb-listfoot"><button type="button" className="qb-more-btn" onClick={() => { shownBefore.current = legend.current?.children.length ?? 0; grow(0); setAll(true); }}>Arată toate</button></div>}
     </div>
   );
 }

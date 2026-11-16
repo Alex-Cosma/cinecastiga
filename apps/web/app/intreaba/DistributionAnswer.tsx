@@ -1,6 +1,7 @@
 "use client";
 
 import { SelectTrace } from "../../components/motion/Selection";
+import { riseNew } from "../../components/motion/rows";
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import type { DistributionDataV2, DistributionDataV3, DistributionData, DistributionMember, ScoredMember } from "../../lib/ask/compile";
@@ -143,6 +144,8 @@ function useBarMembers<M extends DistributionMember>(d: AnyDistribution) {
     const at = focusRow.current;
     if (at === null || !bar || bar.loading) return;
     focusRow.current = null;
+    // The rows that came rise in, the first marked (M-04).
+    riseNew(Array.from(listRef.current?.children ?? []).slice(at));
     listRef.current?.children[at]?.querySelector<HTMLElement>("a")?.focus();
   }, [bar]);
   const load = (key: BarKey, total: number, offset: number) => {
@@ -318,7 +321,7 @@ function ScoreAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<Dist
   const showAll = () => {
     setAll(true);
     // The first row unfolded takes the focus (the entity's row and the first seven stay above it).
-    requestAnimationFrame(() => list.current?.children[LIST_FIRST + 1]?.querySelector<HTMLElement>("a")?.focus());
+    requestAnimationFrame(() => { riseNew(Array.from(list.current?.children ?? []).slice(LIST_FIRST + 1)); list.current?.children[LIST_FIRST + 1]?.querySelector<HTMLElement>("a")?.focus(); });
   };
   const bar = bars.bar, openBand = bar && typeof bar.key !== "number" ? bar.key : null;
 
@@ -458,7 +461,7 @@ function CriteriaAnswer({ distribution: d, spec, onChangeGroup }: VersionProps<D
   const showAll = () => {
     setAll(true);
     // The first row unfolded takes the focus (the entity's row and the first seven stay above it).
-    requestAnimationFrame(() => list.current?.children[LIST_FIRST + 1]?.querySelector<HTMLElement>("a")?.focus());
+    requestAnimationFrame(() => { riseNew(Array.from(list.current?.children ?? []).slice(LIST_FIRST + 1)); list.current?.children[LIST_FIRST + 1]?.querySelector<HTMLElement>("a")?.focus(); });
   };
   const bar = bars.bar, openK = bar && typeof bar.key === "number" ? bar.key : null;
 

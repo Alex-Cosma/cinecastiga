@@ -1,5 +1,6 @@
 "use client";
 
+import { riseNew } from "../../../components/motion/rows";
 import type { RefObject } from "react";
 import { countWords } from "../../../lib/ask/answer-text";
 import { formatInt } from "../../../lib/format";
@@ -37,9 +38,10 @@ export function listFootWords({ shown, total, noun, step = 10, all = false, rest
   return { more, rest };
 }
 
-/** After more rows arrive, focus the first new one (rows marked data-qb-arow, or .qb-arow). */
+/** After more rows arrive, focus the first new one (rows marked data-qb-arow, or .qb-arow); the new ones rise in (M-04). */
 export function focusFirstNew(list: HTMLElement | null, shown: number): void {
   const rows = list ? Array.from(list.querySelectorAll<HTMLElement>("[data-qb-arow]")) : [];
+  riseNew(rows.slice(shown));
   rows[shown]?.focus();
 }
 
