@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import { FLAG_META, FLAG_ORDER, flagLabel } from "@/lib/flags";
-import { cleanName } from "@/lib/format";
+import Link from "next/link";
+import { cleanName, countyLabel } from "@/lib/format";
+import { entityHref } from "@/lib/entity-href";
 import { ghostHold } from "@/lib/ghost-hold";
 import { RISK_CRITERIA, riskPoints } from "@/lib/risk-score";
 import { parseRoleParam } from "@/lib/role-param";
@@ -11,6 +13,7 @@ import { getEntitySignalCounts, parseSignalState } from "@/lib/signals";
 import CasePage from "@/app/semnale/case/CasePage";
 import DropRolParam from "../DropRolParam";
 import CaseRegion from "./CaseRegion";
+import "./entity-signals.css";
 import { loadFlags, loadProfile, validId } from "./load";
 
 /*
@@ -43,14 +46,15 @@ async function resolve(id: string, sp: Search) {
     }
   }
   const p = one(sp["p"]);
-  return { profile, bothRoles: roles.length > 1, state: parseSignalState({ tip: tip ?? "da_split", rol: role, ent: id, ...(p ? { p } : {}) }) };
+  // No signal at all (UX audit bug, 16 November 2026): the page says so instead of an empty first pattern („De 0 ori…”).
+  return { profile, role, bothRoles: roles.length > 1, none: !tip, state: parseSignalState({ tip: tip ?? "da_split", rol: role, ent: id, ...(p ? { p } : {}) }) };
 }
 
 export async function generateMetadata({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }): Promise<Metadata> {
   const { id } = await params;
   if (!validId(id)) return { title: "Semnale" };
   const r = await resolve(id, await searchParams).catch(() => null);
-  return { title: r ? `${flagLabel(r.state.code)} · ${cleanName(r.profile.name)}` : "Semnale" };
+  return { title: r ? `${r.none ? "Semnale" : flagLabel(r.state.code)} · ${cleanName(r.profile.name)}` : "Semnale" };
 }
 
 export default async function EntitySignalsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
@@ -61,6 +65,17 @@ export default async function EntitySignalsPage({ params, searchParams }: { para
   if (!validId(id)) notFound();
   const r = await resolve(id, sp);
   if (!r) notFound();
+  if (r.none) {
+    const name = cleanName(r.profile.name) || `entitatea ${id}`;
+    const county = countyLabel(r.profile.county);
+    return <div className="sgc">
+      <div className="sgc-crumb"><span><Link href={entityHref(id, r.bothRoles ? r.role : null)} className="sgc-back">← {name}</Link>
+        {" · "}{r.role === "authority" ? "instituție" : "firmă"}{county ? `, ${county}` : ""}</span></div>
+      <h1 className="sgc-title">Niciun semnal</h1>
+      <div className="sgc-empty"><p>Nu am găsit niciun tipar în înregistrările {r.role === "authority" ? "acestei instituții" : "acestei firme"}. Lipsa unui tipar nu certifică absența neregulilor.</p>
+        <p><Link href="/metodologie#indice">Ce tipare căutăm →</Link></p></div>
+    </div>;
+  }
   const data = await readSignalCase({ ...r.state, entity: id });
   if (!data) notFound();
   return <>

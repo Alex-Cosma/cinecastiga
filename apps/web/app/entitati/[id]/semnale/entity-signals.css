@@ -1,0 +1,8 @@
+/* The entity's signals page (app/semnale/case/CasePage.tsx is drawn only here). UX audit bug (16 November 2026): on a
+   phone „Luate pe rând” drew its 80 bars wider than the card (3 px each and 2 px apart: 422 px in 258). There the bars
+   may narrow below 3 px and stand 1 px apart, so every one stays inside the chart. */
+@media (max-width:600px){
+  .sgc .sgc-ychart .sgc-cols{gap:6px}
+  .sgc .sgc-ychart .sgc-cols .grp{gap:1px}
+  .sgc .sgc-ychart .sgc-cols .bar{min-width:1px}
+}
