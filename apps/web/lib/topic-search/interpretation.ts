@@ -95,6 +95,11 @@ export interface TopicInterpretation {
    * all of them are none (re-judging, 10 November 2026: 0 titles, while „revelion” alone has 16).
    */
   alsoTry: string[];
+  /**
+   * The words are a place and nothing else („Cluj”, „Cisnădie 2023”): the place is the filter, „Pe scurt” is the place's
+   * own total and first three firms, and the lists search the words as typed within it (UX audit Z1-01, 16 November 2026).
+   */
+  placeAlone?: true;
 }
 
 /**
@@ -329,6 +334,23 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
       }
     }
   }
+  // A place named alone („Cluj”, „Cisnădie 2023”), as the search dialog reads it: the place becomes the filter and „Pe
+  // scurt” answers for it (UX audit Z1-01, 16 November 2026). The names and titles that carry the place's name stay the
+  // lists, within the place. „primăria X” stays the institution's name.
+  // The same place or a period chosen on the page afterwards keeps the reading (a filter edited keeps what was read).
+  if (!out.answer && !out.question && !applies && !loose && !hasEntity && !i.subjects.length && !i.leftover.length && !i.placeAmbiguous
+    && interpretedPlace && interpretedChip && (!scope.place || scope.place === interpretedChip.id) && !(scope.from && i.period) && scope.type === 'all'
+    && i.intentSource !== 'cue' && !placeUnknown && placeAlone(i.text, interpretedPlace.matched!, i.period?.matched)) {
+    const reading: Interpretation = scope.from ? { ...i, period: { yearFrom: Number(scope.from), yearTo: Number(scope.to), matched: { text: '', from: 0, to: 0 } } } : i;
+    const answer = shortAnswer({ ...reading, topN: 3, superlative: false, measure: null }, {}, {}, askHref);
+    if (answer) {
+      out.answer = answer;
+      out.placeAlone = true;
+      // a year typed with the place is the period, not a title word
+      out.applied = { q: wordsPeriod ? remainingWords(i.text, [i.period!.matched]) || scope.q : scope.q, place: interpretedChip.id, from: wordsPeriod?.from ?? scope.from, to: wordsPeriod?.to ?? scope.to };
+      out.fromWords = { place: scope.place ? null : interpretedChip, period: wordsPeriod };
+    }
+  }
   // A question or a scope read but not trusted: the words as typed are searched, and the page says so (owner probe
   // re-judging, 10 November 2026: a silent dead end).
   if (!loose && !applies && !out.question && !out.answer && out.applied.q === scope.q && !out.note && result.sentence
@@ -375,6 +397,15 @@ export function isCleanQuestion(result: IntentResult): boolean {
 }
 
 const OWN_PLACE_SAID = /nu știm ce localitate/;
+
+/** Words that only mark a place („în Cluj”, „județul Iași”, „orașul Cisnădie”); „primăria” names an institution. */
+const PLACE_ONLY_MARK = new Set(['in', 'din', 'la', 'judetul', 'judetului', 'jud', 'municipiul', 'municipiului', 'orasul', 'orasului', 'comuna', 'comunei', 'localitatea']);
+
+/** Every word is the place, its period, or a small word around them („Cluj”, „în județul Cluj 2024”). */
+export function placeAlone(text: string, place: Span, period?: Span): boolean {
+  const inside = (s: Span | undefined, k: number) => Boolean(s) && k >= s!.from && k < s!.to;
+  return tokenize(text).every((t, k) => !/^primari/.test(t.f) && (inside(place, k) || inside(period, k) || STOPWORDS.has(t.f) || PLACE_ONLY_MARK.has(t.f)));
+}
 
 /** "Niciun contract încadrat la „Pod” la primăria Oradea (Bihor), în toți anii." */
 export function emptyAnswerText(totalSentence: string, subject: string | null): string {

@@ -46,14 +46,43 @@ describe('interpretation → /cauta selection', () => {
     expect(t.placeChoices).toContainEqual(expect.objectContaining({ id: 'county:buzau', choice: 'Tot județul Buzău' }));
   });
 
-  it('keeps a lone place or institution as a name search', async () => {
-    for (const q of ['buzau', 'primaria buzau']) {
-      const { scope, result } = await read(q);
-      const t = applyInterpretation(scope, result);
-      expect(t.applied).toEqual({ q, place: '', from: '', to: '' });
-      expect(t.fromWords.place).toBeNull();
-      expect(t.answer).toBeNull();
-    }
+  it('keeps an institution named with its town as a name search', async () => {
+    const { scope, result } = await read('primaria buzau');
+    const t = applyInterpretation(scope, result);
+    expect(t.applied).toEqual({ q: 'primaria buzau', place: '', from: '', to: '' });
+    expect(t.fromWords.place).toBeNull();
+    expect(t.answer).toBeNull();
+    expect(t.placeAlone).toBeUndefined();
+  });
+
+  it('reads a place named alone as the place: its filter and its own short answer (UX audit Z1-01)', async () => {
+    const { scope, result } = await read('buzau');
+    const t = applyInterpretation(scope, result);
+    // the names and titles that carry the place's name stay the lists, within the place
+    expect(t.applied).toEqual({ q: 'buzau', place: 'county:buzau', from: '', to: '' });
+    expect(t.fromWords.place).toEqual({ id: 'county:buzau', label: 'Județul Buzău', kind: 'county' });
+    expect(t.placeAlone).toBe(true);
+    expect(t.note).toBeNull();
+    expect(t.answer?.total.spec).toMatchObject({ block: 'stat', filters: { county: 'Buzău' } });
+    expect(t.answer?.top).toMatchObject({ kind: 'suppliers', spec: { dim: 'supplier', topN: 3, filters: { county: 'Buzău' } } });
+    // Întreabă opens on the same ranking, not on the words read again
+    expect(t.answer?.href).toMatch(/^\/intreaba\?spec=/);
+  });
+
+  it('reads a place and a year named alone, and never a place picked on the page', async () => {
+    const { scope, result } = await read('in judetul buzau 2023');
+    const t = applyInterpretation(scope, result);
+    expect(t.placeAlone).toBe(true);
+    expect(t.applied).toEqual({ q: 'buzau', place: 'county:buzau', from: '2023', to: '2023' });
+    expect(t.answer?.total.spec.filters).toMatchObject({ county: 'Buzău', yearFrom: 2023, yearTo: 2023 });
+    const chosen = await read('buzau', '&place=county:cluj');
+    expect(applyInterpretation(chosen.scope, chosen.result).placeAlone).toBeUndefined();
+    // the same place kept as a filter, with a period picked on the page: still the place's answer, for those years
+    const kept = await read('buzau', '&place=county:buzau&from=2022&to=2022');
+    const k = applyInterpretation(kept.scope, kept.result, { id: 'county:buzau', name: 'Buzău', detail: 'Județ', kind: 'county' });
+    expect(k.placeAlone).toBe(true);
+    expect(k.applied).toEqual({ q: 'buzau', place: 'county:buzau', from: '2022', to: '2022' });
+    expect(k.answer?.total.spec.filters).toMatchObject({ county: 'Buzău', yearFrom: 2022, yearTo: 2022 });
   });
 
   it('never picks between localities of the same name', async () => {
