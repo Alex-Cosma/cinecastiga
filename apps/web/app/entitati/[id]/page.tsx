@@ -48,6 +48,8 @@ import ScoreSignals from "./ScoreSignals";
 import SectionNav from "./SectionNav";
 import AnalysisIcon, { type AnalysisKey } from "./AnalysisIcon";
 import DropRolParam from "./DropRolParam";
+import RepsMore from "./RepsMore";
+import { isFillerRep, REPS_SHOWN } from "./reps";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
 import "./entity.css";
@@ -445,32 +447,43 @@ export default async function EntityPage({
       {summary && <SummaryNotes notes={summary.notes} />}
       {summary && <EntityBrief summary={summary} />}
 
-      {/* Legal representatives (ONRC snapshot) */}
-      {reps.length > 0 && (
+      {/* Legal representatives (ONRC snapshot). A register filler is never a person (UX audit Z5-26); the „other firms”
+          column only when someone has any; on a phone each person is one line and the first five are shown. */}
+      {reps.length > 0 && (() => {
+        const people = reps.filter((r, i) => !isFillerRep(r.personName) || reps.findIndex((x) => isFillerRep(x.personName)) === i);
+        const others = people.some((r) => !isFillerRep(r.personName) && ((r.nOtherFirms > 0 && r.personKey) || r.nOtherOnrcOnly > 0));
+        return (
         <section className="section" id="conducere">
           <h2 className="ent-tip">Conducere <Term tip id="conducere-onrc" /></h2>
-          <table className="rank">
+          <RepsMore hidden={Math.max(0, people.length - REPS_SHOWN)}>
+          <table className="rank reps-table">
             <thead>
               <tr>
                 <th>Persoană</th>
                 <th>Calitate</th>
-                <th>Alte firme reprezentate</th>
+                {others && <th>Alte firme reprezentate</th>}
               </tr>
             </thead>
             <tbody>
-              {reps.map((r, i) => (
-                <tr key={`${r.personName}-${i}`}>
-                  <td>
-                    {cleanName(r.personName)}
+              {people.map((r, i) => isFillerRep(r.personName) ? (
+                <tr key={`filler-${i}`} className={i >= REPS_SHOWN ? "rep-more" : undefined}>
+                  <td className="rep-name"><span className="rep-n rep-none">fără reprezentant declarat</span></td>
+                  <td className="county rep-cal">{r.calitate ?? "—"}</td>
+                  {others && <td className="rep-other" data-empty="1" />}
+                </tr>
+              ) : (
+                <tr key={`${r.personName}-${i}`} className={i >= REPS_SHOWN ? "rep-more" : undefined}>
+                  <td className="rep-name">
+                    <span className="rep-n">{cleanName(r.personName)}</span>
                     {(r.birthYear || r.birthDateImplausible) && (
-                      <span className="county">
+                      <span className="county rep-b">
                         {" "}
                         {birthNote({ ...r, birthLocality: r.birthLocality ? cleanName(r.birthLocality) : null })}
                       </span>
                     )}
                   </td>
-                  <td className="county">{r.calitate ?? "—"}</td>
-                  <td>
+                  <td className="county rep-cal">{r.calitate ?? "—"}</td>
+                  {others && <td className="rep-other" data-empty={r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 ? "1" : undefined}>
                     {r.nOtherFirms > 0 && r.personKey ? (
                       <a href={personFirmsUrl(r.personKey, cleanName(r.personName))}>
                         {r.nOtherFirms === 1 ? "încă o firmă" : `încă ${formatInt(r.nOtherFirms)} firme`} →
@@ -485,13 +498,15 @@ export default async function EntityPage({
                       </span>
                     )}
                     {r.nOtherFirms === 0 && r.nOtherOnrcOnly === 0 && "—"}
-                  </td>
+                  </td>}
                 </tr>
               ))}
             </tbody>
           </table>
+          </RepsMore>
         </section>
-      )}
+        );
+      })()}
 
       {/* Counterparties */}
       {!partnersRepeatTable && <section className="section" id="parteneri">
