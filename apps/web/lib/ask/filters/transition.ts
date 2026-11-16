@@ -64,6 +64,12 @@ const countyToSeat = (spec: FilterSpec): FilterSpec => edited(spec, (next) => {
  * (its own window, F6a). A restored link is not rewritten (restore.ts): it
  * opens as it was asked.
  */
+/**
+ * Words in quotes inside a note: their own quotes become the inner ones (UX audit, zone 2 bug: „pentru „medicamente””
+ * is written „pentru «medicamente»”, as Romanian nests quotes).
+ */
+export const quoted = (words: string): string => `„${words.replace(/„([^”]*)”/g, "«$1»")}”`;
+
 export function seatFromCounty(spec: FilterSpec): FilterSpec {
   if (spec.block === "distribution" || spec.filters.seatCounty || countyMeaning(spec) !== "seat") return spec;
   return countyToSeat(spec);
@@ -99,7 +105,7 @@ function settle(
   const renamed: Partial<Record<FilterId, FilterId>> = {};
   // What the window removed outside its own filters: a stream without the single bidder, another role without the second entity.
   for (const id of presentBefore.keys()) if (!touched.has(id) && !presentAfter.has(id)) {
-    notes.push(`Am scos „${say(id)}”: nu se potrivește cu alegerea nouă.`);
+    notes.push(`Am scos ${quoted(say(id))}: nu se potrivește cu alegerea nouă.`);
     dropped.push(id);
   }
   let spec = after;
@@ -108,7 +114,7 @@ function settle(
     const self = opts.lens ? null : tautology(spec, id);
     if (opts.lens) parked.push({ id, label: labelOf(id), values: pathValues(spec, FILTERS[id].keys) });
     else {
-      const note = `Am scos „${say(id)}”: ${self?.why ?? why}.`;
+      const note = `Am scos ${quoted(say(id))}: ${self?.why ?? why}.`;
       notes.push(note); dropped.push(id);
       if (self) links[note] = self.retarget;
     }

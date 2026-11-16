@@ -45,7 +45,7 @@ export interface LegacyCondition {
   retarget?: { label: string; spec: FilterSpec };
 }
 
-/** Why a tautology answers itself, in a note's words ("Am scos „firma „PORR””: …"). */
+/** Why a tautology answers itself, in a note's words ("Am scos „firma «PORR»”: …"). */
 const TAUTOLOGY_WHY = { supplier: "cu o singură firmă aleasă, răspunsul e chiar ea", authority: "cu o singură instituție aleasă, răspunsul e chiar ea" } as const;
 
 /**
