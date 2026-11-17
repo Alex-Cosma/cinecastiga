@@ -9,7 +9,7 @@ import {cachedSpelling} from '@/lib/intent/vocabulary-sql';
 import {spell} from '@/lib/intent/spelling';
 import {CPV_TERM_SEPARATOR} from '@/lib/ask/cpv-terms';
 import {localityInstitutions} from '@/lib/locality-institutions';
-import {resolvePlace} from '@/lib/topic-search/server';
+import {resolvePlace,topicPlacesAround} from '@/lib/topic-search/server';
 import {parseTopicScope} from '@/lib/topic-search/shared';
 export const dynamic='force-dynamic';
 
@@ -86,6 +86,9 @@ export async function GET(req:Request){
     }
    }
   }
+  // what the place's word offers when opened: the places around the place searched in (never a reason to fail)
+  const where=t.applied.place||scope.place;
+  if(where)t.placeAround=await topicPlacesAround(where).catch(()=>null);
   return Response.json({interpretation:t},{headers:{'Cache-Control':'no-store'}});
  }catch(e){
   devlog('topic-interpretation',{q:scope.q,error:String(e)});

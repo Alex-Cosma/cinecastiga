@@ -55,7 +55,8 @@ export function matchKind(word: string, name: string): Exclude<PlaceMatchKind, '
 
 type Ranked = Place & { match: PlaceMatchKind; population: number; order: number };
 
-const localPlace = (r: UatRow): Place => ({ id: `uat:${r.siruta}`, name: r.name, detail: `${TIP_LABEL[String(r.tip)] ?? 'Localitate'} · ${r.county}`, kind: 'locality' });
+/** A registry row as a /cauta place, in the registry's own spelling. */
+export const localPlace = (r: UatRow): Place => ({ id: `uat:${r.siruta}`, name: r.name, detail: `${TIP_LABEL[String(r.tip)] ?? 'Localitate'} · ${r.county}`, kind: 'locality' });
 
 /**
  * Counties and localities for the typed text, best match first: exact, prefix,

@@ -5,6 +5,7 @@ import {entityIntent} from './entity-intent';
 import {passage} from './passage';
 import {titleTsquery,trailingCounty,wordForms} from './words';
 import {rankPlaces,type UatRow} from './places';
+import {placesAround,type PlaceAround} from './around';
 import {COUNTIES} from '../counties';
 import {buildPlaces} from '../intent/places';
 import {localityInstitutions} from '../locality-institutions';
@@ -43,6 +44,12 @@ export async function topicPlaces(term:string):Promise<Place[]> {
  const word=fold(term.trim()).slice(0,100);
  if(word.length<2)return rankPlaces(word,countyPlaces,[]);
  return rankPlaces(word,countyPlaces,await uatRows()).map(shownPlace);
+}
+/** The places around a place, in the gazetteer's spelling (lib/topic-search/around.ts); null when the place is unknown. */
+export async function topicPlacesAround(id:string):Promise<PlaceAround|null>{
+ if(!id)return null;
+ const around=placesAround(id,id==='county:bucuresti'?[]:await uatRows());
+ return around&&{...around,inside:around.inside.map(shownPlace)};
 }
 export async function resolvePlace(id:string):Promise<Place|null>{
  if(!id)return null;if(id.startsWith('county:'))return countyPlaces.find(p=>p.id===id)??null;

@@ -95,6 +95,26 @@ describe('interpretation → /cauta selection', () => {
     expect(t.placeChoices.every((c) => c.q === 'iluminat')).toBe(true);
   });
 
+  it('reads a same-named locality as the one chosen on the page', async () => {
+    // owner, 17 November 2026: the place's menu links a locality by its name and its id („Florești” + Florești (Cluj))
+    const alone = await read('salcioara');
+    expect(applyInterpretation(alone.scope, alone.result)).toMatchObject({ placeAmbiguous: true, answer: null });
+    const { scope, result } = await read('salcioara', '&place=uat:68789');
+    const t = applyInterpretation(scope, result);
+    expect(t.placeAmbiguous).toBe(false);
+    expect(t.placeAlone).toBe(true);
+    expect(t.applied).toMatchObject({ q: 'salcioara', place: 'uat:68789' });
+    expect(t.answer?.total.sentence).toMatch(/Sălcioara|Salcioara/i);
+    // with a subject, the chosen one is the filter and the others are no longer asked about
+    const lit = await read('iluminat salcioara', '&place=uat:94330');
+    const l = applyInterpretation(lit.scope, lit.result);
+    expect(l.placeAmbiguous).toBe(false);
+    expect(l.placeChoices.map((c) => c.id)).not.toContain('uat:68789');
+    // a place chosen that is none of them settles nothing
+    const other = await read('salcioara', '&place=county:cluj');
+    expect(applyInterpretation(other.scope, other.result).placeAmbiguous).toBe(true);
+  });
+
   it('respects a place chosen on the page and names it officially', async () => {
     const place = { id: 'uat:44818', name: 'MUNICIPIUL BUZAU', detail: 'Municipiu · buzau', kind: 'locality' as const };
     const { scope, result } = await read('asfalt', '&place=uat:44818');

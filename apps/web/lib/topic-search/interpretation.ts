@@ -8,6 +8,7 @@ import { sentenceFor, specFor, subjectsLabel, type SentenceLabels } from '../int
 import type { AuthorityKind } from '../ask/spec';
 import type { IntentResult, Interpretation, PlaceMatch, Span } from '../intent/types';
 import type { Place, TopicScope } from './shared';
+import type { PlaceAround } from './around';
 import { placeId, remainingWords, subjectWords, weakSubject } from './words';
 import { STOPWORDS, tokenize } from '../intent/text';
 import { NEVER_SUBJECT, NO_DOMAIN_SAID, TOWN_HALL_UNKNOWN } from '../intent/rules';
@@ -70,6 +71,11 @@ export interface TopicInterpretation {
   otherSubjects: { label: string; cpvName: string | null }[];
   /** Other readings of the place, ready to apply ("Doar Municipiul Buzău"). */
   placeChoices: (ChipPlace & { choice: string; q: string })[];
+  /**
+   * The places around the place searched in (lib/topic-search/around.ts), set by the route: what the place's word
+   * offers when opened. Each carries the words that name it when typed alone (`name`).
+   */
+  placeAround?: PlaceAround | null;
   /** The place name fits several localities: nothing was applied, the person chooses. */
   placeAmbiguous: boolean;
   /** The interpreter's own sentence and problem, verbatim. */
@@ -146,8 +152,14 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   const named = explicitPlace ? placeMatchFor(explicitPlace) : null;
   if (explicitPlace && named) base.explicitPlace = { id: explicitPlace.id, label: named.kind === 'county' ? named.name : named.label, kind: named.kind };
   if (!result || !scope.q) return base;
-  const i = result.interpretation;
+  let i = result.interpretation;
   if (foldText(i.text).trim() !== foldText(scope.q).trim()) return base;
+  // A place chosen on the page says which of the same-named localities the words mean: „Florești” with Florești (Cluj)
+  // chosen is that Florești, not a question to ask again (the place's menu links so; owner, 17 November 2026).
+  if (i.placeAmbiguous && scope.place) {
+    const chosen = [i.place, ...i.placeAlternatives].find((p) => p?.matched && placeId(p) === scope.place);
+    if (chosen) i = { ...i, place: chosen, placeAlternatives: [], placeAmbiguous: false };
+  }
   const hasEntity = Boolean(i.authority || i.supplier || i.compareWith || i.entityAlternatives.length || i.person || i.personAlternatives.length);
   const s0 = i.subjects[0];
   // A fragment of a catalogue word ("construct") or a reading with unexplained

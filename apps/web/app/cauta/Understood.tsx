@@ -1,6 +1,7 @@
 'use client';
 import {Fragment,useEffect,useId,useRef,useState} from 'react';
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
 import EntityName from '@/components/EntityName';
@@ -98,6 +99,50 @@ function SubjectWord({text,scope,effective,subject,others,total}:{text:string;sc
  </details>;
 }
 
+type Around=NonNullable<TopicInterpretation['placeAround']>;
+const wholeCounty=(county:string)=>county==='București'?'Tot Bucureștiul':`Tot județul ${county}`;
+const inCounty=(county:string)=>county==='București'?'București':`județul ${county}`;
+/**
+ * The place's word in „Am înțeles” (owner, 17 November 2026, „varianta B”): opened on `/cauta?q=Cluj` it offered only
+ * „Caută „Cluj” în toată țara”, though it is announced as „schimbă locul”. It now offers the places around: for a county
+ * its largest localities and the counties beside it, for a locality its whole county and the other localities of it
+ * (lib/topic-search/around.ts), and a search for any other place; typing replaces the suggestions with what was found.
+ * The way out („toată țara”) stays last. The same window as the subject's word, a sheet from the bottom on a phone.
+ */
+function PlaceWord({text,title,choices,around,hrefFor,out}:{text:string;title:string;choices:{id:string;text:string;href:string}[];around:Around|null;hrefFor:(p:Place)=>string;out:{text:string;href:string}}){
+ const box=useRef<HTMLDetailsElement>(null),id=useId(),router=useRouter();
+ const [term,setTerm]=useState(''),[found,setFound]=useState<{term:string;places:Place[];failed:boolean}|null>(null);
+ const word=term.trim();
+ useEffect(()=>{if(word.length<2){setFound(null);return;}
+  const abort=new AbortController(),timer=setTimeout(()=>{void fetch(`/api/topic-search/places?q=${encodeURIComponent(word)}`,{signal:abort.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(!abort.signal.aborted)setFound({term:word,places:(d.places as Place[]).slice(0,6),failed:false});})
+   .catch(e=>{if(!abort.signal.aborted&&(e as Error).name!=='AbortError')setFound({term:word,places:[],failed:true});});},180);
+  return()=>{clearTimeout(timer);abort.abort();};},[word]);
+ const close=()=>{if(box.current){box.current.open=false;setTerm('');}};
+ const taken=new Set(choices.map(c=>c.id));
+ const offer=(p:Place,shown:string)=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}>{shown} ›</Link>;
+ const wider=around?.wider&&!taken.has(around.wider.id)?around.wider:null,inside=(around?.inside??[]).filter(p=>!taken.has(p.id)),beside=(around?.neighbours??[]).filter(p=>!taken.has(p.id));
+ const hits=found&&found.term===word?found:null;
+ return <details ref={box} className="topic-part topic-part-place" onToggle={e=>{const el=e.currentTarget as HTMLDetailsElement;if(el.open)el.querySelector('.topic-domain-menu')?.scrollIntoView({block:'nearest',behavior:scrollMotion()});}}>
+  <summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> (schimbă locul)</span></summary>
+  <div className="topic-part-menu topic-domain-menu topic-place-menu">
+   <div className="topic-domain-head"><div><p className="topic-domain-title">Locul: {title}</p><p className="topic-domain-note">Alege alt loc sau caută unul.</p></div>
+    <button type="button" className="topic-domain-close" onClick={()=>{close();box.current?.querySelector('summary')?.focus();}} aria-label="Închide"><DiscoveryIcon name="close"/></button></div>
+   <label className="topic-place-find" htmlFor={id}><DiscoveryIcon name="search"/><span className="d-sr-only">Alt loc</span>
+    <input id={id} type="search" value={term} placeholder="Alt județ, oraș sau comună" autoComplete="off" enterKeyHint="search" onChange={e=>setTerm(e.target.value)}
+     onKeyDown={e=>{if(e.key==='Enter'&&hits?.places[0]){e.preventDefault();const to=hrefFor(hits.places[0]);close();router.push(to);}}}/></label>
+   {word.length>=2?<div className="topic-place-hits" role="status" aria-busy={!hits}>{!hits?<p>Se caută…</p>:hits.places.length?hits.places.map(p=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}><span>{p.name}</span><small>{p.detail}</small></Link>)
+     :<p>{hits.failed?'Căutarea de locuri nu a răspuns. Încearcă din nou.':`Niciun județ sau localitate numită „${word}”.`}</p>}</div>
+   :<>
+    {choices.length>0&&<div className="topic-domain-more"><p>Același nume</p><div>{choices.map(c=><Link prefetch={false} key={c.id} href={c.href} onClick={close}>{c.text} ›</Link>)}</div></div>}
+    {wider&&around&&<div className="topic-domain-more"><p>Mai larg</p><div>{offer(wider,wholeCounty(around.county))}</div></div>}
+    {inside.length>0&&around&&<div className="topic-domain-more"><p>{around.wider?`Alte localități din ${inCounty(around.county)}`:`Mai îngust, în ${inCounty(around.county)}`}</p><div>{inside.map(p=>offer(p,p.name))}</div></div>}
+    {beside.length>0&&<div className="topic-domain-more"><p>Județe vecine</p><div>{beside.map(p=>offer(p,p.name))}</div></div>}
+   </>}
+   <div className="topic-domain-more topic-place-out"><div><Link prefetch={false} href={out.href} onClick={close}>{out.text} ›</Link></div></div>
+  </div>
+ </details>;
+}
+
 /**
  * "Am înțeles": what /cauta took from the words, as one sentence (UX audit Z1-03, 16 November 2026): the interpreter's
  * own words, with the subject, the buyers, the place and the period marked where it wrote them; each opens what else it
@@ -108,7 +153,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  const fromWords=t.fromWords,placeChip=fromWords.place??(t.explicitPlace?.id===effective.place?t.explicitPlace:null)??(effective.place&&place?.id===effective.place?{id:place.id,label:place.kind==='county'?(place.name==='București'?'Municipiul București':`Județul ${place.name}`):place.name,kind:place.kind}:null);
  const literal=searchHref(withoutDomain(scope),{},true);
  // A place named alone is read as the place again: without it, the words are searched as typed.
- const removePlace=t.placeAlone?literal:fromWords.place?searchHref(scope,{q:t.applied.q,place:'',from:effective.from,to:effective.to}):searchHref(scope,{place:''});
+ const removePlace=t.placeAlone?searchHref(withoutDomain(scope),{place:'',hall:false},true):fromWords.place?searchHref(scope,{q:t.applied.q,place:'',from:effective.from,to:effective.to}):searchHref(scope,{place:''});
  const period=fromWords.period??(effective.from?{from:effective.from,to:effective.to,label:periodLabel(effective.from,effective.to)}:null);
  const removePeriod=fromWords.period?searchHref(scope,{q:t.applied.q,place:effective.place,from:'',to:''}):searchHref(scope,{from:'',to:''});
  const box=useRef<HTMLElement>(null);
@@ -136,14 +181,21 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  if(t.kind)menus.kind={what:'doar în „Pe scurt”',label:`Cine cumpără: ${t.kind.label}`,body:<>
   <p>Doar „Pe scurt” se restrânge la {t.kind.label}; titlurile sunt de la toate instituțiile.</p>
   <Link prefetch={false} href={searchHref(scope,{q:t.kind.withoutQ,place:effective.place,from:effective.from,to:effective.to})}>Scoate „{t.kind.label}”: toate instituțiile</Link></>};
- if(placeChip)menus.place={what:'schimbă locul',label:`Loc: ${placeChip.label}`,body:<>
-  {t.placeChoices.map(c=><Link prefetch={false} key={c.id} href={searchHref(scope,{q:c.q,place:c.id,from:effective.from,to:effective.to})}>{c.choice}</Link>)}
-  <Link prefetch={false} href={removePlace}>{t.placeAlone?`Caută „${scope.q}” în toată țara`:'Scoate locul: toată țara'}</Link></>};
+ // The place's word opens the places around it (PlaceWord).
+ if(placeChip)menus.place={what:'schimbă locul',label:`Loc: ${placeChip.label}`,body:null};
+ // Another place for the same search: a place named alone is named again by its own name (a locality with its id, as
+ // several localities may share the name); a place read beside a subject or chosen on the page is swapped in the filter.
+ const placeHref=(p:Place)=>t.placeAlone?searchHref(scope,{q:p.name,place:p.kind==='county'?'':p.id,from:effective.from,to:effective.to,hall:false})
+  :fromWords.place?searchHref(scope,{q:t.applied.q,place:p.id,from:effective.from,to:effective.to,hall:false}):searchHref(scope,{place:p.id,hall:false});
  if(period)menus.period={what:'schimbă perioada',label:`Perioada: ${period.label}`,body:<Link prefetch={false} href={removePeriod}>Scoate perioada: toți anii</Link>};
  const keys=(Object.keys(menus) as Key[]);
  const texts:Record<Key,string[]>={subject:t.subject?[...(chosenPart?[`„${chosenPart.name}”`,chosenPart.name]:[]),`„${t.subject.label}”`,t.subject.label]:[],kind:t.kind?[t.kind.label]:[],place:placeChip?placeTexts(placeChip.label):[],period:period?[period.label]:[]};
  const marked=sentence?markParts(sentence,keys.map(key=>({key,texts:texts[key]}))):{segments:[],missing:keys};
- const part=(key:Key,text:string)=>{const m=menus[key]!;return key==='subject'&&t.subject?<SubjectWord key={key} text={text} scope={scope} effective={effective} subject={t.subject} others={t.otherSubjects} total={t.answer?.total.spec??null}/>:<Part key={key} text={text} what={m.what}>{m.body}</Part>;};
+ const part=(key:Key,text:string)=>{const m=menus[key]!;
+  if(key==='place'&&placeChip)return <PlaceWord key={key} text={text} title={/^(?:Județul|Municipiul|Orașul|Comuna)\s/.test(placeChip.label)&&placeChip.label!=='Municipiul București'?placeChip.label.charAt(0).toLocaleLowerCase('ro-RO')+placeChip.label.slice(1):placeChip.label} around={t.placeAround??null} hrefFor={placeHref}
+   choices={t.placeChoices.map(c=>({id:c.id,text:c.choice,href:searchHref(scope,{q:c.q,place:c.id,from:effective.from,to:effective.to})}))}
+   out={{text:t.placeAlone?`Caută „${scope.q}” în toată țara`:'Toată țara',href:removePlace}}/>;
+  return key==='subject'&&t.subject?<SubjectWord key={key} text={text} scope={scope} effective={effective} subject={t.subject} others={t.otherSubjects} total={t.answer?.total.spec??null}/>:<Part key={key} text={text} what={m.what}>{m.body}</Part>;};
  // A question's „Caută exact ce ai scris” is in „Pe scurt” (or beside its question when it has none).
  const showLiteral=!t.question&&Boolean(fromWords.place||fromWords.period||t.subject||t.placeAlone);
  return <section ref={box} className="topic-understood topic-question" aria-label={t.question?'Cum am înțeles întrebarea':'Cum am înțeles căutarea'}>
