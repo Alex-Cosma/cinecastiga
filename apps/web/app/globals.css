@@ -462,8 +462,10 @@ table.rank td .src a:hover { color: var(--accent); }
 .ask-caveats .ask-lab { color: var(--amber); }
 /* collapsed-by-default caveats: one quiet line, expands on click */
 /* map hover tooltip — fixed-positioned at cursor, never captures the mouse */
+/* A manual popover (use-tip.tsx TipBox): the browser's own popover box is taken off, the cursor's place is inline. */
 .ask-maptip {
   position: fixed; z-index: 90; pointer-events: none;
+  inset: auto; margin: 0; border: 0; overflow: visible;
   background: var(--ink); color: var(--on-accent); border-radius: 10px;
   padding: 8px 12px; font-size: 12.5px; line-height: 1.45;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22); max-width: 240px;

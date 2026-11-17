@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /*
  * Its own module (audit P3F1, 5 Nov 2026): the entity page's tables and year chart import only this hook, and importing
@@ -28,6 +28,21 @@ function tipPlace(x: number, y: number): { left: number; top: number } {
     left: x + 14 + TIP_W > w ? Math.max(8, x - 14 - TIP_W) : x + 14,
     top: y + 14 + TIP_H > h ? Math.max(8, y - 14 - TIP_H) : y + 14,
   };
+}
+/**
+ * The tip's box, beside the cursor. A manual popover: it is in the top layer, so it is placed against the screen
+ * whatever holds it. As a plain fixed box it was placed against the nearest ancestor that keeps a transform, and an
+ * entrance animation that fills forwards leaves one: on the map's UAT panel the tip of a row landed the panel's own
+ * offset to the right of the cursor, squeezed against the screen's edge (owner, 17 November 2026). A browser without
+ * popovers keeps the fixed box.
+ */
+export function TipBox({ x, y, children }: { x: number; y: number; children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (el && typeof el.showPopover === "function" && !el.matches(":popover-open")) el.showPopover();
+  }, []);
+  return <div ref={box} className="ask-maptip" popover="manual" style={tipPlace(x, y)}>{children}</div>;
 }
 export function useTip() {
   const [tip, setTip] = useState<{
@@ -68,11 +83,11 @@ export function useTip() {
     };
   };
   const el = tip ? (
-    <div className="ask-maptip" style={tipPlace(tip.x, tip.y)}>
+    <TipBox x={tip.x} y={tip.y}>
       <div className="t">{tip.title}</div>
       {tip.v && <div className="v">{tip.v}</div>}
       {tip.s && <div className="s">{tip.s}</div>}
-    </div>
+    </TipBox>
   ) : null;
   /** Manual control for canvas-rendered blocks (no DOM element to bind). */
   const show = (

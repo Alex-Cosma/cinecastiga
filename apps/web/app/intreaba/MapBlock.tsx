@@ -21,6 +21,7 @@ import { chartPace } from "../../components/motion/pace";
 import { SelectPath } from "../../components/motion/Selection";
 import { EASE_CAMERA } from "../../components/motion/outline";
 import { countyMetrics, localNotes, mapFirm, metricWords, nationalMetric, type CountyMetric, type MapLensValue } from "./map-answer";
+import { TipBox } from "./use-tip";
 
 type MapData = Extract<BlockData, { block: "map" }>;
 type CountyValue = MapData["counties"][number];
@@ -361,13 +362,10 @@ export default function MapBlock({
           </p>
         )}
         {tip && (
-          <div
-            className="ask-maptip"
-            style={{ left: tip.x + 14, top: tip.y + 14 }}
-          >
+          <TipBox x={tip.x} y={tip.y}>
             <CountyTip label={tip.label} value={tipRow?.value ?? 0} count={tipRow?.count ?? 0} national={national} asCount={asCount}
               lens={lens} metric={metricOf(tip.key)} />
-          </div>
+          </TipBox>
         )}
       </div>
       <div className="ask-mapside-wrap">
