@@ -63,7 +63,6 @@ export function topicParams(s:TopicScope):URLSearchParams {
 /** The same selection without the domain kept alone: what the lists search, and a search for another subject. */
 export const withoutDomain=(s:TopicScope):TopicScope=>{const {domain:_domain,...rest}=s;return rest;};
 export const fold=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-export function excerpt(text:string,q:string){const needle=fold(q).split(/\s+/)[0]??'',pos=fold(text).indexOf(needle),start=Math.max(0,pos-100);return `${start?'…':''}${text.slice(start,start+380)}${text.length>start+380?'…':''}`;}
 /** The documents request for a selection. Only the Documents tab pages through
  * documents; elsewhere the first hits and the count do not depend on the open
  * tab, page or entity role, so switching those reuses the documents already loaded. */

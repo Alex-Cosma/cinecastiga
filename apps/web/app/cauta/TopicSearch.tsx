@@ -9,7 +9,7 @@ import {formatExactDecimal,formatInt,cleanName} from '@/lib/format';
 import {parseTopicScope,cleanTopicParams,topicParams,documentScope,withoutDomain,fold,PAGE_SIZE,type TopicScope,type TopicResult,type TopicDocumentsResult,type DocumentHit,type Place,type SearchTab,type EntityHit} from '@/lib/topic-search/shared';
 import type {TopicInterpretation} from '@/lib/topic-search/interpretation';
 import {Broader,OWN_PLACE_NOTE,ReadingGhost,SubjectAnswer,Understood,prefetchAnswer,searchHref} from './Understood';
-import {titleTerms} from '@/lib/topic-search/words';
+import {markRanges,pageRuns,textSource} from '@/lib/topic-search/passage';
 import {G,Ghost,rankWidth} from '@/components/ghost/Ghost';
 import {FloatStatus} from '@/components/ghost/client';
 import WorkLine from '../../components/motion/WorkLine';
@@ -38,12 +38,15 @@ function BestMatch({entity:e,unfiltered}:{entity:EntityHit;unfiltered:boolean}){
  <div className="topic-best-actions"><Link prefetch={false} className="topic-control" href={profile}>{e.roles.includes('authority')?'Vezi instituția':'Vezi firma'}</Link><Link prefetch={false} className="topic-primary" href={`${profile}#achizitii`}>Toate achizițiile <DiscoveryIcon name="arrow"/></Link></div>
  </div>;
 }
+/** The pages of a document result as runs („85–98”), each opening at its first page; past a few runs, the count of the rest. */
+const PAGE_RUNS=5;
+function DocumentPages({d,href}:{d:DocumentHit;href:(d:DocumentHit,page:number)=>string}){
+ const runs=pageRuns(d.pages),shown=runs.slice(0,PAGE_RUNS),rest=runs.slice(PAGE_RUNS).reduce((n,[a,b])=>n+b-a+1,0);
+ return <div className="topic-document-pages">{shown.map(([a,b])=><a key={a} aria-label={a===b?`Deschide pagina ${a} din ${d.filename}`:`Deschide paginile ${a}–${b} din ${d.filename}, de la pagina ${a}`} href={href(d,a)} target="_blank" rel="noopener noreferrer">{a===b?a:`${a}–${b}`}</a>)}{rest>0&&<span className="topic-document-more">și încă {formatInt(rest)}</span>}</div>;
+}
 function Highlight({text,query}:{text:string;query:string}){
- // the same words the search used: bases of inflected words, marked to the end of the word they start
- const terms=titleTerms(query).flat(),normal=fold(text),ranges:[number,number][]=[];
- for(const {word,prefix} of terms){let at=normal.indexOf(word);while(at>=0){let end=at+word.length;if(prefix)while(end<normal.length&&/[a-z0-9]/.test(normal[end]!))end++;ranges.push([at,end]);at=normal.indexOf(word,end);}}
- ranges.sort((a,b)=>a[0]-b[0]);const merged:[number,number][]=[];for(const r of ranges){const last=merged.at(-1);if(last&&r[0]<=last[1])last[1]=Math.max(last[1],r[1]);else merged.push([...r]);}
- let cursor=0;const parts:React.ReactNode[]=[];for(const [a,b] of merged){parts.push(text.slice(cursor,a),<mark key={a}>{text.slice(a,b)}</mark>);cursor=b;}parts.push(text.slice(cursor));return <>{parts}</>;
+ // the same words the search used, marked where a word starts (lib/topic-search/passage.ts)
+ let cursor=0;const parts:React.ReactNode[]=[];for(const [a,b] of markRanges(text,query)){parts.push(text.slice(cursor,a),<mark key={a}>{text.slice(a,b)}</mark>);cursor=b;}parts.push(text.slice(cursor));return <>{parts}</>;
 }
 function PlacePicker({value,selected,onChange}:{value:string;selected:Place|null;onChange:(place:Place|null)=>void}){
  const id=useId(),box=useRef<HTMLDivElement>(null),input=useRef<HTMLInputElement>(null);
@@ -302,12 +305,12 @@ export default function TopicSearch(){
   {panelFoot('acquisitions',result.acquisitions.total,result.acquisitions.hits.length,roCount(result.acquisitions.total,'o achiziție','achiziții'))}
   </section>}
   {isShown('documents')&&emptyRow('documents')&&<p className="topic-empty-row"><strong>Documente:</strong> niciunul pregătit pentru această căutare. <Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Niciun document pregătit nu înseamnă că lipsește din originale."/></p>}
-  {isShown('documents')&&!emptyRow('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul extras din PDF-uri',<Term tip title="Documente pregătite" text="Căutăm în textul extras din PDF; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
+  {isShown('documents')&&!emptyRow('documents')&&<section className="topic-panel" aria-labelledby="topic-panel-documents" aria-busy={docsLoading}>{panelHead('document','documents','Documente',docsResult?.documents.total??null,'în textul documentelor',<Term tip title="Documente pregătite" text="Căutăm în textul extras din documente; OCR poate greși. Un document ține de procedură și poate privi mai multe loturi."/>)}
   {docsLoading?<DocumentsGhost rows={scope.tab==='documents'?Math.max(1,Math.min(PAGE_SIZE,(count('documents')??PAGE_SIZE)-(scope.page-1)*PAGE_SIZE)):2}/>
   :<>{docsResult&&docsResult.coverage.known>0&&<div className="topic-coverage"><progress value={docsResult.coverage.ready} max={Math.max(1,docsResult.coverage.known)} aria-label="Acoperirea documentelor pregătite"/><span><strong>{formatInt(docsResult.coverage.ready)} din {formatInt(docsResult.coverage.known)}</strong> fișiere cunoscute au text pregătit · {formatInt(docsResult.coverage.pages)} pagini căutabile. Nu sunt toate documentele din SEAP.</span></div>}
   {!docsResult&&<div className="topic-coverage"><span>Acoperirea documentelor nu este disponibilă acum.</span></div>}
   {docsFailure||!docsResult?<div className="topic-error" role="alert"><p>{docsFailure||'Căutarea în documente nu s-a încheiat.'}</p><button type="button" className="topic-control" onClick={retryDocs}>Reîncearcă documentele</button></div>
-  :<>{docsResult.documents.hits.map(d=><article className="topic-record topic-document" key={d.id}><div className="topic-record-main"><div className="topic-record-meta"><DiscoveryIcon name="bookOpen"/><span>{d.method==='ocr'?'Text OCR':'Text extras din PDF'} · pagina {d.page}</span><span>{d.noticeNo}</span></div><h3><a href={documentHref(d,d.page)} target="_blank" rel="noopener noreferrer">{d.filename}</a></h3><p className="topic-help">{d.noticeTitle}</p><blockquote><Highlight text={d.text} query={effective.q}/></blockquote></div><div className="topic-record-side"><small>Pagini găsite</small><div className="topic-document-pages">{d.pages.map(p=><a key={p} aria-label={`Deschide pagina ${p} din ${d.filename}`} href={documentHref(d,p)} target="_blank" rel="noopener noreferrer">{p}</a>)}</div><a href={documentHref(d,d.page)} target="_blank" rel="noopener noreferrer">Citește și păstrează pasajul <DiscoveryIcon name="arrow"/></a><a href={`/api/documents/${d.id}/file?kind=pdf#page=${d.page}`} target="_blank" rel="noopener noreferrer">PDF la pagina {d.page}</a></div></article>)}{!docsResult.documents.total&&<p className="topic-empty">{docsResult.coverage.ready?'Nimic în documentele pregătite.':'Niciun document pregătit în selecție încă.'} Asta nu înseamnă că lipsește din originale.</p>}
+  :<>{docsResult.documents.hits.map(d=><article className="topic-record topic-document" key={d.id}><div className="topic-record-main"><div className="topic-record-meta"><DiscoveryIcon name="bookOpen"/><span>{textSource(d.filename,d.method)} · pagina {d.page}</span><span>{d.noticeNo}</span></div><h3><a href={documentHref(d,d.page)} target="_blank" rel="noopener noreferrer">{d.filename}</a></h3><p className="topic-help">{d.noticeTitle}</p><blockquote><Highlight text={d.text} query={effective.q}/></blockquote></div><div className="topic-record-side"><small>Pagini găsite{d.pages.length>1?` · ${formatInt(d.pages.length)}`:''}</small><DocumentPages d={d} href={documentHref}/><a href={documentHref(d,d.page)} target="_blank" rel="noopener noreferrer">Citește și păstrează pasajul <DiscoveryIcon name="arrow"/></a><a href={`/api/documents/${d.id}/file?kind=pdf#page=${d.page}`} target="_blank" rel="noopener noreferrer">PDF la pagina {d.page}</a></div></article>)}{!docsResult.documents.total&&<p className="topic-empty">{docsResult.coverage.ready?'Nimic în documentele pregătite.':'Niciun document pregătit în selecție încă.'} Asta nu înseamnă că lipsește din originale.</p>}
   {panelFoot('documents',docsResult.documents.total,docsResult.documents.hits.length,roCount(docsResult.documents.total,'un document','documente'))}</>}</>}
   </section>}
   </div>}

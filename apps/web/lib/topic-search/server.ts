@@ -2,12 +2,13 @@ import {createDb,type DbSql} from '@seap/db';
 import {daUrl,awardUrl} from '../elicitatie';
 import {aliasQueries} from '../ask/entity-alias';
 import {entityIntent} from './entity-intent';
+import {passage} from './passage';
 import {titleTsquery,trailingCounty,wordForms} from './words';
 import {rankPlaces,type UatRow} from './places';
 import {COUNTIES} from '../counties';
 import {buildPlaces} from '../intent/places';
 import {localityInstitutions} from '../locality-institutions';
-import {fold,PAGE_SIZE,excerpt,type TopicScope,type TopicLocality,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
+import {fold,PAGE_SIZE,type TopicScope,type TopicLocality,type Place,type TopicResult,type TopicDocumentsResult,type AcquisitionHit,type DocumentHit,type EntityHit} from './shared';
 export class TopicInputError extends Error {}
 export function topicFailure(e:unknown,slow:string){
  if(e instanceof TopicInputError)return Response.json({error:e.message},{status:400});
@@ -128,7 +129,7 @@ async function documentSearch(s:TopicScope,others:Others=null):Promise<Omit<Topi
    select x.id,src.filename,x.pages[1] page,x.pages,p.text,p.method,src.notice_no,src.notice_title,src.url,c.ca_notice_contract_id::text contract_id
    from selected x join sources src on src.id=x.id join app.document_pages p on p.document_id=x.id and p.page=x.pages[1]
    join core.contracts c on c.id=src.ref_id) h),'[]'::json) hits`;
- const hits:DocumentHit[]=(r!.hits as Record<string,any>[]).map(h=>({id:h.id,filename:h.filename,page:h.page,pages:h.pages,text:excerpt(h.text,s.q),method:h.method,noticeNo:h.notice_no,noticeTitle:h.notice_title,sourceUrl:h.url,contractId:h.contract_id}));
+ const hits:DocumentHit[]=(r!.hits as Record<string,any>[]).map(h=>({id:h.id,filename:h.filename,page:h.page,pages:h.pages,text:passage(h.text,s.q),method:h.method,noticeNo:h.notice_no,noticeTitle:h.notice_title,sourceUrl:h.url,contractId:h.contract_id}));
  return {documents:{total:Number(r!.total),hits},coverage:{known:Number(r!.known),ready:Number(r!.ready),pages:Number(r!.pages)}};
  });
 }
