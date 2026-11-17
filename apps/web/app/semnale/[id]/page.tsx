@@ -6,11 +6,13 @@ import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import SourceEvidenceView from "@/components/SourceEvidenceView";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
 import FirmCard from "@/components/record/FirmCard";
 import { LinkList, RecordHead, RecordPage, RecordSection, ShareList, Sources, type RecordValue, type Source } from "@/components/record/Record";
 import { countWords } from "@/lib/ask/answer-text";
 import { awardUrl } from "@/lib/elicitatie";
 import { FLAG_META, FLAG_ORDER, flagFindingLabel, flagLabel } from "@/lib/flags";
+import { GLOSSARY } from "@/lib/glossary";
 import { cleanName, countyLabel, formatExactDecimal, formatRon } from "@/lib/format";
 import { tedNoticeUrl } from "@/lib/record-context";
 import { procedureLabel } from "@/lib/record-labels";
@@ -138,9 +140,12 @@ function headOf(d: SignalPageData): Head {
         parties: <>{entity}{d.entity?.county ? ` · ${countyLabel(d.entity.county)}` : ""}</>,
         value: {
           amount: lei(e.total), label: `în achiziții înregistrate în ${year}`,
+          // The staff is the title's; the rule waits behind an "i" (owner, 17 November 2026).
           notes: [
-            staff !== null && <>{countWords(staff, "salariat", "salariați")} în medie · bilanț MF {year}{numOf(e.per_employee) !== null && <> · {formatRon(numOf(e.per_employee))} pe salariat</>}</>,
-            "Pragul semnalului: cel mult 5 salariați și cel puțin 2 mil. lei într-un an.",
+            // The last words and the "i" stay on one line (the mark's box sets its own wrapping).
+            <>{staff !== null && <>Bilanț MF {year}{numOf(e.per_employee) !== null && " · "}</>}
+              <span style={{ whiteSpace: "nowrap" }}>{staff !== null && numOf(e.per_employee) !== null && <>{formatRon(numOf(e.per_employee))} pe salariat </>}
+                <InfoMark title="Pragul semnalului" text="Cel mult 5 salariați și cel puțin 2 mil. lei într-un an." /></span></>,
           ],
         },
       };
@@ -155,7 +160,8 @@ function headOf(d: SignalPageData): Head {
         parties: <>{entity}{years !== null ? ` · ${countWords(years, "an", "ani")} cu bilanț și contracte` : ""}</>,
         value: {
           amount: words, label: "valori contractate față de cifra de afaceri",
-          notes: [<>{lei(e.public_total)} contractați · {lei(e.revenue_total)} cifră de afaceri</>, "Pragul semnalului: cel puțin 75%. Nu e partea încasărilor de la stat."],
+          notes: [<>{lei(e.public_total)} contractați · <span style={{ whiteSpace: "nowrap" }}>{lei(e.revenue_total)} cifră de afaceri{" "}
+            <InfoMark title="Pragul semnalului" text="Cel puțin 75%. Nu e partea încasărilor de la stat." /></span></>],
         },
       };
     }
@@ -189,8 +195,9 @@ function Shares({ d }: { d: SignalPageData }) {
   const SHOWN = 12;
   const title = d.code === "award_dependence" ? "Instituțiile firmei" : d.code === "net_shared_admin" ? "Firmele, la această instituție" : "Furnizorii instituției";
   const rest = shares.slice(SHOWN);
-  return <RecordSection id="parti" title={title}>
-    <p className="record-lead">{d.code === "net_shared_admin" ? "Achiziții directe și cote din contracte, înregistrate" : "Contracte prin proceduri; la o asociere, cota fiecărui câștigător"} <Term tip id="consortiu" /></p>
+  // What the shares count joins the consortium's "?", beside the title (owner, 17 November 2026: no line under it).
+  const counts = d.code === "net_shared_admin" ? "Achiziții directe și cote din contracte, înregistrate." : "Contracte prin proceduri; la o asociere, cota fiecărui câștigător.";
+  return <RecordSection id="parti" title={<>{title} <Term tip title="Ce se numără" text={`${counts} ${GLOSSARY.consortiu.title}: ${GLOSSARY.consortiu.text.charAt(0).toLowerCase()}${GLOSSARY.consortiu.text.slice(1)}`} /></>}>
     <ShareList label={title} rows={shares.slice(0, SHOWN).map((s) => ({
       key: s.id ?? s.name, name: <Party party={s} role={side} />, share: s.share, shareText: shareWords(s.share),
       detail: <>{formatExactDecimal(s.valueExact)} lei · {d.code === "net_shared_admin" ? countWords(s.count, "înregistrare", "înregistrări") : countWords(s.count, "contract", "contracte")}</>,
@@ -220,7 +227,8 @@ function lotNotes(d: SignalPageData): { notes: Record<string, ReactNode>; common
   const notes = Object.fromEntries(Object.entries(d.tedLots).map(([id, lot]) => [`contracts:${id}`, <>
     {lot.lot ? `Lotul ${lot.lot}` : "Lot"}{lot.publication && !onePub ? ` în TED ${lot.publication}` : ""} · {lot.tenders == null ? "oferte necunoscute" : countWords(lot.tenders, "ofertă", "oferte")}{procedure && lots.length < 2 ? ` · ${procedure}` : ""}
   </>]));
-  return { notes, common: [onePub && <span key="t">TED {onePub}</span>, procedure && lots.length > 1 && <span key="p">{procedure}</span>].filter(Boolean) as ReactNode[] };
+  // The procedure of several lots is the head's meta line (owner, 17 November 2026: not said again above the table).
+  return { notes, common: [onePub && <span key="t">TED {onePub}</span>].filter(Boolean) as ReactNode[] };
 }
 
 export default async function SignalPage({ params, searchParams }: {
@@ -275,8 +283,11 @@ export default async function SignalPage({ params, searchParams }: {
     {d.firm && <FirmCard firm={d.firm} years={signalYears(d)} title={d.code === "net_shared_admin" ? "Firma semnalului" : "Firma"} />}
 
     <RecordSection id="inregistrari" title={d.code === "award_single_bid" ? "Contractele cu o singură ofertă" : d.code === "award_no_competition" ? "Contractele anunțului" : d.code === "award_calloffs_over_ceiling" ? "Comenzile anunțului" : "Înregistrările din semnal"}>
+      {/* The records' count and sum are the head's when its value is theirs; the institution, when the head names it (owner,
+          17 November 2026). The call-offs keep theirs: their head is the declared sum, not the records'. */}
       <SourceEvidenceView evidence={d.source} href={`/semnale/${id}`} page={page} kind="signal" refId={id} heading={null} save={false} titles={d.titles}
-        notes={lots.notes} notesOpen={false} common={{ extra: lots.common }} />
+        notes={lots.notes} notesOpen={false} common={{ extra: lots.common, authorityId: d.entity?.role === "authority" ? d.entity.id : d.code === "net_shared_admin" ? d.partner?.id ?? null : null }}
+        total={d.code === "award_calloffs_over_ceiling" || head.value?.amount !== lei(d.source.totalExact)} />
     </RecordSection>
 
     {others.length > 0 && d.entity && <RecordSection id="alte-semnale" title={`Alte semnale ale ${role === "supplier" ? "firmei" : "instituției"}`}>
@@ -286,7 +297,7 @@ export default async function SignalPage({ params, searchParams }: {
     {meta?.caveat && <details className="record-caveat"><summary>De ce nu e o dovadă</summary><p>{meta.caveat}</p></details>}
 
     <Sources sources={sources}>
-      <p>Calcul {d.methodology}. Lista urmează calculul curent și se poate schimba la recalculare <Term tip id="recalculare-semnale" />.</p>
+      <p>Calcul {d.methodology} <Term tip title={GLOSSARY["recalculare-semnale"].title} text={`${GLOSSARY["recalculare-semnale"].text} Lista se poate schimba la recalculare.`} /></p>
     </Sources>
   </RecordPage>;
 }

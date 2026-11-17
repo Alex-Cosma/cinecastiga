@@ -18,10 +18,7 @@ export default function SupraPragLoading() {
   return (
     <Ghost name="supra-prag" label="Se încarcă atribuirile TED…" wait="suspense">
       <DiscoverNavGhost current="supra-prag" />
-      <h1 className="page-title">Atribuiri publicate în TED</h1>
-      <p className="page-sub ted-tip-line" inert>
-        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title="TED, peste prag" text="" /></span>
-      </p>
+      <h1 className="page-title ted-title">Atribuiri publicate în <span className="tp-nowrap" inert>TED<Term tip title="TED, peste prag" text="" /></span></h1>
       <p className="hint ted-tip-line" inert>
         <G.Line inline w="min(36rem, 74%)" /><Term tip title="Acoperire TED" text="" />{" · "}<a>Acoperire →</a>
       </p>
@@ -79,9 +76,6 @@ export default function SupraPragLoading() {
         <div className="pager" inert>
           <span className="off">← anterioarele</span><span className="pager-pos"><G.Line inline w="20ch" /></span><a>următoarele →</a>
         </div>
-        <p className="note ted-tip-line ted-tip-up" inert>
-          Potrivirile posibile sunt marcate separat de cele confirmate <Term id="potrivire-ted" tip /> · <a>Metodologia →</a>
-        </p>
       </section>
     </Ghost>
   );

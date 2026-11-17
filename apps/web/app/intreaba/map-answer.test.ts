@@ -144,10 +144,12 @@ describe("the county's number and card (map final §3.9–§3.11)", () => {
     const html = renderToStaticMarkup(createElement(MapBlock, { counties, unknown: { value: 0, count: 0 }, spec: map(Y25, { map: { lens: "seat" } }), facts: read, lens: "seat" }));
     expect(html).toContain('class="ask-county ask-county-muted"');
     expect(html).toContain('id="ask-hatch"');
-    expect(html).not.toMatch(/#[0-9a-f]{3,8}\b|fill="|stroke="/i);
+    // The (i)'s glyph draws in the text's colour (currentColor), not a fixed one.
+    expect(html.replace(/<svg class="info-mark-i"[^>]*>.*?<\/svg>/g, "")).not.toMatch(/#[0-9a-f]{3,8}\b|fill="|stroke="/i);
     expect(html).toMatch(/aria-label="Giurgiu: 8,5% \(date puține\)"/);
-    expect(html).toContain("Pe țară: 20,8% la firme din județ");
-    expect(html).toContain("București și Ilfov: firmele mari au sediul în capitală");
+    // Owner, 17 November 2026 (less small print): Ilfov's seat is in the (i) after the national figure, not a line.
+    expect(html).toMatch(/Pe țară: 20,8% la firme din județ <span class="term term-tip[^"]*info-mark">[\s\S]*?<b>Sediul firmei\.<\/b> București și Ilfov: firmele mari au sediul în capitală\./);
+    expect(html.match(/București și Ilfov/g)).toHaveLength(1);
   });
 
   it("writes the card's and the lens' columns in the CSV, `inregistrari` for records", () => {

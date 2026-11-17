@@ -57,12 +57,13 @@ describe("periods, regions and places people write (owner probe, 10 November 202
     expect(i.authorityKind).toBeNull();
   });
 
-  it("orders the acquisitions by value for „cel mai mare contract”, and says so", async () => {
+  it("orders the acquisitions by value for „cel mai mare contract”, and the titles' head says so", async () => {
     const q = "cel mai mare contract de iluminat";
     const scope = parseTopicScope(new URLSearchParams(`q=${encodeURIComponent(q)}`));
     const t = applyInterpretation(scope, resultFor(await read(q)), null, NOW);
     expect(t.applied.order).toBe("value");
-    expect(t.notes.join(" ")).toMatch(/ordonate după valoare/);
+    // no note: the titles' own head says „cele mai mari valori întâi” (owner, 17 November 2026)
+    expect(t.notes.join(" ")).not.toMatch(/ordonate după valoare/);
     // a person's own order wins
     const own = parseTopicScope(new URLSearchParams(`q=${encodeURIComponent(q)}&ordine=data`));
     expect(applyInterpretation(own, resultFor(await read(q)), null, NOW).applied.order).toBeUndefined();

@@ -24,7 +24,7 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
       const r = total / ceiling;
       // At 1,2× or under a group adds nothing to the score: listed only on request, its multiple says so (UX audit Z6-04).
       const under = r <= SPLIT_COUNTS_ABOVE;
-      return { value: splitRatioWords(r), under, note: `${formatInt(num(e.count))} achiziții adunate față de plafon${under ? " · nu intră în scor" : ""}`,
+      return { value: splitRatioWords(r), under, note: `${formatInt(num(e.count))} achiziții${under ? " · nu intră în scor" : ""}`,
         tip: [`${formatInt(num(e.count))} achiziții${e.year ? ` în ${e.year}` : ""}${e.cpv_class ? `, ${DOMAIN_ALIASES[String(e.cpv_class)] ? `${DOMAIN_ALIASES[String(e.cpv_class)]} (CPV ${e.cpv_class})` : `clasa CPV ${e.cpv_class}`}` : ""}`, `Adunate: ${formatRonFull(total)}`,
           `Verde: plafonul de ${formatRonFull(ceiling)}`, ...(r > 1 ? [`Roșu: ${formatRonFull(Math.round((total - ceiling) * 100) / 100)} peste plafon`] : []), `De ${splitRatioWords(r)} plafonul`],
         // Red only past the ceiling (UX audit Z6-16): up to it green, as „Declarate directe”, so 1,2× has a short red
@@ -47,7 +47,7 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
     }
     case "da_year_end": {
       const share = num(e.december_pct) || (num(e.total) > 0 ? num(e.december) / num(e.total) : 0);
-      return { value: pctWords(share), note: `în decembrie ${e.year ?? ""}`.trim(),
+      return { value: pctWords(share), note: "",
         tip: [`Decembrie ${e.year ?? ""}`.trim(), ...(num(e.total) > 0 ? [`${formatRonFull(num(e.december))} din ${formatRonFull(num(e.total))} în tot anul`] : []), `Bara: ${pctWords(share)} din valoarea anului`,
           ...(e.peer_p95 != null ? [`Linia: ${pctWords(num(e.peer_p95))}; 95% dintre instituțiile de același tip sunt sub ea`] : [])],
         bar: <span className="sg-meter"><i className="cm-x" style={{ width: `${share * 100}%` }} />{e.peer_p95 != null && <b style={{ left: `${num(e.peer_p95) * 100}%` }} />}</span> };
@@ -65,8 +65,9 @@ export function caseMeter(code: string, evidence: Record<string, unknown> | null
     case "da_capacity": {
       // What the multiple is of (UX audit bug: the column said only „cifra de afaceri”): the turnover and its year.
       const r = num(e.ratio), turnover = num(e.turnover), year = e.turnover_year ?? e.year;
-      const sheet = e.implausible === true ? "o cifră de afaceri nerealistă" : turnover > 0 ? `cifra de afaceri de ${formatRon(turnover)}` : "cifra de afaceri";
-      return r > 0 ? { value: ratioWords(r), note: `${formatInt(num(e.da_count))} ${num(e.da_count) === 1 ? "achiziție directă" : "achiziții directe"} în ${e.year ?? ""} · de ${ratioWords(r).replace("×", "")} ori ${sheet}${year ? ` (bilanț ${year})` : ""}`, bar: null, tip: [] } : null;
+      // The year is under the firm and the multiple is the row's number (owner, 17 November 2026: less small print).
+      const sheet = e.implausible === true ? "cifră de afaceri nerealistă" : turnover > 0 ? `cifra de afaceri de ${formatRon(turnover)}` : "cifra de afaceri";
+      return r > 0 ? { value: ratioWords(r), note: `${formatInt(num(e.da_count))} ${num(e.da_count) === 1 ? "achiziție directă" : "achiziții directe"} · ${sheet}${year ? ` (bilanț ${year})` : ""}`, bar: null, tip: [] } : null;
     }
     // A firm's first month (rf-2026.24): how soon after its registration the first direct award came, against the window.
     case "da_first_month": case "da_first_month_buyer": {

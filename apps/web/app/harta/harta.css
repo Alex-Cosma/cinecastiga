@@ -210,7 +210,13 @@
 .mx-p-sec{min-width:0}
 .mx-p-sec h3{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0;font:700 17px/1.2 var(--display)}
 .mx-p-sec h3 small{font:400 12.5px var(--body);color:var(--muted)}
-.mx-p-sec>p{margin:4px 0 10px;max-width:none;min-height:3.9em;font-size:13.5px;line-height:1.45;color:var(--ink2)}
+/* The key of „Cât?": the peak's colour and the dashed line of the average. */
+.mx-p-key{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 12px}
+.mx-p-key>span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.mx-p-key i{flex:none;display:block}
+.mx-p-key i.is-peak{width:8px;height:10px;border-radius:1.5px;background:var(--orange)}
+.mx-p-key i.is-avg{width:14px;border-top:1px dashed var(--ink)}
+.mx-p-sec>p{margin:4px 0 10px;max-width:none;font-size:13.5px;line-height:1.45;color:var(--ink2)}
 .mx-p-sec>p b{color:var(--ink);font-weight:600}
 .mx-p-sec>p a,.mx-p-rows a{color:var(--ink);font-weight:600;text-decoration:none}
 .mx-p-sec>p a:hover,.mx-p-rows a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
@@ -248,14 +254,13 @@ span.mx-p-yr{cursor:default}
 .mx-p-dot{fill:var(--choro-2);cursor:pointer;stroke:transparent;stroke-width:8px;transition:fill var(--fast) var(--ease),cx calc(var(--med) * var(--chart-pace)) var(--ease),cy calc(var(--med) * var(--chart-pace)) var(--ease)}
 .mx-p-dot:hover{fill:var(--choro-4)}
 .mx-p-me{fill:none;stroke:var(--orange);stroke-width:2.5;transition:cx calc(var(--med) * var(--chart-pace)) var(--ease),cy calc(var(--med) * var(--chart-pace)) var(--ease)}
-.mx-p-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
 .mx-p-wait,.mx-p-error{margin:8px 0;font-size:14px;color:var(--muted)}
 /* The ghost while a UAT loads: its content's shape in quiet pulsing blocks, shown after 120 ms so a quick answer never flashes it. */
 /* The ghost (components/ghost): it appears after 120 ms, except the close button, which is there at once. */
 .mx-panel.is-loading .mx-p-body.is-ghost{opacity:1}
 .mx-p-body.is-ghost>:not(.mx-p-close){animation:g-in .25s var(--ease) .12s both}
 .mx-p-body.is-ghost .mx-p-rows i{background:var(--line);animation:g-pulse 1.6s ease-in-out infinite}
-@media (max-width:1180px){.mx-p-cols{grid-template-columns:1fr}.mx-p-sec>p{min-height:0}}
+@media (max-width:1180px){.mx-p-cols{grid-template-columns:1fr}}
 @media (max-width:980px){
   .mx-body.has-panel{grid-template-columns:1fr;grid-template-areas:"stage" "panel" "rank"}
   .mx-body.has-panel .mx-rows{max-height:none}
@@ -341,16 +346,16 @@ span.mx-p-yr{cursor:default}
 .mx-p-act:hover{border-color:var(--accent-line);background:var(--accent-soft)}
 .mx-p-act.is-main{border-color:var(--accent);background:var(--accent);color:var(--on-accent)}
 .mx-p-act.is-main:hover{filter:brightness(1.08)}
-/* Z4-13: „Cât?” takes the panel's width (its sentence left, the years' chart right and larger); „Pe ce?” and „Cui?”
-   share the row under it, so their names are read whole. One column on phones. */
+/* Z4-13: „Cât?” takes the panel's width; „Pe ce?” and „Cui?” share the row under it, so their names are read whole.
+   One column on phones. No sentence under a question (owner, 17 November 2026): the years' chart is as wide as the
+   panel, at most 1.3 times larger than drawn (YEAR_ZOOM, UatPanel.tsx), and the ghost keeps that height. */
 .mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px}
-.mx-p-cols>.mx-p-sec:first-child{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);grid-template-rows:auto 1fr;column-gap:28px;align-items:start}
+.mx-p-cols>.mx-p-sec:first-child{grid-column:1/-1}
+.mx-p-sec>h3+:is(.mx-p-yrs,.mx-p-years,.mx-p-rows){margin-top:8px}
+.mx-p-body.is-ghost .mx-p-years{max-height:calc(112px * 1.3)}
 /* The panel spans the stage's row and the ranking's: its extra height goes to the ranking's row, so the ranking stays
    right under the map. */
 .mx-body.has-panel{grid-template-rows:auto 1fr}
-.mx-p-cols>.mx-p-sec:first-child>:is(h3,p){grid-column:1}
-.mx-p-cols>.mx-p-sec:first-child>:is(.mx-p-yrs,.mx-p-years){grid-column:2;grid-row:1/span 2}
-.mx-p-cols>.mx-p-sec:first-child>p{min-height:0}
 /* Z4-12: the neighbours' strip in the panel's pixels; on phones its subtitle under its title and the nearest UATs as rows. */
 .mx-p-near-box{width:100%;min-height:96px;margin-top:6px}
 .mx-p-nrows,.mx-phone-only{display:none}
@@ -360,11 +365,9 @@ span.mx-p-yr{cursor:default}
 .mx-p-nrow>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
 .mx-p-nrow>em{font:600 14px var(--mono);font-style:normal}
 .mx-p-nrow.is-me>b,.mx-p-nrow.is-me>em{color:var(--orange);font-weight:600}
-@media (max-width:1180px){.mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr))}.mx-p-sec>p{min-height:3.9em}}
+@media (max-width:1180px){.mx-p-cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){
   .mx-p-cols{grid-template-columns:1fr}
-  .mx-p-cols>.mx-p-sec:first-child{display:block}
-  .mx-p-sec>p{min-height:0}
   .mx-p-acts .mx-p-act{min-height:44px}
   .mx-p-wide h3{display:block}
   .mx-p-wide h3 small{display:block;margin-top:2px}
@@ -380,6 +383,9 @@ span.mx-p-yr{cursor:default}
 .mx-city.is-link:hover .entity-name{text-decoration:underline;text-underline-offset:3px}
 .mx-city.is-link:has(.entity-name:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .mx-city .entity-name:focus-visible{outline:none}
+/* The box's caveat behind an "i" (owner, 17 November 2026), above the stretched link so it takes its own hover and tap. */
+.mx-city>span{display:flex;align-items:center;gap:2px}
+.mx-city .info-mark{position:relative;z-index:1}
 /* Z4-30: the kind's window says how many institutions each layer holds (the checkbox: its institutions and companies). */
 .mx-check small{margin-left:auto;padding-left:10px;font:12px var(--mono);color:var(--muted);white-space:nowrap}
 /* Z4-17: lei per bed (or pupil) and the total, each named over its column. */
@@ -389,14 +395,30 @@ span.mx-p-yr{cursor:default}
 /* Z4-19: the segment clips its corners (overflow:hidden), so its buttons draw their focus inside. */
 .mx-seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:5px}
 .mx-seg button[aria-pressed="true"]:focus-visible{outline-color:var(--on-accent)}
-/* Z4-22: the sources' line. */
-.mx-attr{max-width:none}
-.mx-attr .term-trigger{color:var(--muted);font:inherit}
+/* Two small marks in place of two lines of text (owner, 17 November 2026). Under the map, three layers: the sources
+   (before: „Surse: ANCPI, INS (CC BY 4.0)”), the whole attribution with its links and the licence. Under the ranking, an
+   „i”: what the figures are (before: „Un UAT fără primărie identificată nu are cifră… Valori contractate, nu plăți…”).
+   Each opens its text on hover, focus or a tap. While pointed at or open, the layers part (the top one up, the bottom
+   one down, with a small overshoot); the „i” is the site's InfoMark (guide.css), a little larger here. */
+.mx-attr{display:flex;max-width:none}
+.mx-about{display:flex;justify-content:flex-end;margin:6px 0 0}
+.mx-attr>.term-tip>.term-trigger{display:inline-grid;place-items:center;min-height:0;color:var(--muted);text-decoration:none;transition:color var(--fast) var(--ease),background var(--fast) var(--ease)}
+:is(.mx-attr,.mx-about)>.term-tip>.term-trigger{width:28px;height:28px;border-radius:7px}
+.mx-attr>.term-tip>.term-trigger>.term-mark{display:none}
+.mx-attr>.term-tip>.term-trigger:hover,.mx-attr>.term-shown>.term-trigger{color:var(--accent-ink);background:var(--accent-soft)}
+.mx-about .info-mark-i{width:18px;height:18px}
+.mx-src{display:block;overflow:visible}
+.mx-src path{transition:transform var(--med) cubic-bezier(.34,1.56,.64,1)}
+.mx-attr .term-trigger:is(:hover,:focus-visible) .mx-src-a,.mx-attr>.term-shown .mx-src-a{transform:translateY(-2.5px)}
+.mx-attr .term-trigger:is(:hover,:focus-visible) .mx-src-c,.mx-attr>.term-shown .mx-src-c{transform:translateY(2.5px)}
+.mx-src-c{transition-delay:40ms}
+.mx-about-more{display:block;margin-top:6px}
+@media (prefers-reduced-motion:reduce){.mx-src path{transition:none;transform:none!important}}
 /* Z4-28: the feedback button no longer covers the ranking between 721 and 1359 px: it is the slim tab in the page's
    margin on every page (components/feedback/feedback.css, Z1-21). */
-/* Phones: the sources' line keeps 44 px targets without growing the line. */
+/* Phones: the two marks are 44 px targets without growing their rows. */
 @media (max-width:640px){
-  .mx-attr .term-trigger,.mx-attr a{display:inline-flex;align-items:center;min-height:44px;margin-block:-14px}
+  :is(.mx-attr,.mx-about)>.term-tip>.term-trigger{width:44px;height:44px;margin:-8px -8px -8px 0}
 }
 
 /* Windows (UX audit M-06, components/motion/windows.css): on a phone the UAT's sheet comes 24 px up in 260 ms and

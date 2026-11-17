@@ -12,6 +12,7 @@ import CountGroups from "./builder/CountGroups";
 import Segmented from "./builder/Segmented";
 import PhoneSelect from "./answer/PhoneSelect";
 import HelpTip from "./builder/HelpTip";
+import InfoMark from "../../components/InfoMark";
 import EmptyState from "./answer/EmptyState";
 import RowFacts from "./answer/RowFacts";
 import RowMenu from "./answer/RowMenu";
@@ -19,7 +20,7 @@ import TotalLine from "./answer/TotalLine";
 import { focusFirstNew } from "./answer/ListFoot";
 import { entityRowActions } from "./answer/row-actions";
 import {
-  JOINT_TIP, ONE_OFF_TIP, ORDER_OPTIONS, bandLast, chartRows, networkButtons, networkEmpty, networkPage, networkRowView, networkSummary, partnerNoun, relationWaits, shownList, sinceTip,
+  JOINT_TIP, ORDER_OPTIONS, bandLast, chartRows, networkButtons, networkEmpty, networkPage, networkRowView, networkSummary, partnerNoun, relationWaits, shownList, sinceTip,
   type NetworkRelation, type NetworkRowView,
 } from "./network-answer";
 import { useChartMotion } from "./answer/chart-motion";
@@ -91,10 +92,11 @@ export default function NetworkAnswer({ data, spec, conditions = [], onList, onO
     </div>
     {!empty && <div className="qb-net-head">
       <p className="qb-net-summary qb-tipwrap">
-        <span>{summary.parts.join(" · ")}</span>
+        {summary.parts.length > 0 && <span>{summary.parts.join(" · ")}</span>}
+        {/* The partners with one record: an (i) after the share of the first ones (owner, 17 November 2026: less small print). */}
+        {summary.oneOff && <>{summary.parts.length > 0 ? " " : ""}<InfoMark title="O singură înregistrare" text={summary.oneOff} /></>}
         {/* The space before each part stays outside its nowrap: the line may break there (S4 tests: „· 95,3% în asociere (?)” ran 56 px past a 390 px screen, its (?) out of reach). */}
-        {summary.oneOff && <>{" "}<span className="qb-nowrap">· {summary.oneOff}<HelpTip tip={ONE_OFF_TIP} /></span></>}
-        {summary.joint && <>{" "}<span className="qb-nowrap">· {summary.joint}<HelpTip tip={JOINT_TIP} /></span></>}
+        {summary.joint && <>{summary.parts.length > 0 || summary.oneOff ? " " : ""}<span className="qb-nowrap">{summary.parts.length > 0 || summary.oneOff ? "· " : ""}{summary.joint}<HelpTip tip={JOINT_TIP} /></span></>}
         {data.unknownSeat ? <span className="qb-net-unknown">{unknownSeatWords(data.unknownSeat)}</span> : null}
       </p>
       <span className="qb-row qb-net-order">

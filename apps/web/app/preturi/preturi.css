@@ -53,6 +53,8 @@
 .pr-head { position: sticky; top: var(--site-header-h, 64px); z-index: 3; display: grid; grid-template-columns: var(--pr-cols); gap: 24px; align-items: end; padding: 14px 0 6px;
   background: var(--paper); border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--muted); }
 .pr-head > span:last-child { text-align: right; }
+/* The median's name is the head's (owner, 17 November 2026); a phone, which hides the head, says it on each row. */
+.pr-median-word { display: none; }
 .pr-axis { position: relative; height: 18px; font: 500 12px/1 var(--mono); color: var(--muted); }
 .pr-axis span { position: absolute; bottom: 2px; transform: translateX(-50%); white-space: nowrap; }
 .pr-axis span:first-child { transform: none; margin-left: -2px; }
@@ -111,7 +113,6 @@
 /* ── a strip opened: its leads ─────────────────────────────────────────── */
 .pr-open { padding: 6px 10px 18px; }
 .pr-open-head { margin: 10px 0 2px; font-size: 12px; color: var(--ink2); }
-.pr-caution { margin: 10px 0; padding: 10px 14px; border: 1px solid var(--amber-line); border-radius: 8px; background: var(--amber-soft); color: var(--amber-ink); font-size: 13px; max-width: 72ch; }
 .pr-leads { list-style: none; margin: 0; padding: 0; }
 .pr-lead { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) 64px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 76px; gap: 14px; align-items: center; }
 .pr-lead { padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink2); }
@@ -155,6 +156,8 @@
 .pr-hero { margin-top: 22px; }
 .pr-hero-line { margin: 0 0 12px; max-width: 46ch; font: 500 22px/1.3 var(--display); letter-spacing: -.012em; color: var(--ink); }
 .pr-hero-line b { font-weight: 700; }
+.pr-hero-tags { margin: -4px 0 12px; }
+.pr-hero-tags .pr-mixed { margin: 0 6px 0 0; }
 .pr-big { position: relative; margin: 18px 0 8px; padding: 0 2px; }
 .pr-big .pr-marks { position: relative; height: 190px; cursor: crosshair; touch-action: pan-y; }
 .pr-big .pr-bins { position: absolute; left: 0; right: 0; top: 62px; bottom: 30px; }
@@ -324,6 +327,7 @@
   .pr-head { grid-template-columns: 1fr; padding-top: 10px; }
   .pr-head > span { display: none; }
   .pr-count-word { display: block; }
+  .pr-median-word { display: inline; }
   .pr-sum { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "label count" "strip strip" "lead lead"; gap: 6px 12px; padding: 12px 0 8px; }
   .pr-strip-lead { grid-area: lead; display: flex; align-items: baseline; min-width: 0; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--risk); white-space: nowrap; }
   .pr-strip-lead .pr-tag-name { max-width: none; }

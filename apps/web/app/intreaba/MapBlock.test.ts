@@ -23,14 +23,18 @@ describe("Ask county map", () => {
     expect(text(renderToStaticMarkup(createElement(CountyTip, { label: "Olt", value: 0, count: 0, national: 1, asCount: false })))).toBe("Olt nicio înregistrare pentru aceste filtre");
   });
 
-  it("says a count once, in words, in the tip and in the note on records without a county", () => {
+  it("says a count once, in words, in the tip and in the note on records without a county (in the legend's (?))", () => {
     const tip = text(renderToStaticMarkup(createElement(CountyTip, { label: "Tulcea", value: 27_953, count: 27_953, national: 2_400_000, asCount: true })));
     expect(tip).toBe("Tulcea 27.953 de înregistrări 1,2% din total click → fișa județului");
     const count = { block: "map", measure: "count", filters: {} } as const;
-    const note = (n: number) => text(renderToStaticMarkup(createElement(MapBlock, { counties, unknown: { value: 5, count: n }, spec: count })));
-    expect(note(36_138)).toMatch(/36\.138 de înregistrări \([^)]*din selecție\) au instituția fără județ cunoscut și nu apar pe hartă/);
+    const html = (n: number) => renderToStaticMarkup(createElement(MapBlock, { counties, unknown: { value: 5, count: n }, spec: count }));
+    const note = (n: number) => text(html(n));
+    expect(note(36_138)).toMatch(/36\.138 de înregistrări \([^)]*din selecție\) au instituția fără județ cunoscut și nu apar pe hartă\./);
     expect(note(36_138).match(/36\.138/g)).toHaveLength(1);
-    expect(note(1)).toMatch(/1 înregistrare \([^)]*din selecție\) are instituția fără județ cunoscut și nu apare pe hartă/);
+    expect(note(1)).toMatch(/1 înregistrare \([^)]*din selecție\) are instituția fără județ cunoscut și nu apare pe hartă\./);
+    // Owner, 17 November 2026 (less small print): the note is in the legend's (?), after the colours; no line under the map.
+    expect(html(36_138)).toMatch(/class="ask-legend qb-tipwrap"[\s\S]*role="tooltip"[^>]*><b>Culorile hărții\.<\/b> Cinci trepte[^<]*36\.138 de înregistrări/);
+    expect(html(36_138)).not.toContain("procentele sunt din totalul selecției");
   });
 
   it("names each county with its value for a tap or Enter (its card) and explains the legend in a (?)", () => {

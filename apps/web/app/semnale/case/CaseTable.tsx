@@ -113,8 +113,11 @@ export default function CaseTable({ rows, kind, order, partnerRole, clipPrefix }
     <div className={`sgc-table-wrap${update ? " is-upd" : ""}`}>
       <FilterBand columns={columns} state={filters.state} labels={filters.labels} onChange={(s) => { setUpdate(true); filters.replace(s); setPage(1); }} />
       <p className="sgc-table-status" role="status">
+        {/* The count is the heading's above and the pager's under the table: said only with a filter on (owner, 17 November 2026). */}
         {kept.length
-          ? `${formatInt((at - 1) * CASE_TABLE_PAGE + 1)}–${formatInt(Math.min(at * CASE_TABLE_PAGE, kept.length))} din ${formatInt(kept.length)}${filtered ? ` (din ${formatInt(rows.length)})` : ""} · ${order}`
+          ? filtered
+            ? `${formatInt((at - 1) * CASE_TABLE_PAGE + 1)}–${formatInt(Math.min(at * CASE_TABLE_PAGE, kept.length))} din ${formatInt(kept.length)} (din ${formatInt(rows.length)}) · ${order}`
+            : <><span className="sr-only">{`${formatInt((at - 1) * CASE_TABLE_PAGE + 1)}–${formatInt(Math.min(at * CASE_TABLE_PAGE, kept.length))} din ${formatInt(kept.length)} · `}</span>{order.charAt(0).toUpperCase() + order.slice(1)}</>
           : "Niciun caz cu filtrele alese."}
         {!kept.length && filtered && <> <button type="button" className="sgc-link" onClick={() => { setUpdate(true); filters.replace({}); setPage(1); }}>Scoate filtrele</button></>}
       </p>

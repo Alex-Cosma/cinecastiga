@@ -292,6 +292,17 @@
   padding-left: 18px;
   line-height: 1.7;
 }
+/* A note the reader must check („Am ales …”), kept on the page above the closed fold. */
+.cq-caveat-shown {
+  margin: 24px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.cq-caveat-shown + .cq-caveat-shown,
+.cq-caveat-shown + .cq-caveats {
+  margin-top: 4px;
+}
 .cq-ranking > .cq-rank-main,
 .cq-rank-row > .cq-rank-main {
   display: flex;

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { ENTITY_YEAR_EVENT, tipLeft, yearWords, type YearsModel } from "./entity-top";
+import InfoMark from "../../../components/InfoMark";
 
 /**
  * When the turnover line's left-to-right reveal reaches `x` (0–1 of the plot's width), as a share of the reveal's
@@ -155,7 +156,8 @@ export default function EntityYears({ model, title }: { model: YearsModel; title
           ))}
         </div>
       </div>
-      {model.turnoverApart && <p className="ent-years-apart">{model.turnoverApart}</p>}
+      {/* Three words and an "i" (owner, 17 November 2026; before: the whole sentence under the chart). */}
+      {model.turnoverApart && <p className="ent-years-apart">cifra de afaceri: altă scară <InfoMark title="Altă scară" text={model.turnoverApart} /></p>}
     </figure>
   );
 }

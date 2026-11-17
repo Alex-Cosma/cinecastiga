@@ -63,7 +63,10 @@ describe("by value: the podium", () => {
     expect(markup.match(/class="qb-arow"/g)).toHaveLength(2);
     // „Scoate din calcul” on every place (its menu), the page of the firm.
     expect(markup.match(/aria-haspopup="menu"/g)).toHaveLength(3);
-    expect(words).toContain("Din 26,5 mld. lei, câștigați de 1.467 de firme · doar 2025 · valoare înregistrată, nu plăți");
+    // „valoare înregistrată, nu plăți” is in the total's (i), no words on the line (owner, 17 November 2026: less small print).
+    expect(words).toContain("Din 26,5 mld. lei, câștigați de 1.467 de firme · doar 2025");
+    expect(words).not.toContain("· valoare înregistrată, nu plăți");
+    expect(markup).toMatch(/doar 2025<\/span><\/span> <span class="term term-tip[^"]*info-mark">/);
     // UX audit Z3-08: place 1's records are the head's button (AskPanel), not a second one under the podium.
     expect(words).not.toContain("Vezi cele 13.669 de înregistrări");
     // „Tot clasamentul ›” keeps every condition of the question, as a ranking of the first ten.

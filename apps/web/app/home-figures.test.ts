@@ -31,9 +31,9 @@ describe("home counts", () => {
     expect(map).not.toMatch(/countWords|\.count\b|\.records\b/);
   });
 
-  it("label the strip with every record in both streams, the unit the map counts", () => {
-    expect(page).toContain("const records = headline.directRecords + headline.contractRecords;");
-    expect(page).toContain('<small>{countWords(records, "înregistrare", "înregistrări")} · {coverage}</small>');
+  it("label the strip with the archive's years; the two streams' sum is not said a third time (owner, 17 November 2026)", () => {
+    expect(page).not.toContain("headline.directRecords + headline.contractRecords");
+    expect(page).toContain('<div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b></div></div>');
     expect(page).not.toContain("Înregistrări din");
     // The contract item keeps its deliberate label: a consortium is one row per winner.
     expect(page).toContain(">înregistrări contract–furnizor</Term>");

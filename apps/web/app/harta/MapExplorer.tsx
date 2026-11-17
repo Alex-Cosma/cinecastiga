@@ -6,6 +6,8 @@ import OptionList from "@/app/intreaba/builder/pickers/OptionList";
 import type { KitOption } from "@/app/intreaba/builder/kit-types";
 import "@/app/intreaba/builder/filters-kit.css";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
+import { GLOSSARY } from "@/lib/glossary";
 import { G, Ghost } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import Link from "next/link";
@@ -637,11 +639,13 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
             {(!dots || !county || metric !== "value") && <span className="mx-legend-g"><span>0</span><i /><span>{level ? `${say(dotTop)}${dotTop < max ? "+" : ""}` : <G.Line inline w="3.4em" />} lei{metric === "value" ? "" : ` ${UNIT[metric]}`}</span></span>}
             {county && dots && <span className="mx-legend-g"><b className="mx-legend-dots"><s /><s /><s /></b><span>{schools ? "cercul: elevii" : "cercul: paturile spitalului"}</span></span>}
             {areas.some((a) => fig(a) === null) && <span className="mx-legend-g">{county && dots ? <b className="mx-legend-ring" /> : <b className="mx-legend-gap" />}<span>{hospitals ? "fără paturi în lista CNAS" : schools ? "fără elevi în lista ministerului" : county ? "primărie neidentificată" : "fără cifră"}</span></span>}</div>
-          {/* The sources in one line (UX audit Z4-22): their names and the licence stay on the page, the whole attribution
-              with its links in the (?). */}
-          <p className="mx-attr"><Term hold="line" tip title="Surse" text={<>Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
-              : schools ? <>Școli, grădinițe și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>).</> : "Populația: INS, RPL 2021."} Licența: CC BY 4.0.</>}>
-            Surse: ANCPI, INS{hospitals ? ", CNAS" : schools ? ", Ministerul Educației" : ""}</Term> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)</p>
+          {/* The sources behind one small mark (owner, 17 November 2026; before: the line „Surse: ANCPI, INS (CC BY 4.0)”,
+              UX audit Z4-22): the whole attribution, its links and the licence open from it on hover, focus or a tap. */}
+          <p className="mx-attr"><Term tip title="Surse" text={<>Limite UAT: ANCPI; denumiri: INS SIRUTA (<a href="https://data.gov.ro/dataset/unitati-administrativ-teritoriale-07-03-2024" target="_blank" rel="noreferrer">data.gov.ro</a>), simplificate. {hospitals ? <>Paturi: <a href="https://cnas.ro/spitale" target="_blank" rel="noreferrer">CNAS</a>, structura aprobată la 31.12.2025.</>
+              : schools ? <>Școli, grădinițe și elevi: Ministerul Educației (<a href="https://data.gov.ro/dataset/retea-scolara-2025-2026" target="_blank" rel="noreferrer">rețeaua 2025–2026</a>, <a href="https://data.gov.ro/dataset/elevi-inmatriculati" target="_blank" rel="noreferrer">elevii 2024–2025</a>).</> : "Populația: INS, RPL 2021."} Licența: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.</>}>
+            <svg className="mx-src" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path className="mx-src-a" d="M12 3.5 3.5 8l8.5 4.5L20.5 8 12 3.5Z" /><path className="mx-src-b" d="m3.5 12 8.5 4.5 8.5-4.5" /><path className="mx-src-c" d="m3.5 16 8.5 4.5 8.5-4.5" /></svg>
+            <span className="d-sr-only">Sursele hărții</span></Term></p>
         </div>
       </section>
 
@@ -655,11 +659,11 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         {/* București's city hall and a county's council (UX audit Z4-11): apart from the areas, over the whole city or
             county; the whole box is the link to its page (its name, an EntityName, stretched over it). */}
         {county && loc?.city && <div className={`mx-city${loc.city.entityId ? " is-link" : ""}${hover === loc.city.key ? " is-hover" : ""}${stale ? " g-stale" : ""}`} onPointerEnter={() => setHover(loc.city!.key)} onPointerLeave={() => setHover(null)}>
-          <b><EntityName id={loc.city.entityId} role="authority">{loc.city.name}</EntityName></b><span>pentru tot orașul, pe {withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}{sub && loc.city.subValue ? `; instituțiile ei: ${short(loc.city.subValue)} lei` : ""}</span>
+          <b><EntityName id={loc.city.entityId} role="authority">{loc.city.name}</EntityName></b><span>tot orașul <InfoMark title="Tot orașul" text={`Primăria municipiului lucrează pentru tot orașul: cifra ei se împarte la ${withDe(loc.city.denominator ?? 0, "locuitor", "locuitori")}.${sub && loc.city.subValue ? ` Instituțiile ei: ${short(loc.city.subValue)} lei.` : ""}`} /></span>
           <em>{loc.city.perCapita === null ? "—" : `${int(loc.city.perCapita)} lei`}</em>
         </div>}
         {county && !dots && loc?.council && <div className={`mx-city${loc.council.entityId ? " is-link" : ""}${stale ? " g-stale" : ""}`}>
-          <b><EntityName id={loc.council.entityId} role="authority">{loc.council.name}</EntityName></b><span>pentru tot județul, pe {withDe(loc.council.denominator ?? 0, "locuitor", "locuitori")}{sub && loc.council.subValue ? `; instituțiile lui: ${short(loc.council.subValue)} lei` : ""}</span>
+          <b><EntityName id={loc.council.entityId} role="authority">{loc.council.name}</EntityName></b><span>tot județul <InfoMark title="Tot județul" text={`Consiliul județean lucrează pentru tot județul: cifra lui se împarte la ${withDe(loc.council.denominator ?? 0, "locuitor", "locuitori")}.${sub && loc.council.subValue ? ` Instituțiile lui: ${short(loc.council.subValue)} lei.` : ""}`} /></span>
           <em>{loc.council.perCapita === null ? "—" : `${int(loc.council.perCapita)} lei`}</em>
         </div>}
         <ol className={`mx-rows${unfolded === (county ?? "") ? "" : " is-folded"}${atEnd ? " at-end" : ""}${stale ? " g-stale" : ""}${metric === "perBed" || metric === "perPupil" ? " has-total" : metric === "value" ? " is-lei" : ""}`} ref={listRef} key={rankLevel}
@@ -700,10 +704,14 @@ export default function MapExplorer({ initial }: { initial: Initial }) {
         {ranked.length > 15 && unfolded !== (county ?? "") && <button type="button" className="mx-more" onClick={() => setUnfolded(county ?? "")}>Toate cele {ranked.length}</button>}
         {!busy && !ranked.length && <p className="mx-note">Nicio valoare în această selecție.</p>}
         </>}
-        <p className="mx-note">{hospitals
+        {/* What the figures are, behind one small mark (owner, 17 November 2026; before: a line of text under the ranking):
+            the mode's caveat, „Valori contractate, nu plăți”, and what the totals count, on hover, focus or a tap. */}
+        <p className="mx-about"><InfoMark title="De știut" label="De știut despre cifre" text={<>{hospitals
           ? (county ? "Fiecare spital e desenat în orașul lui, nu la adresă." : metric === "perBed" ? "Lei pe pat: valoarea din 2025 a spitalelor cu paturi, la paturile lor aprobate." : "")
-          : schools ? <>{metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși. " : ""}Doar ce cumpără școala sau grădinița <Term id="scolile-harta" tip />.</>
-          : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : `Un județ se împarte la locuitorii ${NB("UAT-urilor")} ale căror primării le identificăm.`} Valori contractate, nu plăți, în plafoanele totalurilor <Term id="plafoane-totaluri" tip /></p>
+          : schools ? `${metric === "perPupil" ? "Lei pe elev: valoarea din 2025 la elevii din 2024–2025, preșcolarii incluși. " : ""}Doar ce cumpără școala sau grădinița.`
+          : county ? "Un UAT fără primărie identificată nu are cifră: nu înseamnă zero lei." : `Un județ se împarte la locuitorii ${NB("UAT-urilor")} ale căror primării le identificăm.`} Valori contractate, nu plăți, în plafoanele totalurilor.
+          {schools && <span className="mx-about-more"><b>{GLOSSARY["scolile-harta"].title}.</b> {GLOSSARY["scolile-harta"].text}</span>}
+          <span className="mx-about-more"><b>{GLOSSARY["plafoane-totaluri"].title}.</b> {GLOSSARY["plafoane-totaluri"].text}</span></>} /></p>
       </aside>
       {(panelOpen || sheetLeaving) && panelUat && <UatPanel siruta={panelUat} query={selection} hint={byKey.get(panelUat) && { name: byKey.get(panelUat)!.name, county: countyArea?.name, gap: byKey.get(panelUat)!.perCapita === null }}
         leaving={!panelOpen} onClose={() => closeTo(county)} onPick={openUat} />}

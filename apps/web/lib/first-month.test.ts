@@ -87,7 +87,8 @@ describe("contracte în prima lună de la înființare (rf-2026.24)", () => {
   it("titles the firm's page and the institution's", () => {
     expect(firstMonthWords("da_first_month", [firstMonth(input(firm))], 1)).toEqual({
       title: "Firma a contractat 284.501 lei în primele 30 de zile de la înființare.",
-      lede: "Înmatriculată la 2 august 2023; prima achiziție directă, după 6 zile. 71 de achiziții directe de la 20 de instituții.",
+      // The age and the awards are the mirror's two panels (owner, 17 November 2026): the line keeps the registration.
+      lede: "Înmatriculată la 2 august 2023.",
     });
     expect(firstMonthWords("da_first_month_buyer", [firstMonth(input(buyer, "VLAMICON CONSTRUCT S.R.L."))], 1)).toEqual({
       title: "Instituția a contractat 890.000 lei cu o firmă aflată în primele 30 de zile de la înființare.",

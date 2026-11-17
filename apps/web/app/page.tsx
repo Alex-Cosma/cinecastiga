@@ -21,17 +21,17 @@ export const dynamic = "force-dynamic";
 const questionHref = askHref;
 // The first card is „Ce a cumpărat primăria ta?” (TownHallTile; owner, 13 November 2026, in place of „Cine repară drumurile?”).
 const QUESTIONS = [
-  { title: "Ce cumpără spitalele?", description: "De la medicamente la echipamente. Vezi pe ce se duc banii și cine furnizează.", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: HOSPITALS_BREAKDOWN_SPEC },
-  { title: "Cine câștigă contractele?", description: "Pornește de la un clasament. Ajungi la firme, instituții și fiecare sursă.", kind: "network", label: "FIRME ȘI CONTRACTE", action: "Urmărește contractele", spec: CONTRACT_WINNERS_SPEC },
-  { title: "Ce cumpără comunele?", description: "Pe ce cumpără primăriile mici, domeniu cu domeniu.", kind: "village", label: "COMUNE", action: "Vezi domeniile", spec: COMMUNES_BREAKDOWN_SPEC },
-  { title: "Cine iese din tipar?", description: "Instituțiile după risc și valoarea achizițiilor directe. Un semnal e o pistă, nu o dovadă.", kind: "outlier", label: "SEMNALE", action: "Vezi instituțiile", spec: AUTHORITY_CLOUD_SPEC },
-  { title: "Ce firme depind de un singur client?", description: "Firmele la care o instituție aduce cel puțin 70% din valoarea achizițiilor directe.", kind: "dependence", label: "DEPENDENȚĂ", action: "Vezi firmele", spec: FIRM_DEPENDENCE_CLOUD_SPEC },
-] satisfies { title: string; description: string; kind: string; label: string; action: string; spec: AskSpec }[];
+  { title: "Ce cumpără spitalele?", kind: "hospital", label: "SĂNĂTATE", action: "Explorează achizițiile", spec: HOSPITALS_BREAKDOWN_SPEC },
+  { title: "Cine câștigă contractele?", kind: "network", label: "FIRME ȘI CONTRACTE", action: "Urmărește contractele", spec: CONTRACT_WINNERS_SPEC },
+  { title: "Ce cumpără comunele?", kind: "village", label: "COMUNE", action: "Vezi domeniile", spec: COMMUNES_BREAKDOWN_SPEC },
+  { title: "Cine iese din tipar?", kind: "outlier", label: "SEMNALE", action: "Vezi instituțiile", spec: AUTHORITY_CLOUD_SPEC },
+  { title: "Ce firme depind de un singur client?", kind: "dependence", label: "DEPENDENȚĂ", action: "Vezi firmele", spec: FIRM_DEPENDENCE_CLOUD_SPEC },
+] satisfies { title: string; kind: string; label: string; action: string; spec: AskSpec }[];
 
 const PATHS = [
-  { href: "/semnale", kind: "signals", title: "Semnale care merită verificate", description: "Indicatori explicați, cu metodologia și sursele lor. Un semnal invită la verificare." },
-  { href: "/domenii", kind: "domains", title: "Ce cumpără instituțiile", description: "Domenii de achiziții, de la materiale și echipamente la servicii și lucrări." },
-  { href: "/supra-prag", kind: "ted", title: "Atribuiri publicate în TED", description: "Consultă anunțurile europene și potrivirile identificate în SEAP." },
+  { href: "/semnale", kind: "signals", title: "Semnale care merită verificate" },
+  { href: "/domenii", kind: "domains", title: "Ce cumpără instituțiile" },
+  { href: "/supra-prag", kind: "ted", title: "Atribuiri publicate în TED" },
 ];
 // Twelve stars of the European flag, rounded so server and client agree.
 const EU_RING = Array.from({ length: 12 }, (_, k) => [Math.round((104 + 36 * Math.cos(k * Math.PI / 6)) * 10) / 10, Math.round((52 + 36 * Math.sin(k * Math.PI / 6)) * 10) / 10]);
@@ -83,8 +83,6 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const [headline, inventory, signedIn] = await Promise.all([getDiscoverySummary(), getCoverage(), sessionUserId().then(id => id !== null, () => false)]);
   const contractInventory = inventory?.observations.find(o => o.dataset === "contracts")?.observation;
   const aboveCap = contractInventory?.above_value_cap === undefined ? null : Number(contractInventory.above_value_cap);
-  // Every record behind the figures, both streams: the unit the map readout counts per county.
-  const records = headline.directRecords + headline.contractRecords;
   const coverage = headline.yearFrom && headline.yearTo ? headline.yearFrom === headline.yearTo ? headline.yearFrom : `${headline.yearFrom}–${headline.yearTo}` : "arhiva importată";
   return <div className="discovery-page">
     <section className="d-hero" aria-labelledby="d-hero-title">
@@ -98,12 +96,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     </section>
 
     <section className="d-national-strip" aria-label="Datele din arhiva publică">
-      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>O arhivă de urmărit.</b><small>{countWords(records, "înregistrare", "înregistrări")} · {coverage}</small></div></div>
+      <div className="d-national-label"><span><DiscoveryIcon name="database" /></span><div><b>{coverage}</b></div></div>
       {/* The number opens its answer; the label explains the word. A Term is a
           button, so it sits next to the link instead of inside it. */}
       <div className="d-national-item"><Link href={questionHref(NATIONAL_DA_COUNT_SPEC)}><strong>{formatInt(headline.directRecords)}</strong></Link><small><Term hold="line" id="achizitie-directa" tip>achiziții directe acceptate</Term></small></div>
       <div className="d-national-item"><Link href={questionHref(NATIONAL_CONTRACT_COUNT_SPEC)}><strong>{formatInt(headline.contractRecords)}</strong></Link><small><Term hold="line" id="inregistrare-contract-furnizor" tip>înregistrări contract–furnizor</Term></small></div>
-      <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term hold="line" id="valoare-inregistrata" tip>valoare înregistrată · nu plăți</Term></small></div>
+      <div className="d-national-item"><Link href={questionHref(NATIONAL_VALUE_SPEC)}><strong>{formatRon(headline.totalRon)}</strong></Link><small><Term hold="line" id="valoare-inregistrata" tip>valoare înregistrată</Term></small></div>
       {/* What the figures include opens under them, in the strip; closed it is one line. */}
       <CoverageDisclosure summary={<>Ce include? <span aria-hidden="true">›</span></>}>
         <p>Totalurile includ achiziții directe acceptate, cu valoare pozitivă de cel mult 2 milioane lei, și contracte din proceduri cu valoare pozitivă de cel mult 1 miliard lei.{aboveCap ? ` ${countWords(aboveCap, "contract", "contracte")} peste acest plafon, în valoare de ${formatRon(Number(contractInventory?.above_value_cap_value ?? 0))}, sunt separate de totaluri și listate pe pagina fiecărei instituții.` : ""} Un contract cu mai mulți furnizori apare pe câte un rând pentru fiecare, cu valoarea împărțită între ei.</p>
@@ -114,14 +112,14 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <section className="d-starts" aria-labelledby="d-starts-title">
       <div className="d-section-heading"><div><h2 id="d-starts-title">O întrebare bună e un început.</h2></div><Link className="d-text-link" href="/intreaba">Construiește întrebarea ta <DiscoveryIcon name="arrow" /></Link></div>
       <div className="d-question-grid"><TownHallTile number="01" art={<QuestionArt kind="townhall" />} />{QUESTIONS.map((question, index) => <Link className="d-question-card" href={questionHref(question.spec)} key={question.kind}>
-        <div className="d-question-top"><span>{question.label}</span><span>0{index + 2}</span></div><QuestionArt kind={question.kind} /><h3>{question.title}<CardGo /></h3><p>{question.description}</p><div className="d-question-bottom"><span>{question.action}</span><span><DiscoveryIcon name="arrow" /></span></div>
+        <div className="d-question-top"><span>{question.label}</span><span>0{index + 2}</span></div><QuestionArt kind={question.kind} /><h3>{question.title}<CardGo /></h3><div className="d-question-bottom"><span>{question.action}</span><span><DiscoveryIcon name="arrow" /></span></div>
       </Link>)}</div>
     </section>
 
     <section className="d-paths" aria-label="Alte direcții">{PATHS.map((item) => <Link className="d-path-card" href={item.href} key={item.href}>
-      <PathArt kind={item.kind} /><div className="d-path-head"><h3>{item.title}<CardGo /></h3><span><DiscoveryIcon name="arrow" /></span></div><p>{item.description}</p>
+      <PathArt kind={item.kind} /><div className="d-path-head"><h3>{item.title}<CardGo /></h3><span><DiscoveryIcon name="arrow" /></span></div>
     </Link>)}</section>
 
-    {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat. Revino la ele când apare următoarea întrebare.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
+    {signedIn && <section className="d-investigation-invite" aria-labelledby="d-investigation-title"><div className="d-folder-art" aria-hidden="true"><div className="d-folder-back" /><div className="d-folder-paper"><i /><i /><i /></div><div className="d-folder-front"><span>+</span></div></div><div><p className="eyebrow">DE LA CURIOZITATE LA ANCHETĂ</p><h2 id="d-investigation-title">Ai găsit un fir? Urmărește-l.</h2><p>Strânge contracte, surse și notițe într-un dosar privat.</p></div><Link href="/anchete" className="d-button d-button-primary">Începe o anchetă <DiscoveryIcon name="arrow" /></Link></section>}
   </div>;
 }

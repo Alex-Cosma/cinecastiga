@@ -1,6 +1,7 @@
 import { redirectCanonicalEntity } from "@/lib/entity-navigation";
 import Link from "next/link";
 import EntityName from "@/components/EntityName";
+import InfoMark from "@/components/InfoMark";
 import { notFound } from "next/navigation";
 import { getRadiografie } from "@/lib/radiografie";
 import { cleanName, formatRon, formatInt } from "@/lib/format";
@@ -41,5 +42,6 @@ export default async function RadiografiePage({ params, searchParams }: {
  {/* The profile's words, and what this page counts (UX audit Z5-18, 16 November 2026): the contracts' value without the
      direct acquisitions, never called the profile's total; one year once. */}
  <div className="rv-context"><span><strong>{formatRon(p.totalContracts)}</strong> valoarea contractelor (fără directe)</span><span><strong>{formatInt(p.nContracts)}</strong> contracte distincte</span><span><strong>{formatInt(p.nDas)}</strong> achiziții directe</span>{p.firstYear && <span><strong>{p.lastYear && p.lastYear !== p.firstYear ? `${p.firstYear}–${p.lastYear}` : p.firstYear}</strong></span>}</div>
- <RadiografieExplorer data={data}/><footer className="rv-footer"><p>Tipare de verificat, nu dovezi. Valori contractate, nu plăți; cotele asocierilor pot fi estimate. Lipsa unui semnal nu confirmă absența unei probleme.</p><Link href="/metodologie">Metodologie și limite</Link></footer></div>;
+ <RadiografieExplorer data={data}/>{/* The caveats behind an "i" (owner, 17 November 2026); „nu plăți” is the site footer's. */}
+ <footer className="rv-footer"><span className="rv-foot-link"><Link href="/metodologie">Metodologie și limite</Link> <InfoMark title="De știut" text="Tipare de verificat, nu dovezi. Lipsa unui semnal nu confirmă absența unei probleme." /></span></footer></div>;
 }

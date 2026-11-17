@@ -65,7 +65,7 @@ export default function PartnersTable({
     <div>
       {tip.el}
       <p className={`hint${stale ? " g-stale" : ""}`} role="status">
-        {stale ? <>{formatInt(shownTotal)} parteneri · ambele canale</> : loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri · ambele canale</>}
+        {stale ? <>{formatInt(shownTotal)} parteneri</> : loading ? "Se încarcă partenerii…" : error ? "Partenerii nu au putut fi încărcați." : <>{formatInt(total)} parteneri</>}
       </p>
       {loading && rows.length === 0 ? <PartnersGhost /> :
       <div className={`bars ent-partners${paged ? " is-paged" : ""}${stale ? " g-stale" : ""}`} aria-busy={loading} inert={stale || undefined} data-chart>

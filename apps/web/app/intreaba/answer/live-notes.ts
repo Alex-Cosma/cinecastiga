@@ -13,7 +13,19 @@ import { SUBCLASSES_PILL } from "./subclasses";
  * stream where no phrase names them („valoarea înregistrată”, „toate achizițiile: directe și din proceduri”), a
  * profile's „achiziții directe”, a distribution's group and its population source, the size of a cloud's group. The
  * answer's shape („clasament”, „pe domenii”) is said by the question itself and is left out. Pure, tested.
+ *
+ * Less small print (owner, 17 November 2026): on the answers that carry a control for it right under the title, the
+ * words that only repeat the selected control are left out too: the measure („Harta arată: Valoare”), the whole
+ * stream („Toate · Directe · Proceduri”), a cloud's group size (the pill „Tot grupul 15.730”), its signal and its
+ * order, a series' split.
  */
+
+/** Answers whose controls show the measure, the stream, the group, the order and the split. */
+const HAS_CONTROLS: ReadonlySet<string> = new Set(["table", "timeseries", "map", "compare", "breakdown", "scatter", "network"]);
+/** The whole stream, in the pill's words (describe.ts STREAM_PILL.all): „Toate” is the selected control. */
+const WHOLE_STREAM = /^toate achizițiile\b/;
+/** The pills those controls repeat. */
+const SHOWN_BY_CONTROL: ReadonlySet<string> = new Set(["measure", "dim", "timeseriesSplit", "scatterFlag", "scatterRankBy"]);
 
 const fold = (text: string) => text.toLocaleLowerCase("ro-RO").replace(/\s+/g, " ").trim();
 
@@ -40,8 +52,9 @@ export function liveNotes(spec: AskSpec, pills: readonly string[], labels: PillL
     const part = own[i];
     // The answer's shape: the question says it.
     if (part && part.filter === null) return;
-    // A cloud's group with its size („337 de instituții publice”): the sentence names the group, not how many.
-    if (i === 0 && spec.block === "scatter" && labels.scatterGroup !== undefined) { notes.push(words); return; }
+    // A control under the title shows the same choice, selected.
+    const id = filters[i] ?? null;
+    if (HAS_CONTROLS.has(spec.block) && id !== null && (SHOWN_BY_CONTROL.has(id) || (id === "dataset" && WHOLE_STREAM.test(words)))) return;
     // A pill that opened a window: its phrase, its chip or the presentation line opens the same one.
     if (pillWindow(view, filters[i] ?? null, spec.block)) return;
     if (said.includes(fold(words))) return;

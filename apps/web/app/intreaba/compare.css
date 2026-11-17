@@ -23,7 +23,6 @@
 .cmp-risk { position: relative; margin-top: 14px; padding: 10px 14px; border: 1px solid var(--amber-line); border-radius: 10px; background: var(--amber-soft); color: var(--ink2); font-size: 13px; }
 .cmp-risk p { margin: 0; }
 .cmp-risk b { font-family: var(--mono); font-weight: 500; }
-.cmp-risk small { display: block; margin-top: 6px; font-size: 11.5px; color: var(--ink2); } /* --muted is 4.2:1 on the warm fill */
 .cmp-risk-none { border-color: var(--line2); background: var(--sunk); }
 .cmp-flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .cmp-flags span { padding: 2px 7px; border: 1px solid var(--amber-line); border-radius: 6px; background: var(--surface); font-size: 11.5px; }
@@ -156,7 +155,6 @@ button.cmp-year[aria-pressed="true"] { background: var(--sunk); }
   .cmp-ab-val { min-width: 0; font-size: 14px; line-height: 1.35; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
   .cmp-ab-big .cmp-ab-val { font: 650 20px/1.2 var(--display); }
   .cmp-ab-big .cmp-ab-val small { position: relative; display: block; font: 400 13px/1.4 var(--font-body); color: var(--muted); }
-  .cmp-ab-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
   .cmp-ab-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
   .cmp-ab-actions .cq-record-link { width: 100%; min-height: 44px; margin: 0; justify-content: center; text-align: center; }
 }

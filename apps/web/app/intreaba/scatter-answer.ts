@@ -453,8 +453,10 @@ export function withFacts<C extends string>(flags: readonly ScatterFlagFact<C>[]
 export const listTotal = (data: ScatterData): number => (data.chosen ? data.chosen.nList : data.group.nList) - (data.historic ?? 0);
 
 /**
- * The line under the list's head that adds up to the group's pill (UX audit Z3-20): „317 în listă · 12 inactive · 8
- * doar în nor (10–19 achiziții)” = 337. Null when the list is the whole group (nothing to add up).
+ * The parts that add up to the group's pill (UX audit Z3-20): 317 in the list, 12 inactive, 8 in the cloud only
+ * (10–19 achiziții) = 337. Null when the list is the whole group (nothing to add up). The line under the list's head
+ * says only the inactive ones, with the way back in: the list is the head's „din 317”, the cloud-only ones its (?)
+ * (owner, 17 November 2026: less small print).
  */
 export function listSumParts(data: ScatterData): { inList: number; historic: number; cloudOnly: number; from: number; to: number } | null {
   const base = data.chosen ?? data.group;
@@ -492,12 +494,14 @@ export function scoreWords(score: number): string {
   return `${riskScoreText(score)} · ${band === "none" ? RISK_BAND_WORD.none : `risc ${RISK_BAND_WORD[band]}`}`;
 }
 
-/** The sheet's facts line (scatter-3): "Achiziții directe: 21 mil. lei · Risc 73 din 100 · puternic · 2 tipare". */
-export function cardFacts(value: number, score: number, nFlags: number): { label: string; value: string }[] {
+/**
+ * The sheet's facts line (scatter-3): "Achiziții directe: 21 mil. lei · Risc 73 din 100 · puternic". Its patterns are
+ * the card's lines under it, one tag each, so they are not counted here too (owner, 17 November 2026: less small print).
+ */
+export function cardFacts(value: number, score: number): { label: string; value: string }[] {
   return [
     { label: "Achiziții directe:", value: formatRon(value) },
     { label: "Risc", value: `${riskScoreText(score)} · ${scoreBandWord(score)}` },
-    ...(nFlags > 0 ? [{ label: "", value: countWords(nFlags, "tipar", "tipare") }] : []),
   ];
 }
 /** The sheet's facts line of a stored scatter-2: "Achiziții directe: 21,0 mil. lei · Indice 0,6 · 3 din 5 semnale". */

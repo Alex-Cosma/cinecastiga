@@ -21,6 +21,6 @@ export default function Loading() {
     <TabsGhost />
     <DependencyScatterGhost />
     <SupplierTableGhost />
-    <footer className="rv-footer" aria-hidden="true"><p>Tipare de verificat, nu dovezi. Valori contractate, nu plăți; cotele asocierilor pot fi estimate. Lipsa unui semnal nu confirmă absența unei probleme.</p><span className="rv-g-link">Metodologie și limite</span></footer>
+    <footer className="rv-footer" aria-hidden="true"><span className="rv-g-link">Metodologie și limite</span></footer>
   </Ghost>;
 }

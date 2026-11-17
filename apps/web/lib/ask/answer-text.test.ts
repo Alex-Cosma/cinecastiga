@@ -36,9 +36,9 @@ describe("Romanian numbers", () => {
 });
 
 describe("the answer starts with its conclusion", () => {
-  it("opens a breakdown with the total and its unit", () => {
+  it("opens a breakdown with the total and its unit (its records on the button, the caveat in the caller's (i))", () => {
     expect(breakdownLead([{ value: 18_686_762, count: 6 }, { value: 20_000_000, count: 7 }], { value: 1_113_238, count: 1 }))
-      .toBe("În total: 39,8 mil. lei în 14 înregistrări · valoare înregistrată, nu plăți");
+      .toBe("În total: 39,8 mil. lei");
     expect(breakdownLead([], { value: 0, count: 0 })).toBeNull();
   });
 

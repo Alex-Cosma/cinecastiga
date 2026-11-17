@@ -17,6 +17,7 @@ import PeriodPicker, { EMPTY_RANGE, periodRangeError, type PeriodRangeValue } fr
 import Popover from "@/app/intreaba/builder/pickers/Popover";
 import "@/app/intreaba/builder/filters-kit.css";
 import { countWords } from "@/lib/ask/answer-text";
+import { glossaryEntry } from "@/lib/glossary";
 import { cleanName, countyLabel } from "@/lib/format";
 import { formatEvidenceAmount, sumDecimalStrings } from "@/lib/ask/evidence";
 import type { Dataset } from "@/lib/ask/spec";
@@ -104,7 +105,7 @@ function useKept<T>(value: T | null, family: string | null): T | null {
 
 /* ---------------- the flow ---------------- */
 
-/** Bands drawn per column: the largest four (the lede's „primele patru”) and the chosen one, then one band for the rest. */
+/** Bands drawn per column: the largest four and the chosen one, then one band for the rest. */
 const DRAWN = 4, DRAWN_RIGHT = 5;
 const H = 440, GAP = 12;
 const X_ROOT = 12, X_MID = 470, X_MID_W = 8, X_RIGHT = 800, X_RIGHT_W = 6;
@@ -367,7 +368,7 @@ function StageGhost({ isAuthority }: { isAuthority: boolean }) {
       <p className="cx-strip-h"><G.Line w="92%" /><G.Line w="48%" /></p>
       <StripGhost name="cx-strip-side" profile={GHOST_RIGHT} />
     </div>
-    <div className="cx-dock"><DockGhost /><p className="cx-dock-fine">Valori înregistrate, nu plăți.</p></div>
+    <div className="cx-dock"><DockGhost /></div>
   </Ghost>;
 }
 
@@ -692,8 +693,7 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
   const secondStale = !held && !!v.second && secondPending;
   const fetching = !!held || (base.busy && !!v.base && v.base !== base.data) || (second.busy && !!v.second && v.second !== second.data);
 
-  // The lede: the total, the partners, the years, and how much the largest four carry.
-  const top4 = v.top ? v.top.items.slice(0, 4).reduce((a, i) => a + amount(i), 0) / Math.max(1, total) : 0;
+  // The lede: the total, the partners, the years (the largest four's sum is the flow's to show: owner, 17 November 2026).
   const count = v.top?.pagination.totalPartners ?? 0;
   // One partner (UX audit Z5-37): the lede names it, the flow starts from it, one list (the partner's own).
   const onePartner = count === 1 && v.top?.items.length === 1 ? v.top.items[0]! : null;
@@ -735,8 +735,8 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
           : v.top && onePartner
           ? <p className={`cx-lede${stale}`}>{isAuthority ? "Singurul furnizor" : "Singurul client"}: <b><EntityName id={onePartner.entity.id} role={onePartner.entity.role}>{name(onePartner.entity)}</EntityName></b> · {formatEvidenceAmount(onePartner.totalExact)}{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
           : v.top
-          ? <p className={`cx-lede${stale}`}>{short(total)} lei {isAuthority ? "către" : "de la"} <b>{countWords(count, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}</b>{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.{count > 4 && <> {isAuthority ? "Primii patru iau" : "Primele patru aduc"} <b>{pct(top4)}</b>.</>}</p>
-          : <Ghost as="p" className={`cx-lede${base.error && !held ? " g-still" : ""}`} name="cx-lede" wait="client"><G.Line w="31em" /><G.Line w="11em" only="phone" /></Ghost>}
+          ? <p className={`cx-lede${stale}`}>{short(total)} lei {isAuthority ? "către" : "de la"} <b>{countWords(count, isAuthority ? "furnizor" : "instituție", isAuthority ? "furnizori" : "instituții")}</b>{years.length ? `, ${years[0]}${years[1] && years[1] !== years[0] ? `–${years[1]}` : ""}` : ""}.</p>
+          : <Ghost as="p" className={`cx-lede${base.error && !held ? " g-still" : ""}`} name="cx-lede" wait="client"><G.Line w="20em" /><G.Line w="6em" only="phone" /></Ghost>}
       </div>
       <div className="cx-scope" role="group" aria-label="Ce achiziții și ce ani">
         {/* A channel without any record is shown with its 0, not offered (UX audit Z5-38). */}
@@ -783,13 +783,13 @@ export default function ConnectionsExplorer({ entityId, entityName, role, bothRo
               <div className="cx-leg" key={index}><h3>{legTitle(a, vp.partner.entity)}</h3><p className="amt">{formatEvidenceAmount(item.totalExact)}</p>
                 <p>{recordLabel(records(item))} · {item.firstDate ? `${date(item.firstDate)} – ${date(item.lastDate)}` : "fără date"}</p>
                 <button type="button" onClick={() => setSources({ selection: selectionFor([pairs[index]!]), title: legTitle(a, vp.partner.entity) })}>{sourceLabel(records(item))}</button></div>))}</div>
-            <p className="cx-dock-note">{isAuthority ? "Un furnizor comun" : "O instituție comună"} nu dovedește o relație între {isAuthority ? "instituții" : "firme"}, proprietate comună sau o neregulă. Împreună: {recordLabel(records(vp.partner) + records(v.peer))} · {formatEvidenceAmount(sumDecimalStrings([vp.partner.totalExact, v.peer.totalExact]))} <Term tip id="consortiu" /></p>
+            {/* The caveat joins the line's (?) (owner, 17 November 2026; before: a sentence before „Împreună”). */}
+            <p className="cx-dock-note">Împreună: {recordLabel(records(vp.partner) + records(v.peer))} · {formatEvidenceAmount(sumDecimalStrings([vp.partner.totalExact, v.peer.totalExact]))} <Term tip title="De știut" text={<>{isAuthority ? "Un furnizor comun" : "O instituție comună"} nu dovedește o relație între {isAuthority ? "instituții" : "firme"}, proprietate comună sau o neregulă. <b>{glossaryEntry("consortiu").title}:</b> {glossaryEntry("consortiu").text}</>} /></p>
             <div className="cx-dock-acts"><button type="button" className="cx-primary" onClick={() => setSources({ selection: selection!, title })}>Sursele ambelor legături</button>
               <ClipButton key={JSON.stringify(selection)} kind="query" spec={connectionEvidenceSpec(selection!)} label={title} snapshot={{ connection: selection }} />
               <CopyLink path={addressOf(vp, v.peer, v.scope)} />
               <button type="button" className="cx-link" onClick={() => { setPeer(null); remember(picked, null); }}>← Doar {name(vp.root)} și {name(vp.partner.entity)}</button></div>
           </>}
-          <p className="cx-dock-fine">Valori înregistrate, nu plăți.</p>
         </section>}
       </section>}
 

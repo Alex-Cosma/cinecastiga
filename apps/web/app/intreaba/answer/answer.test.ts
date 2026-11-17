@@ -99,21 +99,26 @@ describe("the row menu (P7, menu button)", () => {
 });
 
 describe("the total line and the longer list (21)", () => {
-  it("says its words in a polite live region read whole, with the conditions and the caveat on amounts", () => {
+  it("says its words in a polite live region read whole, with the conditions", () => {
     const markup = html(TotalLine, { conditions: ["fără SYSTRA", "doar firmele cu sediul în alt județ"], children: "Din 1.550.554.366 lei, câștigați de 412 firme" });
     expect(markup.startsWith('<p class="qb-total qb-tipwrap"><span aria-live="polite" aria-atomic="true">')).toBe(true);
-    const live = /<span aria-live="polite" aria-atomic="true">(.*?)<\/span><span class="qb-nowrap">/.exec(markup)?.[1] ?? "";
-    expect(text(live).replace(/ /g, " ")).toBe("Din 1.550.554.366 lei, câștigați de 412 firme · fără SYSTRA · doar firmele cu sediul în alt județ · valoare înregistrată, nu plăți");
+    const live = /<span aria-live="polite" aria-atomic="true">(.*?)<\/span> <span class="term term-tip/.exec(markup)?.[1] ?? "";
+    expect(text(live).replace(/\u00a0/g, " ")).toBe("Din 1.550.554.366 lei, câștigați de 412 firme · fără SYSTRA · doar firmele cu sediul în alt județ");
     expect(text(html(TotalLine, { note: false, children: "Din 10 lei" }))).toBe("Din 10 lei");
   });
-  it("keeps the (?) out of the live region, on the line of the last two words", () => {
+  it("keeps the caveat on amounts in one (i) after the total, out of the live region (owner, 17 November 2026: less small print)", () => {
     const markup = html(TotalLine, { children: "Din 10 lei" });
-    const live = /<span aria-live="polite" aria-atomic="true">(.*?)<\/span><span class="qb-nowrap">/.exec(markup)?.[1] ?? "";
-    expect(live).toMatch(/<span class="qb-sr">nu plăți<\/span>$/); // the caveat is announced, the definition is not
-    expect(live).not.toContain("term-");
-    // On screen: the two words and the (?) in one unbreakable span, the words hidden from the reader (said above).
-    expect(markup).toMatch(/<span class="qb-nowrap"><span aria-hidden="true">nu plăți<\/span> <span class="term term-tip[^"]*"><button[^>]*aria-label="Valoare înregistrată, nu plată: ce înseamnă"/);
-    expect(html(TotalLine, { note: { text: "valoare înregistrată, nu plăți" }, children: "Din 10 lei" })).not.toContain("qb-sr"); // no (?), no copy
+    const live = /<span aria-live="polite" aria-atomic="true">(.*?)<\/span> <span class="term term-tip/.exec(markup)?.[1] ?? "";
+    expect(live).toBe("Din 10 lei");
+    expect(markup.match(/class="term-trigger"/g)).toHaveLength(1);
+    expect(markup).toMatch(/<span class="term term-tip[^"]*info-mark"><button[^>]*>.*<span class="d-sr-only">Valoare înregistrată, nu plăți<\/span>/);
+    const box = /<span id="[^"]*" class="term-def"[^>]*>(.*?)<\/span><\/span><\/p>$/.exec(markup)?.[1] ?? "";
+    expect(text(box)).toMatch(/^Valoare înregistrată\. Nu plăți\. .*nu dovedește că banii au fost plătiți\.$/);
+    // On a ranking of firms the same box says that a consortium's value is split equally: still one mark.
+    const firms = html(TotalLine, { joint: true, children: "Din 10 lei" });
+    expect(firms.match(/class="term-trigger"/g)).toHaveLength(1);
+    expect(text(firms)).toContain("În asociere: cote egale. Mai multe firme care câștigă împreună același contract.");
+    expect(html(TotalLine, { note: false, children: "Din 10 lei" })).not.toContain("term-");
     // a line breaks before a "·", never between it and its condition
     expect(html(TotalLine, { note: false, conditions: ["fără SYSTRA"], children: "Din 10 lei" })).toContain('Din 10 lei <span class="qb-total-sep" aria-hidden="true">·</span> <span class="qb-total-cond">fără SYSTRA</span>');
   });

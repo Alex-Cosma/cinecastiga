@@ -20,6 +20,7 @@ import { countWords } from "@/lib/ask/answer-text";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
 import { Facts, PartyList, RecordHead, RecordPage, RecordSection, SignalList, Sources, pairHref, pairLines, type Party, type RecordValue, type Source } from "@/components/record/Record";
 import RecordSums, { type SumRow } from "@/components/record/RecordSums";
 import SeapDetails from "@/components/record/SeapDetails";
@@ -78,17 +79,20 @@ function valueLabel(c: ContractDetail, shown: boolean) {
  * A missing value is said in words in body type, never as a figure, and without a note on a currency it does not have
  * (Z7-10, bug "notă despre înregistrare istorică" on a 2024 contract).
  */
-function headValue(c: ContractDetail, currency: string): RecordValue {
-  const totals = totalsNote(c);
+function headValue(c: ContractDetail, currency: string, sumsSayTotals: boolean): RecordValue {
+  // A framework's place in the totals is said by its sums table when the table lists its call-offs (owner, 17 November
+  // 2026: less small print); the head says it only when the page has no such table.
+  const framework = c.financialKind === "framework";
+  const totals = framework && sumsSayTotals ? null : totalsNote(c);
   const state = contractValueState(c);
   if (state === "amount") return { amount: `${formatExactDecimal(c.contractValueExact!)} ${currency}`, label: valueLabel(c, true), notes: [moneyNote(c), totals] };
   if (state === "foreign") return {
-    amount: <span className="record-amount-words">Valoare în valută, neconvertită</span>, label: valueLabel(c, false),
-    notes: [`SEAP o dă în ${c.currency}, fără curs confirmat; n-o convertim în lei${totals ? "." : " și nu intră în totaluri."}`, totals],
+    amount: <span className="record-amount-words">Valoare în {c.currency}, <span className="record-nowrap">neconvertită <InfoMark title="Neconvertită" text={`SEAP o dă în ${c.currency}, fără curs confirmat; n-o convertim în lei${totalsNote(c) ? "." : " și nu intră în totaluri."}`} /></span></span>,
+    label: valueLabel(c, false), notes: [totals],
   };
   return {
     amount: <span className="record-amount-words is-quiet">Valoare nepublicată</span>, label: valueLabel(c, false),
-    notes: [c.amountStatus === "legacy_unknown" ? null : moneyNote(c), c.financialKind === "framework" ? "SEAP nu publică valoarea acestui acord-cadru; se numără comenzile lui." : totals],
+    notes: [c.amountStatus === "legacy_unknown" ? null : moneyNote(c), framework ? (sumsSayTotals ? null : "SEAP nu publică valoarea acestui acord-cadru; se numără comenzile lui.") : totals],
   };
 }
 
@@ -148,8 +152,10 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
   // The mart's count holds only when every confirmed TED link agrees; one TED lot's count is the fallback.
   const tenders = c.tendersReceived ?? x.ted?.tendersReceived ?? null;
   const singleBidSignal = c.flags.some((f) => f.code === "award_single_bid");
-  // What can explain call-offs over the ceiling is the signal's to say when the page shows it (Z7-07).
-  const overCeilingWhy = c.flags.some((f) => f.code === "award_calloffs_over_ceiling") ? " Vezi semnalul de mai sus." : " Poate fi o depășire reală sau o eroare de completare în SEAP.";
+  // What can explain call-offs over the ceiling is the signal's to say when the page shows it (Z7-07); its figures too
+  // (owner, 17 November 2026: less small print), so the notes below say them only on a page without the signal.
+  const overCeilingSignal = c.flags.some((f) => f.code === "award_calloffs_over_ceiling");
+  const overCeilingWhy = " Poate fi o depășire reală sau o eroare de completare în SEAP.";
 
   const parties: Party[] = [
     ...c.winners.map((w, i): Party => {
@@ -171,17 +177,19 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
     }),
   ];
 
-  // Every sum of the record in the order it happens, each with what it covers (UX audit Z7-09; exact values, Z7-11).
-  const whole = c.noticeLotCount > 1 ? "tot anunțul; " : "";
+  // Every sum of the record in the order it happens, each with what it covers (UX audit Z7-09; exact values, Z7-11). A
+  // range says by itself that it runs from the lowest to the highest, and the bold row is the head's figure (owner,
+  // 17 November 2026: less small print).
+  const whole = c.noticeLotCount > 1 ? "tot anunțul" : null;
   const fw = x.framework?.role === "framework" ? x.framework : null;
   const sums: SumRow[] = [];
   if (x.ted?.estimateRon != null) sums.push({ key: "ted", label: <>Estimarea, în TED <Term tip id="estimare-ted" /></>, scope: x.ted.lotTitle ? <span title={x.ted.lotTitle}>fără TVA, doar acest lot</span> : "fără TVA", value: fx(x.ted.estimateRon) });
   if (c.lowestOfferExact != null && c.highestOfferExact != null && Number(c.highestOfferExact) > 0) sums.push(Number(c.lowestOfferExact) === Number(c.highestOfferExact)
-    ? { key: "of", label: "Ofertele", scope: `${whole}cea mai mică = cea mai mare`, value: fx(c.lowestOfferExact) }
-    : { key: "of", label: "Ofertele", scope: `${whole}de la cea mai mică la cea mai mare`, value: <><span>{fx(c.lowestOfferExact)}</span> – <span>{fx(c.highestOfferExact)}</span></> });
-  if (award) sums.push({ key: "aw", label: <>Atribuită în anunț <Term tip id="valoare-atribuita" /></>, scope: <>toate cele {noticeHref ? <Link prefetch={false} href={noticeHref}>{noticeRecords}</Link> : noticeRecords}, cum a declarat-o instituția</>, value: fx(award) });
+    ? { key: "of", label: "Ofertele", scope: `${whole ? `${whole}; ` : ""}cea mai mică = cea mai mare`, value: fx(c.lowestOfferExact) }
+    : { key: "of", label: "Ofertele", scope: whole, value: <><span>{fx(c.lowestOfferExact)}</span> – <span>{fx(c.highestOfferExact)}</span></> });
+  if (award) sums.push({ key: "aw", label: <>Atribuită în anunț <Term tip id="valoare-atribuita" /></>, scope: <>toate cele {noticeHref ? <Link prefetch={false} href={noticeHref}>{noticeRecords}</Link> : noticeRecords}</>, value: fx(award) });
   const own = c.financialKind === "framework" ? "Acest acord-cadru: plafonul" : c.financialKind === "calloff" ? "Această comandă" : c.financialKind === "amendment" ? "Acest act adițional" : "Acest contract";
-  sums.push({ key: "own", main: true, label: own, scope: `cifra din antet${c.financialKind === "framework" ? "; separat de totaluri" : c.financialKind === "amendment" ? "; nu se adaugă la totaluri" : ""}`,
+  sums.push({ key: "own", main: true, label: own, scope: c.financialKind === "framework" ? "separat de totaluri" : c.financialKind === "amendment" ? "nu se adaugă la totaluri" : null,
     value: c.contractValueExact != null ? `${formatExactDecimal(c.contractValueExact)} ${currency}` : <span className="record-quiet">{contractValueState(c) === "foreign" ? "în valută, neconvertită" : "nepublicată"}</span> });
   let sumsNote: ReactNode = null;
   if (fw) {
@@ -192,9 +200,21 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
       sums.push({ key: "co", label: "Comenzile lui, declarate în SEAP", scope: orders, value: fx(fw.declaredRon), aside: times ? `de ${times} ori plafonul` : null, warn: !!times });
       if (reduced && fw.calloffsRon != null) sums.push({ key: "ct", label: <>Numărate în totaluri <Term tip id="comenzi-identificate" /></>, scope: "comenzile, reduse până la plafon", value: fx(fw.calloffsRon) });
     } else sums.push({ key: "co", label: <>Comenzile lui, identificate <Term tip id="comenzi-identificate" /></>, scope: `${orders}; se numără în totaluri`, value: fw.calloffsRon != null ? fx(fw.calloffsRon) : fw.declaredRon != null ? fx(fw.declaredRon) : "—" });
-    if (times) sumsNote = fw.repeats >= 2 ? `${countWords(fw.repeats, "comandă", "comenzi")} au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP.`
-      : `Comenzile declarate trec de plafon:${overCeilingWhy.replace(" Vezi", " vezi").replace(" Poate", " poate")}`;
+    if (times && !overCeilingSignal) sumsNote = fw.repeats >= 2 ? `${countWords(fw.repeats, "comandă", "comenzi")} au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP.`
+      : `Comenzile declarate trec de plafon:${overCeilingWhy.replace(" Poate", " poate")}`;
   }
+  // A call-off of a framework over its ceiling: whether this order repeats the whole ceiling and what it counts for in
+  // the totals; the framework's figures only when the page has no signal that says them.
+  const calloffOf = x.framework?.role === "calloff" ? x.framework : null;
+  const calloffWarn = (() => {
+    const f = calloffOf, times = f ? overCeiling(f.declaredRon, f.ceilingRon, f.topRon) : null;
+    if (!f || !times) return null;
+    const repeats = f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : overCeilingSignal ? "" : overCeilingWhy;
+    const counted = countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : "";
+    const text = overCeilingSignal ? `${repeats}${counted}`.trim()
+      : `Comenzile lui declarate în SEAP (${formatInt(f.calloffs)}) însumează ${formatExactDecimal(f.declaredRon!)} lei, de ${times} ori plafonul de ${formatExactDecimal(f.ceilingRon!)} lei.${repeats}${counted}`;
+    return text || null;
+  })();
   const sumsTitle = `Sumele, de la ${x.ted?.estimateRon != null ? "estimare" : sums.some((r) => r.key === "of") ? "oferte" : "anunț"} la ${fw && fw.calloffs > 0 ? "comenzi" : c.financialKind === "calloff" ? "comandă" : c.financialKind === "framework" ? "acordul-cadru" : c.financialKind === "amendment" ? "actul adițional" : "contract"}`;
 
   const republished = c.publications.length > 1;
@@ -220,7 +240,7 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
         lot={lot}
         lotLabel={lotLabel}
         parties={<>{authority} a contractat cu {winnerNames.length ? winnerNames : "un câștigător neprecizat"}</>}
-        value={headValue(c, currency)}
+        value={headValue(c, currency, fw !== null)}
         meta={[
           // The meta row's labels hold their explanation (M-01).
           <span className="record-kind" key="k">{c.financialKind === "calloff" ? <Term tip hold="line" id="acord-cadru">{kind}</Term> : kind}</span>,
@@ -250,9 +270,10 @@ export default async function ContractPage({ params }: { params: Promise<{ nid: 
           (c.cpvName || c.cpvCode) && { label: `Domeniu CPV${c.cpvFromNotice ? " (din anunț)" : ""}`, value: c.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
           // A republished notice's version date matters (its versions are listed above); otherwise it is folded (Z7-29).
           republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },
-          x.framework?.role === "calloff" && { label: "Acordul-cadru", value: <><Link prefetch={false} href={`/contracte/${x.framework.frameworkNatId}`}>{cleanName(x.framework.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
-            {(() => { const f = x.framework, times = overCeiling(f.declaredRon, f.ceilingRon, f.topRon); return times && <small className="record-warn">Comenzile lui declarate în SEAP ({formatInt(f.calloffs)}) însumează {formatExactDecimal(f.declaredRon!)} lei, de {times} ori plafonul de {formatExactDecimal(f.ceilingRon!)} lei.{f.repeatsCeiling ? " Comanda aceasta declară chiar tot plafonul: probabil o eroare de completare în SEAP." : overCeilingWhy}{countedBelow(c.splitFromRonExact, c.valueRonExact ?? (c.amountStatus === "ron" || c.amountStatus === "legacy_ron" ? c.contractValueExact : null)) ? ` În totaluri, comanda se numără cu ${formatExactDecimal(c.splitFromRonExact)} lei: comenzile acordului sunt reduse proporțional până la plafon.` : ""}</small>; })()}</>, wide: overCeiling(x.framework.declaredRon, x.framework.ceilingRon, x.framework.topRon) !== null },
-          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a><small>Recunoscute după numele fișierului: pot fi greșit clasificate.</small></>, wide: true },
+          calloffOf && { label: "Acordul-cadru", value: <><Link prefetch={false} href={`/contracte/${calloffOf.frameworkNatId}`}>{cleanName(calloffOf.frameworkTitle) || "Acordul-cadru al comenzii"}</Link>
+            {calloffWarn && <small className="record-warn">{calloffWarn}</small>}</>, wide: calloffWarn !== null },
+          // How the documents were recognised is said once, beside the documents list (owner, 17 November 2026).
+          x.cnsc && { label: "Contestații", value: <>{x.cnsc.complaints > 1 ? `${formatInt(x.cnsc.complaints)} documente de contestație` : "Un document de contestație"} printre documentele procedurii{x.cnsc.mentionsCnsc ? ", cu mențiunea CNSC" : ""} · <a href="#fisiere">Documente</a></>, wide: true },
         ]} />
         <SeapDetails facts={[
           !republished && c.stateDate && { label: "Data acestei versiuni a anunțului", value: formatCalendarDate(c.stateDate.slice(0, 10)) },

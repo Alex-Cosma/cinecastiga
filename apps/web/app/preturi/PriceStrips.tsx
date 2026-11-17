@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
 import { STRIP_DOTS, STRIP_LEADS, productHref, type PriceOrder, type PriceStrip } from "@/lib/unit-prices";
 import { AXIS_TICKS, axisPos, buyersWord, countWord, formatRatio, largestOf, leadTicksPath, leadsWord, medianWords } from "@/lib/unit-prices-shared";
 import StripChart from "./StripChart";
@@ -23,10 +24,11 @@ export const SEASON_CAUTION = "Legumele și fructele proaspete se compară cu me
 export const MIXED_CAUTION = "Aici intră mărci și feluri diferite ale aceluiași produs, iar o parte din diferențele de preț vin de la ele. Citește denumirile înainte de orice concluzie.";
 
 /** The key to the strip, above the axis on the list and under the big strip on the product page. `dots` says which
- * leads have a dot when not all do („cele mai mari 14 pe produs”, „cele mai mari 40 din 195”). */
-export function StripLegend({ bins = false, dots }: { bins?: boolean; dots: string | null }) {
+ * leads have a dot when not all do („cele mai mari 14 pe produs”, „cele mai mari 40 din 195”). `prices`: what the prices
+ * are, behind an "i" by the median (owner, 17 November 2026: it was a sentence under the title of /preturi). */
+export function StripLegend({ bins = false, dots, prices }: { bins?: boolean; dots: string | null; prices?: string }) {
   return <ul className="pr-legend" aria-label="Cum se citește banda">
-    <li><i className="pr-k-median" />mediana</li>
+    <li><i className="pr-k-median" />mediana{prices && <> <InfoMark title="Prețurile" text={prices} /></>}</li>
     <li><i className="pr-k-double" />de două ori mediana</li>
     <li><i className="pr-k-core" />jumătatea din mijloc</li>
     <li><i className="pr-k-band" />opt instituții din zece</li>
@@ -48,14 +50,15 @@ function Strip({ s, i, county, order }: { s: PriceStrip; i: number; county: stri
     + (named ? ` Cel mai mare: ${named.name}, ${formatRatio(named.ratio)}.` : "")
     + (s.mixed ? " Mărci diferite: citește denumirile." : "") + (seasonal ? " Sezonul poate explica o parte." : "");
   const shown = Math.min(s.leads, STRIP_LEADS);
-  const head = s.leads > 0 ? `${s.leads > shown ? `Cele mai mari ${shown} din ${s.leads}` : s.leads === 1 ? "Singurul preț peste dublu" : `Toate cele ${s.leads}`}, după ${order === "multiplu" ? "multiplu" : "lei peste mediană"}. Piste, nu dovezi.` : null;
+  const head = s.leads > 0 ? `${s.leads > shown ? `Cele mai mari ${shown} din ${s.leads}` : s.leads === 1 ? "Singurul preț peste dublu" : `Toate cele ${s.leads}`}, după ${order === "multiplu" ? "multiplu" : "lei peste mediană"}.` : null;
   return <StripRow className={`pr-row${s.leads ? "" : " pr-row-quiet"}`} label={sentence} leads={s.leads} head={head}
     query={{ family: s.family, pack: s.pack, year: s.year, county, byRatio: order === "multiplu", per: s.per }}
     summary={<>
       <span className="pr-label">
         <b>{s.name}</b>
         {s.packLabel && <span className="pr-pack">{s.packLabel}</span>}
-        <small>{median}</small><small className="pr-label-n">{buyersWord(s.buyers)}</small>
+        {/* The median's name is the list head's; on a phone, without the head, the row says it (owner, 17 November 2026). */}
+        <small><span className="pr-median-word">{m.label}: </span>{m.value}</small><small className="pr-label-n">{buyersWord(s.buyers)}</small>
       </span>
       <span className="pr-strip"><StripChart band={{ r10: s.r10, r25: s.r25, r75: s.r75, r90: s.r90 }} median={s.year ? s.medianLo : null} per={s.per}
         dots={s.dots} ticks={leadTicksPath(s.leadRatios)} index={i} hrefBase={productHref(s.family, s.pack, s.year)}
@@ -69,12 +72,17 @@ function Strip({ s, i, county, order }: { s: PriceStrip; i: number; county: stri
         {seasonal && s.leads > 0 && <Term tip hold="box" className="pr-mixed" title="Sezon" text={SEASON_CAUTION}>sezon</Term>}
       </span>
     </>}>
-    {s.mixed && <p className="pr-caution">{MIXED_CAUTION}</p>}
-    {seasonal && s.leads > 0 && <p className="pr-caution">{SEASON_CAUTION}</p>}
+    {/* The cautions are the row's chips (above), not a box again here; the lead-not-proof line is the page's (owner, 17 November 2026). */}
     {s.leads === 0 && <p className="pr-none">{s.thin ? "Prea puține instituții într-un an pentru piste: banda arată doar cum se împrăștie prețurile." : `Niciun preț peste dublu${county ? ` în ${county}` : ""}.`}</p>}
     <p className="pr-more"><Link href={productHref(s.family, s.pack, s.year)} prefetch={false}>
       {s.leads > shown ? `Toate cele ${leadsWord(s.leads)} și ` : "Toate "}cele {buyersWord(s.buyers)}, cu liniile lor →</Link></p>
   </StripRow>;
+}
+
+/** The median's name, said once over the rows (owner, 17 November 2026): of the chosen year, else from year to year. */
+function medianHead(strips: readonly PriceStrip[]): string {
+  const year = strips[0]?.year ?? null;
+  return year ? `mediana ${year}` : strips.some((s) => medianWords(s.medianLo, s.medianHi, s.per, null).label !== "mediana") ? "mediana, de la an la an" : "mediana";
 }
 
 /** Strips without a lead fold behind one line once a county or a year leaves this many of them. */
@@ -90,8 +98,8 @@ export default function PriceStrips({ strips, county, order, narrowed }: {
   const open = fold ? withLeads : strips;
   const key = (s: PriceStrip) => `${s.family}|${s.pack}|${s.year ?? "toti"}`;
   return <div className="pr-strips">
-    <StripLegend dots={`cele mai mari, cel mult ${STRIP_DOTS} pe produs`} />
-    <div className="pr-head" aria-hidden="true"><span>Produs</span><StripAxis /><span>Peste dublu</span></div>
+    <StripLegend dots={`cele mai mari, cel mult ${STRIP_DOTS} pe produs`} prices="Valori contractate, fără TVA." />
+    <div className="pr-head" aria-hidden="true"><span>Produs · {medianHead(strips)}</span><StripAxis /><span>Peste dublu</span></div>
     {open.map((s, i) => <Strip key={key(s)} s={s} i={i} county={county} order={order} />)}
     {fold && withLeads.length === 0 && <p className="pr-none pr-none-all">Niciun preț peste dublu{county ? ` în ${county}` : ""} pentru această alegere.</p>}
     {fold && <details className="pr-fold">

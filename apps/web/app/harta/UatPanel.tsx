@@ -61,6 +61,9 @@ export function versus(value: number, average: number | null, words: string): st
   return `aproape de ${words}`;
 }
 
+/** The years' chart as drawn, and how much larger than drawn it gets before it grows wider instead (harta.css keeps the ghost's height by the same figure). */
+const YEAR_W = 260, YEAR_ZOOM = 1.3;
+
 /** The year's tip under its column, inside the chart's width. */
 function tipLeft(index: number, count: number, width: number, tipWidth: number): number {
   const center = ((index + 0.5) / count) * width;
@@ -78,7 +81,6 @@ function Years({ years, href, allDomains, words }: { years: MapUatResponse["year
   const avgOf = (y: MapUatResponse["years"][number]) => y.hallsPerCapita ?? null;
   const max = Math.max(1, ...years.flatMap((y) => [y.perCapita ?? 0, avgOf(y) ?? 0]));
   const peak = years.reduce((a, y) => ((y.perCapita ?? 0) > (a?.perCapita ?? 0) ? y : a), years[0]);
-  const W = 260, H = 96, bw = W / Math.max(1, years.length);
   const now = new Date().getFullYear();
   const motion = useEntrance("", years.map((y) => y.year));
   const n = years.length;
@@ -91,6 +93,18 @@ function Years({ years, href, allDomains, words }: { years: MapUatResponse["year
   const pointer = useRef("");
   // Whether this year's tip was open when the tap began: a tap's own hover and focus open it before its click.
   const opened = useRef(false);
+  // The chart takes its section's width (owner, 17 November 2026: no sentence beside it). Drawn 260 wide, it grows with
+  // the section up to YEAR_ZOOM; past that the columns get wider, not taller, and the years keep their size.
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    setWidth(Math.round(el.clientWidth));
+    const observer = new ResizeObserver(([entry]) => { if (entry) setWidth(Math.round(entry.contentRect.width)); });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const W = Math.max(YEAR_W, Math.round(width / YEAR_ZOOM)), H = 96, bw = W / Math.max(1, years.length);
 
   useLayoutEffect(() => {
     if (active === null || !box.current || !tip.current) return;
@@ -253,15 +267,13 @@ function Ghost({ name, county, gap }: { name: string | undefined; county: string
     {!gap && <p className="mx-p-acts" aria-hidden="true"><G.Block w="15em" h="36px" /><G.Block w="17em" h="36px" /></p>}
     {!gap && <div className="mx-p-cols" aria-hidden="true">
       {(["Cât?", "Pe ce?", "Cui?"] as const).map((title, i) => <div className="mx-p-sec" key={title}><h3>{title}</h3>
-        <p>{line("94%")}{line("82%", "wide")}{line("48%")}</p>
         {i === 0
-          ? <svg className="mx-p-years" viewBox="0 0 260 112">{YEAR_GHOST.map((h, j) => <rect key={j} className="g-svg" x={j * (260 / 9) + 4.6} y={96 - h} width={19.6} height={h} rx="1.5" />)}</svg>
+          ? <svg className="mx-p-years" viewBox="0 0 260 112" preserveAspectRatio="none">{YEAR_GHOST.map((h, j) => <rect key={j} className="g-svg" x={j * (260 / 9) + 4.6} y={96 - h} width={19.6} height={h} rx="1.5" />)}</svg>
           : <ul className="mx-p-rows">{[100, 74, 52, 38, 26].map((w, j) => <li key={j}><span>{line(`${78 - j * 7}%`)}</span><i style={{ width: `${w}%` }} /><b>{line("100%")}</b></li>)}</ul>}
       </div>)}
     </div>}
-    <div className="mx-p-sec mx-p-wide" aria-hidden="true"><h3>Printre vecini {county && <small>lei pe locuitor în {county}; apasă un <span className="mx-wide-only">punct</span><span className="mx-phone-only">rând</span> ca să deschizi {NB("UAT-ul")}</small>}</h3>
+    <div className="mx-p-sec mx-p-wide" aria-hidden="true"><h3>Printre vecini</h3>
       <svg className="mx-p-near" viewBox="0 0 560 96"><rect className="g-svg" x="10" y="42" width="540" height="14" rx="7" /></svg></div>
-    {!gap && <p className="mx-p-note" aria-hidden="true">{line("40%")}{line("24%", "phone")}</p>}
     <p className="mx-p-wait g-sr" role="status">Se încarcă UAT-ul…</p>
   </>;
 }
@@ -352,17 +364,14 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
       : d.uat.gap === "no_admin" ? <>
         {head}
         <p className="mx-p-lead">Primăria lui {d.uat.name} nu e identificată sigur în date, deci nu avem cifra lui: valoarea e necunoscută, nu zero.</p>
-        <div className="mx-p-sec mx-p-wide"><h3>Printre vecini <small>lei pe locuitor în {d.county.name}; apasă un <span className="mx-wide-only">punct</span><span className="mx-phone-only">rând</span> ca să deschizi {NB("UAT-ul")}</small></h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
+        <div className="mx-p-sec mx-p-wide"><h3>Printre vecini</h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
       </> : <>
         {head}
         {(() => {
           const value = d.uat.value ?? 0, pc = d.uat.perCapita ?? 0, total = d.cpv.reduce((a, c) => a + c.value, 0);
           const words = averageWords(d.county.key);
           const vs = versus(pc, d.county.hallsPerCapita ?? null, words);
-          const counted = d.years.filter((y) => y.hallsPerCapita != null && y.perCapita !== null);
-          const above = counted.filter((y) => y.perCapita! > y.hallsPerCapita!).length;
           const peak = d.years.reduce((a, y) => ((y.perCapita ?? 0) > (a?.perCapita ?? 0) ? y : a), d.years[0]);
-          const supTotal = d.suppliers.reduce((a, s) => a + s.value, 0);
           const top = d.suppliers[0];
           // A year opens the town hall's records of that year, in the map's channel (its largest town hall when the
           // UAT has more than one: the one its name opens). The table filters CPV codes, not divisions: all domains.
@@ -382,19 +391,21 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
               {compareHref && <Link className="mx-p-act" href={compareHref} prefetch={false}>Compară cu primării de mărimea ei →</Link>}
             </p>}
             <div className="mx-p-cols">
-              <div className="mx-p-sec"><h3>Cât?</h3>
-                <p>{peak && (peak.perCapita ?? 0) > 0 ? <>Vârful în <b>{peak.year}</b>: {int(peak.perCapita!)} lei pe locuitor.</> : "Fără achiziții pe ani în această selecție."}
-                  {counted.length > 0 && <> Peste {words} în {above} din {counted.length} ani.</>}</p>
+              {/* The chart's two marks named beside the question (owner, 17 November 2026): the orange column and the dashed line. */}
+              <div className="mx-p-sec"><h3>Cât?{peak && (peak.perCapita ?? 0) > 0 && <small className="mx-p-key">
+                <span><i className="is-peak" />anul de vârf</span>
+                {d.years.some((y) => y.hallsPerCapita != null) && <span><i className="is-avg" />{words}</span>}</small>}</h3>
+                {/* No sentence under a question (owner, 17 November 2026: the figures are in the chart and the rows); only an empty selection says so. */}
+                {!(peak && (peak.perCapita ?? 0) > 0) && <p>Fără achiziții pe ani în această selecție.</p>}
                 <Years years={d.years} href={yearHref} allDomains={d.selection.cpv !== "all"} words={words} />
               </div>
               <div className="mx-p-sec"><h3>Pe ce?</h3>
-                <p>{d.cpv[0] ? <><b>{pct(d.cpv[0].value, total)}%</b> {d.cpv[0].name.toLowerCase()}{d.cpv[1] ? <>, apoi {d.cpv[1].name.toLowerCase()}{d.cpv[2] ? ` și ${d.cpv[2].name.toLowerCase()}` : ""}</> : ""}.</> : "Fără domenii în această selecție."}</p>
+                {!d.cpv[0] && <p>Fără domenii în această selecție.</p>}
                 <Rows tip={t.bind} rows={d.cpv.slice(0, 5).map((c) => ({ key: c.code ?? "none", name: c.name, bar: pct(c.value, d.cpv[0]!.value), value: share(c.value, total),
                   tip: [c.code ? `${c.name} · CPV ${c.code}` : c.name, `${int(c.value)} lei · ${share(c.value, total)}`, withDe(c.records, "înregistrare", "înregistrări")] }))} />
               </div>
               <div className="mx-p-sec"><h3>Cui?</h3>
-                <p>{top ? (d.suppliers.length === 1 ? <>Un singur furnizor: <EntityName id={top.id} role="supplier">{top.name}</EntityName>.</>
-                  : <><EntityName id={top.id} role="supplier">{top.name}</EntityName> ia <b>{pct(top.value, value)}%</b>; primii {d.suppliers.length}, {pct(supTotal, value)}%.</>) : "Fără furnizori în această selecție."}</p>
+                {!top && <p>Fără furnizori în această selecție.</p>}
                 <Rows tip={t.bind} rows={d.suppliers.map((s) => ({ key: String(s.id), name: <EntityName id={s.id} role="supplier">{s.name}</EntityName>, bar: pct(s.value, top!.value),
                   value: share(s.value, value), tip: [s.name, `${int(s.value)} lei · ${share(s.value, value)} din total`, withDe(s.records, "înregistrare", "înregistrări")] }))} />
               </div>
@@ -402,14 +413,13 @@ export default function UatPanel({ siruta, query, hint, onClose, onPick, leaving
             {/* With the institutions (owner, 8 November 2026): which of the town hall's, and how much of the total. */}
             {d.institutions.length > 0 && (() => {
               const subTotal = d.institutions.reduce((a, x) => a + x.value, 0), first = d.institutions[0]!.value;
-              return <div className="mx-p-sec mx-p-wide"><h3>Instituțiile primăriei <small>{short(subTotal)} lei din {short(value)}, {withDe(d.institutions.length, "instituție", "instituții")}</small></h3>
+              return <div className="mx-p-sec mx-p-wide"><h3>Instituțiile primăriei <small>{short(subTotal)} lei</small></h3>
                 <Rows tip={t.bind} rows={d.institutions.slice(0, 8).map((x) => ({ key: x.id, name: <EntityName id={x.id} role="authority">{x.name}</EntityName>, bar: pct(x.value, first),
                   value: share(x.value, value), tip: [x.name, `${int(x.value)} lei · ${share(x.value, value)} din total`] }))} />
                 {d.institutions.length > 8 && <p className="mx-p-more">Și încă {withDe(d.institutions.length - 8, "instituție", "instituții")}, cu {short(d.institutions.slice(8).reduce((a, x) => a + x.value, 0))} lei.</p>}
               </div>;
             })()}
-            <div className="mx-p-sec mx-p-wide"><h3>Printre vecini <small>lei pe locuitor în {d.county.name}; apasă un <span className="mx-wide-only">punct</span><span className="mx-phone-only">rând</span> ca să deschizi {NB("UAT-ul")}</small></h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
-            <p className="mx-p-note">Valori contractate, nu plăți. Prin proceduri: {pct(d.channels.contracts, d.channels.contracts + d.channels.da)}%; directe: {pct(d.channels.da, d.channels.contracts + d.channels.da)}%.</p>
+            <div className="mx-p-sec mx-p-wide"><h3>Printre vecini</h3><Neighbours data={d} onPick={onPick} tip={t.bind} /></div>
           </>;
         })()}
       </>}

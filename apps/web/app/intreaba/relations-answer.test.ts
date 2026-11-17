@@ -75,7 +75,8 @@ describe("the network's answer (final network §3.1, §3.5, §3.7, §4)", () => 
     expect(orderedRows(NETWORK, "all", "count").map((r) => r.entityId)).toEqual(["12", "10", "11", "13"]);
     expect(orderedRows(NETWORK, "all", "years").map((r) => r.entityId)).toEqual(["12", "10", "11", "13"]);
     const page = networkPage(NETWORK, { network: { show: 10 } }, "all");
-    expect([page.shown, page.held, page.more, page.rest]).toEqual([4, 4, null, "alți 278 de parteneri · 66,3% din valoare"]);
+    // The rest's share of the value is the summary's complement („primii 4 au 33,7%”): not said twice (owner, 17 November 2026).
+    expect([page.shown, page.held, page.more, page.rest]).toEqual([4, 4, null, "alți 278 de parteneri"]);
     // An old link shows 14; „Arată încă” adds rows the answer holds.
     expect(networkPage(NETWORK, {}, "continuing", 0).rows.map((r) => r.entityId)).toEqual(["10", "12"]);
   });

@@ -14,6 +14,7 @@ import { captureMethodWords, type FrozenRecord } from "@/lib/evidence-captures-s
 import { RecordHead, RecordSection, Facts } from "@/components/record/Record";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
 import PrivateTrail from "@/components/private/PrivateTrail";
 import CopyCitation from "@/components/private/CopyCitation";
 import ScopeConditions from "../../../../urmariri/ScopeConditions";
@@ -59,6 +60,8 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
   const sortHref = (next: SheetSort) => `/anchete/${id}/dovezi/${captureId}${next === "data" ? "" : `?ordine=${next}`}#inregistrari`;
   const pageHref = (n: number) => `/anchete/${id}/dovezi/${captureId}?${new URLSearchParams({ ...(sort === "data" ? {} : { ordine: sort }), ...(n > 0 ? { pagina: String(n + 1) } : {}) })}#inregistrari`;
   const first = page * SHEET_PAGE + 1, last = page * SHEET_PAGE + rows.length;
+  const rowsLine = [sheet.sortable ? null : `Ordonate ${sheetSortWords[sort]}`,
+    capture.rowCount && rows.length ? `${first === last ? first : `${first}–${last}`} din ${countWords(capture.rowCount, "înregistrare", "înregistrări")}` : null].filter(Boolean).join(" · ");
   // The same institution and firm on every row (a signal's pair, an acquisition): said once above the rows (Z8-37).
   const constantPair = !subjectId && rows.length > 1 && rows.every((r) => r.authorityId === rows[0]!.authorityId && r.supplierId === rows[0]!.supplierId && r.authorityId && r.supplierId);
   const pageName = clip.kind === "contract" ? "Pagina contractului" : clip.kind === "da" ? "Pagina achiziției" : clip.kind === "entity" ? "Pagina entității" : clip.kind === "notice" ? "Pagina anunțului" : "Deschide pe site";
@@ -72,7 +75,9 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
           : <EntityName id={parties.supplierId} role="supplier">{cleanName(parties.supplier) || "Furnizor necunoscut"}</EntityName>}</> : undefined}
         value={{ amount: capture.totalExact === null ? "Total necunoscut" : `${formatExactDecimal(capture.totalExact)} lei`,
           label: <>{capture.rowCount === null ? "Înregistrări păstrate" : countWords(capture.rowCount, "înregistrare păstrată", "înregistrări păstrate")} · <Term hold="line" tip id="valoare-inregistrata">valori înregistrate</Term></>,
-          notes: [clip.kind === "contract" && typeof summary.contractValueFull === "string" && summary.contractValueFull !== capture.totalExact ? <>Valoarea contractului: {formatExactDecimal(summary.contractValueFull)} lei</> : null,
+          // The whole contract's value only when it differs from the kept total (a consortium share), compared as amounts:
+          // "4930170" and "4930170.00" are the same figure (owner, 17 November 2026: less small print).
+          notes: [clip.kind === "contract" && typeof summary.contractValueFull === "string" && Number(summary.contractValueFull) !== Number(capture.totalExact) ? <>Valoarea contractului: {formatExactDecimal(summary.contractValueFull)} lei</> : null,
             Number(summary.unknownValues ?? 0) > 0 ? <>{countWords(Number(summary.unknownValues), "înregistrare fără valoare publicată", "înregistrări fără valoare publicată")}: lipsa nu este zero.</> : null] }}
         meta={[<span className="record-kind" key="k">Fișă de probă · {kind}{clipCode(clip) ? ` · ${clipCode(clip)}` : ""}</span>, sheet.versions.length > 1 ? `Versiunea ${capture.version} din ${sheet.versions.length}` : `Versiunea ${capture.version}`, `Păstrată la ${privateMoment(capturedAt, "moment necunoscut")}, ora României`]}
         actions={<>
@@ -96,14 +101,15 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
         ]} />
       </RecordSection>
 
+      {/* Every limit one click away in one fold, the frozen texts unchanged (owner, 17 November 2026: less small print). */}
       {limits.all.length > 0 && <RecordSection id="limite" title="Limite">
-        <ul className="iw-limits">{limits.shown.map((note, i) => <li key={i}>{note}</li>)}</ul>
-        {limits.rest.length > 0 && <details className="iw-limits-more"><summary>Toate limitele ({limits.all.length})</summary><ul className="iw-limits">{limits.rest.map((note, i) => <li key={i}>{note}</li>)}</ul></details>}
+        <details className="iw-limits-more"><summary>Toate limitele ({limits.all.length})</summary><ul className="iw-limits">{limits.all.map((note, i) => <li key={i}>{note}</li>)}</ul></details>
       </RecordSection>}
 
-      <RecordSection id="inregistrari" title="Înregistrările păstrate">
+      <RecordSection id="inregistrari" title={<>Înregistrările păstrate <InfoMark title="De știut" text="Rândurile sunt cele păstrate la capturare; paginile SEAP se pot schimba. Pentru contracte în asociere, rândul este cota unui furnizor." /></>}>
         <div className="iw-sheet-sort">
-          <p className="record-lead">Ordonate {sheetSortWords[sort]}{capture.rowCount && rows.length ? <> · {first === last ? first : `${first}–${last}`} din {countWords(capture.rowCount, "înregistrare", "înregistrări")}</> : null}</p>
+          {/* The order is the underlined sort link beside it; said in words only when the rows cannot be sorted here. */}
+          {rowsLine && <p className="record-lead">{rowsLine}</p>}
           {sheet.sortable ? <nav aria-label="Ordinea înregistrărilor">{sortLinks.map((s) => <Link key={s.id} href={sortHref(s.id)} aria-current={s.id === sort ? "true" : undefined}>{s.label}</Link>)}</nav>
             : <p className="iw-muted">Peste {formatInt(SHEET_SORT_CAP)} de înregistrări: ordonează-le în CSV.</p>}
         </div>
@@ -125,7 +131,6 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
         </tbody></table> : <p className="record-lead">Nu există înregistrări pe această pagină.</p>}
         {capture.rowCount !== null && <SheetMore tableId="iw-sheet-rows" pageRows={rows.length} total={capture.rowCount} />}
         {(page > 0 || sheet.hasMore) && <nav className="iw-source-pager" aria-label="Paginile înregistrărilor">{page > 0 ? <Link href={pageHref(page - 1)}>← Cele {SHEET_PAGE} dinainte</Link> : <span />}{sheet.hasMore && <Link href={pageHref(page + 1)}>Următoarele {SHEET_PAGE} →</Link>}</nav>}
-        <p className="iw-sheet-note">Rândurile sunt cele păstrate la capturare; paginile SEAP se pot schimba. Pentru contracte în asociere, rândul este cota unui furnizor.</p>
       </RecordSection>
 
       <RecordSection id="selectie" title="Selecția păstrată">
@@ -133,7 +138,7 @@ export default async function EvidenceSheetPage({ params, searchParams }: { para
           : clip.kind === "person" ? <p>Înregistrările firmelor pe care {clipTitle(clip)} le reprezintă, după registrul ONRC.</p>
           : spec ? <><p className="iw-sheet-question">{questionTitle(spec)}</p><ScopeConditions scope={{ spec, options }} /></>
           : <p>{clip.kind === "contract" ? "Toate cotele furnizorilor din acest contract." : clip.kind === "da" ? "Această achiziție directă." : clip.kind === "notice" ? `Toate contractele anunțului${summary.noticeNo ? ` ${String(summary.noticeNo)}` : ""}.` : clip.kind === "monitoring" ? "Înregistrările afectate de actualizare, exact cum au fost observate." : "Înregistrările selecției salvate."}</p>}
-        <p className="iw-sheet-note">Selecția exactă, metodologia și rezultatul (JSON) sunt în exportul dosarului, în fișierele capturii. <a href={`/api/anchete/${id}/export?format=zip`} download>Descarcă dosarul întreg · ZIP</a></p>
+        <p className="iw-sheet-note"><a href={`/api/anchete/${id}/export?format=zip`} download>Descarcă dosarul întreg · ZIP</a> <InfoMark title="Exportul" text="Selecția exactă, metodologia și rezultatul (JSON) sunt în export, în fișierele capturii." /></p>
       </RecordSection>
     </article>
   </div>;

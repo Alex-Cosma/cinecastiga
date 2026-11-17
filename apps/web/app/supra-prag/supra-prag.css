@@ -1,5 +1,8 @@
 .ted-tip-line,.ted-stats .stat{position:relative}
 h2.ted-tip-line .term-tip{font-size:15px;font-weight:400;letter-spacing:0}
+/* The page's „?” sits on its title (owner, 17 November 2026: the subtitle that said the same is gone). */
+.ted-title{position:relative}
+.ted-title .term-tip{font-family:var(--body,inherit);font-size:15px;font-weight:400;letter-spacing:0;vertical-align:middle}
 .filters.ted-tip-line .term-tip{align-self:center}
 /* The route ghost (loading.tsx): the loaded table's column shares; its ten rows are the page's (owner, 8 November 2026). */
 @media (min-width:721px){.tp-ghost-table .c1{width:35%}.tp-ghost-table .c2{width:40%}.tp-ghost-table .c3{width:11%}.tp-ghost-table .c4{width:14%}}

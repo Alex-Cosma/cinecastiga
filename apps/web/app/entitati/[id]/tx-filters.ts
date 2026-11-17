@@ -1,4 +1,3 @@
-import { formatInt } from "../../../lib/format";
 import { roCount } from "../../../lib/ro-count";
 import type { Chip } from "../../../lib/table-filters/describe";
 import type { FilterState } from "../../../lib/table-filters/types";
@@ -23,10 +22,9 @@ export function recordsWord(n: number, state: FilterState): string {
   return roCount(n, one, many);
 }
 
-/** The status line: the records, then the page when there is more than none. */
-export function statusLine(total: number, page: number, pages: number, state: FilterState): string {
-  const records = recordsWord(total, state);
-  return total === 0 ? records : `${records} · pagina ${formatInt(page)} din ${formatInt(pages)}`;
+/** The status line: the records (the page is the pager's: owner, 17 November 2026). */
+export function statusLine(total: number, state: FilterState): string {
+  return recordsWord(total, state);
 }
 
 /** An empty table: what it says, and the filters to take out one by one (each a chip of the band). */

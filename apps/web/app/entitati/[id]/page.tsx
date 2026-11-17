@@ -37,6 +37,7 @@ import { successorOf } from "@/lib/entity-successors";
 import { getSuccessorTarget } from "@/lib/entity-successor-target";
 import ClipButton from "@/components/ClipButton";
 import FollowButton from "@/components/FollowButton";
+import { GLOSSARY } from "@/lib/glossary";
 import Term from "@/components/Term";
 import { encodeSpec } from "@/lib/ask/permalink";
 import { entityChannelSpec, personFirmsSpec } from "@/lib/ask/site-links";
@@ -56,6 +57,8 @@ import { isFillerRep, REPS_SHOWN } from "./reps";
 import EntityBrief, { SummaryNotes } from "./EntityBrief";
 import { composeEntitySummary } from "@/lib/entity-summary";
 import { countWords } from "@/lib/ask/answer-text";
+import { glossaryEntry } from "@/lib/glossary";
+import { roCount } from "@/lib/ro-count";
 import "./entity.css";
 import { parseRoleParam } from "@/lib/role-param";
 
@@ -403,7 +406,11 @@ export default async function EntityPage({
         <div className="ent-risk">
           <p className="ent-risk-read">
             <b data-band={hasRiskScore ? band : "none"}>{hasRiskScore ? riskScoreText(row.score) : "—"}</b>
-            <span className="ent-tip"><Term tip hold="line" id="scor-risc">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"}</Term>
+            {/* rf-2026.22 (S7): the score reads only the direct acquisitions; how much of the money that is waits in the
+                label's own explanation (owner, 17 November 2026: less small print under the bar). */}
+            <span className="ent-tip">{hasRiskScore && ledger.nCt > 0
+              ? <Term tip hold="line" title={GLOSSARY["scor-risc"].title} text={`${GLOSSARY["scor-risc"].text} Scorul citește doar achizițiile directe: ${coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoarea înregistrată; contractele prin proceduri nu intră în el.`}>{riskLabel(row.score)}</Term>
+              : <Term tip hold="line" id="scor-risc">{hasRiskScore ? riskLabel(row.score) : "risc necalculat"}</Term>}
 </span>
           </p>
           {/* Where the score comes from (owner, 6 November 2026): its criteria on the bar, each a link to its pattern's page. */}
@@ -426,9 +433,6 @@ export default async function EntityPage({
             const peer = riskPeerParts(peerLine);
             return <p className="ent-risk-peer ent-tip">{peer.words}{peer.domain && <> <Term tip title="Același domeniu" text={`„${peer.domain}”: domeniul principal al firmei. Locul e printre firmele lui cu cel puțin 10 achiziții directe.`} /></>}</p>;
           })()}
-          {/* rf-2026.22 (S7): the score reads only the direct acquisitions; their share of the money says how much it covers. */}
-          {hasRiskScore && ledger.nCt > 0 && <p className="ent-risk-peer ent-tip">Scorul citește doar achizițiile directe: {coverageWords(Number(ledger.valueDa), Number(ledger.valueCt))} din valoare{" "}
-            <Term tip title="Doar achizițiile directe" text="Scorul se calculează din achizițiile directe; contractele prin proceduri nu intră în el. Procentul e partea achizițiilor directe din valoarea înregistrată." /></p>}
           {(hasRiskScore || signalTypes.length > 0) && <Link href="/metodologie#indice" className="ent-risk-method">Cum se calculează →</Link>}
         </div>
         <div className="ent-activity">
@@ -450,7 +454,10 @@ export default async function EntityPage({
               </tr>
             )}
             <tr className="ent-ledger-total">
-              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><TableLink href="#achizitii" filter={{}}>Total înregistrat</TableLink> <Term tip id="valoare-inregistrata" /></span></span></th>
+              <th scope="row"><span className="ent-ledger-label"><i className="ent-sw" /><span className="ent-tip"><TableLink href="#achizitii" filter={{}}>Total înregistrat</TableLink> {subjects.nConsortium > 0
+                // The contracts in a consortium join this explanation (owner, 17 November 2026; before: a line of their own under the top).
+                ? <Term tip title={glossaryEntry("valoare-inregistrata").title} text={`${glossaryEntry("valoare-inregistrata").text} ${roCount(subjects.nConsortium, "Un contract", "contracte")} în consorțiu.`} />
+                : <Term tip id="valoare-inregistrata" />}</span></span></th>
               <td className="ent-ledger-n">{formatInt(ledger.nDa + ledger.nCt)}</td>
               <td>{formatRon(Number(txCounts.valueExact))}</td>
             </tr>
@@ -474,7 +481,8 @@ export default async function EntityPage({
         {years && <EntityYears model={years} title={isAuth ? "Cât a atribuit, pe ani" : "Cât a câștigat, pe ani"} />}
       </div>
 
-      {summary && <SummaryNotes notes={summary.notes} />}
+      {/* Only the contracts above the cap: the count of contracts in a consortium is in the total's (?) (owner, 17 November 2026). */}
+      {summary && <SummaryNotes notes={summary.notes.filter((note) => !note.some((s) => typeof s !== "string" && s.tip === "consortiu"))} />}
       {summary && <EntityBrief summary={summary} />}
 
       {/* Legal representatives (ONRC snapshot). A register filler is never a person (UX audit Z5-26); the „other firms”

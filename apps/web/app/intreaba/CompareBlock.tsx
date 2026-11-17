@@ -123,8 +123,8 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
       </>}</p>
       {empty
         ? <p className="cmp-big">0 lei <small>nicio înregistrare aici</small></p>
-        // A consortium's records against its contracts in the (?) of the number (final §4.5, §9 compare 5).
-        : <p className="cmp-big">{formatRon(e.value)} <small>{countWords(e.count, "înregistrare", "înregistrări")}{consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}</small></p>}
+        // Its records are the card's button („983 de înregistrări →”), not said beside the number too (owner, 17 November 2026).
+        : <p className="cmp-big">{formatRon(e.value)}</p>}
       {e.streams && dataset === "all" && total > 0 && (
         <>
           <div className={`cmp-split ${motion.enter("cm-x")}`} ref={motion.join} aria-hidden="true">
@@ -203,13 +203,16 @@ function CompareCard({ entity: e, side, dataset, perCapita, period, motion }: { 
           {countWords(e.count, "înregistrare", "înregistrări")} →
         </button>
       )}
+      {/* A consortium's records against its contracts in the (?) beside its records (final §4.5, §9 compare 5). */}
+      {evidence && !empty && consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}
     </article>
   );
 }
 
 /**
  * The comparison on a phone (Z3-05): one table, the two names on top in their colours, then a row per measure with
- * A and B side by side, each (?) beside its row's label; the risk's note once, and the two records' buttons together.
+ * A and B side by side, each (?) beside its row's label (the risk's says what it is computed on), and the two records'
+ * buttons together.
  * Hidden on a wide screen (compare.css), where the cards stand side by side.
  */
 function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b: CompareEntity; dataset: string; perCapita: boolean; period: string | null }) {
@@ -221,9 +224,9 @@ function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b
   const value = (e: CompareEntity) => {
     const consortium = consortiumWords(e);
     return e.count === 0 ? <>0 lei<small>nicio înregistrare aici</small></>
-      : <>{formatRon(e.value)}<small>{countWords(e.count, "înregistrare", "înregistrări")}{consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}</small></>;
+      // Its records are the buttons under the table, not said under the value too (owner, 17 November 2026); a consortium's (?) stays beside it.
+      : <>{formatRon(e.value)}{consortium && <> <Term tip title={glossaryEntry("inregistrari-consortiu").title} text={`${glossaryEntry("inregistrari-consortiu").text} ${consortium}`} /></>}</>;
   };
-  const profiled = a.hasProfile !== undefined || b.hasProfile !== undefined;
   return (
     <div className="cmp-ab" role="table" aria-label={`${cleanName(a.name)} și ${cleanName(b.name)}`}>
       <div className="cmp-ab-head" role="row">
@@ -246,7 +249,6 @@ function FacingTable({ a, b, dataset, perCapita, period }: { a: CompareEntity; b
           <span className="cmp-ab-val" role="cell">{row.b ?? "–"}</span>
         </div>
       ))}
-      {profiled && <p className="cmp-ab-note">Riscul: tot istoricul de achiziții directe; nu urmează filtrele. Semnal, nu dovadă.</p>}
       {evidence && (a.count > 0 || b.count > 0) && (
         <div className="cmp-ab-actions">
           {sides.map(({ e, key }) => e.count > 0
@@ -277,7 +279,6 @@ function RiskProfile({ entity: e }: { entity: CompareEntity }) {
       {e.flags.length > 0 && (
         <div className="cmp-flags">{e.flags.map((flag) => <span key={flag} title={FLAG_META[flag]?.short}>{flagLabel(flag)}</span>)}</div>
       )}
-      <small>Tot istoricul de achiziții directe; nu urmează filtrele.</small>
     </div>
   );
 }

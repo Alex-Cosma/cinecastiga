@@ -74,9 +74,10 @@ describe("value wording (audit F36)", () => {
 
 // Audit F09: every page that shows totals states the 1 mld. lei contract cap.
 describe("value cap disclosure on /harta (audit F09)", () => {
-  it("states the contract cap next to the ranking", () => {
+  // Since 17 November 2026 the ranking's note is behind its "i" (InfoMark „De știut”): the cap's text is in that box.
+  it("states the contract cap in the ranking's note", () => {
     const source = readFileSync(new URL("../../app/harta/MapExplorer.tsx", import.meta.url), "utf8").replace(/\s+/g, " ");
-    expect(source).toContain('<Term id="plafoane-totaluri" tip />');
+    expect(source).toMatch(/<InfoMark title="De știut"[^]*GLOSSARY\["plafoane-totaluri"\]\.text/);
     expect(GLOSSARY["plafoane-totaluri"].text).toContain("contractele din proceduri de cel mult 1 miliard lei. Contractele peste acest plafon sunt separate de totaluri");
   });
 });

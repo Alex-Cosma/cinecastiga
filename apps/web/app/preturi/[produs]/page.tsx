@@ -3,13 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { measureNote, PRICE_GROUP_LABEL, priceFamilyBySlug, type MeasureSource } from "@seap/db";
 import { PendingRegion, RegionLink } from "@/components/ghost/client";
+import InfoMark from "@/components/InfoMark";
+import Term from "@/components/Term";
 import { formatCalendarDate } from "@/lib/format";
 import { priceAdmin } from "@/lib/price-access";
 import { BUYERS_PAGE, DEFAULT_PRICE_ORDER, LEAD_RULE, getProductPage, productHref, type ProductPage } from "@/lib/unit-prices";
 import { flatParams } from "@/lib/unit-prices-params";
 import type { PriceBuyerSort } from "@/lib/price-columns";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
-import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, leadsWord, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
+import { buyersWord, countWord, formatUnitPrice, largestOf, leadTicksPath, leadsCount, medianRange, medianWords, priceHref, priceYearLabel, sentenceCase } from "@/lib/unit-prices-shared";
 import { MIXED_CAUTION, SEASON_CAUTION, StripAxis, StripLegend, isSeasonal } from "../PriceStrips";
 import StripChart from "../StripChart";
 import BuyerRows, { type BuyerRowData } from "./BuyerRows";
@@ -98,10 +100,13 @@ export default async function ProdusPage({ params, searchParams }: {
       <section className="pr-hero" aria-labelledby="pr-hero-h">
         <h2 id="pr-hero-h" className="pr-hero-line">{data.year ? <>În {data.year}, mediana a fost <b>{medianRange(g.medianLo, g.medianHi, g.per)}</b>, la {buyersWord(g.buyers)}.</>
           : <>{(() => { const m = medianWords(g.medianLo, g.medianHi, g.per, null); return <>{m.label.charAt(0).toUpperCase() + m.label.slice(1)}: <b>{m.value}</b></>; })()}, la {buyersWord(g.buyers)}.</>}
-          {" "}{g.thin ? "Prea puține instituții pentru piste." : `${sentenceCase(leadsWord(g.leads))}.`}</h2>
+          {/* How many are above double is the list's title below (owner, 17 November 2026). */}
+          {g.thin && " Prea puține instituții pentru piste."}</h2>
         {g.thin && <p className="pr-note">O pistă cere un produs cu cel puțin {countWord(LEAD_RULE.buyers, "o instituție", "instituții")} într-un an; aici banda arată doar cum se împrăștie prețurile.</p>}
-        {g.mixed && <p className="pr-caution">{MIXED_CAUTION}</p>}
-        {seasonal && g.leads > 0 && <p className="pr-caution">{SEASON_CAUTION}</p>}
+        {/* The cautions as on /preturi: a chip each, the sentence on hover or a tap (owner, 17 November 2026). */}
+        {(g.mixed || (seasonal && g.leads > 0)) && <p className="pr-hero-tags">
+          {g.mixed && <Term tip hold="box" className="pr-mixed" title="Mărci diferite" text={MIXED_CAUTION}>mărci diferite</Term>}
+          {seasonal && g.leads > 0 && <Term tip hold="box" className="pr-mixed" title="Sezon" text={SEASON_CAUTION}>sezon</Term>}</p>}
         <div className="pr-big">
           <StripAxis />
           <StripChart mode="product" band={{ r10: g.r10, r25: g.r25, r75: g.r75, r90: g.r90 }} median={data.year ? g.medianLo : null} per={g.per} dots={data.dots} named={3}
@@ -113,12 +118,15 @@ export default async function ProdusPage({ params, searchParams }: {
       <PendingRegion as="section" className="pr-buyers" label="Se încarcă instituțiile…">
         <div className="pr-buyers-head">
           <h2>{data.onlyLeads ? sentenceCase(leadsCount(g.leads)) : data.year ? `Toate cele ${buyersWord(g.buyers)}` : `Toate cele ${countWord(g.comparisons, "o comparație", "comparații")}`}
-            {(!data.year || data.onlyLeads) && <small>{[!data.year && "o instituție într-un an, față de mediana acelui an", data.onlyLeads && "piste, nu dovezi"].filter(Boolean).join(" · ")}</small>}</h2>
+            {/* What a row is, behind an "i"; the lead-not-proof words stay in sight (owner, 17 November 2026). */}
+            {!data.year && <> <InfoMark title="Un rând" text="O instituție într-un an, față de mediana acelui an." /></>}
+            {data.onlyLeads && <small>piste, nu dovezi</small>}</h2>
           {!allBecauseNone && <RegionLink href={here({ toate: data.onlyLeads ? "1" : null, pagina: null, deschis: null, ordine: null, sens: null })} scroll={false}>
             {data.onlyLeads ? (data.year ? `Arată toate cele ${buyersWord(g.buyers)}` : "Arată toate comparațiile") : "Doar prețurile peste dublu"}</RegionLink>}
         </div>
         <UrlFilterBand table="preturi" scope={scope} />
-        <p className={`pr-shown${data.total === 0 ? " sr-only" : ""}`} role="status">{data.total === 0 ? "Niciun rând cu filtrele alese" : `${first}–${last} din ${data.total}`}{data.total > 0 && data.filtered ? " cu filtrele alese" : ""}{data.pinnedExtra > 0 ? `, plus ${data.pinnedExtra === 1 ? "rândul deschis" : "rândurile deschise"}` : ""}</p>
+        {/* The range is the pager's under the table and the count the title's: in sight only with a filter or an opened row. */}
+        <p className={`pr-shown${data.total === 0 || !(data.filtered || data.pinnedExtra > 0) ? " sr-only" : ""}`} role="status">{data.total === 0 ? "Niciun rând cu filtrele alese" : `${first}–${last} din ${data.total}`}{data.total > 0 && data.filtered ? " cu filtrele alese" : ""}{data.pinnedExtra > 0 ? `, plus ${data.pinnedExtra === 1 ? "rândul deschis" : "rândurile deschise"}` : ""}</p>
         <div className="pr-table-wrap">
           <table className="pr-table" role="table" aria-label={data.onlyLeads ? "Prețurile peste dublu" : "Toate instituțiile"}>
             <thead role="rowgroup"><tr role="row">

@@ -44,12 +44,16 @@ export function formatDecimal(value: number, digits: number): string {
   return new Intl.NumberFormat("ro-RO", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 }
 
-/** The first line of a breakdown answer: the total, before any slice. */
+/**
+ * The first line of a breakdown answer: the total, before any slice. Its records are the answer's button („Vezi cele N
+ * înregistrări”) and „valoare înregistrată, nu plăți” is in the (i) the caller puts after it (owner, 17 November 2026:
+ * less small print).
+ */
 export function breakdownLead(slices: { value: number; count: number }[], other: { value: number; count: number }): string | null {
   const value = slices.reduce((sum, s) => sum + s.value, 0) + other.value;
   const count = slices.reduce((sum, s) => sum + s.count, 0) + other.count;
   if (value <= 0 && count <= 0) return null;
-  return `În total: ${formatRon(value)} în ${countWords(count, "înregistrare", "înregistrări")} · valoare înregistrată, nu plăți`;
+  return `În total: ${formatRon(value)}`;
 }
 
 export interface RankingTotals {

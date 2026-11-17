@@ -31,6 +31,7 @@ import HelpTip from "./builder/HelpTip";
 import { SelectRing } from "../../components/motion/Selection";
 import { arrive } from "../../components/motion/outline";
 import Term from "../../components/Term";
+import InfoMark from "../../components/InfoMark";
 import Pills, { type PillOption } from "./builder/Pills";
 import Segmented from "./builder/Segmented";
 import {
@@ -225,7 +226,7 @@ export function ScatterGhost({ spec }: { spec: AskSpec }) {
       </div>
       <p className="sc-more"><span className="qb-link"><G.Line inline w="22ch" /></span></p>
     </section>
-    <p className="sc-foot qb-tipwrap">Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți. <span inert><HelpTip tip={{ title: "Valori înregistrate", text: "" }} /></span></p>
+    <p className="sc-foot"><span inert><InfoMark title="De știut" text="" /></span></p>
   </div>;
 }
 
@@ -470,14 +471,12 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
   // In the order of risk the list leaves out the historic profiles, said under its head with the way back in (owner,
   // 15 November 2026: the pattern of "Cine conduce?"; the filter's pill takes them out again). A plain <a>, as KitLink's:
   // a client navigation to the same page would change the address and keep the answer (AskPanel reads it on load).
-  // UX audit Z3-20: one line that adds up to the group's pill: who is in the list, who is inactive (with the way back
-  // in), who is in the cloud only; the words of each are in its (?).
+  // UX audit Z3-20: the line under the head says who is inactive, with the way back in. Who is in the list is the
+  // head's „din N”, who is in the cloud only its (?)'s (owner, 17 November 2026: less small print).
   const sum = listSumParts(data);
-  const historicLine = sum ? <p className="sc-hist qb-tipwrap">
-    {formatInt(sum.inList)} în listă
-    {sum.historic > 0 && <>{" · "}<Term hold="line" tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
-      (<a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a>)</>}
-    {sum.cloudOnly > 0 && <>{" · "}{formatInt(sum.cloudOnly)} doar în nor ({sum.from}–{sum.to} achiziții)</>}
+  const historicLine = sum && sum.historic > 0 ? <p className="sc-hist qb-tipwrap">
+    <Term hold="line" tip title="Profiluri inactive" text={historicLeftOutWords(sum.historic)}>{countWords(sum.historic, "inactiv", "inactive")}</Term>{" "}
+    (<a className="qb-link" href={askLink({ ...spec, filters: { ...spec.filters, includeHistoric: true } } as unknown as QuestionSpec)}>Include-le</a>)
   </p> : null;
 
   const results = (found?.results ?? []).map((m) => ({
@@ -616,12 +615,13 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
         <span>{formatRon(hover.dot.point.value)} · {pointRisk(hover.dot)}</span>
       </div>}
       <figcaption className={`sc-legend${legacy ? "" : " qb-tipwrap"}`}>
+        {/* Who is left of the axis is in the (i) after the ramp (owner, 17 November 2026: less small print). */}
         {field ? <span><span className="sc-ramp" aria-hidden="true">{field.steps.map((_, i) => <i key={i} className={`s${i}`} />)}</span>
-          {firm ? "firme" : "instituții"} pe pătrățel: {stepWords(field.steps).join(" · ")}</span>
+          {firm ? "firme" : "instituții"} pe pătrățel: {stepWords(field.steps).join(" · ")}
+          {field.below > 0 && <>{" "}<InfoMark title="La stânga axei" text={`${countWords(field.below, firm ? "firmă" : "instituție", firm ? "firme" : "instituții")}, sub ${"bands" in data.cloud ? axisWords(10 ** data.cloud.bands.minLog) : ""} lei.`} /></>}</span>
           : <span><i className="sc-key" aria-hidden="true" /> grupul</span>}
         {flag && <span><i className="sc-key is-flag" aria-hidden="true" /> cu „{lower(flag)}”</span>}
         {g.strip && field && <span><i className="sc-key is-bars" aria-hidden="true" /> fără semnal în scor, după valoare</span>}
-        {field && field.below > 0 && <span>{countWords(field.below, firm ? "firmă" : "instituție", firm ? "firme" : "instituții")} la stânga axei, sub {"bands" in data.cloud ? axisWords(10 ** data.cloud.bands.minLog) : ""} lei</span>}
         <span><i className="sc-key is-list" aria-hidden="true" /> în listă</span>
         <span><i className="sc-key is-ring" aria-hidden="true" /> ales sau căutat</span>
         <span><i className="sc-key is-line" aria-hidden="true" /> {p90Words}</span>
@@ -643,7 +643,7 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
       title={cleanName(picked.name)}
       entity={{ id: picked.id, role }}
       meta={[firm ? employeesWords(picked.employees, picked.employeesYear) : kindWords(picked.kind), picked.county, picked.place].filter(Boolean).join(" · ")}
-      facts={(legacy ? cardFactsV2(picked.value, picked.cri ?? 0, picked.nFlags, levels) : cardFacts(picked.value, picked.score ?? 0, picked.nFlags)).map((f) => ({ label: f.label, value: f.value }))}
+      facts={(legacy ? cardFactsV2(picked.value, picked.cri ?? 0, picked.nFlags, levels) : cardFacts(picked.value, picked.score ?? 0)).map((f) => ({ label: f.label, value: f.value }))}
       lines={cardLines()}
       onClose={() => setPicked(null)}
       actions={[
@@ -669,8 +669,9 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
             <span className="sc-rank qb-num">{index + 1}</span>
             <span className="sc-who">
               <EntityName id={row.entityId} role={role} className="sc-name">{cleanName(row.name)}</EntityName>
-              {/* Z3-22: a phone leaves the count of direct acquisitions to the records link, which says it (not with a signal chosen). */}
-              <small>{live ? rowMeta(row, role) : <>{rowPlace(row, role)}<span className="sc-who-n">{rowPlace(row, role) ? " · " : ""}{countWords(row.nDas, "achiziție directă", "achiziții directe")}</span></>}</small>
+              {/* Z3-22: the count of direct acquisitions is the records link's, which says it (not with a signal chosen; owner,
+                  17 November 2026: on every screen). */}
+              <small>{live ? rowMeta(row, role) : rowPlace(row, role)}</small>
               {(own.length > 0 || row.historic !== undefined) && <span className="qb-tags">
                 {row.historic !== undefined && <FactTag fact={historicFact(row.historic)} />}
                 {own.map((fact) => <FactTag key={fact.code} fact={flagTag(fact, role)} />)}
@@ -691,7 +692,8 @@ export default function ScatterAnswer({ data, spec, onStrip }: ScatterAnswerProp
     </section> : data.historic ? historicLine
       : <p className="qb-empty-note sc-none">{flag ? `Niciun profil din grup cu 20 de achiziții directe nu are semnalul „${lower(flag)}”.` : "Niciun profil din grup nu are destule achiziții directe pentru listă."}</p>}
 
-    <p className="sc-foot qb-tipwrap">{legacy ? "Semnalele" : "Tiparele"} sunt piste, nu dovezi. Valori înregistrate, nu plăți.{" "}
-      <HelpTip tip={{ title: "Valori înregistrate", text: "Suma achizițiilor directe acceptate, fiecare de cel mult 2 mil. lei. Contractele din proceduri nu intră în profil." }} /></p>
+    {/* The answer's caveats, in one (i) (owner, 17 November 2026: less small print): signals are leads, values are not payments. */}
+    <p className="sc-foot"><InfoMark title="De știut" label={`${legacy ? "Semnalele" : "Tiparele"} sunt piste, nu dovezi`}
+      text={`${legacy ? "Semnalele" : "Tiparele"} sunt piste, nu dovezi. Valori înregistrate, nu plăți: suma achizițiilor directe acceptate, fiecare de cel mult 2 mil. lei. Contractele din proceduri nu intră în profil.`} /></p>
   </div>;
 }

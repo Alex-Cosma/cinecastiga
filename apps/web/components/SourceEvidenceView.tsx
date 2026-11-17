@@ -30,7 +30,7 @@ function commonFacts(records: SourceEvidence["records"]) {
   };
 }
 
-export default function SourceEvidenceView({ evidence, href, page: requestedPage = 0, kind, refId, spec, heading, titles, notes, save = true, notesOpen = true, common }: {
+export default function SourceEvidenceView({ evidence, href, page: requestedPage = 0, kind, refId, spec, heading, titles, notes, save = true, notesOpen = true, common, total = true }: {
   evidence: SourceEvidence; href: string; page?: number;
   kind: "signal" | "radiografie"; refId: string; spec?: unknown;
   /** The block's heading: the finding's title by default; null when the page's section already names it. */
@@ -46,8 +46,11 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
   /**
    * Say once, above the table, what every row would repeat (UX audit Z6-24, a case's sources): the institution, the
    * notice, the CPV, and the page's own `extra` facts (one TED notice, one procedure); the rows keep the rest.
+   * `authorityId`: the institution the page already names (its head), left out of that line when it is every row's.
    */
-  common?: { extra?: ReactNode[] };
+  common?: { extra?: ReactNode[]; authorityId?: string | null };
+  /** The records' count and sum under the heading; false when the page's head shows the same sum (owner, 17 November 2026). */
+  total?: boolean;
 }) {
   const groups = groupSourceRecords(evidence.records);
   const { page, pages, rows } = sourcePage(groups, requestedPage);
@@ -63,20 +66,21 @@ export default function SourceEvidenceView({ evidence, href, page: requestedPage
   const shared = sharedTitleStart(rows.map((g) => titles?.[g.key]));
   const same = common ? commonFacts(evidence.records) : { authority: null, code: null, cpv: null };
   const commonLine = common ? [
-    same.authority && <b key="a">{same.authority.authority ? <EntityName id={same.authority.authorityId} role="authority">{cleanName(same.authority.authority)}</EntityName> : "Instituție neidentificată"}</b>,
+    same.authority && !(common.authorityId && same.authority.authorityId === common.authorityId) && <b key="a">{same.authority.authority ? <EntityName id={same.authority.authorityId} role="authority">{cleanName(same.authority.authority)}</EntityName> : "Instituție neidentificată"}</b>,
     same.code && <span key="c">anunțul {same.code}</span>, same.cpv && <span key="p">CPV {same.cpv}</span>, ...(common.extra ?? []),
   ].filter(Boolean) : [];
   return <div className="source-evidence">
-    <div className="source-evidence-intro">
+    {(title !== null || total || save) && <div className="source-evidence-intro">
       <div>
         {title !== null && <h2>{title}</h2>}
-        <p className="source-evidence-count">{countWords(evidence.sourceCount, "înregistrare", "înregistrări")}{grouped && ` în ${countWords(groups.length, contractsOnly ? "contract" : "rând", contractsOnly ? "contracte" : "rânduri")}`} · <strong>{formatEvidenceAmount(evidence.totalExact, true)}</strong></p>
+        {total && <p className="source-evidence-count">{countWords(evidence.sourceCount, "înregistrare", "înregistrări")}{grouped && ` în ${countWords(groups.length, contractsOnly ? "contract" : "rând", contractsOnly ? "contracte" : "rânduri")}`} · <strong>{formatEvidenceAmount(evidence.totalExact, true)}</strong></p>}
       </div>
       {save && <div className="source-evidence-save"><ClipButton kind={kind} refId={refId} spec={spec} label={evidence.title} /><SourceCaptureTip /></div>}
-    </div>
+    </div>}
     <a className="source-evidence-csv" href={`/api/evidence/sources?${csvQuery}`} download>Descarcă înregistrările · CSV <span aria-hidden="true">↓</span></a>
     {evidence.warnings.length > 0 && <details className="source-evidence-notes" open={notesOpen}><summary>Ce trebuie verificat înainte de a cita{!notesOpen && <span className="source-evidence-n"> · {countWords(evidence.warnings.length, "punct", "puncte")}</span>}</summary><ul>{evidence.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details>}
-    <p className="hint source-evidence-basis"><Term hold="line" tip title="Valori înregistrate" text="Sume înregistrate în SEAP; nu dovedesc plăți.">Valori înregistrate, nu plăți</Term>{grouped && <> · La o asociere, fiecare câștigător are cota lui <Term tip id="consortiu" /></>}</p>
+    {/* „Valori înregistrate, nu plăți” is the site footer's (owner, 17 November 2026); a consortium's shares stay said here. */}
+    {grouped && <p className="hint source-evidence-basis">La o asociere, fiecare câștigător are cota lui <Term tip id="consortiu" /></p>}
     {shared && <p className="source-evidence-shared">{shared.lots ? <>Titlul comun al loturilor: „{shared.start}”.</> : <>Titlurile încep la fel: „{shared.start} …”. Rândurile arată continuarea.</>}</p>}
     {commonLine.length > 0 && <p className="source-evidence-common">Toate rândurile: {commonLine.map((f, i) => <span key={i}>{i > 0 && " · "}{f}</span>)}</p>}
     {rows.length > 0 ? <div className="ask-tablewrap rank-stack list-anchor" id="surse-lista"><table className={`rank source-evidence-table${common ? " se-compact" : ""}`}><thead><tr><th scope="col">Înregistrarea</th><th scope="col">{same.authority ? (evidence.records.every((r) => r.src === "da") ? "Furnizorul" : "Câștigătorul") : "Instituție și furnizor"}</th><th scope="col">Data</th><th scope="col" className="num">Valoare · lei</th></tr></thead><tbody>

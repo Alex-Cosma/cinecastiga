@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { MonitoringPage, MonitoringRun, MonitoringWatch } from "@/lib/monitoring-shared";
 import { Ghost, G, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
+import InfoMark from "@/components/InfoMark";
 import { countWords } from "@/lib/ask/answer-text";
 import { api, ErrorNotice, moment, money, RefreshGhost, RefreshNotice, type RefreshState, RunCard, RunCardGhost } from "./shared";
 /** A followed question's card while the list loads (its title and dates are private: lines only). */
@@ -70,8 +71,11 @@ export default function MonitoringInbox({ view }: { view: "updates" | "watches" 
     <header className="mon-header"><div className="mon-heading"><h1>Urmăriri</h1>{known !== null && !none && <Link className="mon-button" href="/intreaba?mode=builder">+ Urmărește o întrebare</Link>}</div></header>
     {refresh ? <RefreshNotice refresh={refresh} compact /> : !loaded && busy && <RefreshGhost />}
     {!none && health && (health.failed > 0 || health.pending > 0) && <div className="mon-caution"><strong>{health.failed > 0 ? health.failed === 1 ? "Ultima verificare a unei urmăriri a eșuat." : `Ultima verificare a eșuat pentru ${health.failed} urmăriri.` : health.pending === 1 ? "O urmărire așteaptă verificarea datelor disponibile." : `${health.pending} urmăriri așteaptă verificarea datelor disponibile.`}</strong><p>Lista de actualizări include doar verificările încheiate. <Link href="/urmariri?view=watches">Vezi starea urmăririlor →</Link></p></div>}
-    {/* Two views of one tab (Z8-19): a segmented switch, not a second row of the private space's tabs. */}
-    {!none && <nav className="mon-seg" aria-label="Ce arată lista"><Link href="/urmariri" aria-current={view === "updates" ? "page" : undefined}>Modificări{count(toReview, knownMore)}</Link><Link href="/urmariri?view=watches" aria-current={view === "watches" ? "page" : undefined}>Urmăririle mele{count(known?.length ?? null, knownMore)}</Link></nav>}
+    {/* Two views of one tab (Z8-19): a segmented switch, not a second row of the private space's tabs. That an update
+        is a lead to check opens from the mark beside it (owner, 17 November 2026: less small print; the site's footer
+        says the values are not payments). */}
+    {!none && <div className="mon-seg-row"><nav className="mon-seg" aria-label="Ce arată lista"><Link href="/urmariri" aria-current={view === "updates" ? "page" : undefined}>Modificări{count(toReview, knownMore)}</Link><Link href="/urmariri?view=watches" aria-current={view === "watches" ? "page" : undefined}>Urmăririle mele{count(known?.length ?? null, knownMore)}</Link></nav>
+      <InfoMark title="De știut" text="Actualizările sunt indicii de verificat; un semnal statistic nu dovedește o neregulă." /></div>}
     {view === "updates" && !none && <div className="mon-list-controls"><label className="mon-check"><input type="checkbox" checked={unread} onChange={e => setUnread(e.target.checked)} />Doar cele de verificat</label><button type="button" disabled={busy} onClick={() => void load()}>Reîncarcă lista</button></div>}
     <ErrorNotice error={error} retry={() => void load()} />
     <section ref={listRef} className={`mon-list${loaded && busy && !more ? " g-stale" : ""}`} aria-busy={busy} aria-label={view === "updates" ? "Actualizările urmăririlor" : "Urmăririle mele"}>
@@ -85,6 +89,5 @@ export default function MonitoringInbox({ view }: { view: "updates" | "watches" 
     </section>
     {loaded && busy && !more && <FloatStatus>Se reîncarcă lista…</FloatStatus>}
     {cursor && <button className="mon-more" type="button" disabled={busy} onClick={() => { grow(items.length); void load(cursor); }}>{busy ? "Se încarcă…" : "Arată mai multe"}</button>}
-    <p className="mon-footnote">Actualizările sunt indicii de verificat. Valorile înregistrate nu reprezintă automat plăți, iar un semnal statistic nu dovedește o neregulă.</p>
   </>;
 }

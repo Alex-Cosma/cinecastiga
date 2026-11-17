@@ -64,7 +64,7 @@ import StatMix from "./answer/StatMix";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import { answerListGroup, type DrawerListGroup } from "./drawer-group";
 import { PURCHASE_KIND_WORDS } from "@/lib/ask/purchase";
-import TotalLine, { RECORDED_VALUE } from "./answer/TotalLine";
+import TotalLine, { RECORDED_VALUE, TotalMark } from "./answer/TotalLine";
 import RankingLocate from "./answer/RankingLocate";
 import type { LocateMatch } from "@/lib/ask/facet-parts";
 import Locate from "./answer/Locate";
@@ -1514,7 +1514,7 @@ export default function AskPanel({
               </AnswerStrip></div>
             )}
             {data.block === "breakdown" && breakdownLead(data.slices, data.other) && (
-              <p className="cq-lead">{breakdownLead(data.slices, data.other)}</p>
+              <p className="cq-lead">{breakdownLead(data.slices, data.other)} <TotalMark /></p>
             )}
             {/* G2: an answer with no record offers at most three wider questions (kit component 17). */}
             {empty ? <div className="qb cq-result cq-result-empty">
@@ -1674,23 +1674,27 @@ export default function AskPanel({
             {totalWords.length > 0 && !empty && !isProfile && !(data.block === "table" && layout === "visual") && !(data.block === "trend" && data.composition) && data.block !== "network" && data.block !== "entity_card" && (
               <div className="qb cq-total"><TotalLine conditions={totalWords} {...(data.block === "stat" ? { note: false as const } : {})}>{totalLead(data)}</TotalLine></div>
             )}
-            {/* How the number was built reads after the answer, not before it. */}
-            {(resp.caveats?.length ?? 0) > 0 && (
-              <details
-                className="cq-caveats"
-                open={resp.caveats!.some((c) =>
-                  /am ales|Am restrâns|nu există|ignor|în afara/i.test(c),
+            {/* How the number was built reads after the answer, not before it. A note the reader must check („Am ales
+                „URBAN SCOPE”. Alte potriviri: …”) stays on the page; the others wait in the closed fold, which no longer
+                opens by itself to show them all (owner, 17 November 2026: less small print). */}
+            {(resp.caveats?.length ?? 0) > 0 && (() => {
+              const shownCaveats = resp.caveats!.filter((c) => /am ales|Am restrâns|nu există|ignor|în afara/i.test(c));
+              const folded = resp.caveats!.filter((c) => !shownCaveats.includes(c));
+              return <>
+                {shownCaveats.map((c) => <p key={c} className="cq-caveat-shown">{c}</p>)}
+                {folded.length > 0 && (
+                  <details className="cq-caveats">
+                    {/* Z3-16: two disclosures with two names: what the number leaves in and out, and where the data come from. */}
+                    <summary>
+                      Limite · {folded.length}
+                    </summary>
+                    {folded.map((c) => (
+                      <p key={c}>{c}</p>
+                    ))}
+                  </details>
                 )}
-              >
-                {/* Z3-16: two disclosures with two names: what the number leaves in and out, and where the data come from. */}
-                <summary>
-                  Limite · {resp.caveats!.length}
-                </summary>
-                {resp.caveats!.map((c) => (
-                  <p key={c}>{c}</p>
-                ))}
-              </details>
-            )}
+              </>;
+            })()}
             <CoverageDisclosure key={JSON.stringify(applied)} spec={applied} summary="Surse și date">
               {resp.displaySql && (
                 <details>
@@ -1784,7 +1788,7 @@ function AnswerGhost({ spec }: { spec: AskSpec | null }) {
       </div>
     </div>
     {spec && <StripGhost spec={spec} />}
-    {block === "breakdown" && <p className="cq-lead" aria-hidden="true"><G.Line w="64%" /><G.Line w="38%" only="phone" /></p>}
+    {block === "breakdown" && <p className="cq-lead" aria-hidden="true"><G.Line w="24ch" /></p>}
     <div className={`cq-result${block ? ` cq-result-${block}` : ""}`}>
       {!spec ? <GenericGhost />
         : block === "table" ? <RankingGhost spec={spec} />
@@ -1862,11 +1866,10 @@ function RankingGhost({ spec }: { spec: AskSpec }) {
       </div>
     </div>
     {conditions.length > 0
-      ? <div className="qb cq-total" inert><TotalLine conditions={conditions}><G.Line inline w="44%" /></TotalLine></div>
+      ? <div className="qb cq-total" inert><TotalLine conditions={conditions} joint={spec.dim === "supplier"}><G.Line inline w="44%" /></TotalLine></div>
       : <p className="ask-fine cq-total-line" inert>
-        {spec.measure !== "value_per_capita" && <>Total: <G.Line inline w="13ch" /> la <G.Line inline w="12ch" /> · valoare înregistrată, nu plăți</>}
-        {spec.measure !== "value_per_capita" && spec.dim === "supplier" && " · "}
-        {spec.dim === "supplier" && <>în asociere: cote egale <Term id="in-asociere" tip /></>}
+        {spec.measure !== "value_per_capita" && <>Total: <G.Line inline w="13ch" /> la <G.Line inline w="12ch" />{" "}</>}
+        {(spec.measure !== "value_per_capita" || spec.dim === "supplier") && <TotalMark joint={spec.dim === "supplier"} />}
       </p>}
   </>;
 }
@@ -2079,22 +2082,20 @@ function RankingBars({
           </div>;
         })()}
       </div>
-      {/* A consortium's value is split equally among its winners, so some firms show the same amount. */}
+      {/* A consortium's value is split equally among its winners, so some firms show the same amount: the total's one (i)
+          says it with „valoare înregistrată, nu plăți” (owner, 17 November 2026: less small print). */}
       {/* F3: the band of CÂȘTIGĂTORII narrows the list; its line says the list's sum against the whole selection's. */}
-      {lead && group && shareTotals ? <>
-        <div className="qb cq-total"><TotalLine conditions={conditions}>
+      {lead && group && shareTotals ? (
+        <div className="qb cq-total"><TotalLine conditions={conditions} joint>
           {lead}: <span className="qb-num">{formatRonFull(group.value)}</span>, {formatShare(group.value / shareTotals.value)} din{" "}
           <span className="qb-num">{formatRonFull(shareTotals.value)}</span> ({entityNoun(spec.dim, shareTotals.entities)})
         </TotalLine></div>
-        <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>
-      </> : conditions.length > 0 ? <>
-        <div className="qb cq-total"><TotalLine conditions={conditions}>{hasTotal ? <>Total: <span className="qb-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
-        {spec.dim === "supplier" && <p className="ask-fine cq-total-line">în asociere: cote egale <Term id="in-asociere" tip /></p>}
-      </> : (hasTotal || spec.dim === "supplier") && (
+      ) : conditions.length > 0 ? (
+        <div className="qb cq-total"><TotalLine conditions={conditions} joint={spec.dim === "supplier"}>{hasTotal ? <>Total: <span className="qb-num">{formatRonFull(shareTotals.value)}</span> la {entityNoun(spec.dim, shareTotals.entities)}</> : "Selecția"}</TotalLine></div>
+      ) : (hasTotal || spec.dim === "supplier") && (
         <p className="ask-fine cq-total-line">
-          {hasTotal && <>Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)} · valoare înregistrată, nu plăți</>}
-          {hasTotal && spec.dim === "supplier" && " · "}
-          {spec.dim === "supplier" && <>în asociere: cote egale <Term id="in-asociere" tip /></>}
+          {hasTotal && <>Total: {formatRonFull(shareTotals.value)} la {entityNoun(spec.dim, shareTotals.entities)}{" "}</>}
+          <TotalMark joint={spec.dim === "supplier"} />
         </p>
       )}
     </>

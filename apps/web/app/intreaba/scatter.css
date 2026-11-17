@@ -169,7 +169,6 @@
   .sc-row .sc-cri{grid-area:cri;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:2px;padding-top:10px;text-align:right}
   .sc-row .sc-val{grid-area:val;align-self:center;font-size:14px;color:var(--ink)}
   .sc-row .sc-rec{grid-area:rec;justify-self:end}
-  .sc-who-n{display:none}
 }
 
 /* UX audit Z3-32: the phone's strip word sits over the strip's dots with a wider halo of paper, as the points' names. */

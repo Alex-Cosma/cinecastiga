@@ -159,10 +159,7 @@ export default async function SupraPragPage({
   return (
     <>
       <DiscoverNav current="supra-prag" />
-      <h1 className="page-title">Atribuiri publicate în TED</h1>
-      <p className="page-sub ted-tip-line">
-        Anunțuri de atribuire din Jurnalul Oficial al UE. Valorile TED <strong>nu se adaugă</strong> totalurilor <span className="tp-nowrap">SEAP.<Term tip title={TED_TERM.title} text={TED_TERM.text} /></span>
-      </p>
+      <h1 className="page-title ted-title">Atribuiri publicate în <span className="tp-nowrap">TED<Term tip title={TED_TERM.title} text={TED_TERM.text} /></span></h1>
       <p className="hint ted-tip-line">
         {coverageNote.line}{coverageNote.tip && <Term tip title="Acoperire TED" text={coverageNote.tip} />}{" · "}
         <Link href="/metodologie#acoperire">Acoperire →</Link>
@@ -211,7 +208,7 @@ export default async function SupraPragPage({
       <section className="section">
         <h2>Explorează atribuirile</h2>
         <UrlFilterBand table="ted" />
-        <p className="hint" hidden={awards.total === 0}>{countWords(awards.total, "rezultat", "rezultate")} · {sort === "value" ? "după valoarea în lei; la final, cele fără o valoare de contract în lei" : "cele mai noi întâi"}</p>
+        <p className="hint" hidden={awards.total === 0}>{countWords(awards.total, "rezultat", "rezultate")} · {sort === "value" ? "după valoarea în lei" : "cele mai noi întâi"}</p>
         {countries.includes(TED_COUNTRY_UNRESOLVED) ? <p className="hint">
           Sunt afișate rezultatele marcate „străin” pentru care țările câștigătorilor sunt România sau nu sunt
           precizate. Verifică sursa TED; identitatea și țara nu au fost corectate automat.
@@ -295,9 +292,6 @@ export default async function SupraPragPage({
         {/* The pager of the „Descoperă” pages (UX audit Z6-14); the last page is read from the end, as quick as the first. */}
         {totalPages > 1 ? <DiscoverPager page={page - 1} pageSize={PAGE_SIZE} total={awards.total} unit={["rezultat", "rezultate"]} href={(p) => pageUrl(p + 1)} link={RegionLink} scroll bottom className="tp-pager" /> : null}
 
-        <p className="note ted-tip-line ted-tip-up">
-          Potrivirile posibile sunt marcate separat de cele confirmate <Term id="potrivire-ted" tip /> · <Link href="/metodologie">Metodologia →</Link>
-        </p>
       </section>
       </PendingRegion>
     </>

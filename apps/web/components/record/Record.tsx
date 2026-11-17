@@ -2,7 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import Term from "@/components/Term";
 import { FLAG_META, flagFindingLabel } from "@/lib/flags";
-import { riskEvidenceLine } from "@/lib/risk-presentation";
+import { GLOSSARY } from "@/lib/glossary";
+import { CALLOFFS_MAYBE_ERROR, riskEvidenceLine } from "@/lib/risk-presentation";
 import { parseSignalState, signalUrl } from "@/lib/signals-shared";
 import { formatExactDecimal, formatInt } from "@/lib/format";
 import { recordCaveat } from "@/lib/record-labels";
@@ -93,12 +94,17 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
   fallbackEvidence?: (flag: RecordFlag) => ReactNode; note?: (flag: RecordFlag) => ReactNode;
 }) {
   if (!flags.length) return null;
-  return <RecordSection id="semnale" title={flags.length === 1 ? "Semnal" : "Semnale"} className="record-signals">
-    <p className="record-lead">Piste de verificat, nu dovezi <Term tip id="semnal" /></p>
+  // "Piste de verificat, nu dovezi" opens from the heading's "?" (owner, 17 November 2026: less small print); every
+  // signal below keeps its visible "De ce nu e o dovadă".
+  return <RecordSection id="semnale" title={<>{flags.length === 1 ? "Semnal" : "Semnale"} <Term tip title={GLOSSARY.semnal.title} text={`Piste de verificat, nu dovezi. ${GLOSSARY.semnal.text}`} /></>} className="record-signals">
     <ul className="record-signal-list">
       {flags.map((f) => {
         const meta = FLAG_META[f.code];
-        const line = riskEvidenceLine(f.code, f.evidence) ?? fallbackEvidence?.(f) ?? null;
+        // The card's own „De ce nu e o dovadă” says the data-entry error; the evidence line keeps the figures (owner, 17 November 2026).
+        const line = riskEvidenceLine(f.code, f.evidence)?.replace(` ${CALLOFFS_MAYBE_ERROR}`, "") ?? fallbackEvidence?.(f) ?? null;
+        // Call-offs over the ceiling: the evidence line starts with the same words as the definition and adds the
+        // figures, so the definition goes (owner, 17 November 2026); every other signal keeps its definition.
+        const short = f.code === "award_calloffs_over_ceiling" && line ? null : meta?.short;
         const firms = meta?.subject === "supplier";
         const href = firms ? (supplierId ? signalUrl(parseSignalState({ tip: f.code, rol: "furnizor", ent: supplierId })) : null)
           : authorityId ? signalUrl(parseSignalState({ tip: f.code, rol: "autoritate", ent: authorityId })) : null;
@@ -107,7 +113,7 @@ export function SignalList({ flags, authorityId, supplierId = null, fallbackEvid
         const caveat = recordCaveat(f.code);
         return <li key={f.code}>
           <h3>{flagFindingLabel(f.code)}</h3>
-          {meta?.short && <p>{meta.short}</p>}
+          {short && <p>{short}</p>}
           {line && <p className="record-evidence">{line}</p>}
           {extra && <p className="record-evidence">{extra}</p>}
           <div className="record-signal-links">
@@ -162,8 +168,9 @@ export function pairLines(pair: PairContext | null | undefined): ReactNode[] {
   const out: ReactNode[] = [];
   const d = pair.dependence;
   if (d && d.share !== null) {
-    const years = d.firstYear && d.lastYear ? (d.firstYear === d.lastYear ? `, ${d.firstYear}` : `, ${d.firstYear}–${d.lastYear}`) : "";
-    out.push(<>{pct(d.share)} din contractele publice înregistrate ale firmei vin de la această instituție{years} <Term tip id="dependenta-firma" /></>);
+    const years = d.firstYear && d.lastYear ? (d.firstYear === d.lastYear ? ` · ${d.firstYear}` : ` · ${d.firstYear}–${d.lastYear}`) : "";
+    // Short form (owner, 17 November 2026): whose contracts and from whom is in the "?" right after it.
+    out.push(<>{d.share >= 0.995 ? "Toate contractele firmei" : `${pct(d.share)} din contractele firmei`}{years} <Term tip id="dependenta-firma" /></>);
   }
   const s = pair.size;
   if (s && (s.employees !== null || s.turnoverRon !== null)) {

@@ -34,7 +34,8 @@ export default async function PreturiPage({ searchParams }: { searchParams: Prom
   return <div className="pr-page">
     <DiscoverNav current="preturi" />
     <h1 className="page-title">Cine cumpără mai scump același produs</h1>
-    <p className="page-sub pr-sub">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an. Valori contractate, fără TVA. Un preț peste dublu e o pistă de verificat, nu o dovadă.</p>
+    {/* „Valori contractate, fără TVA” is the legend's "i" by the median (owner, 17 November 2026). */}
+    <p className="page-sub pr-sub">Prețul pe kilogram, litru sau bucată din achizițiile directe, față de mediana instituțiilor care au cumpărat același produs, în același an. Un preț peste dublu e o pistă de verificat, nu o dovadă.</p>
     <PendingRegion label="Se actualizează prețurile…" className="pr-region">
       <div className="pr-bar">
         <PriceFilters state={{ ...state, year: data.year }} years={data.years} yearLeads={data.yearLeads} counties={data.counties} options={priceOptions()} />

@@ -38,22 +38,28 @@ export function splitWords(role: RiskRole, t: SplitTotals, part: ScorePart | und
   return { title, lede: `${head}: ${scored}${rest.length ? `, ${rest.join(", ")}` : ""}.` };
 }
 
-export function roundWords(found: number, part: ScorePart | undefined, items: readonly NearCeiling[], partners: readonly { name: string; n: number }[]): CaseWords {
+/**
+ * The expectation is the mirror's „Ne-am aștepta” panel, which shows whenever the score keeps one (owner, 17 November 2026:
+ * not said twice); the line says the years and the firms.
+ */
+export function roundWords(found: number, _part: ScorePart | undefined, items: readonly NearCeiling[], partners: readonly { name: string; n: number }[]): CaseWords {
   const title = `${countWords(found, "achiziție directă s-a oprit", "achiziții directe s-au oprit")} la 96–100% din plafon.`;
-  const expected = part?.expected != null ? Math.round(n(part.expected)) : null;
   const years = items.map((i) => i.date?.slice(0, 4)).filter((y): y is string => Boolean(y)).sort();
   const span = years.length ? ` ${yearsWords({ from: years[0]!, to: years[years.length - 1]! }).replace(/^./, (c) => c.toUpperCase())}.` : "";
   const who = partners.length ? ` ${partners.slice(0, 2).map((p, i) => `${formatInt(p.n)} ${i === 0 ? (p.n === 1 ? "e" : "sunt") + " de la" : "de la"} ${cleanName(p.name)}`).join(", ")}.` : "";
-  const lede = (expected != null ? `După restul achizițiilor directe și media națională, ne-am aștepta la ${expected === 0 ? "niciuna" : `vreo ${formatInt(expected)}`}.` : "") + span + who;
+  const lede = span + who;
   return { title, lede: lede.trim() || null };
 }
 
-export function aboveWords(items: readonly AboveCeiling[], part: ScorePart | undefined): CaseWords {
+/** The rule of „Declarate directe, peste plafon”, behind the "i" of the case page's mirror (owner, 17 November 2026). */
+export const ABOVE_RULE = "Cu valoarea estimată sau cu suma finală, chiar și cu TVA.";
+
+/** `tagged`: the case page's „Sub prag” tag stands before the line and says why the case adds nothing. */
+export function aboveWords(items: readonly AboveCeiling[], part: ScorePart | undefined, tagged = false): CaseWords {
   const title = `${countWords(items.length, "achiziție directă a trecut", "achiziții directe au trecut")} de plafon.`;
-  const rule = "Cu valoarea estimată sau cu suma finală, chiar și cu TVA.";
-  const scored = part ? ` Împreună: ${formatRon(n(part.value))}, ${pctWords(n(part.share))} din valoarea achizițiilor directe.`
-    : items.length === 1 ? " Se vede aici, dar nu intră în scor: tiparul cere cel puțin două cazuri." : "";
-  return { title, lede: rule + scored };
+  const scored = part ? `Împreună: ${formatRon(n(part.value))}, ${pctWords(n(part.share))} din valoarea achizițiilor directe.`
+    : items.length === 1 && !tagged ? "Se vede aici, dar nu intră în scor: tiparul cere cel puțin două cazuri." : "";
+  return { title, lede: scored || null };
 }
 
 export function yearEndWords(years: readonly YearEnd[]): CaseWords {
@@ -61,27 +67,23 @@ export function yearEndWords(years: readonly YearEnd[]): CaseWords {
   const top = sorted[0];
   if (!top) return { title: "Mulți bani contractați în decembrie", lede: null };
   const title = `În ${top.year}, ${pctWords(top.share)} din valoarea achizițiilor directe a fost contractată în decembrie.`;
-  const rest = sorted.slice(1).map((y) => `${y.year}: ${pctWords(y.share)}`);
-  const lede = `${formatRon(top.december)} din ${formatRon(top.total)}.`
-    + (top.reference != null ? ` La instituțiile de același tip, pragul (percentila 95) e ${pctWords(top.reference)}.` : "")
-    + (rest.length ? ` Și ${rest.join(", ")}.` : "");
-  return { title, lede };
+  // The sums, the threshold and the other years are the band and the year rows under the title (owner, 17 November 2026).
+  return { title, lede: null };
 }
 
 export function partnerWords(code: "da_concentration" | "da_dependence", entityName: string, partnerName: string | null, s: PartnerShare, partnerTotal: number, dates: readonly (string | null)[]): CaseWords {
   const partner = cleanName(partnerName) || (code === "da_dependence" ? "o singură instituție" : "o singură firmă");
+  // The count, the sum and the shares are the list's heading and the mirror's panels (owner, 17 November 2026): the line
+  // keeps the dates and, for an institution, how many suppliers it has.
   const when = datesWords(dates);
+  const span = when ? `${when.charAt(0).toUpperCase()}${when.slice(1)}.` : "";
   if (code === "da_dependence") {
     const title = `${pctWords(s.share)} din ce vinde ${cleanName(entityName)} prin achiziții directe vine de la o singură instituție: ${partner}.`;
-    const lede = `${countWords(s.count ?? dates.length, "achiziție directă", "achiziții directe")}${when ? `, ${when}` : ""}, ${formatRon(partnerTotal)}.`
-      + (s.reverse != null ? ` Pentru ${partner}, firma e ${pctWords(s.reverse)} din ce cumpără direct.` : "");
-    return { title, lede };
+    return { title, lede: span || null };
   }
   const title = `${pctWords(s.share)} din valoarea achizițiilor directe ale instituției e la o singură firmă: ${partner}.`;
-  const lede = `${countWords(s.count ?? dates.length, "achiziție directă", "achiziții directe")}${when ? `, ${when}` : ""}, ${formatRon(partnerTotal)}.`
-    + (s.adjusted != null ? ` Fără cea mai mare achiziție a ei, tot ${pctWords(s.adjusted)}.` : "")
-    + (s.partners != null ? ` ${countWords(s.partners, "furnizor", "furnizori")} în date.` : "");
-  return { title, lede };
+  const lede = [span, s.partners != null ? `${countWords(s.partners, "furnizor", "furnizori")} în date.` : ""].filter(Boolean).join(" ");
+  return { title, lede: lede || null };
 }
 
 export function capacityWords(c: Capacity): CaseWords {
@@ -108,12 +110,10 @@ export function firstMonthWords(code: "da_first_month" | "da_first_month_buyer",
   const window = countWords(first.windowDays, "zi", "zile");
   if (code === "da_first_month") {
     const registered = dayWords(first.registeredOn);
-    const age = firstMonthAge(first.ageDays);
-    const from = first.buyers == null ? "" : first.buyers === 1 ? " de la o singură instituție" : ` de la ${countWords(first.buyers, "instituție", "instituții")}`;
+    // The days to the first award and what was contracted are the mirror's two panels (owner, 17 November 2026).
     return {
       title: `Firma a contractat ${formatRon(first.total)} în primele ${window} de la înființare.`,
-      lede: `${registered ? `Înmatriculată la ${registered}` : "Înmatriculată la o dată neprecizată"}${age ? `; prima achiziție directă, ${age}` : ""}.`
-        + (first.count != null ? ` ${countWords(first.count, "achiziție directă", "achiziții directe")}${from}.` : ""),
+      lede: `${registered ? `Înmatriculată la ${registered}` : "Înmatriculată la o dată neprecizată"}.`,
     };
   }
   if (total === 1) {

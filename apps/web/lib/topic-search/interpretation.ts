@@ -390,8 +390,6 @@ export function applyInterpretation(scope: TopicScope, result: IntentResult | nu
   if (exactNote) out.notes.push(exactNote);
   // a total is shown after all (a question, or one within the page's place and period): the note says what it counts
   if (out.answer) out.notes = out.notes.map((n) => n.replace(/ un domeniu: fără total, /, ' un domeniu: totalul numără tot domeniul; '));
-  // said only where the lists search what was read (a question's own words are searched as typed, usually nothing)
-  if (largest && out.applied.q && out.applied.q !== scope.q) out.notes.push('Achizițiile de mai jos sunt ordonate după valoare, cea mai mare întâi.');
   out.trusted = Boolean(out.answer) || Boolean(out.question) || (!i.subjects.length && !i.leftover.length && Boolean(result.spec));
   out.askHref = out.answer?.href ?? (result.spec || result.alternatives.length ? typedHref() : null);
   return out;

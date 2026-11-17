@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {useRouter} from 'next/navigation';
 import DiscoveryIcon from '../DiscoveryIcon';
 import Term from '@/components/Term';
+import InfoMark from '@/components/InfoMark';
 import EntityName from '@/components/EntityName';
 import {G,Ghost} from '@/components/ghost/Ghost';
 import {cleanName,formatInt,formatRon,formatRonFull} from '@/lib/format';
@@ -204,7 +205,7 @@ export function Understood({scope,effective,t,place}:{scope:TopicScope;effective
  return <section ref={box} className="topic-understood topic-question" aria-label={t.question?'Cum am înțeles întrebarea':'Cum am înțeles căutarea'}>
   {sentence&&<div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence">{marked.segments.map((x,i)=>x.key?part(x.key,x.text):<Fragment key={i}>{x.text}</Fragment>)}{marked.missing.map(key=><Fragment key={key}> · {part(key,menus[key]!.label)}</Fragment>)}</span>
    {showLiteral&&<Link prefetch={false} className="topic-understood-literal" href={literal}>Caută exact ce ai scris ›</Link>}</div>}
-  {chosenPart&&t.subject?.parts&&<p className="topic-domain-chosen">Un domeniu din cele {t.subject.parts.length} numărate la „{t.subject.label}”. Listele de mai jos caută în continuare cuvântul. <Link prefetch={false} scroll={false} href={searchHref(withoutDomain(scope),{})}>Arată-le pe toate</Link></p>}
+  {chosenPart&&t.subject?.parts&&<p className="topic-domain-chosen">Un domeniu din {t.subject.parts.length} · <Link prefetch={false} scroll={false} href={searchHref(withoutDomain(scope),{})}>Arată-le pe toate</Link> <InfoMark title="Un domeniu" text={`„Pe scurt” numără doar domeniul ales, unul din cele ${t.subject.parts.length} numărate la „${t.subject.label}”. Listele de mai jos caută în continuare cuvântul, în toate domeniile.`}/></p>}
   {t.question&&!t.answer&&<div className="topic-question-actions">{t.askHref&&<Link prefetch={false} className="topic-primary" href={t.askHref}>Vezi răspunsul complet <DiscoveryIcon name="arrow"/></Link>}<Link prefetch={false} className="topic-control" href={literal}>Caută exact ce ai scris</Link></div>}
   {(!t.answer||scope.tab!=='all')&&t.subject?.notes.map(n=><p key={n} className="topic-subject-note">{n}</p>)}
   <ReadingNotes notes={t.notes}/>
@@ -302,14 +303,19 @@ function AnswerHead({scope,filters,compare,townHall,institutions=false,ghost=fal
  const party=scope?.named&&scope.subject?(filters.supplierId!==undefined?{id:filters.supplierId,role:'supplier' as const,before:'de la '}:filters.authorityId!==undefined?{id:filters.authorityId,role:'authority' as const,before:''}:null):null;
  const name=scope&&capital(scope.subject);
  const first=scope&&!compare&&name?(party?<>{party.before}{ghost?name:<EntityName id={party.id} role={party.role}>{name}</EntityName>}</>:name):null;
- const rest=scope?(compare?['Comparație',scope.period,'valoare înregistrată, nu plăți']:[scope.kind,scope.where,scope.period]).filter((x):x is string=>Boolean(x)):[];
- const line=[first,...rest,...(institutions?['toate instituțiile']:[])].filter(Boolean);
+ // The subject, the place and the period are in „Am înțeles” right above (owner, 17 November 2026: less repeated
+ // text): the line keeps only what that sentence does not say (a firm's or institution's linked name, a comparison,
+ // „toate instituțiile”, „doar primăria”).
+ const rest=scope&&compare?['Comparație',scope.period].filter((x):x is string=>Boolean(x)):[];
+ const line=[party?first:null,...rest,...(institutions?['toate instituțiile']:[])].filter(Boolean);
  return <div className="topic-answer-head"><h2>Pe scurt</h2>{(line.length>0||townHall)&&<p className="topic-answer-scope">{line.map((x,i)=><Fragment key={i}>{i>0&&' · '}{x}</Fragment>)}{townHall&&<>{line.length>0&&' · '}<span className="topic-answer-nowrap">doar primăria {ghost?<GhostTip/>:<Term tip title="Doar primăria" text="„Pe scurt” numără doar achizițiile primăriei, fără celelalte instituții din localitate."/>}</span></>}</p>}</div>;
 }
 
 /**
  * The closing row: how the answer was counted (the CPV classes, what is left out, the limits of the calculation),
- * folded, and the ways on. The summary's words are known before the answer, so its ghost is the same line.
+ * folded, and the ways on. The summary's words are known before the answer, so its ghost is the same line. The
+ * subject's own note („Include și semnalizarea rutieră…") is the first of the limits (owner, 17 November 2026: it was a
+ * box under the list).
  */
 function AnswerFoot({answer,caveats,literalHref,full,ghost=false}:{answer:Answer;caveats:string[];literalHref?:string|undefined;full:boolean;ghost?:boolean}){
  const n=answer.cpv.length;
@@ -375,7 +381,6 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  // A period of one year needs no year on each purchase.
  const oneYear=filters.yearFrom!==undefined&&filters.yearFrom===filters.yearTo;
  const partial=new Map(((ready.top?.ok?ready.top.partialYears:undefined)??(ready.total?.ok?ready.total.partialYears:undefined)??[]).map(p=>[p.year,p.note]));
- const noteList=notes.map(n=><p key={n} className="topic-subject-note">{n}</p>);
  const bar=(fraction:number,i:number,extra='')=><span className="topic-answer-bar" aria-hidden="true"><span className={`cm-x${extra}`} style={{width:`${Math.max(0,Math.min(100,fraction*100))}%`,'--i':i} as React.CSSProperties}/></span>;
  const items=kind==='records'?(records?.length?records.map(({row:r,value,suppliers},i)=>{
    const title=r.title||r.cpvName||'Titlu neprecizat în sursă',winners=r.nWinners??1,shown=suppliers.slice(0,Math.max(winners,suppliers.length)>2?1:2),more=Math.max(winners,suppliers.length)-shown.length;
@@ -405,9 +410,9 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
  const list=kind&&items?<div className="topic-answer-main"><p className="topic-answer-label" id={labelId}>{LIST_LABEL[kind]}</p><ol className={`topic-answer-list is-${kind}`} role="list" aria-labelledby={labelId} data-chart="">{items}</ol></div>:null;
  const rail=total&&<div className="topic-answer-rail">
   {led&&list&&<p className="topic-answer-label">Total</p>}
-  <p className="topic-answer-value">{shape==='value'?<strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong>:<strong>{recordsWord(total.count)}</strong>}</p>
+  <p className="topic-answer-value">{shape==='value'?<><strong title={formatRonFull(total.value)}>{formatRon(total.value)}</strong><InfoMark title="Valoare înregistrată" text="Valoarea înregistrată a contractelor și achizițiilor directe, nu plăți."/></>:<strong>{recordsWord(total.count)}</strong>}</p>
   <p className="topic-answer-count">{shape==='value'&&'în '}<Link prefetch={false} href={answer.evidenceHref}>{shape==='value'?recordsWord(total.count):total.count===1?'Vezi înregistrarea':'Vezi înregistrările'} <DiscoveryIcon name="arrow"/></Link></p>
-  <p className="topic-answer-sub">{shape==='value'?'valoare înregistrată, nu plăți':'fără valoare înregistrată'}</p>
+  {shape!=='value'&&<p className="topic-answer-sub">fără valoare înregistrată</p>}
  </div>;
  const failed=ready.failed||(!total&&!sides);
  return <section className="topic-answer g-content" aria-label="Răspuns pe scurt">
@@ -415,15 +420,15 @@ export function SubjectAnswer({answer,scope,notes=[],literalHref,titles,onCount,
   {failed?<p className="topic-help" role="status">Răspunsul pe scurt nu este disponibil acum. {ready.total&&!ready.total.ok&&ready.total.error?ready.total.error:''}</p>
    :shape==='empty'?<><div className="topic-answer-empty" role="status"><p className="topic-answer-empty-line">{answer.empty}</p>
      {titles&&titleCount>0&&<p className="topic-answer-alternative"><button type="button" className="topic-text-button" onClick={titles.onShow}>{titleCount===1?`Un titlu conține „${titles.q}”`:`${formatInt(titleCount)} titluri conțin „${titles.q}”`}: vezi {titleCount===1?'achiziția':'achizițiile'} <DiscoveryIcon name="arrow"/></button></p>}
-     {answer.domains&&<p className="topic-answer-alternative"><Link prefetch={false} href={answer.domains.href}>{answer.domains.label} <DiscoveryIcon name="arrow"/></Link></p>}</div>{noteList}</>
+     {answer.domains&&<p className="topic-answer-alternative"><Link prefetch={false} href={answer.domains.href}>{answer.domains.label} <DiscoveryIcon name="arrow"/></Link></p>}</div></>
    :sides?(()=>{const max=Math.max(0,...sides.map(x=>x.value));return <><ol className="topic-answer-sides" role="list" data-chart="">{sides.map((x,i)=><li key={x.entityId??x.name}>
      <EntityName id={x.entityId}>{cleanName(x.name)}</EntityName>
      <strong className="topic-answer-side-value">{x.count?formatRon(x.value):'nicio achiziție'}</strong>
      <small>{x.count?`în ${recordsWord(x.count)}`:' '}</small>
      {bar(max>0?x.value/max:0,i)}
-    </li>)}</ol>{noteList}</>;})()
-   :<><div className={`topic-answer-body${list?' has-list':''}${led&&list?' is-led':''}`}>{led?<>{list}{rail}</>:<>{rail}{list}</>}</div>{noteList}</>}
-  <AnswerFoot answer={answer} caveats={caveats} literalHref={literalHref} full={!failed&&shape!=='empty'}/>
+    </li>)}</ol></>;})()
+   :<><div className={`topic-answer-body${list?' has-list':''}${led&&list?' is-led':''}`}>{led?<>{list}{rail}</>:<>{rail}{list}</>}</div></>}
+  <AnswerFoot answer={answer} caveats={[...notes,...caveats]} literalHref={literalHref} full={!failed&&shape!=='empty'}/>
  </section>;
 }
 /*
@@ -444,15 +449,13 @@ function AnswerGhost({head,answer,kind,led,compare,notes,literal}:{head:React.Re
      ?<><span className="topic-answer-title"><G.Line w="96%"/><G.Line w={`${widths[i]}%`}/><G.Line w="30%" only="phone"/></span><small className="topic-answer-parties"><G.Line w="64%"/><G.Line w="40%" only="phone"/></small></>
      :<><span><G.Line w={`${widths[i]}%`}/></span><small><G.Line inline w="11em"/></small></>}</span>
     <span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div>;
- const notesList=notes.map(x=><p key={x} className="topic-subject-note">{x}</p>);
  const rail=<div className="topic-answer-rail">{led&&list&&<p className="topic-answer-label">Total</p>}
   <p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p>
-  <p className="topic-answer-count"><G.Line w="9em"/></p>
-  <p className="topic-answer-sub">valoare înregistrată, nu plăți</p></div>;
+  <p className="topic-answer-count"><G.Line w="9em"/></p></div>;
  return <Ghost as="section" className="topic-answer" name="topic-answer" wait="client" label="Se calculează răspunsul pe scurt…">
   {head}
-  {compare?<><ol className="topic-answer-sides" role="list" aria-hidden="true">{[52,44].map(w=><li key={w}><span><G.Line w={`${w}%`}/></span><strong className="topic-answer-side-value"><G.Line inline w="5em"/></strong><small><G.Line inline w="9em"/></small><span className="topic-answer-bar"/></li>)}</ol>{notesList}</>
-  :<><div className={`topic-answer-body${list?' has-list':''}${led&&list?' is-led':''}`}>{led?<>{list}{rail}</>:<>{rail}{list}</>}</div>{notesList}</>}
+  {compare?<><ol className="topic-answer-sides" role="list" aria-hidden="true">{[52,44].map(w=><li key={w}><span><G.Line w={`${w}%`}/></span><strong className="topic-answer-side-value"><G.Line inline w="5em"/></strong><small><G.Line inline w="9em"/></small><span className="topic-answer-bar"/></li>)}</ol></>
+  :<><div className={`topic-answer-body${list?' has-list':''}${led&&list?' is-led':''}`}>{led?<>{list}{rail}</>:<>{rail}{list}</>}</div></>}
   <AnswerFoot answer={answer} caveats={[]} literalHref={literal?'#':undefined} full ghost/>
  </Ghost>;
 }
@@ -467,7 +470,7 @@ export function ReadingGhost({answer}:{answer:boolean}){
   <Ghost as="section" className="topic-understood topic-question" name="topic-understood" wait="client" label="Citim căutarea…"><div className="topic-question-line"><span className="topic-understood-label">Am înțeles:</span> <span className="topic-sentence topic-g-fill"><G.Line w="56%" only="not-phone"/><G.Lines w={[]} phone={['96%','88%','42%']}/></span><span className="topic-understood-literal g-phone" aria-hidden="true"><G.Line inline w="10em"/></span></div></Ghost>
   {answer&&<Ghost as="section" className="topic-answer" name="topic-answer" wait="client">
    <div className="topic-answer-head"><h2><G.Line inline w="4.2em"/></h2><p className="topic-answer-scope"><G.Line inline w="14em"/></p></div>
-   <div className="topic-answer-body has-list"><div className="topic-answer-rail"><p className="topic-answer-label"><G.Line inline w="3em"/></p><p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p><p className="topic-answer-count"><G.Line w="9em"/></p><p className="topic-answer-sub"><G.Line w="9em"/></p></div>
+   <div className="topic-answer-body has-list"><div className="topic-answer-rail"><p className="topic-answer-label"><G.Line inline w="3em"/></p><p className="topic-answer-value"><strong><G.Line w="5.4em"/></strong></p><p className="topic-answer-count"><G.Line w="9em"/></p></div>
     <div className="topic-answer-main"><p className="topic-answer-label"><G.Line inline w="8em"/></p><ol className="topic-answer-list is-suppliers" role="list" aria-hidden="true">{[58,46,52].map((w,i)=><li key={i} className="topic-answer-row"><span className="topic-answer-rank">{i+1}</span><span className="topic-answer-what"><span><G.Line w={`${w}%`}/></span><small><G.Line inline w="11em"/></small></span><span className="topic-answer-amount"><G.Line inline w="5em"/></span></li>)}</ol></div></div>
    <div className="topic-answer-foot"><div className="topic-answer-how"><p className="topic-answer-how-summary"><G.Line inline w="9em"/></p></div><div className="topic-answer-actions"><G.Line inline w="13em"/></div></div>
   </Ghost>}

@@ -88,7 +88,6 @@ button.cx-label:hover b,button.cx-label.hov b{color:var(--accent);text-decoratio
 .cx-leg p{margin:3px 0 0;font-size:13px;color:var(--muted)}
 .cx-leg button{margin-top:8px;background:transparent}
 .cx-dock-note{position:relative;margin:10px 0 0;font-size:13.5px;color:var(--ink2)}
-.cx-dock-fine{margin:10px 0 0;font-size:12.5px;color:var(--muted)}
 
 /* the flow on a phone: one bar of shares per column */
 .cx-strips{display:none;padding:14px 16px 12px}

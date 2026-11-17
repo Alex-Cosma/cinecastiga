@@ -13,6 +13,8 @@ import { tedNoticeUrl, tedPublicationNumber } from "@/lib/record-context";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
+import { GLOSSARY } from "@/lib/glossary";
 import { LOT_COLUMNS } from "@/lib/notice-lots-columns";
 import { readFilters } from "@/lib/table-filters/codec";
 import { UrlFilterBand, UrlFunnel } from "@/components/table-filters/UrlFilters";
@@ -105,11 +107,10 @@ export default async function NoticePage({ params, searchParams }: {
           // No contract found is said in words, in body type, not as a figure (Z7-10, Z7-21).
           amount: e.total != null ? lei(e.total) : <span className="record-amount-words is-quiet">{none ? "Niciun contract găsit" : "Nicio valoare identificată"}</span>,
           // "nu e plată" once on the page, beside the figure (Z7-08, Z7-09).
-          label: <>Contracte și comenzi identificate{e.total != null && <> <span className="record-not-paid">· nu e plată</span></>} <Term tip id="comenzi-identificate" /></>,
-          notes: [
-            e.frameworks != null && <>Plafoane de acord-cadru publicate: {lei(e.frameworks)}, separate de totaluri.</>,
-            n.versions.length > 1 && "Republicările aceluiași anunț nu se adună.",
-          ],
+          // The ceilings' sum is in the label's "?", which already says they are separate (owner, 17 November 2026).
+          label: <>Contracte și comenzi identificate{e.total != null && <> <span className="record-not-paid">· nu e plată</span></>} {e.frameworks != null
+            ? <Term tip title={GLOSSARY["comenzi-identificate"].title} text={`${GLOSSARY["comenzi-identificate"].text} Plafoane de acord-cadru publicate: ${lei(e.frameworks)}.`} />
+            : <Term tip id="comenzi-identificate" />}</>,
         }}
         meta={[
           <span className="record-kind" key="k">Anunț de atribuire</span>,
@@ -130,12 +131,13 @@ export default async function NoticePage({ params, searchParams }: {
       <RecordSection id="atribuire" title="Atribuirea">
         <Facts facts={[
           awarded && { label: <Term hold="line" tip id="valoare-atribuita">Valoarea atribuită în anunț</Term>, value: <>{lei(awarded)}{gapNote && <small>{gapNote}</small>}</>, wide: !!gapNote },
-          offers && { label: "Oferte, de la cea mai mică la cea mai mare", value: offers },
+          offers && { label: <>Oferte <InfoMark title="Oferte" text={Number(e.lowestOffer) === Number(e.highestOffer) ? "Cea mai mică = cea mai mare." : "De la cea mai mică la cea mai mare."} /></>, value: offers },
           procedure && { label: <Term hold="line" tip id="contract-procedura">Procedura</Term>, value: procedure },
           (n.cpvName || n.cpvCode) && { label: "Domeniu CPV", value: n.cpvName ?? <span className="record-quiet">Denumire neprecizată</span> },
           // Only a notice with several records has a "first" one (Z7-29).
           n.nLots > 1 && { label: "Primul contract din anunț", value: n.firstContractDate ? formatCalendarDate(n.firstContractDate) : <span className="record-quiet">Fără dată plauzibilă</span> },
-          n.versions.length > 1 && { label: <Term hold="line" tip id="versiuni-anunt">Versiuni SEAP</Term>, wide: true, value: n.versions.map((v, i) => <span key={v.caNoticeId}>{i > 0 && ", "}{v.caNoticeId === n.caNoticeId
+          // That the republications are not added up is said by this label's explanation (owner, 17 November 2026).
+          n.versions.length > 1 && { label: <Term hold="line" tip title={GLOSSARY["versiuni-anunt"].title} text={`${GLOSSARY["versiuni-anunt"].text} Republicările aceluiași anunț nu se adună.`}>Versiuni SEAP</Term>, wide: true, value: n.versions.map((v, i) => <span key={v.caNoticeId}>{i > 0 && ", "}{v.caNoticeId === n.caNoticeId
             ? <span aria-current="page">{formatCalendarDate(v.versionDate)} (aceasta)</span>
             : <Link prefetch={false} href={`/anunturi/${v.caNoticeId}`}>{formatCalendarDate(v.versionDate)}</Link>}</span>) },
         ]} />

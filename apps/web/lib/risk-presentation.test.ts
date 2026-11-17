@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FLAG_META } from "./flags";
-import { awardValueLabel, nearThresholdEvidence, noticeContractsNote, riskEvidenceLine, signalPeriodLabel, singleBidValueNote } from "./risk-presentation";
+import { awardValueLabel, nearThresholdEvidence, noticeContractsNote, riskEvidenceLine, riskListLine, signalPeriodLabel, singleBidValueNote } from "./risk-presentation";
 
 describe("distance from a procurement threshold", () => {
   it("shows the one-leu gap rather than rounding a sub-threshold value to 100%", () => {
@@ -200,5 +200,40 @@ describe("a shared representative's line (UX audit bug, 16 November 2026)", () =
     const line = riskEvidenceLine("net_shared_admin", { person: "POPESCU ION", n_firms: 3, combined: 1000, authority: "COMPANIA NATIONALA DE ADMINISTRARE A INFRASTRUCTURII RUTIERE S.A.", roles: ["administrator"] });
     expect(line).toContain("RUTIERE S.A. Calitatea în ONRC");
     expect(line).not.toContain("S.A..");
+  });
+});
+
+describe("a case's note on /semnale's national list (owner, 17 November 2026: less small print)", () => {
+  const procedure = "Negociere fara publicare prealabila";
+  it("leaves out what the row's other cells say and keeps every other fact", () => {
+    expect(riskListLine("award_no_competition", { procedure, value: 885027500, cpv: "50532300-6", notice_contracts: "contract" }))
+      .toEqual({ text: "CPV 50532300-6.", mark: null });
+    // The framework ceiling is the value's own label; another kind of notice is said nowhere else in the row.
+    expect(riskListLine("award_no_competition", { procedure, value: 1, cpv: "35612100-8", notice_contracts: "framework" }).text).toBe("CPV 35612100-8.");
+    expect(riskListLine("award_no_competition", { procedure, value: 1, cpv: "1", notice_contracts: "calloff" }).text).toBe("CPV 1. Anunțul conține doar contracte subsecvente.");
+    expect(riskListLine("fin_tiny_staff", { employees: 3, total: "557584897.52", year: 2022 }).text).toBe("3 salariați în medie.");
+    const reliance = riskListLine("fin_public_reliance", { ratio: 1.24, public_total: 6.3e9, revenue_total: 5.1e9, years: 5 }).text!;
+    expect(reliance).toContain("124%");
+    expect(reliance).not.toContain("încasărilor");
+    expect(riskListLine("net_shared_admin", { person: "POPESCU ION", n_firms: 2, combined: 4.1e9, authority: "X S.A.", roles: ["administrator"] }).text)
+      .toBe("POPESCU ION apare ca reprezentant legal pentru 2 firme. Calitatea în ONRC la această firmă: administrator.");
+  });
+  it("keeps a single bid's count and moves the cited contracts' warning behind a mark", () => {
+    expect(riskListLine("award_single_bid", { confirmed_contract_count: 2, value: 2000000, value_scope: "notice", notice_contracts: "contract" })).toEqual({ text: "2 contracte.", mark: null });
+    const above = riskListLine("award_single_bid", { confirmed_contract_count: 3, value: 782426387, cited_contracts_value: "911479050.80", value_scope: "notice" });
+    expect(above.text).toBe("3 contracte.");
+    expect(above.mark?.text).toContain("Contractele citate însumează 911.479.050,80 lei");
+  });
+  it("keeps the call-offs' count and ceiling, and the owner's sentence on a data-entry error word for word", () => {
+    expect(riskListLine("award_calloffs_over_ceiling", { value: "1300000", ceiling: "1000000", calloffs: 3, calloffs_repeating_ceiling: 0 }))
+      .toEqual({ text: "3 comenzi, față de un plafon al acordului-cadru de 1 mil. lei: de 1,3 ori plafonul.", mark: { words: null, beside: "note", title: "Depășire sau eroare", text: "Poate fi o depășire reală sau o eroare de completare în SEAP." } });
+    const repeated = riskListLine("award_calloffs_over_ceiling", { value: "184029312", ceiling: "46007328", calloffs: 4, calloffs_repeating_ceiling: 4 });
+    expect(repeated.text).toContain("de 4,0 ori plafonul");
+    expect(repeated.mark).toMatchObject({ words: "4 comenzi = plafonul", text: expect.stringContaining("probabil plafonul copiat în fiecare comandă") });
+  });
+  it("is the whole line for the other patterns", () => {
+    const evidence = { top_supplier_pct: 0.67, total: 1000, winners: 116, hhi: 0.449 };
+    expect(riskListLine("award_concentration", { ...evidence, top_winner_pct: 0.67 }).text).toBe(riskEvidenceLine("award_concentration", { ...evidence, top_winner_pct: 0.67 }));
+    expect(riskListLine("award_single_bid", {}).text).toBe(riskEvidenceLine("award_single_bid", {}));
   });
 });

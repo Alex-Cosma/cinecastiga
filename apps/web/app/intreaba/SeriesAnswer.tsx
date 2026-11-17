@@ -14,7 +14,7 @@ import { readableCpvName } from "@/lib/entity-summary";
 import { useTip } from "./blocks";
 import DetailCard from "./answer/DetailCard";
 import KitLink, { recordsWords } from "./answer/KitLink";
-import { RECORDED_VALUE } from "./answer/TotalLine";
+import { TotalMark } from "./answer/TotalLine";
 import { useAnswerFact } from "./answer/use-answer-fact";
 import { useChartMotion } from "./answer/chart-motion";
 import HelpTip from "./builder/HelpTip";
@@ -155,14 +155,17 @@ export default function SeriesAnswer({ data, spec, partial, onSources }: { data:
           const shown = partial.filter((x) => drawn.some((p) => p.year === x.year));
           return <p className="ask-fine ask-partial-note qb-tipwrap">
             * {[...new Set(shown.map((x) => x.year))].join(", ").replace(/, (\d+)$/, " și $1")} {shown.length === 1 ? "e incomplet" : "sunt incomplete"}{" "}
-            <HelpTip tip={{ title: shown.length === 1 ? "An incomplet" : "Ani incompleți", text: `${shown.map((x) => `${x.year}: ${x.note}`).join("; ")}. Nu se compară direct cu un an întreg.` }} />
+            <HelpTip tip={{ title: shown.length === 1 ? "An incomplet" : "Ani incompleți", text: `${shown.map((x) => `${x.year}: ${x.note}`).join("; ")}. Nu se compară direct cu un an întreg.` }} />{" "}
+            <TotalMark more={YEAR_TIP} />
           </p>;
         })()}
         {above.n > 0 && <p className="ask-fine qb-tipwrap">{countWords(above.n, "contract", "contracte")} peste 1 mld. lei nu intră în bare <HelpTip tip={ABOVE_TIP} />{" "}
           <KitLink className="qb-rec" link={{ label: "Vezi-le", glyph: "›", onClick: () => setPicked(above.first) }} /></p>}
         {daMark && <p className="ask-fine qb-tipwrap">▴ 10.09.2022: plafon DA mai mare <HelpTip tip={DA_CAP_TIP} /></p>}
         {(f.adminPersonKey || f.adminName) && <p className="ask-fine">Administratorul e cel de azi; în anii trecuți putea fi altul.</p>}
-        <p className="ask-fine qb-tipwrap">{RECORDED_VALUE.text} <HelpTip tip={RECORDED_VALUE.tip} /> · lei ai fiecărui an <HelpTip tip={YEAR_TIP} /></p>
+        {/* „valoare înregistrată, nu plăți” and „lei ai fiecărui an” are in one (i): at the end of the incomplete years' line,
+            or alone (owner, 17 November 2026: less small print). */}
+        {!partial.some((x) => drawn.some((p) => p.year === x.year)) && <p className="ask-fine"><TotalMark more={YEAR_TIP} /></p>}
       </div>
     </div>
   );

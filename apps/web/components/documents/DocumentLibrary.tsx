@@ -2,6 +2,7 @@
 import {useMemo,useState} from 'react';
 import DiscoveryIcon from '@/app/DiscoveryIcon';
 import Term from '@/components/Term';
+import InfoMark from '@/components/InfoMark';
 import {countWords} from '@/lib/ask/answer-text';
 import {foldText,SIGNATURE_UNVERIFIED,stageLabel,isActiveFileJob,type ContractFile} from '@/lib/documents/shared';
 import {DOCUMENT_CATEGORIES,categoryLabel,classifyDocumentContents,classifyDocumentName,classificationDescription,hasSpecifications,type DocumentCategory,type Classification} from '@/lib/documents/classification';
@@ -25,9 +26,10 @@ export default function DocumentLibrary({files,enabled,busy,onOpen,onEnqueue}:Pr
  const counts=Object.fromEntries(DOCUMENT_CATEGORIES.map(c=>[c.id,entries.filter(e=>e.classification.categories.includes(c.id)).length]));
  // Categories without a file fold under one line, a click away (Z7-14; the 3 November decision keeps them all).
  const empty=DOCUMENT_CATEGORIES.filter(c=>!counts[c.id]&&category!==c.id),shownCategories=DOCUMENT_CATEGORIES.filter(c=>showEmpty||counts[c.id]||category===c.id);
- // How the categories were recognised, said once under the list's title instead of on every row.
+ // How the categories were recognised, and that a mixed archive can be in several: one mark beside the list's title
+ // instead of a line under it and a footnote (owner, 17 November 2026: less small print).
  const guessed=new Set(entries.map(e=>e.classification.method).filter(m=>m==='filename'||m==='source'));
- const legend=guessed.size?`Categoriile sunt recunoscute după ${guessed.size>1?'numele fișierului sau tipul din SEAP':guessed.has('filename')?'numele fișierului':'tipul din SEAP'}; pot fi greșite.`:null;
+ const legend=[guessed.size?`Categoriile sunt recunoscute după ${guessed.size>1?'numele fișierului sau tipul din SEAP':guessed.has('filename')?'numele fișierului':'tipul din SEAP'}; pot fi greșite.`:null,entries.some(e=>e.classification.categories.length>1)?'Arhivele mixte pot apărea în mai multe categorii.':null].filter(Boolean).join(' ');
  const filtered=entries.filter(e=>(category==='all'||e.classification.categories.includes(category))&&(!onlyReady||!!e.file.processedAt)&&(!query.trim()||foldText([e.file.filename,...(e.file.contents??[]).map(p=>p.name)].join(' ')).includes(foldText(query.trim()))));
  const pages=Math.max(1,Math.ceil(filtered.length/perPage)),current=Math.min(page,pages),start=(current-1)*perPage,shown=filtered.slice(start,start+perPage);
  function choose(id:DocumentCategory|'all'){setCategory(id);setPage(1);}
@@ -41,13 +43,11 @@ export default function DocumentLibrary({files,enabled,busy,onOpen,onEnqueue}:Pr
   <div className="df-library-main">
    <label className="df-mobile-category">Categorie<select value={category} onChange={e=>choose(e.target.value as DocumentCategory|'all')}><option value="all">Toate documentele ({files.length})</option>{DOCUMENT_CATEGORIES.filter(c=>counts[c.id]).map(c=><option key={c.id} value={c.id}>{c.label} ({counts[c.id]})</option>)}{DOCUMENT_CATEGORIES.some(c=>!counts[c.id])&&<optgroup label="Fără fișiere">{DOCUMENT_CATEGORIES.filter(c=>!counts[c.id]).map(c=><option key={c.id} value={c.id}>{c.label} (0)</option>)}</optgroup>}</select></label>
    <div className="df-library-tools"><label className="df-name-search"><DiscoveryIcon name="search"/><input type="search" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} aria-label="Caută în numele documentelor" placeholder="Caută în numele documentelor" maxLength={150}/></label><label className="df-ready-filter"><input type="checkbox" checked={onlyReady} onChange={e=>{setOnlyReady(e.target.checked);setPage(1);}}/>Doar de citit acum</label></div>
-   <div className="df-library-results"><h3>{category==='all'?'Toate documentele':categoryLabel(category)}</h3><span role="status" aria-live="polite">{countWords(filtered.length,'document','documente')}</span></div>
-   {legend&&<p className="df-library-legend">{legend}</p>}
+   <div className="df-library-results"><h3>{category==='all'?'Toate documentele':categoryLabel(category)}{legend&&<> <InfoMark title="Încadrare" text={legend}/></>}</h3><span role="status" aria-live="polite">{countWords(filtered.length,'document','documente')}</span></div>
    <div className="df-library-list">{shown.map(({file:f,classification:c})=><FileRow key={f.id} file={f} classification={c} enabled={enabled} busy={busy} onOpen={onOpen} onEnqueue={onEnqueue}/>)}
     {!shown.length&&<div className="df-library-empty"><h4>{query.trim()?'Nu am găsit acest nume':onlyReady?'Niciun document pregătit în această selecție':'Niciun document identificat în această categorie'}</h4><p>{query.trim()?'Încearcă un alt cuvânt sau caută în toate categoriile.':onlyReady?'Poți vedea și documentele care așteaptă descărcarea sau procesarea.':'Poate exista în fișierele neclasificate sau în arhive încă neprocesate.'}</p><button type="button" className="df-button" onClick={reset}>Resetează filtrele</button></div>}
    </div>
    {pages>1&&<nav className="record-pager df-library-pager" aria-label="Paginarea documentelor">{current>1&&<button type="button" onClick={()=>setPage(current-1)}>← Anterior</button>}<span>Pagina {current} din {pages}</span>{current<pages&&<button type="button" onClick={()=>setPage(current+1)}>Următor →</button>}</nav>}
-   {entries.some(e=>e.classification.categories.length>1)&&<p className="df-library-footnote">Arhivele mixte pot apărea în mai multe categorii.</p>}
   </div>
  </div>;
 }

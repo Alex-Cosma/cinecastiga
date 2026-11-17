@@ -105,7 +105,7 @@ describe("the trend's answer", () => {
   it("marks the partly covered year on the one-year lists too, so the note always points at something (`whole` keeps it)", () => {
     const partial = [{ year: 2025, note: "date până la 25.09.2025" }];
     const gone = text(render({ spec: trendSpec({ change: "gone", months: "whole" }), partial }));
-    expect(gone).toContain("Nu mai apar în 2025*: 1 firmă · 50 lei în 2024 · ");
+    expect(gone).toMatch(/Nu mai apar în 2025\*: 1 firmă · 50 lei în 2024(?!\*)/);
     expect(gone).not.toContain("în 2024 lei");
     const fresh = text(render({ spec: trendSpec({ change: "new", months: "whole" }), partial }));
     expect(fresh).toContain("900 lei în 2025*");

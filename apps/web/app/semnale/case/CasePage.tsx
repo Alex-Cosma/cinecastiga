@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
 import { countWords } from "@/lib/ask/answer-text";
 import { evidenceLinks } from "@/lib/ask/evidence";
 import { entityHref } from "@/lib/entity-href";
@@ -11,7 +12,7 @@ import { cleanName, countyLabel, formatCalendarDate, formatInt, formatRon } from
 import { riskEvidenceLine, signalPeriodLabel } from "@/lib/risk-presentation";
 import { RISK_BAND_CLASS, RISK_BAND_WORD, RISK_CRITERIA, riskBand, riskScoreText, type RiskCriterion, type ScorePart } from "@/lib/risk-score";
 import type { CaseInstance, CaseRecord, SignalCase } from "@/lib/signal-case";
-import { aboveWords, capacityWords, caseUnitNouns, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
+import { ABOVE_RULE, aboveWords, capacityWords, caseUnitNouns, caseUnitWords, firstMonthAge, firstMonthWords, partnerWords, pctWords, roundWords, splitWords, yearEndWords, type CaseWords } from "@/lib/signal-case-words";
 import { SIGNAL_GUIDANCE } from "@/lib/signal-guidance";
 import { DOMAIN_ALIASES } from "@/lib/cpv-aliases";
 import { readableCpvName } from "@/lib/entity-summary";
@@ -109,9 +110,18 @@ function ScoreTabs({ data, state, tabs }: { data: SignalCase; state: SignalState
   );
 }
 
-/** One face of the mirror: what it compares, a large number and what it is. */
-function Side({ title, big, unit, children }: { title: string; big: string; unit: ReactNode; children?: ReactNode }) {
-  return <section className="sgc-side"><h2>{title}</h2><p className="sgc-big"><span>{big}</span><small>{unit}</small></p>{children}</section>;
+/** Text with an "i" after it: its last word and the mark never part at a line's end (owner, 17 November 2026). */
+function Marked({ text, mark }: { text: string; mark: ReactNode }) {
+  const at = text.lastIndexOf(" ");
+  return <>{text.slice(0, at + 1)}<span className="sgc-keep">{text.slice(at + 1)} {mark}</span></>;
+}
+
+/**
+ * One face of the mirror: what it compares, a large number and what it is. `mark`: an "i" after the title, holding how
+ * to read the face or the rule behind it (owner, 17 November 2026: no fine print under the charts).
+ */
+function Side({ title, big, unit, mark, children }: { title: string; big: string; unit: ReactNode; mark?: ReactNode; children?: ReactNode }) {
+  return <section className="sgc-side"><h2>{mark ? <Marked text={title} mark={mark} /> : title}</h2><p className="sgc-big"><span>{big}</span><small>{unit}</small></p>{children}</section>;
 }
 
 /** The share bar of a partner signal, with the rule's thresholds. */
@@ -182,7 +192,8 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
   const edge = (at: number, of: number) => (at < of * 0.2 ? " l" : at > of * 0.8 ? " r" : "");
   return <>
     <div className="sgc-mirror">
-      <Side title="Luate pe rând" big={formatInt(all.acquisitions)} unit={s.allUnder ? (all.acquisitions === 1 ? "achiziție, sub plafon" : "achiziții, toate sub plafon") : "achiziții"}>
+      <Side title="Luate pe rând" big={formatInt(all.acquisitions)} unit={s.allUnder ? (all.acquisitions === 1 ? "achiziție, sub plafon" : "achiziții, toate sub plafon") : "achiziții"}
+        mark={<InfoMark title="Cum citești graficul" text="Fiecare bară e o achiziție, ca procent din plafonul ei; barele aceleiași firme stau împreună." />}>
         {/* In motion: the axis, the ceiling and the 50% line stay; each purchase rises from 0, in their order, so the reader
             sees each one stop under the ceiling. The stagger is spread over the shown bars and capped. */}
         <div className="sgc-ychart" data-chart suppressHydrationWarning>
@@ -200,10 +211,11 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               </div>
             ))}</RovingGroup>
         </div>
-        <p className="sgc-cap">Fiecare bară e o achiziție, ca procent din plafonul ei; barele aceleiași firme stau împreună{all.acquisitions > shown ? ` (primele ${formatInt(shown)} din ${formatInt(all.acquisitions)})` : ""}.
-          {s.largest && <> Cea mai mare: {lei(s.largest.value)}, cu {formatInt(Math.round(s.largest.ceiling - s.largest.value))} lei sub {lei(s.largest.ceiling)}.</>}</p>
+        {/* The largest sum is its bar's card; how to read the bars, the title's "i". */}
+        {all.acquisitions > shown && <p className="sgc-cap">Primele {formatInt(shown)} din {formatInt(all.acquisitions)}.</p>}
       </Side>
-      <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={splitRatioWords(s.topRatio)} unit="plafonul, la cel mai mare grup">
+      <Side title={role === "authority" ? "Adunate, pe firmă și an" : "Adunate, pe instituție și an"} big={splitRatioWords(s.topRatio)} unit="plafonul, la cel mai mare grup"
+        mark={<InfoMark title="Cum citești graficul" text="Linia punctată e plafonul: fiecare bară e un grup, adunat." />}>
         {/* In motion: the ceiling stays; the groups rise together (groups, not a sequence). */}
         <RovingGroup label="Grupurile adunate, față de plafon; săgețile trec de la unul la altul" className="sgc-groups" data-chart suppressHydrationWarning><span className="sgc-ceil" style={{ bottom: `${(1 / max) * 100}%` }} />
           {top.map((g, i) => {
@@ -214,7 +226,7 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               </i></div>;
           })}</RovingGroup>
         <div className="sgc-glab">{top.map((g) => <span key={g.id}><EntityName id={g.partnerId} role={partnerRole(role)} title={cleanName(g.partnerName)}>{cleanName(g.partnerName)}</EntityName><small>{g.year}{g.counted ? "" : " · nu intră"}</small></span>)}</div>
-        <p className="sgc-cap">Linia punctată e plafonul: fiecare bară e un grup, adunat.{all.groups > top.length ? ` Cele mai mari ${formatInt(top.length)} din ${formatInt(all.groups)}.` : ""}</p>
+        {all.groups > top.length && <p className="sgc-cap">Cele mai mari {formatInt(top.length)} din {formatInt(all.groups)}.</p>}
       </Side>
     </div>
     <CasesHead title={countWords(data.total, "grup", "grupuri")} total={data.total} shown={data.total} />
@@ -239,7 +251,8 @@ function SplitCase({ data, groups }: { data: SignalCase; groups: SplitGroup[] })
               <RowSave inst={inst} label={`${flagLabel(data.code)} · ${cleanName(g.partnerName)} ${g.year}`} />
             </summary>
             <div className="sgc-body">
-              <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA. Adunate, cele {formatInt(g.count)} achiziții trec de el de {splitRatioWords(g.ratio).replace("×", "")} ori.</p>
+              {/* How far past it: the row's count and multiple, right above. */}
+              <p className="sgc-cap">Plafonul: {lei(g.ceiling)}, fără TVA.</p>
               <Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} />
               <Warnings inst={inst} />
               <CaseActions inst={inst} label={`${flagLabel(data.code)} · ${cleanName(g.partnerName)} ${g.year}`} />
@@ -331,9 +344,8 @@ function AboveCase({ data, items }: { data: SignalCase; items: AboveCeiling[] })
   const maxOver = Math.max(0, ...items.map((i) => i.over));
   return <>
     <div className="sgc-mirror">
-      <Side title="Achizițiile peste plafon" big={formatInt(items.length)} unit={items.length === 1 ? "achiziție directă" : "achiziții directe"}>
-        <p className="sgc-cap">Plafonul achiziției directe e fără TVA; regula numără și suma finală care îl trece chiar cu TVA.</p>
-      </Side>
+      <Side title="Achizițiile peste plafon" big={formatInt(items.length)} unit={items.length === 1 ? "achiziție directă" : "achiziții directe"}
+        mark={<InfoMark title="Regula" text={`${ABOVE_RULE} Plafonul achiziției directe e fără TVA.`} />} />
       <Side title="Cu cât l-au trecut" big={formatRon(maxOver)} unit="cea mai mare depășire" />
     </div>
     <CasesHead title={countWords(items.length, "achiziție", "achiziții")} total={data.total} shown={items.length} />
@@ -354,7 +366,8 @@ function YearEndCase({ data }: { data: SignalCase }) {
         <span className="r"><em>Restul anului</em><b>{pctWords(1 - top.y.share)}</b>{formatRon(top.y.total - top.y.december)}</span></div>
       <div className="bar" aria-hidden="true" data-chart suppressHydrationWarning><i className="cm-x" style={{ width: `${Math.max(0.6, Math.min(100, top.y.share * 100))}%` }} />
         {top.y.reference != null && <s style={{ left: `${top.y.reference * 100}%` }} />}</div>
-      {top.y.reference != null && <div className="tk" aria-hidden="true"><span className={top.y.reference > 0.7 ? "r" : top.y.reference < 0.15 ? "l" : ""} style={{ left: `${top.y.reference * 100}%` }}>pragul, {pctWords(top.y.reference)} la instituțiile de același tip</span></div>}
+      {top.y.reference != null && <div className="tk"><span className={top.y.reference > 0.7 ? "r" : top.y.reference < 0.15 ? "l" : ""} style={{ left: `${top.y.reference * 100}%` }}><span aria-hidden="true">pragul, {pctWords(top.y.reference)} la instituțiile de același </span><span className="sgc-keep"><span aria-hidden="true">tip</span>{" "}
+        <InfoMark title="Pragul" text="La instituțiile de același tip, pragul e percentila 95." /></span></span></div>}
     </section>
     <CasesHead title={years.length === 1 ? `Achizițiile din decembrie ${top.y.year}` : countWords(years.length, "an", "ani")} total={data.total} shown={years.length} />
     <div className="sgc-cases" data-chart suppressHydrationWarning>
@@ -397,13 +410,13 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
         <p className="sgc-cap"><b>{partnerName}</b> {formatRon(mineTotal)}{inst.aside && inst.aside.count > 0 && <> · <b>{dep ? "celelalte instituții" : "ceilalți furnizori"}</b> {formatRon(inst.aside.totalExact)}</>}</p>
       </Side>
       {dep
-        ? <Side title={`Pentru ${partner} · de la cine cumpără`} big={s.reverse == null ? "—" : pctWords(s.reverse)} unit={`de la ${cleanName(data.entity.name)}`}>
+        ? <Side title={`Pentru ${partner} · de la cine cumpără`} big={s.reverse == null ? "—" : pctWords(s.reverse)} unit={`de la ${cleanName(data.entity.name)}`}
+            mark={<InfoMark title="Tăria tiparului" text="Crește cu acest procent: cu cât firma contează mai mult pentru instituție, cu atât relația cântărește mai mult." />}>
             {s.reverse != null && <ShareBar share={s.reverse} />}
-            <p className="sgc-cap">Tăria tiparului crește cu acest procent: cu cât firma contează mai mult pentru instituție, cu atât relația cântărește mai mult.</p>
           </Side>
-        : <Side title="Fără cea mai mare achiziție" big={s.adjusted == null ? "—" : pctWords(s.adjusted)} unit={<>tot la {partnerName}</>}>
+        : <Side title="Fără cea mai mare achiziție" big={s.adjusted == null ? "—" : pctWords(s.adjusted)} unit={<>tot la {partnerName}</>}
+            mark={<InfoMark title="De ce" text="O singură achiziție mare nu face o relație; de aceea regula o scoate din calcul." />}>
             {s.adjusted != null && <ShareBar share={s.adjusted} ticks={[{ at: 0.6, label: "semnal de la 60%" }]} />}
-            <p className="sgc-cap">O singură achiziție mare nu face o relație; de aceea regula o scoate din calcul.</p>
           </Side>}
     </div>
     <CasesHead title={<>{countWords(inst.records.length, "achiziție", "achiziții")} cu {partnerName}</>} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(code)} · ${partner}`} />} />
@@ -412,7 +425,7 @@ function PartnerCase({ data, code }: { data: SignalCase; code: "da_concentration
       <Warnings inst={inst} />
       {inst.aside && inst.aside.count > 0 && (
         <details className="sgc-aside">
-          <summary><b>Puse deoparte: {countWords(inst.aside.count, dep ? "achiziție de la alte instituții" : "achiziție de la alți furnizori", dep ? "achiziții de la alte instituții" : "achiziții de la alți furnizori")}, {lei(inst.aside.totalExact)}.</b> Nu intră în semnal; sunt restul de {pctWords(Math.max(0, 1 - s.share))}.</summary>
+          <summary><b>Puse deoparte: {countWords(inst.aside.count, dep ? "achiziție de la alte instituții" : "achiziție de la alți furnizori", dep ? "achiziții de la alte instituții" : "achiziții de la alți furnizori")}, {lei(inst.aside.totalExact)}.</b></summary>
           <Records records={inst.aside.top} alsoIn={data.alsoIn} code={data.code} counterparty={dep ? "authority" : "supplier"} />
           {inst.aside.count > inst.aside.top.length && <p className="sgc-cap">Cele mai mari {formatInt(inst.aside.top.length)}. Toate sunt în <Link href={`${entityHref(data.entity.id, data.entity.role)}#inregistrari`}>înregistrările profilului</Link>.</p>}
         </details>
@@ -428,9 +441,9 @@ function CapacityCase({ data }: { data: SignalCase }) {
   return <>
     <div className="sgc-mirror">
       <Side title={`Achiziții directe în ${c.year}`} big={formatRon(c.daValue)} unit={c.daCount != null ? countWords(c.daCount, "achiziție", "achiziții") : ""} />
-      <Side title={`Bilanțul din ${c.turnoverYear ?? c.year}`} big={c.turnover == null ? "—" : formatRon(c.turnover)} unit={c.employees == null ? "cifră de afaceri · angajați nepublicați" : `cifră de afaceri · ${countWords(c.employees, "angajat", "angajați")}`}>
-        {c.young && <p className="sgc-cap">Firmă nouă: bilanțul poate să nu arate încă activitatea anului.</p>}
-      </Side>
+      <Side title={`Bilanțul din ${c.turnoverYear ?? c.year}`} big={c.turnover == null ? "—" : formatRon(c.turnover)}
+        unit={(() => { const sheet = c.employees == null ? "cifră de afaceri · angajați nepublicați" : `cifră de afaceri · ${countWords(c.employees, "angajat", "angajați")}`;
+          return c.young ? <Marked text={sheet} mark={<InfoMark title="Firmă nouă" text="Bilanțul poate să nu arate încă activitatea anului." />} /> : sheet; })()} />
     </div>
     <CasesHead title={`Achizițiile din ${c.year}`} total={1} shown={1} actions={<CaseActions inst={inst} label={`${flagLabel(data.code)} · ${c.year}`} />} />
     <div id={`caz-${inst.id}`}><Records role={data.entity.role} records={inst.records} alsoIn={data.alsoIn} code={data.code} source={listSource(data, inst.id)} /><Warnings inst={inst} /></div>
@@ -460,10 +473,10 @@ function FirstMonthCase({ data }: { data: SignalCase }) {
     const from = m.buyers == null ? "" : m.buyers === 1 ? (m.buyersAll === 1 ? " · o singură instituție, singura din achizițiile ei directe" : " · o singură instituție") : ` · ${countWords(m.buyers, "instituție", "instituții")}`;
     return <>
       <div className="sgc-mirror">
-        <Side title="De la înmatriculare la prima achiziție directă" big={m.ageDays == null ? "—" : formatInt(m.ageDays)} unit={m.ageDays === 1 ? "zi" : "zile"}>
+        {/* The registration date is the lede's; how the days are counted, the "i" (UX audit Z6-38; owner, 17 November 2026). */}
+        <Side title="De la înmatriculare la prima achiziție directă" big={m.ageDays == null ? "—" : formatInt(m.ageDays)}
+          unit={<Marked text={m.ageDays === 1 ? "zi" : "zile"} mark={<InfoMark title="Cum numărăm" text="De la cea mai veche înmatriculare a firmei: o mutare de sediu nu o face nouă." />} />}>
           {day(m) != null && <ShareBar share={day(m)!} ticks={[{ at: 1, label: `ziua ${formatInt(m.windowDays)}`, left: true }]} />}
-          {/* The dates are the lede's; the mirror keeps only how the days are counted (UX audit Z6-38). */}
-          <p className="sgc-cap">Numărăm de la cea mai veche înmatriculare a firmei: o mutare de sediu nu o face nouă.</p>
         </Side>
         <Side title={`În primele ${countWords(m.windowDays, "zi", "zile")}`} big={formatRon(m.total)} unit={`${m.count == null ? "contractați" : countWords(m.count, "achiziție directă", "achiziții directe")}${from}`}>
           {near(m)}
@@ -614,13 +627,13 @@ function CasesHead({ title, total, shown, actions }: { title: ReactNode; total: 
 
 const firstSentence = (text: string) => { const i = text.indexOf(". "); return i > 0 ? text.slice(0, i + 1) : text; };
 
-function headline(data: SignalCase, models: { split: SplitGroup[] | undefined; round: NearCeiling[] | undefined; above: AboveCeiling[] | undefined }): CaseWords {
+function headline(data: SignalCase, models: { split: SplitGroup[] | undefined; round: NearCeiling[] | undefined; above: AboveCeiling[] | undefined }, under: boolean): CaseWords {
   const { entity: e, code } = data;
   const part = e.parts[code as RiskCriterion] as ScorePart | undefined;
   switch (code) {
     case "da_split": return splitWords(e.role, data.split ?? splitTotals(data.instances.map((i) => i.evidence)), part);
     case "da_round": return roundWords(data.total, part, models.round ?? [], topPartners(models.round ?? []));
-    case "da_above_ceiling": return aboveWords(models.above ?? [], part);
+    case "da_above_ceiling": return aboveWords(models.above ?? [], part, under);
     case "da_year_end": return yearEndWords(data.instances.map((i) => yearEnd(inputOf(i))));
     case "da_concentration": case "da_dependence": {
       const inst = data.instances[0];
@@ -654,14 +667,17 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
     round: code === "da_round" ? data.instances.map((i) => nearCeiling(inputOf(i))).sort((a, b) => b.ofCeiling - a.ofCeiling) : undefined,
     above: code === "da_above_ceiling" ? data.instances.map((i) => aboveCeiling(inputOf(i))).sort((a, b) => b.over - a.over) : undefined,
   };
-  const words = headline(data, models);
+  // Found, but under the rule's threshold: a tag before the lede, the rule on hover (owner, 6 November 2026).
+  const under = e.hasRiskScore && data.total > 0 && tabs.quiet.includes(code);
+  const words = headline(data, models, under);
   const guide = SIGNAL_GUIDANCE[code as RiskCriterion];
   const band = riskBand(e.score);
   const scored = tabs.inScore.length > 0;
   const county = countyLabel(e.county);
-  // Found, but under the rule's threshold: a tag before the lede, the rule on hover (owner, 6 November 2026).
-  const under = e.hasRiskScore && data.total > 0 && tabs.quiet.includes(code);
   const rule = firstSentence(flagEntityRule(code));
+  // A procedure's title says what was counted; the pattern's definition joins it behind an "i" (owner, 17 November 2026).
+  const definition = (code === "award_single_bid" || code === "award_no_competition") && words.lede === FLAG_META[code]?.short ? words.lede : null;
+  const lede = definition ? null : words.lede;
   return (
     <div className="sgc">
       <OpenFromHash />
@@ -671,14 +687,14 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
         <span>{e.role === "authority" ? "Instituție" : "Firmă"}{county ? `, ${county}` : ""}{e.nDas ? ` · ${countWords(e.nDas, "achiziție directă", "achiziții directe")}` : ""}
           {e.otherRole && <> · <Link href={entityHref(e.id, e.otherRole)}>{e.otherRole === "authority" ? "și ca instituție" : "și ca firmă"}</Link></>}</span>
         {scored ? <span className={`cri-pill ${RISK_BAND_CLASS[band]}`}>{riskScoreText(e.score)} · {RISK_BAND_WORD[band]}</span>
-          : e.noScoreReason ? <span className="sgc-noscore">{e.noScoreReason}</span> : null}
+          : e.noScoreReason ? <span className="sgc-noscore"><Marked text="fără scor" mark={<InfoMark title="Fără scor" text={e.noScoreReason} />} /></span> : null}
       </div>
       <ScoreTabs data={data} state={state} tabs={tabs} />
-      <h1 className="sgc-title">{words.title}</h1>
-      {(words.lede || under) && <p className="sgc-lede">
+      <h1 className="sgc-title">{definition ? <Marked text={words.title} mark={<InfoMark title={flagLabel(code)} text={definition} />} /> : words.title}</h1>
+      {(lede || under) && <p className="sgc-lede">
         {under && <Term tip hold="box" className="sgc-under" title="Sub prag"
           text={<>Apare, dar sub pragul regulii: nu adună puncte în scor.{rule && <> Regula: {rule.charAt(0).toLowerCase() + rule.slice(1)}</>}</>}>Sub prag</Term>}
-        {words.lede}</p>}
+        {lede}</p>}
 
       {data.total === 0 ? (
         <div className="sgc-empty"><h2>{cleanName(e.name)} nu are acum acest tipar</h2><p>Poate a avut la un calcul anterior. Celelalte tipare sunt mai jos.</p></div>
@@ -699,7 +715,8 @@ export default function CasePage({ data, state }: { data: SignalCase; state: Sig
       {/* „Explicații posibile” on every pattern (UX audit Z6-38), the limits one link away. */}
       {!guide && FLAG_META[code] && <div className="sgc-guide"><div><h2>Ce verifici</h2><p>{FLAG_META[code]!.rationale}</p></div><div><h2>Explicații posibile</h2><p>{firstSentence(FLAG_META[code]!.caveat)} <Link href={`/metodologie#${code}`}>Toate limitele →</Link></p></div></div>}
 
-      <p className="sgc-foot">Un tipar e o pistă de verificat, nu o dovadă. Valori înregistrate, nu plăți. <Link href={`/metodologie#${code}`}>Cum se calculează →</Link></p>
+      {/* The lead-not-proof caveat stays in sight, its sentence behind the "i"; „nu plăți” is the site footer's (owner, 17 November 2026). */}
+      <p className="sgc-foot"><Marked text="Pistă, nu dovadă" mark={<InfoMark title="De știut" text="Un tipar e o pistă de verificat, nu o dovadă." />} /> · <Link href={`/metodologie#${code}`}>Cum se calculează →</Link></p>
     </div>
   );
 }

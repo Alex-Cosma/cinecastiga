@@ -12,9 +12,10 @@ describe("the records table's words", () => {
   });
 
   it("names the records by the one type chosen, else counts records", () => {
-    expect(statusLine(4536, 1, 454, {})).toBe("4.536 de înregistrări · pagina 1 din 454");
-    expect(statusLine(14, 1, 2, { tip: { kind: "options", values: ["directe"] } })).toBe("14 achiziții directe · pagina 1 din 2");
-    expect(statusLine(0, 1, 1, { tip: { kind: "options", values: ["contracte"] } })).toBe("0 contracte");
+    // The page is the pager's words, not the status line's (owner, 17 November 2026).
+    expect(statusLine(4536, {})).toBe("4.536 de înregistrări");
+    expect(statusLine(14, { tip: { kind: "options", values: ["directe"] } })).toBe("14 achiziții directe");
+    expect(statusLine(0, { tip: { kind: "options", values: ["contracte"] } })).toBe("0 contracte");
     expect(recordsWord(1, { tip: { kind: "options", values: ["excluse"] } })).toBe("o achiziție directă exclusă din total");
     expect(recordsWord(3, { tip: { kind: "options", values: ["directe", "contracte"] } })).toBe("3 înregistrări");
   });

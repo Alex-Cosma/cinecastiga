@@ -92,7 +92,9 @@ describe("the risk cloud's answer", () => {
     const words = text(markup);
     expect(words).toContain("Primele 3 din 82");
     expect(words).toContain("Comuna Sageata (Primaria Comunei Sageata)");
-    expect(words).toContain("Primărie de comună · Buzău · 2.567 de achiziții directe");
+    // Owner, 17 November 2026 (less small print): the row's count of direct acquisitions is its records link's.
+    expect(words).toContain("Primărie de comună · Buzău Adunate, trec de plafon");
+    expect(words).not.toContain("2.567 de achiziții directe");
     expect(words).toContain(`${SPLIT} · 2018–2019`);
     expect(words).toContain("Mulți bani contractați în decembrie · 2022");
     expect(words).toContain("Declarate directe, peste plafon");
@@ -104,7 +106,9 @@ describe("the risk cloud's answer", () => {
     // UX audit Z3-08: the list's records say how many they are (its rows' direct acquisitions).
     expect(words).toContain("Vezi cele 4.827 de înregistrări →");
     expect(words).toContain("Toată lista pe /semnale");
-    expect(words).toContain("Tiparele sunt piste, nu dovezi. Valori înregistrate, nu plăți.");
+    // The answer's caveats are one (i) at its foot, no words on the page (owner, 17 November 2026: less small print).
+    expect(words).not.toContain("Valori înregistrate, nu plăți");
+    expect(markup).toMatch(/<p class="sc-foot"><span class="term term-tip[^"]*info-mark">.*?role="tooltip"[^>]*><b>De știut\.<\/b> Tiparele sunt piste, nu dovezi\. Valori înregistrate, nu plăți: suma achizițiilor directe acceptate/);
   });
 
   it("with a signal: the group stays the cloud, the head counts the signal's list, the records are the signal's", () => {
@@ -169,7 +173,9 @@ describe("the risk cloud's answer", () => {
     const words = text(markup);
     expect(words).toMatch(/instituții pe pătrățel: 1 · /);
     expect(words).toContain("fără semnal în scor, după valoare");
-    expect(words).toContain("3 instituții la stânga axei, sub 3 mii lei");
+    // Who is left of the axis: in the (i) after the ramp (owner, 17 November 2026: less small print).
+    expect(words).not.toContain("la stânga axei");
+    expect(markup).toMatch(/role="tooltip"[^>]*><b>La stânga axei\.<\/b> 3 instituții, sub 3 mii lei\.<\/span>/);
     // The strip's count, beside it.
     expect(markup).toContain(">14.100</text>");
     expect(markup).not.toContain(">grupul<");
@@ -230,7 +236,7 @@ describe("a stored scatter-2, drawn as it was", () => {
     expect(words).toContain("Finalizare rapidă 15");
     expect(words).toContain("Finalizare rapidă · 25,2%");
     expect(words).toContain("0,6 · 3 din 5");
-    expect(words).toContain("Semnalele sunt piste, nu dovezi.");
+    expect(markup).toMatch(/<b>De știut\.<\/b> Semnalele sunt piste, nu dovezi\./);
     expect(markup).not.toContain("cri-pill");
     expect(stripStatusWords(BUZAU_CLOUD_V2)).toBe("82 în listă, după semnale");
   });
@@ -452,8 +458,9 @@ describe("the chart's geometry and words", () => {
     expect(flagTag({ code: "da_rapid", share: 0.252 }, "supplier").text).toBe("Finalizare rapidă · 25,2%");
     expect(withFacts([{ code: "da_round" }, { code: "da_split", years: [2019] }], [{ code: "da_round", share: 0.25, rows: 647 }]))
       .toEqual([{ code: "da_round", share: 0.25, rows: 647 }, { code: "da_split", years: [2019] }]);
-    expect(cardFacts(21_000_000, 73, 3)).toEqual([{ label: "Achiziții directe:", value: "21 mil. lei" }, { label: "Risc", value: "73 din 100 · pronunțat" }, { label: "", value: "3 tipare" }]);
-    expect(cardFacts(900_000, 0, 0)).toEqual([{ label: "Achiziții directe:", value: "900.000 lei" }, { label: "Risc", value: "0 din 100 · fără semnal în scor" }]);
+    // The patterns are the card's lines, one tag each: not counted in its facts too (owner, 17 November 2026).
+    expect(cardFacts(21_000_000, 73)).toEqual([{ label: "Achiziții directe:", value: "21 mil. lei" }, { label: "Risc", value: "73 din 100 · pronunțat" }]);
+    expect(cardFacts(900_000, 0)).toEqual([{ label: "Achiziții directe:", value: "900.000 lei" }, { label: "Risc", value: "0 din 100 · fără semnal în scor" }]);
     expect([scoreWords(73), scoreWords(47), scoreWords(20), scoreWords(0)]).toEqual(["73 din 100 · risc pronunțat", "47 din 100 · risc moderat", "20 din 100 · risc slab", "0 din 100 · fără semnal în scor"]);
   });
 
@@ -466,8 +473,9 @@ describe("the chart's geometry and words", () => {
     expect(listHeadWords(out, 10)).toBe("Primele 10 din 81");
     expect([pointPlace(out, "2144803"), pointPlace(out, "2146202"), pointPlace(out, "2144792")]).toEqual([1, 2, null]);
     const markup = render(out);
-    expect(text(markup)).toContain("Primele 2 din 81 81 în listă · 1 inactiv ( Include-le )");
-    // UX audit Z3-20: the line adds up to the group (81 listed + 1 inactive = 82, the pill); the cloud-only ones join it.
+    // The line under the head says the inactive one and the way back in; the head says the list (owner, 17 November 2026).
+    expect(text(markup)).toContain("Primele 2 din 81 1 inactiv ( Include-le )");
+    // UX audit Z3-20: the parts add up to the group (81 listed + 1 inactive = 82, the pill); the cloud-only ones join them.
     expect(listSumParts(out)).toMatchObject({ inList: 81, historic: 1 });
     expect(listSumParts({ ...out, group: { ...out.group, n: out.group.nList + 8 } })).toMatchObject({ inList: 81, historic: 1, cloudOnly: 8, from: 10, to: 19 });
     expect(listSumParts({ ...BUZAU_CLOUD, historic: 0, group: { ...BUZAU_CLOUD.group, n: BUZAU_CLOUD.group.nList } })).toBeNull();

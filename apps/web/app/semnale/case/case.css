@@ -251,6 +251,8 @@ a.dot{cursor:pointer}
 
 .sgc-cp{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}.sgc-cp a{color:var(--ink2)}
 .sgc-foot{margin:22px 0 0;font-size:12.5px;color:var(--muted)}
+/* A word and the "i" after it stay on one line (owner, 17 November 2026); the mark's box sets its own wrapping. */
+.sgc-keep{white-space:nowrap}
 .sgc-foot a{color:var(--accent)}
 
 @media (max-width:760px){
@@ -343,10 +345,10 @@ a.dot{cursor:pointer}
 .sgc-yband .bar i{display:block;height:100%;border-radius:6px 0 0 6px;background:var(--accent)}
 .sgc-yband .bar s{position:absolute;top:-6px;bottom:-6px;border-left:2px dashed var(--ink)}
 .sgc-yband .tk{position:relative;height:22px;margin-top:6px;font-size:13px;line-height:1.4;color:var(--muted)}
-.sgc-yband .tk span{position:absolute;transform:translateX(-50%);white-space:nowrap}
-.sgc-yband .tk span.l{transform:none}.sgc-yband .tk span.r{transform:translateX(-100%)}
+.sgc-yband .tk>span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.sgc-yband .tk>span.l{transform:none}.sgc-yband .tk>span.r{transform:translateX(-100%)}
 .sgc-one>summary .sgc-mini,.sgc-one>summary .sgc-x,.sgc-one>summary .sgc-who small{display:none}
-@media (max-width:760px){.sgc-yband{padding:16px}.sgc-yband .lg b{font-size:26px}.sgc-yband .tk{height:auto}.sgc-yband .tk span{position:static;transform:none;white-space:normal}}
+@media (max-width:760px){.sgc-yband{padding:16px}.sgc-yband .lg b{font-size:26px}.sgc-yband .tk{height:auto}.sgc-yband .tk>span{position:static;transform:none;white-space:normal}}
 /* A second threshold close to the first takes the line under it, ending at its tick (Z6-38: „85%: punctaj mai mare”). */
 .sgc-ticks:has(.low){height:46px}
 .sgc-ticks span.low{height:28px}

@@ -15,6 +15,7 @@ import DetailCard, { type CardFact, type CardLine } from "./answer/DetailCard";
 import { recordsWords } from "./answer/KitLink";
 import type { AnswerFact } from "./answer/use-answer-fact";
 import HelpTip from "./builder/HelpTip";
+import InfoMark from "../../components/InfoMark";
 import type { KitLink } from "./builder/kit-types";
 import { G } from "../../components/ghost/Ghost";
 import { chartPace } from "../../components/motion/pace";
@@ -266,6 +267,14 @@ export default function MapBlock({
   const country = lens === "value_per_capita" || lens === "seat" || lens === "share" ? nationalMetric({ counties, unknown, ...(local ? { local } : {}) }, lens, ready,
     Boolean(asked.filters.county) || asked.filters.uatSiruta != null) : null;
   const tipRow = tip ? rowByKey.get(tip.key) : undefined;
+  // Fine print in marks (owner, 17 November 2026: less small print under the map): what the map leaves out is in the
+  // legend's (?); Ilfov's seat, the population and the strict list are in an (i) after the national figure.
+  const unknownNote = unknown.count > 0 && national > 0 ? `${asCount
+    ? `${countWords(unknown.count, "înregistrare", "înregistrări")} (${formatShare(unknownMeasure / national)} din selecție)`
+    : `${formatRon(unknown.value)} (${formatShare(unknownMeasure / national)} din selecție, ${countWords(unknown.count, "înregistrare", "înregistrări")})`} ${asCount && unknown.count === 1 ? "are instituția fără județ cunoscut și nu apare" : "au instituția fără județ cunoscut și nu apar"} pe hartă.` : null;
+  const strict = local ? localNotes(local) : [];
+  const countryMark = lens === "seat" ? <InfoMark title={SEAT_TIP.title} text={`București și Ilfov: firmele mari au sediul în capitală. ${SEAT_TIP.text}`} />
+    : lens === "value_per_capita" ? <InfoMark title="Pe locuitor" text={`Populația rezidentă, RPL 2021.${strict[0] ? ` ${strict[0].text}. ${strict[0].tip}` : ""}`} /> : null;
 
   return (
     <div className="ask-maplayout">
@@ -327,7 +336,7 @@ export default function MapBlock({
           ))}
           <span>mai mult</span>
           {(lens === "seat" || lens === "share" || lens === "value_per_capita") && <span className="sw ask-county-muted" aria-label="date puține" />}
-          <span className="qb"><HelpTip tip={LEGEND_TIP} /></span>
+          <span className="qb"><HelpTip tip={unknownNote ? { ...LEGEND_TIP, text: `${LEGEND_TIP.text} ${unknownNote}` } : LEGEND_TIP} /></span>
         </div>
         {card && (() => {
           const c = cardOf(card.label, card.key);
@@ -345,22 +354,15 @@ export default function MapBlock({
           );
         })()}
         {country !== null && (
-          <p className="ask-fine">Pe țară: {metricWords(lens, country)}{lens === "seat" ? " la firme din județ" : lens === "value_per_capita" ? " (populația rezidentă, RPL 2021)" : ""}</p>
+          <p className="ask-fine">Pe țară: {metricWords(lens, country)}{lens === "seat" ? " la firme din județ" : ""}{countryMark && <>{" "}{countryMark}</>}</p>
         )}
-        {lens === "seat" && (
+        {lens === "seat" && country === null && (
           <p className="ask-fine qb-tipwrap-sm">București și Ilfov: firmele mari au sediul în capitală <span className="qb"><HelpTip tip={SEAT_TIP} /></span></p>
         )}
-        {local && localNotes(local).map((note) => (
+        {/* The strict list's line is in the per-inhabitant (i) when the national figure is drawn. */}
+        {strict.slice(lens === "value_per_capita" && country !== null ? 1 : 0).map((note) => (
           <p key={note.text} className="ask-fine qb-tipwrap-sm">{note.text} <span className="qb"><HelpTip tip={{ title: "Primăriile și consiliile județene", text: note.tip }} /></span></p>
         ))}
-        {unknown.count > 0 && national > 0 && (
-          <p className="ask-fine">
-            {asCount
-              ? `${countWords(unknown.count, "înregistrare", "înregistrări")} (${formatShare(unknownMeasure / national)} din selecție)`
-              : `${formatRon(unknown.value)} (${formatShare(unknownMeasure / national)} din selecție, ${countWords(unknown.count, "înregistrare", "înregistrări")})`}{" "}
-            {asCount && unknown.count === 1 ? "are instituția fără județ cunoscut și nu apare" : "au instituția fără județ cunoscut și nu apar"} pe hartă · procentele sunt din totalul selecției
-          </p>
-        )}
         {tip && (
           <TipBox x={tip.x} y={tip.y}>
             <CountyTip label={tip.label} value={tipRow?.value ?? 0} count={tipRow?.count ?? 0} national={national} asCount={asCount}

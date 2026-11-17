@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ENTITY_TABLE_EVENT, ENTITY_YEAR_EVENT } from "./entity-top";
-import { formatRonFull, formatExactDecimal, formatInt, formatCalendarDate, cleanName } from "@/lib/format";
+import { formatRonFull, formatExactDecimal, formatCalendarDate, cleanName } from "@/lib/format";
 import { FLAG_META, flagRecordLabel } from "@/lib/flags";
 import { daUrl, awardUrl } from "@/lib/elicitatie";
 import { useTip } from "../../intreaba/use-tip";
@@ -157,7 +157,7 @@ export default function TxTable({
   const stale = loading && rows.length > 0;
   // The status line keeps the shown rows' words while others load (the floating status says it is loading), so it
   // neither changes length nor is read out twice.
-  const line = loading ? null : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, page, pages, filters.state);
+  const line = loading ? null : error ? "Înregistrările nu au putut fi încărcate." : statusLine(total, filters.state);
   // A year or a filter that changes how many records there are marks the line once (M-05); a page turn does not.
   useChangedMark(status, loading || error ? null : total, entityId);
   const [shownLine, setShownLine] = useState(line);
@@ -199,6 +199,9 @@ export default function TxTable({
       <div className="tx-head">
         <div className={`ask-detmeta${stale ? " g-stale" : ""}`} role="status" ref={status} tabIndex={-1}>
           {line ?? (stale ? shownLine : "Se încarcă înregistrările…")}
+          {/* The page is shown by the pager under the table (owner, 17 November 2026: less repeated text); a screen
+              reader still hears it here, where a page turn puts the focus. */}
+          {line !== null && !error && pages > 1 && <span className="d-sr-only"> · pagina {page} din {pages}</span>}
         </div>
         {/* The selection shown, as a file; Întreabă's drawer for captures and follows (UX audit Z5-12). */}
         <div className="tx-tools">
@@ -280,7 +283,6 @@ export default function TxTable({
                       ? <EntityName id={m.partnerId} role="supplier">{cleanName(m.partnerName)}</EntityName>
                       : (m.partnerName ?? "—")}</span>)}
                   </span>
-                  <span className="cons-line">{formatInt(members.length)} înregistrări, câte una pe membru</span>
                 </td>
                 ) : (
                 <td className="clip c-party" {...tip.bindClip(cleanName(t.partnerName))}>

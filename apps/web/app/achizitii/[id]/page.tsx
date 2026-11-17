@@ -13,6 +13,7 @@ import { formatRatio, formatUnitPrice, ratioWords } from "@/lib/unit-prices-shar
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
 import Term from "@/components/Term";
+import InfoMark from "@/components/InfoMark";
 import RecordTitle from "@/components/record/RecordTitle";
 import ItemsMore from "@/components/record/ItemsMore";
 import SeapDetails from "@/components/record/SeapDetails";
@@ -83,8 +84,10 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
   // A missing title is said once, in the identity line, when the page names it after its products or its category.
   const missing = [!d.title && !namedByProducts && !d.cpvName && "titlu", !d.cpvName && !d.cpvCode && "categorie CPV", !d.publishedAt && "data publicării", !d.finalizedAt && "data finalizării", d.estimate == null && "valoare estimată"].filter((f): f is string => !!f);
 
+  // Why it stays out of the totals opens from a mark (owner, 17 November 2026: less small print); the fact stays.
+  const outWhy = closing != null && closing > 2_000_000 ? "Peste 2 milioane lei, limita de plauzibilitate a site-ului." : closing != null && closing <= 0 ? "Valoare zero." : null;
   const notes = [
-    !purchase || x.counted || sameParty ? null : closing != null && closing > 2_000_000 ? "Nu intră în totaluri: peste 2 milioane lei, limita de plauzibilitate a site-ului." : closing != null && closing <= 0 ? "Nu intră în totaluri: valoare zero." : "Nu intră în totaluri.",
+    !purchase || x.counted || sameParty ? null : outWhy ? <>Nu intră în totaluri <InfoMark title="Motivul" text={outWhy} /></> : "Nu intră în totaluri.",
     x.valueSuspect === true && purchase && "Valoare neplauzibilă față de estimare: o verificăm separat.",
     sameParty && (purchase ? <>Furnizorul înregistrat este chiar instituția: neconcordanță în sursă. Rămâne în totalul instituției, nu la furnizori. <Link href="/metodologie#totaluri">Cum se formează totalurile</Link></> : "Ofertantul înregistrat este chiar instituția: neconcordanță în sursă."),
   ];
@@ -137,7 +140,8 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
         d.cpvCode && { label: "Cod CPV", value: d.cpvCode },
       ]} />
     </RecordSection>
-    {x.items.length > 0 && <RecordSection id="produse" title="Ce s-a cumpărat">
+    {/* How the lines are written opens from a mark beside the heading (owner, 17 November 2026: less small print). */}
+    {x.items.length > 0 && <RecordSection id="produse" title={<>Ce s-a cumpărat <InfoMark title="Liniile" text="Așa cum le-a scris instituția în SEAP; unitățile nu sunt standardizate." /></>}>
       {/* Each line's total and their sum, as the institution wrote them (UX audit Z7-16); on a phone one short row per
           product and the first ten, then the rest on demand. */}
       <ItemsMore count={x.items.length}>
@@ -167,9 +171,9 @@ export default async function Acquisition({ params }: { params: Promise<{ id: st
         </tr>; })}</tbody>
         {sums.counted > 0 && <tfoot><tr><td colSpan={4}>{sums.counted === sums.lines ? `Suma celor ${countWords(sums.lines, "linie", "linii")}` : `Suma celor ${countWords(sums.counted, "linie", "linii")} cu preț, din ${sums.lines}`}</td><td className="record-num">{formatExactDecimal(sums.sum)} lei</td></tr></tfoot>}
       </table>
-      {sums.note && <p className="record-items-note">{sums.note}</p>}
+      {/* A sum equal to the closing value is seen in the sum row and the head's figure; a difference is said. */}
+      {sums.note && sums.note !== "Egală cu valoarea de închidere." && <p className="record-items-note">{sums.note}</p>}
       </ItemsMore>
-      <p className="record-missing">Așa cum le-a scris instituția în SEAP; unitățile nu sunt standardizate.</p>
     </RecordSection>}
     <RecordSection id="parti" title={purchase ? "Instituție și furnizor" : "Instituție și ofertant"}>
       <PartyList institution={{ name: authority, place: countyLabel(x.authorityCounty) }} parties={parties} />

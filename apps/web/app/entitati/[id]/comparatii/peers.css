@@ -1,7 +1,6 @@
 /* Comparații (owner, 6 November 2026, "Șirul celor 465"). The .px-* rules are the error and empty states; .pxs-* is the page
    (its first answer loads as a ghost in the page's own classes, PeersGhost). */
 .px-error,.px-empty{padding:30px 0;min-height:320px}
-.px-notice{color:var(--ink2);font-size:14px;background:var(--sunk);padding:14px 18px;border-radius:7px}
 /* ---- the page (.pxs) ---- */
 .pxs{max-width:1200px;margin:22px auto 72px;color:var(--ink);font-size:15px;line-height:1.55;overflow-wrap:anywhere}
 .pxs :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
@@ -16,9 +15,10 @@
 .pxs-lede{margin:6px 0 0;max-width:none;font-size:15.5px;color:var(--ink2)}
 .pxs-lede b{color:var(--ink);font-weight:600}
 .pxs-note{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}
-.pxs-caveat{margin:18px 0 0;font-size:13px;color:var(--muted)}
 /* Filters: one row of buttons, each opening the site's short window; applied at once */
 .pxs-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+/* „în curs ⓘ” beside a year in progress (owner, 17 November 2026: it was a notice over the chart) */
+.pxs-partial{display:inline-flex;align-items:center;gap:2px;margin-left:-2px;font-size:13px;color:var(--muted);white-space:nowrap}
 .pxs-pick{display:inline-flex;align-items:center;gap:7px;min-height:36px;max-width:100%;padding:6px 11px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);color:var(--muted);font-size:13px}
 .pxs-pick b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--ink);font-size:13.5px;max-width:34ch}
 .pxs-pick svg{flex:none}
@@ -32,6 +32,7 @@
 /* The stage: the swarm on the value axis */
 .pxs-stage{margin-top:16px;padding:14px 20px 10px;border:1px solid var(--line);border-radius:14px;background:var(--surface);container-type:inline-size}
 .pxs-key{margin:0;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
+.pxs-scale{display:inline-flex;align-items:center;gap:2px;white-space:nowrap}
 .pxs-legend{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 12px;color:var(--ink2)}
 .pxs-legend>span{white-space:nowrap}
 .pxs-legend .sw{display:inline-block;margin-right:5px;vertical-align:-2px}
@@ -143,6 +144,8 @@ span.pxs-src{display:inline-flex;align-items:center}
   .pxs-pick svg{grid-column:2;grid-row:1/3;align-self:center}
   .pxs-filters>.pxs-pick:nth-of-type(2){grid-column:1/-1;order:3}
   .pxs-filters .pxs-seg{order:4}
+  /* „în curs ⓘ” under the period, not in the county's cell */
+  .pxs-filters>.pxs-partial{grid-column:1/-1;order:2;margin:-2px 0 0 2px}
   .pxs-stage{padding:12px 12px 8px;margin-inline:-4px}
   .pxs-stage-top .pxs-seg{width:100%;display:grid;grid-template-columns:1fr 1fr}
   .pxs-row{grid-template-columns:26px minmax(0,1fr) 92px auto;gap:8px}

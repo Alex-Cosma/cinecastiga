@@ -20,16 +20,16 @@ describe("liveNotes", () => {
     expect(out.subclasses).toBe("fără 3 subclase (vezi limitele)");
   });
 
-  it("a breakdown: the measure and the stream, which no phrase says, stay as words; „pe domenii” does not", () => {
+  it("a breakdown: the measure and the whole stream are shown by the controls under the title, so no words repeat them", () => {
     const spec = { block: "breakdown", measure: "value", filters: { authorityId: 2145984, authorityName: "SPITALUL JUDETEAN DE URGENTA BUZAU" } } as unknown as AskSpec;
     const pills = ["pe domenii", "valoarea înregistrată", "SPITALUL JUDETEAN DE URGENTA BUZAU", "toți anii", "toate achizițiile: directe și din proceduri"];
-    expect(liveNotes(spec, pills, {}, view(spec)).notes).toEqual(["valoarea înregistrată", "toate achizițiile: directe și din proceduri"]);
+    expect(liveNotes(spec, pills, {}, view(spec)).notes).toEqual([]);
   });
 
-  it("a risk cloud: the size of its group stays, with „achiziții directe”", () => {
+  it("a risk cloud: „achiziții directe” stays; the group's size is on the pill „Tot grupul”", () => {
     const spec = { block: "scatter", dim: "authority", filters: { county: "Buzău" } } as unknown as AskSpec;
     const pills = ["337 de instituții publice", "județul Buzău", "achiziții directe"];
-    expect(liveNotes(spec, pills, { scatterGroup: 337 }, view(spec)).notes).toEqual(["337 de instituții publice", "achiziții directe"]);
+    expect(liveNotes(spec, pills, { scatterGroup: 337 }, view(spec)).notes).toEqual(["achiziții directe"]);
   });
 
   it("words the sentence already says are not repeated", () => {

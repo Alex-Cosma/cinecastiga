@@ -12,10 +12,12 @@ import type { KitOption } from "@/app/intreaba/builder/kit-types";
 import "@/app/intreaba/builder/filters-kit.css";
 import ClipButton from "@/components/ClipButton";
 import EntityName from "@/components/EntityName";
+import InfoMark from "@/components/InfoMark";
 import Term from "@/components/Term";
 import { G, Ghost, rankWidth } from "@/components/ghost/Ghost";
 import { FloatStatus } from "@/components/ghost/client";
 import { countWords } from "@/lib/ask/answer-text";
+import { glossaryEntry } from "@/lib/glossary";
 import { formatEvidenceAmount } from "@/lib/ask/evidence";
 import type { ConnectionRole } from "@/lib/connections-shared";
 import { entityHref } from "@/lib/entity-href";
@@ -194,7 +196,7 @@ function PeersGhost({ name }: { name: string }) {
   return <Ghost name="pxs-answer" wait="client" label="Se construiește grupul și se verifică sursele…">
     <section className="pxs-stage">
       <div className="pxs-stage-top">
-        <p className="pxs-key"><span><G.Line w="44ch" /><G.Line w="30%" only="phone" /></span>
+        <p className="pxs-key"><span className="pxs-scale">scară logaritmică <G.Block w="24px" h="24px" r="6px" /></span>
           <span className="pxs-legend" aria-hidden="true"><span><i className="sw band" />jumătatea din mijloc</span><span><i className="sw med" />mediana</span><span><i className="sw me" />{name}</span></span></p>
         <div className="pxs-seg pxs-seg-g g-quiet" aria-hidden="true"><span>Total</span><span>Pe înregistrare</span></div>
       </div>
@@ -218,11 +220,9 @@ function PeersGhost({ name }: { name: string }) {
         <span className="pxs-more"><G.Line inline w="24ch" /></span>
       </section>
       <section className="pxs-who" aria-hidden="true"><h2>Cine e în grup <span className="term term-tip"><span className="term-trigger"><span className="term-mark">?</span></span></span></h2>
-        <p><G.Line w="100%" /><G.Line w="56%" /><G.Line w="88%" only="phone" /><G.Line w="38%" only="phone" /></p>
         <div className="pxs-acts"><G.Block w="7.8em" h="36px" /><G.Block w="10.2em" h="36px" /><G.Block w="7.75em" h="36px" /></div>
       </section>
     </div>
-    <p className="pxs-caveat">Valori înregistrate, nu plăți. O diferență față de mediană e o pistă, nu o dovadă.</p>
     <div className="pxs-method g-quiet" aria-hidden="true"><span className="pxs-method-s"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</span></div>
   </Ghost>;
 }
@@ -509,8 +509,8 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
     const populationWords = (m: PeerMember | undefined) => {
       const p = m?.population;
       if (!p || method === "activity") return undefined;
-      const d = p.differencePercent === null || p.differencePercent === undefined ? 0 : Math.round(p.differencePercent);
-      return `${countWords(p.value, "locuitor", "locuitori")}${d !== 0 ? ` (${d > 0 ? "+" : "−"}${count(Math.abs(d))}%)` : ""}`;
+      // The population alone: hers is on her own row (owner, 17 November 2026; before: „(+4%)” after each).
+      return countWords(p.value, "locuitor", "locuitori");
     };
     const rows: Row[] = points.map((p) => ({ id: p.id, name: p.name, value: metric === "total" ? p.total : p.mean, exact: metric === "total" ? p.totalExact : p.meanExact, records: p.records, focal: false, rank: null, extra: populationWords(byId.get(p.id)) }));
     rows.push({ id: entityId, name: currentName, value: focalValue, exact: metric === "total" ? focal.totalExact : focal.meanRounded, records: focal.recordCount, focal: true, rank: null,
@@ -600,6 +600,9 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
     return p?.placeName ? { name: p.placeName, county: p.level === "sector" ? null : countyLabel(p.county) } : null;
   };
   const showFilters = !unknownType && !(error && !data);
+  // „Cine e în grup”: the group's rule and its source, said in the title's (?) (owner, 17 November 2026: a paragraph before).
+  const populationRule = data && focal?.population ? <>Cele {count(data.cohort.count)} administrații din țară cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : null;
+  const activityRule = data && focal ? `${role === "supplier" ? "Firmele" : KIND_PLURAL[data.cohort.authorityKind ?? ""] ?? "Instituțiile de același tip"} cu activitate asemănătoare ${cpvCode === "all" ? (yearValue === "all" ? "în toți anii" : "în același an") : yearValue === "all" ? "în același domeniu, în toți anii" : "în același domeniu și an"}: între jumătate și dublul celor ${recordsWords(focal.recordCount)} ale ei. Un reper, nu o listă de concurenți.` : "";
 
   return <div className="pxs" onClickCapture={(e) => {
     // A member's page opened from a row: Back brings its row into view (UX audit Z4-33).
@@ -625,11 +628,12 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
 
     {showFilters && <div className="pxs-filters" role="group" aria-label="Ce se compară">
       <Choice label="Perioada" text={data ? (yearValue === null ? "—" : peerPeriodLabel(yearValue)) : request.year || <PickGhost w="5ch" />} title="Ce an?" options={yearOptions} value={data ? String(data.filters.year ?? "") : request.year} onPick={(year) => change({ year })} disabled={!options} />
+      {/* Two words and an "i" beside the year (owner, 17 November 2026; before: a notice over the chart). */}
+      {data && !unknownType && typeof data.filters.year === "number" && data.filters.year >= new Date().getFullYear() && <span className="pxs-partial">în curs <InfoMark title="An în curs" text="Anul ales e în curs: valorile nu acoperă un an întreg." /></span>}
       <Choice label="Domenii" text={data ? cpvCode === "all" ? "Toate" : cpvCode === null ? "—" : `${cpvCode} · ${domainOf(cpvCode)}` : <PickGhost w="22ch" />} title="Ce domeniu?" options={cpvOptions} value={data?.filters.cpv ?? request.cpv} onPick={(cpv) => change({ cpv })} disabled={!options} />
       <div className="pxs-seg" role="group" aria-label="Achizițiile comparate">{DATASETS.map((d) => <button key={d.value} type="button" aria-pressed={(data?.filters.dataset ?? request.dataset) === d.value} disabled={!data} onClick={() => change({ dataset: d.value })}>{d.label}</button>)}</div>
       {method !== "manual" && (countyOptions.length > 1 || !options) && <Choice label="Județul" text={data?.filters.county ? countyLabel(data.filters.county) ?? data.filters.county : options ? "Toată țara" : <PickGhost w="9ch" />} title="Membrii din ce județ?" options={countyOptions} value={data?.filters.county ?? ""} onPick={(county) => change({ county })} disabled={!options} />}
     </div>}
-    {data && !unknownType && typeof data.filters.year === "number" && data.filters.year >= new Date().getFullYear() && <p className="px-notice">Anul ales e în curs: valorile nu acoperă un an întreg.</p>}
 
     {firstLoad ? <PeersGhost name={shownName} />
       // Unavailable (UX audit Z4-26): no filters that look as if they were loading, when it comes back, and ways out.
@@ -646,16 +650,16 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
         <div className={busy ? "g-stale" : undefined} aria-busy={busy || undefined}>
         {unknownType ? <UnknownType focal={focal ?? null} division={cpvCode && cpvCode !== "all" ? { code: cpvCode, name: domainName(cpvCode, division?.label) } : null} county={data.entity.county} year={typeof yearValue === "number" ? yearValue : null}
             pageHref={entityHref(entityId, role)} onSources={focal ? () => showSources(focal) : null} busy={busy} />
-        : !focal ? <section className="px-empty"><h2>Nu avem înregistrări eligibile în această selecție.</h2><p>Schimbă perioada, domeniul sau canalul. {data.filters.year !== "all" && " Înregistrările fără an utilizabil sunt excluse."}{data.filters.cpv !== "all" && " Înregistrările fără cod CPV utilizabil sunt excluse."}</p>
+        : !focal ? <section className="px-empty"><h2>Nu avem înregistrări eligibile în această selecție.</h2><p>Schimbă perioada, domeniul sau canalul.{(data.filters.year !== "all" || data.filters.cpv !== "all") && <> <InfoMark title="Ce e exclus" text={[data.filters.year !== "all" && "Înregistrările fără an utilizabil sunt excluse.", data.filters.cpv !== "all" && "Înregistrările fără cod CPV utilizabil sunt excluse."].filter(Boolean).join(" ")} /></>}</p>
             {widen && <div className="pxs-acts pxs-acts--out">{widenButtons("pxs-btn")}</div>}</section> : <>
           {ranking && axis ? <section className="pxs-stage" aria-label="Locul în grup">
             <div className="pxs-stage-top">
-              <p className="pxs-key"><span>Fiecare punct e {noun[0] === "firmă" ? "o firmă" : noun[0] === "administrație" ? "o administrație" : "o instituție"} din grup, după {metric === "total" ? "valoarea înregistrată" : "valoarea pe înregistrare"}, pe o scară logaritmică{data.pointsSampled ? ` (un eșantion de ${count(points.length)} din ${count(observedCount)})` : ""}.</span>
+              {/* Two words and an "i" (owner, 17 November 2026; before: the whole sentence over the chart). */}
+              <p className="pxs-key"><span className="pxs-scale">scară logaritmică <InfoMark title="Cum citești graficul" text={`Fiecare punct e ${noun[0] === "firmă" ? "o firmă" : noun[0] === "administrație" ? "o administrație" : "o instituție"} din grup, după ${metric === "total" ? "valoarea înregistrată" : "valoarea pe înregistrare"}, pe o scară logaritmică${data.pointsSampled ? ` (un eșantion de ${count(points.length)} din ${count(observedCount)})` : ""}.${metric === "mean" ? " Valoarea totală împărțită la numărul de înregistrări. Nu e un preț unitar: un domeniu CPV adună achiziții foarte diferite." : ""}${observedCount < data.cohort.count ? ` ${countWords(data.cohort.count - observedCount, "membru fără înregistrări rămâne", "membri fără înregistrări rămân")} în grup, dar nu în desen și nici în mediană: lipsa înregistrărilor nu înseamnă zero lei.` : ""}${median === null ? " Mediana cere cel puțin 5 alți membri cu înregistrări." : ""}`} /></span>
                 <span className="pxs-legend" aria-hidden="true"><span><i className="sw band" />jumătatea din mijloc</span><span><i className="sw med" />mediana</span><span className="pxs-legend-me"><i className="sw me" />{shownName}</span></span></p>
               <div className="pxs-seg" role="group" aria-label="Măsura"><button type="button" aria-pressed={metric === "total"} onClick={() => setMetric("total")}>Total</button><button type="button" aria-pressed={metric === "mean"} onClick={() => setMetric("mean")}>Pe înregistrare</button></div></div>
             <Swarm points={points} focal={{ name: shownName, value: focalValue }} median={median} metric={metric} role={role} rank={rank} total={total} axis={axis} rankOf={rankOf}
               compact={small} nameOf={(id: string, name: string) => placeOf(id)?.name ?? cleanName(name)} />
-            {metric === "mean" && <p className="pxs-note">Valoarea totală împărțită la numărul de înregistrări. Nu e un preț unitar: un domeniu CPV adună achiziții foarte diferite.</p>}
           </section> : <section className="px-empty px-empty--short"><h2>{comparisonAvailable && focal.recordCount === 0 ? "Nu are înregistrări în această selecție." : "Grupul nu are încă membri cu înregistrări."}</h2>
             <p>{data.filters.county ? "Încearcă toată țara, alt an sau alt domeniu." : method === "manual" ? "Grupul ales e gol: revino la grupul automat." : widen ? "Lărgește selecția:" : "Încearcă alt canal."}</p>
             {widen && <div className="pxs-acts pxs-acts--out">{widenButtons("pxs-btn")}</div>}</section>}
@@ -670,13 +674,12 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
                 {data.cohort.count > 5 && <button type="button" className="pxs-more" aria-expanded={listOpen} aria-controls="peer-members" onClick={openList}>Tot clasamentul · {countWords(total, noun[0], noun[1])}
                   <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg></button>}
               </section>)}
-            <section className="pxs-who" aria-labelledby="pxs-who-h"><h2 id="pxs-who-h">Cine e în grup{method === "activity" ? <> <Term tip id="grup-activitate" /></> : method === "population" ? <> <Term tip id="grup-populatie" /></> : null}</h2>
-              {/* Said once (UX audit Z4-35): the rule and its source; the number is in the title, the median on the drawing. */}
-              {method === "population" ? <p>{focal.population ? <>Cele {count(data.cohort.count)} administrații din țară cu populația cea mai apropiată de a ei ({countWords(focal.population.value, "locuitor", "locuitori")}, recensământ {focal.population.referenceDate.slice(0, 4)}, <a href={focal.population.sourceUrl} target="_blank" rel="noreferrer">sursa INS</a>). Achizițiile nu contează la alegere.</> : "Nu am putut identifica sigur populația acestei administrații, deci nici grupul după populație."}</p>
-                : method === "manual" ? <p>Grupul ales de tine: {countWords(data.cohort.count, noun[0], noun[1])}, din orice județ (cel mult 50). Rămâne când schimbi anul sau domeniul.</p>
-                : <p>{role === "supplier" ? "Firmele" : KIND_PLURAL[data.cohort.authorityKind ?? ""] ?? "Instituțiile de același tip"} cu activitate asemănătoare {cpvCode === "all" ? (yearValue === "all" ? "în toți anii" : "în același an") : yearValue === "all" ? "în același domeniu, în toți anii" : "în același domeniu și an"}: între jumătate și dublul celor {recordsWords(focal.recordCount)} ale ei. Un reper, nu o listă de concurenți.</p>}
-              {observedCount < data.cohort.count && <p className="pxs-note">{countWords(data.cohort.count - observedCount, "membru fără înregistrări rămâne", "membri fără înregistrări rămân")} în grup, dar nu în desen și nici în mediană: lipsa înregistrărilor nu înseamnă zero lei.</p>}
-              {median === null && comparisonAvailable && <p className="pxs-note">Mediana cere cel puțin 5 alți membri cu înregistrări.</p>}
+            <section className="pxs-who" aria-labelledby="pxs-who-h"><h2 id="pxs-who-h">Cine e în grup{method === "activity" ? <> <Term tip title={glossaryEntry("grup-activitate").title} text={`${activityRule} ${glossaryEntry("grup-activitate").text}`} /></>
+                : method === "population" ? <> <Term tip title={glossaryEntry("grup-populatie").title} text={populationRule ? <>{populationRule} {glossaryEntry("grup-populatie").text}</> : glossaryEntry("grup-populatie").text} /></> : null}</h2>
+              {/* Said once (UX audit Z4-35): the rule and its source, in the title's (?) (owner, 17 November 2026: it was a
+                  paragraph here); the number is in the lede, the median on the drawing. */}
+              {method === "population" ? !focal.population && <p>Nu am putut identifica sigur populația acestei administrații, deci nici grupul după populație.</p>
+                : method === "manual" && <p>Grupul ales de tine: {countWords(data.cohort.count, noun[0], noun[1])} <InfoMark title="Grupul ales" text="Din orice județ (cel mult 50). Rămâne când schimbi anul sau domeniul." /></p>}
               {/* One row, one size (owner, 6 November 2026: the buttons looked thrown at random): her sources first, the
                   whole comparison's sources, then keeping it (investigation, link); a copied hand-picked group adds the way back. */}
               <div className="pxs-acts">
@@ -687,8 +690,9 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
                 <span className="d-sr-only" role="status">{linkCopied ? "Link copiat. Păstrează criteriile și versiunea datelor." : ""}</span>
                 {mapHref && <Link className="pxs-btn" href={mapHref} prefetch={false}>Pe hartă: {onMap?.siruta && onMap.siruta !== 179132 ? shownName : countyLabel(onMap?.county) ?? "județul"} ›</Link>}
                 {method === "manual" && <button type="button" className="pxs-btn" disabled={busy} onClick={resetGroup}>Revino la grupul automat</button>}
+                {/* Why „Sursele comparației” is missing: an "i" (owner, 17 November 2026; before: a note under the buttons). */}
+                {!canCapture && comparisonAvailable && <InfoMark title="Sursele comparației" label="De ce lipsesc sursele comparației" text="Grupul are peste 499 de membri: restrânge județul ca să salvezi întreaga comparație." />}
               </div>
-              {!canCapture && comparisonAvailable && <p className="pxs-note">Grupul are peste 499 de membri: restrânge județul ca să salvezi întreaga comparație. Sursele fiecărui membru rămân la un clic.</p>}
               {copied && <p className="pxs-note" role="status">{copied}</p>}
             </section>
           </div>
@@ -707,7 +711,6 @@ export default function PeersExplorer({ entityId, entityName, county = null, rol
             </>}
           </section>}
         </>}
-        <p className="pxs-caveat">Valori înregistrate, nu plăți. O diferență față de mediană e o pistă, nu o dovadă.</p>
         </div>
         <details className="pxs-method"><summary><svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true"><path d="M4.5 3 7.5 6 4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Cum e construit grupul și ce limite are</summary>
           {/* Three plain sentences first (UX audit Z4-42), the technical text behind its own fold. */}

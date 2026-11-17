@@ -262,7 +262,7 @@ function mountAtlas(
       ...(node.officialName && node.officialName !== node.name ? [[node.officialName, "dat-official"] as [string, string]] : []),
       [description, "dat-code"],
       [node.valueExact !== undefined ? formatEvidenceAmount(node.valueExact) : `${exactMoney.format(node.value)} lei`, "dat-value"],
-      [`${percent.format(share)}% ${shareLabel}`, "dat-share"],
+      [`${percent.format(share)}%`, "dat-share"],
       [`${hint} →`, "dat-hint"],
     ];
     tooltip.replaceChildren(...rows.map(([text, className]) => {
@@ -395,7 +395,7 @@ function mountAtlas(
           const foot = document.createElement("span");
           foot.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:12px;font-size:12px;flex:none";
           const amount = document.createElement("span");
-          amount.textContent = `${percent.format(share)}% ${shareLabel}`;
+          amount.textContent = `${percent.format(share)}%`;
           foot.style.paddingRight = "38px";
           foot.append(amount);
           label.append(foot);

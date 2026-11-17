@@ -54,14 +54,12 @@ export default function EntitySignalsLoading() {
               <div className="sgc-yaxis" />
               <div className="sgc-cols">{COLS.map((h, i) => <span key={i} className="g-block" style={{ flex: 1, height: `${h}%`, borderRadius: "2px 2px 0 0" }} />)}</div>
             </div>
-            <p className="sgc-cap"><G.Line w="96%" /><G.Line w="54%" /><G.Line w="88%" only="phone" /><G.Line w="46%" only="phone" /></p>
           </section>
           <section className="sgc-side">
             <h2><G.Line w="190px" /></h2>
             <p className="sgc-big"><span><G.Line inline w="1.9em" /></span><small><G.Line inline w="190px" /></small></p>
             <div className="sgc-groups">{GROUPS.map((h, i) => <div key={i}><span className="g-block" style={{ width: "100%", height: `${h}%`, borderRadius: "3px 3px 0 0" }} /></div>)}</div>
             <div className="sgc-glab">{GROUPS.map((_, i) => <span key={i}><G.Line w="86%" /><small><G.Line w="44%" /></small></span>)}</div>
-            <p className="sgc-cap"><G.Line w="78%" /><G.Line w="40%" only="phone" /></p>
           </section>
         </div>
       )}
@@ -88,7 +86,7 @@ export default function EntitySignalsLoading() {
         <div><h2>Ce verifici</h2><p><G.Line w="92%" /><G.Line w="70%" only="phone" /></p></div>
         <div><h2><G.Line w="150px" /></h2><p><G.Line w="88%" /><G.Line w="64%" only="phone" /></p></div>
       </div>
-      <p className="sgc-foot" aria-hidden="true">Un tipar e o pistă de verificat, nu o dovadă. Valori înregistrate, nu plăți. <G.Line inline w="120px" /></p>
+      <p className="sgc-foot" aria-hidden="true">Pistă, nu dovadă · <G.Line inline w="120px" /></p>
     </Ghost>
   );
 }

@@ -76,6 +76,7 @@
 .topic-answer-label{margin:0 0 6px!important;font-size:13px;font-weight:600;color:var(--ink)}
 /* the total and its records */
 .topic-answer-value{margin:0!important}
+.topic-answer-value{display:flex;align-items:center;gap:4px}
 .topic-answer-value>strong{display:block;font:600 30px/1.2 var(--display);letter-spacing:-.025em;font-variant-numeric:tabular-nums;color:var(--ink)}
 .is-led .topic-answer-value>strong{font-size:24px}
 .topic-answer-count{display:flex;align-items:center;min-height:36px;margin:0!important;font-size:14px;color:var(--ink2)}

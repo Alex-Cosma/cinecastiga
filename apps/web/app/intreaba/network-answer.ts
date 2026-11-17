@@ -98,19 +98,19 @@ export function orderedRows(data: NetworkData, list: NetworkList, order: Network
 }
 
 /**
- * The summary under the groups (final §3.7): "282 de parteneri · primii 15 au 75% din valoare ·
- * 150 cu o singură înregistrare (?)", and "95% în asociere (?)" when more than half the value is.
+ * The summary under the groups (final §3.7): "primii 15 au 75% din valoare (i)", and "95% în asociere (?)" when more
+ * than half the value is. How many partners is the group's button („Toți 282”); the partners with one record are in
+ * the (i)'s box, `oneOff` (owner, 17 November 2026: less small print).
  */
 export function networkSummary(own: NetworkListData, shownValue: number, shown: number): { parts: string[]; oneOff: string | null; joint: string | null } {
-  const parts = [partners(own.partners)];
+  const parts: string[] = [];
   if (own.partners > shown && own.value > 0) parts.push(`primii ${formatInt(shown)} au ${formatShare(shownValue / own.value)} din valoare`);
   return {
     parts,
-    oneOff: own.oneOff > 0 ? `${formatInt(own.oneOff)} cu o singură înregistrare` : null,
+    oneOff: own.oneOff > 0 ? `${partners(own.oneOff)} cu o singură achiziție sau un singur contract în selecție. Ordonarea după valoare îi coboară în listă.` : null,
     joint: own.value > 0 && own.joint / own.value > JOINT_SHARE ? `${formatShare(own.joint / own.value)} în asociere` : null,
   };
 }
-export const ONE_OFF_TIP: KitTip = { title: "O singură înregistrare", text: "Parteneri cu o singură achiziție sau un singur contract în selecție. Ordonarea după valoare îi coboară în listă." };
 export const JOINT_TIP: KitTip = { title: "În asociere", text: "Contracte cu mai mulți câștigători: valoarea fiecăruia e împărțită egal între ei." };
 
 /** The band of years of a row (final §3.7): ≤2018 … the archive's last year, a gap before the reference year, partial years hatched. */
@@ -196,7 +196,11 @@ export function networkRowView(row: NetworkRow, data: NetworkData, list: Network
 /** The last year any row's band shows: the archive's last year with a partner, never before the reference year. */
 export const bandLast = (data: NetworkData): number => Math.max(data.since, ...Object.values(data.partners).map((p) => p.last));
 
-/** What a list shows now: its rows in the order, the first `shown`, and the rest (final §3.5: „alți 267 de parteneri · 25% din valoare”). */
+/**
+ * What a list shows now: its rows in the order, the first `shown`, and the rest (final §3.5: „alți 267 de parteneri”;
+ * its share of the value is the summary's complement, „primii 15 au 75% din valoare”: not said twice, owner,
+ * 17 November 2026).
+ */
 export function networkPage(data: NetworkData, spec: Pick<AskSpec, "network">, list: NetworkList, extra = 0): {
   rows: NetworkRow[]; shown: number; held: number; rest: string | null; more: string | null; step: number; shownValue: number;
 } {
@@ -206,7 +210,7 @@ export function networkPage(data: NetworkData, spec: Pick<AskSpec, "network">, l
   const rows = ordered.slice(0, shown);
   const shownValue = rows.reduce((t, r) => t + r.value, 0);
   const left = own.partners - shown;
-  const rest = left > 0 ? `${left === 1 ? "un alt partener" : `alți ${partners(left)}`} · ${own.value > 0 ? formatShare(Math.max(0, own.value - shownValue) / own.value) : "—"} din valoare` : null;
+  const rest = left > 0 ? (left === 1 ? "un alt partener" : `alți ${partners(left)}`) : null;
   const step = Math.min(networkShow(spec), ordered.length - shown);
   return { rows, shown, held: ordered.length, rest, more: step > 0 ? `Arată încă ${formatInt(step)}` : null, step, shownValue };
 }

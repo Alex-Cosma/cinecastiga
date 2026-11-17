@@ -114,6 +114,16 @@
 /* A (?) on a word (the home number strip): the label keeps its dotted "?" word. */
 .term-tip-text>.term-trigger{text-decoration:underline dotted;text-decoration-thickness:1px;text-underline-offset:.2em;min-height:0;display:inline}
 .term-tip-text>.term-trigger>.term-mark{margin-left:.35em}
+/* The "i" in place of a line of fine print (components/InfoMark.tsx; owner, 17 November 2026): a quiet 24 px mark in
+   the text's line; its explanation floats like any (?). The dot of the "i" hops once while it is pointed at or open. */
+.term-tip.info-mark{vertical-align:middle}
+.term-tip.info-mark>.term-trigger{display:inline-grid;place-items:center;width:24px;height:24px;min-height:0;border-radius:6px;color:var(--muted);text-decoration:none;transition:color var(--fast) var(--ease),background var(--fast) var(--ease)}
+.term-tip.info-mark>.term-trigger>.term-mark{display:none}
+.term-tip.info-mark>.term-trigger:hover,.term-tip.info-mark.term-shown>.term-trigger{color:var(--accent-ink);background:var(--accent-soft)}
+.info-mark-i{display:block;width:16px;height:16px;overflow:visible}
+.info-mark .term-trigger:is(:hover,:focus-visible) .info-mark-dot,.info-mark.term-shown .info-mark-dot{animation:info-hop 560ms var(--ease) both}
+@keyframes info-hop{0%{transform:none}35%{transform:translateY(-4px)}62%{transform:none}80%{transform:translateY(-1.5px)}100%{transform:none}}
+@media(prefers-reduced-motion:reduce){.info-mark-dot{animation:none!important}}
 .d-national-item{position:relative}
 
 /* Home: three ways further in, smaller than the question cards */
@@ -138,18 +148,20 @@
 @media(prefers-reduced-motion:reduce){.d-path-card{transition:none}.d-path-card:hover{transform:none}}
 
 /* Home on phones (UX audit Z1-04, 16 November 2026): each question and each way further in is one row, its drawing
-   (cropped to its subject) on the left, the title with a small arrow and the whole description on the right. The
+   (cropped to its subject) on the left, the title with a small arrow on the right. The
    label, the number and the action row are left out; the whole row stays the link. Wide screens are unchanged. */
 .d-art-narrow,.d-card-go{display:none}
+/* The cards have no description (owner, 17 November 2026): the title keeps the room the description gave it above the
+   action row; on phones it sits in the middle of its row, beside the drawing. */
+.d-question-card h3{margin-bottom:20px}
 @media(max-width:700px){
   .d-question-grid{gap:10px}
-  .d-question-card,.d-path-card{display:grid;grid-template-columns:104px minmax(0,1fr);grid-template-areas:"art title" "art desc";column-gap:14px;row-gap:6px;align-items:center;padding:14px 16px 14px 10px}
+  .d-question-card,.d-path-card{display:grid;grid-template-columns:104px minmax(0,1fr);grid-template-areas:"art title";column-gap:14px;align-items:center;padding:14px 16px 14px 10px}
   .d-question-card{min-height:100px}
   .d-question-top,.d-question-bottom,.d-path-head>span,.d-art-wide{display:none}
   .discovery-page .d-art-narrow{display:block;grid-area:art;width:104px;height:70px;margin:0;align-self:center}
-  .d-question-card h3,.d-path-head{grid-area:title;align-self:end;margin:0;max-width:none}
+  .d-question-card h3,.d-path-head{grid-area:title;align-self:center;margin:0;max-width:none}
   .d-question-card h3,.d-path-head h3{font-size:19px;line-height:1.2;letter-spacing:-.3px}
-  .d-question-card>p,.d-path-card>p{grid-area:desc;align-self:start;margin:0;max-width:none;font-size:13px;line-height:1.5}
   .d-card-go{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:6px;vertical-align:-3px;color:var(--accent)}
   .d-card-go .d-icon{width:16px;height:16px}
   .d-paths{gap:10px}

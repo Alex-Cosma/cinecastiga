@@ -34,6 +34,13 @@ export function nearThresholdEvidence(evidence: Record<string, unknown>): string
 /** award_single_bid (rf-2026.9): which value the signal uses and whether the
  * cited contracts exceed it. Older signals lack these fields and add nothing. */
 export function singleBidValueNote(evidence: Record<string, unknown>): string {
+  const parts = Object.values(singleBidValueParts(evidence)).filter((part): part is string => part !== null);
+  return parts.length ? ` ${parts.join(" ")}` : "";
+}
+
+/** singleBidValueNote's sentences one by one, each null when it does not apply: what the value is, cited contracts
+ * above it (a warning), cited contracts without a value. */
+export function singleBidValueParts(evidence: Record<string, unknown>): { scope: string | null; above: string | null; unknown: string | null } {
   const n = (key: string): number | null => {
     const raw = evidence[key];
     if (raw == null || raw === "" || !["string", "number"].includes(typeof raw)) return null;
@@ -47,11 +54,11 @@ export function singleBidValueNote(evidence: Record<string, unknown>): string {
     return /^\d+(?:\.\d+)?$/.test(text) ? `${formatExactDecimal(text)} lei` : "valoare necunoscută";
   };
   const value = n("value"), cited = n("cited_contracts_value"), unknown = n("cited_unknown_value_count");
-  const parts: string[] = [];
-  if (evidence.value_scope === "confirmed_contracts") parts.push(`Anunțul SEAP nu are o valoare; valoarea semnalului (${lei("value")}) este suma contractelor citate care sunt contracte sau comenzi subsecvente, fără plafoane de acord-cadru.`);
-  if (value !== null && cited !== null && cited > value) parts.push(`Contractele citate însumează ${lei("cited_contracts_value")}, mai mult decât ${evidence.value_scope === "confirmed_contracts" ? "valoarea semnalului" : `valoarea anunțului (${lei("value")})`}; suma poate include plafoane de acord-cadru, care nu sunt cheltuieli. Verifică anunțul SEAP.`);
-  if (unknown) parts.push(`${formatInt(unknown)} ${unknown === 1 ? "contract citat nu are" : "contracte citate nu au"} valoare cunoscută în lei.`);
-  return parts.length ? ` ${parts.join(" ")}` : "";
+  return {
+    scope: evidence.value_scope === "confirmed_contracts" ? `Anunțul SEAP nu are o valoare; valoarea semnalului (${lei("value")}) este suma contractelor citate care sunt contracte sau comenzi subsecvente, fără plafoane de acord-cadru.` : null,
+    above: value !== null && cited !== null && cited > value ? `Contractele citate însumează ${lei("cited_contracts_value")}, mai mult decât ${evidence.value_scope === "confirmed_contracts" ? "valoarea semnalului" : `valoarea anunțului (${lei("value")})`}; suma poate include plafoane de acord-cadru, care nu sunt cheltuieli. Verifică anunțul SEAP.` : null,
+    unknown: unknown ? `${formatInt(unknown)} ${unknown === 1 ? "contract citat nu are" : "contracte citate nu au"} valoare cunoscută în lei.` : null,
+  };
 }
 
 /** What an award notice publishes (evidence.notice_contracts, rf-2026.12, audit
@@ -105,10 +112,17 @@ export function calloffsOverCeilingLine(evidence: Record<string, unknown>): stri
   const value = num("value"), ceiling = num("ceiling"), calloffs = num("calloffs"), repeats = num("calloffs_repeating_ceiling") ?? 0;
   const times = value !== null && ceiling ? (Math.round((value / ceiling) * 10) / 10).toFixed(1).replace(".", ",") : null;
   const head = `Comenzile subsecvente declarate în SEAP: ${value === null ? "valoare necunoscută" : formatRon(value)}${calloffs ? ` (${countWords(calloffs, "comandă", "comenzi")})` : ""}, față de un plafon al acordului-cadru de ${ceiling === null ? "valoare necunoscută" : formatRon(ceiling)}${times ? `: de ${times} ori plafonul` : ""}.`;
-  if (repeats >= 2) return `${head} ${countWords(repeats, "comandă", "comenzi")} au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP. Valorile reale sunt în documentele contractelor.`;
-  if (repeats === 1) return `${head} O comandă are exact suma plafonului. Poate fi și o eroare de completare în SEAP.`;
-  return `${head} Poate fi o depășire reală sau o eroare de completare în SEAP.`;
+  return `${head} ${calloffsRepeatWords(repeats)}`;
 }
+
+/** The end of calloffsOverCeilingLine: how many call-offs repeat the whole ceiling, and what that may mean. */
+function calloffsRepeatWords(repeats: number): string {
+  if (repeats >= 2) return `${countWords(repeats, "comandă", "comenzi")} au exact suma plafonului: probabil plafonul copiat în fiecare comandă, o eroare de completare în SEAP. Valorile reale sunt în documentele contractelor.`;
+  if (repeats === 1) return "O comandă are exact suma plafonului. Poate fi și o eroare de completare în SEAP.";
+  return CALLOFFS_MAYBE_ERROR;
+}
+/** Call-offs over the ceiling with no order equal to the ceiling: what it may mean (owner, 8 November 2026). */
+export const CALLOFFS_MAYBE_ERROR = "Poate fi o depășire reală sau o eroare de completare în SEAP.";
 
 /**
  * da_first_month and its reverse on the institution, da_first_month_buyer (rf-2026.24; owner, 13 November 2026): the
@@ -209,6 +223,60 @@ export function riskEvidenceLine(code: string, evidence: Record<string, unknown>
     default:
       return null;
   }
+}
+
+/** A row note of /semnale's national list (riskListLine), and a warning it keeps behind an "i": the words that stay
+ * beside the mark (none: the mark alone), the bold start of its explanation and the sentence. */
+export interface ListLine { text: string | null; mark: { words: string | null; title: string; text: string; /** A mark without words that belongs to the note, not to the amount. */ beside?: "note" } | null }
+
+/**
+ * A case's note on /semnale's national list (owner, 17 November 2026: less small print under the rows): riskEvidenceLine
+ * without what the row's other cells already say. The pattern is said once above the list; the value is the row's amount,
+ * with its kind under it; the year is under the institution; the institution is its own column. Every other figure stays.
+ * The other pages keep riskEvidenceLine whole.
+ */
+export function riskListLine(code: string, evidence: Record<string, unknown> | null): ListLine {
+  if (!evidence) return { text: null, mark: null };
+  const n = (key: string): number | null => {
+    const raw = evidence[key];
+    if (raw == null || raw === "" || !["string", "number"].includes(typeof raw)) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+  const s = (key: string) => evidence[key] == null ? "neprecizat" : String(evidence[key]);
+  const money = (key: string) => n(key) === null ? "valoare necunoscută" : formatRon(n(key));
+  // What the notice publishes, when it is not the usual contracts or the framework ceiling the value's label already names.
+  const kind = evidence.notice_contracts === "contract" || (noticeIsFrameworkOnly(evidence) && awardValueLabel(evidence) === "plafon acord-cadru")
+    ? "" : noticeContractsNote(evidence);
+  switch (code) {
+    case "award_no_competition":
+      return { text: `CPV ${s("cpv")}.${kind}`, mark: null };
+    case "award_single_bid": {
+      if (!evidence.confirmed_contract_count) break;
+      const value = singleBidValueParts(evidence);
+      const count = n("confirmed_contract_count") === 1 ? "1 contract" : `${s("confirmed_contract_count")} contracte`;
+      return {
+        text: [`${count}.`, value.scope, value.unknown].filter(Boolean).join(" ") + kind,
+        mark: value.above ? { words: null, title: "Contractele citate", text: value.above } : null,
+      };
+    }
+    case "award_calloffs_over_ceiling": {
+      const value = n("value"), ceiling = n("ceiling"), calloffs = n("calloffs"), repeats = n("calloffs_repeating_ceiling") ?? 0;
+      const times = value !== null && ceiling ? (Math.round((value / ceiling) * 10) / 10).toFixed(1).replace(".", ",") : null;
+      const text = `${calloffs ? `${countWords(calloffs, "comandă", "comenzi")}, față de` : "Față de"} un plafon al acordului-cadru de ${ceiling === null ? "valoare necunoscută" : formatRon(ceiling)}${times ? `: de ${times} ori plafonul` : ""}.`;
+      // What the figures may mean waits behind the "i" on every row (owner, 17 November 2026): most rows said it word for word.
+      return repeats >= 1
+        ? { text, mark: { words: `${countWords(repeats, "comandă", "comenzi")} = plafonul`, title: repeats === 1 ? "O comandă cât plafonul" : "Comenzi cât plafonul", text: calloffsRepeatWords(repeats) } }
+        : { text, mark: { words: null, beside: "note", title: "Depășire sau eroare", text: calloffsRepeatWords(repeats) } };
+    }
+    case "fin_tiny_staff":
+      return { text: `${s("employees")} salariați în medie.`, mark: null };
+    case "fin_public_reliance":
+      return { text: `Raport valori contractate / cifră de afaceri: ${n("ratio") === null ? "pondere necunoscută" : `${Math.round(n("ratio")! * 100)}%`} (${money("public_total")} / ${money("revenue_total")}, ${s("years")} ani cu bilanț).`, mark: null };
+    case "net_shared_admin":
+      return { text: `${s("person")} apare ca reprezentant legal pentru ${s("n_firms")} firme.${onrcRoleNote(evidence)}`, mark: null };
+  }
+  return { text: riskEvidenceLine(code, evidence), mark: null };
 }
 
 /** Award signals (rf-2026.15) are dated by the first contract of the notice,

@@ -19,6 +19,8 @@
    the figure's 30 px display (Z7-10, Z7-valuta, Z7-21). */
 .record-entry .record-amount .record-amount-words { display: block; font: 600 20px/1.3 var(--body); letter-spacing: 0; color: var(--ink); }
 .record-entry .record-amount .record-amount-words.is-quiet { color: var(--ink2); }
+/* The last word keeps its "i" beside it (a foreign-currency value, owner 17 November 2026). */
+.record-entry .record-amount .record-amount-words > .record-nowrap { white-space: nowrap; }
 /* Z7-09: „nu e plată” once, in the label of the head's figure. */
 .record-amount-label .record-not-paid { font-weight: 600; color: var(--ink2); white-space: nowrap; }
 

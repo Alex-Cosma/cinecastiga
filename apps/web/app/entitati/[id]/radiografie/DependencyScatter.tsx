@@ -159,7 +159,7 @@ export default function DependencyScatter({ rows, win, authorityName, authorityI
         suppressClick.current = Date.now() + 250; if (e.currentTarget.hasPointerCapture(e.pointerId))
         e.currentTarget.releasePointerCapture(e.pointerId); drag.current = null; }
     return <>
- {!p ? <div className="rv-empty"><h2>Niciun furnizor</h2><p>Autoritatea nu are furnizori identificați în contracte sau achiziții directe. Lipsa lor nu confirmă absența unei probleme.</p></div> : <>
+ {!p ? <div className="rv-empty"><h2>Niciun furnizor</h2><p>Autoritatea nu are furnizori identificați în contracte sau achiziții directe.</p></div> : <>
  <section className="rv-workspace"><div className="rv-workspace-heading rv-tip"><h2>Cât de strânsă este relația? <Term tip id="grafic-dependenta" /></h2></div><div className="rv-split"><div><div className="rv-dependency-chart">
  <div className="rv-zoom">{/* Which suppliers the chart draws, in its own corner beside the zoom (owner, 4 November 2026). */}
  <span className="rv-limit rv-tip"><select aria-label="Furnizori în grafic" value={limit} onChange={e => { showTop(Number(e.target.value)); jump(INITIAL_ZOOM); }}><option value={12}>Primii 12 după valoare</option>{rows.length > 12 && <option value={25}>Primii {Math.min(25, rows.length)} după valoare</option>}</select><Term tip title="Furnizorii din grafic" text="Cei mai mari 12 sau 25 de furnizori ai autorității după valoare, contracte prin proceduri și achiziții directe. Tabelul de dedesubt îi are pe toți. Datele pot avea lacune." /></span>

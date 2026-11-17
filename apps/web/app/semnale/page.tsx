@@ -1,6 +1,4 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
-import RiskFreshness from "@/components/RiskFreshness";
 import { getSignalPage, getSignalRiskGroup, getSignalTypeCounts, getRiskScoreDistribution, parseSignalState } from "@/lib/signals";
 import SignalsExplorer from "./SignalsExplorer";
 import "./signals.css";
@@ -23,6 +21,6 @@ export default async function SemnalePage({ searchParams }: { searchParams: Prom
   });
   if (signals) counts[state.code] = signals.total;
   const page = signals?.page ?? risk?.page ?? 0;
-  return <SignalsExplorer state={{ ...state, page }} signals={signals} risk={risk} counts={counts} distribution={distribution} error={error}
-    freshness={<Suspense fallback={null}><RiskFreshness /></Suspense>} />;
+  // The date of the signals is the site footer's („semnale la …”; owner, 17 November 2026: no second line under the title).
+  return <SignalsExplorer state={{ ...state, page }} signals={signals} risk={risk} counts={counts} distribution={distribution} error={error} />;
 }
