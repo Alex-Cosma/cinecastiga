@@ -452,8 +452,9 @@
  .topic-part-subject[open]>summary::before,.topic-part-place[open]>summary::before{content:"";position:fixed;inset:0;z-index:39;background:color-mix(in srgb,var(--ink) 38%,transparent);cursor:default}
  .topic-part-menu.topic-domain-menu{position:fixed;z-index:40;top:auto;left:0;right:0;bottom:0;width:auto;max-width:none;max-height:calc(100dvh - var(--site-header-h,53px) - 24px);overflow-y:auto;overscroll-behavior:contain;padding:14px 12px calc(16px + env(safe-area-inset-bottom));border:0;border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(0,0,0,.14);font-size:15px;animation:sheet-in var(--sheet-in) var(--ease) both}
  .topic-domain-close{display:grid}
- /* while another place is searched the sheet is tall, so the field stays near the top, above the keyboard */
- .topic-part-menu.topic-place-menu:has(.topic-place-find:focus-within),.topic-part-menu.topic-place-menu:has(.topic-place-find>input:not(:placeholder-shown)){min-height:calc(100dvh - var(--site-header-h,53px) - 24px)}
+ /* once the field is used the sheet is tall until it closes, so the field stays near the top, above the keyboard, and
+    nothing moves when the finger leaves the field for a suggestion */
+ .topic-part-menu.topic-place-menu.is-searching{min-height:calc(100dvh - var(--site-header-h,53px) - 24px)}
  .topic-part-menu .topic-domain-title{font-family:var(--display);font-size:19px;letter-spacing:-.02em}
  .topic-part-menu>.topic-domain{grid-template-columns:18px minmax(0,1fr);min-height:56px}
  .topic-domain.is-only{grid-template-columns:minmax(0,1fr)}

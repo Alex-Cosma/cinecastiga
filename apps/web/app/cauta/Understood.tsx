@@ -112,23 +112,26 @@ const inCounty=(county:string)=>county==='București'?'București':`județul ${c
 function PlaceWord({text,title,choices,around,hrefFor,out}:{text:string;title:string;choices:{id:string;text:string;href:string}[];around:Around|null;hrefFor:(p:Place)=>string;out:{text:string;href:string}}){
  const box=useRef<HTMLDetailsElement>(null),id=useId(),router=useRouter();
  const [term,setTerm]=useState(''),[found,setFound]=useState<{term:string;places:Place[];failed:boolean}|null>(null);
+ // Once the field is used the sheet stays tall until the menu closes: a height that followed the focus moved the
+ // suggestions from under the finger as it left the field (found on the public site, 17 November 2026).
+ const [searching,setSearching]=useState(false);
  const word=term.trim();
  useEffect(()=>{if(word.length<2){setFound(null);return;}
   const abort=new AbortController(),timer=setTimeout(()=>{void fetch(`/api/topic-search/places?q=${encodeURIComponent(word)}`,{signal:abort.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error);if(!abort.signal.aborted)setFound({term:word,places:(d.places as Place[]).slice(0,6),failed:false});})
    .catch(e=>{if(!abort.signal.aborted&&(e as Error).name!=='AbortError')setFound({term:word,places:[],failed:true});});},180);
   return()=>{clearTimeout(timer);abort.abort();};},[word]);
- const close=()=>{if(box.current){box.current.open=false;setTerm('');}};
+ const close=()=>{if(box.current)box.current.open=false;setTerm('');setSearching(false);};
  const taken=new Set(choices.map(c=>c.id));
  const offer=(p:Place,shown:string)=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}>{shown} ›</Link>;
  const wider=around?.wider&&!taken.has(around.wider.id)?around.wider:null,inside=(around?.inside??[]).filter(p=>!taken.has(p.id)),beside=(around?.neighbours??[]).filter(p=>!taken.has(p.id));
  const hits=found&&found.term===word?found:null;
- return <details ref={box} className="topic-part topic-part-place" onToggle={e=>{const el=e.currentTarget as HTMLDetailsElement;if(el.open)el.querySelector('.topic-domain-menu')?.scrollIntoView({block:'nearest',behavior:scrollMotion()});}}>
+ return <details ref={box} className="topic-part topic-part-place" onToggle={e=>{const el=e.currentTarget as HTMLDetailsElement;if(el.open)el.querySelector('.topic-domain-menu')?.scrollIntoView({block:'nearest',behavior:scrollMotion()});else{setTerm('');setSearching(false);}}}>
   <summary><span>{text}</span><DiscoveryIcon name="chevronDown"/><span className="d-sr-only"> (schimbă locul)</span></summary>
-  <div className="topic-part-menu topic-domain-menu topic-place-menu">
+  <div className={`topic-part-menu topic-domain-menu topic-place-menu${searching?' is-searching':''}`}>
    <div className="topic-domain-head"><div><p className="topic-domain-title">Locul: {title}</p><p className="topic-domain-note">Alege alt loc sau caută unul.</p></div>
     <button type="button" className="topic-domain-close" onClick={()=>{close();box.current?.querySelector('summary')?.focus();}} aria-label="Închide"><DiscoveryIcon name="close"/></button></div>
    <label className="topic-place-find" htmlFor={id}><DiscoveryIcon name="search"/><span className="d-sr-only">Alt loc</span>
-    <input id={id} type="search" value={term} placeholder="Alt județ, oraș sau comună" autoComplete="off" enterKeyHint="search" onChange={e=>setTerm(e.target.value)}
+    <input id={id} type="search" value={term} placeholder="Alt județ, oraș sau comună" autoComplete="off" enterKeyHint="search" onFocus={()=>setSearching(true)} onChange={e=>setTerm(e.target.value)}
      onKeyDown={e=>{if(e.key==='Enter'&&hits?.places[0]){e.preventDefault();const to=hrefFor(hits.places[0]);close();router.push(to);}}}/></label>
    {word.length>=2?<div className="topic-place-hits" role="status" aria-busy={!hits}>{!hits?<p>Se caută…</p>:hits.places.length?hits.places.map(p=><Link prefetch={false} key={p.id} href={hrefFor(p)} onClick={close}><span>{p.name}</span><small>{p.detail}</small></Link>)
      :<p>{hits.failed?'Căutarea de locuri nu a răspuns. Încearcă din nou.':`Niciun județ sau localitate numită „${word}”.`}</p>}</div>
